@@ -6,7 +6,7 @@ import type {
   BenchmarkProjection,
   BenchmarkQuery,
   BenchmarkRenderModel,
-} from "./contracts.ts";
+} from "./contracts";
 
 export interface ReferenceSnapshot {
   readonly byId: ReadonlyMap<string, FixtureEvent>;

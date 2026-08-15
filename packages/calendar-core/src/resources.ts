@@ -1,4 +1,4 @@
-import type { ResourceId } from "./ids.ts";
+import type { ResourceId } from "./ids";
 
 export interface CalendarResource<TData = unknown, TResourceId extends ResourceId = string> {
   readonly data: TData;

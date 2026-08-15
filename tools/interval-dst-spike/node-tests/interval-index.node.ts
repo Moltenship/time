@@ -8,7 +8,7 @@ import {
   ScanIntervalIndex,
   type HalfOpenInterval,
   type IntervalIndex,
-} from "../src/interval-index.ts";
+} from "../src/interval-index";
 
 function add<T>(index: IntervalIndex<T>, interval: HalfOpenInterval, value: T): IntervalIndex<T> {
   index.insert(interval, value);

@@ -3,7 +3,7 @@
 import { renderToString } from "react-dom/server";
 import { expect, test } from "vite-plus/test";
 
-import { ResourceTimeline } from "../src/ResourceTimeline.tsx";
+import { ResourceTimeline } from "../src/ResourceTimeline";
 
 function count(markup: string, token: string) {
   return markup.split(token).length - 1;

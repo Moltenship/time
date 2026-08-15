@@ -9,7 +9,7 @@ export {
   plainDateInterval,
   plainDateTimeInterval,
   validateHalfOpenInterval,
-} from "./intervals/half-open.ts";
+} from "./intervals/half-open";
 export type {
   HalfOpenInterval,
   HalfOpenIntervalComparator,
@@ -18,7 +18,7 @@ export type {
   InstantInterval,
   PlainDateInterval,
   PlainDateTimeInterval,
-} from "./intervals/half-open.ts";
+} from "./intervals/half-open";
 
 export {
   clampInstantInterval,
@@ -39,41 +39,41 @@ export {
   splitInstantInterval,
   splitPlainDateInterval,
   splitPlainDateTimeInterval,
-} from "./intervals/operations.ts";
-export type { HalfOpenIntervalSplit } from "./intervals/operations.ts";
+} from "./intervals/operations";
+export type { HalfOpenIntervalSplit } from "./intervals/operations";
 
-export { DEFAULT_PLAIN_DATE_ITERATION_LIMIT, iteratePlainDates } from "./plain-date/iteration.ts";
-export type { PlainDateIterationOptions } from "./plain-date/iteration.ts";
+export { DEFAULT_PLAIN_DATE_ITERATION_LIMIT, iteratePlainDates } from "./plain-date/iteration";
+export type { PlainDateIterationOptions } from "./plain-date/iteration";
 
-export { monthGrid, weekRange } from "./grids/calendar-grid.ts";
+export { monthGrid, weekRange } from "./grids/calendar-grid";
 export type {
   MonthGrid,
   MonthGridOptions,
   WeekRangeOptions,
   WeekStartsOn,
-} from "./grids/calendar-grid.ts";
+} from "./grids/calendar-grid";
 
-export { roundPlainTime, snapPlainTime } from "./plain-time/rounding.ts";
+export { roundPlainTime, snapPlainTime } from "./plain-time/rounding";
 export type {
   PlainTimeRoundingMode,
   PlainTimeRoundingOptions,
   PlainTimeSnapMode,
   PlainTimeSnapOptions,
-} from "./plain-time/rounding.ts";
+} from "./plain-time/rounding";
 
-export { DEFAULT_INSTANT_ITERATION_LIMIT, iterateInstants } from "./instant/iteration.ts";
-export type { InstantIterationOptions } from "./instant/iteration.ts";
+export { DEFAULT_INSTANT_ITERATION_LIMIT, iterateInstants } from "./instant/iteration";
+export type { InstantIterationOptions } from "./instant/iteration";
 
-export { roundInstant, snapInstant } from "./instant/rounding.ts";
+export { roundInstant, snapInstant } from "./instant/rounding";
 export type {
   InstantRoundingMode,
   InstantRoundingOptions,
   InstantSnapMode,
   InstantSnapOptions,
-} from "./instant/rounding.ts";
+} from "./instant/rounding";
 
-export { createFixedClock, createSystemClock } from "./clock/calendar-clock.ts";
-export type { CalendarClock } from "./clock/calendar-clock.ts";
+export { createFixedClock, createSystemClock } from "./clock/calendar-clock";
+export type { CalendarClock } from "./clock/calendar-clock";
 
 export {
   instantKey,
@@ -81,9 +81,9 @@ export {
   plainDateTimeKey,
   zonedDayKey,
   zonedWallTimeKey,
-} from "./zoned/machine-keys.ts";
+} from "./zoned/machine-keys";
 
-export { projectInstantToZonedTime, resolveZonedWallTime } from "./zoned/projection.ts";
+export { projectInstantToZonedTime, resolveZonedWallTime } from "./zoned/projection";
 export type {
   RejectedZonedWallTimeProjection,
   ResolvedZonedWallTimeProjection,
@@ -95,14 +95,14 @@ export type {
   ZonedWallTimeOccurrence,
   ZonedWallTimeProjection,
   ZonedWallTimeSelection,
-} from "./zoned/projection.ts";
+} from "./zoned/projection";
 
 export {
   DEFAULT_ZONED_DAY_SPLIT_LIMIT,
   splitInstantRangeByZonedDay,
   zonedDayRange,
   zonedDayTransitions,
-} from "./zoned/day.ts";
+} from "./zoned/day";
 export type {
   AvailableZonedDayRange,
   SkippedZonedDayRange,
@@ -110,13 +110,13 @@ export type {
   ZonedDayRange,
   ZonedDaySplit,
   ZonedOffsetTransition,
-} from "./zoned/day.ts";
+} from "./zoned/day";
 
-export { DEFAULT_ZONED_SLOT_LIMIT, slotsInZonedDay } from "./zoned/slots.ts";
+export { DEFAULT_ZONED_SLOT_LIMIT, slotsInZonedDay } from "./zoned/slots";
 export type {
   ZonedDaySlot,
   ZonedDaySlotOccurrence,
   ZonedDaySlots,
   ZonedDaySlotSegment,
   ZonedDaySlotsOptions,
-} from "./zoned/slots.ts";
+} from "./zoned/slots";

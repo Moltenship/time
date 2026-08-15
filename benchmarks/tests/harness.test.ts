@@ -2,16 +2,16 @@ import { describe, expect, test } from "vite-plus/test";
 
 import { generateBenchmarkFixtures } from "fixtures";
 
-import type { BenchmarkEngine, BenchmarkQuery } from "../shared/contracts.ts";
+import type { BenchmarkEngine, BenchmarkQuery } from "../shared/contracts";
 import {
   benchmarkExitCode,
   compareCandidateToReference,
   CORE_BENCHMARK_STAGES,
   runBenchmark,
   summarizeSamples,
-} from "../shared/protocol.ts";
-import { referenceEngine, type ReferenceSnapshot } from "../shared/reference.ts";
-import { indexedSnapshotEngine } from "../core/indexed-snapshot.ts";
+} from "../shared/protocol";
+import { referenceEngine, type ReferenceSnapshot } from "../shared/reference";
+import { indexedSnapshotEngine } from "../core/indexed-snapshot";
 
 describe("benchmark protocol", () => {
   test("reports nearest-rank p50 and p95 after warmup", () => {

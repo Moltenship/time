@@ -7,9 +7,9 @@ import {
   snapPlacement,
   snapToDevicePixel,
   synchronizeAxes,
-} from "../src/geometry.ts";
-import { createTimelineMetrics } from "../src/metrics.ts";
-import { RESOURCE_COUNT, TIME_SLOT_COUNT, createResources, createTimeSlots } from "../src/model.ts";
+} from "../src/geometry";
+import { createTimelineMetrics } from "../src/metrics";
+import { RESOURCE_COUNT, TIME_SLOT_COUNT, createResources, createTimeSlots } from "../src/model";
 
 test("resource and time keys are deterministic domain identifiers", () => {
   const resources = createResources(RESOURCE_COUNT);

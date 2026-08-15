@@ -9,7 +9,7 @@ import {
   type InstantInterval,
   type PlainDateInterval,
   type PlainDateTimeInterval,
-} from "./half-open.ts";
+} from "./half-open";
 
 interface IntervalEndpoints<TPoint> {
   readonly end: TPoint;

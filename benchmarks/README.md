@@ -63,7 +63,7 @@ Candidate engines implement the generic `BenchmarkEngine<TSnapshot>` seam and ar
 comparison in the benchmark test suite:
 
 ```ts
-import { compareCandidateToReference } from "./core/index.ts";
+import { compareCandidateToReference } from "./core/index";
 import { generateBenchmarkFixtures } from "fixtures";
 
 const comparison = compareCandidateToReference(candidateEngine, generateBenchmarkFixtures());

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, type RefObject } from "react";
 
-import { devicePixelError } from "./geometry.ts";
-import type { TimelineMetrics, TimelineMetricsSnapshot } from "./metrics.ts";
+import { devicePixelError } from "./geometry";
+import type { TimelineMetrics, TimelineMetricsSnapshot } from "./metrics";
 
 export type TimelineDirection = "ltr" | "rtl";
 

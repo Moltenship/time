@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 
-import { validateRegistryWorkspace } from "./validation.ts";
+import { validateRegistryWorkspace } from "./validation";
 
 const workspaceRoot = resolve(import.meta.dirname, "../../..");
 const contractFixture = "tools/registry/fixtures/valid/registry-item.json";

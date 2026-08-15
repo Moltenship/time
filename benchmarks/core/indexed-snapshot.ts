@@ -16,8 +16,8 @@ import type {
   BenchmarkLayout,
   BenchmarkProjection,
   BenchmarkQuery,
-} from "../shared/contracts.ts";
-import { referenceEngine } from "../shared/reference.ts";
+} from "../shared/contracts";
+import { referenceEngine } from "../shared/reference";
 
 type NativeFixtureEvent = CalendarEvent<FixtureEventData, string, string>;
 type IndexedFixtureSnapshot = EventSnapshot<NativeFixtureEvent, string, string>;

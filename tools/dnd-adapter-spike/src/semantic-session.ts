@@ -4,8 +4,8 @@ import type {
   CalendarEventChange,
   CalendarEventPlacement,
   CalendarInteractionInput,
-} from "./contracts.ts";
-import type { CalendarPoint, CalendarViewRegionGeometry } from "./geometry.ts";
+} from "./contracts";
+import type { CalendarPoint, CalendarViewRegionGeometry } from "./geometry";
 
 interface ActiveSession<TEvent, TResourceId extends CalendarEntityId> {
   readonly sequence: number;

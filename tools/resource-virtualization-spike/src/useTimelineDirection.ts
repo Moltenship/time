@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, type Dispatch, type RefObject } from "react";
 
-import type { TimelineDirection } from "./browserApi.ts";
-import { logicalInlineOffset, nativeInlineOffset, synchronizeAxes } from "./geometry.ts";
+import type { TimelineDirection } from "./browserApi";
+import { logicalInlineOffset, nativeInlineOffset, synchronizeAxes } from "./geometry";
 
 interface DirectionTransition {
   readonly direction: TimelineDirection;

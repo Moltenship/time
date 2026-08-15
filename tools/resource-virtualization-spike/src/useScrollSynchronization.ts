@@ -1,8 +1,8 @@
 import type { Virtualizer } from "@tanstack/react-virtual";
 import { useCallback, useEffect, useRef, type RefObject } from "react";
 
-import { synchronizeAxes } from "./geometry.ts";
-import type { TimelineMetrics } from "./metrics.ts";
+import { synchronizeAxes } from "./geometry";
+import type { TimelineMetrics } from "./metrics";
 
 interface ScrollSynchronizationOptions {
   readonly diagnosticsRef: RefObject<HTMLOutputElement | null>;

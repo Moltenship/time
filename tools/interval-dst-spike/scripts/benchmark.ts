@@ -8,13 +8,13 @@ import {
   type HalfOpenInterval,
   type IntervalIndex,
   type IntervalIndexEntry,
-} from "../src/interval-index.ts";
+} from "../src/interval-index";
 import {
   candidateSurvivesBenchmark,
   TREE_BUILD_P95_LIMIT_MS,
   TREE_QUERY_P95_LIMIT_MS,
-} from "../src/benchmark-verdict.ts";
-import { indexEntries, seededEvents, seededQueries } from "../src/seeded-data.ts";
+} from "../src/benchmark-verdict";
+import { indexEntries, seededEvents, seededQueries } from "../src/seeded-data";
 
 type IndexKind = "scan" | "tree";
 
@@ -128,7 +128,7 @@ function measureMemory(kind: IndexKind): number {
   for (let sample = 0; sample < 7; sample += 1) {
     const result = spawnSync(
       process.execPath,
-      ["--harmony-temporal", "--expose-gc", script, "--memory-probe", kind],
+      ["--import", "tsx", "--harmony-temporal", "--expose-gc", script, "--memory-probe", kind],
       { encoding: "utf8" },
     );
 

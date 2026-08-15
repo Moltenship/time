@@ -1,12 +1,11 @@
 {
   "compilerOptions": {
-    "allowImportingTsExtensions": true,
     "erasableSyntaxOnly": true,
     "esModuleInterop": true,
     "isolatedModules": true,
-    "module": "NodeNext",
+    "module": "ESNext",
     "moduleDetection": "force",
-    "moduleResolution": "NodeNext",
+    "moduleResolution": "Bundler",
     "noEmit": true,
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,

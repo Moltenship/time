@@ -1,17 +1,17 @@
-import { isDirectExecution, runBenchmarkCli } from "../shared/cli.ts";
-import { CORE_BENCHMARK_STAGES } from "../shared/protocol.ts";
-import { indexedSnapshotEngine } from "./indexed-snapshot.ts";
+import { isDirectExecution, runBenchmarkCli } from "../shared/cli";
+import { CORE_BENCHMARK_STAGES } from "../shared/protocol";
+import { indexedSnapshotEngine } from "./indexed-snapshot";
 
-export { compareCandidateToReference, runBenchmark } from "../shared/protocol.ts";
-export { referenceEngine } from "../shared/reference.ts";
-export { indexedSnapshotEngine } from "./indexed-snapshot.ts";
+export { compareCandidateToReference, runBenchmark } from "../shared/protocol";
+export { referenceEngine } from "../shared/reference";
+export { indexedSnapshotEngine } from "./indexed-snapshot";
 export type {
   BenchmarkComparison,
   BenchmarkEngine,
   BenchmarkReport,
   BenchmarkRunOptions,
   BenchmarkStage,
-} from "../shared/contracts.ts";
+} from "../shared/contracts";
 
 export function runCoreBenchmarkCli(arguments_: readonly string[]): number {
   return runBenchmarkCli(

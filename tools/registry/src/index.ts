@@ -5,4 +5,4 @@ export {
   type RegistryValidationOptions,
   type RegistryValidationIssue,
   type RegistryValidationReport,
-} from "./validation.ts";
+} from "./validation";

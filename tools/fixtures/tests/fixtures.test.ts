@@ -6,7 +6,7 @@ import {
   BENCHMARK_RESOURCE_COUNT,
   BENCHMARK_VISIBLE_FRAGMENT_COUNT,
   generateBenchmarkFixtures,
-} from "../src/index.ts";
+} from "../src/index";
 
 describe("benchmark fixtures", () => {
   test("repeats identical semantic data for the same seed", () => {

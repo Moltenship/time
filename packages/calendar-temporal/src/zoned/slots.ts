@@ -1,4 +1,4 @@
-import { positiveTimeDuration } from "../internal/time-duration.ts";
+import { positiveTimeDuration } from "../internal/time-duration";
 import {
   compareInstants,
   comparePlainDateTimes,
@@ -6,15 +6,15 @@ import {
   plainDateTimeInterval,
   type InstantInterval,
   type PlainDateTimeInterval,
-} from "../intervals/half-open.ts";
-import { intersectInstantIntervals } from "../intervals/operations.ts";
+} from "../intervals/half-open";
+import { intersectInstantIntervals } from "../intervals/operations";
 import {
   zonedDayRange,
   zonedDayTransitions,
   type ZonedDayRange,
   type ZonedOffsetTransition,
-} from "./day.ts";
-import { zonedWallTimeKeyForTimeZoneId } from "./machine-keys.ts";
+} from "./day";
+import { zonedWallTimeKeyForTimeZoneId } from "./machine-keys";
 import {
   projectInstantToZonedTime,
   resolveZonedWallTime,
@@ -22,7 +22,7 @@ import {
   type ZonedWallTimeKind,
   type ZonedWallTimeOccurrence,
   type ZonedWallTimeProjection,
-} from "./projection.ts";
+} from "./projection";
 
 const NOMINAL_DAY_NANOSECONDS = 86_400_000_000_000n;
 export const DEFAULT_ZONED_SLOT_LIMIT = 10_000;

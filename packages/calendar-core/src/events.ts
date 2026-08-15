@@ -6,7 +6,7 @@ import {
   type HalfOpenIntervalComparator,
 } from "@moltenship/calendar-temporal";
 
-import { isEventId, isResourceId, type EventId, type ResourceId } from "./ids.ts";
+import { isEventId, isResourceId, type EventId, type ResourceId } from "./ids";
 
 export interface CalendarEventBase<
   TData,

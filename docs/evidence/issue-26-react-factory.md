@@ -24,8 +24,11 @@
   unregistered-view, and invalid-event state through public contracts.
 - The supported facade re-exports core and React contracts behind a preserved client boundary. A
   consumer fixture implements a third-party view using package roots only.
-- Local React-package and SSR-fixture source imports omit file extensions. Those workspaces use
-  TypeScript's bundler resolution mode, and SSR command fixtures run through Vitest's resolver.
+- Source imports across the repository omit file extensions. TypeScript workspaces use bundler
+  resolution, SSR command fixtures run through Vitest's resolver, and the two direct TypeScript
+  command workspaces use `tsx` as their Node loader.
+- A repository-level test walks source modules and rejects explicit JavaScript or TypeScript
+  extensions in static imports, dynamic imports, and re-exports.
 
 `architecture.md` remains normative. `IMPLEMENTATION_PLAN.md` did not change because issue scope and
 dependency sequencing remain unchanged; GitHub's native issue relationships continue to hold the
@@ -71,9 +74,11 @@ owned by the downstream integrated React gate and source-view issues.
 
 | Command | Result |
 | --- | --- |
-| `vp install` | Lockfile current; supply-chain policy passed |
-| `vp check` | 204 files formatted; 148 files with no lint or type errors |
-| `vp test` | 27 files and 148 tests passed; one intentional fixture skipped |
+| `vp install --frozen-lockfile` | Lockfile current; supply-chain policy passed |
+| `vp check` | 205 files formatted; 149 files with no lint or type errors |
+| `vp test` | 28 files and 149 tests passed; one intentional file/test skipped |
 | `vp run -r build` | 23 of 23 recursive build tasks passed |
 | `vp run ssr:smoke` | Stable hash, no recovery, no mutation, one interaction, clean unmount |
+| `vp run @moltenship/interval-dst-spike#test` | 12 direct Node/TypeScript tests passed |
+| `vp run --no-cache @moltenship/interval-dst-spike#benchmark` | Reference agreement and performance gate passed through the `tsx` loader |
 | `git diff --check` | Passed |

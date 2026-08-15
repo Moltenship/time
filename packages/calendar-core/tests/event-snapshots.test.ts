@@ -17,7 +17,7 @@ import {
   type CalendarEventSource,
   type EventAdapter,
   type EventSnapshot,
-} from "../src/index.ts";
+} from "../src/index";
 
 type TestEvent = CalendarEvent<Readonly<{ readonly revision: number }>, string, string>;
 

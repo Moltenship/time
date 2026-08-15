@@ -14,8 +14,8 @@ import {
   type MonthGrid,
   type PlainTimeSnapOptions,
   type WeekStartsOn,
-} from "../src/index.ts";
-import { NativeTemporal } from "./native-temporal.ts";
+} from "../src/index";
+import { NativeTemporal } from "./native-temporal";
 
 describe("PlainDate calendar grids", () => {
   test("builds bounded natural and fixed month grids", () => {

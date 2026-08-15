@@ -1,4 +1,4 @@
-export { createCalendar } from "./calendar.tsx";
+export { createCalendar } from "./calendar";
 export type {
   CalendarActions,
   CalendarContextValue,
@@ -13,4 +13,4 @@ export type {
   CalendarViewProps,
   CreateCalendarOptions,
   StateChangeDetail,
-} from "./types.ts";
+} from "./types";

@@ -5,8 +5,8 @@ import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import { ResourceTimeline } from "../src/ResourceTimeline.tsx";
-import "./setup.ts";
+import { ResourceTimeline } from "../src/ResourceTimeline";
+import "./setup";
 
 let root: Root | undefined;
 

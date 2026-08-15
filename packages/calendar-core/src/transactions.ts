@@ -1,6 +1,6 @@
-import type { CalendarEventInterval } from "./events.ts";
-import type { CalendarEnvironment } from "./environment.ts";
-import type { ResourceId } from "./ids.ts";
+import type { CalendarEventInterval } from "./events";
+import type { CalendarEnvironment } from "./environment";
+import type { ResourceId } from "./ids";
 
 export type NonEmptyReadonlyArray<TValue> = readonly [TValue, ...TValue[]];
 

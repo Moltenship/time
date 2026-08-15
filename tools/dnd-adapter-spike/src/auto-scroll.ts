@@ -1,5 +1,5 @@
-import type { CalendarAutoScrollConfiguration } from "./contracts.ts";
-import type { CalendarPoint } from "./geometry.ts";
+import type { CalendarAutoScrollConfiguration } from "./contracts";
+import type { CalendarPoint } from "./geometry";
 
 export interface AnimationFrameScheduler {
   request(callback: FrameRequestCallback): number;

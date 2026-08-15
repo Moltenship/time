@@ -1,9 +1,9 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { CalendarRafAutoScroller, type AnimationFrameScheduler } from "../src/auto-scroll.ts";
-import type { CalendarEventPlacement } from "../src/contracts.ts";
-import { CalendarViewRegionGeometry } from "../src/geometry.ts";
-import { CalendarSemanticDragSession } from "../src/semantic-session.ts";
+import { CalendarRafAutoScroller, type AnimationFrameScheduler } from "../src/auto-scroll";
+import type { CalendarEventPlacement } from "../src/contracts";
+import { CalendarViewRegionGeometry } from "../src/geometry";
+import { CalendarSemanticDragSession } from "../src/semantic-session";
 
 const definition = {
   startMinute: 0,

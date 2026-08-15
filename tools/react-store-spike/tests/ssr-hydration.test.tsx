@@ -5,8 +5,8 @@ import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import { createCalendar } from "../src/index.ts";
-import "./setup.ts";
+import { createCalendar } from "../src/index";
+import "./setup";
 
 interface TestEvent {
   readonly id: string;

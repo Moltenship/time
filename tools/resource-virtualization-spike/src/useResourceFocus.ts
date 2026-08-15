@@ -9,7 +9,7 @@ import {
   type RefObject,
 } from "react";
 
-import type { LabResource } from "./model.ts";
+import type { LabResource } from "./model";
 
 interface ResourceFocusOptions {
   readonly resourceAxisRef: RefObject<HTMLDivElement | null>;

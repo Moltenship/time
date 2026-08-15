@@ -2,14 +2,9 @@ import { pathToFileURL } from "node:url";
 
 import { generateBenchmarkFixtures } from "fixtures";
 
-import type {
-  BenchmarkEngine,
-  BenchmarkMode,
-  BenchmarkReport,
-  BenchmarkStage,
-} from "./contracts.ts";
-import { benchmarkExitCode, runBenchmark } from "./protocol.ts";
-import { referenceEngine } from "./reference.ts";
+import type { BenchmarkEngine, BenchmarkMode, BenchmarkReport, BenchmarkStage } from "./contracts";
+import { benchmarkExitCode, runBenchmark } from "./protocol";
+import { referenceEngine } from "./reference";
 
 export interface BenchmarkLogger {
   error(message: string): void;

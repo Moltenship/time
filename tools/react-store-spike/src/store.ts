@@ -1,6 +1,6 @@
 import { atom, createStore } from "jotai/vanilla";
 
-import type { CalendarPublicState } from "./types.ts";
+import type { CalendarPublicState } from "./types";
 
 interface RuntimeStoreOptions {
   readonly defaultView: string;

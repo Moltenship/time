@@ -8,7 +8,7 @@ import {
   useSyncExternalStore,
 } from "react";
 
-import { createCalendarRuntimeStore } from "./store.ts";
+import { createCalendarRuntimeStore } from "./store";
 import type {
   CalendarActions,
   CalendarContextValue,
@@ -19,7 +19,7 @@ import type {
   CalendarViewComponent,
   CreateCalendarOptions,
   StateChangeDetail,
-} from "./types.ts";
+} from "./types";
 
 function changeDetail(previous: string, controlled: boolean): StateChangeDetail {
   return Object.freeze({ source: "action", previous, controlled });

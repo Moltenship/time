@@ -1,9 +1,9 @@
 import { useVirtualizer, type Rect, type Virtualizer } from "@tanstack/react-virtual";
 import { useCallback, useLayoutEffect, useRef, useState, type CSSProperties } from "react";
 
-import { useResourceTimelineBrowserApi, type TimelineDirection } from "./browserApi.ts";
-import { snapPlacement, snapToDevicePixel } from "./geometry.ts";
-import { createTimelineMetrics } from "./metrics.ts";
+import { useResourceTimelineBrowserApi, type TimelineDirection } from "./browserApi";
+import { snapPlacement, snapToDevicePixel } from "./geometry";
+import { createTimelineMetrics } from "./metrics";
 import {
   INITIAL_VIEWPORT_RECT,
   LAB_RESOURCES,
@@ -14,16 +14,12 @@ import {
   TIME_SLOT_WIDTH,
   type LabResource,
   type TimeSlot,
-} from "./model.ts";
-import { useResourceFocus } from "./useResourceFocus.ts";
-import { useScrollSynchronization } from "./useScrollSynchronization.ts";
-import { useTimelineDirection } from "./useTimelineDirection.ts";
+} from "./model";
+import { useResourceFocus } from "./useResourceFocus";
+import { useScrollSynchronization } from "./useScrollSynchronization";
+import { useTimelineDirection } from "./useTimelineDirection";
 
-export type {
-  BrowserEvidence,
-  ResourceTimelineBrowserApi,
-  TimelineDirection,
-} from "./browserApi.ts";
+export type { BrowserEvidence, ResourceTimelineBrowserApi, TimelineDirection } from "./browserApi";
 
 export interface ResourceTimelineProps {
   readonly resources?: readonly LabResource[];

@@ -1,6 +1,6 @@
 import type { PlainDateInterval } from "@moltenship/calendar-temporal";
 
-import type { CalendarEnvironment } from "./environment.ts";
+import type { CalendarEnvironment } from "./environment";
 
 export type ViewNavigationDirection = -1 | 1;
 

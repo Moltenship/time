@@ -7,8 +7,8 @@ import {
   zonedDayTransitions,
   type ZonedDayRange,
   type ZonedDaySplit,
-} from "../src/index.ts";
-import { NativeTemporal } from "./native-temporal.ts";
+} from "../src/index";
+import { NativeTemporal } from "./native-temporal";
 
 const MINUTE_NANOSECONDS = 60_000_000_000n;
 

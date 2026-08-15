@@ -20,7 +20,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { CalendarRafAutoScroller } from "./auto-scroll.ts";
+import { CalendarRafAutoScroller } from "./auto-scroll";
 import {
   defaultCalendarDragConfiguration,
   type CalendarDragConfiguration,
@@ -32,14 +32,14 @@ import {
   type CalendarEventChange,
   type CalendarEventPlacement,
   type CalendarInteractionInput,
-} from "./contracts.ts";
+} from "./contracts";
 import {
   CalendarViewRegionGeometry,
   rectangleFromElement,
   type CalendarPoint,
   type CalendarViewRegionDefinition,
-} from "./geometry.ts";
-import { CalendarSemanticDragSession } from "./semantic-session.ts";
+} from "./geometry";
+import { CalendarSemanticDragSession } from "./semantic-session";
 
 interface InternalDragData<TEvent, TResourceId extends CalendarEntityId> extends Record<
   string,

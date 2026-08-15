@@ -1,5 +1,5 @@
-import { compareInstants, type InstantInterval } from "../intervals/half-open.ts";
-import { positiveTimeDuration } from "../internal/time-duration.ts";
+import { compareInstants, type InstantInterval } from "../intervals/half-open";
+import { positiveTimeDuration } from "../internal/time-duration";
 
 export const DEFAULT_INSTANT_ITERATION_LIMIT = 10_000;
 

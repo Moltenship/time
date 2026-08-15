@@ -8,8 +8,8 @@ import type {
   AllDayCalendarEventInterval,
   FloatingCalendarEventInterval,
   TimedCalendarEventInterval,
-} from "../events.ts";
-import type { EventId, ResourceId } from "../ids.ts";
+} from "../events";
+import type { EventId, ResourceId } from "../ids";
 
 export type InvalidCalendarEventPolicy = "report-and-skip" | "throw";
 

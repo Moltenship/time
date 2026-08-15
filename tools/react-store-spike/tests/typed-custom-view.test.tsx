@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, test } from "vite-plus/test";
 
-import { createCalendar } from "../src/index.ts";
+import { createCalendar } from "../src/index";
 
 interface Meeting {
   readonly id: `meeting-${number}`;

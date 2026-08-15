@@ -7,7 +7,7 @@ export {
   type CalendarDragProviderProps,
   type CalendarDraggableProps,
   type CalendarViewRegionProps,
-} from "./provider.tsx";
+} from "./provider";
 export {
   defaultCalendarDragConfiguration,
   type CalendarAnnouncementContext,
@@ -25,10 +25,10 @@ export {
   type CalendarInteractionInput,
   type CalendarPointerActivation,
   type CalendarValidationResult,
-} from "./contracts.ts";
+} from "./contracts";
 export {
   CalendarViewRegionGeometry,
   type CalendarPoint,
   type CalendarRegionRectangle,
   type CalendarViewRegionDefinition,
-} from "./geometry.ts";
+} from "./geometry";

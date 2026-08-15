@@ -14,7 +14,7 @@ import {
   CalendarViewRegion,
   type CalendarDragMessages,
   type CalendarEventChange,
-} from "../src/index.ts";
+} from "../src/index";
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;

@@ -1,4 +1,4 @@
-import type { HalfOpenInterval, IntervalIndexEntry } from "./interval-index.ts";
+import type { HalfOpenInterval, IntervalIndexEntry } from "./interval-index";
 
 const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * MINUTE_MS;

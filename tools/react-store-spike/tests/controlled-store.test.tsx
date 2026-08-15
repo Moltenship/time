@@ -4,8 +4,8 @@ import { StrictMode, act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test } from "vite-plus/test";
 
-import { createCalendar } from "../src/index.ts";
-import "./setup.ts";
+import { createCalendar } from "../src/index";
+import "./setup";
 
 interface TestEvent {
   readonly id: string;

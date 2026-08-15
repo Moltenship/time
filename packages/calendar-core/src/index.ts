@@ -1,12 +1,12 @@
-export { isEventId, isResourceId } from "./ids.ts";
-export type { CalendarEntityId, EventId, ResourceId } from "./ids.ts";
+export { isEventId, isResourceId } from "./ids";
+export type { CalendarEntityId, EventId, ResourceId } from "./ids";
 
 export {
   createCanonicalEventAdapter,
   defineEventAdapter,
   validateCalendarEvent,
   validateCalendarEventInterval,
-} from "./events.ts";
+} from "./events";
 export type {
   AllDayCalendarEvent,
   AllDayCalendarEventInterval,
@@ -24,10 +24,10 @@ export type {
   TimedCalendarEventInterval,
   ValidatedCalendarEvent,
   ValidatedCalendarEventInterval,
-} from "./events.ts";
+} from "./events";
 
-export { createEventSnapshot, createEventSnapshotCache } from "./snapshots/event-snapshot.ts";
-export { InvalidCalendarEventSnapshotError } from "./snapshots/types.ts";
+export { createEventSnapshot, createEventSnapshotCache } from "./snapshots/event-snapshot";
+export { InvalidCalendarEventSnapshotError } from "./snapshots/types";
 export type {
   CalendarEventInput,
   CalendarEventSource,
@@ -43,9 +43,9 @@ export type {
   NormalizedCalendarEvent,
   NormalizedFloatingCalendarEvent,
   NormalizedTimedCalendarEvent,
-} from "./snapshots/types.ts";
+} from "./snapshots/types";
 
-export type { CalendarResource } from "./resources.ts";
+export type { CalendarResource } from "./resources";
 export type {
   CalendarDirection,
   CalendarEnvironment,
@@ -53,13 +53,13 @@ export type {
   CalendarNowSource,
   CalendarWeekRules,
   IsoDayOfWeek,
-} from "./environment.ts";
+} from "./environment";
 
 export type {
   CalendarViewDefinition,
   CalendarViewStrategy,
   ViewNavigationDirection,
-} from "./views.ts";
+} from "./views";
 
 export type {
   CalendarChangeCause,
@@ -74,4 +74,4 @@ export type {
   CalendarValidationIssue,
   CalendarValidationResult,
   NonEmptyReadonlyArray,
-} from "./transactions.ts";
+} from "./transactions";

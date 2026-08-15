@@ -11,9 +11,9 @@ export default defineConfig({
   run: {
     tasks: {
       test: "vp test",
-      smoke: "node src/smoke.ts",
+      smoke: "node --import tsx src/smoke.ts",
       "fixture:known-bad": {
-        command: "node src/known-bad.ts",
+        command: "node --import tsx src/known-bad.ts",
         cache: false,
       },
     },

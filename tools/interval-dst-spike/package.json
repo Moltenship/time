@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit -p tsconfig.json",
-    "test": "node --harmony-temporal --test node-tests/*.node.ts",
-    "benchmark": "node --harmony-temporal --expose-gc scripts/benchmark.ts",
-    "fixtures": "node --harmony-temporal scripts/write-dst-fixtures.ts"
+    "test": "node --import tsx --harmony-temporal --test node-tests/*.node.ts",
+    "benchmark": "node --import tsx --harmony-temporal --expose-gc scripts/benchmark.ts",
+    "fixtures": "node --import tsx --harmony-temporal scripts/write-dst-fixtures.ts"
   },
   "dependencies": {
     "@flatten-js/interval-tree": "catalog:"
@@ -15,6 +15,7 @@
   "devDependencies": {
     "@types/node": "^24.13.3",
     "fast-check": "catalog:",
+    "tsx": "catalog:",
     "typescript": "7.0.2"
   }
 }

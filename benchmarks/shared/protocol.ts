@@ -14,8 +14,8 @@ import type {
   BenchmarkStage,
   BenchmarkStageResult,
   BenchmarkStatistics,
-} from "./contracts.ts";
-import { referenceEngine } from "./reference.ts";
+} from "./contracts";
+import { referenceEngine } from "./reference";
 
 export const ALL_BENCHMARK_STAGES: readonly BenchmarkStage[] = Object.freeze([
   "build",

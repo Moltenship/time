@@ -2,8 +2,6 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "lib": ["ESNext"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
     "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,

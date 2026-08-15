@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { validateRegistryWorkspace } from "../src/validation.ts";
+import { validateRegistryWorkspace } from "../src/validation";
 
 const execFileAsync = promisify(execFile);
 const workspaceRoot = resolve(import.meta.dirname, "../../..");
@@ -62,7 +62,7 @@ describe("shadcn registry validation", () => {
 
   test("the named known-bad task exits non-zero with the registry reason", async () => {
     try {
-      await execFileAsync(process.execPath, ["src/known-bad.ts"], {
+      await execFileAsync(process.execPath, ["--import", "tsx", "src/known-bad.ts"], {
         cwd: new URL("..", import.meta.url),
         env: process.env,
       });

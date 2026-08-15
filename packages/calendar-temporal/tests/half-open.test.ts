@@ -11,7 +11,7 @@ import {
   type InstantInterval,
   type PlainDateInterval,
   type PlainDateTimeInterval,
-} from "../src/index.ts";
+} from "../src/index";
 
 const compareNumbers = (left: number, right: number) => left - right;
 

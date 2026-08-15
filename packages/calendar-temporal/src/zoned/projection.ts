@@ -1,4 +1,4 @@
-import { instantKey, zonedWallTimeKeyForTimeZoneId } from "./machine-keys.ts";
+import { instantKey, zonedWallTimeKeyForTimeZoneId } from "./machine-keys";
 
 export type TemporalDisambiguation = NonNullable<Temporal.DisambiguationOptions["disambiguation"]>;
 

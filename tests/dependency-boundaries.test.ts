@@ -8,7 +8,7 @@ import { promisify } from "node:util";
 import { cruise, type IConfiguration, type ICruiseResult } from "dependency-cruiser";
 import { describe, expect, test } from "vite-plus/test";
 
-import dependencyCruiserConfig from "../dependency-cruiser.config.ts";
+import dependencyCruiserConfig from "../dependency-cruiser.config";
 
 const productionRoots = ["apps", "benchmarks", "packages", "registry", "tools"];
 const invalidFixtureRoot = "tests/fixtures/dependency-boundaries";

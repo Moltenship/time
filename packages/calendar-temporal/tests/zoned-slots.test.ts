@@ -1,8 +1,8 @@
 import fc from "fast-check";
 import { describe, expect, test } from "vite-plus/test";
 
-import { slotsInZonedDay } from "../src/index.ts";
-import { NativeTemporal } from "./native-temporal.ts";
+import { slotsInZonedDay } from "../src/index";
+import { NativeTemporal } from "./native-temporal";
 
 const MINUTE_NANOSECONDS = 60_000_000_000n;
 

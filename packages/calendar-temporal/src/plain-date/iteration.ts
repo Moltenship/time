@@ -1,4 +1,4 @@
-import { comparePlainDates, type PlainDateInterval } from "../intervals/half-open.ts";
+import { comparePlainDates, type PlainDateInterval } from "../intervals/half-open";
 
 export const DEFAULT_PLAIN_DATE_ITERATION_LIMIT = 10_000;
 

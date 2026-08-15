@@ -2,7 +2,7 @@ import {
   comparePlainDates,
   plainDateInterval,
   type PlainDateInterval,
-} from "../intervals/half-open.ts";
+} from "../intervals/half-open";
 
 export type WeekStartsOn = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 

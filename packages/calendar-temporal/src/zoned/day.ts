@@ -5,8 +5,8 @@ import {
   plainDateTimeInterval,
   type InstantInterval,
   type PlainDateTimeInterval,
-} from "../intervals/half-open.ts";
-import { instantKey, zonedDayKeyForTimeZoneId } from "./machine-keys.ts";
+} from "../intervals/half-open";
+import { instantKey, zonedDayKeyForTimeZoneId } from "./machine-keys";
 
 export const DEFAULT_ZONED_DAY_SPLIT_LIMIT = 10_000;
 

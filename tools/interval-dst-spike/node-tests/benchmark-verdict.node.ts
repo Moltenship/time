@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { candidateSurvivesBenchmark, TREE_BUILD_P95_LIMIT_MS } from "../src/benchmark-verdict.ts";
+import { candidateSurvivesBenchmark, TREE_BUILD_P95_LIMIT_MS } from "../src/benchmark-verdict";
 
 const passingQueries = {
   "1d": { scanP95: 0.2, treeP95: 0.05 },

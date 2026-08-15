@@ -7,8 +7,8 @@ import {
   iterateInstants,
   iteratePlainDates,
   plainDateInterval,
-} from "../src/index.ts";
-import { NativeTemporal } from "./native-temporal.ts";
+} from "../src/index";
+import { NativeTemporal } from "./native-temporal";
 
 const dateOrigin = NativeTemporal.PlainDate.from("2000-01-01");
 

@@ -4,20 +4,20 @@ import {
   type PlainDateTimeInterval,
 } from "@moltenship/calendar-temporal";
 
-import { type CalendarEventInterval, type EventAdapter } from "../events.ts";
-import type { EventId, ResourceId } from "../ids.ts";
+import { type CalendarEventInterval, type EventAdapter } from "../events";
+import type { EventId, ResourceId } from "../ids";
 import {
   createIntervalIndex,
   type IntervalIndex,
   type IntervalIndexEntry,
-} from "../internal/interval-index.ts";
-import { BoundedLruCache } from "../internal/lru-cache.ts";
-import { ReadonlyMapView } from "../internal/readonly-map.ts";
+} from "../internal/interval-index";
+import { BoundedLruCache } from "../internal/lru-cache";
+import { ReadonlyMapView } from "../internal/readonly-map";
 import {
   instantIndexKey,
   plainDateIndexKey,
   plainDateTimeIndexKey,
-} from "../internal/temporal-index-keys.ts";
+} from "../internal/temporal-index-keys";
 import {
   InvalidCalendarEventSnapshotError,
   type EventSnapshot,
@@ -29,7 +29,7 @@ import {
   type NormalizedCalendarEvent,
   type NormalizedFloatingCalendarEvent,
   type NormalizedTimedCalendarEvent,
-} from "./types.ts";
+} from "./types";
 
 const DEFAULT_QUERY_CACHE_SIZE = 128;
 

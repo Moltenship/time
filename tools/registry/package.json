@@ -17,6 +17,7 @@
     "@types/node": "catalog:",
     "@types/npm-package-arg": "catalog:",
     "@types/semver": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

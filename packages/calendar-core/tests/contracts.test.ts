@@ -22,7 +22,7 @@ import {
   type FloatingCalendarEvent,
   type TimedCalendarEvent,
   type ValidatedCalendarEvent,
-} from "../src/index.ts";
+} from "../src/index";
 
 declare const apiEventIdBrand: unique symbol;
 declare const roomIdBrand: unique symbol;

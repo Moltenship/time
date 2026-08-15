@@ -1,4 +1,4 @@
-import { ResourceTimeline } from "./ResourceTimeline.tsx";
+import { ResourceTimeline } from "./ResourceTimeline";
 
 export function App() {
   return (

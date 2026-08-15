@@ -9,8 +9,8 @@ import {
   zonedDayKey,
   zonedWallTimeKey,
   type ZonedWallTimeProjection,
-} from "../src/index.ts";
-import { NativeTemporal } from "./native-temporal.ts";
+} from "../src/index";
+import { NativeTemporal } from "./native-temporal";
 
 describe("zoned wall-time projection", () => {
   test("keeps both instant identities for a repeated wall time", () => {

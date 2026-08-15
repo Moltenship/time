@@ -1,2 +1,2 @@
-import "../../calendar-react/src/index.ts";
-import "@moltenship/calendar-react/src/index.ts";
+import "../../calendar-react/src/index";
+import "@moltenship/calendar-react/src/index";

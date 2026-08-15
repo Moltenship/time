@@ -1,4 +1,4 @@
-import type { CalendarEntityId, CalendarEventPlacement } from "./contracts.ts";
+import type { CalendarEntityId, CalendarEventPlacement } from "./contracts";
 
 export interface CalendarPoint {
   readonly x: number;

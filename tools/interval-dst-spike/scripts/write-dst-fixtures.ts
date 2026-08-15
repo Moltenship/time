@@ -1,4 +1,4 @@
-import { buildZonedDayGeometry } from "../src/native-temporal.ts";
+import { buildZonedDayGeometry } from "../src/native-temporal";
 
 const cases = [
   {

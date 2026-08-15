@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 
-import { buildZonedDayGeometry } from "../src/native-temporal.ts";
+import { buildZonedDayGeometry } from "../src/native-temporal";
 
 interface ExpectedFixture {
   readonly cases: readonly {
