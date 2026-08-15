@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { Profiler, act, startTransition, useState } from "react";
+import { Profiler, Suspense, act, startTransition, useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
 import {
@@ -24,6 +24,7 @@ import {
 import { createCommitCounter, createSelectorCounter } from "./harness/counters";
 import { GateCalendar, gateViews } from "./harness/custom-view-fixture";
 import {
+  createSuspensionGate,
   hydrateWithHarness,
   renderWithHarness,
   type ReactRootHarness,
@@ -144,31 +145,74 @@ describe("controlled state regression matrix", () => {
   }
 });
 
-test("a concurrent controlled transition commits the newest value without a stale render", async () => {
-  const renderHistory: GateView[] = [];
-  const commits = createCommitCounter();
+test("a suspended controlled transition rebases around an urgent update without stale state", async () => {
+  interface ConcurrentRender {
+    readonly calendarView: GateView;
+    readonly controlledView: GateView;
+    readonly urgentRevision: number;
+  }
 
-  function ConcurrentProbe() {
-    const [view, setView] = useState<GateView>("month");
+  const renderHistory: ConcurrentRender[] = [];
+  const commits = createCommitCounter();
+  const suspension = createSuspensionGate();
+
+  function ConcurrentProbe({
+    controlledView,
+    requestView,
+    urgentRevision,
+  }: {
+    readonly controlledView: GateView;
+    readonly requestView: (next: GateView) => void;
+    readonly urgentRevision: number;
+  }) {
     const store = useCalendarStore<GateView, GateSelection, GateFocus, string>(gateStoreDefaults);
     const calendar = useCalendarStoreBinding(store, {
-      controlled: { view },
-      handlers: {
-        onViewChange(next) {
-          startTransition(() => setView(next));
-        },
-      },
+      controlled: { view: controlledView },
+      handlers: { onViewChange: requestView },
     });
-    renderHistory.push(calendar.state.view);
+    renderHistory.push({
+      calendarView: calendar.state.view,
+      controlledView,
+      urgentRevision,
+    });
+    if (calendar.state.view === "agenda") suspension.read();
+
     return (
-      <button onClick={() => calendar.actions.setView("agenda")}>{calendar.state.view}</button>
+      <div>
+        <output data-concurrent-view>
+          {calendar.state.view}:{urgentRevision}
+        </output>
+        <button data-transition onClick={() => calendar.actions.setView("agenda")}>
+          Start transition
+        </button>
+      </div>
+    );
+  }
+
+  function ConcurrentHarness() {
+    const [view, setView] = useState<GateView>("month");
+    const [urgentRevision, setUrgentRevision] = useState(0);
+
+    return (
+      <>
+        <button data-urgent onClick={() => setUrgentRevision((revision) => revision + 1)}>
+          Urgent update
+        </button>
+        <Suspense fallback={<output data-concurrent-fallback>fallback</output>}>
+          <ConcurrentProbe
+            controlledView={view}
+            requestView={(next) => startTransition(() => setView(next))}
+            urgentRevision={urgentRevision}
+          />
+        </Suspense>
+      </>
     );
   }
 
   const harness = track(
     await renderWithHarness(
       <Profiler id="concurrent-controlled" onRender={commits.onRender}>
-        <ConcurrentProbe />
+        <ConcurrentHarness />
       </Profiler>,
       { strictMode: true },
     ),
@@ -176,11 +220,44 @@ test("a concurrent controlled transition commits the newest value without a stal
   const rendersBeforeAction = renderHistory.length;
   commits.counter.reset();
 
-  await click(harness.container, "button");
+  await click(harness.container, "[data-transition]");
 
-  expect(harness.container.querySelector("button")?.textContent).toBe("agenda");
-  expect(renderHistory.slice(rendersBeforeAction)).not.toContain("month");
-  expect(commits.counter.value).toBeGreaterThan(0);
+  expect(suspension.pending).toBe(true);
+  expect(harness.container.querySelector("[data-concurrent-view]")?.textContent).toBe("month:0");
+  expect(harness.container.querySelector("[data-concurrent-fallback]")).toBeNull();
+  expect(renderHistory.slice(rendersBeforeAction)).toContainEqual({
+    calendarView: "agenda",
+    controlledView: "agenda",
+    urgentRevision: 0,
+  });
+
+  await click(harness.container, "[data-urgent]");
+
+  expect(harness.container.querySelector("[data-concurrent-view]")?.textContent).toBe("month:1");
+  expect(harness.container.querySelector("[data-concurrent-fallback]")).toBeNull();
+  expect(renderHistory.slice(rendersBeforeAction)).toContainEqual({
+    calendarView: "month",
+    controlledView: "month",
+    urgentRevision: 1,
+  });
+
+  await act(async () => {
+    suspension.release();
+    await Promise.resolve();
+  });
+
+  expect(harness.container.querySelector("[data-concurrent-view]")?.textContent).toBe("agenda:1");
+  expect(renderHistory.slice(rendersBeforeAction)).toContainEqual({
+    calendarView: "agenda",
+    controlledView: "agenda",
+    urgentRevision: 1,
+  });
+  expect(
+    renderHistory
+      .slice(rendersBeforeAction)
+      .every(({ calendarView, controlledView }) => calendarView === controlledView),
+  ).toBe(true);
+  expect(commits.counter.value).toBeGreaterThanOrEqual(2);
   expect(harness.recoverableErrors).toEqual([]);
 });
 

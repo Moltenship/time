@@ -16,6 +16,12 @@ export interface ReactHydrationHarness extends ReactRootHarness {
   readonly serverMarkup: string;
 }
 
+export interface SuspensionGate {
+  readonly pending: boolean;
+  read(): void;
+  release(): void;
+}
+
 interface HarnessOptions {
   readonly identifierPrefix?: string;
   readonly strictMode?: boolean;
@@ -33,6 +39,28 @@ function createContainer(): HTMLDivElement {
   const container = document.createElement("div");
   document.body.append(container);
   return container;
+}
+
+export function createSuspensionGate(): SuspensionGate {
+  let pending = true;
+  let resolve: (() => void) | undefined;
+  const promise = new Promise<void>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return Object.freeze({
+    get pending() {
+      return pending;
+    },
+    read() {
+      if (pending) throw promise;
+    },
+    release() {
+      if (!pending) return;
+      pending = false;
+      resolve?.();
+    },
+  });
 }
 
 function createHarness(

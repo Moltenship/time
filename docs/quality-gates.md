@@ -47,9 +47,10 @@ its 28 KiB raw / 6.25 KiB gzip production ESM budget.
 `vp run react:gate` is the phase-2 regression gate from issue #27. It runs the repository check, the
 complete React/facade package tests and production builds, the focused render/hydrate harness, the
 consumer-equivalent SSR smoke, and dependency-boundary checks. The focused harness covers the
-six-slice controlled-state matrix under Strict Mode, a concurrent transition, selector evaluation
-versus React commit counts, a typed custom view, two physical roots, and final unmount. A static
-known-bad import and Node's package resolver both prove that React source deep imports fail.
+six-slice controlled-state matrix under Strict Mode, a Suspense-held transition interrupted by an
+urgent update and rebased on release, selector evaluation versus React commit counts, a typed
+custom view, two physical roots, and final unmount. A static known-bad import and a temporary
+consumer of the actual packed React artifact both prove that React source deep imports fail.
 
 ## Intentional failure proofs
 

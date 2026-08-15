@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -87,31 +87,76 @@ describe.sequential("workspace boundaries", () => {
     expect(violatedRules).toContain("no-package-source-specifiers");
   });
 
-  test("a calendar React source import fails static and package-export boundaries", async () => {
+  test("a calendar React source import fails static and packed-package boundaries", async () => {
     const result = await cruiseWithArchitectureRules([calendarReactDeepImportFixture]);
     const violatedRules = result.summary.violations.map(({ rule }) => rule.name);
 
     expect(violatedRules).toContain("no-package-source-specifiers");
 
-    let failureOutput = "";
-    try {
-      await execFileAsync(
-        process.execPath,
-        [
-          "--input-type=module",
-          "--eval",
-          'await import("@moltenship/calendar-react/src/internal/runtime-store")',
-        ],
-        { cwd: join(process.cwd(), "packages/calendar-react") },
-      );
-    } catch (error) {
-      const failure = error as { readonly stderr?: string; readonly stdout?: string };
-      failureOutput = `${failure.stdout ?? ""}\n${failure.stderr ?? ""}`;
-    }
+    const packageRoot = join(process.cwd(), "packages/calendar-react");
+    const manifestPath = join(packageRoot, "package.json");
+    const packDestination = await mkdtemp(join(tmpdir(), "time-react-package-"));
+    const localManifestBeforePack = await readFile(manifestPath, "utf8");
 
-    expect(failureOutput).toContain("ERR_PACKAGE_PATH_NOT_EXPORTED");
-    expect(failureOutput).toContain("./src/internal/runtime-store");
-  });
+    try {
+      await execFileAsync("vp", ["pack"], { cwd: packageRoot });
+      expect(await readFile(manifestPath, "utf8")).toBe(localManifestBeforePack);
+      await execFileAsync("vp", ["pm", "pack", "--pack-destination", packDestination], {
+        cwd: packageRoot,
+      });
+
+      const [archiveName] = (await readdir(packDestination)).filter((fileName) =>
+        fileName.endsWith(".tgz"),
+      );
+      expect(archiveName).toBeDefined();
+
+      const archivePath = join(packDestination, archiveName!);
+      const consumerRoot = join(packDestination, "consumer");
+      const installedPackageRoot = join(
+        consumerRoot,
+        "node_modules",
+        "@moltenship",
+        "calendar-react",
+      );
+      await mkdir(installedPackageRoot, { recursive: true });
+      await execFileAsync("tar", [
+        "-xzf",
+        archivePath,
+        "-C",
+        installedPackageRoot,
+        "--strip-components=1",
+      ]);
+
+      const packedManifest = JSON.parse(
+        await readFile(join(installedPackageRoot, "package.json"), "utf8"),
+      ) as { readonly exports: Record<string, unknown> };
+      expect(packedManifest.exports).toEqual({
+        ".": { import: "./dist/index.mjs", types: "./dist/index.d.mts" },
+        "./package.json": "./package.json",
+      });
+
+      let failureOutput = "";
+      try {
+        await execFileAsync(
+          process.execPath,
+          [
+            "--input-type=module",
+            "--eval",
+            'await import("@moltenship/calendar-react/src/internal/runtime-store")',
+          ],
+          { cwd: consumerRoot },
+        );
+      } catch (error) {
+        const failure = error as { readonly stderr?: string; readonly stdout?: string };
+        failureOutput = `${failure.stdout ?? ""}\n${failure.stderr ?? ""}`;
+      }
+
+      expect(failureOutput).toContain("ERR_PACKAGE_PATH_NOT_EXPORTED");
+      expect(failureOutput).toContain("./src/internal/runtime-store");
+    } finally {
+      await rm(packDestination, { force: true, recursive: true });
+    }
+  }, 30_000);
 
   test("workspace manifests encode only the approved import direction", async () => {
     const actualDependencies = Object.fromEntries(

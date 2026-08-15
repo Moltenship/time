@@ -23,13 +23,17 @@ The focused harness passed 12 tests:
 | Contract | Evidence | Result |
 | --- | --- | --- |
 | Controlled freshness | View, anchor date, selection, focus, timezone, and expanded-resource slices run through controlled actions under Strict Mode; no post-action render contains the prior value | Pass |
-| Concurrent rendering | A controlled view update scheduled with `startTransition` commits `agenda` without a stale `month` render | Pass |
+| Concurrent rendering | A controlled `agenda` transition suspends while the committed `month` screen remains visible, an urgent revision commits against `month`, and releasing the gate rebases `agenda` over that revision; every attempted render keeps the controlled prop and calendar state equal | Pass |
 | Selector isolation | An unrelated selection update evaluates both selectors but produces zero view and anchor commits; an anchor update produces one anchor commit and zero view commits | Pass |
 | Custom-view boundary | A typed month/agenda fixture uses public package roots, deterministic event/resource builders, and an injected clock | Pass |
 | Root isolation | Updating one of two physical `createRoot` trees leaves the other calendar unchanged | Pass |
 | Cleanup | Unmount removes the first tree and prevents later commits while the caller-owned store continues updating the second tree | Pass |
 | Hydration | Server markup hydrates without mutation, warning, or recoverable error, then performs a controlled view interaction and unmounts cleanly | Pass |
-| Deep imports | dependency-cruiser rejects the known-bad React source specifier and Node reports `ERR_PACKAGE_PATH_NOT_EXPORTED` | Pass |
+| Deep imports | dependency-cruiser rejects the known-bad React source specifier; the package is then packed, extracted under a temporary consumer's `node_modules`, and Node reports `ERR_PACKAGE_PATH_NOT_EXPORTED` from the published export map | Pass |
+
+As a mutation proof, temporarily replacing `startTransition` with the synchronous state setter
+causes the focused concurrency test to fail because the Suspense fallback replaces the committed
+screen. Restoring `startTransition` makes the same test pass.
 
 The render/hydrate lifecycle helpers, deterministic clock/builders, selector/Profiler counters,
 custom-view fixture, and controlled-state matrix remain internal test infrastructure. Issue #45
@@ -60,7 +64,7 @@ changed the controlled custom view after hydration.
 | `vp check` | 212 files formatted; 155 files with no lint or type errors |
 | `vp test` | 29 files and 165 tests passed; one intentional file/test skipped |
 | `vp run -r build` | 23 of 23 recursive build tasks passed |
-| `vp run check:boundaries` | 10 tests passed, including static and runtime React deep-import rejection |
+| `vp run check:boundaries` | 10 tests passed, including static rejection and packed-consumer React deep-import rejection |
 | `git diff --check` | Passed |
 
 The production React entry remains 25,413 bytes raw / 5,382 bytes gzip, below its unchanged 28 KiB
