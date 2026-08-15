@@ -1,6 +1,11 @@
 "use client";
 
-import "@moltenship/calendar";
+import {
+  createCalendar,
+  defineEventAdapter,
+  type CalendarContextValue,
+  type CalendarViewRegistration,
+} from "@moltenship/calendar";
 
 import { createElement, useId, useState, type ReactNode } from "react";
 
@@ -26,6 +31,54 @@ export interface DeterministicCalendarFixtureProps {
   readonly environment: CalendarFixtureEnvironment;
 }
 
+interface FixtureEvent {
+  readonly end: Temporal.Instant;
+  readonly id: string;
+  readonly resourceIds: readonly string[];
+  readonly start: Temporal.Instant;
+  readonly title: string;
+}
+
+interface FixtureResource {
+  readonly id: string;
+  readonly title: string;
+}
+
+const fixtureEventAdapter = defineEventAdapter<FixtureEvent>()({
+  getId: (event) => event.id,
+  getInterval: (event) => ({ end: event.end, kind: "timed", start: event.start }),
+  getResourceIds: (event) => event.resourceIds,
+  getTitle: (event) => event.title,
+});
+const fixtureView: CalendarViewRegistration<FixtureEvent, FixtureResource> = Object.freeze({
+  capabilities: Object.freeze(["fixture:view"]),
+  getTitle: (anchor: Temporal.PlainDate) => anchor.toString(),
+  name: "fixture",
+  navigate: (anchor: Temporal.PlainDate, direction: -1 | 1) => anchor.add({ days: direction }),
+  render: (calendar: CalendarContextValue<FixtureEvent, FixtureResource>) =>
+    createElement(
+      "output",
+      { "data-calendar-view": true },
+      `${calendar.state.view}:${calendar.meta.eventSnapshot.size}`,
+    ),
+});
+const FixtureCalendar = createCalendar<FixtureEvent, FixtureResource>({
+  eventAdapter: fixtureEventAdapter,
+  views: [fixtureView],
+});
+const fixtureEvents: readonly FixtureEvent[] = Object.freeze([
+  Object.freeze({
+    end: Temporal.Instant.from("2026-08-15T10:00:00Z"),
+    id: "fixture-event",
+    resourceIds: Object.freeze(["fixture-resource"]),
+    start: Temporal.Instant.from("2026-08-15T09:00:00Z"),
+    title: "Fixture event",
+  }),
+]);
+const fixtureResources: readonly FixtureResource[] = Object.freeze([
+  Object.freeze({ id: "fixture-resource", title: "Fixture resource" }),
+]);
+
 export function DeterministicCalendarFixture({
   environment,
 }: DeterministicCalendarFixtureProps): ReactNode {
@@ -33,26 +86,45 @@ export function DeterministicCalendarFixture({
   const [interactionCount, setInteractionCount] = useState(0);
 
   return createElement(
-    "main",
+    FixtureCalendar.Root,
     {
-      "data-anchor-date": environment.anchorDate,
-      "data-locale": environment.locale,
-      "data-time-zone": environment.timeZone,
-      "data-week-starts-on": environment.weekStartsOn,
+      defaultAnchorDate: Temporal.PlainDate.from(environment.anchorDate),
+      defaultTimeZone: environment.timeZone,
+      defaultView: "fixture",
+      events: fixtureEvents,
+      locale: environment.locale,
+      now: Temporal.Instant.from(environment.now),
+      resources: fixtureResources,
+      weekRules: { firstDay: environment.weekStartsOn, minimalDays: 4, weekend: [6, 7] },
     },
-    createElement("h1", null, "Moltenship Time SSR fixture"),
-    createElement("span", { "data-environment-locale": true }, environment.locale),
-    createElement("time", { dateTime: environment.now }, environment.now),
-    createElement("p", { id: interactionDescriptionId }, "Deterministic interaction count"),
     createElement(
-      "output",
-      { "aria-describedby": interactionDescriptionId, "data-interaction-count": true },
-      interactionCount,
-    ),
-    createElement(
-      "button",
-      { type: "button", onClick: () => setInteractionCount((count) => count + 1) },
-      "Interact",
+      FixtureCalendar.Frame,
+      null,
+      createElement(
+        "main",
+        {
+          "data-anchor-date": environment.anchorDate,
+          "data-locale": environment.locale,
+          "data-time-zone": environment.timeZone,
+          "data-week-starts-on": environment.weekStartsOn,
+        },
+        createElement("h1", null, "Moltenship Time SSR fixture"),
+        createElement(FixtureCalendar.Title),
+        createElement(FixtureCalendar.ActiveView),
+        createElement("span", { "data-environment-locale": true }, environment.locale),
+        createElement("time", { dateTime: environment.now }, environment.now),
+        createElement("p", { id: interactionDescriptionId }, "Deterministic interaction count"),
+        createElement(
+          "output",
+          { "aria-describedby": interactionDescriptionId, "data-interaction-count": true },
+          interactionCount,
+        ),
+        createElement(
+          "button",
+          { type: "button", onClick: () => setInteractionCount((count) => count + 1) },
+          "Interact",
+        ),
+      ),
     ),
   );
 }

@@ -1,3 +1,4 @@
-// The DX facade exposes the stable framework-independent contracts now; React exports join here
-// when their owning implementation lands.
+"use client";
+
 export * from "@moltenship/calendar-core";
+export * from "@moltenship/calendar-react";

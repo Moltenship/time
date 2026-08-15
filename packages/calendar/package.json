@@ -23,7 +23,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "vp pack && node scripts/verify-public-api.mjs",
     "check": "vp check",
     "dev": "vp pack --watch",
     "prepublishOnly": "vp run build",
@@ -34,8 +34,16 @@
     "@moltenship/calendar-react": "workspace:*"
   },
   "devDependencies": {
+    "@moltenship/calendar-temporal": "workspace:*",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
   }
 }

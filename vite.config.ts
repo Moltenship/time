@@ -46,6 +46,14 @@ export default defineConfig({
         "vp run calendar-react#test",
         "vp run calendar-react#build",
       ],
+      "react:factory": [
+        "vp run calendar-react#check",
+        "vp run calendar-react#test",
+        "vp run calendar-react#build",
+        "vp run calendar#check",
+        "vp run calendar#test",
+        "vp run calendar#build",
+      ],
     },
   },
 });

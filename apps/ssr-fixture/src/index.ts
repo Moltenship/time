@@ -3,4 +3,4 @@ export {
   deterministicEnvironment,
   type CalendarFixtureEnvironment,
   type DeterministicCalendarFixtureProps,
-} from "./fixture.ts";
+} from "./fixture.js";

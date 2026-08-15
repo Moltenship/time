@@ -15,16 +15,18 @@ export default defineConfig({
         dependsOn: [{ task: "build", from: "dependencies" }],
       },
       smoke: {
-        command: "node src/smoke.ts",
+        command:
+          'vp test tests/ssr-fixture.test.ts --run -t "renders, hydrates, interacts, and unmounts"',
         dependsOn: [{ task: "build", from: "dependencies" }],
       },
       "fixture:bad-hydration": {
-        command: "node tests/fixtures/known-bad-hydration.ts",
+        command: "SSR_KNOWN_BAD=hydration vp test tests/fixtures/known-bad-runner.test.ts --run",
         cache: false,
         dependsOn: [{ task: "build", from: "dependencies" }],
       },
       "fixture:bad-browser-global": {
-        command: "node tests/fixtures/known-bad-browser-global.ts",
+        command:
+          "SSR_KNOWN_BAD=browser-global vp test tests/fixtures/known-bad-runner.test.ts --run",
         cache: false,
       },
     },

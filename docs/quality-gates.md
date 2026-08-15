@@ -37,6 +37,12 @@ controlled/uncontrolled state matrix, two-root isolation, selector invalidation,
 cleanup checks, and verifies deterministic SSR/hydration. The production declaration audit fails if
 Jotai enters the public API or if the React client boundary is dropped.
 
+`vp run react:factory` is the focused issue #26 gate. It adds the typed factory, compound controls,
+custom-view registry, diagnostics/capabilities, facade consumer, direct React 19 refs, deterministic
+IDs, and public declaration checks. The facade test imports only supported package roots and fails
+if its third-party view needs a cast or a private source path. The React package build also enforces
+its 28 KiB raw / 6.25 KiB gzip production ESM budget.
+
 ## Intentional failure proofs
 
 These commands must exit non-zero:

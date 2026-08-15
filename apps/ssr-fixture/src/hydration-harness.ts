@@ -5,7 +5,7 @@ import { createElement, act } from "react";
 import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 
-import { DeterministicCalendarFixture, type CalendarFixtureEnvironment } from "./fixture.ts";
+import { DeterministicCalendarFixture, type CalendarFixtureEnvironment } from "./fixture.js";
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;

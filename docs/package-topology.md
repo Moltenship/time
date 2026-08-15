@@ -5,8 +5,8 @@ ownership. A workspace may import only the public entry points of workspaces lis
 `dependencies`; importing another workspace's `src/` tree is always invalid.
 
 Entry points expose only contracts approved by their owning implementation issues. Calendar core
-and Temporal expose the canonical engine contracts. Calendar React exposes its issue #25 state and
-SSR layer without pre-empting the issue #26 factory/view surface. The internal fixtures and
+and Temporal expose the canonical engine contracts. Calendar React exposes its state/SSR layer and
+the issue #26 factory, compound context, and custom-view surface. The internal fixtures and
 benchmark workspaces own reproducible data and performance protocol code; other workspace shells
 stay empty until their implementation and validation issues land.
 

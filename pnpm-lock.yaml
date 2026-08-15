@@ -384,6 +384,21 @@ importers:
         specifier: workspace:*
         version: link:../calendar-react
     devDependencies:
+      '@moltenship/calendar-temporal':
+        specifier: workspace:*
+        version: link:../calendar-temporal
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.14)
+      react:
+        specifier: 'catalog:'
+        version: 19.2.7
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.2.7(react@19.2.7)
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -444,6 +459,9 @@ importers:
         specifier: 2.20.2
         version: 2.20.2(@babel/core@7.29.7(supports-color@7.2.0))(@babel/template@7.29.7)(@types/react@19.2.14)(react@19.2.7)
     devDependencies:
+      '@moltenship/calendar-temporal':
+        specifier: workspace:*
+        version: link:../calendar-temporal
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
