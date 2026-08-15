@@ -248,7 +248,7 @@ export function runBenchmark<TSnapshot>(
     },
     mode: options.mode,
     notes: [
-      "Reference algorithms calibrate the harness; they are not production-engine claims.",
+      "Reference algorithms are the correctness oracle; timings describe the selected engine.",
       "Render measures render-model materialization, not browser paint or React commits.",
       "Pointer-frame measures library hit-test scripting, not end-to-end input latency.",
       `Observable sink: ${benchmarkSink ^ queried.length ^ render.length}`,

@@ -7,7 +7,8 @@ The foundation packages expose only contracts that already have an owning implem
   grids, PlainTime/Instant snapping, zoned-day boundaries and splitting, explicit gap/fold
   projection, transition-aware wall slots, machine keys, and injected clocks/environments.
 - `@moltenship/calendar-core` owns IDs, canonical events, application adapters, resources,
-  environment, view strategy/renderer boundaries, policies, and transactions.
+  normalized snapshots, interval/resource queries, advanced event sources, environment, view
+  strategy/renderer boundaries, policies, and transactions.
 - `@moltenship/calendar` re-exports the supported core surface. It will add supported React exports
   when the React integration issue lands.
 
@@ -49,6 +50,19 @@ const eventAdapter = defineEventAdapter<ApiEvent>()({
 
 The curried definition preserves `ApiEvent`, `EventId`, and `RoomId` inference. No consumer cast is
 required.
+
+## Immutable event snapshots
+
+`createEventSnapshotCache(adapter)` is the array-input normalization boundary. Stable immutable
+array identity reuses the complete snapshot; a new array advances a monotonic version and performs
+one pass. Adapter revisions permit structural reuse when application records are recreated without
+semantic changes.
+
+Snapshots expose read-only `byId` and normalized event collections plus type-specific timed,
+all-day, floating, and resource queries. Query results are stable in input order and cached only in
+a bounded LRU. Invalid events report and skip by default or reject the complete build in strict
+mode. `CalendarEventSource` is the advanced subscription contract for application stores that
+already own versioned client and server snapshots.
 
 ## Validation boundary
 

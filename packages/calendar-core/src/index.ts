@@ -26,6 +26,25 @@ export type {
   ValidatedCalendarEventInterval,
 } from "./events.ts";
 
+export { createEventSnapshot, createEventSnapshotCache } from "./snapshots/event-snapshot.ts";
+export { InvalidCalendarEventSnapshotError } from "./snapshots/types.ts";
+export type {
+  CalendarEventInput,
+  CalendarEventSource,
+  EventAdapterAccessor,
+  EventSnapshot,
+  EventSnapshotCache,
+  EventSnapshotIssue,
+  EventSnapshotOptions,
+  EventSnapshotQueryCacheStatistics,
+  EventSnapshotQueryOptions,
+  InvalidCalendarEventPolicy,
+  NormalizedAllDayCalendarEvent,
+  NormalizedCalendarEvent,
+  NormalizedFloatingCalendarEvent,
+  NormalizedTimedCalendarEvent,
+} from "./snapshots/types.ts";
+
 export type { CalendarResource } from "./resources.ts";
 export type {
   CalendarDirection,

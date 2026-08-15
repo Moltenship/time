@@ -12,7 +12,7 @@ export default defineConfig({
     tasks: {
       core: {
         cache: false,
-        command: "node dist/core/index.mjs --mode=full",
+        command: "node dist/core/index.mjs --mode=full --gated",
         dependsOn: ["build", { task: "build", from: "dependencies" }],
       },
       gated: {

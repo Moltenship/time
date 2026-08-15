@@ -30,9 +30,11 @@
     "test": "vp test --passWithNoTests"
   },
   "dependencies": {
+    "@flatten-js/interval-tree": "catalog:",
     "@moltenship/calendar-temporal": "workspace:*"
   },
   "devDependencies": {
+    "fast-check": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

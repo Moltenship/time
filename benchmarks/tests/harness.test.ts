@@ -10,6 +10,7 @@ import {
   summarizeSamples,
 } from "../shared/protocol.ts";
 import { referenceEngine, type ReferenceSnapshot } from "../shared/reference.ts";
+import { indexedSnapshotEngine } from "../core/indexed-snapshot.ts";
 
 describe("benchmark protocol", () => {
   test("reports nearest-rank p50 and p95 after warmup", () => {
@@ -46,6 +47,19 @@ describe("benchmark protocol", () => {
     expect(compareCandidateToReference(invalidCandidate, fixtures)).toMatchObject({
       differences: ["query"],
       matchesReference: false,
+    });
+  });
+
+  test("keeps the production indexed snapshot equivalent to the reference", () => {
+    const fixtures = generateBenchmarkFixtures({
+      eventCount: 500,
+      resourceCount: 40,
+      visibleFragmentCount: 100,
+    });
+
+    expect(compareCandidateToReference(indexedSnapshotEngine, fixtures)).toMatchObject({
+      differences: [],
+      matchesReference: true,
     });
   });
 

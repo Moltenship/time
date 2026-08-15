@@ -1,8 +1,8 @@
 # Performance harness
 
-This workspace is a production-bundle benchmark protocol, not a product performance claim. Until
-the indexed core and React integration land, the committed baseline measures the deliberately simple
-reference implementation and validates the harness itself.
+This workspace is a production-bundle benchmark protocol, not a product performance claim. The
+core task measures the production indexed event snapshot; the complete and React tasks continue to
+use deliberately simple reference stages until their owning implementations land.
 
 ## First-class tasks
 
@@ -22,19 +22,20 @@ stage; full tasks use ten warmups and fifty samples.
 
 ## Separately reported stages
 
-| Stage | Reference work measured now | Initial p95 gate |
+| Stage | Work measured now | Initial p95 gate |
 | --- | --- | --- |
-| `build` | Construct the reference snapshot and ID lookup from 10k events | 25 ms |
-| `query` | Simple linear range-query correctness oracle | 1 ms |
+| `build` | Core: validate, normalize, and index 10k native-Temporal events; complete: reference snapshot | 25 ms |
+| `query` | Core: production interval indexes with result caching disabled; complete: scan oracle | 1 ms |
 | `projection` | Materialize the exact 1k visible fragment inputs | Report only |
 | `layout` | Deterministic overlap lane assignment for 1k fragments | 8 ms |
 | `render` | Materialize framework-neutral render models | Report only |
 | `pointer-frame` | Reference hit-test scripting for one pointer frame | 4 ms |
 
-The query baseline is intentionally linear and is not evidence that the future indexed engine meets
-the architecture. Render excludes React commits, browser style/layout, and paint. Pointer-frame
-excludes event delivery and browser paint. Those claims require the later engine, React, and browser
-gates.
+Transport-string conversion is prepared before timed core samples. The build measurement begins at
+application records containing native Temporal values and includes adapter reads, validation,
+normalization, ID/resource maps, interval indexes, and snapshot construction. Render excludes React
+commits, browser style/layout, and paint. Pointer-frame excludes event delivery and browser paint.
+Those claims require the later React and browser gates.
 
 ## Protocol
 
@@ -50,8 +51,9 @@ gates.
 
 ## Candidate comparison
 
-Future engines implement the generic `BenchmarkEngine<TSnapshot>` seam and are checked against
-`referenceEngine` before their timings are accepted:
+Candidate engines implement the generic `BenchmarkEngine<TSnapshot>` seam and are checked against
+`referenceEngine` before their timings are accepted. The production indexed core is covered by this
+comparison in the benchmark test suite:
 
 ```ts
 import { compareCandidateToReference } from "./core/index.ts";

@@ -396,10 +396,16 @@ importers:
 
   packages/calendar-core:
     dependencies:
+      '@flatten-js/interval-tree':
+        specifier: 'catalog:'
+        version: 2.0.3
       '@moltenship/calendar-temporal':
         specifier: workspace:*
         version: link:../calendar-temporal
     devDependencies:
+      fast-check:
+        specifier: 'catalog:'
+        version: 4.9.0
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

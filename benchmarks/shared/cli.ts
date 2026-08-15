@@ -2,7 +2,12 @@ import { pathToFileURL } from "node:url";
 
 import { generateBenchmarkFixtures } from "fixtures";
 
-import type { BenchmarkMode, BenchmarkReport, BenchmarkStage } from "./contracts.ts";
+import type {
+  BenchmarkEngine,
+  BenchmarkMode,
+  BenchmarkReport,
+  BenchmarkStage,
+} from "./contracts.ts";
 import { benchmarkExitCode, runBenchmark } from "./protocol.ts";
 import { referenceEngine } from "./reference.ts";
 
@@ -76,15 +81,16 @@ export function formatBenchmarkReport(report: BenchmarkReport): string {
   return lines.join("\n");
 }
 
-export function runBenchmarkCli(
+export function runBenchmarkCli<TSnapshot = ReturnType<typeof referenceEngine.build>>(
   arguments_: readonly string[],
   stages: readonly BenchmarkStage[],
   suite: string,
+  engine: BenchmarkEngine<TSnapshot> = referenceEngine as BenchmarkEngine<TSnapshot>,
   logger: BenchmarkLogger = console,
 ): number {
   try {
     const options = parseOptions(arguments_);
-    const report = runBenchmark(referenceEngine, generateBenchmarkFixtures(), {
+    const report = runBenchmark(engine, generateBenchmarkFixtures(), {
       mode: options.mode,
       stages,
       suite,

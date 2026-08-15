@@ -1,0 +1,679 @@
+import {
+  compareInstants,
+  comparePlainDates,
+  comparePlainDateTimes,
+  type InstantInterval,
+  type PlainDateInterval,
+  type PlainDateTimeInterval,
+} from "@moltenship/calendar-temporal";
+
+import {
+  validateCalendarEventInterval,
+  type CalendarEventInterval,
+  type CalendarEventIntervalComparators,
+  type EventAdapter,
+} from "../events.ts";
+import type { EventId, ResourceId } from "../ids.ts";
+import {
+  createIntervalIndex,
+  type IntervalIndex,
+  type IntervalIndexEntry,
+} from "../internal/interval-index.ts";
+import { BoundedLruCache } from "../internal/lru-cache.ts";
+import { ReadonlyMapView } from "../internal/readonly-map.ts";
+import {
+  instantIndexKey,
+  plainDateIndexKey,
+  plainDateTimeIndexKey,
+} from "../internal/temporal-index-keys.ts";
+import {
+  InvalidCalendarEventSnapshotError,
+  type EventSnapshot,
+  type EventSnapshotCache,
+  type EventSnapshotIssue,
+  type EventSnapshotOptions,
+  type EventSnapshotQueryOptions,
+  type NormalizedAllDayCalendarEvent,
+  type NormalizedCalendarEvent,
+  type NormalizedFloatingCalendarEvent,
+  type NormalizedTimedCalendarEvent,
+} from "./types.ts";
+
+const DEFAULT_QUERY_CACHE_SIZE = 128;
+
+const nativeIntervalComparators: CalendarEventIntervalComparators<
+  Temporal.Instant,
+  Temporal.PlainDate,
+  Temporal.PlainDateTime
+> = {
+  instant: compareInstants,
+  plainDate: comparePlainDates,
+  plainDateTime: comparePlainDateTimes,
+};
+
+interface EventStructureBase<TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly endKey: bigint;
+  readonly id: TEventId;
+  readonly isReadOnly: boolean;
+  readonly resourceIds: readonly TResourceId[];
+  readonly revision?: string | number;
+  readonly startKey: bigint;
+  readonly title: string;
+}
+
+type EventStructure<TEventId extends EventId, TResourceId extends ResourceId> = EventStructureBase<
+  TEventId,
+  TResourceId
+> &
+  CalendarEventInterval;
+
+interface PreviousEvent<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly event: TEvent;
+  readonly structure: EventStructure<TEventId, TResourceId>;
+}
+
+interface IndexedEventData<TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly allDay: IntervalIndex<TEventId>;
+  readonly floating: IntervalIndex<TEventId>;
+  readonly resources: ReadonlyMap<TResourceId, readonly TEventId[]>;
+  readonly structures: readonly EventStructure<TEventId, TResourceId>[];
+  readonly timed: IntervalIndex<TEventId>;
+}
+
+function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+function isRevision(value: unknown): value is string | number {
+  return typeof value === "string" || (typeof value === "number" && Number.isFinite(value));
+}
+
+function isCalendarEventInterval(value: unknown): value is CalendarEventInterval {
+  if (typeof value !== "object" || value === null) return false;
+  const kind = (value as { readonly kind?: unknown }).kind;
+  return kind === "timed" || kind === "all-day" || kind === "floating";
+}
+
+function intervalKeys(interval: CalendarEventInterval): {
+  readonly endKey: bigint;
+  readonly startKey: bigint;
+} {
+  return interval.kind === "timed"
+    ? { endKey: instantIndexKey(interval.end), startKey: instantIndexKey(interval.start) }
+    : interval.kind === "all-day"
+      ? { endKey: plainDateIndexKey(interval.end), startKey: plainDateIndexKey(interval.start) }
+      : {
+          endKey: plainDateTimeIndexKey(interval.end),
+          startKey: plainDateTimeIndexKey(interval.start),
+        };
+}
+
+function materializeEvent<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
+  event: TEvent,
+  inputIndex: number,
+  structure: EventStructure<TEventId, TResourceId>,
+): NormalizedCalendarEvent<TEvent, TEventId, TResourceId> {
+  const base = {
+    event,
+    id: structure.id,
+    inputIndex,
+    isReadOnly: structure.isReadOnly,
+    resourceIds: structure.resourceIds,
+    revision: structure.revision,
+    title: structure.title,
+  };
+
+  return structure.kind === "timed"
+    ? Object.freeze({
+        ...base,
+        end: structure.end,
+        kind: structure.kind,
+        sourceTimeZone: structure.sourceTimeZone,
+        start: structure.start,
+      })
+    : structure.kind === "all-day"
+      ? Object.freeze({
+          ...base,
+          end: structure.end,
+          kind: structure.kind,
+          start: structure.start,
+        })
+      : Object.freeze({
+          ...base,
+          end: structure.end,
+          kind: structure.kind,
+          start: structure.start,
+        });
+}
+
+function structuresMatch<TEventId extends EventId, TResourceId extends ResourceId>(
+  left: readonly EventStructure<TEventId, TResourceId>[],
+  right: readonly EventStructure<TEventId, TResourceId>[],
+): boolean {
+  return (
+    left.length === right.length && left.every((structure, index) => structure === right[index])
+  );
+}
+
+function buildIndexedData<TEventId extends EventId, TResourceId extends ResourceId>(
+  structures: readonly EventStructure<TEventId, TResourceId>[],
+): IndexedEventData<TEventId, TResourceId> {
+  const timed: IntervalIndexEntry<TEventId>[] = [];
+  const allDay: IntervalIndexEntry<TEventId>[] = [];
+  const floating: IntervalIndexEntry<TEventId>[] = [];
+  const resourceIds = new Map<TResourceId, TEventId[]>();
+
+  structures.forEach((structure, order) => {
+    const entry = {
+      end: structure.endKey,
+      order,
+      start: structure.startKey,
+      value: structure.id,
+    };
+    if (structure.kind === "timed") timed.push(entry);
+    else if (structure.kind === "all-day") allDay.push(entry);
+    else floating.push(entry);
+
+    for (const resourceId of structure.resourceIds) {
+      const ids = resourceIds.get(resourceId);
+      if (ids === undefined) resourceIds.set(resourceId, [structure.id]);
+      else ids.push(structure.id);
+    }
+  });
+
+  const frozenResources = new Map<TResourceId, readonly TEventId[]>();
+  for (const [resourceId, ids] of resourceIds) {
+    frozenResources.set(resourceId, Object.freeze(ids));
+  }
+
+  return Object.freeze({
+    allDay: createIntervalIndex(allDay),
+    floating: createIntervalIndex(floating),
+    resources: new ReadonlyMapView(frozenResources),
+    structures: Object.freeze([...structures]),
+    timed: createIntervalIndex(timed),
+  });
+}
+
+function resourceIdKey(resourceId: ResourceId): string {
+  return typeof resourceId === "number"
+    ? `number:${Object.is(resourceId, -0) ? "0" : String(resourceId)}`
+    : `string:${JSON.stringify(resourceId)}`;
+}
+
+function resourceFilter<TResourceId extends ResourceId>(
+  options: EventSnapshotQueryOptions<TResourceId> | undefined,
+): { readonly key: string; readonly values?: ReadonlySet<TResourceId> } {
+  if (options?.resourceIds === undefined) return { key: "*" };
+
+  const values = new Set(options.resourceIds);
+  const key = JSON.stringify([...values].map(resourceIdKey).sort());
+  return { key, values };
+}
+
+class ImmutableEventSnapshot<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+> implements EventSnapshot<TEvent, TEventId, TResourceId> {
+  readonly #indexed: IndexedEventData<TEventId, TResourceId>;
+  readonly #queryCache: BoundedLruCache<
+    readonly NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[]
+  >;
+  readonly byId: ReadonlyMap<TEventId, NormalizedCalendarEvent<TEvent, TEventId, TResourceId>>;
+  readonly events: readonly NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[];
+  readonly issues: readonly EventSnapshotIssue<TEvent, TEventId>[];
+  readonly version: number;
+
+  constructor(
+    version: number,
+    events: readonly NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[],
+    issues: readonly EventSnapshotIssue<TEvent, TEventId>[],
+    indexed: IndexedEventData<TEventId, TResourceId>,
+    queryCacheSize: number,
+  ) {
+    const byId = new Map(events.map((event) => [event.id, event]));
+    this.#indexed = indexed;
+    this.#queryCache = new BoundedLruCache(queryCacheSize);
+    this.byId = new ReadonlyMapView(byId);
+    this.events = Object.freeze([...events]);
+    this.issues = Object.freeze([...issues]);
+    this.version = version;
+    Object.freeze(this);
+  }
+
+  get size(): number {
+    return this.events.length;
+  }
+
+  eventsForResource(
+    resourceId: TResourceId,
+  ): readonly NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[] {
+    const key = `resource:${resourceIdKey(resourceId)}`;
+    const cached = this.#queryCache.get(key);
+    if (cached !== undefined) return cached;
+
+    const result = Object.freeze(
+      (this.#indexed.resources.get(resourceId) ?? []).flatMap((eventId) => {
+        const event = this.byId.get(eventId);
+        return event === undefined ? [] : [event];
+      }),
+    );
+    this.#queryCache.set(key, result);
+    return result;
+  }
+
+  get(eventId: TEventId): NormalizedCalendarEvent<TEvent, TEventId, TResourceId> | undefined {
+    return this.byId.get(eventId);
+  }
+
+  getQueryCacheStatistics() {
+    return this.#queryCache.statistics();
+  }
+
+  queryAllDay(
+    range: PlainDateInterval,
+    options?: EventSnapshotQueryOptions<TResourceId>,
+  ): readonly NormalizedAllDayCalendarEvent<TEvent, TEventId, TResourceId>[] {
+    return this.#query(
+      "all-day",
+      this.#indexed.allDay,
+      plainDateIndexKey(range.start),
+      plainDateIndexKey(range.end),
+      options,
+    ) as readonly NormalizedAllDayCalendarEvent<TEvent, TEventId, TResourceId>[];
+  }
+
+  queryFloating(
+    range: PlainDateTimeInterval,
+    options?: EventSnapshotQueryOptions<TResourceId>,
+  ): readonly NormalizedFloatingCalendarEvent<TEvent, TEventId, TResourceId>[] {
+    return this.#query(
+      "floating",
+      this.#indexed.floating,
+      plainDateTimeIndexKey(range.start),
+      plainDateTimeIndexKey(range.end),
+      options,
+    ) as readonly NormalizedFloatingCalendarEvent<TEvent, TEventId, TResourceId>[];
+  }
+
+  queryTimed(
+    range: InstantInterval,
+    options?: EventSnapshotQueryOptions<TResourceId>,
+  ): readonly NormalizedTimedCalendarEvent<TEvent, TEventId, TResourceId>[] {
+    return this.#query(
+      "timed",
+      this.#indexed.timed,
+      instantIndexKey(range.start),
+      instantIndexKey(range.end),
+      options,
+    ) as readonly NormalizedTimedCalendarEvent<TEvent, TEventId, TResourceId>[];
+  }
+
+  #query(
+    kind: CalendarEventInterval["kind"],
+    index: IntervalIndex<TEventId>,
+    start: bigint,
+    end: bigint,
+    options: EventSnapshotQueryOptions<TResourceId> | undefined,
+  ): readonly NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[] {
+    const resources = resourceFilter(options);
+    const key = `${kind}:${start}:${end}:${resources.key}`;
+    const cached = this.#queryCache.get(key);
+    if (cached !== undefined) return cached;
+
+    const result = Object.freeze(
+      index.query(start, end).flatMap((eventId) => {
+        const event = this.byId.get(eventId);
+        if (
+          event === undefined ||
+          (resources.values !== undefined &&
+            !event.resourceIds.some((resourceId) => resources.values?.has(resourceId)))
+        ) {
+          return [];
+        }
+        return [event];
+      }),
+    );
+    this.#queryCache.set(key, result);
+    return result;
+  }
+}
+
+function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
+  event: TEvent,
+  index: number,
+  adapter: EventAdapter<TEvent, TEventId, TResourceId>,
+  previous: ReadonlyMap<TEventId, PreviousEvent<TEvent, TEventId, TResourceId>>,
+  seenIds: ReadonlySet<TEventId>,
+):
+  | {
+      readonly issue: EventSnapshotIssue<TEvent, TEventId>;
+      readonly valid: false;
+    }
+  | {
+      readonly normalized: NormalizedCalendarEvent<TEvent, TEventId, TResourceId>;
+      readonly structure: EventStructure<TEventId, TResourceId>;
+      readonly valid: true;
+    } {
+  let eventId: TEventId;
+  try {
+    eventId = adapter.getId(event);
+  } catch (error) {
+    return {
+      issue: Object.freeze({
+        accessor: "getId",
+        code: "adapter-error",
+        event,
+        index,
+        message: errorMessage(error),
+      }),
+      valid: false,
+    };
+  }
+
+  if (
+    (typeof eventId === "string" && eventId.length === 0) ||
+    (typeof eventId === "number" && !Number.isFinite(eventId)) ||
+    (typeof eventId !== "string" && typeof eventId !== "number")
+  ) {
+    return {
+      issue: Object.freeze({ code: "invalid-event-id", event, index }),
+      valid: false,
+    };
+  }
+  if (seenIds.has(eventId)) {
+    return {
+      issue: Object.freeze({ code: "duplicate-event-id", event, eventId, index }),
+      valid: false,
+    };
+  }
+
+  let revision: string | number | undefined;
+  if (adapter.getRevision !== undefined) {
+    try {
+      revision = adapter.getRevision(event);
+    } catch (error) {
+      return {
+        issue: Object.freeze({
+          accessor: "getRevision",
+          code: "adapter-error",
+          event,
+          eventId,
+          index,
+          message: errorMessage(error),
+        }),
+        valid: false,
+      };
+    }
+    if (!isRevision(revision)) {
+      return {
+        issue: Object.freeze({ code: "invalid-revision", event, eventId, index }),
+        valid: false,
+      };
+    }
+  }
+
+  const prior = previous.get(eventId);
+  if (
+    prior !== undefined &&
+    (adapter.getRevision === undefined
+      ? prior.event === event
+      : prior.structure.revision === revision)
+  ) {
+    return {
+      normalized: materializeEvent(event, index, prior.structure),
+      structure: prior.structure,
+      valid: true,
+    };
+  }
+
+  let interval: CalendarEventInterval;
+  try {
+    const value: unknown = adapter.getInterval(event);
+    if (!isCalendarEventInterval(value)) {
+      return {
+        issue: Object.freeze({
+          accessor: "getInterval",
+          code: "invalid-event-interval",
+          event,
+          eventId,
+          index,
+        }),
+        valid: false,
+      };
+    }
+    interval = value;
+    const validation = validateCalendarEventInterval(interval, nativeIntervalComparators);
+    if (!validation.valid) {
+      return {
+        issue: Object.freeze({
+          code: "start-not-before-end",
+          event,
+          eventId,
+          index,
+        }),
+        valid: false,
+      };
+    }
+  } catch (error) {
+    return {
+      issue: Object.freeze({
+        accessor: "getInterval",
+        code: "adapter-error",
+        event,
+        eventId,
+        index,
+        message: errorMessage(error),
+      }),
+      valid: false,
+    };
+  }
+
+  let resourceIds: readonly TResourceId[];
+  try {
+    const value: unknown = adapter.getResourceIds(event);
+    if (!Array.isArray(value)) throw new TypeError("resource-ids-must-be-an-array");
+    const unique: TResourceId[] = [];
+    for (const [resourceIndex, resourceId] of value.entries()) {
+      if (
+        (typeof resourceId === "string" && resourceId.length === 0) ||
+        (typeof resourceId === "number" && !Number.isFinite(resourceId)) ||
+        (typeof resourceId !== "string" && typeof resourceId !== "number")
+      ) {
+        return {
+          issue: Object.freeze({
+            code: "invalid-resource-id",
+            event,
+            eventId,
+            index,
+            resourceIndex,
+          }),
+          valid: false,
+        };
+      }
+      if (!unique.includes(resourceId as TResourceId)) unique.push(resourceId as TResourceId);
+    }
+    resourceIds = Object.freeze(unique);
+  } catch (error) {
+    return {
+      issue: Object.freeze({
+        accessor: "getResourceIds",
+        code: "adapter-error",
+        event,
+        eventId,
+        index,
+        message: errorMessage(error),
+      }),
+      valid: false,
+    };
+  }
+
+  let title: string;
+  try {
+    const value: unknown = adapter.getTitle(event);
+    if (typeof value !== "string") throw new TypeError("event-title-must-be-a-string");
+    title = value;
+  } catch (error) {
+    return {
+      issue: Object.freeze({
+        accessor: "getTitle",
+        code: "adapter-error",
+        event,
+        eventId,
+        index,
+        message: errorMessage(error),
+      }),
+      valid: false,
+    };
+  }
+
+  let isReadOnly = false;
+  if (adapter.isReadOnly !== undefined) {
+    try {
+      const value: unknown = adapter.isReadOnly(event);
+      if (typeof value !== "boolean") throw new TypeError("event-read-only-must-be-a-boolean");
+      isReadOnly = value;
+    } catch (error) {
+      return {
+        issue: Object.freeze({
+          accessor: "isReadOnly",
+          code: "adapter-error",
+          event,
+          eventId,
+          index,
+          message: errorMessage(error),
+        }),
+        valid: false,
+      };
+    }
+  }
+
+  let keys: { readonly endKey: bigint; readonly startKey: bigint };
+  try {
+    keys = intervalKeys(interval);
+  } catch (error) {
+    return {
+      issue: Object.freeze({
+        accessor: "getInterval",
+        code: "adapter-error",
+        event,
+        eventId,
+        index,
+        message: errorMessage(error),
+      }),
+      valid: false,
+    };
+  }
+
+  const base = {
+    ...keys,
+    id: eventId,
+    isReadOnly,
+    resourceIds,
+    revision,
+    title,
+  };
+  const structure: EventStructure<TEventId, TResourceId> =
+    interval.kind === "timed"
+      ? Object.freeze({
+          ...base,
+          end: interval.end,
+          kind: interval.kind,
+          sourceTimeZone: interval.sourceTimeZone,
+          start: interval.start,
+        })
+      : interval.kind === "all-day"
+        ? Object.freeze({ ...base, end: interval.end, kind: interval.kind, start: interval.start })
+        : Object.freeze({ ...base, end: interval.end, kind: interval.kind, start: interval.start });
+
+  return {
+    normalized: materializeEvent(event, index, structure),
+    structure,
+    valid: true,
+  };
+}
+
+export function createEventSnapshotCache<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+>(
+  adapter: EventAdapter<TEvent, TEventId, TResourceId>,
+  options: EventSnapshotOptions = {},
+): EventSnapshotCache<TEvent, TEventId, TResourceId> {
+  const invalidEventPolicy = options.invalidEventPolicy ?? "report-and-skip";
+  if (invalidEventPolicy !== "report-and-skip" && invalidEventPolicy !== "throw") {
+    throw new RangeError("invalid-event-policy");
+  }
+  const queryCacheSize = options.queryCacheSize ?? DEFAULT_QUERY_CACHE_SIZE;
+  // Validate eagerly rather than deferring a configuration error until the first snapshot.
+  new BoundedLruCache(queryCacheSize);
+
+  let version = 0;
+  let previousById = new Map<TEventId, PreviousEvent<TEvent, TEventId, TResourceId>>();
+  let indexed: IndexedEventData<TEventId, TResourceId> | undefined;
+  let lastEvents: readonly TEvent[] | undefined;
+  let lastSnapshot: EventSnapshot<TEvent, TEventId, TResourceId> | undefined;
+
+  return Object.freeze({
+    getSnapshot(events: readonly TEvent[]) {
+      if (events === lastEvents && lastSnapshot !== undefined) return lastSnapshot;
+
+      const nextPreviousById = new Map<TEventId, PreviousEvent<TEvent, TEventId, TResourceId>>();
+      const seenIds = new Set<TEventId>();
+      const structures: EventStructure<TEventId, TResourceId>[] = [];
+      const normalized: NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[] = [];
+      const issues: EventSnapshotIssue<TEvent, TEventId>[] = [];
+
+      events.forEach((event, index) => {
+        const result = normalizeEvent(event, index, adapter, previousById, seenIds);
+        if (!result.valid) {
+          issues.push(result.issue);
+          return;
+        }
+
+        seenIds.add(result.structure.id);
+        structures.push(result.structure);
+        normalized.push(result.normalized);
+        nextPreviousById.set(result.structure.id, { event, structure: result.structure });
+      });
+
+      const frozenIssues = Object.freeze([...issues]);
+      if (invalidEventPolicy === "throw" && frozenIssues.length > 0) {
+        throw new InvalidCalendarEventSnapshotError(frozenIssues);
+      }
+
+      const nextIndexed =
+        indexed !== undefined && structuresMatch(indexed.structures, structures)
+          ? indexed
+          : buildIndexedData(structures);
+      version += 1;
+      const snapshot = new ImmutableEventSnapshot(
+        version,
+        normalized,
+        frozenIssues,
+        nextIndexed,
+        queryCacheSize,
+      );
+
+      indexed = nextIndexed;
+      lastEvents = events;
+      lastSnapshot = snapshot;
+      previousById = nextPreviousById;
+      return snapshot;
+    },
+  });
+}
+
+export function createEventSnapshot<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+>(
+  events: readonly TEvent[],
+  adapter: EventAdapter<TEvent, TEventId, TResourceId>,
+  options: EventSnapshotOptions = {},
+): EventSnapshot<TEvent, TEventId, TResourceId> {
+  return createEventSnapshotCache(adapter, options).getSnapshot(events);
+}
