@@ -5,9 +5,10 @@ ownership. A workspace may import only the public entry points of workspaces lis
 `dependencies`; importing another workspace's `src/` tree is always invalid.
 
 Entry points expose only contracts approved by their owning implementation issues. Calendar core
-and Temporal expose the canonical foundation contracts. The internal fixtures and benchmark
-workspaces own reproducible data and performance protocol code; the remaining workspaces stay empty
-until their implementation and validation issues land.
+and Temporal expose the canonical engine contracts. Calendar React exposes its issue #25 state and
+SSR layer without pre-empting the issue #26 factory/view surface. The internal fixtures and
+benchmark workspaces own reproducible data and performance protocol code; other workspace shells
+stay empty until their implementation and validation issues land.
 
 Publishable workspaces expose `src/index.ts` inside the checkout so declared package imports work
 before any ignored build output exists. pnpm applies each package's `publishConfig.exports` while
@@ -32,9 +33,10 @@ packing, replacing that development entry with `dist/index.mjs` and `dist/index.
 | `benchmark` | Internal core and React performance runners | Core, React bindings, and fixture tooling |
 | `registry` | Internal shadcn schema/build verification | None until the registry harness lands |
 
-External dependencies are added by the issue that validates their contract. In particular, the
-React/Jotai, dnd-kit, interval-tree, virtualization, and browser-test dependencies remain owned by
-their architecture spikes and harness issues rather than this topology change.
+External dependencies are added by the issue that validates their contract. React 19 is a
+`calendar-react` peer and Jotai 2 is its private runtime dependency after issue #25. The dnd-kit,
+interval-tree, virtualization, and browser-test dependencies remain owned by their corresponding
+implementation or harness issues.
 
 Every workspace compiles with the cataloged current TypeScript toolchain against the `ESNext`
 standard library. Temporal is an ambient global, so `calendar-temporal` has no declaration

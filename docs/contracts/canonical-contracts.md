@@ -9,8 +9,11 @@ The foundation packages expose only contracts that already have an owning implem
 - `@moltenship/calendar-core` owns IDs, canonical events, application adapters, resources,
   normalized snapshots, interval/resource queries, advanced event sources, environment, view
   strategy/renderer boundaries, policies, and transactions.
+- `@moltenship/calendar-react` owns per-instance controllable state, semantic state actions,
+  render-scoped controlled readers, selector subscriptions, store injection, and React/SSR binding.
+  Jotai atoms and stores are private implementation details.
 - `@moltenship/calendar` re-exports the supported core surface. It will add supported React exports
-  when the React integration issue lands.
+  with the typed factory and compound API in issue #26.
 
 Internal validation brands and native-global access stay behind those entry points. Package source
 paths are not public APIs.

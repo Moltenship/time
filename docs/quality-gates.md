@@ -32,6 +32,11 @@ API checks, both production engine builds and size budgets, and the uncached pro
 benchmark. The benchmark is a reference-hardware gate rather than a portable CI timing claim, so it
 remains an explicit local task while its deterministic correctness and build checks also run in CI.
 
+`vp run react:store` is the focused issue #25 gate. It checks and builds `calendar-react`, runs the
+controlled/uncontrolled state matrix, two-root isolation, selector invalidation, injected-store and
+cleanup checks, and verifies deterministic SSR/hydration. The production declaration audit fails if
+Jotai enters the public API or if the React client boundary is dropped.
+
 ## Intentional failure proofs
 
 These commands must exit non-zero:

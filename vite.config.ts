@@ -41,6 +41,11 @@ export default defineConfig({
         "vp run engine:build",
         "vp run --no-cache benchmark#core",
       ],
+      "react:store": [
+        "vp run calendar-react#check",
+        "vp run calendar-react#test",
+        "vp run calendar-react#build",
+      ],
     },
   },
 });

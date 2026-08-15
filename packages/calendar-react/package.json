@@ -23,18 +23,28 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "vp pack && node scripts/verify-public-api.mjs",
     "check": "vp check",
     "dev": "vp pack --watch",
     "prepublishOnly": "vp run build",
-    "test": "vp test --passWithNoTests"
+    "test": "vp test",
+    "test:ssr": "vp test tests/ssr-hydration.test.tsx"
   },
   "dependencies": {
-    "@moltenship/calendar-core": "workspace:*"
+    "@moltenship/calendar-core": "workspace:*",
+    "jotai": "2.20.2"
   },
   "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
   }
 }

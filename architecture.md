@@ -541,7 +541,8 @@ State is divided by ownership and update frequency.
 
 - Every `Root` creates or receives one calendar store.
 - There is no provider-less global state.
-- Jotai vanilla stores provide fine-grained subscriptions.
+- Jotai vanilla stores own primitive uncontrolled state and derived controlled readers.
+- React bindings use `useAtomValue`/`useSetAtom`; semantic selectors use `selectAtom`.
 - Atoms are not exported; public hooks select semantic state.
 - An advanced `createCalendarStore()` supports external orchestration and testing.
 - Components subscribe only to the slices they render.
@@ -557,9 +558,9 @@ defaultView?: ViewName
 onViewChange?: (next: ViewName, detail: StateChangeDetail) => void
 ```
 
-The same pattern applies to anchor date, selection, timezone, focus, and resource expansion. Controlled inputs are read through a synchronous state adapter; they are not copied into the store with `useEffect`. Uncontrolled defaults are read exactly once.
+The same pattern applies to anchor date, selection, timezone, focus, and resource expansion. A render-scoped derived reader atom closes over the current controlled inputs and reads primitive atoms only for uncontrolled branches. Controlled inputs are not copied into the store with `useEffect`. Uncontrolled defaults are read exactly once.
 
-`useSyncExternalStore` integration provides cached `getSnapshot` and deterministic `getServerSnapshot`. Hydration receives the exact server snapshot.
+Jotai's React bindings own subscription and unmount cleanup. `selectAtom` owns selector equality and avoids unrelated React commits. The public `getSnapshot` and `getServerSnapshot` methods read the same cached derived atom for orchestration and SSR assertions; explicit defaults and controlled inputs make server and first-client output deterministic.
 
 ### 9.3 Public state interface
 
