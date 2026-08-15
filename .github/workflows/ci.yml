@@ -40,6 +40,9 @@ jobs:
       - name: Root and workspace tests
         run: vp run ci:test
 
+      - name: React isolation, custom-view, and SSR contracts
+        run: vp run react:gate
+
       - name: SSR render, hydrate, interact, and unmount
         run: vp run ssr:smoke
 

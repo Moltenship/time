@@ -37,6 +37,12 @@ vp run -r build
 vp run check:boundaries
 ```
 
+- Run the React isolation, custom-view, and SSR regression gate:
+
+```bash
+vp run react:gate
+```
+
 - Run the development server:
 
 ```bash

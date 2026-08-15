@@ -12,6 +12,8 @@ import dependencyCruiserConfig from "../dependency-cruiser.config";
 
 const productionRoots = ["apps", "benchmarks", "packages", "registry", "tools"];
 const invalidFixtureRoot = "tests/fixtures/dependency-boundaries";
+const calendarReactDeepImportFixture =
+  "tests/fixtures/dependency-boundaries/consumer/calendar-react-deep-import.ts";
 const execFileAsync = promisify(execFile);
 
 const expectedWorkspaceDependencies = {
@@ -83,6 +85,32 @@ describe.sequential("workspace boundaries", () => {
 
     expect(violatedRules).toContain("no-calendar-temporal-deep-imports");
     expect(violatedRules).toContain("no-package-source-specifiers");
+  });
+
+  test("a calendar React source import fails static and package-export boundaries", async () => {
+    const result = await cruiseWithArchitectureRules([calendarReactDeepImportFixture]);
+    const violatedRules = result.summary.violations.map(({ rule }) => rule.name);
+
+    expect(violatedRules).toContain("no-package-source-specifiers");
+
+    let failureOutput = "";
+    try {
+      await execFileAsync(
+        process.execPath,
+        [
+          "--input-type=module",
+          "--eval",
+          'await import("@moltenship/calendar-react/src/internal/runtime-store")',
+        ],
+        { cwd: join(process.cwd(), "packages/calendar-react") },
+      );
+    } catch (error) {
+      const failure = error as { readonly stderr?: string; readonly stdout?: string };
+      failureOutput = `${failure.stdout ?? ""}\n${failure.stderr ?? ""}`;
+    }
+
+    expect(failureOutput).toContain("ERR_PACKAGE_PATH_NOT_EXPORTED");
+    expect(failureOutput).toContain("./src/internal/runtime-store");
   });
 
   test("workspace manifests encode only the approved import direction", async () => {

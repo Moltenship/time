@@ -24,6 +24,7 @@ const expectedGateCommands = [
   "vp run ci:check",
   "vp run ci:build",
   "vp run ci:test",
+  "vp run react:gate",
   "vp run ssr:smoke",
   "vp run registry:smoke",
   "vp run package:graph",

@@ -54,6 +54,13 @@ export default defineConfig({
         "vp run calendar#test",
         "vp run calendar#build",
       ],
+      "react:gate": [
+        "vp check",
+        "vp run calendar-react#test:gate",
+        "vp run react:factory",
+        "vp run ssr:smoke",
+        "vp run check:boundaries",
+      ],
     },
   },
 });

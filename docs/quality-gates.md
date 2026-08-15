@@ -14,6 +14,7 @@ vp install
 vp run ci:check
 vp run ci:build
 vp run ci:test
+vp run react:gate
 vp run ssr:smoke
 vp run registry:smoke
 vp run package:graph
@@ -42,6 +43,13 @@ custom-view registry, diagnostics/capabilities, facade consumer, direct React 19
 IDs, and public declaration checks. The facade test imports only supported package roots and fails
 if its third-party view needs a cast or a private source path. The React package build also enforces
 its 28 KiB raw / 6.25 KiB gzip production ESM budget.
+
+`vp run react:gate` is the phase-2 regression gate from issue #27. It runs the repository check, the
+complete React/facade package tests and production builds, the focused render/hydrate harness, the
+consumer-equivalent SSR smoke, and dependency-boundary checks. The focused harness covers the
+six-slice controlled-state matrix under Strict Mode, a concurrent transition, selector evaluation
+versus React commit counts, a typed custom view, two physical roots, and final unmount. A static
+known-bad import and Node's package resolver both prove that React source deep imports fail.
 
 ## Intentional failure proofs
 

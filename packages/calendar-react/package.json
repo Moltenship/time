@@ -28,6 +28,7 @@
     "dev": "vp pack --watch",
     "prepublishOnly": "vp run build",
     "test": "vp test",
+    "test:gate": "vp test tests/react-gate.test.tsx",
     "test:ssr": "vp test tests/ssr-hydration.test.tsx"
   },
   "dependencies": {
