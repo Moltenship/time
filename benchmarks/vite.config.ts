@@ -12,12 +12,12 @@ export default defineConfig({
     tasks: {
       core: {
         cache: false,
-        command: "node dist/core/index.mjs --mode=full --gated",
+        command: "node --expose-gc dist/core/index.mjs --mode=full --gated",
         dependsOn: ["build", { task: "build", from: "dependencies" }],
       },
       gated: {
         cache: false,
-        command: "node dist/run.mjs --mode=full --gated",
+        command: "node --expose-gc dist/run.mjs --mode=full --gated",
         dependsOn: ["build", { task: "build", from: "dependencies" }],
       },
       react: {

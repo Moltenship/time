@@ -102,7 +102,7 @@ export interface BenchmarkReport {
   readonly mode: BenchmarkMode;
   readonly notes: readonly string[];
   readonly passed: boolean;
-  readonly protocolVersion: 1;
+  readonly protocolVersion: 2;
   readonly stages: readonly BenchmarkStageResult[];
   readonly suite: string;
 }
@@ -110,6 +110,7 @@ export interface BenchmarkReport {
 export type BenchmarkMode = "smoke" | "full";
 
 export interface BenchmarkRunOptions {
+  readonly collectGarbageBetweenSamples?: boolean;
   readonly mode: BenchmarkMode;
   readonly stages: readonly BenchmarkStage[];
   readonly suite: string;

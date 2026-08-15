@@ -91,6 +91,7 @@ export function runBenchmarkCli<TSnapshot = ReturnType<typeof referenceEngine.bu
   try {
     const options = parseOptions(arguments_);
     const report = runBenchmark(engine, generateBenchmarkFixtures(), {
+      collectGarbageBetweenSamples: options.gated,
       mode: options.mode,
       stages,
       suite,

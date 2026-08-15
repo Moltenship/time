@@ -29,6 +29,18 @@ export default defineConfig({
       "ssr:smoke": "vp run ssr-fixture#smoke",
       "registry:smoke": "vp run registry#smoke",
       "package:graph": ["vp run check:boundaries", "vp test tests/quality-gates.test.ts"],
+      "engine:correctness":
+        "vp test packages/calendar-temporal/tests packages/calendar-core/tests benchmarks/tests/harness.test.ts tools/fixtures/tests",
+      "engine:contracts":
+        "vp test tests/temporal-utilities-boundary.test.ts tests/dependency-boundaries.test.ts",
+      "engine:build": ["vp run calendar-temporal#build", "vp run calendar-core#build"],
+      "engine:gate": [
+        "vp check",
+        "vp run engine:correctness",
+        "vp run engine:contracts",
+        "vp run engine:build",
+        "vp run --no-cache benchmark#core",
+      ],
     },
   },
 });

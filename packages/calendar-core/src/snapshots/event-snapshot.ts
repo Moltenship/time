@@ -1,18 +1,10 @@
 import {
-  compareInstants,
-  comparePlainDates,
-  comparePlainDateTimes,
   type InstantInterval,
   type PlainDateInterval,
   type PlainDateTimeInterval,
 } from "@moltenship/calendar-temporal";
 
-import {
-  validateCalendarEventInterval,
-  type CalendarEventInterval,
-  type CalendarEventIntervalComparators,
-  type EventAdapter,
-} from "../events.ts";
+import { type CalendarEventInterval, type EventAdapter } from "../events.ts";
 import type { EventId, ResourceId } from "../ids.ts";
 import {
   createIntervalIndex,
@@ -40,16 +32,6 @@ import {
 } from "./types.ts";
 
 const DEFAULT_QUERY_CACHE_SIZE = 128;
-
-const nativeIntervalComparators: CalendarEventIntervalComparators<
-  Temporal.Instant,
-  Temporal.PlainDate,
-  Temporal.PlainDateTime
-> = {
-  instant: compareInstants,
-  plainDate: comparePlainDates,
-  plainDateTime: comparePlainDateTimes,
-};
 
 interface EventStructureBase<TEventId extends EventId, TResourceId extends ResourceId> {
   readonly endKey: bigint;
@@ -92,20 +74,6 @@ function calendarEventIntervalKind(value: unknown): CalendarEventInterval["kind"
   if (typeof value !== "object" || value === null) return undefined;
   const kind = (value as { readonly kind?: unknown }).kind;
   return kind === "timed" || kind === "all-day" || kind === "floating" ? kind : undefined;
-}
-
-function intervalKeys(interval: CalendarEventInterval): {
-  readonly endKey: bigint;
-  readonly startKey: bigint;
-} {
-  return interval.kind === "timed"
-    ? { endKey: instantIndexKey(interval.end), startKey: instantIndexKey(interval.start) }
-    : interval.kind === "all-day"
-      ? { endKey: plainDateIndexKey(interval.end), startKey: plainDateIndexKey(interval.start) }
-      : {
-          endKey: plainDateTimeIndexKey(interval.end),
-          startKey: plainDateTimeIndexKey(interval.start),
-        };
 }
 
 function materializeEvent<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
@@ -346,30 +314,18 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
   adapter: EventAdapter<TEvent, TEventId, TResourceId>,
   previous: ReadonlyMap<TEventId, PreviousEvent<TEvent, TEventId, TResourceId>>,
   normalizedById: Pick<ReadonlyMap<TEventId, unknown>, "has">,
-):
-  | {
-      readonly issue: EventSnapshotIssue<TEvent, TEventId>;
-      readonly valid: false;
-    }
-  | {
-      readonly normalized: NormalizedCalendarEvent<TEvent, TEventId, TResourceId>;
-      readonly structure: EventStructure<TEventId, TResourceId>;
-      readonly valid: true;
-    } {
+): EventSnapshotIssue<TEvent, TEventId> | EventStructure<TEventId, TResourceId> {
   let eventId: TEventId;
   try {
     eventId = adapter.getId(event);
   } catch (error) {
-    return {
-      issue: Object.freeze({
-        accessor: "getId",
-        code: "adapter-error",
-        event,
-        index,
-        message: errorMessage(error),
-      }),
-      valid: false,
-    };
+    return Object.freeze({
+      accessor: "getId",
+      code: "adapter-error",
+      event,
+      index,
+      message: errorMessage(error),
+    });
   }
 
   if (
@@ -377,16 +333,10 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
     (typeof eventId === "number" && !Number.isFinite(eventId)) ||
     (typeof eventId !== "string" && typeof eventId !== "number")
   ) {
-    return {
-      issue: Object.freeze({ code: "invalid-event-id", event, index }),
-      valid: false,
-    };
+    return Object.freeze({ code: "invalid-event-id", event, index });
   }
   if (normalizedById.has(eventId)) {
-    return {
-      issue: Object.freeze({ code: "duplicate-event-id", event, eventId, index }),
-      valid: false,
-    };
+    return Object.freeze({ code: "duplicate-event-id", event, eventId, index });
   }
 
   let revision: string | number | undefined;
@@ -394,23 +344,17 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
     try {
       revision = adapter.getRevision(event);
     } catch (error) {
-      return {
-        issue: Object.freeze({
-          accessor: "getRevision",
-          code: "adapter-error",
-          event,
-          eventId,
-          index,
-          message: errorMessage(error),
-        }),
-        valid: false,
-      };
+      return Object.freeze({
+        accessor: "getRevision",
+        code: "adapter-error",
+        event,
+        eventId,
+        index,
+        message: errorMessage(error),
+      });
     }
     if (!isRevision(revision)) {
-      return {
-        issue: Object.freeze({ code: "invalid-revision", event, eventId, index }),
-        valid: false,
-      };
+      return Object.freeze({ code: "invalid-revision", event, eventId, index });
     }
   }
 
@@ -421,28 +365,21 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
       ? prior.event === event
       : prior.structure.revision === revision)
   ) {
-    return {
-      normalized: materializeEvent(event, index, prior.structure),
-      structure: prior.structure,
-      valid: true,
-    };
+    return prior.structure;
   }
 
   let intervalValue: unknown;
   try {
     intervalValue = adapter.getInterval(event);
   } catch (error) {
-    return {
-      issue: Object.freeze({
-        accessor: "getInterval",
-        code: "adapter-error",
-        event,
-        eventId,
-        index,
-        message: errorMessage(error),
-      }),
-      valid: false,
-    };
+    return Object.freeze({
+      accessor: "getInterval",
+      code: "adapter-error",
+      event,
+      eventId,
+      index,
+      message: errorMessage(error),
+    });
   }
 
   let interval: CalendarEventInterval;
@@ -450,16 +387,13 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
   try {
     const kind = calendarEventIntervalKind(intervalValue);
     if (kind === undefined) {
-      return {
-        issue: Object.freeze({
-          accessor: "getInterval",
-          code: "invalid-event-interval",
-          event,
-          eventId,
-          index,
-        }),
-        valid: false,
-      };
+      return Object.freeze({
+        accessor: "getInterval",
+        code: "invalid-event-interval",
+        event,
+        eventId,
+        index,
+      });
     }
 
     const returned = intervalValue as {
@@ -471,94 +405,83 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
       const start = returned.start;
       const end = returned.end;
       if (!(start instanceof Temporal.Instant) || !(end instanceof Temporal.Instant)) {
-        return {
-          issue: Object.freeze({
-            accessor: "getInterval",
-            code: "invalid-event-interval",
-            event,
-            eventId,
-            index,
-            message: "interval-endpoints-must-match-kind",
-          }),
-          valid: false,
-        };
+        return Object.freeze({
+          accessor: "getInterval",
+          code: "invalid-event-interval",
+          event,
+          eventId,
+          index,
+          message: "interval-endpoints-must-match-kind",
+        });
       }
       const sourceTimeZone = returned.sourceTimeZone;
       if (sourceTimeZone !== undefined && typeof sourceTimeZone !== "string") {
-        return {
-          issue: Object.freeze({
-            accessor: "getInterval",
-            code: "invalid-event-interval",
-            event,
-            eventId,
-            index,
-            message: "source-time-zone-must-be-a-string",
-          }),
-          valid: false,
-        };
+        return Object.freeze({
+          accessor: "getInterval",
+          code: "invalid-event-interval",
+          event,
+          eventId,
+          index,
+          message: "source-time-zone-must-be-a-string",
+        });
       }
       interval = { end, kind, sourceTimeZone, start };
     } else if (kind === "all-day") {
       const start = returned.start;
       const end = returned.end;
       if (!(start instanceof Temporal.PlainDate) || !(end instanceof Temporal.PlainDate)) {
-        return {
-          issue: Object.freeze({
-            accessor: "getInterval",
-            code: "invalid-event-interval",
-            event,
-            eventId,
-            index,
-            message: "interval-endpoints-must-match-kind",
-          }),
-          valid: false,
-        };
+        return Object.freeze({
+          accessor: "getInterval",
+          code: "invalid-event-interval",
+          event,
+          eventId,
+          index,
+          message: "interval-endpoints-must-match-kind",
+        });
       }
       interval = { end, kind, start };
     } else {
       const start = returned.start;
       const end = returned.end;
       if (!(start instanceof Temporal.PlainDateTime) || !(end instanceof Temporal.PlainDateTime)) {
-        return {
-          issue: Object.freeze({
-            accessor: "getInterval",
-            code: "invalid-event-interval",
-            event,
-            eventId,
-            index,
-            message: "interval-endpoints-must-match-kind",
-          }),
-          valid: false,
-        };
+        return Object.freeze({
+          accessor: "getInterval",
+          code: "invalid-event-interval",
+          event,
+          eventId,
+          index,
+          message: "interval-endpoints-must-match-kind",
+        });
       }
       interval = { end, kind, start };
     }
 
-    const validation = validateCalendarEventInterval(interval, nativeIntervalComparators);
-    if (!validation.valid) {
-      return {
-        issue: Object.freeze({
-          code: "start-not-before-end",
-          event,
-          eventId,
-          index,
-        }),
-        valid: false,
-      };
-    }
-    keys = intervalKeys(interval);
-  } catch (error) {
-    return {
-      issue: Object.freeze({
-        accessor: "getInterval",
-        code: "invalid-event-interval",
+    keys =
+      interval.kind === "timed"
+        ? { endKey: instantIndexKey(interval.end), startKey: instantIndexKey(interval.start) }
+        : interval.kind === "all-day"
+          ? { endKey: plainDateIndexKey(interval.end), startKey: plainDateIndexKey(interval.start) }
+          : {
+              endKey: plainDateTimeIndexKey(interval.end),
+              startKey: plainDateTimeIndexKey(interval.start),
+            };
+    if (keys.startKey >= keys.endKey) {
+      return Object.freeze({
+        code: "start-not-before-end",
         event,
         eventId,
         index,
-        message: errorMessage(error),
-      }),
-      valid: false,
-    };
+      });
+    }
+  } catch (error) {
+    return Object.freeze({
+      accessor: "getInterval",
+      code: "invalid-event-interval",
+      event,
+      eventId,
+      index,
+      message: errorMessage(error),
+    });
   }
 
   let resourceIds: readonly TResourceId[];
@@ -572,32 +495,26 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
         (typeof resourceId === "number" && !Number.isFinite(resourceId)) ||
         (typeof resourceId !== "string" && typeof resourceId !== "number")
       ) {
-        return {
-          issue: Object.freeze({
-            code: "invalid-resource-id",
-            event,
-            eventId,
-            index,
-            resourceIndex,
-          }),
-          valid: false,
-        };
+        return Object.freeze({
+          code: "invalid-resource-id",
+          event,
+          eventId,
+          index,
+          resourceIndex,
+        });
       }
       if (!unique.includes(resourceId as TResourceId)) unique.push(resourceId as TResourceId);
     }
     resourceIds = Object.freeze(unique);
   } catch (error) {
-    return {
-      issue: Object.freeze({
-        accessor: "getResourceIds",
-        code: "adapter-error",
-        event,
-        eventId,
-        index,
-        message: errorMessage(error),
-      }),
-      valid: false,
-    };
+    return Object.freeze({
+      accessor: "getResourceIds",
+      code: "adapter-error",
+      event,
+      eventId,
+      index,
+      message: errorMessage(error),
+    });
   }
 
   let title: string;
@@ -606,17 +523,14 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
     if (typeof value !== "string") throw new TypeError("event-title-must-be-a-string");
     title = value;
   } catch (error) {
-    return {
-      issue: Object.freeze({
-        accessor: "getTitle",
-        code: "adapter-error",
-        event,
-        eventId,
-        index,
-        message: errorMessage(error),
-      }),
-      valid: false,
-    };
+    return Object.freeze({
+      accessor: "getTitle",
+      code: "adapter-error",
+      event,
+      eventId,
+      index,
+      message: errorMessage(error),
+    });
   }
 
   let isReadOnly = false;
@@ -626,17 +540,14 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
       if (typeof value !== "boolean") throw new TypeError("event-read-only-must-be-a-boolean");
       isReadOnly = value;
     } catch (error) {
-      return {
-        issue: Object.freeze({
-          accessor: "isReadOnly",
-          code: "adapter-error",
-          event,
-          eventId,
-          index,
-          message: errorMessage(error),
-        }),
-        valid: false,
-      };
+      return Object.freeze({
+        accessor: "isReadOnly",
+        code: "adapter-error",
+        event,
+        eventId,
+        index,
+        message: errorMessage(error),
+      });
     }
   }
 
@@ -661,11 +572,7 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
         ? { ...base, end: interval.end, kind: interval.kind, start: interval.start }
         : { ...base, end: interval.end, kind: interval.kind, start: interval.start };
 
-  return {
-    normalized: materializeEvent(event, index, structure),
-    structure,
-    valid: true,
-  };
+  return structure;
 }
 
 function createEventSnapshotCacheInternal<
@@ -708,15 +615,16 @@ function createEventSnapshotCacheInternal<
 
       events.forEach((event, index) => {
         const result = normalizeEvent(event, index, adapter, previousById, normalizedById);
-        if (!result.valid) {
-          issues.push(result.issue);
+        if ("code" in result) {
+          issues.push(result);
           return;
         }
 
-        structures.push(result.structure);
-        normalized.push(result.normalized);
-        normalizedById.set(result.structure.id, result.normalized);
-        nextPreviousById?.set(result.structure.id, { event, structure: result.structure });
+        const normalizedEvent = materializeEvent(event, index, result);
+        structures.push(result);
+        normalized.push(normalizedEvent);
+        normalizedById.set(result.id, normalizedEvent);
+        nextPreviousById?.set(result.id, { event, structure: result });
       });
 
       const frozenIssues = Object.freeze(issues);

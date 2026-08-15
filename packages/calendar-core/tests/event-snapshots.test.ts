@@ -126,6 +126,43 @@ describe("event snapshots", () => {
     expect(calls).toEqual({ id: 3, interval: 2, resources: 2, revision: 3, title: 2 });
   });
 
+  test("structurally reuses unchanged string revisions while exposing the latest record", () => {
+    interface RevisionEvent {
+      readonly end: Temporal.Instant;
+      readonly id: string;
+      readonly revision: string;
+      readonly start: Temporal.Instant;
+      readonly title: string;
+    }
+
+    let intervalReads = 0;
+    const adapter: EventAdapter<RevisionEvent, string, string> = {
+      getId: ({ id }) => id,
+      getInterval(event) {
+        intervalReads += 1;
+        return { end: event.end, kind: "timed", start: event.start };
+      },
+      getResourceIds: () => [],
+      getRevision: ({ revision }) => revision,
+      getTitle: ({ title }) => title,
+    };
+    const firstEvent = Object.freeze({
+      end: Temporal.Instant.from("2026-08-15T10:00Z"),
+      id: "string-revision",
+      revision: "v1",
+      start: Temporal.Instant.from("2026-08-15T09:00Z"),
+      title: "String revision",
+    });
+    const latestEvent = Object.freeze({ ...firstEvent });
+    const cache = createEventSnapshotCache(adapter);
+
+    cache.getSnapshot(Object.freeze([firstEvent]));
+    const reused = cache.getSnapshot(Object.freeze([latestEvent]));
+
+    expect(reused.get("string-revision")?.event).toBe(latestEvent);
+    expect(intervalReads).toBe(1);
+  });
+
   test("queries every Temporal kind and resource with half-open adjacency", () => {
     const events: readonly TestEvent[] = Object.freeze([
       timedEvent("left", "2026-08-15T09:00Z", "2026-08-15T10:00Z", ["room-a"]),
@@ -407,6 +444,150 @@ describe("event snapshots", () => {
       misses: 3,
       size: 2,
     });
+  });
+
+  test("canonicalizes cache keys across every query kind and resource-filter order", () => {
+    const events: readonly TestEvent[] = Object.freeze([
+      timedEvent("timed", "2026-08-15T09:00Z", "2026-08-15T12:00Z", ["room-a", "room-b"]),
+      Object.freeze({
+        data: Object.freeze({ revision: 1 }),
+        end: Temporal.PlainDate.from("2026-08-17"),
+        id: "all-day",
+        kind: "all-day",
+        resourceIds: Object.freeze(["room-a"]),
+        start: Temporal.PlainDate.from("2026-08-15"),
+        title: "all-day",
+      }),
+      Object.freeze({
+        data: Object.freeze({ revision: 1 }),
+        end: Temporal.PlainDateTime.from("2026-08-15T12:00"),
+        id: "floating",
+        kind: "floating",
+        resourceIds: Object.freeze(["room-b"]),
+        start: Temporal.PlainDateTime.from("2026-08-15T09:00"),
+        title: "floating",
+      }),
+    ]);
+    const snapshot = createEventSnapshot(events, canonicalAdapter, { queryCacheSize: 8 });
+    const timedRange = instantInterval(
+      Temporal.Instant.from("2026-08-15T10:00Z"),
+      Temporal.Instant.from("2026-08-15T11:00Z"),
+    );
+    const allDayRange = plainDateInterval(
+      Temporal.PlainDate.from("2026-08-15"),
+      Temporal.PlainDate.from("2026-08-16"),
+    );
+    const floatingRange = plainDateTimeInterval(
+      Temporal.PlainDateTime.from("2026-08-15T10:00"),
+      Temporal.PlainDateTime.from("2026-08-15T11:00"),
+    );
+
+    const timed = snapshot.queryTimed(timedRange);
+    const allDay = snapshot.queryAllDay(allDayRange);
+    const floating = snapshot.queryFloating(floatingRange);
+    const resource = snapshot.eventsForResource("room-a");
+    const filtered = snapshot.queryTimed(timedRange, { resourceIds: ["room-b", "room-a"] });
+
+    expect(snapshot.queryTimed(timedRange)).toBe(timed);
+    expect(snapshot.queryAllDay(allDayRange)).toBe(allDay);
+    expect(snapshot.queryFloating(floatingRange)).toBe(floating);
+    expect(snapshot.eventsForResource("room-a")).toBe(resource);
+    expect(snapshot.queryTimed(timedRange, { resourceIds: ["room-a", "room-b"] })).toBe(filtered);
+    expect(snapshot.getQueryCacheStatistics()).toEqual({
+      capacity: 8,
+      evictions: 0,
+      hits: 5,
+      misses: 5,
+      size: 5,
+    });
+
+    const uncached = createEventSnapshot(events, canonicalAdapter, { queryCacheSize: 0 });
+    expect(uncached.queryTimed(timedRange)).not.toBe(uncached.queryTimed(timedRange));
+    expect(uncached.getQueryCacheStatistics()).toEqual({
+      capacity: 0,
+      evictions: 0,
+      hits: 0,
+      misses: 2,
+      size: 0,
+    });
+  });
+
+  test.each([
+    ["undefined", undefined],
+    ["NaN", Number.NaN],
+    ["positive infinity", Number.POSITIVE_INFINITY],
+    ["an object", Object.freeze({})],
+  ])("reports %s as an invalid adapter revision", (_name, revision) => {
+    const event = timedEvent("revision", "2026-08-15T09:00Z", "2026-08-15T10:00Z");
+    const adapter: EventAdapter<TestEvent, string, string> = {
+      ...canonicalAdapter,
+      getRevision: () => revision as unknown as string | number,
+    };
+
+    expect(createEventSnapshot(Object.freeze([event]), adapter).issues).toEqual([
+      {
+        code: "invalid-revision",
+        event,
+        eventId: "revision",
+        index: 0,
+      },
+    ]);
+  });
+
+  test("contains every optional adapter failure inside the invalid-data policy", () => {
+    const event = timedEvent("adapter", "2026-08-15T09:00Z", "2026-08-15T10:00Z");
+    const adapters: readonly [EventAdapter<TestEvent, string, string>, string, string][] = [
+      [
+        {
+          ...canonicalAdapter,
+          getRevision() {
+            throw new Error("revision-read-failed");
+          },
+        },
+        "getRevision",
+        "adapter-error",
+      ],
+      [
+        { ...canonicalAdapter, getResourceIds: () => "room-a" as unknown as readonly string[] },
+        "getResourceIds",
+        "adapter-error",
+      ],
+      [
+        { ...canonicalAdapter, getTitle: () => 42 as unknown as string },
+        "getTitle",
+        "adapter-error",
+      ],
+      [
+        { ...canonicalAdapter, isReadOnly: () => "yes" as unknown as boolean },
+        "isReadOnly",
+        "adapter-error",
+      ],
+    ];
+
+    for (const [adapter, accessor, code] of adapters) {
+      const [issue] = createEventSnapshot(Object.freeze([event]), adapter).issues;
+      expect(issue).toMatchObject({ accessor, code, event, eventId: "adapter", index: 0 });
+    }
+  });
+
+  test("contains event-ID accessor failures before an ID is available", () => {
+    const event = timedEvent("adapter", "2026-08-15T09:00Z", "2026-08-15T10:00Z");
+    const adapter: EventAdapter<TestEvent, string, string> = {
+      ...canonicalAdapter,
+      getId() {
+        throw new Error("id-read-failed");
+      },
+    };
+
+    expect(createEventSnapshot(Object.freeze([event]), adapter).issues).toEqual([
+      {
+        accessor: "getId",
+        code: "adapter-error",
+        event,
+        index: 0,
+        message: "id-read-failed",
+      },
+    ]);
   });
 
   test("exposes the advanced external-store contract without owning subscriptions", () => {

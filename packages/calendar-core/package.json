@@ -23,10 +23,11 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "vp pack && node scripts/check-size.mjs",
     "check": "vp check",
     "dev": "vp pack --watch",
     "prepublishOnly": "vp run build",
+    "size": "node scripts/check-size.mjs",
     "test": "vp test --passWithNoTests"
   },
   "dependencies": {

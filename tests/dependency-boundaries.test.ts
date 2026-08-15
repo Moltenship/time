@@ -215,6 +215,60 @@ describe.sequential("workspace boundaries", () => {
     }
   }, 30_000);
 
+  test("packed calendar core keeps its API public and its interval-tree seam private", async () => {
+    const packageRoot = join(process.cwd(), "packages/calendar-core");
+    const manifestPath = join(packageRoot, "package.json");
+    const packDestination = await mkdtemp(join(tmpdir(), "time-core-package-"));
+    const localManifestBeforePack = await readFile(manifestPath, "utf8");
+
+    try {
+      await execFileAsync("vp", ["pack"], { cwd: packageRoot });
+      expect(await readFile(manifestPath, "utf8")).toBe(localManifestBeforePack);
+      await execFileAsync("vp", ["pm", "pack", "--pack-destination", packDestination], {
+        cwd: packageRoot,
+      });
+
+      const [archiveName] = (await readdir(packDestination)).filter((fileName) =>
+        fileName.endsWith(".tgz"),
+      );
+      expect(archiveName).toBeDefined();
+
+      const archivePath = join(packDestination, archiveName!);
+      const { stdout: packedManifestText } = await execFileAsync("tar", [
+        "-xOf",
+        archivePath,
+        "package/package.json",
+      ]);
+      const { stdout: packedDeclarations } = await execFileAsync("tar", [
+        "-xOf",
+        archivePath,
+        "package/dist/index.d.mts",
+      ]);
+      const { stdout: archiveContents } = await execFileAsync("tar", ["-tf", archivePath]);
+      const packedManifest = JSON.parse(packedManifestText) as {
+        readonly dependencies?: Record<string, string>;
+        readonly exports: Record<string, unknown>;
+      };
+
+      expect(packedManifest.exports["."]).toEqual({
+        types: "./dist/index.d.mts",
+        import: "./dist/index.mjs",
+      });
+      expect(packedManifest.dependencies).toEqual({
+        "@flatten-js/interval-tree": "^2.0.3",
+        "@moltenship/calendar-temporal": "0.0.0",
+      });
+      expect(archiveContents).toContain("package/dist/index.d.mts");
+      expect(archiveContents).toContain("package/dist/index.mjs");
+      expect(packedDeclarations).toContain("createEventSnapshot");
+      expect(packedDeclarations).toContain("EventSnapshotQueryCacheStatistics");
+      expect(packedDeclarations).not.toContain("@flatten-js/interval-tree");
+      expect(packedDeclarations).not.toContain("/internal/");
+    } finally {
+      await rm(packDestination, { force: true, recursive: true });
+    }
+  }, 30_000);
+
   test("benchmark resolves the built fixtures package through its public entry point", async () => {
     await execFileAsync("vp", ["pack"], {
       cwd: join(process.cwd(), "tools/fixtures"),

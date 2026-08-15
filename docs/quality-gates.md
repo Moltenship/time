@@ -25,6 +25,13 @@ vp run package:graph
 raw and 6.25 KiB gzip. Because the check reads the emitted artifact, the recursive CI build exercises
 the same gate that runs before publication.
 
+`vp run calendar-core#build` applies the same emitted-artifact check to the phase-1 core surface: at
+most 24 KiB raw and 5.5 KiB gzip. `vp run engine:gate` is the reproducible phase-1 audit. It runs the
+repository check, the interval/DST/index/revision/cache/invalid-data matrices, dependency and packed
+API checks, both production engine builds and size budgets, and the uncached protocol-v2 core
+benchmark. The benchmark is a reference-hardware gate rather than a portable CI timing claim, so it
+remains an explicit local task while its deterministic correctness and build checks also run in CI.
+
 ## Intentional failure proofs
 
 These commands must exit non-zero:

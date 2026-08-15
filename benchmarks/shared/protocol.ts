@@ -49,7 +49,7 @@ const initialP95ThresholdsMs: Readonly<Partial<Record<BenchmarkStage, number>>> 
 });
 
 const QUERY_START_UNIT = 8 * 60;
-const QUERY_OPERATIONS_PER_SAMPLE = 50;
+const QUERY_OPERATIONS_PER_SAMPLE = 200;
 const queries = Object.freeze({
   default: Object.freeze({ startUnit: QUERY_START_UNIT, endUnit: 2 * 1_440 }),
   oneDay: Object.freeze({ startUnit: QUERY_START_UNIT, endUnit: QUERY_START_UNIT + 1_440 }),
@@ -124,6 +124,7 @@ function measure(
   operation: (iteration: number) => number,
   mode: BenchmarkMode,
   operationsPerSample = 1,
+  collectGarbageBetweenSamples = false,
 ): BenchmarkStatistics {
   const { iterations, warmupIterations } = iterationCounts(mode);
   for (let iteration = 0; iteration < warmupIterations; iteration += 1) {
@@ -134,6 +135,13 @@ function measure(
 
   const samples: number[] = [];
   for (let iteration = 0; iteration < iterations; iteration += 1) {
+    if (collectGarbageBetweenSamples) {
+      const collectGarbage = (globalThis as typeof globalThis & { gc?: () => void }).gc;
+      if (collectGarbage === undefined) {
+        throw new Error("explicit-garbage-collection-is-unavailable");
+      }
+      collectGarbage();
+    }
     const startedAt = performance.now();
     for (let operationIndex = 0; operationIndex < operationsPerSample; operationIndex += 1) {
       benchmarkSink ^= operation(iteration * operationsPerSample + operationIndex);
@@ -267,6 +275,7 @@ export function runBenchmark<TSnapshot>(
                 : (iteration) => hashString(engine.pointerFrame(layout, iteration)),
       options.mode,
       operationsPerSample,
+      options.collectGarbageBetweenSamples,
     );
     let referenceP95Ms: number | undefined;
     if (isRetentionQuery(stage) && engine !== referenceEngine) {
@@ -278,6 +287,7 @@ export function runBenchmark<TSnapshot>(
         },
         options.mode,
         operationsPerSample,
+        options.collectGarbageBetweenSamples,
       ).p95Ms;
     }
     results.push(stageResult(stage, statistics, thresholdScale, referenceP95Ms));
@@ -308,11 +318,12 @@ export function runBenchmark<TSnapshot>(
       "Render measures render-model materialization, not browser paint or React commits.",
       "Pointer-frame measures library hit-test scripting, not end-to-end input latency.",
       "Core one-day and seven-day query gates require indexed p95 below both 1 ms and scan p95.",
-      "Query samples average 50 operations to reduce sub-millisecond timer and scheduler noise.",
+      "Query samples average 200 operations to reduce sub-millisecond timer and scheduler noise.",
+      `Explicit garbage collection between samples: ${options.collectGarbageBetweenSamples === true ? "enabled" : "disabled"}.`,
       `Observable sink: ${benchmarkSink ^ queried.length ^ render.length}`,
     ],
     passed: results.every(({ status }) => status !== "fail"),
-    protocolVersion: 1,
+    protocolVersion: 2,
     stages: results,
     suite: options.suite,
   };
