@@ -103,10 +103,11 @@ function CalendarStateBridge({ injectedStore }: { injectedStore?: typeof store }
 }
 ```
 
-`useCalendarStore()` creates a store once when no injected store is supplied. It destroys only the
-store it owns; an injected store remains owned by its caller. Jotai's React bindings own subscription
-setup and cleanup, while the calendar ownership cleanup remains idempotent and safe under React
-Strict Mode's development effect replay.
+`useCalendarStore()` creates a store once when no injected store is supplied; an injected store
+remains owned by its caller. Jotai's React bindings disconnect and recreate subscriptions across
+unmount and React `Activity` hide/reveal cycles. The hook does not call irreversible `destroy()` from
+an Effect cleanup because a hidden Activity preserves the store ref for a later reveal. After final
+unmount, an internally created pure store becomes garbage-collectable with the hook state.
 
 `useCalendarStoreBinding()` returns `{ state, actions, meta }`. Controlled props are visible in the
 same render. The action object is stable for the life of a store and dispatches through the latest
@@ -138,7 +139,8 @@ current time, `window`, `document`, or layout measurement while creating a store
 
 ## Lifecycle boundary
 
-`store.destroy()` is idempotent and commands reject after destruction. React unmount cleanup is
-delegated to Jotai, and injected stores are never destroyed by the binding. `store.meta.destroyed`
-is the only public lifecycle diagnostic; neither listeners nor the private Jotai store leak through
-the package contract.
+`store.destroy()` is an explicit orchestration action: it is idempotent and commands reject after
+destruction. React never calls it implicitly. Reversible subscription cleanup is delegated to
+Jotai, and injected stores are never destroyed by the binding. `store.meta.destroyed` is the only
+public lifecycle diagnostic; neither listeners nor the private Jotai store leak through the package
+contract.

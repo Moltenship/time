@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { StrictMode, act, useState } from "react";
+import { Activity, StrictMode, act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
@@ -160,9 +160,8 @@ test("two React roots own isolated stores", async () => {
   expect(second?.textContent).toBe("agenda");
 });
 
-test("unmount cleans subscriptions and only destroys an internally owned store", async () => {
+test("unmount cleans subscriptions without destroying an injected store", async () => {
   const injected = makeStore();
-  let owned: TestStore | undefined;
   const unsubscribe = vi.fn();
   const subscription = vi
     .spyOn(getCalendarRuntime(injected).jotaiStore, "sub")
@@ -170,7 +169,6 @@ test("unmount cleans subscriptions and only destroys an internally owned store",
 
   function Harness({ store }: { readonly store?: TestStore }) {
     const current = useCalendarStore<ViewName, string, string, string>(defaults, store);
-    if (store === undefined) owned = current;
     const calendar = useCalendarStoreBinding(current);
     return <span>{calendar.state.view}</span>;
   }
@@ -184,17 +182,64 @@ test("unmount cleans subscriptions and only destroys an internally owned store",
   await act(async () => injected.actions.setView("week"));
   expect(injected.getSnapshot().view).toBe("week");
   expect(injected.meta.destroyed).toBe(false);
+});
+
+test("Activity hide and reveal preserve an owned store while disconnecting subscriptions", async () => {
+  let owned: TestStore | undefined;
+  const observedStores: TestStore[] = [];
+  const unsubscribe = vi.fn();
+  let subscription: ReturnType<typeof vi.fn> | undefined;
+
+  function Harness() {
+    const current = useCalendarStore<ViewName, string, string, string>(defaults);
+    observedStores.push(current);
+    if (owned === undefined) {
+      owned = current;
+      subscription = vi
+        .spyOn(getCalendarRuntime(current).jotaiStore, "sub")
+        .mockReturnValue(unsubscribe);
+    }
+    const calendar = useCalendarStoreBinding(current);
+    return <span>{calendar.state.view}</span>;
+  }
 
   const ownedContainer = document.createElement("div");
   const ownedRoot = createRoot(ownedContainer);
   await act(async () =>
     ownedRoot.render(
-      <StrictMode>
+      <Activity mode="visible">
         <Harness />
-      </StrictMode>,
+      </Activity>,
     ),
   );
+  expect(subscription).toHaveBeenCalledOnce();
   expect(owned?.meta.destroyed).toBe(false);
+
+  await act(async () => owned?.actions.setView("week"));
+  await act(async () =>
+    ownedRoot.render(
+      <Activity mode="hidden">
+        <Harness />
+      </Activity>,
+    ),
+  );
+  expect(unsubscribe).toHaveBeenCalledOnce();
+  expect(owned?.meta.destroyed).toBe(false);
+
+  await act(async () =>
+    ownedRoot.render(
+      <Activity mode="visible">
+        <Harness />
+      </Activity>,
+    ),
+  );
+  expect(subscription).toHaveBeenCalledTimes(2);
+  expect(observedStores.every((store) => store === owned)).toBe(true);
+  expect(owned?.getSnapshot().view).toBe("week");
+  expect(ownedContainer.querySelector("span")?.textContent).toBe("week");
+  expect(owned?.meta.destroyed).toBe(false);
+
   await act(async () => ownedRoot.unmount());
-  expect(owned?.meta.destroyed).toBe(true);
+  expect(unsubscribe).toHaveBeenCalledTimes(2);
+  expect(owned?.meta.destroyed).toBe(false);
 });

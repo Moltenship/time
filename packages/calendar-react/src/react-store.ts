@@ -3,7 +3,7 @@
 import type { ResourceId } from "@moltenship/calendar-core";
 import { useAtomValue, useSetAtom } from "jotai/react";
 import { selectAtom } from "jotai/vanilla/utils";
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef } from "react";
 
 import {
   createCalendarActions,
@@ -36,20 +36,9 @@ export function useCalendarStore<
   injectedStore?: CalendarStore<TView, TSelection, TFocus, TResourceId>,
 ): CalendarStore<TView, TSelection, TFocus, TResourceId> {
   const ownedStoreRef = useRef<CalendarStore<TView, TSelection, TFocus, TResourceId> | null>(null);
-  const lifecycleGenerationRef = useRef(0);
   if (injectedStore === undefined && ownedStoreRef.current === null) {
     ownedStoreRef.current = createCalendarStore(defaults);
   }
-
-  useEffect(() => {
-    lifecycleGenerationRef.current += 1;
-    const generation = lifecycleGenerationRef.current;
-    return () => {
-      queueMicrotask(() => {
-        if (lifecycleGenerationRef.current === generation) ownedStoreRef.current?.destroy();
-      });
-    };
-  }, []);
 
   const store = injectedStore ?? ownedStoreRef.current;
   if (store === null) throw new Error("calendar-store-not-created");

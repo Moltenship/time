@@ -560,7 +560,7 @@ onViewChange?: (next: ViewName, detail: StateChangeDetail) => void
 
 The same pattern applies to anchor date, selection, timezone, focus, and resource expansion. A render-scoped derived reader atom closes over the current controlled inputs and reads primitive atoms only for uncontrolled branches. Controlled inputs are not copied into the store with `useEffect`. Uncontrolled defaults are read exactly once.
 
-Jotai's React bindings own subscription and unmount cleanup. `selectAtom` owns selector equality and avoids unrelated React commits. The public `getSnapshot` and `getServerSnapshot` methods read the same cached derived atom for orchestration and SSR assertions; explicit defaults and controlled inputs make server and first-client output deterministic.
+Jotai's React bindings own reversible subscription cleanup for unmount and React `Activity` hide/reveal cycles. Permanent logical store destruction is an explicit orchestration action, never an Effect cleanup, because hidden Activities preserve hook state. `selectAtom` owns selector equality and avoids unrelated React commits. The public `getSnapshot` and `getServerSnapshot` methods read the same cached derived atom for orchestration and SSR assertions; explicit defaults and controlled inputs make server and first-client output deterministic.
 
 ### 9.3 Public state interface
 

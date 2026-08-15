@@ -15,8 +15,9 @@
 - Stable semantic commands through one private Jotai write atom and the latest committed handlers.
 - `useAtomValue`, `useSetAtom`, and `selectAtom` for React reads, dispatch, equality, subscription,
   and unmount cleanup.
-- Caller-owned injected stores survive unmount; internally owned stores are destroyed once, including
-  under Strict Mode effect replay.
+- React `Activity` hide/reveal preserves internally created stores and state while disconnecting and
+  recreating Jotai subscriptions; final unmount disconnects subscriptions without destroying
+  caller-owned injected stores.
 - Packed declarations expose only calendar state/actions/meta types.
 
 The production decision and its difference from the Phase 0 handwritten adapter are recorded in
@@ -27,22 +28,23 @@ The production decision and its difference from the Phase 0 handwritten adapter 
 `vp run react:store` passed:
 
 - package formatting, lint, and type checking with no findings;
-- 3 test files and 11 tests;
-- production package build at 9.95 kB raw / 2.32 kB gzip;
+- 3 test files and 12 tests;
+- production package build at 9.63 kB raw / 2.23 kB gzip;
 - declaration/client-boundary audit.
 
 The tests cover cached immutable snapshots, all six state commands, the full controlled callback
 matrix, controlled backing-atom dependency elision, destroyed-store rejection, foreign-source
 rejection, stable latest-handler dispatch, selector isolation, two-root isolation, injected-store
-ownership, internally owned cleanup, Strict Mode, deterministic server rendering, hydration without
-recovery or console errors, and post-hydration interaction.
+ownership, Activity hide/reveal state preservation, reversible subscription cleanup, Strict Mode,
+deterministic server rendering, hydration without recovery or console errors, and post-hydration
+interaction.
 
 ## Repository gates
 
 | Command | Result |
 | --- | --- |
 | `vp check` | 196 files formatted; 140 files with no lint or type errors |
-| `vp test` | 25 files and 144 tests passed |
+| `vp test` | 25 files and 145 tests passed |
 | `vp run -r build` | 22 of 22 recursive build tasks passed |
 | `vp run ssr:smoke` | Stable server hash, no recoverable errors, no hydration mutation, interaction count 1, clean unmount |
 | `git diff --check` | Passed |

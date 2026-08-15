@@ -34,8 +34,10 @@ They remain useful for orchestration and deterministic SSR assertions, but React
 Jotai's subscription protocol with a custom `useSyncExternalStore` adapter.
 
 The calendar keeps a thin semantic command layer for controlled callback dispatch, Temporal and
-resource-ID equality, source ownership checks, store injection, and destruction. Mapped public
-types derive controlled state, actions, and change-handler names from `CalendarPublicState`.
+resource-ID equality, source ownership checks, store injection, and explicit orchestration
+destruction. React Effect cleanup never permanently destroys the logical store: React `Activity`
+disconnects Effects while preserving hook state for a later reveal. Mapped public types derive
+controlled state, actions, and change-handler names from `CalendarPublicState`.
 
 ## Consequences
 
@@ -43,8 +45,11 @@ types derive controlled state, actions, and change-handler names from `CalendarP
   dependency lists are removed from calendar code.
 - A controlled source does not depend on the corresponding backing atom, so backing changes do not
   invalidate its cached snapshot.
-- Jotai's React bindings own subscription setup and unmount cleanup; calendar code owns only store
-  lifetime and never destroys an injected store.
+- Jotai's React bindings own reversible subscription setup and cleanup across Activity hide/reveal
+  and final unmount. An internally created pure store becomes garbage-collectable with its hook
+  state; an injected store remains caller-owned.
+- `store.destroy()` remains an explicit, irreversible orchestration command and is not coupled to a
+  React Effect cleanup.
 - Stable semantic actions use the latest committed source and handlers.
 - Jotai remains replaceable because packed declarations contain only calendar-owned types.
 
