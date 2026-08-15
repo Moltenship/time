@@ -6,9 +6,9 @@
 ## Context
 
 Calendar arithmetic needs explicit instants, local dates, local date-times, time zones, and DST
-disambiguation. Legacy date objects collapse these distinctions. TypeScript 6 and newer ship the
-ambient Temporal declarations in the `ESNext` library, and the supported Node.js runtime provides
-the corresponding native global.
+disambiguation. Legacy date objects collapse these distinctions. The current TypeScript standard
+library ships the ambient Temporal declarations in `ESNext`, and the supported Node.js runtime
+provides the corresponding native global.
 
 ## Decision
 
@@ -20,10 +20,11 @@ Node.js support starts at 26, where the production and test suites use the unfla
 `globalThis.Temporal` implementation. Browser and SSR consumers outside that runtime floor remain
 responsible for meeting the same native-global contract before importing the calendar.
 
-TypeScript support starts at 6 with `compilerOptions.lib` set to `ESNext`. Production code and public
-declarations use the ambient `Temporal.*` namespace directly. The calendar does not depend on a
-declaration package or re-export the platform's Temporal namespace. Applications remain responsible
-for providing native Temporal or installing a global polyfill before loading the calendar.
+The project and its consumers compile with current TypeScript and `compilerOptions.lib` set to
+`ESNext`. Production code and public declarations use the ambient `Temporal.*` namespace directly.
+The calendar does not depend on a declaration package or re-export the platform's Temporal
+namespace. Applications remain responsible for providing native Temporal or installing a global
+polyfill before loading the calendar.
 
 ## Consequences
 
@@ -34,6 +35,6 @@ package has no production dependencies.
 
 ## Reversal trigger
 
-Revisit the compiler floor if maintaining TypeScript 6+ prevents supported consumer adoption.
+Revisit the current-compiler policy if it prevents supported consumer adoption.
 Revisit the runtime policy only if the supported-runtime matrix cannot provide Temporal and product
 adoption evidence outweighs the bundle and semantic cost of a library-owned fallback.

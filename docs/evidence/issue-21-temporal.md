@@ -15,8 +15,7 @@ namespace. The package has no production dependencies and does not re-export the
 
 The package-boundary test packs `@moltenship/calendar-temporal`, verifies its manifest and emitted
 declarations contain no Temporal dependency, and compiles a clean consumer against the packed
-declarations using only TypeScript's `ESNext` library. The Temporal and core source configurations
-also type-check without errors under the installed TypeScript 6.0.3 compiler.
+declarations using the workspace's current TypeScript compiler and only its `ESNext` library.
 
 ## Focused correctness and package build
 

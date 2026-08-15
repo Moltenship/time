@@ -83,7 +83,7 @@ const snapped = snapPlainTime(Temporal.PlainTime.from("10:07:30"), {
 ## Runtime and package guarantees
 
 - Node.js 26+ exercises unflagged native Temporal in local checks and CI.
-- TypeScript 6+ with `compilerOptions.lib: ["ESNext"]` supplies the ambient Temporal declarations.
+- Current TypeScript with `compilerOptions.lib: ["ESNext"]` supplies the ambient Temporal declarations.
 - Consumers use the global `Temporal` namespace directly; the package does not re-export it.
 - The package contains no React, DOM, timezone default, current-time read, parser, or runtime
   polyfill dependency, and it has no production dependencies.

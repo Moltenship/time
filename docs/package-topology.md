@@ -36,9 +36,10 @@ External dependencies are added by the issue that validates their contract. In p
 React/Jotai, dnd-kit, interval-tree, virtualization, and browser-test dependencies remain owned by
 their architecture spikes and harness issues rather than this topology change.
 
-Every workspace compiles against the `ESNext` standard library. TypeScript 6+ supplies Temporal as an
-ambient global, so `calendar-temporal` has no declaration dependency and does not re-export the
-platform namespace. ADR 0004 owns the compiler and runtime boundary.
+Every workspace compiles with the cataloged current TypeScript toolchain against the `ESNext`
+standard library. Temporal is an ambient global, so `calendar-temporal` has no declaration
+dependency and does not re-export the platform namespace. ADR 0004 owns the compiler and runtime
+boundary.
 
 ## Consumption flow
 
@@ -67,7 +68,6 @@ the workspace manifest graph. The same test runs dependency-cruiser against a de
 fixture and passes only when the expected deep-import violation is reported. Core and Temporal
 configuration is also asserted to omit DOM libraries and ambient package types.
 
-Dependency-cruiser 18 does not yet parse TypeScript 7, so pnpm supplies it with an isolated
-TypeScript 6 parser through `packageExtensions`. Vite+ and every workspace continue to compile with
-the cataloged TypeScript 7 toolchain; remove the isolated parser once dependency-cruiser supports
-that compiler line.
+Dependency-cruiser 18 uses an isolated TypeScript 6 parser through `packageExtensions` because its
+boundary analysis does not yet work with TypeScript 7. This exception is tooling-only: Vite+, the
+packed-consumer test, and every workspace compile with the cataloged current TypeScript toolchain.
