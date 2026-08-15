@@ -7,6 +7,10 @@ import { NativeTemporal } from "./native-temporal.ts";
 const MINUTE_NANOSECONDS = 60_000_000_000n;
 
 function totalPhysicalMinutes(result: ReturnType<typeof slotsInZonedDay>): number {
+  return Number(result.physicalDurationNanoseconds / MINUTE_NANOSECONDS);
+}
+
+function totalNominalSlotMinutes(result: ReturnType<typeof slotsInZonedDay>): number {
   const nanoseconds = result.slots.reduce(
     (total, slot) => total + slot.physicalDurationNanoseconds,
     0n,
@@ -146,6 +150,63 @@ describe("zoned wall-clock slots", () => {
     expect(apia.slots).toHaveLength(24);
     expect(apia.slots.every((slot) => slot.kind === "gap")).toBe(true);
     expect(totalPhysicalMinutes(apia)).toBe(0);
+  });
+
+  test("allocates cross-midnight fold occurrences to actual day intervals", () => {
+    const options = {
+      disambiguation: "compatible" as const,
+      slotDuration: { hours: 1 },
+      timeZone: "Antarctica/Casey",
+    };
+    const march4 = slotsInZonedDay(NativeTemporal.PlainDate.from("2010-03-04"), options);
+    const march5 = slotsInZonedDay(NativeTemporal.PlainDate.from("2010-03-05"), options);
+    const march4Fold = march4.slots.find(
+      (slot) => slot.wallRange.start.toString() === "2010-03-04T23:00:00",
+    );
+    const march5Folds = march5.slots.filter(
+      (slot) => slot.kind === "fold" && slot.wallRange.start.hour < 2,
+    );
+
+    expect(march4.transitions).toHaveLength(1);
+    expect(march5.transitions).toHaveLength(1);
+    expect(march4Fold?.kind).toBe("fold");
+    expect(march4Fold?.segments[0]!.projection.occurrences).toHaveLength(2);
+    expect(march4Fold?.segments[0]!.occurrences).toHaveLength(1);
+    expect(march5Folds).toHaveLength(2);
+    expect(march5Folds.every((slot) => slot.segments[0]!.occurrences.length === 2)).toBe(true);
+    expect(march4.carryoverOccurrences).toEqual([]);
+    expect(march5.carryoverOccurrences).toHaveLength(1);
+    expect(march5.carryoverOccurrences[0]!.start.wallTime.toString()).toBe("2010-03-04T23:00:00");
+    expect(
+      Number(
+        (march5.carryoverOccurrences[0]!.interval.end.epochNanoseconds -
+          march5.carryoverOccurrences[0]!.interval.start.epochNanoseconds) /
+          MINUTE_NANOSECONDS,
+      ),
+    ).toBe(60);
+    expect(totalNominalSlotMinutes(march4)).toBe(24 * 60);
+    expect(totalNominalSlotMinutes(march5)).toBe(26 * 60);
+    expect(totalNominalSlotMinutes(march5) + 60).toBe(totalPhysicalMinutes(march5));
+    expect(totalPhysicalMinutes(march4)).toBe(24 * 60);
+    expect(totalPhysicalMinutes(march5)).toBe(27 * 60);
+    expect(totalPhysicalMinutes(march4)).toBe(
+      Number(march4.day.durationNanoseconds / MINUTE_NANOSECONDS),
+    );
+    expect(totalPhysicalMinutes(march5)).toBe(
+      Number(march5.day.durationNanoseconds / MINUTE_NANOSECONDS),
+    );
+  });
+
+  test("materializes slots safely at Temporal's minimum instant", () => {
+    const result = slotsInZonedDay(NativeTemporal.PlainDate.from("-271821-04-20"), {
+      disambiguation: "compatible",
+      slotDuration: { hours: 1 },
+      timeZone: "UTC",
+    });
+
+    expect(result.slots).toHaveLength(24);
+    expect(result.transitions).toEqual([]);
+    expect(totalPhysicalMinutes(result)).toBe(24 * 60);
   });
 
   test("rejects calendar durations, zero steps, and accidental oversized grids", () => {

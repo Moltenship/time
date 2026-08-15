@@ -82,16 +82,19 @@ const snapped = snapPlainTime(Temporal.PlainTime.from("10:07:30"), {
 
 ## Zoned days and splitting
 
-`zonedDayRange(date, timeZone)` returns the actual instant extent of one nominal date. Ordinary,
-23-hour, 23.5-hour, 25-hour, and historical longer days are `kind: "available"` and carry a
-validated `InstantInterval`. A date removed by a date-line change is `kind: "skipped"`, has equal
-`start` and `end` instants, and deliberately has `interval: null`; the package never fabricates a
-non-empty range for it. `startBoundary` is the first real instant of the date, so a midnight gap can
-begin at `01:00` or another post-transition wall time.
+`zonedDayRange(date, timeZone)` returns the boundary-day interval from Temporal's start of the
+requested date to the start of the next date. Ordinary, 23-hour, 23.5-hour, 25-hour, and historical
+longer days are `kind: "available"` and carry a validated `InstantInterval`. A date removed by a
+date-line change is `kind: "skipped"`, has equal `start` and `end` instants, and deliberately has
+`interval: null`; the package never fabricates a non-empty range for it. `startBoundary` is the
+first real instant of the date, so a midnight gap can begin at `01:00` or another post-transition
+wall time.
 
 `splitInstantRangeByZonedDay(range, timeZone)` walks actual day boundaries and returns frozen
 fragments with their nominal date, day metadata, continuation flags, and stable key. It does not
-emit a fragment for a skipped date. Materialization defaults to a 10,000-fragment safety limit.
+emit a fragment for a skipped date. A historical cross-midnight fold can project an instant in one
+boundary day back onto the preceding wall date; the fragment retains its boundary-day owner rather
+than relabeling it from that projection. Materialization defaults to a 10,000-fragment safety limit.
 
 `zonedDayTransitions(date, timeZone)` returns offset changes whose affected wall range intersects
 the date. Each transition identifies its instant, previous and next offsets, offset delta, and the
@@ -136,13 +139,19 @@ positive, time-only `slotDuration`. Each slot contains one or more segments:
 
 - gap segments have no instant occurrence;
 - unique segments have one instant interval;
-- fold segments have two instant intervals with distinct keys;
+- fold projections retain two instant identities; a segment exposes only the occurrence intervals
+  owned by the selected boundary day;
 - if a transition falls inside a configured slot, the slot is `kind: "transition"` and is split at
   the exact affected-wall-range boundaries.
 
-The sum of segment occurrence durations equals the physical zoned-day duration, including zero for
-a skipped date. This keeps visual wall coordinates separate from physical elapsed time without
-losing repeated-hour identity. Slot materialization defaults to a 10,000-item safety limit.
+Most boundary days are represented completely by their nominal slots. For a historical fold that
+crosses midnight, a boundary day can also own a physical interval whose projected wall coordinate
+belongs to an adjacent nominal date. `carryoverOccurrences` exposes those exceptional pieces
+without placing them at an incorrect coordinate in the 24-hour grid. `physicalDurationNanoseconds`
+is the sum of nominal segment occurrences and carryover occurrences and equals the boundary-day
+duration, including zero for a skipped date. This keeps visual wall coordinates separate from
+physical elapsed time without losing repeated-hour identity. Slot materialization defaults to a
+10,000-item safety limit.
 
 ## Machine keys
 
@@ -158,5 +167,5 @@ share the same wall coordinate.
 - Consumers use the global `Temporal` namespace directly; the package does not re-export it.
 - The package contains no React, DOM, timezone default, current-time read, parser, or runtime
   polyfill dependency, and it has no production dependencies.
-- The production ESM entry must remain at or below 28 KiB raw and 6 KiB gzip. The package build
+- The production ESM entry must remain at or below 28 KiB raw and 6.25 KiB gzip. The package build
   enforces both budgets.

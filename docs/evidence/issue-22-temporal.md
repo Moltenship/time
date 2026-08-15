@@ -29,6 +29,8 @@ runtime-boundary test proves the new modules do not read `Temporal.Now` or legac
 | Santiago midnight gap, 2026-09-06 | day starts at the first real wall time, `01:00`; first two 30-minute slots are gaps; reject policy remains rejected |
 | Kathmandu unusual offset | ordinary 24-hour grid projects `+05:45` without host-timezone input |
 | Apia date-line change, 2011-12-30 | date is `kind: "skipped"` with no fabricated interval; slots are all gaps and zoned splitting emits no fragment for the removed date |
+| Casey cross-midnight fold, 2010-03-04/05 | both nominal dates report the `23:00–02:00` fold; slot occurrences are clipped to their boundary-day owner, and March 5 exposes the remaining repeated `23:00` hour as carryover so totals equal 24 and 27 hours |
+| Temporal minimum UTC date, -271821-04-20 | transition scans and a complete 24-slot hourly grid remain in range and return no transitions |
 
 The ordinary-grid fast-check property ran 150 generated year/month/duration cases and verified
 bounded slot counts, adjacency, stable unique slot keys, unique occurrence cardinality, and exact
@@ -39,17 +41,17 @@ physical-day totals.
 ```text
 $ vp test packages/calendar-temporal/tests packages/calendar-core/tests tests/temporal-utilities-boundary.test.ts tests/dependency-boundaries.test.ts tests/quality-gates.test.ts
 Test Files  11 passed (11)
-Tests       67 passed (67)
+Tests       71 passed (71)
 
 $ vp run calendar-temporal#build
-dist/index.mjs    26.09 kB | gzip: 5.80 kB
-dist/index.d.mts  19.17 kB | gzip: 3.88 kB
-[calendar-temporal:size] raw=26085/28672 gzip=5801/6144
+dist/index.mjs    28.45 kB | gzip: 6.29 kB
+dist/index.d.mts  19.39 kB | gzip: 3.94 kB
+[calendar-temporal:size] raw=28452/28672 gzip=6302/6400
 ```
 
-The size budget moved from the issue #21 base-only 16 KiB / 4 KiB gate to 28 KiB / 6 KiB for the
-intentional public zoned-day, projection, slot, transition, and key surface. The production artifact
-remains dependency-free and tree-shakeable.
+The size budget moved from the issue #21 base-only 16 KiB / 4 KiB gate to 28 KiB / 6.25 KiB for the
+intentional public zoned-day, projection, slot, transition, key, and cross-date carryover surface.
+The production artifact remains dependency-free and tree-shakeable.
 
 ## Full repository gate
 
@@ -57,7 +59,7 @@ remains dependency-free and tree-shakeable.
 $ vp run ready
 check:          178 files formatted; 123 files linted and type-checked
 build:          all recursive production builds passed
-test:           21 files passed; 107 tests passed
+test:           21 files passed; 111 tests passed
 SSR smoke:      hydrated without mutation; no recoverable errors; interaction and unmount passed
 registry smoke: 1 contract fixture and 1 target validated
 package graph:  dependency boundaries and quality-gate contracts passed

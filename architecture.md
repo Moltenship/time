@@ -301,7 +301,9 @@ Rules:
 5. Iterators are lazy where ranges may be large.
 6. Every helper that resolves a nominal wall time requires a timezone and disambiguation policy.
    Day-boundary and instant-splitting helpers require a timezone and use Temporal's unique
-   start-of-day semantics, including the first real instant after a midnight gap.
+   start-of-day semantics, including the first real instant after a midnight gap. Boundary-day
+   ownership remains authoritative when a historical cross-midnight fold projects an instant onto
+   an adjacent wall date; slot results expose such physical pieces as explicit carryover metadata.
 7. Each module has property tests for ordering, adjacency, boundaries, and round trips.
 
 Representative API:

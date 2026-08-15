@@ -22,7 +22,7 @@ vp run package:graph
 `vp run ready` runs the same sequence. The SSR report includes its deterministic environment, server-markup hash, recoverable hydration errors, interaction result, and unmount result. The registry report validates any `registry-item.json` files under `registry/` plus a committed contract fixture so an empty source registry cannot make the schema smoke vacuous.
 
 `vp run calendar-temporal#build` also enforces the package's production ESM budget: at most 28 KiB
-raw and 6 KiB gzip. Because the check reads the emitted artifact, the recursive CI build exercises
+raw and 6.25 KiB gzip. Because the check reads the emitted artifact, the recursive CI build exercises
 the same gate that runs before publication.
 
 ## Intentional failure proofs

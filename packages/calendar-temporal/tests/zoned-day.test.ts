@@ -4,6 +4,7 @@ import {
   instantInterval,
   splitInstantRangeByZonedDay,
   zonedDayRange,
+  zonedDayTransitions,
   type ZonedDayRange,
   type ZonedDaySplit,
 } from "../src/index.ts";
@@ -96,6 +97,42 @@ describe("zoned day boundaries and splitting", () => {
       splits.map((split) => durationMinutes(split.interval.start, split.interval.end)),
     ).toEqual([12 * 60, 12 * 60]);
     expect(new Set(splits.map((split) => split.key)).size).toBe(splits.length);
+  });
+
+  test("finds cross-midnight folds and assigns their repeated instants to boundary days", () => {
+    const timeZone = "Antarctica/Casey";
+    const march4 = NativeTemporal.PlainDate.from("2010-03-04");
+    const march5 = NativeTemporal.PlainDate.from("2010-03-05");
+    const march4Transitions = zonedDayTransitions(march4, timeZone);
+    const march5Transitions = zonedDayTransitions(march5, timeZone);
+
+    expect(march4Transitions).toHaveLength(1);
+    expect(march5Transitions).toHaveLength(1);
+    expect(march4Transitions[0]).toMatchObject({
+      kind: "fold",
+      offsetAfter: "+08:00",
+      offsetBefore: "+11:00",
+    });
+    expect(march4Transitions[0]!.affectedWallRange.start.toString()).toBe("2010-03-04T23:00:00");
+    expect(march4Transitions[0]!.affectedWallRange.end.toString()).toBe("2010-03-05T02:00:00");
+    expect(march5Transitions[0]!.instant.equals(march4Transitions[0]!.instant)).toBe(true);
+
+    const start = NativeTemporal.PlainDateTime.from("2010-03-04T23:30")
+      .toZonedDateTime(timeZone, { disambiguation: "later" })
+      .toInstant();
+    const end = NativeTemporal.PlainDateTime.from("2010-03-05T03:00")
+      .toZonedDateTime(timeZone, { disambiguation: "later" })
+      .toInstant();
+    const splits = splitInstantRangeByZonedDay(instantInterval(start, end), timeZone);
+
+    expect(splits.map((split) => split.date.toString())).toEqual(["2010-03-05"]);
+    expect(durationMinutes(splits[0]!.interval.start, splits[0]!.interval.end)).toBe(210);
+  });
+
+  test("scans transitions safely at Temporal's minimum instant", () => {
+    const minimumDate = NativeTemporal.PlainDate.from("-271821-04-20");
+
+    expect(zonedDayTransitions(minimumDate, "UTC")).toEqual([]);
   });
 
   test("bounds accidental materialization", () => {

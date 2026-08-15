@@ -1,11 +1,13 @@
 import { positiveTimeDuration } from "../internal/time-duration.ts";
 import {
+  compareInstants,
   comparePlainDateTimes,
   instantInterval,
   plainDateTimeInterval,
   type InstantInterval,
   type PlainDateTimeInterval,
 } from "../intervals/half-open.ts";
+import { intersectInstantIntervals } from "../intervals/operations.ts";
 import {
   zonedDayRange,
   zonedDayTransitions,
@@ -14,6 +16,7 @@ import {
 } from "./day.ts";
 import { zonedWallTimeKeyForTimeZoneId } from "./machine-keys.ts";
 import {
+  projectInstantToZonedTime,
   resolveZonedWallTime,
   type ZonedTimeEnvironment,
   type ZonedWallTimeKind,
@@ -54,13 +57,30 @@ export interface ZonedDaySlot {
 }
 
 export interface ZonedDaySlots {
+  /** Physical pieces owned by the boundary day whose projected wall date is adjacent to `day.date`. */
+  readonly carryoverOccurrences: readonly ZonedDaySlotOccurrence[];
   readonly day: ZonedDayRange;
   readonly disambiguation: ZonedTimeEnvironment["disambiguation"];
+  readonly physicalDurationNanoseconds: bigint;
   readonly slotDuration: Temporal.Duration;
   readonly slotDurationNanoseconds: bigint;
   readonly slots: readonly ZonedDaySlot[];
   readonly timeZone: string;
   readonly transitions: readonly ZonedOffsetTransition[];
+}
+
+function carryoverOccurrence(
+  start: Temporal.Instant,
+  end: Temporal.Instant,
+  timeZone: string,
+): ZonedDaySlotOccurrence {
+  const projection = projectInstantToZonedTime(start, timeZone);
+
+  return Object.freeze({
+    interval: instantInterval(start, end),
+    key: projection.key,
+    start: projection,
+  });
 }
 
 function slotLimit(value: number): number {
@@ -100,17 +120,23 @@ function segmentBoundaries(
 function buildSegment(
   wallRange: PlainDateTimeInterval,
   environment: ZonedTimeEnvironment,
+  day: ZonedDayRange,
 ): ZonedDaySlotSegment {
   const projection = resolveZonedWallTime(wallRange.start, environment);
   const wallDuration = wallRange.start.until(wallRange.end, { largestUnit: "hour" });
-  const occurrences = projection.occurrences.map((start) => {
-    const end = start.instant.add(wallDuration);
-    return Object.freeze({
-      interval: instantInterval(start.instant, end),
-      key: start.key,
-      start,
-    });
-  });
+  const occurrences: ZonedDaySlotOccurrence[] = [];
+
+  if (day.interval !== null) {
+    for (const start of projection.occurrences) {
+      const interval = intersectInstantIntervals(
+        instantInterval(start.instant, start.instant.add(wallDuration)),
+        day.interval,
+      );
+      if (interval !== null) {
+        occurrences.push(Object.freeze({ interval, key: start.key, start }));
+      }
+    }
+  }
   const physicalDurationNanoseconds = occurrences.reduce(
     (total, item) =>
       total + item.interval.end.epochNanoseconds - item.interval.start.epochNanoseconds,
@@ -125,6 +151,39 @@ function buildSegment(
     projection,
     wallRange,
   });
+}
+
+function carryoverOccurrences(
+  day: ZonedDayRange,
+  slots: readonly ZonedDaySlot[],
+): readonly ZonedDaySlotOccurrence[] {
+  if (day.interval === null) {
+    return Object.freeze([]);
+  }
+
+  const represented = slots
+    .flatMap((slot) => slot.segments.flatMap((segment) => segment.occurrences))
+    .toSorted((left, right) => compareInstants(left.interval.start, right.interval.start));
+  const carryover: ZonedDaySlotOccurrence[] = [];
+  let cursor = day.start;
+
+  for (const occurrence of represented) {
+    if (compareInstants(occurrence.interval.end, cursor) <= 0) {
+      continue;
+    }
+    if (compareInstants(cursor, occurrence.interval.start) < 0) {
+      carryover.push(carryoverOccurrence(cursor, occurrence.interval.start, day.timeZone));
+    }
+    if (compareInstants(cursor, occurrence.interval.end) < 0) {
+      cursor = occurrence.interval.end;
+    }
+  }
+
+  if (compareInstants(cursor, day.end) < 0) {
+    carryover.push(carryoverOccurrence(cursor, day.end, day.timeZone));
+  }
+
+  return Object.freeze(carryover);
 }
 
 /**
@@ -167,6 +226,7 @@ export function slotsInZonedDay(
         buildSegment(
           plainDateTimeInterval(boundaries[index - 1]!, boundaries[index]!),
           environment,
+          day,
         ),
       );
     }
@@ -188,12 +248,17 @@ export function slotsInZonedDay(
     startOffset = endOffset;
   }
 
+  const frozenSlots = Object.freeze(slots);
+  const carryover = carryoverOccurrences(day, frozenSlots);
+
   return Object.freeze({
+    carryoverOccurrences: carryover,
     day,
     disambiguation: options.disambiguation,
+    physicalDurationNanoseconds: day.durationNanoseconds,
     slotDuration: step.duration,
     slotDurationNanoseconds: step.nanoseconds,
-    slots: Object.freeze(slots),
+    slots: frozenSlots,
     timeZone: day.timeZone,
     transitions,
   });

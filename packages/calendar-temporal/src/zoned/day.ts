@@ -10,6 +10,12 @@ import { instantKey, zonedDayKeyForTimeZoneId } from "./machine-keys.ts";
 
 export const DEFAULT_ZONED_DAY_SPLIT_LIMIT = 10_000;
 
+const MINIMUM_INSTANT_NANOSECONDS = -8_640_000_000_000_000_000_000n;
+const MAXIMUM_INSTANT_NANOSECONDS = 8_640_000_000_000_000_000_000n;
+// Temporal offsets are smaller than 24 hours, so two consecutive offsets differ by less than 48.
+const MAXIMUM_TIME_ZONE_OFFSET_SPAN_NANOSECONDS = 172_800_000_000_000n;
+const MAXIMUM_ZONED_DAY_BOUNDARY_CORRECTIONS = 4;
+
 interface ZonedDayRangeBase {
   readonly date: Temporal.PlainDate;
   readonly duration: Temporal.Duration;
@@ -117,13 +123,21 @@ export function zonedDayTransitions(
   const day = zonedDayRange(date, timeZone);
   const wallStart = date.toPlainDateTime();
   const wallEnd = date.add({ days: 1 }).toPlainDateTime();
-  const searchStartNanoseconds = day.start.epochNanoseconds - 1n;
+  const searchStartNanoseconds =
+    day.start.epochNanoseconds === MINIMUM_INSTANT_NANOSECONDS
+      ? MINIMUM_INSTANT_NANOSECONDS
+      : day.start.epochNanoseconds - 1n;
+  const latestRelevantTransitionNanoseconds =
+    day.end.epochNanoseconds >
+    MAXIMUM_INSTANT_NANOSECONDS - MAXIMUM_TIME_ZONE_OFFSET_SPAN_NANOSECONDS
+      ? MAXIMUM_INSTANT_NANOSECONDS
+      : day.end.epochNanoseconds + MAXIMUM_TIME_ZONE_OFFSET_SPAN_NANOSECONDS;
   let cursor = new globalThis.Temporal.ZonedDateTime(searchStartNanoseconds, day.timeZone);
   const transitions: ZonedOffsetTransition[] = [];
 
   for (;;) {
     const after = cursor.getTimeZoneTransition("next");
-    if (after === null || after.epochNanoseconds > day.end.epochNanoseconds) {
+    if (after === null || after.epochNanoseconds > latestRelevantTransitionNanoseconds) {
       break;
     }
 
@@ -165,6 +179,29 @@ export function zonedDayTransitions(
   return Object.freeze(transitions);
 }
 
+function zonedDayContainingInstant(
+  instant: Temporal.Instant,
+  timeZone: string,
+): AvailableZonedDayRange {
+  let date = instant.toZonedDateTimeISO(timeZone).toPlainDate();
+
+  for (let correction = 0; correction < MAXIMUM_ZONED_DAY_BOUNDARY_CORRECTIONS; correction += 1) {
+    const day = zonedDayRange(date, timeZone);
+    if (
+      day.kind === "available" &&
+      compareInstants(day.start, instant) <= 0 &&
+      compareInstants(instant, day.end) < 0
+    ) {
+      return day;
+    }
+
+    date =
+      compareInstants(instant, day.start) < 0 ? date.subtract({ days: 1 }) : date.add({ days: 1 });
+  }
+
+  throw new RangeError("instant-not-contained-by-projected-zoned-day");
+}
+
 /** Splits an absolute interval at actual zoned-day boundaries without inventing skipped dates. */
 export function splitInstantRangeByZonedDay(
   range: InstantInterval,
@@ -180,11 +217,8 @@ export function splitInstantRangeByZonedDay(
       throw new RangeError("zoned-day-split-limit-exceeded");
     }
 
-    const date = current.toZonedDateTimeISO(timeZone).toPlainDate();
-    const day = zonedDayRange(date, timeZone);
-    if (day.kind === "skipped" || compareInstants(day.end, current) <= 0) {
-      throw new RangeError("instant-not-contained-by-projected-zoned-day");
-    }
+    const day = zonedDayContainingInstant(current, timeZone);
+    const date = day.date;
 
     const end = compareInstants(day.end, range.end) < 0 ? day.end : range.end;
     const interval = instantInterval(current, end);
