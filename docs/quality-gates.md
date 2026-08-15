@@ -2,6 +2,9 @@
 
 Issue #15 makes the repository's compatibility checks executable before calendar feature code lands. CI and local development run the same named Vite+ tasks.
 
+CI runs on Node.js 26, the server-runtime floor where the suite exercises native `Temporal` without
+a V8 feature flag or bundled polyfill.
+
 ## Passing gates
 
 From the workspace root:
@@ -17,6 +20,10 @@ vp run package:graph
 ```
 
 `vp run ready` runs the same sequence. The SSR report includes its deterministic environment, server-markup hash, recoverable hydration errors, interaction result, and unmount result. The registry report validates any `registry-item.json` files under `registry/` plus a committed contract fixture so an empty source registry cannot make the schema smoke vacuous.
+
+`vp run calendar-temporal#build` also enforces the package's production ESM budget: at most 16 KiB
+raw and 4 KiB gzip. Because the check reads the emitted artifact, the recursive CI build exercises
+the same gate that runs before publication.
 
 ## Intentional failure proofs
 

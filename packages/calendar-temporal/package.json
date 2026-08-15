@@ -23,16 +23,18 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "vp pack && node scripts/check-size.mjs",
     "check": "vp check",
     "dev": "vp pack --watch",
     "prepublishOnly": "vp run build",
+    "size": "node scripts/check-size.mjs",
     "test": "vp test --passWithNoTests"
   },
   "dependencies": {
     "temporal-spec": "1.0.1"
   },
   "devDependencies": {
+    "fast-check": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

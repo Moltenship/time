@@ -6,7 +6,7 @@ Time is a Temporal-native, React 19 calendar system built on five principles: ap
 > **Repository:** `github.com/Moltenship/time`
 > **Primary package:** `@moltenship/calendar`
 > **Registry item:** `@moltenship/calendar`
-> **Runtime target:** React 19+, modern ESM, native `Temporal`, any React-capable SSR framework
+> **Runtime target:** React 19+, modern ESM, native `Temporal`, Node.js 26+, any React-capable SSR framework
 > **Date policy:** no `Date`, no bundled polyfill, ISO-8601 chronology in v1
 
 This document is the normative architecture contract. The companion `architecture.html` is its visual reading surface. If the two disagree, this file wins.
@@ -308,9 +308,9 @@ zonedDayRange(date, timeZone);
 splitInstantRangeByZonedDay(range, timeZone);
 roundPlainTime(time, { smallestUnit, increment, roundingMode });
 slotsInZonedDay(date, timeZone, slotDuration);
-intersects(left, right);
-intersection(left, right);
-clampInterval(interval, bounds);
+plainDateIntervalsIntersect(left, right);
+intersectPlainDateIntervals(left, right);
+clampPlainDateInterval(interval, bounds);
 ```
 
 ## 6. Event snapshots and indexes

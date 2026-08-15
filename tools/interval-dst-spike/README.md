@@ -7,11 +7,11 @@ The interval candidate is hidden behind `IntervalIndex`; its closed-range
 search results are filtered to preserve Time's half-open semantics. The scan
 implementation is the correctness oracle and benchmark reference.
 
-The DST prototype imports no polyfill. On the pinned Vite+ Node.js 24 runtime,
-native V8 Temporal is absent by default and available only with the
-`--harmony-temporal` flag. The named `test`, `fixtures`, and `benchmark` tasks
-include that flag explicitly; this spike is not evidence of unflagged runtime
-support.
+The DST prototype imports no polyfill. Its committed evidence was recorded on
+the earlier Vite+ Node.js 24 runtime, where native V8 Temporal was absent by
+default and available only with the `--harmony-temporal` flag. The production
+repository now targets Node.js 26+ and verifies unflagged Temporal separately;
+this historical spike is not that runtime evidence.
 
 From the repository root:
 

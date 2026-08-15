@@ -15,6 +15,10 @@ Public time contracts use native Temporal types exclusively. Production code rea
 only at the clock and type-specific comparison boundaries. It does not feature-detect, mutate the
 global, accept legacy date objects, or bundle a fallback.
 
+Node.js support starts at 26, where the production and test suites use the unflagged native
+`globalThis.Temporal` implementation. Browser and SSR consumers outside that runtime floor remain
+responsible for meeting the same native-global contract before importing the calendar.
+
 Pin `temporal-spec@1.0.1` as declaration-only infrastructure. Its JavaScript entry points are empty;
 the package supplies the standards-aligned namespace used in emitted declarations and never installs
 or executes a Temporal implementation. Applications remain responsible for providing native

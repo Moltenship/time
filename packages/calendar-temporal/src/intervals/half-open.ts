@@ -90,6 +90,9 @@ interface NativeTemporalComparators {
   readonly PlainDateTime: {
     compare(left: Temporal.PlainDateTime, right: Temporal.PlainDateTime): number;
   };
+  readonly PlainTime: {
+    compare(left: Temporal.PlainTime, right: Temporal.PlainTime): number;
+  };
 }
 
 function nativeTemporal(): NativeTemporalComparators {
@@ -109,6 +112,10 @@ export function comparePlainDateTimes(
   right: Temporal.PlainDateTime,
 ): number {
   return nativeTemporal().PlainDateTime.compare(left, right);
+}
+
+export function comparePlainTimes(left: Temporal.PlainTime, right: Temporal.PlainTime): number {
+  return nativeTemporal().PlainTime.compare(left, right);
 }
 
 export function instantInterval(start: Temporal.Instant, end: Temporal.Instant): InstantInterval {
