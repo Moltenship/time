@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, test } from "vite-plus/test";
 
-import type { CalendarClock } from "@moltenship/calendar-temporal";
+import type { CalendarClock, ZonedTimeEnvironment } from "@moltenship/calendar-temporal";
 
 import {
   createCanonicalEventAdapter,
@@ -214,8 +214,12 @@ describe("canonical contracts", () => {
       readonly now: Temporal.Instant;
     };
     type BothSourcesAreRejected = InvalidNowSources extends CalendarEnvironment ? false : true;
+    type EnvironmentSupportsZonedUtilities = CalendarEnvironment extends ZonedTimeEnvironment
+      ? true
+      : false;
 
     expectTypeOf<BothSourcesAreRejected>().toEqualTypeOf<true>();
+    expectTypeOf<EnvironmentSupportsZonedUtilities>().toEqualTypeOf<true>();
   });
 
   test("keeps renderer ownership generic and framework independent", () => {

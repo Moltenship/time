@@ -75,4 +75,48 @@ export type {
 export { createFixedClock, createSystemClock } from "./clock/calendar-clock.ts";
 export type { CalendarClock } from "./clock/calendar-clock.ts";
 
-export type TemporalDisambiguation = NonNullable<Temporal.DisambiguationOptions["disambiguation"]>;
+export {
+  instantKey,
+  plainDateKey,
+  plainDateTimeKey,
+  zonedDayKey,
+  zonedWallTimeKey,
+} from "./zoned/machine-keys.ts";
+
+export { projectInstantToZonedTime, resolveZonedWallTime } from "./zoned/projection.ts";
+export type {
+  RejectedZonedWallTimeProjection,
+  ResolvedZonedWallTimeProjection,
+  TemporalDisambiguation,
+  ZonedInstantProjection,
+  ZonedTimeEnvironment,
+  ZonedWallTimeAdjustment,
+  ZonedWallTimeKind,
+  ZonedWallTimeOccurrence,
+  ZonedWallTimeProjection,
+  ZonedWallTimeSelection,
+} from "./zoned/projection.ts";
+
+export {
+  DEFAULT_ZONED_DAY_SPLIT_LIMIT,
+  splitInstantRangeByZonedDay,
+  zonedDayRange,
+  zonedDayTransitions,
+} from "./zoned/day.ts";
+export type {
+  AvailableZonedDayRange,
+  SkippedZonedDayRange,
+  SplitInstantRangeByZonedDayOptions,
+  ZonedDayRange,
+  ZonedDaySplit,
+  ZonedOffsetTransition,
+} from "./zoned/day.ts";
+
+export { DEFAULT_ZONED_SLOT_LIMIT, slotsInZonedDay } from "./zoned/slots.ts";
+export type {
+  ZonedDaySlot,
+  ZonedDaySlotOccurrence,
+  ZonedDaySlots,
+  ZonedDaySlotSegment,
+  ZonedDaySlotsOptions,
+} from "./zoned/slots.ts";

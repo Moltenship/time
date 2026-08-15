@@ -4,7 +4,8 @@ The foundation packages expose only contracts that already have an owning implem
 
 - `@moltenship/calendar-temporal` owns native Temporal types, validated half-open intervals,
   type-specific comparison and interval operations, bounded date/instant iteration, month/week
-  grids, PlainTime/Instant snapping, and injected clocks.
+  grids, PlainTime/Instant snapping, zoned-day boundaries and splitting, explicit gap/fold
+  projection, transition-aware wall slots, machine keys, and injected clocks/environments.
 - `@moltenship/calendar-core` owns IDs, canonical events, application adapters, resources,
   environment, view strategy/renderer boundaries, policies, and transactions.
 - `@moltenship/calendar` re-exports the supported core surface. It will add supported React exports

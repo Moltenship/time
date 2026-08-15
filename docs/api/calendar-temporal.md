@@ -80,6 +80,77 @@ const snapped = snapPlainTime(Temporal.PlainTime.from("10:07:30"), {
 }); // 10:15:00
 ```
 
+## Zoned days and splitting
+
+`zonedDayRange(date, timeZone)` returns the actual instant extent of one nominal date. Ordinary,
+23-hour, 23.5-hour, 25-hour, and historical longer days are `kind: "available"` and carry a
+validated `InstantInterval`. A date removed by a date-line change is `kind: "skipped"`, has equal
+`start` and `end` instants, and deliberately has `interval: null`; the package never fabricates a
+non-empty range for it. `startBoundary` is the first real instant of the date, so a midnight gap can
+begin at `01:00` or another post-transition wall time.
+
+`splitInstantRangeByZonedDay(range, timeZone)` walks actual day boundaries and returns frozen
+fragments with their nominal date, day metadata, continuation flags, and stable key. It does not
+emit a fragment for a skipped date. Materialization defaults to a 10,000-fragment safety limit.
+
+`zonedDayTransitions(date, timeZone)` returns offset changes whose affected wall range intersects
+the date. Each transition identifies its instant, previous and next offsets, offset delta, and the
+exact gap or fold wall interval.
+
+## Wall-time projection and disambiguation
+
+`resolveZonedWallTime(wallTime, environment)` requires both a timezone and a Temporal
+disambiguation policy. Its result is explicit metadata rather than a bare `ZonedDateTime`:
+
+- a unique wall time has one occurrence;
+- a gap has zero occurrences and either a visible earlier/later adjustment or `status: "rejected"`;
+- a fold has two occurrences with distinct instant keys, plus the occurrence selected by the policy.
+
+`"compatible"` selects the later shifted value for a gap and the earlier occurrence for a fold.
+Gap adjustments retain the requested wall time, resolved wall time, direction, and wall-time delta,
+so transaction and accessibility layers can report the change. `projectInstantToZonedTime` performs
+the inverse projection and retains the instant key, wall key, offset, canonical timezone, and native
+Temporal values.
+
+```ts
+import { resolveZonedWallTime } from "@moltenship/calendar-temporal";
+
+const projection = resolveZonedWallTime(Temporal.PlainDateTime.from("2026-03-08T02:15"), {
+  disambiguation: "compatible",
+  timeZone: "America/New_York",
+});
+
+if (projection.status === "resolved" && projection.adjustment) {
+  // Requested 02:15, resolved 03:15, one-hour forward shift.
+}
+```
+
+`ZonedTimeEnvironment` is structural: the timezone/disambiguation portion of the core
+`CalendarEnvironment` can be passed directly. Current time remains a separate injected concern;
+callers supply a `Temporal.Instant` or `CalendarClock`, and no zoned helper reads `Temporal.Now`.
+
+## Zoned wall-clock slots
+
+`slotsInZonedDay(date, options)` builds a bounded nominal 24-hour wall grid from an explicit
+positive, time-only `slotDuration`. Each slot contains one or more segments:
+
+- gap segments have no instant occurrence;
+- unique segments have one instant interval;
+- fold segments have two instant intervals with distinct keys;
+- if a transition falls inside a configured slot, the slot is `kind: "transition"` and is split at
+  the exact affected-wall-range boundaries.
+
+The sum of segment occurrence durations equals the physical zoned-day duration, including zero for
+a skipped date. This keeps visual wall coordinates separate from physical elapsed time without
+losing repeated-hour identity. Slot materialization defaults to a 10,000-item safety limit.
+
+## Machine keys
+
+`instantKey`, `plainDateKey`, `plainDateTimeKey`, `zonedDayKey`, and `zonedWallTimeKey` produce
+deterministic strings for indexes, caches, and render models. A zoned wall key identifies the
+nominal coordinate only; a fold occurrence must use its `instantKey`, because the two occurrences
+share the same wall coordinate.
+
 ## Runtime and package guarantees
 
 - Node.js 26+ exercises unflagged native Temporal in local checks and CI.
@@ -87,5 +158,5 @@ const snapped = snapPlainTime(Temporal.PlainTime.from("10:07:30"), {
 - Consumers use the global `Temporal` namespace directly; the package does not re-export it.
 - The package contains no React, DOM, timezone default, current-time read, parser, or runtime
   polyfill dependency, and it has no production dependencies.
-- The production ESM entry must remain at or below 16 KiB raw and 4 KiB gzip. The package build
+- The production ESM entry must remain at or below 28 KiB raw and 6 KiB gzip. The package build
   enforces both budgets.

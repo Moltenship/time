@@ -299,7 +299,9 @@ Rules:
 3. Parsing is limited to Temporal-supported machine formats; no fuzzy natural-language parser.
 4. Week functions require explicit week rules or locale-derived rules at the boundary.
 5. Iterators are lazy where ranges may be large.
-6. Every DST-sensitive helper requires a timezone and disambiguation policy.
+6. Every helper that resolves a nominal wall time requires a timezone and disambiguation policy.
+   Day-boundary and instant-splitting helpers require a timezone and use Temporal's unique
+   start-of-day semantics, including the first real instant after a midnight gap.
 7. Each module has property tests for ordering, adjacency, boundaries, and round trips.
 
 Representative API:
@@ -311,8 +313,11 @@ monthGrid(date, { weekStartsOn, fixedWeeks });
 weekRange(date, { weekStartsOn });
 zonedDayRange(date, timeZone);
 splitInstantRangeByZonedDay(range, timeZone);
+resolveZonedWallTime(wallTime, { timeZone, disambiguation });
 roundPlainTime(time, { smallestUnit, increment, roundingMode });
-slotsInZonedDay(date, timeZone, slotDuration);
+slotsInZonedDay(date, { timeZone, disambiguation, slotDuration });
+instantKey(instant);
+zonedWallTimeKey(wallTime, timeZone);
 plainDateIntervalsIntersect(left, right);
 intersectPlainDateIntervals(left, right);
 clampPlainDateInterval(interval, bounds);
