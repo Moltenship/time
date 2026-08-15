@@ -13,7 +13,6 @@ import {
   weekRange,
   type MonthGrid,
   type PlainTimeSnapOptions,
-  type Temporal,
   type WeekStartsOn,
 } from "../src/index.ts";
 import { NativeTemporal } from "./native-temporal.ts";

@@ -1,8 +1,4 @@
-import type {
-  CalendarClock,
-  Temporal,
-  TemporalDisambiguation,
-} from "@moltenship/calendar-temporal";
+import type { CalendarClock, TemporalDisambiguation } from "@moltenship/calendar-temporal";
 
 export type IsoDayOfWeek = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type CalendarDirection = "ltr" | "rtl";

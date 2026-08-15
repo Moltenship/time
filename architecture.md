@@ -7,6 +7,7 @@ Time is a Temporal-native, React 19 calendar system built on five principles: ap
 > **Primary package:** `@moltenship/calendar`
 > **Registry item:** `@moltenship/calendar`
 > **Runtime target:** React 19+, modern ESM, native `Temporal`, Node.js 26+, any React-capable SSR framework
+> **TypeScript target:** TypeScript 6+ with `compilerOptions.lib: ["ESNext"]`
 > **Date policy:** no `Date`, no bundled polyfill, ISO-8601 chronology in v1
 
 This document is the normative architecture contract. The companion `architecture.html` is its visual reading surface. If the two disagree, this file wins.
@@ -157,6 +158,10 @@ The library assumes native `Temporal` exists in every target runtime. It does no
 - accept legacy `Date` in public core contracts.
 
 An application may install its own global polyfill before importing the calendar. That decision remains outside the library.
+
+TypeScript consumers use TypeScript 6 or newer with `compilerOptions.lib: ["ESNext"]`. Temporal is
+the ambient standard global, like other built-in platform APIs; packages use `Temporal.*` directly
+and do not depend on or re-export a separate Temporal namespace.
 
 ### 4.2 Canonical event shape
 

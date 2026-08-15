@@ -1,4 +1,3 @@
-import type { Temporal } from "../temporal.ts";
 import {
   compareInstants,
   comparePlainDates,

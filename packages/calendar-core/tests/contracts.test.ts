@@ -1,6 +1,6 @@
 import { describe, expect, expectTypeOf, test } from "vite-plus/test";
 
-import type { CalendarClock, Temporal } from "@moltenship/calendar-temporal";
+import type { CalendarClock } from "@moltenship/calendar-temporal";
 
 import {
   createCanonicalEventAdapter,

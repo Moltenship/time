@@ -22,7 +22,6 @@ import {
   type InstantInterval,
   type PlainDateInterval,
   type PlainDateTimeInterval,
-  type Temporal,
 } from "../src/index.ts";
 import { NativeTemporal } from "./native-temporal.ts";
 

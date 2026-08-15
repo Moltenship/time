@@ -9,20 +9,26 @@ verified local runtime was Node.js 26.7.0, where `typeof globalThis.Temporal ===
 V8 feature flag. CI selects Node.js 26 through `voidzero-dev/setup-vp`.
 
 `tests/temporal-utilities-boundary.test.ts` verifies that the utility modules do not read
-`Temporal.Now`, a timezone, legacy `Date`, a parser, or a runtime polyfill. The only production
-dependency remains the declaration-only `temporal-spec@1.0.1` package.
+`Temporal.Now`, a timezone, legacy `Date`, a parser, or a runtime polyfill. Every workspace compiles
+with TypeScript 7.0.2 and `compilerOptions.lib: ["ESNext"]`, which supplies the ambient Temporal
+namespace. The package has no production dependencies and does not re-export the platform global.
+
+The package-boundary test packs `@moltenship/calendar-temporal`, verifies its manifest and emitted
+declarations contain no Temporal dependency, and compiles a clean consumer against the packed
+declarations using only TypeScript's `ESNext` library. The Temporal and core source configurations
+also type-check without errors under the installed TypeScript 6.0.3 compiler.
 
 ## Focused correctness and package build
 
 ```text
-$ vp test packages/calendar-temporal/tests tests/temporal-utilities-boundary.test.ts tests/quality-gates.test.ts
-Test Files  6 passed (6)
-Tests       30 passed (30)
+$ vp test packages/calendar-temporal/tests packages/calendar-core/tests tests/temporal-utilities-boundary.test.ts tests/dependency-boundaries.test.ts tests/quality-gates.test.ts
+Test Files  8 passed (8)
+Tests       47 passed (47)
 
 $ vp run calendar-temporal#build
-dist/index.mjs    12.04 kB | gzip: 2.60 kB
-dist/index.d.mts  11.44 kB | gzip: 2.45 kB
-[calendar-temporal:size] raw=12041/16384 gzip=2601/4096
+dist/index.mjs    11.99 kB | gzip: 2.59 kB
+dist/index.d.mts  11.39 kB | gzip: 2.43 kB
+[calendar-temporal:size] raw=11994/16384 gzip=2587/4096
 ```
 
 The focused suite includes fast-check properties for interval intersection/clamping symmetry,
@@ -34,7 +40,7 @@ and type-specific public signatures.
 
 ```text
 $ vp run ready
-check:          171 files formatted; 116 files linted and type-checked
+check:          170 files formatted; 115 files linted and type-checked
 build:          all recursive production builds passed
 test:           18 files passed; 87 tests passed
 SSR smoke:      hydrated without mutation; no recoverable errors; interaction and unmount passed

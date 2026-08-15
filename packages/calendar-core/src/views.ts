@@ -1,4 +1,4 @@
-import type { PlainDateInterval, Temporal } from "@moltenship/calendar-temporal";
+import type { PlainDateInterval } from "@moltenship/calendar-temporal";
 
 import type { CalendarEnvironment } from "./environment.ts";
 

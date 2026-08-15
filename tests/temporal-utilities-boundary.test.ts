@@ -15,9 +15,7 @@ const utilitySourcePaths = [
 describe("calendar-temporal runtime boundary", () => {
   test("targets unflagged native Temporal on Node 26 or newer", () => {
     expect(Number(process.versions.node.split(".")[0])).toBeGreaterThanOrEqual(26);
-    expect(
-      (globalThis as typeof globalThis & { readonly Temporal?: unknown }).Temporal,
-    ).toBeDefined();
+    expect(globalThis.Temporal).toBeDefined();
   });
 
   test("keeps utility modules free of implicit time, timezone, legacy Date, and polyfills", async () => {
@@ -32,13 +30,13 @@ describe("calendar-temporal runtime boundary", () => {
     expect(source).not.toMatch(/\bparse[A-Z\w]*\s*\(/u);
   });
 
-  test("ships declaration-only Temporal infrastructure as its sole runtime dependency", async () => {
+  test("ships without production dependencies", async () => {
     const manifest = JSON.parse(
       await readFile("packages/calendar-temporal/package.json", "utf8"),
     ) as {
-      readonly dependencies: Record<string, string>;
+      readonly dependencies?: Record<string, string>;
     };
 
-    expect(manifest.dependencies).toEqual({ "temporal-spec": "1.0.1" });
+    expect(manifest.dependencies ?? {}).toEqual({});
   });
 });

@@ -1,5 +1,3 @@
-export type { Temporal } from "./temporal.ts";
-
 export {
   compareInstants,
   comparePlainDates,
@@ -77,6 +75,4 @@ export type {
 export { createFixedClock, createSystemClock } from "./clock/calendar-clock.ts";
 export type { CalendarClock } from "./clock/calendar-clock.ts";
 
-export type TemporalDisambiguation = NonNullable<
-  import("./temporal.ts").Temporal.DisambiguationOptions["disambiguation"]
->;
+export type TemporalDisambiguation = NonNullable<Temporal.DisambiguationOptions["disambiguation"]>;

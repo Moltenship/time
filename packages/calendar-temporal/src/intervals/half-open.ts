@@ -1,5 +1,3 @@
-import type { Temporal } from "../temporal.ts";
-
 const validatedHalfOpenInterval: unique symbol = Symbol("validated-half-open-interval");
 
 export type HalfOpenIntervalComparator<TPoint> = (left: TPoint, right: TPoint) => number;
@@ -80,42 +78,23 @@ export function halfOpenInterval<TPoint, const TKind extends string>(
   return validation.interval;
 }
 
-interface NativeTemporalComparators {
-  readonly Instant: {
-    compare(left: Temporal.Instant, right: Temporal.Instant): number;
-  };
-  readonly PlainDate: {
-    compare(left: Temporal.PlainDate, right: Temporal.PlainDate): number;
-  };
-  readonly PlainDateTime: {
-    compare(left: Temporal.PlainDateTime, right: Temporal.PlainDateTime): number;
-  };
-  readonly PlainTime: {
-    compare(left: Temporal.PlainTime, right: Temporal.PlainTime): number;
-  };
-}
-
-function nativeTemporal(): NativeTemporalComparators {
-  return (globalThis as typeof globalThis & { Temporal: NativeTemporalComparators }).Temporal;
-}
-
 export function compareInstants(left: Temporal.Instant, right: Temporal.Instant): number {
-  return nativeTemporal().Instant.compare(left, right);
+  return globalThis.Temporal.Instant.compare(left, right);
 }
 
 export function comparePlainDates(left: Temporal.PlainDate, right: Temporal.PlainDate): number {
-  return nativeTemporal().PlainDate.compare(left, right);
+  return globalThis.Temporal.PlainDate.compare(left, right);
 }
 
 export function comparePlainDateTimes(
   left: Temporal.PlainDateTime,
   right: Temporal.PlainDateTime,
 ): number {
-  return nativeTemporal().PlainDateTime.compare(left, right);
+  return globalThis.Temporal.PlainDateTime.compare(left, right);
 }
 
 export function comparePlainTimes(left: Temporal.PlainTime, right: Temporal.PlainTime): number {
-  return nativeTemporal().PlainTime.compare(left, right);
+  return globalThis.Temporal.PlainTime.compare(left, right);
 }
 
 export function instantInterval(start: Temporal.Instant, end: Temporal.Instant): InstantInterval {

@@ -4,7 +4,6 @@ import {
   comparePlainDateTimes,
   validateHalfOpenInterval,
   type HalfOpenIntervalComparator,
-  type Temporal,
 } from "@moltenship/calendar-temporal";
 
 import { isEventId, isResourceId, type EventId, type ResourceId } from "./ids.ts";

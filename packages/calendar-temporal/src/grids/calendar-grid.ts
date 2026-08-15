@@ -3,7 +3,6 @@ import {
   plainDateInterval,
   type PlainDateInterval,
 } from "../intervals/half-open.ts";
-import type { Temporal } from "../temporal.ts";
 
 export type WeekStartsOn = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 

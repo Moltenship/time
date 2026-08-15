@@ -6,8 +6,9 @@
 ## Context
 
 Calendar arithmetic needs explicit instants, local dates, local date-times, time zones, and DST
-disambiguation. Legacy date objects collapse these distinctions. The current TypeScript library does
-not yet ship ambient declarations for the runtime Temporal global.
+disambiguation. Legacy date objects collapse these distinctions. TypeScript 6 and newer ship the
+ambient Temporal declarations in the `ESNext` library, and the supported Node.js runtime provides
+the corresponding native global.
 
 ## Decision
 
@@ -19,19 +20,20 @@ Node.js support starts at 26, where the production and test suites use the unfla
 `globalThis.Temporal` implementation. Browser and SSR consumers outside that runtime floor remain
 responsible for meeting the same native-global contract before importing the calendar.
 
-Pin `temporal-spec@1.0.1` as declaration-only infrastructure. Its JavaScript entry points are empty;
-the package supplies the standards-aligned namespace used in emitted declarations and never installs
-or executes a Temporal implementation. Applications remain responsible for providing native
-Temporal or installing a global polyfill before loading the calendar.
+TypeScript support starts at 6 with `compilerOptions.lib` set to `ESNext`. Production code and public
+declarations use the ambient `Temporal.*` namespace directly. The calendar does not depend on a
+declaration package or re-export the platform's Temporal namespace. Applications remain responsible
+for providing native Temporal or installing a global polyfill before loading the calendar.
 
 ## Consequences
 
 The public model preserves temporal meaning and avoids two runtime implementations in an application.
 Unsupported runtimes fail at the first operation that needs the missing global, and consumers of the
-declarations can resolve the exact type package transitively.
+declarations opt into the same modern standard-library surface as the calendar. The Temporal utility
+package has no production dependencies.
 
 ## Reversal trigger
 
-Remove `temporal-spec` when TypeScript ships compatible native Temporal declarations. Revisit the
-runtime policy only if the supported-runtime matrix cannot provide Temporal and product adoption
-evidence outweighs the bundle and semantic cost of a library-owned fallback.
+Revisit the compiler floor if maintaining TypeScript 6+ prevents supported consumer adoption.
+Revisit the runtime policy only if the supported-runtime matrix cannot provide Temporal and product
+adoption evidence outweighs the bundle and semantic cost of a library-owned fallback.

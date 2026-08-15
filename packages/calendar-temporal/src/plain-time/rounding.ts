@@ -1,5 +1,3 @@
-import type { Temporal } from "../temporal.ts";
-
 export type PlainTimeRoundingMode = NonNullable<
   Temporal.RoundingOptions<Temporal.TimeUnit>["roundingMode"]
 >;

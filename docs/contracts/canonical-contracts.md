@@ -19,7 +19,6 @@ Consumers can preserve branded domain identifiers and records without a parallel
 
 ```ts
 import { defineEventAdapter } from "@moltenship/calendar";
-import type { Temporal } from "@moltenship/calendar-temporal";
 
 declare const eventIdBrand: unique symbol;
 declare const roomIdBrand: unique symbol;

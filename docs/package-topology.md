@@ -36,9 +36,9 @@ External dependencies are added by the issue that validates their contract. In p
 React/Jotai, dnd-kit, interval-tree, virtualization, and browser-test dependencies remain owned by
 their architecture spikes and harness issues rather than this topology change.
 
-`calendar-temporal` carries the exact `temporal-spec` declaration package so its public types compile
-before TypeScript ships native Temporal declarations. That package has empty JavaScript entry points:
-it is not a runtime implementation or bundled polyfill. ADR 0004 owns its removal trigger.
+Every workspace compiles against the `ESNext` standard library. TypeScript 6+ supplies Temporal as an
+ambient global, so `calendar-temporal` has no declaration dependency and does not re-export the
+platform namespace. ADR 0004 owns the compiler and runtime boundary.
 
 ## Consumption flow
 

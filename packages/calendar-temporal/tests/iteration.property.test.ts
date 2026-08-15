@@ -7,7 +7,6 @@ import {
   iterateInstants,
   iteratePlainDates,
   plainDateInterval,
-  type Temporal,
 } from "../src/index.ts";
 import { NativeTemporal } from "./native-temporal.ts";
 

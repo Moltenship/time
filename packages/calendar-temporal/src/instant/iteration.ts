@@ -1,5 +1,4 @@
 import { compareInstants, type InstantInterval } from "../intervals/half-open.ts";
-import type { Temporal } from "../temporal.ts";
 
 export const DEFAULT_INSTANT_ITERATION_LIMIT = 10_000;
 

@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -162,6 +162,11 @@ describe.sequential("workspace boundaries", () => {
         archivePath,
         "package/package.json",
       ]);
+      const { stdout: packedDeclarations } = await execFileAsync("tar", [
+        "-xOf",
+        archivePath,
+        "package/dist/index.d.mts",
+      ]);
       const { stdout: archiveContents } = await execFileAsync("tar", ["-tf", archivePath]);
       const packedManifest = JSON.parse(packedManifestText);
 
@@ -169,8 +174,41 @@ describe.sequential("workspace boundaries", () => {
         types: "./dist/index.d.mts",
         import: "./dist/index.mjs",
       });
+      expect(packedManifest.dependencies ?? {}).toEqual({});
       expect(archiveContents).toContain("package/dist/index.d.mts");
       expect(archiveContents).toContain("package/dist/index.mjs");
+      expect(packedDeclarations).toContain("Temporal.Instant");
+      expect(packedDeclarations).not.toContain("temporal-spec");
+
+      await execFileAsync("tar", ["-xzf", archivePath, "-C", packDestination]);
+      const consumerPath = join(packDestination, "consumer.mts");
+      await writeFile(
+        consumerPath,
+        [
+          'import type { InstantInterval } from "./package/dist/index.mjs";',
+          "declare const interval: InstantInterval;",
+          "const start: Temporal.Instant = interval.start;",
+          "void start;",
+        ].join("\n"),
+      );
+      await execFileAsync(
+        join(process.cwd(), "node_modules/.bin/tsc"),
+        [
+          "--ignoreConfig",
+          "--noEmit",
+          "--strict",
+          "--target",
+          "ES2023",
+          "--lib",
+          "ESNext",
+          "--module",
+          "NodeNext",
+          "--moduleResolution",
+          "NodeNext",
+          consumerPath,
+        ],
+        { cwd: packDestination },
+      );
     } finally {
       await rm(packDestination, { force: true, recursive: true });
     }
@@ -203,7 +241,7 @@ describe.sequential("workspace boundaries", () => {
         await readFile(join(process.cwd(), "packages", packageName, "tsconfig.json"), "utf8"),
       ) as { compilerOptions: { lib: string[]; types: string[] } };
 
-      expect(tsconfig.compilerOptions.lib).toEqual(["ES2023"]);
+      expect(tsconfig.compilerOptions.lib).toEqual(["ESNext"]);
       expect(tsconfig.compilerOptions.types).toEqual([]);
     },
   );
