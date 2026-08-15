@@ -11,9 +11,9 @@ import {
   useCalendarStoreSelector,
   type CalendarActions,
   type CalendarStore,
-} from "../src/index.js";
-import { getCalendarRuntime } from "../src/internal/runtime-store.js";
-import "./setup.js";
+} from "../src/index";
+import { getCalendarRuntime } from "../src/internal/runtime-store";
+import "./setup";
 
 type ViewName = "agenda" | "month" | "week";
 type TestStore = CalendarStore<ViewName, string, string, string>;

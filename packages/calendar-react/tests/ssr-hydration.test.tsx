@@ -5,8 +5,8 @@ import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import { useCalendarStore, useCalendarStoreBinding } from "../src/index.js";
-import "./setup.js";
+import { useCalendarStore, useCalendarStoreBinding } from "../src/index";
+import "./setup";
 
 type ViewName = "month" | "week";
 

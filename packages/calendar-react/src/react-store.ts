@@ -10,7 +10,7 @@ import {
   createCalendarStore,
   getCalendarRuntime,
   getCalendarSourceRuntime,
-} from "./internal/runtime-store.js";
+} from "./internal/runtime-store";
 import type {
   CalendarPublicState,
   CalendarStateSelector,
@@ -20,7 +20,7 @@ import type {
   CalendarStoreBinding,
   CalendarStoreOptions,
   UseCalendarStoreBindingOptions,
-} from "./types.js";
+} from "./types";
 
 function sameValue<T>(left: T, right: T): boolean {
   return Object.is(left, right);

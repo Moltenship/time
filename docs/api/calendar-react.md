@@ -262,7 +262,6 @@ contract.
 - Packed declarations expose no Jotai atom/store type and no private source path.
 - The emitted runtime preserves the React client boundary, uses `useId`, and contains no
   `forwardRef` wrapper.
-- Local source imports use emitted-JavaScript `.js` specifiers; TypeScript extensions do not leak
-  into ESM imports.
+- Local source imports omit file extensions and use TypeScript's bundler resolution mode.
 - The production ESM entry must remain at or below 28 KiB raw and 6.25 KiB gzip. The package build
   enforces both budgets against the emitted artifact.

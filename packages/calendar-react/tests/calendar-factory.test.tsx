@@ -10,8 +10,8 @@ import { act, createRef } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import { createCalendar, type CalendarDiagnostic, type CalendarPartRefs } from "../src/index.js";
-import "./setup.js";
+import { createCalendar, type CalendarDiagnostic, type CalendarPartRefs } from "../src/index";
+import "./setup";
 
 interface Meeting {
   readonly end: Temporal.Instant;

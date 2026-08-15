@@ -19,7 +19,7 @@ import {
 } from "react";
 import type { Ref, RefObject } from "react";
 
-import { createCalendarCapabilitySet } from "./capabilities.js";
+import { createCalendarCapabilitySet } from "./capabilities";
 import type {
   CalendarContextValue,
   CalendarDiagnostic,
@@ -29,21 +29,17 @@ import type {
   CalendarRootProps,
   CalendarSemanticActions,
   CreateCalendarOptions,
-} from "./calendar-types.js";
-import type { InferEventId, InferResourceId } from "./generics.js";
-import {
-  useCalendarStore,
-  useCalendarStoreBinding,
-  useCalendarStoreSelector,
-} from "./react-store.js";
-import type { CalendarPublicState, CalendarStateSource } from "./types.js";
+} from "./calendar-types";
+import type { InferEventId, InferResourceId } from "./generics";
+import { useCalendarStore, useCalendarStoreBinding, useCalendarStoreSelector } from "./react-store";
+import type { CalendarPublicState, CalendarStateSource } from "./types";
 import {
   bindCalendarView,
   createCalendarViewRegistry,
   type CalendarDefinedView,
   type CalendarViewDefinitionInput,
   type CalendarViewRegistration,
-} from "./views.js";
+} from "./views";
 
 function safePartId(reactId: string): string {
   return `calendar-${reactId.replaceAll(":", "")}`;

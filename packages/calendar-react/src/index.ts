@@ -1,14 +1,10 @@
 "use client";
 
-export { createCalendar } from "./calendar.js";
-export { createCalendarCapabilitySet } from "./capabilities.js";
-export { bindCalendarView, createCalendarViewRegistry, defineCalendarView } from "./views.js";
-export { createCalendarStore } from "./internal/runtime-store.js";
-export {
-  useCalendarStore,
-  useCalendarStoreBinding,
-  useCalendarStoreSelector,
-} from "./react-store.js";
+export { createCalendar } from "./calendar";
+export { createCalendarCapabilitySet } from "./capabilities";
+export { bindCalendarView, createCalendarViewRegistry, defineCalendarView } from "./views";
+export { createCalendarStore } from "./internal/runtime-store";
+export { useCalendarStore, useCalendarStoreBinding, useCalendarStoreSelector } from "./react-store";
 export type {
   CalendarActiveViewProps,
   CalendarContextValue,
@@ -29,9 +25,9 @@ export type {
   CalendarViewSwitcherProps,
   CalendarViewportProps,
   CreateCalendarOptions,
-} from "./calendar-types.js";
-export type { CalendarCapability, CalendarCapabilitySet } from "./capabilities.js";
-export type { InferEventId, InferResourceId } from "./generics.js";
+} from "./calendar-types";
+export type { CalendarCapability, CalendarCapabilitySet } from "./capabilities";
+export type { InferEventId, InferResourceId } from "./generics";
 export type {
   CalendarDefinedView,
   CalendarViewDefinitionInput,
@@ -40,7 +36,7 @@ export type {
   CalendarViewRegistry,
   CalendarViewRegistryDiagnostic,
   CalendarViewRendererProps,
-} from "./views.js";
+} from "./views";
 export type {
   CalendarActions,
   CalendarControlledState,
@@ -58,4 +54,4 @@ export type {
   CalendarStoreMeta,
   CalendarStoreOptions,
   UseCalendarStoreBindingOptions,
-} from "./types.js";
+} from "./types";

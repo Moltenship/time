@@ -9,9 +9,9 @@ import type {
 } from "@moltenship/calendar-core";
 import { createElement, type ComponentType, type ReactNode } from "react";
 
-import type { CalendarCapability } from "./capabilities.js";
-import type { CalendarContextValue } from "./calendar-types.js";
-import type { InferEventId, InferResourceId } from "./generics.js";
+import type { CalendarCapability } from "./capabilities";
+import type { CalendarContextValue } from "./calendar-types";
+import type { InferEventId, InferResourceId } from "./generics";
 
 export interface CalendarViewRendererProps<
   TEvent,

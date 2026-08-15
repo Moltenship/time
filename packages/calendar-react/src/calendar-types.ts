@@ -12,8 +12,8 @@ import type {
 } from "@moltenship/calendar-core";
 import type { ComponentPropsWithRef, ComponentType, ReactNode, RefObject } from "react";
 
-import type { CalendarCapability, CalendarCapabilitySet } from "./capabilities.js";
-import type { InferEventId, InferResourceId } from "./generics.js";
+import type { CalendarCapability, CalendarCapabilitySet } from "./capabilities";
+import type { InferEventId, InferResourceId } from "./generics";
 import type {
   CalendarActions,
   CalendarStateChangeHandler,
@@ -21,13 +21,13 @@ import type {
   CalendarStateSelectorOptions,
   CalendarStore,
   CalendarPublicState,
-} from "./types.js";
+} from "./types";
 import type {
   CalendarDefinedView,
   CalendarViewDefinitionInput,
   CalendarViewRegistration,
   CalendarViewRegistry,
-} from "./views.js";
+} from "./views";
 
 export type CalendarSemanticActions<
   TView extends string = string,

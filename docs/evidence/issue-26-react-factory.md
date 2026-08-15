@@ -24,8 +24,8 @@
   unregistered-view, and invalid-event state through public contracts.
 - The supported facade re-exports core and React contracts behind a preserved client boundary. A
   consumer fixture implements a third-party view using package roots only.
-- Local React-package and SSR-fixture source imports use `.js` ESM specifiers rather than TypeScript
-  extensions. SSR command fixtures run through Vitest's source resolver.
+- Local React-package and SSR-fixture source imports omit file extensions. Those workspaces use
+  TypeScript's bundler resolution mode, and SSR command fixtures run through Vitest's resolver.
 
 `architecture.md` remains normative. `IMPLEMENTATION_PLAN.md` did not change because issue scope and
 dependency sequencing remain unchanged; GitHub's native issue relationships continue to hold the
