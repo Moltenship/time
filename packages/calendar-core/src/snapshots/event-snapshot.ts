@@ -88,19 +88,10 @@ function isRevision(value: unknown): value is string | number {
   return typeof value === "string" || (typeof value === "number" && Number.isFinite(value));
 }
 
-function isCalendarEventInterval(value: unknown): value is CalendarEventInterval {
-  if (typeof value !== "object" || value === null) return false;
+function calendarEventIntervalKind(value: unknown): CalendarEventInterval["kind"] | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
   const kind = (value as { readonly kind?: unknown }).kind;
-  return kind === "timed" || kind === "all-day" || kind === "floating";
-}
-
-function hasExpectedTemporalEndpoints(interval: CalendarEventInterval): boolean {
-  return interval.kind === "timed"
-    ? interval.start instanceof Temporal.Instant && interval.end instanceof Temporal.Instant
-    : interval.kind === "all-day"
-      ? interval.start instanceof Temporal.PlainDate && interval.end instanceof Temporal.PlainDate
-      : interval.start instanceof Temporal.PlainDateTime &&
-        interval.end instanceof Temporal.PlainDateTime;
+  return kind === "timed" || kind === "all-day" || kind === "floating" ? kind : undefined;
 }
 
 function intervalKeys(interval: CalendarEventInterval): {
@@ -454,53 +445,95 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
     };
   }
 
-  if (!isCalendarEventInterval(intervalValue)) {
-    return {
-      issue: Object.freeze({
-        accessor: "getInterval",
-        code: "invalid-event-interval",
-        event,
-        eventId,
-        index,
-      }),
-      valid: false,
-    };
-  }
-
-  const interval = intervalValue;
-  if (!hasExpectedTemporalEndpoints(interval)) {
-    return {
-      issue: Object.freeze({
-        accessor: "getInterval",
-        code: "invalid-event-interval",
-        event,
-        eventId,
-        index,
-        message: "interval-endpoints-must-match-kind",
-      }),
-      valid: false,
-    };
-  }
-  if (
-    interval.kind === "timed" &&
-    interval.sourceTimeZone !== undefined &&
-    typeof interval.sourceTimeZone !== "string"
-  ) {
-    return {
-      issue: Object.freeze({
-        accessor: "getInterval",
-        code: "invalid-event-interval",
-        event,
-        eventId,
-        index,
-        message: "source-time-zone-must-be-a-string",
-      }),
-      valid: false,
-    };
-  }
-
+  let interval: CalendarEventInterval;
   let keys: { readonly endKey: bigint; readonly startKey: bigint };
   try {
+    const kind = calendarEventIntervalKind(intervalValue);
+    if (kind === undefined) {
+      return {
+        issue: Object.freeze({
+          accessor: "getInterval",
+          code: "invalid-event-interval",
+          event,
+          eventId,
+          index,
+        }),
+        valid: false,
+      };
+    }
+
+    const returned = intervalValue as {
+      readonly end?: unknown;
+      readonly sourceTimeZone?: unknown;
+      readonly start?: unknown;
+    };
+    if (kind === "timed") {
+      const start = returned.start;
+      const end = returned.end;
+      if (!(start instanceof Temporal.Instant) || !(end instanceof Temporal.Instant)) {
+        return {
+          issue: Object.freeze({
+            accessor: "getInterval",
+            code: "invalid-event-interval",
+            event,
+            eventId,
+            index,
+            message: "interval-endpoints-must-match-kind",
+          }),
+          valid: false,
+        };
+      }
+      const sourceTimeZone = returned.sourceTimeZone;
+      if (sourceTimeZone !== undefined && typeof sourceTimeZone !== "string") {
+        return {
+          issue: Object.freeze({
+            accessor: "getInterval",
+            code: "invalid-event-interval",
+            event,
+            eventId,
+            index,
+            message: "source-time-zone-must-be-a-string",
+          }),
+          valid: false,
+        };
+      }
+      interval = { end, kind, sourceTimeZone, start };
+    } else if (kind === "all-day") {
+      const start = returned.start;
+      const end = returned.end;
+      if (!(start instanceof Temporal.PlainDate) || !(end instanceof Temporal.PlainDate)) {
+        return {
+          issue: Object.freeze({
+            accessor: "getInterval",
+            code: "invalid-event-interval",
+            event,
+            eventId,
+            index,
+            message: "interval-endpoints-must-match-kind",
+          }),
+          valid: false,
+        };
+      }
+      interval = { end, kind, start };
+    } else {
+      const start = returned.start;
+      const end = returned.end;
+      if (!(start instanceof Temporal.PlainDateTime) || !(end instanceof Temporal.PlainDateTime)) {
+        return {
+          issue: Object.freeze({
+            accessor: "getInterval",
+            code: "invalid-event-interval",
+            event,
+            eventId,
+            index,
+            message: "interval-endpoints-must-match-kind",
+          }),
+          valid: false,
+        };
+      }
+      interval = { end, kind, start };
+    }
+
     const validation = validateCalendarEventInterval(interval, nativeIntervalComparators);
     if (!validation.valid) {
       return {

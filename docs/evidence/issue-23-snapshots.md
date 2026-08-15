@@ -27,9 +27,9 @@ Timed, date, and floating keys remain exact bigint coordinates; dependency-owned
 - Recreated records with unchanged revisions skip interval/title/resource normalization while the
   new application record remains visible.
 - Half-open adjacency, type isolation, multi-resource lookup, duplicate IDs, invalid resources,
-  malformed Temporal endpoint brands, malformed timed source zones, adapter failures, strict
-  rejection, and LRU eviction are covered by focused tests. Accessor throws and malformed returned
-  intervals retain distinct public issue codes.
+  malformed Temporal endpoint brands, throwing returned interval properties, malformed timed source
+  zones, adapter failures, strict rejection, and LRU eviction are covered by focused tests. Accessor
+  throws and malformed returned intervals retain distinct public issue codes.
 - A fixed-seed fast-check suite runs 500 randomized timed/all-day/floating interval cases against a
   simple scan oracle.
 - The production benchmark candidate is compared with the reference query/projection/layout/render
@@ -55,11 +55,11 @@ range while preserving per-query milliseconds.
 
 | Stage | p50 | p95 | Scan p95 | Gate | Result |
 | --- | ---: | ---: | ---: | ---: | --- |
-| 10k snapshot build | 18.799 ms | 20.203 ms | — | 25 ms | Pass |
-| One-day indexed query | 0.011 ms | 0.014 ms | 0.090 ms | < scan and < 1 ms | Pass |
-| Seven-day indexed query | 0.047 ms | 0.070 ms | 0.099 ms | < scan and < 1 ms | Pass |
-| 1k-fragment projection | 0.086 ms | 0.129 ms | — | Report only | Recorded |
-| 1k-fragment layout | 0.361 ms | 0.432 ms | — | 8 ms | Pass |
+| 10k snapshot build | 20.642 ms | 22.240 ms | — | 25 ms | Pass |
+| One-day indexed query | 0.013 ms | 0.014 ms | 0.093 ms | < scan and < 1 ms | Pass |
+| Seven-day indexed query | 0.050 ms | 0.077 ms | 0.099 ms | < scan and < 1 ms | Pass |
+| 1k-fragment projection | 0.090 ms | 0.156 ms | — | Report only | Recorded |
+| 1k-fragment layout | 0.322 ms | 0.416 ms | — | 8 ms | Pass |
 
 The run used fixture seed `1414090053`, 10 warmups, and 50 measured samples on an Apple M1 Pro with
 10 logical CPUs and 32 GiB memory. These values describe the recorded environment and protocol;
@@ -71,7 +71,7 @@ they are not portable end-user latency claims.
 $ vp run ready
 check:          186 files formatted; 131 files linted and type-checked
 build:          all recursive production builds passed
-test:           22 files passed; 123 tests passed
+test:           22 files passed; 124 tests passed
 SSR smoke:      hydrated without mutation; no recoverable errors; interaction and unmount passed
 registry smoke: 1 contract fixture and 1 target validated
 package graph:  dependency boundaries and packed-consumer checks passed

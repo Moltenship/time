@@ -316,6 +316,42 @@ describe("event snapshots", () => {
     ]);
   });
 
+  test("contains throwing returned interval properties inside the invalid-record policy", () => {
+    const event = timedEvent("broken", "2026-08-15T09:00Z", "2026-08-15T10:00Z");
+
+    for (const property of ["kind", "start", "end", "sourceTimeZone"] as const) {
+      const returnedInterval = {
+        end: event.end,
+        kind: "timed" as const,
+        sourceTimeZone: "UTC",
+        start: event.start,
+      };
+      Object.defineProperty(returnedInterval, property, {
+        get() {
+          throw new Error(`${property}-read-failed`);
+        },
+      });
+      const adapter: EventAdapter<TestEvent, string, string> = {
+        ...canonicalAdapter,
+        getInterval: () => returnedInterval as CalendarEventInterval,
+      };
+
+      const snapshot = createEventSnapshot(Object.freeze([event]), adapter);
+
+      expect(snapshot.size).toBe(0);
+      expect(snapshot.issues).toEqual([
+        {
+          accessor: "getInterval",
+          code: "invalid-event-interval",
+          event,
+          eventId: "broken",
+          index: 0,
+          message: `${property}-read-failed`,
+        },
+      ]);
+    }
+  });
+
   test("preserves nanosecond adjacency without numeric millisecond conversion", () => {
     const atZero = Temporal.Instant.fromEpochNanoseconds(0n);
     const atOne = Temporal.Instant.fromEpochNanoseconds(1n);

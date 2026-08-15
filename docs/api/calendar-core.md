@@ -58,8 +58,9 @@ The default `"report-and-skip"` policy keeps valid events and records immutable 
 `snapshot.issues`. It covers adapter failures, malformed or duplicate IDs, invalid resource IDs,
 invalid revisions, malformed interval variants, and empty/reversed intervals. Applications can
 forward the immutable issue list to their diagnostics layer. An accessor that throws is reported
-as `adapter-error`; a returned interval with the wrong native Temporal endpoint kind or a non-string
-timed `sourceTimeZone` is reported as `invalid-event-interval`.
+as `adapter-error`; a returned interval with throwing structural properties, the wrong native
+Temporal endpoint kind, or a non-string timed `sourceTimeZone` is reported as
+`invalid-event-interval`.
 
 Use `invalidEventPolicy: "throw"` to reject the complete input with
 `InvalidCalendarEventSnapshotError`. No partially built strict snapshot is published.
