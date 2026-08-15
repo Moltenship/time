@@ -3,6 +3,8 @@ import type { BenchmarkFixtureSet, FixtureFragment } from "fixtures";
 export type BenchmarkStage =
   | "build"
   | "query"
+  | "query-1d"
+  | "query-7d"
   | "projection"
   | "layout"
   | "render"
@@ -60,6 +62,8 @@ export interface BenchmarkStatistics {
 export type BenchmarkThresholdStatus = "pass" | "fail" | "report-only";
 
 export interface BenchmarkStageResult extends BenchmarkStatistics {
+  readonly beatsReference?: boolean;
+  readonly referenceP95Ms?: number;
   readonly stage: BenchmarkStage;
   readonly status: BenchmarkThresholdStatus;
   readonly thresholdP95Ms?: number;

@@ -2,10 +2,11 @@ import { describe, expect, test } from "vite-plus/test";
 
 import { generateBenchmarkFixtures } from "fixtures";
 
-import type { BenchmarkEngine } from "../shared/contracts.ts";
+import type { BenchmarkEngine, BenchmarkQuery } from "../shared/contracts.ts";
 import {
   benchmarkExitCode,
   compareCandidateToReference,
+  CORE_BENCHMARK_STAGES,
   runBenchmark,
   summarizeSamples,
 } from "../shared/protocol.ts";
@@ -61,6 +62,13 @@ describe("benchmark protocol", () => {
       differences: [],
       matchesReference: true,
     });
+    expect(CORE_BENCHMARK_STAGES).toEqual([
+      "build",
+      "query-1d",
+      "query-7d",
+      "projection",
+      "layout",
+    ]);
   });
 
   test("returns nonzero in gated mode when a threshold fails", () => {
@@ -82,6 +90,38 @@ describe("benchmark protocol", () => {
     expect(report.stages[0]?.status).toBe("fail");
     expect(benchmarkExitCode(report, true)).toBe(1);
     expect(benchmarkExitCode(report, false)).toBe(0);
+  });
+
+  test("measures distinct one-day and seven-day core query workloads", () => {
+    const fixtures = generateBenchmarkFixtures({
+      eventCount: 50,
+      resourceCount: 10,
+      visibleFragmentCount: 20,
+    });
+    const measuredQueries: BenchmarkQuery[] = [];
+    const candidate: BenchmarkEngine<ReferenceSnapshot> = {
+      ...referenceEngine,
+      name: "query-workload-recorder",
+      query(snapshot, query) {
+        measuredQueries.push(query);
+        return referenceEngine.query(snapshot, query);
+      },
+    };
+    const report = runBenchmark(candidate, fixtures, {
+      mode: "smoke",
+      stages: ["query-1d", "query-7d"],
+      suite: "query-workloads",
+    });
+
+    expect(new Set(measuredQueries.map(({ endUnit, startUnit }) => endUnit - startUnit))).toEqual(
+      new Set([1_440, 2_400, 10_080]),
+    );
+    expect(
+      report.stages.map(({ referenceP95Ms, stage }) => [stage, typeof referenceP95Ms]),
+    ).toEqual([
+      ["query-1d", "number"],
+      ["query-7d", "number"],
+    ]);
   });
 });
 

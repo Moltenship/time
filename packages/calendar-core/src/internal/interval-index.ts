@@ -1,4 +1,4 @@
-import IntervalTree, { Interval } from "@flatten-js/interval-tree";
+import IntervalTree, { IntervalBase } from "@flatten-js/interval-tree";
 
 export interface IntervalIndexEntry<TValue> {
   readonly end: bigint;
@@ -20,8 +20,31 @@ function assertNonEmptyInterval(start: bigint, end: bigint): void {
   }
 }
 
-function treeInterval(start: bigint, end: bigint): Interval {
-  return new Interval(start, end);
+class BigIntInterval extends IntervalBase {
+  declare high: bigint;
+  declare low: bigint;
+
+  constructor(low: bigint, high: bigint) {
+    super(low, high);
+  }
+
+  clone(): BigIntInterval {
+    return new BigIntInterval(this.low as bigint, this.high as bigint);
+  }
+
+  // The tree invokes merge on a key clone while recalculating subtree maxima.
+  // Mutating that private clone avoids allocating another interval per ancestor.
+  merge(other: IntervalBase): BigIntInterval {
+    const otherLow = other.low as bigint;
+    const otherHigh = other.high as bigint;
+    if (otherLow < this.low) this.low = otherLow;
+    if (otherHigh > this.high) this.high = otherHigh;
+    return this;
+  }
+}
+
+function treeInterval(start: bigint, end: bigint): BigIntInterval {
+  return new BigIntInterval(start, end);
 }
 
 class FlattenIntervalIndex<TValue> implements IntervalIndex<TValue> {

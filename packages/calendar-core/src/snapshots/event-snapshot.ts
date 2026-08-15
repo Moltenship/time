@@ -94,6 +94,15 @@ function isCalendarEventInterval(value: unknown): value is CalendarEventInterval
   return kind === "timed" || kind === "all-day" || kind === "floating";
 }
 
+function hasExpectedTemporalEndpoints(interval: CalendarEventInterval): boolean {
+  return interval.kind === "timed"
+    ? interval.start instanceof Temporal.Instant && interval.end instanceof Temporal.Instant
+    : interval.kind === "all-day"
+      ? interval.start instanceof Temporal.PlainDate && interval.end instanceof Temporal.PlainDate
+      : interval.start instanceof Temporal.PlainDateTime &&
+        interval.end instanceof Temporal.PlainDateTime;
+}
+
 function intervalKeys(interval: CalendarEventInterval): {
   readonly endKey: bigint;
   readonly startKey: bigint;
@@ -190,7 +199,7 @@ function buildIndexedData<TEventId extends EventId, TResourceId extends Resource
     allDay: createIntervalIndex(allDay),
     floating: createIntervalIndex(floating),
     resources: new ReadonlyMapView(frozenResources),
-    structures: Object.freeze([...structures]),
+    structures: Object.freeze(structures),
     timed: createIntervalIndex(timed),
   });
 }
@@ -230,14 +239,14 @@ class ImmutableEventSnapshot<
     events: readonly NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[],
     issues: readonly EventSnapshotIssue<TEvent, TEventId>[],
     indexed: IndexedEventData<TEventId, TResourceId>,
+    byId: ReadonlyMap<TEventId, NormalizedCalendarEvent<TEvent, TEventId, TResourceId>>,
     queryCacheSize: number,
   ) {
-    const byId = new Map(events.map((event) => [event.id, event]));
     this.#indexed = indexed;
     this.#queryCache = new BoundedLruCache(queryCacheSize);
     this.byId = new ReadonlyMapView(byId);
-    this.events = Object.freeze([...events]);
-    this.issues = Object.freeze([...issues]);
+    this.events = events;
+    this.issues = issues;
     this.version = version;
     Object.freeze(this);
   }
@@ -345,7 +354,7 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
   index: number,
   adapter: EventAdapter<TEvent, TEventId, TResourceId>,
   previous: ReadonlyMap<TEventId, PreviousEvent<TEvent, TEventId, TResourceId>>,
-  seenIds: ReadonlySet<TEventId>,
+  normalizedById: Pick<ReadonlyMap<TEventId, unknown>, "has">,
 ):
   | {
       readonly issue: EventSnapshotIssue<TEvent, TEventId>;
@@ -382,7 +391,7 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
       valid: false,
     };
   }
-  if (seenIds.has(eventId)) {
+  if (normalizedById.has(eventId)) {
     return {
       issue: Object.freeze({ code: "duplicate-event-id", event, eventId, index }),
       valid: false,
@@ -428,22 +437,70 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
     };
   }
 
-  let interval: CalendarEventInterval;
+  let intervalValue: unknown;
   try {
-    const value: unknown = adapter.getInterval(event);
-    if (!isCalendarEventInterval(value)) {
-      return {
-        issue: Object.freeze({
-          accessor: "getInterval",
-          code: "invalid-event-interval",
-          event,
-          eventId,
-          index,
-        }),
-        valid: false,
-      };
-    }
-    interval = value;
+    intervalValue = adapter.getInterval(event);
+  } catch (error) {
+    return {
+      issue: Object.freeze({
+        accessor: "getInterval",
+        code: "adapter-error",
+        event,
+        eventId,
+        index,
+        message: errorMessage(error),
+      }),
+      valid: false,
+    };
+  }
+
+  if (!isCalendarEventInterval(intervalValue)) {
+    return {
+      issue: Object.freeze({
+        accessor: "getInterval",
+        code: "invalid-event-interval",
+        event,
+        eventId,
+        index,
+      }),
+      valid: false,
+    };
+  }
+
+  const interval = intervalValue;
+  if (!hasExpectedTemporalEndpoints(interval)) {
+    return {
+      issue: Object.freeze({
+        accessor: "getInterval",
+        code: "invalid-event-interval",
+        event,
+        eventId,
+        index,
+        message: "interval-endpoints-must-match-kind",
+      }),
+      valid: false,
+    };
+  }
+  if (
+    interval.kind === "timed" &&
+    interval.sourceTimeZone !== undefined &&
+    typeof interval.sourceTimeZone !== "string"
+  ) {
+    return {
+      issue: Object.freeze({
+        accessor: "getInterval",
+        code: "invalid-event-interval",
+        event,
+        eventId,
+        index,
+        message: "source-time-zone-must-be-a-string",
+      }),
+      valid: false,
+    };
+  }
+
+  let keys: { readonly endKey: bigint; readonly startKey: bigint };
+  try {
     const validation = validateCalendarEventInterval(interval, nativeIntervalComparators);
     if (!validation.valid) {
       return {
@@ -456,11 +513,12 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
         valid: false,
       };
     }
+    keys = intervalKeys(interval);
   } catch (error) {
     return {
       issue: Object.freeze({
         accessor: "getInterval",
-        code: "adapter-error",
+        code: "invalid-event-interval",
         event,
         eventId,
         index,
@@ -549,23 +607,6 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
     }
   }
 
-  let keys: { readonly endKey: bigint; readonly startKey: bigint };
-  try {
-    keys = intervalKeys(interval);
-  } catch (error) {
-    return {
-      issue: Object.freeze({
-        accessor: "getInterval",
-        code: "adapter-error",
-        event,
-        eventId,
-        index,
-        message: errorMessage(error),
-      }),
-      valid: false,
-    };
-  }
-
   const base = {
     ...keys,
     id: eventId,
@@ -576,16 +617,16 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
   };
   const structure: EventStructure<TEventId, TResourceId> =
     interval.kind === "timed"
-      ? Object.freeze({
+      ? {
           ...base,
           end: interval.end,
           kind: interval.kind,
           sourceTimeZone: interval.sourceTimeZone,
           start: interval.start,
-        })
+        }
       : interval.kind === "all-day"
-        ? Object.freeze({ ...base, end: interval.end, kind: interval.kind, start: interval.start })
-        : Object.freeze({ ...base, end: interval.end, kind: interval.kind, start: interval.start });
+        ? { ...base, end: interval.end, kind: interval.kind, start: interval.start }
+        : { ...base, end: interval.end, kind: interval.kind, start: interval.start };
 
   return {
     normalized: materializeEvent(event, index, structure),
@@ -594,13 +635,14 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
   };
 }
 
-export function createEventSnapshotCache<
+function createEventSnapshotCacheInternal<
   TEvent,
   TEventId extends EventId,
   TResourceId extends ResourceId,
 >(
   adapter: EventAdapter<TEvent, TEventId, TResourceId>,
-  options: EventSnapshotOptions = {},
+  options: EventSnapshotOptions,
+  retainPreviousState: boolean,
 ): EventSnapshotCache<TEvent, TEventId, TResourceId> {
   const invalidEventPolicy = options.invalidEventPolicy ?? "report-and-skip";
   if (invalidEventPolicy !== "report-and-skip" && invalidEventPolicy !== "throw") {
@@ -620,26 +662,31 @@ export function createEventSnapshotCache<
     getSnapshot(events: readonly TEvent[]) {
       if (events === lastEvents && lastSnapshot !== undefined) return lastSnapshot;
 
-      const nextPreviousById = new Map<TEventId, PreviousEvent<TEvent, TEventId, TResourceId>>();
-      const seenIds = new Set<TEventId>();
+      const nextPreviousById = retainPreviousState
+        ? new Map<TEventId, PreviousEvent<TEvent, TEventId, TResourceId>>()
+        : undefined;
+      const normalizedById = new Map<
+        TEventId,
+        NormalizedCalendarEvent<TEvent, TEventId, TResourceId>
+      >();
       const structures: EventStructure<TEventId, TResourceId>[] = [];
       const normalized: NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[] = [];
       const issues: EventSnapshotIssue<TEvent, TEventId>[] = [];
 
       events.forEach((event, index) => {
-        const result = normalizeEvent(event, index, adapter, previousById, seenIds);
+        const result = normalizeEvent(event, index, adapter, previousById, normalizedById);
         if (!result.valid) {
           issues.push(result.issue);
           return;
         }
 
-        seenIds.add(result.structure.id);
         structures.push(result.structure);
         normalized.push(result.normalized);
-        nextPreviousById.set(result.structure.id, { event, structure: result.structure });
+        normalizedById.set(result.structure.id, result.normalized);
+        nextPreviousById?.set(result.structure.id, { event, structure: result.structure });
       });
 
-      const frozenIssues = Object.freeze([...issues]);
+      const frozenIssues = Object.freeze(issues);
       if (invalidEventPolicy === "throw" && frozenIssues.length > 0) {
         throw new InvalidCalendarEventSnapshotError(frozenIssues);
       }
@@ -651,19 +698,31 @@ export function createEventSnapshotCache<
       version += 1;
       const snapshot = new ImmutableEventSnapshot(
         version,
-        normalized,
+        Object.freeze(normalized),
         frozenIssues,
         nextIndexed,
+        normalizedById,
         queryCacheSize,
       );
 
       indexed = nextIndexed;
       lastEvents = events;
       lastSnapshot = snapshot;
-      previousById = nextPreviousById;
+      if (nextPreviousById !== undefined) previousById = nextPreviousById;
       return snapshot;
     },
   });
+}
+
+export function createEventSnapshotCache<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+>(
+  adapter: EventAdapter<TEvent, TEventId, TResourceId>,
+  options: EventSnapshotOptions = {},
+): EventSnapshotCache<TEvent, TEventId, TResourceId> {
+  return createEventSnapshotCacheInternal(adapter, options, true);
 }
 
 export function createEventSnapshot<
@@ -675,5 +734,5 @@ export function createEventSnapshot<
   adapter: EventAdapter<TEvent, TEventId, TResourceId>,
   options: EventSnapshotOptions = {},
 ): EventSnapshot<TEvent, TEventId, TResourceId> {
-  return createEventSnapshotCache(adapter, options).getSnapshot(events);
+  return createEventSnapshotCacheInternal(adapter, options, false).getSnapshot(events);
 }

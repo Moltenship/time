@@ -2,6 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 
 import {
   BENCHMARK_EVENT_COUNT,
+  BENCHMARK_EVENT_DAY_SPAN,
   BENCHMARK_RESOURCE_COUNT,
   BENCHMARK_VISIBLE_FRAGMENT_COUNT,
   generateBenchmarkFixtures,
@@ -34,6 +35,9 @@ describe("benchmark fixtures", () => {
     expect(fixtures.events).toHaveLength(BENCHMARK_EVENT_COUNT);
     expect(fixtures.resources).toHaveLength(BENCHMARK_RESOURCE_COUNT);
     expect(fixtures.visibleFragments).toHaveLength(BENCHMARK_VISIBLE_FRAGMENT_COUNT);
+    expect(Math.max(...fixtures.events.map(({ data }) => data.startUnit))).toBeGreaterThan(
+      (BENCHMARK_EVENT_DAY_SPAN - 30) * 1_440,
+    );
     const eventIds = new Set(fixtures.events.map(({ id }) => id));
     const resourceIds = new Set(fixtures.resources.map(({ id }) => id));
     expect(eventIds.size).toBe(BENCHMARK_EVENT_COUNT);

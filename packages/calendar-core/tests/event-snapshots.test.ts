@@ -13,6 +13,7 @@ import {
   createEventSnapshotCache,
   InvalidCalendarEventSnapshotError,
   type CalendarEvent,
+  type CalendarEventInterval,
   type CalendarEventSource,
   type EventAdapter,
   type EventSnapshot,
@@ -252,6 +253,65 @@ describe("event snapshots", () => {
         eventId: "broken",
         index: 0,
         message: "title-read-failed",
+      },
+    ]);
+  });
+
+  test("distinguishes interval accessor failures from malformed returned intervals", () => {
+    const event = timedEvent("broken", "2026-08-15T09:00Z", "2026-08-15T10:00Z");
+    const throwingAdapter: EventAdapter<TestEvent, string, string> = {
+      ...canonicalAdapter,
+      getInterval() {
+        throw new Error("interval-read-failed");
+      },
+    };
+    const malformedEndpointAdapter: EventAdapter<TestEvent, string, string> = {
+      ...canonicalAdapter,
+      getInterval(currentEvent) {
+        return {
+          ...currentEvent,
+          start: 42 as unknown as Temporal.Instant,
+        } as unknown as CalendarEventInterval;
+      },
+    };
+    const malformedTimeZoneAdapter: EventAdapter<TestEvent, string, string> = {
+      ...canonicalAdapter,
+      getInterval(currentEvent) {
+        return {
+          ...currentEvent,
+          sourceTimeZone: 42 as unknown as string,
+        };
+      },
+    };
+
+    expect(createEventSnapshot(Object.freeze([event]), throwingAdapter).issues).toEqual([
+      {
+        accessor: "getInterval",
+        code: "adapter-error",
+        event,
+        eventId: "broken",
+        index: 0,
+        message: "interval-read-failed",
+      },
+    ]);
+    expect(createEventSnapshot(Object.freeze([event]), malformedEndpointAdapter).issues).toEqual([
+      {
+        accessor: "getInterval",
+        code: "invalid-event-interval",
+        event,
+        eventId: "broken",
+        index: 0,
+        message: "interval-endpoints-must-match-kind",
+      },
+    ]);
+    expect(createEventSnapshot(Object.freeze([event]), malformedTimeZoneAdapter).issues).toEqual([
+      {
+        accessor: "getInterval",
+        code: "invalid-event-interval",
+        event,
+        eventId: "broken",
+        index: 0,
+        message: "source-time-zone-must-be-a-string",
       },
     ]);
   });

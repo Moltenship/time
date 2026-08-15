@@ -6,6 +6,7 @@ import type {
 
 export const BENCHMARK_FIXTURE_SEED = 0x54_49_4d_45;
 export const BENCHMARK_EVENT_COUNT = 10_000;
+export const BENCHMARK_EVENT_DAY_SPAN = 365;
 export const BENCHMARK_VISIBLE_FRAGMENT_COUNT = 1_000;
 export const BENCHMARK_RESOURCE_COUNT = 500;
 
@@ -106,8 +107,28 @@ function padded(value: number, width: number): string {
   return String(value).padStart(width, "0");
 }
 
+function daysInMonth(year: number, month: number): number {
+  if (month === 2) {
+    return year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0) ? 29 : 28;
+  }
+  return month === 4 || month === 6 || month === 9 || month === 11 ? 30 : 31;
+}
+
 function isoDate(dayIndex: number): string {
-  return `2026-08-${padded(dayIndex + 1, 2)}`;
+  let year = 2026;
+  let month = 8;
+  let remainingDays = dayIndex;
+
+  while (remainingDays >= daysInMonth(year, month)) {
+    remainingDays -= daysInMonth(year, month);
+    month += 1;
+    if (month === 13) {
+      month = 1;
+      year += 1;
+    }
+  }
+
+  return `${padded(year, 4)}-${padded(month, 2)}-${padded(remainingDays + 1, 2)}`;
 }
 
 function isoDateTime(minute: number, suffix: "" | "Z"): string {
@@ -171,7 +192,7 @@ function createEvent(
   const resourceIds = createResourceIds(ordinal, resourceCount, random);
 
   if (ordinal % 10 === 0) {
-    const startDay = random(24);
+    const startDay = random(BENCHMARK_EVENT_DAY_SPAN);
     const daySpan = 1 + random(5);
     return Object.freeze({
       data: Object.freeze({
@@ -188,7 +209,7 @@ function createEvent(
     });
   }
 
-  const clusteredStart = random(14) * 1_440 + 8 * 60 + random(24) * 15;
+  const clusteredStart = random(BENCHMARK_EVENT_DAY_SPAN) * 1_440 + 8 * 60 + random(24) * 15;
   const duration = 15 * (1 + random(12));
 
   if (ordinal % 10 === 1) {

@@ -64,12 +64,12 @@ export function formatBenchmarkReport(report: BenchmarkReport): string {
     `fixture seed=${report.fixture.seed} events=${report.fixture.events} fragments=${report.fixture.visibleFragments} resources=${report.fixture.resources} dst=${report.fixture.dstCases}`,
     `environment node=${report.environment.node} platform=${report.environment.platform}/${report.environment.processArchitecture} release=${report.environment.platformRelease}`,
     `cpu=${report.environment.cpuModel} logical=${report.environment.logicalCpuCount} memory=${megabytes(report.environment.totalMemoryBytes)}`,
-    "stage               warmup samples    p50 ms    p95 ms   threshold      status",
+    "stage               warmup samples    p50 ms    p95 ms   scan p95   threshold      status",
   ];
 
   for (const result of report.stages) {
     lines.push(
-      `${result.stage.padEnd(19)}${String(result.warmupIterations).padStart(6)}${String(result.iterations).padStart(8)}${result.p50Ms.toFixed(3).padStart(10)}${result.p95Ms.toFixed(3).padStart(10)}${(result.thresholdP95Ms === undefined ? "report" : result.thresholdP95Ms.toFixed(3)).padStart(12)} ${result.status.padStart(11)}`,
+      `${result.stage.padEnd(19)}${String(result.warmupIterations).padStart(6)}${String(result.iterations).padStart(8)}${result.p50Ms.toFixed(3).padStart(10)}${result.p95Ms.toFixed(3).padStart(10)}${(result.referenceP95Ms === undefined ? "—" : result.referenceP95Ms.toFixed(3)).padStart(11)}${(result.thresholdP95Ms === undefined ? "report" : result.thresholdP95Ms.toFixed(3)).padStart(12)} ${result.status.padStart(11)}`,
     );
   }
 

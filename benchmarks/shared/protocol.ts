@@ -28,7 +28,8 @@ export const ALL_BENCHMARK_STAGES: readonly BenchmarkStage[] = Object.freeze([
 
 export const CORE_BENCHMARK_STAGES: readonly BenchmarkStage[] = Object.freeze([
   "build",
-  "query",
+  "query-1d",
+  "query-7d",
   "projection",
   "layout",
 ]);
@@ -43,10 +44,30 @@ const initialP95ThresholdsMs: Readonly<Partial<Record<BenchmarkStage, number>>> 
   layout: 8,
   "pointer-frame": 4,
   query: 1,
+  "query-1d": 1,
+  "query-7d": 1,
 });
 
-const query = Object.freeze({ startUnit: 8 * 60, endUnit: 2 * 1_440 });
+const QUERY_START_UNIT = 8 * 60;
+const QUERY_OPERATIONS_PER_SAMPLE = 50;
+const queries = Object.freeze({
+  default: Object.freeze({ startUnit: QUERY_START_UNIT, endUnit: 2 * 1_440 }),
+  oneDay: Object.freeze({ startUnit: QUERY_START_UNIT, endUnit: QUERY_START_UNIT + 1_440 }),
+  sevenDays: Object.freeze({ startUnit: QUERY_START_UNIT, endUnit: QUERY_START_UNIT + 7 * 1_440 }),
+});
 let benchmarkSink = 0;
+
+function queryForStage(stage: BenchmarkStage) {
+  return stage === "query-1d"
+    ? queries.oneDay
+    : stage === "query-7d"
+      ? queries.sevenDays
+      : queries.default;
+}
+
+function isRetentionQuery(stage: BenchmarkStage): stage is "query-1d" | "query-7d" {
+  return stage === "query-1d" || stage === "query-7d";
+}
 
 function iterationCounts(mode: BenchmarkMode): {
   readonly iterations: number;
@@ -102,17 +123,22 @@ function hashCollection(values: readonly { readonly key?: string }[]): number {
 function measure(
   operation: (iteration: number) => number,
   mode: BenchmarkMode,
+  operationsPerSample = 1,
 ): BenchmarkStatistics {
   const { iterations, warmupIterations } = iterationCounts(mode);
   for (let iteration = 0; iteration < warmupIterations; iteration += 1) {
-    benchmarkSink ^= operation(iteration);
+    for (let operationIndex = 0; operationIndex < operationsPerSample; operationIndex += 1) {
+      benchmarkSink ^= operation(iteration * operationsPerSample + operationIndex);
+    }
   }
 
   const samples: number[] = [];
   for (let iteration = 0; iteration < iterations; iteration += 1) {
     const startedAt = performance.now();
-    benchmarkSink ^= operation(iteration);
-    samples.push(performance.now() - startedAt);
+    for (let operationIndex = 0; operationIndex < operationsPerSample; operationIndex += 1) {
+      benchmarkSink ^= operation(iteration * operationsPerSample + operationIndex);
+    }
+    samples.push((performance.now() - startedAt) / operationsPerSample);
   }
 
   return summarizeSamples(samples, warmupIterations);
@@ -134,6 +160,7 @@ function stageResult(
   stage: BenchmarkStage,
   statistics: BenchmarkStatistics,
   thresholdScale: number,
+  referenceP95Ms?: number,
 ): BenchmarkStageResult {
   const baseThreshold = initialP95ThresholdsMs[stage];
   if (baseThreshold === undefined) {
@@ -141,10 +168,14 @@ function stageResult(
   }
 
   const thresholdP95Ms = baseThreshold * thresholdScale;
+  const beatsReference =
+    referenceP95Ms === undefined ? undefined : statistics.p95Ms < referenceP95Ms;
   return {
     ...statistics,
+    beatsReference,
+    referenceP95Ms,
     stage,
-    status: statistics.p95Ms <= thresholdP95Ms ? "pass" : "fail",
+    status: statistics.p95Ms <= thresholdP95Ms && beatsReference !== false ? "pass" : "fail",
     thresholdP95Ms,
   };
 }
@@ -159,15 +190,23 @@ export function compareCandidateToReference<TSnapshot>(
 ): BenchmarkComparison {
   const referenceSnapshot = referenceEngine.build(fixtures);
   const candidateSnapshot = candidate.build(fixtures);
-  const referenceQuery = referenceEngine.query(referenceSnapshot, query);
-  const candidateQuery = candidate.query(candidateSnapshot, query);
   const referenceProjection = referenceEngine.project(referenceSnapshot, fixtures.visibleFragments);
   const candidateProjection = candidate.project(candidateSnapshot, fixtures.visibleFragments);
   const referenceLayout = referenceEngine.layout(referenceProjection);
   const candidateLayout = candidate.layout(candidateProjection);
   const differences: BenchmarkStage[] = [];
 
-  if (!equivalent(referenceQuery, candidateQuery)) differences.push("query");
+  if (
+    [queries.default, queries.oneDay, queries.sevenDays].some(
+      (query) =>
+        !equivalent(
+          referenceEngine.query(referenceSnapshot, query),
+          candidate.query(candidateSnapshot, query),
+        ),
+    )
+  ) {
+    differences.push("query");
+  }
   if (!equivalent(referenceProjection, candidateProjection)) differences.push("projection");
   if (!equivalent(referenceLayout, candidateLayout)) differences.push("layout");
   if (!equivalent(referenceEngine.render(referenceLayout), candidate.render(candidateLayout))) {
@@ -200,20 +239,24 @@ export function runBenchmark<TSnapshot>(
 
   const before = memoryUsage();
   const snapshot = engine.build(fixtures);
-  const queried = engine.query(snapshot, query);
+  const queried = engine.query(snapshot, queries.default);
   const projection = engine.project(snapshot, fixtures.visibleFragments);
   const layout = engine.layout(projection);
   const render = engine.render(layout);
   const results: BenchmarkStageResult[] = [];
+  let referenceSnapshot: ReturnType<typeof referenceEngine.build> | undefined;
 
   for (const stage of options.stages) {
+    const query = queryForStage(stage);
+    const operationsPerSample =
+      stage === "query" || isRetentionQuery(stage) ? QUERY_OPERATIONS_PER_SAMPLE : 1;
     const statistics = measure(
       stage === "build"
         ? () => {
             engine.build(fixtures);
             return fixtures.events.length;
           }
-        : stage === "query"
+        : stage === "query" || isRetentionQuery(stage)
           ? () => hashString(engine.query(snapshot, query)[0] ?? null) ^ queried.length
           : stage === "projection"
             ? () => hashCollection(engine.project(snapshot, fixtures.visibleFragments))
@@ -223,8 +266,21 @@ export function runBenchmark<TSnapshot>(
                 ? () => hashCollection(engine.render(layout))
                 : (iteration) => hashString(engine.pointerFrame(layout, iteration)),
       options.mode,
+      operationsPerSample,
     );
-    results.push(stageResult(stage, statistics, thresholdScale));
+    let referenceP95Ms: number | undefined;
+    if (isRetentionQuery(stage) && engine !== referenceEngine) {
+      referenceSnapshot ??= referenceEngine.build(fixtures);
+      referenceP95Ms = measure(
+        () => {
+          const result = referenceEngine.query(referenceSnapshot!, query);
+          return hashString(result[0] ?? null) ^ result.length;
+        },
+        options.mode,
+        operationsPerSample,
+      ).p95Ms;
+    }
+    results.push(stageResult(stage, statistics, thresholdScale, referenceP95Ms));
   }
 
   const after = memoryUsage();
@@ -251,6 +307,8 @@ export function runBenchmark<TSnapshot>(
       "Reference algorithms are the correctness oracle; timings describe the selected engine.",
       "Render measures render-model materialization, not browser paint or React commits.",
       "Pointer-frame measures library hit-test scripting, not end-to-end input latency.",
+      "Core one-day and seven-day query gates require indexed p95 below both 1 ms and scan p95.",
+      "Query samples average 50 operations to reduce sub-millisecond timer and scheduler noise.",
       `Observable sink: ${benchmarkSink ^ queried.length ^ render.length}`,
     ],
     passed: results.every(({ status }) => status !== "fail"),
