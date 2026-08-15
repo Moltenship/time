@@ -23,18 +23,19 @@ also type-check without errors under the installed TypeScript 6.0.3 compiler.
 ```text
 $ vp test packages/calendar-temporal/tests packages/calendar-core/tests tests/temporal-utilities-boundary.test.ts tests/dependency-boundaries.test.ts tests/quality-gates.test.ts
 Test Files  8 passed (8)
-Tests       47 passed (47)
+Tests       48 passed (48)
 
 $ vp run calendar-temporal#build
-dist/index.mjs    11.99 kB | gzip: 2.59 kB
+dist/index.mjs    13.09 kB | gzip: 2.88 kB
 dist/index.d.mts  11.39 kB | gzip: 2.43 kB
-[calendar-temporal:size] raw=11994/16384 gzip=2587/4096
+[calendar-temporal:size] raw=13089/16384 gzip=2877/4096
 ```
 
 The focused suite includes fast-check properties for interval intersection/clamping symmetry,
 split boundary round trips, half-open date iteration, exact instant-grid steps, and month-grid
 coverage. It also covers adjacency, invalid ranges, iterator limits, explicit week starts, rounding,
-and type-specific public signatures.
+type-specific public signatures, overshooting iteration strides, and ranges ending at the Temporal
+upper bounds.
 
 ## Full repository gate
 
@@ -42,7 +43,7 @@ and type-specific public signatures.
 $ vp run ready
 check:          170 files formatted; 115 files linted and type-checked
 build:          all recursive production builds passed
-test:           18 files passed; 87 tests passed
+test:           18 files passed; 88 tests passed
 SSR smoke:      hydrated without mutation; no recoverable errors; interaction and unmount passed
 registry smoke: 1 contract fixture and 1 target validated
 package graph:  dependency boundaries and quality-gate contracts passed

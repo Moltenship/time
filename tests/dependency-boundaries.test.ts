@@ -192,8 +192,9 @@ describe.sequential("workspace boundaries", () => {
         ].join("\n"),
       );
       await execFileAsync(
-        join(process.cwd(), "node_modules/.bin/tsc"),
+        process.execPath,
         [
+          join(process.cwd(), "node_modules/typescript-6/bin/tsc"),
           "--ignoreConfig",
           "--noEmit",
           "--strict",

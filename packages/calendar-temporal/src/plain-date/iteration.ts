@@ -36,7 +36,13 @@ export function* iteratePlainDates(
     }
 
     yield current;
-    current = current.add({ days: stepDays });
     count += 1;
+
+    const remainingDays = current.until(range.end, { largestUnit: "day" }).days;
+    if (stepDays >= remainingDays) {
+      return;
+    }
+
+    current = current.add({ days: stepDays });
   }
 }

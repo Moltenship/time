@@ -16,6 +16,7 @@
     "@types/node": "catalog:",
     "dependency-cruiser": "18.2.0",
     "typescript": "catalog:",
+    "typescript-6": "npm:typescript@6.0.3",
     "vite": "catalog:",
     "vite-plus": "catalog:",
     "yaml": "catalog:"

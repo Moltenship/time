@@ -89,4 +89,47 @@ describe("bounded lazy Temporal iteration", () => {
       "instant-iteration-limit-exceeded",
     );
   });
+
+  test("terminates overshooting strides without leaving the Temporal domain", () => {
+    const dateStart = NativeTemporal.PlainDate.from("2026-08-15");
+    const dateEnd = dateStart.add({ days: 1 });
+    expect(
+      Array.from(
+        iteratePlainDates(plainDateInterval(dateStart, dateEnd), {
+          stepDays: 1_000_000_000,
+        }),
+      ),
+    ).toEqual([dateStart]);
+
+    const maximumDate = NativeTemporal.PlainDate.from("+275760-09-13");
+    const penultimateDate = maximumDate.subtract({ days: 1 });
+    expect(
+      Array.from(
+        iteratePlainDates(plainDateInterval(penultimateDate, maximumDate), {
+          stepDays: 2,
+        }),
+      ),
+    ).toEqual([penultimateDate]);
+
+    const instantStart = NativeTemporal.Instant.from("2026-08-15T00:00:00Z");
+    const instantEnd = instantStart.add({ nanoseconds: 1 });
+    expect(
+      Array.from(
+        iterateInstants(instantInterval(instantStart, instantEnd), {
+          step: { hours: 3_000_000_000 },
+        }),
+      ),
+    ).toEqual([instantStart]);
+
+    const maximumInstant =
+      NativeTemporal.Instant.fromEpochNanoseconds(8_640_000_000_000_000_000_000n);
+    const penultimateInstant = maximumInstant.subtract({ nanoseconds: 1 });
+    expect(
+      Array.from(
+        iterateInstants(instantInterval(penultimateInstant, maximumInstant), {
+          step: { nanoseconds: 2 },
+        }),
+      ),
+    ).toEqual([penultimateInstant]);
+  });
 });
