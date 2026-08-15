@@ -51,7 +51,11 @@ export const TeamCalendar = createCalendar<Meeting, Room, ViewName>({
 
 `defineCalendarView<TEvent, TResource>()` is the standalone registration helper.
 `Calendar.defineView()` provides the same binding after a factory exists. Both keep the pure
-`CalendarViewStrategy` separate from its renderer and freeze the resulting registration.
+`CalendarViewStrategy` separate from its renderer and freeze the resulting registration. A
+factory-local renderer receives the factory's full view union even though its strategy retains one
+literal name. A standalone renderer receives a view-agnostic context: it can read the active view
+and use semantic navigation, while factory-local `defineView()` is the place to switch to a known
+sibling through `setView`.
 
 Factory registrations apply to every root. A root may append registrations with its `views` prop;
 the last registration with a duplicate name wins and emits a structured warning. The active view
@@ -104,7 +108,10 @@ snapshot.
 
 DOM refs are ordinary React 19 props. The same frame, toolbar, title, and viewport nodes are exposed
 through `meta.refs`, and their deterministic IDs are exposed through `meta.ids` for custom controls
-and accessibility relationships. No `forwardRef` compatibility wrappers are used.
+and accessibility relationships. Composed callback refs preserve React 19 detach cleanup functions.
+`Root.id` is the supported custom ID seed; `Frame`, `Title`, and `Viewport` do not accept separate
+`id` overrides, so metadata and trigger `aria-controls` always identify the rendered nodes. No
+`forwardRef` compatibility wrappers are used.
 
 ## Capabilities and diagnostics
 
@@ -186,6 +193,10 @@ Every slice follows the same controlled/uncontrolled behavior. An action against
 slice updates only that instance and then calls its handler. An action against a controlled slice
 calls the handler without changing the underlying default. `CalendarStateChangeDetail` records the
 slice, previous value, source, and ownership mode.
+
+Stable React actions publish their latest controlled source, handlers, active strategy, state, and
+environment during the commit mutation phase. Descendant layout effects therefore observe the
+current committed action context without exposing values from an abandoned render.
 
 Each reader is a Jotai derived atom. Its controlled branches return props directly, while its
 uncontrolled branches read the corresponding primitive atoms. Jotai therefore tracks only the

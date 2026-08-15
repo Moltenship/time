@@ -3,7 +3,7 @@
 import type { ResourceId } from "@moltenship/calendar-core";
 import { useAtomValue, useSetAtom } from "jotai/react";
 import { selectAtom } from "jotai/vanilla/utils";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useInsertionEffect, useMemo, useRef } from "react";
 
 import {
   createCalendarActions,
@@ -74,7 +74,7 @@ export function useCalendarStoreBinding<
   const dispatch = useSetAtom(storeRuntime.commandAtom, { store: storeRuntime.jotaiStore });
   const currentContext = useMemo(() => ({ handlers: handlers ?? {}, source }), [handlers, source]);
   const committedContextRef = useRef(currentContext);
-  useLayoutEffect(() => {
+  useInsertionEffect(() => {
     committedContextRef.current = currentContext;
   }, [currentContext]);
   const actions = useMemo(

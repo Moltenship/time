@@ -25,15 +25,11 @@ function findExplicitSpecifiers(
   source: string,
 ): readonly { readonly line: number; readonly text: string }[] {
   const specifiers: { line: number; text: string }[] = [];
-  const patterns = [
-    /\bfrom\s+["']([^"']+)["']/g,
-    /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
-    /^\s*import\s*["']([^"']+)["']/g,
-  ];
+  const linePatterns = [/\bfrom\s+["']([^"']+)["']/g, /^\s*import\s*["']([^"']+)["']/g];
 
   for (const [index, line] of source.split("\n").entries()) {
     if (/^\s*(?:\/\/|\/\*|\*)/.test(line)) continue;
-    for (const pattern of patterns) {
+    for (const pattern of linePatterns) {
       for (const match of line.matchAll(pattern)) {
         const prefix = line.slice(0, match.index);
         const specifier = match[1];
@@ -44,10 +40,27 @@ function findExplicitSpecifiers(
     }
   }
 
+  for (const match of source.matchAll(/\bimport\s*\(\s*["']([^"']+)["']\s*\)/gs)) {
+    const specifier = match[1];
+    if (specifier && explicitSourceExtension.test(specifier)) {
+      const specifierOffset = match.index + match[0].indexOf(specifier);
+      specifiers.push({
+        line: source.slice(0, specifierOffset).split("\n").length,
+        text: specifier,
+      });
+    }
+  }
+
   return specifiers;
 }
 
 describe("module specifier conventions", () => {
+  test("detects explicit extensions in multiline dynamic imports", () => {
+    const source = ["const load = import(", '  "./module.ts"', ");"].join("\n");
+
+    expect(findExplicitSpecifiers(source)).toEqual([{ line: 2, text: "./module.ts" }]);
+  });
+
   test("keeps source import and export specifiers extensionless", async () => {
     const violations: string[] = [];
 

@@ -82,6 +82,24 @@ const capacityView = defineCalendarView<Meeting, Room>()({
   strategy: capacityStrategy,
 });
 
+const UnionCalendar = createCalendar<Meeting, Room, "agenda" | "capacity">({ eventAdapter });
+const unionCapacityView = UnionCalendar.defineView({
+  defaultOptions: { days: 5 },
+  Renderer({ calendar }) {
+    expectTypeOf(calendar.state.view).toEqualTypeOf<"agenda" | "capacity">();
+    const setView: (view: "agenda" | "capacity") => void = calendar.actions.setView;
+    void setView;
+    return null;
+  },
+  strategy: capacityStrategy,
+});
+void unionCapacityView;
+const calendarWithStandaloneView = createCalendar<Meeting, Room, "agenda" | "capacity">({
+  eventAdapter,
+  views: [capacityView],
+});
+void calendarWithStandaloneView;
+
 const TeamCalendar = createCalendar<Meeting, Room>({
   eventAdapter,
   views: [capacityView],

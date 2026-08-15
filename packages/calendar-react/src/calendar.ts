@@ -13,7 +13,7 @@ import {
   useContext,
   useEffect,
   useId,
-  useLayoutEffect,
+  useInsertionEffect,
   useMemo,
   useRef,
 } from "react";
@@ -25,16 +25,20 @@ import type {
   CalendarDiagnostic,
   CalendarEventProps,
   CalendarFactory,
+  CalendarFrameProps,
   CalendarMeta,
   CalendarRootProps,
   CalendarSemanticActions,
+  CalendarTitleProps,
+  CalendarToolbarProps,
+  CalendarViewportProps,
   CreateCalendarOptions,
 } from "./calendar-types";
 import type { InferEventId, InferResourceId } from "./generics";
 import { useCalendarStore, useCalendarStoreBinding, useCalendarStoreSelector } from "./react-store";
 import type { CalendarPublicState, CalendarStateSource } from "./types";
 import {
-  bindCalendarView,
+  bindCalendarViewToRuntime,
   createCalendarViewRegistry,
   type CalendarDefinedView,
   type CalendarViewDefinitionInput,
@@ -49,8 +53,21 @@ function useComposedRef<T>(internalRef: RefObject<T | null>, externalRef: Ref<T>
   return useCallback(
     (node: T | null) => {
       internalRef.current = node;
-      if (typeof externalRef === "function") externalRef(node);
-      else if (externalRef !== null && externalRef !== undefined) externalRef.current = node;
+      const externalCleanup = typeof externalRef === "function" ? externalRef(node) : undefined;
+      if (externalRef !== null && externalRef !== undefined && typeof externalRef !== "function") {
+        externalRef.current = node;
+      }
+      if (node === null) return undefined;
+
+      return () => {
+        internalRef.current = null;
+        if (typeof externalRef === "function") {
+          if (typeof externalCleanup === "function") externalCleanup();
+          else externalRef(null);
+        } else if (externalRef !== null && externalRef !== undefined) {
+          externalRef.current = null;
+        }
+      };
     },
     [externalRef, internalRef],
   );
@@ -315,7 +332,7 @@ export function createCalendar<
     const actionRuntime = { activeView, environment, state: binding.state } satisfies ActionRuntime;
     const committedActionRuntime = useRef<ActionRuntime | null>(null);
     if (committedActionRuntime.current === null) committedActionRuntime.current = actionRuntime;
-    useLayoutEffect(() => {
+    useInsertionEffect(() => {
       committedActionRuntime.current = actionRuntime;
     }, [actionRuntime]);
     const actions = useMemo<CalendarSemanticActions<TView, TSelection, TFocus, TResourceId>>(
@@ -409,7 +426,7 @@ export function createCalendar<
     );
   }
 
-  function Frame({ children, id, ref, ...props }: React.ComponentPropsWithRef<"section">) {
+  function Frame({ children, ref, ...props }: CalendarFrameProps) {
     const meta = useCalendarMeta();
     const composedRef = useComposedRef(meta.refs.frame, ref);
     return createElement(
@@ -418,14 +435,14 @@ export function createCalendar<
         ...props,
         "data-calendar-instance": meta.instanceId,
         "data-calendar-part": "frame",
-        id: id ?? meta.ids.frame,
+        id: meta.ids.frame,
         ref: composedRef,
       },
       children,
     );
   }
 
-  function Toolbar({ children, ref, ...props }: React.ComponentPropsWithRef<"header">) {
+  function Toolbar({ children, ref, ...props }: CalendarToolbarProps) {
     const meta = useCalendarMeta();
     const composedRef = useComposedRef(meta.refs.toolbar, ref);
     return createElement(
@@ -435,7 +452,7 @@ export function createCalendar<
     );
   }
 
-  function Viewport({ children, id, ref, ...props }: React.ComponentPropsWithRef<"div">) {
+  function Viewport({ children, ref, ...props }: CalendarViewportProps) {
     const meta = useCalendarMeta();
     const composedRef = useComposedRef(meta.refs.viewport, ref);
     return createElement(
@@ -443,14 +460,14 @@ export function createCalendar<
       {
         ...props,
         "data-calendar-part": "viewport",
-        id: id ?? meta.ids.viewport,
+        id: meta.ids.viewport,
         ref: composedRef,
       },
       children,
     );
   }
 
-  function Title({ children, id, ref, ...props }: React.ComponentPropsWithRef<"span">) {
+  function Title({ children, ref, ...props }: CalendarTitleProps) {
     const meta = useCalendarMeta();
     const anchorDate = useCalendarSelector(selectAnchorDate);
     const composedRef = useComposedRef(meta.refs.title, ref);
@@ -460,7 +477,7 @@ export function createCalendar<
       {
         ...props,
         "data-calendar-part": "title",
-        id: id ?? meta.ids.title,
+        id: meta.ids.title,
         ref: composedRef,
       },
       children ?? title,
@@ -621,7 +638,8 @@ export function createCalendar<
       TSelection,
       TFocus,
       TEventId,
-      TResourceId
+      TResourceId,
+      TView
     >,
   ): CalendarDefinedView<
     TEvent,
@@ -637,9 +655,10 @@ export function createCalendar<
     TSelection,
     TFocus,
     TEventId,
-    TResourceId
+    TResourceId,
+    TView
   > {
-    return bindCalendarView(definition);
+    return bindCalendarViewToRuntime(definition);
   }
 
   return Object.freeze({

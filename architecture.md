@@ -475,7 +475,12 @@ export const TeamCalendar = createCalendar<ApiEvent, Room>({
 });
 ```
 
-The factory carries `TEvent` and `TResource` through hooks, callbacks, transactions, renderers, and custom views without repeating generics in JSX.
+The factory carries `TEvent`, `TResource`, and the complete view-name union through hooks,
+callbacks, transactions, renderers, and custom views without repeating generics in JSX. A view
+definition's literal strategy name remains distinct from that runtime union, so its renderer can
+navigate to sibling views without an unsound narrowed context. Standalone definitions use a
+view-agnostic context until a factory supplies the complete union, so they remain assignable
+without pretending that their literal registration name is the only runtime view.
 
 ### 8.2 Compound components
 
@@ -521,9 +526,12 @@ API rules:
 2. Structural customization uses children and compound components.
 3. Render callbacks exist only when a parent must supply typed event/fragment data.
 4. Day, week, month, list, and resource variants are explicit definitions.
-5. In React 19, DOM refs are ordinary props; registry source does not add `forwardRef` wrappers.
+5. In React 19, DOM refs are ordinary props; composed callbacks preserve returned detach cleanup
+   functions, and registry source does not add `forwardRef` wrappers.
 6. UI components consume a generic `{ state, actions, meta }` context contract. Only the provider knows Jotai exists.
 7. Custom controls may live anywhere inside `Root`, not only inside `Frame`.
+8. `Root.id` is the authoritative instance/part ID seed. Individual identified primitives do not
+   accept an `id` override, so `meta.ids` and default ARIA relationships cannot diverge from the DOM.
 
 ## 9. State architecture
 
@@ -543,6 +551,8 @@ State is divided by ownership and update frequency.
 - There is no provider-less global state.
 - Jotai vanilla stores own primitive uncontrolled state and derived controlled readers.
 - React bindings use `useAtomValue`/`useSetAtom`; semantic selectors use `selectAtom`.
+- Stable semantic actions read only commit-published state, view strategy, environment, source, and
+  handlers; that publication completes before descendant layout effects run.
 - Atoms are not exported; public hooks select semantic state.
 - An advanced `createCalendarStore()` supports external orchestration and testing.
 - Components subscribe only to the slices they render.

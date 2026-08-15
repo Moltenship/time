@@ -195,10 +195,10 @@ export type CalendarRootProps<
   CalendarRootTimeZoneProps &
   CalendarNowSource;
 
-export type CalendarFrameProps = ComponentPropsWithRef<"section">;
+export type CalendarFrameProps = Omit<ComponentPropsWithRef<"section">, "id">;
 export type CalendarToolbarProps = ComponentPropsWithRef<"header">;
-export type CalendarViewportProps = ComponentPropsWithRef<"div">;
-export type CalendarTitleProps = ComponentPropsWithRef<"span">;
+export type CalendarViewportProps = Omit<ComponentPropsWithRef<"div">, "id">;
+export type CalendarTitleProps = Omit<ComponentPropsWithRef<"span">, "id">;
 
 type CalendarAccessibleName =
   | { readonly "aria-label": string; readonly children?: ReactNode }
@@ -357,7 +357,8 @@ export interface CalendarFactory<
       TSelection,
       TFocus,
       TEventId,
-      TResourceId
+      TResourceId,
+      TView
     >,
   ) => CalendarDefinedView<
     TEvent,
@@ -373,7 +374,8 @@ export interface CalendarFactory<
     TSelection,
     TFocus,
     TEventId,
-    TResourceId
+    TResourceId,
+    TView
   >;
   readonly viewRegistry: CalendarViewRegistry<
     TEvent,

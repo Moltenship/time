@@ -6,11 +6,18 @@ import {
   type CalendarEnvironment,
   type CalendarViewStrategy,
 } from "@moltenship/calendar-core";
-import { act, createRef } from "react";
+import { act, createRef, useLayoutEffect, useState, type Ref, type RefCallback } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, expect, test, vi } from "vite-plus/test";
+import { afterEach, expect, expectTypeOf, test, vi } from "vite-plus/test";
 
-import { createCalendar, type CalendarDiagnostic, type CalendarPartRefs } from "../src/index";
+import {
+  createCalendar,
+  type CalendarDiagnostic,
+  type CalendarFrameProps,
+  type CalendarPartRefs,
+  type CalendarTitleProps,
+  type CalendarViewportProps,
+} from "../src/index";
 import "./setup";
 
 interface Meeting {
@@ -42,7 +49,7 @@ const Calendar = createCalendar<Meeting, Room>({
   eventAdapter: adapter,
 });
 
-function viewStrategy(name: string, days: number) {
+function viewStrategy<const TName extends string>(name: TName, days: number) {
   return {
     getInteractionGeometry: (input: number) => input,
     getRange: (anchor: Temporal.PlainDate) => plainDateInterval(anchor, anchor.add({ days })),
@@ -57,7 +64,7 @@ function viewStrategy(name: string, days: number) {
       anchor.add({ days: direction * days }),
     project: (input: number) => input,
   } satisfies CalendarViewStrategy<
-    string,
+    TName,
     ViewOptions,
     number,
     number,
@@ -155,6 +162,7 @@ test("compound controls work anywhere under Root with direct React 19 refs", asy
       defaultTimeZone="Asia/Tbilisi"
       defaultView="month"
       events={events}
+      id="team-calendar"
       locale="en-GB"
       now={Temporal.Instant.from("2026-08-20T08:00:00Z")}
       resources={resources}
@@ -192,8 +200,13 @@ test("compound controls work anywhere under Root with direct React 19 refs", asy
   expect(container.querySelector("[data-event]")?.textContent).toBe("Architecture review");
   expect(container.querySelector("[data-outside-control]")?.textContent).toBe("2026-08-15:true");
   expect(titleRef.current?.textContent).toBe("Month:2026-08-15");
-  expect(nextRef.current?.getAttribute("aria-controls")).toBe(viewportRef.current?.id);
-  expect(frameRef.current?.id).toMatch(/^calendar-.+-frame$/u);
+  expect(frameRef.current?.id).toBe("team-calendar-frame");
+  expect(titleRef.current?.id).toBe("team-calendar-title");
+  expect(viewportRef.current?.id).toBe("team-calendar-viewport");
+  expect(nextRef.current?.getAttribute("aria-controls")).toBe("team-calendar-viewport");
+  expectTypeOf<"id" extends keyof CalendarFrameProps ? true : false>().toEqualTypeOf<false>();
+  expectTypeOf<"id" extends keyof CalendarTitleProps ? true : false>().toEqualTypeOf<false>();
+  expectTypeOf<"id" extends keyof CalendarViewportProps ? true : false>().toEqualTypeOf<false>();
 
   const renderCountBeforeUnrelatedSelection = outsideControlRenderCount;
   await act(async () =>
@@ -219,6 +232,119 @@ test("compound controls work anywhere under Root with direct React 19 refs", asy
   await act(async () => switcher.dispatchEvent(new Event("change", { bubbles: true })));
   expect(container.querySelector("[data-active-view]")?.textContent).toBe("agenda");
   expect(titleRef.current?.textContent).toBe("Agenda:2026-08-20");
+});
+
+test("composed callback refs preserve React 19 cleanup on replacement and unmount", async () => {
+  const firstCleanup = vi.fn();
+  const firstLegacyDetach = vi.fn();
+  const secondCleanup = vi.fn();
+  const secondLegacyDetach = vi.fn();
+  let partRefs: CalendarPartRefs | undefined;
+  const firstRef: RefCallback<HTMLElement> = (node) => {
+    if (node === null) {
+      firstLegacyDetach();
+      return;
+    }
+    return firstCleanup;
+  };
+  const secondRef: RefCallback<HTMLElement> = (node) => {
+    if (node === null) {
+      secondLegacyDetach();
+      return;
+    }
+    return secondCleanup;
+  };
+
+  function Probe() {
+    partRefs = Calendar.useCalendarMeta().refs;
+    return null;
+  }
+
+  function renderCalendar(frameRef: Ref<HTMLElement>) {
+    return (
+      <Calendar.Root
+        defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
+        defaultTimeZone="Asia/Tbilisi"
+        defaultView="month"
+        events={events}
+        locale="en-GB"
+        resources={resources}
+        views={[monthView]}
+        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+      >
+        <Probe />
+        <Calendar.Frame ref={frameRef} />
+      </Calendar.Root>
+    );
+  }
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mountedRoots.push(root);
+  await act(async () => root.render(renderCalendar(firstRef)));
+  expect(partRefs?.frame.current).toBeInstanceOf(HTMLElement);
+
+  await act(async () => root.render(renderCalendar(secondRef)));
+  expect(firstCleanup).toHaveBeenCalledOnce();
+  expect(firstLegacyDetach).not.toHaveBeenCalled();
+  expect(partRefs?.frame.current).toBeInstanceOf(HTMLElement);
+
+  mountedRoots.pop();
+  await act(async () => root.unmount());
+  expect(secondCleanup).toHaveBeenCalledOnce();
+  expect(secondLegacyDetach).not.toHaveBeenCalled();
+  expect(partRefs?.frame.current).toBeNull();
+});
+
+test("descendant layout effects navigate with the latest committed view and handler", async () => {
+  const actionHistory: ReturnType<typeof Calendar.useCalendarActions>[] = [];
+  const navigationCommits: string[] = [];
+
+  function NavigateFromLayout({ revision }: { readonly revision: number }) {
+    const actions = Calendar.useCalendarActions();
+    actionHistory.push(actions);
+    useLayoutEffect(() => {
+      if (revision > 0) actions.navigateNext();
+    }, [actions, revision]);
+    return null;
+  }
+
+  function Harness({ revision, view }: { readonly revision: number; readonly view: string }) {
+    const [anchorDate, setAnchorDate] = useState(Temporal.PlainDate.from("2026-08-15"));
+    return (
+      <Calendar.Root
+        anchorDate={anchorDate}
+        defaultTimeZone="Asia/Tbilisi"
+        events={events}
+        locale="en-GB"
+        onAnchorDateChange={(next) => {
+          navigationCommits.push(`${view}:${next.toString()}`);
+          setAnchorDate(next);
+        }}
+        resources={resources}
+        view={view}
+        views={[monthView, agendaView]}
+        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+      >
+        <NavigateFromLayout revision={revision} />
+        <output data-anchor>{anchorDate.toString()}</output>
+      </Calendar.Root>
+    );
+  }
+
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mountedRoots.push(root);
+  await act(async () => root.render(<Harness revision={0} view="month" />));
+  const initialActions = actionHistory.at(-1);
+
+  await act(async () => root.render(<Harness revision={1} view="agenda" />));
+
+  expect(actionHistory.at(-1)).toBe(initialActions);
+  expect(navigationCommits).toEqual(["agenda:2026-08-16"]);
+  expect(container.querySelector("[data-anchor]")?.textContent).toBe("2026-08-16");
 });
 
 test("registration, event validation, capabilities, and diagnostics stay structured", async () => {

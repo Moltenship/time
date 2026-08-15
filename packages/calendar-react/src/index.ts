@@ -30,6 +30,10 @@ export type { CalendarCapability, CalendarCapabilitySet } from "./capabilities";
 export type { InferEventId, InferResourceId } from "./generics";
 export type {
   CalendarDefinedView,
+  CalendarStandaloneDefinedView,
+  CalendarStandaloneViewContextValue,
+  CalendarStandaloneViewDefinitionInput,
+  CalendarStandaloneViewRendererProps,
   CalendarViewDefinitionInput,
   CalendarViewDefinitionBuilder,
   CalendarViewRegistration,

@@ -37,10 +37,80 @@ export interface CalendarViewRendererProps<
   readonly strategy: TStrategy;
 }
 
+/**
+ * The context exposed by a standalone view definition before it is bound to a
+ * factory's complete view-name union. It can inspect the active view, but it
+ * cannot switch to an arbitrary sibling view whose name is not known yet.
+ */
+export type CalendarStandaloneViewContextValue<
+  TEvent,
+  TResource,
+  TSelection = string,
+  TFocus = string,
+  TEventId extends EventId = InferEventId<TEvent>,
+  TResourceId extends ResourceId = InferResourceId<TResource>,
+> = Readonly<{
+  readonly actions: Omit<
+    CalendarContextValue<
+      TEvent,
+      TResource,
+      string,
+      TSelection,
+      TFocus,
+      TEventId,
+      TResourceId
+    >["actions"],
+    "setView"
+  >;
+  readonly meta: Omit<
+    CalendarContextValue<
+      TEvent,
+      TResource,
+      string,
+      TSelection,
+      TFocus,
+      TEventId,
+      TResourceId
+    >["meta"],
+    "activeView" | "viewRegistry"
+  >;
+  readonly state: CalendarContextValue<
+    TEvent,
+    TResource,
+    string,
+    TSelection,
+    TFocus,
+    TEventId,
+    TResourceId
+  >["state"];
+}>;
+
+export interface CalendarStandaloneViewRendererProps<
+  TEvent,
+  TResource,
+  TOptions,
+  TStrategy,
+  TSelection = string,
+  TFocus = string,
+  TEventId extends EventId = InferEventId<TEvent>,
+  TResourceId extends ResourceId = InferResourceId<TResource>,
+> {
+  readonly calendar: CalendarStandaloneViewContextValue<
+    TEvent,
+    TResource,
+    TSelection,
+    TFocus,
+    TEventId,
+    TResourceId
+  >;
+  readonly options: TOptions;
+  readonly strategy: TStrategy;
+}
+
 export interface CalendarViewDefinitionInput<
   TEvent,
   TResource,
-  TName extends string,
+  TName extends TRuntimeView,
   TOptions,
   TProjectionInput,
   TProjection,
@@ -52,12 +122,13 @@ export interface CalendarViewDefinitionInput<
   TFocus = string,
   TEventId extends EventId = InferEventId<TEvent>,
   TResourceId extends ResourceId = InferResourceId<TResource>,
+  TRuntimeView extends string = string,
 > {
   readonly Renderer: ComponentType<
     CalendarViewRendererProps<
       TEvent,
       TResource,
-      TName,
+      TRuntimeView,
       TOptions,
       CalendarViewStrategy<
         TName,
@@ -122,6 +193,52 @@ export interface CalendarViewRegistration<
 export type CalendarDefinedView<
   TEvent,
   TResource,
+  TName extends TRuntimeView,
+  TOptions,
+  TProjectionInput,
+  TProjection,
+  TSpatialNavigationInput,
+  TSpatialNavigationResult,
+  TInteractionGeometryInput,
+  TInteractionGeometry,
+  TSelection = string,
+  TFocus = string,
+  TEventId extends EventId = InferEventId<TEvent>,
+  TResourceId extends ResourceId = InferResourceId<TResource>,
+  TRuntimeView extends string = string,
+> = CalendarViewRegistration<
+  TEvent,
+  TResource,
+  TRuntimeView,
+  TSelection,
+  TFocus,
+  TEventId,
+  TResourceId
+> &
+  Readonly<{ readonly name: TName }> &
+  Readonly<
+    CalendarViewDefinitionInput<
+      TEvent,
+      TResource,
+      TName,
+      TOptions,
+      TProjectionInput,
+      TProjection,
+      TSpatialNavigationInput,
+      TSpatialNavigationResult,
+      TInteractionGeometryInput,
+      TInteractionGeometry,
+      TSelection,
+      TFocus,
+      TEventId,
+      TResourceId,
+      TRuntimeView
+    >
+  >;
+
+export type CalendarStandaloneViewDefinitionInput<
+  TEvent,
+  TResource,
   TName extends string,
   TOptions,
   TProjectionInput,
@@ -134,9 +251,83 @@ export type CalendarDefinedView<
   TFocus = string,
   TEventId extends EventId = InferEventId<TEvent>,
   TResourceId extends ResourceId = InferResourceId<TResource>,
-> = CalendarViewRegistration<TEvent, TResource, TName, TSelection, TFocus, TEventId, TResourceId> &
+> = Omit<
+  CalendarViewDefinitionInput<
+    TEvent,
+    TResource,
+    TName,
+    TOptions,
+    TProjectionInput,
+    TProjection,
+    TSpatialNavigationInput,
+    TSpatialNavigationResult,
+    TInteractionGeometryInput,
+    TInteractionGeometry,
+    TSelection,
+    TFocus,
+    TEventId,
+    TResourceId,
+    string
+  >,
+  "Renderer"
+> & {
+  readonly Renderer: ComponentType<
+    CalendarStandaloneViewRendererProps<
+      TEvent,
+      TResource,
+      TOptions,
+      CalendarViewStrategy<
+        TName,
+        TOptions,
+        TProjectionInput,
+        TProjection,
+        TSpatialNavigationInput,
+        TSpatialNavigationResult,
+        TInteractionGeometryInput,
+        TInteractionGeometry
+      >,
+      TSelection,
+      TFocus,
+      TEventId,
+      TResourceId
+    >
+  >;
+};
+
+export type CalendarStandaloneDefinedView<
+  TEvent,
+  TResource,
+  TName extends string,
+  TOptions,
+  TProjectionInput,
+  TProjection,
+  TSpatialNavigationInput,
+  TSpatialNavigationResult,
+  TInteractionGeometryInput,
+  TInteractionGeometry,
+  TSelection = string,
+  TFocus = string,
+  TEventId extends EventId = InferEventId<TEvent>,
+  TResourceId extends ResourceId = InferResourceId<TResource>,
+> = Omit<
+  CalendarViewRegistration<TEvent, TResource, string, TSelection, TFocus, TEventId, TResourceId>,
+  "name" | "render"
+> &
+  Readonly<{
+    readonly name: TName;
+    render(
+      calendar: CalendarStandaloneViewContextValue<
+        TEvent,
+        TResource,
+        TSelection,
+        TFocus,
+        TEventId,
+        TResourceId
+      >,
+    ): ReactNode;
+  }> &
   Readonly<
-    CalendarViewDefinitionInput<
+    CalendarStandaloneViewDefinitionInput<
       TEvent,
       TResource,
       TName,
@@ -188,6 +379,93 @@ export interface CalendarViewRegistry<
   has(name: string): boolean;
 }
 
+export function bindCalendarViewToRuntime<
+  TEvent,
+  TResource,
+  const TName extends TRuntimeView,
+  TOptions,
+  TProjectionInput,
+  TProjection,
+  TSpatialNavigationInput,
+  TSpatialNavigationResult,
+  TInteractionGeometryInput,
+  TInteractionGeometry,
+  TSelection = string,
+  TFocus = string,
+  TEventId extends EventId = InferEventId<TEvent>,
+  TResourceId extends ResourceId = InferResourceId<TResource>,
+  TRuntimeView extends string = string,
+>(
+  definition: CalendarViewDefinitionInput<
+    TEvent,
+    TResource,
+    TName,
+    TOptions,
+    TProjectionInput,
+    TProjection,
+    TSpatialNavigationInput,
+    TSpatialNavigationResult,
+    TInteractionGeometryInput,
+    TInteractionGeometry,
+    TSelection,
+    TFocus,
+    TEventId,
+    TResourceId,
+    TRuntimeView
+  >,
+): CalendarDefinedView<
+  TEvent,
+  TResource,
+  TName,
+  TOptions,
+  TProjectionInput,
+  TProjection,
+  TSpatialNavigationInput,
+  TSpatialNavigationResult,
+  TInteractionGeometryInput,
+  TInteractionGeometry,
+  TSelection,
+  TFocus,
+  TEventId,
+  TResourceId,
+  TRuntimeView
+> {
+  const { Renderer, defaultOptions, strategy } = definition;
+  const capabilities = Object.freeze([...(definition.capabilities ?? [])]);
+
+  return Object.freeze({
+    Renderer,
+    capabilities,
+    defaultOptions,
+    getTitle(anchor: Temporal.PlainDate, environment: CalendarEnvironment) {
+      const range = strategy.getRange(anchor, environment, defaultOptions);
+      return strategy.getTitle(range, environment, defaultOptions);
+    },
+    name: strategy.name,
+    navigate(
+      anchor: Temporal.PlainDate,
+      direction: ViewNavigationDirection,
+      environment: CalendarEnvironment,
+    ) {
+      return strategy.navigate(anchor, direction, environment, defaultOptions);
+    },
+    render(
+      calendar: CalendarContextValue<
+        TEvent,
+        TResource,
+        TRuntimeView,
+        TSelection,
+        TFocus,
+        TEventId,
+        TResourceId
+      >,
+    ) {
+      return createElement(Renderer, { calendar, options: defaultOptions, strategy });
+    },
+    strategy,
+  });
+}
+
 export function bindCalendarView<
   TEvent,
   TResource,
@@ -204,7 +482,7 @@ export function bindCalendarView<
   TEventId extends EventId = InferEventId<TEvent>,
   TResourceId extends ResourceId = InferResourceId<TResource>,
 >(
-  definition: CalendarViewDefinitionInput<
+  definition: CalendarStandaloneViewDefinitionInput<
     TEvent,
     TResource,
     TName,
@@ -220,7 +498,7 @@ export function bindCalendarView<
     TEventId,
     TResourceId
   >,
-): CalendarDefinedView<
+): CalendarStandaloneDefinedView<
   TEvent,
   TResource,
   TName,
@@ -256,10 +534,9 @@ export function bindCalendarView<
       return strategy.navigate(anchor, direction, environment, defaultOptions);
     },
     render(
-      calendar: CalendarContextValue<
+      calendar: CalendarStandaloneViewContextValue<
         TEvent,
         TResource,
-        TName,
         TSelection,
         TFocus,
         TEventId,
@@ -290,7 +567,7 @@ export interface CalendarViewDefinitionBuilder<
     TInteractionGeometryInput,
     TInteractionGeometry,
   >(
-    definition: CalendarViewDefinitionInput<
+    definition: CalendarStandaloneViewDefinitionInput<
       TEvent,
       TResource,
       TName,
@@ -306,7 +583,7 @@ export interface CalendarViewDefinitionBuilder<
       TEventId,
       TResourceId
     >,
-  ): CalendarDefinedView<
+  ): CalendarStandaloneDefinedView<
     TEvent,
     TResource,
     TName,
@@ -342,7 +619,7 @@ export function defineCalendarView<
     TInteractionGeometryInput,
     TInteractionGeometry,
   >(
-    definition: CalendarViewDefinitionInput<
+    definition: CalendarStandaloneViewDefinitionInput<
       TEvent,
       TResource,
       TName,
@@ -358,7 +635,7 @@ export function defineCalendarView<
       TEventId,
       TResourceId
     >,
-  ): CalendarDefinedView<
+  ): CalendarStandaloneDefinedView<
     TEvent,
     TResource,
     TName,
