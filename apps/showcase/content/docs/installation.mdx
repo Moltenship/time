@@ -24,9 +24,14 @@ import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
 
 interface Meeting {
   id: `meeting-${number}`;
+  roomIds: readonly `room-${number}`[];
   startsAt: Temporal.Instant;
   endsAt: Temporal.Instant;
   title: string;
+}
+
+interface Room {
+  id: `room-${number}`;
 }
 
 const eventAdapter = defineEventAdapter<Meeting>()({
@@ -36,10 +41,11 @@ const eventAdapter = defineEventAdapter<Meeting>()({
     start: event.startsAt,
     end: event.endsAt,
   }),
+  getResourceIds: (event) => event.roomIds,
   getTitle: (event) => event.title,
 });
 
-export const Calendar = createCalendar<Meeting>({ eventAdapter });
+export const Calendar = createCalendar<Meeting, Room>({ eventAdapter });
 ```
 
 Use immutable event arrays. Snapshot caches use array identity to avoid repeated normalization and

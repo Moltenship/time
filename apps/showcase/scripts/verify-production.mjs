@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import { staticClient } from "fumadocs-core/search/client/orama-static";
 
 const host = "127.0.0.1";
 const port = Number(process.env.SHOWCASE_PORT ?? 4318);
@@ -54,13 +55,19 @@ try {
   const missingPage = await fetch(`${origin}/docs/not-a-real-page`);
   assert.equal(missingPage.status, 404);
 
-  const search = await fetch(`${origin}/api/search`);
-  assert.equal(search.status, 200);
-  const searchIndex = await search.text();
-  assert.match(searchIndex, /React composition/);
-  assert.match(searchIndex, /Events and snapshots/);
+  const search = staticClient({ from: `${origin}/api/search` });
+  const reactResults = await search.search("React composition");
+  assert(
+    reactResults.some((result) => result.url === "/docs/api/react"),
+    "Static search did not return the React API page.",
+  );
+  const eventResults = await search.search("Events and snapshots");
+  assert(
+    eventResults.some((result) => result.url === "/docs/api/events"),
+    "Static search did not return the events API page.",
+  );
 
-  console.log("Verified direct routes, not-found handling, and the production search index.");
+  console.log("Verified direct routes, not-found handling, and production static search queries.");
 } finally {
   server.kill("SIGTERM");
   await Promise.race([
