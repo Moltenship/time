@@ -1,0 +1,45 @@
+---
+title: React composition
+description: Build one typed calendar factory, then compose semantic controls and registered views.
+---
+
+## Factory
+
+`createCalendar<TEvent, TResource, TView>()` binds an event adapter and optional view registrations.
+The returned factory carries event, resource, identifier, selection, focus, and view-name types
+through context without consumer casts.
+
+## Root state
+
+`Calendar.Root` accepts independently controlled or uncontrolled slices for view, anchor date,
+selection, focus, time zone, and expanded resources. `undefined` means uncontrolled; nullable
+selection and focus use `null` for an explicitly controlled empty value.
+
+## Compound primitives
+
+```tsx
+<Calendar.Root {...calendarProps}>
+  <Calendar.Frame>
+    <Calendar.Toolbar>
+      <Calendar.PreviousTrigger>Previous</Calendar.PreviousTrigger>
+      <Calendar.Title />
+      <Calendar.TodayTrigger>Today</Calendar.TodayTrigger>
+      <Calendar.NextTrigger>Next</Calendar.NextTrigger>
+    </Calendar.Toolbar>
+    <Calendar.Viewport>
+      <Calendar.ActiveView fallback={<p>View unavailable</p>} />
+    </Calendar.Viewport>
+  </Calendar.Frame>
+</Calendar.Root>
+```
+
+Every primitive reads the factory-private root context. `Frame` is layout markup, not a second
+provider. DOM refs are ordinary React 19 props, and deterministic IDs and refs are available through
+calendar metadata for custom controls and accessibility.
+
+## Views and diagnostics
+
+A view registration combines a pure `CalendarViewStrategy` with a React renderer. The active view
+contributes semantic capabilities. Duplicate or unavailable registrations and normalized event
+issues appear as structured immutable diagnostics; the library does not create an implicit console
+error channel.

@@ -1,0 +1,43 @@
+---
+title: Architecture
+description: The engine, React bridge, and supported facade form a one-way dependency graph.
+---
+
+The public architecture separates time correctness from React rendering and keeps the application
+in control of records, persistence, and visual design.
+
+```text
+calendar-temporal
+        ↓
+  calendar-core
+        ↓
+ calendar-react
+        ↓
+calendar (supported facade) → your application
+```
+
+## Engine plane
+
+`@moltenship/calendar-core` validates application records, creates immutable snapshots, and answers
+interval and resource queries. It contains no React or DOM dependency. Temporal utilities preserve
+native types and half-open interval semantics.
+
+## React plane
+
+`@moltenship/calendar-react` binds engine snapshots to a React 19 store and typed compound
+components. The state contract contains view, anchor date, selection, focus, time zone, and expanded
+resources. Controlled and uncontrolled ownership is explicit for every slice.
+
+## Consumer boundary
+
+Application code should begin at `@moltenship/calendar`. The facade re-exports the stable core and
+React contracts. Deep workspace imports, source-tree imports, and dependency-owned implementation
+types are not public API.
+
+## Extension boundary
+
+Views combine a pure strategy with a React renderer. Strategies own range, navigation, projection,
+and spatial contracts; renderers consume typed public context. Optional capabilities are queried by
+semantic name rather than inferred from a view identifier.
+
+Browse [packages](/docs/packages) for ownership or [API contracts](/docs/api) for entry points.

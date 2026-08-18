@@ -29,6 +29,14 @@ export default defineConfig({
       "ssr:smoke": "vp run ssr-fixture#smoke",
       "registry:smoke": "vp run registry#smoke",
       "package:graph": ["vp run check:boundaries", "vp test tests/quality-gates.test.ts"],
+      "showcase:source": "vp run showcase#source:generate",
+      "showcase:types": "vp run showcase#types:check",
+      "showcase:test": "vp run showcase#test",
+      "showcase:links": "vp run showcase:source && vp run showcase#links:check",
+      "showcase:build": "vp run showcase#build",
+      "showcase:search": "vp run showcase:build && vp run showcase#search:check",
+      "showcase:gate":
+        "vp run showcase:types && vp run showcase:test && vp run showcase:links && vp run showcase:search",
       "engine:correctness":
         "vp test packages/calendar-temporal/tests packages/calendar-core/tests benchmarks/tests/harness.test.ts tools/fixtures/tests",
       "engine:contracts":

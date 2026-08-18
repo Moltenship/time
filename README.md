@@ -42,6 +42,12 @@ vp run check:boundaries
 ```bash
 vp run react:gate
 ```
+- Generate, validate, build, and production-smoke the documentation site:
+
+```bash
+vp run showcase:gate
+```
+
 
 - Run the development server:
 

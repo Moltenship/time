@@ -1,0 +1,33 @@
+---
+title: Overview
+description: Headless calendar contracts for applications that own their data, rendering, and design system.
+---
+
+Moltenship Time is a typed, headless calendar system for React 19. Applications keep ownership of
+event records and rendering; the library supplies normalized time contracts, deterministic state,
+and composable calendar primitives.
+
+<ContractLab />
+
+## Start with the supported facade
+
+Install and import `@moltenship/calendar` for application code. It re-exports the stable engine and
+React contracts without exposing workspace internals.
+
+```tsx
+import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
+```
+
+## Contract first
+
+- **Application-owned records.** An event adapter projects your domain records into canonical timed,
+  all-day, or floating intervals.
+- **Temporal-native semantics.** Interval boundaries use native `Temporal` values and half-open
+  ranges; legacy `Date` and lossy millisecond conversions do not cross the public engine.
+- **Headless React composition.** A typed factory provides state, semantic actions, compound
+  primitives, diagnostics, and custom-view registration without prescribing CSS.
+- **Consumer-equivalent examples.** This site consumes only published entry points, exactly as an
+  application does.
+
+Continue with [installation](/docs/installation), then read the [architecture](/docs/architecture)
+or browse the [package map](/docs/packages).

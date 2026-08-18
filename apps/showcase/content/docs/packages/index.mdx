@@ -1,0 +1,20 @@
+---
+title: Package map
+description: Choose the supported facade by default and specialized packages only for advanced engine work.
+---
+
+## Application entry point
+
+- [`@moltenship/calendar`](/docs/packages/calendar) — supported facade for React applications.
+
+## Specialized contracts
+
+- [`@moltenship/calendar-core`](/docs/packages/calendar-core) — framework-independent event
+  normalization, snapshots, and queries.
+- [`@moltenship/calendar-react`](/docs/packages/calendar-react) — React 19 state bridge, typed factory,
+  compound context, and custom views.
+- [`@moltenship/calendar-temporal`](/docs/packages/calendar-temporal) — type-specific Temporal
+  interval utilities used by engine strategies.
+
+Published packages depend in one direction. No public package imports application, showcase,
+registry, benchmark, or tool code.

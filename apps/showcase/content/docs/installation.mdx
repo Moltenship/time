@@ -1,0 +1,49 @@
+---
+title: Installation
+description: Install the supported facade and configure the React 19 and Temporal runtime boundary.
+---
+
+## Install
+
+```bash
+pnpm add @moltenship/calendar react react-dom
+```
+
+`react` is a peer dependency. The supported facade is a client boundary that can still be imported
+during server rendering; it does not read browser globals at module scope.
+
+## Runtime requirements
+
+Moltenship Time targets modern runtimes with native `Temporal`. Supply a standards-compatible
+polyfill before application code only when a supported runtime does not provide the global.
+
+## Define your records
+
+```tsx
+import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
+
+interface Meeting {
+  id: `meeting-${number}`;
+  startsAt: Temporal.Instant;
+  endsAt: Temporal.Instant;
+  title: string;
+}
+
+const eventAdapter = defineEventAdapter<Meeting>()({
+  getId: (event) => event.id,
+  getInterval: (event) => ({
+    kind: "timed",
+    start: event.startsAt,
+    end: event.endsAt,
+  }),
+  getTitle: (event) => event.title,
+});
+
+export const Calendar = createCalendar<Meeting>({ eventAdapter });
+```
+
+Use immutable event arrays. Snapshot caches use array identity to avoid repeated normalization and
+index construction.
+
+Next: [understand the architecture](/docs/architecture) or open the
+[`@moltenship/calendar` package guide](/docs/packages/calendar).

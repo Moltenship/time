@@ -3,7 +3,15 @@ import { extname, join } from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
 
-const ignoredDirectories = new Set([".git", ".vite", "coverage", "dist", "node_modules"]);
+const ignoredDirectories = new Set([
+  ".git",
+  ".next",
+  ".source",
+  ".vite",
+  "coverage",
+  "dist",
+  "node_modules",
+]);
 const sourceExtensions = new Set([".cjs", ".cts", ".js", ".jsx", ".mjs", ".mts", ".ts", ".tsx"]);
 const explicitSourceExtension = /\.(?:[cm]?[jt]s|[jt]sx)$/;
 
@@ -15,7 +23,11 @@ async function findSourceFiles(directory: string): Promise<readonly string[]> {
       if (entry.isDirectory()) {
         return ignoredDirectories.has(entry.name) ? [] : findSourceFiles(path);
       }
-      return entry.isFile() && sourceExtensions.has(extname(entry.name)) ? [path] : [];
+      return entry.isFile() &&
+        entry.name !== "next-env.d.ts" &&
+        sourceExtensions.has(extname(entry.name))
+        ? [path]
+        : [];
     }),
   );
   return files.flat();

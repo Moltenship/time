@@ -1,0 +1,22 @@
+---
+title: "@moltenship/calendar"
+description: The supported facade for application calendars, event contracts, state, and custom views.
+---
+
+Use this package for application code. It re-exports the stable public surfaces of
+`@moltenship/calendar-core` and `@moltenship/calendar-react` through one client-safe entry point.
+
+```tsx
+import {
+  createCalendar,
+  defineCalendarView,
+  defineEventAdapter,
+  isEventId,
+} from "@moltenship/calendar";
+```
+
+The facade deliberately does not re-export Temporal utility helpers, optional drag-and-drop
+adapters, registry items, or workspace source paths. Add a specialized package only when its
+contract is directly required.
+
+See [event contracts](/docs/api/events) and [React composition](/docs/api/react).

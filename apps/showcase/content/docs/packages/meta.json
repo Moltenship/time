@@ -1,0 +1,4 @@
+{
+  "title": "Packages",
+  "pages": ["index", "calendar", "calendar-core", "calendar-react", "calendar-temporal"]
+}

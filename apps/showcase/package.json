@@ -5,16 +5,36 @@
   "description": "Consumer-equivalent documentation, examples, and verification labs for Moltenship Time.",
   "type": "module",
   "scripts": {
-    "build": "vp build",
+    "build": "fumadocs-mdx && next build",
     "check": "vp check",
-    "dev": "vp dev",
-    "preview": "vp preview",
-    "test": "vp test --passWithNoTests"
+    "dev": "fumadocs-mdx && next dev",
+    "links:check": "node --import ./scripts/register-fumadocs.mjs --import tsx ./scripts/check-links.ts",
+    "postinstall": "fumadocs-mdx",
+    "preview": "next start",
+    "search:check": "node scripts/verify-production.mjs",
+    "source:generate": "fumadocs-mdx",
+    "test": "vp test tests",
+    "types:check": "fumadocs-mdx && next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@moltenship/calendar": "workspace:*"
+    "@moltenship/calendar": "workspace:*",
+    "fumadocs-core": "catalog:",
+    "fumadocs-mdx": "catalog:",
+    "fumadocs-ui": "catalog:",
+    "next": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "catalog:",
+    "@types/mdx": "catalog:",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "next-validate-link": "catalog:",
+    "postcss": "catalog:",
+    "tailwindcss": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

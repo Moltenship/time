@@ -1,0 +1,39 @@
+---
+title: Events and snapshots
+description: Adapt application records once, then query immutable normalized snapshots by time and resource.
+---
+
+## Adapter
+
+`defineEventAdapter<TEvent>()` preserves the concrete application record type while mapping IDs,
+titles, intervals, resources, and optional revisions into canonical engine contracts.
+
+Canonical intervals are discriminated by `kind`:
+
+- `timed` uses `Temporal.Instant` boundaries;
+- `all-day` uses `Temporal.PlainDate` boundaries;
+- `floating` uses `Temporal.PlainDateTime` boundaries.
+
+Every interval is half open: the start is included and the end is excluded.
+
+## Snapshot cache
+
+```ts
+import { createEventSnapshotCache } from "@moltenship/calendar";
+
+const snapshots = createEventSnapshotCache(eventAdapter, {
+  invalidEventPolicy: "report-and-skip",
+  queryCacheSize: 128,
+});
+
+const snapshot = snapshots.getSnapshot(events);
+```
+
+Repeated calls with the same immutable event array return the same snapshot. Queries preserve input
+order and exact repeated queries return the same frozen result while resident in the bounded cache.
+
+## Invalid records
+
+The default policy reports immutable issues and skips invalid records. Set `invalidEventPolicy` to
+`"throw"` to reject the complete input with `InvalidCalendarEventSnapshotError`; a partial strict
+snapshot is never published.
