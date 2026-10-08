@@ -2,7 +2,7 @@ import type { CalendarNowSource } from "@moltenship/calendar-core";
 import { createSystemClock, type CalendarClock } from "@moltenship/calendar-temporal";
 import { useContext, useMemo, useSyncExternalStore } from "react";
 
-import { CalendarMetaContext } from "./context";
+import { CalendarNowSourceContext } from "./context";
 
 export interface UseNowOptions {
   /** How often the clock is sampled. Defaults to one minute. */
@@ -19,10 +19,15 @@ function createClockTicker(clock: CalendarClock, intervalMs: number) {
   return {
     getSnapshot: () => (current ??= clock.instant()),
     subscribe: (onChange: () => void) => {
-      const timer = setInterval(() => {
-        current = clock.instant();
+      const sample = () => {
+        const next = clock.instant();
+        if (current?.equals(next) === true) return;
+        current = next;
         onChange();
-      }, intervalMs);
+      };
+      // Resample on every (re)subscription so a revealed Activity does not show a stale instant.
+      sample();
+      const timer = setInterval(sample, intervalMs);
       return () => clearInterval(timer);
     },
   };
@@ -49,5 +54,5 @@ export function useNowFrom(
  * clock. It is `null` during server rendering and hydration unless the calendar fixes `now`.
  */
 export function useNow({ intervalMs = 60_000 }: UseNowOptions = {}): Temporal.Instant | null {
-  return useNowFrom(useContext(CalendarMetaContext)?.environment, intervalMs);
+  return useNowFrom(useContext(CalendarNowSourceContext), intervalMs);
 }

@@ -13,13 +13,11 @@ import {
   createElement,
   createRef,
   useEffect,
-  useEffectEvent,
   useId,
   useInsertionEffect,
   useMemo,
   useRef,
   useState,
-  type RefObject,
 } from "react";
 
 import type {
@@ -28,13 +26,7 @@ import type {
   CalendarRootProps,
   CalendarSemanticActions,
 } from "./calendar-types";
-import {
-  CalendarActionsContext,
-  CalendarMetaContext,
-  CalendarSourceContext,
-  CalendarStateContext,
-  CalendarViewContext,
-} from "./context";
+import { CalendarNowSourceContext, type CalendarContexts } from "./context";
 import {
   sameElements,
   sameInstant,
@@ -44,7 +36,7 @@ import {
   shallowEqual,
 } from "./equality";
 import { useCalendarStateBinding } from "./state-binding";
-import type { CalendarStore } from "./types";
+import type { CalendarRootStoreBinding } from "./store";
 import { useNowFrom } from "./use-now";
 import { useStableValue } from "./use-stable-value";
 import { resolveViewOptions, type AnyCalendarView, type CalendarActiveView } from "./views";
@@ -62,8 +54,11 @@ export interface CalendarRootConfig<
 
 type ViewOptionsOverrides = Readonly<Record<string, object | undefined>> | undefined;
 
-interface CommittedRootInputs {
+interface CommittedRootInputs<TEvent, TEventId extends EventId> {
   readonly environment: CalendarEnvironment;
+  readonly onDiagnosticsChange:
+    | ((diagnostics: readonly CalendarDiagnostic<TEvent, TEventId>[]) => void)
+    | undefined;
   readonly viewOptions: ViewOptionsOverrides;
 }
 
@@ -127,14 +122,11 @@ function createSemanticActions<
   TFocus,
   TResourceId extends ResourceId,
 >(
-  store: CalendarStore<TView, TSelection, TFocus, TResourceId>,
-  read: () => {
-    readonly anchorDate: Temporal.PlainDate;
-    readonly timeZone: string;
-    readonly view: TView;
-  },
+  { actions, read }: CalendarRootStoreBinding<TView, TSelection, TFocus, TResourceId>,
   viewsByName: ReadonlyMap<string, AnyCalendarView>,
-  committed: RefObject<CommittedRootInputs>,
+  committed: {
+    readonly current: Pick<CommittedRootInputs<unknown, EventId>, "environment" | "viewOptions">;
+  },
 ): CalendarSemanticActions<TView, TSelection, TFocus, TResourceId> {
   // Every command reads the latest requested state, so consecutive commands in one handler compose.
   function navigate(delta: number) {
@@ -142,17 +134,17 @@ function createSemanticActions<
     const view = viewsByName.get(latest.view);
     if (view === undefined) return;
     const options = resolveViewOptions(view, committed.current.viewOptions?.[latest.view]);
-    store.actions.setAnchorDate(view.strategy.navigate(latest.anchorDate, delta, options));
+    actions.setAnchorDate(view.strategy.navigate(latest.anchorDate, delta, options));
   }
 
   return Object.freeze({
-    ...store.actions,
+    ...actions,
     navigateNext: () => navigate(1),
     navigatePrevious: () => navigate(-1),
     navigateToday() {
       const { environment } = committed.current;
       const instant = environment.now ?? environment.clock?.instant() ?? Temporal.Now.instant();
-      store.actions.setAnchorDate(instant.toZonedDateTimeISO(read().timeZone).toPlainDate());
+      actions.setAnchorDate(instant.toZonedDateTimeISO(read().timeZone).toPlainDate());
     },
   });
 }
@@ -165,7 +157,7 @@ export function createCalendarRoot<
   TFocus,
   TEventId extends EventId,
   TResourceId extends ResourceId,
->(config: CalendarRootConfig<TEvent, TViewDef, TEventId, TResourceId>) {
+>(config: CalendarRootConfig<TEvent, TViewDef, TEventId, TResourceId>, contexts: CalendarContexts) {
   type View = TViewDef["name"];
   const viewsByName: ReadonlyMap<string, AnyCalendarView> = new Map(
     config.views.map((view) => [view.name, view]),
@@ -206,7 +198,7 @@ export function createCalendarRoot<
   }: CalendarRootProps<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>) {
     const reactId = useId();
     const instanceId = id ?? reactId;
-    const { internals, source, state, store } = useCalendarStateBinding<
+    const { binding, source, state } = useCalendarStateBinding<
       View,
       TSelection,
       TFocus,
@@ -319,18 +311,19 @@ export function createCalendarRoot<
       collectDiagnostics(state.view, activeDefinition !== undefined, eventSnapshot.issues),
       sameDiagnostics,
     );
-    const reportDiagnostics = useEffectEvent(
-      (next: readonly CalendarDiagnostic<TEvent, TEventId>[]) => onDiagnosticsChange?.(next),
-    );
-    useEffect(() => reportDiagnostics(diagnostics), [diagnostics]);
-
-    const committed = useRef<CommittedRootInputs>({ environment, viewOptions: viewOverrides });
-    useInsertionEffect(() => {
-      committed.current = { environment, viewOptions: viewOverrides };
+    // Callbacks and options are read from the last commit, so inline values need no memoization.
+    const committed = useRef<CommittedRootInputs<TEvent, TEventId>>({
+      environment,
+      onDiagnosticsChange,
+      viewOptions: viewOverrides,
     });
+    useInsertionEffect(() => {
+      committed.current = { environment, onDiagnosticsChange, viewOptions: viewOverrides };
+    });
+    useEffect(() => committed.current.onDiagnosticsChange?.(diagnostics), [diagnostics]);
     const actions = useMemo(
-      () => createSemanticActions(store, internals.read, viewsByName, committed),
-      [internals, store],
+      () => createSemanticActions(binding, viewsByName, committed),
+      [binding],
     );
 
     const [refs] = useState(() =>
@@ -376,18 +369,22 @@ export function createCalendarRoot<
     );
 
     return createElement(
-      CalendarSourceContext,
-      { value: source },
+      CalendarNowSourceContext,
+      { value: environment },
       createElement(
-        CalendarActionsContext,
-        { value: actions },
+        contexts.source,
+        { value: source },
         createElement(
-          CalendarMetaContext,
-          { value: meta },
+          contexts.actions,
+          { value: actions },
           createElement(
-            CalendarStateContext,
-            { value: state },
-            createElement(CalendarViewContext, { value: activeView }, children),
+            contexts.meta,
+            { value: meta },
+            createElement(
+              contexts.state,
+              { value: state },
+              createElement(contexts.view, { value: activeView }, children),
+            ),
           ),
         ),
       ),

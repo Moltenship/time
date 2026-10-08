@@ -10,26 +10,12 @@ import type {
   CreateCalendarOptions,
 } from "./calendar-types";
 import {
-  CalendarActionsContext,
-  CalendarMetaContext,
-  CalendarSourceContext,
-  CalendarStateContext,
+  createCalendarContexts,
   useActiveViewContext,
   useRootContext,
   type CalendarStateSource,
 } from "./context";
-import {
-  ActiveView,
-  EventPart,
-  Frame,
-  NextTrigger,
-  PreviousTrigger,
-  Title,
-  TodayTrigger,
-  Toolbar,
-  ViewSwitcher,
-  Viewport,
-} from "./parts";
+import { createCalendarParts } from "./parts";
 import { createCalendarRoot } from "./root";
 import { useStateSelector } from "./state-binding";
 import type {
@@ -72,6 +58,8 @@ export function createCalendar<
       names.add(view.name);
     }
 
+    const contexts = createCalendarContexts();
+    const { EventPart, ViewSwitcher, ...parts } = createCalendarParts(contexts);
     const Root = createCalendarRoot<
       TEvent,
       TResource,
@@ -80,29 +68,21 @@ export function createCalendar<
       TFocus,
       TEventId,
       TResourceId
-    >({
-      eventAdapter: options.eventAdapter,
-      invalidEventPolicy: options.invalidEventPolicy,
-      views,
-    });
+    >(
+      { eventAdapter: options.eventAdapter, invalidEventPolicy: options.invalidEventPolicy, views },
+      contexts,
+    );
 
-    // The package-level contexts are untyped; each factory narrows them to its own records.
-    const useCalendarActions = () => useRootContext(CalendarActionsContext) as Actions;
-    const useCalendarMeta = () => useRootContext(CalendarMetaContext) as Meta;
-    const useCalendarState = () => useRootContext(CalendarStateContext) as State;
+    // The contexts are untyped so parts can be shared; this factory narrows them to its records.
+    const useCalendarActions = () => useRootContext(contexts.actions) as Actions;
+    const useCalendarMeta = () => useRootContext(contexts.meta) as Meta;
+    const useCalendarState = () => useRootContext(contexts.state) as State;
 
     return Object.freeze({
-      ActiveView,
+      ...parts,
       Event: EventPart<TEvent, TEventId, TResourceId>,
-      Frame,
-      NextTrigger,
-      PreviousTrigger,
       Root,
-      Title,
-      TodayTrigger,
-      Toolbar,
       ViewSwitcher: ViewSwitcher as ComponentType<CalendarViewSwitcherProps<View>>,
-      Viewport,
       views,
       useCalendar() {
         const actions = useCalendarActions();
@@ -126,12 +106,13 @@ export function createCalendar<
         selector: CalendarStateSelector<State, TSelected>,
         selectorOptions?: CalendarStateSelectorOptions<TSelected>,
       ) {
-        const source = useRootContext(CalendarSourceContext) as CalendarStateSource<State>;
+        const source = useRootContext(contexts.source) as CalendarStateSource<State>;
         return useStateSelector(source, selector, selectorOptions);
       },
       useCalendarState,
-      useViewProjection: () => useActiveViewContext() as CalendarActiveView<TViewDef> | null,
-      useVisibleRange: () => useActiveViewContext()?.range ?? null,
+      useViewProjection: () =>
+        useActiveViewContext(contexts.view) as CalendarActiveView<TViewDef> | null,
+      useVisibleRange: () => useActiveViewContext(contexts.view)?.range ?? null,
     });
   };
 }

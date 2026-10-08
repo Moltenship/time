@@ -1,12 +1,22 @@
 // @vitest-environment jsdom
 
-import { act, useState, type ReactNode } from "react";
+import { defineEventAdapter } from "@moltenship/calendar-core";
+import { plainDateInterval } from "@moltenship/calendar-temporal";
+import { Activity, act, useState, type ReactNode } from "react";
+import { flushSync } from "react-dom";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { createCalendarStore, type CalendarDiagnostic } from "@moltenship/calendar-react";
+import {
+  createCalendar,
+  createCalendarStore,
+  defineCalendarView,
+  useNow,
+  type CalendarDiagnostic,
+} from "@moltenship/calendar-react";
 
 import {
   buildGateEvent,
+  createTestCalendarClock,
   gateAnchorDate,
   gateEvents,
   gateTimeZone,
@@ -338,5 +348,190 @@ describe("commands", () => {
     expect(
       harness.container.querySelector("[data-gate-view]")?.getAttribute("data-gate-anchor"),
     ).toBe(Temporal.Now.plainDateISO(gateTimeZone).toString());
+  });
+});
+
+describe("ownership", () => {
+  test("a factory's hooks and parts resolve its own root inside another factory's root", async () => {
+    const otherView = defineCalendarView({
+      name: "other",
+      strategy: {
+        getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 1 })),
+        getTitle: () => "Other",
+        navigate: (anchor, delta) => anchor.add({ days: delta }),
+        project: () => null,
+      },
+      Renderer: () => null,
+    });
+    const OtherCalendar = createCalendar<{ readonly id: string }>()({
+      eventAdapter: defineEventAdapter<{ readonly id: string }>()({
+        getId: (event) => event.id,
+        getInterval: () => ({
+          end: Temporal.Instant.from("2026-08-15T10:00:00Z"),
+          kind: "timed",
+          start: Temporal.Instant.from("2026-08-15T09:00:00Z"),
+        }),
+        getResourceIds: () => [],
+        getTitle: (event) => event.id,
+      }),
+      views: [otherView],
+    });
+
+    function Probe() {
+      const gate = GateCalendar.useCalendarState();
+      const other = OtherCalendar.useCalendarState();
+      return (
+        <output data-views>
+          {gate.view}:{gate.anchorDate.toString()}/{other.view}:{other.anchorDate.toString()}
+        </output>
+      );
+    }
+
+    const harness = await render(
+      <GateCalendar.Root
+        defaultAnchorDate={gateAnchorDate}
+        defaultTimeZone={gateTimeZone}
+        events={gateEvents}
+        locale="en-GB"
+        weekRules={gateWeekRules}
+      >
+        <OtherCalendar.Root
+          defaultAnchorDate={gateAnchorDate}
+          defaultTimeZone={gateTimeZone}
+          events={[]}
+          locale="en-GB"
+          weekRules={gateWeekRules}
+        >
+          <Probe />
+          <GateCalendar.NextTrigger>Next</GateCalendar.NextTrigger>
+        </OtherCalendar.Root>
+      </GateCalendar.Root>,
+    );
+
+    expect(harness.container.querySelector("[data-views]")?.textContent).toBe(
+      "month:2026-08-15/other:2026-08-15",
+    );
+    await click(harness.container, '[data-calendar-part="next-trigger"]');
+    expect(harness.container.querySelector("[data-views]")?.textContent).toBe(
+      "month:2026-08-22/other:2026-08-15",
+    );
+  });
+
+  test("roots sharing a store keep their own controlled handlers, even after one unmounts", async () => {
+    const store = createCalendarStore<GateView, GateSelection, GateFocus, `resource-${number}`>({
+      defaultAnchorDate: gateAnchorDate,
+      defaultTimeZone: gateTimeZone,
+      defaultView: "month",
+    });
+    const handlers = { first: vi.fn(), second: vi.fn() };
+
+    function ControlledRoot({ label }: { readonly label: keyof typeof handlers }) {
+      const [anchorDate, setAnchorDate] = useState(gateAnchorDate);
+      return (
+        <GateCalendar.Root
+          anchorDate={anchorDate}
+          defaultTimeZone={gateTimeZone}
+          events={gateEvents}
+          locale="en-GB"
+          onAnchorDateChange={(next) => {
+            handlers[label](next.toString());
+            setAnchorDate(next);
+          }}
+          store={store}
+          weekRules={gateWeekRules}
+        >
+          <GateCalendar.NextTrigger>Next</GateCalendar.NextTrigger>
+        </GateCalendar.Root>
+      );
+    }
+
+    const first = await render(<ControlledRoot label="first" />);
+    const second = await render(<ControlledRoot label="second" />);
+    await click(first.container, '[data-calendar-part="next-trigger"]');
+    await second.unmount();
+    await click(first.container, '[data-calendar-part="next-trigger"]');
+
+    expect(handlers.first.mock.calls).toEqual([["2026-08-22"], ["2026-08-29"]]);
+    expect(handlers.second).not.toHaveBeenCalled();
+    expect(store.getSnapshot().anchorDate.toString()).toBe("2026-08-15");
+  });
+
+  test("a command after a synchronous owner correction starts from the committed value", async () => {
+    const requested: string[] = [];
+
+    function Application() {
+      const [anchorDate, setAnchorDate] = useState(gateAnchorDate);
+      return (
+        <GateCalendar.Root
+          anchorDate={anchorDate}
+          defaultTimeZone={gateTimeZone}
+          events={gateEvents}
+          locale="en-GB"
+          onAnchorDateChange={(next) => {
+            requested.push(next.toString());
+            const corrected = requested.length === 1 ? next.add({ days: 7 }) : next;
+            flushSync(() => setAnchorDate(corrected));
+          }}
+          weekRules={gateWeekRules}
+        >
+          <NavigateTwice />
+        </GateCalendar.Root>
+      );
+    }
+
+    function NavigateTwice() {
+      const actions = GateCalendar.useCalendarActions();
+      return (
+        <button
+          data-navigate-twice
+          onClick={() => {
+            actions.navigateNext();
+            actions.navigateNext();
+          }}
+        >
+          {GateCalendar.useCalendarState().anchorDate.toString()}
+        </button>
+      );
+    }
+
+    const harness = await render(<Application />);
+    await click(harness.container, "[data-navigate-twice]");
+
+    expect(requested).toEqual(["2026-08-22", "2026-09-05"]);
+    expect(harness.container.querySelector("[data-navigate-twice]")?.textContent).toBe(
+      "2026-09-05",
+    );
+  });
+
+  test("useNow resamples the clock when a hidden Activity is revealed", async () => {
+    const clock = createTestCalendarClock(Temporal.Instant.from("2026-08-15T08:30:00Z"));
+
+    function NowProbe() {
+      return <time data-now>{useNow()?.toString()}</time>;
+    }
+
+    function Application({ mode }: { readonly mode: "hidden" | "visible" }) {
+      return (
+        <Activity mode={mode}>
+          <GateCalendar.Root
+            clock={clock}
+            defaultAnchorDate={gateAnchorDate}
+            defaultTimeZone={gateTimeZone}
+            events={gateEvents}
+            locale="en-GB"
+            weekRules={gateWeekRules}
+          >
+            <NowProbe />
+          </GateCalendar.Root>
+        </Activity>
+      );
+    }
+
+    const harness = await render(<Application mode="visible" />);
+    await harness.render(<Application mode="hidden" />);
+    clock.set(Temporal.Instant.from("2026-08-16T08:30:00Z"));
+    await harness.render(<Application mode="visible" />);
+
+    expect(harness.container.querySelector("[data-now]")?.textContent).toBe("2026-08-16T08:30:00Z");
   });
 });

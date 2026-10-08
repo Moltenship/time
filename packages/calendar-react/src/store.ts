@@ -22,21 +22,35 @@ export interface CalendarStoreBinding<
   readonly handlers: CalendarStateChangeHandlers<TView, TSelection, TFocus, TResourceId>;
 }
 
+/** One root's view of a shared store: its controlled slices, handlers, and pending requests. */
+export interface CalendarRootStoreBinding<
+  TView extends string,
+  TSelection,
+  TFocus,
+  TResourceId extends ResourceId,
+> {
+  /** Commands that honor this root's controlled slices and handlers. */
+  readonly actions: CalendarActions<TView, TSelection, TFocus, TResourceId>;
+  /** Routes `store.actions` through this root until the cleanup runs; the latest mounted root wins. */
+  readonly attach: () => () => void;
+  /** Publishes the root's committed props. Requests made before this commit are discarded. */
+  readonly commit: (binding: CalendarStoreBinding<TView, TSelection, TFocus, TResourceId>) => void;
+  /**
+   * The latest requested state. A controlled change requested since the last commit is visible
+   * here before its owner commits it, so consecutive commands in one event handler compose.
+   */
+  readonly read: () => CalendarPublicState<TView, TSelection, TFocus, TResourceId>;
+}
+
 interface CalendarStoreInternals<
   TView extends string,
   TSelection,
   TFocus,
   TResourceId extends ResourceId,
 > {
-  /** Routes actions through a root's committed controlled slices and handlers until detached. */
-  readonly attach: (binding: {
-    readonly current: CalendarStoreBinding<TView, TSelection, TFocus, TResourceId>;
-  }) => () => void;
-  /**
-   * The latest requested state. A controlled change requested in the current task is visible here
-   * before its owner commits it, so consecutive actions in one event handler compose.
-   */
-  readonly read: () => CalendarPublicState<TView, TSelection, TFocus, TResourceId>;
+  readonly bind: (
+    binding: CalendarStoreBinding<TView, TSelection, TFocus, TResourceId>,
+  ) => CalendarRootStoreBinding<TView, TSelection, TFocus, TResourceId>;
 }
 
 const handlerNames = Object.freeze({
@@ -116,48 +130,85 @@ export function createCalendarStore<
     timeZone: options.defaultTimeZone,
     view: options.defaultView,
   });
-  let pending: Partial<State> | undefined;
-  let attached: { readonly current: Binding } | undefined;
   const listeners = new Set<() => void>();
+  const mountedRoots: CalendarRootStoreBinding<TView, TSelection, TFocus, TResourceId>[] = [];
 
-  function read(): State {
-    return mergeControlledState(mergeControlledState(state, attached?.current.controlled), pending);
+  function createActions(
+    dispatch: <TSlice extends CalendarStateSlice>(slice: TSlice, next: State[TSlice]) => void,
+  ): CalendarActions<TView, TSelection, TFocus, TResourceId> {
+    return Object.freeze({
+      setAnchorDate: (next) => dispatch("anchorDate", next),
+      setExpandedResourceIds: (next) => dispatch("expandedResourceIds", next),
+      setFocus: (next) => dispatch("focus", next),
+      setSelection: (next) => dispatch("selection", next),
+      setTimeZone: (next) => dispatch("timeZone", next),
+      setView: (next) => dispatch("view", next),
+    });
   }
 
-  function dispatch<TSlice extends CalendarStateSlice>(slice: TSlice, requested: State[TSlice]) {
-    const next =
-      slice === "expandedResourceIds"
-        ? (uniqueResourceIds(requested as readonly TResourceId[]) as State[TSlice])
-        : requested;
-    const previous = read()[slice];
-    if (sameSliceValue(slice, previous, next)) return;
+  function bind(
+    initial: Binding,
+  ): CalendarRootStoreBinding<TView, TSelection, TFocus, TResourceId> {
+    let current = initial;
+    let pending: Partial<State> | undefined;
 
-    const binding = attached?.current;
-    const controlled = binding?.controlled[slice] !== undefined;
-    if (controlled) {
-      if (pending === undefined) queueMicrotask(() => (pending = undefined));
-      pending = { ...pending, [slice]: next };
-    } else {
-      state = Object.freeze({ ...state, [slice]: next });
-      for (const listener of listeners) listener();
+    const read = () =>
+      mergeControlledState(mergeControlledState(state, current.controlled), pending);
+
+    function dispatch<TSlice extends CalendarStateSlice>(slice: TSlice, requested: State[TSlice]) {
+      const next =
+        slice === "expandedResourceIds"
+          ? (uniqueResourceIds(requested as readonly TResourceId[]) as State[TSlice])
+          : requested;
+      const previous = read()[slice];
+      if (sameSliceValue(slice, previous, next)) return;
+
+      const controlled = current.controlled[slice] !== undefined;
+      if (controlled) {
+        if (pending === undefined) queueMicrotask(() => (pending = undefined));
+        pending = { ...pending, [slice]: next };
+      } else {
+        state = Object.freeze({ ...state, [slice]: next });
+        for (const listener of listeners) listener();
+      }
+
+      const handler = current.handlers[handlerNames[slice]] as
+        | CalendarStateChangeHandler<State[TSlice], TSlice>
+        | undefined;
+      handler?.(next, Object.freeze({ controlled, previous, slice }));
     }
 
-    const handler = binding?.handlers[handlerNames[slice]] as
-      | CalendarStateChangeHandler<State[TSlice], TSlice>
-      | undefined;
-    handler?.(next, Object.freeze({ controlled, previous, slice }));
+    const binding: CalendarRootStoreBinding<TView, TSelection, TFocus, TResourceId> = Object.freeze(
+      {
+        actions: createActions(dispatch),
+        attach: () => {
+          mountedRoots.push(binding);
+          return () => {
+            const index = mountedRoots.lastIndexOf(binding);
+            if (index !== -1) mountedRoots.splice(index, 1);
+          };
+        },
+        commit: (next: Binding) => {
+          current = next;
+          pending = undefined;
+        },
+        read,
+      },
+    );
+    return binding;
   }
 
-  const actions: CalendarActions<TView, TSelection, TFocus, TResourceId> = Object.freeze({
-    setAnchorDate: (next) => dispatch("anchorDate", next),
-    setExpandedResourceIds: (next) => dispatch("expandedResourceIds", next),
-    setFocus: (next) => dispatch("focus", next),
-    setSelection: (next) => dispatch("selection", next),
-    setTimeZone: (next) => dispatch("timeZone", next),
-    setView: (next) => dispatch("view", next),
-  });
+  const unbound = bind({ controlled: {}, handlers: {} });
+  const owner = () => mountedRoots.at(-1) ?? unbound;
   const store: CalendarStore<TView, TSelection, TFocus, TResourceId> = {
-    actions,
+    actions: Object.freeze({
+      setAnchorDate: (next) => owner().actions.setAnchorDate(next),
+      setExpandedResourceIds: (next) => owner().actions.setExpandedResourceIds(next),
+      setFocus: (next) => owner().actions.setFocus(next),
+      setSelection: (next) => owner().actions.setSelection(next),
+      setTimeZone: (next) => owner().actions.setTimeZone(next),
+      setView: (next) => owner().actions.setView(next),
+    }),
     getSnapshot: () => state,
     subscribe: (listener) => {
       listeners.add(listener);
@@ -167,14 +218,6 @@ export function createCalendarStore<
     },
   };
 
-  storeInternals.set(store, {
-    attach: (binding) => {
-      attached = binding;
-      return () => {
-        if (attached === binding) attached = undefined;
-      };
-    },
-    read,
-  });
+  storeInternals.set(store, { bind });
   return store;
 }

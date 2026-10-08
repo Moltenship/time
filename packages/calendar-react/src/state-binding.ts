@@ -19,6 +19,8 @@ import type {
 } from "./types";
 import { useStableValue } from "./use-stable-value";
 
+const uncommittedBinding = Object.freeze({ controlled: {}, handlers: {} });
+
 function sameControlledState(
   left: CalendarControlledState<string, unknown, unknown>,
   right: CalendarControlledState<string, unknown, unknown>,
@@ -81,15 +83,14 @@ export function useCalendarStateBinding<
 
   const internals = getCalendarStoreInternals(store);
   const controlled = useStableValue(controlledInput, sameControlledState);
-  const binding = useRef({ controlled, handlers });
-  useInsertionEffect(() => {
-    binding.current = { controlled, handlers };
-  });
-  useInsertionEffect(() => internals.attach(binding), [internals]);
+  // Commands run only after a commit, and every commit publishes this render's props first.
+  const binding = useMemo(() => internals.bind(uncommittedBinding), [internals]);
+  useInsertionEffect(() => binding.commit({ controlled, handlers }));
+  useInsertionEffect(() => binding.attach(), [binding]);
 
   const source = useMemo(() => createStateSource(store, controlled), [controlled, store]);
   const state = useSyncExternalStore(source.subscribe, source.getSnapshot, source.getSnapshot);
-  return { internals, source, state, store };
+  return { binding, source, state, store };
 }
 
 /** Subscribes once per source; inline selectors and `isEqual` callbacks are read per render. */
