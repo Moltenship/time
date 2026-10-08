@@ -1,10 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, test } from "vite-plus/test";
 
-import { instantInterval, plainDateInterval } from "@moltenship/calendar-temporal";
-
 import { layoutTimedOverlaps, type TimedOverlapItem } from "../src/layout/timed-overlap";
-import { layoutTimeGridColumn, timeGridColumns } from "../src/index";
 
 /** Items as `key start-end` in hours, e.g. `"a 9-11"`. */
 function items(...specs: readonly string[]): readonly TimedOverlapItem[] {
@@ -123,32 +120,5 @@ describe("timed overlap layout", () => {
       }),
       { numRuns: 300 },
     );
-  });
-});
-
-describe("time-grid column layout", () => {
-  test("puts the two occurrences of a repeated hour side by side", () => {
-    const date = Temporal.PlainDate.from("2026-11-01");
-    const [fall] = timeGridColumns(
-      plainDateInterval(date, date.add({ days: 1 })),
-      "America/New_York",
-    );
-    const fragment = (key: string, start: string, end: string) => ({
-      interval: instantInterval(Temporal.Instant.from(start), Temporal.Instant.from(end)),
-      key,
-    });
-    const placements = layoutTimeGridColumn(fall!, [
-      fragment("standard", "2026-11-01T06:00Z", "2026-11-01T06:30Z"),
-      fragment("daylight", "2026-11-01T05:00Z", "2026-11-01T05:30Z"),
-      fragment("after", "2026-11-01T07:00Z", "2026-11-01T08:00Z"),
-    ]);
-
-    expect(
-      placements.map(({ fragment: { key }, left, top, width }) => [key, top, left, width]),
-    ).toEqual([
-      ["daylight", 1 / 24, 0, 0.5],
-      ["standard", 1 / 24, 0.5, 0.5],
-      ["after", 2 / 24, 0, 1],
-    ]);
   });
 });

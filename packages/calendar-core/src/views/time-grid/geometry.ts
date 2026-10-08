@@ -96,6 +96,18 @@ export function timedFragmentBox(column: TimeGridColumn, interval: InstantInterv
   return Object.freeze({ height: columnFraction(date, bottom) - topFraction, top: topFraction });
 }
 
+/** Vertical extent of a wall-clock range, such as a floating event, in the column's date. */
+export function wallRangeBox(
+  column: TimeGridColumn,
+  start: Temporal.PlainDateTime,
+  end: Temporal.PlainDateTime,
+): TimeGridBand {
+  const top = columnFraction(column.date, wallEpochNanoseconds(start));
+  const bottom = columnFraction(column.date, wallEpochNanoseconds(end));
+
+  return Object.freeze({ height: Math.max(0, bottom - top), top });
+}
+
 /**
  * Wall-clock time at a vertical position, where `0` is the column's midnight and `1` the midnight
  * that ends it. The position is snapped on the wall grid before it is resolved, so the result never
