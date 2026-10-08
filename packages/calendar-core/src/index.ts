@@ -45,6 +45,10 @@ export type {
   NormalizedTimedCalendarEvent,
 } from "./snapshots/types";
 
+export { queryVisibleEvents, visibleInstantRange } from "./projection/visible-events";
+export { splitEventsByDay } from "./projection/day-fragments";
+export type { EventDayFragment } from "./projection/day-fragments";
+
 export type { CalendarResource } from "./resources";
 export type {
   CalendarDirection,
