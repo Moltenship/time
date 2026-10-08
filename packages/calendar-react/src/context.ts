@@ -13,7 +13,7 @@ export interface CalendarStateSource<TState = AnyCalendarState> {
 }
 
 // oxlint-disable-next-line typescript/no-explicit-any -- commands accept every factory's values.
-type AnyCalendarActions = CalendarSemanticActions<any, any, any, any>;
+type AnyCalendarActions = CalendarSemanticActions<any, any, any, any, any, any>;
 
 /** One factory's providers. The factory narrows these untyped contexts to its own records. */
 export interface CalendarContexts {

@@ -180,8 +180,15 @@ export function createCalendarParts(contexts: CalendarContexts) {
     const actions = useRootContext(contexts.actions);
     const activeView = useActiveViewContext(contexts.view);
     if (activeView === null) return fallback;
-    const { definition, environment, options, projection, range } = activeView;
-    return createElement(definition.Renderer, { actions, environment, options, projection, range });
+    const { definition, environment, events, options, projection, range } = activeView;
+    return createElement(definition.Renderer, {
+      actions,
+      environment,
+      events,
+      options,
+      projection,
+      range,
+    });
   }
 
   function EventPart<TEvent, TEventId extends EventId, TResourceId extends ResourceId>({

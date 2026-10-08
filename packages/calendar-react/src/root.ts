@@ -1,11 +1,18 @@
 import {
+  applyEventOverlay,
   createEventSnapshotCache,
+  createEventTransactions,
+  readOnlyPolicy,
   resolveViewInstantRange,
   type CalendarEnvironment,
   type CalendarEnvironmentBase,
+  type CalendarEventChangeHandler,
+  type CalendarPolicy,
   type EventAdapter,
   type EventId,
+  type EventSnapshot,
   type EventSnapshotIssue,
+  type EventTransactions,
   type InvalidCalendarEventPolicy,
   type ResourceId,
 } from "@moltenship/calendar-core";
@@ -15,9 +22,11 @@ import {
   useEffect,
   useId,
   useInsertionEffect,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
 } from "react";
 
 import type {
@@ -54,11 +63,15 @@ export interface CalendarRootConfig<
 
 type ViewOptionsOverrides = Readonly<Record<string, object | undefined>> | undefined;
 
-interface CommittedRootInputs<TEvent, TEventId extends EventId> {
+interface CommittedRootInputs<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
   readonly environment: CalendarEnvironment;
+  /** The application's events, without pending changes. */
+  readonly eventSnapshot: EventSnapshot<TEvent, TEventId, TResourceId>;
   readonly onDiagnosticsChange:
     | ((diagnostics: readonly CalendarDiagnostic<TEvent, TEventId>[]) => void)
     | undefined;
+  readonly onEventChange: CalendarEventChangeHandler<TEvent, TEventId, TResourceId> | undefined;
+  readonly policies: readonly CalendarPolicy<TEvent, TEventId, TResourceId>[] | undefined;
   readonly viewOptions: ViewOptionsOverrides;
 }
 
@@ -120,14 +133,16 @@ function createSemanticActions<
   TView extends string,
   TSelection,
   TFocus,
+  TEvent,
+  TEventId extends EventId,
   TResourceId extends ResourceId,
 >(
   { actions, read }: CalendarRootStoreBinding<TView, TSelection, TFocus, TResourceId>,
   viewsByName: ReadonlyMap<string, AnyCalendarView>,
-  committed: {
-    readonly current: Pick<CommittedRootInputs<unknown, EventId>, "environment" | "viewOptions">;
-  },
-): CalendarSemanticActions<TView, TSelection, TFocus, TResourceId> {
+  committed: { readonly current: CommittedRootInputs<TEvent, TEventId, TResourceId> },
+  transactions: EventTransactions<TEvent, TEventId, TResourceId>,
+  readOnly: CalendarPolicy<TEvent, TEventId, TResourceId>,
+): CalendarSemanticActions<TView, TSelection, TFocus, TResourceId, TEvent, TEventId> {
   // Every command reads the latest requested state, so consecutive commands in one handler compose.
   function navigate(delta: number) {
     const latest = read();
@@ -146,6 +161,18 @@ function createSemanticActions<
       const instant = environment.now ?? environment.clock?.instant() ?? Temporal.Now.instant();
       actions.setAnchorDate(instant.toZonedDateTimeISO(read().timeZone).toPlainDate());
     },
+    proposeEventChange(proposal) {
+      const { environment, eventSnapshot, onEventChange, policies = [] } = committed.current;
+      if (onEventChange === undefined) {
+        return Promise.resolve({ reason: "read-only", status: "rejected" });
+      }
+      return transactions.propose(proposal, {
+        onEventChange,
+        policies: [readOnly, ...policies],
+        snapshot: eventSnapshot,
+        timeZone: environment.timeZone,
+      });
+    },
   });
 }
 
@@ -162,6 +189,7 @@ export function createCalendarRoot<
   const viewsByName: ReadonlyMap<string, AnyCalendarView> = new Map(
     config.views.map((view) => [view.name, view]),
   );
+  const readOnly = readOnlyPolicy<TEvent, TEventId, TResourceId>();
 
   return function Root({
     anchorDate,
@@ -183,11 +211,13 @@ export function createCalendarRoot<
     now,
     onAnchorDateChange,
     onDiagnosticsChange,
+    onEventChange,
     onExpandedResourceIdsChange,
     onFocusChange,
     onSelectionChange,
     onTimeZoneChange,
     onViewChange,
+    policies,
     resources = noResources,
     selection,
     store: injectedStore,
@@ -266,6 +296,19 @@ export function createCalendarRoot<
       () => snapshotCache.getSnapshot(stableEvents),
       [snapshotCache, stableEvents],
     );
+    const [transactions] = useState(() => createEventTransactions<TEvent, TEventId, TResourceId>());
+    const pending = useSyncExternalStore(
+      transactions.subscribe,
+      transactions.getPending,
+      transactions.getPending,
+    );
+    // Pending changes patch only their events at query time; the snapshot's indexes are reused.
+    const visibleSnapshot = useMemo(
+      () => applyEventOverlay(eventSnapshot, pending),
+      [eventSnapshot, pending],
+    );
+    // New events confirm resolved changes; this runs before paint, so none shows stale.
+    useLayoutEffect(() => transactions.reconcile(eventSnapshot), [eventSnapshot, transactions]);
     const stableResources = useStableValue(resources, sameElements);
 
     const activeDefinition = viewsByName.get(state.view);
@@ -291,6 +334,7 @@ export function createCalendarRoot<
       return Object.freeze({
         definition: activeDefinition,
         environment: viewEnvironment,
+        events: visibleSnapshot,
         instantRange,
         options,
         projection: activeDefinition.strategy.project({
@@ -299,31 +343,43 @@ export function createCalendarRoot<
           options,
           range,
           resources: stableResources,
-          snapshot: eventSnapshot,
+          snapshot: visibleSnapshot,
           today,
         }),
         range,
         view: activeDefinition.name,
       });
-    }, [activeDefinition, eventSnapshot, options, range, stableResources, today, viewEnvironment]);
+    }, [
+      activeDefinition,
+      options,
+      range,
+      stableResources,
+      today,
+      viewEnvironment,
+      visibleSnapshot,
+    ]);
 
     const diagnostics = useStableValue(
       collectDiagnostics(state.view, activeDefinition !== undefined, eventSnapshot.issues),
       sameDiagnostics,
     );
     // Callbacks and options are read from the last commit, so inline values need no memoization.
-    const committed = useRef<CommittedRootInputs<TEvent, TEventId>>({
+    const committedInputs: CommittedRootInputs<TEvent, TEventId, TResourceId> = {
       environment,
+      eventSnapshot,
       onDiagnosticsChange,
+      onEventChange,
+      policies,
       viewOptions: viewOverrides,
-    });
+    };
+    const committed = useRef(committedInputs);
     useInsertionEffect(() => {
-      committed.current = { environment, onDiagnosticsChange, viewOptions: viewOverrides };
+      committed.current = committedInputs;
     });
     useEffect(() => committed.current.onDiagnosticsChange?.(diagnostics), [diagnostics]);
     const actions = useMemo(
-      () => createSemanticActions(binding, viewsByName, committed),
-      [binding],
+      () => createSemanticActions(binding, viewsByName, committed, transactions, readOnly),
+      [binding, transactions],
     );
 
     const [refs] = useState(() =>
@@ -349,7 +405,7 @@ export function createCalendarRoot<
           activeView: activeDefinition as TViewDef | undefined,
           diagnostics,
           environment,
-          eventSnapshot,
+          eventSnapshot: visibleSnapshot,
           ids,
           instanceId,
           refs,
@@ -360,7 +416,7 @@ export function createCalendarRoot<
         activeDefinition,
         diagnostics,
         environment,
-        eventSnapshot,
+        visibleSnapshot,
         ids,
         instanceId,
         refs,

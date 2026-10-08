@@ -1,4 +1,12 @@
-import type { CalendarEnvironmentBase, CalendarViewStrategy } from "@moltenship/calendar-core";
+import type {
+  CalendarEnvironmentBase,
+  CalendarEventProposal,
+  CalendarTransactionResult,
+  CalendarViewStrategy,
+  EventId,
+  EventSnapshot,
+  ResourceId,
+} from "@moltenship/calendar-core";
 import type { InstantInterval, PlainDateInterval } from "@moltenship/calendar-temporal";
 import type { ComponentType } from "react";
 
@@ -7,6 +15,10 @@ export interface CalendarViewActions {
   navigateNext(): void;
   navigatePrevious(): void;
   navigateToday(): void;
+  /** Proposes a move, resize, create, or delete, such as the result of a pointer drag. */
+  proposeEventChange(
+    proposal: CalendarEventProposal<EventId, ResourceId>,
+  ): Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
   setAnchorDate(anchorDate: Temporal.PlainDate): void;
   setView(view: string): void;
 }
@@ -15,6 +27,8 @@ export interface CalendarViewRendererProps<TProjection, TOptions> {
   /** Stable for the lifetime of the calendar root. */
   readonly actions: CalendarViewActions;
   readonly environment: CalendarEnvironmentBase;
+  /** The events the projection was built from, pending changes included. */
+  readonly events: EventSnapshot<unknown, EventId, ResourceId>;
   readonly options: TOptions;
   readonly projection: TProjection;
   readonly range: PlainDateInterval;
@@ -63,6 +77,8 @@ export type CalendarActiveView<TViewDef extends AnyCalendarView> = TViewDef exte
   ? {
       readonly definition: TViewDef;
       readonly environment: CalendarEnvironmentBase;
+      /** The events the projection was built from, pending changes included. */
+      readonly events: EventSnapshot<unknown, EventId, ResourceId>;
       readonly instantRange: InstantInterval;
       readonly options: TViewDef["defaultOptions"];
       readonly projection: ReturnType<TViewDef["strategy"]["project"]>;

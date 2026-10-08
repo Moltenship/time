@@ -1,6 +1,10 @@
 import type {
   CalendarEnvironment,
+  CalendarEventChangeHandler,
+  CalendarEventProposal,
   CalendarNowSource,
+  CalendarPolicy,
+  CalendarTransactionResult,
   CalendarWeekRules,
   EventAdapter,
   EventId,
@@ -28,10 +32,19 @@ export type CalendarSemanticActions<
   TSelection = string,
   TFocus = string,
   TResourceId extends ResourceId = ResourceId,
+  TEvent = unknown,
+  TEventId extends EventId = EventId,
 > = CalendarActions<TView, TSelection, TFocus, TResourceId> & {
   navigateNext(): void;
   navigatePrevious(): void;
   navigateToday(): void;
+  /**
+   * Validates a change against the root's policies, shows it while `onEventChange` persists it,
+   * and resolves with the outcome. Read-only events and roots without `onEventChange` reject.
+   */
+  proposeEventChange(
+    proposal: CalendarEventProposal<TEventId, TResourceId>,
+  ): Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
 };
 
 export type CalendarDiagnostic<TEvent, TEventId extends EventId> =
@@ -86,7 +99,14 @@ export interface CalendarContextValue<
   TEventId extends EventId = EventId,
   TResourceId extends ResourceId = ResourceId,
 > {
-  readonly actions: CalendarSemanticActions<TViewDef["name"], TSelection, TFocus, TResourceId>;
+  readonly actions: CalendarSemanticActions<
+    TViewDef["name"],
+    TSelection,
+    TFocus,
+    TResourceId,
+    TEvent,
+    TEventId
+  >;
   readonly meta: CalendarMeta<TEvent, TResource, TViewDef, TEventId, TResourceId>;
   readonly state: CalendarPublicState<TViewDef["name"], TSelection, TFocus, TResourceId>;
 }
@@ -116,6 +136,12 @@ interface CalendarRootBaseProps<
   readonly onDiagnosticsChange?: (
     diagnostics: readonly CalendarDiagnostic<TEvent, TEventId>[],
   ) => void;
+  /**
+   * Persists an accepted event change. Apply it to `events` synchronously, or return a promise:
+   * the change stays visible as pending until it settles and `events` reflect it, and a rejection
+   * rolls it back. Without a handler the calendar is read-only.
+   */
+  readonly onEventChange?: CalendarEventChangeHandler<TEvent, TEventId, TResourceId>;
   readonly onExpandedResourceIdsChange?: CalendarStateChangeHandler<
     readonly TResourceId[],
     "expandedResourceIds"
@@ -124,6 +150,8 @@ interface CalendarRootBaseProps<
   readonly onSelectionChange?: CalendarStateChangeHandler<TSelection | null, "selection">;
   readonly onTimeZoneChange?: CalendarStateChangeHandler<string, "timeZone">;
   readonly onViewChange?: CalendarStateChangeHandler<TViewDef["name"], "view">;
+  /** Run in order on every proposed change, after the built-in read-only check. */
+  readonly policies?: readonly CalendarPolicy<TEvent, TEventId, TResourceId>[];
   readonly resources?: readonly TResource[];
   readonly selection?: TSelection | null;
   readonly store?: CalendarStore<TViewDef["name"], TSelection, TFocus, TResourceId>;
@@ -245,7 +273,14 @@ export interface CalendarFactory<
     TEventId,
     TResourceId
   >;
-  useCalendarActions(): CalendarSemanticActions<TViewDef["name"], TSelection, TFocus, TResourceId>;
+  useCalendarActions(): CalendarSemanticActions<
+    TViewDef["name"],
+    TSelection,
+    TFocus,
+    TResourceId,
+    TEvent,
+    TEventId
+  >;
   useCalendarMeta(): CalendarMeta<TEvent, TResource, TViewDef, TEventId, TResourceId>;
   useCalendarSelector<TSelected>(
     selector: CalendarStateSelector<

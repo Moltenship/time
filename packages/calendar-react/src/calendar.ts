@@ -49,7 +49,7 @@ export function createCalendar<
     type View = TViewDef["name"];
     type State = CalendarPublicState<View, TSelection, TFocus, TResourceId>;
     type Meta = CalendarMeta<TEvent, TResource, TViewDef, TEventId, TResourceId>;
-    type Actions = CalendarSemanticActions<View, TSelection, TFocus, TResourceId>;
+    type Actions = CalendarSemanticActions<View, TSelection, TFocus, TResourceId, TEvent, TEventId>;
 
     const views = Object.freeze([...(options.views ?? [])]);
     const names = new Set<string>();
