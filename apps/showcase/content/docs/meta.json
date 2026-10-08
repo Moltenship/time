@@ -1,4 +1,14 @@
 {
   "title": "Moltenship Time",
-  "pages": ["index", "installation", "quick-start", "concepts", "views", "theming", "guides", "api"]
+  "pages": [
+    "index",
+    "installation",
+    "quick-start",
+    "concepts",
+    "views",
+    "interactions",
+    "theming",
+    "guides",
+    "api"
+  ]
 }

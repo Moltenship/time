@@ -1,0 +1,146 @@
+---
+title: Event changes
+description: Proposals, changes, results, policies, placement helpers, and the pointer layer.
+---
+
+Everything on this page is exported from `@moltenship/calendar`, except the
+[pointer layer](#pointer-layer). [Interactions](/docs/interactions) explains how the pieces fit
+together.
+
+## Proposals
+
+`actions.proposeEventChange(proposal)` takes one of these:
+
+```ts
+type CalendarEventProposal =
+  | { cause: "create"; proposed: Placement }
+  | {
+      cause: "move" | "resize-start" | "resize-end" | "update";
+      eventId: EventId;
+      proposed: Placement;
+    }
+  | { cause: "delete"; eventId: EventId };
+```
+
+A placement is a [range](/docs/api/events#ranges) (`kind`, `start`, `end`) plus optional
+`resourceIds`. Leaving out `resourceIds` keeps the event's current resources.
+
+## Changes
+
+`onEventChange` and policies receive a `CalendarEventChange`:
+
+| Field      | `create`          | `move`, `resize-*`, `update` | `delete`             |
+| ---------- | ----------------- | ---------------------------- | -------------------- |
+| `cause`    | `"create"`        | the cause                    | `"delete"`           |
+| `id`       | a change ID       | a change ID                  | a change ID          |
+| `eventId`  | `null`            | the event's ID               | the event's ID       |
+| `event`    | `null`            | your record                  | your record          |
+| `original` | `null`            | the placement before         | the placement before |
+| `proposed` | the new placement | the new placement            | `null`               |
+
+Placements in a change always include `resourceIds`. `original` is what the user saw, including any
+change still pending for the same event.
+
+## Results
+
+`proposeEventChange` resolves with `{ status: "committed", change }` or
+`{ status: "rejected", reason, change?, error? }`. It never rejects. The
+[reasons](/docs/interactions#changing-events-from-your-own-ui) are listed on the Interactions page.
+
+## Policies
+
+```ts
+type CalendarPolicy = (
+  change: CalendarEventChange,
+  context: { events: EventSnapshot; timeZone: string },
+) => Decision | Promise<Decision>;
+
+type Decision =
+  { type: "accept" } | { type: "adjust"; proposed: Placement } | { type: "reject"; reason: string };
+```
+
+`context.events` includes pending changes, so a policy sees the calendar as the user does. A policy
+that throws rejects the change with the reason `policy-error`.
+
+| Policy                           | Behaviour                                                                                                                                                                                                                                                    |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `snapPolicy(increment)`          | Rounds timed and floating changes to a wall-clock grid in the calendar's time zone, such as `{ minutes: 15 }`. Moves keep their length; resizes snap only the dragged edge. All-day changes pass through. The increment must divide an hour or a day evenly. |
+| `minimumDurationPolicy(minimum)` | Lengthens timed and floating changes shorter than `minimum`. Resizing the start moves the start earlier; anything else moves the end later.                                                                                                                  |
+| `boundsPolicy({ start, end })`   | Rejects changes that reach outside `[start, end)`, with the reason `out-of-bounds`. Both bounds are optional instants.                                                                                                                                       |
+| `readOnlyPolicy()`               | Rejects changes to events whose adapter `isReadOnly` returns `true`, with the reason `read-only`. `Root` runs it before your policies.                                                                                                                       |
+
+## Placement helpers
+
+These build placements for proposals, with the same wall-clock rules the built-in gestures use.
+
+| Function                                                                      | Returns                                                                                                                                           |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `eventPlacement(normalizedEvent)`                                             | The placement of an event from the snapshot                                                                                                       |
+| `moveEventPlacement(placement, delta, { timeZone })`                          | The placement moved by a wall-clock delta, such as `{ days: 1, minutes: -30 }`. A 09:00 event moved by a week stays at 09:00 across a DST change. |
+| `resizeEventPlacement(placement, edge, delta, { timeZone, minimumDuration })` | One edge moved, keeping at least `minimumDuration` (15 minutes by default; all-day events keep a day)                                             |
+| `createEventPlacement(anchor, focus, resourceIds)`                            | A placement covering two ranges of the same kind, such as the first and last slot of a drag                                                       |
+| `toAllDayPlacement(placement, { timeZone })`                                  | The dates a placement touches, as an all-day placement                                                                                            |
+| `toTimedPlacement(placement, start, duration)`                                | A timed placement starting at a `Temporal.ZonedDateTime`                                                                                          |
+
+For example, this moves an event to the same time on the next day:
+
+<include meta='title="move-to-tomorrow.ts"'>../../examples/editing.tsx#placement</include>
+
+`createEventTransactions` and `applyEventOverlay` are the engine `Root` uses to run proposals and
+draw pending changes. You only need them to handle changes outside React.
+
+## Pointer layer
+
+`@moltenship/calendar-dnd` is a separate package. `useCalendarPointer(options)` returns a ref for
+the element that contains a view's days, and `attachCalendarPointer(element, getOptions)` does the
+same without React and returns a cleanup function.
+
+<TypeTable
+  type={{
+    events: {
+      type: "EventSnapshot",
+      description: (
+        <>
+          The events as rendered, pending changes included: the Renderer's <code>events</code> prop.
+        </>
+      ),
+      required: true,
+    },
+    onPropose: {
+      type: "(proposal) => void",
+      description: (
+        <>
+          Receives one proposal per finished drag. Usually <code>actions.proposeEventChange</code>.
+        </>
+      ),
+      required: true,
+    },
+    timeZone: { type: "string", description: "The calendar's time zone.", required: true },
+    columns: {
+      type: "readonly TimeGridColumn[]",
+      description: (
+        <>
+          The day columns of a time grid: <code>projection.days.map((day) =&gt; day.column)</code>.
+          Leave it out in a month grid.
+        </>
+      ),
+    },
+    snap: {
+      type: "{ increment, smallestUnit, mode? }",
+      description: "The wall-clock grid for times.",
+      default: "15 minutes",
+    },
+    scrollContainer: {
+      type: "HTMLElement | null",
+      description: "Scrolled while dragging near its edges.",
+      default: "the nearest scrollable ancestor",
+    },
+    ghostClassName: { type: "string", description: "Extra classes for the drag preview." },
+    disabled: { type: "boolean", description: "Turns gestures off.", default: "false" },
+  }}
+/>
+
+While a gesture runs, the region has `data-interaction="move"`, `"resize"`, or `"create"`, and the
+event being dragged has `data-dragging`. Preview elements have `data-calendar-ghost="event"` or
+`"range"` and read `--calendar-ghost-background`, `--calendar-ghost-radius`, and
+`--calendar-ghost-z-index`.

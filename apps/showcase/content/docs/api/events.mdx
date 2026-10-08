@@ -147,7 +147,9 @@ and builds a new one, reusing what it can, for a new array. For a one-off snapsh
 | `getQueryCacheStatistics()` | `capacity`, `size`, `hits`, `misses`, and `evictions`    |
 
 A normalized event has your record as `event`, plus `id`, `title`, `resourceIds`, `isReadOnly`,
-`revision`, `inputIndex`, and the range fields (`kind`, `start`, `end`).
+`revision`, `inputIndex`, and the range fields (`kind`, `start`, `end`). Inside a calendar, an event
+with a change that is still saving also has `isPending: true` and shows its proposed range; see
+[pending changes](/docs/interactions#pending-changes).
 
 ## Queries
 

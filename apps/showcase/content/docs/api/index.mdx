@@ -22,6 +22,11 @@ import { createCalendar, defineCalendarView, plainDateInterval } from "@moltensh
     description="Adapters, ranges, validation, snapshots, and queries."
   />
   <Card
+    title="Event changes"
+    href="/docs/api/changes"
+    description="Proposals, changes, policies, placement helpers, and the pointer layer."
+  />
+  <Card
     title="State store"
     href="/docs/api/store"
     description="Calendar state without Root, and sharing a store with Root."
@@ -35,12 +40,13 @@ import { createCalendar, defineCalendarView, plainDateInterval } from "@moltensh
 
 ## Packages
 
-| Package                         | Contents                                                         | Dependencies                                          |
-| ------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| `@moltenship/calendar`          | Re-exports the three packages below                              | Those three; React 19 (peer)                          |
-| `@moltenship/calendar-react`    | `createCalendar`, `defineCalendarView`, components, hooks, store | `calendar-core`, `calendar-temporal`; React 19 (peer) |
-| `@moltenship/calendar-core`     | Adapters, validation, snapshots, queries. No React.              | `calendar-temporal`, `@flatten-js/interval-tree`      |
-| `@moltenship/calendar-temporal` | Ranges, grids, rounding, zoned days, DST                         | None                                                  |
+| Package                         | Contents                                                          | Dependencies                                          |
+| ------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------- |
+| `@moltenship/calendar`          | Re-exports `calendar-react`, `calendar-core`, `calendar-temporal` | Those three; React 19 (peer)                          |
+| `@moltenship/calendar-react`    | `createCalendar`, `defineCalendarView`, components, hooks, store  | `calendar-core`, `calendar-temporal`; React 19 (peer) |
+| `@moltenship/calendar-core`     | Adapters, validation, snapshots, queries. No React.               | `calendar-temporal`, `@flatten-js/interval-tree`      |
+| `@moltenship/calendar-temporal` | Ranges, grids, rounding, zoned days, DST                          | None                                                  |
+| `@moltenship/calendar-dnd`      | Pointer drag, resize, and create for views. Not in the facade.    | `calendar-core`, `calendar-temporal`; React 19 (peer) |
 
 Every package is ESM only. Import from the package name: paths inside a package aren't part of the
 API.

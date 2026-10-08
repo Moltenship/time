@@ -146,6 +146,24 @@ own.
         </>
       ),
     },
+    onEventChange: {
+      type: "(change) => void | Promise<void>",
+      description: (
+        <>
+          Saves a proposed change. Return a promise to keep it pending until it settles. Without it
+          the calendar is read-only. See <a href="/docs/interactions">Interactions</a>.
+        </>
+      ),
+    },
+    policies: {
+      type: "readonly CalendarPolicy[]",
+      description: (
+        <>
+          Run in order on every proposed change, after the built-in read-only check. See{" "}
+          <a href="/docs/api/changes#policies">policies</a>.
+        </>
+      ),
+    },
     resources: {
       type: "readonly TResource[]",
       description: "Rooms, people, or anything else events are assigned to.",
@@ -274,16 +292,17 @@ instant from the nearest `Root`'s `now` or `clock`, or the system clock, and sam
 
 ### Actions
 
-| Action                                 | Effect                                     |
-| -------------------------------------- | ------------------------------------------ |
-| `setView(name)`                        | Changes the view                           |
-| `setAnchorDate(date)`                  | Changes the date                           |
-| `setTimeZone(zone)`                    | Changes the time zone                      |
-| `setSelection(value)`                  | Changes the selection (`null` clears it)   |
-| `setFocus(value)`                      | Changes the focus (`null` clears it)       |
-| `setExpandedResourceIds(ids)`          | Changes the expanded resources             |
-| `navigatePrevious()`, `navigateNext()` | Moves by one step of the active view       |
-| `navigateToday()`                      | Moves to today in the calendar's time zone |
+| Action                                 | Effect                                                                                                                                |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `setView(name)`                        | Changes the view                                                                                                                      |
+| `setAnchorDate(date)`                  | Changes the date                                                                                                                      |
+| `setTimeZone(zone)`                    | Changes the time zone                                                                                                                 |
+| `setSelection(value)`                  | Changes the selection (`null` clears it)                                                                                              |
+| `setFocus(value)`                      | Changes the focus (`null` clears it)                                                                                                  |
+| `setExpandedResourceIds(ids)`          | Changes the expanded resources                                                                                                        |
+| `navigatePrevious()`, `navigateNext()` | Moves by one step of the active view                                                                                                  |
+| `navigateToday()`                      | Moves to today in the calendar's time zone                                                                                            |
+| `proposeEventChange(proposal)`         | Proposes a change to an event and resolves with the outcome. See [Interactions](/docs/interactions#changing-events-from-your-own-ui). |
 
 Setting a value equal to the current one does nothing. Calling two actions in a row builds on the
 first, so `navigateNext(); navigateNext()` moves two steps, even for controlled values.
