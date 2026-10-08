@@ -1,2 +1,3 @@
-// Public exports are added with the dnd adapter; no implementation is implied by this shell.
-export {};
+export { attachCalendarPointer } from "./attach-calendar-pointer";
+export type { CalendarPointerOptions } from "./attach-calendar-pointer";
+export { useCalendarPointer } from "./use-calendar-pointer";

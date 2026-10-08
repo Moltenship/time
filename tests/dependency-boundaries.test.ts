@@ -25,7 +25,7 @@ const expectedWorkspaceDependencies = {
     "@moltenship/calendar-temporal",
   ],
   "@moltenship/calendar-core": ["@moltenship/calendar-temporal"],
-  "@moltenship/calendar-dnd": ["@moltenship/calendar-core", "@moltenship/calendar-react"],
+  "@moltenship/calendar-dnd": ["@moltenship/calendar-core", "@moltenship/calendar-temporal"],
   "@moltenship/calendar-react": ["@moltenship/calendar-core", "@moltenship/calendar-temporal"],
   "@moltenship/calendar-recurrence": ["@moltenship/calendar-core", "@moltenship/calendar-temporal"],
   "@moltenship/calendar-temporal": [],

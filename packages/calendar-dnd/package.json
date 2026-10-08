@@ -1,7 +1,7 @@
 {
   "name": "@moltenship/calendar-dnd",
   "version": "0.0.0",
-  "description": "Optional semantic dnd-kit adapter for Moltenship Time.",
+  "description": "Pointer drag, resize, and create interactions for Moltenship Time views.",
   "license": "MIT",
   "files": [
     "dist"
@@ -31,11 +31,19 @@
   },
   "dependencies": {
     "@moltenship/calendar-core": "workspace:*",
-    "@moltenship/calendar-react": "workspace:*"
+    "@moltenship/calendar-temporal": "workspace:*"
   },
   "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0"
   }
 }
