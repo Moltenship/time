@@ -6,6 +6,7 @@ import type { CalendarEventProposal } from "@moltenship/calendar-core";
 import { attachCalendarPointer, type CalendarPointerOptions } from "../src/index";
 import {
   ALL_DAY_HEIGHT,
+  HOUR_HEIGHT,
   cellCenter,
   mountMonth,
   mountTimeGrid,
@@ -212,6 +213,35 @@ describe("time grid", () => {
     expect(ghosts(grid.region)[0]!.style.transform).toBe(
       `translate3d(${100 - 120}px, ${yAt("11:00") - 30}px, 0)`,
     );
+  });
+
+  test("clips a translucent preview to the scroll viewport when it crosses midnight", () => {
+    const grid = mountTimeGrid([meeting]);
+    // The region scrolls: only 04:00 to 14:00 of the columns are in view.
+    grid.region.style.overflowY = "auto";
+    grid.region.getBoundingClientRect = () =>
+      ({
+        bottom: yAt("14:00"),
+        height: 400,
+        left: 0,
+        right: 200,
+        top: yAt("04:00"),
+        width: 200,
+      }) as DOMRect;
+    setup(grid, { columns: grid.columns });
+    const handle = grid.elements.get("a")!.querySelector('[data-resize="end"]')!;
+
+    pointer("pointerdown", handle, 50, yAt("09:58"));
+    pointer("pointermove", handle, 50, yAt("10:30"));
+    pointer("pointermove", handle, 150, yAt("06:00"));
+
+    // 09:00 to 24:00 on the first day, then 00:00 to 06:00 on the second.
+    const [first, second] = ghosts(grid.region);
+    expect(first!.style.clipPath).toBe(
+      `inset(0px 0px ${ALL_DAY_HEIGHT + 24 * HOUR_HEIGHT - yAt("14:00")}px 0px)`,
+    );
+    expect(second!.style.clipPath).toBe(`inset(${yAt("04:00") - yAt("00:00")}px 0px 0px 0px)`);
+    expect(first!.style.opacity).toBe("var(--calendar-ghost-opacity, 0.75)");
   });
 
   test("turns a timed event into an all-day event on the all-day row", () => {

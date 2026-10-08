@@ -3,9 +3,11 @@ import type { TimeGridColumn } from "@moltenship/calendar-core";
 import type { PointerTarget } from "./gestures";
 
 export interface TargetSurface {
-  readonly region: HTMLElement;
+  /** Each cell's overflow-clipping ancestors, found once per gesture. */
+  readonly clippers: Map<Element, readonly Element[]>;
   /** Time-grid columns by ISO date; `[data-date]` elements matching one map height to time. */
   readonly columns: ReadonlyMap<string, TimeGridColumn>;
+  readonly region: HTMLElement;
 }
 
 export function isTimeColumn(surface: TargetSurface, cell: Element): boolean {

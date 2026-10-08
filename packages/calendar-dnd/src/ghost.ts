@@ -1,4 +1,5 @@
 import {
+  belongsInTimeGridAllDayRow,
   timedFragmentBox,
   toAllDayPlacement,
   type CalendarEventPlacement,
@@ -8,11 +9,65 @@ import { instantInterval } from "@moltenship/calendar-temporal";
 
 import { dayCells, timeColumns, type TargetSurface } from "./targets";
 
+interface Bounds {
+  readonly bottom: number;
+  readonly left: number;
+  readonly right: number;
+  readonly top: number;
+}
+
 export interface GhostRect {
   readonly height: number;
   readonly left: number;
   readonly top: number;
+  /** Where the segment may paint: its cell's scroll viewport and other clipping ancestors. */
+  readonly visible: Bounds;
   readonly width: number;
+}
+
+/** Viewport rectangles read at most once per layout. */
+type RectReader = (element: Element) => DOMRect;
+
+function clips(overflow: string): boolean {
+  return overflow !== "" && overflow !== "visible";
+}
+
+/**
+ * The part of the viewport where a cell's content can paint. The preview is fixed-position, so it
+ * applies the clipping of the cell's scroll viewport and other overflow ancestors itself.
+ */
+function visibleBounds(surface: TargetSurface, cell: Element, rectOf: RectReader): Bounds {
+  let ancestors = surface.clippers.get(cell);
+  if (ancestors === undefined) {
+    const found: Element[] = [];
+    for (let current = cell.parentElement; current !== null; current = current.parentElement) {
+      const { overflowX, overflowY } = getComputedStyle(current);
+      if (clips(overflowX) || clips(overflowY)) found.push(current);
+    }
+    surface.clippers.set(cell, found);
+    ancestors = found;
+  }
+
+  let bounds: Bounds = { bottom: innerHeight, left: 0, right: innerWidth, top: 0 };
+  for (const ancestor of ancestors) {
+    const rect = rectOf(ancestor);
+    bounds = {
+      bottom: Math.min(bounds.bottom, rect.bottom),
+      left: Math.max(bounds.left, rect.left),
+      right: Math.min(bounds.right, rect.right),
+      top: Math.max(bounds.top, rect.top),
+    };
+  }
+  return bounds;
+}
+
+function isVisible({ height, left, top, visible, width }: GhostRect): boolean {
+  return (
+    left < visible.right &&
+    left + width > visible.left &&
+    top < visible.bottom &&
+    top + height > visible.top
+  );
 }
 
 export interface GhostLayout {
@@ -37,6 +92,7 @@ function timeColumnRects(
   surface: TargetSurface,
   placement: Exclude<CalendarEventPlacement, { kind: "all-day" }>,
   timeZone: string,
+  rectOf: RectReader,
 ): GhostRect[] {
   const { end, start } = instantEndpoints(placement, timeZone);
   return timeColumns(surface).flatMap((cell) => {
@@ -48,12 +104,13 @@ function timeColumnRects(
     if (Temporal.Instant.compare(from, to) >= 0) return [];
 
     const box = timedFragmentBox(column, instantInterval(from, to));
-    const rect = cell.getBoundingClientRect();
+    const rect = rectOf(cell);
     return [
       {
         height: box.height * rect.height,
         left: rect.left,
         top: rect.top + box.top * rect.height,
+        visible: visibleBounds(surface, cell, rectOf),
         width: rect.width,
       },
     ];
@@ -65,6 +122,7 @@ function dayCellRects(
   surface: TargetSurface,
   placement: CalendarEventPlacement<ResourceId>,
   timeZone: string,
+  rectOf: RectReader,
 ): GhostRect[] {
   const days = toAllDayPlacement(placement, { timeZone });
   const first = days.start.toString();
@@ -76,7 +134,7 @@ function dayCellRects(
     const date = cell.getAttribute("data-date")!;
     if (date < first || date >= last) continue;
 
-    const rect = cell.getBoundingClientRect();
+    const rect = rectOf(cell);
     const previous = rects.at(-1);
     const adjacent =
       previous !== undefined &&
@@ -91,27 +149,51 @@ function dayCellRects(
         width: Math.max(previous.left + previous.width, rect.right) - left,
       };
     } else {
-      rects.push({ height: rect.height, left: rect.left, top: rect.top, width: rect.width });
+      rects.push({
+        height: rect.height,
+        left: rect.left,
+        top: rect.top,
+        visible: visibleBounds(surface, cell, rectOf),
+        width: rect.width,
+      });
     }
   }
   return rects;
 }
 
-/** Viewport boxes that preview a placement on the rendered view. */
+/**
+ * Viewport boxes that preview a placement where the view will render it: in time columns, or in
+ * day cells for all-day and 24-hour-plus events, which a time grid shows in its all-day row.
+ * Boxes outside their cell's scroll viewport are left out.
+ */
 export function ghostLayout(
   surface: TargetSurface,
   placement: CalendarEventPlacement<ResourceId>,
   timeZone: string,
 ): GhostLayout {
-  return placement.kind !== "all-day" && surface.columns.size > 0
-    ? { axis: "time", rects: timeColumnRects(surface, placement, timeZone) }
-    : { axis: "day", rects: dayCellRects(surface, placement, timeZone) };
+  const rects = new Map<Element, DOMRect>();
+  const rectOf: RectReader = (element) => {
+    let rect = rects.get(element);
+    if (rect === undefined) {
+      rect = element.getBoundingClientRect();
+      rects.set(element, rect);
+    }
+    return rect;
+  };
+  const layout: GhostLayout =
+    placement.kind !== "all-day" &&
+    surface.columns.size > 0 &&
+    !belongsInTimeGridAllDayRow(placement)
+      ? { axis: "time", rects: timeColumnRects(surface, placement, timeZone, rectOf) }
+      : { axis: "day", rects: dayCellRects(surface, placement, timeZone, rectOf) };
+  return { ...layout, rects: layout.rects.filter(isVisible) };
 }
 
 /**
- * Fixed-position preview segments, moved with transforms so a drag never re-renders the view.
- * Segments clone the dragged event, or are plain range boxes for creates and day cells; style them
- * through `[data-calendar-ghost]` or the `--calendar-ghost-*` custom properties.
+ * Fixed-position preview segments, moved with transforms so a drag never re-renders the view, and
+ * clipped to their cells' scroll viewports. Segments are translucent clones of the dragged event,
+ * or range boxes for creates and day cells; style them through `[data-calendar-ghost]` or the
+ * `--calendar-ghost-*` custom properties.
  */
 export class GhostLayer {
   readonly #className: string | undefined;
@@ -137,9 +219,20 @@ export class GhostLayer {
     const origin = this.#containingBlockOrigin();
     rects.forEach((rect, index) => {
       const { style } = this.#segments[index]!;
-      style.width = `${rect.width}px`;
-      style.height = `${rect.height}px`;
-      style.transform = `translate3d(${rect.left - origin.left}px, ${rect.top - origin.top}px, 0)`;
+      const { height, left, top, visible, width } = rect;
+      // Insets keep the segment's full geometry and hide what its cell would clip.
+      const insets = [
+        visible.top - top,
+        left + width - visible.right,
+        top + height - visible.bottom,
+        visible.left - left,
+      ].map((inset) => Math.max(0, inset));
+      style.width = `${width}px`;
+      style.height = `${height}px`;
+      style.transform = `translate3d(${left - origin.left}px, ${top - origin.top}px, 0)`;
+      style.clipPath = insets.some((inset) => inset > 0)
+        ? `inset(${insets.map((inset) => `${inset}px`).join(" ")})`
+        : "";
     });
   }
 
@@ -197,12 +290,19 @@ export class GhostLayer {
       top: "0",
       zIndex: "var(--calendar-ghost-z-index, 50)",
     });
-    if (template === null) {
-      Object.assign(segment.style, {
-        background: "var(--calendar-ghost-background, rgb(37 99 235 / 0.18))",
-        borderRadius: "var(--calendar-ghost-radius, 6px)",
-      });
-    }
+    // The preview stays see-through, so events under it remain readable.
+    Object.assign(
+      segment.style,
+      template === null
+        ? {
+            background: "var(--calendar-ghost-background, rgb(37 99 235 / 0.18))",
+            borderRadius: "var(--calendar-ghost-radius, 6px)",
+          }
+        : {
+            boxShadow: "var(--calendar-ghost-shadow, 0 6px 16px rgb(0 0 0 / 0.18))",
+            opacity: "var(--calendar-ghost-opacity, 0.75)",
+          },
+    );
     this.#region.append(segment);
     return segment;
   }

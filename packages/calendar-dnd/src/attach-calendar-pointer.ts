@@ -308,6 +308,7 @@ export function attachCalendarPointer<
     if (options.disabled === true || !(event.target instanceof Element)) return;
 
     const surface: TargetSurface = {
+      clippers: new Map(),
       columns: new Map((options.columns ?? []).map((column) => [column.date.toString(), column])),
       region,
     };
