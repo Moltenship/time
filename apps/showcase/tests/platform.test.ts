@@ -5,8 +5,10 @@ import { fileURLToPath } from "node:url";
 import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
 import { describe, expect, test } from "vite-plus/test";
 
+import { Calendar as LandingCalendar } from "../app/(home)/example";
+
 const contentRoot = fileURLToPath(new URL("../content/docs", import.meta.url));
-const landingExamplePath = fileURLToPath(new URL("../app/(home)/example.tsx", import.meta.url));
+const landingExamplePath = fileURLToPath(new URL("../app/(home)/example.ts", import.meta.url));
 
 interface InstallationMeeting {
   readonly endsAt: Temporal.Instant;
@@ -64,6 +66,10 @@ describe("documentation platform contracts", () => {
 
   test("the installation call shape compiles against the public facade", () => {
     expect(InstallationCalendar.Root).toBeTypeOf("function");
+  });
+
+  test("the landing page example builds a calendar from the public facade", () => {
+    expect(LandingCalendar.Root).toBeTypeOf("function");
   });
 
   test("the landing page example consumes no private Moltenship workspace", async () => {

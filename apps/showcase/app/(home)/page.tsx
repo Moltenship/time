@@ -45,15 +45,15 @@ const features = [
 const steps = [
   "Describe your records with an event adapter.",
   "Create a calendar typed by those records.",
-  "Compose the toolbar and views, styled your way.",
+  "Use its hooks and components with your types, no casts.",
 ] as const;
 
 const buttonClass =
   "inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-medium transition-colors";
 
 export default async function HomePage() {
-  // The sample is a real module so `showcase:types` keeps it in step with the public API.
-  const example = await readFile(join(process.cwd(), "app/(home)/example.tsx"), "utf8");
+  // The sample is a real module, type-checked and imported by tests, so it tracks the public API.
+  const example = await readFile(join(process.cwd(), "app/(home)/example.ts"), "utf8");
 
   return (
     <>
@@ -120,7 +120,7 @@ export default async function HomePage() {
         aria-labelledby="example-title"
         className="mx-auto grid w-full max-w-6xl gap-10 px-6 pb-24 lg:grid-cols-[2fr_3fr] lg:items-start"
       >
-        <div className="lg:sticky lg:top-24 lg:pt-4">
+        <div className="lg:pt-4">
           <h2 className="text-3xl font-semibold tracking-tight text-balance" id="example-title">
             Your data, typed all the way through
           </h2>
@@ -144,12 +144,8 @@ export default async function HomePage() {
         </div>
         <ServerCodeBlock
           code={example}
-          codeblock={{
-            title: "schedule.tsx",
-            className: "my-0 shadow-sm",
-            viewportProps: { className: "max-h-none" },
-          }}
-          lang="tsx"
+          codeblock={{ title: "calendar.ts", className: "my-0 shadow-sm" }}
+          lang="ts"
           themes={codeThemes}
         />
       </section>
