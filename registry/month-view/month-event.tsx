@@ -37,12 +37,14 @@ export function MonthEvent({
 }: MonthEventProps) {
   return (
     <EventChip
+      // A change to this event is still being saved.
+      aria-busy={event.isPending === true || undefined}
       color={color}
       data-event-id={String(event.id)}
       style={style}
       title={event.title}
       className={cn(
-        "gap-1 rounded-sm px-1.5 py-0 max-sm:px-1 max-sm:text-[0.625rem]",
+        "gap-1 rounded-sm px-1.5 py-0 aria-busy:opacity-60 max-sm:px-1 max-sm:text-[0.625rem]",
         bar
           ? [startsBefore && "rounded-l-none border-l-0 pl-0.5", endsAfter && "rounded-r-none"]
           : // Small screens show compact tinted blocks instead of dot, time, and title.

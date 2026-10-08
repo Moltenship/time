@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
+import { createCanonicalEventAdapter, createEventSnapshot } from "@moltenship/calendar";
 import { afterEach, expect, test } from "vite-plus/test";
 
+import { MonthEvent } from "../month-view/month-event";
 import { createMonthView } from "../month-view/month-view";
 import { click, render } from "./render";
 import {
@@ -108,4 +110,19 @@ test("opens the day view from a date number", async () => {
 
   expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Day 2026-10-13");
   expect(container.querySelector('[data-testid="day-view"]')).not.toBeNull();
+});
+
+test("marks events whose change is still pending as busy", async () => {
+  const [event] = createEventSnapshot(events, createCanonicalEventAdapter()).events;
+  const view = await render(
+    <MonthEvent
+      bar={false}
+      endsAfter={false}
+      event={{ ...event!, isPending: true }}
+      startsBefore={false}
+    />,
+  );
+  cleanup = view.unmount;
+
+  expect(view.container.querySelector("[data-event-id]")?.getAttribute("aria-busy")).toBe("true");
 });

@@ -25,9 +25,11 @@ export function AgendaItem({ color, item, timeFormat }: AgendaItemProps) {
 
   return (
     <EventChip
+      // A change to this event is still being saved.
+      aria-busy={item.event.isPending === true || undefined}
       color={color}
       data-event-id={String(item.event.id)}
-      className="w-full gap-x-3 gap-y-0.5 border-l-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start"
+      className="w-full gap-x-3 aria-busy:opacity-60 gap-y-0.5 border-l-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start"
     >
       <span className="flex shrink-0 items-center gap-2 sm:w-44">
         <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-calendar-event-border" />
