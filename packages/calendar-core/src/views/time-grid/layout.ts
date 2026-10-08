@@ -1,4 +1,4 @@
-import { instantInterval, intersectInstantIntervals } from "@moltenship/calendar-temporal";
+import { instantInterval } from "@moltenship/calendar-temporal";
 
 import type { EventId, ResourceId } from "../../ids";
 import { layoutTimedOverlaps, type TimedOverlapOptions } from "../../layout/timed-overlap";
@@ -16,16 +16,11 @@ export interface TimeGridEventLayout<TFragment> extends TimeGridBand {
 
 function fragmentBox(column: TimeGridColumn, fragment: DayFragment): TimeGridBand {
   const { event } = fragment;
-  if (event.kind === "timed" && column.day.interval !== null) {
-    const interval = intersectInstantIntervals(
-      instantInterval(event.start, event.end),
-      column.day.interval,
-    );
-    // Instants keep fold identity, so a repeated hour is measured rather than inferred.
-    if (interval !== null) return timedFragmentBox(column, interval);
-  }
 
-  return wallRangeBox(column, fragment.start, fragment.end);
+  // Instants keep fold identity, so every offset run on this date is measured rather than inferred.
+  return event.kind === "timed"
+    ? timedFragmentBox(column, instantInterval(event.start, event.end))
+    : wallRangeBox(column, fragment.start, fragment.end);
 }
 
 function layoutColumn<TFragment extends DayFragment>(
@@ -36,7 +31,8 @@ function layoutColumn<TFragment extends DayFragment>(
   const items = fragments.map((fragment) => ({
     ...fragmentBox(column, fragment),
     fragment,
-    key: String(fragment.event.id),
+    // `1` and `"1"` are distinct event IDs, so the type is part of the tie-breaking key.
+    key: `${typeof fragment.event.id}:${fragment.event.id}`,
   }));
 
   return Object.freeze(

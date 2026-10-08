@@ -1,5 +1,4 @@
 import {
-  instantIntervalContains,
   snapZonedWallTime,
   type InstantInterval,
   type WallTimeSnapOptions,
@@ -8,6 +7,7 @@ import {
 import type { TimeGridBand, TimeGridColumn } from "./columns";
 
 const NOMINAL_DAY_NANOSECONDS = 86_400_000_000_000;
+const DAY_NANOSECONDS = 86_400_000_000_000n;
 const DEFAULT_SNAP: WallTimeSnapOptions = { increment: 15, smallestUnit: "minute" };
 
 export interface TimeGridPosition {
@@ -36,64 +36,73 @@ export function columnFraction(date: Temporal.PlainDate, wallNanoseconds: bigint
   return Math.min(1, Math.max(0, fraction));
 }
 
-/** Wall-clock epoch nanoseconds of `instant`, read with the offset in effect at `offsetSource`. */
-function wallNanoseconds(
-  instant: Temporal.Instant,
-  offsetSource: Temporal.Instant,
-  timeZone: string,
-): bigint {
-  return (
-    instant.epochNanoseconds + BigInt(offsetSource.toZonedDateTimeISO(timeZone).offsetNanoseconds)
-  );
-}
-
-/** Column and vertical position of an instant, such as now; `null` outside every column. */
+/** Column and vertical position of an instant, such as now, by its wall time; `null` off-grid. */
 export function timeGridPosition(
   columns: readonly TimeGridColumn[],
   instant: Temporal.Instant,
 ): TimeGridPosition | null {
-  const column = columns.findIndex(
-    ({ day }) => day.interval !== null && instantIntervalContains(day.interval, instant),
-  );
+  if (columns.length === 0) {
+    return null;
+  }
+
+  const zoned = instant.toZonedDateTimeISO(columns[0]!.day.timeZone);
+  const date = zoned.toPlainDate();
+  const column = columns.findIndex((candidate) => candidate.date.equals(date));
   if (column < 0) {
     return null;
   }
 
-  const { date, day } = columns[column]!;
   return Object.freeze({
     column,
-    top: columnFraction(date, wallNanoseconds(instant, instant, day.timeZone)),
+    top: columnFraction(date, zoned.epochNanoseconds + BigInt(zoned.offsetNanoseconds)),
   });
 }
 
 /**
- * Vertical extent of a fragment already clipped to the column's day. The end is read with the
- * offset in effect just before it, so a fragment ending at a spring-forward transition stops at
- * the gap. A fragment crossing a fold spans the whole repeated band instead of inverting.
+ * Vertical extent of the part of an instant interval whose wall time falls on the column's date.
+ * The interval is walked one UTC offset at a time, so a piece crossing a fold covers the whole
+ * repeated band (even when the fold crosses midnight), a piece ending at a spring-forward
+ * transition stops at the gap, and an interval that never touches the date is empty.
  */
 export function timedFragmentBox(column: TimeGridColumn, interval: InstantInterval): TimeGridBand {
-  const { date, day } = column;
+  const origin = wallEpochNanoseconds(column.date.toPlainDateTime());
+  // Offsets stay within ±24 hours, so only these instants can have a wall time on this date.
+  const windowStart = origin - DAY_NANOSECONDS;
+  const windowEnd = origin + 2n * DAY_NANOSECONDS;
   const start = interval.start.epochNanoseconds;
-  const end = interval.end.epochNanoseconds;
-  let top = wallNanoseconds(interval.start, interval.start, day.timeZone);
-  let bottom = wallNanoseconds(
-    interval.end,
-    interval.end.subtract({ nanoseconds: 1 }),
-    day.timeZone,
+  const end = interval.end.epochNanoseconds < windowEnd ? interval.end.epochNanoseconds : windowEnd;
+  let cursor = new globalThis.Temporal.ZonedDateTime(
+    start > windowStart ? start : windowStart,
+    column.day.timeZone,
   );
+  let top = DAY_NANOSECONDS;
+  let bottom = 0n;
 
-  for (const transition of column.transitions) {
-    const at = transition.instant.epochNanoseconds;
-    if (transition.kind === "fold" && start < at && at < end) {
-      const wallAfter = wallNanoseconds(transition.instant, transition.instant, day.timeZone);
-      const wallBefore = wallAfter - BigInt(transition.offsetDeltaNanoseconds);
-      top = wallAfter < top ? wallAfter : top;
-      bottom = wallBefore > bottom ? wallBefore : bottom;
+  while (cursor.epochNanoseconds < end) {
+    const transition = cursor.getTimeZoneTransition("next");
+    const runEnd =
+      transition === null || transition.epochNanoseconds >= end ? end : transition.epochNanoseconds;
+    const wallStart = cursor.epochNanoseconds + BigInt(cursor.offsetNanoseconds) - origin;
+    const wallEnd = wallStart + runEnd - cursor.epochNanoseconds;
+
+    if (wallStart < DAY_NANOSECONDS && wallEnd > 0n) {
+      const runTop = wallStart > 0n ? wallStart : 0n;
+      const runBottom = wallEnd < DAY_NANOSECONDS ? wallEnd : DAY_NANOSECONDS;
+      top = runTop < top ? runTop : top;
+      bottom = runBottom > bottom ? runBottom : bottom;
     }
+    if (transition === null || runEnd === end) {
+      break;
+    }
+    cursor = transition;
   }
 
-  const topFraction = columnFraction(date, top);
-  return Object.freeze({ height: columnFraction(date, bottom) - topFraction, top: topFraction });
+  return bottom > top
+    ? Object.freeze({
+        height: Number(bottom - top) / NOMINAL_DAY_NANOSECONDS,
+        top: Number(top) / NOMINAL_DAY_NANOSECONDS,
+      })
+    : Object.freeze({ height: 0, top: 0 });
 }
 
 /** Vertical extent of a wall-clock range, such as a floating event, in the column's date. */

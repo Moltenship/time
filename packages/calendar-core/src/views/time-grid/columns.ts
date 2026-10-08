@@ -28,7 +28,6 @@ export interface TimeGridColumn {
   /** Wall time that never occurs (spring-forward). No instant maps into this band. */
   readonly gaps: readonly TimeGridBand[];
   readonly key: string;
-  readonly transitions: readonly ZonedOffsetTransition[];
 }
 
 function transitionBand(
@@ -72,7 +71,6 @@ export function timeGridColumns(
         folds: bands(date, transitions, "fold"),
         gaps: bands(date, transitions, "gap"),
         key: day.key,
-        transitions,
       }),
     );
   }
