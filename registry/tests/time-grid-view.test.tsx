@@ -2,10 +2,10 @@
 
 import {
   createCalendar,
+  createFixedClock,
   defineEventAdapter,
   type CalendarEventInterval,
 } from "@moltenship/calendar";
-import { createFixedClock } from "@moltenship/calendar-temporal";
 import { act } from "react";
 import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";

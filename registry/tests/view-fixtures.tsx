@@ -1,11 +1,12 @@
 import {
   createCalendar,
   createCanonicalEventAdapter,
+  createFixedClock,
   defineCalendarView,
+  plainDateInterval,
   type AnyCalendarView,
   type CalendarEvent,
 } from "@moltenship/calendar";
-import { createFixedClock, plainDateInterval } from "@moltenship/calendar-temporal";
 
 import type { CalendarEventColor } from "../calendar-theme/event-colors";
 
