@@ -159,6 +159,18 @@ test("marks resize edges only where an editable fragment starts or ends", async 
   expect(handles(event(container, "locked")[0]!)).toEqual([]);
 });
 
+test("labels an overnight event with the weekday its end falls on", async () => {
+  const container = await renderCalendar("week", "2026-10-08");
+  const [friday, saturday] = event(container, "overnight");
+
+  // 22:00 Friday to 02:00 Saturday in New York; both fragments show the event's own range.
+  for (const fragment of [friday!, saturday!]) {
+    expect(fragment.textContent?.replace(/\s/gu, " ")).toBe(
+      "Meeting overnight10:00 PM – Sat 2:00 AM",
+    );
+  }
+});
+
 test("draws the now-line in today's column only", async () => {
   const container = await renderCalendar("week", "2026-10-08");
   const lines = container.querySelectorAll<HTMLElement>('[data-slot="time-grid-now"]');

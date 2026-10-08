@@ -3,14 +3,14 @@ import type { TimeGridBand, TimeGridDay } from "@moltenship/calendar";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
-import { percent, TimeGridEvent } from "./time-grid-event";
+import { percent, TimeGridEvent, type TimeGridEventFormats } from "./time-grid-event";
 
 export interface TimeGridColumnProps<TEvent> {
   readonly day: TimeGridDay<TEvent>;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   /** Position of the now-line when the current time falls in this column. */
   readonly nowTop: number | null;
-  readonly timeFormat: Intl.DateTimeFormat;
+  readonly formats: TimeGridEventFormats;
   readonly timeZone: string;
 }
 
@@ -26,7 +26,7 @@ export function TimeGridColumn<TEvent>({
   day: { column, events, isToday },
   getEventColor,
   nowTop,
-  timeFormat,
+  formats,
   timeZone,
 }: TimeGridColumnProps<TEvent>) {
   return (
@@ -58,7 +58,7 @@ export function TimeGridColumn<TEvent>({
             key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
             color={getEventColor?.(layout.fragment.event.event)}
             layout={layout}
-            timeFormat={timeFormat}
+            formats={formats}
             timeZone={timeZone}
           />
         ))}

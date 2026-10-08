@@ -53,6 +53,11 @@ export function TimeGridBody<TEvent>({
   );
   const formats = useMemo(
     () => ({
+      dayTime: new Intl.DateTimeFormat(locale, {
+        hour: "numeric",
+        minute: "2-digit",
+        weekday: "short",
+      }),
       hour: hourFormat(locale),
       time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }),
     }),
@@ -101,7 +106,7 @@ export function TimeGridBody<TEvent>({
               day={day}
               getEventColor={getEventColor}
               nowTop={nowPosition?.column === index ? nowPosition.top : null}
-              timeFormat={formats.time}
+              formats={formats}
               timeZone={timeZone}
             />
           ))}
