@@ -20,6 +20,10 @@ function assertNonEmptyInterval(start: bigint, end: bigint): void {
   }
 }
 
+/**
+ * Never mutated after construction, so the tree may share instances between nodes and subtree
+ * maxima without one node's update leaking into another.
+ */
 class BigIntInterval extends IntervalBase {
   declare high: bigint;
   declare low: bigint;
@@ -29,17 +33,13 @@ class BigIntInterval extends IntervalBase {
   }
 
   clone(): BigIntInterval {
-    return new BigIntInterval(this.low as bigint, this.high as bigint);
+    return new BigIntInterval(this.low, this.high);
   }
 
-  // The tree invokes merge on a key clone while recalculating subtree maxima.
-  // Mutating that private clone avoids allocating another interval per ancestor.
   merge(other: IntervalBase): BigIntInterval {
-    const otherLow = other.low as bigint;
-    const otherHigh = other.high as bigint;
-    if (otherLow < this.low) this.low = otherLow;
-    if (otherHigh > this.high) this.high = otherHigh;
-    return this;
+    const low = (other.low as bigint) < this.low ? (other.low as bigint) : this.low;
+    const high = (other.high as bigint) > this.high ? (other.high as bigint) : this.high;
+    return low === this.low && high === this.high ? this : new BigIntInterval(low, high);
   }
 }
 

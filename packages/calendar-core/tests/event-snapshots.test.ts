@@ -163,6 +163,61 @@ describe("event snapshots", () => {
     expect(intervalReads).toBe(1);
   });
 
+  test("rereads events mutated in place when the adapter has no revisions", () => {
+    interface MutableEvent {
+      end: Temporal.Instant;
+      readonly id: string;
+      start: Temporal.Instant;
+      title: string;
+    }
+    const adapter: EventAdapter<MutableEvent, string, string> = {
+      getId: ({ id }) => id,
+      getInterval: ({ end, start }) => ({ end, kind: "timed", start }),
+      getResourceIds: () => [],
+      getTitle: ({ title }) => title,
+    };
+    const mutable: MutableEvent = {
+      end: Temporal.Instant.from("2026-08-15T10:00Z"),
+      id: "a",
+      start: Temporal.Instant.from("2026-08-15T09:00Z"),
+      title: "Before",
+    };
+    const cache = createEventSnapshotCache(adapter);
+    cache.getSnapshot([mutable]);
+
+    mutable.start = Temporal.Instant.from("2026-08-15T13:00Z");
+    mutable.end = Temporal.Instant.from("2026-08-15T14:00Z");
+    mutable.title = "After";
+    const next = cache.getSnapshot([mutable]);
+
+    expect(next.get("a")).toMatchObject({ start: mutable.start, title: "After" });
+    expect(
+      next.queryTimed(
+        instantInterval(
+          Temporal.Instant.from("2026-08-15T13:00Z"),
+          Temporal.Instant.from("2026-08-15T14:00Z"),
+        ),
+      ),
+    ).toHaveLength(1);
+  });
+
+  test("reuses the index for recreated but equal events without revisions", () => {
+    const original = timedEvent("a", "2026-08-15T09:00Z", "2026-08-15T10:00Z", ["room-1"]);
+    const recreated = timedEvent("a", "2026-08-15T09:00Z", "2026-08-15T10:00Z", ["room-1"]);
+    const cache = createEventSnapshotCache(canonicalAdapter);
+    const morning = instantInterval(
+      Temporal.Instant.from("2026-08-15T08:00Z"),
+      Temporal.Instant.from("2026-08-15T12:00Z"),
+    );
+
+    const first = cache.getSnapshot([original]);
+    const second = cache.getSnapshot([recreated]);
+
+    expect(second.get("a")?.event).toBe(recreated);
+    expect(second.queryTimed(morning).map(({ event }) => event)).toEqual([recreated]);
+    expect(second.get("a")).toEqual({ ...first.get("a"), event: recreated });
+  });
+
   test("queries every Temporal kind and resource with half-open adjacency", () => {
     const events: readonly TestEvent[] = Object.freeze([
       timedEvent("left", "2026-08-15T09:00Z", "2026-08-15T10:00Z", ["room-a"]),

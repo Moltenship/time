@@ -11,6 +11,7 @@ import {
   type IntervalIndex,
   type IntervalIndexEntry,
 } from "../internal/interval-index";
+import { intervalEndpointsEqual } from "../internal/interval-equality";
 import { BoundedLruCache } from "../internal/lru-cache";
 import { ReadonlyMapView } from "../internal/readonly-map";
 import {
@@ -48,11 +49,6 @@ type EventStructure<TEventId extends EventId, TResourceId extends ResourceId> = 
   TResourceId
 > &
   CalendarEventInterval;
-
-interface PreviousEvent<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
-  readonly event: TEvent;
-  readonly structure: EventStructure<TEventId, TResourceId>;
-}
 
 interface IndexedEventData<TEventId extends EventId, TResourceId extends ResourceId> {
   readonly allDay: IntervalIndex<TEventId>;
@@ -112,6 +108,22 @@ function materializeEvent<TEvent, TEventId extends EventId, TResourceId extends 
           kind: structure.kind,
           start: structure.start,
         });
+}
+
+function structuresEqual<TEventId extends EventId, TResourceId extends ResourceId>(
+  left: EventStructure<TEventId, TResourceId>,
+  right: EventStructure<TEventId, TResourceId>,
+): boolean {
+  return (
+    intervalEndpointsEqual(left, right) &&
+    (left.kind === "timed" ? left.sourceTimeZone : undefined) ===
+      (right.kind === "timed" ? right.sourceTimeZone : undefined) &&
+    left.title === right.title &&
+    left.isReadOnly === right.isReadOnly &&
+    left.revision === right.revision &&
+    left.resourceIds.length === right.resourceIds.length &&
+    left.resourceIds.every((resourceId, index) => resourceId === right.resourceIds[index])
+  );
 }
 
 function structuresMatch<TEventId extends EventId, TResourceId extends ResourceId>(
@@ -312,7 +324,7 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
   event: TEvent,
   index: number,
   adapter: EventAdapter<TEvent, TEventId, TResourceId>,
-  previous: ReadonlyMap<TEventId, PreviousEvent<TEvent, TEventId, TResourceId>>,
+  previous: ReadonlyMap<TEventId, EventStructure<TEventId, TResourceId>>,
   normalizedById: Pick<ReadonlyMap<TEventId, unknown>, "has">,
 ): EventSnapshotIssue<TEvent, TEventId> | EventStructure<TEventId, TResourceId> {
   let eventId: TEventId;
@@ -358,14 +370,11 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
     }
   }
 
+  // A matching revision vouches for the whole record. Without revisions, identity proves nothing:
+  // the application may have mutated the object in place, so the record is read and compared.
   const prior = previous.get(eventId);
-  if (
-    prior !== undefined &&
-    (adapter.getRevision === undefined
-      ? prior.event === event
-      : prior.structure.revision === revision)
-  ) {
-    return prior.structure;
+  if (prior !== undefined && adapter.getRevision !== undefined && prior.revision === revision) {
+    return prior;
   }
 
   let intervalValue: unknown;
@@ -572,7 +581,7 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
         ? { ...base, end: interval.end, kind: interval.kind, start: interval.start }
         : { ...base, end: interval.end, kind: interval.kind, start: interval.start };
 
-  return structure;
+  return prior !== undefined && structuresEqual(prior, structure) ? prior : structure;
 }
 
 function createEventSnapshotCacheInternal<
@@ -593,7 +602,7 @@ function createEventSnapshotCacheInternal<
   new BoundedLruCache(queryCacheSize);
 
   let version = 0;
-  let previousById = new Map<TEventId, PreviousEvent<TEvent, TEventId, TResourceId>>();
+  let previousById = new Map<TEventId, EventStructure<TEventId, TResourceId>>();
   let indexed: IndexedEventData<TEventId, TResourceId> | undefined;
   let lastEvents: readonly TEvent[] | undefined;
   let lastSnapshot: EventSnapshot<TEvent, TEventId, TResourceId> | undefined;
@@ -603,7 +612,7 @@ function createEventSnapshotCacheInternal<
       if (events === lastEvents && lastSnapshot !== undefined) return lastSnapshot;
 
       const nextPreviousById = retainPreviousState
-        ? new Map<TEventId, PreviousEvent<TEvent, TEventId, TResourceId>>()
+        ? new Map<TEventId, EventStructure<TEventId, TResourceId>>()
         : undefined;
       const normalizedById = new Map<
         TEventId,
@@ -624,7 +633,7 @@ function createEventSnapshotCacheInternal<
         structures.push(result);
         normalized.push(normalizedEvent);
         normalizedById.set(result.id, normalizedEvent);
-        nextPreviousById?.set(result.id, { event, structure: result });
+        nextPreviousById?.set(result.id, result);
       });
 
       const frozenIssues = Object.freeze(issues);
