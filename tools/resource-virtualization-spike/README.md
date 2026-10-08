@@ -43,4 +43,4 @@ await window.__resourceTimelineSpike.focusResource(239);
 ```
 
 The browser measurements captured for the decision are in
-[`docs/evidence/issue-20-browser.md`](../../docs/evidence/issue-20-browser.md).
+[`docs/internal/evidence/issue-20-browser.md`](../../docs/internal/evidence/issue-20-browser.md).

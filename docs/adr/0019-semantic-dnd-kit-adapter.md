@@ -1,4 +1,4 @@
-# ADR 0001: Keep dnd-kit behind a semantic calendar adapter
+# ADR 0019: Keep dnd-kit behind a semantic calendar adapter
 
 - Status: accepted for the production implementation in issue #37
 - Date: 2026-08-15

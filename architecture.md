@@ -2,7 +2,7 @@
 
 Time is a Temporal-native, React 19 calendar system built on five principles: application data remains authoritative; performance comes from indexed projections and bounded rendering rather than later optimization; every interaction is controllable and accessible; consumers own the visual source while upgradeable engines own difficult algorithms; and public contracts stay typed, deterministic, composable, and SSR-safe.
 
-> **Status:** Proposed architecture
+> **Status:** Target design. Parts of it are built; the documentation site (`apps/showcase`) describes only what exists today.
 > **Repository:** `github.com/Moltenship/time`
 > **Primary package:** `@moltenship/calendar`
 > **Registry item:** `@moltenship/calendar`
@@ -10,7 +10,7 @@ Time is a Temporal-native, React 19 calendar system built on five principles: ap
 > **TypeScript target:** current TypeScript with `compilerOptions.lib: ["ESNext"]`
 > **Date policy:** no `Date`, no bundled polyfill, ISO-8601 chronology in v1
 
-This document is the normative architecture contract. The companion `architecture.html` is its visual reading surface. If the two disagree, this file wins.
+This document is the normative architecture contract.
 
 ## 1. Decisions at a glance
 
@@ -100,17 +100,15 @@ time/
 │   └── react/                    # commits, DOM bounds, pointer and scroll frames
 ├── docs/
 │   ├── adr/                      # one consequential decision per record
-│   └── contracts/                # generated API and compatibility tables
+│   └── internal/                 # contributor notes: quality gates, topology, benchmarks, evidence
 ├── tools/
 │   ├── registry/                 # registry schema/build verification
 │   └── fixtures/                 # deterministic event/resource generators
-├── architecture.md
-└── architecture.html
+└── architecture.md
 ```
 
-`apps/showcase` is the only public documentation/vitrine application. Phase 3 task #68 replaces its
-placeholder shell with Fumadocs and removes the empty `apps/website` starter; no second docs content
-tree is introduced.
+`apps/showcase` is the only public documentation/vitrine application. It runs on Fumadocs; there is
+no second docs content tree.
 
 ### Published packages
 

@@ -21,7 +21,7 @@
 - Packed declarations expose only calendar state/actions/meta types.
 
 The production decision and its difference from the Phase 0 handwritten adapter are recorded in
-[ADR 0025](../adr/0025-native-jotai-react-bindings.md).
+[ADR 0025](../../adr/0025-native-jotai-react-bindings.md).
 
 ## Focused gate
 

@@ -4,7 +4,7 @@
 - Date: 2026-08-15
 - Issue: [#25](https://github.com/Moltenship/time/issues/25)
 - Supersedes in production: the handwritten subscription adapter from the
-  [Phase 0 React spike](./0001-controlled-react-store-spike.md)
+  [Phase 0 React spike](./0018-controlled-react-store-spike.md)
 
 ## Context
 

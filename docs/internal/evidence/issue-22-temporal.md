@@ -70,4 +70,4 @@ The SSR smoke retained server markup SHA-256
 deterministic environment. Browser and accessibility artifacts are not applicable to this
 framework-free, DOM-free utility task; later time-grid work consumes this metadata for rendering
 and announcements. The interval-index performance evidence and wall-geometry decision remain in
-[ADR 0016](../adr/0016-interval-index-and-dst-wall-time-geometry.md).
+[ADR 0016](../../adr/0016-interval-index-and-dst-wall-time-geometry.md).

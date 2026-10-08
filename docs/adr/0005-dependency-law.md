@@ -11,7 +11,7 @@ of the public API and pull browser concerns into deterministic code.
 
 ## Decision
 
-Workspace imports follow the direction documented in `docs/package-topology.md` and use intentional
+Workspace imports follow the direction documented in `docs/internal/package-topology.md` and use intentional
 package entry points only. Temporal and core packages remain free of React, Jotai, dnd-kit, DOM, and
 Tailwind contracts. Framework and application packages may depend downward; engine packages never
 depend upward. Automated boundary checks include a deliberately invalid deep-import fixture that

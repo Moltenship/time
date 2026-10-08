@@ -1,4 +1,4 @@
-# ADR 0001: Controlled React state reads through render-scoped external-store snapshots
+# ADR 0018: Controlled React state reads through render-scoped external-store snapshots
 
 - Status: Accepted for the Phase 0 prototype
 - Date: 2026-08-15

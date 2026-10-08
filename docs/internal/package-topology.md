@@ -1,6 +1,6 @@
 # Package topology and ownership
 
-This document turns the dependency law in [architecture.md](../architecture.md) into repository
+This document turns the dependency law in [architecture.md](../../architecture.md) into repository
 ownership. A workspace may import only the public entry points of workspaces listed in its
 `dependencies`; importing another workspace's `src/` tree is always invalid.
 

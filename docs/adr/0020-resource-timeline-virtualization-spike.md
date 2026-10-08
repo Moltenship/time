@@ -47,7 +47,7 @@ The production browser probe bounded the logical `500 × 336` surface to at most
 axis synchronization performed exactly two writes per sample, device-pixel error was zero at DPR 2,
 and no sample read all 500 resource keys. Focus moved from resource 240 to 241 and returned to 241
 after its DOM node was virtualized away. Full results and reproduction steps are in
-[`docs/evidence/issue-20-browser.md`](../evidence/issue-20-browser.md).
+[`docs/internal/evidence/issue-20-browser.md`](../internal/evidence/issue-20-browser.md).
 
 Automated tests also cover deterministic repeated SSR output, exact StrictMode hydration without a
 recovery, RTL initial markup, focus restoration, stable IDs, two-write synchronization, pixel
