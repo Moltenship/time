@@ -1,7 +1,25 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { getListRange, getListTitle, navigateList, projectList, type ListDay } from "../src/index";
-import { allDay, environment, floating, snapshotOf, timed } from "./view-fixtures";
+import {
+  getListRange,
+  getListTitle,
+  navigateList,
+  projectList,
+  type CalendarEnvironmentBase,
+  type EventId,
+  type ListDay,
+  type ListViewOptions,
+  type ResourceId,
+} from "../src/index";
+import {
+  allDay,
+  environment,
+  floating,
+  snapshotOf,
+  timed,
+  viewInput,
+  type FixtureEvent,
+} from "./view-fixtures";
 
 const anchor = Temporal.PlainDate.from("2026-10-08");
 
@@ -10,7 +28,19 @@ function rangeOf(env = environment("UTC"), weeks?: number) {
   return `${range.start.toString()} → ${range.end.toString()}`;
 }
 
-function describeDay(day: ListDay<unknown, string, string>): string {
+function project(
+  events: readonly FixtureEvent[],
+  env: CalendarEnvironmentBase,
+  {
+    at = anchor,
+    options = {},
+    today = null,
+  }: { at?: Temporal.PlainDate; options?: ListViewOptions; today?: string | null } = {},
+) {
+  return projectList(viewInput(snapshotOf(events), getListRange(at, env, options), env, today));
+}
+
+function describeDay(day: ListDay<unknown, EventId, ResourceId>): string {
   const items = day.items.map((item) =>
     item.dayCount > 1 ? `${item.event.id} ${item.dayIndex}/${item.dayCount}` : item.event.id,
   );
@@ -45,7 +75,7 @@ describe("list range, navigation, and title", () => {
 
 describe("list projection", () => {
   test("groups event days, all-day first, then by start, flagging multi-day items (golden)", () => {
-    const snapshot = snapshotOf([
+    const events = [
       timed("redeye", "2026-10-09T02:00Z", "2026-10-09T06:00Z"),
       timed("standup", "2026-10-08T13:30Z", "2026-10-08T14:00Z"),
       floating("yoga", "2026-10-08T07:00", "2026-10-08T08:00"),
@@ -54,9 +84,11 @@ describe("list projection", () => {
       allDay("before", "2026-10-01", "2026-10-05"),
       allDay("holiday", "2026-10-09", "2026-10-10"),
       allDay("after", "2026-10-11", "2026-10-12"),
-    ]);
-    const env = environment("America/New_York", { now: "2026-10-08T15:00Z" });
-    const list = projectList({ anchor, environment: env, snapshot }, { weeks: 1 });
+    ];
+    const list = project(events, environment("America/New_York"), {
+      options: { weeks: 1 },
+      today: "2026-10-08",
+    });
 
     expect(list.days.map(describeDay)).toEqual([
       "2026-10-04: before 4/4",
@@ -68,12 +100,10 @@ describe("list projection", () => {
   });
 
   test("counts multi-day timed events in display-time-zone days", () => {
-    const snapshot = snapshotOf([timed("late", "2026-06-30T22:30Z", "2026-06-30T23:30Z")]);
+    const late = timed("late", "2026-06-30T22:30Z", "2026-06-30T23:30Z");
     const describe = (timeZone: string) =>
-      projectList({
-        anchor: Temporal.PlainDate.from("2026-06-30"),
-        environment: environment(timeZone),
-        snapshot,
+      project([late], environment(timeZone), {
+        at: Temporal.PlainDate.from("2026-06-30"),
       }).days.map(describeDay);
 
     expect(describe("UTC")).toEqual(["2026-06-30: late"]);
@@ -81,18 +111,16 @@ describe("list projection", () => {
   });
 
   test("does not count a date the zone skipped", () => {
-    const snapshot = snapshotOf([timed("hop", "2011-12-30T09:30Z", "2011-12-30T10:30Z")]);
-    const list = projectList({
-      anchor: Temporal.PlainDate.from("2011-12-29"),
-      environment: environment("Pacific/Apia"),
-      snapshot,
+    const hop = timed("hop", "2011-12-30T09:30Z", "2011-12-30T10:30Z");
+    const list = project([hop], environment("Pacific/Apia"), {
+      at: Temporal.PlainDate.from("2011-12-29"),
     });
 
     expect(list.days.map(describeDay)).toEqual(["2011-12-29: hop 1/2", "2011-12-31: hop 2/2"]);
   });
 
   test("returns no days when nothing is scheduled", () => {
-    const list = projectList({ anchor, environment: environment("UTC"), snapshot: snapshotOf([]) });
+    const list = project([], environment("UTC"));
 
     expect(list.days).toEqual([]);
     expect(list.range.start.toString()).toBe("2026-10-04");

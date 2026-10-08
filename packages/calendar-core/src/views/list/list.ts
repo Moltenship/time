@@ -5,7 +5,7 @@ import {
   type PlainDateInterval,
 } from "@moltenship/calendar-temporal";
 
-import type { CalendarEnvironment } from "../../environment";
+import type { CalendarEnvironmentBase } from "../../environment";
 import type { EventId, ResourceId } from "../../ids";
 import {
   compareDayFragments,
@@ -13,25 +13,14 @@ import {
   splitEventsByDay,
   type EventDayFragment,
 } from "../../projection/day-fragments";
-import { todayIn } from "../../projection/today";
 import { queryVisibleEvents } from "../../projection/visible-events";
-import type { EventSnapshot } from "../../snapshots/types";
+import type { CalendarViewProjectionInput } from "../../views";
 
 const DEFAULT_LIST_WEEKS = 4;
 
 export interface ListViewOptions {
   /** Number of whole weeks shown, starting with the anchor's week. Defaults to 4. */
   readonly weeks?: number;
-}
-
-export interface ListProjectionInput<
-  TEvent,
-  TEventId extends EventId,
-  TResourceId extends ResourceId,
-> {
-  readonly anchor: Temporal.PlainDate;
-  readonly environment: CalendarEnvironment;
-  readonly snapshot: EventSnapshot<TEvent, TEventId, TResourceId>;
 }
 
 export interface ListItem<
@@ -67,7 +56,7 @@ function listWeeks(options: ListViewOptions): number {
 
 export function getListRange(
   anchor: Temporal.PlainDate,
-  environment: CalendarEnvironment,
+  environment: CalendarEnvironmentBase,
   options: ListViewOptions = {},
 ): PlainDateInterval {
   const start = weekRange(anchor, { weekStartsOn: environment.weekRules.firstDay }).start;
@@ -82,7 +71,10 @@ export function navigateList(
   return anchor.add({ weeks: delta * listWeeks(options) });
 }
 
-export function getListTitle(range: PlainDateInterval, environment: CalendarEnvironment): string {
+export function getListTitle(
+  range: PlainDateInterval,
+  environment: CalendarEnvironmentBase,
+): string {
   return new Intl.DateTimeFormat(environment.locale, {
     day: "numeric",
     month: "short",
@@ -112,24 +104,21 @@ function toListItem<TEvent, TEventId extends EventId, TResourceId extends Resour
 }
 
 /**
- * Projects an agenda: the dates in range that have events, each listing its fragments with
- * all-day events first, then by start time.
+ * Projects a list range from `getListRange` into an agenda: the dates that have events, each
+ * listing its fragments with all-day events first, then by start time.
  */
-export function projectList<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
-  input: ListProjectionInput<TEvent, TEventId, TResourceId>,
-  options: ListViewOptions = {},
-): ListProjection<TEvent, TEventId, TResourceId> {
-  const { anchor, environment, snapshot } = input;
+export function projectList<TEvent>(
+  input: CalendarViewProjectionInput<unknown, TEvent>,
+): ListProjection<TEvent, EventId, ResourceId> {
+  const { environment, range, snapshot, today } = input;
   const { timeZone } = environment;
-  const range = getListRange(anchor, environment, options);
-  const today = todayIn(environment);
   const fragments = splitEventsByDay(
     queryVisibleEvents(snapshot, range, timeZone),
     range,
     timeZone,
   );
 
-  const byDate = new Map<string, EventDayFragment<TEvent, TEventId, TResourceId>[]>();
+  const byDate = new Map<string, EventDayFragment<TEvent, EventId, ResourceId>[]>();
   for (const fragment of fragments) {
     const key = fragment.date.toString();
     const dayFragments = byDate.get(key);
@@ -145,7 +134,7 @@ export function projectList<TEvent, TEventId extends EventId, TResourceId extend
         .map((fragment) => toListItem(fragment, timeZone));
       return Object.freeze({
         date,
-        isToday: today !== undefined && date.equals(today),
+        isToday: today?.equals(date) === true,
         items: Object.freeze(items),
       });
     })

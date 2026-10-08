@@ -1,10 +1,13 @@
-import { plainDateInterval, type CalendarClock } from "@moltenship/calendar-temporal";
+import { plainDateInterval, type PlainDateInterval } from "@moltenship/calendar-temporal";
 
 import {
   createCanonicalEventAdapter,
   createEventSnapshot,
-  type CalendarEnvironment,
+  resolveViewInstantRange,
+  type CalendarEnvironmentBase,
   type CalendarEvent,
+  type CalendarViewProjectionInput,
+  type EventSnapshot,
   type IsoDayOfWeek,
 } from "../src/index";
 
@@ -53,19 +56,31 @@ export function dates(start: string, end: string) {
 
 export function environment(
   timeZone: string,
-  options: {
-    readonly clock?: CalendarClock;
-    readonly firstDay?: IsoDayOfWeek;
-    readonly now?: string;
-  } = {},
-): CalendarEnvironment {
-  const base = {
+  options: { readonly firstDay?: IsoDayOfWeek } = {},
+): CalendarEnvironmentBase {
+  return {
     direction: "ltr",
     disambiguation: "compatible",
     locale: "en-US",
     timeZone,
     weekRules: { firstDay: options.firstDay ?? 7, minimalDays: 1, weekend: [6, 7] },
-  } as const;
-  if (options.clock !== undefined) return { ...base, clock: options.clock };
-  return options.now === undefined ? base : { ...base, now: Temporal.Instant.from(options.now) };
+  };
+}
+
+/** The input a calendar root hands to `strategy.project` for `range`. */
+export function viewInput<TEvent>(
+  snapshot: EventSnapshot<TEvent, string, string>,
+  range: PlainDateInterval,
+  environment: CalendarEnvironmentBase,
+  today: string | null = null,
+): CalendarViewProjectionInput<unknown, TEvent> {
+  return {
+    environment,
+    instantRange: resolveViewInstantRange(range, environment.timeZone),
+    options: undefined,
+    range,
+    resources: [],
+    snapshot,
+    today: today === null ? null : Temporal.PlainDate.from(today),
+  };
 }

@@ -1,26 +1,17 @@
 import {
+  comparePlainDates,
   iteratePlainDates,
   monthGrid,
+  plainDateInterval,
   type PlainDateInterval,
 } from "@moltenship/calendar-temporal";
 
-import type { CalendarEnvironment } from "../../environment";
+import type { CalendarEnvironmentBase } from "../../environment";
 import type { EventId, ResourceId } from "../../ids";
 import { layoutDayGridRow, type DayGridRow } from "../../layout/day-grid";
 import { splitEventsByDay } from "../../projection/day-fragments";
-import { todayIn } from "../../projection/today";
 import { queryVisibleEvents } from "../../projection/visible-events";
-import type { EventSnapshot } from "../../snapshots/types";
-
-export interface MonthProjectionInput<
-  TEvent,
-  TEventId extends EventId,
-  TResourceId extends ResourceId,
-> {
-  readonly anchor: Temporal.PlainDate;
-  readonly environment: CalendarEnvironment;
-  readonly snapshot: EventSnapshot<TEvent, TEventId, TResourceId>;
-}
+import type { CalendarViewProjectionInput } from "../../views";
 
 export interface MonthDay {
   readonly date: Temporal.PlainDate;
@@ -42,57 +33,62 @@ export interface MonthProjection<TEvent, TEventId extends EventId, TResourceId e
   readonly weeks: readonly MonthWeek<TEvent, TEventId, TResourceId>[];
 }
 
-function monthGridFor(anchor: Temporal.PlainDate, environment: CalendarEnvironment) {
-  return monthGrid(anchor, { weekStartsOn: environment.weekRules.firstDay });
-}
-
 /** Whole weeks covering the anchor's month; four to six rows depending on the month. */
 export function getMonthRange(
   anchor: Temporal.PlainDate,
-  environment: CalendarEnvironment,
+  environment: CalendarEnvironmentBase,
 ): PlainDateInterval {
-  return monthGridFor(anchor, environment).range;
+  return monthGrid(anchor, { weekStartsOn: environment.weekRules.firstDay }).range;
 }
 
 export function navigateMonth(anchor: Temporal.PlainDate, delta: number): Temporal.PlainDate {
   return anchor.add({ months: delta });
 }
 
-export function getMonthTitle(range: PlainDateInterval, environment: CalendarEnvironment): string {
-  // The month's first day always falls in the grid's first week.
-  const month = range.start.add({ days: 6 }).with({ day: 1 });
+/** The first day of the month a month range shows; it always falls in the range's first week. */
+function monthOf(range: PlainDateInterval): Temporal.PlainDate {
+  return range.start.add({ days: 6 }).with({ day: 1 });
+}
+
+export function getMonthTitle(
+  range: PlainDateInterval,
+  environment: CalendarEnvironmentBase,
+): string {
   return new Intl.DateTimeFormat(environment.locale, { month: "long", year: "numeric" }).format(
-    month,
+    monthOf(range),
   );
 }
 
 /**
- * Projects the month grid around `anchor`. Each week packs all of its events into lanes: spans
- * (all-day and multi-day) come first, single-day timed events fill the remaining lanes by start
- * time. Apply `limitDayGridLanes` per week once the available cell height is known.
+ * Projects a month range from `getMonthRange` into week rows. Each week packs all of its events
+ * into lanes: spans (all-day and multi-day) take the top lanes, single-day timed events fill the
+ * remaining lanes by start time. Apply `limitDayGridLanes` per week once the available cell
+ * height is known.
  */
-export function projectMonth<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
-  input: MonthProjectionInput<TEvent, TEventId, TResourceId>,
-): MonthProjection<TEvent, TEventId, TResourceId> {
-  const { anchor, environment, snapshot } = input;
-  const grid = monthGridFor(anchor, environment);
-  const today = todayIn(environment);
+export function projectMonth<TEvent>(
+  input: CalendarViewProjectionInput<unknown, TEvent>,
+): MonthProjection<TEvent, EventId, ResourceId> {
+  const { environment, range, snapshot, today } = input;
+  const month = monthOf(range);
   const fragments = splitEventsByDay(
-    queryVisibleEvents(snapshot, grid.range, environment.timeZone),
-    grid.range,
+    queryVisibleEvents(snapshot, range, environment.timeZone),
+    range,
     environment.timeZone,
   );
 
-  const weeks = grid.weeks.map((week) => {
+  const weeks: MonthWeek<TEvent, EventId, ResourceId>[] = [];
+  for (let start = range.start; comparePlainDates(start, range.end) < 0;) {
+    const week = plainDateInterval(start, start.add({ weeks: 1 }));
     const days = Array.from(iteratePlainDates(week), (date) =>
       Object.freeze({
         date,
-        inMonth: date.year === grid.month.year && date.month === grid.month.month,
-        isToday: today !== undefined && date.equals(today),
+        inMonth: date.year === month.year && date.month === month.month,
+        isToday: today?.equals(date) === true,
       }),
     );
-    return Object.freeze({ ...layoutDayGridRow(week, fragments), days: Object.freeze(days) });
-  });
+    weeks.push(Object.freeze({ ...layoutDayGridRow(week, fragments), days: Object.freeze(days) }));
+    start = week.end;
+  }
 
-  return Object.freeze({ range: grid.range, weeks: Object.freeze(weeks) });
+  return Object.freeze({ range, weeks: Object.freeze(weeks) });
 }

@@ -1,16 +1,25 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { createFixedClock } from "@moltenship/calendar-temporal";
-
 import {
   getMonthRange,
   getMonthTitle,
   navigateMonth,
   projectMonth,
+  type CalendarEnvironmentBase,
   type DayGridSegment,
+  type EventId,
   type IsoDayOfWeek,
+  type ResourceId,
 } from "../src/index";
-import { allDay, environment, floating, snapshotOf, timed } from "./view-fixtures";
+import {
+  allDay,
+  environment,
+  floating,
+  snapshotOf,
+  timed,
+  viewInput,
+  type FixtureEvent,
+} from "./view-fixtures";
 
 const october = Temporal.PlainDate.from("2026-10-08");
 
@@ -19,7 +28,15 @@ function rangeOf(anchor: Temporal.PlainDate, firstDay: IsoDayOfWeek) {
   return `${range.start.toString()} → ${range.end.toString()}`;
 }
 
-function describeSegment(segment: DayGridSegment<unknown, string, string>): string {
+function project(
+  events: readonly FixtureEvent[],
+  env: CalendarEnvironmentBase,
+  { anchor = october, today = null }: { anchor?: Temporal.PlainDate; today?: string | null } = {},
+) {
+  return projectMonth(viewInput(snapshotOf(events), getMonthRange(anchor, env), env, today));
+}
+
+function describeSegment(segment: DayGridSegment<unknown, EventId, ResourceId>): string {
   return `${segment.startsBefore ? "<" : ""}${segment.event.id}@${segment.lane}:${segment.column}+${segment.span}${segment.endsAfter ? ">" : ""}`;
 }
 
@@ -56,10 +73,10 @@ describe("month projection", () => {
     floating("yoga", "2026-10-08T07:00", "2026-10-08T08:00"),
     allDay("holiday", "2026-10-12", "2026-10-13"),
   ];
-  const env = environment("America/New_York", { firstDay: 1, now: "2026-10-08T15:00Z" });
+  const env = environment("America/New_York", { firstDay: 1 });
 
   test("packs every week of October 2026 (golden)", () => {
-    const month = projectMonth({ anchor: october, environment: env, snapshot: snapshotOf(events) });
+    const month = project(events, env);
 
     expect(month.weeks.map((week) => week.segments.map(describeSegment))).toEqual([
       ["trip@0:4+3>"],
@@ -71,8 +88,8 @@ describe("month projection", () => {
     expect(month.weeks.map((week) => week.laneCount)).toEqual([1, 4, 1, 0, 0]);
   });
 
-  test("marks out-of-month days and today in the display time zone", () => {
-    const month = projectMonth({ anchor: october, environment: env, snapshot: snapshotOf([]) });
+  test("marks out-of-month days and the root's today", () => {
+    const month = project([], env, { today: "2026-10-08" });
     const days = month.weeks.flatMap((week) => week.days);
 
     expect(days.filter((day) => !day.inMonth).map((day) => day.date.toString())).toEqual([
@@ -84,43 +101,28 @@ describe("month projection", () => {
     expect(days.filter((day) => day.isToday).map((day) => day.date.toString())).toEqual([
       "2026-10-08",
     ]);
-
-    // 01:00Z on 2026-10-09 is still the evening of 2026-10-08 in New York.
-    const clockEnv = environment("America/New_York", {
-      clock: createFixedClock(Temporal.Instant.from("2026-10-09T01:00Z")),
-    });
-    const clockDays = projectMonth({
-      anchor: october,
-      environment: clockEnv,
-      snapshot: snapshotOf([]),
-    }).weeks.flatMap((week) => week.days);
-    expect(clockDays.find((day) => day.isToday)?.date.toString()).toBe("2026-10-08");
-
-    const timeless = projectMonth({
-      anchor: october,
-      environment: environment("UTC"),
-      snapshot: snapshotOf([]),
-    });
-    expect(timeless.weeks.flatMap((week) => week.days).some((day) => day.isToday)).toBe(false);
+    expect(
+      project([], env)
+        .weeks.flatMap((week) => week.days)
+        .some((day) => day.isToday),
+    ).toBe(false);
   });
 
   test("splits a bar around a date the zone skipped", () => {
-    const month = projectMonth({
-      anchor: Temporal.PlainDate.from("2011-12-01"),
-      environment: environment("Pacific/Apia"),
-      snapshot: snapshotOf([timed("hop", "2011-12-30T09:30Z", "2011-12-30T10:30Z")]),
-    });
+    const month = project(
+      [timed("hop", "2011-12-30T09:30Z", "2011-12-30T10:30Z")],
+      environment("Pacific/Apia"),
+      {
+        anchor: Temporal.PlainDate.from("2011-12-01"),
+      },
+    );
 
     expect(month.weeks.at(-1)?.segments.map(describeSegment)).toEqual(["hop@0:4+1>", "<hop@0:6+1"]);
   });
 
   test("lanes of a week survive changes to events in other weeks", () => {
-    const lanes = (snapshotEvents: typeof events) =>
-      projectMonth({
-        anchor: october,
-        environment: env,
-        snapshot: snapshotOf(snapshotEvents),
-      }).weeks[1]!.segments.map(describeSegment);
+    const lanes = (snapshotEvents: readonly FixtureEvent[]) =>
+      project(snapshotEvents, env).weeks[1]!.segments.map(describeSegment);
 
     expect(
       lanes([
