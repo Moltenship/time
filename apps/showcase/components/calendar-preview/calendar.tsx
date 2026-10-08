@@ -17,6 +17,7 @@ import {
   TimeGridView,
   type TimeGridViewOptions,
 } from "@registry/time-grid-view/time-grid-view";
+import { Button } from "@registry/ui/button";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
 import {
@@ -69,12 +70,16 @@ const Calendar = createCalendar<PreviewEvent, never>()({
   ],
 });
 
-const viewOptions = [
-  { label: "Week", value: "week" },
-  { label: "Day", value: "day" },
-  { label: "Month", value: "month" },
-  { label: "Agenda", value: "agenda" },
-] as const;
+const viewLabels: Record<PreviewView, string> = {
+  week: "Week",
+  day: "Day",
+  month: "Month",
+  agenda: "Agenda",
+};
+const viewOptions = (["week", "day", "month", "agenda"] as const).map((value) => ({
+  label: viewLabels[value],
+  value,
+}));
 
 const wideQuery = "(min-width: 640px)";
 
@@ -140,7 +145,17 @@ export default function LiveCalendar({
                 options={viewOptions}
                 value={activeView}
               />
-            ) : null}
+            ) : activeView === view ? null : (
+              // Dates open the day view, so a single-view preview needs a way back to its view.
+              <Button
+                className="rounded-full"
+                onClick={() => setActiveView(view)}
+                size="sm"
+                variant="outline"
+              >
+                Back to {viewLabels[view].toLowerCase()}
+              </Button>
+            )}
           </CalendarToolbar>
           <div className="flex min-h-0 flex-1">
             {sidebar ? (

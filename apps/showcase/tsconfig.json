@@ -4,7 +4,7 @@
     "allowJs": true,
     "esModuleInterop": true,
     "incremental": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "lib": ["DOM", "DOM.Iterable", "ESNext"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
