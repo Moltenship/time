@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   },
   description:
     "A React calendar built on Temporal: week, month, day and agenda views with exact time zone handling.",
-  metadataBase: new URL("https://time.moltenship.com"),
+  metadataBase: new URL("https://moltenship-time.vercel.app"),
   twitter: { card: "summary_large_image" },
 };
 

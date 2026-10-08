@@ -1,15 +1,14 @@
 import {
   ArrowRightIcon,
   BracesIcon,
-  GitHubIcon,
   GlobeClockIcon,
   PanelsIcon,
   ServerIcon,
 } from "@/components/icons";
 import InstallCommand from "@/components/install-command";
-import WeekPreview from "@/components/week-preview";
+import LandingCalendar from "@/components/landing-calendar";
 import { codeThemes } from "@/lib/code-themes";
-import { githubUrl } from "@/lib/layout";
+import { demoUrl, githubUrl } from "@/lib/layout";
 import { ServerCodeBlock } from "fumadocs-ui/components/codeblock.rsc";
 import Link from "next/link";
 import { readFile } from "node:fs/promises";
@@ -83,10 +82,9 @@ export default async function HomePage() {
             </Link>
             <a
               className={`${buttonClass} border bg-fd-background hover:bg-fd-accent`}
-              href={githubUrl}
+              href={demoUrl}
             >
-              <GitHubIcon />
-              GitHub
+              View demo
             </a>
           </div>
           <div className="mt-6 max-w-full">
@@ -94,7 +92,7 @@ export default async function HomePage() {
           </div>
         </div>
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <WeekPreview />
+          <LandingCalendar />
         </div>
       </section>
 
@@ -157,6 +155,9 @@ export default async function HomePage() {
             <Link className="hover:text-fd-foreground" href="/docs">
               Docs
             </Link>
+            <a className="hover:text-fd-foreground" href={demoUrl}>
+              Demo
+            </a>
             <a className="hover:text-fd-foreground" href={githubUrl}>
               GitHub
             </a>
