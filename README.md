@@ -5,6 +5,9 @@ state, fast event lookups, and saving changes. Your events stay in the shape you
 Week, day, month, and agenda views come as shadcn/ui-style source that you copy into your app and
 own.
 
+**[Documentation](https://moltenship-time.vercel.app/docs)** ·
+**[Live demo](https://moltenship-time-demo.vercel.app)**
+
 > **Status: pre-1.0.** The packages aren't published to npm yet, and the API will change before 1.0.
 
 ## Install
@@ -21,7 +24,7 @@ TypeScript 6+ with `"lib": ["ESNext"]`.
 ## Example
 
 The smallest calendar, with a hand-written view. The
-[Quick start](./apps/showcase/content/docs/quick-start.mdx) uses the built-in views instead.
+[Quick start](https://moltenship-time.vercel.app/docs/quick-start) uses the built-in views instead.
 
 ```tsx
 import {
@@ -85,15 +88,18 @@ export function MeetingCalendar({ meetings }: { meetings: readonly Meeting[] }) 
 
 ## Documentation
 
-The documentation site lives in [`apps/showcase`](./apps/showcase). It isn't hosted yet, so run it
-locally with `vp run dev`, or read the pages as MDX in
-[`apps/showcase/content/docs`](./apps/showcase/content/docs). Good places to start:
+Read the docs at **[moltenship-time.vercel.app](https://moltenship-time.vercel.app/docs)**. Good
+places to start:
 
-- [Quick start](./apps/showcase/content/docs/quick-start.mdx)
-- [Events and adapters](./apps/showcase/content/docs/concepts/events.mdx)
-- [Interactions](./apps/showcase/content/docs/interactions.mdx)
+- [Quick start](https://moltenship-time.vercel.app/docs/quick-start)
+- [Events and adapters](https://moltenship-time.vercel.app/docs/concepts/events)
+- [Interactions](https://moltenship-time.vercel.app/docs/interactions)
 
-[`apps/demo`](./apps/demo) is a Google Calendar-style app built from the same views. Start it with
+The [live demo](https://moltenship-time-demo.vercel.app) is a Google Calendar-style app built from
+the same views. Its source is in [`apps/demo`](./apps/demo).
+
+To work on the docs, run `vp run dev` and edit the MDX in
+[`apps/showcase/content/docs`](./apps/showcase/content/docs). Start the demo with
 `vp run demo#dev`.
 
 ## Contributing
