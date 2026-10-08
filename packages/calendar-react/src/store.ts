@@ -33,7 +33,7 @@ export interface CalendarRootStoreBinding<
   readonly actions: CalendarActions<TView, TSelection, TFocus, TResourceId>;
   /** Routes `store.actions` through this root until the cleanup runs; the latest mounted root wins. */
   readonly attach: () => () => void;
-  /** Publishes the root's committed props. Requests made before this commit are discarded. */
+  /** Publishes the root's committed props, settling requests for slices whose owner changed them. */
   readonly commit: (binding: CalendarStoreBinding<TView, TSelection, TFocus, TResourceId>) => void;
   /**
    * The latest requested state. A controlled change requested since the last commit is visible
@@ -189,8 +189,25 @@ export function createCalendarStore<
           };
         },
         commit: (next: Binding) => {
+          const previous = current;
           current = next;
-          pending = undefined;
+          if (pending === undefined) return;
+          // A slice's request is settled once the owner commits a different value for it; commits
+          // caused by unrelated updates keep it so later commands in the same task still compose.
+          const retained = { ...pending };
+          for (const slice of stateSlices) {
+            if (retained[slice] === undefined) continue;
+            const committed = next.controlled[slice];
+            if (
+              committed === undefined ||
+              !sameSliceValue(slice, previous.controlled[slice], committed)
+            ) {
+              delete retained[slice];
+            }
+          }
+          pending = stateSlices.some((slice) => retained[slice] !== undefined)
+            ? retained
+            : undefined;
         },
         read,
       },

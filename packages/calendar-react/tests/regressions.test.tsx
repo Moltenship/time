@@ -43,6 +43,21 @@ async function click(container: ParentNode, selector: string): Promise<void> {
   await act(async () => button.click());
 }
 
+function NavigateTwice() {
+  const actions = GateCalendar.useCalendarActions();
+  return (
+    <button
+      data-navigate-twice
+      onClick={() => {
+        actions.navigateNext();
+        actions.navigateNext();
+      }}
+    >
+      {GateCalendar.useCalendarState().anchorDate.toString()}
+    </button>
+  );
+}
+
 afterEach(async () => {
   for (const harness of harnesses.splice(0)) await harness.dispose();
   document.body.replaceChildren();
@@ -283,21 +298,6 @@ describe("commands", () => {
   test.each(["uncontrolled", "controlled"] as const)(
     "two navigations in one %s handler both apply",
     async (mode) => {
-      function NavigateTwice() {
-        const actions = GateCalendar.useCalendarActions();
-        return (
-          <button
-            data-navigate-twice
-            onClick={() => {
-              actions.navigateNext();
-              actions.navigateNext();
-            }}
-          >
-            {GateCalendar.useCalendarState().anchorDate.toString()}
-          </button>
-        );
-      }
-
       function Application() {
         const [anchorDate, setAnchorDate] = useState(gateAnchorDate);
         const anchorProps =
@@ -479,27 +479,50 @@ describe("ownership", () => {
       );
     }
 
-    function NavigateTwice() {
-      const actions = GateCalendar.useCalendarActions();
-      return (
-        <button
-          data-navigate-twice
-          onClick={() => {
-            actions.navigateNext();
-            actions.navigateNext();
-          }}
-        >
-          {GateCalendar.useCalendarState().anchorDate.toString()}
-        </button>
-      );
-    }
-
     const harness = await render(<Application />);
     await click(harness.container, "[data-navigate-twice]");
 
     expect(requested).toEqual(["2026-08-22", "2026-09-05"]);
     expect(harness.container.querySelector("[data-navigate-twice]")?.textContent).toBe(
       "2026-09-05",
+    );
+  });
+
+  test("an unrelated synchronous commit keeps an uncommitted controlled request", async () => {
+    const store = createCalendarStore<GateView, GateSelection, GateFocus, `resource-${number}`>({
+      defaultAnchorDate: gateAnchorDate,
+      defaultTimeZone: gateTimeZone,
+      defaultView: "month",
+    });
+    const requested: string[] = [];
+
+    function Application() {
+      const [anchorDate, setAnchorDate] = useState(gateAnchorDate);
+      return (
+        <GateCalendar.Root
+          anchorDate={anchorDate}
+          events={gateEvents}
+          locale="en-GB"
+          onAnchorDateChange={(next) => {
+            requested.push(next.toString());
+            flushSync(() => store.actions.setSelection({ eventId: "event-1" }));
+            setAnchorDate(next);
+          }}
+          store={store}
+          timeZone={gateTimeZone}
+          weekRules={gateWeekRules}
+        >
+          <NavigateTwice />
+        </GateCalendar.Root>
+      );
+    }
+
+    const harness = await render(<Application />);
+    await click(harness.container, "[data-navigate-twice]");
+
+    expect(requested).toEqual(["2026-08-22", "2026-08-29"]);
+    expect(harness.container.querySelector("[data-navigate-twice]")?.textContent).toBe(
+      "2026-08-29",
     );
   });
 
