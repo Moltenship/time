@@ -47,6 +47,8 @@ const messages: CalendarDragMessages<TestEvent, string> = {
   canceled: ({ source }) => `Canceled ${source.title}`,
 };
 
+const untransformedProperties = new Set(["scale", "transform", "translate"]);
+
 let root: Root | null = null;
 let container: HTMLDivElement | null = null;
 
@@ -54,16 +56,17 @@ beforeEach(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
   const getComputedStyle = window.getComputedStyle.bind(window);
   vi.spyOn(window, "getComputedStyle").mockImplementation((element) => {
-    const styles = getComputedStyle(element);
-    for (const property of ["scale", "transform", "translate"] as const) {
-      if (!styles[property]) {
-        Object.defineProperty(styles, property, {
-          configurable: true,
-          value: "none",
-        });
-      }
-    }
-    return styles;
+    // Happy DOM's declaration is a proxy that rejects defineProperty, so wrap it instead.
+    return new Proxy(getComputedStyle(element), {
+      get(styles, property) {
+        const value: unknown = Reflect.get(styles, property, styles);
+        if (typeof value === "function") return value.bind(styles);
+        if (typeof property === "string" && untransformedProperties.has(property) && !value) {
+          return "none";
+        }
+        return value;
+      },
+    });
   });
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(() => ({
     x: 0,
@@ -312,8 +315,9 @@ test("pointer/touch/keyboard share proposals with zero calendar commits on point
   expect([...manager.registry.droppables]).toHaveLength(1);
   expect(manager.sensors).toHaveLength(2);
   expect(manager.modifiers).toHaveLength(1);
-  // Three dnd-kit core plugins plus the adapter's four configured plugins.
-  expect(manager.plugins).toHaveLength(7);
+  // Four dnd-kit core plugins (collision notifier, scroll listener, scroller, style injector)
+  // plus the adapter's four configured plugins.
+  expect(manager.plugins).toHaveLength(8);
   expect(document.body.textContent).toContain(messages.instructions);
 
   await start(manager, pointerEvent("pointerdown", 50, 60));

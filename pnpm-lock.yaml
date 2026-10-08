@@ -486,6 +486,9 @@ importers:
       '@moltenship/calendar-react':
         specifier: workspace:*
         version: link:../packages/calendar-react
+      '@moltenship/calendar-temporal':
+        specifier: workspace:*
+        version: link:../packages/calendar-temporal
       fixtures:
         specifier: workspace:*
         version: link:../tools/fixtures
@@ -7876,7 +7879,7 @@ snapshots:
 
   '@types/set-cookie-parser@2.4.10':
     dependencies:
-      '@types/node': 24.13.3
+      '@types/node': 26.6.4
     optional: true
 
   '@types/statuses@2.0.6':
@@ -8037,7 +8040,7 @@ snapshots:
       '@oxc-project/runtime': 0.153.0
       '@oxc-project/types': 0.153.0
       lightningcss: 1.33.0
-      postcss: 8.5.26
+      postcss: 8.5.29
       yuku-codegen: 0.9.5
       yuku-parser: 0.9.5
     optionalDependencies:

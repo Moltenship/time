@@ -12,6 +12,7 @@
   "dependencies": {
     "@moltenship/calendar-core": "workspace:*",
     "@moltenship/calendar-react": "workspace:*",
+    "@moltenship/calendar-temporal": "workspace:*",
     "fixtures": "workspace:*"
   },
   "devDependencies": {

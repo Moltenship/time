@@ -35,7 +35,12 @@ const expectedWorkspaceDependencies = {
     "@moltenship/calendar-dnd",
     "@moltenship/calendar-temporal",
   ],
-  benchmark: ["@moltenship/calendar-core", "@moltenship/calendar-react", "fixtures"],
+  benchmark: [
+    "@moltenship/calendar-core",
+    "@moltenship/calendar-react",
+    "@moltenship/calendar-temporal",
+    "fixtures",
+  ],
   demo: ["@moltenship/calendar"],
   fixtures: ["@moltenship/calendar-core"],
   registry: [],
