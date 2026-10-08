@@ -56,11 +56,21 @@ export function App() {
   );
   const shownEvent = events.find(({ id }) => id === openEvent?.eventId);
 
+  // Counts resets, so a save that was still in flight when the data was reset is dropped instead
+  // of editing the fresh seed, whose event IDs repeat.
+  const resets = useRef(0);
+  const resetDemoData = useCallback(() => {
+    resets.current += 1;
+    resetEvents();
+  }, [resetEvents]);
+
   // Moves, resizes and deletes arrive here after the calendar has shown them optimistically.
   // Rejecting rolls the calendar back to the stored events.
   const persistChange = useCallback(
     async (change: DemoEventChange) => {
+      const resetsAtStart = resets.current;
       await new Promise((resolve) => setTimeout(resolve, saveDelayMs));
+      if (resets.current !== resetsAtStart) throw new Error("superseded-by-reset");
       if (failSaves) {
         showNotice("Couldn't save the change, so it was undone.");
         throw new Error("simulated-save-failure");
@@ -100,7 +110,7 @@ export function App() {
         failSaves={failSaves}
         onChange={setSettings}
         onFailSavesChange={setFailSaves}
-        onReset={resetEvents}
+        onReset={resetDemoData}
         settings={settings}
         systemTimeZone={systemTimeZone}
       />

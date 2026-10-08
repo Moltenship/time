@@ -6,7 +6,8 @@ import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 
 import { App } from "../src/app";
 import type { DemoEvent } from "../src/calendar";
-import { serializeEvents } from "../src/event-storage";
+import { parseEvents, serializeEvents } from "../src/event-storage";
+import { createSeedEvents } from "../src/seed";
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -132,4 +133,26 @@ test("deletes persist after the save delay and roll back when saves fail", async
   await pastSaveDelay();
   expect(eventButton("lunch")).toBeNull();
   expect(stored.get("moltenship-demo:events")).not.toContain('"lunch"');
+});
+
+test("a reset during an in-flight delete keeps the fresh seed intact", async () => {
+  const today = Temporal.Now.plainDateISO("UTC");
+  stored.set("moltenship-demo:events", serializeEvents(createSeedEvents(today, "UTC")));
+  history.replaceState(null, "", `/?view=day&date=${today.toString()}`);
+  await act(async () => root.render(<App />));
+  const deletedId = container.querySelector<HTMLElement>("[data-event-id]")?.dataset.eventId;
+  if (deletedId === undefined) throw new Error("the seed has events today");
+
+  await deleteFromPopover(deletedId);
+  expect(eventButton(deletedId)).toBeNull();
+  const reset = [...container.querySelectorAll("button")].find((button) =>
+    button.textContent?.includes("Reset demo data"),
+  );
+  await act(async () => reset?.click());
+  await pastSaveDelay();
+
+  const ids = parseEvents(stored.get("moltenship-demo:events") ?? null)?.map(({ id }) => id);
+  expect(ids).toContain(deletedId);
+  expect(ids).toHaveLength(createSeedEvents(today, "UTC").length);
+  expect(eventButton(deletedId)).not.toBeNull();
 });
