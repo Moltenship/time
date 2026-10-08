@@ -1,0 +1,46 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "time-grid-view",
+  "type": "registry:component",
+  "title": "Week and day views",
+  "description": "Google Calendar-style week and day time grids: day headers with today highlighted, all-day lanes that collapse to +N, an hour gutter, overlapping events side by side, daylight-saving gaps and folds, and a now-line.",
+  "dependencies": ["@moltenship/calendar", "lucide-react"],
+  "registryDependencies": ["button", "utils", "@moltenship/calendar", "@moltenship/calendar-theme"],
+  "files": [
+    {
+      "path": "registry/time-grid-view/time-grid-view.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/time-grid-view/time-grid-view.tsx"
+    },
+    {
+      "path": "registry/time-grid-view/time-grid-header.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/time-grid-view/time-grid-header.tsx"
+    },
+    {
+      "path": "registry/time-grid-view/time-grid-all-day.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/time-grid-view/time-grid-all-day.tsx"
+    },
+    {
+      "path": "registry/time-grid-view/time-grid-body.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/time-grid-view/time-grid-body.tsx"
+    },
+    {
+      "path": "registry/time-grid-view/time-grid-column.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/time-grid-view/time-grid-column.tsx"
+    },
+    {
+      "path": "registry/time-grid-view/time-grid-event.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/time-grid-view/time-grid-event.tsx"
+    }
+  ],
+  "meta": {
+    "compatibility": {
+      "@moltenship/calendar": ">=0.0.0"
+    }
+  }
+}
