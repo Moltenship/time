@@ -1,3 +1,5 @@
+import type { CalendarEventInterval } from "@moltenship/calendar";
+
 import type { DemoEvent } from "./calendar";
 import type { DemoCalendarId } from "./calendars";
 
@@ -27,27 +29,33 @@ export type EventDraftResult = { readonly event: DemoEvent } | { readonly error:
 
 const defaultStartTime = Temporal.PlainTime.from("09:00");
 
-export function draftFromEvent(event: DemoEvent, timeZone: string): EventDraft {
-  const base = {
-    calendarId: event.calendarId,
-    description: event.description ?? "",
-    id: event.id,
-    title: event.title,
-  };
-  if (event.kind === "all-day") {
+type IntervalFields = Pick<
+  EventDraft,
+  "allDay" | "endDate" | "endOffset" | "endTime" | "startDate" | "startOffset" | "startTime"
+>;
+
+function intervalFields(interval: CalendarEventInterval, timeZone: string): IntervalFields {
+  if (interval.kind === "all-day") {
     return {
-      ...base,
       allDay: true,
-      endDate: event.end.subtract({ days: 1 }),
+      endDate: interval.end.subtract({ days: 1 }),
       endTime: defaultStartTime.add({ hours: 1 }),
-      startDate: event.start,
+      startDate: interval.start,
       startTime: defaultStartTime,
     };
   }
-  const start = event.start.toZonedDateTimeISO(timeZone);
-  const end = event.end.toZonedDateTimeISO(timeZone);
+  if (interval.kind === "floating") {
+    return {
+      allDay: false,
+      endDate: interval.end.toPlainDate(),
+      endTime: interval.end.toPlainTime(),
+      startDate: interval.start.toPlainDate(),
+      startTime: interval.start.toPlainTime(),
+    };
+  }
+  const start = interval.start.toZonedDateTimeISO(timeZone);
+  const end = interval.end.toZonedDateTimeISO(timeZone);
   return {
-    ...base,
     allDay: false,
     endDate: end.toPlainDate(),
     endOffset: end.offset,
@@ -56,6 +64,25 @@ export function draftFromEvent(event: DemoEvent, timeZone: string): EventDraft {
     startOffset: start.offset,
     startTime: start.toPlainTime(),
   };
+}
+
+export function draftFromEvent(event: DemoEvent, timeZone: string): EventDraft {
+  return {
+    ...intervalFields(event, timeZone),
+    calendarId: event.calendarId,
+    description: event.description ?? "",
+    id: event.id,
+    title: event.title,
+  };
+}
+
+/** A new event for a range dragged out in a view. */
+export function draftFromPlacement(
+  placement: CalendarEventInterval,
+  timeZone: string,
+  calendarId: DemoCalendarId,
+): EventDraft {
+  return { ...intervalFields(placement, timeZone), calendarId, description: "", title: "" };
 }
 
 /**

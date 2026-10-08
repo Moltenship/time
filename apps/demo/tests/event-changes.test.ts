@@ -54,8 +54,14 @@ describe("event changes", () => {
     expect(next).toEqual(others);
   });
 
-  test("the policy rejects creates and floating times and accepts the rest", () => {
+  test("the policy rejects floating times and accepts timed and all-day ones", () => {
     const floating = Temporal.PlainDateTime.from("2026-10-09T09:00");
+    const floatingMove = update({
+      end: floating.add({ hours: 1 }),
+      kind: "floating",
+      resourceIds: [],
+      start: floating,
+    });
     const create = {
       cause: "create",
       event: null,
@@ -64,15 +70,10 @@ describe("event changes", () => {
       original: null,
       proposed: original,
     } as const;
-    const floatingMove = update({
-      end: floating.add({ hours: 1 }),
-      kind: "floating",
-      resourceIds: [],
-      start: floating,
-    });
 
-    expect(demoEventPolicy(create).type).toBe("reject");
     expect(demoEventPolicy(floatingMove).type).toBe("reject");
     expect(demoEventPolicy(update(original))).toEqual({ type: "accept" });
+    expect(demoEventPolicy(create)).toEqual({ type: "accept" });
+    expect(applyEventChange(events, create)).toBe(events);
   });
 });

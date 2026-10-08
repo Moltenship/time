@@ -4,6 +4,7 @@ import type { DemoEvent } from "../src/calendar";
 import {
   draftForNewEvent,
   draftFromEvent,
+  draftFromPlacement,
   eventFromDraft,
   moveDraftStart,
 } from "../src/event-draft";
@@ -95,6 +96,30 @@ describe("event drafts", () => {
       expect([result.event.start.toString(), result.event.end.toString()]).toEqual([start, end]);
     },
   );
+
+  test("turn a dragged-out range into a new event's draft", () => {
+    const timedDraft = draftFromPlacement(
+      {
+        end: Temporal.Instant.from("2026-10-08T15:30:00Z"),
+        kind: "timed",
+        start: Temporal.Instant.from("2026-10-08T14:00:00Z"),
+      },
+      timeZone,
+      "personal",
+    );
+    expect([timedDraft.startTime.toString(), timedDraft.endTime.toString()]).toEqual([
+      "10:00:00",
+      "11:30:00",
+    ]);
+    expect(timedDraft).toMatchObject({ allDay: false, calendarId: "personal", title: "" });
+
+    const allDayDraft = draftFromPlacement(
+      { end: date("2026-10-15"), kind: "all-day", start: date("2026-10-13") },
+      timeZone,
+      "work",
+    );
+    expect([allDayDraft.allDay, allDayDraft.endDate.toString()]).toEqual([true, "2026-10-14"]);
+  });
 
   test("start new events at the next half hour today and at 09:00 on other days", () => {
     const now = Temporal.ZonedDateTime.from(`2026-10-08T10:05[${timeZone}]`);

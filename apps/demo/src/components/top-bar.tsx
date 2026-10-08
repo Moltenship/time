@@ -6,6 +6,7 @@ import { Button } from "@registry/ui/button";
 
 import { DemoCalendar, type DemoView } from "../calendar";
 import { BrandMark } from "./brand";
+import { DocsLink } from "./docs-link";
 import { ThemeToggle } from "./theme-toggle";
 
 const viewOptions: readonly ViewSwitcherOption<DemoView>[] = [
@@ -43,6 +44,7 @@ export function TopBar({ onOpenSidebar }: { readonly onOpenSidebar: () => void }
       }
     >
       <ViewSwitcher onValueChange={setView} options={viewOptions} value={view} />
+      <DocsLink className="max-sm:hidden" />
       <ThemeToggle className="rounded-full max-sm:hidden" />
     </CalendarToolbar>
   );

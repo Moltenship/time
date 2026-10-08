@@ -1,4 +1,4 @@
-import { useNow, type CalendarWeekRules } from "@moltenship/calendar";
+import { eventIdOf, useNow, type CalendarWeekRules, type EventId } from "@moltenship/calendar";
 import { PlusIcon } from "lucide-react";
 import { useCallback, useMemo, useRef, useState, type MouseEvent } from "react";
 
@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetTitle } from "@registry/ui/sheet";
 
 import { DemoCalendar, type DemoEvent } from "./calendar";
 import { BrandMark } from "./components/brand";
+import { DocsLink } from "./components/docs-link";
 import { EventDialog } from "./components/event-dialog";
 import { EventPopover } from "./components/event-popover";
 import { KeyboardShortcuts } from "./components/keyboard-shortcuts";
@@ -17,7 +18,12 @@ import { ThemeToggle } from "./components/theme-toggle";
 import { TopBar } from "./components/top-bar";
 import { useDemoEvents } from "./demo-events";
 import { demoEventPolicy, type DemoEventChange } from "./event-changes";
-import { draftForNewEvent, draftFromEvent, type EventDraft } from "./event-draft";
+import {
+  draftForNewEvent,
+  draftFromEvent,
+  draftFromPlacement,
+  type EventDraft,
+} from "./event-draft";
 import { useHiddenCalendars } from "./hidden-calendars";
 import { useDemoSettings } from "./settings";
 import { useCalendarLocation } from "./url-state";
@@ -29,7 +35,7 @@ const demoPolicies = [demoEventPolicy];
 interface OpenEvent {
   readonly anchor: HTMLElement;
   /** Cleared on close while the anchor stays, so focus can return to it. */
-  readonly eventId: string | null;
+  readonly eventId: EventId | null;
 }
 
 export function App() {
@@ -65,9 +71,15 @@ export function App() {
   }, [resetEvents]);
 
   // Moves, resizes and deletes arrive here after the calendar has shown them optimistically.
-  // Rejecting rolls the calendar back to the stored events.
+  // Rejecting rolls the calendar back to the stored events. A range dragged out in a view opens
+  // the event dialog, which names and saves the new event.
   const persistChange = useCallback(
     async (change: DemoEventChange) => {
+      if (change.cause === "create") {
+        setOpenEvent(null);
+        setDraft(draftFromPlacement(change.proposed, timeZone, "work"));
+        return;
+      }
       const resetsAtStart = resets.current;
       await new Promise((resolve) => setTimeout(resolve, saveDelayMs));
       if (resets.current !== resetsAtStart) throw new Error("superseded-by-reset");
@@ -77,7 +89,7 @@ export function App() {
       }
       applyChange(change);
     },
-    [applyChange, failSaves, showNotice],
+    [applyChange, failSaves, showNotice, timeZone],
   );
 
   const openCreate = useCallback(() => {
@@ -95,8 +107,8 @@ export function App() {
   const openClickedEvent = (click: MouseEvent) => {
     const anchor =
       click.target instanceof Element ? click.target.closest<HTMLElement>("[data-event-id]") : null;
-    const eventId = anchor?.dataset.eventId;
-    if (anchor !== null && eventId !== undefined) setOpenEvent({ anchor, eventId });
+    const eventId = anchor === null ? null : eventIdOf(anchor);
+    if (anchor !== null && eventId !== null) setOpenEvent({ anchor, eventId });
   };
   const sidebar = (onNavigate?: () => void) => (
     <Sidebar
@@ -163,7 +175,8 @@ export function App() {
             <div className="flex h-14 shrink-0 items-center gap-2 pr-12 pl-4">
               <BrandMark />
               <SheetTitle className="text-lg font-medium">Calendar</SheetTitle>
-              <ThemeToggle className="ml-auto rounded-full" />
+              <DocsLink className="ml-auto" />
+              <ThemeToggle className="rounded-full" />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               {sidebar(() => setSidebarOpen(false))}
