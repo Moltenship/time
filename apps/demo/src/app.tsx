@@ -75,12 +75,14 @@ export function App() {
             }}
             side="left"
           >
-            <div className="flex h-14 items-center gap-2 pr-12 pl-4">
+            <div className="flex h-14 shrink-0 items-center gap-2 pr-12 pl-4">
               <BrandMark />
               <SheetTitle className="text-lg font-medium">Calendar</SheetTitle>
               <ThemeToggle className="ml-auto rounded-full" />
             </div>
-            {sidebar(() => setSidebarOpen(false))}
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              {sidebar(() => setSidebarOpen(false))}
+            </div>
           </SheetContent>
         </Sheet>
       </DemoCalendar.Frame>

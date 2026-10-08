@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 
 import { readStorage, writeStorage } from "./storage";
 
@@ -6,32 +6,40 @@ type Theme = "light" | "dark";
 
 // Shared with the pre-paint script in index.html.
 const themeStorageKey = "moltenship-demo:theme";
-const darkQuery = "(prefers-color-scheme: dark)";
+const listeners = new Set<() => void>();
+let systemQuery: MediaQueryList | undefined;
 
-/** Follows the system theme until the user picks one; the choice is applied as `.dark` on `<html>`. */
+// The `.dark` class on <html> is the single source of truth, so every toggle stays in sync.
+function readTheme(): Theme {
+  return document.documentElement.classList.contains("dark") ? "dark" : "light";
+}
+
+function applyTheme(theme: Theme) {
+  document.documentElement.classList.toggle("dark", theme === "dark");
+  for (const listener of listeners) listener();
+}
+
+function followSystem(event: MediaQueryListEvent) {
+  if (readStorage(themeStorageKey) === null) applyTheme(event.matches ? "dark" : "light");
+}
+
+function subscribe(listener: () => void) {
+  systemQuery ??= matchMedia("(prefers-color-scheme: dark)");
+  if (listeners.size === 0) systemQuery.addEventListener("change", followSystem);
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+    if (listeners.size === 0) systemQuery?.removeEventListener("change", followSystem);
+  };
+}
+
+function toggleTheme() {
+  const next = readTheme() === "dark" ? "light" : "dark";
+  writeStorage(themeStorageKey, next);
+  applyTheme(next);
+}
+
+/** Follows the system theme until the user picks one; the choice is saved and applied as `.dark`. */
 export function useTheme() {
-  const [theme, setTheme] = useState<Theme>(() =>
-    document.documentElement.classList.contains("dark") ? "dark" : "light",
-  );
-
-  useEffect(() => {
-    const query = matchMedia(darkQuery);
-    const followSystem = () => {
-      if (readStorage(themeStorageKey) === null) setTheme(query.matches ? "dark" : "light");
-    };
-    query.addEventListener("change", followSystem);
-    return () => query.removeEventListener("change", followSystem);
-  }, []);
-
-  useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
-
-  const toggleTheme = useCallback(() => {
-    const next = theme === "dark" ? "light" : "dark";
-    writeStorage(themeStorageKey, next);
-    setTheme(next);
-  }, [theme]);
-
-  return { theme, toggleTheme };
+  return { theme: useSyncExternalStore(subscribe, readTheme), toggleTheme };
 }
