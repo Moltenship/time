@@ -50,10 +50,12 @@ export function App() {
 
   const openCreate = useCallback(() => {
     setSidebarOpen(false);
+    setOpenEvent(null);
     setDraft(draftForNewEvent(location.date, Temporal.Now.zonedDateTimeISO(timeZone), "work"));
   }, [location.date, timeZone]);
+  // Editing keeps the popover's anchor so the dialog can return focus to the event.
   const openEdit = (event: DemoEvent) => {
-    setOpenEvent(null);
+    setOpenEvent((current) => current && { ...current, eventId: null });
     setDraft(draftFromEvent(event, timeZone));
   };
   // Views render each event as a `[data-event-id]` button, so one delegated listener opens any of
@@ -151,6 +153,7 @@ export function App() {
             saveEvent(event);
             setDraft(null);
           }}
+          returnFocus={openEvent?.anchor}
           timeZone={timeZone}
         />
       </DemoCalendar.Frame>

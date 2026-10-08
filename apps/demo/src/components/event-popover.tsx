@@ -1,5 +1,5 @@
 import { AlignLeftIcon, CalendarIcon, PencilIcon, Trash2Icon, XIcon } from "lucide-react";
-import { useId } from "react";
+import { useId, useRef } from "react";
 
 import { Button } from "@registry/ui/button";
 import { Popover, PopoverAnchor, PopoverClose, PopoverContent } from "@registry/ui/popover";
@@ -30,6 +30,7 @@ export function EventPopover({
   timeZone,
 }: EventPopoverProps) {
   const titleId = useId();
+  const handingOffToEditor = useRef(false);
   const calendar = demoCalendars.find(({ id }) => id === event?.calendarId);
 
   return (
@@ -44,17 +45,25 @@ export function EventPopover({
           aria-labelledby={titleId}
           className="w-80 p-3"
           collisionPadding={8}
-          // Return focus to the event the popover was opened from.
           onCloseAutoFocus={(focusEvent) => {
-            if (anchor?.isConnected !== true) return;
-            focusEvent.preventDefault();
-            anchor.focus();
+            // Opening the editor hands focus to its dialog; a plain dismissal returns it to the
+            // event the popover was opened from.
+            if (handingOffToEditor.current) {
+              handingOffToEditor.current = false;
+              focusEvent.preventDefault();
+            } else if (anchor?.isConnected === true) {
+              focusEvent.preventDefault();
+              anchor.focus();
+            }
           }}
         >
           <div className="-mt-1 -mr-1 flex justify-end">
             <Button
               aria-label="Edit event"
-              onClick={() => onEdit(event)}
+              onClick={() => {
+                handingOffToEditor.current = true;
+                onEdit(event);
+              }}
               size="icon-sm"
               variant="ghost"
             >

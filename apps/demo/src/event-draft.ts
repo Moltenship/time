@@ -11,10 +11,14 @@ export interface EventDraft {
   readonly calendarId: DemoCalendarId;
   readonly description: string;
   readonly endDate: Temporal.PlainDate;
+  /** The end's original UTC offset, which picks the same occurrence of a repeated wall time. */
+  readonly endOffset?: string;
   readonly endTime: Temporal.PlainTime;
   /** Set when editing an existing event. */
   readonly id?: string;
   readonly startDate: Temporal.PlainDate;
+  /** The start's original UTC offset, which picks the same occurrence of a repeated wall time. */
+  readonly startOffset?: string;
   readonly startTime: Temporal.PlainTime;
   readonly title: string;
 }
@@ -46,10 +50,30 @@ export function draftFromEvent(event: DemoEvent, timeZone: string): EventDraft {
     ...base,
     allDay: false,
     endDate: end.toPlainDate(),
+    endOffset: end.offset,
     endTime: end.toPlainTime(),
     startDate: start.toPlainDate(),
+    startOffset: start.offset,
     startTime: start.toPlainTime(),
   };
+}
+
+/**
+ * Resolves a wall time in `timeZone`. The original offset wins while it is still valid for that
+ * wall time, so an unchanged time in a DST fold keeps its occurrence; otherwise the earlier
+ * occurrence of a repeated time, or the shifted time of a skipped one, is used.
+ */
+function resolveWallTime(
+  date: Temporal.PlainDate,
+  time: Temporal.PlainTime,
+  timeZone: string,
+  offset: string | undefined,
+): Temporal.Instant {
+  const dateTime = date.toPlainDateTime(time);
+  if (offset === undefined) return dateTime.toZonedDateTime(timeZone).toInstant();
+  return Temporal.ZonedDateTime.from(`${dateTime.toString()}${offset}[${timeZone}]`, {
+    offset: "prefer",
+  }).toInstant();
 }
 
 /** Where "Create" starts an hour-long event: the next half hour today, otherwise 09:00. */
@@ -119,10 +143,8 @@ export function eventFromDraft(draft: EventDraft, timeZone: string, id: string):
     };
   }
 
-  const toInstant = (date: Temporal.PlainDate, plainTime: Temporal.PlainTime) =>
-    date.toZonedDateTime({ plainTime, timeZone }).toInstant();
-  const start = toInstant(draft.startDate, draft.startTime);
-  const end = toInstant(draft.endDate, draft.endTime);
+  const start = resolveWallTime(draft.startDate, draft.startTime, timeZone, draft.startOffset);
+  const end = resolveWallTime(draft.endDate, draft.endTime, timeZone, draft.endOffset);
   if (Temporal.Instant.compare(end, start) <= 0) {
     return { error: "The event must end after it starts." };
   }

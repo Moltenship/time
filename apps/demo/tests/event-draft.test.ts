@@ -76,6 +76,26 @@ describe("event drafts", () => {
     ).toBe(210);
   });
 
+  test.each([
+    ["earlier", "2026-11-01T05:30:00Z", "2026-11-01T05:45:00Z"],
+    ["later", "2026-11-01T06:30:00Z", "2026-11-01T06:45:00Z"],
+  ])(
+    "keep the %s occurrence of a repeated wall time through an unchanged save",
+    (_, start, end) => {
+      // 01:30–01:45 happens twice in New York on 2026-11-01: first in EDT, then in EST.
+      const event: DemoEvent = {
+        ...timed,
+        end: Temporal.Instant.from(end),
+        start: Temporal.Instant.from(start),
+      };
+      const result = eventFromDraft(draftFromEvent(event, timeZone), timeZone, event.id);
+      if (!("event" in result) || result.event.kind !== "timed")
+        throw new Error("expected an event");
+
+      expect([result.event.start.toString(), result.event.end.toString()]).toEqual([start, end]);
+    },
+  );
+
   test("start new events at the next half hour today and at 09:00 on other days", () => {
     const now = Temporal.ZonedDateTime.from(`2026-10-08T10:05[${timeZone}]`);
 

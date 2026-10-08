@@ -23,13 +23,29 @@ export interface EventDialogProps {
   readonly draft: EventDraft | null;
   readonly onOpenChange: (open: boolean) => void;
   readonly onSave: (event: DemoEvent) => void;
+  /** Where focus goes when the dialog closes, such as the event it edits. */
+  readonly returnFocus?: HTMLElement | null;
   readonly timeZone: string;
 }
 
-export function EventDialog({ draft, onOpenChange, onSave, timeZone }: EventDialogProps) {
+export function EventDialog({
+  draft,
+  onOpenChange,
+  onSave,
+  returnFocus,
+  timeZone,
+}: EventDialogProps) {
   return (
     <Dialog open={draft !== null} onOpenChange={onOpenChange}>
-      <DialogContent aria-describedby={undefined} className="max-sm:p-4 sm:max-w-md">
+      <DialogContent
+        aria-describedby={undefined}
+        className="max-sm:p-4 sm:max-w-md"
+        onCloseAutoFocus={(focusEvent) => {
+          if (returnFocus?.isConnected !== true) return;
+          focusEvent.preventDefault();
+          returnFocus.focus();
+        }}
+      >
         {draft !== null && <EventForm initial={draft} onSave={onSave} timeZone={timeZone} />}
       </DialogContent>
     </Dialog>
@@ -166,6 +182,7 @@ function EventForm({
       <div className="grid gap-2">
         <Label htmlFor={`${id}-description`}>Description</Label>
         <Textarea
+          className="max-h-40"
           id={`${id}-description`}
           onChange={(event) => update({ description: event.target.value })}
           value={draft.description}
