@@ -1,5 +1,7 @@
-import { CheckIcon } from "lucide-react";
 import { useId } from "react";
+
+import { Checkbox } from "@registry/ui/checkbox";
+import { Label } from "@registry/ui/label";
 
 import { demoCalendars, type DemoCalendarId } from "../calendars";
 
@@ -19,25 +21,15 @@ export function CalendarList({ hidden, onToggle }: CalendarListProps) {
       <ul>
         {demoCalendars.map((calendar) => (
           <li key={calendar.id}>
-            <label
-              data-color={calendar.color}
-              className="flex h-8 cursor-pointer items-center gap-3 rounded-md px-2 text-sm hover:bg-accent"
-            >
-              <span className="relative grid size-4 shrink-0 place-items-center">
-                <input
-                  type="checkbox"
-                  checked={!hidden.has(calendar.id)}
-                  onChange={() => onToggle(calendar.id)}
-                  className="peer absolute inset-0 cursor-pointer appearance-none rounded-[4px] border-2 border-calendar-event-border outline-none checked:bg-calendar-event-border focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                />
-                <CheckIcon
-                  aria-hidden
-                  className="pointer-events-none relative size-3 text-background opacity-0 peer-checked:opacity-100"
-                  strokeWidth={3.5}
-                />
-              </span>
+            <Label className="h-8 cursor-pointer gap-3 rounded-md px-2 font-normal hover:bg-accent">
+              <Checkbox
+                checked={!hidden.has(calendar.id)}
+                className="border-2 border-calendar-event-border data-[state=checked]:border-calendar-event-border data-[state=checked]:bg-calendar-event-border data-[state=checked]:text-background dark:data-[state=checked]:bg-calendar-event-border"
+                data-color={calendar.color}
+                onCheckedChange={() => onToggle(calendar.id)}
+              />
               {calendar.name}
-            </label>
+            </Label>
           </li>
         ))}
       </ul>

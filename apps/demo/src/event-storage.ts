@@ -1,11 +1,6 @@
 import type { DemoEvent } from "./calendar";
 import { isDemoCalendarId } from "./calendars";
-
-export const eventsStorageKey = "moltenship-demo:events";
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+import { isRecord } from "./storage";
 
 function parseEvent(value: unknown): DemoEvent {
   if (!isRecord(value)) throw new TypeError("invalid-stored-event");

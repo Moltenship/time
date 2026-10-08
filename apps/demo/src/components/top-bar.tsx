@@ -9,10 +9,10 @@ import { BrandMark } from "./brand";
 import { ThemeToggle } from "./theme-toggle";
 
 const viewOptions: readonly ViewSwitcherOption<DemoView>[] = [
-  { label: "Day", value: "day" },
-  { label: "Week", value: "week" },
-  { label: "Month", value: "month" },
-  { label: "Agenda", value: "agenda" },
+  { label: "Day", shortcut: "D", value: "day" },
+  { label: "Week", shortcut: "W", value: "week" },
+  { label: "Month", shortcut: "M", value: "month" },
+  { label: "Agenda", shortcut: "A", value: "agenda" },
 ];
 
 const selectView = (state: { readonly view: DemoView }) => state.view;
