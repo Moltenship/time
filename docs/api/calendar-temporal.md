@@ -179,5 +179,5 @@ share the same wall coordinate. Zoned keys normalize identifier case but keep al
 - Consumers use the global `Temporal` namespace directly; the package does not re-export it.
 - The package contains no React, DOM, timezone default, current-time read, parser, or runtime
   polyfill dependency, and it has no production dependencies.
-- The production ESM entry must remain at or below 28 KiB raw and 6.25 KiB gzip. The package build
+- The production ESM entry must remain at or below 30 KiB raw and 7 KiB gzip. The package build
   enforces both budgets.

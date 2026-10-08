@@ -91,5 +91,5 @@ does not fetch, persist, or mutate application events.
 - React, Jotai, dnd-kit, Tailwind, browser globals, and dependency-owned interval-tree types do not
   cross the public entry point.
 - Packed declarations are compiled in the engine API matrix through the package export.
-- The production ESM entry must remain at or below 24 KiB raw and 5.5 KiB gzip. The package build
+- The production ESM entry must remain at or below 32 KiB raw and 8 KiB gzip. The package build
   enforces both budgets against the emitted artifact.

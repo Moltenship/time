@@ -85,6 +85,16 @@ export type {
   ViewNavigationDirection,
 } from "./views";
 
+export { navigateTimeGrid, timeGridRange, timeGridTitle } from "./views/time-grid/range";
+export type { TimeGridSpan } from "./views/time-grid/range";
+export { timeGridColumns } from "./views/time-grid/columns";
+export type { TimeGridBand, TimeGridColumn } from "./views/time-grid/columns";
+export { timedFragmentBox, timeGridDateTimeAt, timeGridPosition } from "./views/time-grid/geometry";
+export type { TimeGridPointOptions, TimeGridPosition } from "./views/time-grid/geometry";
+export { layoutTimeGridColumn } from "./views/time-grid/layout";
+export type { TimeGridEventLayout, TimeGridFragment } from "./views/time-grid/layout";
+export type { TimedOverlapOptions } from "./layout/timed-overlap";
+
 export { createEventTransactions } from "./transactions/event-transactions";
 export type { EventTransactions } from "./transactions/event-transactions";
 export { applyEventOverlay } from "./transactions/overlay";
