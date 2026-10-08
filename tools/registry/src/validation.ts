@@ -344,6 +344,7 @@ async function findRegistryManifests(directory: string, workspaceRoot: string): 
   const manifests: string[] = [];
   for (const entry of entries) {
     const relativePath = `${directory}/${entry.name}`;
+    if (entry.name === "node_modules") continue;
     if (entry.isDirectory()) {
       manifests.push(...(await findRegistryManifests(relativePath, workspaceRoot)));
     } else if (entry.name === "registry-item.json") {

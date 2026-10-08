@@ -1,0 +1,30 @@
+{
+  "name": "registry-source",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Consumer-owned shadcn registry source, type-checked and tested in place.",
+  "type": "module",
+  "scripts": {
+    "check": "vp check",
+    "test": "vp test"
+  },
+  "dependencies": {
+    "@moltenship/calendar": "workspace:*",
+    "@moltenship/calendar-temporal": "workspace:*",
+    "class-variance-authority": "catalog:",
+    "clsx": "catalog:",
+    "lucide-react": "catalog:",
+    "radix-ui": "catalog:",
+    "react": "catalog:",
+    "tailwind-merge": "catalog:"
+  },
+  "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

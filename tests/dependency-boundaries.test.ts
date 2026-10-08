@@ -14,6 +14,8 @@ const productionRoots = ["apps", "benchmarks", "packages", "registry", "tools"];
 const invalidFixtureRoot = "tests/fixtures/dependency-boundaries";
 const calendarReactDeepImportFixture =
   "tests/fixtures/dependency-boundaries/consumer/calendar-react-deep-import.ts";
+const registryCoreImportFixture =
+  "tests/fixtures/dependency-boundaries/registry/calendar/core-import.ts";
 const execFileAsync = promisify(execFile);
 
 const expectedWorkspaceDependencies = {
@@ -29,13 +31,16 @@ const expectedWorkspaceDependencies = {
     "@moltenship/calendar-temporal",
   ],
   benchmark: ["@moltenship/calendar-core", "@moltenship/calendar-react", "fixtures"],
+  demo: ["@moltenship/calendar", "@moltenship/calendar-temporal"],
   fixtures: ["@moltenship/calendar-core"],
   registry: [],
+  "registry-source": ["@moltenship/calendar", "@moltenship/calendar-temporal"],
   showcase: ["@moltenship/calendar"],
   "ssr-fixture": ["@moltenship/calendar"],
 } as const;
 
 const workspaceManifestPaths = [
+  "apps/demo/package.json",
   "apps/showcase/package.json",
   "apps/ssr-fixture/package.json",
   "benchmarks/package.json",
@@ -46,6 +51,7 @@ const workspaceManifestPaths = [
   "packages/calendar-recurrence/package.json",
   "packages/calendar-temporal/package.json",
   "packages/calendar-testing/package.json",
+  "registry/package.json",
   "tools/fixtures/package.json",
   "tools/registry/package.json",
 ] as const;
@@ -85,6 +91,13 @@ describe.sequential("workspace boundaries", () => {
 
     expect(violatedRules).toContain("no-calendar-temporal-deep-imports");
     expect(violatedRules).toContain("no-package-source-specifiers");
+  });
+
+  test("registry source may not reach past the public calendar packages", async () => {
+    const result = await cruiseWithArchitectureRules([registryCoreImportFixture]);
+    const violatedRules = result.summary.violations.map(({ rule }) => rule.name);
+
+    expect(violatedRules).toEqual(["registry-source-uses-public-calendar-api"]);
   });
 
   test("a calendar React source import fails static and packed-package boundaries", async () => {

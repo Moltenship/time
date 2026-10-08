@@ -48,6 +48,17 @@ export default {
       to: { path: "(?:^|/)(?:apps|benchmarks|registry|tools)/" },
     },
     {
+      name: "registry-source-uses-public-calendar-api",
+      comment:
+        "Copied registry source depends only on public calendar packages and its declared UI deps. @moltenship/calendar-temporal folds into the facade with #70.",
+      severity: "error",
+      from: { path: "(?:^|/)registry/", pathNot: "(?:^|/)tools/registry/" },
+      to: {
+        path: ["^@moltenship/", "(?:^|/)(?:apps|benchmarks|packages|tools)/"],
+        pathNot: "^@moltenship/calendar(?:-temporal)?$",
+      },
+    },
+    {
       name: "engine-has-no-ui-runtime-imports",
       comment:
         "Temporal and core stay independent from React, Jotai, dnd-kit, DOM helpers, and CSS.",
