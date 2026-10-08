@@ -1,0 +1,83 @@
+---
+title: Anatomy
+description: The parts a calendar is built from, and their names in code.
+---
+
+A calendar is made of the parts your `createCalendar` factory returns, such as `Calendar.Toolbar`,
+and a few components from the registry. The diagram labels each part with its name in code, and the
+code below it puts the same parts together.
+
+<CalendarAnatomy />
+
+```tsx
+<Calendar.Root
+  events={meetings}
+  defaultAnchorDate={today}
+  defaultTimeZone="Europe/Berlin"
+  locale="en-US"
+  weekRules={weekRules}
+>
+  <Calendar.Frame>
+    <Calendar.Toolbar>
+      <Calendar.TodayTrigger>Today</Calendar.TodayTrigger>
+      <Calendar.PreviousTrigger aria-label="Previous period" />
+      <Calendar.NextTrigger aria-label="Next period" />
+      <Calendar.Title />
+      <ViewSwitcher value={view} onValueChange={setView} options={viewOptions} />
+    </Calendar.Toolbar>
+    <aside>
+      <MiniMonth
+        locale="en-US"
+        selectedDate={anchorDate}
+        onSelectDate={setAnchorDate}
+        today={today}
+        weekStartsOn={1}
+      />
+    </aside>
+    <Calendar.Viewport>
+      <Calendar.ActiveView />
+    </Calendar.Viewport>
+  </Calendar.Frame>
+</Calendar.Root>
+```
+
+- **`Root`** holds the calendar's state and renders no element of its own. Every part and hook
+  works anywhere inside it.
+- **`Frame`, `Toolbar`, `Title`, `Viewport`,** and the three triggers each render one element with a
+  `data-calendar-part` attribute, such as `data-calendar-part="today-trigger"`, for styling. The
+  [component reference](/docs/api/react#components) lists them.
+- **`ActiveView`** renders the active view's Renderer inside the viewport.
+- **`ViewSwitcher`** and **`MiniMonth`** come from `registry/calendar`. They're plain components:
+  you connect them to the calendar with `setView`, `setAnchorDate`, and the `view` and
+  `anchorDate` state. `Calendar.ViewSwitcher` is an unstyled `<select>` you can use instead.
+
+The registry's `CalendarToolbar` renders the toolbar parts above, styled, and puts its children at
+the end. The [Quick start](/docs/quick-start) uses it:
+
+```tsx
+<CalendarToolbar calendar={Calendar}>
+  <ViewSwitcher value={view} onValueChange={setView} options={viewOptions} />
+</CalendarToolbar>
+```
+
+## Views
+
+`ActiveView` draws the rest. Each built-in view has its own anatomy:
+
+<Cards>
+  <Card
+    title="Week and day"
+    href="/docs/views/week-and-day#anatomy"
+    description="Day headers, the all-day row, the time gutter, columns, and events."
+  />
+  <Card
+    title="Month"
+    href="/docs/views/month#anatomy"
+    description="Week rows, day cells, event chips, multi-day bars, and +N more."
+  />
+  <Card
+    title="Agenda"
+    href="/docs/views/agenda#anatomy"
+    description="Day groups, items, the All day badge, and the empty state."
+  />
+</Cards>
