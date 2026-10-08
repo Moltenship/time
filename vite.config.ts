@@ -5,13 +5,6 @@ const staticCheckIgnorePatterns = [".github/**", "*.md", "**/*.md"];
 const invalidBoundaryFixturePattern = "tests/fixtures/dependency-boundaries/**";
 
 export default defineConfig({
-  test: {
-    // Vitest v4 compatibility: preserve mock call history.
-    // Remove after tests no longer rely on calls from setup or earlier tests.
-    // https://viteplus.dev/guide/vitest-v5#remove-unneeded-compatibility-settings
-    // https://vitest.dev/guide/migration/#clearmocks-is-enabled-by-default
-    clearMocks: false,
-  },
   resolve: {
     tsconfigPaths: true,
   },
