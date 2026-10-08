@@ -8,10 +8,13 @@ Router. The same rules apply elsewhere.
 
 ## Calendars are Client Components
 
-`@moltenship/calendar` is marked `"use client"`, and calendar state lives in React state. Put
-`createCalendar`, your views, and `Root` in files that start with `"use client"`, as the
-[Quick start](/docs/quick-start) does. Server Components can render those components and pass them
-props.
+Calendar state lives in React state, so `createCalendar`, `defineCalendarView`, and the components
+are client-only. Put your calendar, its views, and `Root` in files that start with `"use client"`,
+as the [Quick start](/docs/quick-start) does. Server Components can render those components and pass
+them props.
+
+The rest of `@moltenship/calendar` works on the server too. A Server Component can import the
+Temporal helpers or build a snapshot, for example to filter events before sending them.
 
 ## Send strings, not Temporal objects
 
@@ -29,12 +32,14 @@ The page fetches the data on the server:
 
 ## Match the server and the browser
 
-Time never reads the clock, the host time zone, or `window` on its own. Everything that affects the
-output comes from props, so the server and the browser render the same markup as long as they get
-the same props. In practice:
+During server rendering and hydration, Time doesn't read the clock, the host time zone, or `window`.
+Everything that affects the first render comes from props, so the server and the browser produce the
+same markup as long as they get the same props. In practice:
 
 - **Compute "now" once on the server** and pass it down, as `now` above. Calling
   `Temporal.Now.instant()` in a Client Component gives the server and the browser different values.
+  Without `now`, anything that depends on the current time (a view's `today`, `useNow()`) is empty
+  on the server and fills in after hydration.
 - **Choose the time zone on the server**, for example from the user's profile or a cookie. The
   server's own zone is rarely the user's.
 - **Pass the same `locale`** to both. Dates and times are formatted with `Intl`, which depends on it.

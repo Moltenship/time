@@ -56,10 +56,11 @@ Views can then filter by resource with `snapshot.eventsForResource(roomId)` or
 Time never edits, saves, or fetches your events. When your data changes, update your own state and
 pass a new array.
 
-Treat the array as immutable. While you pass the same array object, Time reuses all the work it did
-on it. When you pass a new array, Time walks it again but skips records that are the same objects as
-before, or that have the same `getRevision` value. The
-[performance guide](/docs/guides/performance) explains how to make the most of that.
+Treat your records as immutable: change a record by replacing it with a new object. Time compares
+the array item by item, so a new array with the same records in the same order counts as unchanged,
+even if you build it inline with `filter` or `map`. When records do change, Time re-reads only the ones that are new objects, and skips
+those whose `getRevision` value is unchanged. The [performance guide](/docs/guides/performance)
+explains how to make the most of that.
 
 ## Invalid records
 
@@ -71,10 +72,10 @@ Reports show up in `meta.diagnostics` and in the `onDiagnosticsChange` callback 
 
 <include meta='title="bookings.tsx"'>../../examples/bookings.tsx#diagnostics</include>
 
-Pass `reportDiagnostics` as `onDiagnosticsChange`. Keep the handler at module scope or wrap it in
-`useCallback`, because Time calls it again whenever its identity changes.
+Pass `reportDiagnostics` as `onDiagnosticsChange`. Time calls it after mount and again whenever the
+list changes; an inline function works too.
 
-To reject bad input instead, set `invalidEventPolicy="throw"` on `Root` (or in `createCalendar`).
+To reject bad input instead, pass `invalidEventPolicy: "throw"` to `createCalendar`.
 Time then throws an `InvalidCalendarEventSnapshotError` during render, with every problem listed on
 its `issues` property. Catch it with an error boundary.
 

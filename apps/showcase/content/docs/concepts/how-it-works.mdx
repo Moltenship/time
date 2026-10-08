@@ -6,21 +6,24 @@ description: The packages, and how your events become a rendered view.
 ## Packages
 
 ```text
-@moltenship/calendar                  what you import in a React app
+@moltenship/calendar                  what you import: everything below
 ├── @moltenship/calendar-react        Root, components, hooks, state
-└── @moltenship/calendar-core         adapters, validation, snapshots, queries
-    └── @moltenship/calendar-temporal ranges, day boundaries, DST helpers
+├── @moltenship/calendar-core         adapters, validation, snapshots, queries
+└── @moltenship/calendar-temporal     ranges, day boundaries, DST helpers
 ```
 
-Each package depends only on the ones below it. `calendar-core` and `calendar-temporal` don't use
-React or the DOM, so they also run on a server or in a worker.
+`calendar-react` builds on `calendar-core`, which builds on `calendar-temporal`. `calendar-core` and
+`calendar-temporal` don't use React or the DOM, so they also run on a server or in a worker.
 
-| Package                         | Use it when                                                         |
-| ------------------------------- | ------------------------------------------------------------------- |
-| `@moltenship/calendar`          | You're building a calendar in React. It includes core and React.    |
-| `@moltenship/calendar-temporal` | You're writing a view and need date ranges or DST-aware time slots. |
-| `@moltenship/calendar-core`     | You want to validate or query events without React.                 |
-| `@moltenship/calendar-react`    | Rarely. `@moltenship/calendar` already includes everything in it.   |
+| Package                         | Use it when                                                          |
+| ------------------------------- | -------------------------------------------------------------------- |
+| `@moltenship/calendar`          | Almost always. It includes the three packages below.                 |
+| `@moltenship/calendar-core`     | You want to validate or query events in code that never loads React. |
+| `@moltenship/calendar-temporal` | You only need the date and time zone helpers.                        |
+| `@moltenship/calendar-react`    | Rarely. `@moltenship/calendar` already includes everything in it.    |
+
+`@moltenship/calendar` has no `"use client"` directive of its own, so a Server Component can import
+its core and Temporal helpers. The React parts keep their client boundary.
 
 Import from the package name only. Files inside a package, such as
 `@moltenship/calendar-core/src/events`, aren't part of the API and can change at any time.
@@ -29,14 +32,18 @@ Import from the package name only. Files inside a package, such as
 
 1. You pass `events` to `Root`.
 2. `Root` runs each record through your adapter, validates it, and builds a **snapshot**: a frozen,
-   indexed copy of your events. Passing the same array again returns the same snapshot.
-3. The active view renders. It reads the state (date, time zone) and asks the snapshot for the
-   events it needs.
-4. Buttons and your own controls call actions such as `navigateNext` or `setView`. The calendar
-   updates uncontrolled state itself and sends controlled changes to your handlers.
+   indexed copy of your events.
+3. `Root` asks the active view's strategy for the visible dates, then calls its `project` function
+   with the snapshot. The result is the view's **projection**: the events it needs, in the shape it
+   needs.
+4. `ActiveView` renders the view's `Renderer` with that projection.
+5. Buttons and your own controls call actions such as `navigateNext` or `setView`. The calendar
+   updates uncontrolled state itself and sends controlled changes to your handlers. A new date or
+   view means a new range and a new projection.
 
-Pass a new array and step 2 runs again. Records that are the same objects as before, or that have an
-unchanged `getRevision` value, reuse their earlier result.
+Steps 2 and 3 only run again when their inputs change. A new array with the same records in the same
+order reuses the snapshot, and records that are the same objects as before, or have an unchanged
+`getRevision` value, reuse their earlier result.
 
 ## Using the engine without React
 

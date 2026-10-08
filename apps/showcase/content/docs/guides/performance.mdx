@@ -1,34 +1,31 @@
 ---
 title: Performance
-description: Keep re-renders and event processing to a minimum.
+description: Where Time does its work, and how to keep that work small.
 ---
 
-Time does most of its work when it reads your events. These habits keep that work to a minimum.
+Time does its work in two steps, and caches each one:
 
-## Keep the events array stable
+1. **Reading events.** `Root` runs your records through the adapter into a snapshot. This happens
+   again only when the records change.
+2. **Projecting the view.** `Root` calls the active view's `project` with the snapshot and the
+   visible range. This happens again only when the snapshot, range, options, resources,
+   environment, or today's date change.
 
-`Root` builds a snapshot from your events array. While you pass the same array object, Time reuses
-that snapshot and its cached query results. A new array, even with the same contents, means a new
-snapshot: Time walks the array again and queries start with an empty cache.
+Everything else is a normal React render. These habits keep both steps rare and cheap.
 
-```tsx
-// Avoid: a new array on every render.
-<Calendar.Root events={meetings.filter((meeting) => !meeting.cancelled)} ... />;
+## Replace records, don't recreate them
 
-// Prefer: a new array only when `meetings` changes.
-const visible = useMemo(() => meetings.filter((meeting) => !meeting.cancelled), [meetings]);
+`Root` compares `events` item by item. A new array with the same record objects in the same order
+counts as unchanged, so you can filter or map inline, as in
+`events={meetings.filter((meeting) => !meeting.cancelled)}`.
 
-<Calendar.Root events={visible} ... />;
-```
-
-Data libraries such as TanStack Query and SWR usually return the same array until the data changes,
-so you can pass their result straight through.
+When some records change, Time reads only the new objects. So update records immutably: replace the
+changed record and keep the others as they are.
 
 ## Add a revision to your adapter
 
-Records that are the same objects as last time aren't read through the adapter again. But when you
-refetch, your data layer usually creates new objects for every record, even unchanged ones.
-`getRevision` lets Time skip those too. Return anything that changes whenever the record changes, such as
+When you refetch, your data layer usually creates new objects for every record, even unchanged ones.
+`getRevision` lets Time skip those. Return anything that changes whenever the record changes, such as
 an `updatedAt` timestamp or a version number:
 
 ```ts
@@ -45,11 +42,38 @@ Records with the same ID and revision as last time reuse their earlier result. T
 change whenever anything the adapter reads changes; otherwise Time keeps showing the old title or
 time.
 
-## Keep other props stable
+## Do the heavy work in project
 
-`weekRules`, `views`, `now`, `clock`, and the event adapter are compared by identity. Defining them inside a
-component creates new objects on each render, which makes Time rebuild the work that depends on them.
-Define them at module scope, as the Quick start does, or wrap them in `useMemo`.
+A view's `project` runs only when its inputs change, while its `Renderer` re-renders like any
+component. Put filtering, sorting, and layout in `project`, and keep the Renderer to drawing.
+
+Inside `project`, ask the snapshot for the visible range instead of looping over every event:
+
+```ts
+project: ({ snapshot, instantRange }) => snapshot.queryTimed(instantRange),
+```
+
+Queries use an interval index, so they don't scan every event. Each snapshot also remembers the
+results of its last 128 distinct queries, so asking again for the same range returns the same
+array.
+
+## Keep functions in options stable
+
+`Root` compares `locale`, `weekRules`, `now`, controlled values, and each view's options by value,
+so inline objects are fine. Functions are different: a new function is a new value. A
+`getEventColor` written inline in `viewOptions` makes the view project again on every render of the
+component that renders `Root`. Define it once instead:
+
+```tsx
+// At module scope, outside the component that renders Root:
+const getEventColor = (meeting: Meeting) => (meeting.title === "Standup" ? "green" : "blue");
+
+// Then, on Root:
+viewOptions={{ agenda: { getEventColor } }}
+```
+
+The same goes for a `clock` object. Change handlers and `onDiagnosticsChange` can be inline: `Root`
+reads them when it needs them.
 
 ## Subscribe to what you use
 
@@ -57,37 +81,18 @@ Define them at module scope, as the Quick start does, or wrap them in `useMemo`.
 component that needs one value, use a selector:
 
 ```tsx
-const selectView = (state: CalendarPublicState) => state.view;
-
 function ViewName() {
-  const view = Calendar.useCalendarSelector(selectView);
+  const view = Calendar.useCalendarSelector((state) => state.view);
   return <span>{view}</span>;
 }
 ```
 
-The component re-renders only when the selected value changes. Define the selector outside the
-component so it keeps the same identity. If your selector builds a new object each time, pass
-`isEqual` so equal results don't count as changes:
+The component re-renders only when the selected value changes. If your selector builds a new object
+each time, pass `isEqual` so equal results don't count as changes:
 
 ```ts
-const selectPosition = (state: CalendarPublicState) => ({
-  view: state.view,
-  anchorDate: state.anchorDate,
-});
-
-const position = Calendar.useCalendarSelector(selectPosition, {
-  isEqual: (a, b) => a.view === b.view && a.anchorDate.equals(b.anchorDate),
-});
+const position = Calendar.useCalendarSelector(
+  (state) => ({ view: state.view, anchorDate: state.anchorDate }),
+  { isEqual: (a, b) => a.view === b.view && a.anchorDate.equals(b.anchorDate) },
+);
 ```
-
-## Query instead of filtering
-
-Inside a view, ask the snapshot for a range instead of looping over every event:
-
-```ts
-const day = zonedDayRange(date, timeZone);
-const meetings = day.interval ? calendar.meta.eventSnapshot.queryTimed(day.interval) : [];
-```
-
-Queries use an interval index, so they don't scan every event. Each snapshot remembers the results of its last 128 distinct queries, so asking again for the same
-range returns the same array. The [snapshot reference](/docs/api/events#snapshots) lists every query.

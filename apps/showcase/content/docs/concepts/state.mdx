@@ -75,18 +75,21 @@ Any component inside `Root` can use the hooks on your calendar:
 - `useCalendarSelector(selector)` returns one derived value and re-renders only when it changes.
 - `useCalendarActions()` returns `setView`, `setAnchorDate`, `setTimeZone`, `setSelection`,
   `setFocus`, `setExpandedResourceIds`, `navigateNext`, `navigatePrevious`, and `navigateToday`.
-- `useCalendarMeta()` returns everything else: events, the event snapshot, the active view,
+- `useCalendarMeta()` returns everything else: the event snapshot, resources, the active view,
   diagnostics, and element IDs and refs.
 - `useCalendar()` returns `state`, `actions`, and `meta` together.
+- `useVisibleRange()` and `useViewProjection()` return what the active view shows. See
+  [Custom views](/docs/views/custom-views#reading-the-view-from-other-components).
 
 <include meta='title="controlled-state.tsx"'>../../examples/controlled-state.tsx#hooks</include>
 
-Define selectors outside the component, as above, so they keep the same identity between renders.
+A selector can live outside the component, as above, or inline. Actions called one after another
+build on each other, so `navigateNext()` twice in one click moves two steps, controlled or not.
 
 ## Selection and focus types
 
-You choose the shape of `selection` and `focus`. Pass their types as the fourth and fifth type
-arguments of `createCalendar`, after the event, resource, and view-name types. Time stores the values
-as they are.
+You choose the shape of `selection` and `focus`. Pass their types as the third and fourth type
+arguments of `createCalendar`, after the event and resource types. Time stores the values as they
+are.
 
 <include meta='title="selection.tsx"'>../../examples/selection.tsx#selection</include>

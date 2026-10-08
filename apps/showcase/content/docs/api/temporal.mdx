@@ -3,12 +3,15 @@ title: Temporal helpers
 description: Ranges, date and time grids, rounding, day boundaries, and DST from @moltenship/calendar-temporal.
 ---
 
-`@moltenship/calendar-temporal` has the date math that views need. It's a separate package with no
-dependencies and no React. It isn't included in `@moltenship/calendar`, so import it directly:
+`@moltenship/calendar-temporal` has the date math that views need. `@moltenship/calendar` re-exports
+all of it, so you can import these functions from either package:
 
 ```ts
-import { plainDateInterval, zonedDayRange } from "@moltenship/calendar-temporal";
+import { plainDateInterval, zonedDayRange } from "@moltenship/calendar";
 ```
+
+The package on its own has no dependencies and no React, so it also works where React isn't
+loaded.
 
 Every function takes and returns native Temporal values. None of them read the clock or the host
 time zone.

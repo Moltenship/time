@@ -39,14 +39,20 @@ If you need a styled, drop-in calendar today, Time isn't there yet.
   `Temporal.PlainDate`, and floating events use `Temporal.PlainDateTime`. No `Date` objects.
 - **Time zone and DST handling.** Days that are 23 or 25 hours long and skipped or repeated hours
   are handled for you.
-- **Indexed event lookups.** Events are validated and indexed once per array, so range and resource
-  queries don't scan every event.
+- **Indexed event lookups.** Events are validated and indexed once, so range and resource queries
+  don't scan every event.
+- **Views as small, typed functions.** A view is a strategy (visible dates, navigation, title, and
+  which events to show) plus a component that draws them. Time runs the strategy and caches the
+  result.
 - **Controlled or uncontrolled state.** The visible date, view, time zone, selection, and focus can
   each be owned by the calendar or by your app.
 - **Unstyled components.** `Root`, `Toolbar`, previous/next/today buttons, `Title`, `ViewSwitcher`,
   and `ActiveView` render plain elements with `data-calendar-part` attributes you can style.
-- **Server rendering.** Time never reads the clock, the host time zone, or `window` on its own, so
-  the server and the browser render the same markup from the same props.
+- **Styled parts to copy.** A theme with calendar tokens and an event color palette, plus a toolbar,
+  view switcher, event chip, and mini month, as shadcn/ui-style source you own. See
+  [Theming](/docs/theming).
+- **Server rendering.** During server rendering, Time doesn't read the clock, the host time zone, or
+  `window`, so the server and the browser render the same markup from the same props.
 
 <Cards>
   <Card title="Installation" href="/docs/installation" description="Requirements and setup." />

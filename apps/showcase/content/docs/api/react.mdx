@@ -8,18 +8,16 @@ Everything on this page is exported from `@moltenship/calendar`.
 ## createCalendar
 
 ```ts
-const Calendar = createCalendar<TEvent, TResource, TView, TSelection, TFocus>(options);
+const Calendar = createCalendar<TEvent, TResource, TSelection, TFocus>()(options);
 ```
 
 Creates a calendar: a set of components and hooks typed to your records. Call it once at module
-scope. Type arguments are usually inferred from the options:
+scope. It's called twice: the first call takes your types, and the second infers the view names
+from `views` and the ID types from the adapter.
 
-- `TEvent`: your event record.
-- `TResource`: your resource record. Use `never` if you don't have resources.
-- `TView`: the union of view names. Defaults to `string`.
+- `TEvent`: your event record. Required.
+- `TResource`: your resource record. Defaults to `unknown`; use `never` if you don't have resources.
 - `TSelection`, `TFocus`: the types of the `selection` and `focus` state. Default to `string`.
-
-Event and resource ID types come from the `id` field of your records when they have one.
 
 <TypeTable
   type={{
@@ -33,28 +31,38 @@ Event and resource ID types come from the `id` field of your records when they h
       required: true,
     },
     views: {
-      type: "readonly CalendarViewRegistration[]",
-      description: "Views available to every Root. The first is the default view.",
-    },
-    capabilities: {
-      type: "readonly string[]",
+      type: "readonly CalendarView[]",
       description: (
         <>
-          Extra capabilities added to <code>meta.capabilities</code>.
+          Views made with <code>defineCalendarView</code>. The first is the default view. Names must
+          be unique.
         </>
       ),
     },
     invalidEventPolicy: {
       type: '"report-and-skip" | "throw"',
-      description: "What to do with invalid records. Root can override it.",
+      description: "What to do with invalid records.",
       default: '"report-and-skip"',
     },
   }}
 />
 
-The returned object holds the components and hooks below, plus `defineView` (see
-[Custom views](/docs/views/custom-views#views-that-switch-to-other-views)) and `viewRegistry`, the
-views passed to `createCalendar`.
+The returned object holds the components and hooks below, plus `views`, the list you passed in.
+Use it to derive the view-name type: `(typeof Calendar.views)[number]["name"]`.
+
+## defineCalendarView
+
+```ts
+const view = defineCalendarView({ name, defaultOptions, strategy, Renderer });
+```
+
+Defines a view. `defaultOptions` is required only when the strategy's options can't be `undefined`.
+[Custom views](/docs/views/custom-views) covers the strategy, the projection input, and the
+Renderer props. The related types are `CalendarViewStrategy`, `CalendarViewProjectionInput`, and
+`CalendarViewRendererProps`.
+
+`resolveViewInstantRange(range, timeZone)` turns visible dates into the instant range that `Root`
+passes to `project` as `instantRange`. Use it to run a strategy outside React, for example in a test.
 
 ## Root
 
@@ -65,7 +73,7 @@ own.
   type={{
     events: {
       type: "readonly TEvent[]",
-      description: "Your events. Treat the array as immutable.",
+      description: "Your events. A new array holding the same records is treated as unchanged.",
       required: true,
     },
     locale: {
@@ -103,11 +111,19 @@ own.
     },
     timeZone: { type: "string", description: "Controlled time zone." },
     defaultView: {
-      type: "TView",
+      type: "view name",
       description: "Initial view, uncontrolled.",
       default: "the first registered view",
     },
-    view: { type: "TView", description: "Controlled view." },
+    view: { type: "view name", description: "Controlled view." },
+    viewOptions: {
+      type: "{ [view]: Partial<options> }",
+      description: (
+        <>
+          Overrides for each view's <code>defaultOptions</code>, keyed by view name.
+        </>
+      ),
+    },
     "defaultSelection / selection": {
       type: "TSelection | null",
       description: "Uncontrolled or controlled selection.",
@@ -125,7 +141,7 @@ own.
       description: (
         <>
           One handler per value. <code>detail</code> has <code>previous</code>,{" "}
-          <code>controlled</code>, <code>slice</code>, and <code>source</code>. See{" "}
+          <code>controlled</code>, and <code>slice</code>. See{" "}
           <a href="/docs/concepts/state">State</a>.
         </>
       ),
@@ -139,13 +155,15 @@ own.
       type: "Temporal.Instant",
       description: (
         <>
-          The current time. Enables Today. Pass <code>now</code> or <code>clock</code>, not both.
+          Fixes the current time, so server and browser agree. Pass <code>now</code> or{" "}
+          <code>clock</code>, not both.
         </>
       ),
     },
     clock: {
       type: "{ instant(): Temporal.Instant }",
-      description: "A source of the current time, read when needed.",
+      description:
+        "A source of the current time. Without now or clock, Time uses the system clock.",
     },
     direction: { type: '"ltr" | "rtl"', description: "Text direction.", default: '"ltr"' },
     disambiguation: {
@@ -157,30 +175,6 @@ own.
         </>
       ),
       default: '"compatible"',
-    },
-    views: {
-      type: "readonly CalendarViewRegistration[]",
-      description: (
-        <>
-          Views added for this Root, after the ones from <code>createCalendar</code>.
-        </>
-      ),
-    },
-    eventAdapter: {
-      type: "EventAdapter<TEvent>",
-      description: (
-        <>
-          Replaces the adapter from <code>createCalendar</code> for this Root.
-        </>
-      ),
-    },
-    invalidEventPolicy: {
-      type: '"report-and-skip" | "throw"',
-      description: (
-        <>
-          Overrides the <code>createCalendar</code> setting.
-        </>
-      ),
     },
     onDiagnosticsChange: {
       type: "(diagnostics) => void",
@@ -210,6 +204,11 @@ own.
   }}
 />
 
+You can write most props inline. `locale`, `weekRules`, `now`, and controlled values are compared by
+value; `events` and `resources` are compared item by item; `viewOptions`, `onDiagnosticsChange`, and
+the change handlers are read from the latest render. Keep a `clock` object stable, for example at
+module scope.
+
 `Root` throws on its first render if it has no date (`calendar-root-requires-anchor-date`), no
 time zone (`calendar-root-requires-time-zone`), or no view (`calendar-root-requires-view`).
 
@@ -218,19 +217,18 @@ time zone (`calendar-root-requires-time-zone`), or no view (`calendar-root-requi
 Use these inside `Root`. Each renders one plain element with a `data-calendar-part` attribute and
 accepts that element's usual props, including `className`, `style`, `ref`, and event handlers.
 
-| Component         | Renders     | Notes                                                                       |
-| ----------------- | ----------- | --------------------------------------------------------------------------- |
-| `Frame`           | `<section>` | Outer wrapper. Gets the `{id}-frame` ID.                                    |
-| `Toolbar`         | `<header>`  | Wrapper for controls.                                                       |
-| `Title`           | `<span>`    | The active view's title, or its children. Gets the `{id}-title` ID.         |
-| `PreviousTrigger` | `<button>`  | Moves back one step of the active view. Disabled when no view is active.    |
-| `NextTrigger`     | `<button>`  | Moves forward one step of the active view.                                  |
-| `TodayTrigger`    | `<button>`  | Moves to today in the calendar's time zone. Disabled without `now`/`clock`. |
-| `ViewSwitcher`    | `<select>`  | One option per view. Requires `getViewLabel(name)`.                         |
-| `Viewport`        | `<div>`     | Wrapper for the view. Gets the `{id}-viewport` ID.                          |
-| `ActiveView`      | view output | Renders the active view, or `fallback` if it isn't registered.              |
-| `CustomView`      | view output | Renders the view passed as `view`.                                          |
-| `Event`           | your output | Looks up one event by `eventId` and calls `children` with it.               |
+| Component         | Renders     | Notes                                                                                 |
+| ----------------- | ----------- | ------------------------------------------------------------------------------------- |
+| `Frame`           | `<section>` | Outer wrapper. Gets the `{id}-frame` ID and is labelled by the title.                 |
+| `Toolbar`         | `<header>`  | Wrapper for controls.                                                                 |
+| `Title`           | `<span>`    | The active view's title, or its children. Gets the `{id}-title` ID.                   |
+| `PreviousTrigger` | `<button>`  | Moves back one step of the active view. Disabled when no view is active.              |
+| `NextTrigger`     | `<button>`  | Moves forward one step of the active view.                                            |
+| `TodayTrigger`    | `<button>`  | Moves to today in the calendar's time zone, from `now`, `clock`, or the system clock. |
+| `ViewSwitcher`    | `<select>`  | One option per view. Requires `getViewLabel(name)`.                                   |
+| `Viewport`        | `<div>`     | Wrapper for the view. Gets the `{id}-viewport` ID.                                    |
+| `ActiveView`      | view output | Renders the active view, or `fallback` if it isn't registered.                        |
+| `Event`           | your output | Looks up one event by `eventId` and calls `children` with it.                         |
 
 - The buttons default to `type="button"` and set `aria-controls` to the viewport. Give each one
   text or an `aria-label`.
@@ -239,7 +237,7 @@ accepts that element's usual props, including `className`, `style`, `ref`, and e
 - `Frame`, `Title`, and `Viewport` don't accept `id`. Set `id` on `Root` instead, so the IDs and
   `aria-controls` always match.
 
-`Event` passes the record, its normalized form, and the calendar context:
+`Event` passes your record and its normalized form:
 
 ```tsx
 <Calendar.Event eventId="standup" fallback={<p>Not found</p>}>
@@ -251,10 +249,10 @@ accepts that element's usual props, including `className`, `style`, `ref`, and e
 </Calendar.Event>
 ```
 
-Using a component or hook outside `Root` throws `calendar-compound-component-outside-root` or
-`calendar-hook-outside-root`.
-
 ## Hooks
+
+The hooks on your calendar work anywhere inside its `Root`. Using them, or any component above,
+outside `Root` throws `calendar-hook-outside-root`.
 
 | Hook                                   | Returns                                             |
 | -------------------------------------- | --------------------------------------------------- |
@@ -263,45 +261,37 @@ Using a component or hook outside `Root` throws `calendar-compound-component-out
 | `useCalendarActions()`                 | The actions below. The object never changes.        |
 | `useCalendarMeta()`                    | The [meta](#meta) object                            |
 | `useCalendarSelector(selector, opts?)` | `selector(state)`. Re-renders only when it changes. |
+| `useVisibleRange()`                    | The active view's visible dates, or `null`          |
+| `useViewProjection()`                  | The active view and its projection, or `null`       |
 
 `useCalendarSelector` compares results with `Object.is`. Pass `{ isEqual }` to compare another way.
+The selector can be an inline function.
+
+`useNow({ intervalMs })` is exported on its own, not from your calendar. It returns the current
+instant from the nearest `Root`'s `now` or `clock`, or the system clock, and samples it every
+`intervalMs` (one minute by default). It returns `null` during server rendering and hydration unless
+`Root` has `now`.
 
 ### Actions
 
-| Action                                 | Effect                                                 |
-| -------------------------------------- | ------------------------------------------------------ |
-| `setView(name)`                        | Changes the view                                       |
-| `setAnchorDate(date)`                  | Changes the date                                       |
-| `setTimeZone(zone)`                    | Changes the time zone                                  |
-| `setSelection(value)`                  | Changes the selection (`null` clears it)               |
-| `setFocus(value)`                      | Changes the focus (`null` clears it)                   |
-| `setExpandedResourceIds(ids)`          | Changes the expanded resources                         |
-| `navigatePrevious()`, `navigateNext()` | Moves by one step of the active view                   |
-| `navigateToday()`                      | Moves to today. Does nothing without `now` or `clock`. |
+| Action                                 | Effect                                     |
+| -------------------------------------- | ------------------------------------------ |
+| `setView(name)`                        | Changes the view                           |
+| `setAnchorDate(date)`                  | Changes the date                           |
+| `setTimeZone(zone)`                    | Changes the time zone                      |
+| `setSelection(value)`                  | Changes the selection (`null` clears it)   |
+| `setFocus(value)`                      | Changes the focus (`null` clears it)       |
+| `setExpandedResourceIds(ids)`          | Changes the expanded resources             |
+| `navigatePrevious()`, `navigateNext()` | Moves by one step of the active view       |
+| `navigateToday()`                      | Moves to today in the calendar's time zone |
 
-Setting a value equal to the current one does nothing. Dates compare with `equals`, resource ID
-arrays by their items in order, and selection and focus by identity.
+Setting a value equal to the current one does nothing. Calling two actions in a row builds on the
+first, so `navigateNext(); navigateNext()` moves two steps, even for controlled values.
 
 ### Meta
 
 <TypeTable
   type={{
-    events: {
-      type: "readonly TEvent[]",
-      description: (
-        <>
-          The <code>events</code> prop.
-        </>
-      ),
-    },
-    resources: {
-      type: "readonly TResource[]",
-      description: (
-        <>
-          The <code>resources</code> prop.
-        </>
-      ),
-    },
     eventSnapshot: {
       type: "EventSnapshot",
       description: (
@@ -310,38 +300,21 @@ arrays by their items in order, and selection and focus by identity.
         </>
       ),
     },
-    eventAdapter: { type: "EventAdapter", description: "The adapter in use." },
+    resources: { type: "readonly TResource[]", description: "The resources prop." },
     environment: {
       type: "CalendarEnvironment",
       description: (
         <>
           <code>locale</code>, <code>timeZone</code>, <code>weekRules</code>, <code>direction</code>
-          , <code>disambiguation</code>, and <code>now</code> or <code>clock</code>.
+          , <code>disambiguation</code>, and <code>now</code> or <code>clock</code> when set.
         </>
       ),
     },
     activeView: {
-      type: "CalendarViewRegistration | undefined",
-      description: "The active view, if it's registered.",
+      type: "CalendarView | undefined",
+      description: "The active view's definition, if it's registered.",
     },
-    viewRegistry: {
-      type: "CalendarViewRegistry",
-      description: (
-        <>
-          All views for this Root: <code>names</code>, <code>values</code>, <code>get(name)</code>,{" "}
-          <code>has(name)</code>.
-        </>
-      ),
-    },
-    capabilities: {
-      type: "CalendarCapabilitySet",
-      description: (
-        <>
-          <code>values</code> and <code>has(name)</code>. See{" "}
-          <a href="/docs/views#capabilities">capabilities</a>.
-        </>
-      ),
-    },
+    views: { type: "readonly CalendarView[]", description: "The registered views." },
     diagnostics: { type: "readonly CalendarDiagnostic[]", description: "See below." },
     ids: { type: "{ frame, title, viewport }", description: "Element IDs." },
     refs: {
@@ -359,15 +332,5 @@ Problems that don't stop rendering are collected in `meta.diagnostics` and passe
 
 | `code`                     | `severity` | Cause                                                                                            |
 | -------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
-| `duplicate-view-name`      | warning    | Two views share a name. The last one is used.                                                    |
 | `unregistered-active-view` | error      | The `view` state names a view that isn't registered.                                             |
 | `invalid-event`            | error      | A record was skipped. `issue` has the details ([issue codes](/docs/api/events#invalid-records)). |
-
-## View helpers
-
-| Export                                    | Purpose                                                                                                        |
-| ----------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| `defineCalendarView<TEvent, TResource>()` | Builds a view from a strategy and a Renderer. See [Custom views](/docs/views/custom-views#definecalendarview). |
-| `createCalendarViewRegistry(views)`       | Builds the registry `Root` uses: `names`, `values`, `get`, `has`, `diagnostics`.                               |
-| `createCalendarCapabilitySet(values)`     | Builds a capability set with `values` and `has(name)`.                                                         |
-| `bindCalendarView(definition)`            | What `defineCalendarView` calls. Prefer `defineCalendarView`.                                                  |

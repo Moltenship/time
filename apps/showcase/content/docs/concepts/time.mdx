@@ -96,8 +96,8 @@ Temporal.PlainDateTime.from("2026-03-29T02:30")
   .toString(); // "2026-03-29T03:30:00+02:00[Europe/Berlin]"
 ```
 
-Views read the setting from `meta.environment.disambiguation`. When you build a view,
-`@moltenship/calendar-temporal` has helpers that already account for these days:
+Views get the setting as `environment.disambiguation`. When you build a view, these helpers from
+`@moltenship/calendar` already account for these days:
 
 - `zonedDayRange(date, timeZone)` returns the real start and end of a day, 23 or 25 hours long when
   needed.
@@ -109,14 +109,31 @@ See the [Temporal helpers reference](/docs/api/temporal).
 
 ## The current time
 
-Time never reads the clock on its own. To enable the Today button and anything else that needs the
-current time, pass one of these to `Root`:
+Time reads the current time from one of three places, in this order:
 
-- `now`: a fixed `Temporal.Instant`. Use this when rendering on the server, so the server and the
-  browser agree.
-- `clock`: an object with an `instant()` method, for a value that keeps moving. Define it once at
-  module scope:
+- `now` on `Root`: a fixed `Temporal.Instant`. Use it when you render on the server, so the server
+  and the browser agree on "today".
+- `clock` on `Root`: an object with an `instant()` method, for a value you control, such as a fake
+  clock in tests. Define it once at module scope.
+- The system clock, when you pass neither.
 
-```ts
-const systemClock = { instant: () => Temporal.Now.instant() };
+Without `now`, nothing that depends on the current time renders on the server: a view's `today` is
+`null` and `useNow()` returns `null` until the page has hydrated. The Today button always works; it
+reads the clock when it's clicked.
+
+`useNow()` gives a component the current instant, for example to draw a line at the current time.
+It re-renders every `intervalMs` (one minute by default). This one uses the `Calendar` from the
+[Quick start](/docs/quick-start):
+
+```tsx
+import { useNow } from "@moltenship/calendar";
+
+function CurrentTime() {
+  const now = useNow({ intervalMs: 30_000 });
+  const { timeZone } = Calendar.useCalendarState();
+  if (now === null) return null;
+
+  const time = now.toZonedDateTimeISO(timeZone).toPlainTime();
+  return <time dateTime={now.toString()}>{time.toString({ smallestUnit: "minute" })}</time>;
+}
 ```

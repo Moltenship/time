@@ -23,8 +23,9 @@ TypeScript 6+ with `"lib": ["ESNext"]`.
 ```tsx
 import {
   createCalendar,
+  defineCalendarView,
   defineEventAdapter,
-  type CalendarViewRegistration,
+  plainDateInterval,
 } from "@moltenship/calendar";
 
 interface Meeting {
@@ -41,28 +42,25 @@ const eventAdapter = defineEventAdapter<Meeting>()({
   getResourceIds: () => [],
 });
 
-// A minimal view: the meetings that start on the visible day.
-const dayView: CalendarViewRegistration<Meeting, never> = {
+// A minimal view: the meetings on the visible day.
+const dayView = defineCalendarView({
   name: "day",
-  capabilities: [],
-  getTitle: (date, { locale }) => date.toLocaleString(locale, { dateStyle: "full" }),
-  navigate: (date, direction) => date.add({ days: direction }),
-  render: ({ state, meta }) => (
+  strategy: {
+    getRange: (date) => plainDateInterval(date, date.add({ days: 1 })),
+    navigate: (date, delta) => date.add({ days: delta }),
+    getTitle: (range, { locale }) => range.start.toLocaleString(locale, { dateStyle: "full" }),
+    project: ({ snapshot, instantRange }) => snapshot.queryTimed(instantRange),
+  },
+  Renderer: ({ projection }) => (
     <ul>
-      {meta.eventSnapshot.events
-        .filter((event) => event.kind === "timed")
-        .filter((event) =>
-          event.start.toZonedDateTimeISO(state.timeZone).toPlainDate().equals(state.anchorDate),
-        )
-        .map((event) => (
-          <li key={event.id}>{event.title}</li>
-        ))}
+      {projection.map((meeting) => (
+        <li key={meeting.id}>{meeting.title}</li>
+      ))}
     </ul>
   ),
-};
+});
 
-const Calendar = createCalendar({ eventAdapter, views: [dayView] });
-const weekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] } as const;
+const Calendar = createCalendar<Meeting>()({ eventAdapter, views: [dayView] });
 
 export function MeetingCalendar({ meetings }: { meetings: readonly Meeting[] }) {
   return (
@@ -71,7 +69,7 @@ export function MeetingCalendar({ meetings }: { meetings: readonly Meeting[] }) 
       defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
       defaultTimeZone="Europe/Berlin"
       locale="en-US"
-      weekRules={weekRules}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
       <Calendar.PreviousTrigger>Previous</Calendar.PreviousTrigger>
       <Calendar.Title />

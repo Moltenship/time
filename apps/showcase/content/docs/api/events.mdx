@@ -164,7 +164,7 @@ snapshot.get("meeting-1");
 - Each query returns the events of one kind that overlap the range. Ranges are end-exclusive on both
   sides, so an event ending exactly at the range start isn't included.
 - Build ranges with `instantInterval`, `plainDateInterval`, and `plainDateTimeInterval` from
-  [`@moltenship/calendar-temporal`](/docs/api/temporal#ranges).
+  the [Temporal helpers](/docs/api/temporal#ranges).
 - `resourceIds` keeps events assigned to any of the listed resources. An empty list matches nothing.
 - Results are frozen and in input order. Repeating a query returns the same array while it's in the
   cache.

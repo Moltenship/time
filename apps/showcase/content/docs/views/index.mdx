@@ -16,59 +16,41 @@ example a day view and a three-day view. The `view` state names the active one, 
 ## Registering views
 
 Pass views to `createCalendar`. The first one is active by default unless you set `defaultView` or
-`view` on `Root`.
+`view` on `Root`. TypeScript learns the view names from this list, so `setView` and `defaultView`
+only accept names you registered.
 
 ```tsx
-const Calendar = createCalendar({ eventAdapter, views: [dayView, threeDayView] });
+const Calendar = createCalendar<Meeting>()({ eventAdapter, views: [dayView, daysView] });
 ```
 
-`Root` also takes a `views` prop. Those views are added after the ones from `createCalendar`, for
-that `Root` only. Define the array outside your component so it isn't rebuilt on every render. If
-two views share a name, the last one wins and a `duplicate-view-name` warning appears in
-`meta.diagnostics`.
+Each name must be unique. `createCalendar` throws `calendar-duplicate-view-name` if two views share
+one.
+
+## View options
+
+A view can declare `defaultOptions`. Override them per calendar with `viewOptions` on `Root`, keyed
+by view name. Each entry is typed from that view's `defaultOptions`, and you only pass the fields you
+want to change. For example, `viewOptions={{ days: { days: 5 } }}` makes the `days` view show five
+days. [Custom views](/docs/views/custom-views#register-it-and-set-options) has the complete
+example.
 
 ## Switching views
 
 `ViewSwitcher` renders a `<select>` with one option per registered view:
 
 ```tsx
-const labels: Record<string, string> = { day: "Day", days: "3 days" };
+const labels = { day: "Day", days: "Several days" };
 
-<Calendar.ViewSwitcher getViewLabel={(name) => labels[name] ?? name} />;
+<Calendar.ViewSwitcher getViewLabel={(name) => labels[name]} />;
 ```
 
-To build your own control, call `setView` from `useCalendarActions()`.
+To build your own control, call `setView` from `useCalendarActions()`. Inside a view's Renderer, use
+the `actions` prop instead.
 
 The active view also drives `Title`, `PreviousTrigger`, and `NextTrigger`. The title comes from the
 view's `getTitle`, and the buttons move by the view's own step: one day in a day view, three days in
 a three-day view.
 
-If the active name doesn't match a registered view, `ActiveView` renders its `fallback` prop and
-`meta.diagnostics` includes an `unregistered-active-view` error.
-
-## Rendering a specific view
-
-`CustomView` renders the view you give it, whatever the active view is. Use it to show a second view
-next to the main one:
-
-```tsx
-<Calendar.CustomView view={dayView} />
-```
-
-## Capabilities
-
-Views can declare capabilities, which are plain strings. Your components can then check for a
-feature instead of comparing view names:
-
-```tsx
-const meta = Calendar.useCalendarMeta();
-
-if (meta.capabilities.has("view:today")) {
-  // A `now` or `clock` was passed to Root, so "today" is known.
-}
-```
-
-Time adds these on its own: `calendar:state`, `calendar:events`, `calendar:resources`, and
-`calendar:diagnostics` always; `view:active` and `view:navigate` while a registered view is active;
-and `view:today` when `Root` has `now` or `clock`. Add your own through the `capabilities` field of a
-view or the `capabilities` option of `createCalendar`.
+If the active name doesn't match a registered view, `ActiveView` renders its `fallback` prop, the
+previous and next buttons are disabled, and `meta.diagnostics` includes an `unregistered-active-view`
+error.

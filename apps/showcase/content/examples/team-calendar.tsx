@@ -31,7 +31,7 @@ export function TeamCalendar({ meetings, now, timeZone }: TeamCalendarProps) {
       ),
     [meetings],
   );
-  const nowInstant = useMemo(() => Temporal.Instant.from(now), [now]);
+  const nowInstant = Temporal.Instant.from(now);
 
   return (
     <Calendar.Root
