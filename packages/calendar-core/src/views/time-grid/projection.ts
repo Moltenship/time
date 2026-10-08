@@ -1,8 +1,8 @@
+import type { CalendarEventInterval } from "../../events";
 import type { EventId, ResourceId } from "../../ids";
 import { layoutDayGridRow, type DayGridRow } from "../../layout/day-grid";
 import { splitEventsByDay, type EventDayFragment } from "../../projection/day-fragments";
 import { queryVisibleEvents } from "../../projection/visible-events";
-import type { NormalizedCalendarEvent } from "../../snapshots/types";
 import type { CalendarViewProjectionInput, CalendarViewStrategy } from "../../views";
 import { timeGridColumns, type TimeGridColumn } from "./columns";
 import { layoutTimeGrid, type TimeGridEventLayout } from "./layout";
@@ -30,15 +30,18 @@ export type TimeGridProjectionInput<TEvent> = Pick<
   "environment" | "range" | "snapshot" | "today"
 >;
 
-/** Like Google Calendar, an event of 24 hours or more sits in the all-day row, not the grid. */
-function belongsInAllDayRow(event: NormalizedCalendarEvent<unknown, EventId, ResourceId>) {
-  switch (event.kind) {
+/**
+ * Like Google Calendar, an event of 24 hours or more sits in a time grid's all-day row, not in
+ * its columns. Interaction previews use this too, so they land where the event will render.
+ */
+export function belongsInTimeGridAllDayRow(interval: CalendarEventInterval): boolean {
+  switch (interval.kind) {
     case "all-day":
       return true;
     case "timed":
-      return event.end.epochNanoseconds - event.start.epochNanoseconds >= DAY_NANOSECONDS;
+      return interval.end.epochNanoseconds - interval.start.epochNanoseconds >= DAY_NANOSECONDS;
     case "floating":
-      return Temporal.PlainDateTime.compare(event.start.add({ days: 1 }), event.end) <= 0;
+      return Temporal.PlainDateTime.compare(interval.start.add({ days: 1 }), interval.end) <= 0;
   }
 }
 
@@ -55,8 +58,8 @@ export function projectTimeGrid<TEvent>({
     range,
     timeZone,
   );
-  const allDay = fragments.filter((fragment) => belongsInAllDayRow(fragment.event));
-  const timed = fragments.filter((fragment) => !belongsInAllDayRow(fragment.event));
+  const allDay = fragments.filter((fragment) => belongsInTimeGridAllDayRow(fragment.event));
+  const timed = fragments.filter((fragment) => !belongsInTimeGridAllDayRow(fragment.event));
   const columns = timeGridColumns(range, timeZone);
   const layouts = layoutTimeGrid(columns, timed, { minHeight: MINIMUM_EVENT_HEIGHT });
 
