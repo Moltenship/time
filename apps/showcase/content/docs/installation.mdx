@@ -99,23 +99,22 @@ There's no `shadcn add` command for these files yet, so copy them by hand:
 <Steps>
 <Step>
 
-Set up [shadcn/ui](https://ui.shadcn.com/docs/installation) with Tailwind CSS 4 and its **Radix**
-primitives. The copied files use Radix's `asChild` prop, so they don't compile against the Base UI or
-React Aria versions of the primitives. In a new app, choose Radix when you initialize:
+Set up [shadcn/ui](https://ui.shadcn.com/docs/installation) with Tailwind CSS 4 if your app
+doesn't use it yet:
 
 ```bash
-npx shadcn@latest init --base radix
+npx shadcn@latest init
 ```
 
-In an existing app, check that `style` in `components.json` starts with `radix-`. Then add the
-primitives the files import, and the icons if your app doesn't have them yet. shadcn's tooltip also
-needs a `TooltipProvider` around your app, as its
-[installation notes](https://ui.shadcn.com/docs/components/radix/tooltip#installation) describe:
+Then add the primitives the files import, and the icons if your app doesn't have them yet:
 
 ```bash
 npx shadcn@latest add button popover select tooltip
 pnpm add lucide-react
 ```
+
+shadcn's tooltip also needs a `TooltipProvider` at the root of your app, as its
+[installation notes](https://ui.shadcn.com/docs/components/tooltip) describe.
 
 </Step>
 <Step>
