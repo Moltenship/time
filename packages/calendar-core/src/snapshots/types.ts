@@ -51,6 +51,8 @@ interface NormalizedCalendarEventBase<
   readonly event: TEvent;
   readonly id: TEventId;
   readonly inputIndex: number;
+  /** Set on events showing a change that has not been confirmed yet. */
+  readonly isPending?: boolean;
   readonly isReadOnly: boolean;
   readonly resourceIds: readonly TResourceId[];
   readonly revision?: string | number;

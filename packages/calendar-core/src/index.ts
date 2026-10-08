@@ -85,17 +85,38 @@ export type {
   ViewNavigationDirection,
 } from "./views";
 
+export { createEventTransactions } from "./transactions/event-transactions";
+export type { EventTransactions } from "./transactions/event-transactions";
+export { applyEventOverlay } from "./transactions/overlay";
+export {
+  createEventPlacement,
+  moveEventPlacement,
+  resizeEventPlacement,
+  toAllDayPlacement,
+  toTimedPlacement,
+} from "./transactions/placement";
 export type {
   CalendarChangeCause,
   CalendarEventChange,
   CalendarEventChangeHandler,
-  CalendarEventChangeProposal,
+  CalendarEventCreateChange,
+  CalendarEventDeleteChange,
   CalendarEventPlacement,
+  CalendarEventPlacementInput,
+  CalendarEventProposal,
+  CalendarEventUpdateChange,
+  CalendarPendingPlacements,
+  CalendarTransactionContext,
+  CalendarTransactionResult,
+} from "./transactions/types";
+export type { CalendarWallClockDelta } from "./transactions/wall-clock";
+
+export { boundsPolicy } from "./policies/bounds";
+export { minimumDurationPolicy } from "./policies/minimum-duration";
+export { readOnlyPolicy } from "./policies/read-only";
+export { snapPolicy } from "./policies/snap";
+export type {
   CalendarPolicy,
   CalendarPolicyContext,
-  CalendarTransactionState,
-  CalendarTransactionStateChange,
-  CalendarValidationIssue,
-  CalendarValidationResult,
-  NonEmptyReadonlyArray,
-} from "./transactions";
+  CalendarPolicyDecision,
+} from "./policies/types";

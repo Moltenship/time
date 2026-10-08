@@ -92,7 +92,7 @@ describe("canonical contracts", () => {
       EventAdapter<ApiEvent, ApiEventId, RoomId>
     >();
     expectTypeOf<CalendarResource<Room, RoomId>["id"]>().toEqualTypeOf<RoomId>();
-    expectTypeOf<CalendarPolicy<ApiEvent, Room, RoomId>>().toBeFunction();
+    expectTypeOf<CalendarPolicy<ApiEvent, ApiEventId, RoomId>>().toBeFunction();
   });
 
   test("provides an identity adapter for every canonical event variant", () => {
