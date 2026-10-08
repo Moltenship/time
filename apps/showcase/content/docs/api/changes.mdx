@@ -3,9 +3,8 @@ title: Event changes
 description: Proposals, changes, results, policies, placement helpers, and the pointer layer.
 ---
 
-Everything on this page is exported from `@moltenship/calendar`, except the
-[pointer layer](#pointer-layer). [Interactions](/docs/interactions) explains how the pieces fit
-together.
+Everything on this page is exported from `@moltenship/calendar`. [Interactions](/docs/interactions)
+explains how the pieces fit together.
 
 ## Proposals
 
@@ -91,9 +90,10 @@ draw pending changes. You only need them to handle changes outside React.
 
 ## Pointer layer
 
-`@moltenship/calendar-dnd` is a separate package. `useCalendarPointer(options)` returns a ref for
-the element that contains a view's days, and `attachCalendarPointer(element, getOptions)` does the
-same without React and returns a cleanup function.
+`useCalendarPointer(options)` returns a ref for the element that contains a view's days, and turns
+drags inside it into proposals. `attachCalendarPointer(element, getOptions)` does the same without
+React and returns a cleanup function. Both come from `@moltenship/calendar-dnd`, which
+`@moltenship/calendar` re-exports.
 
 <TypeTable
   type={{
@@ -131,8 +131,9 @@ same without React and returns a cleanup function.
       default: "15 minutes",
     },
     scrollContainer: {
-      type: "HTMLElement | null",
-      description: "Scrolled while dragging near its edges.",
+      type: "{ current: Element | null }",
+      description:
+        "A ref to the element to scroll while dragging near its edges. It's read when a drag starts.",
       default: "the nearest scrollable ancestor",
     },
     ghostClassName: { type: "string", description: "Extra classes for the drag preview." },

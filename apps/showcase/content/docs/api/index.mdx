@@ -4,7 +4,7 @@ description: What each package exports, and where to import it from.
 ---
 
 Import from `@moltenship/calendar`. It includes the React components and hooks, the event engine,
-and the Temporal helpers, so one import line covers everything:
+the Temporal helpers, and the pointer interactions, so one import line covers everything:
 
 ```ts
 import { createCalendar, defineCalendarView, plainDateInterval } from "@moltenship/calendar";
@@ -40,13 +40,13 @@ import { createCalendar, defineCalendarView, plainDateInterval } from "@moltensh
 
 ## Packages
 
-| Package                         | Contents                                                          | Dependencies                                          |
-| ------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------- |
-| `@moltenship/calendar`          | Re-exports `calendar-react`, `calendar-core`, `calendar-temporal` | Those three; React 19 (peer)                          |
-| `@moltenship/calendar-react`    | `createCalendar`, `defineCalendarView`, components, hooks, store  | `calendar-core`, `calendar-temporal`; React 19 (peer) |
-| `@moltenship/calendar-core`     | Adapters, validation, snapshots, queries. No React.               | `calendar-temporal`, `@flatten-js/interval-tree`      |
-| `@moltenship/calendar-temporal` | Ranges, grids, rounding, zoned days, DST                          | None                                                  |
-| `@moltenship/calendar-dnd`      | Pointer drag, resize, and create for views. Not in the facade.    | `calendar-core`, `calendar-temporal`; React 19 (peer) |
+| Package                         | Contents                                                         | Dependencies                                          |
+| ------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
+| `@moltenship/calendar`          | Re-exports the four packages below                               | Those four; React 19 (peer)                           |
+| `@moltenship/calendar-react`    | `createCalendar`, `defineCalendarView`, components, hooks, store | `calendar-core`, `calendar-temporal`; React 19 (peer) |
+| `@moltenship/calendar-core`     | Adapters, validation, snapshots, queries. No React.              | `calendar-temporal`, `@flatten-js/interval-tree`      |
+| `@moltenship/calendar-temporal` | Ranges, grids, rounding, zoned days, DST                         | None                                                  |
+| `@moltenship/calendar-dnd`      | Pointer drag, resize, and create for views                       | `calendar-core`, `calendar-temporal`; React 19 (peer) |
 
 Every package is ESM only. Import from the package name: paths inside a package aren't part of the
 API.

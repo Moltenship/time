@@ -8,22 +8,23 @@ description: The packages, and how your events become a rendered view.
 ```text
 @moltenship/calendar                  what you import: everything below
 ├── @moltenship/calendar-react        Root, components, hooks, state
-├── @moltenship/calendar-core         adapters, validation, snapshots, queries
+├── @moltenship/calendar-dnd          drag, resize, and create inside views
+├── @moltenship/calendar-core         adapters, validation, snapshots, queries, changes
 └── @moltenship/calendar-temporal     ranges, day boundaries, DST helpers
 ```
 
-`calendar-react` builds on `calendar-core`, which builds on `calendar-temporal`. `calendar-core` and
+`calendar-react` and `calendar-dnd` build on `calendar-core`, which builds on `calendar-temporal`. `calendar-core` and
 `calendar-temporal` don't use React or the DOM, so they also run on a server or in a worker.
 
 | Package                         | Use it when                                                          |
 | ------------------------------- | -------------------------------------------------------------------- |
-| `@moltenship/calendar`          | Almost always. It includes the three packages below.                 |
+| `@moltenship/calendar`          | Almost always. It includes the packages below.                       |
 | `@moltenship/calendar-core`     | You want to validate or query events in code that never loads React. |
 | `@moltenship/calendar-temporal` | You only need the date and time zone helpers.                        |
 | `@moltenship/calendar-react`    | Rarely. `@moltenship/calendar` already includes everything in it.    |
 
 `@moltenship/calendar` has no `"use client"` directive of its own, so a Server Component can import
-its core and Temporal helpers. The React parts keep their client boundary.
+its core and Temporal helpers. The React parts and the pointer layer keep their client boundary.
 
 Import from the package name only. Files inside a package, such as
 `@moltenship/calendar-core/src/events`, aren't part of the API and can change at any time.

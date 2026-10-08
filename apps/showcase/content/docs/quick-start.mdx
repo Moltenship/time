@@ -68,7 +68,9 @@ week rules (the first day of the week, where 1 is Monday, and the weekend days).
 
 <include meta='title="calendar.tsx"'>../examples/quick-start.tsx#root</include>
 
-Give the frame a height: the views fill it and scroll inside it.
+Give the frame a height: the views fill it and scroll inside it. The calendar is read-only until
+you add an `onEventChange` handler; [Interactions](/docs/interactions) shows how to save dragged and
+resized events.
 
 The toolbar's buttons use shadcn's `Tooltip`, which needs a `TooltipProvider` above it. If your app
 doesn't have one yet, add it once around your app:

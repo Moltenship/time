@@ -104,37 +104,35 @@ propose `{ cause: "delete", eventId }`.
 
 ## Drag, resize, and create
 
-`@moltenship/calendar-dnd` turns pointer gestures into proposals: drag an event to move it, drag its
-top or bottom edge to resize it, and drag across empty time to create one. It works with mouse,
-pen, and touch (on touch screens, press and hold for a moment first).
+Once `Root` has an `onEventChange` handler, the built-in views let people edit events with the
+mouse, a pen, or touch:
 
-<Callout title="Coming to the built-in views">
-  The built-in views already render the markup the pointer layer needs. Connecting it to them is in
-  progress; until then, you can add it to your own views as shown below.
-</Callout>
+| View         | Move                                                                 | Resize                      | Create                                          |
+| ------------ | -------------------------------------------------------------------- | --------------------------- | ----------------------------------------------- |
+| Week and day | Across days and times. Dropping on the all-day row makes it all-day. | Drag the top or bottom edge | Drag across empty time, or across all-day cells |
+| Month        | Across days. Timed events keep their time.                           | –                           | Drag across days to make an all-day event       |
 
-In a view's Renderer, call `useCalendarPointer` with the props the Renderer receives, and put the
-returned ref on the element that contains the days:
+Each finished drag sends exactly one change to your handler, so the policies and pending state above
+apply. A few details:
 
-```tsx title="my-week-view.tsx"
-import { defineCalendarView, timeGridStrategy } from "@moltenship/calendar";
-import { useCalendarPointer } from "@moltenship/calendar-dnd";
+- Times snap to 15 minutes, and a resized event keeps at least one 15-minute slot.
+- A movement under 4px is a click, so clicking an event still works. The click that ends a drag
+  doesn't count as a click.
+- Escape cancels a drag, and so does dropping outside the view.
+- On touch screens, press and hold for a moment to start a drag, so swiping still scrolls.
+- The view scrolls when you drag near its top or bottom edge.
+- Read-only events (your adapter's `isReadOnly`) can't be dragged and have no resize handles.
+- While dragging, the original event dims (it has `data-dragging`) and a preview follows the
+  pointer. Dragging never re-renders the view.
 
-export const myWeekView = defineCalendarView({
-  name: "week",
-  strategy: timeGridStrategy({ kind: "week" }),
-  Renderer: function MyWeek({ actions, environment, events, projection }) {
-    const ref = useCalendarPointer({
-      columns: projection.days.map((day) => day.column),
-      events,
-      onPropose: actions.proposeEventChange,
-      timeZone: environment.timeZone,
-    });
+Clicking an empty slot doesn't create an event; creating needs a drag.
 
-    return <div ref={ref}>{/* Day columns with data-date, events with data-event-id */}</div>;
-  },
-});
-```
+### In your own views
+
+The built-in views use `useCalendarPointer`, and your views can too. Call it in the Renderer with
+the props the Renderer receives, and put the returned ref on the element that contains the days:
+
+<include meta='title="my-week-view.tsx"'>../examples/pointer-view.tsx#view</include>
 
 Pass `columns` only in time-grid views; a month grid finds days by their `data-date`. The hook reads
 these attributes from your markup:
@@ -147,7 +145,5 @@ these attributes from your markup:
 | An event (render it as a `<button>`)           | `data-event-id`                  |
 | A resize handle inside an event                | `data-resize="start"` or `"end"` |
 
-Each finished drag proposes exactly one change. A movement under 4px stays a click, and Escape
-cancels a drag. Times snap to 15 minutes by default (set `snap` to change it), and the view scrolls
-when you drag near its edges. Dragging never re-renders your view: the preview is drawn separately
-and can be styled through `[data-calendar-ghost]`.
+The [pointer layer reference](/docs/api/changes#pointer-layer) lists the hook's options and styling
+hooks.

@@ -77,6 +77,9 @@ Set options when you create the view, or per calendar with
 - **Current time:** a line across today's column, from [`useNow()`](/docs/concepts/time#the-current-time).
   The grid opens scrolled to the current time, or to 08:00 when today isn't visible, and keeps its
   scroll position when you move between weeks.
+- **Editing:** with `onEventChange` on `Root`, drag an event to move it (onto the all-day row to
+  make it all-day), drag its top or bottom edge to resize it, and drag across empty time or all-day
+  cells to create one. See [Interactions](/docs/interactions#drag-resize-and-create).
 - **Changes being saved:** events with a [pending change](/docs/interactions#pending-changes) get
   `data-pending` and render at 60% opacity.
 
@@ -86,7 +89,7 @@ The day view works on narrow screens:
 
 ## Markup for interactions
 
-Day columns have `data-date` and cover the full 24 hours. All-day cells have `data-date` and
-`data-all-day`. Each event is a `<button>` with `data-event-id`, and events you can edit have
-`data-resize="start"` and `data-resize="end"` handles. The [pointer layer](/docs/interactions#drag-resize-and-create)
-reads these attributes.
+The view connects the pointer layer for you. If you change its markup, keep the attributes the
+pointer layer reads: day columns have `data-date` and cover the full 24 hours, all-day cells have
+`data-date` and `data-all-day`, each event is a `<button>` with `data-event-id`, and events you can
+edit have `data-resize="start"` and `data-resize="end"` handles.

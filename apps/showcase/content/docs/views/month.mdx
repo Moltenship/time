@@ -54,11 +54,15 @@ The view is named `month`. Previous and Next move by one month.
   events as fit. The rest collapse into "+N more", which opens a popover with the day's events.
 - **Clicking a date number** opens that day in the view named `day`. Register a
   [day view](/docs/views/week-and-day) so the click has somewhere to go.
+- **Editing:** with `onEventChange` on `Root`, drag an event to another day (timed events keep their
+  time), and drag across days to create an all-day event. See
+  [Interactions](/docs/interactions#drag-resize-and-create).
 - **Changes being saved:** events with a [pending change](/docs/interactions#pending-changes) get
   `aria-busy` and render at 60% opacity.
 
 ## Markup for interactions
 
-Each day cell has `data-date`, and each event is a `<button>` with `data-event-id`. Event bars sit
-on a layer above the cells that lets the pointer through everywhere except on events, so the
-[pointer layer](/docs/interactions#drag-resize-and-create) can find the day under a bar.
+The view connects the pointer layer for you. If you change its markup, keep the attributes it reads:
+each day cell has `data-date`, and each event is a `<button>` with `data-event-id`. Event bars sit
+on a layer above the cells that lets the pointer through everywhere except on events, so a drag can
+find the day under a bar.
