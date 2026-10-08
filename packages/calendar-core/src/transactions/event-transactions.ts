@@ -17,24 +17,25 @@ import type {
   CalendarTransactionResult,
 } from "./types";
 
+/** Members are plain functions, so they can be passed on, as to `useSyncExternalStore`. */
 export interface EventTransactions<
   TEvent,
   TEventId extends EventId,
   TResourceId extends ResourceId,
 > {
   /** Pending placements for `applyEventOverlay`. The map identity changes only on updates. */
-  getPending(): CalendarPendingPlacements<TEventId, TResourceId>;
+  readonly getPending: () => CalendarPendingPlacements<TEventId, TResourceId>;
   /**
    * Validates a proposal, shows it optimistically, and hands it to `onEventChange`. The promise
    * settles with the outcome and never rejects.
    */
-  propose(
+  readonly propose: (
     proposal: CalendarEventProposal<TEventId, TResourceId>,
     context: CalendarTransactionContext<TEvent, TEventId, TResourceId>,
-  ): Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  ) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
   /** Reports new application events, which confirm or supersede resolved changes. */
-  reconcile(snapshot: EventSnapshot<TEvent, TEventId, TResourceId>): void;
-  subscribe(listener: () => void): () => void;
+  readonly reconcile: (snapshot: EventSnapshot<TEvent, TEventId, TResourceId>) => void;
+  readonly subscribe: (listener: () => void) => () => void;
 }
 
 interface PendingEntry<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
