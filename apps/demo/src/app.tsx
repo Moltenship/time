@@ -19,6 +19,7 @@ import { ThemeToggle } from "./components/theme-toggle";
 import { TopBar } from "./components/top-bar";
 import { useDemoEvents } from "./demo-events";
 import { demoEventPolicy, type DemoEventChange } from "./event-changes";
+import { useFollowEventElement } from "./event-anchor";
 import {
   draftForNewEvent,
   draftFromEvent,
@@ -51,6 +52,22 @@ export function App() {
   const [hiddenCalendars, toggleCalendar] = useHiddenCalendars();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openEvent, setOpenEvent] = useState<OpenEvent | null>(null);
+  const viewportRef = useRef<HTMLDivElement>(null);
+  // A drag that starts on the open popover's event re-renders it elsewhere; follow it there, and
+  // close the popover once the event is no longer shown.
+  const followOpenEvent = useCallback(
+    (anchor: HTMLElement | null) =>
+      setOpenEvent((current) =>
+        current === null || anchor === null ? null : { ...current, anchor },
+      ),
+    [],
+  );
+  useFollowEventElement(
+    viewportRef,
+    openEvent?.anchor ?? null,
+    openEvent?.eventId ?? null,
+    followOpenEvent,
+  );
   const [draft, setDraft] = useState<EventDraft | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const visibleEvents = useMemo(
@@ -150,7 +167,11 @@ export function App() {
           <div className="flex min-h-0 flex-1">
             <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
             <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:rounded-xl lg:border lg:bg-card">
-              <DemoCalendar.Viewport className="h-full" onClick={openClickedEvent}>
+              <DemoCalendar.Viewport
+                ref={viewportRef}
+                className="h-full"
+                onClick={openClickedEvent}
+              >
                 <DemoCalendar.ActiveView />
               </DemoCalendar.Viewport>
             </main>
