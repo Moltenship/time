@@ -11,6 +11,14 @@ export function PopoverTrigger(props: ComponentProps<typeof PopoverPrimitive.Tri
   return <PopoverPrimitive.Trigger data-slot="popover-trigger" {...props} />;
 }
 
+export function PopoverClose(props: ComponentProps<typeof PopoverPrimitive.Close>) {
+  return <PopoverPrimitive.Close data-slot="popover-close" {...props} />;
+}
+
+export function PopoverAnchor(props: ComponentProps<typeof PopoverPrimitive.Anchor>) {
+  return <PopoverPrimitive.Anchor data-slot="popover-anchor" {...props} />;
+}
+
 export function PopoverContent({
   align = "center",
   className,

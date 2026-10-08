@@ -40,6 +40,8 @@ map `@registry/ui/*` and `@registry/lib/utils` to the consumer's `components.jso
   and sets `data-color` on each event element (`EventChip` does this through its `color` prop).
   The theme maps `data-color` to the `--calendar-event`, `--calendar-event-foreground`, and
   `--calendar-event-border` tokens for light and dark themes.
+- Render each event as a `<button data-event-id={id}>` (the pointer layer's contract). Apps open
+  event details by delegating clicks on `[data-event-id]`, so views need no click callback.
 - Copy is English and lives in the source; consumers own and translate it. Dates are formatted
   with `Intl` from the calendar locale.
 

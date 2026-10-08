@@ -1,6 +1,6 @@
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
 import { Select as SelectPrimitive } from "radix-ui";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import { cn } from "@registry/lib/utils";
 
@@ -74,8 +74,12 @@ export function SelectContent({
 export function SelectItem({
   children,
   className,
+  hint,
   ...props
-}: ComponentProps<typeof SelectPrimitive.Item>) {
+}: ComponentProps<typeof SelectPrimitive.Item> & {
+  /** Secondary text shown in the list but not in the trigger, such as a shortcut. */
+  readonly hint?: ReactNode;
+}) {
   return (
     <SelectPrimitive.Item
       data-slot="select-item"
@@ -91,6 +95,7 @@ export function SelectItem({
         </SelectPrimitive.ItemIndicator>
       </span>
       <SelectPrimitive.ItemText>{children}</SelectPrimitive.ItemText>
+      {hint !== undefined && <span className="ml-auto text-xs text-muted-foreground">{hint}</span>}
     </SelectPrimitive.Item>
   );
 }

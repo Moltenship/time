@@ -3,6 +3,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 
 export interface ViewSwitcherOption<TView extends string> {
   readonly label: string;
+  /** Keyboard shortcut shown next to the label in the list. */
+  readonly shortcut?: string;
   readonly value: TView;
 }
 
@@ -32,7 +34,11 @@ export function ViewSwitcher<TView extends string>({
       </SelectTrigger>
       <SelectContent align="end">
         {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
+          <SelectItem
+            key={option.value}
+            hint={option.shortcut && <kbd className="font-sans">{option.shortcut}</kbd>}
+            value={option.value}
+          >
             {option.label}
           </SelectItem>
         ))}
