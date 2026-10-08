@@ -2,7 +2,7 @@ import type { CalendarEventChange } from "@moltenship/calendar";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
-export type LandingEvent = {
+export type PreviewEvent = {
   readonly color: CalendarEventColor;
   readonly id: string;
   readonly title: string;
@@ -23,15 +23,14 @@ export type LandingEvent = {
 type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 /**
- * A believable week around `today`, at wall-clock times in the visitor's `timeZone`, with a few
- * events in the weeks either side so navigation is never empty.
+ * A believable week around `now`, at wall-clock times in its time zone, with a few events in the
+ * weeks either side so navigation is never empty.
  */
-export function createLandingEvents(
-  today: Temporal.PlainDate,
-  timeZone: string,
-): readonly LandingEvent[] {
+export function createPreviewEvents(now: Temporal.ZonedDateTime): readonly PreviewEvent[] {
+  const { timeZoneId: timeZone } = now;
+  const today = now.toPlainDate();
   const monday = today.subtract({ days: today.dayOfWeek - 1 });
-  const events: LandingEvent[] = [];
+  const events: PreviewEvent[] = [];
   const dateOf = (week: number, weekday: Weekday) => monday.add({ days: week * 7 + weekday - 1 });
 
   function timed(
@@ -42,10 +41,24 @@ export function createLandingEvents(
     duration: Temporal.DurationLike,
     zone = timeZone,
   ) {
-    const start = dateOf(week, weekday).toZonedDateTime({
-      plainTime: Temporal.PlainTime.from(time),
-      timeZone: zone,
-    });
+    at(
+      color,
+      title,
+      dateOf(week, weekday).toZonedDateTime({
+        plainTime: Temporal.PlainTime.from(time),
+        timeZone: zone,
+      }),
+      duration,
+    );
+  }
+
+  function at(
+    color: CalendarEventColor,
+    title: string,
+    start: Temporal.ZonedDateTime,
+    duration: Temporal.DurationLike,
+  ) {
+    const zone = start.timeZoneId;
     events.push({
       color,
       end: start.add(duration).toInstant(),
@@ -99,21 +112,34 @@ export function createLandingEvents(
   allDay("orange", "Release freeze", [0, 3], 3);
   allDay("gray", "Mom's birthday", [0, 6]);
 
+  // Time grids open on the current time, so something is always in view, whatever the hour.
+  const hour = now.round({ roundingMode: "floor", smallestUnit: "hour" });
+  at("gray", "On-call handover", hour.subtract({ hours: 1 }), { minutes: 45 });
+  at("orange", "Deploy window", hour.add({ hours: 1 }), { hours: 1, minutes: 30 });
+
   timed("orange", "Quarterly planning", [1, 1], "10:00", { hours: 2 });
   timed("gray", "Flight to Berlin", [1, 2], "21:40", { hours: 8, minutes: 30 });
+
+  // Further out, so the month and agenda views have more than one busy week.
+  allDay("gray", "Hack day", [-2, 4]);
+  timed("orange", "Design sync", [2, 3], "14:00", { hours: 1 });
+  allDay("orange", "Team offsite", [2, 4], 2);
+  timed("gray", "Dinner with Lee", [2, 6], "19:30", { hours: 2 });
+  timed("orange", "Board meeting", [3, 2], "09:00", { hours: 2 });
+  timed("gray", "Yoga", [3, 4], "18:30", { hours: 1 });
 
   return events;
 }
 
-export type LandingEventChange = CalendarEventChange<LandingEvent, string, never>;
+export type PreviewEventChange = CalendarEventChange<PreviewEvent, string, never>;
 
 /** The events after a drag: moves and resizes take the new placement, and empty time adds one. */
-export function applyLandingChange(
-  events: readonly LandingEvent[],
-  change: LandingEventChange,
-): readonly LandingEvent[] {
+export function applyPreviewChange(
+  events: readonly PreviewEvent[],
+  change: PreviewEventChange,
+): readonly PreviewEvent[] {
   if (change.cause === "delete") return events.filter(({ id }) => id !== change.eventId);
-  // Landing events have no resources, so only the interval carries over.
+  // Preview events have no resources, so only the interval carries over.
   const { resourceIds: _resourceIds, ...placement } = change.proposed;
   if (placement.kind === "floating") return events;
   if (change.cause === "create") {

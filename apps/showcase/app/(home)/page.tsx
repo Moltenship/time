@@ -6,7 +6,7 @@ import {
   ServerIcon,
 } from "@/components/icons";
 import InstallCommand from "@/components/install-command";
-import LandingCalendar from "@/components/landing-calendar";
+import { CalendarPreview } from "@/components/calendar-preview";
 import { codeThemes } from "@/lib/code-themes";
 import { demoUrl, githubUrl } from "@/lib/layout";
 import { ServerCodeBlock } from "fumadocs-ui/components/codeblock.rsc";
@@ -92,7 +92,7 @@ export default async function HomePage() {
           </div>
         </div>
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
-          <LandingCalendar />
+          <CalendarPreview sidebar size="h-[34rem] sm:h-[40rem]" view="week" />
         </div>
       </section>
 

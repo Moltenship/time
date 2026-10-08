@@ -24,7 +24,9 @@
     "next": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "temporal-polyfill": "catalog:"
+    "shadcn": "catalog:",
+    "temporal-polyfill": "catalog:",
+    "tw-animate-css": "catalog:"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "catalog:",

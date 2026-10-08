@@ -400,9 +400,15 @@ importers:
       react-dom:
         specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
+      shadcn:
+        specifier: 'catalog:'
+        version: 4.21.4(supports-color@7.2.0)
       temporal-polyfill:
         specifier: 'catalog:'
         version: 1.0.5
+      tw-animate-css:
+        specifier: 'catalog:'
+        version: 1.4.0
     devDependencies:
       '@tailwindcss/postcss':
         specifier: 'catalog:'
