@@ -1,0 +1,168 @@
+/*
+ * Calendar theme: shadcn semantic tokens, calendar tokens, and the event colour palette.
+ *
+ * Import it after `tailwindcss` and toggle dark mode with a `.dark` class on an ancestor.
+ * Every token is declared in the base layer, so an app's own unlayered shadcn theme wins
+ * and the calendar tokens follow it.
+ */
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-calendar-grid: var(--calendar-grid);
+  --color-calendar-axis: var(--calendar-axis);
+  --color-calendar-today: var(--calendar-today);
+  --color-calendar-today-foreground: var(--calendar-today-foreground);
+  --color-calendar-now: var(--calendar-now);
+  --color-calendar-selection: var(--calendar-selection);
+  --color-calendar-weekend: var(--calendar-weekend);
+  --color-calendar-event: var(--calendar-event);
+  --color-calendar-event-foreground: var(--calendar-event-foreground);
+  --color-calendar-event-border: var(--calendar-event-border);
+}
+
+@layer base {
+  :root {
+    --radius: 0.625rem;
+    --background: oklch(1 0 0);
+    --foreground: oklch(0.145 0 0);
+    --card: oklch(1 0 0);
+    --card-foreground: oklch(0.145 0 0);
+    --popover: oklch(1 0 0);
+    --popover-foreground: oklch(0.145 0 0);
+    --primary: oklch(0.205 0 0);
+    --primary-foreground: oklch(0.985 0 0);
+    --secondary: oklch(0.97 0 0);
+    --secondary-foreground: oklch(0.205 0 0);
+    --muted: oklch(0.97 0 0);
+    --muted-foreground: oklch(0.556 0 0);
+    --accent: oklch(0.97 0 0);
+    --accent-foreground: oklch(0.205 0 0);
+    --destructive: oklch(0.577 0.245 27.325);
+    --border: oklch(0.922 0 0);
+    --input: oklch(0.922 0 0);
+    --ring: oklch(0.708 0 0);
+
+    --calendar-grid: var(--border);
+    --calendar-axis: var(--muted-foreground);
+    --calendar-today: oklch(0.546 0.215 262.9);
+    --calendar-today-foreground: oklch(0.985 0 0);
+    --calendar-now: oklch(0.637 0.237 25.3);
+    --calendar-selection: color-mix(in oklch, var(--calendar-today) 12%, transparent);
+    --calendar-weekend: color-mix(in oklch, var(--muted) 60%, transparent);
+    --calendar-hour-height: 3rem;
+    --calendar-event: color-mix(in oklch, var(--primary) 8%, var(--background));
+    --calendar-event-foreground: var(--foreground);
+    --calendar-event-border: var(--primary);
+  }
+
+  .dark {
+    --background: oklch(0.145 0 0);
+    --foreground: oklch(0.985 0 0);
+    --card: oklch(0.205 0 0);
+    --card-foreground: oklch(0.985 0 0);
+    --popover: oklch(0.205 0 0);
+    --popover-foreground: oklch(0.985 0 0);
+    --primary: oklch(0.922 0 0);
+    --primary-foreground: oklch(0.205 0 0);
+    --secondary: oklch(0.269 0 0);
+    --secondary-foreground: oklch(0.985 0 0);
+    --muted: oklch(0.269 0 0);
+    --muted-foreground: oklch(0.708 0 0);
+    --accent: oklch(0.269 0 0);
+    --accent-foreground: oklch(0.985 0 0);
+    --destructive: oklch(0.704 0.191 22.216);
+    --border: oklch(1 0 0 / 10%);
+    --input: oklch(1 0 0 / 15%);
+    --ring: oklch(0.556 0 0);
+
+    --calendar-today: oklch(0.707 0.165 254.6);
+    --calendar-today-foreground: oklch(0.145 0 0);
+    --calendar-now: oklch(0.704 0.191 22.2);
+    --calendar-selection: color-mix(in oklch, var(--calendar-today) 18%, transparent);
+    --calendar-weekend: color-mix(in oklch, var(--muted) 35%, transparent);
+  }
+
+  /*
+   * Event colours. `data-color` picks a hue and chroma; the three semantic event tokens are
+   * derived from them per theme, so an element only ever reads `--calendar-event*`.
+   * Override a colour by redefining its hue/chroma, or the derived tokens directly.
+   */
+  [data-color] {
+    --calendar-event: oklch(
+      0.95 calc(var(--calendar-event-chroma) * 0.3) var(--calendar-event-hue)
+    );
+    --calendar-event-foreground: oklch(
+      0.37 calc(var(--calendar-event-chroma) * 0.8) var(--calendar-event-hue)
+    );
+    --calendar-event-border: oklch(0.63 var(--calendar-event-chroma) var(--calendar-event-hue));
+  }
+
+  .dark [data-color] {
+    --calendar-event: oklch(
+      0.32 calc(var(--calendar-event-chroma) * 0.45) var(--calendar-event-hue)
+    );
+    --calendar-event-foreground: oklch(
+      0.93 calc(var(--calendar-event-chroma) * 0.35) var(--calendar-event-hue)
+    );
+    --calendar-event-border: oklch(0.72 var(--calendar-event-chroma) var(--calendar-event-hue));
+  }
+
+  [data-color="blue"] {
+    --calendar-event-hue: 258;
+    --calendar-event-chroma: 0.17;
+  }
+  [data-color="green"] {
+    --calendar-event-hue: 150;
+    --calendar-event-chroma: 0.15;
+  }
+  [data-color="red"] {
+    --calendar-event-hue: 25;
+    --calendar-event-chroma: 0.19;
+  }
+  [data-color="orange"] {
+    --calendar-event-hue: 55;
+    --calendar-event-chroma: 0.17;
+  }
+  [data-color="yellow"] {
+    --calendar-event-hue: 90;
+    --calendar-event-chroma: 0.15;
+  }
+  [data-color="purple"] {
+    --calendar-event-hue: 300;
+    --calendar-event-chroma: 0.18;
+  }
+  [data-color="pink"] {
+    --calendar-event-hue: 350;
+    --calendar-event-chroma: 0.18;
+  }
+  [data-color="teal"] {
+    --calendar-event-hue: 190;
+    --calendar-event-chroma: 0.12;
+  }
+  [data-color="gray"] {
+    --calendar-event-hue: 260;
+    --calendar-event-chroma: 0.015;
+  }
+}

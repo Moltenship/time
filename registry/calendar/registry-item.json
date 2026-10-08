@@ -1,0 +1,36 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "calendar",
+  "type": "registry:component",
+  "title": "Calendar shell",
+  "description": "Toolbar, view switcher, event chip, and sidebar mini month shared by every calendar view.",
+  "dependencies": ["@moltenship/calendar", "@moltenship/calendar-temporal", "lucide-react"],
+  "registryDependencies": ["button", "select", "tooltip", "utils", "@moltenship/calendar-theme"],
+  "files": [
+    {
+      "path": "registry/calendar/calendar-toolbar.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/calendar-toolbar.tsx"
+    },
+    {
+      "path": "registry/calendar/event-chip.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/event-chip.tsx"
+    },
+    {
+      "path": "registry/calendar/mini-month.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/mini-month.tsx"
+    },
+    {
+      "path": "registry/calendar/view-switcher.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/view-switcher.tsx"
+    }
+  ],
+  "meta": {
+    "compatibility": {
+      "@moltenship/calendar": ">=0.0.0"
+    }
+  }
+}
