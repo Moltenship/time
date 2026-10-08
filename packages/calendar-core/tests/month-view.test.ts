@@ -104,6 +104,16 @@ describe("month projection", () => {
     expect(timeless.weeks.flatMap((week) => week.days).some((day) => day.isToday)).toBe(false);
   });
 
+  test("splits a bar around a date the zone skipped", () => {
+    const month = projectMonth({
+      anchor: Temporal.PlainDate.from("2011-12-01"),
+      environment: environment("Pacific/Apia"),
+      snapshot: snapshotOf([timed("hop", "2011-12-30T09:30Z", "2011-12-30T10:30Z")]),
+    });
+
+    expect(month.weeks.at(-1)?.segments.map(describeSegment)).toEqual(["hop@0:4+1>", "<hop@0:6+1"]);
+  });
+
   test("lanes of a week survive changes to events in other weeks", () => {
     const lanes = (snapshotEvents: typeof events) =>
       projectMonth({

@@ -9,7 +9,7 @@ import type { CalendarEnvironment } from "../../environment";
 import type { EventId, ResourceId } from "../../ids";
 import {
   compareDayFragments,
-  localEventSpan,
+  eventDateRanges,
   splitEventsByDay,
   type EventDayFragment,
 } from "../../projection/day-fragments";
@@ -98,12 +98,18 @@ function toListItem<TEvent, TEventId extends EventId, TResourceId extends Resour
   if (!fragment.startsBeforeDay && !fragment.endsAfterDay) {
     return Object.freeze({ ...fragment, dayCount: 1, dayIndex: 1 });
   }
-  const { firstDate, lastDate } = localEventSpan(fragment.event, timeZone);
-  return Object.freeze({
-    ...fragment,
-    dayCount: firstDate.until(lastDate).days + 1,
-    dayIndex: firstDate.until(fragment.date).days + 1,
-  });
+  let dayCount = 0;
+  let dayIndex = 0;
+  for (const { first, last } of eventDateRanges(fragment.event, timeZone)) {
+    if (
+      comparePlainDates(first, fragment.date) <= 0 &&
+      comparePlainDates(fragment.date, last) <= 0
+    ) {
+      dayIndex = dayCount + first.until(fragment.date).days + 1;
+    }
+    dayCount += first.until(last).days + 1;
+  }
+  return Object.freeze({ ...fragment, dayCount, dayIndex });
 }
 
 /**

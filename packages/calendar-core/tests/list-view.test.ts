@@ -80,6 +80,17 @@ describe("list projection", () => {
     expect(describe("Europe/London")).toEqual(["2026-06-30: late 1/2", "2026-07-01: late 2/2"]);
   });
 
+  test("does not count a date the zone skipped", () => {
+    const snapshot = snapshotOf([timed("hop", "2011-12-30T09:30Z", "2011-12-30T10:30Z")]);
+    const list = projectList({
+      anchor: Temporal.PlainDate.from("2011-12-29"),
+      environment: environment("Pacific/Apia"),
+      snapshot,
+    });
+
+    expect(list.days.map(describeDay)).toEqual(["2011-12-29: hop 1/2", "2011-12-31: hop 2/2"]);
+  });
+
   test("returns no days when nothing is scheduled", () => {
     const list = projectList({ anchor, environment: environment("UTC"), snapshot: snapshotOf([]) });
 

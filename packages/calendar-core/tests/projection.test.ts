@@ -231,6 +231,53 @@ describe("day fragments", () => {
     ]);
   });
 
+  test("a date the zone skipped entirely gets no fragment", () => {
+    // Pacific/Apia jumped from 2011-12-29T24:00-10:00 straight to 2011-12-31T00:00+14:00.
+    expect(
+      fragmentsOf(timed("hop", "2011-12-30T09:30Z", "2011-12-30T10:30Z"), "Pacific/Apia"),
+    ).toEqual([
+      {
+        date: "2011-12-29",
+        end: "2011-12-30T00:00:00",
+        endsAfterDay: true,
+        start: "2011-12-29T23:30:00",
+        startsBeforeDay: false,
+      },
+      {
+        date: "2011-12-31",
+        end: "2011-12-31T00:30:00",
+        endsAfterDay: false,
+        start: "2011-12-31T00:00:00",
+        startsBeforeDay: true,
+      },
+    ]);
+  });
+
+  test("a jump back across midnight keeps both local dates", () => {
+    // America/St_Johns went from 2010-11-07T00:01-02:30 back to 2010-11-06T23:01-03:30.
+    expect(
+      fragmentsOf(
+        timed("rollback", "2010-11-07T02:30:30Z", "2010-11-07T02:45Z"),
+        "America/St_Johns",
+      ),
+    ).toEqual([
+      {
+        date: "2010-11-06",
+        end: "2010-11-06T23:15:00",
+        endsAfterDay: true,
+        start: "2010-11-06T23:01:00",
+        startsBeforeDay: false,
+      },
+      {
+        date: "2010-11-07",
+        end: "2010-11-07T00:01:00",
+        endsAfterDay: false,
+        start: "2010-11-07T00:00:30",
+        startsBeforeDay: true,
+      },
+    ]);
+  });
+
   test("a skipped local midnight does not create a phantom fragment", () => {
     // America/Santiago jumps from 2026-09-06T00:00 to 01:00; that 01:00 is the day's start.
     expect(

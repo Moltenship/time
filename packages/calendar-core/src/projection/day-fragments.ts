@@ -1,4 +1,5 @@
 import {
+  compareInstants,
   comparePlainDates,
   comparePlainDateTimes,
   type PlainDateInterval,
@@ -15,60 +16,111 @@ export interface EventDayFragment<
 > {
   readonly date: Temporal.PlainDate;
   /**
-   * Display wall time where the fragment ends: the next midnight when the event continues.
+   * Display wall time where the event leaves this date: the next midnight when it continues.
    * Inside a repeated (fold) hour it can precede `start`; `event` keeps the absolute interval.
    */
   readonly end: Temporal.PlainDateTime;
+  /** The event also touches a later local date. */
   readonly endsAfterDay: boolean;
   readonly event: NormalizedCalendarEvent<TEvent, TEventId, TResourceId>;
-  /** Display wall time where the fragment starts: midnight when the event began earlier. */
+  /** Display wall time where the event enters this date: midnight when it continues. */
   readonly start: Temporal.PlainDateTime;
+  /** The event also touches an earlier local date. */
   readonly startsBeforeDay: boolean;
 }
 
-interface LocalEventSpan {
+/** A stretch of wall time with a single UTC offset. */
+interface WallRun {
   readonly end: Temporal.PlainDateTime;
-  readonly firstDate: Temporal.PlainDate;
-  readonly lastDate: Temporal.PlainDate;
   readonly start: Temporal.PlainDateTime;
 }
 
-/** Wall-clock extent of an event in `timeZone`, with the first and last local dates it touches. */
-export function localEventSpan(
+interface LocalDateRange {
+  readonly first: Temporal.PlainDate;
+  readonly last: Temporal.PlainDate;
+}
+
+interface DayPortion {
+  readonly date: Temporal.PlainDate;
+  end: Temporal.PlainDateTime;
+  readonly start: Temporal.PlainDateTime;
+}
+
+function earlierDate(left: Temporal.PlainDate, right: Temporal.PlainDate): Temporal.PlainDate {
+  return comparePlainDates(left, right) <= 0 ? left : right;
+}
+
+function laterDate(left: Temporal.PlainDate, right: Temporal.PlainDate): Temporal.PlainDate {
+  return comparePlainDates(left, right) >= 0 ? left : right;
+}
+
+/**
+ * Wall-time runs of an event in `timeZone`. All-day and floating events are one nominal run. A
+ * timed event gets one run per UTC offset, so a skipped date or a jump back across midnight
+ * changes the local dates it touches.
+ */
+function wallRuns(
   event: NormalizedCalendarEvent<unknown, EventId, ResourceId>,
   timeZone: string,
-): LocalEventSpan {
+): readonly WallRun[] {
   if (event.kind === "all-day") {
-    return {
-      end: event.end.toPlainDateTime(),
-      firstDate: event.start,
-      lastDate: event.end.subtract({ days: 1 }),
-      start: event.start.toPlainDateTime(),
-    };
+    return [{ end: event.end.toPlainDateTime(), start: event.start.toPlainDateTime() }];
   }
-  if (event.kind === "floating") {
-    return {
-      end: event.end,
-      firstDate: event.start.toPlainDate(),
-      lastDate: event.end.subtract({ nanoseconds: 1 }).toPlainDate(),
-      start: event.start,
-    };
-  }
+  if (event.kind === "floating") return [{ end: event.end, start: event.start }];
 
-  const start = event.start.toZonedDateTimeISO(timeZone).toPlainDateTime();
+  const runs: WallRun[] = [];
+  let cursor = event.start.toZonedDateTimeISO(timeZone);
+  for (;;) {
+    const start = cursor.toPlainDateTime();
+    const transition = cursor.getTimeZoneTransition("next");
+    if (transition === null || compareInstants(transition.toInstant(), event.end) >= 0) {
+      runs.push({ end: start.add(cursor.toInstant().until(event.end)), start });
+      return runs;
+    }
+    runs.push({ end: start.add(cursor.toInstant().until(transition.toInstant())), start });
+    cursor = transition;
+  }
+}
+
+function runDates(run: WallRun): LocalDateRange {
+  // The end is exclusive, so the last touched date is the one holding the final nanosecond.
   return {
-    end: event.end.toZonedDateTimeISO(timeZone).toPlainDateTime(),
-    firstDate: start.toPlainDate(),
-    // The end is exclusive, so the last touched date is the one holding its final nanosecond.
-    lastDate: event.end.subtract({ nanoseconds: 1 }).toZonedDateTimeISO(timeZone).toPlainDate(),
-    start,
+    first: run.start.toPlainDate(),
+    last: run.end.subtract({ nanoseconds: 1 }).toPlainDate(),
   };
+}
+
+/** The local dates an event touches in `timeZone`, as sorted, disjoint inclusive ranges. */
+export function eventDateRanges(
+  event: NormalizedCalendarEvent<unknown, EventId, ResourceId>,
+  timeZone: string,
+): readonly LocalDateRange[] {
+  const ranges = wallRuns(event, timeZone)
+    .map(runDates)
+    .sort((left, right) => comparePlainDates(left.first, right.first));
+  const merged: LocalDateRange[] = [];
+  for (const range of ranges) {
+    const previous = merged.at(-1);
+    if (
+      previous !== undefined &&
+      comparePlainDates(range.first, previous.last.add({ days: 1 })) <= 0
+    ) {
+      merged[merged.length - 1] = {
+        first: previous.first,
+        last: laterDate(previous.last, range.last),
+      };
+    } else {
+      merged.push(range);
+    }
+  }
+  return merged;
 }
 
 /**
  * Splits events into one fragment per local date inside `range`. Timed events are projected into
- * `timeZone`, floating events keep their wall time, and all-day events cover their dates with an
- * exclusive end. Fragments are ordered by event, then date.
+ * `timeZone` (dates the zone skipped get no fragment), floating events keep their wall time, and
+ * all-day events cover their dates with an exclusive end. Fragments are ordered by event, then
+ * date.
  */
 export function splitEventsByDay<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
   events: readonly NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[],
@@ -79,30 +131,50 @@ export function splitEventsByDay<TEvent, TEventId extends EventId, TResourceId e
   const fragments: EventDayFragment<TEvent, TEventId, TResourceId>[] = [];
 
   for (const event of events) {
-    const span = localEventSpan(event, timeZone);
-    const lastDate =
-      comparePlainDates(span.lastDate, lastVisibleDate) < 0 ? span.lastDate : lastVisibleDate;
-    let date = comparePlainDates(span.firstDate, range.start) > 0 ? span.firstDate : range.start;
+    // Indexed by days since `range.start`; runs arrive in time order, which is not always date order.
+    const portions: (DayPortion | undefined)[] = [];
+    let firstDate: Temporal.PlainDate | undefined;
+    let lastDate: Temporal.PlainDate | undefined;
 
-    while (comparePlainDates(date, lastDate) <= 0) {
-      const nextDate = date.add({ days: 1 });
-      const nextMidnight = nextDate.toPlainDateTime();
-      const startsBeforeDay = comparePlainDates(date, span.firstDate) > 0;
-      const endsAfterDay = comparePlainDates(date, span.lastDate) < 0;
+    for (const run of wallRuns(event, timeZone)) {
+      const dates = runDates(run);
+      firstDate = firstDate === undefined ? dates.first : earlierDate(firstDate, dates.first);
+      lastDate = lastDate === undefined ? dates.last : laterDate(lastDate, dates.last);
+
+      const lastRunDate = earlierDate(dates.last, lastVisibleDate);
+      let date = laterDate(dates.first, range.start);
+      for (
+        let index = range.start.until(date).days;
+        comparePlainDates(date, lastRunDate) <= 0;
+        index += 1
+      ) {
+        const nextDate = date.add({ days: 1 });
+        const midnight = date.toPlainDateTime();
+        const nextMidnight = nextDate.toPlainDateTime();
+        const end = comparePlainDateTimes(run.end, nextMidnight) < 0 ? run.end : nextMidnight;
+        const portion = portions[index];
+        if (portion === undefined) {
+          const start = comparePlainDateTimes(run.start, midnight) > 0 ? run.start : midnight;
+          portions[index] = { date, end, start };
+        } else {
+          portion.end = end;
+        }
+        date = nextDate;
+      }
+    }
+
+    for (const portion of portions) {
+      if (portion === undefined) continue;
       fragments.push(
         Object.freeze({
-          date,
-          end:
-            endsAfterDay || comparePlainDateTimes(span.end, nextMidnight) > 0
-              ? nextMidnight
-              : span.end,
-          endsAfterDay,
+          date: portion.date,
+          end: portion.end,
+          endsAfterDay: comparePlainDates(portion.date, lastDate!) < 0,
           event,
-          start: startsBeforeDay ? date.toPlainDateTime() : span.start,
-          startsBeforeDay,
+          start: portion.start,
+          startsBeforeDay: comparePlainDates(portion.date, firstDate!) > 0,
         }),
       );
-      date = nextDate;
     }
   }
 
