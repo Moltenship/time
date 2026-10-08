@@ -10,6 +10,8 @@ import { cn } from "@registry/lib/utils";
 export interface TimeGridHeaderProps {
   readonly actions: CalendarViewActions;
   readonly days: readonly TimeGridDay<unknown>[];
+  /** View a date opens in a multi-day grid; dates are static without one. */
+  readonly dayView: string | undefined;
   readonly environment: CalendarEnvironmentBase;
 }
 
@@ -20,8 +22,8 @@ function offsetLabel(locale: Intl.LocalesArgument, timeZone: string, day: TimeGr
     .find((part) => part.type === "timeZoneName")?.value;
 }
 
-/** Weekday and date for each column; in a multi-day grid the date opens that day. */
-export function TimeGridHeader({ actions, days, environment }: TimeGridHeaderProps) {
+/** Weekday and date for each column; in a multi-day grid the date can open that day. */
+export function TimeGridHeader({ actions, days, dayView, environment }: TimeGridHeaderProps) {
   const { locale, timeZone } = environment;
   const formats = useMemo(
     () => ({
@@ -31,6 +33,7 @@ export function TimeGridHeader({ actions, days, environment }: TimeGridHeaderPro
     [locale],
   );
   const single = days.length === 1;
+  const opensDay = !single && dayView !== undefined;
 
   return (
     <div className="flex">
@@ -50,7 +53,7 @@ export function TimeGridHeader({ actions, days, environment }: TimeGridHeaderPro
                 single ? "size-11" : "size-9 sm:size-11",
                 isToday
                   ? "bg-calendar-today text-calendar-today-foreground"
-                  : !single && "group-hover:bg-accent",
+                  : opensDay && "group-hover:bg-accent",
               )}
             >
               {date.day}
@@ -76,20 +79,20 @@ export function TimeGridHeader({ actions, days, environment }: TimeGridHeaderPro
               >
                 {formats.weekday.format(date)}
               </span>
-              {single ? (
-                number
-              ) : (
+              {opensDay ? (
                 <button
                   aria-label={`Open ${label}`}
                   className="group rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
                   onClick={() => {
                     actions.setAnchorDate(date);
-                    actions.setView("day");
+                    actions.setView(dayView);
                   }}
                   type="button"
                 >
                   {number}
                 </button>
+              ) : (
+                number
               )}
             </div>
           );

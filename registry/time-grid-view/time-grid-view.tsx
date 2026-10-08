@@ -13,6 +13,8 @@ import { TimeGridBody } from "./time-grid-body";
 import { TimeGridHeader } from "./time-grid-header";
 
 export interface TimeGridViewOptions<TEvent> {
+  /** Registered view a week's header date opens, usually `"day"`; without it dates are static. */
+  readonly dayView?: string;
   /** Colour for an event; sets `data-color` on every element that renders it. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
 }
@@ -37,7 +39,12 @@ export function TimeGridView<TEvent>({
       className="flex h-full min-h-0 flex-col [--calendar-gutter-width:3rem] sm:[--calendar-gutter-width:4rem]"
     >
       <div className="shrink-0 overflow-hidden border-b border-calendar-grid [scrollbar-gutter:stable]">
-        <TimeGridHeader actions={actions} days={days} environment={environment} />
+        <TimeGridHeader
+          actions={actions}
+          days={days}
+          dayView={options.dayView}
+          environment={environment}
+        />
         <TimeGridAllDay days={days} getEventColor={options.getEventColor} row={projection.allDay} />
       </div>
       <TimeGridBody days={days} environment={environment} getEventColor={options.getEventColor} />

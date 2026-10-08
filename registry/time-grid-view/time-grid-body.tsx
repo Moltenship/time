@@ -57,18 +57,19 @@ export function TimeGridBody<TEvent>({
     [locale],
   );
 
-  // Open on the current time, or 08:00 when today is not visible. Later renders keep the user's
-  // scroll position, so navigating between weeks does not jump.
-  const initialScroll = useRef(nowPosition?.top ?? null);
+  // Once the first clock sample arrives (after hydration, `now` starts as null), open on the
+  // current time, or 08:00 when today is not visible. Later ticks and navigation keep the user's
+  // scroll position.
+  const scrolled = useRef(false);
   useLayoutEffect(() => {
     const node = scrollRef.current;
-    if (node === null) return;
-    const top = initialScroll.current;
+    if (scrolled.current || node === null || now === null) return;
+    scrolled.current = true;
     node.scrollTop =
-      top === null
+      nowPosition === null
         ? DEFAULT_SCROLL_FRACTION * node.scrollHeight
-        : Math.max(0, top * node.scrollHeight - node.clientHeight / 3);
-  }, []);
+        : Math.max(0, nowPosition.top * node.scrollHeight - node.clientHeight / 3);
+  }, [now, nowPosition]);
 
   return (
     <div

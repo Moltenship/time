@@ -7,13 +7,13 @@ Week and day views in the style of Google Calendar, built on `timeGridStrategy` 
 import { createDayView, createWeekView } from "@/components/calendar/time-grid-view/time-grid-view";
 
 const views = [
-  createWeekView<Meeting>({ getEventColor: (meeting) => meeting.color }),
+  createWeekView<Meeting>({ dayView: "day", getEventColor: (meeting) => meeting.color }),
   createDayView<Meeting>({ getEventColor: (meeting) => meeting.color }),
 ] as const;
 ```
 
-- The header shows the weekday and date and highlights today. In the week view, the date opens
-  the `day` view.
+- The header shows the weekday and date and highlights today. Pass `dayView: "day"` to the week
+  view to make each date open that registered view.
 - All-day events and events of 24 hours or more sit in the all-day row, which collapses busy days
   to three lanes with "+N more".
 - Columns use a nominal 24-hour wall clock. Spring-forward hours are hatched, repeated fall-back

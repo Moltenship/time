@@ -151,7 +151,7 @@ function placeholderView<const TName extends string>(
 }
 
 export const demoViews = [
-  createWeekView<DemoEvent>(options),
+  createWeekView<DemoEvent>({ ...options, dayView: "day" }),
   createDayView<DemoEvent>(options),
   placeholderView(
     "month",

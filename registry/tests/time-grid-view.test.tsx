@@ -5,6 +5,10 @@ import {
   defineEventAdapter,
   type CalendarEventInterval,
 } from "@moltenship/calendar";
+import { createFixedClock } from "@moltenship/calendar-temporal";
+import { act } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
 import { afterEach, expect, test } from "vite-plus/test";
 
 import type { CalendarEventColor } from "../calendar-theme/event-colors";
@@ -41,16 +45,18 @@ function allDay(id: string, start: string, end: string): Meeting {
   };
 }
 
+const eventAdapter = defineEventAdapter<Meeting>()({
+  getId: (meeting) => meeting.id,
+  getInterval: (meeting) => meeting.interval,
+  getResourceIds: () => [],
+  getTitle: (meeting) => `Meeting ${meeting.id}`,
+  isReadOnly: (meeting) => meeting.readOnly === true,
+});
+
 const Calendar = createCalendar<Meeting, never>()({
-  eventAdapter: defineEventAdapter<Meeting>()({
-    getId: (meeting) => meeting.id,
-    getInterval: (meeting) => meeting.interval,
-    getResourceIds: () => [],
-    getTitle: (meeting) => `Meeting ${meeting.id}`,
-    isReadOnly: (meeting) => meeting.readOnly === true,
-  }),
+  eventAdapter,
   views: [
-    createWeekView<Meeting>({ getEventColor: (meeting) => meeting.color }),
+    createWeekView<Meeting>({ dayView: "day", getEventColor: (meeting) => meeting.color }),
     createDayView<Meeting>(),
   ],
 });
@@ -202,4 +208,69 @@ test("hatches the skipped hour of a spring-forward day", async () => {
   expect(hours(gap?.style.height)).toBeCloseTo(1, 9);
   expect(hours(night.top)).toBeCloseTo(1, 9);
   expect(hours(night.height)).toBeCloseTo(3, 9);
+});
+
+test("keeps header dates static when the week has no day view to open", async () => {
+  const WeekOnly = createCalendar<Meeting, never>()({
+    eventAdapter,
+    views: [createWeekView<Meeting>()],
+  });
+  const { container, unmount } = await render(
+    <WeekOnly.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="UTC"
+      events={meetings}
+      locale="en-US"
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <WeekOnly.ActiveView />
+    </WeekOnly.Root>,
+  );
+  cleanup = unmount;
+
+  expect(container.querySelector('[aria-label^="Open "]')).toBeNull();
+  expect(columnDates(container)).toHaveLength(7);
+});
+
+test("opens on the current time once a hydrated clock reports it", async () => {
+  const sizes = { clientHeight: 600, scrollHeight: 1_440 };
+  const originals = Object.keys(sizes).map(
+    (key) => [key, Object.getOwnPropertyDescriptor(HTMLElement.prototype, key)] as const,
+  );
+  for (const [key, value] of Object.entries(sizes)) {
+    Object.defineProperty(HTMLElement.prototype, key, { configurable: true, get: () => value });
+  }
+  const element = (
+    <Calendar.Root
+      clock={createFixedClock(Temporal.Instant.from("2026-10-08T16:30Z"))}
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="UTC"
+      defaultView="day"
+      events={[]}
+      locale="en-US"
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Calendar.ActiveView />
+    </Calendar.Root>
+  );
+  const container = document.createElement("div");
+  container.innerHTML = renderToString(element);
+  document.body.append(container);
+
+  try {
+    const root = await act(async () => hydrateRoot(container, element));
+    cleanup = async () => {
+      await act(async () => root.unmount());
+      container.remove();
+    };
+    const body = container.querySelector('[data-slot="time-grid-body"]');
+
+    expect(container.querySelector('[data-slot="time-grid-now"]')).not.toBeNull();
+    expect(body?.scrollTop).toBe(0.6875 * 1_440 - 600 / 3);
+  } finally {
+    for (const [key, descriptor] of originals) {
+      if (descriptor === undefined) Reflect.deleteProperty(HTMLElement.prototype, key);
+      else Object.defineProperty(HTMLElement.prototype, key, descriptor);
+    }
+  }
 });
