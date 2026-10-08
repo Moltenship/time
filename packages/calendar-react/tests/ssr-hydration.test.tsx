@@ -5,38 +5,42 @@ import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import { useCalendarStore, useCalendarStoreBinding } from "../src/index";
+import { gateAnchorDate, gateEvents, gateTimeZone, gateWeekRules } from "./harness/builders";
+import { GateCalendar, type GateView } from "./harness/custom-view-fixture";
 import "./setup";
 
-type ViewName = "month" | "week";
-
-const defaults = {
-  defaultAnchorDate: Temporal.PlainDate.from("2026-08-15"),
-  defaultExpandedResourceIds: ["team-a"],
-  defaultTimeZone: "Asia/Tbilisi",
-  defaultView: "month" as ViewName,
-};
 let hydratedRoot: Root | undefined;
 
-function Application() {
-  const [view, setView] = useState<ViewName>("month");
-  const store = useCalendarStore<ViewName, string, string, string>(defaults);
-  const calendar = useCalendarStoreBinding(store, {
-    controlled: { timeZone: "Asia/Tbilisi", view },
-    handlers: { onViewChange: setView },
-  });
-
+function Probe() {
+  const calendar = GateCalendar.useCalendar();
   return (
     <main
       data-anchor-date={calendar.state.anchorDate.toString()}
       data-time-zone={calendar.state.timeZone}
       data-view={calendar.state.view}
     >
-      <output>{calendar.state.view}</output>
-      <button onClick={() => calendar.actions.setView("week")} type="button">
+      <GateCalendar.ActiveView />
+      <button onClick={() => calendar.actions.setView("agenda")} type="button">
         Change view
       </button>
     </main>
+  );
+}
+
+function Application() {
+  const [view, setView] = useState<GateView>("month");
+  return (
+    <GateCalendar.Root
+      defaultAnchorDate={gateAnchorDate}
+      events={gateEvents}
+      locale="en-GB"
+      onViewChange={setView}
+      timeZone={gateTimeZone}
+      view={view}
+      weekRules={gateWeekRules}
+    >
+      <Probe />
+    </GateCalendar.Root>
   );
 }
 
@@ -80,6 +84,8 @@ test("the first client tree matches the server and remains interactive", async (
   });
 
   await act(async () => container.querySelector<HTMLButtonElement>("button")?.click());
-  expect(container.querySelector("output")?.textContent).toBe("week");
-  expect(container.querySelector("main")?.dataset.view).toBe("week");
+  expect(container.querySelector("main")?.dataset.view).toBe("agenda");
+  expect(container.querySelector("[data-gate-view]")?.getAttribute("data-gate-view")).toBe(
+    "agenda",
+  );
 });

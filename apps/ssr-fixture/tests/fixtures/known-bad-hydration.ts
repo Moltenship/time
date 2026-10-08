@@ -1,5 +1,5 @@
 import { deterministicEnvironment } from "../../src/fixture";
-import { runHydrationScenario } from "../../src/hydration-harness";
+import { runHydrationScenario } from "../hydration-harness";
 
 const report = await runHydrationScenario({
   serverEnvironment: deterministicEnvironment,

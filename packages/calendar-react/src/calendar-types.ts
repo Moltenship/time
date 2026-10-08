@@ -10,24 +10,18 @@ import type {
   NormalizedCalendarEvent,
   ResourceId,
 } from "@moltenship/calendar-core";
+import type { PlainDateInterval } from "@moltenship/calendar-temporal";
 import type { ComponentPropsWithRef, ComponentType, ReactNode, RefObject } from "react";
 
-import type { CalendarCapability, CalendarCapabilitySet } from "./capabilities";
-import type { InferEventId, InferResourceId } from "./generics";
 import type {
   CalendarActions,
+  CalendarPublicState,
   CalendarStateChangeHandler,
   CalendarStateSelector,
   CalendarStateSelectorOptions,
   CalendarStore,
-  CalendarPublicState,
 } from "./types";
-import type {
-  CalendarDefinedView,
-  CalendarViewDefinitionInput,
-  CalendarViewRegistration,
-  CalendarViewRegistry,
-} from "./views";
+import type { AnyCalendarView, CalendarActiveView, CalendarViewOptionsMap } from "./views";
 
 export type CalendarSemanticActions<
   TView extends string = string,
@@ -41,11 +35,6 @@ export type CalendarSemanticActions<
 };
 
 export type CalendarDiagnostic<TEvent, TEventId extends EventId> =
-  | {
-      readonly code: "duplicate-view-name";
-      readonly severity: "warning";
-      readonly viewName: string;
-    }
   | {
       readonly code: "unregistered-active-view";
       readonly severity: "error";
@@ -73,54 +62,39 @@ export interface CalendarPartRefs {
 export interface CalendarMeta<
   TEvent,
   TResource,
-  TView extends string = string,
-  TSelection = string,
-  TFocus = string,
-  TEventId extends EventId = InferEventId<TEvent>,
-  TResourceId extends ResourceId = InferResourceId<TResource>,
+  TViewDef extends AnyCalendarView = AnyCalendarView,
+  TEventId extends EventId = EventId,
+  TResourceId extends ResourceId = ResourceId,
 > {
-  readonly activeView:
-    | CalendarViewRegistration<TEvent, TResource, TView, TSelection, TFocus, TEventId, TResourceId>
-    | undefined;
-  readonly capabilities: CalendarCapabilitySet;
+  readonly activeView: TViewDef | undefined;
   readonly diagnostics: readonly CalendarDiagnostic<TEvent, TEventId>[];
   readonly environment: CalendarEnvironment;
-  readonly eventAdapter: EventAdapter<TEvent, TEventId, TResourceId>;
   readonly eventSnapshot: EventSnapshot<TEvent, TEventId, TResourceId>;
-  readonly events: readonly TEvent[];
   readonly ids: CalendarPartIds;
   readonly instanceId: string;
   readonly refs: CalendarPartRefs;
   readonly resources: readonly TResource[];
-  readonly viewRegistry: CalendarViewRegistry<
-    TEvent,
-    TResource,
-    TView,
-    TSelection,
-    TFocus,
-    TEventId,
-    TResourceId
-  >;
+  readonly views: readonly TViewDef[];
 }
 
 export interface CalendarContextValue<
   TEvent,
   TResource,
-  TView extends string = string,
+  TViewDef extends AnyCalendarView = AnyCalendarView,
   TSelection = string,
   TFocus = string,
-  TEventId extends EventId = InferEventId<TEvent>,
-  TResourceId extends ResourceId = InferResourceId<TResource>,
+  TEventId extends EventId = EventId,
+  TResourceId extends ResourceId = ResourceId,
 > {
-  readonly actions: CalendarSemanticActions<TView, TSelection, TFocus, TResourceId>;
-  readonly meta: CalendarMeta<TEvent, TResource, TView, TSelection, TFocus, TEventId, TResourceId>;
-  readonly state: CalendarPublicState<TView, TSelection, TFocus, TResourceId>;
+  readonly actions: CalendarSemanticActions<TViewDef["name"], TSelection, TFocus, TResourceId>;
+  readonly meta: CalendarMeta<TEvent, TResource, TViewDef, TEventId, TResourceId>;
+  readonly state: CalendarPublicState<TViewDef["name"], TSelection, TFocus, TResourceId>;
 }
 
 interface CalendarRootBaseProps<
   TEvent,
   TResource,
-  TView extends string,
+  TViewDef extends AnyCalendarView,
   TSelection,
   TFocus,
   TEventId extends EventId,
@@ -130,15 +104,13 @@ interface CalendarRootBaseProps<
   readonly defaultExpandedResourceIds?: readonly TResourceId[];
   readonly defaultFocus?: TFocus | null;
   readonly defaultSelection?: TSelection | null;
-  readonly defaultView?: TView;
+  readonly defaultView?: TViewDef["name"];
   readonly direction?: CalendarEnvironment["direction"];
   readonly disambiguation?: CalendarEnvironment["disambiguation"];
-  readonly eventAdapter?: EventAdapter<TEvent, TEventId, TResourceId>;
   readonly events: readonly TEvent[];
   readonly expandedResourceIds?: readonly TResourceId[];
   readonly focus?: TFocus | null;
   readonly id?: string;
-  readonly invalidEventPolicy?: InvalidCalendarEventPolicy;
   readonly locale: Intl.Locale | string;
   readonly onAnchorDateChange?: CalendarStateChangeHandler<Temporal.PlainDate, "anchorDate">;
   readonly onDiagnosticsChange?: (
@@ -151,20 +123,13 @@ interface CalendarRootBaseProps<
   readonly onFocusChange?: CalendarStateChangeHandler<TFocus | null, "focus">;
   readonly onSelectionChange?: CalendarStateChangeHandler<TSelection | null, "selection">;
   readonly onTimeZoneChange?: CalendarStateChangeHandler<string, "timeZone">;
-  readonly onViewChange?: CalendarStateChangeHandler<TView, "view">;
+  readonly onViewChange?: CalendarStateChangeHandler<TViewDef["name"], "view">;
   readonly resources?: readonly TResource[];
   readonly selection?: TSelection | null;
-  readonly store?: CalendarStore<TView, TSelection, TFocus, TResourceId>;
-  readonly view?: TView;
-  readonly views?: readonly CalendarViewRegistration<
-    TEvent,
-    TResource,
-    TView,
-    TSelection,
-    TFocus,
-    TEventId,
-    TResourceId
-  >[];
+  readonly store?: CalendarStore<TViewDef["name"], TSelection, TFocus, TResourceId>;
+  readonly view?: TViewDef["name"];
+  /** Per-view overrides of each registered view's `defaultOptions`. */
+  readonly viewOptions?: CalendarViewOptionsMap<TViewDef>;
   readonly weekRules: CalendarWeekRules;
 }
 
@@ -185,12 +150,12 @@ type CalendarRootTimeZoneProps =
 export type CalendarRootProps<
   TEvent,
   TResource,
-  TView extends string = string,
+  TViewDef extends AnyCalendarView = AnyCalendarView,
   TSelection = string,
   TFocus = string,
-  TEventId extends EventId = InferEventId<TEvent>,
-  TResourceId extends ResourceId = InferResourceId<TResource>,
-> = CalendarRootBaseProps<TEvent, TResource, TView, TSelection, TFocus, TEventId, TResourceId> &
+  TEventId extends EventId = EventId,
+  TResourceId extends ResourceId = ResourceId,
+> = CalendarRootBaseProps<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId> &
   CalendarRootAnchorProps &
   CalendarRootTimeZoneProps &
   CalendarNowSource;
@@ -218,42 +183,10 @@ export interface CalendarActiveViewProps {
   readonly fallback?: ReactNode;
 }
 
-export interface CalendarCustomViewProps<
-  TEvent,
-  TResource,
-  TView extends string = string,
-  TSelection = string,
-  TFocus = string,
-  TEventId extends EventId = InferEventId<TEvent>,
-  TResourceId extends ResourceId = InferResourceId<TResource>,
-> {
-  readonly view: CalendarViewRegistration<
-    TEvent,
-    TResource,
-    TView,
-    TSelection,
-    TFocus,
-    TEventId,
-    TResourceId
-  >;
-}
-
 export interface CalendarEventRenderValue<
   TEvent,
-  TResource,
-  TView extends string,
-  TSelection,
-  TFocus,
   TEventId extends EventId,
   TResourceId extends ResourceId,
-> extends CalendarContextValue<
-  TEvent,
-  TResource,
-  TView,
-  TSelection,
-  TFocus,
-  TEventId,
-  TResourceId
 > {
   readonly event: TEvent;
   readonly normalized: NormalizedCalendarEvent<TEvent, TEventId, TResourceId>;
@@ -261,156 +194,69 @@ export interface CalendarEventRenderValue<
 
 export interface CalendarEventProps<
   TEvent,
-  TResource,
-  TView extends string = string,
-  TSelection = string,
-  TFocus = string,
-  TEventId extends EventId = InferEventId<TEvent>,
-  TResourceId extends ResourceId = InferResourceId<TResource>,
+  TEventId extends EventId = EventId,
+  TResourceId extends ResourceId = ResourceId,
 > {
-  readonly children: (
-    value: CalendarEventRenderValue<
-      TEvent,
-      TResource,
-      TView,
-      TSelection,
-      TFocus,
-      TEventId,
-      TResourceId
-    >,
-  ) => ReactNode;
+  readonly children: (value: CalendarEventRenderValue<TEvent, TEventId, TResourceId>) => ReactNode;
   readonly eventId: TEventId;
   readonly fallback?: ReactNode;
 }
 
 export interface CreateCalendarOptions<
   TEvent,
-  TResource,
-  TView extends string = string,
-  TSelection = string,
-  TFocus = string,
-  TEventId extends EventId = InferEventId<TEvent>,
-  TResourceId extends ResourceId = InferResourceId<TResource>,
+  TViewDef extends AnyCalendarView,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
 > {
-  readonly capabilities?: readonly CalendarCapability[];
   readonly eventAdapter: EventAdapter<TEvent, TEventId, TResourceId>;
   readonly invalidEventPolicy?: InvalidCalendarEventPolicy;
-  readonly views?: readonly CalendarViewRegistration<
-    TEvent,
-    TResource,
-    TView,
-    TSelection,
-    TFocus,
-    TEventId,
-    TResourceId
-  >[];
+  readonly views?: readonly TViewDef[];
 }
 
 export interface CalendarFactory<
   TEvent,
   TResource,
-  TView extends string = string,
+  TViewDef extends AnyCalendarView = AnyCalendarView,
   TSelection = string,
   TFocus = string,
-  TEventId extends EventId = InferEventId<TEvent>,
-  TResourceId extends ResourceId = InferResourceId<TResource>,
+  TEventId extends EventId = EventId,
+  TResourceId extends ResourceId = ResourceId,
 > {
   readonly ActiveView: ComponentType<CalendarActiveViewProps>;
-  readonly CustomView: ComponentType<
-    CalendarCustomViewProps<TEvent, TResource, TView, TSelection, TFocus, TEventId, TResourceId>
-  >;
-  readonly Event: ComponentType<
-    CalendarEventProps<TEvent, TResource, TView, TSelection, TFocus, TEventId, TResourceId>
-  >;
+  readonly Event: ComponentType<CalendarEventProps<TEvent, TEventId, TResourceId>>;
   readonly Frame: ComponentType<CalendarFrameProps>;
   readonly NextTrigger: ComponentType<CalendarTriggerProps>;
   readonly PreviousTrigger: ComponentType<CalendarTriggerProps>;
   readonly Root: ComponentType<
-    CalendarRootProps<TEvent, TResource, TView, TSelection, TFocus, TEventId, TResourceId>
+    CalendarRootProps<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>
   >;
   readonly Title: ComponentType<CalendarTitleProps>;
   readonly TodayTrigger: ComponentType<CalendarTriggerProps>;
   readonly Toolbar: ComponentType<CalendarToolbarProps>;
   readonly Viewport: ComponentType<CalendarViewportProps>;
-  readonly ViewSwitcher: ComponentType<CalendarViewSwitcherProps<TView>>;
-  readonly defineView: <
-    const TName extends TView,
-    TOptions,
-    TProjectionInput,
-    TProjection,
-    TSpatialNavigationInput,
-    TSpatialNavigationResult,
-    TInteractionGeometryInput,
-    TInteractionGeometry,
-  >(
-    definition: CalendarViewDefinitionInput<
-      TEvent,
-      TResource,
-      TName,
-      TOptions,
-      TProjectionInput,
-      TProjection,
-      TSpatialNavigationInput,
-      TSpatialNavigationResult,
-      TInteractionGeometryInput,
-      TInteractionGeometry,
-      TSelection,
-      TFocus,
-      TEventId,
-      TResourceId,
-      TView
-    >,
-  ) => CalendarDefinedView<
-    TEvent,
-    TResource,
-    TName,
-    TOptions,
-    TProjectionInput,
-    TProjection,
-    TSpatialNavigationInput,
-    TSpatialNavigationResult,
-    TInteractionGeometryInput,
-    TInteractionGeometry,
-    TSelection,
-    TFocus,
-    TEventId,
-    TResourceId,
-    TView
-  >;
-  readonly viewRegistry: CalendarViewRegistry<
-    TEvent,
-    TResource,
-    TView,
-    TSelection,
-    TFocus,
-    TEventId,
-    TResourceId
-  >;
+  readonly ViewSwitcher: ComponentType<CalendarViewSwitcherProps<TViewDef["name"]>>;
+  readonly views: readonly TViewDef[];
   useCalendar(): CalendarContextValue<
     TEvent,
     TResource,
-    TView,
+    TViewDef,
     TSelection,
     TFocus,
     TEventId,
     TResourceId
   >;
-  useCalendarActions(): CalendarSemanticActions<TView, TSelection, TFocus, TResourceId>;
-  useCalendarMeta(): CalendarMeta<
-    TEvent,
-    TResource,
-    TView,
-    TSelection,
-    TFocus,
-    TEventId,
-    TResourceId
-  >;
+  useCalendarActions(): CalendarSemanticActions<TViewDef["name"], TSelection, TFocus, TResourceId>;
+  useCalendarMeta(): CalendarMeta<TEvent, TResource, TViewDef, TEventId, TResourceId>;
   useCalendarSelector<TSelected>(
     selector: CalendarStateSelector<
-      CalendarPublicState<TView, TSelection, TFocus, TResourceId>,
+      CalendarPublicState<TViewDef["name"], TSelection, TFocus, TResourceId>,
       TSelected
     >,
     options?: CalendarStateSelectorOptions<TSelected>,
   ): TSelected;
-  useCalendarState(): CalendarPublicState<TView, TSelection, TFocus, TResourceId>;
+  useCalendarState(): CalendarPublicState<TViewDef["name"], TSelection, TFocus, TResourceId>;
+  /** The active view's projection, discriminated by `view`; `null` when it is unregistered. */
+  useViewProjection(): CalendarActiveView<TViewDef> | null;
+  /** The active view's visible dates; `null` when it is unregistered. */
+  useVisibleRange(): PlainDateInterval | null;
 }

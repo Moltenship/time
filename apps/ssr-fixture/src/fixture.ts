@@ -2,9 +2,9 @@
 
 import {
   createCalendar,
+  defineCalendarView,
   defineEventAdapter,
-  type CalendarContextValue,
-  type CalendarViewRegistration,
+  plainDateInterval,
 } from "@moltenship/calendar";
 
 import { createElement, useId, useState, type ReactNode } from "react";
@@ -50,19 +50,22 @@ const fixtureEventAdapter = defineEventAdapter<FixtureEvent>()({
   getResourceIds: (event) => event.resourceIds,
   getTitle: (event) => event.title,
 });
-const fixtureView: CalendarViewRegistration<FixtureEvent, FixtureResource> = Object.freeze({
-  capabilities: Object.freeze(["fixture:view"]),
-  getTitle: (anchor: Temporal.PlainDate) => anchor.toString(),
+const fixtureView = defineCalendarView({
   name: "fixture",
-  navigate: (anchor: Temporal.PlainDate, direction: -1 | 1) => anchor.add({ days: direction }),
-  render: (calendar: CalendarContextValue<FixtureEvent, FixtureResource>) =>
+  strategy: {
+    getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 1 })),
+    getTitle: (range, { locale }) => range.start.toLocaleString(locale, { dateStyle: "full" }),
+    navigate: (anchor, delta) => anchor.add({ days: delta }),
+    project: ({ instantRange, snapshot }) => snapshot.queryTimed(instantRange),
+  },
+  Renderer: ({ projection }) =>
     createElement(
-      "output",
+      "ol",
       { "data-calendar-view": true },
-      `${calendar.state.view}:${calendar.meta.eventSnapshot.size}`,
+      projection.map((event) => createElement("li", { key: event.id }, event.title)),
     ),
 });
-const FixtureCalendar = createCalendar<FixtureEvent, FixtureResource>({
+const FixtureCalendar = createCalendar<FixtureEvent, FixtureResource>()({
   eventAdapter: fixtureEventAdapter,
   views: [fixtureView],
 });

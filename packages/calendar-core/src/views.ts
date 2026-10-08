@@ -1,58 +1,52 @@
-import type { PlainDateInterval } from "@moltenship/calendar-temporal";
+import {
+  instantInterval,
+  type InstantInterval,
+  type PlainDateInterval,
+} from "@moltenship/calendar-temporal";
 
-import type { CalendarEnvironment } from "./environment";
+import type { CalendarEnvironmentBase } from "./environment";
+import type { EventId, ResourceId } from "./ids";
+import type { EventSnapshot } from "./snapshots/types";
 
-export type ViewNavigationDirection = -1 | 1;
-
-export interface CalendarViewStrategy<
-  TName extends string,
-  TOptions,
-  TProjectionInput,
-  TProjection,
-  TSpatialNavigationInput,
-  TSpatialNavigationResult,
-  TInteractionGeometryInput,
-  TInteractionGeometry,
-> {
-  readonly name: TName;
-  getInteractionGeometry(input: TInteractionGeometryInput): TInteractionGeometry;
-  getRange(
-    anchor: Temporal.PlainDate,
-    environment: CalendarEnvironment,
-    options: TOptions,
-  ): PlainDateInterval;
-  getSpatialNavigation(input: TSpatialNavigationInput): TSpatialNavigationResult;
-  getTitle(range: PlainDateInterval, environment: CalendarEnvironment, options: TOptions): string;
-  navigate(
-    anchor: Temporal.PlainDate,
-    direction: ViewNavigationDirection,
-    environment: CalendarEnvironment,
-    options: TOptions,
-  ): Temporal.PlainDate;
-  project(input: TProjectionInput, options: TOptions): TProjection;
+export interface CalendarViewProjectionInput<TOptions, TEvent = unknown> {
+  readonly environment: CalendarEnvironmentBase;
+  /** The visible dates resolved to instants in the display time zone. */
+  readonly instantRange: InstantInterval;
+  readonly options: TOptions;
+  /** The visible dates. */
+  readonly range: PlainDateInterval;
+  readonly resources: readonly unknown[];
+  readonly snapshot: EventSnapshot<TEvent, EventId, ResourceId>;
+  /** The current date in the display time zone, or `null` until a clock is available. */
+  readonly today: Temporal.PlainDate | null;
 }
 
-export interface CalendarViewDefinition<
-  TName extends string,
-  TOptions,
-  TProjectionInput,
-  TProjection,
-  TSpatialNavigationInput,
-  TSpatialNavigationResult,
-  TInteractionGeometryInput,
-  TInteractionGeometry,
-  TRenderer,
-> {
-  readonly Renderer: TRenderer;
-  readonly defaultOptions: TOptions;
-  readonly strategy: CalendarViewStrategy<
-    TName,
-    TOptions,
-    TProjectionInput,
-    TProjection,
-    TSpatialNavigationInput,
-    TSpatialNavigationResult,
-    TInteractionGeometryInput,
-    TInteractionGeometry
-  >;
+/** Pure range, navigation, title, and projection rules for one kind of view. */
+export interface CalendarViewStrategy<TProjection, TOptions = undefined, TEvent = unknown> {
+  getRange(
+    anchor: Temporal.PlainDate,
+    environment: CalendarEnvironmentBase,
+    options: TOptions,
+  ): PlainDateInterval;
+  getTitle(
+    range: PlainDateInterval,
+    environment: CalendarEnvironmentBase,
+    options: TOptions,
+  ): string;
+  navigate(anchor: Temporal.PlainDate, delta: number, options: TOptions): Temporal.PlainDate;
+  project(input: CalendarViewProjectionInput<TOptions, TEvent>): TProjection;
+}
+
+/**
+ * Resolves visible dates to the instants between their starts of day. `toZonedDateTime` uses the
+ * start of day, so a date whose midnight is skipped by a DST gap begins at its first valid instant.
+ */
+export function resolveViewInstantRange(
+  range: PlainDateInterval,
+  timeZone: string,
+): InstantInterval {
+  return instantInterval(
+    range.start.toZonedDateTime(timeZone).toInstant(),
+    range.end.toZonedDateTime(timeZone).toInstant(),
+  );
 }

@@ -17,7 +17,6 @@ import {
   type CalendarEventIntervalOf,
   type CalendarPolicy,
   type CalendarResource,
-  type CalendarViewDefinition,
   type EventAdapter,
   type FloatingCalendarEvent,
   type TimedCalendarEvent,
@@ -220,25 +219,5 @@ describe("canonical contracts", () => {
 
     expectTypeOf<BothSourcesAreRejected>().toEqualTypeOf<true>();
     expectTypeOf<EnvironmentSupportsZonedUtilities>().toEqualTypeOf<true>();
-  });
-
-  test("keeps renderer ownership generic and framework independent", () => {
-    interface RenderBoundary {
-      render(): unknown;
-    }
-    type Definition = CalendarViewDefinition<
-      "week",
-      { readonly days: number },
-      { readonly revision: number },
-      { readonly columns: number },
-      { readonly current: string },
-      { readonly next: string },
-      { readonly x: number },
-      { readonly column: number },
-      RenderBoundary
-    >;
-
-    expectTypeOf<Definition["Renderer"]>().toEqualTypeOf<RenderBoundary>();
-    expectTypeOf<Definition["strategy"]["name"]>().toEqualTypeOf<"week">();
   });
 });

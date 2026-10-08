@@ -5,12 +5,19 @@ import type {
   CalendarStateChangeHandlers,
 } from "@moltenship/calendar-react";
 
-import type { GateFocus, GateSelection, GateView } from "./builders";
+import type { GateFocus, GateSelection } from "./builders";
+import type { GateView } from "./custom-view-fixture";
 
-type GateState = CalendarPublicState<GateView, GateSelection, GateFocus, string>;
-type GateActions = CalendarActions<GateView, GateSelection, GateFocus, string>;
-type GateControlledState = CalendarControlledState<GateView, GateSelection, GateFocus, string>;
-type GateHandlers = CalendarStateChangeHandlers<GateView, GateSelection, GateFocus, string>;
+type GateResourceId = `resource-${number}`;
+type GateState = CalendarPublicState<GateView, GateSelection, GateFocus, GateResourceId>;
+type GateActions = CalendarActions<GateView, GateSelection, GateFocus, GateResourceId>;
+type GateControlledState = CalendarControlledState<
+  GateView,
+  GateSelection,
+  GateFocus,
+  GateResourceId
+>;
+type GateHandlers = CalendarStateChangeHandlers<GateView, GateSelection, GateFocus, GateResourceId>;
 
 export interface ControlledStateMatrixCase {
   readonly controlled: GateControlledState;

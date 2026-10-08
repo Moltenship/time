@@ -4,7 +4,7 @@ import { promisify } from "node:util";
 import { describe, expect, test } from "vite-plus/test";
 
 import { deterministicEnvironment } from "../src/fixture";
-import { runHydrationScenario } from "../src/hydration-harness";
+import { runHydrationScenario } from "./hydration-harness";
 
 const execFileAsync = promisify(execFile);
 

@@ -1,4 +1,49 @@
-"use client";
-
+// No "use client" here: core and Temporal utilities stay callable from Server Components, while
+// the React bindings keep their own client boundary in `@moltenship/calendar-react`.
 export * from "@moltenship/calendar-core";
-export * from "@moltenship/calendar-react";
+export * from "@moltenship/calendar-temporal";
+export {
+  createCalendar,
+  createCalendarStore,
+  defineCalendarView,
+  useNow,
+} from "@moltenship/calendar-react";
+export type {
+  AnyCalendarView,
+  CalendarActions,
+  CalendarActiveView,
+  CalendarActiveViewProps,
+  CalendarContextValue,
+  CalendarControlledState,
+  CalendarDiagnostic,
+  CalendarEventProps,
+  CalendarEventRenderValue,
+  CalendarFactory,
+  CalendarFrameProps,
+  CalendarMeta,
+  CalendarPartIds,
+  CalendarPartRefs,
+  CalendarPublicState,
+  CalendarRootProps,
+  CalendarSemanticActions,
+  CalendarStateChangeDetail,
+  CalendarStateChangeHandler,
+  CalendarStateChangeHandlers,
+  CalendarStateSelector,
+  CalendarStateSelectorOptions,
+  CalendarStateSlice,
+  CalendarStore,
+  CalendarStoreOptions,
+  CalendarTitleProps,
+  CalendarToolbarProps,
+  CalendarTriggerProps,
+  CalendarView,
+  CalendarViewActions,
+  CalendarViewInput,
+  CalendarViewOptionsMap,
+  CalendarViewRendererProps,
+  CalendarViewSwitcherProps,
+  CalendarViewportProps,
+  CreateCalendarOptions,
+  UseNowOptions,
+} from "@moltenship/calendar-react";

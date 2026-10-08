@@ -79,11 +79,8 @@ export type {
   IsoDayOfWeek,
 } from "./environment";
 
-export type {
-  CalendarViewDefinition,
-  CalendarViewStrategy,
-  ViewNavigationDirection,
-} from "./views";
+export { resolveViewInstantRange } from "./views";
+export type { CalendarViewProjectionInput, CalendarViewStrategy } from "./views";
 
 export { navigateTimeGrid, timeGridRange, timeGridTitle } from "./views/time-grid/range";
 export type { TimeGridSpan } from "./views/time-grid/range";

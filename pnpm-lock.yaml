@@ -546,10 +546,10 @@ importers:
       '@moltenship/calendar-react':
         specifier: workspace:*
         version: link:../calendar-react
-    devDependencies:
       '@moltenship/calendar-temporal':
         specifier: workspace:*
         version: link:../calendar-temporal
+    devDependencies:
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
@@ -618,13 +618,10 @@ importers:
       '@moltenship/calendar-core':
         specifier: workspace:*
         version: link:../calendar-core
-      jotai:
-        specifier: 2.20.2
-        version: 2.20.2(@babel/core@7.29.7(supports-color@7.2.0))(@babel/template@7.29.7)(@types/react@19.2.14)(react@19.2.7)
-    devDependencies:
       '@moltenship/calendar-temporal':
         specifier: workspace:*
         version: link:../calendar-temporal
+    devDependencies:
       '@types/react':
         specifier: 'catalog:'
         version: 19.2.14
@@ -9836,13 +9833,6 @@ snapshots:
   jiti@2.7.0: {}
 
   jose@6.2.8: {}
-
-  jotai@2.20.2(@babel/core@7.29.7(supports-color@7.2.0))(@babel/template@7.29.7)(@types/react@19.2.14)(react@19.2.7):
-    optionalDependencies:
-      '@babel/core': 7.29.7(supports-color@7.2.0)
-      '@babel/template': 7.29.7
-      '@types/react': 19.2.14
-      react: 19.2.7
 
   jotai@2.20.2(@babel/core@7.29.7(supports-color@7.2.0))(@babel/template@7.29.7)(@types/react@19.2.18)(react@19.2.8):
     optionalDependencies:

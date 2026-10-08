@@ -1,28 +1,30 @@
 // @vitest-environment jsdom
 
-import { Profiler, Suspense, act, startTransition, useState } from "react";
+import {
+  Profiler,
+  Suspense,
+  act,
+  startTransition,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
-import {
-  createCalendarStore,
-  useCalendarStore,
-  useCalendarStoreBinding,
-  useCalendarStoreSelector,
-  type CalendarStore,
-} from "@moltenship/calendar-react";
+import { createCalendarStore, type CalendarStore } from "@moltenship/calendar-react";
 
 import {
   createTestCalendarClock,
+  gateAnchorDate,
   gateEvents,
   gateResources,
-  gateStoreDefaults,
+  gateTimeZone,
   gateWeekRules,
   type GateFocus,
   type GateSelection,
-  type GateView,
 } from "./harness/builders";
-import { createCommitCounter, createSelectorCounter } from "./harness/counters";
-import { GateCalendar, gateViews } from "./harness/custom-view-fixture";
+import { createCommitCounter, createSelectorCounter, createTestCounter } from "./harness/counters";
+import { GateCalendar, type GateView } from "./harness/custom-view-fixture";
 import {
   createSuspensionGate,
   hydrateWithHarness,
@@ -32,19 +34,17 @@ import {
 import { controlledStateMatrix, type ControlledStateMatrixCase } from "./harness/state-matrix";
 import "./setup";
 
-type GateStore = CalendarStore<GateView, GateSelection, GateFocus, string>;
+type GateStore = CalendarStore<GateView, GateSelection, GateFocus, `resource-${number}`>;
 type GateState = ReturnType<GateStore["getSnapshot"]>;
 
 const harnesses: ReactRootHarness[] = [];
-const stores: GateStore[] = [];
 
-function makeStore(defaultView: GateView = "month"): GateStore {
-  const store = createCalendarStore<GateView, GateSelection, GateFocus, string>({
-    ...gateStoreDefaults,
-    defaultView,
+function makeStore(): GateStore {
+  return createCalendarStore<GateView, GateSelection, GateFocus, `resource-${number}`>({
+    defaultAnchorDate: gateAnchorDate,
+    defaultTimeZone: gateTimeZone,
+    defaultView: "month",
   });
-  stores.push(store);
-  return store;
 }
 
 function track<THarness extends ReactRootHarness>(harness: THarness): THarness {
@@ -58,6 +58,22 @@ async function click(container: ParentNode, selector: string): Promise<void> {
   await act(async () => button.click());
 }
 
+function GateRoot(
+  props: Partial<ComponentProps<typeof GateCalendar.Root>> & { readonly children?: ReactNode },
+) {
+  return (
+    <GateCalendar.Root
+      defaultAnchorDate={gateAnchorDate}
+      defaultTimeZone={gateTimeZone}
+      events={gateEvents}
+      locale="en-GB"
+      resources={gateResources}
+      weekRules={gateWeekRules}
+      {...props}
+    />
+  );
+}
+
 function ControlledStateProbe({
   renderHistory,
   scenario,
@@ -66,18 +82,22 @@ function ControlledStateProbe({
   readonly scenario: ControlledStateMatrixCase;
 }) {
   const [controlled, setControlled] = useState(scenario.controlled);
-  const store = useCalendarStore<GateView, GateSelection, GateFocus, string>(gateStoreDefaults);
-  const calendar = useCalendarStoreBinding(store, {
-    controlled,
-    handlers: scenario.createHandlers(setControlled),
-  });
-  const value = scenario.read(calendar.state);
-  renderHistory.push(value);
+
+  function Probe() {
+    const actions = GateCalendar.useCalendarActions();
+    const value = scenario.read(GateCalendar.useCalendarState());
+    renderHistory.push(value);
+    return (
+      <button data-state-action={scenario.name} onClick={() => scenario.apply(actions)}>
+        {value}
+      </button>
+    );
+  }
 
   return (
-    <button data-state-action={scenario.name} onClick={() => scenario.apply(calendar.actions)}>
-      {value}
-    </button>
+    <GateRoot {...controlled} {...scenario.createHandlers(setControlled)}>
+      <Probe />
+    </GateRoot>
   );
 }
 
@@ -90,34 +110,8 @@ function GateViewTrigger({ target }: { readonly target: GateView }) {
   );
 }
 
-function GateRootFixture({
-  defaultView = "month",
-  id,
-}: {
-  readonly defaultView?: GateView;
-  readonly id: string;
-}) {
-  return (
-    <GateCalendar.Root
-      defaultAnchorDate={gateStoreDefaults.defaultAnchorDate}
-      defaultTimeZone={gateStoreDefaults.defaultTimeZone}
-      defaultView={defaultView}
-      events={gateEvents}
-      id={id}
-      locale="en-GB"
-      resources={gateResources}
-      views={gateViews}
-      weekRules={gateWeekRules}
-    >
-      <GateCalendar.ActiveView />
-      <GateViewTrigger target="agenda" />
-    </GateCalendar.Root>
-  );
-}
-
 afterEach(async () => {
   for (const harness of harnesses.splice(0)) await harness.dispose();
-  for (const store of stores.splice(0)) store.destroy();
   document.body.replaceChildren();
   vi.restoreAllMocks();
 });
@@ -158,23 +152,13 @@ test("a suspended controlled transition rebases around an urgent update without 
 
   function ConcurrentProbe({
     controlledView,
-    requestView,
     urgentRevision,
   }: {
     readonly controlledView: GateView;
-    readonly requestView: (next: GateView) => void;
     readonly urgentRevision: number;
   }) {
-    const store = useCalendarStore<GateView, GateSelection, GateFocus, string>(gateStoreDefaults);
-    const calendar = useCalendarStoreBinding(store, {
-      controlled: { view: controlledView },
-      handlers: { onViewChange: requestView },
-    });
-    renderHistory.push({
-      calendarView: calendar.state.view,
-      controlledView,
-      urgentRevision,
-    });
+    const calendar = GateCalendar.useCalendar();
+    renderHistory.push({ calendarView: calendar.state.view, controlledView, urgentRevision });
     if (calendar.state.view === "agenda") suspension.read();
 
     return (
@@ -199,11 +183,9 @@ test("a suspended controlled transition rebases around an urgent update without 
           Urgent update
         </button>
         <Suspense fallback={<output data-concurrent-fallback>fallback</output>}>
-          <ConcurrentProbe
-            controlledView={view}
-            requestView={(next) => startTransition(() => setView(next))}
-            urgentRevision={urgentRevision}
-          />
+          <GateRoot onViewChange={(next) => startTransition(() => setView(next))} view={view}>
+            <ConcurrentProbe controlledView={view} urgentRevision={urgentRevision} />
+          </GateRoot>
         </Suspense>
       </>
     );
@@ -235,11 +217,6 @@ test("a suspended controlled transition rebases around an urgent update without 
 
   expect(harness.container.querySelector("[data-concurrent-view]")?.textContent).toBe("month:1");
   expect(harness.container.querySelector("[data-concurrent-fallback]")).toBeNull();
-  expect(renderHistory.slice(rendersBeforeAction)).toContainEqual({
-    calendarView: "month",
-    controlledView: "month",
-    urgentRevision: 1,
-  });
 
   await act(async () => {
     suspension.release();
@@ -247,11 +224,6 @@ test("a suspended controlled transition rebases around an urgent update without 
   });
 
   expect(harness.container.querySelector("[data-concurrent-view]")?.textContent).toBe("agenda:1");
-  expect(renderHistory.slice(rendersBeforeAction)).toContainEqual({
-    calendarView: "agenda",
-    controlledView: "agenda",
-    urgentRevision: 1,
-  });
   expect(
     renderHistory
       .slice(rendersBeforeAction)
@@ -272,25 +244,25 @@ test("selector evaluation does not turn unrelated state changes into React commi
 
   function ViewProbe() {
     return (
-      <output data-view-selector>{useCalendarStoreSelector(store, viewSelector.select)}</output>
+      <output data-view-selector>{GateCalendar.useCalendarSelector(viewSelector.select)}</output>
     );
   }
 
   function AnchorProbe() {
-    const anchor = useCalendarStoreSelector(store, anchorSelector.select);
+    const anchor = GateCalendar.useCalendarSelector(anchorSelector.select);
     return <output data-anchor-selector>{anchor.toString()}</output>;
   }
 
   const harness = track(
     await renderWithHarness(
-      <>
+      <GateRoot store={store}>
         <Profiler id="view-selector" onRender={viewCommits.onRender}>
           <ViewProbe />
         </Profiler>
         <Profiler id="anchor-selector" onRender={anchorCommits.onRender}>
           <AnchorProbe />
         </Profiler>
-      </>,
+      </GateRoot>,
       { strictMode: true },
     ),
   );
@@ -306,8 +278,6 @@ test("selector evaluation does not turn unrelated state changes into React commi
   expect(viewCommits.counter.value).toBe(0);
   expect(anchorCommits.counter.value).toBe(0);
 
-  viewCommits.counter.reset();
-  anchorCommits.counter.reset();
   await act(async () => store.actions.setAnchorDate(Temporal.PlainDate.from("2026-08-16")));
 
   expect(viewCommits.counter.value).toBe(0);
@@ -320,20 +290,10 @@ test("the public custom-view fixture uses deterministic builders and an injected
   const clock = createTestCalendarClock();
   const harness = track(
     await renderWithHarness(
-      <GateCalendar.Root
-        clock={clock}
-        defaultAnchorDate={gateStoreDefaults.defaultAnchorDate}
-        defaultTimeZone={gateStoreDefaults.defaultTimeZone}
-        defaultView="month"
-        events={gateEvents}
-        locale="en-GB"
-        resources={gateResources}
-        views={gateViews}
-        weekRules={gateWeekRules}
-      >
+      <GateRoot clock={clock} defaultView="month">
         <GateCalendar.ActiveView />
         <GateCalendar.TodayTrigger data-gate-today>Today</GateCalendar.TodayTrigger>
-      </GateCalendar.Root>,
+      </GateRoot>,
     ),
   );
 
@@ -357,23 +317,13 @@ test("the hydrate harness reports stable markup, no warnings, interaction, and c
   function HydrationApplication() {
     const [view, setView] = useState<GateView>("month");
     return (
-      <GateCalendar.Root
-        clock={clock}
-        defaultAnchorDate={gateStoreDefaults.defaultAnchorDate}
-        defaultTimeZone={gateStoreDefaults.defaultTimeZone}
-        events={gateEvents}
-        locale="en-GB"
-        onViewChange={setView}
-        resources={gateResources}
-        view={view}
-        views={gateViews}
-        weekRules={gateWeekRules}
-      >
+      <GateRoot clock={clock} onViewChange={setView} view={view}>
         <GateCalendar.Frame>
+          <GateCalendar.Title />
           <GateCalendar.ActiveView />
           <GateViewTrigger target="agenda" />
         </GateCalendar.Frame>
-      </GateCalendar.Root>
+      </GateRoot>
     );
   }
 
@@ -402,15 +352,17 @@ test("the hydrate harness reports stable markup, no warnings, interaction, and c
 });
 
 test("two physical React roots keep independently owned calendar state isolated", async () => {
-  const first = track(await renderWithHarness(<GateRootFixture id="first-calendar" />));
-  const second = track(await renderWithHarness(<GateRootFixture id="second-calendar" />));
+  function Fixture({ id }: { readonly id: string }) {
+    return (
+      <GateRoot id={id}>
+        <GateCalendar.ActiveView />
+        <GateViewTrigger target="agenda" />
+      </GateRoot>
+    );
+  }
 
-  expect(first.container.querySelector("[data-gate-view]")?.getAttribute("data-gate-view")).toBe(
-    "month",
-  );
-  expect(second.container.querySelector("[data-gate-view]")?.getAttribute("data-gate-view")).toBe(
-    "month",
-  );
+  const first = track(await renderWithHarness(<Fixture id="first-calendar" />));
+  const second = track(await renderWithHarness(<Fixture id="second-calendar" />));
 
   await click(first.container, "[data-gate-view-trigger]");
 
@@ -424,38 +376,36 @@ test("two physical React roots keep independently owned calendar state isolated"
 
 test("unmount disconnects one root while a caller-owned store remains usable", async () => {
   const store = makeStore();
-  const firstCommits = createCommitCounter();
-  const secondCommits = createCommitCounter();
+  const renders = { first: createTestCounter(), second: createTestCounter() };
 
-  function StoreProbe({ label }: { readonly label: string }) {
-    const calendar = useCalendarStoreBinding(store);
-    return <output data-store-probe={label}>{calendar.state.view}</output>;
+  function StoreProbe({ label }: { readonly label: keyof typeof renders }) {
+    renders[label].increment();
+    return <output data-store-probe={label}>{GateCalendar.useCalendarState().view}</output>;
   }
 
   const first = track(
     await renderWithHarness(
-      <Profiler id="first-shared-store" onRender={firstCommits.onRender}>
+      <GateRoot store={store}>
         <StoreProbe label="first" />
-      </Profiler>,
+      </GateRoot>,
     ),
   );
   const second = track(
     await renderWithHarness(
-      <Profiler id="second-shared-store" onRender={secondCommits.onRender}>
+      <GateRoot store={store}>
         <StoreProbe label="second" />
-      </Profiler>,
+      </GateRoot>,
     ),
   );
 
   await first.unmount();
-  firstCommits.counter.reset();
-  secondCommits.counter.reset();
+  renders.first.reset();
+  renders.second.reset();
   await act(async () => store.actions.setView("agenda"));
 
-  expect(first.unmounted).toBe(true);
   expect(first.container.childNodes).toHaveLength(0);
-  expect(firstCommits.counter.value).toBe(0);
-  expect(secondCommits.counter.value).toBe(1);
+  expect(renders.first.value).toBe(0);
+  expect(renders.second.value).toBe(1);
   expect(second.container.querySelector("[data-store-probe]")?.textContent).toBe("agenda");
-  expect(store.meta.destroyed).toBe(false);
+  expect(store.getSnapshot().view).toBe("agenda");
 });

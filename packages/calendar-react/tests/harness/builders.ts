@@ -1,8 +1,5 @@
 import type { CalendarWeekRules } from "@moltenship/calendar-core";
-import type { CalendarStoreOptions } from "@moltenship/calendar-react";
 import type { CalendarClock } from "@moltenship/calendar-temporal";
-
-export type GateView = "agenda" | "month";
 
 export interface GateSelection {
   readonly eventId: `event-${number}`;
@@ -61,15 +58,8 @@ export function buildGateResource(overrides: Partial<GateResource> = {}): GateRe
 
 export const gateEvents = Object.freeze([buildGateEvent()]);
 export const gateResources = Object.freeze([buildGateResource()]);
-export const gateStoreDefaults: CalendarStoreOptions<GateView, GateSelection, GateFocus, string> =
-  Object.freeze({
-    defaultAnchorDate: Temporal.PlainDate.from("2026-08-15"),
-    defaultExpandedResourceIds: Object.freeze([]),
-    defaultFocus: null,
-    defaultSelection: null,
-    defaultTimeZone: "Asia/Tbilisi",
-    defaultView: "month",
-  });
+export const gateAnchorDate = Temporal.PlainDate.from("2026-08-15");
+export const gateTimeZone = "Asia/Tbilisi";
 export const gateWeekRules: CalendarWeekRules = Object.freeze({
   firstDay: 1,
   minimalDays: 4,

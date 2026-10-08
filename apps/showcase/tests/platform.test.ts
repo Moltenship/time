@@ -32,7 +32,7 @@ const installationEventAdapter = defineEventAdapter<InstallationMeeting>()({
   getTitle: (event) => event.title,
   getResourceIds: (event) => event.roomIds,
 });
-const InstallationCalendar = createCalendar<InstallationMeeting, InstallationRoom>({
+const InstallationCalendar = createCalendar<InstallationMeeting, InstallationRoom>()({
   eventAdapter: installationEventAdapter,
 });
 

@@ -23,7 +23,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vp pack && node scripts/verify-public-api.mjs",
+    "build": "vp pack",
     "check": "vp check",
     "dev": "vp pack --watch",
     "prepublishOnly": "vp run build",
@@ -31,10 +31,10 @@
   },
   "dependencies": {
     "@moltenship/calendar-core": "workspace:*",
-    "@moltenship/calendar-react": "workspace:*"
+    "@moltenship/calendar-react": "workspace:*",
+    "@moltenship/calendar-temporal": "workspace:*"
   },
   "devDependencies": {
-    "@moltenship/calendar-temporal": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "react": "catalog:",

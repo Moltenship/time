@@ -1,17 +1,14 @@
 // @vitest-environment jsdom
 
+import { defineEventAdapter } from "@moltenship/calendar-core";
 import { plainDateInterval } from "@moltenship/calendar-temporal";
-import {
-  defineEventAdapter,
-  type CalendarEnvironment,
-  type CalendarViewStrategy,
-} from "@moltenship/calendar-core";
 import { act, createRef, useLayoutEffect, useState, type Ref, type RefCallback } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, expectTypeOf, test, vi } from "vite-plus/test";
 
 import {
   createCalendar,
+  defineCalendarView,
   type CalendarDiagnostic,
   type CalendarFrameProps,
   type CalendarPartRefs,
@@ -33,63 +30,33 @@ interface Room {
   readonly title: string;
 }
 
-interface ViewOptions {
-  readonly days: number;
-  readonly label: string;
-}
-
 const adapter = defineEventAdapter<Meeting>()({
   getId: (event) => event.id,
   getInterval: (event) => ({ end: event.end, kind: "timed", start: event.start }),
   getResourceIds: (event) => event.roomIds,
   getTitle: (event) => event.title,
 });
-const Calendar = createCalendar<Meeting, Room>({
-  capabilities: ["calendar:testing"],
-  eventAdapter: adapter,
-});
 
-function viewStrategy<const TName extends string>(name: TName, days: number) {
-  return {
-    getInteractionGeometry: (input: number) => input,
-    getRange: (anchor: Temporal.PlainDate) => plainDateInterval(anchor, anchor.add({ days })),
-    getSpatialNavigation: (input: string) => input,
-    getTitle: (
-      range: ReturnType<typeof plainDateInterval>,
-      _environment: CalendarEnvironment,
-      options: ViewOptions,
-    ) => `${options.label}:${range.start.toString()}`,
+function dayRangeView<const TName extends string>(name: TName, days: number, label: string) {
+  return defineCalendarView({
+    defaultOptions: { days, label },
     name,
-    navigate: (anchor: Temporal.PlainDate, direction: -1 | 1) =>
-      anchor.add({ days: direction * days }),
-    project: (input: number) => input,
-  } satisfies CalendarViewStrategy<
-    TName,
-    ViewOptions,
-    number,
-    number,
-    string,
-    string,
-    number,
-    number
-  >;
+    Renderer: () => <output data-active-view>{name}</output>,
+    strategy: {
+      getRange: (anchor, _environment, options) =>
+        plainDateInterval(anchor, anchor.add({ days: options.days })),
+      getTitle: (range, _environment, options) => `${options.label}:${range.start.toString()}`,
+      navigate: (anchor, delta, options) => anchor.add({ days: delta * options.days }),
+      project: () => null,
+    },
+  });
 }
 
-const monthView = Calendar.defineView({
-  capabilities: ["view:month-grid"],
-  defaultOptions: { days: 7, label: "Month" },
-  Renderer({ calendar }) {
-    return <output data-active-view>{calendar.state.view}</output>;
-  },
-  strategy: viewStrategy("month", 7),
-});
-const agendaView = Calendar.defineView({
-  capabilities: ["view:agenda-list"],
-  defaultOptions: { days: 1, label: "Agenda" },
-  Renderer({ calendar }) {
-    return <output data-active-view>{calendar.state.view}</output>;
-  },
-  strategy: viewStrategy("agenda", 1),
+const monthView = dayRangeView("month", 7, "Month");
+const agendaView = dayRangeView("agenda", 1, "Agenda");
+const Calendar = createCalendar<Meeting, Room>()({
+  eventAdapter: adapter,
+  views: [monthView, agendaView],
 });
 
 const events: readonly Meeting[] = [
@@ -143,7 +110,7 @@ test("compound controls work anywhere under Root with direct React 19 refs", asy
     return (
       <div>
         <button data-outside-control onClick={() => actions.navigateNext()} type="button">
-          {anchorDate.toString()}:{String(meta.capabilities.has("calendar:testing"))}
+          {anchorDate.toString()}
         </button>
         <button
           data-selection-control
@@ -166,7 +133,6 @@ test("compound controls work anywhere under Root with direct React 19 refs", asy
       locale="en-GB"
       now={Temporal.Instant.from("2026-08-20T08:00:00Z")}
       resources={resources}
-      views={[monthView, agendaView]}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
       <OutsideControl />
@@ -198,9 +164,10 @@ test("compound controls work anywhere under Root with direct React 19 refs", asy
   expect(observedPartRefs?.viewport.current).toBe(viewportRef.current);
   expect(observedPartRefs?.title.current).toBe(titleRef.current);
   expect(container.querySelector("[data-event]")?.textContent).toBe("Architecture review");
-  expect(container.querySelector("[data-outside-control]")?.textContent).toBe("2026-08-15:true");
+  expect(container.querySelector("[data-outside-control]")?.textContent).toBe("2026-08-15");
   expect(titleRef.current?.textContent).toBe("Month:2026-08-15");
   expect(frameRef.current?.id).toBe("team-calendar-frame");
+  expect(frameRef.current?.getAttribute("aria-labelledby")).toBe("team-calendar-title");
   expect(titleRef.current?.id).toBe("team-calendar-title");
   expect(viewportRef.current?.id).toBe("team-calendar-viewport");
   expect(nextRef.current?.getAttribute("aria-controls")).toBe("team-calendar-viewport");
@@ -217,12 +184,12 @@ test("compound controls work anywhere under Root with direct React 19 refs", asy
   await act(async () =>
     container.querySelector<HTMLButtonElement>("[data-outside-control]")?.click(),
   );
-  expect(container.querySelector("[data-outside-control]")?.textContent).toBe("2026-08-22:true");
+  expect(container.querySelector("[data-outside-control]")?.textContent).toBe("2026-08-22");
 
   await act(async () =>
     container.querySelector<HTMLButtonElement>('[data-calendar-part="today-trigger"]')?.click(),
   );
-  expect(container.querySelector("[data-outside-control]")?.textContent).toBe("2026-08-20:true");
+  expect(container.querySelector("[data-outside-control]")?.textContent).toBe("2026-08-20");
 
   const switcher = container.querySelector<HTMLSelectElement>(
     '[data-calendar-part="view-switcher"]',
@@ -269,7 +236,6 @@ test("composed callback refs preserve React 19 cleanup on replacement and unmoun
         events={events}
         locale="en-GB"
         resources={resources}
-        views={[monthView]}
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >
         <Probe />
@@ -310,7 +276,13 @@ test("descendant layout effects navigate with the latest committed view and hand
     return null;
   }
 
-  function Harness({ revision, view }: { readonly revision: number; readonly view: string }) {
+  function Harness({
+    revision,
+    view,
+  }: {
+    readonly revision: number;
+    readonly view: "agenda" | "month";
+  }) {
     const [anchorDate, setAnchorDate] = useState(Temporal.PlainDate.from("2026-08-15"));
     return (
       <Calendar.Root
@@ -324,7 +296,6 @@ test("descendant layout effects navigate with the latest committed view and hand
         }}
         resources={resources}
         view={view}
-        views={[monthView, agendaView]}
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >
         <NavigateFromLayout revision={revision} />
@@ -347,7 +318,7 @@ test("descendant layout effects navigate with the latest committed view and hand
   expect(container.querySelector("[data-anchor]")?.textContent).toBe("2026-08-16");
 });
 
-test("registration, event validation, capabilities, and diagnostics stay structured", async () => {
+test("an unregistered view and invalid events surface as structured diagnostics", async () => {
   const onDiagnosticsChange =
     vi.fn<(diagnostics: readonly CalendarDiagnostic<Meeting, string>[]) => void>();
   let observedCodes: readonly string[] = [];
@@ -355,7 +326,7 @@ test("registration, event validation, capabilities, and diagnostics stay structu
   function Probe() {
     const meta = Calendar.useCalendarMeta();
     observedCodes = meta.diagnostics.map((diagnostic) => diagnostic.code);
-    return <output>{meta.viewRegistry.size}</output>;
+    return <output data-view-count>{meta.views.length}</output>;
   }
 
   const duplicateEvents = [events[0], events[0]].filter(
@@ -365,32 +336,37 @@ test("registration, event validation, capabilities, and diagnostics stay structu
     <Calendar.Root
       defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
       defaultTimeZone="Asia/Tbilisi"
-      defaultView="missing"
       events={duplicateEvents}
       locale="en-GB"
       onDiagnosticsChange={onDiagnosticsChange}
-      views={[monthView, monthView]}
+      // @ts-expect-error a view name outside the registered union is rejected by the types.
+      view="missing"
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
       <Probe />
-      <Calendar.TodayTrigger>Today</Calendar.TodayTrigger>
+      <Calendar.ActiveView fallback={<p data-fallback>View unavailable</p>} />
+      <Calendar.NextTrigger>Next</Calendar.NextTrigger>
     </Calendar.Root>,
   );
 
-  expect(container.querySelector("output")?.textContent).toBe("1");
-  expect(observedCodes).toEqual([
-    "duplicate-view-name",
-    "unregistered-active-view",
-    "invalid-event",
+  expect(container.querySelector("[data-view-count]")?.textContent).toBe("2");
+  expect(observedCodes).toEqual(["unregistered-active-view", "invalid-event"]);
+  expect(onDiagnosticsChange).toHaveBeenCalledOnce();
+  expect(onDiagnosticsChange).toHaveBeenCalledWith([
+    expect.objectContaining({ code: "unregistered-active-view", viewName: "missing" }),
+    expect.objectContaining({
+      code: "invalid-event",
+      issue: expect.objectContaining({ code: "duplicate-event-id", index: 1 }),
+    }),
   ]);
-  expect(onDiagnosticsChange).toHaveBeenCalledWith(
-    expect.arrayContaining([
-      expect.objectContaining({ code: "duplicate-view-name", severity: "warning" }),
-      expect.objectContaining({ code: "unregistered-active-view", severity: "error" }),
-      expect.objectContaining({ code: "invalid-event", severity: "error" }),
-    ]),
-  );
+  expect(container.querySelector("[data-fallback]")).not.toBeNull();
   expect(
-    container.querySelector<HTMLButtonElement>('[data-calendar-part="today-trigger"]')?.disabled,
+    container.querySelector<HTMLButtonElement>('[data-calendar-part="next-trigger"]')?.disabled,
   ).toBe(true);
+});
+
+test("a factory rejects two views with the same name", () => {
+  expect(() =>
+    createCalendar<Meeting>()({ eventAdapter: adapter, views: [monthView, monthView] }),
+  ).toThrow("calendar-duplicate-view-name:month");
 });

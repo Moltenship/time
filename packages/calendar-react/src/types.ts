@@ -16,13 +16,6 @@ export interface CalendarPublicState<
 
 export type CalendarStateSlice = keyof CalendarPublicState;
 
-type CalendarState<
-  TView extends string,
-  TSelection,
-  TFocus,
-  TResourceId extends ResourceId,
-> = CalendarPublicState<TView, TSelection, TFocus, TResourceId>;
-
 export interface CalendarStoreOptions<
   TView extends string = string,
   TSelection = string,
@@ -37,12 +30,13 @@ export interface CalendarStoreOptions<
   readonly defaultView: TView;
 }
 
+/** Slices whose value is owned by props. `undefined` leaves a slice uncontrolled. */
 export type CalendarControlledState<
   TView extends string = string,
   TSelection = string,
   TFocus = string,
   TResourceId extends ResourceId = ResourceId,
-> = Partial<CalendarState<TView, TSelection, TFocus, TResourceId>>;
+> = Partial<CalendarPublicState<TView, TSelection, TFocus, TResourceId>>;
 
 export interface CalendarStateChangeDetail<
   TValue,
@@ -51,7 +45,6 @@ export interface CalendarStateChangeDetail<
   readonly controlled: boolean;
   readonly previous: TValue;
   readonly slice: TSlice;
-  readonly source: "action";
 }
 
 export type CalendarStateChangeHandler<TValue, TSlice extends CalendarStateSlice> = (
@@ -66,7 +59,7 @@ export type CalendarStateChangeHandlers<
   TResourceId extends ResourceId = ResourceId,
 > = {
   readonly [TSlice in CalendarStateSlice as `on${Capitalize<TSlice>}Change`]?: CalendarStateChangeHandler<
-    CalendarState<TView, TSelection, TFocus, TResourceId>[TSlice],
+    CalendarPublicState<TView, TSelection, TFocus, TResourceId>[TSlice],
     TSlice
   >;
 };
@@ -78,78 +71,27 @@ export type CalendarActions<
   TResourceId extends ResourceId = ResourceId,
 > = {
   readonly [TSlice in CalendarStateSlice as `set${Capitalize<TSlice>}`]: (
-    next: CalendarState<TView, TSelection, TFocus, TResourceId>[TSlice],
+    next: CalendarPublicState<TView, TSelection, TFocus, TResourceId>[TSlice],
   ) => void;
 };
 
-export interface CalendarStateSource<
-  TView extends string = string,
-  TSelection = string,
-  TFocus = string,
-  TResourceId extends ResourceId = ResourceId,
-> {
-  readonly controlledSlices: readonly CalendarStateSlice[];
-  getServerSnapshot(): CalendarPublicState<TView, TSelection, TFocus, TResourceId>;
-  getSnapshot(): CalendarPublicState<TView, TSelection, TFocus, TResourceId>;
-  isControlled(slice: CalendarStateSlice): boolean;
-}
-
-export interface CalendarStoreMeta {
-  readonly destroyed: boolean;
-}
-
+/**
+ * Uncontrolled calendar state. While a `Root` is mounted with this store, `actions` honor that
+ * root's controlled slices and change handlers.
+ */
 export interface CalendarStore<
   TView extends string = string,
   TSelection = string,
   TFocus = string,
   TResourceId extends ResourceId = ResourceId,
-> extends CalendarStateSource<TView, TSelection, TFocus, TResourceId> {
-  readonly actions: CalendarActions<TView, TSelection, TFocus, TResourceId>;
-  readonly meta: CalendarStoreMeta;
-  createActions(
-    source: CalendarStateSource<TView, TSelection, TFocus, TResourceId>,
-    handlers?: CalendarStateChangeHandlers<TView, TSelection, TFocus, TResourceId>,
-  ): CalendarActions<TView, TSelection, TFocus, TResourceId>;
-  createStateSource(
-    controlled?: CalendarControlledState<TView, TSelection, TFocus, TResourceId>,
-  ): CalendarStateSource<TView, TSelection, TFocus, TResourceId>;
-  destroy(): void;
-}
-
-export interface CalendarStoreBindingMeta<
-  TView extends string = string,
-  TSelection = string,
-  TFocus = string,
-  TResourceId extends ResourceId = ResourceId,
-> {
-  readonly controlledSlices: readonly CalendarStateSlice[];
-  readonly source: CalendarStateSource<TView, TSelection, TFocus, TResourceId>;
-  readonly store: CalendarStore<TView, TSelection, TFocus, TResourceId>;
-}
-
-export interface CalendarStoreBinding<
-  TView extends string = string,
-  TSelection = string,
-  TFocus = string,
-  TResourceId extends ResourceId = ResourceId,
 > {
   readonly actions: CalendarActions<TView, TSelection, TFocus, TResourceId>;
-  readonly meta: CalendarStoreBindingMeta<TView, TSelection, TFocus, TResourceId>;
-  readonly state: CalendarPublicState<TView, TSelection, TFocus, TResourceId>;
+  readonly getSnapshot: () => CalendarPublicState<TView, TSelection, TFocus, TResourceId>;
+  readonly subscribe: (listener: () => void) => () => void;
 }
 
 export type CalendarStateSelector<TState, TSelected> = (state: TState) => TSelected;
 
 export interface CalendarStateSelectorOptions<TSelected> {
   readonly isEqual?: (previous: TSelected, next: TSelected) => boolean;
-}
-
-export interface UseCalendarStoreBindingOptions<
-  TView extends string = string,
-  TSelection = string,
-  TFocus = string,
-  TResourceId extends ResourceId = ResourceId,
-> {
-  readonly controlled?: CalendarControlledState<TView, TSelection, TFocus, TResourceId>;
-  readonly handlers?: CalendarStateChangeHandlers<TView, TSelection, TFocus, TResourceId>;
 }

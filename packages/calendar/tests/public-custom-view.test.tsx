@@ -1,10 +1,12 @@
+import { readFile } from "node:fs/promises";
+import type { ComponentProps } from "react";
+
 import {
   createCalendar,
   defineCalendarView,
   defineEventAdapter,
-  type CalendarViewStrategy,
+  plainDateInterval,
 } from "@moltenship/calendar";
-import { plainDateInterval } from "@moltenship/calendar-temporal";
 import { renderToStaticMarkup } from "react-dom/server";
 import { expect, expectTypeOf, test } from "vite-plus/test";
 
@@ -21,89 +23,32 @@ interface Room {
   readonly id: `room-${number}`;
 }
 
-interface CapacityOptions {
-  readonly days: number;
-}
-
 const eventAdapter = defineEventAdapter<Meeting>()({
   getId: (event) => event.id,
-  getInterval: (event) => ({
-    end: event.endsAt,
-    kind: "timed",
-    start: event.startsAt,
-  }),
+  getInterval: (event) => ({ end: event.endsAt, kind: "timed", start: event.startsAt }),
   getResourceIds: (event) => event.roomIds,
   getTitle: (event) => event.title,
 });
 
-const capacityStrategy = {
-  getInteractionGeometry: (input: number) => input,
-  getRange: (anchor: Temporal.PlainDate, _environment, options: CapacityOptions) =>
-    plainDateInterval(anchor, anchor.add({ days: options.days })),
-  getSpatialNavigation: (input: string) => input.length,
-  getTitle: (range: ReturnType<typeof plainDateInterval>) => range.start.toString(),
+const capacityView = defineCalendarView({
+  defaultOptions: { days: 5 },
   name: "capacity",
-  navigate: (
-    anchor: Temporal.PlainDate,
-    direction: -1 | 1,
-    _environment,
-    options: CapacityOptions,
-  ) => anchor.add({ days: direction * options.days }),
-  project: (input: readonly Meeting[]) => input.length,
-} satisfies CalendarViewStrategy<
-  "capacity",
-  CapacityOptions,
-  readonly Meeting[],
-  number,
-  string,
-  number,
-  number,
-  number
->;
-
-const capacityView = defineCalendarView<Meeting, Room>()({
-  capabilities: ["view:capacity"],
-  defaultOptions: { days: 5 },
-  Renderer({ calendar, options, strategy }) {
-    const meeting: Meeting | undefined = calendar.meta.events[0];
-    const room: Room | undefined = calendar.meta.resources.find((candidate) =>
-      meeting?.roomIds.includes(candidate.id),
-    );
-
-    expectTypeOf(options.days).toEqualTypeOf<number>();
-    expectTypeOf(strategy.name).toEqualTypeOf<"capacity">();
-
-    return meeting === undefined || room === undefined ? null : (
-      <output>
-        {meeting.title} · {room.capacity}
-      </output>
-    );
+  strategy: {
+    getRange: (anchor, _environment, { days }) => plainDateInterval(anchor, anchor.add({ days })),
+    getTitle: (range) => range.start.toString(),
+    navigate: (anchor, delta, { days }) => anchor.add({ days: delta * days }),
+    project: ({ instantRange, snapshot }) => snapshot.queryTimed(instantRange),
   },
-  strategy: capacityStrategy,
+  Renderer: ({ projection }) => (
+    <ul>
+      {projection.map(({ id, title }) => (
+        <li key={id}>{title}</li>
+      ))}
+    </ul>
+  ),
 });
 
-const UnionCalendar = createCalendar<Meeting, Room, "agenda" | "capacity">({ eventAdapter });
-const unionCapacityView = UnionCalendar.defineView({
-  defaultOptions: { days: 5 },
-  Renderer({ calendar }) {
-    expectTypeOf(calendar.state.view).toEqualTypeOf<"agenda" | "capacity">();
-    const setView: (view: "agenda" | "capacity") => void = calendar.actions.setView;
-    void setView;
-    return null;
-  },
-  strategy: capacityStrategy,
-});
-void unionCapacityView;
-const calendarWithStandaloneView = createCalendar<Meeting, Room, "agenda" | "capacity">({
-  eventAdapter,
-  views: [capacityView],
-});
-void calendarWithStandaloneView;
-
-const TeamCalendar = createCalendar<Meeting, Room>({
-  eventAdapter,
-  views: [capacityView],
-});
+const TeamCalendar = createCalendar<Meeting, Room>()({ eventAdapter, views: [capacityView] });
 
 const events: readonly Meeting[] = [
   {
@@ -121,7 +66,6 @@ test("a third-party view and event renderer use public exports without casts", (
     <TeamCalendar.Root
       defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
       defaultTimeZone="Asia/Tbilisi"
-      defaultView="capacity"
       events={events}
       locale="en-GB"
       resources={resources}
@@ -141,7 +85,18 @@ test("a third-party view and event renderer use public exports without casts", (
     </TeamCalendar.Root>,
   );
 
+  expectTypeOf<ComponentProps<typeof TeamCalendar.Root>["view"]>().toEqualTypeOf<
+    "capacity" | undefined
+  >();
   expect(markup).toContain("2026-08-15");
-  expect(markup).toContain("Architecture review · 8");
-  expect(markup).toContain("Architecture review");
+  expect(markup).toContain("<li>Architecture review</li>");
+  expect(markup).toContain("<span>Architecture review</span>");
+});
+
+test("the facade entry is not a client boundary, so core utilities work in Server Components", async () => {
+  const source = await readFile(new URL("../src/index.ts", import.meta.url), "utf8");
+
+  expect(source).not.toMatch(/^\s*["']use client["']/mu);
+  expect(plainDateInterval).toBeTypeOf("function");
+  expect(defineEventAdapter).toBeTypeOf("function");
 });
