@@ -133,6 +133,14 @@ describe("across DST transitions", () => {
     ).toBe("2026-11-01T00:00/2026-11-01T03:00");
   });
 
+  test("moves a multi-day event's far end by calendar days when the clock moves earlier", () => {
+    // A day later and half an hour earlier, with the spring gap between the two ends.
+    const event = timed("2026-03-06T10:00", "2026-03-07T22:00");
+    expect(
+      wall(movedPlacement(event, at("2026-03-06", "10:00"), at("2026-03-07", "09:30"), options)),
+    ).toBe("2026-03-07T09:30/2026-03-08T21:30");
+  });
+
   test("moves floating events by wall time, which has no gap", () => {
     const floating: CalendarEventPlacement<string> = {
       end: Temporal.PlainDateTime.from("2026-03-08T01:00"),

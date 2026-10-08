@@ -6,6 +6,7 @@ import {
   toAllDayPlacement,
   toTimedPlacement,
   type CalendarEventPlacement,
+  type CalendarWallClockDelta,
   type ResourceId,
   type TimeGridColumn,
 } from "@moltenship/calendar-core";
@@ -38,18 +39,31 @@ function snapDuration({ increment, smallestUnit }: WallTimeSnapOptions): Tempora
 }
 
 /**
- * The delta that carries `from` onto `to` under the placement helpers' rules: whole days on the
- * wall clock, then the rest as exact time, so the grabbed point lands under the pointer even when
- * the offset changes in between. Floating events have no offsets, so their rest is wall time.
+ * The delta that carries `from` onto `to` under the placement helpers' rules: the calendar-day
+ * difference on the wall clock, then the exact time from there to `to`. The grabbed point lands
+ * under the pointer even when the offset changes, and the event's other endpoints still move by
+ * whole calendar days. The parts may differ in sign. Floating events have no offsets, so their
+ * time part is wall time.
  */
 function deltaBetween(
   from: Temporal.ZonedDateTime,
   to: Temporal.ZonedDateTime,
   kind: CalendarEventPlacement["kind"],
-): Temporal.Duration {
-  return kind === "floating"
-    ? from.toPlainDateTime().until(to.toPlainDateTime(), { largestUnit: "days" })
-    : from.until(to, { largestUnit: "days" });
+): CalendarWallClockDelta {
+  const days = from.toPlainDate().until(to.toPlainDate()).days;
+  const time =
+    kind === "floating"
+      ? from.toPlainDateTime().add({ days }).until(to.toPlainDateTime(), { largestUnit: "hours" })
+      : from.add({ days }).until(to, { largestUnit: "hours" });
+  return {
+    days,
+    hours: time.hours,
+    microseconds: time.microseconds,
+    milliseconds: time.milliseconds,
+    minutes: time.minutes,
+    nanoseconds: time.nanoseconds,
+    seconds: time.seconds,
+  };
 }
 
 /**
