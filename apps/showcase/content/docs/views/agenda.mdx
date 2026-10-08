@@ -28,26 +28,22 @@ The view is named `agenda`.
 
 ## Anatomy
 
-`AgendaView` from `registry/list-view` renders a list with one group per day:
+`AgendaView` from `registry/list-view` renders a list with one group per day. The view builds these
+parts itself, so they're not parts you compose: to change one, edit its file. The tree shows where
+each part lives.
 
 <AgendaAnatomy />
 
-```tsx
-<AgendaView>
-  <li data-date="2026-10-08">
-    {/* Day group header: weekday and date */}
-    <ul>
-      <li>
-        <AgendaItem item={item} />
-      </li>
-    </ul>
-  </li>
-</AgendaView>
+```txt title="Rendered by AgendaView"
+AgendaView                       agenda-view.tsx
+├── Day group                    data-date, one per day with events
+│   ├── Day group header         weekday and date
+│   └── AgendaItem               agenda-item.tsx, one per event
+└── Empty state                  instead of the groups when nothing is scheduled
 ```
 
-`AgendaView` (`agenda-view.tsx`) renders the day groups, or the empty state when the range has no
-events. `AgendaItem` (`agenda-item.tsx`) renders one event, including the "All day" badge and
-"Day 2 of 3", which comes from `dayIndex` and `dayCount`.
+`AgendaItem` shows the time range or an "All day" badge, the title, and "Day 2 of 3", which comes
+from `dayIndex` and `dayCount`.
 
 ## Options
 

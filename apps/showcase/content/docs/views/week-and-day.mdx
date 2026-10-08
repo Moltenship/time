@@ -37,34 +37,28 @@ The views are named `week` and `day`. Pass your event type, as in `createWeekVie
 ## Anatomy
 
 Both views render `TimeGridView` from `registry/time-grid-view`, with seven day columns for the week
-and one for the day.
+and one for the day. The view builds these parts itself, so they're not parts you compose: to change
+one, edit its file. The tree shows where each part lives.
 
 <TimeGridAnatomy />
 
-```tsx
-<TimeGridView>
-  <TimeGridHeader />
-  <TimeGridAllDay />
-  <TimeGridBody>
-    {/* Time gutter */}
-    <TimeGridColumn day={day}>
-      <TimeGridEvent layout={layout}>
-        {/* Title and time */}
-        <span data-resize="start" />
-        <span data-resize="end" />
-      </TimeGridEvent>
-      <div data-slot="time-grid-now" />
-    </TimeGridColumn>
-  </TimeGridBody>
-</TimeGridView>
+```txt title="Rendered by TimeGridView"
+TimeGridView                     time-grid-view.tsx
+├── TimeGridHeader               time-grid-header.tsx
+├── TimeGridAllDay               time-grid-all-day.tsx
+└── TimeGridBody                 time-grid-body.tsx, scrolls
+    ├── Time gutter              --calendar-gutter-width
+    └── TimeGridColumn           time-grid-column.tsx, one per day, data-date
+        ├── TimeGridEvent        time-grid-event.tsx
+        │   ├── Title and time
+        │   └── Resize handles   data-resize="start" and "end"
+        └── Now line             data-slot="time-grid-now"
 ```
-
-Each component has its own file, such as `time-grid-header.tsx`.
 
 - The gutter is `--calendar-gutter-width` wide: 3rem, or 4rem from the `sm` breakpoint.
 - An event's `TimeGridEventLayout` sets its `top` and `height` from its times, and its `left` and
   `width` from the lanes it shares with overlapping events.
-- The now line is the element with `data-slot="time-grid-now"`. `useNow()` moves it.
+- `useNow()` moves the now line.
 
 ## Options
 
