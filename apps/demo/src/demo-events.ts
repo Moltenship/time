@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 import type { DemoEvent } from "./calendar";
+import { applyEventChange, type DemoEventChange } from "./event-changes";
 import { parseEvents, serializeEvents } from "./event-storage";
 import { createSeedEvents } from "./seed";
 import { usePersistentState } from "./storage";
@@ -10,7 +11,7 @@ const seedAroundToday = (timeZone: string) =>
 
 /** Demo events in memory, persisted to localStorage, and seeded around today on first visit. */
 export function useDemoEvents(timeZone: string) {
-  const [events, setEvents] = usePersistentState(
+  const [events, setEvents] = usePersistentState<readonly DemoEvent[]>(
     "moltenship-demo:events",
     (stored) => parseEvents(stored) ?? seedAroundToday(timeZone),
     serializeEvents,
@@ -24,8 +25,8 @@ export function useDemoEvents(timeZone: string) {
       ),
     [setEvents],
   );
-  const deleteEvent = useCallback(
-    (eventId: string) => setEvents((current) => current.filter(({ id }) => id !== eventId)),
+  const applyChange = useCallback(
+    (change: DemoEventChange) => setEvents((current) => applyEventChange(current, change)),
     [setEvents],
   );
   const resetEvents = useCallback(
@@ -33,5 +34,5 @@ export function useDemoEvents(timeZone: string) {
     [setEvents, timeZone],
   );
 
-  return { deleteEvent, events, resetEvents, saveEvent };
+  return { applyChange, events, resetEvents, saveEvent };
 }

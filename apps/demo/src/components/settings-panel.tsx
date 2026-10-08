@@ -2,13 +2,17 @@ import { RotateCcwIcon } from "lucide-react";
 import { useId, type ReactNode } from "react";
 
 import { Button } from "@registry/ui/button";
+import { Checkbox } from "@registry/ui/checkbox";
 import { Label } from "@registry/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@registry/ui/select";
 
 import { localeOptions, timeZoneOptions, weekStartOptions, type DemoSettings } from "../settings";
 
 export interface SettingsPanelProps {
+  /** Makes every move, resize and delete fail after the simulated save delay. */
+  readonly failSaves: boolean;
   readonly onChange: (settings: DemoSettings) => void;
+  readonly onFailSavesChange: (failSaves: boolean) => void;
   readonly onReset: () => void;
   readonly settings: DemoSettings;
   readonly systemTimeZone: string;
@@ -45,7 +49,14 @@ function Setting({
   );
 }
 
-export function SettingsPanel({ onChange, onReset, settings, systemTimeZone }: SettingsPanelProps) {
+export function SettingsPanel({
+  failSaves,
+  onChange,
+  onFailSavesChange,
+  onReset,
+  settings,
+  systemTimeZone,
+}: SettingsPanelProps) {
   const headingId = useId();
 
   return (
@@ -89,6 +100,13 @@ export function SettingsPanel({ onChange, onReset, settings, systemTimeZone }: S
           </SelectItem>
         ))}
       </Setting>
+      <Label className="mt-1 font-normal">
+        <Checkbox
+          checked={failSaves}
+          onCheckedChange={(checked) => onFailSavesChange(checked === true)}
+        />
+        Simulate failing saves
+      </Label>
       <Button className="w-fit" onClick={onReset} size="sm" variant="ghost">
         <RotateCcwIcon />
         Reset demo data

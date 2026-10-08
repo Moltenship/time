@@ -10,15 +10,21 @@ import { BrandMark } from "./components/brand";
 import { EventDialog } from "./components/event-dialog";
 import { EventPopover } from "./components/event-popover";
 import { KeyboardShortcuts } from "./components/keyboard-shortcuts";
+import { Notice, useNotice } from "./components/notice";
 import { SettingsPanel } from "./components/settings-panel";
 import { Sidebar } from "./components/sidebar";
 import { ThemeToggle } from "./components/theme-toggle";
 import { TopBar } from "./components/top-bar";
 import { useDemoEvents } from "./demo-events";
+import { demoEventPolicy, type DemoEventChange } from "./event-changes";
 import { draftForNewEvent, draftFromEvent, type EventDraft } from "./event-draft";
 import { useHiddenCalendars } from "./hidden-calendars";
 import { useDemoSettings } from "./settings";
 import { useCalendarLocation } from "./url-state";
+
+/** How long a simulated save takes, so the pending state is visible. */
+const saveDelayMs = 600;
+const demoPolicies = [demoEventPolicy];
 
 interface OpenEvent {
   readonly anchor: HTMLElement;
@@ -32,7 +38,9 @@ export function App() {
   const { locale, timeZone, weekStartsOn } = settings;
   const today = (useNow() ?? Temporal.Now.instant()).toZonedDateTimeISO(timeZone).toPlainDate();
   const [location, setLocation] = useCalendarLocation(today);
-  const { deleteEvent, events, resetEvents, saveEvent } = useDemoEvents(timeZone);
+  const { applyChange, events, resetEvents, saveEvent } = useDemoEvents(timeZone);
+  const [failSaves, setFailSaves] = useState(false);
+  const [notice, showNotice] = useNotice();
   const [hiddenCalendars, toggleCalendar] = useHiddenCalendars();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [openEvent, setOpenEvent] = useState<OpenEvent | null>(null);
@@ -47,6 +55,20 @@ export function App() {
     [weekStartsOn],
   );
   const shownEvent = events.find(({ id }) => id === openEvent?.eventId);
+
+  // Moves, resizes and deletes arrive here after the calendar has shown them optimistically.
+  // Rejecting rolls the calendar back to the stored events.
+  const persistChange = useCallback(
+    async (change: DemoEventChange) => {
+      await new Promise((resolve) => setTimeout(resolve, saveDelayMs));
+      if (failSaves) {
+        showNotice("Couldn't save the change, so it was undone.");
+        throw new Error("simulated-save-failure");
+      }
+      applyChange(change);
+    },
+    [applyChange, failSaves, showNotice],
+  );
 
   const openCreate = useCallback(() => {
     setSidebarOpen(false);
@@ -75,7 +97,9 @@ export function App() {
       today={today}
     >
       <SettingsPanel
+        failSaves={failSaves}
         onChange={setSettings}
+        onFailSavesChange={setFailSaves}
         onReset={resetEvents}
         settings={settings}
         systemTimeZone={systemTimeZone}
@@ -89,7 +113,9 @@ export function App() {
       events={visibleEvents}
       locale={locale}
       onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
+      onEventChange={persistChange}
       onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
+      policies={demoPolicies}
       timeZone={timeZone}
       view={location.view}
       weekRules={weekRules}
@@ -139,10 +165,6 @@ export function App() {
           event={shownEvent}
           locale={locale}
           onClose={() => setOpenEvent((current) => current && { ...current, eventId: null })}
-          onDelete={(event) => {
-            setOpenEvent(null);
-            deleteEvent(event.id);
-          }}
           onEdit={openEdit}
           timeZone={timeZone}
         />
@@ -156,6 +178,7 @@ export function App() {
           returnFocus={openEvent?.anchor}
           timeZone={timeZone}
         />
+        <Notice text={notice} />
       </DemoCalendar.Frame>
     </DemoCalendar.Root>
   );

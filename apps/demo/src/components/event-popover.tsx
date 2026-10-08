@@ -4,7 +4,7 @@ import { useId, useRef } from "react";
 import { Button } from "@registry/ui/button";
 import { Popover, PopoverAnchor, PopoverClose, PopoverContent } from "@registry/ui/popover";
 
-import type { DemoEvent } from "../calendar";
+import { DemoCalendar, type DemoEvent } from "../calendar";
 import { demoCalendars } from "../calendars";
 import { formatEventWhen } from "../event-format";
 
@@ -15,7 +15,6 @@ export interface EventPopoverProps {
   readonly event: DemoEvent | undefined;
   readonly locale: Intl.LocalesArgument;
   readonly onClose: () => void;
-  readonly onDelete: (event: DemoEvent) => void;
   readonly onEdit: (event: DemoEvent) => void;
   readonly timeZone: string;
 }
@@ -25,11 +24,11 @@ export function EventPopover({
   event,
   locale,
   onClose,
-  onDelete,
   onEdit,
   timeZone,
 }: EventPopoverProps) {
   const titleId = useId();
+  const actions = DemoCalendar.useCalendarActions();
   const handingOffToEditor = useRef(false);
   const calendar = demoCalendars.find(({ id }) => id === event?.calendarId);
 
@@ -71,7 +70,11 @@ export function EventPopover({
             </Button>
             <Button
               aria-label="Delete event"
-              onClick={() => onDelete(event)}
+              onClick={() => {
+                onClose();
+                // Goes through onEventChange, so a failed save brings the event back.
+                void actions.proposeEventChange({ cause: "delete", eventId: event.id });
+              }}
               size="icon-sm"
               variant="ghost"
             >

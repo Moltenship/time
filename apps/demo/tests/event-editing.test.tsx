@@ -22,14 +22,23 @@ const focusTime: DemoEvent = {
   start: Temporal.Instant.from("2026-10-08T10:00:00Z"),
   title: "Focus time",
 };
+const lunch: DemoEvent = {
+  ...focusTime,
+  end: Temporal.Instant.from("2026-10-08T13:30:00Z"),
+  id: "lunch",
+  start: Temporal.Instant.from("2026-10-08T12:30:00Z"),
+  title: "Lunch",
+};
 const container = document.createElement("div");
 document.body.append(container);
 const root = createRoot(container);
 
+let stored = new Map<string, string>();
+
 beforeEach(() => {
   // Node's experimental localStorage global shadows jsdom's, so stub a small one.
-  const stored = new Map([
-    ["moltenship-demo:events", serializeEvents([focusTime])],
+  stored = new Map([
+    ["moltenship-demo:events", serializeEvents([focusTime, lunch])],
     [
       "moltenship-demo:settings",
       JSON.stringify({ locale: "en-US", timeZone: "UTC", weekStartsOn: 7 }),
@@ -63,6 +72,15 @@ afterEach(async () => {
 // Radix restores focus on a zero-delay timer after a layer unmounts.
 const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 20)));
 const view = () => new URLSearchParams(location.search).get("view");
+const eventButton = (id: string) =>
+  container.querySelector<HTMLButtonElement>(`[data-event-id="${id}"]`);
+const pastSaveDelay = () => act(() => new Promise((resolve) => setTimeout(resolve, 700)));
+
+async function deleteFromPopover(id: string) {
+  await act(async () => eventButton(id)?.click());
+  const remove = document.querySelector<HTMLButtonElement>('button[aria-label="Delete event"]');
+  await act(async () => remove?.click());
+}
 
 test("editing from the popover moves focus into the editor and keeps shortcuts out", async () => {
   await act(async () => root.render(<App />));
@@ -94,4 +112,24 @@ test("editing from the popover moves focus into the editor and keeps shortcuts o
   await settle();
   expect(document.querySelector('[role="dialog"]')).toBeNull();
   expect(document.activeElement?.getAttribute("data-event-id")).toBe("focus-time");
+});
+
+test("deletes persist after the save delay and roll back when saves fail", async () => {
+  await act(async () => root.render(<App />));
+  const failSaves = [...container.querySelectorAll('[role="checkbox"]')].find((checkbox) =>
+    checkbox.closest("label")?.textContent?.includes("Simulate failing saves"),
+  );
+
+  await act(async () => failSaves?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await deleteFromPopover("focus-time");
+  expect(eventButton("focus-time")).toBeNull();
+  await pastSaveDelay();
+  expect(eventButton("focus-time")).not.toBeNull();
+  expect(document.querySelector('[role="status"]')?.textContent).toContain("undone");
+
+  await act(async () => failSaves?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  await deleteFromPopover("lunch");
+  await pastSaveDelay();
+  expect(eventButton("lunch")).toBeNull();
+  expect(stored.get("moltenship-demo:events")).not.toContain('"lunch"');
 });
