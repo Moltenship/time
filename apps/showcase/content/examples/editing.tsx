@@ -54,17 +54,21 @@ const timedOnly: CalendarPolicy<Meeting, string, never> = ({ proposed }) =>
 // #region root
 export function EditableCalendar() {
   const [meetings, setMeetings] = useState(initialMeetings);
-  // The newest change to each event, so a slow save can't overwrite a newer edit.
-  const latestChange = useRef(new Map<string, string>());
+  // Number changes as they start, and remember the newest one applied to each event, so a slow
+  // save never replaces a newer saved edit.
+  const nextOrder = useRef(0);
+  const lastApplied = useRef(new Map<string, number>());
 
   return (
     <Calendar.Root
       events={meetings}
       onEventChange={async (change) => {
-        if (change.eventId !== null) latestChange.current.set(change.eventId, change.id);
+        const order = ++nextOrder.current;
         await saveToServer(change);
-        if (change.eventId !== null && latestChange.current.get(change.eventId) !== change.id)
-          return;
+        if (change.eventId !== null) {
+          if ((lastApplied.current.get(change.eventId) ?? 0) > order) return;
+          lastApplied.current.set(change.eventId, order);
+        }
         setMeetings((current) => applyChange(current, change));
       }}
       policies={[timedOnly, snapPolicy({ minutes: 15 }), minimumDurationPolicy({ minutes: 15 })]}

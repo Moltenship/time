@@ -55,10 +55,11 @@ Pending events have `isPending: true` in projections, in `meta.eventSnapshot`, a
 style pending events your own way.
 
 If the same event changes again before the first change finishes saving, the calendar shows the
-newer change. Your handler still receives both, and their saves can finish in either order. The
-example records the newest change for each event in `latestChange` and skips the state update for
-a save that finishes after a newer change started, so an old result never replaces a newer edit.
-Your server needs the same care, for example by rejecting writes that carry an outdated version.
+newer change. Your handler still receives both, and their saves can finish in either order, or one
+can fail. The example numbers each change as it starts. When a save succeeds, it updates the state
+only if no newer change to that event has been applied yet. So a slow save never replaces a newer
+saved edit, and if the newer save fails, the older one that succeeded is still shown. Your server
+needs the same care, for example by rejecting writes that carry an outdated version.
 
 ## Policies
 
