@@ -94,34 +94,31 @@ your app and then own, the same way shadcn/ui works:
   [week and day](/docs/views/week-and-day), [month](/docs/views/month), and
   [agenda](/docs/views/agenda) views.
 
-<Callout type="warn" title="Moving to Base UI">
-  shadcn/ui now sets up Base UI primitives by default, and the registry files are being updated to
-  match. Until that update lands, the copied toolbar and month view don't compile against Base UI
-  primitives. To see the views working in the meantime, open the [live
-  demo](https://moltenship-time-demo.vercel.app).
-</Callout>
-
 There's no `shadcn add` command for these files yet, so copy them by hand:
 
 <Steps>
 <Step>
 
 Set up [shadcn/ui](https://ui.shadcn.com/docs/installation) with Tailwind CSS 4 if your app
-doesn't use it yet:
+doesn't use it yet. The files use shadcn's default primitives, built on
+[Base UI](https://base-ui.com):
 
 ```bash
 npx shadcn@latest init
 ```
 
-Then add the primitives the files import, and the icons if your app doesn't have them yet:
+Then add the primitives the files import:
 
 ```bash
 npx shadcn@latest add button popover select tooltip
-pnpm add lucide-react
 ```
 
-shadcn's tooltip also needs a `TooltipProvider` at the root of your app, as its
-[installation notes](https://ui.shadcn.com/docs/components/tooltip) describe.
+The files also import `cn` and `lucide-react`. `shadcn init` installs both with its default preset;
+if your app doesn't have them, add them with `pnpm add cn lucide-react`.
+
+The toolbar's buttons use shadcn's tooltip, so wrap your app in `TooltipProvider` from
+`@/components/ui/tooltip` once, as shadcn's
+[tooltip instructions](https://ui.shadcn.com/docs/components/tooltip) describe.
 
 </Step>
 <Step>
@@ -133,22 +130,19 @@ such as `components/calendar/calendar-toolbar.tsx` and `styles/calendar-theme.cs
 <Step>
 
 The copied files import each other through `@registry/…`. Change those imports to your own paths.
-In a default shadcn setup they map like this. The last row is there because `@moltenship/calendar`
-already includes the Temporal helpers:
+In a default shadcn setup they map like this:
 
 | Import in the copied file               | Change it to                         |
 | --------------------------------------- | ------------------------------------ |
 | `@registry/ui/button` (and other `ui/`) | `@/components/ui/button`             |
-| `@registry/lib/utils`                   | `@/lib/utils`                        |
 | `@registry/calendar/…`                  | `@/components/calendar/…`            |
 | `@registry/calendar-theme/event-colors` | `@/components/calendar/event-colors` |
-| `@moltenship/calendar-temporal`         | `@moltenship/calendar`               |
 
 </Step>
 <Step>
 
-Import the theme in your global CSS, after the Tailwind and shadcn imports that are already there.
-The path is relative to the CSS file:
+Import the theme in your global CSS, after the Tailwind and shadcn imports that `shadcn init`
+added. The path is relative to the CSS file:
 
 ```css title="index.css"
 @import "tailwindcss";

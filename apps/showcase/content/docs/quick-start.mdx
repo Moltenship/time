@@ -23,9 +23,8 @@ Install `@moltenship/calendar` as described in [Installation](/docs/installation
 
 ### Copy the UI source
 
-The views are source files that you copy into your app. They're built on shadcn/ui, and are being
-updated for its default Base UI primitives; see the note in
-[UI source](/docs/installation#ui-source-optional). Add the primitives they use:
+The views are source files that you copy into your app. They're built on shadcn/ui and its default
+Base UI primitives. Add the primitives they use:
 
 ```bash
 npx shadcn@latest add button popover select tooltip
@@ -73,8 +72,8 @@ Give the frame a height: the views fill it and scroll inside it. The calendar is
 you add an `onEventChange` handler; [Interactions](/docs/interactions) shows how to save dragged and
 resized events.
 
-The toolbar's buttons use shadcn's `Tooltip`, which needs a `TooltipProvider` above it. If your app
-doesn't have one yet, add it once around your app:
+The toolbar's buttons use shadcn's `Tooltip`, which shadcn sets up with a `TooltipProvider` around
+your app. If your app doesn't have one yet, add it once:
 
 ```tsx title="app.tsx"
 import { TooltipProvider } from "@/components/ui/tooltip";
