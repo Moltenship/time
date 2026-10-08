@@ -1,55 +1,97 @@
 ---
 title: Installation
-description: Install the supported facade and configure the React 19 and Temporal runtime boundary.
+description: Requirements, packages, and Temporal setup.
 ---
 
+## Requirements
+
+- **React 19.** React is a peer dependency.
+- **A JavaScript runtime with `Temporal`.** Node.js 26 and later include it. Browser support is
+  still rolling out, so check the
+  [MDN compatibility table](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal#browser_compatibility)
+  for the browsers you support and add a polyfill if needed (see below).
+- **TypeScript 6 or later** with `"lib": ["ESNext"]`, which includes the `Temporal` types.
+
 ## Install
+
+<Callout type="warn" title="Not on npm yet">
+  The packages haven't been published. The commands below are what you'll run after the first
+  release. To try Time now, [run it from source](#run-from-source).
+</Callout>
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
 
 ```bash
 pnpm add @moltenship/calendar react react-dom
 ```
 
-`react` is a peer dependency. The supported facade is a client boundary that can still be imported
-during server rendering; it does not read browser globals at module scope.
+</Tab>
+<Tab value="npm">
 
-## Runtime requirements
-
-Moltenship Time targets modern runtimes with native `Temporal`. Supply a standards-compatible
-polyfill before application code only when a supported runtime does not provide the global.
-
-## Define your records
-
-```tsx
-import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
-
-interface Meeting {
-  id: `meeting-${number}`;
-  roomIds: readonly `room-${number}`[];
-  startsAt: Temporal.Instant;
-  endsAt: Temporal.Instant;
-  title: string;
-}
-
-interface Room {
-  id: `room-${number}`;
-}
-
-const eventAdapter = defineEventAdapter<Meeting>()({
-  getId: (event) => event.id,
-  getInterval: (event) => ({
-    kind: "timed",
-    start: event.startsAt,
-    end: event.endsAt,
-  }),
-  getResourceIds: (event) => event.roomIds,
-  getTitle: (event) => event.title,
-});
-
-export const Calendar = createCalendar<Meeting, Room>({ eventAdapter });
+```bash
+npm install @moltenship/calendar react react-dom
 ```
 
-Use immutable event arrays. Snapshot caches use array identity to avoid repeated normalization and
-index construction.
+</Tab>
+<Tab value="yarn">
 
-Next: [understand the architecture](/docs/architecture) or open the
-[`@moltenship/calendar` package guide](/docs/packages/calendar).
+```bash
+yarn add @moltenship/calendar react react-dom
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar react react-dom
+```
+
+</Tab>
+</Tabs>
+
+`@moltenship/calendar` is the package you import in your app. It includes the React components and
+the event engine. If you write your own views, you'll also want `@moltenship/calendar-temporal` for
+date ranges and time zone helpers. See [How it works](/docs/concepts/how-it-works) for what each
+package does.
+
+## Temporal
+
+Time uses the global `Temporal` object and never bundles a polyfill. In a runtime without
+`Temporal`, load one before any code that imports the calendar:
+
+```ts title="main.ts"
+import "temporal-polyfill/global";
+```
+
+[`temporal-polyfill`](https://www.npmjs.com/package/temporal-polyfill) is one option. Any polyfill
+that defines `globalThis.Temporal` works.
+
+## TypeScript
+
+Make sure your `tsconfig.json` includes the `ESNext` library so `Temporal` is typed:
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "lib": ["DOM", "DOM.Iterable", "ESNext"]
+  }
+}
+```
+
+## Run from source
+
+Until the first release, you can run Time and this documentation site from the repository. You need
+Node.js 26 and the [Vite+ CLI](https://viteplus.dev/guide/) (`vp`).
+
+```bash
+git clone https://github.com/Moltenship/time.git
+cd time
+vp install
+vp run dev
+```
+
+`vp run dev` starts this site locally. The examples on these pages are real files in
+`apps/showcase/content/examples`, type-checked against the current packages.
+
+Next, build a calendar in the [Quick start](/docs/quick-start).

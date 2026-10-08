@@ -1,0 +1,151 @@
+---
+title: Temporal helpers
+description: Ranges, date and time grids, rounding, day boundaries, and DST from @moltenship/calendar-temporal.
+---
+
+`@moltenship/calendar-temporal` has the date math that views need. It's a separate package with no
+dependencies and no React. It isn't included in `@moltenship/calendar`, so import it directly:
+
+```ts
+import { plainDateInterval, zonedDayRange } from "@moltenship/calendar-temporal";
+```
+
+Every function takes and returns native Temporal values. None of them read the clock or the host
+time zone.
+
+## Ranges
+
+A range has a `start` and an `end`. The start is included and the end is excluded, and the start
+must come before the end.
+
+```ts
+import { plainDateInterval, plainDateIntervalContains } from "@moltenship/calendar-temporal";
+
+const october = plainDateInterval(
+  Temporal.PlainDate.from("2026-10-01"),
+  Temporal.PlainDate.from("2026-11-01"),
+);
+
+plainDateIntervalContains(october, Temporal.PlainDate.from("2026-10-31")); // true
+plainDateIntervalContains(october, Temporal.PlainDate.from("2026-11-01")); // false
+```
+
+`instantInterval`, `plainDateInterval`, and `plainDateTimeInterval` create frozen ranges and throw
+`InvalidHalfOpenIntervalError` when the start isn't before the end. To get a result object instead
+of an error, use `validateHalfOpenInterval`.
+
+There's one function per operation and type:
+
+| Operation        | `Temporal.Instant`                | `Temporal.PlainDate`                | `Temporal.PlainDateTime`                |
+| ---------------- | --------------------------------- | ----------------------------------- | --------------------------------------- |
+| Contains a point | `instantIntervalContains`         | `plainDateIntervalContains`         | `plainDateTimeIntervalContains`         |
+| Contains a range | `instantIntervalContainsInterval` | `plainDateIntervalContainsInterval` | `plainDateTimeIntervalContainsInterval` |
+| Overlaps         | `instantIntervalsIntersect`       | `plainDateIntervalsIntersect`       | `plainDateTimeIntervalsIntersect`       |
+| Overlapping part | `intersectInstantIntervals`       | `intersectPlainDateIntervals`       | `intersectPlainDateTimeIntervals`       |
+| Limit to bounds  | `clampInstantInterval`            | `clampPlainDateInterval`            | `clampPlainDateTimeInterval`            |
+| Split at a point | `splitInstantInterval`            | `splitPlainDateInterval`            | `splitPlainDateTimeInterval`            |
+
+Ranges that only touch don't overlap. The overlapping part and the clamped range are `null` when
+there's no overlap. Splitting returns two ranges when the point is strictly inside, and the original
+range otherwise.
+
+`compareInstants`, `comparePlainDates`, `comparePlainDateTimes`, and `comparePlainTimes` are the
+matching sort functions.
+
+## Days, weeks, and months
+
+```ts
+import { iteratePlainDates, monthGrid, weekRange } from "@moltenship/calendar-temporal";
+
+const date = Temporal.PlainDate.from("2026-10-08");
+
+weekRange(date, { weekStartsOn: 1 }); // 2026-10-05 to 2026-10-12, Monday start
+
+const grid = monthGrid(date, { weekStartsOn: 1 });
+grid.weeks.length; // 5 weeks shown for October 2026
+
+for (const day of iteratePlainDates(grid.range)) {
+  // every date in the visible grid, end excluded
+}
+```
+
+- `weekRange(date, { weekStartsOn })` returns the seven-day range containing `date`. `weekStartsOn`
+  is 1 (Monday) to 7 (Sunday).
+- `monthGrid(date, options)` returns the month's first day (`month`), the full visible `range`, and
+  one range per week (`weeks`). It has four to six weeks; pass `fixedWeeks: true` for always six.
+- `iteratePlainDates(range, { stepDays })` and `iterateInstants(range, { step })` step through a
+  range lazily. They stop after 10,000 values unless you raise `limit`.
+
+## Rounding and snapping
+
+```ts
+import { snapPlainTime } from "@moltenship/calendar-temporal";
+
+snapPlainTime(Temporal.PlainTime.from("10:07:30"), {
+  increment: 15,
+  mode: "nearest",
+  smallestUnit: "minute",
+}); // 10:15:00
+```
+
+`snapPlainTime` and `snapInstant` round to a grid with `mode` set to `"nearest"`, `"floor"`, or
+`"ceil"`. `roundPlainTime` and `roundInstant` take Temporal's full set of rounding modes. Time-of-day
+grids start at midnight, and instant grids at the Unix epoch.
+
+## Days in a time zone
+
+```ts
+import { zonedDayRange } from "@moltenship/calendar-temporal";
+
+const day = zonedDayRange(Temporal.PlainDate.from("2026-03-29"), "Europe/Berlin");
+
+day.kind; // "available"
+day.duration.toString(); // "PT23H": the clocks go forward that night
+```
+
+- `zonedDayRange(date, timeZone)` returns the real start and end of a date in a zone. Its
+  `interval` is the instant range to query with. In the rare case where a time zone skips a whole
+  date, `kind` is `"skipped"` and `interval` is `null`.
+- `splitInstantRangeByZonedDay(range, timeZone)` cuts an instant range into one piece per day, for
+  events that cross midnight. Each piece says whether the event continues before or after that day.
+- `zonedDayTransitions(date, timeZone)` lists the offset changes on a date, with whether each is a
+  gap or a fold and which wall-clock times it affects.
+
+## Wall-clock times
+
+```ts
+import { resolveZonedWallTime } from "@moltenship/calendar-temporal";
+
+const result = resolveZonedWallTime(Temporal.PlainDateTime.from("2026-03-29T02:15"), {
+  timeZone: "Europe/Berlin",
+  disambiguation: "compatible",
+});
+
+result.status; // "resolved"
+result.kind; // "gap": 02:15 doesn't exist that day
+result.adjustment?.resolvedWallTime.toString(); // "2026-03-29T03:15:00"
+```
+
+`resolveZonedWallTime(wallTime, { timeZone, disambiguation })` turns a wall-clock time into an
+instant and tells you what happened: `kind` is `"unique"`, `"gap"`, or `"fold"`. For a gap,
+`adjustment` says how far the time moved; with `disambiguation: "reject"`, `status` is `"rejected"`
+instead. For a fold, `occurrences` has both instants. `projectInstantToZonedTime(instant, timeZone)`
+goes the other way.
+
+## Time slots
+
+`slotsInZonedDay(date, { timeZone, disambiguation, slotDuration })` splits a day into wall-clock
+slots, such as 30-minute rows for a day view. Slots in a skipped hour have no instant. Slots in a
+repeated hour have two. A slot that a DST change cuts through is split at the change. It stops after
+10,000 slots unless you raise `limit`.
+
+## Keys
+
+`instantKey`, `plainDateKey`, `plainDateTimeKey`, `zonedDayKey`, and `zonedWallTimeKey` return
+strings for use as React keys or cache keys. Two moments in a repeated hour share a wall-clock key,
+so key those by `instantKey`.
+
+## Clocks
+
+`createFixedClock(instant)` and `createSystemClock()` return objects for `Root`'s `clock` prop. A fixed
+clock always returns the same instant, which helps in tests.

@@ -1,0 +1,93 @@
+---
+title: Performance
+description: Keep re-renders and event processing to a minimum.
+---
+
+Time does most of its work when it reads your events. These habits keep that work to a minimum.
+
+## Keep the events array stable
+
+`Root` builds a snapshot from your events array. While you pass the same array object, Time reuses
+that snapshot and its cached query results. A new array, even with the same contents, means a new
+snapshot: Time walks the array again and queries start with an empty cache.
+
+```tsx
+// Avoid: a new array on every render.
+<Calendar.Root events={meetings.filter((meeting) => !meeting.cancelled)} ... />;
+
+// Prefer: a new array only when `meetings` changes.
+const visible = useMemo(() => meetings.filter((meeting) => !meeting.cancelled), [meetings]);
+
+<Calendar.Root events={visible} ... />;
+```
+
+Data libraries such as TanStack Query and SWR usually return the same array until the data changes,
+so you can pass their result straight through.
+
+## Add a revision to your adapter
+
+Records that are the same objects as last time aren't read through the adapter again. But when you
+refetch, your data layer usually creates new objects for every record, even unchanged ones.
+`getRevision` lets Time skip those too. Return anything that changes whenever the record changes, such as
+an `updatedAt` timestamp or a version number:
+
+```ts
+const bookingAdapter = defineEventAdapter<Booking>()({
+  getId: (booking) => booking.id,
+  getTitle: (booking) => booking.summary,
+  getInterval: (booking) => ({ kind: "timed", start: booking.startsAt, end: booking.endsAt }),
+  getResourceIds: (booking) => booking.roomIds,
+  getRevision: (booking) => booking.updatedAt,
+});
+```
+
+Records with the same ID and revision as last time reuse their earlier result. The revision must
+change whenever anything the adapter reads changes; otherwise Time keeps showing the old title or
+time.
+
+## Keep other props stable
+
+`weekRules`, `views`, `now`, `clock`, and the event adapter are compared by identity. Defining them inside a
+component creates new objects on each render, which makes Time rebuild the work that depends on them.
+Define them at module scope, as the Quick start does, or wrap them in `useMemo`.
+
+## Subscribe to what you use
+
+`useCalendarState()` and `useCalendar()` re-render their component whenever any state changes. For a
+component that needs one value, use a selector:
+
+```tsx
+const selectView = (state: CalendarPublicState) => state.view;
+
+function ViewName() {
+  const view = Calendar.useCalendarSelector(selectView);
+  return <span>{view}</span>;
+}
+```
+
+The component re-renders only when the selected value changes. Define the selector outside the
+component so it keeps the same identity. If your selector builds a new object each time, pass
+`isEqual` so equal results don't count as changes:
+
+```ts
+const selectPosition = (state: CalendarPublicState) => ({
+  view: state.view,
+  anchorDate: state.anchorDate,
+});
+
+const position = Calendar.useCalendarSelector(selectPosition, {
+  isEqual: (a, b) => a.view === b.view && a.anchorDate.equals(b.anchorDate),
+});
+```
+
+## Query instead of filtering
+
+Inside a view, ask the snapshot for a range instead of looping over every event:
+
+```ts
+const day = zonedDayRange(date, timeZone);
+const meetings = day.interval ? calendar.meta.eventSnapshot.queryTimed(day.interval) : [];
+```
+
+Queries use an interval index, so they don't scan every event. Each snapshot remembers the results of its last 128 distinct queries, so asking again for the same
+range returns the same array. The [snapshot reference](/docs/api/events#snapshots) lists every query.

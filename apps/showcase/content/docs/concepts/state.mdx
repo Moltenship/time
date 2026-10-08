@@ -1,0 +1,92 @@
+---
+title: State
+description: Let the calendar own its state, or control it from your app, one value at a time.
+---
+
+`Root` keeps six values:
+
+| Value                 | Type                   | Meaning                                     |
+| --------------------- | ---------------------- | ------------------------------------------- |
+| `view`                | one of your view names | The active view                             |
+| `anchorDate`          | `Temporal.PlainDate`   | The date the visible range is built around  |
+| `timeZone`            | `string` (IANA name)   | The zone timed events are shown in          |
+| `selection`           | your type, or `null`   | What the user selected                      |
+| `focus`               | your type, or `null`   | What has keyboard focus inside the calendar |
+| `expandedResourceIds` | array of resource IDs  | Which resource groups are expanded          |
+
+Each value can be **uncontrolled** (the calendar owns it) or **controlled** (your app owns it),
+independently of the others.
+
+## Uncontrolled
+
+Pass a `default` prop and the calendar manages the value from then on. Defaults are read once, when
+`Root` mounts.
+
+```tsx
+<Calendar.Root
+  events={meetings}
+  defaultView="day"
+  defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+  defaultTimeZone="Europe/Berlin"
+  locale="en-US"
+  weekRules={weekRules}
+>
+  <Calendar.ActiveView />
+</Calendar.Root>
+```
+
+## Controlled
+
+Pass the value and a change handler. The calendar never changes a controlled value itself. When the
+user clicks Next, it calls your handler with the new value, and you decide whether to store it.
+
+This example controls the date so a date input outside the calendar stays in sync. It uses the
+`Calendar` from the [Quick start](/docs/quick-start).
+
+<include meta='title="controlled-state.tsx"'>../../examples/controlled-state.tsx#app</include>
+
+The props follow one pattern:
+
+| Uncontrolled                 | Controlled            | Handler                       |
+| ---------------------------- | --------------------- | ----------------------------- |
+| `defaultView`                | `view`                | `onViewChange`                |
+| `defaultAnchorDate`          | `anchorDate`          | `onAnchorDateChange`          |
+| `defaultTimeZone`            | `timeZone`            | `onTimeZoneChange`            |
+| `defaultSelection`           | `selection`           | `onSelectionChange`           |
+| `defaultFocus`               | `focus`               | `onFocusChange`               |
+| `defaultExpandedResourceIds` | `expandedResourceIds` | `onExpandedResourceIdsChange` |
+
+A few rules:
+
+- `undefined` means uncontrolled. To control `selection` or `focus` with nothing selected, pass
+  `null`.
+- Handlers also run for uncontrolled values, after the calendar updates them. The second argument
+  tells you the `previous` value and whether the value is `controlled`.
+- `Root` needs a date, a time zone, and a view on its first render. The view can come from
+  `defaultView`, `view`, or the first registered view. If one is missing, `Root` throws
+  `calendar-root-requires-anchor-date`, `calendar-root-requires-time-zone`, or
+  `calendar-root-requires-view`.
+
+## Reading and changing state
+
+Any component inside `Root` can use the hooks on your calendar:
+
+- `useCalendarState()` returns all six values.
+- `useCalendarSelector(selector)` returns one derived value and re-renders only when it changes.
+- `useCalendarActions()` returns `setView`, `setAnchorDate`, `setTimeZone`, `setSelection`,
+  `setFocus`, `setExpandedResourceIds`, `navigateNext`, `navigatePrevious`, and `navigateToday`.
+- `useCalendarMeta()` returns everything else: events, the event snapshot, the active view,
+  diagnostics, and element IDs and refs.
+- `useCalendar()` returns `state`, `actions`, and `meta` together.
+
+<include meta='title="controlled-state.tsx"'>../../examples/controlled-state.tsx#hooks</include>
+
+Define selectors outside the component, as above, so they keep the same identity between renders.
+
+## Selection and focus types
+
+You choose the shape of `selection` and `focus`. Pass their types as the fourth and fifth type
+arguments of `createCalendar`, after the event, resource, and view-name types. Time stores the values
+as they are.
+
+<include meta='title="selection.tsx"'>../../examples/selection.tsx#selection</include>

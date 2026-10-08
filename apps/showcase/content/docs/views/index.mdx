@@ -1,0 +1,74 @@
+---
+title: Overview
+description: How views work, how to switch between them, and which ones exist today.
+---
+
+A view decides which dates are visible and how to draw them. A calendar can have several views, for
+example a day view and a three-day view. The `view` state names the active one, and
+`<Calendar.ActiveView />` renders it.
+
+<Callout title="Built-in views are on the way">
+  Month, week, day, and agenda views are in development and will get their own pages here. Until
+  then, write your own. The [Quick start](/docs/quick-start) has a complete day view, and [Custom
+  views](/docs/views/custom-views) covers the details.
+</Callout>
+
+## Registering views
+
+Pass views to `createCalendar`. The first one is active by default unless you set `defaultView` or
+`view` on `Root`.
+
+```tsx
+const Calendar = createCalendar({ eventAdapter, views: [dayView, threeDayView] });
+```
+
+`Root` also takes a `views` prop. Those views are added after the ones from `createCalendar`, for
+that `Root` only. Define the array outside your component so it isn't rebuilt on every render. If
+two views share a name, the last one wins and a `duplicate-view-name` warning appears in
+`meta.diagnostics`.
+
+## Switching views
+
+`ViewSwitcher` renders a `<select>` with one option per registered view:
+
+```tsx
+const labels: Record<string, string> = { day: "Day", days: "3 days" };
+
+<Calendar.ViewSwitcher getViewLabel={(name) => labels[name] ?? name} />;
+```
+
+To build your own control, call `setView` from `useCalendarActions()`.
+
+The active view also drives `Title`, `PreviousTrigger`, and `NextTrigger`. The title comes from the
+view's `getTitle`, and the buttons move by the view's own step: one day in a day view, three days in
+a three-day view.
+
+If the active name doesn't match a registered view, `ActiveView` renders its `fallback` prop and
+`meta.diagnostics` includes an `unregistered-active-view` error.
+
+## Rendering a specific view
+
+`CustomView` renders the view you give it, whatever the active view is. Use it to show a second view
+next to the main one:
+
+```tsx
+<Calendar.CustomView view={dayView} />
+```
+
+## Capabilities
+
+Views can declare capabilities, which are plain strings. Your components can then check for a
+feature instead of comparing view names:
+
+```tsx
+const meta = Calendar.useCalendarMeta();
+
+if (meta.capabilities.has("view:today")) {
+  // A `now` or `clock` was passed to Root, so "today" is known.
+}
+```
+
+Time adds these on its own: `calendar:state`, `calendar:events`, `calendar:resources`, and
+`calendar:diagnostics` always; `view:active` and `view:navigate` while a registered view is active;
+and `view:today` when `Root` has `now` or `clock`. Add your own through the `capabilities` field of a
+view or the `capabilities` option of `createCalendar`.

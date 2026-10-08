@@ -1,0 +1,236 @@
+---
+title: Custom views
+description: Write a view as a plain object, or split it into a typed strategy and a renderer.
+---
+
+There are two ways to write a view. Start with a plain object. Move to `defineCalendarView` when you
+want typed options, or logic you can test without React.
+
+## A view object
+
+The [Quick start](/docs/quick-start) day view is a plain object typed as `CalendarViewRegistration`.
+It has five fields:
+
+<TypeTable
+  type={{
+    name: {
+      type: "string",
+      description: (
+        <>
+          Identifies the view in state, <code>setView</code>, and <code>ViewSwitcher</code>.
+        </>
+      ),
+      required: true,
+    },
+    getTitle: {
+      type: "(anchor: Temporal.PlainDate, environment: CalendarEnvironment) => string",
+      description: (
+        <>
+          Text for <code>{"<Calendar.Title />"}</code>. <code>environment</code> holds the locale
+          and time zone.
+        </>
+      ),
+      required: true,
+    },
+    navigate: {
+      type: "(anchor: Temporal.PlainDate, direction: -1 | 1, environment: CalendarEnvironment) => Temporal.PlainDate",
+      description: "The new anchor date for the previous (-1) and next (1) buttons.",
+      required: true,
+    },
+    render: {
+      type: "(calendar: CalendarContextValue) => ReactNode",
+      description: (
+        <>
+          Draws the view. Receives the same <code>&#123; state, actions, meta &#125;</code> as{" "}
+          <code>useCalendar()</code>.
+        </>
+      ),
+      required: true,
+    },
+    capabilities: {
+      type: "readonly string[]",
+      description: (
+        <>
+          Feature flags this view adds while active. Use <code>[]</code> for none.
+        </>
+      ),
+      required: true,
+    },
+  }}
+/>
+
+`render` is a plain function, not a component, so it can't call hooks. Return a component from it,
+as the Quick start does with `<DayList calendar={calendar} />`, and use hooks there.
+
+## defineCalendarView
+
+`defineCalendarView` splits a view in two:
+
+- a **strategy**: plain functions that compute the visible range, the title, and navigation, with
+  no React involved;
+- a **Renderer**: a React component that receives the calendar, the view's options, and the
+  strategy.
+
+This three-day view shows how many meetings fall on each visible day. It uses
+`@moltenship/calendar-temporal` to build date ranges and the real start and end of each day.
+
+```tsx title="three-day-view.tsx"
+import {
+  createCalendar,
+  defineCalendarView,
+  type CalendarViewStrategy,
+} from "@moltenship/calendar";
+import { plainDateInterval, zonedDayRange } from "@moltenship/calendar-temporal";
+
+interface DaysOptions {
+  readonly days: number;
+}
+
+const daysStrategy = {
+  name: "days",
+  getRange: (anchor, _environment, options) =>
+    plainDateInterval(anchor, anchor.add({ days: options.days })),
+  navigate: (anchor, direction, _environment, options) =>
+    anchor.add({ days: direction * options.days }),
+  getTitle: (range, environment) =>
+    `${range.start.toLocaleString(environment.locale, { dateStyle: "medium" })} – ${range.end
+      .subtract({ days: 1 })
+      .toLocaleString(environment.locale, { dateStyle: "medium" })}`,
+  project: (input: undefined) => input,
+  getSpatialNavigation: (input: undefined) => input,
+  getInteractionGeometry: (input: undefined) => input,
+} satisfies CalendarViewStrategy<
+  "days",
+  DaysOptions,
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  undefined,
+  undefined
+>;
+
+const threeDayView = defineCalendarView<Meeting, never>()({
+  strategy: daysStrategy,
+  defaultOptions: { days: 3 },
+  Renderer({ calendar, options, strategy }) {
+    const { anchorDate, timeZone } = calendar.state;
+    const range = strategy.getRange(anchorDate, calendar.meta.environment, options);
+
+    return (
+      <ol>
+        {Array.from({ length: options.days }, (_, index) => {
+          const date = range.start.add({ days: index });
+          const day = zonedDayRange(date, timeZone);
+          const count = day.interval
+            ? calendar.meta.eventSnapshot.queryTimed(day.interval).length
+            : 0;
+
+          return (
+            <li key={date.toString()}>
+              {date.toString()}: {count} meetings
+            </li>
+          );
+        })}
+      </ol>
+    );
+  },
+});
+
+export const Calendar = createCalendar({ eventAdapter, views: [threeDayView] });
+```
+
+`Meeting` and `eventAdapter` are the ones from the Quick start. For October 8, 2026, the title reads
+"Oct 8, 2026 – Oct 10, 2026".
+
+### Strategy fields
+
+<TypeTable
+  type={{
+    name: { type: "string literal", description: "The view name.", required: true },
+    getRange: {
+      type: "(anchor, environment, options) => PlainDateInterval",
+      description: (
+        <>
+          The visible dates, end exclusive. Build it with <code>plainDateInterval</code>.
+        </>
+      ),
+      required: true,
+    },
+    navigate: {
+      type: "(anchor, direction, environment, options) => Temporal.PlainDate",
+      description: "The anchor date after moving one step back (-1) or forward (1).",
+      required: true,
+    },
+    getTitle: {
+      type: "(range, environment, options) => string",
+      description: "The title for a visible range.",
+      required: true,
+    },
+    project: {
+      type: "(input) => output",
+      description: "Not called by Time yet. Return the input if you don't need it.",
+      required: true,
+    },
+    getSpatialNavigation: {
+      type: "(input) => output",
+      description: "Not called by Time yet. Return the input if you don't need it.",
+      required: true,
+    },
+    getInteractionGeometry: {
+      type: "(input) => output",
+      description: "Not called by Time yet. Return the input if you don't need it.",
+      required: true,
+    },
+  }}
+/>
+
+Time calls `getRange`, `getTitle`, and `navigate` with the view's `defaultOptions`. The last three
+fields are required by the type but unused today, which is why the example returns its input. Your
+Renderer can still call `strategy.project(...)` itself.
+
+### Renderer props
+
+| Prop       | Contents                                                       |
+| ---------- | -------------------------------------------------------------- |
+| `calendar` | `{ state, actions, meta }`, as from `useCalendar()`            |
+| `options`  | The view's `defaultOptions`, typed                             |
+| `strategy` | The strategy, so the Renderer can reuse `getRange` and friends |
+
+`Renderer` is a real component, so it can use hooks.
+
+### Views that switch to other views
+
+A view made with `defineCalendarView` doesn't know which other views exist, so its Renderer can't
+call `setView`. If a view needs to switch to a sibling, for example a month view that opens a day
+when clicked, create the calendar first with all view names, then define its views with
+`Calendar.defineView`. It takes the same fields, and the Renderer gets `setView` typed to every view
+name:
+
+```tsx
+const Calendar = createCalendar<Meeting, never, "days" | "day">({ eventAdapter });
+
+const threeDayView = Calendar.defineView({
+  strategy: daysStrategy,
+  defaultOptions: { days: 3 },
+  Renderer({ calendar }) {
+    return (
+      <button type="button" onClick={() => calendar.actions.setView("day")}>
+        Open day view
+      </button>
+    );
+  },
+});
+
+const dayView = Calendar.defineView({
+  strategy: { ...daysStrategy, name: "day" },
+  defaultOptions: { days: 1 },
+  Renderer({ calendar }) {
+    return <p>{calendar.state.anchorDate.toString()}</p>;
+  },
+});
+
+const views = [threeDayView, dayView];
+```
+
+Pass them to `Root` with `<Calendar.Root views={views} ...>`.

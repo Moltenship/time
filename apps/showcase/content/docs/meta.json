@@ -1,4 +1,4 @@
 {
   "title": "Moltenship Time",
-  "pages": ["index", "installation", "architecture", "packages", "api"]
+  "pages": ["index", "installation", "quick-start", "concepts", "views", "guides", "api"]
 }

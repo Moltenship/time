@@ -1,0 +1,122 @@
+---
+title: Time and time zones
+description: Timed, all-day, and floating events, exclusive end times, and daylight saving time.
+---
+
+Time uses the
+[Temporal API](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal)
+for every date and time. There are no `Date` objects or millisecond timestamps in the API, so a
+date never shifts by a day because of a hidden time zone conversion.
+
+## Three kinds of events
+
+```ts
+// A call at 15:00 UTC. Shown at 17:00 in Berlin and 11:00 in New York.
+const call = {
+  kind: "timed",
+  start: Temporal.Instant.from("2026-10-08T15:00:00Z"),
+  end: Temporal.Instant.from("2026-10-08T16:00:00Z"),
+};
+
+// A public holiday. October 3 in every time zone.
+const holiday = {
+  kind: "all-day",
+  start: Temporal.PlainDate.from("2026-10-03"),
+  end: Temporal.PlainDate.from("2026-10-04"),
+};
+
+// Gym at 07:00, in whatever time zone you're in that day.
+const gym = {
+  kind: "floating",
+  start: Temporal.PlainDateTime.from("2026-10-08T07:00"),
+  end: Temporal.PlainDateTime.from("2026-10-08T08:00"),
+};
+```
+
+- **Timed** events happen at an exact moment. Time converts them to the calendar's time zone for
+  display.
+- **All-day** events cover whole dates and ignore time zones.
+- **Floating** events have a wall-clock time but no time zone. They show at the same clock time
+  whichever zone the calendar uses.
+
+A timed range can also carry `sourceTimeZone`, the zone the event was created in. Time keeps it on
+the event for your views to use; display still uses the calendar's zone.
+
+## End times are exclusive
+
+Every range includes its start and excludes its end. This is often written `[start, end)`.
+
+- A 9:00–10:00 meeting and a 10:00–11:00 meeting don't overlap.
+- A one-day all-day event on October 3 ends on October 4.
+- An all-day event covering October 3 and 4 ends on October 5.
+
+The start must be strictly before the end. Zero-length and reversed ranges are
+[reported as invalid](/docs/concepts/events#invalid-records).
+
+## The calendar's time zone
+
+`Root` takes an IANA time zone name, either as `defaultTimeZone` or as a controlled `timeZone`. Time
+doesn't read the browser's or the server's zone. You choose it, typically from user settings.
+
+```tsx
+const actions = Calendar.useCalendarActions();
+
+actions.setTimeZone("America/New_York");
+```
+
+Changing the zone moves timed events to their new local times. All-day and floating events stay
+where they are.
+
+To use the visitor's own zone, read `Temporal.Now.timeZoneId()` in the browser. If you render on the
+server, store the zone with the user or pass it from the client after hydration, so the server and
+the browser render the same thing. See [Next.js and server rendering](/docs/guides/nextjs).
+
+## Daylight saving time
+
+Not every day has 24 hours. In Berlin, March 29, 2026 has 23 hours and October 25, 2026 has 25:
+
+```ts
+Temporal.PlainDate.from("2026-03-29").toZonedDateTime("Europe/Berlin").hoursInDay; // 23
+Temporal.PlainDate.from("2026-10-25").toZonedDateTime("Europe/Berlin").hoursInDay; // 25
+```
+
+So some wall-clock times never happen (02:30 on March 29) and some happen twice (02:30 on
+October 25). The `disambiguation` prop on `Root` decides which moment such a time means:
+
+| Value                    | Skipped time (gap)       | Repeated time (fold)  |
+| ------------------------ | ------------------------ | --------------------- |
+| `"compatible"` (default) | Moves later by the gap   | The earlier one       |
+| `"earlier"`              | Moves earlier by the gap | The earlier one       |
+| `"later"`                | Moves later by the gap   | The later one         |
+| `"reject"`               | Throws a `RangeError`    | Throws a `RangeError` |
+
+```ts
+Temporal.PlainDateTime.from("2026-03-29T02:30")
+  .toZonedDateTime("Europe/Berlin", { disambiguation: "compatible" })
+  .toString(); // "2026-03-29T03:30:00+02:00[Europe/Berlin]"
+```
+
+Views read the setting from `meta.environment.disambiguation`. When you build a view,
+`@moltenship/calendar-temporal` has helpers that already account for these days:
+
+- `zonedDayRange(date, timeZone)` returns the real start and end of a day, 23 or 25 hours long when
+  needed.
+- `slotsInZonedDay(date, options)` splits a day into time slots and marks skipped and repeated hours.
+- `resolveZonedWallTime(wallTime, { timeZone, disambiguation })` tells you how a wall-clock time
+  resolved, including how far it moved.
+
+See the [Temporal helpers reference](/docs/api/temporal).
+
+## The current time
+
+Time never reads the clock on its own. To enable the Today button and anything else that needs the
+current time, pass one of these to `Root`:
+
+- `now`: a fixed `Temporal.Instant`. Use this when rendering on the server, so the server and the
+  browser agree.
+- `clock`: an object with an `instant()` method, for a value that keeps moving. Define it once at
+  module scope:
+
+```ts
+const systemClock = { instant: () => Temporal.Now.instant() };
+```

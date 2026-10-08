@@ -1,39 +1,190 @@
 ---
 title: Events and snapshots
-description: Adapt application records once, then query immutable normalized snapshots by time and resource.
+description: Adapters, event ranges, validation, snapshots, and queries.
 ---
+
+Exported from `@moltenship/calendar` and from `@moltenship/calendar-core`.
 
 ## Adapter
 
-`defineEventAdapter<TEvent>()` preserves the concrete application record type while mapping IDs,
-titles, intervals, resources, and optional revisions into canonical engine contracts.
+```ts
+const eventAdapter = defineEventAdapter<TEvent>()({ getId, getTitle, getInterval, getResourceIds });
+```
 
-Canonical intervals are discriminated by `kind`:
+`defineEventAdapter` returns your adapter unchanged. The two calls let TypeScript fix `TEvent` first
+and then infer the ID types from `getId` and `getResourceIds`.
 
-- `timed` uses `Temporal.Instant` boundaries;
-- `all-day` uses `Temporal.PlainDate` boundaries;
-- `floating` uses `Temporal.PlainDateTime` boundaries.
+<TypeTable
+  type={{
+    getId: {
+      type: "(event) => string | number",
+      description: "A unique ID: a non-empty string or a finite number.",
+      required: true,
+    },
+    getTitle: { type: "(event) => string", description: "The display title.", required: true },
+    getInterval: {
+      type: "(event) => CalendarEventInterval",
+      description: (
+        <>
+          When the event happens. See <a href="#ranges">ranges</a>.
+        </>
+      ),
+      required: true,
+    },
+    getResourceIds: {
+      type: "(event) => readonly (string | number)[]",
+      description: (
+        <>
+          The resources the event belongs to. Return <code>[]</code> for none.
+        </>
+      ),
+      required: true,
+    },
+    getRevision: {
+      type: "(event) => string | number",
+      description:
+        "Changes whenever the record changes. Lets Time reuse work for unchanged records after a refetch.",
+    },
+    isReadOnly: {
+      type: "(event) => boolean",
+      description: (
+        <>
+          Marks events users can't change. Exposed as <code>isReadOnly</code> on normalized events.
+        </>
+      ),
+      default: "false",
+    },
+  }}
+/>
 
-Every interval is half open: the start is included and the end is excluded.
+`createCanonicalEventAdapter()` returns an adapter for records already in Time's `CalendarEvent`
+shape (`id`, `title`, `kind`, `start`, `end`, optional `resourceIds`, and `data`).
 
-## Snapshot cache
+## Ranges
+
+`getInterval` returns one of three shapes. In every one, `start` is included and `end` is excluded,
+and `start` must come before `end`.
+
+```ts
+type CalendarEventInterval =
+  | { kind: "timed"; start: Temporal.Instant; end: Temporal.Instant; sourceTimeZone?: string }
+  | { kind: "all-day"; start: Temporal.PlainDate; end: Temporal.PlainDate }
+  | { kind: "floating"; start: Temporal.PlainDateTime; end: Temporal.PlainDateTime };
+```
+
+See [Time and time zones](/docs/concepts/time) for when to use each.
+
+## Validation helpers
+
+These check values before they reach the calendar. They return a result instead of throwing.
+
+```ts
+import { isEventId, validateCalendarEvent } from "@moltenship/calendar";
+
+isEventId("meeting-1"); // true
+
+const result = validateCalendarEvent({
+  id: "meeting-1",
+  title: "Standup",
+  kind: "timed",
+  start: Temporal.Instant.from("2026-10-08T07:15:00Z"),
+  end: Temporal.Instant.from("2026-10-08T07:00:00Z"),
+  data: null,
+});
+
+result.valid; // false
+result.valid || result.issues; // [{ code: "start-not-before-end", kind: "timed" }]
+```
+
+| Function                                           | Checks                                             |
+| -------------------------------------------------- | -------------------------------------------------- |
+| `isEventId(value)`, `isResourceId(value)`          | A non-empty string or a finite number              |
+| `validateCalendarEvent(event)`                     | A `CalendarEvent`: its ID, resource IDs, and range |
+| `validateCalendarEventInterval(interval, compare)` | A range, using the comparison functions you pass   |
+
+## Snapshots
+
+A snapshot is a frozen, indexed copy of your events. `Root` builds one for you and exposes it as
+`meta.eventSnapshot`. Outside React, build one yourself:
 
 ```ts
 import { createEventSnapshotCache } from "@moltenship/calendar";
 
-const snapshots = createEventSnapshotCache(eventAdapter, {
-  invalidEventPolicy: "report-and-skip",
-  queryCacheSize: 128,
-});
-
+const snapshots = createEventSnapshotCache(eventAdapter, { queryCacheSize: 128 });
 const snapshot = snapshots.getSnapshot(events);
+
+snapshots.getSnapshot(events) === snapshot; // true while `events` is the same array
 ```
 
-Repeated calls with the same immutable event array return the same snapshot. Queries preserve input
-order and exact repeated queries return the same frozen result while resident in the bounded cache.
+Keep one cache per adapter and reuse it. `getSnapshot` returns the same snapshot for the same array
+and builds a new one, reusing what it can, for a new array. For a one-off snapshot, call
+`createEventSnapshot(events, eventAdapter, options)`.
+
+<TypeTable
+  type={{
+    invalidEventPolicy: {
+      type: '"report-and-skip" | "throw"',
+      description: "What to do with invalid records.",
+      default: '"report-and-skip"',
+    },
+    queryCacheSize: {
+      type: "number",
+      description: "How many distinct query results each snapshot keeps.",
+      default: "128",
+    },
+  }}
+/>
+
+### Snapshot fields
+
+| Field                       | Contents                                                 |
+| --------------------------- | -------------------------------------------------------- |
+| `events`                    | Valid events, normalized, in input order                 |
+| `byId`                      | A read-only `Map` from ID to normalized event            |
+| `size`                      | Number of valid events                                   |
+| `issues`                    | Problems with skipped records (see below)                |
+| `version`                   | Goes up by one for each new snapshot from the same cache |
+| `getQueryCacheStatistics()` | `capacity`, `size`, `hits`, `misses`, and `evictions`    |
+
+A normalized event has your record as `event`, plus `id`, `title`, `resourceIds`, `isReadOnly`,
+`revision`, `inputIndex`, and the range fields (`kind`, `start`, `end`).
+
+## Queries
+
+```ts
+snapshot.queryTimed(instantInterval(start, end));
+snapshot.queryAllDay(plainDateInterval(startDate, endDate));
+snapshot.queryFloating(plainDateTimeInterval(startDateTime, endDateTime));
+
+snapshot.queryTimed(range, { resourceIds: ["room-1"] });
+snapshot.eventsForResource("room-1");
+snapshot.get("meeting-1");
+```
+
+- Each query returns the events of one kind that overlap the range. Ranges are end-exclusive on both
+  sides, so an event ending exactly at the range start isn't included.
+- Build ranges with `instantInterval`, `plainDateInterval`, and `plainDateTimeInterval` from
+  [`@moltenship/calendar-temporal`](/docs/api/temporal#ranges).
+- `resourceIds` keeps events assigned to any of the listed resources. An empty list matches nothing.
+- Results are frozen and in input order. Repeating a query returns the same array while it's in the
+  cache.
 
 ## Invalid records
 
-The default policy reports immutable issues and skips invalid records. Set `invalidEventPolicy` to
-`"throw"` to reject the complete input with `InvalidCalendarEventSnapshotError`; a partial strict
-snapshot is never published.
+With the default policy, invalid records are left out of the snapshot and listed in
+`snapshot.issues`. In React they also appear as `invalid-event` [diagnostics](/docs/api/react#diagnostics).
+Each issue has the `event`, its `index` in your array, a `code`, and when known the `eventId`, the
+adapter function that failed (`accessor`), and a `message`.
+
+| `code`                   | Cause                                                            |
+| ------------------------ | ---------------------------------------------------------------- |
+| `adapter-error`          | An adapter function threw                                        |
+| `invalid-event-id`       | `getId` returned an empty string, `NaN`, or another non-ID value |
+| `duplicate-event-id`     | Another record already has this ID                               |
+| `invalid-resource-id`    | `getResourceIds` returned a non-ID value                         |
+| `invalid-revision`       | `getRevision` returned something other than a string or number   |
+| `invalid-event-interval` | The range has an unknown `kind` or the wrong Temporal type       |
+| `start-not-before-end`   | The range is empty or reversed                                   |
+
+With `invalidEventPolicy: "throw"`, building the snapshot throws an
+`InvalidCalendarEventSnapshotError` with every issue on its `issues` property instead.

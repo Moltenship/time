@@ -1,0 +1,64 @@
+---
+title: How it works
+description: The packages, and how your events become a rendered view.
+---
+
+## Packages
+
+```text
+@moltenship/calendar                  what you import in a React app
+├── @moltenship/calendar-react        Root, components, hooks, state
+└── @moltenship/calendar-core         adapters, validation, snapshots, queries
+    └── @moltenship/calendar-temporal ranges, day boundaries, DST helpers
+```
+
+Each package depends only on the ones below it. `calendar-core` and `calendar-temporal` don't use
+React or the DOM, so they also run on a server or in a worker.
+
+| Package                         | Use it when                                                         |
+| ------------------------------- | ------------------------------------------------------------------- |
+| `@moltenship/calendar`          | You're building a calendar in React. It includes core and React.    |
+| `@moltenship/calendar-temporal` | You're writing a view and need date ranges or DST-aware time slots. |
+| `@moltenship/calendar-core`     | You want to validate or query events without React.                 |
+| `@moltenship/calendar-react`    | Rarely. `@moltenship/calendar` already includes everything in it.   |
+
+Import from the package name only. Files inside a package, such as
+`@moltenship/calendar-core/src/events`, aren't part of the API and can change at any time.
+
+## From events to the screen
+
+1. You pass `events` to `Root`.
+2. `Root` runs each record through your adapter, validates it, and builds a **snapshot**: a frozen,
+   indexed copy of your events. Passing the same array again returns the same snapshot.
+3. The active view renders. It reads the state (date, time zone) and asks the snapshot for the
+   events it needs.
+4. Buttons and your own controls call actions such as `navigateNext` or `setView`. The calendar
+   updates uncontrolled state itself and sends controlled changes to your handlers.
+
+Pass a new array and step 2 runs again. Records that are the same objects as before, or that have an
+unchanged `getRevision` value, reuse their earlier result.
+
+## Using the engine without React
+
+Snapshots work anywhere. This finds the meetings in a time range using `calendar-core` and
+`calendar-temporal` directly:
+
+```ts
+import { createEventSnapshotCache } from "@moltenship/calendar-core";
+import { instantInterval } from "@moltenship/calendar-temporal";
+
+const snapshots = createEventSnapshotCache(eventAdapter);
+const snapshot = snapshots.getSnapshot(meetings);
+
+const morning = snapshot.queryTimed(
+  instantInterval(
+    Temporal.Instant.from("2026-10-08T06:00:00Z"),
+    Temporal.Instant.from("2026-10-08T10:00:00Z"),
+  ),
+);
+
+morning.map((meeting) => meeting.title); // ["Standup"]
+```
+
+`eventAdapter` and `meetings` are the ones from the [Quick start](/docs/quick-start). The
+[snapshot reference](/docs/api/events#snapshots) lists every query.

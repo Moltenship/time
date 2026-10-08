@@ -1,0 +1,118 @@
+---
+title: State store
+description: Create calendar state outside Root, share it with Root, or bind it to your own components.
+---
+
+`Root` creates a store for its [state](/docs/concepts/state) automatically. You only need this page
+to keep that state outside React's tree, or to use calendar state without `Root`. Everything here is
+exported from `@moltenship/calendar`.
+
+## createCalendarStore
+
+```ts
+import { createCalendarStore } from "@moltenship/calendar";
+
+const store = createCalendarStore<"day" | "days">({
+  defaultView: "day",
+  defaultAnchorDate: Temporal.PlainDate.from("2026-10-08"),
+  defaultTimeZone: "Europe/Berlin",
+});
+
+store.actions.setView("days");
+store.getSnapshot().view; // "days"
+```
+
+<TypeTable
+  type={{
+    defaultView: { type: "TView", description: "Initial view.", required: true },
+    defaultAnchorDate: { type: "Temporal.PlainDate", description: "Initial date.", required: true },
+    defaultTimeZone: { type: "string", description: "Initial IANA time zone.", required: true },
+    defaultSelection: {
+      type: "TSelection | null",
+      description: "Initial selection.",
+      default: "null",
+    },
+    defaultFocus: { type: "TFocus | null", description: "Initial focus.", default: "null" },
+    defaultExpandedResourceIds: {
+      type: "readonly TResourceId[]",
+      description: "Initial expanded resources.",
+      default: "[]",
+    },
+  }}
+/>
+
+The type arguments are `<TView, TSelection, TFocus, TResourceId>`. The store holds the six state
+values for one calendar. It has:
+
+- `getSnapshot()` and `getServerSnapshot()`: the current state, as one frozen object.
+- `actions`: `setView`, `setAnchorDate`, and the other setters. They change the store's own values.
+- `createStateSource(controlled)` and `createActions(source, handlers)`: a view of the state where
+  some values come from you, and setters that call your handlers for those values. This is what
+  `Root` uses for controlled props.
+- `destroy()`: makes later calls throw. Safe to call twice. React never calls it for you.
+- `meta.destroyed`: whether `destroy()` was called.
+
+## Sharing a store with Root
+
+Pass a store to `Root` to change the calendar from outside its tree, or to keep the state when `Root`
+unmounts:
+
+```tsx
+const store = createCalendarStore({
+  defaultView: "day",
+  defaultAnchorDate: Temporal.PlainDate.from("2026-10-08"),
+  defaultTimeZone: "Europe/Berlin",
+});
+
+function JumpToHolidays() {
+  return (
+    <button onClick={() => store.actions.setAnchorDate(Temporal.PlainDate.from("2026-12-24"))}>
+      Holidays
+    </button>
+  );
+}
+
+<Calendar.Root
+  store={store}
+  events={meetings}
+  defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+  defaultTimeZone="Europe/Berlin"
+  locale="en-US"
+  weekRules={weekRules}
+>
+  <Calendar.ActiveView />
+</Calendar.Root>;
+```
+
+`Root` still requires `defaultAnchorDate` and `defaultTimeZone`, but with a store it shows the
+store's values. Unmounting `Root` leaves the store as it was.
+
+## Using a store without Root
+
+These hooks connect a store to your own components. Use them for calendar state with fully custom
+rendering.
+
+```tsx
+import { useCalendarStore, useCalendarStoreBinding } from "@moltenship/calendar";
+
+function DatePager() {
+  const store = useCalendarStore({
+    defaultView: "day",
+    defaultAnchorDate: Temporal.PlainDate.from("2026-10-08"),
+    defaultTimeZone: "Europe/Berlin",
+  });
+  const { state, actions } = useCalendarStoreBinding(store);
+
+  return (
+    <button onClick={() => actions.setAnchorDate(state.anchorDate.add({ days: 1 }))}>
+      {state.anchorDate.toString()}
+    </button>
+  );
+}
+```
+
+| Hook                                                   | Does                                                                                                               |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `useCalendarStore(defaults, store?)`                   | Creates a store on first render and keeps it. Returns `store` instead if you pass one.                             |
+| `useCalendarStoreBinding(store, options?)`             | Returns `{ state, actions, meta }`. `options` takes `controlled` values and `handlers` (`onViewChange` and so on). |
+| `useCalendarStoreSelector(source, selector, options?)` | Returns `selector(state)` and re-renders only when it changes. `source` is `binding.meta.source`.                  |

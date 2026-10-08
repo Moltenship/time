@@ -1,31 +1,59 @@
 ---
-title: Overview
-description: Headless calendar contracts for applications that own their data, rendering, and design system.
+title: Introduction
+description: A headless calendar for React 19, built on the Temporal API.
 ---
 
-Moltenship Time is a typed, headless calendar system for React 19. Applications keep ownership of
-event records and rendering; the library supplies normalized time contracts, deterministic state,
-and composable calendar primitives.
+Moltenship Time handles the hard parts of a calendar: dates, time zones, navigation, calendar
+state, and fast event lookups. You write the markup. Your events stay in the shape your app already
+uses, and Time reads them through a small adapter.
 
-## Start with the supported facade
+<Callout type="warn" title="Pre-1.0">
+  Time is in active development and not published to npm yet. Everything on these pages works today,
+  but expect breaking changes before 1.0. Built-in month, week, day, and agenda views are being
+  built now. Until they land, you write your own views.
+</Callout>
 
-Install and import `@moltenship/calendar` for application code. It re-exports the stable engine and
-React contracts without exposing workspace internals.
+## What it looks like
 
-```tsx
-import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
-```
+This is the render part of the [Quick start](/docs/quick-start). `Calendar` comes from
+`createCalendar`, and `meetings` is a plain array of your own records.
 
-## Contract first
+<include meta='title="calendar.tsx"'>../examples/calendar.tsx#root</include>
 
-- **Application-owned records.** An event adapter projects your domain records into canonical timed,
-  all-day, or floating intervals.
-- **Temporal-native semantics.** Interval boundaries use native `Temporal` values and half-open
-  ranges; legacy `Date` and lossy millisecond conversions do not cross the public engine.
-- **Headless React composition.** A typed factory provides state, semantic actions, compound
-  primitives, diagnostics, and custom-view registration without prescribing CSS.
-- **Consumer-equivalent examples.** This site consumes only published entry points, exactly as an
-  application does.
+## Who it's for
 
-Continue with [installation](/docs/installation), then read the [architecture](/docs/architecture)
-or browse the [package map](/docs/packages).
+Time is for React developers building scheduling screens (bookings, rooms, shifts, team calendars)
+who want to:
+
+- render the calendar with their own components and design system,
+- keep their existing event data and API,
+- get time zones and daylight saving time right without writing that math themselves.
+
+If you need a styled, drop-in calendar today, Time isn't there yet.
+
+## What you get today
+
+- **Your data, read through an adapter.** You describe how to read an ID, title, and time range
+  from your records. TypeScript keeps your record and ID types all the way through.
+- **Three kinds of time.** Timed events use `Temporal.Instant`, all-day events use
+  `Temporal.PlainDate`, and floating events use `Temporal.PlainDateTime`. No `Date` objects.
+- **Time zone and DST handling.** Days that are 23 or 25 hours long and skipped or repeated hours
+  are handled for you.
+- **Indexed event lookups.** Events are validated and indexed once per array, so range and resource
+  queries don't scan every event.
+- **Controlled or uncontrolled state.** The visible date, view, time zone, selection, and focus can
+  each be owned by the calendar or by your app.
+- **Unstyled components.** `Root`, `Toolbar`, previous/next/today buttons, `Title`, `ViewSwitcher`,
+  and `ActiveView` render plain elements with `data-calendar-part` attributes you can style.
+- **Server rendering.** Time never reads the clock, the host time zone, or `window` on its own, so
+  the server and the browser render the same markup from the same props.
+
+<Cards>
+  <Card title="Installation" href="/docs/installation" description="Requirements and setup." />
+  <Card
+    title="Quick start"
+    href="/docs/quick-start"
+    description="A working calendar in one file."
+  />
+  <Card title="Concepts" href="/docs/concepts/events" description="Events, time, and state." />
+</Cards>

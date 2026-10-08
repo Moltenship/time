@@ -1,0 +1,89 @@
+---
+title: Quick start
+description: Build a working day calendar in one file.
+---
+
+You'll build a calendar that shows one day of meetings, with previous, next, and today buttons. It
+uses a small custom view because the built-in views haven't shipped yet. Once they do, this page will
+use them instead.
+
+<Steps>
+<Step>
+
+### Describe your events
+
+Start with the record type your app already has. The adapter tells Time how to read an ID, a title,
+and a time range from it. `kind: "timed"` means the start and end are exact moments
+(`Temporal.Instant`).
+
+<include meta='title="calendar.tsx"'>../examples/calendar.tsx#adapter</include>
+
+`getResourceIds` returns the rooms or people an event belongs to. This calendar doesn't group by
+resource, so it returns an empty array.
+
+</Step>
+<Step>
+
+### Add a view
+
+A view has a name, a title for the visible date, a rule for moving forward and back, and a
+`render` function. This one lists the meetings that start on the visible day, in the calendar's
+time zone.
+
+<include meta='title="calendar.tsx"'>../examples/calendar.tsx#view</include>
+
+`createCalendar` returns a set of components and hooks typed to your `Meeting` record.
+
+</Step>
+<Step>
+
+### Render it
+
+`Root` holds the calendar state. It needs your events, a starting date, a time zone, a locale, and
+week rules (the first day of the week, where 1 is Monday, and the weekend days). The `now` prop
+enables the Today button. Without it the button is disabled, because Time never reads the clock on
+its own.
+
+<include meta='title="calendar.tsx"'>../examples/calendar.tsx#root</include>
+
+</Step>
+</Steps>
+
+The rendered day for October 8, 2026, in Berlin time:
+
+```html
+<span data-calendar-part="title">Thursday, October 8, 2026</span>
+<ul>
+  <li>9:00 AM Standup</li>
+  <li>3:00 PM Design review</li>
+</ul>
+```
+
+Every component renders a plain element (`section`, `header`, `button`, `span`, `div`) with a
+`data-calendar-part` attribute. Pass `className` or `style` to any of them, or target
+`[data-calendar-part="toolbar"]` from CSS.
+
+<Callout title="Using Next.js?">
+  Calendar modules are Client Components. The file above starts with `"use client"` for that reason.
+  See [Next.js and server rendering](/docs/guides/nextjs) for passing data from a Server Component.
+</Callout>
+
+## Next steps
+
+<Cards>
+  <Card
+    title="Events and adapters"
+    href="/docs/concepts/events"
+    description="All-day and floating events, resources, and invalid records."
+  />
+  <Card
+    title="State"
+    href="/docs/concepts/state"
+    description="Control the visible date and view from your app."
+  />
+  <Card
+    title="Custom views"
+    href="/docs/views/custom-views"
+    description="Typed view options and indexed range queries."
+  />
+</Cards>

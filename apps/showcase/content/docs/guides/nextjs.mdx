@@ -1,0 +1,49 @@
+---
+title: Next.js and server rendering
+description: Fetch events in a Server Component and render the same calendar on the server and in the browser.
+---
+
+Time works with any React 19 framework that renders on the server. This guide uses the Next.js App
+Router. The same rules apply elsewhere.
+
+## Calendars are Client Components
+
+`@moltenship/calendar` is marked `"use client"`, and calendar state lives in React state. Put
+`createCalendar`, your views, and `Root` in files that start with `"use client"`, as the
+[Quick start](/docs/quick-start) does. Server Components can render those components and pass them
+props.
+
+## Send strings, not Temporal objects
+
+Props from a Server Component to a Client Component must be serializable. Temporal objects aren't,
+so send ISO 8601 strings and turn them into Temporal values in the client:
+
+<include meta='title="team-calendar.tsx"'>../../examples/nextjs-calendar.tsx#client</include>
+
+`useMemo` keeps the converted array stable between renders, so the calendar only re-reads events
+when `meetings` actually changes.
+
+The page fetches the data on the server:
+
+<include meta='title="page.tsx"'>../../examples/nextjs-page.tsx#page</include>
+
+## Match the server and the browser
+
+Time never reads the clock, the host time zone, or `window` on its own. Everything that affects the
+output comes from props, so the server and the browser render the same markup as long as they get
+the same props. In practice:
+
+- **Compute "now" once on the server** and pass it down, as `now` above. Calling
+  `Temporal.Now.instant()` in a Client Component gives the server and the browser different values.
+- **Choose the time zone on the server**, for example from the user's profile or a cookie. The
+  server's own zone is rarely the user's.
+- **Pass the same `locale`** to both. Dates and times are formatted with `Intl`, which depends on it.
+
+If you only learn the user's time zone in the browser, render the calendar after hydration, or pass
+the zone as a controlled `timeZone` and update it once you know it.
+
+## Element IDs
+
+`Root` derives element IDs from React's `useId`, so they match between server and browser. If you
+render several separate React roots on one page, give each a distinct `identifierPrefix` when you
+create it (on both server and client), or pass an explicit `id` to each `Root`.

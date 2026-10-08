@@ -1,0 +1,85 @@
+---
+title: Events and adapters
+description: How Time reads your event records, and what happens when one is invalid.
+---
+
+Time has no event class of its own. You pass an array of your own records to `Root`, and an
+**adapter** tells Time how to read each one: its ID, title, time range, and the resources it belongs
+to.
+
+<include meta='title="bookings.tsx"'>../../examples/bookings.tsx#adapter</include>
+
+`defineEventAdapter<Booking>()` is called twice on purpose. The first call fixes the record type,
+and the second infers the ID types from your accessors. Here `booking-${number}` stays
+`booking-${number}` everywhere Time hands an ID back to you, so you never cast.
+
+`getRevision` and `isReadOnly` are optional. The [adapter reference](/docs/api/events#adapter)
+lists every field.
+
+## Time ranges
+
+`getInterval` returns one of three kinds of range. Pick the one that matches what the event means:
+
+| `kind`       | `start` and `end`        | Use it for                                                      |
+| ------------ | ------------------------ | --------------------------------------------------------------- |
+| `"timed"`    | `Temporal.Instant`       | Meetings and calls: exact moments, shown in the calendar's zone |
+| `"all-day"`  | `Temporal.PlainDate`     | Holidays and vacations: whole dates, the same in every zone     |
+| `"floating"` | `Temporal.PlainDateTime` | Wall-clock times with no zone, like "gym at 7:00"               |
+
+The end is always exclusive. A one-day all-day event on October 8 has `end` set to October 9.
+[Time and time zones](/docs/concepts/time) covers this in detail.
+
+## IDs
+
+Event and resource IDs are non-empty strings or finite numbers. To check untrusted input before
+it reaches the calendar, use `isEventId` and `isResourceId`:
+
+```ts
+import { isEventId } from "@moltenship/calendar";
+
+isEventId("booking-12"); // true
+isEventId(""); // false
+isEventId(Number.NaN); // false
+```
+
+## Resources
+
+Resources are what events are assigned to: rooms, people, equipment. Pass your own resource records
+(anything with an `id`) to `Root` as `resources`, and return their IDs from `getResourceIds`. An
+event can belong to no resource, one, or several.
+
+Views can then filter by resource with `snapshot.eventsForResource(roomId)` or
+`snapshot.queryTimed(range, { resourceIds: [roomId] })`. See [snapshot queries](/docs/api/events#queries).
+
+## Changing events
+
+Time never edits, saves, or fetches your events. When your data changes, update your own state and
+pass a new array.
+
+Treat the array as immutable. While you pass the same array object, Time reuses all the work it did
+on it. When you pass a new array, Time walks it again but skips records that are the same objects as
+before, or that have the same `getRevision` value. The
+[performance guide](/docs/guides/performance) explains how to make the most of that.
+
+## Invalid records
+
+By default, an invalid record is skipped and reported. The rest of the calendar keeps working.
+Reasons include a missing or duplicate ID, an end that isn't after the start, a range of the wrong
+Temporal type, or an adapter function that throws.
+
+Reports show up in `meta.diagnostics` and in the `onDiagnosticsChange` callback on `Root`:
+
+<include meta='title="bookings.tsx"'>../../examples/bookings.tsx#diagnostics</include>
+
+Pass `reportDiagnostics` as `onDiagnosticsChange`. Keep the handler at module scope or wrap it in
+`useCallback`, because Time calls it again whenever its identity changes.
+
+To reject bad input instead, set `invalidEventPolicy="throw"` on `Root` (or in `createCalendar`).
+Time then throws an `InvalidCalendarEventSnapshotError` during render, with every problem listed on
+its `issues` property. Catch it with an error boundary.
+
+## Records in Time's own shape
+
+If you're starting from scratch, you can store events in Time's built-in shape (`CalendarEvent`: an
+`id`, `title`, `kind`, `start`, `end`, optional `resourceIds`, and your own `data`) and use
+`createCanonicalEventAdapter()` instead of writing an adapter.
