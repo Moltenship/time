@@ -162,7 +162,7 @@ function createSemanticActions<
       actions.setAnchorDate(instant.toZonedDateTimeISO(read().timeZone).toPlainDate());
     },
     proposeEventChange(proposal) {
-      const { environment, eventSnapshot, onEventChange, policies = [] } = committed.current;
+      const { eventSnapshot, onEventChange, policies = [] } = committed.current;
       if (onEventChange === undefined) {
         return Promise.resolve({ reason: "read-only", status: "rejected" });
       }
@@ -170,7 +170,7 @@ function createSemanticActions<
         onEventChange,
         policies: [readOnly, ...policies],
         snapshot: eventSnapshot,
-        timeZone: environment.timeZone,
+        timeZone: read().timeZone,
       });
     },
   });

@@ -13,7 +13,7 @@ import {
   type ResourceId,
 } from "@moltenship/calendar-core";
 import { plainDateInterval } from "@moltenship/calendar-temporal";
-import { act, useState } from "react";
+import { act, useState, type ReactNode } from "react";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
 import {
@@ -105,15 +105,20 @@ function applyChange(events: readonly Meeting[], change: Change): readonly Meeti
 
 /** An application that owns its events, as the calendar's `events` prop expects. */
 function Application(props: {
+  readonly children?: ReactNode;
+  readonly controlledTimeZone?: boolean;
   readonly onEventChange?: Handler;
   readonly policies?: readonly CalendarPolicy<Meeting, string, string>[];
 }) {
   const [events, setEvents] = useState(meetings);
+  const [timeZone, setTimeZone] = useState("UTC");
   updateEvents = setEvents;
   return (
     <MeetingCalendar.Root
       defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
-      defaultTimeZone="UTC"
+      {...(props.controlledTimeZone === true
+        ? { onTimeZoneChange: (next: string) => setTimeZone(next), timeZone }
+        : { defaultTimeZone: "UTC" })}
       events={events}
       locale="en-GB"
       onEventChange={props.onEventChange}
@@ -124,6 +129,7 @@ function Application(props: {
       <MeetingCalendar.Event eventId="standup">
         {({ normalized }) => <output>{normalized.isPending === true ? "saving" : "saved"}</output>}
       </MeetingCalendar.Event>
+      {props.children}
     </MeetingCalendar.Root>
   );
 }
@@ -148,11 +154,17 @@ function visible(harness: ReactRootHarness): string[] {
   return [...harness.container.querySelectorAll("li, output")].map((node) => node.textContent);
 }
 
+function interval(
+  placement: { readonly end: unknown; readonly start: unknown } | null | undefined,
+) {
+  return placement == null ? undefined : `${String(placement.start)}/${String(placement.end)}`;
+}
+
 function move(
   start: string,
   end: string,
   eventId = "standup",
-): CalendarEventProposal<EventId, ResourceId> {
+): CalendarEventProposal<string, string> {
   return {
     cause: "move",
     eventId,
@@ -193,12 +205,10 @@ test("a synchronous handler commits through the application's events", async () 
     "saved",
   ]);
   await expect(result).resolves.toMatchObject({ status: "committed" });
-  expect(handler.mock.calls[0]?.[0]).toMatchObject({
-    cause: "move",
-    event: meetings[0],
-    eventId: "standup",
-    original: { kind: "timed", start: meetings[0]!.start },
-  });
+  // toMatchObject treats any two Temporal values as equal, so intervals are compared as strings.
+  const [change] = handler.mock.calls[0]!;
+  expect(change).toMatchObject({ cause: "move", event: meetings[0], eventId: "standup" });
+  expect(interval(change.original)).toBe("2026-08-15T09:00:00Z/2026-08-15T10:00:00Z");
 });
 
 test("an async change renders as pending in every view until the new events confirm it", async () => {
@@ -311,8 +321,38 @@ test("root policies adjust a change before the handler sees it", async () => {
 
   await propose(move("2026-08-15T11:10:00Z", "2026-08-15T12:10:00Z"));
 
-  expect(handler.mock.calls[0]?.[0].proposed).toMatchObject({
-    end: Temporal.Instant.from("2026-08-15T12:00:00Z"),
-    start: Temporal.Instant.from("2026-08-15T11:00:00Z"),
-  });
+  expect(interval(handler.mock.calls[0]?.[0].proposed)).toBe(
+    "2026-08-15T11:00:00Z/2026-08-15T12:00:00Z",
+  );
 });
+
+test.each([false, true])(
+  "a proposal uses a time zone requested earlier in the same handler (controlled: %s)",
+  async (controlledTimeZone) => {
+    const handler = vi.fn<Handler>();
+    let actions: ReturnType<typeof MeetingCalendar.useCalendarActions> | undefined;
+    function CaptureActions() {
+      actions = MeetingCalendar.useCalendarActions();
+      return null;
+    }
+    await render(
+      <Application
+        controlledTimeZone={controlledTimeZone}
+        onEventChange={handler}
+        policies={[snapPolicy({ hours: 1 })]}
+      >
+        <CaptureActions />
+      </Application>,
+    );
+
+    await act(async () => {
+      actions!.setTimeZone("Asia/Kolkata");
+      void actions!.proposeEventChange(move("2026-08-15T11:10:00Z", "2026-08-15T12:10:00Z"));
+    });
+
+    // Hourly snapping in Kolkata (UTC+05:30) lands on the half hour in UTC.
+    expect(interval(handler.mock.calls[0]?.[0].proposed)).toBe(
+      "2026-08-15T11:30:00Z/2026-08-15T12:30:00Z",
+    );
+  },
+);

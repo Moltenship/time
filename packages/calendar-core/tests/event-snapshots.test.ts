@@ -190,7 +190,9 @@ describe("event snapshots", () => {
     mutable.title = "After";
     const next = cache.getSnapshot([mutable]);
 
-    expect(next.get("a")).toMatchObject({ start: mutable.start, title: "After" });
+    // toMatchObject treats any two Temporal values as equal, so compare the instant as a string.
+    expect(next.get("a")?.title).toBe("After");
+    expect(next.get("a")?.start.toString()).toBe("2026-08-15T13:00:00Z");
     expect(
       next.queryTimed(
         instantInterval(
