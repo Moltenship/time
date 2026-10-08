@@ -36,11 +36,12 @@ export function columnFraction(date: Temporal.PlainDate, wallNanoseconds: bigint
   return Math.min(1, Math.max(0, fraction));
 }
 
+/** Wall-clock epoch nanoseconds of `instant`, read with the offset in effect at `offsetSource`. */
 function wallNanoseconds(
   instant: Temporal.Instant,
   offsetSource: Temporal.Instant,
   timeZone: string,
-) {
+): bigint {
   return (
     instant.epochNanoseconds + BigInt(offsetSource.toZonedDateTimeISO(timeZone).offsetNanoseconds)
   );
