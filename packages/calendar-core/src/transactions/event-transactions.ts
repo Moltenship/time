@@ -3,13 +3,12 @@ import { isPromiseLike } from "../internal/promise-like";
 import { ReadonlyMapView } from "../internal/readonly-map";
 import { runEventPolicies } from "../policies/pipeline";
 import type { CalendarPolicyResult } from "../policies/types";
-import type { EventSnapshot, NormalizedCalendarEvent } from "../snapshots/types";
+import type { EventSnapshot } from "../snapshots/types";
 import { applyEventOverlay } from "./overlay";
-import { isNonEmptyInterval, placementsEqual } from "./placement";
+import { eventPlacement, isNonEmptyInterval, placementsEqual } from "./placement";
 import type {
   CalendarEventChange,
   CalendarEventDeleteChange,
-  CalendarEventPlacement,
   CalendarEventProposal,
   CalendarEventUpdateChange,
   CalendarPendingPlacements,
@@ -52,23 +51,6 @@ interface PendingEntry<TEvent, TEventId extends EventId, TResourceId extends Res
 
 const noPending = new ReadonlyMapView(new Map<never, never>());
 
-function placementOf<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
-  event: NormalizedCalendarEvent<TEvent, TEventId, TResourceId>,
-): CalendarEventPlacement<TResourceId> {
-  const { resourceIds } = event;
-  return event.kind === "timed"
-    ? {
-        end: event.end,
-        kind: event.kind,
-        resourceIds,
-        sourceTimeZone: event.sourceTimeZone,
-        start: event.start,
-      }
-    : event.kind === "all-day"
-      ? { end: event.end, kind: event.kind, resourceIds, start: event.start }
-      : { end: event.end, kind: event.kind, resourceIds, start: event.start };
-}
-
 function createChange<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
   proposal: CalendarEventProposal<TEventId, TResourceId>,
   id: string,
@@ -81,7 +63,7 @@ function createChange<TEvent, TEventId extends EventId, TResourceId extends Reso
 
   const current = events.get(proposal.eventId);
   if (current === undefined) return undefined;
-  const base = { event: current.event, eventId: current.id, id, original: placementOf(current) };
+  const base = { event: current.event, eventId: current.id, id, original: eventPlacement(current) };
   if (proposal.cause === "delete") return { ...base, cause: "delete", proposed: null };
   return {
     ...base,

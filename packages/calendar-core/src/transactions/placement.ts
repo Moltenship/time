@@ -5,8 +5,9 @@ import {
 } from "@moltenship/calendar-temporal";
 
 import type { CalendarEventInterval } from "../events";
-import type { ResourceId } from "../ids";
+import type { EventId, ResourceId } from "../ids";
 import { intervalsEqual } from "../internal/interval-equality";
+import type { NormalizedCalendarEvent } from "../snapshots/types";
 import type { CalendarEventPlacement } from "./types";
 import {
   positiveDuration,
@@ -25,6 +26,24 @@ function earlier<TPoint>(left: TPoint, right: TPoint, compare: (a: TPoint, b: TP
 
 function later<TPoint>(left: TPoint, right: TPoint, compare: (a: TPoint, b: TPoint) => number) {
   return compare(left, right) >= 0 ? left : right;
+}
+
+/** The placement of a normalized event, without its title, record, or other fields. */
+export function eventPlacement<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
+  event: NormalizedCalendarEvent<TEvent, TEventId, TResourceId>,
+): CalendarEventPlacement<TResourceId> {
+  const { resourceIds } = event;
+  return event.kind === "timed"
+    ? {
+        end: event.end,
+        kind: event.kind,
+        resourceIds,
+        sourceTimeZone: event.sourceTimeZone,
+        start: event.start,
+      }
+    : event.kind === "all-day"
+      ? { end: event.end, kind: event.kind, resourceIds, start: event.start }
+      : { end: event.end, kind: event.kind, resourceIds, start: event.start };
 }
 
 /**

@@ -97,6 +97,7 @@ export type { EventTransactions } from "./transactions/event-transactions";
 export { applyEventOverlay } from "./transactions/overlay";
 export {
   createEventPlacement,
+  eventPlacement,
   moveEventPlacement,
   resizeEventPlacement,
   toAllDayPlacement,
