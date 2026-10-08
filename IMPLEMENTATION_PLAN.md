@@ -15,77 +15,52 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | Engine         | #21–#24          | `calendar-temporal` intervals, zoned days, slots and DST; `calendar-core` snapshots and interval indexes     |
 | Headless React | #25–#27          | `calendar-react` per-instance store, controlled state, SSR snapshots, typed factory, custom views            |
 | Docs platform  | #68              | Fumadocs + Next.js site in `apps/showcase`                                                                   |
+| 0.1 views      | #70, #28–#30, #32, #33 | View pipeline; theme and shell primitives; month, agenda, week and day views in `registry/`            |
+| 0.1 editing    | #35, #37         | Transactions with optimistic overlay; native Pointer Events move, resize and create in `calendar-dnd`        |
+| 0.1 demo, docs | #71–#73, #100    | Demo app, rewritten docs with live previews and anatomy diagrams, landing page with a live week view         |
 
-No visible views exist yet.
+0.1 — Working calendar is closed. Deployed from `main`:
 
-## Now: 0.1 — Working calendar
+- Demo: https://moltenship-time-demo.vercel.app
+- Docs: https://moltenship-time.vercel.app
 
-Goal: a calendar people can use. Month, week, day and agenda views, navigation, create / move /
-resize / edit, a demo app, and docs that teach it.
-Milestone: [0.1 — Working calendar](https://github.com/Moltenship/time/milestone/6).
+UI source uses shadcn's default Base UI primitives, not Radix. Dependencies are kept at their
+latest releases.
 
-| Thread | Issues                | Scope                                                                                                     |
-| ------ | --------------------- | --------------------------------------------------------------------------------------------------------- |
-| W1     | #70                   | View contract and projection pipeline in React, React bug fixes, facade exports                           |
-| W2     | #29, #30              | Month and agenda: projection, fragments, day-grid lane packing, `month-view` and `list-view`              |
-| W3     | #32, #33              | Time grid: Temporal snapping, DST-safe geometry, overlap layout, day and week `time-grid-view`            |
-| W4     | #28, #71              | Theme tokens and shared shell primitives in `registry/`; Google Calendar-style demo in `apps/demo`        |
-| W5     | #35, #37, part of #36 | Transactions, policies, optimistic overlay; native Pointer Events move/resize/create in `calendar-dnd`    |
-| W6     | #72                   | Docs content and information architecture                                                                 |
-| W7     | #73                   | Docs visual design and landing page with a live calendar                                                  |
+## Next: 0.2 — Keyboard & accessibility
 
-### Order
+Planned and rescoped, not started. Milestone:
+[0.2 — Keyboard & accessibility](https://github.com/Moltenship/time/milestone/2).
 
-```mermaid
-flowchart LR
-  I70["#70 view pipeline"] --> I29["#29 month"]
-  I70 --> I30["#30 agenda"]
-  I70 --> I33["#33 day/week views"]
-  I70 --> I37["#37 pointer layer"]
-  I28["#28 theme + primitives"] --> I29
-  I28 --> I30
-  I28 --> I33
-  I29 --> I33
-  I32["#32 time-grid engine"] --> I33
-  I32 --> I37
-  I33 --> I37
-  I35["#35 transactions"] --> I37
-  I29 --> P2["phase 2: #71 demo, #72 docs, #73 landing"]
-  I30 --> P2
-  I33 --> P2
-  I37 --> P2
-```
+| Issue | Scope                                                                                                         |
+| ----- | ------------------------------------------------------------------------------------------------------------- |
+| #36   | Keyboard engine: typed focus model, spatial navigation per view, keyboard transactions, announcement builders |
+| #97   | Keyboard and ARIA in the registry views and the demo, built on #36                                            |
+| #98   | Accessibility quality: axe checks in CI, token contrast, reduced motion, RTL layout, accessibility docs       |
 
-The edges are merge order, matching native "blocked by" links; work can start in parallel. #33
-reuses the day-grid lane packing from #29 for its all-day row. Engine work (#32, #35) and phase 1
-of #71, #72 and #73 (layout, content rewrite, design system) run in parallel with #70 and #28.
-Phase 2 of those three wires in the real views and interactions once they merge.
+#36 comes first. #97 can start with ARIA semantics and focus styling, then wires keyboard
+behaviour once #36's API lands. #98 starts with axe and contrast and writes the keyboard docs
+after #36 and #97 merge.
 
-### 0.1 is done when
-
-- `apps/demo` shows month, week, day and agenda views of realistic data. Create, edit, move, resize
-  and delete work with mouse and touch and persist across reloads.
-- The docs have a quick start that runs, a page per view, and a landing page with a live calendar.
-- `vp check`, `vp test`, `vp run react:gate`, `vp run ssr:smoke` and `vp run showcase:gate` pass on
-  `main`.
+After 0.2 comes 0.3 — Resource views (#39–#42): resource hierarchy and projections first, then
+resource columns and the resource timeline in parallel.
 
 ## Later
 
-Deferred from 0.1. Each item is listed under "Later" in the issue it came from; open a new issue
-when one is picked up.
+Deferred work. Each item is listed under "Later" in the issue it came from; open a new issue when
+one is picked up.
 
 - List virtualization for large ranges (#30)
 - Business hours and availability (#32)
 - Equal, compact and stacked overlap policies (#33)
-- Keyboard move and resize, explicit actions, announcements (#36)
 - Optional dnd-kit adapter (#37)
-- Layout and frame budgets, browser matrix, RTL and axe suites
+- Layout and frame budgets, browser matrix
+- RTL key mapping (#36)
 
-Next milestones:
+Later milestones:
 
 | Milestone                      | Issues          | Scope                                                                         |
 | ------------------------------ | --------------- | ----------------------------------------------------------------------------- |
-| 0.2 — Keyboard & accessibility | #36             | Pointer-free interaction and announcements, plus picks from the list above    |
 | 0.3 — Resource views           | #39–#42         | Resource hierarchy and projections, resource columns, resource timeline       |
 | 1.0 — Public release           | #43, #45–#47    | shadcn registry distribution, testing package, release automation, audit      |
 | Post-1.0 — Recurrence          | #48, #49        | Range-bounded recurrence, exceptions, detached occurrences                    |
@@ -95,13 +70,14 @@ Scope / Done when / Later before starting it.
 
 ## How we work
 
-- One issue → one branch → one PR with `Closes #N`. Issues with two phases (#71–#73) use one PR
-  per phase; the last one closes the issue.
+- One issue → one branch → one PR with `Closes #N`. Larger issues may ship in phases, one PR per
+  phase; the last one closes the issue.
 - The issue's "Done when" list is the acceptance check. There are no separate gate issues and no
   evidence attachments.
 - Run `vp check` and `vp test` before pushing, plus any `vp run` gate the change touches.
 - Pullfrog reviews every PR. Fix each comment, or reply in its thread with the reason you didn't.
 - Merge with squash once Pullfrog approves and CI is green. Rebase on `main` first if behind.
+- UI changes include light and dark screenshots. Docs show live, theme-aware UI, not screenshots.
 - Keep native "blocked by" links and this file current when scope or order changes.
 
 ## Boundaries
@@ -113,15 +89,15 @@ Scope / Done when / Later before starting it.
   package entry points and `registry/` source.
 - If a PR changes a decision recorded in `architecture.md`, update that file in the same PR.
 
-## Exceptions to `architecture.md` in 0.1
+## Exceptions to `architecture.md`
 
-`architecture.md` is still the design reference, except for three decisions this rescope changes.
-#37 updates `architecture.md` (§11 and §26) and marks
-[ADR 0001](./docs/adr/0001-semantic-dnd-kit-adapter.md) superseded in its PR.
+`architecture.md` is still the design reference, except for three decisions made in 0.1. #37
+updated `architecture.md` (§11 and §26) and marks
+[ADR 0001](./docs/adr/0001-semantic-dnd-kit-adapter.md) superseded.
 
-- Pointer input in #37 uses native Pointer Events. dnd-kit becomes an optional adapter for later;
+- Pointer input uses native Pointer Events (#37). dnd-kit becomes an optional adapter for later;
   the #19 spike stays as history.
-- Keyboard grab / move / resize comes in 0.2 (#36). In 0.1, pointer changes have equivalents
-  through the transaction API (#35) and the demo's event dialog (#71), but no keyboard mode.
+- Keyboard grab / move / resize comes in 0.2 (#36). Until then, pointer changes have equivalents
+  through the transaction API (#35) and the demo's event dialog (#71).
 - The "performance, accessibility, and browser evidence" invariant is replaced by each issue's
   "Done when" list.
