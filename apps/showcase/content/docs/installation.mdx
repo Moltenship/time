@@ -96,8 +96,16 @@ There's no `shadcn add` command for these files yet, so copy them by hand:
 <Steps>
 <Step>
 
-Set up [shadcn/ui](https://ui.shadcn.com/docs/installation) with Tailwind CSS 4 if your app doesn't
-use it yet. Then add the primitives the files import, and the icons:
+Set up [shadcn/ui](https://ui.shadcn.com/docs/installation) with Tailwind CSS 4 and its **Radix**
+primitives. The copied files use Radix's `asChild` prop, so they don't compile against the Base UI or
+React Aria versions of the primitives. In a new app, choose Radix when you initialize:
+
+```bash
+npx shadcn@latest init --base radix
+```
+
+In an existing app, check that `style` in `components.json` starts with `radix-`. Then add the
+primitives the files import, and the icons if your app doesn't have them yet:
 
 ```bash
 npx shadcn@latest add button select tooltip
@@ -128,15 +136,18 @@ already includes the Temporal helpers:
 </Step>
 <Step>
 
-Import the theme in your global CSS, after Tailwind:
+Import the theme in your global CSS, after the Tailwind and shadcn imports that are already there.
+The path is relative to the CSS file:
 
-```css title="globals.css"
+```css title="index.css"
 @import "tailwindcss";
 @import "tw-animate-css";
-@import "../styles/calendar-theme.css";
-
-@custom-variant dark (&:where(.dark, .dark *));
+@import "shadcn/tailwind.css";
+@import "./styles/calendar-theme.css";
 ```
+
+A shadcn app already defines the `dark` variant. If yours doesn't, add
+`@custom-variant dark (&:is(.dark *));` below the imports.
 
 </Step>
 </Steps>
