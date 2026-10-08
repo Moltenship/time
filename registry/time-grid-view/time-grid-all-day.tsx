@@ -68,8 +68,9 @@ export function TimeGridAllDay<TEvent>({ days, getEventColor, row }: TimeGridAll
               key={`${String(event.id)}:${column}`}
               color={getEventColor?.(event.event)}
               data-event-id={String(event.id)}
+              data-pending={event.isPending === true ? "" : undefined}
               className={cn(
-                "pointer-events-auto mx-1 min-w-0 py-0 leading-[1.375rem]",
+                "pointer-events-auto mx-1 min-w-0 py-0 leading-[1.375rem] data-pending:opacity-60",
                 startsBefore && "ml-0 rounded-l-none",
                 endsAfter && "mr-0 rounded-r-none",
               )}

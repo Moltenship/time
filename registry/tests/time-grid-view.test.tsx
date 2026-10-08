@@ -274,3 +274,43 @@ test("opens on the current time once a hydrated clock reports it", async () => {
     }
   }
 });
+
+test("dims an event while its change is being saved", async () => {
+  let actions: ReturnType<typeof Calendar.useCalendarActions> | undefined;
+  function CaptureActions() {
+    actions = Calendar.useCalendarActions();
+    return null;
+  }
+  const { container, unmount } = await render(
+    <Calendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="America/New_York"
+      events={meetings}
+      locale="en-US"
+      now={Temporal.Instant.from("2026-10-08T16:30Z")}
+      onEventChange={() => new Promise<void>(() => {})}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <CaptureActions />
+      <Calendar.ActiveView />
+    </Calendar.Root>,
+  );
+  cleanup = unmount;
+
+  await act(async () => {
+    void actions!.proposeEventChange({
+      cause: "move",
+      eventId: "c",
+      proposed: {
+        end: Temporal.Instant.from("2026-10-08T19:00Z"),
+        kind: "timed",
+        start: Temporal.Instant.from("2026-10-08T18:00Z"),
+      },
+    });
+  });
+  const [moved] = event(container, "c");
+
+  expect(moved!.hasAttribute("data-pending")).toBe(true);
+  expect(moved!.style.top).toBe(`${(14 / 24) * 100}%`);
+  expect(event(container, "a")[0]!.hasAttribute("data-pending")).toBe(false);
+});

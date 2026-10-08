@@ -18,6 +18,8 @@ const views = [
   to three lanes with "+N more".
 - Columns use a nominal 24-hour wall clock. Spring-forward hours are hatched, repeated fall-back
   hours are tinted, and the two occurrences of a repeated hour sit side by side.
+- Changes still being saved (`isPending` from `onEventChange`) render at reduced opacity with
+  `data-pending`.
 - The now-line follows `useNow()` in today's column. The body opens on the current time, or on
   08:00 when today is not visible.
 

@@ -55,8 +55,9 @@ export function TimeGridEvent({ color, layout, timeFormat, timeZone }: TimeGridE
     <EventChip
       color={color}
       data-event-id={String(event.id)}
+      data-pending={event.isPending === true ? "" : undefined}
       className={cn(
-        "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)]",
+        "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)] data-pending:opacity-60",
         compact ? "flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" : "py-1",
         startsBeforeDay && "rounded-t-none",
         endsAfterDay && "rounded-b-none",
