@@ -207,6 +207,20 @@ describe("position to snapped time", () => {
     );
   });
 
+  test("snaps the pointer before resolving its fold occurrence or gap", () => {
+    expect(
+      at(column("2026-11-01", "America/New_York"), 55 / 60, {
+        fold: "later",
+        snap: { increment: 15, mode: "ceil", smallestUnit: "minute" },
+      }),
+    ).toBe("2026-11-01T01:00:00-05:00[America/New_York]");
+    expect(
+      at(column("2026-10-04", "Australia/Lord_Howe"), 2 + 11 / 60, {
+        snap: { increment: 20, mode: "nearest", smallestUnit: "minute" },
+      }),
+    ).toBe("2026-10-04T02:30:00+11:00[Australia/Lord_Howe]");
+  });
+
   test("resolves a repeated wall time to the requested fold occurrence", () => {
     const fall = column("2026-11-01", "America/New_York");
 

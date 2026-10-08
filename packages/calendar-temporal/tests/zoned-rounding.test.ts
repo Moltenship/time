@@ -1,7 +1,13 @@
 import fc from "fast-check";
 import { describe, expect, test } from "vite-plus/test";
 
-import { compareInstants, snapZonedDateTime, type WallTimeSnapMode } from "../src/index";
+import {
+  compareInstants,
+  snapZonedDateTime,
+  snapZonedWallTime,
+  type WallTimeSnapMode,
+  type ZonedWallTimeSnapOptions,
+} from "../src/index";
 import { NativeTemporal } from "./native-temporal";
 
 function zoned(value: string): Temporal.ZonedDateTime {
@@ -85,6 +91,32 @@ describe("wall-clock ZonedDateTime snapping", () => {
         },
       ),
       { numRuns: 500 },
+    );
+  });
+
+  test("snaps a nominal wall time before resolving its fold occurrence or gap", () => {
+    const wall = (
+      value: string,
+      options: Partial<ZonedWallTimeSnapOptions> & { timeZone: string },
+    ) =>
+      snapZonedWallTime(NativeTemporal.PlainDateTime.from(value), {
+        increment: 15,
+        smallestUnit: "minute",
+        ...options,
+      }).toString();
+
+    expect(wall("2026-11-01T00:55", { mode: "ceil", timeZone: "America/New_York" })).toBe(
+      "2026-11-01T01:00:00-04:00[America/New_York]",
+    );
+    expect(
+      wall("2026-11-01T00:55", { fold: "later", mode: "ceil", timeZone: "America/New_York" }),
+    ).toBe("2026-11-01T01:00:00-05:00[America/New_York]");
+    // 02:11 snaps to 02:20, inside the 02:00–02:30 gap, so it resolves to the transition.
+    expect(wall("2026-10-04T02:11", { increment: 20, timeZone: "Australia/Lord_Howe" })).toBe(
+      "2026-10-04T02:30:00+11:00[Australia/Lord_Howe]",
+    );
+    expect(wall("2026-09-06T00:20", { mode: "floor", timeZone: "America/Santiago" })).toBe(
+      "2026-09-06T01:00:00-03:00[America/Santiago]",
     );
   });
 

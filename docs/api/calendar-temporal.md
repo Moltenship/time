@@ -73,7 +73,9 @@ selected unit.
 `snapPlainTime` returns `{ time, days }`: `days` is `1` when rounding up crossed midnight, so a
 late end time is never mistaken for an early one. `snapZonedDateTime` rounds in the value's own
 timezone. Inside a fold it keeps the input's offset; inside a gap it resolves to the transition
-instant, so `floor` never moves later and `ceil` never moves earlier.
+instant, so `floor` never moves later and `ceil` never moves earlier. `snapZonedWallTime` does the
+same for a nominal wall time without an occurrence, such as a pointer position: it snaps first,
+then resolves a repeated time to the requested `fold` occurrence and a skipped one to the transition.
 
 ```ts
 import { snapPlainTime, snapZonedDateTime } from "@moltenship/calendar-temporal";

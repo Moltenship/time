@@ -1,6 +1,6 @@
 import {
   instantIntervalContains,
-  snapZonedDateTime,
+  snapZonedWallTime,
   type InstantInterval,
   type WallTimeSnapOptions,
 } from "@moltenship/calendar-temporal";
@@ -98,8 +98,9 @@ export function timedFragmentBox(column: TimeGridColumn, interval: InstantInterv
 
 /**
  * Wall-clock time at a vertical position, where `0` is the column's midnight and `1` the midnight
- * that ends it. The result is snapped on the wall grid and never lands inside a gap: a position
- * in a spring-forward band resolves to the transition instant.
+ * that ends it. The position is snapped on the wall grid before it is resolved, so the result never
+ * lands inside a gap (a snapped spring-forward time resolves to the transition instant) and a
+ * repeated time keeps the requested `fold` occurrence.
  */
 export function timeGridDateTimeAt(
   column: TimeGridColumn,
@@ -107,14 +108,10 @@ export function timeGridDateTimeAt(
   options: TimeGridPointOptions = {},
 ): Temporal.ZonedDateTime {
   const nanoseconds = Math.round(Math.min(1, Math.max(0, y)) * NOMINAL_DAY_NANOSECONDS);
-  const wallTime = column.date.toPlainDateTime().add({ nanoseconds });
-  const timeZone = column.day.timeZone;
-  const earlier = wallTime.toZonedDateTime(timeZone, { disambiguation: "earlier" });
-  const resolved = !earlier.toPlainDateTime().equals(wallTime)
-    ? earlier.getTimeZoneTransition("next")!
-    : options.fold === "later"
-      ? wallTime.toZonedDateTime(timeZone, { disambiguation: "later" })
-      : earlier;
 
-  return snapZonedDateTime(resolved, options.snap ?? DEFAULT_SNAP);
+  return snapZonedWallTime(column.date.toPlainDateTime().add({ nanoseconds }), {
+    ...(options.snap ?? DEFAULT_SNAP),
+    fold: options.fold,
+    timeZone: column.day.timeZone,
+  });
 }

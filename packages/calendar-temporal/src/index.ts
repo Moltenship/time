@@ -77,7 +77,8 @@ export {
 } from "./zoned/machine-keys";
 
 export { projectInstantToZonedTime, resolveZonedWallTime } from "./zoned/projection";
-export { snapZonedDateTime } from "./zoned/rounding";
+export { snapZonedDateTime, snapZonedWallTime } from "./zoned/rounding";
+export type { ZonedWallTimeSnapOptions } from "./zoned/rounding";
 export type {
   RejectedZonedWallTimeProjection,
   ResolvedZonedWallTimeProjection,
