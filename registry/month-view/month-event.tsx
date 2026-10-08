@@ -9,7 +9,7 @@ import type { CSSProperties } from "react";
 
 import { EventChip } from "@registry/calendar/event-chip";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 
 export interface MonthEventProps {
   /** A filled bar (all-day and multi-day events) rather than a dot, time, and title. */

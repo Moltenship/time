@@ -8,7 +8,7 @@ import {
 
 import { EventChip } from "@registry/calendar/event-chip";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 
 type DayFragment = EventDayFragment<unknown, EventId, ResourceId>;
 

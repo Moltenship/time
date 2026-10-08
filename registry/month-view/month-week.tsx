@@ -10,7 +10,7 @@ import {
 import { useMemo, type CSSProperties } from "react";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@registry/ui/popover";
 
 import { MonthEvent } from "./month-event";
@@ -102,22 +102,15 @@ function MoreEvents<TEvent>({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          aria-label={`${count} more events on ${formats.date.format(day.date)}`}
-          style={style}
-          className="pointer-events-auto mx-0.5 my-px truncate rounded-sm px-1.5 text-left text-xs font-medium max-sm:px-1 max-sm:text-[0.625rem] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
-        >
-          <span className="max-sm:hidden">{count} more</span>
-          <span className="sm:hidden">+{count}</span>
-        </button>
-      </PopoverTrigger>
-      <PopoverContent
-        align="center"
-        collisionPadding={8}
-        className="flex max-h-(--radix-popover-content-available-height) w-64 flex-col p-2"
+      <PopoverTrigger
+        aria-label={`${count} more events on ${formats.date.format(day.date)}`}
+        style={style}
+        className="pointer-events-auto mx-0.5 my-px truncate rounded-sm px-1.5 text-left text-xs font-medium max-sm:px-1 max-sm:text-[0.625rem] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
       >
+        <span className="max-sm:hidden">{count} more</span>
+        <span className="sm:hidden">+{count}</span>
+      </PopoverTrigger>
+      <PopoverContent align="center" className="max-h-(--available-height) w-64 gap-0 p-2">
         <div className="flex flex-col items-center gap-0.5 pb-2">
           <span className="text-[0.6875rem] font-medium text-muted-foreground uppercase">
             {formats.weekday.format(day.date)}

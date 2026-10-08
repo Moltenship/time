@@ -1,4 +1,4 @@
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@registry/ui/select";
 
 export interface ViewSwitcherOption<TView extends string> {
@@ -23,23 +23,26 @@ export function ViewSwitcher<TView extends string>({
 }: ViewSwitcherProps<TView>) {
   return (
     <Select
+      items={options}
       value={value}
       onValueChange={(next) => {
         const option = options.find((candidate) => candidate.value === next);
         if (option !== undefined) onValueChange(option.value);
       }}
     >
-      <SelectTrigger aria-label="View" size="sm" className={cn("rounded-full sm:w-26", className)}>
+      <SelectTrigger aria-label="View" className={cn("rounded-full sm:w-26", className)}>
         <SelectValue />
       </SelectTrigger>
-      <SelectContent align="end">
+      <SelectContent align="end" alignItemWithTrigger={false}>
         {options.map((option) => (
-          <SelectItem
-            key={option.value}
-            hint={option.shortcut && <kbd className="font-sans">{option.shortcut}</kbd>}
-            value={option.value}
-          >
+          <SelectItem key={option.value} value={option.value}>
             {option.label}
+            {/* The trigger shows the label from `items`, so the shortcut only appears in the list. */}
+            {option.shortcut !== undefined && (
+              <kbd className="ml-auto font-sans text-xs text-muted-foreground">
+                {option.shortcut}
+              </kbd>
+            )}
           </SelectItem>
         ))}
       </SelectContent>

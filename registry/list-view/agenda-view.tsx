@@ -15,7 +15,7 @@ import { CalendarX2Icon } from "lucide-react";
 import { useMemo } from "react";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 
 import { AgendaItem } from "./agenda-item";
 

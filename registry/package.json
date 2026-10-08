@@ -9,13 +9,12 @@
     "test": "vp test"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@moltenship/calendar": "workspace:*",
     "class-variance-authority": "catalog:",
-    "clsx": "catalog:",
+    "cn": "catalog:",
     "lucide-react": "catalog:",
-    "radix-ui": "catalog:",
-    "react": "catalog:",
-    "tailwind-merge": "catalog:"
+    "react": "catalog:"
   },
   "devDependencies": {
     "@types/react": "catalog:",

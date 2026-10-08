@@ -2,7 +2,7 @@ import type { CalendarFactory, CalendarTriggerProps } from "@moltenship/calendar
 import { CalendarCheckIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { ComponentType, ReactNode } from "react";
 
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 import { buttonVariants } from "@registry/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/ui/tooltip";
 
@@ -32,17 +32,15 @@ function StepTrigger({
 }) {
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Trigger
-          aria-label={label}
-          className={buttonVariants({
-            variant: "ghost",
-            size: "icon-sm",
-            className: "rounded-full",
-          })}
-        >
-          {children}
-        </Trigger>
+      <TooltipTrigger
+        render={
+          <Trigger
+            aria-label={label}
+            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "rounded-full")}
+          />
+        }
+      >
+        {children}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>
@@ -59,11 +57,11 @@ export function CalendarToolbar({ calendar, children, className, start }: Calend
       {start}
       <TodayTrigger
         aria-label="Today"
-        className={buttonVariants({
-          className: "rounded-full max-sm:w-8 max-sm:px-0 sm:px-4",
-          size: "sm",
-          variant: "outline",
-        })}
+        // `cn` resolves the variant's border colour against the base one, as the Button component does.
+        className={cn(
+          buttonVariants({ variant: "outline" }),
+          "rounded-full max-sm:w-8 max-sm:px-0 sm:px-4",
+        )}
       >
         <span className="sm:hidden">
           <CalendarCheckIcon />

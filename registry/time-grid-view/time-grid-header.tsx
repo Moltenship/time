@@ -5,7 +5,7 @@ import type {
 } from "@moltenship/calendar";
 import { useMemo } from "react";
 
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 
 export interface TimeGridHeaderProps {
   readonly actions: CalendarViewActions;

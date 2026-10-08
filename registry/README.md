@@ -11,8 +11,7 @@ registry/
   calendar-theme/   tokens + event palette          registry item "calendar-theme"
   calendar/         toolbar, view switcher, event chip, mini month   registry item "calendar"
   month-view/ …     one folder per view, each its own registry item
-  ui/               local copies of standard shadcn primitives (button, dialog, popover, …)
-  lib/utils.ts      the shadcn `cn` helper
+  ui/               stock shadcn components (Base UI, base-nova style): button, dialog, popover, …
   tests/            focused tests for the source above
 ```
 
@@ -22,16 +21,29 @@ file with an explicit consumer `target`. `vp run registry:smoke` validates all m
 `tools/registry`: schema, existing source files, safe and unique targets, npm dependency
 specifiers, `calendar-*` CSS variable names, and `meta.compatibility` ranges.
 
-`ui/` and `lib/` are not registry items. They are the components a shadcn app already has, so
-items reference them through `registryDependencies` (`button`, `select`, `tooltip`, `utils`) and
-consumers get the upstream versions. There is no `shadcn build` step yet; when one lands it must
-map `@registry/ui/*` and `@registry/lib/utils` to the consumer's `components.json` aliases.
+`ui/` is not a registry item. It holds the components a stock shadcn app already has: the files
+`npx shadcn@latest init` and `shadcn add` install today (Base UI, `base-nova` style), unchanged
+apart from the `@registry/ui/button` import path. Items reference them through
+`registryDependencies` (`button`, `popover`, `select`, `tooltip`), so consumers get the upstream
+versions. There is no `shadcn build` step yet; when one lands it must map `@registry/ui/*` to the
+consumer's `components.json` `ui` alias.
+
+A stock shadcn app takes the source as is:
+
+```sh
+npx shadcn@latest init                              # Base UI, base-nova
+npx shadcn@latest add button popover select tooltip
+```
 
 ## Conventions
 
 - Import shared source through the `@registry/*` alias: `@registry/ui/button`,
   `@registry/calendar/event-chip`, `@registry/calendar-theme/event-colors`. Files inside one item
-  may import each other relatively.
+  may import each other relatively. Class names merge with `cn` from the `cn` package, as stock
+  shadcn components do.
+- Compose with Base UI's `render` prop, never `asChild`:
+  `<TooltipTrigger render={<Button variant="ghost" />}>…</TooltipTrigger>`. Tooltips need a
+  `TooltipProvider` around the app, as `shadcn add tooltip` instructs.
 - Registry source imports only the calendar facade (`@moltenship/calendar`) and the UI
   dependencies declared in `registry/package.json`. `dependency-cruiser.config.ts` enforces this.
 - Style with the theme tokens, not raw colours: `bg-calendar-event`, `border-calendar-grid`,
@@ -64,10 +76,12 @@ export default defineConfig({ resolve: { tsconfigPaths: true } });
 /* apps/<app>/src/styles.css */
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @import "../../../registry/calendar-theme/calendar-theme.css";
 @source "../../../registry";
-@custom-variant dark (&:where(.dark, .dark *));
+@custom-variant dark (&:is(.dark *));
 ```
 
-The app also lists the UI dependencies the source uses (`radix-ui`, `lucide-react`, …), exactly as
-a consumer project would after `shadcn add`.
+The app also lists the UI dependencies the source uses (`@base-ui/react`, `cn`,
+`class-variance-authority`, `lucide-react`, and `shadcn` for its Tailwind variants), exactly as a
+stock shadcn project has them.

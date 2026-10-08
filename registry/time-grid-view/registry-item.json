@@ -4,8 +4,8 @@
   "type": "registry:component",
   "title": "Week and day views",
   "description": "Google Calendar-style week and day time grids: day headers with today highlighted, all-day lanes that collapse to +N, an hour gutter, overlapping events side by side, daylight-saving gaps and folds, and a now-line.",
-  "dependencies": ["@moltenship/calendar", "lucide-react"],
-  "registryDependencies": ["button", "utils", "@moltenship/calendar", "@moltenship/calendar-theme"],
+  "dependencies": ["@moltenship/calendar", "cn", "lucide-react"],
+  "registryDependencies": ["button", "@moltenship/calendar", "@moltenship/calendar-theme"],
   "files": [
     {
       "path": "registry/time-grid-view/time-grid-view.tsx",

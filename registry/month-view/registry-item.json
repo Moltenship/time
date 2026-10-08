@@ -4,13 +4,8 @@
   "type": "registry:component",
   "title": "Month view",
   "description": "Google Calendar-style month grid: multi-day bars with continuation ends, timed events as dot, time, and title, lane counts that follow the cell height, and a \"+N more\" popover per day.",
-  "dependencies": ["@moltenship/calendar", "lucide-react"],
-  "registryDependencies": [
-    "popover",
-    "utils",
-    "@moltenship/calendar",
-    "@moltenship/calendar-theme"
-  ],
+  "dependencies": ["@moltenship/calendar", "cn", "lucide-react"],
+  "registryDependencies": ["popover", "@moltenship/calendar", "@moltenship/calendar-theme"],
   "files": [
     {
       "path": "registry/month-view/month-view.tsx",

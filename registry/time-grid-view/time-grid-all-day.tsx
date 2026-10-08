@@ -11,7 +11,7 @@ import { useMemo, useState } from "react";
 
 import { EventChip } from "@registry/calendar/event-chip";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 import { Button } from "@registry/ui/button";
 
 export interface TimeGridAllDayProps<TEvent> {

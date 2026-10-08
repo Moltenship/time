@@ -7,7 +7,7 @@ import {
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 import { Button } from "@registry/ui/button";
 
 export interface MiniMonthProps {

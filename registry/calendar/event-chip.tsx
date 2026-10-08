@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 
 export interface EventChipProps extends ComponentProps<"button"> {
   /** Sets `data-color`; without it the chip uses the theme's default event tokens. */

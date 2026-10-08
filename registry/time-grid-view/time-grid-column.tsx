@@ -1,7 +1,7 @@
 import type { TimeGridBand, TimeGridDay } from "@moltenship/calendar";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
-import { cn } from "@registry/lib/utils";
+import { cn } from "cn";
 
 import { percent, TimeGridEvent } from "./time-grid-event";
 
