@@ -1,6 +1,6 @@
 # ADR 0019: Keep dnd-kit behind a semantic calendar adapter
 
-- Status: accepted for the production implementation in issue #37
+- Status: superseded by [ADR 0037](./0037-native-pointer-events.md). Production pointer input uses native Pointer Events; this spike stays as history.
 - Date: 2026-08-15
 - Spike: issue #19
 

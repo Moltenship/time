@@ -26,7 +26,7 @@ This document is the normative architecture contract.
 | State              | Per-calendar store; independently controlled/uncontrolled state slices; Jotai is private implementation detail.                                      |
 | Views              | Day, week, month, list/agenda, resource columns, and resource timeline ship as explicit view definitions. Custom views use a stable plugin contract. |
 | Resources          | An event can have zero-to-many resources. Both day-by-resource columns and horizontal resource timelines are first-class.                            |
-| Interaction        | dnd-kit is isolated behind an adapter. Pointer, touch, keyboard, and explicit edit actions produce the same typed transaction.                       |
+| Interaction        | Native Pointer Events live behind a semantic adapter (ADR 0037). Pointer, touch, keyboard, and explicit edit actions produce the same typed transaction. |
 | Recurrence         | Separate post-foundation package; the base contracts reserve occurrence identity without implementing RRULE expansion in v1.                         |
 | Styling            | Tailwind CSS 4 and shadcn tokens in registry source; no Tailwind dependency in headless packages.                                                    |
 | SSR                | Full deterministic server markup when environment inputs are provided; no browser globals at module scope.                                           |
@@ -61,7 +61,7 @@ The application owns facts. The engine derives render models. React binds those 
 1. Temporal utilities never import React, Jotai, dnd-kit, DOM types, CSS, or application types.
 2. Core never imports React, Jotai, dnd-kit, DOM types, or registry source.
 3. React bindings may import core and Jotai, but not default view source.
-4. The dnd adapter may import the React bindings, core interaction contracts, and dnd-kit.
+4. The pointer adapter may import the React bindings and core interaction contracts. It uses native Pointer Events, not a drag-and-drop library (ADR 0037).
 5. Registry source may import all public packages and ordinary shadcn components.
 6. The showcase consumes packages and registry output exactly as an end user would.
 7. No package may deep-import another package's `src/` directory.
@@ -81,7 +81,7 @@ time/
 │   ├── calendar-temporal/        # standalone Temporal calendar utilities
 │   ├── calendar-core/            # data/index/layout/view/transaction engine
 │   ├── calendar-react/           # React provider, store bridge, hooks, primitives
-│   ├── calendar-dnd/             # optional dnd-kit interaction adapter
+│   ├── calendar-dnd/             # pointer interaction adapter (native Pointer Events)
 │   ├── calendar/                 # DX-first public facade
 │   ├── calendar-testing/         # fixtures, harnesses and semantic test helpers
 │   └── calendar-recurrence/      # reserved; implemented after the foundation
@@ -117,7 +117,7 @@ no second docs content tree.
 | `@moltenship/calendar-temporal`   | Type-specific ranges, grids, timezone projection, slots, rounding, keys, and interval helpers.                                | None                                                                                      | Stable, standalone                                |
 | `@moltenship/calendar-core`       | Event adapters, normalized snapshots, interval indexes, view strategies, fragments, layout engines, policies, transactions.   | `calendar-temporal`; provisional `@flatten-js/interval-tree` behind an internal interface | Stable                                            |
 | `@moltenship/calendar-react`      | Per-instance provider, controlled state bridge, selectors, actions, meta, headless primitives, custom-view renderer contract. | `calendar-core`, Jotai; React 19 peer                                                     | Stable                                            |
-| `@moltenship/calendar-dnd`        | dnd-kit sensors, geometry adapter, overlay, auto-scroll, accessibility announcements.                                         | `calendar-core`, `calendar-react`; dnd-kit peers                                          | Stable adapter; dnd-kit types are not re-exported |
+| `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements.                                          | `calendar-core`, `calendar-temporal`                                                      | Stable adapter; no DOM event types in callbacks   |
 | `@moltenship/calendar`            | The ergonomic entry point used by most consumers. Re-exports supported React and core contracts.                              | `calendar-react`, `calendar-core`                                                         | Stable facade                                     |
 | `@moltenship/calendar-testing`    | Deterministic clocks, event builders, keyboard drivers, view harnesses, assertions.                                           | Public calendar packages                                                                  | Stable after v1                                   |
 | `@moltenship/calendar-recurrence` | Series/occurrence expansion, exceptions, detached instances, RRULE boundary.                                                  | `calendar-core`, `calendar-temporal`                                                      | Post-foundation                                   |
@@ -130,7 +130,7 @@ Package versions move in lockstep until after `1.0`. The repository lockfile pin
 | ------------------------------------- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
 | React 19                              | `calendar-react`, facade, registry | Rendering, context, refs, SSR, external-store subscription        | Peer dependency; absent from core and Temporal utilities          |
 | Jotai 2                               | `calendar-react`                   | Per-instance vanilla store and fine-grained derived subscriptions | Private atoms; no Jotai type in the public calendar API           |
-| `@dnd-kit/react` + `@dnd-kit/dom` 0.x | `calendar-dnd`                     | Maintained pointer/touch/keyboard and accessibility substrate     | Exact lockfile pin; wrapped behind semantic interaction contracts |
+| `@dnd-kit/react` + `@dnd-kit/dom` 0.x | `tools/dnd-adapter-spike` only     | Spike history; not a production dependency since ADR 0037          | Optional future adapter behind the same semantic contracts       |
 | TanStack Virtual 3                    | List and resource registry views   | Maintained vertical/horizontal windowing and measurement          | Hidden behind view adapters; not required by core                 |
 | `@flatten-js/interval-tree` 2         | `calendar-core` provisionally      | Established interval-query baseline                               | Hidden behind `IntervalIndex`; retained only if benchmarks pass   |
 | Tailwind CSS 4 + shadcn registry      | Consumer-owned registry source     | Theme-token compatibility and source distribution                 | No runtime import in headless packages                            |
@@ -625,7 +625,7 @@ The promise return is the DX path. An explicit transaction controller is availab
 
 ## 11. Drag, resize, selection, and creation
 
-`@moltenship/calendar-dnd` adapts the current `@dnd-kit/react`/`@dnd-kit/dom` line. Core packages know only semantic interaction contracts.
+`@moltenship/calendar-dnd` uses native Pointer Events ([ADR 0037](./docs/adr/0037-native-pointer-events.md)). Core packages know only semantic interaction contracts. A dnd-kit adapter can return later as an option behind the same contracts.
 
 ### Performance model
 
@@ -640,12 +640,12 @@ The promise return is the DX path. An explicit transaction controller is availab
 
 Pointer dragging is never the only path. The same commands are available through:
 
-- keyboard grab/move/resize mode;
+- keyboard grab/move/resize mode (0.2, #36);
 - explicit move and resize controls;
 - an editable event details surface installed from registry source;
 - programmatic `actions.proposeEventChange()`.
 
-dnd-kit sensor, collision, and announcement options are configurable through a narrow adapter configuration. Raw dnd-kit event types do not leak into calendar callbacks.
+Activation distance, touch delay, snapping, and announcement options are configured through a narrow adapter configuration. DOM event types do not leak into calendar callbacks.
 
 ### Policy pipeline
 
@@ -1076,7 +1076,7 @@ Gate: timezone/DST recurrence matrix and interop fixtures pass without changing 
 ## 23. Prototype risks to retire early
 
 1. **React controlled bridge:** prove synchronous controlled state plus fine-grained Jotai subscriptions under SSR/Strict Mode.
-2. **dnd-kit adapter:** pin the current 0.x line in the lockfile and prove pointer, touch, keyboard, auto-scroll, and announcements behind semantic types.
+2. **dnd-kit adapter:** pin the current 0.x line in the lockfile and prove pointer, touch, keyboard, auto-scroll, and announcements behind semantic types. Superseded in 0.1 by native Pointer Events (ADR 0037).
 3. **Two-axis resource timeline:** prove TanStack Virtual composition, sticky axes, focus retention, and SSR initial geometry.
 4. **DST wall-time geometry:** prove gaps and folds in day/week drag, resize, slots, and announcements.
 5. **Index implementation:** compare the selected interval-tree adapter with a simple reference and retain it only if build/query/memory budgets pass.
@@ -1116,10 +1116,10 @@ Before merging any feature, verify:
 - [ ] No host timezone or current time is read implicitly during render.
 - [ ] Core imports no React, DOM, Jotai, dnd-kit, Tailwind, or application code.
 - [ ] The change does not add work proportional to all events/resources inside a render or frame.
-- [ ] Pointer interaction has keyboard and explicit-action equivalents.
+- [ ] Pointer interaction has explicit-action equivalents now and keyboard equivalents from 0.2 (#36).
 - [ ] Controlled state is not mirrored through an effect.
 - [ ] A custom view can use the capability without internal imports.
 - [ ] Registry source uses semantic tokens and remains editable.
 - [ ] SSR markup is deterministic or the client-only enhancement is intentional.
-- [ ] Performance, accessibility, and browser evidence matches the claim.
+- [ ] The issue's "Done when" list is met, with tests for each behavioural claim.
 - [ ] No new boolean-prop matrix or god file was introduced.

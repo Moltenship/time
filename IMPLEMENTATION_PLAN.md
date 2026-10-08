@@ -89,15 +89,14 @@ Scope / Done when / Later before starting it.
   package entry points and `registry/` source.
 - If a PR changes a decision recorded in `architecture.md`, update that file in the same PR.
 
-## Exceptions to `architecture.md`
+## Decisions changed in 0.1
 
-`architecture.md` is still the design reference, except for three decisions made in 0.1. #37
-updated `architecture.md` (§11 and §26) and marks
-[ADR 0001](./docs/adr/0001-semantic-dnd-kit-adapter.md) superseded.
+`architecture.md` is the design reference. Three decisions changed in 0.1 and are reflected there:
 
-- Pointer input uses native Pointer Events (#37). dnd-kit becomes an optional adapter for later;
-  the #19 spike stays as history.
+- Pointer input uses native Pointer Events ([ADR 0037](./docs/adr/0037-native-pointer-events.md),
+  superseding [ADR 0019](./docs/adr/0019-semantic-dnd-kit-adapter.md)). dnd-kit can return later as
+  an optional adapter; the #19 spike stays as history.
 - Keyboard grab / move / resize comes in 0.2 (#36). Until then, pointer changes have equivalents
   through the transaction API (#35) and the demo's event dialog (#71).
-- The "performance, accessibility, and browser evidence" invariant is replaced by each issue's
-  "Done when" list.
+- Each issue's "Done when" list replaces the "performance, accessibility, and browser evidence"
+  invariant.
