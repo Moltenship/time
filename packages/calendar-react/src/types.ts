@@ -58,7 +58,9 @@ export type CalendarStateChangeHandlers<
   TFocus = string,
   TResourceId extends ResourceId = ResourceId,
 > = {
-  readonly [TSlice in CalendarStateSlice as `on${Capitalize<TSlice>}Change`]?: CalendarStateChangeHandler<
+  readonly [
+    TSlice in CalendarStateSlice as `on${Capitalize<TSlice>}Change`
+  ]?: CalendarStateChangeHandler<
     CalendarPublicState<TView, TSelection, TFocus, TResourceId>[TSlice],
     TSlice
   >;

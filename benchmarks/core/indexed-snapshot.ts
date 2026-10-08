@@ -41,25 +41,24 @@ function nativeEvents(fixtures: BenchmarkFixtureSet): readonly NativeFixtureEven
   if (cached !== undefined) return cached;
 
   const events = Object.freeze(
-    fixtures.events.map(
-      (event): NativeFixtureEvent =>
-        event.kind === "timed"
+    fixtures.events.map((event): NativeFixtureEvent =>
+      event.kind === "timed"
+        ? Object.freeze({
+            ...event,
+            end: Temporal.Instant.from(event.end),
+            start: Temporal.Instant.from(event.start),
+          })
+        : event.kind === "all-day"
           ? Object.freeze({
               ...event,
-              end: Temporal.Instant.from(event.end),
-              start: Temporal.Instant.from(event.start),
+              end: Temporal.PlainDate.from(event.end),
+              start: Temporal.PlainDate.from(event.start),
             })
-          : event.kind === "all-day"
-            ? Object.freeze({
-                ...event,
-                end: Temporal.PlainDate.from(event.end),
-                start: Temporal.PlainDate.from(event.start),
-              })
-            : Object.freeze({
-                ...event,
-                end: Temporal.PlainDateTime.from(event.end),
-                start: Temporal.PlainDateTime.from(event.start),
-              }),
+          : Object.freeze({
+              ...event,
+              end: Temporal.PlainDateTime.from(event.end),
+              start: Temporal.PlainDateTime.from(event.start),
+            }),
     ),
   );
   nativeEventCache.set(fixtures, events);

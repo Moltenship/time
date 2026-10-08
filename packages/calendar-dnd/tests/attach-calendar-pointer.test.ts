@@ -200,11 +200,11 @@ describe("time grid", () => {
     const element = grid.elements.get("a")!;
     // Under a transform, a fixed box at left: 0, top: 0 sits at the ancestor's corner.
     const containingBlock = { height: 0, left: 120, top: 30, width: 0 } as DOMRect;
-    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
-      function (this: HTMLElement) {
-        return this.hasAttribute("data-calendar-ghost-origin") ? containingBlock : new DOMRect();
-      },
-    );
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: HTMLElement,
+    ) {
+      return this.hasAttribute("data-calendar-ghost-origin") ? containingBlock : new DOMRect();
+    });
 
     pointer("pointerdown", element, 50, yAt("09:30"));
     pointer("pointermove", element, 150, yAt("11:30"));

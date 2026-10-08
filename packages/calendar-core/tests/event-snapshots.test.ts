@@ -716,14 +716,12 @@ describe("event snapshot index properties", () => {
           start: fc.integer({ min: -120, max: 120 }),
         }),
         (rawEntries, rawQuery) => {
-          const events = rawEntries.map(
-            (entry, index): RawEvent => ({
-              end: entry.start + entry.length,
-              id: `event-${index}`,
-              kind: entry.kind,
-              start: entry.start,
-            }),
-          );
+          const events = rawEntries.map((entry, index): RawEvent => ({
+            end: entry.start + entry.length,
+            id: `event-${index}`,
+            kind: entry.kind,
+            start: entry.start,
+          }));
           const queryEnd = rawQuery.start + rawQuery.length;
           const expected = events
             .filter(

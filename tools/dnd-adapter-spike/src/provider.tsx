@@ -4,6 +4,7 @@ import {
   type Draggable as DndDraggable,
   Feedback,
   KeyboardSensor,
+  PointerActivationConstraints,
   PointerSensor,
   PreventSelection,
 } from "@dnd-kit/dom";
@@ -212,13 +213,17 @@ export function CalendarDragProvider<TEvent, TResourceId extends CalendarEntityI
       PointerSensor.configure({
         activationConstraints(event) {
           return event.pointerType === "touch"
-            ? {
-                delay: {
+            ? [
+                new PointerActivationConstraints.Delay({
                   value: configuration.pointer.touchDelayMs,
                   tolerance: configuration.pointer.touchTolerance,
-                },
-              }
-            : { distance: { value: configuration.pointer.mouseDistance } };
+                }),
+              ]
+            : [
+                new PointerActivationConstraints.Distance({
+                  value: configuration.pointer.mouseDistance,
+                }),
+              ];
         },
       }),
       KeyboardSensor.configure({
@@ -325,7 +330,7 @@ export function CalendarDraggable<TEvent, TResourceId extends CalendarEntityId =
   const { ref, handleRef } = useDraggable<InternalDragData<TEvent, TResourceId>>({
     id: eventId,
     data: { kind: "calendar-event", source },
-    feedback: "clone",
+    plugins: [Feedback.configure({ feedback: "clone" })],
   });
 
   return children({ ref, handleRef });

@@ -37,9 +37,9 @@ describe("CI quality gate contract", () => {
 
     expect(steps.map(({ uses }) => uses).filter(Boolean)).toEqual([
       "actions/checkout@v6",
-      "voidzero-dev/setup-vp@v1",
+      "voidzero-dev/setup-vp@v1.21.1",
     ]);
-    expect(steps.find(({ uses }) => uses === "voidzero-dev/setup-vp@v1")?.with).toMatchObject({
+    expect(steps.find(({ uses }) => uses === "voidzero-dev/setup-vp@v1.21.1")?.with).toMatchObject({
       "node-version": "26",
       cache: true,
     });

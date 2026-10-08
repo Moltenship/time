@@ -22,13 +22,11 @@ interface TeamCalendarProps {
 export function TeamCalendar({ meetings, now, timeZone }: TeamCalendarProps) {
   const events = useMemo(
     () =>
-      meetings.map(
-        (meeting): Meeting => ({
-          ...meeting,
-          start: Temporal.Instant.from(meeting.start),
-          end: Temporal.Instant.from(meeting.end),
-        }),
-      ),
+      meetings.map((meeting): Meeting => ({
+        ...meeting,
+        start: Temporal.Instant.from(meeting.start),
+        end: Temporal.Instant.from(meeting.end),
+      })),
     [meetings],
   );
   const nowInstant = Temporal.Instant.from(now);

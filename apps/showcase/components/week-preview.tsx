@@ -29,16 +29,14 @@ interface PreviewEvent {
   readonly lane?: readonly [index: number, count: number];
 }
 
-const standups = [0, 1, 2, 3, 4].map(
-  (day): PreviewEvent => ({
-    day,
-    start: 9,
-    end: 9.5,
-    title: "Standup",
-    time: "09:00",
-    tone: "neutral",
-  }),
-);
+const standups = [0, 1, 2, 3, 4].map((day): PreviewEvent => ({
+  day,
+  start: 9,
+  end: 9.5,
+  title: "Standup",
+  time: "09:00",
+  tone: "neutral",
+}));
 
 const events: readonly PreviewEvent[] = [
   ...standups,

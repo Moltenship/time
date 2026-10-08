@@ -14,14 +14,12 @@ const scanned = await scanURLs({
   },
 });
 const files = await Promise.all(
-  pages.map(
-    async (page): Promise<FileObject> => ({
-      content: await page.data.getText("raw"),
-      data: page.data,
-      path: page.absolutePath ?? page.path,
-      url: page.url,
-    }),
-  ),
+  pages.map(async (page): Promise<FileObject> => ({
+    content: await page.data.getText("raw"),
+    data: page.data,
+    path: page.absolutePath ?? page.path,
+    url: page.url,
+  })),
 );
 const results = await validateFiles(files, {
   checkRelativePaths: "as-url",
