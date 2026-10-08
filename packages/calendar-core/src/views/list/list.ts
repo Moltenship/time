@@ -16,7 +16,6 @@ import {
 import { todayIn } from "../../projection/today";
 import { queryVisibleEvents } from "../../projection/visible-events";
 import type { EventSnapshot } from "../../snapshots/types";
-import type { ViewNavigationDirection } from "../../views";
 
 const DEFAULT_LIST_WEEKS = 4;
 
@@ -77,10 +76,10 @@ export function getListRange(
 
 export function navigateList(
   anchor: Temporal.PlainDate,
-  direction: ViewNavigationDirection,
+  delta: number,
   options: ListViewOptions = {},
 ): Temporal.PlainDate {
-  return anchor.add({ weeks: direction * listWeeks(options) });
+  return anchor.add({ weeks: delta * listWeeks(options) });
 }
 
 export function getListTitle(range: PlainDateInterval, environment: CalendarEnvironment): string {

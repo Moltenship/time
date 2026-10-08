@@ -10,7 +10,7 @@ interface Meeting {
   end: Temporal.Instant;
 }
 
-export const Calendar = createCalendar<Meeting, { id: string }>({
+export const Calendar = createCalendar<Meeting, { id: string }>()({
   eventAdapter: defineEventAdapter<Meeting>()({
     getId: (meeting) => meeting.id,
     getTitle: (meeting) => meeting.title,

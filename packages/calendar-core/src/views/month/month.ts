@@ -11,7 +11,6 @@ import { splitEventsByDay } from "../../projection/day-fragments";
 import { todayIn } from "../../projection/today";
 import { queryVisibleEvents } from "../../projection/visible-events";
 import type { EventSnapshot } from "../../snapshots/types";
-import type { ViewNavigationDirection } from "../../views";
 
 export interface MonthProjectionInput<
   TEvent,
@@ -55,11 +54,8 @@ export function getMonthRange(
   return monthGridFor(anchor, environment).range;
 }
 
-export function navigateMonth(
-  anchor: Temporal.PlainDate,
-  direction: ViewNavigationDirection,
-): Temporal.PlainDate {
-  return anchor.add({ months: direction });
+export function navigateMonth(anchor: Temporal.PlainDate, delta: number): Temporal.PlainDate {
+  return anchor.add({ months: delta });
 }
 
 export function getMonthTitle(range: PlainDateInterval, environment: CalendarEnvironment): string {
