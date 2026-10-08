@@ -4,7 +4,7 @@ import {
   type CalendarEnvironmentBase,
   type TimeGridDay,
 } from "@moltenship/calendar";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
@@ -14,6 +14,8 @@ export interface TimeGridBodyProps<TEvent> {
   readonly days: readonly TimeGridDay<TEvent>[];
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /** The scrolling element, which dragging also scrolls near its edges. */
+  readonly scrollRef: RefObject<HTMLDivElement | null>;
 }
 
 /** Hour labels from 1:00 to 23:00; midnight sits under the header. */
@@ -35,9 +37,9 @@ export function TimeGridBody<TEvent>({
   days,
   environment,
   getEventColor,
+  scrollRef,
 }: TimeGridBodyProps<TEvent>) {
   const { locale, timeZone } = environment;
-  const scrollRef = useRef<HTMLDivElement>(null);
   const now = useNow();
   const nowPosition = useMemo(
     () =>
@@ -69,7 +71,7 @@ export function TimeGridBody<TEvent>({
       nowPosition === null
         ? DEFAULT_SCROLL_FRACTION * node.scrollHeight
         : Math.max(0, nowPosition.top * node.scrollHeight - node.clientHeight / 3);
-  }, [now, nowPosition]);
+  }, [now, nowPosition, scrollRef]);
 
   return (
     <div

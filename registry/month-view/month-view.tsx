@@ -9,6 +9,7 @@ import {
   type EventId,
   type MonthProjection,
   type ResourceId,
+  useCalendarPointer,
 } from "@moltenship/calendar";
 import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 
@@ -66,8 +67,20 @@ function useMonthFormats(locale: Intl.LocalesArgument): MonthFormats {
   }, [locale]);
 }
 
-function MonthView<TEvent>({ actions, environment, options, projection }: MonthViewProps<TEvent>) {
+function MonthView<TEvent>({
+  actions,
+  environment,
+  events,
+  options,
+  projection,
+}: MonthViewProps<TEvent>) {
   const body = useRef<HTMLDivElement>(null);
+  const pointerRef = useCalendarPointer({
+    events,
+    onPropose: actions.proposeEventChange,
+    scrollContainer: body,
+    timeZone: environment.timeZone,
+  });
   const maxLanes = useLaneCapacity(body, projection.weeks.length);
   const formats = useMonthFormats(environment.locale);
   const openDay = (date: Temporal.PlainDate) => {
@@ -76,7 +89,11 @@ function MonthView<TEvent>({ actions, environment, options, projection }: MonthV
   };
 
   return (
-    <div data-slot="month-view" className="flex h-full min-h-0 flex-col">
+    <div
+      ref={pointerRef}
+      data-slot="month-view"
+      className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing"
+    >
       <div aria-hidden className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
         {projection.weeks[0]?.days.map(({ date }) => (
           <div
@@ -110,7 +127,8 @@ function MonthView<TEvent>({ actions, environment, options, projection }: MonthV
 }
 
 /**
- * A Google Calendar-style month grid named `month`. Clicking a date opens the `day` view on it.
+ * A Google Calendar-style month grid named `month`. Clicking a date opens the `day` view on it;
+ * dragging an event moves it to another day, and dragging across days creates an all-day event.
  * Pass default options here; a root can override them through `viewOptions.month`.
  */
 export function createMonthView<TEvent>(defaultOptions: MonthViewOptions<TEvent> = {}) {
