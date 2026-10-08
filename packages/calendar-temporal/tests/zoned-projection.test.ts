@@ -112,6 +112,15 @@ describe("zoned wall-time projection", () => {
     expect(fold.key).toBe(zonedWallTimeKey(wallTime, "America/New_York"));
   });
 
+  test("normalizes timezone case but keeps aliases distinct across engines", () => {
+    const date = NativeTemporal.PlainDate.from("2026-01-15");
+
+    expect(zonedDayKey(date, "america/new_york")).toBe(zonedDayKey(date, "America/New_York"));
+    expect(zonedDayKey(date, "Asia/Calcutta")).toBe("date:2026-01-15|time-zone:Asia/Calcutta");
+    expect(zonedDayKey(date, "Asia/Kolkata")).toBe("date:2026-01-15|time-zone:Asia/Kolkata");
+    expect(() => zonedDayKey(date, "Mars/Olympus_Mons")).toThrow(RangeError);
+  });
+
   test("keeps the public projection signature environment-driven", () => {
     expectTypeOf<
       ReturnType<typeof resolveZonedWallTime>

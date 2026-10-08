@@ -8,11 +8,11 @@ import {
   monthGrid,
   roundInstant,
   roundPlainTime,
-  snapInstant,
   snapPlainTime,
   weekRange,
   type MonthGrid,
-  type PlainTimeSnapOptions,
+  type SnappedPlainTime,
+  type WallTimeSnapOptions,
   type WeekStartsOn,
 } from "../src/index";
 import { NativeTemporal } from "./native-temporal";
@@ -86,11 +86,11 @@ describe("type-specific rounding and snapping", () => {
         (hour, minute, increment) => {
           const time = NativeTemporal.PlainTime.from({ hour, minute, second: 30 });
           const snapped = snapPlainTime(time, { increment, smallestUnit: "minute" });
+          const resnapped = snapPlainTime(snapped.time, { increment, smallestUnit: "minute" });
 
-          expect(snapped.minute % increment).toBe(0);
-          expect(
-            snapPlainTime(snapped, { increment, smallestUnit: "minute" }).equals(snapped),
-          ).toBe(true);
+          expect(snapped.time.minute % increment).toBe(0);
+          expect(snapped.days).toBe(snapped.time.hour < hour ? 1 : 0);
+          expect(resnapped).toEqual({ days: 0, time: snapped.time });
         },
       ),
       { numRuns: 250 },
@@ -108,24 +108,48 @@ describe("type-specific rounding and snapping", () => {
       }).toString(),
     ).toBe("10:15:00");
     expect(
-      snapPlainTime(time, { increment: 15, mode: "floor", smallestUnit: "minute" }).toString(),
+      snapPlainTime(time, { increment: 15, mode: "floor", smallestUnit: "minute" }).time.toString(),
     ).toBe("10:00:00");
     expect(
-      snapPlainTime(time, { increment: 15, mode: "ceil", smallestUnit: "minute" }).toString(),
+      snapPlainTime(time, { increment: 15, mode: "ceil", smallestUnit: "minute" }).time.toString(),
     ).toBe("10:15:00");
     expect(
       comparePlainTimes(
-        snapPlainTime(time, { increment: 15, smallestUnit: "minute" }),
+        snapPlainTime(time, { increment: 15, smallestUnit: "minute" }).time,
         NativeTemporal.PlainTime.from("10:00"),
       ),
     ).toBeGreaterThan(0);
   });
 
-  test("rounds and snaps instants on the epoch grid", () => {
+  test("reports a day carry instead of wrapping a late snap to midnight", () => {
+    const late = NativeTemporal.PlainTime.from("23:50");
+    const midnight = NativeTemporal.PlainTime.from("00:00");
+
+    expect(snapPlainTime(late, { increment: 30, mode: "ceil", smallestUnit: "minute" })).toEqual({
+      days: 1,
+      time: midnight,
+    });
+    expect(snapPlainTime(late, { increment: 30, smallestUnit: "minute" })).toEqual({
+      days: 1,
+      time: midnight,
+    });
+    expect(snapPlainTime(late, { increment: 30, mode: "floor", smallestUnit: "minute" })).toEqual({
+      days: 0,
+      time: NativeTemporal.PlainTime.from("23:30"),
+    });
+    expect(
+      snapPlainTime(NativeTemporal.PlainTime.from("00:05"), {
+        increment: 15,
+        smallestUnit: "minute",
+      }),
+    ).toEqual({ days: 0, time: midnight });
+  });
+
+  test("rounds instants on the epoch grid", () => {
     const instant = NativeTemporal.Instant.from("1970-01-01T00:00:00.0075Z");
-    const floor = snapInstant(instant, {
+    const floor = roundInstant(instant, {
       increment: 10,
-      mode: "floor",
+      roundingMode: "floor",
       smallestUnit: "millisecond",
     });
     const nearest = roundInstant(instant, {
@@ -152,13 +176,17 @@ describe("type-specific rounding and snapping", () => {
     expect(() => roundPlainTime(time, { increment: 7, smallestUnit: "minute" })).toThrow(
       RangeError,
     );
+    expect(() => snapPlainTime(time, { increment: 2.5, smallestUnit: "minute" })).toThrow(
+      "invalid-plain-time-rounding-increment",
+    );
   });
 
   test("keeps grid and snapping return types type specific", () => {
     expectTypeOf<ReturnType<typeof monthGrid>>().toEqualTypeOf<MonthGrid>();
     expectTypeOf<Parameters<typeof snapPlainTime>>().toEqualTypeOf<
-      [time: Temporal.PlainTime, options: PlainTimeSnapOptions]
+      [time: Temporal.PlainTime, options: WallTimeSnapOptions]
     >();
-    expectTypeOf<ReturnType<typeof snapInstant>>().toEqualTypeOf<Temporal.Instant>();
+    expectTypeOf<ReturnType<typeof snapPlainTime>>().toEqualTypeOf<SnappedPlainTime>();
+    expectTypeOf<ReturnType<typeof roundInstant>>().toEqualTypeOf<Temporal.Instant>();
   });
 });

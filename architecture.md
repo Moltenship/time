@@ -329,7 +329,6 @@ instantKey(instant);
 zonedWallTimeKey(wallTime, timeZone);
 plainDateIntervalsIntersect(left, right);
 intersectPlainDateIntervals(left, right);
-clampPlainDateInterval(interval, bounds);
 ```
 
 ## 6. Event snapshots and indexes

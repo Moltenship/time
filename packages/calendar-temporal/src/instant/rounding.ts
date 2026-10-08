@@ -1,8 +1,8 @@
+import { assertRoundingIncrement } from "../internal/rounding-increment";
+
 export type InstantRoundingMode = NonNullable<
   Temporal.RoundingOptions<Temporal.TimeUnit>["roundingMode"]
 >;
-
-export type InstantSnapMode = "ceil" | "floor" | "nearest";
 
 export interface InstantRoundingOptions {
   readonly increment?: number;
@@ -10,44 +10,20 @@ export interface InstantRoundingOptions {
   readonly smallestUnit: Temporal.TimeUnit;
 }
 
-export interface InstantSnapOptions {
-  readonly increment: number;
-  readonly mode?: InstantSnapMode;
-  readonly smallestUnit: Temporal.TimeUnit;
-}
-
-function assertIncrement(increment: number): void {
-  if (!Number.isSafeInteger(increment) || increment < 1) {
-    throw new RangeError("invalid-instant-rounding-increment");
-  }
-}
-
-/** Rounds an absolute instant through the native Temporal operation. */
+/**
+ * Rounds an absolute instant on the Unix-epoch grid through the native Temporal operation.
+ * Calendar grids are wall-clock grids: use `snapZonedDateTime` for those.
+ */
 export function roundInstant(
   instant: Temporal.Instant,
   options: InstantRoundingOptions,
 ): Temporal.Instant {
   const increment = options.increment ?? 1;
-  assertIncrement(increment);
+  assertRoundingIncrement(increment, "invalid-instant-rounding-increment");
 
   return instant.round({
     roundingIncrement: increment,
     roundingMode: options.roundingMode,
-    smallestUnit: options.smallestUnit,
-  });
-}
-
-/** Snaps an instant to a Unix-epoch-anchored grid. */
-export function snapInstant(
-  instant: Temporal.Instant,
-  options: InstantSnapOptions,
-): Temporal.Instant {
-  const roundingMode: InstantRoundingMode =
-    options.mode === "floor" ? "floor" : options.mode === "ceil" ? "ceil" : "halfExpand";
-
-  return roundInstant(instant, {
-    increment: options.increment,
-    roundingMode,
     smallestUnit: options.smallestUnit,
   });
 }

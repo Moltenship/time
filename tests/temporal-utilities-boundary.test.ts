@@ -16,6 +16,7 @@ const zonedUtilitySourcePaths = [
   "packages/calendar-temporal/src/zoned/day.ts",
   "packages/calendar-temporal/src/zoned/machine-keys.ts",
   "packages/calendar-temporal/src/zoned/projection.ts",
+  "packages/calendar-temporal/src/zoned/rounding.ts",
   "packages/calendar-temporal/src/zoned/slots.ts",
 ] as const;
 

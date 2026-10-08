@@ -156,30 +156,6 @@ export function intersectPlainDateTimeIntervals(
   return intersectIntervals(left, right, comparePlainDateTimes, plainDateTimeInterval);
 }
 
-/** Restricts an instant interval to bounds, returning `null` when they are disjoint. */
-export function clampInstantInterval(
-  interval: InstantInterval,
-  bounds: InstantInterval,
-): InstantInterval | null {
-  return intersectInstantIntervals(interval, bounds);
-}
-
-/** Restricts a date interval to bounds, returning `null` when they are disjoint. */
-export function clampPlainDateInterval(
-  interval: PlainDateInterval,
-  bounds: PlainDateInterval,
-): PlainDateInterval | null {
-  return intersectPlainDateIntervals(interval, bounds);
-}
-
-/** Restricts a date-time interval to bounds, returning `null` when they are disjoint. */
-export function clampPlainDateTimeInterval(
-  interval: PlainDateTimeInterval,
-  bounds: PlainDateTimeInterval,
-): PlainDateTimeInterval | null {
-  return intersectPlainDateTimeIntervals(interval, bounds);
-}
-
 /** Splits only at an interior instant; endpoints and out-of-range points preserve the input. */
 export function splitInstantInterval(
   interval: InstantInterval,

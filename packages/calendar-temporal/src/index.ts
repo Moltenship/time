@@ -21,9 +21,6 @@ export type {
 } from "./intervals/half-open";
 
 export {
-  clampInstantInterval,
-  clampPlainDateInterval,
-  clampPlainDateTimeInterval,
   instantIntervalContains,
   instantIntervalContainsInterval,
   instantIntervalsIntersect,
@@ -57,20 +54,16 @@ export { roundPlainTime, snapPlainTime } from "./plain-time/rounding";
 export type {
   PlainTimeRoundingMode,
   PlainTimeRoundingOptions,
-  PlainTimeSnapMode,
-  PlainTimeSnapOptions,
+  SnappedPlainTime,
+  WallTimeSnapMode,
+  WallTimeSnapOptions,
 } from "./plain-time/rounding";
 
 export { DEFAULT_INSTANT_ITERATION_LIMIT, iterateInstants } from "./instant/iteration";
 export type { InstantIterationOptions } from "./instant/iteration";
 
-export { roundInstant, snapInstant } from "./instant/rounding";
-export type {
-  InstantRoundingMode,
-  InstantRoundingOptions,
-  InstantSnapMode,
-  InstantSnapOptions,
-} from "./instant/rounding";
+export { roundInstant } from "./instant/rounding";
+export type { InstantRoundingMode, InstantRoundingOptions } from "./instant/rounding";
 
 export { createFixedClock, createSystemClock } from "./clock/calendar-clock";
 export type { CalendarClock } from "./clock/calendar-clock";
@@ -84,6 +77,7 @@ export {
 } from "./zoned/machine-keys";
 
 export { projectInstantToZonedTime, resolveZonedWallTime } from "./zoned/projection";
+export { snapZonedDateTime } from "./zoned/rounding";
 export type {
   RejectedZonedWallTimeProjection,
   ResolvedZonedWallTimeProjection,

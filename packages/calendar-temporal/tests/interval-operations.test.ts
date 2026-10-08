@@ -2,8 +2,6 @@ import fc from "fast-check";
 import { describe, expect, expectTypeOf, test } from "vite-plus/test";
 
 import {
-  clampInstantInterval,
-  clampPlainDateInterval,
   InvalidHalfOpenIntervalError,
   instantInterval,
   instantIntervalContains,
@@ -71,17 +69,13 @@ describe("type-specific half-open interval operations", () => {
           expect(plainDateIntervalsIntersect(right, left)).toBe(expectedIntersects);
 
           const intersection = intersectPlainDateIntervals(left, right);
-          const clamp = clampPlainDateInterval(left, right);
           if (!expectedIntersects) {
             expect(intersection).toBeNull();
-            expect(clamp).toBeNull();
             return;
           }
 
           expect(intersection?.start.equals(dateAt(expectedStart))).toBe(true);
           expect(intersection?.end.equals(dateAt(expectedEnd))).toBe(true);
-          expect(clamp?.start.equals(intersection!.start)).toBe(true);
-          expect(clamp?.end.equals(intersection!.end)).toBe(true);
           expect(plainDateIntervalContainsInterval(left, intersection!)).toBe(true);
           expect(Object.isFrozen(intersection)).toBe(true);
         },
@@ -131,7 +125,6 @@ describe("type-specific half-open interval operations", () => {
     expect(instantIntervalContains(instantRange, middleInstant)).toBe(true);
     expect(instantIntervalsIntersect(instantRange, instantTail)).toBe(true);
     expect(intersectInstantIntervals(instantRange, instantTail)).toEqual(instantTail);
-    expect(clampInstantInterval(instantRange, instantTail)).toEqual(instantTail);
     expect(splitInstantInterval(instantRange, middleInstant)).toHaveLength(2);
 
     const firstDateTime = NativeTemporal.PlainDateTime.from("2026-08-15T10:00");

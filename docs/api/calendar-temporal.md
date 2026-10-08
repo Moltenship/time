@@ -25,11 +25,10 @@ Every operation is specific to one Temporal point type:
 | Interval containment | `instantIntervalContainsInterval` | `plainDateIntervalContainsInterval` | `plainDateTimeIntervalContainsInterval` |
 | Overlap predicate | `instantIntervalsIntersect` | `plainDateIntervalsIntersect` | `plainDateTimeIntervalsIntersect` |
 | Intersection | `intersectInstantIntervals` | `intersectPlainDateIntervals` | `intersectPlainDateTimeIntervals` |
-| Clamp to bounds | `clampInstantInterval` | `clampPlainDateInterval` | `clampPlainDateTimeInterval` |
 | Split at an interior point | `splitInstantInterval` | `splitPlainDateInterval` | `splitPlainDateTimeInterval` |
 
 Point containment includes `start` and excludes `end`. Adjacent intervals do not intersect.
-Intersection and clamp return `null` for adjacent or disjoint inputs. Split returns the original
+Intersection returns `null` for adjacent or disjoint inputs. Split returns the original
 interval as a one-item tuple unless the split point is strictly inside it.
 
 ## Lazy grids
@@ -66,18 +65,30 @@ individual row to `iteratePlainDates` when cells are needed.
 ## Rounding and snapping
 
 `roundPlainTime` and `roundInstant` expose native Temporal rounding with package-level `increment`
-and `roundingMode` options. `snapPlainTime` and `snapInstant` use the smaller `nearest | floor | ceil`
-vocabulary. Plain-time grids are anchored at midnight; instant grids are anchored at the Unix epoch.
-Native Temporal validates whether an increment is legal for the selected unit.
+and `roundingMode` options; instant rounding is anchored at the Unix epoch. `snapPlainTime` and
+`snapZonedDateTime` snap to a midnight-anchored wall-clock grid with the smaller
+`nearest | floor | ceil` vocabulary. Native Temporal validates whether an increment is legal for the
+selected unit.
+
+`snapPlainTime` returns `{ time, days }`: `days` is `1` when rounding up crossed midnight, so a
+late end time is never mistaken for an early one. `snapZonedDateTime` rounds in the value's own
+timezone. Inside a fold it keeps the input's offset; inside a gap it resolves to the transition
+instant, so `floor` never moves later and `ceil` never moves earlier.
 
 ```ts
-import { snapPlainTime } from "@moltenship/calendar-temporal";
+import { snapPlainTime, snapZonedDateTime } from "@moltenship/calendar-temporal";
 
-const snapped = snapPlainTime(Temporal.PlainTime.from("10:07:30"), {
-  increment: 15,
-  mode: "nearest",
+snapPlainTime(Temporal.PlainTime.from("23:50"), {
+  increment: 30,
+  mode: "ceil",
   smallestUnit: "minute",
-}); // 10:15:00
+}); // { days: 1, time: 00:00 }
+
+snapZonedDateTime(Temporal.ZonedDateTime.from("2026-03-08T01:50-05:00[America/New_York]"), {
+  increment: 15,
+  mode: "ceil",
+  smallestUnit: "minute",
+}); // 2026-03-08T03:00:00-04:00[America/New_York]
 ```
 
 ## Zoned days and splitting
@@ -112,7 +123,7 @@ disambiguation policy. Its result is explicit metadata rather than a bare `Zoned
 `"compatible"` selects the later shifted value for a gap and the earlier occurrence for a fold.
 Gap adjustments retain the requested wall time, resolved wall time, direction, and wall-time delta,
 so transaction and accessibility layers can report the change. `projectInstantToZonedTime` performs
-the inverse projection and retains the instant key, wall key, offset, canonical timezone, and native
+the inverse projection and retains the instant key, wall key, offset, timezone identifier, and native
 Temporal values.
 
 ```ts
@@ -158,7 +169,8 @@ physical elapsed time without losing repeated-hour identity. Slot materializatio
 `instantKey`, `plainDateKey`, `plainDateTimeKey`, `zonedDayKey`, and `zonedWallTimeKey` produce
 deterministic strings for indexes, caches, and render models. A zoned wall key identifies the
 nominal coordinate only; a fold occurrence must use its `instantKey`, because the two occurrences
-share the same wall coordinate.
+share the same wall coordinate. Zoned keys normalize identifier case but keep aliases such as
+`Asia/Calcutta` and `Asia/Kolkata` distinct, because engines disagree on the primary name.
 
 ## Runtime and package guarantees
 
