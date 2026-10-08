@@ -18,7 +18,7 @@ props.
 Props from a Server Component to a Client Component must be serializable. Temporal objects aren't,
 so send ISO 8601 strings and turn them into Temporal values in the client:
 
-<include meta='title="team-calendar.tsx"'>../../examples/nextjs-calendar.tsx#client</include>
+<include meta='title="team-calendar.tsx"'>../../examples/team-calendar.tsx#client</include>
 
 `useMemo` keeps the converted array stable between renders, so the calendar only re-reads events
 when `meetings` actually changes.

@@ -28,7 +28,8 @@ resource, so it returns an empty array.
 
 A view has a name, a title for the visible date, a rule for moving forward and back, and a
 `render` function. This one lists the meetings that start on the visible day, in the calendar's
-time zone.
+time zone. It reads them from `meta.eventSnapshot`, which holds only the events that passed
+validation.
 
 <include meta='title="calendar.tsx"'>../examples/calendar.tsx#view</include>
 

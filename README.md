@@ -49,12 +49,13 @@ const dayView: CalendarViewRegistration<Meeting, never> = {
   navigate: (date, direction) => date.add({ days: direction }),
   render: ({ state, meta }) => (
     <ul>
-      {meta.events
-        .filter((meeting) =>
-          meeting.start.toZonedDateTimeISO(state.timeZone).toPlainDate().equals(state.anchorDate),
+      {meta.eventSnapshot.events
+        .filter((event) => event.kind === "timed")
+        .filter((event) =>
+          event.start.toZonedDateTimeISO(state.timeZone).toPlainDate().equals(state.anchorDate),
         )
-        .map((meeting) => (
-          <li key={meeting.id}>{meeting.title}</li>
+        .map((event) => (
+          <li key={event.id}>{event.title}</li>
         ))}
     </ul>
   ),

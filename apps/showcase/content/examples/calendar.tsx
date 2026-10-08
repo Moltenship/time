@@ -1,6 +1,6 @@
+// #region adapter
 "use client";
 
-// #region adapter
 import {
   createCalendar,
   defineEventAdapter,
@@ -28,9 +28,10 @@ export const eventAdapter = defineEventAdapter<Meeting>()({
 function DayList({ calendar }: { readonly calendar: CalendarContextValue<Meeting, never> }) {
   const { anchorDate, timeZone } = calendar.state;
   const { locale } = calendar.meta.environment;
-  const meetings = calendar.meta.events.filter((meeting) =>
-    meeting.start.toZonedDateTimeISO(timeZone).toPlainDate().equals(anchorDate),
-  );
+  // The snapshot holds only events that passed validation, already read through the adapter.
+  const meetings = calendar.meta.eventSnapshot.events
+    .filter((event) => event.kind === "timed")
+    .filter((event) => event.start.toZonedDateTimeISO(timeZone).toPlainDate().equals(anchorDate));
 
   if (meetings.length === 0) return <p>No meetings.</p>;
 

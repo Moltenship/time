@@ -1,6 +1,6 @@
 // #region page
 // app/calendar/page.tsx (a Server Component)
-import { TeamCalendar, type MeetingJson } from "./nextjs-calendar";
+import { TeamCalendar, type MeetingJson } from "./team-calendar";
 
 async function getMeetings(): Promise<readonly MeetingJson[]> {
   // Replace with your database or API call. Return ISO 8601 strings, not Temporal objects.
