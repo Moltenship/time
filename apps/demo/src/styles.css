@@ -1,0 +1,25 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "../../../registry/calendar-theme/calendar-theme.css";
+
+@source "../../../registry";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  :root {
+    color-scheme: light;
+  }
+
+  .dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
+}
