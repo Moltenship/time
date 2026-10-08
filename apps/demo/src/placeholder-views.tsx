@@ -8,19 +8,19 @@ import {
   instantInterval,
   iteratePlainDates,
   plainDateInterval,
-  weekRange,
   type PlainDateInterval,
 } from "@moltenship/calendar-temporal";
 
 import { EventChip } from "@registry/calendar/event-chip";
+import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "@registry/lib/utils";
 
 import type { DemoEvent } from "./calendar";
 import { getCalendarColor } from "./calendars";
 
-// Stand-ins built on the public view API until the registry month, time-grid and list views
-// land. Every view renders its visible range as a day-by-day agenda.
+// Stand-ins built on the public view API until the registry month and list views land. They
+// render their visible range as a day-by-day agenda.
 
 interface PlaceholderOptions {
   readonly getEventColor?: (event: DemoEvent) => CalendarEventColor;
@@ -151,21 +151,8 @@ function placeholderView<const TName extends string>(
 }
 
 export const demoViews = [
-  placeholderView(
-    "week",
-    (anchor, environment) => weekRange(anchor, { weekStartsOn: environment.weekRules.firstDay }),
-    (delta) => ({ weeks: delta }),
-    formatSpan,
-  ),
-  placeholderView(
-    "day",
-    (anchor) => plainDateInterval(anchor, anchor.add({ days: 1 })),
-    (delta) => ({ days: delta }),
-    (range, locale) =>
-      new Intl.DateTimeFormat(locale, { day: "numeric", month: "long", year: "numeric" }).format(
-        range.start,
-      ),
-  ),
+  createWeekView<DemoEvent>(options),
+  createDayView<DemoEvent>(options),
   placeholderView(
     "month",
     (anchor) => {
