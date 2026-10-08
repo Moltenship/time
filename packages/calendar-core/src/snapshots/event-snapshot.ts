@@ -11,7 +11,7 @@ import {
   type IntervalIndex,
   type IntervalIndexEntry,
 } from "../internal/interval-index";
-import { intervalEndpointsEqual } from "../internal/interval-equality";
+import { intervalsEqual } from "../internal/interval-equality";
 import { BoundedLruCache } from "../internal/lru-cache";
 import { ReadonlyMapView } from "../internal/readonly-map";
 import {
@@ -115,9 +115,7 @@ function structuresEqual<TEventId extends EventId, TResourceId extends ResourceI
   right: EventStructure<TEventId, TResourceId>,
 ): boolean {
   return (
-    intervalEndpointsEqual(left, right) &&
-    (left.kind === "timed" ? left.sourceTimeZone : undefined) ===
-      (right.kind === "timed" ? right.sourceTimeZone : undefined) &&
+    intervalsEqual(left, right) &&
     left.title === right.title &&
     left.isReadOnly === right.isReadOnly &&
     left.revision === right.revision &&

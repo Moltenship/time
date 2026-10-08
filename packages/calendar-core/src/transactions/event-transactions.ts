@@ -45,6 +45,8 @@ interface PendingEntry<TEvent, TEventId extends EventId, TResourceId extends Res
   readonly revision: string | number | undefined;
   /** Set when the handler resolved before the application's events reflected the change. */
   readonly settledAgainst?: EventSnapshot<TEvent, TEventId, TResourceId>;
+  /** Shown while asynchronous policies decide; the handler has not seen it yet. */
+  readonly validating?: true;
 }
 
 const noPending = new ReadonlyMapView(new Map<never, never>());
@@ -123,8 +125,8 @@ export function createEventTransactions<
     for (const listener of listeners) listener();
   }
 
-  function show(change: Entry["change"], revision: Entry["revision"]): void {
-    entries.set(change.eventId, { change, revision });
+  function show(change: Entry["change"], entry: Omit<Entry, "change">): void {
+    entries.set(change.eventId, { ...entry, change });
     publish();
   }
 
@@ -157,11 +159,22 @@ export function createEventTransactions<
     }
   }
 
-  /** Marks the end of validation; returns false when a newer proposal superseded this one. */
+  /**
+   * Marks the end of validation; returns false when a newer proposal superseded this one. Older
+   * proposals still being validated can no longer win, so their previews go.
+   */
   function claim(change: Change): boolean {
     if (change.eventId === null) return true;
-    if (latest.get(change.eventId) !== change.id) return false;
+    if (latest.get(change.eventId) !== change.id) {
+      hide(change);
+      return false;
+    }
     latest.delete(change.eventId);
+    const entry = entries.get(change.eventId);
+    if (entry?.validating === true && entry.change.id !== change.id) {
+      entries.delete(change.eventId);
+      publish();
+    }
     return true;
   }
 
@@ -222,7 +235,7 @@ export function createEventTransactions<
       return { change, status: "committed" };
     }
 
-    show(change, revision);
+    show(change, { revision });
     return Promise.resolve(returned).then(
       (): Result => {
         settle(change);
@@ -272,7 +285,7 @@ export function createEventTransactions<
     }
 
     // Keep the proposal visible while asynchronous policies decide.
-    if (change.cause !== "create") show(change, revision);
+    if (change.cause !== "create") show(change, { revision, validating: true });
     return outcome.then((result) => commit(result, revision, context)).catch(policyError);
   }
 

@@ -6,7 +6,7 @@ import {
 
 import type { CalendarEventInterval } from "../events";
 import type { ResourceId } from "../ids";
-import { intervalEndpointsEqual } from "../internal/interval-equality";
+import { intervalsEqual } from "../internal/interval-equality";
 import type { CalendarEventPlacement } from "./types";
 import {
   positiveDuration,
@@ -189,7 +189,7 @@ export function placementsEqual(
   right: CalendarEventPlacement,
 ): boolean {
   return (
-    intervalEndpointsEqual(left, right) &&
+    intervalsEqual(left, right) &&
     left.resourceIds.length === right.resourceIds.length &&
     left.resourceIds.every((resourceId) => right.resourceIds.includes(resourceId))
   );

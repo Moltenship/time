@@ -270,6 +270,34 @@ describe("event transactions", () => {
     expect(app.transactions.getPending().size).toBe(0);
   });
 
+  test("keeps a source-time-zone-only update pending until events reflect it", async () => {
+    const original = {
+      data: { revision: 1 },
+      end: zoned("2026-08-15T10:00").toInstant(),
+      id: "a",
+      kind: "timed",
+      resourceIds: [],
+      sourceTimeZone: "UTC",
+      start: zoned("2026-08-15T09:00").toInstant(),
+      title: "a",
+    } satisfies TestEvent;
+    const app = createHarness([original]);
+    const saving = Promise.withResolvers<void>();
+    const visible = () => applyEventOverlay(app.snapshot, app.transactions.getPending()).get("a");
+
+    const result = app.propose(
+      { cause: "update", eventId: "a", proposed: { ...original, sourceTimeZone: timeZone } },
+      () => saving.promise,
+    );
+    saving.resolve();
+    await result;
+    expect(visible()).toMatchObject({ isPending: true, sourceTimeZone: timeZone });
+
+    app.setEvents([{ ...original, sourceTimeZone: timeZone }]);
+    expect(app.transactions.getPending().size).toBe(0);
+    expect(visible()).toMatchObject({ sourceTimeZone: timeZone });
+  });
+
   test("rolls back when the handler rejects or throws", async () => {
     const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
     const saving = Promise.withResolvers<void>();
@@ -376,6 +404,38 @@ describe("event transactions", () => {
     await expect(slow).resolves.toMatchObject({ reason: "superseded", status: "rejected" });
     expect(handler).toHaveBeenCalledTimes(1);
     expect(app.visible("a")).toBe("14:00");
+  });
+
+  test("drops an older validation's preview when a newer proposal is rejected", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const decision = Promise.withResolvers<{ readonly type: "accept" }>();
+    const handler = vi.fn<Handler>();
+
+    const slow = app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), handler, [
+      () => decision.promise,
+    ]);
+    await expect(
+      app.propose(move("a", "2026-08-15T14:00", "2026-08-15T15:00"), handler, [
+        () => ({ reason: "closed", type: "reject" }),
+      ]),
+    ).resolves.toMatchObject({ reason: "closed", status: "rejected" });
+    expect(app.visible("a")).toBe("09:00");
+
+    decision.resolve({ type: "accept" });
+    await expect(slow).resolves.toMatchObject({ reason: "superseded", status: "rejected" });
+    expect(handler).not.toHaveBeenCalled();
+    expect(app.transactions.getPending().size).toBe(0);
+  });
+
+  test("keeps an older change that is already saving when a newer proposal is rejected", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const saving = Promise.withResolvers<void>();
+
+    void app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), () => saving.promise);
+    await app.propose(move("a", "2026-08-15T14:00", "2026-08-15T15:00"), vi.fn<Handler>(), [
+      () => ({ reason: "closed", type: "reject" }),
+    ]);
+    expect(app.visible("a")).toBe("11:00 (pending)");
   });
 
   test("rolls back an optimistic change when an async policy rejects or throws", async () => {
