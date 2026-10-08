@@ -1,0 +1,36 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "month-view",
+  "type": "registry:component",
+  "title": "Month view",
+  "description": "Google Calendar-style month grid: multi-day bars with continuation ends, timed events as dot, time, and title, lane counts that follow the cell height, and a \"+N more\" popover per day.",
+  "dependencies": ["@moltenship/calendar", "lucide-react"],
+  "registryDependencies": [
+    "popover",
+    "utils",
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme"
+  ],
+  "files": [
+    {
+      "path": "registry/month-view/month-view.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/month-view/month-view.tsx"
+    },
+    {
+      "path": "registry/month-view/month-week.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/month-view/month-week.tsx"
+    },
+    {
+      "path": "registry/month-view/month-event.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/month-view/month-event.tsx"
+    }
+  ],
+  "meta": {
+    "compatibility": {
+      "@moltenship/calendar": ">=0.0.0"
+    }
+  }
+}
