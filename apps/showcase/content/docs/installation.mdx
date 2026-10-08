@@ -100,12 +100,16 @@ There's no `shadcn add` command for these files yet, so copy them by hand:
 <Step>
 
 Set up [shadcn/ui](https://ui.shadcn.com/docs/installation) with Tailwind CSS 4 if your app
-doesn't use it yet. The files use shadcn's default primitives, built on
-[Base UI](https://base-ui.com):
+doesn't use it yet. The files need shadcn's default primitives, built on
+[Base UI](https://base-ui.com), which `init` sets up:
 
 ```bash
 npx shadcn@latest init
 ```
+
+If your app already uses shadcn/ui, check that `style` in `components.json` starts with `base-`,
+such as `base-nova`. `shadcn add` installs components in your app's existing style, and the copied
+files don't compile against primitives from other styles.
 
 Then add the primitives the files import:
 
