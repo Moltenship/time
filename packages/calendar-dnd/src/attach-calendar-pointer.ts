@@ -11,6 +11,7 @@ import {
 import type { WallTimeSnapOptions } from "@moltenship/calendar-temporal";
 
 import { autoScroll, scrollableAncestor } from "./auto-scroll";
+import { eventIdOf } from "./event-id";
 import {
   createdPlacement,
   movedPlacement,
@@ -107,15 +108,21 @@ function samePlacement(left: CalendarEventPlacement, right: CalendarEventPlaceme
   );
 }
 
-/** `data-event-id` is always a string; numeric event IDs are matched by value. */
+/**
+ * The event an element renders. Without `data-event-id-type`, an ID that only exists as a number
+ * still resolves, which keeps all-numeric calendars working with plain `data-event-id`.
+ */
 function resolveEvent<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
   events: EventSnapshot<TEvent, TEventId, TResourceId>,
-  key: string,
+  element: Element,
 ): NormalizedCalendarEvent<TEvent, TEventId, TResourceId> | undefined {
-  const numeric = Number(key);
+  const id = eventIdOf(element) as TEventId;
+  const numeric = Number(id);
   return (
-    events.get(key as TEventId) ??
-    (Number.isFinite(numeric) ? events.get(numeric as TEventId) : undefined)
+    events.get(id) ??
+    (typeof id === "string" && Number.isFinite(numeric)
+      ? events.get(numeric as TEventId)
+      : undefined)
   );
 }
 
@@ -123,7 +130,8 @@ function resolveEvent<TEvent, TEventId extends EventId, TResourceId extends Reso
  * Adds pointer move, resize, and create to a rendered view through delegated listeners on one
  * region. The view marks its parts with data attributes:
  *
- * - `data-event-id` on events, with `data-resize="start"` or `"end"` on resize handles;
+ * - `data-event-id` on events (spread `eventIdAttributes(id)` to keep numeric IDs distinct), with
+ *   `data-resize="start"` or `"end"` on resize handles;
  * - `data-date` (an ISO date) on time-grid day columns and on day cells (month cells, or a time
  *   grid's all-day row, which also carries `data-all-day`).
  *
@@ -283,7 +291,7 @@ export function attachCalendarPointer<
     const element = pressed.closest<HTMLElement>("[data-event-id]");
     if (element === null || !region.contains(element)) return { anchor: target, kind: "create" };
 
-    const event = resolveEvent(events, element.getAttribute("data-event-id")!);
+    const event = resolveEvent(events, element);
     if (event === undefined || event.isReadOnly) return null;
     const base = { element, event, grab: target, original: eventPlacement(event) };
     const handle = pressed.closest("[data-resize]");

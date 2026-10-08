@@ -177,7 +177,7 @@ export class GhostLayer {
     const template = this.#template;
     const segment =
       template === null ? document.createElement("div") : (template.cloneNode(true) as HTMLElement);
-    for (const attribute of ["data-dragging", "data-event-id", "id"]) {
+    for (const attribute of ["data-dragging", "data-event-id", "data-event-id-type", "id"]) {
       segment.removeAttribute(attribute);
     }
     segment.setAttribute("aria-hidden", "true");

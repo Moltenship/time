@@ -252,6 +252,45 @@ describe("time grid", () => {
     expect(proposals).toMatchObject([{ cause: "move", eventId: 7 }]);
   });
 
+  test("keeps numeric and string IDs with the same text apart", () => {
+    const grid = mountTimeGrid([
+      timedEvent(1, "2026-08-17T09:00Z", "2026-08-17T10:00Z"),
+      timedEvent("1", "2026-08-18T09:00Z", "2026-08-18T10:00Z"),
+    ]);
+    const proposals = setup(grid, { columns: grid.columns });
+    const numeric = grid.elements.get(1)!;
+    const text = grid.elements.get("1")!;
+
+    pointer("pointerdown", numeric, 50, yAt("09:30"));
+    pointer("pointermove", numeric, 50, yAt("11:30"));
+    pointer("pointerup", numeric, 50, yAt("11:30"));
+    pointer("pointerdown", text, 150, yAt("09:30"));
+    pointer("pointermove", text, 150, yAt("12:30"));
+    pointer("pointerup", text, 150, yAt("12:30"));
+
+    expect(
+      proposals.map((proposal) => [
+        proposal.cause === "create" ? null : proposal.eventId,
+        interval(proposal),
+      ]),
+    ).toEqual([
+      [1, "timed 2026-08-17T11:00:00Z/2026-08-17T12:00:00Z"],
+      ["1", "timed 2026-08-18T12:00:00Z/2026-08-18T13:00:00Z"],
+    ]);
+  });
+
+  test("still finds an all-numeric event rendered with a plain data-event-id", () => {
+    const grid = mountTimeGrid([timedEvent(7, "2026-08-18T09:00Z", "2026-08-18T10:00Z")]);
+    const proposals = setup(grid, { columns: grid.columns });
+    const element = grid.elements.get(7)!;
+    element.removeAttribute("data-event-id-type");
+
+    pointer("pointerdown", element, 150, yAt("09:30"));
+    pointer("pointermove", element, 150, yAt("10:30"));
+    pointer("pointerup", element, 150, yAt("10:30"));
+    expect(proposals).toMatchObject([{ cause: "move", eventId: 7 }]);
+  });
+
   test("starts touch drags with a long-press and lets quick swipes scroll", () => {
     vi.useFakeTimers();
     const grid = mountTimeGrid([meeting]);

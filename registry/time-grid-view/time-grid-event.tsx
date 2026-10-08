@@ -1,8 +1,9 @@
-import type {
-  EventDayFragment,
-  EventId,
-  ResourceId,
-  TimeGridEventLayout,
+import {
+  eventIdAttributes,
+  type EventDayFragment,
+  type EventId,
+  type ResourceId,
+  type TimeGridEventLayout,
 } from "@moltenship/calendar";
 
 import { EventChip } from "@registry/calendar/event-chip";
@@ -54,7 +55,7 @@ export function TimeGridEvent({ color, layout, timeFormat, timeZone }: TimeGridE
   return (
     <EventChip
       color={color}
-      data-event-id={String(event.id)}
+      {...eventIdAttributes(event.id)}
       data-pending={event.isPending === true ? "" : undefined}
       className={cn(
         "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)] data-pending:opacity-60",

@@ -172,3 +172,61 @@ test("the month view moves events across days and creates all-day ranges", async
     ["create", "2026-10-20/2026-10-23"],
   ]);
 });
+
+test("dragging keeps numeric and string event IDs with the same text apart", async () => {
+  const MixedCalendar = createCalendar<CalendarEvent<null, string | number, string>, never>()({
+    eventAdapter: createCanonicalEventAdapter<null, string | number, string>(),
+    views: [createMonthView()],
+  });
+  const onEventChange =
+    vi.fn<(change: CalendarEventChange<unknown, string | number, string>) => void>();
+  const view = await render(
+    <MixedCalendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="UTC"
+      events={[
+        { ...standup, id: 1, title: "Numeric" },
+        {
+          ...standup,
+          end: Temporal.Instant.from("2026-10-09T10:00:00Z"),
+          id: "1",
+          start: Temporal.Instant.from("2026-10-09T09:00:00Z"),
+          title: "Text",
+        },
+      ]}
+      locale="en-US"
+      onEventChange={onEventChange}
+      weekRules={{ firstDay: 1, minimalDays: 1, weekend: [6, 7] }}
+    >
+      <MixedCalendar.ActiveView />
+    </MixedCalendar.Root>,
+  );
+  cleanup = view.unmount;
+
+  const cells = [...view.container.querySelectorAll("[data-date]")];
+  const at = (date: string): [number, number] => {
+    const index = cells.findIndex((cell) => cell.getAttribute("data-date") === date);
+    return [(index % 7) * 100 + 50, Math.floor(index / 7) * 100 + 80];
+  };
+  const numeric = [...view.container.querySelectorAll("[data-event-id]")].find((element) =>
+    element.textContent?.includes("Numeric"),
+  )!;
+  const [nx, ny] = at("2026-10-08");
+  layOut([
+    [numeric, { height: 20, width: 100, x: nx - 50, y: ny - 10 }],
+    ...cells.map(
+      (cell, index) =>
+        [
+          cell,
+          { height: 100, width: 100, x: (index % 7) * 100, y: Math.floor(index / 7) * 100 },
+        ] as const,
+    ),
+  ]);
+
+  drag(numeric, [[nx, ny], [nx + 10, ny], at("2026-10-15")]);
+
+  expect(onEventChange.mock.calls[0]?.[0]).toMatchObject({ cause: "move", eventId: 1 });
+  expect(interval(onEventChange.mock.calls[0]?.[0] as Change)).toBe(
+    "2026-10-15T09:00:00Z/2026-10-15T10:00:00Z",
+  );
+});

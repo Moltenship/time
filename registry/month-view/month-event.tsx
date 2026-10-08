@@ -1,4 +1,9 @@
-import type { EventId, NormalizedCalendarEvent, ResourceId } from "@moltenship/calendar";
+import {
+  eventIdAttributes,
+  type EventId,
+  type NormalizedCalendarEvent,
+  type ResourceId,
+} from "@moltenship/calendar";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 
@@ -40,7 +45,7 @@ export function MonthEvent({
       // A change to this event is still being saved.
       aria-busy={event.isPending === true || undefined}
       color={color}
-      data-event-id={String(event.id)}
+      {...eventIdAttributes(event.id)}
       style={style}
       title={event.title}
       className={cn(

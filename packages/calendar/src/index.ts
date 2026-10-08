@@ -2,7 +2,12 @@
 // the React bindings and pointer interactions keep their own client boundaries.
 export * from "@moltenship/calendar-core";
 export * from "@moltenship/calendar-temporal";
-export { attachCalendarPointer, useCalendarPointer } from "@moltenship/calendar-dnd";
+export {
+  attachCalendarPointer,
+  eventIdAttributes,
+  eventIdOf,
+  useCalendarPointer,
+} from "@moltenship/calendar-dnd";
 export type { CalendarPointerOptions } from "@moltenship/calendar-dnd";
 export {
   createCalendar,

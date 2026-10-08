@@ -6,6 +6,8 @@ import {
 } from "@moltenship/calendar-core";
 import { plainDateInterval } from "@moltenship/calendar-temporal";
 
+import { eventIdAttributes } from "../src/index";
+
 /**
  * jsdom has no layout, hit testing, or PointerEvent. These helpers give fixture elements fixed
  * viewport rectangles and hit-test them topmost-first, like the browser does.
@@ -66,9 +68,11 @@ export function pointer(
   return event;
 }
 
-function element(attributes: Record<string, string>): HTMLElement {
+function element(attributes: Readonly<Record<string, string | undefined>>): HTMLElement {
   const node = document.createElement("div");
-  for (const [name, value] of Object.entries(attributes)) node.setAttribute(name, value);
+  for (const [name, value] of Object.entries(attributes)) {
+    if (value !== undefined) node.setAttribute(name, value);
+  }
   return node;
 }
 
@@ -147,7 +151,7 @@ export function mountTimeGrid(events: readonly TestEvent[]) {
     const height = (event.start.until(event.end).total({ unit: "minutes" }) / 60) * HOUR_HEIGHT;
     const left = column.getBoundingClientRect().left;
     const node = place(
-      element({ "data-event-id": String(event.id) }),
+      element(eventIdAttributes(event.id)),
       {
         height,
         left,
@@ -235,7 +239,7 @@ export function mountMonth(events: readonly TestEvent[]) {
         : event.start.toString();
     const { x, y } = cellCenter(date);
     const node = place(
-      element({ "data-event-id": String(event.id) }),
+      element(eventIdAttributes(event.id)),
       {
         height: 20,
         left: x - CELL_WIDTH / 2,
