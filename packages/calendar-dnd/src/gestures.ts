@@ -6,7 +6,6 @@ import {
   toAllDayPlacement,
   toTimedPlacement,
   type CalendarEventPlacement,
-  type CalendarWallClockDelta,
   type ResourceId,
   type TimeGridColumn,
 } from "@moltenship/calendar-core";
@@ -38,21 +37,19 @@ function snapDuration({ increment, smallestUnit }: WallTimeSnapOptions): Tempora
   return Temporal.Duration.from({ [unit]: increment } as Temporal.DurationLike);
 }
 
-/** Calendar days plus a time-of-day offset; the two parts may differ in sign. */
-function wallClockDelta(
+/**
+ * The delta that carries `from` onto `to` under the placement helpers' rules: whole days on the
+ * wall clock, then the rest as exact time, so the grabbed point lands under the pointer even when
+ * the offset changes in between. Floating events have no offsets, so their rest is wall time.
+ */
+function deltaBetween(
   from: Temporal.ZonedDateTime,
   to: Temporal.ZonedDateTime,
-): CalendarWallClockDelta {
-  const time = to.toPlainTime().since(from.toPlainTime());
-  return {
-    days: from.toPlainDate().until(to.toPlainDate()).days,
-    hours: time.hours,
-    microseconds: time.microseconds,
-    milliseconds: time.milliseconds,
-    minutes: time.minutes,
-    nanoseconds: time.nanoseconds,
-    seconds: time.seconds,
-  };
+  kind: CalendarEventPlacement["kind"],
+): Temporal.Duration {
+  return kind === "floating"
+    ? from.toPlainDateTime().until(to.toPlainDateTime(), { largestUnit: "days" })
+    : from.until(to, { largestUnit: "days" });
 }
 
 /**
@@ -84,14 +81,16 @@ export function movedPlacement<TResourceId extends ResourceId>(
 
   const at = timeAt(current, snap);
   if (grab.kind === "time") {
-    return moveEventPlacement(original, wallClockDelta(timeAt(grab, snap), at), { timeZone });
+    return moveEventPlacement(original, deltaBetween(timeAt(grab, snap), at, original.kind), {
+      timeZone,
+    });
   }
   if (original.kind === "all-day") return toTimedPlacement(original, at, DROPPED_ALL_DAY_DURATION);
   const start =
     original.kind === "timed"
       ? original.start.toZonedDateTimeISO(timeZone)
       : original.start.toZonedDateTime(timeZone);
-  return moveEventPlacement(original, wallClockDelta(start, at), { timeZone });
+  return moveEventPlacement(original, deltaBetween(start, at, original.kind), { timeZone });
 }
 
 /** The placement after dragging one edge; `null` while the pointer is over the other axis. */
@@ -103,7 +102,7 @@ export function resizedPlacement<TResourceId extends ResourceId>(
   { snap, timeZone }: GestureOptions,
 ): CalendarEventPlacement<TResourceId> | null {
   if (grab.kind === "time" && current.kind === "time") {
-    const delta = wallClockDelta(timeAt(grab, snap), timeAt(current, snap));
+    const delta = deltaBetween(timeAt(grab, snap), timeAt(current, snap), original.kind);
     return resizeEventPlacement(original, edge, delta, {
       minimumDuration: snapDuration(snap),
       timeZone,

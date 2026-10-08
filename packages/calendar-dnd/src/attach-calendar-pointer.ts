@@ -66,8 +66,7 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
   longPress?: ReturnType<typeof setTimeout>;
   readonly options: GestureOptions;
   readonly origin: { readonly x: number; readonly y: number };
-  /** Whether the pointer was last over the view; drops elsewhere cancel. */
-  overTarget: boolean;
+  /** What a drop would propose; `null` off the view or over the gesture's other axis. */
   placement: CalendarEventPlacement<TResourceId> | null;
   point: { readonly x: number; readonly y: number };
   readonly pointerId: number;
@@ -152,9 +151,13 @@ export function attachCalendarPointer<
 
   function preview(current: Session<TEvent, TEventId, TResourceId>, scrolled = false): void {
     const target = targetAt(current.surface, current.point.x, current.point.y);
-    current.overTarget = target !== null;
     const placement = target === null ? null : placementAt(current, target);
-    if (placement === null) return;
+    if (placement === null) {
+      // Nothing to drop here, so show nothing rather than the last valid spot.
+      current.placement = null;
+      current.ghost.clear();
+      return;
+    }
     if (!scrolled && current.placement !== null && samePlacement(current.placement, placement)) {
       return;
     }
@@ -215,7 +218,7 @@ export function attachCalendarPointer<
     current: Session<TEvent, TEventId, TResourceId>,
   ): CalendarEventProposal<TEventId, TResourceId> | null {
     const { gesture, placement } = current;
-    if (placement === null || !current.overTarget) return null;
+    if (placement === null) return null;
     if (gesture.kind === "create") return { cause: "create", proposed: placement };
     if (samePlacement(placement, gesture.original)) return null;
     return {
@@ -307,7 +310,6 @@ export function attachCalendarPointer<
       ghost: new GhostLayer(region, options.ghostClassName),
       options: { snap: options.snap ?? DEFAULT_SNAP, timeZone: options.timeZone },
       origin: { x: event.clientX, y: event.clientY },
-      overTarget: true,
       placement: null,
       point: { x: event.clientX, y: event.clientY },
       pointerId: event.pointerId,

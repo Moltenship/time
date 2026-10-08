@@ -95,6 +95,57 @@ describe("move", () => {
   });
 });
 
+describe("across DST transitions", () => {
+  const november = timeGridColumns(
+    plainDateInterval(Temporal.PlainDate.from("2026-11-01"), Temporal.PlainDate.from("2026-11-02")),
+    timeZone,
+  );
+  const inNovember = (time: string): PointerTarget => {
+    const { hour, minute } = Temporal.PlainTime.from(time);
+    return { column: november[0]!, kind: "time", y: (hour * 60 + minute) / (24 * 60) };
+  };
+
+  test("lands the grabbed point under the pointer across the spring gap", () => {
+    const event = timed("2026-03-08T00:00", "2026-03-08T01:00");
+    expect(
+      wall(movedPlacement(event, at("2026-03-08", "00:00"), at("2026-03-08", "04:00"), options)),
+    ).toBe("2026-03-08T04:00/2026-03-08T05:00");
+    expect(
+      wall(
+        resizedPlacement(
+          event,
+          "end",
+          at("2026-03-08", "01:00"),
+          at("2026-03-08", "04:00"),
+          options,
+        ),
+      ),
+    ).toBe("2026-03-08T00:00/2026-03-08T04:00");
+  });
+
+  test("lands the grabbed point under the pointer across the fall fold", () => {
+    const event = timed("2026-11-01T00:00", "2026-11-01T01:00");
+    expect(wall(movedPlacement(event, inNovember("00:00"), inNovember("03:00"), options))).toBe(
+      "2026-11-01T03:00/2026-11-01T04:00",
+    );
+    expect(
+      wall(resizedPlacement(event, "end", inNovember("01:00"), inNovember("03:00"), options)),
+    ).toBe("2026-11-01T00:00/2026-11-01T03:00");
+  });
+
+  test("moves floating events by wall time, which has no gap", () => {
+    const floating: CalendarEventPlacement<string> = {
+      end: Temporal.PlainDateTime.from("2026-03-08T01:00"),
+      kind: "floating",
+      resourceIds: [],
+      start: Temporal.PlainDateTime.from("2026-03-08T00:00"),
+    };
+    expect(
+      wall(movedPlacement(floating, at("2026-03-08", "00:00"), at("2026-03-08", "04:00"), options)),
+    ).toBe("floating 2026-03-08T04:00:00/2026-03-08T05:00:00");
+  });
+});
+
 describe("resize", () => {
   test("moves the dragged edge and stops one slot from the other", () => {
     const event = timed("2026-03-06T09:00", "2026-03-06T10:00");

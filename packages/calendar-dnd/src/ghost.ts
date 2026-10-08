@@ -115,6 +115,7 @@ export function ghostLayout(
  */
 export class GhostLayer {
   readonly #className: string | undefined;
+  #origin: HTMLElement | null = null;
   readonly #region: HTMLElement;
   readonly #segments: HTMLElement[] = [];
   #template: HTMLElement | null = null;
@@ -131,18 +132,45 @@ export class GhostLayer {
     }
     while (this.#segments.length < rects.length) this.#segments.push(this.#createSegment());
     while (this.#segments.length > rects.length) this.#segments.pop()!.remove();
+    if (rects.length === 0) return;
 
+    const origin = this.#containingBlockOrigin();
     rects.forEach((rect, index) => {
       const { style } = this.#segments[index]!;
       style.width = `${rect.width}px`;
       style.height = `${rect.height}px`;
-      style.transform = `translate3d(${rect.left}px, ${rect.top}px, 0)`;
+      style.transform = `translate3d(${rect.left - origin.left}px, ${rect.top - origin.top}px, 0)`;
     });
   }
 
   clear(): void {
     for (const segment of this.#segments) segment.remove();
     this.#segments.length = 0;
+    this.#origin?.remove();
+    this.#origin = null;
+  }
+
+  /**
+   * Where a fixed `left: 0; top: 0` box actually sits. It is the viewport origin unless an
+   * ancestor is transformed, which makes that ancestor the containing block of fixed elements.
+   */
+  #containingBlockOrigin(): DOMRect {
+    if (this.#origin === null) {
+      this.#origin = document.createElement("div");
+      this.#origin.setAttribute("aria-hidden", "true");
+      this.#origin.setAttribute("data-calendar-ghost-origin", "");
+      Object.assign(this.#origin.style, {
+        height: "0",
+        left: "0",
+        pointerEvents: "none",
+        position: "fixed",
+        top: "0",
+        visibility: "hidden",
+        width: "0",
+      });
+      this.#region.append(this.#origin);
+    }
+    return this.#origin.getBoundingClientRect();
   }
 
   #createSegment(): HTMLElement {

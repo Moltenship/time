@@ -24,6 +24,7 @@ const meeting = timedEvent("a", "2026-08-17T09:00Z", "2026-08-17T10:00Z");
 
 let detach: (() => void) | undefined;
 afterEach(async () => {
+  vi.restoreAllMocks();
   detach?.();
   detach = undefined;
   if (vi.isFakeTimers()) {
@@ -163,6 +164,54 @@ describe("time grid", () => {
     expect(proposals.map((proposal) => proposal.cause)).toEqual(["create", "create"]);
     expect(interval(proposals[0])).toBe("timed 2026-08-17T13:00:00Z/2026-08-17T14:30:00Z");
     expect(interval(proposals[1])).toBe("all-day 2026-08-17/2026-08-19");
+  });
+
+  test("proposes nothing for a create or resize dropped on the other axis", () => {
+    const grid = mountTimeGrid([meeting]);
+    const proposals = setup(grid, { columns: grid.columns });
+    const column = grid.region.querySelector('[data-date="2026-08-17"]:not([data-all-day])')!;
+    const handle = grid.elements.get("a")!.querySelector('[data-resize="end"]')!;
+    const allDayRow = ALL_DAY_HEIGHT / 2;
+
+    pointer("pointerdown", column, 50, yAt("13:00"));
+    pointer("pointermove", column, 50, yAt("14:00"));
+    pointer("pointermove", column, 50, allDayRow);
+    expect(ghosts(grid.region)).toHaveLength(0);
+    pointer("pointerup", column, 50, allDayRow);
+
+    pointer("pointerdown", handle, 50, yAt("09:58"));
+    pointer("pointermove", handle, 50, yAt("12:00"));
+    pointer("pointermove", handle, 50, allDayRow);
+    pointer("pointerup", handle, 50, allDayRow);
+    expect(proposals).toHaveLength(0);
+
+    // Coming back to a time column resumes the gesture.
+    pointer("pointerdown", column, 50, yAt("13:00"));
+    pointer("pointermove", column, 50, allDayRow);
+    pointer("pointermove", column, 50, yAt("14:00"));
+    expect(ghosts(grid.region)).toHaveLength(1);
+    pointer("pointerup", column, 50, yAt("14:00"));
+    expect(interval(proposals[0])).toBe("timed 2026-08-17T13:00:00Z/2026-08-17T14:15:00Z");
+  });
+
+  test("offsets the preview when a transformed ancestor contains it", () => {
+    const grid = mountTimeGrid([meeting]);
+    setup(grid, { columns: grid.columns });
+    const element = grid.elements.get("a")!;
+    // Under a transform, a fixed box at left: 0, top: 0 sits at the ancestor's corner.
+    const containingBlock = { height: 0, left: 120, top: 30, width: 0 } as DOMRect;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(
+      function (this: HTMLElement) {
+        return this.hasAttribute("data-calendar-ghost-origin") ? containingBlock : new DOMRect();
+      },
+    );
+
+    pointer("pointerdown", element, 50, yAt("09:30"));
+    pointer("pointermove", element, 150, yAt("11:30"));
+
+    expect(ghosts(grid.region)[0]!.style.transform).toBe(
+      `translate3d(${100 - 120}px, ${yAt("11:00") - 30}px, 0)`,
+    );
   });
 
   test("turns a timed event into an all-day event on the all-day row", () => {
