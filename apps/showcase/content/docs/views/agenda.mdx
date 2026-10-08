@@ -1,0 +1,61 @@
+---
+title: Agenda
+description: A chronological list of upcoming events, grouped by day.
+---
+
+![The agenda view in the demo app](../../images/agenda-view.png)
+
+`createAgendaView` lists the events in the coming weeks, one group per day. Days without events are
+left out.
+
+## Add it
+
+Copy `registry/list-view` into your app, along with the theme and `registry/calendar`, as described
+in [UI source](/docs/installation#ui-source-optional). Then register the view:
+
+```tsx
+import { createAgendaView } from "@/components/calendar/list-view/agenda-view";
+
+export const Calendar = createCalendar<Meeting>()({
+  eventAdapter,
+  views: [createAgendaView<Meeting>({ weeks: 2, getEventColor: (meeting) => meeting.color })],
+});
+```
+
+The view is named `agenda`.
+
+## Options
+
+<TypeTable
+  type={{
+    weeks: {
+      type: "number",
+      description:
+        "How many whole weeks to show, starting with the week of the anchor date. Previous and Next move by the same number of weeks.",
+      default: "4",
+    },
+    getEventColor: {
+      type: "(event: TEvent) => CalendarEventColor",
+      description: (
+        <>
+          The color for each event. See <a href="/docs/theming#event-colors">event colors</a>.
+        </>
+      ),
+    },
+  }}
+/>
+
+## What it shows
+
+- **Days:** each day with events gets a date column that stays in view while you scroll its
+  events. Today is highlighted.
+- **Times** are formatted as a range with `Intl`, as in "10:00 – 11:30 AM". Events that started the
+  day before read "Until 2:00 AM"; events that run into the next day read "From 10:00 PM".
+- **All-day events** show an "All day" badge, and events longer than a day show "Day 2 of 3".
+- **Empty range:** a short message when the weeks shown have no events.
+- **Clicking a date** opens that day in the view named `day`. Register a
+  [day view](/docs/views/week-and-day) so the click has somewhere to go.
+- **Changes being saved:** events with a [pending change](/docs/interactions#pending-changes) get
+  `aria-busy` and render at 60% opacity.
+
+Each day has `data-date`, and each event is a `<button>` with `data-event-id`.

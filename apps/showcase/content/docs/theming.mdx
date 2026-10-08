@@ -71,62 +71,24 @@ names are exported from `event-colors.ts` as `calendarEventColors`, with the typ
 
 ### Choosing a color per event
 
-Views decide colors with an optional `getEventColor` option: a function from your event record to a
-color name. You set it per calendar with the `viewOptions` prop on `Root`:
+Every built-in view takes an optional `getEventColor` option: a function from your event record to
+a color name. Pass it when you create the view, as the [Quick start](/docs/quick-start) does, or
+per calendar with the `viewOptions` prop on `Root`:
 
 ```tsx
 const getEventColor = (meeting: Meeting) => (meeting.title === "Standup" ? "green" : "blue");
 
 // On Root:
-viewOptions={{ agenda: { getEventColor } }}
+viewOptions={{ month: { getEventColor }, agenda: { getEventColor } }}
 ```
 
 Define the function outside your component, so it keeps its identity between renders. See
-[Performance](/docs/guides/performance#keep-functions-in-options-stable).
+[Performance](/docs/guides/performance#keep-functions-in-options-stable). Without `getEventColor`,
+events use the theme's default event tokens.
 
-The built-in views will accept `getEventColor` when they ship. To support it in your own view, add it
-to the view's options and pass the result to `EventChip`:
+To support it in your own view, add it to the view's options and pass the result to `EventChip`:
 
-```tsx title="agenda-view.tsx"
-import {
-  defineCalendarView,
-  plainDateInterval,
-  type CalendarViewProjectionInput,
-} from "@moltenship/calendar";
-
-import { EventChip } from "@/components/calendar/event-chip";
-import type { CalendarEventColor } from "@/components/calendar/event-colors";
-
-import type { Meeting } from "./calendar";
-
-interface AgendaOptions {
-  readonly getEventColor?: (meeting: Meeting) => CalendarEventColor;
-}
-
-export const agendaView = defineCalendarView({
-  name: "agenda",
-  defaultOptions: {},
-  strategy: {
-    getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 7 })),
-    navigate: (anchor, delta) => anchor.add({ weeks: delta }),
-    getTitle: (range, { locale }) => range.start.toLocaleString(locale, { dateStyle: "medium" }),
-    project: ({ snapshot, instantRange }: CalendarViewProjectionInput<AgendaOptions, Meeting>) =>
-      snapshot.queryTimed(instantRange),
-  },
-  Renderer: ({ projection, options }) => (
-    <ul>
-      {projection.map(({ event }) => (
-        <li key={event.id}>
-          <EventChip color={options.getEventColor?.(event)}>{event.title}</EventChip>
-        </li>
-      ))}
-    </ul>
-  ),
-});
-```
-
-Without `getEventColor`, `EventChip` leaves `data-color` off and uses the theme's default event
-tokens.
+<include meta='title="upcoming-view.tsx"'>../examples/upcoming-view.tsx#view</include>
 
 ### Adding a color
 

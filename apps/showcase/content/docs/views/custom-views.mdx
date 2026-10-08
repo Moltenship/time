@@ -104,16 +104,18 @@ project: ({ snapshot, instantRange }: CalendarViewProjectionInput<DaysOptions, M
 
 The Renderer is a regular component, so it can use hooks. It receives:
 
-| Prop          | Contents                                                                        |
-| ------------- | ------------------------------------------------------------------------------- |
-| `projection`  | What `project` returned                                                         |
-| `range`       | The visible dates                                                               |
-| `options`     | The view's options                                                              |
-| `environment` | Locale, time zone, week rules, direction, disambiguation                        |
-| `actions`     | `setAnchorDate`, `setView`, `navigateNext`, `navigatePrevious`, `navigateToday` |
+| Prop          | Contents                                                                                              |
+| ------------- | ----------------------------------------------------------------------------------------------------- |
+| `projection`  | What `project` returned                                                                               |
+| `range`       | The visible dates                                                                                     |
+| `options`     | The view's options                                                                                    |
+| `environment` | Locale, time zone, week rules, direction, disambiguation                                              |
+| `events`      | The snapshot `project` received, with [pending changes](/docs/interactions#pending-changes) applied   |
+| `actions`     | `setAnchorDate`, `setView`, `navigateNext`, `navigatePrevious`, `navigateToday`, `proposeEventChange` |
 
 `actions` never changes identity. `setView` takes any registered view name; an unknown name shows up
-as an `unregistered-active-view` diagnostic.
+as an `unregistered-active-view` diagnostic. `proposeEventChange` and `events` are what a view needs
+to let people [drag and resize events](/docs/interactions#drag-resize-and-create).
 
 To declare a Renderer as its own component, type its props with `CalendarViewRendererProps`:
 
@@ -134,7 +136,7 @@ Components inside `Root` can read the active view without being part of it:
 - `Calendar.useVisibleRange()` returns the visible dates, or `null` when the active view isn't
   registered.
 - `Calendar.useViewProjection()` returns the active view's `view` name, `definition`,
-  `projection`, `range`, `instantRange`, `options`, and `environment`, or `null`. Check `view` to
+  `projection`, `range`, `instantRange`, `options`, `environment`, and `events`, or `null`. Check `view` to
   narrow `projection` to that view's type.
 - `useNow({ intervalMs })` returns the current instant for a now-line and re-renders on each tick.
   It's `null` during server rendering and hydration unless `Root` has `now`.

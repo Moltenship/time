@@ -4,14 +4,32 @@ description: How views work, how to switch between them, and which ones exist to
 ---
 
 A view decides which dates are visible and how to draw them. A calendar can have several views, for
-example a day view and a three-day view. The `view` state names the active one, and
+example a week view and a month view. The `view` state names the active one, and
 `<Calendar.ActiveView />` renders it.
 
-<Callout title="Built-in views are on the way">
-  Month, week, day, and agenda views are in development and will get their own pages here. Until
-  then, write your own. The [Quick start](/docs/quick-start) has a complete day view, and [Custom
-  views](/docs/views/custom-views) covers the details.
-</Callout>
+## Built-in views
+
+The built-in views are source files in the repository's `registry` folder. You copy them into your
+app and can change anything in them; see [UI source](/docs/installation#ui-source-optional).
+
+<Cards>
+  <Card
+    title="Week and day"
+    href="/docs/views/week-and-day"
+    description="Hours down the side, one column per day, and an all-day row."
+  />
+  <Card
+    title="Month"
+    href="/docs/views/month"
+    description="A month grid with multi-day bars and a popover for busy days."
+  />
+  <Card title="Agenda" href="/docs/views/agenda" description="Upcoming events, grouped by day." />
+  <Card
+    title="Custom views"
+    href="/docs/views/custom-views"
+    description="Write your own view with a strategy and a Renderer."
+  />
+</Cards>
 
 ## Registering views
 
@@ -20,7 +38,10 @@ Pass views to `createCalendar`. The first one is active by default unless you se
 only accept names you registered.
 
 ```tsx
-const Calendar = createCalendar<Meeting>()({ eventAdapter, views: [dayView, daysView] });
+const Calendar = createCalendar<Meeting>()({
+  eventAdapter,
+  views: [createWeekView<Meeting>(), createMonthView<Meeting>()],
+});
 ```
 
 Each name must be unique. `createCalendar` throws `calendar-duplicate-view-name` if two views share
@@ -30,26 +51,26 @@ one.
 
 A view can declare `defaultOptions`. Override them per calendar with `viewOptions` on `Root`, keyed
 by view name. Each entry is typed from that view's `defaultOptions`, and you only pass the fields you
-want to change. For example, `viewOptions={{ days: { days: 5 } }}` makes the `days` view show five
-days. [Custom views](/docs/views/custom-views#register-it-and-set-options) has the complete
-example.
+want to change. For example, `viewOptions={{ agenda: { weeks: 2 } }}` makes the
+[agenda view](/docs/views/agenda) show two weeks instead of four.
 
 ## Switching views
 
-`ViewSwitcher` renders a `<select>` with one option per registered view:
+`Calendar.ViewSwitcher` renders a plain `<select>` with one option per registered view:
 
 ```tsx
-const labels = { day: "Day", days: "Several days" };
+const labels = { week: "Week", month: "Month" };
 
 <Calendar.ViewSwitcher getViewLabel={(name) => labels[name]} />;
 ```
 
-To build your own control, call `setView` from `useCalendarActions()`. Inside a view's Renderer, use
-the `actions` prop instead.
+For a styled control, `registry/calendar` has a `ViewSwitcher` built on shadcn's `Select`. The
+[Quick start](/docs/quick-start) shows how to connect it. To build your own, call `setView` from
+`useCalendarActions()`. Inside a view's Renderer, use the `actions` prop instead.
 
 The active view also drives `Title`, `PreviousTrigger`, and `NextTrigger`. The title comes from the
-view's `getTitle`, and the buttons move by the view's own step: one day in a day view, three days in
-a three-day view.
+view's `getTitle`, and the buttons move by the view's own step: a week in the week view, a month in
+the month view.
 
 If the active name doesn't match a registered view, `ActiveView` renders its `fallback` prop, the
 previous and next buttons are disabled, and `meta.diagnostics` includes an `unregistered-active-view`

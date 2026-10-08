@@ -90,6 +90,9 @@ your app and then own, the same way shadcn/ui works:
 - `registry/calendar-theme`: `calendar-theme.css` (calendar tokens and event colors) and
   `event-colors.ts` (the color names). See [Theming](/docs/theming).
 - `registry/calendar`: `CalendarToolbar`, `ViewSwitcher`, `EventChip`, and `MiniMonth`.
+- `registry/time-grid-view`, `registry/month-view`, and `registry/list-view`: the
+  [week and day](/docs/views/week-and-day), [month](/docs/views/month), and
+  [agenda](/docs/views/agenda) views.
 
 There's no `shadcn add` command for these files yet, so copy them by hand:
 
@@ -108,7 +111,7 @@ In an existing app, check that `style` in `components.json` starts with `radix-`
 primitives the files import, and the icons if your app doesn't have them yet:
 
 ```bash
-npx shadcn@latest add button select tooltip
+npx shadcn@latest add button popover select tooltip
 pnpm add lucide-react
 ```
 

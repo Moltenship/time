@@ -1,4 +1,4 @@
 {
   "title": "Views",
-  "pages": ["index", "custom-views"]
+  "pages": ["index", "week-and-day", "month", "agenda", "custom-views"]
 }
