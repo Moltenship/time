@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, test } from "vite-plus/test";
+import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
 import {
   createCanonicalEventAdapter,
@@ -16,6 +16,19 @@ import { plainDateInterval } from "@moltenship/calendar-temporal";
 import { ghostLayout } from "../src/ghost";
 import type { TargetSurface } from "../src/targets";
 import { place, resetLayout } from "./dom-fixture";
+
+/** Records the date range each preview asks the projection's day splitter to cover. */
+const splitRanges = vi.hoisted((): string[] => []);
+vi.mock("@moltenship/calendar-core", async (importOriginal) => {
+  const core = await importOriginal<typeof import("@moltenship/calendar-core")>();
+  return {
+    ...core,
+    splitEventsByDay: ((events, range, zone) => {
+      splitRanges.push(`${range.start.toString()}/${range.end.toString()}`);
+      return core.splitEventsByDay(events, range, zone);
+    }) satisfies typeof core.splitEventsByDay,
+  };
+});
 
 const timeZone = "America/New_York";
 // Clocks fall back on Sunday 2026-11-01, so that day is 25 hours long.
@@ -297,4 +310,25 @@ describe("dates a jump back across midnight repeats", () => {
       { left: 0, width: 200 },
     ]);
   });
+});
+
+test("splits only the rendered dates of a long event", () => {
+  const surface = mountSurface();
+  const decade: CalendarEventPlacement<string> = {
+    end: Temporal.PlainDate.from("2030-01-01"),
+    kind: "all-day",
+    resourceIds: [],
+    start: Temporal.PlainDate.from("2020-01-01"),
+  };
+  const longTimed = timed(
+    "2020-01-01T09:00-05:00[America/New_York]",
+    "2030-01-01T09:00-05:00[America/New_York]",
+  );
+
+  for (const placement of [decade, longTimed]) {
+    splitRanges.length = 0;
+    const { rects } = ghostLayout(surface, placement, timeZone);
+    expect(rects.map(({ left, width }) => ({ left, width }))).toEqual([{ left: 0, width: 200 }]);
+    expect(splitRanges).toEqual(["2026-10-31/2026-11-02"]);
+  }
 });

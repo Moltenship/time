@@ -2,7 +2,6 @@ import {
   belongsInTimeGridAllDayRow,
   splitEventsByDay,
   timedFragmentBox,
-  toAllDayPlacement,
   type CalendarEventPlacement,
   type NormalizedCalendarEvent,
   type ResourceId,
@@ -129,16 +128,22 @@ function sameBounds(left: Bounds, right: Bounds): boolean {
 }
 
 /**
- * The local dates a placement has time on, from the projection's own day splitting: a date the
+ * The rendered dates a placement has time on, from the projection's own day splitting: a date the
  * zone skipped gets none, and a date that a jump back across midnight repeats keeps its share.
+ * Splitting stays within the rendered dates, however long the event is.
  */
 function touchedDates(
   placement: CalendarEventPlacement<ResourceId>,
+  rendered: readonly string[],
   timeZone: string,
 ): ReadonlySet<string> {
-  // A jump back across midnight can repeat time onto the day before the start's date.
-  const { end, start } = toAllDayPlacement(placement, { timeZone });
-  const range = plainDateInterval(start.subtract({ days: 1 }), end.add({ days: 1 }));
+  if (rendered.length === 0) return new Set();
+  // ISO dates order lexicographically.
+  const sorted = rendered.toSorted();
+  const range = plainDateInterval(
+    Temporal.PlainDate.from(sorted[0]!),
+    Temporal.PlainDate.from(sorted.at(-1)!).add({ days: 1 }),
+  );
   const event: NormalizedCalendarEvent<null, string, ResourceId> = {
     ...placement,
     event: null,
@@ -160,10 +165,15 @@ function dayCellRects(
   timeZone: string,
   rectOf: RectReader,
 ): GhostRect[] {
-  const dates = touchedDates(placement, timeZone);
+  const cells = dayCells(surface);
+  const dates = touchedDates(
+    placement,
+    cells.map((cell) => cell.getAttribute("data-date")!),
+    timeZone,
+  );
   const rects: GhostRect[] = [];
 
-  for (const cell of dayCells(surface)) {
+  for (const cell of cells) {
     if (!dates.has(cell.getAttribute("data-date")!)) continue;
 
     const rect = rectOf(cell);
