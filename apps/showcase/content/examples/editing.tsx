@@ -9,7 +9,7 @@ import {
   type CalendarEventChange,
   type CalendarPolicy,
 } from "@moltenship/calendar";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 import { Calendar, meetings as initialMeetings, weekRules, type Meeting } from "./quick-start";
 
@@ -54,12 +54,17 @@ const timedOnly: CalendarPolicy<Meeting, string, never> = ({ proposed }) =>
 // #region root
 export function EditableCalendar() {
   const [meetings, setMeetings] = useState(initialMeetings);
+  // The newest change to each event, so a slow save can't overwrite a newer edit.
+  const latestChange = useRef(new Map<string, string>());
 
   return (
     <Calendar.Root
       events={meetings}
       onEventChange={async (change) => {
+        if (change.eventId !== null) latestChange.current.set(change.eventId, change.id);
         await saveToServer(change);
+        if (change.eventId !== null && latestChange.current.get(change.eventId) !== change.id)
+          return;
         setMeetings((current) => applyChange(current, change));
       }}
       policies={[timedOnly, snapPolicy({ minutes: 15 }), minimumDurationPolicy({ minutes: 15 })]}

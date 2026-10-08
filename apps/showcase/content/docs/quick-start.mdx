@@ -70,6 +70,17 @@ week rules (the first day of the week, where 1 is Monday, and the weekend days).
 
 Give the frame a height: the views fill it and scroll inside it.
 
+The toolbar's buttons use shadcn's `Tooltip`, which needs a `TooltipProvider` above it. If your app
+doesn't have one yet, add it once around your app:
+
+```tsx title="app.tsx"
+import { TooltipProvider } from "@/components/ui/tooltip";
+
+<TooltipProvider>
+  <TeamCalendar meetings={meetings} />
+</TooltipProvider>;
+```
+
 </Step>
 </Steps>
 

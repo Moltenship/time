@@ -108,7 +108,9 @@ npx shadcn@latest init --base radix
 ```
 
 In an existing app, check that `style` in `components.json` starts with `radix-`. Then add the
-primitives the files import, and the icons if your app doesn't have them yet:
+primitives the files import, and the icons if your app doesn't have them yet. shadcn's tooltip also
+needs a `TooltipProvider` around your app, as its
+[installation notes](https://ui.shadcn.com/docs/components/radix/tooltip#installation) describe:
 
 ```bash
 npx shadcn@latest add button popover select tooltip

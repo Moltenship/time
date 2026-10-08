@@ -41,8 +41,10 @@ How long a change stays pending depends on your handler:
   events in the same handler.
 - **A handler that returns a promise** keeps the change pending until the promise settles. The event
   shows in its new place in the meantime.
-  - If the promise resolves, the change stays visible until your `events` include it, so the event
-    never jumps back.
+  - If the promise resolves, the calendar keeps showing the change until your `events` next change.
+    From then on your `events` decide where the event is, so include the saved change in that
+    update, as `setMeetings` does in the example. If another update arrives first, such as a
+    refetch that doesn't have the change yet, the event moves to where that update puts it.
   - If it rejects or the handler throws, the change is undone.
 
 <include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#save</include>
@@ -52,7 +54,11 @@ Pending events have `isPending: true` in projections, in `meta.eventSnapshot`, a
 `data-pending` on them, and the month and agenda views set `aria-busy`. Target those attributes to
 style pending events your own way.
 
-If the same event changes again before the first change finishes saving, the newer change wins.
+If the same event changes again before the first change finishes saving, the calendar shows the
+newer change. Your handler still receives both, and their saves can finish in either order. The
+example records the newest change for each event in `latestChange` and skips the state update for
+a save that finishes after a newer change started, so an old result never replaces a newer edit.
+Your server needs the same care, for example by rejecting writes that carry an outdated version.
 
 ## Policies
 
