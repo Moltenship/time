@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "list-view",
+  "type": "registry:component",
+  "title": "Agenda view",
+  "description": "Chronological agenda grouped by day with sticky dates, Intl time ranges, all-day badges, \"Day k of n\" for multi-day events, and an empty state.",
+  "dependencies": ["@moltenship/calendar", "lucide-react"],
+  "registryDependencies": ["utils", "@moltenship/calendar", "@moltenship/calendar-theme"],
+  "files": [
+    {
+      "path": "registry/list-view/agenda-view.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/list-view/agenda-view.tsx"
+    },
+    {
+      "path": "registry/list-view/agenda-item.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/list-view/agenda-item.tsx"
+    }
+  ],
+  "meta": {
+    "compatibility": {
+      "@moltenship/calendar": ">=0.0.0"
+    }
+  }
+}
