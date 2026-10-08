@@ -45,8 +45,10 @@ flowchart LR
   I28["#28 theme + primitives"] --> I29
   I28 --> I30
   I28 --> I33
+  I29 --> I33
   I32["#32 time-grid engine"] --> I33
   I32 --> I37
+  I33 --> I37
   I35["#35 transactions"] --> I37
   I29 --> P2["phase 2: #71 demo, #72 docs, #73 landing"]
   I30 --> P2
@@ -54,9 +56,10 @@ flowchart LR
   I37 --> P2
 ```
 
-Engine work (#32, #35) and phase 1 of #71, #72 and #73 (layout, content rewrite, design system)
-run in parallel with #70 and #28. Phase 2 of those three wires in the real views and interactions
-once they merge.
+The edges are merge order, matching native "blocked by" links; work can start in parallel. #33
+reuses the day-grid lane packing from #29 for its all-day row. Engine work (#32, #35) and phase 1
+of #71, #72 and #73 (layout, content rewrite, design system) run in parallel with #70 and #28.
+Phase 2 of those three wires in the real views and interactions once they merge.
 
 ### 0.1 is done when
 
@@ -109,3 +112,16 @@ Scope / Done when / Later before starting it.
 - Fumadocs and Next.js stay inside `apps/showcase`. `apps/demo` and the docs import only public
   package entry points and `registry/` source.
 - If a PR changes a decision recorded in `architecture.md`, update that file in the same PR.
+
+## Exceptions to `architecture.md` in 0.1
+
+`architecture.md` is still the design reference, except for three decisions this rescope changes.
+#37 updates `architecture.md` (§11 and §26) and marks
+[ADR 0001](./docs/adr/0001-semantic-dnd-kit-adapter.md) superseded in its PR.
+
+- Pointer input in #37 uses native Pointer Events. dnd-kit becomes an optional adapter for later;
+  the #19 spike stays as history.
+- Keyboard grab / move / resize comes in 0.2 (#36). In 0.1, pointer changes have equivalents
+  through the transaction API (#35) and the demo's event dialog (#71), but no keyboard mode.
+- The "performance, accessibility, and browser evidence" invariant is replaced by each issue's
+  "Done when" list.
