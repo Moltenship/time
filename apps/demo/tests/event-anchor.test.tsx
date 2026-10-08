@@ -67,3 +67,26 @@ test("finds an event's first element and keeps numeric and string IDs apart", ()
   expect(lookup("1")).toBe("string one");
   expect(lookup("missing")).toBeUndefined();
 });
+
+test("prefers the fragment in view over an earlier one scrolled out of the time grid", () => {
+  const grid = document.createElement("div");
+  grid.style.overflowY = "auto";
+  grid.innerHTML = `
+    <button data-event-id="deploy">Friday 23:00</button>
+    <button data-event-id="deploy">Saturday 00:00</button>`;
+  document.body.append(grid);
+  const [friday, saturday] = [...grid.querySelectorAll("button")];
+  // jsdom has no layout, so give the grid and fragments their on-screen boxes.
+  const placeAt = (element: Element | undefined, top: number, height: number) => {
+    if (element) element.getBoundingClientRect = () => new DOMRect(0, top, 120, height);
+  };
+  placeAt(grid, 160, 600);
+  placeAt(friday, 1270, 60);
+  placeAt(saturday, 166, 72);
+
+  expect(findEventElement(grid, "deploy")?.textContent).toBe("Saturday 00:00");
+
+  placeAt(saturday, -400, 72);
+  expect(findEventElement(grid, "deploy")?.textContent).toBe("Friday 23:00");
+  grid.remove();
+});
