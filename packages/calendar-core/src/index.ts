@@ -90,6 +90,12 @@ export { timedFragmentBox, timeGridDateTimeAt, timeGridPosition } from "./views/
 export type { TimeGridPointOptions, TimeGridPosition } from "./views/time-grid/geometry";
 export { layoutTimeGrid } from "./views/time-grid/layout";
 export type { TimeGridEventLayout } from "./views/time-grid/layout";
+export { projectTimeGrid, timeGridStrategy } from "./views/time-grid/projection";
+export type {
+  TimeGridDay,
+  TimeGridProjection,
+  TimeGridProjectionInput,
+} from "./views/time-grid/projection";
 export type { TimedOverlapOptions } from "./layout/timed-overlap";
 
 export { createEventTransactions } from "./transactions/event-transactions";
