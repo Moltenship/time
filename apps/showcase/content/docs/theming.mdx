@@ -1,0 +1,142 @@
+---
+title: Theming
+description: Calendar color tokens, dark mode, and the event color palette.
+---
+
+The packages don't ship any CSS. The styled parts in the registry read their colors and sizes from
+CSS variables defined in `calendar-theme.css`. Copy that file into your app as described in
+[UI source](/docs/installation#ui-source-optional), then change the variables to restyle the
+calendar.
+
+## Tokens
+
+`calendar-theme.css` defines the standard shadcn/ui tokens (`--background`, `--primary`,
+`--border`, and so on) plus these calendar tokens:
+
+| Variable                      | Used for                                  | Tailwind class                   |
+| ----------------------------- | ----------------------------------------- | -------------------------------- |
+| `--calendar-grid`             | Lines between days and hours              | `border-calendar-grid`           |
+| `--calendar-axis`             | Hour and weekday labels                   | `text-calendar-axis`             |
+| `--calendar-today`            | Today's date marker                       | `bg-calendar-today`              |
+| `--calendar-today-foreground` | Text on today's marker                    | `text-calendar-today-foreground` |
+| `--calendar-now`              | The current-time line                     | `bg-calendar-now`                |
+| `--calendar-selection`        | Selected days and time ranges             | `bg-calendar-selection`          |
+| `--calendar-weekend`          | Weekend background                        | `bg-calendar-weekend`            |
+| `--calendar-event`            | Event background                          | `bg-calendar-event`              |
+| `--calendar-event-foreground` | Event text                                | `text-calendar-event-foreground` |
+| `--calendar-event-border`     | Event accent edge                         | `border-calendar-event-border`   |
+| `--calendar-hour-height`      | Height of one hour in time grids (`3rem`) | `h-(--calendar-hour-height)`     |
+
+The color tokens work with any Tailwind color utility, so `text-calendar-today` and
+`ring-calendar-now` work too. Most calendar tokens derive from the shadcn tokens: `--calendar-grid`
+is your `--border`, and the default event colors mix your `--primary` into `--background`.
+
+## Changing tokens
+
+Every token is declared inside `@layer base`, so a plain rule in your own CSS wins without
+`!important`. Set the light values on `:root` and the dark values on `.dark`:
+
+```css title="globals.css"
+:root {
+  --calendar-today: oklch(0.55 0.17 150);
+  --calendar-hour-height: 4rem;
+}
+
+.dark {
+  --calendar-today: oklch(0.72 0.15 150);
+}
+```
+
+If your app already defines the shadcn tokens, the calendar follows them automatically.
+
+## Dark mode
+
+The theme switches when an ancestor of the calendar has the `dark` class, which is how shadcn/ui
+and `next-themes` work. The CSS import step in [UI source](/docs/installation#ui-source-optional)
+adds the matching Tailwind `dark` variant.
+
+## Event colors
+
+The theme has a palette of nine event colors: `blue`, `green`, `red`, `orange`, `yellow`,
+`purple`, `pink`, `teal`, and `gray`. Put one in a `data-color` attribute and that element's three
+event tokens switch to the color, in both light and dark mode:
+
+```html
+<div data-color="green" class="bg-calendar-event text-calendar-event-foreground">Standup</div>
+```
+
+`EventChip`, the event button in `registry/calendar`, sets `data-color` from its `color` prop. The
+names are exported from `event-colors.ts` as `calendarEventColors`, with the type
+`CalendarEventColor`.
+
+### Choosing a color per event
+
+Views decide colors with an optional `getEventColor` option: a function from your event record to a
+color name. You set it per calendar with the `viewOptions` prop on `Root`:
+
+```tsx
+const getEventColor = (meeting: Meeting) => (meeting.title === "Standup" ? "green" : "blue");
+
+// On Root:
+viewOptions={{ agenda: { getEventColor } }}
+```
+
+Define the function outside your component, so it keeps its identity between renders. See
+[Performance](/docs/guides/performance#keep-functions-in-options-stable).
+
+The built-in views will accept `getEventColor` when they ship. To support it in your own view, add it
+to the view's options and pass the result to `EventChip`:
+
+```tsx title="agenda-view.tsx"
+import {
+  defineCalendarView,
+  plainDateInterval,
+  type CalendarViewProjectionInput,
+} from "@moltenship/calendar";
+
+import { EventChip } from "@/components/calendar/event-chip";
+import type { CalendarEventColor } from "@/components/calendar/event-colors";
+
+import type { Meeting } from "./calendar";
+
+interface AgendaOptions {
+  readonly getEventColor?: (meeting: Meeting) => CalendarEventColor;
+}
+
+export const agendaView = defineCalendarView({
+  name: "agenda",
+  defaultOptions: {},
+  strategy: {
+    getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 7 })),
+    navigate: (anchor, delta) => anchor.add({ weeks: delta }),
+    getTitle: (range, { locale }) => range.start.toLocaleString(locale, { dateStyle: "medium" }),
+    project: ({ snapshot, instantRange }: CalendarViewProjectionInput<AgendaOptions, Meeting>) =>
+      snapshot.queryTimed(instantRange),
+  },
+  Renderer: ({ projection, options }) => (
+    <ul>
+      {projection.map(({ event }) => (
+        <li key={event.id}>
+          <EventChip color={options.getEventColor?.(event)}>{event.title}</EventChip>
+        </li>
+      ))}
+    </ul>
+  ),
+});
+```
+
+Without `getEventColor`, `EventChip` leaves `data-color` off and uses the theme's default event
+tokens.
+
+### Adding a color
+
+Each palette entry only sets a hue and a chroma; the `[data-color]` rule turns them into the three
+event tokens for light and dark mode. To add a color, add its name to `calendarEventColors` in
+`event-colors.ts` and give it a hue and chroma in your CSS:
+
+```css title="globals.css"
+[data-color="brand"] {
+  --calendar-event-hue: 285;
+  --calendar-event-chroma: 0.2;
+}
+```
