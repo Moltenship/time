@@ -26,6 +26,29 @@ export const Calendar = createCalendar<Meeting>()({
 
 The view is named `agenda`.
 
+## Anatomy
+
+`AgendaView` from `registry/list-view` renders a list with one group per day:
+
+<AgendaAnatomy />
+
+```tsx
+<AgendaView>
+  <li data-date="2026-10-08">
+    {/* Day group header: weekday and date */}
+    <ul>
+      <li>
+        <AgendaItem item={item} />
+      </li>
+    </ul>
+  </li>
+</AgendaView>
+```
+
+`AgendaView` (`agenda-view.tsx`) renders the day groups, or the empty state when the range has no
+events. `AgendaItem` (`agenda-item.tsx`) renders one event, including the "All day" badge and
+"Day 2 of 3", which comes from `dayIndex` and `dayCount`.
+
 ## Options
 
 <TypeTable

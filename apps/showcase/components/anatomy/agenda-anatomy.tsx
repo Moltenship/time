@@ -21,7 +21,7 @@ const callouts: readonly AnatomyCallout[] = [
   { label: "Day group", name: "data-date", anchor: [0, 105], side: "left", span: 70 },
   { label: "All-day badge", anchor: [ITEM_LEFT + 36, 12], side: "top" },
   { label: "Item", name: "AgendaItem", anchor: [WIDTH - 12, 49], side: "right" },
-  { label: "Multi-day position", name: "dayCount", anchor: [312, 91], side: "right" },
+  { label: "Day k of n", name: "dayCount", anchor: [312, 91], side: "right" },
   { label: "Empty state", anchor: [0, EMPTY_TOP + 50], side: "left" },
 ];
 

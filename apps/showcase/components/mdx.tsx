@@ -1,4 +1,9 @@
-import { AgendaAnatomy, CalendarAnatomy, MonthAnatomy, TimeGridAnatomy } from "@/components/anatomy";
+import {
+  AgendaAnatomy,
+  CalendarAnatomy,
+  MonthAnatomy,
+  TimeGridAnatomy,
+} from "@/components/anatomy";
 import { CalendarPreview } from "@/components/calendar-preview";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Step, Steps } from "fumadocs-ui/components/steps";

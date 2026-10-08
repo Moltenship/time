@@ -34,6 +34,38 @@ export const Calendar = createCalendar<Meeting>()({
 The views are named `week` and `day`. Pass your event type, as in `createWeekView<Meeting>`, so
 `getEventColor` receives your records.
 
+## Anatomy
+
+Both views render `TimeGridView` from `registry/time-grid-view`, with seven day columns for the week
+and one for the day.
+
+<TimeGridAnatomy />
+
+```tsx
+<TimeGridView>
+  <TimeGridHeader />
+  <TimeGridAllDay />
+  <TimeGridBody>
+    {/* Time gutter */}
+    <TimeGridColumn day={day}>
+      <TimeGridEvent layout={layout}>
+        {/* Title and time */}
+        <span data-resize="start" />
+        <span data-resize="end" />
+      </TimeGridEvent>
+      <div data-slot="time-grid-now" />
+    </TimeGridColumn>
+  </TimeGridBody>
+</TimeGridView>
+```
+
+Each component has its own file, such as `time-grid-header.tsx`.
+
+- The gutter is `--calendar-gutter-width` wide: 3rem, or 4rem from the `sm` breakpoint.
+- An event's `TimeGridEventLayout` sets its `top` and `height` from its times, and its `left` and
+  `width` from the lanes it shares with overlapping events.
+- The now line is the element with `data-slot="time-grid-now"`. `useNow()` moves it.
+
 ## Options
 
 <TypeTable

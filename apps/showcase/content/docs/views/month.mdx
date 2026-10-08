@@ -27,6 +27,32 @@ export const Calendar = createCalendar<Meeting>()({
 
 The view is named `month`. Previous and Next move by one month.
 
+## Anatomy
+
+`MonthView` renders the parts below. Each name is a component, prop, or attribute in the
+`registry/month-view` files you copied.
+
+<MonthAnatomy />
+
+```tsx
+<MonthView>
+  {/* Weekday header */}
+  <MonthWeekRow week={week}>
+    <div data-date="2026-10-05">
+      <DateButton day={day} />
+    </div>
+    <MonthEvent time="9 AM" />
+    <MonthEvent bar endsAfter />
+    <MoreEvents count={2} />
+  </MonthWeekRow>
+</MonthView>
+```
+
+`MonthView` (`month-view.tsx`) draws the weekday header and the week rows. `MonthWeekRow`,
+`DateButton`, and `MoreEvents` live in `month-week.tsx`, and `MonthEvent` in `month-event.tsx`. A
+bar is a `MonthEvent` with `bar` set; `startsBefore` and `endsAfter` mark the ends that continue into
+another week.
+
 ## Options
 
 <TypeTable
