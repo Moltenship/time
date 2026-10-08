@@ -42,12 +42,10 @@ There's one function per operation and type:
 | Contains a range | `instantIntervalContainsInterval` | `plainDateIntervalContainsInterval` | `plainDateTimeIntervalContainsInterval` |
 | Overlaps         | `instantIntervalsIntersect`       | `plainDateIntervalsIntersect`       | `plainDateTimeIntervalsIntersect`       |
 | Overlapping part | `intersectInstantIntervals`       | `intersectPlainDateIntervals`       | `intersectPlainDateTimeIntervals`       |
-| Limit to bounds  | `clampInstantInterval`            | `clampPlainDateInterval`            | `clampPlainDateTimeInterval`            |
 | Split at a point | `splitInstantInterval`            | `splitPlainDateInterval`            | `splitPlainDateTimeInterval`            |
 
-Ranges that only touch don't overlap. The overlapping part and the clamped range are `null` when
-there's no overlap. Splitting returns two ranges when the point is strictly inside, and the original
-range otherwise.
+Ranges that only touch don't overlap. The overlapping part is `null` when there's no overlap.
+Splitting returns two ranges when the point is strictly inside, and the original range otherwise.
 
 `compareInstants`, `comparePlainDates`, `comparePlainDateTimes`, and `comparePlainTimes` are the
 matching sort functions.
@@ -79,18 +77,35 @@ for (const day of iteratePlainDates(grid.range)) {
 ## Rounding and snapping
 
 ```ts
-import { snapPlainTime } from "@moltenship/calendar-temporal";
+import { snapPlainTime, snapZonedDateTime } from "@moltenship/calendar-temporal";
 
-snapPlainTime(Temporal.PlainTime.from("10:07:30"), {
-  increment: 15,
-  mode: "nearest",
+snapPlainTime(Temporal.PlainTime.from("23:50"), {
+  increment: 30,
+  mode: "ceil",
   smallestUnit: "minute",
-}); // 10:15:00
+}); // { time: 00:00, days: 1 }
+
+snapZonedDateTime(Temporal.ZonedDateTime.from("2026-03-29T01:50+01:00[Europe/Berlin]"), {
+  increment: 15,
+  mode: "ceil",
+  smallestUnit: "minute",
+}); // 2026-03-29T03:00:00+02:00[Europe/Berlin]: 02:00 doesn't exist that night
 ```
 
-`snapPlainTime` and `snapInstant` round to a grid with `mode` set to `"nearest"`, `"floor"`, or
-`"ceil"`. `roundPlainTime` and `roundInstant` take Temporal's full set of rounding modes. Time-of-day
-grids start at midnight, and instant grids at the Unix epoch.
+The snap functions round to a wall-clock grid that starts at midnight, with `mode` set to
+`"nearest"` (the default), `"floor"`, or `"ceil"`:
+
+- `snapPlainTime(time, options)` returns `{ time, days }`. `days` is `1` when rounding up passed
+  midnight, so a late end time isn't mistaken for an early one.
+- `snapZonedDateTime(value, options)` rounds in the value's own time zone. In a repeated hour it
+  keeps the same occurrence. If the result lands in a skipped hour, it moves to the moment the clocks
+  change, so `floor` never moves later and `ceil` never moves earlier.
+- `snapZonedWallTime(wallTime, { timeZone, fold, ...options })` does the same for a wall-clock time
+  with no zone yet, such as a pointer position. `fold` picks `"earlier"` (the default) or `"later"`
+  for a repeated time.
+
+`roundPlainTime` and `roundInstant` take Temporal's full set of rounding modes. Instant rounding
+starts at the Unix epoch.
 
 ## Days in a time zone
 
@@ -143,7 +158,8 @@ repeated hour have two. A slot that a DST change cuts through is split at the ch
 
 `instantKey`, `plainDateKey`, `plainDateTimeKey`, `zonedDayKey`, and `zonedWallTimeKey` return
 strings for use as React keys or cache keys. Two moments in a repeated hour share a wall-clock key,
-so key those by `instantKey`.
+so key those by `instantKey`. Time zone names are compared case-insensitively, but aliases such as
+`Asia/Calcutta` and `Asia/Kolkata` produce different keys.
 
 ## Clocks
 

@@ -287,7 +287,7 @@ V1 promises ISO-8601/Gregorian arithmetic with arbitrary locale, numbering syste
 
 ```text
 src/
-├── intervals/       # compare, intersect, clamp, contains, split
+├── intervals/       # compare, intersect, contains, split
 ├── plain-date/      # week/month grids, iteration, date keys
 ├── plain-time/      # slot generation and snapping
 ├── instant/         # instant ranges and duration-safe comparisons
