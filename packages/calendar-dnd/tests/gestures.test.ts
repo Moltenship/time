@@ -96,14 +96,16 @@ describe("move", () => {
 });
 
 describe("across DST transitions", () => {
-  const november = timeGridColumns(
-    plainDateInterval(Temporal.PlainDate.from("2026-11-01"), Temporal.PlainDate.from("2026-11-02")),
+  const autumn = timeGridColumns(
+    plainDateInterval(Temporal.PlainDate.from("2026-10-30"), Temporal.PlainDate.from("2026-11-03")),
     timeZone,
   );
-  const inNovember = (time: string): PointerTarget => {
+  const inAutumn = (date: string, time: string): PointerTarget => {
     const { hour, minute } = Temporal.PlainTime.from(time);
-    return { column: november[0]!, kind: "time", y: (hour * 60 + minute) / (24 * 60) };
+    const column = autumn.find((candidate) => candidate.date.toString() === date)!;
+    return { column, kind: "time", y: (hour * 60 + minute) / (24 * 60) };
   };
+  const inNovember = (time: string) => inAutumn("2026-11-01", time);
 
   test("lands the grabbed point under the pointer across the spring gap", () => {
     const event = timed("2026-03-08T00:00", "2026-03-08T01:00");
@@ -131,6 +133,25 @@ describe("across DST transitions", () => {
     expect(
       wall(resizedPlacement(event, "end", inNovember("01:00"), inNovember("03:00"), options)),
     ).toBe("2026-11-01T00:00/2026-11-01T03:00");
+  });
+
+  test("moves both ends of a multi-day event by calendar days across either transition", () => {
+    // Grabbed a day before the transition at 10:00 and dropped a day later at 09:30.
+    const spring = timed("2026-03-06T09:00", "2026-03-09T10:00");
+    expect(
+      wall(movedPlacement(spring, at("2026-03-07", "10:00"), at("2026-03-08", "09:30"), options)),
+    ).toBe("2026-03-07T08:30/2026-03-10T09:30");
+    const fall = timed("2026-10-30T09:00", "2026-11-02T10:00");
+    expect(
+      wall(
+        movedPlacement(
+          fall,
+          inAutumn("2026-10-31", "10:00"),
+          inAutumn("2026-11-01", "09:30"),
+          options,
+        ),
+      ),
+    ).toBe("2026-10-31T08:30/2026-11-03T09:30");
   });
 
   test("moves a multi-day event's far end by calendar days when the clock moves earlier", () => {
