@@ -88,7 +88,7 @@ export function movedPlacement<TResourceId extends ResourceId>(
     const allDay = toAllDayPlacement(original, { timeZone });
     return moveEventPlacement(
       allDay,
-      { days: (allDay.start as Temporal.PlainDate).until(current.date).days },
+      { days: allDay.start.until(current.date).days },
       { timeZone },
     );
   }

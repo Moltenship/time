@@ -164,7 +164,7 @@ export function createEventPlacement<TResourceId extends ResourceId>(
 export function toAllDayPlacement<TResourceId extends ResourceId>(
   placement: CalendarEventPlacement<TResourceId>,
   options: { readonly timeZone: string },
-): CalendarEventPlacement<TResourceId> {
+): Extract<CalendarEventPlacement<TResourceId>, { readonly kind: "all-day" }> {
   if (placement.kind === "all-day") return placement;
 
   const { end, start } = wallClockEndpoints(placement, options.timeZone);

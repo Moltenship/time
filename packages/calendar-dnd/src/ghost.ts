@@ -1,11 +1,13 @@
 import {
   belongsInTimeGridAllDayRow,
+  splitEventsByDay,
   timedFragmentBox,
   toAllDayPlacement,
   type CalendarEventPlacement,
+  type NormalizedCalendarEvent,
   type ResourceId,
 } from "@moltenship/calendar-core";
-import { instantInterval, zonedDayRange } from "@moltenship/calendar-temporal";
+import { instantInterval, plainDateInterval } from "@moltenship/calendar-temporal";
 
 import { dayCells, timeColumns, type TargetSurface } from "./targets";
 
@@ -127,22 +129,25 @@ function sameBounds(left: Bounds, right: Bounds): boolean {
 }
 
 /**
- * Whether a timed placement has time on a date. Like the time grid's own fragments, this skips a
- * date that a date-line change removed from the time zone.
+ * The local dates a placement has time on, from the projection's own day splitting: a date the
+ * zone skipped gets none, and a date that a jump back across midnight repeats keeps its share.
  */
-function touchesDay(
-  surface: TargetSurface,
-  { end, start }: Extract<CalendarEventPlacement, { kind: "timed" }>,
-  date: string,
+function touchedDates(
+  placement: CalendarEventPlacement<ResourceId>,
   timeZone: string,
-): boolean {
-  const { interval } =
-    surface.columns.get(date)?.day ?? zonedDayRange(Temporal.PlainDate.from(date), timeZone);
-  return (
-    interval !== null &&
-    Temporal.Instant.compare(start, interval.end) < 0 &&
-    Temporal.Instant.compare(end, interval.start) > 0
-  );
+): ReadonlySet<string> {
+  // A jump back across midnight can repeat time onto the day before the start's date.
+  const { end, start } = toAllDayPlacement(placement, { timeZone });
+  const range = plainDateInterval(start.subtract({ days: 1 }), end.add({ days: 1 }));
+  const event: NormalizedCalendarEvent<null, string, ResourceId> = {
+    ...placement,
+    event: null,
+    id: "preview",
+    inputIndex: 0,
+    isReadOnly: false,
+    title: "",
+  };
+  return new Set(splitEventsByDay([event], range, timeZone).map(({ date }) => date.toString()));
 }
 
 /**
@@ -155,16 +160,11 @@ function dayCellRects(
   timeZone: string,
   rectOf: RectReader,
 ): GhostRect[] {
-  const days = toAllDayPlacement(placement, { timeZone });
-  const first = days.start.toString();
-  const last = days.end.toString();
+  const dates = touchedDates(placement, timeZone);
   const rects: GhostRect[] = [];
 
   for (const cell of dayCells(surface)) {
-    // ISO dates order lexicographically.
-    const date = cell.getAttribute("data-date")!;
-    if (date < first || date >= last) continue;
-    if (placement.kind === "timed" && !touchesDay(surface, placement, date, timeZone)) continue;
+    if (!dates.has(cell.getAttribute("data-date")!)) continue;
 
     const rect = rectOf(cell);
     const visible = visibleBounds(surface, cell, rectOf);

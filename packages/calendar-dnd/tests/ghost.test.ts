@@ -6,6 +6,7 @@ import {
   createCanonicalEventAdapter,
   createEventSnapshot,
   projectTimeGrid,
+  splitEventsByDay,
   timeGridColumns,
   type CalendarEnvironmentBase,
   type CalendarEventPlacement,
@@ -221,4 +222,79 @@ test("keeps neighbouring day cells apart when different ancestors clip them", ()
     { left: 0, visible: { bottom: 40, left: 0, right: 100, top: 0 }, width: 100 },
     { left: 100, visible: { bottom: 40, left: 100, right: 200, top: 0 }, width: 100 },
   ]);
+});
+
+describe("dates a jump back across midnight repeats", () => {
+  // St. John's fell back from 00:01 to 23:01 on 2010-11-07, repeating an hour onto Nov 6.
+  const stJohns = "America/St_Johns";
+  const days = plainDateInterval(
+    Temporal.PlainDate.from("2010-11-06"),
+    Temporal.PlainDate.from("2010-11-09"),
+  );
+  const instants = (start: string, end: string): CalendarEventPlacement<string> => ({
+    end: Temporal.Instant.from(end),
+    kind: "timed",
+    resourceIds: [],
+    start: Temporal.Instant.from(start),
+  });
+  // Nov 6 23:10 to Nov 7 23:10 on the wall clock: 24 hours, touching both dates.
+  const day = instants("2010-11-07T02:40Z", "2010-11-08T02:40Z");
+  // Both ends on Nov 7, but the repeated hour also falls on Nov 6.
+  const repeated = instants("2010-11-07T02:30:30Z", "2010-11-07T05:00Z");
+
+  function boxes(rects: readonly { readonly left: number; readonly width: number }[]) {
+    return rects.map(({ left, width }) => ({ left, width }));
+  }
+
+  /** Day cells only, as in a month view: no time columns to borrow day ranges from. */
+  function mountDayCells(): TargetSurface {
+    resetLayout();
+    const region = document.createElement("div");
+    document.body.append(region);
+    ["2010-11-06", "2010-11-07", "2010-11-08"].forEach((date, index) => {
+      const cell = document.createElement("div");
+      cell.setAttribute("data-date", date);
+      region.append(place(cell, { height: 80, left: index * 100, top: 0, width: 100 }, 2));
+    });
+    return { clippers: new Map(), columns: new Map(), region };
+  }
+
+  test("a time grid previews the dates its all-day row will show", () => {
+    const projection = projectTimeGrid({
+      environment: { timeZone: stJohns } as CalendarEnvironmentBase,
+      range: days,
+      snapshot: createEventSnapshot(
+        [{ ...day, data: null, id: "day", title: "Day" }],
+        createCanonicalEventAdapter<null, string, string>(),
+      ),
+      today: null,
+    });
+
+    const { axis, rects } = ghostLayout(mountSurface(timeGridColumns(days, stJohns)), day, stJohns);
+    expect(axis).toBe("day");
+    expect(boxes(rects)).toEqual(
+      projection.allDay.segments.map(({ column, span }) => ({
+        left: column * 100,
+        width: span * 100,
+      })),
+    );
+    expect(boxes(rects)).toEqual([{ left: 0, width: 200 }]);
+  });
+
+  test("day cells without time columns preview the projected dates too", () => {
+    const touched = (placement: CalendarEventPlacement<string>) =>
+      splitEventsByDay(
+        [{ ...placement, event: null, id: "event", inputIndex: 0, isReadOnly: false, title: "" }],
+        days,
+        stJohns,
+      ).map(({ date }) => date.toString());
+
+    expect(touched(repeated)).toEqual(["2010-11-06", "2010-11-07"]);
+    expect(boxes(ghostLayout(mountDayCells(), day, stJohns).rects)).toEqual([
+      { left: 0, width: 200 },
+    ]);
+    expect(boxes(ghostLayout(mountDayCells(), repeated, stJohns).rects)).toEqual([
+      { left: 0, width: 200 },
+    ]);
+  });
 });
