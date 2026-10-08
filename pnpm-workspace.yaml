@@ -27,8 +27,8 @@ catalog:
   fast-check: ^4.9.0
   happy-dom: 20.11.2
   typescript: ^7.0.2
-  vite: npm:@voidzero-dev/vite-plus-core@0.2.6
-  vite-plus: 0.2.6
+  vite: npm:@voidzero-dev/vite-plus-core@1.1.0
+  vite-plus: 1.1.0
   yaml: 2.9.0
   tsx: ^4.23.12
   fumadocs-core: 16.14.5
@@ -49,7 +49,7 @@ catalog:
   postcss: 8.5.26
   tailwindcss: 4.3.3
 overrides:
-  vite: "catalog:"
+  vite@*: "catalog:"
 packageExtensions:
   "dependency-cruiser@18.2.0":
     dependencies:

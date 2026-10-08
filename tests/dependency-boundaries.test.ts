@@ -83,7 +83,7 @@ async function cruiseWithArchitectureRules(roots: string[]) {
   return result.output as ICruiseResult;
 }
 
-describe.sequential("workspace boundaries", () => {
+describe("workspace boundaries", { concurrent: false }, () => {
   test("production source obeys the dependency rules", async () => {
     const result = await cruiseWithArchitectureRules(productionRoots);
 
