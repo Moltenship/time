@@ -543,6 +543,9 @@ importers:
       '@moltenship/calendar-core':
         specifier: workspace:*
         version: link:../calendar-core
+      '@moltenship/calendar-dnd':
+        specifier: workspace:*
+        version: link:../calendar-dnd
       '@moltenship/calendar-react':
         specifier: workspace:*
         version: link:../calendar-react

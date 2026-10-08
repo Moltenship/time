@@ -40,11 +40,12 @@ export type CalendarSemanticActions<
   navigateToday(): void;
   /**
    * Validates a change against the root's policies, shows it while `onEventChange` persists it,
-   * and resolves with the outcome. Read-only events and roots without `onEventChange` reject.
+   * and resolves with the outcome. Read-only events and roots without `onEventChange` reject. A
+   * plain function, so it can be passed on as a callback.
    */
-  proposeEventChange(
+  readonly proposeEventChange: (
     proposal: CalendarEventProposal<TEventId, TResourceId>,
-  ): Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  ) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
 };
 
 export type CalendarDiagnostic<TEvent, TEventId extends EventId> =

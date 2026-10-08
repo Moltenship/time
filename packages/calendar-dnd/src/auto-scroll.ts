@@ -8,12 +8,8 @@ function step(position: number, start: number, end: number): number {
   return 0;
 }
 
-export function scrollableAncestor(element: HTMLElement): HTMLElement {
-  for (
-    let current: HTMLElement | null = element;
-    current !== null;
-    current = current.parentElement
-  ) {
+export function scrollableAncestor(element: Element): Element {
+  for (let current: Element | null = element; current !== null; current = current.parentElement) {
     const { overflowX, overflowY } = getComputedStyle(current);
     const scrollsY =
       /auto|scroll|overlay/.test(overflowY) && current.scrollHeight > current.clientHeight;
@@ -21,14 +17,14 @@ export function scrollableAncestor(element: HTMLElement): HTMLElement {
       /auto|scroll|overlay/.test(overflowX) && current.scrollWidth > current.clientWidth;
     if (scrollsY || scrollsX) return current;
   }
-  return (document.scrollingElement ?? document.documentElement) as HTMLElement;
+  return document.scrollingElement ?? document.documentElement;
 }
 
 /**
  * Scrolls `container` when a viewport point sits near its edges. Returns whether it moved, so the
  * caller re-reads geometry only after a scroll.
  */
-export function autoScroll(container: HTMLElement, x: number, y: number): boolean {
+export function autoScroll(container: Element, x: number, y: number): boolean {
   const viewport =
     container === document.scrollingElement || container === document.documentElement;
   const rect = viewport

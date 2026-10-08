@@ -15,10 +15,13 @@ export interface CalendarViewActions {
   navigateNext(): void;
   navigatePrevious(): void;
   navigateToday(): void;
-  /** Proposes a move, resize, create, or delete, such as the result of a pointer drag. */
-  proposeEventChange(
+  /**
+   * Proposes a move, resize, create, or delete, such as the result of a pointer drag. A plain
+   * function, so it can be passed on as a callback.
+   */
+  readonly proposeEventChange: (
     proposal: CalendarEventProposal<EventId, ResourceId>,
-  ): Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
+  ) => Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
   setAnchorDate(anchorDate: Temporal.PlainDate): void;
   setView(view: string): void;
 }

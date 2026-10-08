@@ -1,7 +1,9 @@
 // No "use client" here: core and Temporal utilities stay callable from Server Components, while
-// the React bindings keep their own client boundary in `@moltenship/calendar-react`.
+// the React bindings and pointer interactions keep their own client boundaries.
 export * from "@moltenship/calendar-core";
 export * from "@moltenship/calendar-temporal";
+export { attachCalendarPointer, useCalendarPointer } from "@moltenship/calendar-dnd";
+export type { CalendarPointerOptions } from "@moltenship/calendar-dnd";
 export {
   createCalendar,
   createCalendarStore,

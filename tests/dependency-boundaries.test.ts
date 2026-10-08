@@ -21,6 +21,7 @@ const execFileAsync = promisify(execFile);
 const expectedWorkspaceDependencies = {
   "@moltenship/calendar": [
     "@moltenship/calendar-core",
+    "@moltenship/calendar-dnd",
     "@moltenship/calendar-react",
     "@moltenship/calendar-temporal",
   ],

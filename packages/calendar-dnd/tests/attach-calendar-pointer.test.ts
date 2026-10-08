@@ -289,7 +289,7 @@ describe("time grid", () => {
       get: () => scrollTop,
       set: (value: number) => (scrollTop = Math.max(0, value)),
     });
-    setup(grid, { columns: grid.columns, scrollContainer: container });
+    setup(grid, { columns: grid.columns, scrollContainer: { current: container } });
     const element = grid.elements.get("a")!;
 
     pointer("pointerdown", element, 50, yAt("09:30"));

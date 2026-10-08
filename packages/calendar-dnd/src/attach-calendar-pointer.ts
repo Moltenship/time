@@ -37,8 +37,11 @@ export interface CalendarPointerOptions<
   readonly disabled?: boolean;
   /** Extra classes for the preview segments. */
   readonly ghostClassName?: string;
-  /** Scrolled while dragging near its edges. Defaults to the nearest scrollable ancestor. */
-  readonly scrollContainer?: HTMLElement | null;
+  /**
+   * A ref to the element scrolled while dragging near its edges. Defaults to the nearest scrollable
+   * ancestor of where the drag starts.
+   */
+  readonly scrollContainer?: { readonly current: Element | null };
   /** Wall-clock grid for time columns. Defaults to 15 minutes. */
   readonly snap?: WallTimeSnapOptions;
 }
@@ -71,7 +74,7 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
   point: { readonly x: number; readonly y: number };
   readonly pointerId: number;
   readonly pointerType: string;
-  readonly scrollContainer: HTMLElement;
+  readonly scrollContainer: Element;
   readonly surface: TargetSurface;
 }
 
@@ -314,7 +317,7 @@ export function attachCalendarPointer<
       point: { x: event.clientX, y: event.clientY },
       pointerId: event.pointerId,
       pointerType: event.pointerType,
-      scrollContainer: options.scrollContainer ?? scrollableAncestor(region),
+      scrollContainer: options.scrollContainer?.current ?? scrollableAncestor(event.target),
       surface,
     };
     session = current;
