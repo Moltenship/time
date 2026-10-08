@@ -13,7 +13,6 @@
   },
   "dependencies": {
     "@moltenship/calendar": "workspace:*",
-    "@moltenship/calendar-temporal": "workspace:*",
     "class-variance-authority": "catalog:",
     "clsx": "catalog:",
     "lucide-react": "catalog:",

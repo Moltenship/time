@@ -35,10 +35,10 @@ const expectedWorkspaceDependencies = {
     "@moltenship/calendar-temporal",
   ],
   benchmark: ["@moltenship/calendar-core", "@moltenship/calendar-react", "fixtures"],
-  demo: ["@moltenship/calendar", "@moltenship/calendar-temporal"],
+  demo: ["@moltenship/calendar"],
   fixtures: ["@moltenship/calendar-core"],
   registry: [],
-  "registry-source": ["@moltenship/calendar", "@moltenship/calendar-temporal"],
+  "registry-source": ["@moltenship/calendar"],
   showcase: ["@moltenship/calendar"],
   "ssr-fixture": ["@moltenship/calendar"],
 } as const;
@@ -97,11 +97,11 @@ describe.sequential("workspace boundaries", () => {
     expect(violatedRules).toContain("no-package-source-specifiers");
   });
 
-  test("registry source may not reach past the public calendar packages", async () => {
+  test("registry source may not reach past the calendar facade", async () => {
     const result = await cruiseWithArchitectureRules([registryCoreImportFixture]);
     const violatedRules = result.summary.violations.map(({ rule }) => rule.name);
 
-    expect(violatedRules).toEqual(["registry-source-uses-public-calendar-api"]);
+    expect(violatedRules).toEqual(["registry-source-uses-calendar-facade"]);
   });
 
   test("a calendar React source import fails static and packed-package boundaries", async () => {

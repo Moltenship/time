@@ -356,9 +356,6 @@ importers:
       '@moltenship/calendar':
         specifier: workspace:*
         version: link:../../packages/calendar
-      '@moltenship/calendar-temporal':
-        specifier: workspace:*
-        version: link:../../packages/calendar-temporal
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
@@ -723,9 +720,6 @@ importers:
       '@moltenship/calendar':
         specifier: workspace:*
         version: link:../packages/calendar
-      '@moltenship/calendar-temporal':
-        specifier: workspace:*
-        version: link:../packages/calendar-temporal
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1

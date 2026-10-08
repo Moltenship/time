@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
 
-import { createCalendar, defineCalendarView, defineEventAdapter } from "@moltenship/calendar";
-import { createFixedClock, plainDateInterval } from "@moltenship/calendar-temporal";
+import {
+  createCalendar,
+  createFixedClock,
+  defineCalendarView,
+  defineEventAdapter,
+  plainDateInterval,
+} from "@moltenship/calendar";
 import { afterEach, expect, test } from "vite-plus/test";
 
 import { CalendarToolbar } from "../calendar/calendar-toolbar";

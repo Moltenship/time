@@ -48,14 +48,14 @@ export default {
       to: { path: "(?:^|/)(?:apps|benchmarks|registry|tools)/" },
     },
     {
-      name: "registry-source-uses-public-calendar-api",
+      name: "registry-source-uses-calendar-facade",
       comment:
-        "Copied registry source depends only on public calendar packages and its declared UI deps. @moltenship/calendar-temporal folds into the facade with #70.",
+        "Copied registry source depends only on the calendar facade and its declared UI deps.",
       severity: "error",
       from: { path: "(?:^|/)registry/", pathNot: "(?:^|/)tools/registry/" },
       to: {
         path: ["^@moltenship/", "(?:^|/)(?:apps|benchmarks|packages|tools)/"],
-        pathNot: "^@moltenship/calendar(?:-temporal)?$",
+        pathNot: "^@moltenship/calendar$",
       },
     },
     {

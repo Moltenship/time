@@ -1,9 +1,9 @@
-import type { IsoDayOfWeek } from "@moltenship/calendar";
 import {
   monthGrid,
   plainDateIntervalContains,
+  type IsoDayOfWeek,
   type PlainDateInterval,
-} from "@moltenship/calendar-temporal";
+} from "@moltenship/calendar";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 

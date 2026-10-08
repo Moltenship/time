@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { plainDateInterval } from "@moltenship/calendar-temporal";
+import { plainDateInterval } from "@moltenship/calendar";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { MiniMonth, type MiniMonthProps } from "../calendar/mini-month";

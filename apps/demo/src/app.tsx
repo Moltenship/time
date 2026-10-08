@@ -1,4 +1,3 @@
-import { createSystemClock } from "@moltenship/calendar-temporal";
 import { useMemo, useRef, useState } from "react";
 
 import { Sheet, SheetContent, SheetTitle } from "@registry/ui/sheet";
@@ -13,7 +12,6 @@ import { useHiddenCalendars } from "./hidden-calendars";
 import { createSeedEvents } from "./seed";
 import { usePersistentState } from "./storage";
 
-const clock = createSystemClock();
 const locale = "en-US";
 const weekRules = { firstDay: 7, minimalDays: 1, weekend: [6, 7] } as const;
 
@@ -43,7 +41,6 @@ export function App() {
 
   return (
     <DemoCalendar.Root
-      clock={clock}
       defaultAnchorDate={today}
       defaultTimeZone={timeZone}
       defaultView="week"
