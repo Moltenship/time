@@ -332,3 +332,28 @@ test("splits only the rendered dates of a long event", () => {
     expect(splitRanges).toEqual(["2026-10-31/2026-11-02"]);
   }
 });
+
+test("orders rendered dates by date, including years past 9999", () => {
+  resetLayout();
+  const region = document.createElement("div");
+  document.body.append(region);
+  ["9999-12-30", "9999-12-31", "+010000-01-01"].forEach((date, index) => {
+    const cell = document.createElement("div");
+    cell.setAttribute("data-date", date);
+    region.append(place(cell, { height: 80, left: index * 100, top: 0, width: 100 }, 2));
+  });
+  splitRanges.length = 0;
+
+  const { rects } = ghostLayout(
+    { clippers: new Map(), columns: new Map(), region },
+    {
+      end: Temporal.PlainDate.from("+010000-01-02"),
+      kind: "all-day",
+      resourceIds: [],
+      start: Temporal.PlainDate.from("9999-12-31"),
+    },
+    timeZone,
+  );
+  expect(splitRanges).toEqual(["9999-12-30/+010000-01-02"]);
+  expect(rects.map(({ left, width }) => ({ left, width }))).toEqual([{ left: 100, width: 200 }]);
+});

@@ -6,7 +6,11 @@ import {
   type NormalizedCalendarEvent,
   type ResourceId,
 } from "@moltenship/calendar-core";
-import { instantInterval, plainDateInterval } from "@moltenship/calendar-temporal";
+import {
+  comparePlainDates,
+  instantInterval,
+  plainDateInterval,
+} from "@moltenship/calendar-temporal";
 
 import { dayCells, timeColumns, type TargetSurface } from "./targets";
 
@@ -138,12 +142,8 @@ function touchedDates(
   timeZone: string,
 ): ReadonlySet<string> {
   if (rendered.length === 0) return new Set();
-  // ISO dates order lexicographically.
-  const sorted = rendered.toSorted();
-  const range = plainDateInterval(
-    Temporal.PlainDate.from(sorted[0]!),
-    Temporal.PlainDate.from(sorted.at(-1)!).add({ days: 1 }),
-  );
+  const dates = rendered.map((date) => Temporal.PlainDate.from(date)).toSorted(comparePlainDates);
+  const range = plainDateInterval(dates[0]!, dates.at(-1)!.add({ days: 1 }));
   const event: NormalizedCalendarEvent<null, string, ResourceId> = {
     ...placement,
     event: null,
