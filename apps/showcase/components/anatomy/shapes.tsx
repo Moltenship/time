@@ -2,10 +2,10 @@ import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import type { ReactNode, SVGProps } from "react";
 
 /** Radii per corner: top left, top right, bottom right, bottom left. */
-export type Corners = readonly [number, number, number, number];
+type Corners = readonly [number, number, number, number];
 
 /** A rectangle path with its own radius per corner, so continued edges can stay square. */
-export function roundedRect(
+function roundedRect(
   x: number,
   y: number,
   width: number,
@@ -43,7 +43,7 @@ export function GridLine(props: SVGProps<SVGLineElement>) {
   return <line className="stroke-calendar-grid" vectorEffect="non-scaling-stroke" {...props} />;
 }
 
-export interface EventShapeProps {
+interface EventShapeProps {
   readonly x: number;
   readonly y: number;
   readonly width: number;
@@ -97,17 +97,18 @@ export function EventShape({
 
 /** A Lucide-style chevron centered on (`x`, `y`). */
 export function Chevron({
+  className,
   direction,
-  size = 8,
+  size,
   x,
   y,
-  className = "stroke-current",
 }: {
+  /** The stroke colour, such as `stroke-foreground`. */
+  readonly className: string;
   readonly direction: "left" | "right" | "down";
-  readonly size?: number;
+  readonly size: number;
   readonly x: number;
   readonly y: number;
-  readonly className?: string;
 }) {
   const half = size / 2;
   const quarter = size / 4;

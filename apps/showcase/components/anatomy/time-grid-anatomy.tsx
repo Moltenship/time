@@ -223,7 +223,7 @@ function Events() {
         <text
           x={columnLeft(1) + 10}
           y={hourY(10) + 23}
-          fontSize={8.5}
+          fontSize={8}
           dominantBaseline="central"
           className="opacity-80"
         >
@@ -251,7 +251,7 @@ function Events() {
         <text
           x={columnLeft(1) + 10 + EVENT_WIDTH / 2}
           y={hourY(10.5) + 23}
-          fontSize={8.5}
+          fontSize={8}
           dominantBaseline="central"
           className="opacity-80"
         >

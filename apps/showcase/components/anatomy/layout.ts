@@ -1,4 +1,4 @@
-export type AnatomySide = "top" | "right" | "bottom" | "left";
+type AnatomySide = "top" | "right" | "bottom" | "left";
 
 export interface AnatomyCallout {
   /** The part in words, such as "Day cell". */
