@@ -1,6 +1,17 @@
-import { source } from "@/lib/source";
+import { registerHooks } from "node:module";
+
 import type { FileObject } from "next-validate-link";
 import { printErrors, scanURLs, validateFiles } from "next-validate-link";
+
+// Pages import their screenshots, which Next.js bundles. Plain Node only needs a stand-in.
+registerHooks({
+  load: (url, context, nextLoad) =>
+    /\.(?:png|jpe?g|webp|gif|svg)$/.test(url)
+      ? { format: "module", shortCircuit: true, source: "export default {};" }
+      : nextLoad(url, context),
+});
+
+const { source } = await import("@/lib/source");
 
 const pages = source.getPages();
 const scanned = await scanURLs({

@@ -9,7 +9,7 @@ import {
   zonedDayRange,
 } from "@moltenship/calendar";
 
-import { eventAdapter, meetings, weekRules, type Meeting } from "./calendar";
+import { eventAdapter, meetings, weekRules, type Meeting } from "./quick-start";
 
 export const daysView = defineCalendarView({
   name: "days",

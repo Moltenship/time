@@ -4,14 +4,13 @@
 
 import { useMemo } from "react";
 
-import { Calendar, weekRules, type Meeting } from "./calendar";
+import { Calendar, weekRules, type Meeting } from "./quick-start";
 
-export interface MeetingJson {
-  readonly id: string;
-  readonly title: string;
+// A Meeting with its times as ISO 8601 strings.
+export type MeetingJson = Omit<Meeting, "start" | "end"> & {
   readonly start: string;
   readonly end: string;
-}
+};
 
 interface TeamCalendarProps {
   readonly meetings: readonly MeetingJson[];

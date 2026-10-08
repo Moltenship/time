@@ -2,7 +2,7 @@
 
 import { createCalendar } from "@moltenship/calendar";
 
-import { eventAdapter, type Meeting } from "./calendar";
+import { eventAdapter, type Meeting } from "./quick-start";
 
 // #region selection
 type Selection = { readonly eventId: string } | { readonly date: Temporal.PlainDate };

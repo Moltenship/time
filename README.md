@@ -1,11 +1,11 @@
 # Moltenship Time
 
-A headless calendar for React 19, built on the Temporal API. Time handles dates, time zones,
-navigation, calendar state, and fast event lookups. You render the calendar with your own components,
-and your events stay in the shape your app already uses.
+A React 19 calendar built on the Temporal API. Time handles dates, time zones, navigation, calendar
+state, fast event lookups, and saving changes. Your events stay in the shape your app already uses.
+Week, day, month, and agenda views come as shadcn/ui-style source that you copy into your app and
+own.
 
 > **Status: pre-1.0.** The packages aren't published to npm yet, and the API will change before 1.0.
-> Built-in month, week, day, and agenda views are in progress; today you write your own views.
 
 ## Install
 
@@ -19,6 +19,9 @@ You need React 19, a runtime with `Temporal` (Node.js 26+; a polyfill in browser
 TypeScript 6+ with `"lib": ["ESNext"]`.
 
 ## Example
+
+The smallest calendar, with a hand-written view. The
+[Quick start](./apps/showcase/content/docs/quick-start.mdx) uses the built-in views instead.
 
 ```tsx
 import {
@@ -88,7 +91,10 @@ locally with `vp run dev`, or read the pages as MDX in
 
 - [Quick start](./apps/showcase/content/docs/quick-start.mdx)
 - [Events and adapters](./apps/showcase/content/docs/concepts/events.mdx)
-- [Time and time zones](./apps/showcase/content/docs/concepts/time.mdx)
+- [Interactions](./apps/showcase/content/docs/interactions.mdx)
+
+[`apps/demo`](./apps/demo) is a Google Calendar-style app built from the same views. Start it with
+`vp run demo#dev`.
 
 ## Contributing
 

@@ -3,7 +3,7 @@
 import type { CalendarPublicState } from "@moltenship/calendar";
 import { useState } from "react";
 
-import { Calendar, meetings, weekRules } from "./calendar";
+import { Calendar, meetings, weekRules } from "./quick-start";
 
 // #region hooks
 const selectAnchorDate = (state: CalendarPublicState) => state.anchorDate;

@@ -1,38 +1,58 @@
 ---
 title: Quick start
-description: Build a working day calendar in one file.
+description: Build a week, day, month, and agenda calendar with the built-in views.
 ---
 
-You'll build a calendar that shows one day of meetings, with previous, next, and today buttons. It
-uses a small custom view because the built-in views haven't shipped yet. Once they do, this page will
-use them instead.
+You'll build this calendar: a toolbar, a view switcher, and the built-in week, day, month, and
+agenda views, showing your own meetings.
+
+![The finished calendar, showing one week](../images/quick-start-week.png)
 
 <Steps>
 <Step>
 
-### Describe your events
+### Install
 
-Start with the record type your app already has. The adapter tells Time how to read an ID, a title,
-and a time range from it. `kind: "timed"` means the start and end are exact moments
-(`Temporal.Instant`).
-
-<include meta='title="calendar.tsx"'>../examples/calendar.tsx#adapter</include>
-
-`getResourceIds` returns the rooms or people an event belongs to. This calendar doesn't group by
-resource, so it returns an empty array.
+Install `@moltenship/calendar` as described in [Installation](/docs/installation), including
+`Temporal` if your browsers need it.
 
 </Step>
 <Step>
 
-### Add a view
+### Copy the UI source
 
-A view has a name, a strategy, and a `Renderer`. The strategy picks the visible dates, moves them
-forward and back, titles them, and projects the events to show. This one lists the meetings on the
-visible day. The `Renderer` draws that projection in the calendar's locale and time zone.
+The views are source files that you copy into your app. They're built on shadcn/ui with its Radix
+primitives. Add the primitives they use:
 
-<include meta='title="calendar.tsx"'>../examples/calendar.tsx#view</include>
+```bash
+npx shadcn@latest add button popover select tooltip
+```
 
-`createCalendar` returns a set of components and hooks typed to your `Meeting` record.
+Then copy these folders from the repository's `registry`, and change their `@registry/…` imports
+to your own paths, as [UI source](/docs/installation#ui-source-optional) describes:
+
+| Folder           | Copy to                               | Contains                            |
+| ---------------- | ------------------------------------- | ----------------------------------- |
+| `calendar-theme` | `styles/`, `components/calendar/`     | The theme CSS and event color names |
+| `calendar`       | `components/calendar/`                | Toolbar, view switcher, event chip  |
+| `time-grid-view` | `components/calendar/time-grid-view/` | Week and day views                  |
+| `month-view`     | `components/calendar/month-view/`     | Month view                          |
+| `list-view`      | `components/calendar/list-view/`      | Agenda view                         |
+
+Import `calendar-theme.css` in your global CSS, after the Tailwind and shadcn imports.
+
+</Step>
+<Step>
+
+### Create the calendar
+
+Describe your records with an adapter, then create a calendar with the views you want. The first
+view in the list is shown first.
+
+<include meta='title="calendar.tsx"'>../examples/quick-start.tsx#calendar</include>
+
+`getEventColor` picks each event's color from the [palette](/docs/theming#event-colors).
+`dayView: "day"` makes the dates in the week header open the day view.
 
 </Step>
 <Step>
@@ -40,50 +60,30 @@ visible day. The `Renderer` draws that projection in the calendar's locale and t
 ### Render it
 
 `Root` holds the calendar state. It needs your events, a starting date, a time zone, a locale, and
-week rules (the first day of the week, where 1 is Monday, and the weekend days). The `now` prop
-fixes the current time, so the server and the browser render the same output. Without it, the
-Today button uses the system clock.
+week rules (the first day of the week, where 1 is Monday, and the weekend days).
+`CalendarToolbar` adds the Today, previous, and next buttons and the title, and the registry's
+`ViewSwitcher` switches between your views.
 
-<include meta='title="calendar.tsx"'>../examples/calendar.tsx#root</include>
+<include meta='title="calendar.tsx"'>../examples/quick-start.tsx#root</include>
+
+Give the frame a height: the views fill it and scroll inside it.
 
 </Step>
 </Steps>
 
-The rendered day for October 8, 2026, in Berlin time:
-
-```html
-<span data-calendar-part="title">Thursday, October 8, 2026</span>
-<ul>
-  <li>9:00 AM Standup</li>
-  <li>3:00 PM Design review</li>
-</ul>
-```
-
-Every component renders a plain element (`section`, `header`, `button`, `span`, `div`) with a
-`data-calendar-part` attribute. Pass `className` or `style` to any of them, or target
-`[data-calendar-part="toolbar"]` from CSS.
-
 <Callout title="Using Next.js?">
-  Calendar modules are Client Components. The file above starts with `"use client"` for that reason.
-  See [Next.js and server rendering](/docs/guides/nextjs) for passing data from a Server Component.
+  Calendar modules are Client Components, which is why the file starts with `"use client"`. See
+  [Next.js and server rendering](/docs/guides/nextjs) for passing data from a Server Component.
 </Callout>
 
 ## Next steps
 
 <Cards>
   <Card
-    title="Events and adapters"
-    href="/docs/concepts/events"
-    description="All-day and floating events, resources, and invalid records."
+    title="Interactions"
+    href="/docs/interactions"
+    description="Let people move, resize, create, and delete events."
   />
-  <Card
-    title="State"
-    href="/docs/concepts/state"
-    description="Control the visible date and view from your app."
-  />
-  <Card
-    title="Custom views"
-    href="/docs/views/custom-views"
-    description="Typed view options and indexed range queries."
-  />
+  <Card title="Views" href="/docs/views" description="Options for each built-in view." />
+  <Card title="Theming" href="/docs/theming" description="Colors, dark mode, and event colors." />
 </Cards>

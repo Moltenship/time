@@ -9,9 +9,19 @@
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "noEmit": true,
-    "plugins": [{ "name": "next" }],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "paths": {
-      "@/*": ["./*"]
+      "@/components/calendar/time-grid-view/*": ["../../registry/time-grid-view/*"],
+      "@/components/calendar/month-view/*": ["../../registry/month-view/*"],
+      "@/components/calendar/list-view/*": ["../../registry/list-view/*"],
+      "@/components/calendar/event-colors": ["../../registry/calendar-theme/event-colors"],
+      "@/components/calendar/*": ["../../registry/calendar/*"],
+      "@/*": ["./*"],
+      "@registry/*": ["../../registry/*"]
     },
     "types": ["node"]
   },
