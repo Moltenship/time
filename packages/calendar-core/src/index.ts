@@ -52,6 +52,23 @@ export type { EventDayFragment } from "./projection/day-fragments";
 export { layoutDayGridRow, limitDayGridLanes } from "./layout/day-grid";
 export type { DayGridOverflow, DayGridRow, DayGridSegment } from "./layout/day-grid";
 
+export { getMonthRange, getMonthTitle, navigateMonth, projectMonth } from "./views/month/month";
+export type {
+  MonthDay,
+  MonthProjection,
+  MonthProjectionInput,
+  MonthWeek,
+} from "./views/month/month";
+
+export { getListRange, getListTitle, navigateList, projectList } from "./views/list/list";
+export type {
+  ListDay,
+  ListItem,
+  ListProjection,
+  ListProjectionInput,
+  ListViewOptions,
+} from "./views/list/list";
+
 export type { CalendarResource } from "./resources";
 export type {
   CalendarDirection,
