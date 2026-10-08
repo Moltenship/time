@@ -1,6 +1,9 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/shadcn.css";
 @import "fumadocs-ui/css/preset.css";
+@import "../../../registry/calendar-theme/calendar-theme.css";
+
+@source "../../../registry";
 
 /* shadcn/ui neutral palette with one accent; shadcn.css maps these onto the --color-fd-* tokens. */
 :root {
@@ -29,6 +32,8 @@
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
   --brand: oklch(0.646 0.222 41.116);
+  --calendar-today: var(--brand);
+  --calendar-now: var(--brand);
 }
 
 .dark {
