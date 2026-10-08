@@ -26,10 +26,9 @@ resource, so it returns an empty array.
 
 ### Add a view
 
-A view has a name, a title for the visible date, a rule for moving forward and back, and a
-`render` function. This one lists the meetings that start on the visible day, in the calendar's
-time zone. It reads them from `meta.eventSnapshot`, which holds only the events that passed
-validation.
+A view has a name, a strategy, and a `Renderer`. The strategy picks the visible dates, moves them
+forward and back, titles them, and projects the events to show. This one lists the meetings on the
+visible day. The `Renderer` draws that projection in the calendar's locale and time zone.
 
 <include meta='title="calendar.tsx"'>../examples/calendar.tsx#view</include>
 
@@ -42,8 +41,8 @@ validation.
 
 `Root` holds the calendar state. It needs your events, a starting date, a time zone, a locale, and
 week rules (the first day of the week, where 1 is Monday, and the weekend days). The `now` prop
-enables the Today button. Without it the button is disabled, because Time never reads the clock on
-its own.
+fixes the current time, so the server and the browser render the same output. Without it, the
+Today button uses the system clock.
 
 <include meta='title="calendar.tsx"'>../examples/calendar.tsx#root</include>
 

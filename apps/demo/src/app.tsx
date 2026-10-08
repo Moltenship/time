@@ -10,7 +10,6 @@ import { ThemeToggle } from "./components/theme-toggle";
 import { TopBar } from "./components/top-bar";
 import { eventsStorageKey, parseEvents, serializeEvents } from "./event-storage";
 import { useHiddenCalendars } from "./hidden-calendars";
-import { demoViews } from "./placeholder-views";
 import { createSeedEvents } from "./seed";
 import { usePersistentState } from "./storage";
 
@@ -50,7 +49,6 @@ export function App() {
       defaultView="week"
       events={visibleEvents}
       locale={locale}
-      views={demoViews}
       weekRules={weekRules}
     >
       <DemoCalendar.Frame className="flex h-dvh flex-col">

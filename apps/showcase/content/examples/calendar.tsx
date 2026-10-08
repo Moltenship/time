@@ -3,9 +3,9 @@
 
 import {
   createCalendar,
+  defineCalendarView,
   defineEventAdapter,
-  type CalendarContextValue,
-  type CalendarViewRegistration,
+  plainDateInterval,
 } from "@moltenship/calendar";
 
 export interface Meeting {
@@ -24,41 +24,34 @@ export const eventAdapter = defineEventAdapter<Meeting>()({
 // #endregion adapter
 
 // #region view
-// `never`: this calendar has no resources (rooms, people) to group events by.
-function DayList({ calendar }: { readonly calendar: CalendarContextValue<Meeting, never> }) {
-  const { anchorDate, timeZone } = calendar.state;
-  const { locale } = calendar.meta.environment;
-  // The snapshot holds only events that passed validation, already read through the adapter.
-  const meetings = calendar.meta.eventSnapshot.events
-    .filter((event) => event.kind === "timed")
-    .filter((event) => event.start.toZonedDateTimeISO(timeZone).toPlainDate().equals(anchorDate));
-
-  if (meetings.length === 0) return <p>No meetings.</p>;
-
-  return (
-    <ul>
-      {meetings.map((meeting) => (
-        <li key={meeting.id}>
-          {meeting.start
-            .toZonedDateTimeISO(timeZone)
-            .toLocaleString(locale, { hour: "numeric", minute: "2-digit" })}{" "}
-          {meeting.title}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-const dayView: CalendarViewRegistration<Meeting, never> = {
+const dayView = defineCalendarView({
   name: "day",
-  capabilities: [],
-  getTitle: (anchor, environment) =>
-    anchor.toLocaleString(environment.locale, { dateStyle: "full" }),
-  navigate: (anchor, direction) => anchor.add({ days: direction }),
-  render: (calendar) => <DayList calendar={calendar} />,
-};
+  strategy: {
+    // The visible dates: a half-open interval, so one day ends where the next begins.
+    getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 1 })),
+    navigate: (anchor, delta) => anchor.add({ days: delta }),
+    getTitle: (range, { locale }) => range.start.toLocaleString(locale, { dateStyle: "full" }),
+    // The snapshot holds only events that passed validation, already read through the adapter.
+    project: ({ snapshot, instantRange }) => snapshot.queryTimed(instantRange),
+  },
+  Renderer: ({ projection, environment: { locale, timeZone } }) =>
+    projection.length === 0 ? (
+      <p>No meetings.</p>
+    ) : (
+      <ul>
+        {projection.map((meeting) => (
+          <li key={meeting.id}>
+            {meeting.start
+              .toZonedDateTimeISO(timeZone)
+              .toLocaleString(locale, { hour: "numeric", minute: "2-digit" })}{" "}
+            {meeting.title}
+          </li>
+        ))}
+      </ul>
+    ),
+});
 
-export const Calendar = createCalendar({ eventAdapter, views: [dayView] });
+export const Calendar = createCalendar<Meeting>()({ eventAdapter, views: [dayView] });
 // #endregion view
 
 // #region root

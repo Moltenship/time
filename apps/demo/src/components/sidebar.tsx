@@ -3,13 +3,11 @@ import { PlusIcon } from "lucide-react";
 import { MiniMonth } from "@registry/calendar/mini-month";
 import { Button } from "@registry/ui/button";
 
-import { DemoCalendar, type DemoView } from "../calendar";
+import { DemoCalendar } from "../calendar";
 import type { DemoCalendarId } from "../calendars";
-import { getVisibleRange } from "../placeholder-views";
 import { CalendarList } from "./calendar-list";
 
 const selectAnchorDate = (state: { readonly anchorDate: Temporal.PlainDate }) => state.anchorDate;
-const selectView = (state: { readonly view: DemoView }) => state.view;
 
 export interface SidebarProps {
   readonly hiddenCalendars: ReadonlySet<DemoCalendarId>;
@@ -21,7 +19,7 @@ export interface SidebarProps {
 
 export function Sidebar({ hiddenCalendars, onNavigate, onToggleCalendar, today }: SidebarProps) {
   const anchorDate = DemoCalendar.useCalendarSelector(selectAnchorDate);
-  const view = DemoCalendar.useCalendarSelector(selectView);
+  const visibleRange = DemoCalendar.useVisibleRange();
   const { setAnchorDate } = DemoCalendar.useCalendarActions();
   const { environment } = DemoCalendar.useCalendarMeta();
 
@@ -44,7 +42,7 @@ export function Sidebar({ hiddenCalendars, onNavigate, onToggleCalendar, today }
         }}
         selectedDate={anchorDate}
         today={today}
-        visibleRange={getVisibleRange(view, anchorDate, environment)}
+        visibleRange={visibleRange ?? undefined}
         weekStartsOn={environment.weekRules.firstDay}
       />
       <CalendarList hidden={hiddenCalendars} onToggle={onToggleCalendar} />

@@ -7,7 +7,7 @@ import { eventAdapter, type Meeting } from "./calendar";
 // #region selection
 type Selection = { readonly eventId: string } | { readonly date: Temporal.PlainDate };
 
-const Calendar = createCalendar<Meeting, never, "day", Selection>({ eventAdapter });
+const Calendar = createCalendar<Meeting, never, Selection>()({ eventAdapter });
 
 export function SelectStandup() {
   const actions = Calendar.useCalendarActions();

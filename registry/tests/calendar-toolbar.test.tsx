@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 
-import {
-  createCalendar,
-  defineEventAdapter,
-  type CalendarViewStrategy,
-} from "@moltenship/calendar";
+import { createCalendar, defineCalendarView, defineEventAdapter } from "@moltenship/calendar";
 import { createFixedClock, plainDateInterval } from "@moltenship/calendar-temporal";
 import { afterEach, expect, test } from "vite-plus/test";
 
@@ -17,28 +13,25 @@ interface Meeting {
   readonly start: Temporal.Instant;
 }
 
-const dayStrategy = {
-  getInteractionGeometry: () => null,
-  getRange: (anchor: Temporal.PlainDate) => plainDateInterval(anchor, anchor.add({ days: 1 })),
-  getSpatialNavigation: () => null,
-  getTitle: (range: ReturnType<typeof plainDateInterval>) => range.start.toString(),
+const dayView = defineCalendarView({
   name: "day",
-  navigate: (anchor: Temporal.PlainDate, direction: -1 | 1) => anchor.add({ days: direction }),
-  project: () => null,
-} satisfies CalendarViewStrategy<"day", null, null, null, null, null, null, null>;
+  strategy: {
+    getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 1 })),
+    getTitle: (range) => range.start.toString(),
+    navigate: (anchor, delta) => anchor.add({ days: delta }),
+    project: () => null,
+  },
+  Renderer: () => null,
+});
 
-const Calendar = createCalendar<Meeting, never>({
+const Calendar = createCalendar<Meeting, never>()({
   eventAdapter: defineEventAdapter<Meeting>()({
     getId: (meeting) => meeting.id,
     getInterval: (meeting) => ({ end: meeting.end, kind: "timed", start: meeting.start }),
     getResourceIds: () => [],
     getTitle: (meeting) => meeting.id,
   }),
-});
-const dayView = Calendar.defineView({
-  defaultOptions: null,
-  Renderer: () => null,
-  strategy: dayStrategy,
+  views: [dayView],
 });
 const clock = createFixedClock(Temporal.Instant.from("2026-10-08T12:00:00Z"));
 let cleanup: (() => Promise<void>) | undefined;
@@ -56,7 +49,6 @@ test("styles the factory's headless triggers and title", async () => {
       defaultTimeZone="UTC"
       events={[]}
       locale="en-US"
-      views={[dayView]}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
       <CalendarToolbar calendar={Calendar}>

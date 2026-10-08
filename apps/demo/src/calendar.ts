@@ -1,6 +1,7 @@
 import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
 
 import type { DemoCalendarId } from "./calendars";
+import { demoViews } from "./placeholder-views";
 
 interface DemoEventBase {
   readonly calendarId: DemoCalendarId;
@@ -19,15 +20,16 @@ export type DemoEvent = DemoEventBase &
       }
   );
 
-export type DemoView = "day" | "week" | "month" | "agenda";
-
 const noResourceIds: readonly never[] = [];
 
-export const DemoCalendar = createCalendar<DemoEvent, never, DemoView>({
+export const DemoCalendar = createCalendar<DemoEvent, never>()({
   eventAdapter: defineEventAdapter<DemoEvent>()({
     getId: (event) => event.id,
     getInterval: (event) => event,
     getResourceIds: () => noResourceIds,
     getTitle: (event) => event.title,
   }),
+  views: demoViews,
 });
+
+export type DemoView = (typeof DemoCalendar.views)[number]["name"];

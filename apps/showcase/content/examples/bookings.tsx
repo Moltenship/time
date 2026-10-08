@@ -27,7 +27,7 @@ const bookingAdapter = defineEventAdapter<Booking>()({
   isReadOnly: (booking) => booking.locked,
 });
 
-export const BookingCalendar = createCalendar<Booking, Room>({ eventAdapter: bookingAdapter });
+export const BookingCalendar = createCalendar<Booking, Room>()({ eventAdapter: bookingAdapter });
 // #endregion adapter
 
 // #region diagnostics

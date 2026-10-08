@@ -5,7 +5,6 @@ import {
 } from "@moltenship/calendar-temporal";
 
 import type { CalendarWeekRules } from "../../environment";
-import type { ViewNavigationDirection } from "../../views";
 
 /** The anchor's week, or `count` consecutive days starting at the anchor (a day view is one). */
 export type TimeGridSpan =
@@ -39,10 +38,10 @@ export function timeGridRange(
 /** Moves the anchor by one whole span: a day, a week, or `count` days. */
 export function navigateTimeGrid(
   anchor: Temporal.PlainDate,
-  direction: ViewNavigationDirection,
+  delta: number,
   span: TimeGridSpan,
 ): Temporal.PlainDate {
-  return anchor.add({ days: direction * dayCount(span) });
+  return anchor.add({ days: delta * dayCount(span) });
 }
 
 /** "October 8, 2026" for one day, "Oct 6 – 12, 2026" for several, in the given locale. */
