@@ -100,7 +100,8 @@ function AgendaView<TEvent>({
           </div>
           <ul className="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
             {day.items.map((item) => (
-              <li key={String(item.event.id)}>
+              // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
+              <li key={`${typeof item.event.id}:${item.event.id}`}>
                 <AgendaItem
                   color={options.getEventColor?.(item.event.event)}
                   item={item}

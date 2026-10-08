@@ -40,21 +40,25 @@ afterEach(async () => {
   cleanup = undefined;
 });
 
-async function renderMonth(firstDay: 1 | 7 = 7) {
-  const view = await render(
+function month(monthEvents: readonly ColoredEvent[], firstDay: 1 | 7 = 7) {
+  return (
     <Calendar.Root
       clock={clock}
       defaultAnchorDate={anchorDate}
       defaultTimeZone="UTC"
       defaultView="month"
-      events={events}
+      events={monthEvents}
       locale="en-US"
       weekRules={{ firstDay, minimalDays: 1, weekend: [6, 7] }}
     >
       <Calendar.Title />
       <Calendar.ActiveView />
-    </Calendar.Root>,
+    </Calendar.Root>
   );
+}
+
+async function renderMonth(firstDay: 1 | 7 = 7) {
+  const view = await render(month(events, firstDay));
   cleanup = view.unmount;
   return view;
 }
@@ -110,6 +114,23 @@ test("opens the day view from a date number", async () => {
 
   expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Day 2026-10-13");
   expect(container.querySelector('[data-testid="day-view"]')).not.toBeNull();
+});
+
+test("keeps numeric and string IDs with the same text apart", async () => {
+  const sameText = [
+    timed(1, "2026-10-20T09:00Z", "2026-10-20T10:00Z"),
+    timed("1", "2026-10-20T09:00Z", "2026-10-20T10:00Z"),
+  ];
+  const view = await render(month(sameText));
+  cleanup = view.unmount;
+  const ids = () =>
+    [...view.container.querySelectorAll("[data-event-id]")].map((element) =>
+      element.getAttribute("data-event-id"),
+    );
+
+  expect(ids()).toEqual(["1", "1"]);
+  await view.rerender(month([timed(3, "2026-10-20T09:00Z", "2026-10-20T10:00Z")]));
+  expect(ids()).toEqual(["3"]);
 });
 
 test("marks events whose change is still pending as busy", async () => {

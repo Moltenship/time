@@ -9,16 +9,21 @@ import { createFixedClock, plainDateInterval } from "@moltenship/calendar-tempor
 
 import type { CalendarEventColor } from "../calendar-theme/event-colors";
 
-export type ColoredEvent = CalendarEvent<{ readonly color: CalendarEventColor }>;
+export type ColoredEvent = CalendarEvent<{ readonly color: CalendarEventColor }, string | number>;
 
-export function timed(id: string, start: string, end: string, color: CalendarEventColor = "blue") {
+export function timed(
+  id: string | number,
+  start: string,
+  end: string,
+  color: CalendarEventColor = "blue",
+) {
   return {
     data: { color },
     end: Temporal.Instant.from(end),
     id,
     kind: "timed",
     start: Temporal.Instant.from(start),
-    title: id,
+    title: String(id),
   } as const satisfies ColoredEvent;
 }
 
@@ -47,7 +52,10 @@ const dayView = defineCalendarView({
 
 export function createTestCalendar<TView extends AnyCalendarView<ColoredEvent>>(view: TView) {
   return createCalendar<ColoredEvent, never>()({
-    eventAdapter: createCanonicalEventAdapter<{ readonly color: CalendarEventColor }>(),
+    eventAdapter: createCanonicalEventAdapter<
+      { readonly color: CalendarEventColor },
+      string | number
+    >(),
     views: [view, dayView],
   });
 }

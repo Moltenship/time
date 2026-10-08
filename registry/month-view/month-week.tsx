@@ -113,7 +113,11 @@ function MoreEvents<TEvent>({
           <span className="sm:hidden">+{count}</span>
         </button>
       </PopoverTrigger>
-      <PopoverContent align="center" className="w-64 p-2">
+      <PopoverContent
+        align="center"
+        collisionPadding={8}
+        className="flex max-h-(--radix-popover-content-available-height) w-64 flex-col p-2"
+      >
         <div className="flex flex-col items-center gap-0.5 pb-2">
           <span className="text-[0.6875rem] font-medium text-muted-foreground uppercase">
             {formats.weekday.format(day.date)}
@@ -125,18 +129,18 @@ function MoreEvents<TEvent>({
             onOpenDay={onOpenDay}
           />
         </div>
-        <div className="flex flex-col gap-0.5">
+        <div className="-mx-2 flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2">
           {dayEvents.map((segment) => {
             const fragment = segment.fragments[column - segment.column]!;
             return (
               <MonthEvent
-                key={String(segment.event.id)}
+                key={`${typeof segment.event.id}:${segment.event.id}`}
                 bar={
                   segment.event.kind === "all-day" ||
                   fragment.startsBeforeDay ||
                   fragment.endsAfterDay
                 }
-                className="h-6"
+                className="h-6 shrink-0"
                 color={getEventColor?.(segment.event.event)}
                 endsAfter={fragment.endsAfterDay}
                 event={segment.event}
@@ -191,7 +195,8 @@ export function MonthWeekRow<TEvent>({
       >
         {segments.map((segment) => (
           <MonthEvent
-            key={`${String(segment.event.id)}@${segment.column}`}
+            // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
+            key={`${typeof segment.event.id}:${segment.event.id}@${segment.column}`}
             bar={
               segment.event.kind === "all-day" ||
               segment.span > 1 ||

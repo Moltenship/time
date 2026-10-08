@@ -25,8 +25,8 @@ afterEach(async () => {
   cleanup = undefined;
 });
 
-async function renderAgenda(events: readonly ColoredEvent[]) {
-  const view = await render(
+function agenda(events: readonly ColoredEvent[]) {
+  return (
     <Calendar.Root
       clock={clock}
       defaultAnchorDate={anchorDate}
@@ -38,8 +38,12 @@ async function renderAgenda(events: readonly ColoredEvent[]) {
     >
       <Calendar.Title />
       <Calendar.ActiveView />
-    </Calendar.Root>,
+    </Calendar.Root>
   );
+}
+
+async function renderAgenda(events: readonly ColoredEvent[]) {
+  const view = await render(agenda(events));
   cleanup = view.unmount;
   return view;
 }
@@ -68,6 +72,20 @@ test("groups events by day with time ranges, all-day badges, and day k of n", as
   expect(container.querySelector('[aria-current="date"]')?.getAttribute("aria-label")).toBe(
     "Thursday, October 8, 2026",
   );
+});
+
+test("keeps numeric and string IDs with the same text apart", async () => {
+  const view = await renderAgenda([
+    timed(1, "2026-10-08T09:00Z", "2026-10-08T10:00Z"),
+    timed(2, "2026-10-08T09:00Z", "2026-10-08T10:00Z"),
+    timed("1", "2026-10-08T09:00Z", "2026-10-08T10:00Z"),
+    timed("2", "2026-10-08T09:00Z", "2026-10-08T10:00Z"),
+  ]);
+  const count = () => view.container.querySelectorAll("[data-event-id]").length;
+
+  expect(count()).toBe(4);
+  await view.rerender(agenda([timed(3, "2026-10-08T09:00Z", "2026-10-08T10:00Z")]));
+  expect(count()).toBe(1);
 });
 
 test("opens the day view from a date", async () => {
