@@ -33,12 +33,12 @@ function timed(start: string, end: string): CalendarEventPlacement<string> {
   };
 }
 
-/** Two days: all-day cells on top, 100px-per-hour columns below, all 100px wide. */
-function mountSurface(): TargetSurface {
+/** Days side by side: all-day cells on top, 100px-per-hour columns below, all 100px wide. */
+function mountSurface(days = columns): TargetSurface {
   resetLayout();
   const region = document.createElement("div");
   document.body.append(region);
-  columns.forEach(({ date }, index) => {
+  days.forEach(({ date }, index) => {
     const allDay = document.createElement("div");
     allDay.setAttribute("data-all-day", "");
     allDay.setAttribute("data-date", date.toString());
@@ -51,7 +51,7 @@ function mountSurface(): TargetSurface {
   });
   return {
     clippers: new Map(),
-    columns: new Map(columns.map((column) => [column.date.toString(), column])),
+    columns: new Map(days.map((column) => [column.date.toString(), column])),
     region,
   };
 }
@@ -159,4 +159,66 @@ describe("clipping", () => {
     );
     expect(hidden.rects).toEqual([]);
   });
+});
+
+test("skips a date the time zone removed, as the committed event does", () => {
+  // Samoa skipped 2011-12-30 when it moved across the date line.
+  const apia = "Pacific/Apia";
+  const days = plainDateInterval(
+    Temporal.PlainDate.from("2011-12-29"),
+    Temporal.PlainDate.from("2012-01-01"),
+  );
+  const placement = timed(
+    "2011-12-29T12:00-10:00[Pacific/Apia]",
+    "2011-12-31T12:00+14:00[Pacific/Apia]",
+  );
+  const surface = mountSurface(timeGridColumns(days, apia));
+  const projection = projectTimeGrid({
+    environment: { timeZone: apia } as CalendarEnvironmentBase,
+    range: days,
+    snapshot: createEventSnapshot(
+      [{ ...placement, data: null, id: "trip", title: "Trip" }],
+      createCanonicalEventAdapter<null, string, string>(),
+    ),
+    today: null,
+  });
+
+  const { axis, rects } = ghostLayout(surface, placement, apia);
+  expect(axis).toBe("day");
+  expect(rects.map(({ left, width }) => ({ left, width }))).toEqual(
+    projection.allDay.segments.map(({ column, span }) => ({
+      left: column * 100,
+      width: span * 100,
+    })),
+  );
+  expect(rects.map(({ left }) => left)).toEqual([0, 200]);
+});
+
+test("keeps neighbouring day cells apart when different ancestors clip them", () => {
+  const surface = mountSurface();
+  for (const cell of surface.region.querySelectorAll<HTMLElement>("[data-all-day]")) {
+    const wrapper = document.createElement("div");
+    // jsdom does not expand the `overflow` shorthand into the longhands it computes.
+    wrapper.style.overflowX = "hidden";
+    wrapper.style.overflowY = "hidden";
+    cell.replaceWith(wrapper);
+    wrapper.append(cell);
+    const box = cell.getBoundingClientRect();
+    place(wrapper, { height: box.height, left: box.left, top: box.top, width: box.width }, 2);
+  }
+
+  const { rects } = ghostLayout(
+    surface,
+    {
+      end: Temporal.PlainDate.from("2026-11-02"),
+      kind: "all-day",
+      resourceIds: [],
+      start: Temporal.PlainDate.from("2026-10-31"),
+    },
+    timeZone,
+  );
+  expect(rects.map(({ left, visible, width }) => ({ left, visible, width }))).toEqual([
+    { left: 0, visible: { bottom: 40, left: 0, right: 100, top: 0 }, width: 100 },
+    { left: 100, visible: { bottom: 40, left: 100, right: 200, top: 0 }, width: 100 },
+  ]);
 });

@@ -5,7 +5,7 @@ import {
   type CalendarEventPlacement,
   type ResourceId,
 } from "@moltenship/calendar-core";
-import { instantInterval } from "@moltenship/calendar-temporal";
+import { instantInterval, zonedDayRange } from "@moltenship/calendar-temporal";
 
 import { dayCells, timeColumns, type TargetSurface } from "./targets";
 
@@ -117,7 +117,38 @@ function timeColumnRects(
   });
 }
 
-/** Covers the day cells in the placement's dates, merging neighbours on the same row. */
+function sameBounds(left: Bounds, right: Bounds): boolean {
+  return (
+    left.bottom === right.bottom &&
+    left.left === right.left &&
+    left.right === right.right &&
+    left.top === right.top
+  );
+}
+
+/**
+ * Whether a timed placement has time on a date. Like the time grid's own fragments, this skips a
+ * date that a date-line change removed from the time zone.
+ */
+function touchesDay(
+  surface: TargetSurface,
+  { end, start }: Extract<CalendarEventPlacement, { kind: "timed" }>,
+  date: string,
+  timeZone: string,
+): boolean {
+  const { interval } =
+    surface.columns.get(date)?.day ?? zonedDayRange(Temporal.PlainDate.from(date), timeZone);
+  return (
+    interval !== null &&
+    Temporal.Instant.compare(start, interval.end) < 0 &&
+    Temporal.Instant.compare(end, interval.start) > 0
+  );
+}
+
+/**
+ * Covers the day cells in the placement's dates. Neighbours on the same row merge when the same
+ * ancestors clip them.
+ */
 function dayCellRects(
   surface: TargetSurface,
   placement: CalendarEventPlacement<ResourceId>,
@@ -133,11 +164,14 @@ function dayCellRects(
     // ISO dates order lexicographically.
     const date = cell.getAttribute("data-date")!;
     if (date < first || date >= last) continue;
+    if (placement.kind === "timed" && !touchesDay(surface, placement, date, timeZone)) continue;
 
     const rect = rectOf(cell);
+    const visible = visibleBounds(surface, cell, rectOf);
     const previous = rects.at(-1);
     const adjacent =
       previous !== undefined &&
+      sameBounds(previous.visible, visible) &&
       Math.abs(previous.top - rect.top) < 1 &&
       (Math.abs(previous.left + previous.width - rect.left) < 1 ||
         Math.abs(rect.right - previous.left) < 1);
@@ -153,7 +187,7 @@ function dayCellRects(
         height: rect.height,
         left: rect.left,
         top: rect.top,
-        visible: visibleBounds(surface, cell, rectOf),
+        visible,
         width: rect.width,
       });
     }
