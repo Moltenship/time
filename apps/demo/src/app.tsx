@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef, useState, type MouseEvent } from "react";
 
 import { Button } from "@registry/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@registry/ui/sheet";
+import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { DemoCalendar, type DemoEvent } from "./calendar";
 import { BrandMark } from "./components/brand";
@@ -130,79 +131,77 @@ export function App() {
   );
 
   return (
-    <DemoCalendar.Root
-      anchorDate={location.date}
-      events={visibleEvents}
-      locale={locale}
-      onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
-      onEventChange={persistChange}
-      onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
-      policies={demoPolicies}
-      timeZone={timeZone}
-      view={location.view}
-      weekRules={weekRules}
-    >
-      <KeyboardShortcuts onCreate={openCreate} />
-      <DemoCalendar.Frame className="flex h-dvh flex-col">
-        <TopBar onOpenSidebar={() => setSidebarOpen(true)} />
-        <div className="flex min-h-0 flex-1">
-          <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
-          <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:rounded-xl lg:border lg:bg-card">
-            <DemoCalendar.Viewport className="h-full" onClick={openClickedEvent}>
-              <DemoCalendar.ActiveView />
-            </DemoCalendar.Viewport>
-          </main>
-        </div>
-        <Button
-          aria-label="Create event"
-          className="fixed right-4 bottom-4 size-14 rounded-2xl shadow-lg lg:hidden"
-          onClick={openCreate}
-        >
-          <PlusIcon className="size-6" />
-        </Button>
-        <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-          <SheetContent
-            ref={sheetRef}
-            aria-describedby={undefined}
-            className="w-72 gap-2 outline-none"
-            // Focus the sheet itself so the first control's tooltip does not pop open.
-            onOpenAutoFocus={(event) => {
-              event.preventDefault();
-              sheetRef.current?.focus();
-            }}
-            side="left"
+    <TooltipProvider delay={400}>
+      <DemoCalendar.Root
+        anchorDate={location.date}
+        events={visibleEvents}
+        locale={locale}
+        onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
+        onEventChange={persistChange}
+        onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
+        policies={demoPolicies}
+        timeZone={timeZone}
+        view={location.view}
+        weekRules={weekRules}
+      >
+        <KeyboardShortcuts onCreate={openCreate} />
+        <DemoCalendar.Frame className="flex h-dvh flex-col">
+          <TopBar onOpenSidebar={() => setSidebarOpen(true)} />
+          <div className="flex min-h-0 flex-1">
+            <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
+            <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:rounded-xl lg:border lg:bg-card">
+              <DemoCalendar.Viewport className="h-full" onClick={openClickedEvent}>
+                <DemoCalendar.ActiveView />
+              </DemoCalendar.Viewport>
+            </main>
+          </div>
+          <Button
+            aria-label="Create event"
+            className="fixed right-4 bottom-4 size-14 rounded-2xl shadow-lg lg:hidden"
+            onClick={openCreate}
           >
-            <div className="flex h-14 shrink-0 items-center gap-2 pr-12 pl-4">
-              <BrandMark />
-              <SheetTitle className="text-lg font-medium">Calendar</SheetTitle>
-              <DocsLink className="ml-auto" />
-              <ThemeToggle className="rounded-full" />
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              {sidebar(() => setSidebarOpen(false))}
-            </div>
-          </SheetContent>
-        </Sheet>
-        <EventPopover
-          anchor={openEvent?.anchor ?? null}
-          event={shownEvent}
-          locale={locale}
-          onClose={() => setOpenEvent((current) => current && { ...current, eventId: null })}
-          onEdit={openEdit}
-          timeZone={timeZone}
-        />
-        <EventDialog
-          draft={draft}
-          onOpenChange={(open) => !open && setDraft(null)}
-          onSave={(event) => {
-            saveEvent(event);
-            setDraft(null);
-          }}
-          returnFocus={openEvent?.anchor}
-          timeZone={timeZone}
-        />
-        <Notice text={notice} />
-      </DemoCalendar.Frame>
-    </DemoCalendar.Root>
+            <PlusIcon className="size-6" />
+          </Button>
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetContent
+              ref={sheetRef}
+              className="w-72 gap-2 outline-none"
+              // Focus the sheet itself so the first control's tooltip does not pop open.
+              initialFocus={sheetRef}
+              side="left"
+            >
+              <div className="flex h-14 shrink-0 items-center gap-2 pr-12 pl-4">
+                <BrandMark />
+                <SheetTitle className="text-lg font-medium">Calendar</SheetTitle>
+                <DocsLink className="ml-auto" />
+                <ThemeToggle className="rounded-full" />
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto">
+                {sidebar(() => setSidebarOpen(false))}
+              </div>
+            </SheetContent>
+          </Sheet>
+          <EventPopover
+            anchor={openEvent?.anchor ?? null}
+            event={shownEvent}
+            locale={locale}
+            onClose={() => setOpenEvent((current) => current && { ...current, eventId: null })}
+            onEdit={openEdit}
+            timeZone={timeZone}
+          />
+          <EventDialog
+            draft={draft}
+            onOpenChange={(open) => !open && setDraft(null)}
+            onSave={(event) => {
+              saveEvent(event);
+              setDraft(null);
+            }}
+            returnFocus={openEvent?.anchor}
+            timeZone={timeZone}
+          />
+          <Notice text={notice} />
+        </DemoCalendar.Frame>
+      </DemoCalendar.Root>
+    </TooltipProvider>
   );
 }

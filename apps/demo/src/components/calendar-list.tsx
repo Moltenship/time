@@ -24,7 +24,7 @@ export function CalendarList({ hidden, onToggle }: CalendarListProps) {
             <Label className="h-8 cursor-pointer gap-3 rounded-md px-2 font-normal hover:bg-accent">
               <Checkbox
                 checked={!hidden.has(calendar.id)}
-                className="border-2 border-calendar-event-border data-[state=checked]:border-calendar-event-border data-[state=checked]:bg-calendar-event-border data-[state=checked]:text-background dark:data-[state=checked]:bg-calendar-event-border"
+                className="border-2 border-calendar-event-border data-checked:border-calendar-event-border data-checked:bg-calendar-event-border data-checked:text-background dark:data-checked:bg-calendar-event-border"
                 data-color={calendar.color}
                 onCheckedChange={() => onToggle(calendar.id)}
               />

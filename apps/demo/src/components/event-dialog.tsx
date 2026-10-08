@@ -38,17 +38,26 @@ export function EventDialog({
   return (
     <Dialog open={draft !== null} onOpenChange={onOpenChange}>
       <DialogContent
-        aria-describedby={undefined}
-        className="max-sm:p-4 sm:max-w-md"
-        onCloseAutoFocus={(focusEvent) => {
-          if (returnFocus?.isConnected !== true) return;
-          focusEvent.preventDefault();
-          returnFocus.focus();
-        }}
+        // Bounded by the viewport so a long description scrolls instead of pushing Save off-screen.
+        className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md"
+        finalFocus={() => (returnFocus?.isConnected === true ? returnFocus : true)}
       >
         {draft !== null && <EventForm initial={draft} onSave={onSave} timeZone={timeZone} />}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CalendarOption({ calendarId }: { readonly calendarId: unknown }) {
+  const calendar = demoCalendars.find(({ id }) => id === calendarId);
+  return (
+    <>
+      <span
+        data-color={calendar?.color}
+        className="size-3 shrink-0 rounded-full bg-calendar-event-border"
+      />
+      {calendar?.name}
+    </>
   );
 }
 
@@ -164,16 +173,12 @@ function EventForm({
           value={draft.calendarId}
         >
           <SelectTrigger className="w-full" id={`${id}-calendar`}>
-            <SelectValue />
+            <SelectValue>{(calendarId) => <CalendarOption calendarId={calendarId} />}</SelectValue>
           </SelectTrigger>
           <SelectContent>
             {demoCalendars.map((calendar) => (
               <SelectItem key={calendar.id} value={calendar.id}>
-                <span
-                  data-color={calendar.color}
-                  className="size-3 rounded-full bg-calendar-event-border"
-                />
-                {calendar.name}
+                <CalendarOption calendarId={calendar.id} />
               </SelectItem>
             ))}
           </SelectContent>

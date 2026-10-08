@@ -1,17 +1,19 @@
+import { cn } from "cn";
 import { BookOpenIcon } from "lucide-react";
 
-import { cn } from "@registry/lib/utils";
-import { Button } from "@registry/ui/button";
+import { buttonVariants } from "@registry/ui/button";
 
 const docsUrl = "https://moltenship-time.vercel.app";
 
+/** A link styled as a ghost button, so it keeps link semantics. */
 export function DocsLink({ className }: { readonly className?: string }) {
   return (
-    <Button asChild className={cn("rounded-full", className)} size="sm" variant="ghost">
-      <a href={docsUrl}>
-        <BookOpenIcon />
-        Docs
-      </a>
-    </Button>
+    <a
+      className={cn(buttonVariants({ variant: "ghost" }), "rounded-full", className)}
+      href={docsUrl}
+    >
+      <BookOpenIcon />
+      Docs
+    </a>
   );
 }

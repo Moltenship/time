@@ -1,8 +1,8 @@
+import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { AlignLeftIcon, CalendarIcon, PencilIcon, Trash2Icon, XIcon } from "lucide-react";
 import { useId, useRef } from "react";
 
 import { Button } from "@registry/ui/button";
-import { Popover, PopoverAnchor, PopoverClose, PopoverContent } from "@registry/ui/popover";
 
 import { DemoCalendar, type DemoEvent } from "../calendar";
 import { demoCalendars } from "../calendars";
@@ -33,81 +33,89 @@ export function EventPopover({
   const calendar = demoCalendars.find(({ id }) => id === event?.calendarId);
 
   return (
-    <Popover
+    // Built from Base UI parts rather than the registry PopoverContent, because it points at the
+    // clicked event (`anchor`) instead of a trigger; the popup classes match PopoverContent's.
+    <PopoverPrimitive.Root
       open={event !== undefined && anchor !== null}
       onOpenChange={(open) => !open && onClose()}
     >
-      {anchor !== null && <PopoverAnchor virtualRef={{ current: anchor }} />}
       {event !== undefined && (
-        <PopoverContent
-          align="start"
-          aria-labelledby={titleId}
-          className="w-80 p-3"
-          collisionPadding={8}
-          onCloseAutoFocus={(focusEvent) => {
-            // Opening the editor hands focus to its dialog; a plain dismissal returns it to the
-            // event the popover was opened from.
-            if (handingOffToEditor.current) {
-              handingOffToEditor.current = false;
-              focusEvent.preventDefault();
-            } else if (anchor?.isConnected === true) {
-              focusEvent.preventDefault();
-              anchor.focus();
-            }
-          }}
-        >
-          <div className="-mt-1 -mr-1 flex justify-end">
-            <Button
-              aria-label="Edit event"
-              onClick={() => {
-                handingOffToEditor.current = true;
-                onEdit(event);
+        <PopoverPrimitive.Portal>
+          <PopoverPrimitive.Positioner
+            align="start"
+            anchor={anchor}
+            className="isolate z-50"
+            collisionPadding={8}
+            sideOffset={4}
+          >
+            <PopoverPrimitive.Popup
+              aria-labelledby={titleId}
+              className="z-50 flex w-80 origin-(--transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-3 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
+              // Opening the editor hands focus to its dialog; a plain dismissal returns it to the
+              // event the popover was opened from.
+              finalFocus={() => {
+                if (!handingOffToEditor.current)
+                  return anchor?.isConnected === true ? anchor : true;
+                handingOffToEditor.current = false;
+                return false;
               }}
-              size="icon-sm"
-              variant="ghost"
             >
-              <PencilIcon />
-            </Button>
-            <Button
-              aria-label="Delete event"
-              onClick={() => {
-                onClose();
-                // Goes through onEventChange, so a failed save brings the event back.
-                void actions.proposeEventChange({ cause: "delete", eventId: event.id });
-              }}
-              size="icon-sm"
-              variant="ghost"
-            >
-              <Trash2Icon />
-            </Button>
-            <PopoverClose asChild>
-              <Button aria-label="Close" size="icon-sm" variant="ghost">
-                <XIcon />
-              </Button>
-            </PopoverClose>
-          </div>
-          <div className="grid grid-cols-[1rem_1fr] gap-x-3 gap-y-3 px-1 pb-1 text-sm">
-            <span
-              data-color={calendar?.color}
-              className="mt-1.5 size-3.5 rounded-[4px] bg-calendar-event-border"
-            />
-            <div>
-              <h2 id={titleId} className="text-lg leading-snug font-medium">
-                {event.title}
-              </h2>
-              <p className="text-muted-foreground">{formatEventWhen(event, timeZone, locale)}</p>
-            </div>
-            <CalendarIcon className="mt-0.5 size-4 text-muted-foreground" />
-            <span>{calendar?.name}</span>
-            {event.description !== undefined && (
-              <>
-                <AlignLeftIcon className="mt-0.5 size-4 text-muted-foreground" />
-                <p className="whitespace-pre-wrap">{event.description}</p>
-              </>
-            )}
-          </div>
-        </PopoverContent>
+              <div className="-mt-1 -mr-1 flex justify-end">
+                <Button
+                  aria-label="Edit event"
+                  onClick={() => {
+                    handingOffToEditor.current = true;
+                    onEdit(event);
+                  }}
+                  size="icon-sm"
+                  variant="ghost"
+                >
+                  <PencilIcon />
+                </Button>
+                <Button
+                  aria-label="Delete event"
+                  onClick={() => {
+                    onClose();
+                    // Goes through onEventChange, so a failed save brings the event back.
+                    void actions.proposeEventChange({ cause: "delete", eventId: event.id });
+                  }}
+                  size="icon-sm"
+                  variant="ghost"
+                >
+                  <Trash2Icon />
+                </Button>
+                <PopoverPrimitive.Close
+                  render={<Button aria-label="Close" size="icon-sm" variant="ghost" />}
+                >
+                  <XIcon />
+                </PopoverPrimitive.Close>
+              </div>
+              <div className="grid grid-cols-[1rem_1fr] gap-x-3 gap-y-3 px-1 pb-1 text-sm">
+                <span
+                  data-color={calendar?.color}
+                  className="mt-1.5 size-3.5 rounded-[4px] bg-calendar-event-border"
+                />
+                <div>
+                  <h2 id={titleId} className="text-lg leading-snug font-medium">
+                    {event.title}
+                  </h2>
+                  <p className="text-muted-foreground">
+                    {formatEventWhen(event, timeZone, locale)}
+                  </p>
+                </div>
+                <CalendarIcon className="mt-0.5 size-4 text-muted-foreground" />
+                <span>{calendar?.name}</span>
+                {event.description !== undefined && (
+                  <>
+                    <AlignLeftIcon className="mt-0.5 size-4 text-muted-foreground" />
+                    <p className="whitespace-pre-wrap">{event.description}</p>
+                  </>
+                )}
+              </div>
+            </PopoverPrimitive.Popup>
+          </PopoverPrimitive.Positioner>
+        </PopoverPrimitive.Portal>
       )}
-    </Popover>
+    </PopoverPrimitive.Root>
   );
 }

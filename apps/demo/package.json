@@ -12,14 +12,13 @@
     "test": "vp test"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@moltenship/calendar": "workspace:*",
     "class-variance-authority": "catalog:",
-    "clsx": "catalog:",
+    "cn": "catalog:",
     "lucide-react": "catalog:",
-    "radix-ui": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "tailwind-merge": "catalog:",
     "temporal-polyfill": "catalog:"
   },
   "devDependencies": {
@@ -28,6 +27,7 @@
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "jsdom": "catalog:",
+    "shadcn": "catalog:",
     "tailwindcss": "catalog:",
     "tw-animate-css": "catalog:",
     "typescript": "catalog:",

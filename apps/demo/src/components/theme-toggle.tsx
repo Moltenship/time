@@ -11,16 +11,18 @@ export function ThemeToggle({ className }: { readonly className?: string }) {
 
   return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          aria-label={label}
-          className={className}
-          onClick={toggleTheme}
-          size="icon"
-          variant="ghost"
-        >
-          {theme === "dark" ? <SunIcon /> : <MoonIcon />}
-        </Button>
+      <TooltipTrigger
+        render={
+          <Button
+            aria-label={label}
+            className={className}
+            onClick={toggleTheme}
+            size="icon"
+            variant="ghost"
+          />
+        }
+      >
+        {theme === "dark" ? <SunIcon /> : <MoonIcon />}
       </TooltipTrigger>
       <TooltipContent>{label}</TooltipContent>
     </Tooltip>

@@ -1,5 +1,5 @@
 import { RotateCcwIcon } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import { useId } from "react";
 
 import { Button } from "@registry/ui/button";
 import { Checkbox } from "@registry/ui/checkbox";
@@ -22,13 +22,20 @@ function offsetLabel(timeZone: string): string {
   return `UTC${Temporal.Now.zonedDateTimeISO(timeZone).offset}`;
 }
 
+interface SettingItem {
+  /** Shown after the label in the list only, such as a UTC offset. */
+  readonly hint?: string;
+  readonly label: string;
+  readonly value: string;
+}
+
 function Setting({
-  children,
+  items,
   label,
   onValueChange,
   value,
 }: {
-  readonly children: ReactNode;
+  readonly items: readonly SettingItem[];
   readonly label: string;
   readonly onValueChange: (value: string) => void;
   readonly value: string;
@@ -39,11 +46,26 @@ function Setting({
       <Label htmlFor={id} className="text-xs text-muted-foreground">
         {label}
       </Label>
-      <Select onValueChange={onValueChange} value={value}>
+      <Select
+        items={items}
+        onValueChange={(next) => {
+          if (next !== null) onValueChange(next);
+        }}
+        value={value}
+      >
         <SelectTrigger className="w-full" id={id} size="sm">
           <SelectValue />
         </SelectTrigger>
-        <SelectContent>{children}</SelectContent>
+        <SelectContent alignItemWithTrigger={false}>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+              {item.hint !== undefined && (
+                <span className="ml-auto text-xs text-muted-foreground">{item.hint}</span>
+              )}
+            </SelectItem>
+          ))}
+        </SelectContent>
       </Select>
     </div>
   );
@@ -65,41 +87,30 @@ export function SettingsPanel({
         Settings
       </h2>
       <Setting
+        items={timeZoneOptions(systemTimeZone, settings.timeZone).map((timeZone) => ({
+          hint: offsetLabel(timeZone),
+          label: timeZone.replaceAll("_", " "),
+          value: timeZone,
+        }))}
         label="Time zone"
         onValueChange={(timeZone) => onChange({ ...settings, timeZone })}
         value={settings.timeZone}
-      >
-        {timeZoneOptions(systemTimeZone, settings.timeZone).map((timeZone) => (
-          <SelectItem key={timeZone} hint={offsetLabel(timeZone)} value={timeZone}>
-            {timeZone.replaceAll("_", " ")}
-          </SelectItem>
-        ))}
-      </Setting>
+      />
       <Setting
+        items={weekStartOptions.map(({ label, value }) => ({ label, value: String(value) }))}
         label="Week starts on"
         onValueChange={(value) => {
           const option = weekStartOptions.find((candidate) => String(candidate.value) === value);
           if (option !== undefined) onChange({ ...settings, weekStartsOn: option.value });
         }}
         value={String(settings.weekStartsOn)}
-      >
-        {weekStartOptions.map((option) => (
-          <SelectItem key={option.value} value={String(option.value)}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </Setting>
+      />
       <Setting
+        items={localeOptions}
         label="Date format"
         onValueChange={(locale) => onChange({ ...settings, locale })}
         value={settings.locale}
-      >
-        {localeOptions.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-          </SelectItem>
-        ))}
-      </Setting>
+      />
       <Label className="mt-1 font-normal">
         <Checkbox
           checked={failSaves}
