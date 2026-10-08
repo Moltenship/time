@@ -1,34 +1,26 @@
+import { BrandMark } from "@/components/brand";
+import type { HomeLayoutProps } from "fumadocs-ui/layouts/home";
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
+
+export const githubUrl = "https://github.com/Moltenship/time";
 
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
       title: (
-        <span className="brand-lockup">
-          <span aria-hidden="true" className="brand-mark">
-            24
-          </span>
-          <span>Moltenship Time</span>
-        </span>
+        <>
+          <BrandMark className="size-6" />
+          <span className="font-semibold tracking-tight">Moltenship Time</span>
+        </>
       ),
     },
-    githubUrl: "https://github.com/Moltenship/time",
-    links: [
-      {
-        text: "Docs",
-        url: "/docs",
-        active: "nested-url",
-      },
-      {
-        text: "Packages",
-        url: "/docs/packages",
-        active: "nested-url",
-      },
-      {
-        text: "API",
-        url: "/docs/api",
-        active: "nested-url",
-      },
-    ],
+    githubUrl,
+  };
+}
+
+export function homeOptions(): HomeLayoutProps {
+  return {
+    ...baseOptions(),
+    links: [{ text: "Docs", url: "/docs", active: "nested-url" }],
   };
 }

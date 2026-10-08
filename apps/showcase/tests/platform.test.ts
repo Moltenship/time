@@ -6,7 +6,7 @@ import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
 import { describe, expect, test } from "vite-plus/test";
 
 const contentRoot = fileURLToPath(new URL("../content/docs", import.meta.url));
-const contractLabPath = fileURLToPath(new URL("../components/contract-lab.tsx", import.meta.url));
+const landingExamplePath = fileURLToPath(new URL("../app/(home)/example.tsx", import.meta.url));
 
 interface InstallationMeeting {
   readonly endsAt: Temporal.Instant;
@@ -66,8 +66,8 @@ describe("documentation platform contracts", () => {
     expect(InstallationCalendar.Root).toBeTypeOf("function");
   });
 
-  test("the live example consumes no private Moltenship workspace", async () => {
-    const source = await readFile(contractLabPath, "utf8");
+  test("the landing page example consumes no private Moltenship workspace", async () => {
+    const source = await readFile(landingExamplePath, "utf8");
     const workspaceSpecifiers = [...source.matchAll(/from\s+["'](@moltenship\/[^"']+)["']/g)].map(
       (match) => match[1],
     );

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { readdir, readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { staticClient } from "fumadocs-core/search/client/orama-static";
+
+const contentRoot = fileURLToPath(new URL("../content/docs", import.meta.url));
 
 const host = "127.0.0.1";
 const port = Number(process.env.SHOWCASE_PORT ?? 4318);
@@ -24,6 +28,22 @@ server.stderr.on("data", (chunk) => {
   output += chunk;
 });
 
+// Derive routes and titles from the content so copy edits do not break this check.
+async function readDocumentationPages() {
+  const files = await readdir(contentRoot, { recursive: true });
+  return Promise.all(
+    files
+      .filter((file) => file.endsWith(".mdx"))
+      .map(async (file) => {
+        const source = await readFile(join(contentRoot, file), "utf8");
+        const title = /^---\n[\s\S]*?^title:\s*["']?(.+?)["']?\s*$/m.exec(source)?.[1];
+        assert(title, `${file} has no frontmatter title.`);
+        const slug = file.replace(/\.mdx$/, "").replace(/(?:^|\/)index$/, "");
+        return { title, url: slug === "" ? "/docs" : `/docs/${slug}` };
+      }),
+  );
+}
+
 async function waitForServer() {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     if (server.exitCode !== null) {
@@ -44,30 +64,31 @@ async function waitForServer() {
 try {
   await waitForServer();
 
-  const overview = await fetch(`${origin}/docs`);
-  assert.equal(overview.status, 200);
-  assert.match(await overview.text(), /Headless calendar contracts/);
+  const landing = await fetch(origin);
+  assert.match(await landing.text(), /The React calendar built on Temporal/);
 
-  const apiPage = await fetch(`${origin}/docs/api/react`);
-  assert.equal(apiPage.status, 200);
-  assert.match(await apiPage.text(), /React composition/);
+  const ogImage = await fetch(`${origin}/opengraph-image`);
+  assert.equal(ogImage.status, 200);
+  assert.equal(ogImage.headers.get("content-type"), "image/png");
 
   const missingPage = await fetch(`${origin}/docs/not-a-real-page`);
   assert.equal(missingPage.status, 404);
 
   const search = staticClient({ from: `${origin}/api/search` });
-  const reactResults = await search.search("React composition");
-  assert(
-    reactResults.some((result) => result.url === "/docs/api/react"),
-    "Static search did not return the React API page.",
-  );
-  const eventResults = await search.search("Events and snapshots");
-  assert(
-    eventResults.some((result) => result.url === "/docs/api/events"),
-    "Static search did not return the events API page.",
-  );
+  for (const page of await readDocumentationPages()) {
+    const response = await fetch(`${origin}${page.url}`);
+    assert.equal(response.status, 200, `${page.url} did not render.`);
 
-  console.log("Verified direct routes, not-found handling, and production static search queries.");
+    const results = await search.search(page.title);
+    assert(
+      results.some((result) => result.url === page.url),
+      `Static search for "${page.title}" did not return ${page.url}.`,
+    );
+  }
+
+  console.log(
+    "Verified the landing page, every docs route, not-found handling, and static search.",
+  );
 } finally {
   server.kill("SIGTERM");
   await Promise.race([
