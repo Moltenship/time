@@ -147,6 +147,58 @@ test("? lists the shortcuts and closing the list hands focus back", async () => 
   expect(document.activeElement).toBe(eventButton("focus-time"));
 });
 
+async function pressKey(key: string, init: KeyboardEventInit = {}) {
+  await act(async () => {
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key, ...init }),
+    );
+    await Promise.resolve();
+  });
+}
+
+const monthDay = (date: string) =>
+  container.querySelector(`[data-date="${date}"]`)?.closest<HTMLElement>('[role="gridcell"]') ??
+  null;
+const announced = () =>
+  document.querySelector('[data-calendar-part="announcer"]')?.textContent?.replace(/\s/g, " ");
+
+test("the month view moves an event with the keyboard, saves it and says so", async () => {
+  history.replaceState(null, "", "/?view=month&date=2026-10-08");
+  await act(async () => root.render(<App />));
+  await act(async () => monthDay("2026-10-08")?.focus());
+
+  await pressKey("Enter");
+  expect(document.activeElement?.getAttribute("data-event-id")).toBe("focus-time");
+  await pressKey(" ");
+  await pressKey("ArrowRight");
+  await pressKey("Enter");
+  expect(announced()).toBe("Friday, October 9, 10:00 AM – 12:00 PM");
+  // The demo saves after a delay; the move is announced once the save goes through.
+  await pastSaveDelay();
+  expect(announced()).toBe("Moved Focus time to Friday, October 9, 10:00 AM – 12:00 PM.");
+
+  const saved = parseEvents(stored.get("moltenship-demo:events") ?? null);
+  expect(saved?.find(({ id }) => id === "focus-time")?.start.toString()).toBe(
+    "2026-10-09T10:00:00Z",
+  );
+  expect(document.activeElement?.getAttribute("data-event-id")).toBe("focus-time");
+});
+
+test("Space on a month day starts a create that opens the event dialog", async () => {
+  history.replaceState(null, "", "/?view=month&date=2026-10-08");
+  await act(async () => root.render(<App />));
+  await act(async () => monthDay("2026-10-13")?.focus());
+
+  await pressKey(" ");
+  await pressKey("ArrowRight");
+  await pressKey("Enter");
+  await settle();
+
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("New event");
+  expect(dialog?.querySelector<HTMLInputElement>('input[type="date"]')?.value).toBe("2026-10-13");
+});
+
 test("deletes persist after the save delay and roll back when saves fail", async () => {
   await act(async () => root.render(<App />));
   const failSaves = [...container.querySelectorAll('[role="checkbox"]')].find((checkbox) =>
@@ -158,7 +210,9 @@ test("deletes persist after the save delay and roll back when saves fail", async
   expect(eventButton("focus-time")).toBeNull();
   await pastSaveDelay();
   expect(eventButton("focus-time")).not.toBeNull();
-  expect(document.querySelector('[role="status"]')?.textContent).toContain("undone");
+  expect(
+    document.querySelector('[role="status"]:not([data-calendar-part])')?.textContent,
+  ).toContain("undone");
 
   await act(async () => failSaves?.dispatchEvent(new MouseEvent("click", { bubbles: true })));
   await deleteFromPopover("lunch");

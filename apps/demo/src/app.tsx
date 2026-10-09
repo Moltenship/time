@@ -2,6 +2,7 @@ import { eventIdOf, useNow, type CalendarWeekRules, type EventId } from "@molten
 import { PlusIcon } from "lucide-react";
 import { useCallback, useMemo, useRef, useState, type MouseEvent } from "react";
 
+import { calendarAnnouncements } from "@registry/calendar/announcements";
 import { Button } from "@registry/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@registry/ui/sheet";
 import { TooltipProvider } from "@registry/ui/tooltip";
@@ -72,6 +73,9 @@ export function App() {
     followOpenEvent,
   );
   const [draft, setDraft] = useState<EventDraft | null>(null);
+  // Where focus goes back to when a range created in a view closes its dialog: the day or slot
+  // a keyboard create ended on. Base UI's default covers the Create button and the "c" key.
+  const [createdFrom, setCreatedFrom] = useState<HTMLElement | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
   const visibleEvents = useMemo(
     () => events.filter((event) => !hiddenCalendars.has(event.calendarId)),
@@ -98,6 +102,12 @@ export function App() {
     async (change: DemoEventChange) => {
       if (change.cause === "create") {
         setOpenEvent(null);
+        const focused = document.activeElement;
+        setCreatedFrom(
+          focused instanceof HTMLElement && viewportRef.current?.contains(focused) === true
+            ? focused
+            : null,
+        );
         setDraft(draftFromPlacement(change.proposed, timeZone, "work"));
         return;
       }
@@ -116,6 +126,7 @@ export function App() {
   const openCreate = useCallback(() => {
     setSidebarOpen(false);
     setOpenEvent(null);
+    setCreatedFrom(null);
     setDraft(draftForNewEvent(location.date, Temporal.Now.zonedDateTimeISO(timeZone), "work"));
   }, [location.date, timeZone]);
   // Editing keeps the popover's anchor so the dialog can return focus to the event.
@@ -220,10 +231,12 @@ export function App() {
               saveEvent(event);
               setDraft(null);
             }}
-            returnFocus={openEvent?.anchor}
+            returnFocus={openEvent?.anchor ?? createdFrom}
             timeZone={timeZone}
           />
           <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+          {/* Speaks keyboard and pointer moves, resizes and creates. */}
+          <DemoCalendar.Announcer messages={calendarAnnouncements} />
           <Notice text={notice} />
         </DemoCalendar.Frame>
       </DemoCalendar.Root>
