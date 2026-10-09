@@ -3,8 +3,13 @@ import { useEffect } from "react";
 import { DemoCalendar } from "../calendar";
 import { shortcutCommand } from "../shortcuts";
 
-/** Global shortcuts: t today, d/w/m/a views, j/k or ←/→ to step, c to create. */
-export function KeyboardShortcuts({ onCreate }: { readonly onCreate: () => void }) {
+export interface KeyboardShortcutsProps {
+  readonly onCreate: () => void;
+  readonly onHelp: () => void;
+}
+
+/** Global shortcuts: t today, d/w/m/a views, j/k or ←/→ to step, c to create, ? for help. */
+export function KeyboardShortcuts({ onCreate, onHelp }: KeyboardShortcutsProps) {
   const actions = DemoCalendar.useCalendarActions();
 
   useEffect(() => {
@@ -14,13 +19,14 @@ export function KeyboardShortcuts({ onCreate }: { readonly onCreate: () => void 
       event.preventDefault();
       if (command.type === "view") actions.setView(command.view);
       else if (command.type === "create") onCreate();
+      else if (command.type === "help") onHelp();
       else if (command.type === "next") actions.navigateNext();
       else if (command.type === "previous") actions.navigatePrevious();
       else actions.navigateToday();
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [actions, onCreate]);
+  }, [actions, onCreate, onHelp]);
 
   return null;
 }

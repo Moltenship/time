@@ -33,6 +33,11 @@ describe("keyboard shortcuts", () => {
     expect(press(key)).toEqual(command);
   });
 
+  test("maps ? whether or not the layout needs Shift for it", () => {
+    expect(press("?")).toEqual({ type: "help" });
+    expect(press("?", document.body, { shiftKey: true })).toEqual({ type: "help" });
+  });
+
   test("ignores modified keys, unknown keys, and inherited object keys", () => {
     expect(press("t", document.body, { metaKey: true })).toBeUndefined();
     expect(press("T", document.body, { shiftKey: true })).toBeUndefined();

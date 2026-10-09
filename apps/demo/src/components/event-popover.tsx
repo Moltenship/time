@@ -36,6 +36,9 @@ export function EventPopover({
     // Built from Base UI parts rather than the registry PopoverContent, because it points at the
     // clicked event (`anchor`) instead of a trigger; the popup classes match PopoverContent's.
     <PopoverPrimitive.Root
+      // Tab cycles through the popover's actions instead of leaving focus on the page body, since
+      // it has no trigger to continue from; Escape or Close returns to the event.
+      modal="trap-focus"
       open={event !== undefined && anchor !== null}
       onOpenChange={(open) => !open && onClose()}
     >

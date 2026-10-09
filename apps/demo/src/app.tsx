@@ -14,6 +14,7 @@ import { EventPopover } from "./components/event-popover";
 import { KeyboardShortcuts } from "./components/keyboard-shortcuts";
 import { Notice, useNotice } from "./components/notice";
 import { SettingsPanel } from "./components/settings-panel";
+import { ShortcutsDialog } from "./components/shortcuts-dialog";
 import { Sidebar } from "./components/sidebar";
 import { ThemeToggle } from "./components/theme-toggle";
 import { TopBar } from "./components/top-bar";
@@ -51,6 +52,8 @@ export function App() {
   const [notice, showNotice] = useNotice();
   const [hiddenCalendars, toggleCalendar] = useHiddenCalendars();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const showShortcuts = useCallback(() => setShortcutsOpen(true), []);
   const [openEvent, setOpenEvent] = useState<OpenEvent | null>(null);
   const viewportRef = useRef<HTMLDivElement>(null);
   // A drag that starts on the open popover's event re-renders it elsewhere; follow it there, and
@@ -161,9 +164,9 @@ export function App() {
         view={location.view}
         weekRules={weekRules}
       >
-        <KeyboardShortcuts onCreate={openCreate} />
+        <KeyboardShortcuts onCreate={openCreate} onHelp={showShortcuts} />
         <DemoCalendar.Frame className="flex h-dvh flex-col">
-          <TopBar onOpenSidebar={() => setSidebarOpen(true)} />
+          <TopBar onOpenSidebar={() => setSidebarOpen(true)} onShowShortcuts={showShortcuts} />
           <div className="flex min-h-0 flex-1">
             <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
             <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:rounded-xl lg:border lg:bg-card">
@@ -220,6 +223,7 @@ export function App() {
             returnFocus={openEvent?.anchor}
             timeZone={timeZone}
           />
+          <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
           <Notice text={notice} />
         </DemoCalendar.Frame>
       </DemoCalendar.Root>

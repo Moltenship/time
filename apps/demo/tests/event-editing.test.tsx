@@ -115,6 +115,38 @@ test("editing from the popover moves focus into the editor and keeps shortcuts o
   expect(document.activeElement?.getAttribute("data-event-id")).toBe("focus-time");
 });
 
+test("names events with their calendar for screen readers", async () => {
+  await act(async () => root.render(<App />));
+
+  expect(eventButton("focus-time")?.getAttribute("aria-label")?.replace(/\s/g, " ")).toBe(
+    "Focus time, Thursday, October 8, 10:00 AM – 12:00 PM, Work calendar",
+  );
+});
+
+test("? lists the shortcuts and closing the list hands focus back", async () => {
+  await act(async () => root.render(<App />));
+  const event = eventButton("focus-time");
+  event?.focus();
+
+  await act(async () => {
+    event?.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "?", shiftKey: true }));
+  });
+  await settle();
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog?.textContent).toContain("Keyboard shortcuts");
+  expect(dialog?.textContent).toContain("Go to today");
+  expect(dialog?.contains(document.activeElement)).toBe(true);
+
+  await act(async () => {
+    document.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }),
+    );
+  });
+  await settle();
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+  expect(document.activeElement).toBe(eventButton("focus-time"));
+});
+
 test("deletes persist after the save delay and roll back when saves fail", async () => {
   await act(async () => root.render(<App />));
   const failSaves = [...container.querySelectorAll('[role="checkbox"]')].find((checkbox) =>

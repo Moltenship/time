@@ -1,8 +1,9 @@
-import { MenuIcon } from "lucide-react";
+import { KeyboardIcon, MenuIcon } from "lucide-react";
 
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { ViewSwitcher, type ViewSwitcherOption } from "@registry/calendar/view-switcher";
 import { Button } from "@registry/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/ui/tooltip";
 
 import { DemoCalendar, type DemoView } from "../calendar";
 import { BrandMark } from "./brand";
@@ -18,7 +19,12 @@ const viewOptions: readonly ViewSwitcherOption<DemoView>[] = [
 
 const selectView = (state: { readonly view: DemoView }) => state.view;
 
-export function TopBar({ onOpenSidebar }: { readonly onOpenSidebar: () => void }) {
+export interface TopBarProps {
+  readonly onOpenSidebar: () => void;
+  readonly onShowShortcuts: () => void;
+}
+
+export function TopBar({ onOpenSidebar, onShowShortcuts }: TopBarProps) {
   const view = DemoCalendar.useCalendarSelector(selectView);
   const { setView } = DemoCalendar.useCalendarActions();
 
@@ -44,6 +50,22 @@ export function TopBar({ onOpenSidebar }: { readonly onOpenSidebar: () => void }
       }
     >
       <ViewSwitcher onValueChange={setView} options={viewOptions} value={view} />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label="Keyboard shortcuts"
+              className="rounded-full max-sm:hidden"
+              onClick={onShowShortcuts}
+              size="icon"
+              variant="ghost"
+            />
+          }
+        >
+          <KeyboardIcon />
+        </TooltipTrigger>
+        <TooltipContent>Keyboard shortcuts (?)</TooltipContent>
+      </Tooltip>
       <DocsLink className="max-sm:hidden" />
       <ThemeToggle className="rounded-full max-sm:hidden" />
     </CalendarToolbar>

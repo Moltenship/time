@@ -4,9 +4,12 @@ import { createMonthView } from "@registry/month-view/month-view";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
 
 import type { DemoEvent } from "./calendar";
-import { getCalendarColor } from "./calendars";
+import { demoCalendars, getCalendarColor } from "./calendars";
 
 const options = {
+  // Read after each event's title and time: "Standup, Thursday, October 8, 9:00 – 9:15 AM, Work calendar".
+  describeEvent: (event: DemoEvent) =>
+    `${demoCalendars.find(({ id }) => id === event.calendarId)?.name ?? "Unknown"} calendar`,
   getEventColor: (event: DemoEvent): CalendarEventColor => getCalendarColor(event.calendarId),
 };
 

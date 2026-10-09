@@ -1,21 +1,32 @@
 import type { DemoView } from "./calendar";
 
 export type ShortcutCommand =
-  | { readonly type: "create" | "next" | "previous" | "today" }
+  | { readonly type: "create" | "help" | "next" | "previous" | "today" }
   | { readonly type: "view"; readonly view: DemoView };
 
-const commands = new Map<string, ShortcutCommand>([
-  ["a", { type: "view", view: "agenda" }],
-  ["ArrowLeft", { type: "previous" }],
-  ["ArrowRight", { type: "next" }],
-  ["c", { type: "create" }],
-  ["d", { type: "view", view: "day" }],
-  ["j", { type: "next" }],
-  ["k", { type: "previous" }],
-  ["m", { type: "view", view: "month" }],
-  ["t", { type: "today" }],
-  ["w", { type: "view", view: "week" }],
-]);
+export interface Shortcut {
+  readonly command: ShortcutCommand;
+  /** `KeyboardEvent.key` values that run the command. */
+  readonly keys: readonly string[];
+  readonly label: string;
+}
+
+/** Global shortcuts, in the order the shortcuts dialog lists them. */
+export const shortcuts: readonly Shortcut[] = [
+  { command: { type: "today" }, keys: ["t"], label: "Go to today" },
+  { command: { type: "previous" }, keys: ["k", "ArrowLeft"], label: "Previous period" },
+  { command: { type: "next" }, keys: ["j", "ArrowRight"], label: "Next period" },
+  { command: { type: "view", view: "day" }, keys: ["d"], label: "Day view" },
+  { command: { type: "view", view: "week" }, keys: ["w"], label: "Week view" },
+  { command: { type: "view", view: "month" }, keys: ["m"], label: "Month view" },
+  { command: { type: "view", view: "agenda" }, keys: ["a"], label: "Agenda view" },
+  { command: { type: "create" }, keys: ["c"], label: "Create an event" },
+  { command: { type: "help" }, keys: ["?"], label: "Show keyboard shortcuts" },
+];
+
+const commands = new Map(
+  shortcuts.flatMap(({ command, keys }) => keys.map((key) => [key, command] as const)),
+);
 
 function isTypingOrInDialog(target: EventTarget | null): boolean {
   return (
@@ -26,11 +37,13 @@ function isTypingOrInDialog(target: EventTarget | null): boolean {
   );
 }
 
-/** The command for a plain key press outside text fields, dialogs and menus. */
+/**
+ * The command for a plain key press outside text fields, dialogs and menus. Shift only counts for
+ * "?", which most layouts type with it.
+ */
 export function shortcutCommand(event: KeyboardEvent): ShortcutCommand | undefined {
-  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) {
-    return undefined;
-  }
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return undefined;
+  if (event.shiftKey && event.key !== "?") return undefined;
   if (isTypingOrInDialog(event.target)) return undefined;
   return commands.get(event.key);
 }
