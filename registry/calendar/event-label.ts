@@ -28,12 +28,18 @@ export function useEventLabel<TEvent>(
       month: "long",
       weekday: "long",
     });
-    const dateTime = new Intl.DateTimeFormat(locale, {
+    const dateTimeOptions = {
       day: "numeric",
       hour: "numeric",
       minute: "2-digit",
       month: "long",
       weekday: "long",
+    } as const;
+    const dateTime = new Intl.DateTimeFormat(locale, dateTimeOptions);
+    const zonedDateTime = new Intl.DateTimeFormat(locale, {
+      ...dateTimeOptions,
+      timeZone,
+      timeZoneName: "short",
     });
     const when = (event: LabelledEvent<TEvent>) => {
       switch (event.kind) {
@@ -44,11 +50,15 @@ export function useEventLabel<TEvent>(
             : date.formatRange(event.start, last);
           return `all day, ${dates}`;
         }
-        case "timed":
-          return dateTime.formatRange(
-            event.start.toZonedDateTimeISO(timeZone).toPlainDateTime(),
-            event.end.toZonedDateTimeISO(timeZone).toPlainDateTime(),
-          );
+        case "timed": {
+          const start = event.start.toZonedDateTimeISO(timeZone);
+          const end = event.end.toZonedDateTimeISO(timeZone);
+          // Across a clock change the wall times alone can repeat or run backwards, and a range
+          // format collapses them, so name each end with its zone: "1:30 AM EDT – 1:30 AM EST".
+          return start.offsetNanoseconds === end.offsetNanoseconds
+            ? dateTime.formatRange(start.toPlainDateTime(), end.toPlainDateTime())
+            : `${zonedDateTime.format(event.start)} – ${zonedDateTime.format(event.end)}`;
+        }
         case "floating":
           return dateTime.formatRange(event.start, event.end);
       }
