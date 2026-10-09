@@ -8,6 +8,7 @@ import {
   type CalendarAnnouncementMessages,
   type CalendarEvent,
   type CalendarEventChange,
+  type CalendarFocus,
   type CalendarPolicy,
   type DayGridSegment,
   type EventId,
@@ -140,22 +141,27 @@ export function allDay(id: string, start: string, end: string, title = id): Fixt
 
 /**
  * Applies each accepted change to its events, as an application would; `persist` saves it first
- * and the change rolls back when it rejects.
+ * and the change rolls back when it rejects. `controlFocus` owns focus in React state.
  */
 export function KeyboardFixture({
   children,
+  controlFocus = false,
+  defaultFocus = null,
   initialEvents,
   onChange,
   persist,
   policies,
 }: {
   readonly children?: ReactNode;
+  readonly controlFocus?: boolean;
+  readonly defaultFocus?: CalendarFocus | null;
   readonly initialEvents: readonly FixtureEvent[];
   readonly onChange?: (change: Change) => void;
   readonly persist?: (change: Change) => Promise<void>;
   readonly policies?: readonly CalendarPolicy<FixtureEvent, string, string>[];
 }) {
   const [events, setEvents] = useState(initialEvents);
+  const [focus, setFocus] = useState(defaultFocus);
   const apply = (change: Change) =>
     setEvents((current) =>
       change.cause === "create"
@@ -177,8 +183,10 @@ export function KeyboardFixture({
   return (
     <KeyboardCalendar.Root
       defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultFocus={defaultFocus}
       defaultTimeZone="UTC"
       events={events}
+      focus={controlFocus ? focus : undefined}
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T12:00:00Z")}
       onEventChange={(change) => {
@@ -186,6 +194,7 @@ export function KeyboardFixture({
         if (persist === undefined) return apply(change);
         return persist(change).then(() => apply(change));
       }}
+      onFocusChange={controlFocus ? setFocus : undefined}
       policies={policies}
       weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
     >

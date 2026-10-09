@@ -66,7 +66,7 @@ type CalendarCommitPlacement = Extract<
 >["proposed"];
 
 function createKeyboardHandlers(
-  { actions, announcements, keyboard, source }: CalendarInteractionRuntime,
+  { actions, announcements, keyboard, read }: CalendarInteractionRuntime,
   { getView, roving }: CalendarViewRuntime,
   getSnap: () => WallTimeSnapOptions,
 ): CalendarKeyboardHandlers {
@@ -106,7 +106,7 @@ function createKeyboardHandlers(
   function reveal(date: Temporal.PlainDate) {
     const { definition, environment, options, range } = view();
     if (plainDateIntervalContains(range, date)) return;
-    const { anchorDate } = source.getSnapshot();
+    const { anchorDate } = read();
     actions.setAnchorDate(
       anchorShowingDate(definition.strategy, anchorDate, date, environment, options),
     );
@@ -114,7 +114,7 @@ function createKeyboardHandlers(
 
   /** Moves the calendar's focus and, once the view renders it, DOM focus. */
   function moveFocus(focus: CalendarFocus | null) {
-    if (sameFocus(focus, source.getSnapshot().focus as CalendarFocus | null)) {
+    if (sameFocus(focus, read().focus as CalendarFocus | null)) {
       roving.focusTabStop("now");
       return;
     }
@@ -132,9 +132,7 @@ function createKeyboardHandlers(
       // Focus enters the next range once it renders, from its end when paging back.
       roving.focusTabStop("after-update");
       if (result.page < 0) roving.enterFromEnd();
-      actions.setAnchorDate(
-        definition.strategy.navigate(source.getSnapshot().anchorDate, result.page, options),
-      );
+      actions.setAnchorDate(definition.strategy.navigate(read().anchorDate, result.page, options));
       actions.setFocus(null);
     }
     return true;
@@ -221,12 +219,12 @@ function createKeyboardHandlers(
     }
     keyboard.set(null);
     // A later gesture, focus move, or view switch keeps focus where it went.
-    const focused = source.getSnapshot().focus as CalendarFocus | null;
+    const focused = read().focus as CalendarFocus | null;
     const { definition } = view();
     const owned = () =>
       keyboard.get() === null &&
       getView()?.definition === definition &&
-      sameFocus(source.getSnapshot().focus as CalendarFocus | null, focused);
+      sameFocus(read().focus as CalendarFocus | null, focused);
 
     void actions.proposeEventChange(proposal).then((result) => {
       if (result.status === "committed") {

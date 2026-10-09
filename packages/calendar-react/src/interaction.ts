@@ -17,6 +17,12 @@ export interface CalendarInteractionRuntime {
   readonly actions: CalendarSemanticActions<any, any, any, any, any, any>;
   readonly announcements: AnnouncerChannel;
   readonly keyboard: KeyboardSessionStore;
+  /**
+   * The latest state, controlled slices and requests not yet committed included; read it in
+   * callbacks that run after the render that created them.
+   */
+  readonly read: () => AnyCalendarState;
+  /** For subscribing; its identity changes with controlled values. */
   readonly source: CalendarStateSource<AnyCalendarState>;
 }
 

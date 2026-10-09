@@ -396,8 +396,8 @@ export function createCalendarRoot<
       createAnnouncerChannel(() => committed.current.environment),
     );
     const interaction = useMemo<CalendarInteractionRuntime>(
-      () => Object.freeze({ actions, announcements, keyboard, source }),
-      [actions, announcements, keyboard, source],
+      () => Object.freeze({ actions, announcements, keyboard, read: binding.read, source }),
+      [actions, announcements, binding, keyboard, source],
     );
 
     const [refs] = useState(() =>

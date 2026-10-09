@@ -45,7 +45,7 @@ afterEach(async () => {
 async function mount(
   events: readonly FixtureEvent[] = [],
   onChange?: (change: Change) => void,
-  props: Pick<Parameters<typeof KeyboardFixture>[0], "persist" | "policies"> = {},
+  props: Pick<Parameters<typeof KeyboardFixture>[0], "controlFocus" | "persist" | "policies"> = {},
 ) {
   harness = await renderWithHarness(
     <KeyboardFixture initialEvents={events} onChange={onChange} {...props} />,
@@ -390,6 +390,78 @@ describe("focus through edge cases", () => {
   });
 });
 
+describe("late results with controlled focus", () => {
+  function deferred() {
+    const settle: { reject?: (error: Error) => void; resolve?: () => void } = {};
+    const promise = new Promise<void>((resolve, reject) =>
+      Object.assign(settle, { reject, resolve }),
+    );
+    return { promise, settle };
+  }
+
+  test("a late rejection does not take focus back from where the application moved it", async () => {
+    const save = deferred();
+    const container = await mount(
+      [allDay("a", "2026-10-07", "2026-10-08"), allDay("b", "2026-10-14", "2026-10-15")],
+      undefined,
+      {
+        controlFocus: true,
+        persist: (change) => (change.eventId === "a" ? save.promise : Promise.resolve()),
+      },
+    );
+    await focus(segment(container, "a"));
+    await press(" ");
+    await press("ArrowRight");
+    await press("Enter");
+    await focus(segment(container, "b"));
+
+    await act(async () => {
+      save.settle.reject!(new Error("offline"));
+      await new Promise((resolve) => setTimeout(resolve));
+    });
+    expect(spoken(container)).toBe("reject move a handler-error");
+    expect(focused()).toBe("b@2026-10-14");
+    expect(tabStops(container)).toEqual(["b@2026-10-14"]);
+  });
+
+  test("a late, adjusted success does not move focus from where the application moved it", async () => {
+    const save = deferred();
+    const toThe20th: CalendarPolicy<FixtureEvent, string, string> = ({ cause, proposed }) =>
+      cause === "move" && proposed !== null
+        ? {
+            proposed: {
+              ...proposed,
+              end: Temporal.PlainDate.from("2026-10-21"),
+              kind: "all-day",
+              start: Temporal.PlainDate.from("2026-10-20"),
+            },
+            type: "adjust",
+          }
+        : { type: "accept" };
+    const container = await mount(
+      [allDay("a", "2026-10-07", "2026-10-08"), allDay("b", "2026-10-14", "2026-10-15")],
+      undefined,
+      {
+        controlFocus: true,
+        persist: (change) => (change.eventId === "a" ? save.promise : Promise.resolve()),
+        policies: [toThe20th],
+      },
+    );
+    await focus(segment(container, "a"));
+    await press(" ");
+    await press("ArrowRight");
+    await press("Enter");
+    await focus(segment(container, "b"));
+
+    await act(async () => {
+      save.settle.resolve!();
+      await new Promise((resolve) => setTimeout(resolve));
+    });
+    expect(spoken(container)).toBe("commit move a Oct 20");
+    expect(focused()).toBe("b@2026-10-14");
+  });
+});
+
 /** Three days per page; the first and last day page back and forward. */
 function pagedNavigation({
   command,
@@ -468,6 +540,21 @@ test("paging back enters the previous range from its end, and forward from its s
 
 test("server markup has exactly one tab stop and hydrates unchanged", async () => {
   const element = <KeyboardFixture initialEvents={[allDay("trip", "2026-10-07", "2026-10-09")]} />;
+  expect(renderToString(element).match(/tabindex="0"/g)).toHaveLength(1);
+
+  const hydrated = await hydrateWithHarness(element);
+  harness = hydrated;
+  expect(hydrated.recoverableErrors).toEqual([]);
+  expect(tabStops(hydrated.container)).toEqual(["2026-10-08"]);
+});
+
+test("server markup falls back to the entry when focus is outside the view", async () => {
+  const element = (
+    <KeyboardFixture
+      defaultFocus={{ date: Temporal.PlainDate.from("2026-11-20"), kind: "day" }}
+      initialEvents={[]}
+    />
+  );
   expect(renderToString(element).match(/tabindex="0"/g)).toHaveLength(1);
 
   const hydrated = await hydrateWithHarness(element);

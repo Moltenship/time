@@ -1,4 +1,5 @@
 import { sameFocus, type CalendarFocus } from "@moltenship/calendar-core";
+import { plainDateIntervalContains } from "@moltenship/calendar-temporal";
 import {
   useCallback,
   useInsertionEffect,
@@ -29,8 +30,13 @@ function focusLandsOn(focus: CalendarFocus, target: CalendarFocus, days: number)
   return sameFocus(focus, target);
 }
 
-/** Where focus enters the active view: its default entry (`"home"`) or its last target. */
-export type RovingEntry = (command: "end" | "home") => CalendarFocus | null;
+/** What the roving store asks of the active view. */
+export interface RovingView {
+  /** Where focus enters: the view's default entry (`"home"`) or its last target. */
+  readonly entry: (command: "end" | "home") => CalendarFocus | null;
+  /** Whether the view shows `focus`, judged without its elements, as on the server. */
+  readonly shows: (focus: CalendarFocus) => boolean;
+}
 
 /**
  * The elements of the active view that can take focus. Exactly one is the tab stop: the focused
@@ -48,17 +54,17 @@ export interface RovingFocusStore {
   readonly isTabStop: (target: CalendarFocus, days: number) => boolean;
   readonly register: (element: HTMLElement, target: CalendarFocus, days: number) => () => void;
   readonly subscribe: (listener: () => void) => () => void;
-  readonly update: (focus: CalendarFocus | null, getEntry: RovingEntry) => void;
+  readonly update: (focus: CalendarFocus | null, view: RovingView) => void;
 }
 
 export function createRovingFocusStore(
   initialFocus: CalendarFocus | null,
-  initialEntry: RovingEntry,
+  initialView: RovingView,
 ): RovingFocusStore {
   const items = new Map<HTMLElement, RovingItem>();
   const listeners = new Set<() => void>();
   let focus = initialFocus;
-  let getEntry = initialEntry;
+  let view = initialView;
   let entryCommand: "end" | "home" = "home";
   let resolved: { readonly element?: HTMLElement; readonly target: CalendarFocus | null } | null =
     null;
@@ -74,8 +80,10 @@ export function createRovingFocusStore(
 
   function resolve() {
     if (resolved !== null) return resolved;
-    const entry = getEntry(entryCommand);
-    if (items.size === 0) return (resolved = { target: focus ?? entry });
+    const entry = view.entry(entryCommand);
+    if (items.size === 0) {
+      return (resolved = { target: focus !== null && view.shows(focus) ? focus : entry });
+    }
     for (const target of [focus, entry]) {
       const element = find(target);
       if (element !== undefined) return (resolved = { element, target });
@@ -143,9 +151,9 @@ export function createRovingFocusStore(
         listeners.delete(listener);
       };
     },
-    update(nextFocus: CalendarFocus | null, nextEntry: RovingEntry) {
+    update(nextFocus: CalendarFocus | null, nextView: RovingView) {
       focus = nextFocus;
-      getEntry = nextEntry;
+      view = nextView;
       if (nextFocus !== null) entryCommand = "home";
       changed();
       if (focusAfterUpdate) {
@@ -158,21 +166,27 @@ export function createRovingFocusStore(
 
 const selectFocus = (state: AnyCalendarState) => state.focus as CalendarFocus | null;
 
-/** The view's entry points, from its navigation with no focus. */
-export function viewEntry(view: CalendarActiveView<AnyCalendarView> | null): RovingEntry {
-  return (command) => {
-    if (view === null) return null;
-    const { definition, environment, options, projection, range } = view;
-    const result = definition.strategy.getSpatialNavigation?.({
-      command,
-      environment,
-      focus: null,
-      options,
-      projection,
-      range,
-      snap: DEFAULT_SNAP,
-    });
-    return result != null && "focus" in result ? result.focus : null;
+/** The active view's entry points, from its navigation with no focus, and what it shows. */
+export function rovingView(active: CalendarActiveView<AnyCalendarView> | null): RovingView {
+  return {
+    entry(command) {
+      if (active === null) return null;
+      const { definition, environment, options, projection, range } = active;
+      const result = definition.strategy.getSpatialNavigation?.({
+        command,
+        environment,
+        focus: null,
+        options,
+        projection,
+        range,
+        snap: DEFAULT_SNAP,
+      });
+      return result != null && "focus" in result ? result.focus : null;
+    },
+    shows: (focus) =>
+      active !== null &&
+      plainDateIntervalContains(active.range, focus.date) &&
+      (focus.kind !== "event" || active.events.get(focus.eventId) !== undefined),
   };
 }
 
@@ -190,8 +204,8 @@ export function RovingFocusSync({
   readonly view: CalendarActiveView<AnyCalendarView>;
 }) {
   const focus = useStateSelector(source, selectFocus);
-  const entry = useMemo(() => viewEntry(view), [view]);
-  useLayoutEffect(() => roving.update(focus, entry), [entry, focus, roving]);
+  const adapter = useMemo(() => rovingView(view), [view]);
+  useLayoutEffect(() => roving.update(focus, adapter), [adapter, focus, roving]);
   return null;
 }
 
@@ -227,7 +241,7 @@ export function useRovingFocus(
   target: CalendarFocus,
   { days = 1 }: CalendarRovingFocusOptions = {},
 ): CalendarRovingFocusProps {
-  const { actions, source } = useInteractionRuntime();
+  const { actions, read } = useInteractionRuntime();
   const { roving } = useViewRuntime();
   const latest = useRef(target);
   useInsertionEffect(() => {
@@ -247,12 +261,12 @@ export function useRovingFocus(
   const onFocus = useCallback(
     (event: FocusEvent<HTMLElement>) => {
       if (event.target !== event.currentTarget) return;
-      const focus = source.getSnapshot().focus as CalendarFocus | null;
+      const focus = read().focus as CalendarFocus | null;
       if (focus === null || !focusLandsOn(focus, latest.current, days)) {
         actions.setFocus(latest.current);
       }
     },
-    [actions, days, source],
+    [actions, days, read],
   );
 
   return { onFocus, ref, tabIndex: tabStop ? 0 : -1 };
