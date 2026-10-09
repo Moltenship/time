@@ -13,11 +13,14 @@ import {
 } from "@moltenship/calendar";
 import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 
+import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import { DATE_ROW_HEIGHT, LANE_HEIGHT, MonthWeekRow, type MonthFormats } from "./month-week";
 
 export interface MonthViewOptions<TEvent> {
+  /** Extra words for each event's accessible name, such as its calendar. */
+  readonly describeEvent?: EventDescriber<TEvent>;
   /** Picks each event's `data-color`; events without one use the theme's default colour. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
 }
@@ -63,6 +66,7 @@ function useMonthFormats(locale: Intl.LocalesArgument): MonthFormats {
       monthDay: new Intl.DateTimeFormat(locale, { day: "numeric", month: "short" }),
       time: (time) => (time.minute === 0 ? hour : hourMinute).format(time),
       weekday: new Intl.DateTimeFormat(locale, { weekday: "short" }),
+      weekdayName: new Intl.DateTimeFormat(locale, { weekday: "long" }),
     };
   }, [locale]);
 }
@@ -73,6 +77,7 @@ function MonthView<TEvent>({
   events,
   options,
   projection,
+  range,
 }: MonthViewProps<TEvent>) {
   const body = useRef<HTMLDivElement>(null);
   const pointerRef = useCalendarPointer({
@@ -83,6 +88,7 @@ function MonthView<TEvent>({
   });
   const maxLanes = useLaneCapacity(body, projection.weeks.length);
   const formats = useMonthFormats(environment.locale);
+  const labelEvent = useEventLabel(environment, options.describeEvent);
   const openDay = (date: Temporal.PlainDate) => {
     actions.setAnchorDate(date);
     actions.setView("day");
@@ -91,13 +97,17 @@ function MonthView<TEvent>({
   return (
     <div
       ref={pointerRef}
+      role="grid"
+      aria-label={getMonthTitle(range, environment)}
       data-slot="month-view"
       className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing"
     >
-      <div aria-hidden className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
+      <div role="row" className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
         {projection.weeks[0]?.days.map(({ date }) => (
           <div
             key={date.dayOfWeek}
+            role="columnheader"
+            aria-label={formats.weekdayName.format(date)}
             className="py-2 text-center text-[0.6875rem] font-medium text-muted-foreground uppercase"
           >
             {formats.weekday.format(date)}
@@ -116,6 +126,7 @@ function MonthView<TEvent>({
             key={week.range.start.toString()}
             formats={formats}
             getEventColor={options.getEventColor}
+            labelEvent={labelEvent}
             maxLanes={maxLanes}
             onOpenDay={openDay}
             week={week}

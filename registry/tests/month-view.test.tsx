@@ -9,6 +9,7 @@ import { click, render } from "./render";
 import {
   allDay,
   anchorDate,
+  ariaLabel,
   clock,
   createTestCalendar,
   text,
@@ -82,6 +83,29 @@ test("renders whole weeks of date cells from the configured week start", async (
   );
 });
 
+test("is a grid of weekday headers and week rows whose day cells hold the events starting there", async () => {
+  const { container } = await renderMonth();
+  const grid = container.querySelector('[role="grid"]');
+  const [header, ...weeks] = [...(grid?.querySelectorAll('[role="row"]') ?? [])];
+  const trip = container.querySelector('[data-event-id="trip"]');
+
+  expect(grid?.getAttribute("aria-label")).toBe("October 2026");
+  expect(
+    [...(header?.querySelectorAll('[role="columnheader"]') ?? [])].map((cell) =>
+      cell.getAttribute("aria-label"),
+    ),
+  ).toEqual(["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]);
+  expect(weeks.map((week) => week.querySelectorAll('[role="gridcell"]').length)).toEqual([
+    7, 7, 7, 7, 7,
+  ]);
+  expect(
+    trip?.closest('[role="gridcell"]')?.querySelector("[data-date]")?.getAttribute("data-date"),
+  ).toBe("2026-10-06");
+  // Pointer hit-testing reads the cell under the pointer, never the cell a bar starts in.
+  expect(trip?.closest("[data-date]")).toBeNull();
+  expect(ariaLabel(trip)).toBe("trip, all day, Tuesday, October 6 – Thursday, October 8");
+});
+
 test("shows bars and items that fit and counts the rest per day", async () => {
   // jsdom has no layout, so rows fall back to their 80px minimum: two lanes.
   const { container } = await renderMonth();
@@ -140,6 +164,7 @@ test("marks events whose change is still pending as busy", async () => {
       bar={false}
       endsAfter={false}
       event={{ ...event!, isPending: true }}
+      label="trip"
       startsBefore={false}
     />,
   );

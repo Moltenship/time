@@ -19,6 +19,8 @@ export interface MonthEventProps {
   /** The event continues after this element. */
   readonly endsAfter: boolean;
   readonly event: NormalizedCalendarEvent<unknown, EventId, ResourceId>;
+  /** Accessible name: title, when, and other details the visible text leaves out. */
+  readonly label: string;
   /** The event began before this element. */
   readonly startsBefore: boolean;
   readonly style?: CSSProperties;
@@ -36,20 +38,21 @@ export function MonthEvent({
   color,
   endsAfter,
   event,
+  label,
   startsBefore,
   style,
   time,
 }: MonthEventProps) {
   return (
     <EventChip
-      // A change to this event is still being saved.
-      aria-busy={event.isPending === true || undefined}
+      aria-label={label}
       color={color}
       {...eventIdAttributes(event.id)}
+      pending={event.isPending === true}
       style={style}
       title={event.title}
       className={cn(
-        "gap-1 rounded-sm px-1.5 py-0 aria-busy:opacity-60 max-sm:px-1 max-sm:text-[0.625rem]",
+        "gap-1 rounded-sm px-1.5 py-0 max-sm:px-1 max-sm:text-[0.625rem]",
         bar
           ? [startsBefore && "rounded-l-none border-l-0 pl-0.5", endsAfter && "rounded-r-none"]
           : // Small screens show compact tinted blocks instead of dot, time, and title.

@@ -9,6 +9,7 @@ import {
 } from "@moltenship/calendar";
 import { useMemo, type CSSProperties } from "react";
 
+import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@registry/ui/popover";
@@ -24,11 +25,13 @@ export interface MonthFormats {
   readonly monthDay: Intl.DateTimeFormat;
   readonly time: (time: Temporal.PlainTime) => string;
   readonly weekday: Intl.DateTimeFormat;
+  readonly weekdayName: Intl.DateTimeFormat;
 }
 
 interface MonthWeekRowProps<TEvent> {
   readonly formats: MonthFormats;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  readonly labelEvent: EventLabeler<TEvent>;
   /** Lanes that fit in a cell, including the one a "+N more" control takes. */
   readonly maxLanes: number;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
@@ -36,6 +39,18 @@ interface MonthWeekRowProps<TEvent> {
 }
 
 type Segment<TEvent> = DayGridSegment<TEvent, EventId, ResourceId>;
+
+/**
+ * Places an item in a lane of its first day's cell. A span reaches across the following cells:
+ * `100%` is one cell without its 1px grid line.
+ */
+function laneStyle(lane: number, span = 1): CSSProperties {
+  return {
+    height: LANE_HEIGHT - 2,
+    insetInlineEnd: `calc(${1 - span} * (100% + 1px))`,
+    top: DATE_ROW_HEIGHT + lane * LANE_HEIGHT + 1,
+  };
+}
 
 function startTime(
   fragment: EventDayFragment<unknown, EventId, ResourceId>,
@@ -64,7 +79,7 @@ function DateButton({
       aria-label={formats.date.format(day.date)}
       onClick={() => onOpenDay(day.date)}
       className={cn(
-        "flex items-center justify-center rounded-full font-medium tabular-nums outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50",
+        "flex items-center justify-center rounded-full font-medium tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
         !day.inMonth && "text-muted-foreground",
         day.isToday &&
           "bg-calendar-today text-calendar-today-foreground hover:bg-calendar-today/90",
@@ -82,18 +97,20 @@ function MoreEvents<TEvent>({
   day,
   formats,
   getEventColor,
+  labelEvent,
+  lane,
   onOpenDay,
   segments,
-  style,
 }: {
   readonly column: number;
   readonly count: number;
   readonly day: MonthDay;
   readonly formats: MonthFormats;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  readonly labelEvent: EventLabeler<TEvent>;
+  readonly lane: number;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
   readonly segments: readonly Segment<TEvent>[];
-  readonly style: CSSProperties;
 }) {
   // Lanes are assigned in display order, so the day's events read top to bottom by lane.
   const dayEvents = segments
@@ -104,8 +121,8 @@ function MoreEvents<TEvent>({
     <Popover>
       <PopoverTrigger
         aria-label={`${count} more events on ${formats.date.format(day.date)}`}
-        style={style}
-        className="pointer-events-auto mx-0.5 my-px truncate rounded-sm px-1.5 text-left text-xs font-medium max-sm:px-1 max-sm:text-[0.625rem] text-muted-foreground outline-none hover:bg-accent hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
+        style={laneStyle(lane)}
+        className="absolute start-0 z-1 mx-0.5 truncate rounded-sm px-1.5 text-left text-xs font-medium max-sm:px-1 max-sm:text-[0.625rem] text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
       >
         <span className="max-sm:hidden">{count} more</span>
         <span className="sm:hidden">+{count}</span>
@@ -122,7 +139,7 @@ function MoreEvents<TEvent>({
             onOpenDay={onOpenDay}
           />
         </div>
-        <div className="-mx-2 flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2">
+        <div className="-mx-2 flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2 py-1">
           {dayEvents.map((segment) => {
             const fragment = segment.fragments[column - segment.column]!;
             return (
@@ -137,6 +154,7 @@ function MoreEvents<TEvent>({
                 color={getEventColor?.(segment.event.event)}
                 endsAfter={fragment.endsAfterDay}
                 event={segment.event}
+                label={labelEvent(segment.event)}
                 startsBefore={fragment.startsBeforeDay}
                 time={startTime(fragment, formats)}
               />
@@ -148,10 +166,15 @@ function MoreEvents<TEvent>({
   );
 }
 
-/** One week: day cells (`data-date`) underneath, event lanes and "+N more" controls on top. */
+/**
+ * One week as a grid row of day cells. A cell holds its date (`data-date`, which pointer
+ * hit-testing reads), the event segments that start on it, and its "+N more" control; a segment
+ * spanning several days stretches over the cells that follow.
+ */
 export function MonthWeekRow<TEvent>({
   formats,
   getEventColor,
+  labelEvent,
   maxLanes,
   onOpenDay,
   week,
@@ -162,16 +185,20 @@ export function MonthWeekRow<TEvent>({
   );
 
   return (
-    <div className="relative min-h-0 border-b border-calendar-grid last:border-b-0">
-      <div className="absolute inset-0 grid grid-cols-7">
-        {week.days.map((day) => (
+    <div
+      role="row"
+      className="grid min-h-0 grid-cols-7 border-b border-calendar-grid last:border-b-0"
+    >
+      {week.days.map((day, column) => (
+        <div
+          key={day.date.toString()}
+          role="gridcell"
+          className="relative min-w-0 border-r border-calendar-grid last:border-r-0"
+        >
+          {/* Events sit outside this element, so a drop target is never the cell a bar starts in. */}
           <div
-            key={day.date.toString()}
             data-date={day.date.toString()}
-            className={cn(
-              "flex min-w-0 justify-center border-r border-calendar-grid last:border-r-0",
-              !day.inMonth && "bg-muted/50",
-            )}
+            className={cn("absolute inset-0 flex justify-center", !day.inMonth && "bg-muted/50")}
           >
             <DateButton
               className="mt-1 h-6 min-w-6 px-1.5 text-xs"
@@ -180,55 +207,47 @@ export function MonthWeekRow<TEvent>({
               onOpenDay={onOpenDay}
             />
           </div>
-        ))}
-      </div>
-      <div
-        className="pointer-events-none absolute inset-x-0 grid grid-cols-7"
-        style={{ gridAutoRows: LANE_HEIGHT, top: DATE_ROW_HEIGHT }}
-      >
-        {segments.map((segment) => (
-          <MonthEvent
-            // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
-            key={`${typeof segment.event.id}:${segment.event.id}@${segment.column}`}
-            bar={
-              segment.event.kind === "all-day" ||
-              segment.span > 1 ||
-              segment.startsBefore ||
-              segment.endsAfter
-            }
-            className={cn(
-              "pointer-events-auto mx-0.5 my-px",
-              segment.startsBefore && "ml-0",
-              segment.endsAfter && "mr-0",
-            )}
-            color={getEventColor?.(segment.event.event)}
-            endsAfter={segment.endsAfter}
-            event={segment.event}
-            startsBefore={segment.startsBefore}
-            style={{
-              gridColumn: `${segment.column + 1} / span ${segment.span}`,
-              gridRow: segment.lane + 1,
-            }}
-            time={startTime(segment.fragments[0]!, formats)}
-          />
-        ))}
-        {hiddenCounts.map(
-          (count, column) =>
-            count > 0 && (
-              <MoreEvents
-                key={column}
-                column={column}
-                count={count}
-                day={week.days[column]!}
-                formats={formats}
-                getEventColor={getEventColor}
-                onOpenDay={onOpenDay}
-                segments={week.segments}
-                style={{ gridColumn: column + 1, gridRow: maxLanes }}
+          {segments
+            .filter((segment) => segment.column === column)
+            .map((segment) => (
+              <MonthEvent
+                // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
+                key={`${typeof segment.event.id}:${segment.event.id}`}
+                bar={
+                  segment.event.kind === "all-day" ||
+                  segment.span > 1 ||
+                  segment.startsBefore ||
+                  segment.endsAfter
+                }
+                className={cn(
+                  "absolute start-0 z-1 mx-0.5",
+                  segment.startsBefore && "ml-0",
+                  segment.endsAfter && "mr-0",
+                )}
+                color={getEventColor?.(segment.event.event)}
+                endsAfter={segment.endsAfter}
+                event={segment.event}
+                label={labelEvent(segment.event)}
+                startsBefore={segment.startsBefore}
+                style={laneStyle(segment.lane, segment.span)}
+                time={startTime(segment.fragments[0]!, formats)}
               />
-            ),
-        )}
-      </div>
+            ))}
+          {hiddenCounts[column]! > 0 && (
+            <MoreEvents
+              column={column}
+              count={hiddenCounts[column]!}
+              day={day}
+              formats={formats}
+              getEventColor={getEventColor}
+              labelEvent={labelEvent}
+              lane={maxLanes - 1}
+              onOpenDay={onOpenDay}
+              segments={week.segments}
+            />
+          )}
+        </div>
+      ))}
     </div>
   );
 }

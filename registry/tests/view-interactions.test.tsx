@@ -31,6 +31,7 @@ const Calendar = createCalendar<Meeting, never>()({
 });
 
 function Application(props: {
+  readonly events?: readonly Meeting[];
   readonly onEventChange: (change: Change) => void;
   readonly view: "month" | "week";
 }) {
@@ -39,7 +40,7 @@ function Application(props: {
       defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
       defaultTimeZone="UTC"
       defaultView={props.view}
-      events={[standup]}
+      events={props.events ?? [standup]}
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T12:00:00Z")}
       onEventChange={props.onEventChange}
@@ -170,6 +171,47 @@ test("the month view moves events across days and creates all-day ranges", async
   expect(onEventChange.mock.calls.map(([change]) => [change.cause, interval(change)])).toEqual([
     ["move", "2026-10-15T09:00:00Z/2026-10-15T10:00:00Z"],
     ["create", "2026-10-20/2026-10-23"],
+  ]);
+});
+
+test("a month bar dragged by a later day lands by the cell under the pointer", async () => {
+  const trip: Meeting = {
+    data: null,
+    end: Temporal.PlainDate.from("2026-10-09"),
+    id: "trip",
+    kind: "all-day",
+    start: Temporal.PlainDate.from("2026-10-06"),
+    title: "Trip",
+  };
+  const onEventChange = vi.fn<(change: Change) => void>();
+  const view = await render(
+    <Application events={[trip]} onEventChange={onEventChange} view="month" />,
+  );
+  cleanup = view.unmount;
+
+  // 100×100 cells from Monday 2026-09-28; the bar covers Tuesday to Thursday of the second row.
+  const cells = [...view.container.querySelectorAll("[data-date]")];
+  const bar = view.container.querySelector('[data-event-id="trip"]')!;
+  layOut([
+    [bar, { height: 20, width: 300, x: 100, y: 128 }],
+    ...cells.map(
+      (cell, index) =>
+        [
+          cell,
+          { height: 100, width: 100, x: (index % 7) * 100, y: Math.floor(index / 7) * 100 },
+        ] as const,
+    ),
+  ]);
+
+  // From Wednesday to Thursday, still over the bar itself.
+  drag(bar, [
+    [250, 138],
+    [260, 138],
+    [350, 138],
+  ]);
+
+  expect(onEventChange.mock.calls.map(([change]) => [change.cause, interval(change)])).toEqual([
+    ["move", "2026-10-07/2026-10-10"],
   ]);
 });
 
