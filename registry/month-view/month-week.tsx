@@ -149,7 +149,11 @@ function MoreEvents<TEvent>({
         <span className="max-sm:hidden">{count} more</span>
         <span className="sm:hidden">+{count}</span>
       </PopoverTrigger>
-      <PopoverContent align="center" className="max-h-(--available-height) w-64 gap-0 p-2">
+      <PopoverContent
+        align="center"
+        aria-label={`Events on ${formats.date.format(day.date)}`}
+        className="max-h-(--available-height) w-64 gap-0 p-2"
+      >
         <div className="flex flex-col items-center gap-0.5 pb-2">
           <span className="text-[0.6875rem] font-medium text-muted-foreground uppercase">
             {formats.weekday.format(day.date)}

@@ -21,26 +21,19 @@ function isMonthOverflowPopup(element: Element | null): boolean {
 
 type ElementFilter = Readonly<Record<string, (element: Element) => boolean>>;
 
-/**
- * Elements the keyboard and ARIA work in #97 fixes. Remove each entry once that work merges:
- * https://github.com/Moltenship/time/issues/97
- */
-const knownViolations: ElementFilter = {
-  // The month's "+N more" popover has no name.
-  "aria-dialog-name": isMonthOverflowPopup,
-  // Event names lead with the title and add the date ("Standup, Thursday, October 8, 9:30 –
-  // 10:00 AM"), so a chip's visible "9:30 AM Standup" isn't part of them; and a month's first date
-  // shows "Oct 1" but is named "Thursday, October 1, 2026".
-  "label-content-name-mismatch": (element) =>
-    element.matches('[data-slot="calendar-event"]') ||
-    element.closest('[data-slot="month-view"] [role="gridcell"]') !== null ||
-    isMonthOverflowPopup(element.closest('[role="dialog"]')),
-};
-
 /** Elements a rule flags by design, with the reason. */
 const exemptions: ElementFilter = {
   // Base UI's focus guards are hidden, tabbable spans that pass focus straight on.
   "aria-hidden-focus": (element) => element.matches("[data-base-ui-focus-guard]"),
+  // Event names lead with the title and spell out the date, time, calendar, and state, which a
+  // chip abbreviates ("9:30 AM Standup"); speech input still matches the title. Day cells are
+  // named by date and event count, while their events are separate focus targets; and a month's
+  // first date shows "Oct 1" but is named "Thursday, October 1, 2026".
+  "label-content-name-mismatch": (element) =>
+    element.matches('[data-slot="calendar-event"]') ||
+    element.closest('[data-slot="month-view"] [role="gridcell"]') !== null ||
+    element.closest('[data-slot="time-grid"] [role="gridcell"]') !== null ||
+    isMonthOverflowPopup(element.closest('[role="dialog"]')),
   // WCAG 2.5.8 exempts targets whose size is essential: in the month and time grids an event's
   // box is its time span, and "+N more" fills the event lane it summarises.
   "target-size": (element) =>
@@ -48,8 +41,7 @@ const exemptions: ElementFilter = {
 };
 
 const excused = (rule: string, element: Element | undefined) =>
-  element !== undefined &&
-  (knownViolations[rule]?.(element) === true || exemptions[rule]?.(element) === true);
+  element !== undefined && exemptions[rule]?.(element) === true;
 
 /** Serious and critical WCAG 2.2 A/AA and best-practice violations, one line per element. */
 export async function seriousViolations(context: axe.ElementContext = document) {
