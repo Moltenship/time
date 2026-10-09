@@ -227,3 +227,32 @@ describe("time-grid events across DST changes", () => {
     expect(navigate("exit", event("call", "2026-10-04"))).toBe("2026-10-04T03:00");
   });
 });
+
+test("Enter keeps half-open coverage at sub-second event bounds", () => {
+  const quarterHour = { increment: 15, smallestUnit: "minute" } as const;
+  const at = (events: readonly FixtureEvent[], wall: string) => {
+    const env = environment("UTC");
+    const range = timeGridRange(
+      Temporal.PlainDate.from("2026-10-08"),
+      { count: 1, kind: "days" },
+      env.weekRules,
+    );
+    const projection = projectTimeGrid(viewInput(snapshotOf(events), range, env));
+    const result = timeGridSpatialNavigation({
+      command: "enter",
+      environment: env,
+      focus: slot(wall),
+      options: undefined,
+      projection,
+      range,
+      snap: quarterHour,
+    });
+    return result !== null && "focus" in result && result.focus.kind === "event";
+  };
+  const lateStart = [timed("late", "2026-10-08T09:00:00.400Z", "2026-10-08T10:00:00Z")];
+  expect(at(lateStart, "2026-10-08T09:00")).toBe(false);
+  expect(at(lateStart, "2026-10-08T09:15")).toBe(true);
+  const lateEnd = [timed("long", "2026-10-08T09:00:00Z", "2026-10-08T10:00:00.400Z")];
+  expect(at(lateEnd, "2026-10-08T10:00")).toBe(true);
+  expect(at(lateEnd, "2026-10-08T10:15")).toBe(false);
+});

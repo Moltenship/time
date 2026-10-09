@@ -9,8 +9,8 @@ import type { CalendarSpatialNavigation, CalendarSpatialNavigationInput } from "
 
 type Input = CalendarSpatialNavigationInput<TimeGridProjection<unknown>, unknown>;
 
-/** A time-grid column's nominal height, which layout fractions measure. */
-const DAY_SECONDS = 24 * 60 * 60;
+/** A time-grid column's nominal height, which layout fractions measure; exact as a double. */
+const DAY_NANOSECONDS = 86_400_000_000_000;
 type Layout = TimeGridProjection<unknown>["days"][number]["events"][number];
 
 /** Whether a wall time exists in the time zone; spring-forward gaps skip some. */
@@ -108,10 +108,11 @@ function fromCell(cell: CalendarCellFocus, input: Input): CalendarSpatialNavigat
     case "enter": {
       if (cell.kind === "day") return null;
       // The rendered boxes, not the wall-clock endpoints, which a repeated hour can reverse.
-      const at = cell.time.since(Temporal.PlainTime.from("00:00")).total({ unit: "seconds" });
+      const at = cell.time.since(Temporal.PlainTime.from("00:00")).total({ unit: "nanoseconds" });
       const covering = columnEvents(projection, date).find(
         ({ height, top }) =>
-          Math.round(top * DAY_SECONDS) <= at && at < Math.round((top + height) * DAY_SECONDS),
+          Math.round(top * DAY_NANOSECONDS) <= at &&
+          at < Math.round((top + height) * DAY_NANOSECONDS),
       );
       return covering === undefined ? null : eventFocus(date, covering.fragment.event.id);
     }

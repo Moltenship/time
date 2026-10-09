@@ -117,6 +117,20 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
     element.focus();
   }
 
+  let retrying = false;
+  /**
+   * Retries owed focus once the commit that registered an element is done. By then this commit's
+   * focus has reached the store, so a newer focus wins over the element that came back.
+   */
+  function retryOwedFocus() {
+    if (retrying) return;
+    retrying = true;
+    queueMicrotask(() => {
+      retrying = false;
+      if (owed === "focus") focusNow();
+    });
+  }
+
   return Object.freeze({
     enterFromEnd() {
       entryCommand = "end";
@@ -138,7 +152,7 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
       items.set(element, { days, target });
       changed();
       // The focused target can come back without a calendar update, as when a view re-renders it.
-      if (owed === "focus" && focus !== null && focusLandsOn(focus, target, days)) focusNow();
+      if (owed === "focus") retryOwedFocus();
       return () => {
         if (items.get(element)?.target !== target) return;
         // The focused element is leaving, as when a grabbed event moves between the all-day row
