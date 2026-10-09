@@ -157,7 +157,12 @@ function MonthView<TEvent>({
       ref={pointerRef}
       role="grid"
       aria-label={getMonthTitle(range, environment)}
-      {...keyboard}
+      onBlur={keyboard.onBlur}
+      onKeyDown={(event) => {
+        // React bubbles keys from the "+N more" list's portal through here; its event copies are
+        // not focus targets, so their keys stay native (Enter and Space open the event).
+        if (event.currentTarget.contains(event.target as Node)) keyboard.onKeyDown(event);
+      }}
       data-slot="month-view"
       className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing"
     >

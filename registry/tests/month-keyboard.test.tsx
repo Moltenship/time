@@ -250,3 +250,34 @@ test("arrowing onto an event behind +N more shows its week's every lane", async 
   expect(focused()).toBe("2026-10-08");
   expect(row().querySelector('[aria-label^="2 more events"]')).not.toBeNull();
 });
+
+test("keys on an event in the +N more list stay with that event", async () => {
+  const onEventChange = vi.fn<(change: Change) => void>();
+  const container = await renderMonth(
+    [...events, timed("lunch", "2026-10-08T12:00Z", "2026-10-08T13:00Z")],
+    onEventChange,
+  );
+  await focusDay(container, "2026-10-08");
+  await act(async () => {
+    container.querySelector<HTMLElement>('[aria-label^="2 more events"]')!.click();
+  });
+  const copy = document.querySelector<HTMLElement>(
+    '[data-slot="popover-content"] [data-event-id="lunch"]',
+  )!;
+  await act(async () => copy.focus());
+
+  let enter = true;
+  await act(async () => {
+    enter = copy.dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key: "Enter" }),
+    );
+  });
+  await press(" ");
+  await press("ArrowRight");
+  await press("Enter");
+
+  // Enter is left to the button, which opens the event, and nothing was picked up or saved.
+  expect(enter).toBe(true);
+  expect(spoken(container)).toBe("");
+  expect(onEventChange).not.toHaveBeenCalled();
+});
