@@ -159,6 +159,23 @@ test("marks resize edges only where an editable fragment starts or ends", async 
   expect(handles(event(container, "locked")[0]!)).toEqual([]);
 });
 
+test("keeps one resize handle on short blocks so the rest can be grabbed to move", async () => {
+  const container = await renderCalendar("week", "2026-10-08", [
+    timed("short", "2026-10-08T15:00Z", "2026-10-08T15:15Z"),
+    // 23:45 Thursday to 01:00 Friday in New York: a short first fragment that continues.
+    timed("late", "2026-10-09T03:45Z", "2026-10-09T05:00Z"),
+  ]);
+  const handles = (element: HTMLElement) =>
+    [...element.querySelectorAll("[data-resize]")].map((handle) =>
+      handle.getAttribute("data-resize"),
+    );
+  const [thursday, friday] = event(container, "late");
+
+  expect(handles(event(container, "short")[0]!)).toEqual(["end"]);
+  expect(handles(thursday!)).toEqual(["start"]);
+  expect(handles(friday!)).toEqual(["end"]);
+});
+
 test("labels an overnight event with the weekday its end falls on", async () => {
   const container = await renderCalendar("week", "2026-10-08");
   const [friday, saturday] = event(container, "overnight");

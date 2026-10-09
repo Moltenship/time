@@ -81,7 +81,8 @@ export function eventTimeRange(
 
 /**
  * A positioned event: title and time range, or one compact line when short. Resize handles mark
- * the edges that belong to this day; continued edges are squared off instead.
+ * the edges that belong to this day; continued edges are squared off instead. A short block keeps
+ * one handle, and handles take at most a third of the height, so the rest still grabs to move.
  */
 export function TimeGridEvent({ color, formats, layout, timeZone }: TimeGridEventProps) {
   const { fragment, height, left, top, width } = layout;
@@ -123,18 +124,18 @@ export function TimeGridEvent({ color, formats, layout, timeZone }: TimeGridEven
           </span>
         </>
       )}
-      {resizable && !startsBeforeDay && (
+      {resizable && !startsBeforeDay && (!compact || endsAfterDay) && (
         <span
           aria-hidden
           data-resize="start"
-          className="absolute inset-x-0 top-0 h-1.5 cursor-ns-resize"
+          className="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize"
         />
       )}
       {resizable && !endsAfterDay && (
         <span
           aria-hidden
           data-resize="end"
-          className="absolute inset-x-0 bottom-0 flex h-1.5 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40"
+          className="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40"
         />
       )}
     </EventChip>
