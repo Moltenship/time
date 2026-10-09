@@ -181,6 +181,16 @@ test("keyboard paging crosses an empty range and comes back", async () => {
   expect(text(document.activeElement)).toBe("No eventsNothing is scheduled for November 1 – 28.");
   expect(container.querySelectorAll('[tabindex="0"]')).toHaveLength(1);
 
+  // Space starts nothing here, so paging keeps working.
+  await press(" ");
+  await press(" ", { shiftKey: true });
+  await press("ArrowDown");
+  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe(
+    "Nov 29 – Dec 26, 2026",
+  );
+  expect(document.activeElement?.getAttribute("role")).toBe("group");
+
+  await press("ArrowUp");
   await press("ArrowUp");
   expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 4 – 31, 2026");
   expect(document.activeElement?.getAttribute("data-event-id")).toBe("standup");

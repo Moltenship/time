@@ -66,6 +66,10 @@ function EmptyAgenda({
       role="group"
       aria-labelledby={id}
       {...roving}
+      onKeyDown={(event) => {
+        // Only for paging: the agenda has no cells, so Space must not start an event here.
+        if (event.key === " ") event.preventDefault();
+      }}
       className="flex flex-col items-center gap-2 rounded-lg p-4 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
     >
       <CalendarX2Icon aria-hidden className="mb-1 size-10 text-muted-foreground/60" />
