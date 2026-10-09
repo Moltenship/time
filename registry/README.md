@@ -54,6 +54,9 @@ npx shadcn@latest add button popover select tooltip
   `--calendar-event-border` tokens for light and dark themes.
 - Render each event as a `<button data-event-id={id}>` (the pointer layer's contract). Apps open
   event details by delegating clicks on `[data-event-id]`, so views need no click callback.
+- Name each event with `useEventLabel` from `@registry/calendar/event-label`: title, when, the
+  view's `describeEvent` detail (such as the event's calendar), and "saving" while a change is
+  pending. Focus rings are a 2px `outline-ring` outline on `:focus-visible`.
 - Copy is English and lives in the source; consumers own and translate it. Dates are formatted
   with `Intl` from the calendar locale.
 

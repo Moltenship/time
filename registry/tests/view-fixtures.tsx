@@ -68,3 +68,8 @@ export const anchorDate = Temporal.PlainDate.from("2026-10-08");
 export function text(element: Element | null | undefined): string | undefined {
   return element?.textContent?.replace(/\s/g, " ");
 }
+
+/** An element's `aria-label`, with Intl's thin and narrow no-break spaces as plain spaces. */
+export function ariaLabel(element: Element | null | undefined): string | undefined {
+  return element?.getAttribute("aria-label")?.replace(/\s/g, " ");
+}
