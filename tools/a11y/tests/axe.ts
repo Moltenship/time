@@ -9,21 +9,36 @@ export function setTheme(theme: Theme) {
   document.documentElement.style.colorScheme = theme;
 }
 
+/** The popup a month's "+N more" trigger opens. */
+function isMonthOverflowPopup(element: Element | null): boolean {
+  return (
+    element !== null &&
+    document.querySelector(
+      `[aria-controls="${CSS.escape(element.id)}"][aria-label*=" more events on "]`,
+    ) !== null
+  );
+}
+
+type ElementFilter = Readonly<Record<string, (element: Element) => boolean>>;
+
 /**
- * Violations the keyboard and ARIA work in #97 fixes. Remove each rule once that work merges:
+ * Elements the keyboard and ARIA work in #97 fixes. Remove each entry once that work merges:
  * https://github.com/Moltenship/time/issues/97
  */
-const knownViolations: ReadonlySet<string> = new Set([
+const knownViolations: ElementFilter = {
   // The time grid's day headers are `columnheader`s outside any row.
-  "aria-required-parent",
+  "aria-required-parent": (element) =>
+    element.matches('[data-slot="time-grid"] [role="columnheader"]'),
   // The month's "+N more" popover has no name.
-  "aria-dialog-name",
+  "aria-dialog-name": isMonthOverflowPopup,
   // A month's first date shows "Oct 1" but is named "Thursday, October 1, 2026".
-  "label-content-name-mismatch",
-]);
+  "label-content-name-mismatch": (element) =>
+    element.closest('[data-slot="month-view"] [data-date]') !== null ||
+    isMonthOverflowPopup(element.closest('[role="dialog"]')),
+};
 
 /** Elements a rule flags by design, with the reason. */
-const exemptions: Readonly<Record<string, (element: Element) => boolean>> = {
+const exemptions: ElementFilter = {
   // Base UI's focus guards are hidden, tabbable spans that pass focus straight on.
   "aria-hidden-focus": (element) => element.matches("[data-base-ui-focus-guard]"),
   // WCAG 2.5.8 exempts targets whose size is essential: in the month and time grids an event's
@@ -31,6 +46,10 @@ const exemptions: Readonly<Record<string, (element: Element) => boolean>> = {
   "target-size": (element) =>
     element.closest('[data-slot="month-view"], [data-slot="time-grid"]') !== null,
 };
+
+const excused = (rule: string, element: Element | undefined) =>
+  element !== undefined &&
+  (knownViolations[rule]?.(element) === true || exemptions[rule]?.(element) === true);
 
 /** Serious and critical WCAG 2.2 A/AA and best-practice violations, one line per element. */
 export async function seriousViolations(context: axe.ElementContext = document) {
@@ -45,13 +64,10 @@ export async function seriousViolations(context: axe.ElementContext = document) 
     },
   });
   return violations
-    .filter(
-      ({ id, impact }) =>
-        (impact === "serious" || impact === "critical") && !knownViolations.has(id),
-    )
+    .filter(({ impact }) => impact === "serious" || impact === "critical")
     .flatMap(({ help, id, nodes }) =>
       nodes
-        .filter(({ element }) => element === undefined || exemptions[id]?.(element) !== true)
+        .filter(({ element }) => !excused(id, element))
         .map(
           ({ failureSummary, target }) =>
             `${id}: ${help} at ${target.join(" ")}\n${failureSummary}`,
