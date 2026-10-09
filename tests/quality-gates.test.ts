@@ -30,9 +30,19 @@ const expectedGateCommands = [
   "vp run package:graph",
 ] as const;
 
+const accessibilityCommands = [
+  "vp install --frozen-lockfile",
+  "vp exec --filter a11y playwright install --with-deps --only-shell chromium",
+  "vp run a11y",
+] as const;
+
+async function readWorkflow(): Promise<Workflow> {
+  return parse(await readFile(".github/workflows/ci.yml", "utf8")) as Workflow;
+}
+
 describe("CI quality gate contract", () => {
   test("workflow uses the supported Vite+ setup and locally reproducible named tasks", async () => {
-    const workflow = parse(await readFile(".github/workflows/ci.yml", "utf8")) as Workflow;
+    const workflow = await readWorkflow();
     const steps = workflow.jobs?.["quality-gates"]?.steps ?? [];
 
     expect(steps.map(({ uses }) => uses).filter(Boolean)).toEqual([
@@ -51,12 +61,18 @@ describe("CI quality gate contract", () => {
     });
   });
 
+  test("a separate job runs the axe checks in Chromium", async () => {
+    const steps = (await readWorkflow()).jobs?.accessibility?.steps ?? [];
+
+    expect(steps.map(({ run }) => run).filter(Boolean)).toEqual(accessibilityCommands);
+  });
+
   test("the default ready command delegates to every named gate", async () => {
     const manifest = JSON.parse(await readFile("package.json", "utf8")) as {
       readonly scripts: Record<string, string>;
     };
 
-    for (const command of expectedGateCommands.slice(1)) {
+    for (const command of [...expectedGateCommands.slice(1), "vp run a11y"]) {
       expect(manifest.scripts.ready).toContain(command);
     }
   });
