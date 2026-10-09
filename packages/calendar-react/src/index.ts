@@ -1,11 +1,18 @@
 "use client";
 
+export { useCalendarAnnouncer } from "./announcer";
 export { createCalendar } from "./calendar";
 export { createCalendarStore } from "./store";
+export { useCalendarInteraction, useCalendarKeyboard } from "./keyboard";
+export type { CalendarKeyboardHandlers, CalendarKeyboardOptions } from "./keyboard";
+export { useRovingFocus } from "./roving-focus";
+export type { CalendarRovingFocusOptions, CalendarRovingFocusProps } from "./roving-focus";
+export { useCalendarFocus, useCalendarSelection } from "./selectors";
 export { useNow } from "./use-now";
 export { defineCalendarView } from "./views";
 export type {
   CalendarActiveViewProps,
+  CalendarAnnouncerProps,
   CalendarContextValue,
   CalendarDiagnostic,
   CalendarEventProps,

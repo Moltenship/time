@@ -1,5 +1,8 @@
 import type {
+  CalendarAnnouncementMessages,
   CalendarEnvironment,
+  CalendarFocus,
+  CalendarSelection,
   CalendarEventChangeHandler,
   CalendarEventProposal,
   CalendarNowSource,
@@ -29,8 +32,8 @@ import type { AnyCalendarView, CalendarActiveView, CalendarViewOptionsMap } from
 
 export type CalendarSemanticActions<
   TView extends string = string,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TResourceId extends ResourceId = ResourceId,
   TEvent = unknown,
   TEventId extends EventId = EventId,
@@ -95,8 +98,8 @@ export interface CalendarContextValue<
   TEvent,
   TResource,
   TViewDef extends AnyCalendarView = AnyCalendarView,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TEventId extends EventId = EventId,
   TResourceId extends ResourceId = ResourceId,
 > {
@@ -180,8 +183,8 @@ export type CalendarRootProps<
   TEvent,
   TResource,
   TViewDef extends AnyCalendarView = AnyCalendarView,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TEventId extends EventId = EventId,
   TResourceId extends ResourceId = ResourceId,
 > = CalendarRootBaseProps<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId> &
@@ -206,6 +209,11 @@ export type CalendarViewSwitcherProps<TView extends string = string> = Omit<
   "children" | "defaultValue" | "value"
 > & {
   readonly getViewLabel: (view: TView) => string;
+};
+
+export type CalendarAnnouncerProps = Omit<ComponentPropsWithRef<"div">, "children"> & {
+  /** What each phase says, in the calendar's language; the registry has an English set. */
+  readonly messages: CalendarAnnouncementMessages;
 };
 
 export interface CalendarActiveViewProps {
@@ -246,12 +254,13 @@ export interface CalendarFactory<
   TEvent,
   TResource,
   TViewDef extends AnyCalendarView = AnyCalendarView,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TEventId extends EventId = EventId,
   TResourceId extends ResourceId = ResourceId,
 > {
   readonly ActiveView: ComponentType<CalendarActiveViewProps>;
+  readonly Announcer: ComponentType<CalendarAnnouncerProps>;
   readonly Event: ComponentType<CalendarEventProps<TEvent, TEventId, TResourceId>>;
   readonly Frame: ComponentType<CalendarFrameProps>;
   readonly NextTrigger: ComponentType<CalendarTriggerProps>;

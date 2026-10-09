@@ -14,6 +14,7 @@ import {
   type EventSnapshotIssue,
   type EventTransactions,
   type InvalidCalendarEventPolicy,
+  type CalendarPendingPlacements,
   type ResourceId,
 } from "@moltenship/calendar-core";
 import {
@@ -35,6 +36,7 @@ import type {
   CalendarRootProps,
   CalendarSemanticActions,
 } from "./calendar-types";
+import { createAnnouncerChannel } from "./announcer";
 import { CalendarNowSourceContext, type CalendarContexts } from "./context";
 import {
   sameElements,
@@ -44,6 +46,8 @@ import {
   sameWeekRules,
   shallowEqual,
 } from "./equality";
+import { CalendarInteractionContext, type CalendarInteractionRuntime } from "./interaction";
+import { createKeyboardSessionStore } from "./keyboard-store";
 import { useCalendarStateBinding } from "./state-binding";
 import type { CalendarRootStoreBinding } from "./store";
 import { useNowFrom } from "./use-now";
@@ -302,10 +306,17 @@ export function createCalendarRoot<
       transactions.getPending,
       transactions.getPending,
     );
-    // Pending changes patch only their events at query time; the snapshot's indexes are reused.
+    const [keyboard] = useState(createKeyboardSessionStore);
+    const preview = useSyncExternalStore(
+      keyboard.subscribe,
+      keyboard.getPreview,
+      keyboard.getPreview,
+    ) as CalendarPendingPlacements<TEventId, TResourceId>;
+    // Pending changes and a keyboard gesture's preview patch only their events at query time; the
+    // snapshot's indexes are reused.
     const visibleSnapshot = useMemo(
-      () => applyEventOverlay(eventSnapshot, pending),
-      [eventSnapshot, pending],
+      () => applyEventOverlay(applyEventOverlay(eventSnapshot, pending), preview),
+      [eventSnapshot, pending, preview],
     );
     // New events confirm resolved changes; this runs before paint, so none shows stale.
     useLayoutEffect(() => transactions.reconcile(eventSnapshot), [eventSnapshot, transactions]);
@@ -381,6 +392,13 @@ export function createCalendarRoot<
       () => createSemanticActions(binding, viewsByName, committed, transactions, readOnly),
       [binding, transactions],
     );
+    const [announcements] = useState(() =>
+      createAnnouncerChannel(() => committed.current.environment),
+    );
+    const interaction = useMemo<CalendarInteractionRuntime>(
+      () => Object.freeze({ actions, announcements, keyboard, source }),
+      [actions, announcements, keyboard, source],
+    );
 
     const [refs] = useState(() =>
       Object.freeze({
@@ -439,7 +457,11 @@ export function createCalendarRoot<
             createElement(
               contexts.state,
               { value: state },
-              createElement(contexts.view, { value: activeView }, children),
+              createElement(
+                contexts.view,
+                { value: activeView },
+                createElement(CalendarInteractionContext, { value: interaction }, children),
+              ),
             ),
           ),
         ),

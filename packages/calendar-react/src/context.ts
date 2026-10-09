@@ -37,7 +37,9 @@ export function createCalendarContexts(): CalendarContexts {
 }
 
 /** The nearest root's clock, shared by every factory so `useNow` works inside any calendar. */
-export const CalendarNowSourceContext = createContext<CalendarNowSource | undefined>(undefined);
+export const CalendarNowSourceContext: Context<CalendarNowSource | undefined> = createContext<
+  CalendarNowSource | undefined
+>(undefined);
 
 export function useRootContext<T>(context: Context<T | null>): T {
   const value = useContext(context);

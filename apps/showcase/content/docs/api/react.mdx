@@ -17,7 +17,9 @@ from `views` and the ID types from the adapter.
 
 - `TEvent`: your event record. Required.
 - `TResource`: your resource record. Defaults to `unknown`; use `never` if you don't have resources.
-- `TSelection`, `TFocus`: the types of the `selection` and `focus` state. Default to `string`.
+- `TSelection`, `TFocus`: the types of the `selection` and `focus` state. Default to
+  `CalendarSelection` and `CalendarFocus`, the days, slots, and events the built-in views read and
+  write. A calendar with only custom views can use its own types.
 
 <TypeTable
   type={{

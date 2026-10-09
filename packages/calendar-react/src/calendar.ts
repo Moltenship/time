@@ -1,4 +1,9 @@
-import type { EventId, ResourceId } from "@moltenship/calendar-core";
+import type {
+  CalendarFocus,
+  CalendarSelection,
+  EventId,
+  ResourceId,
+} from "@moltenship/calendar-core";
 import { useMemo, type ComponentType } from "react";
 
 import type {
@@ -15,6 +20,7 @@ import {
   useRootContext,
   type CalendarStateSource,
 } from "./context";
+import { Announcer } from "./announcer";
 import { createCalendarParts } from "./parts";
 import { createCalendarRoot } from "./root";
 import { useStateSelector } from "./state-binding";
@@ -36,8 +42,8 @@ import type { AnyCalendarView, CalendarActiveView } from "./views";
 export function createCalendar<
   TEvent,
   TResource = unknown,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
 >() {
   return function createTypedCalendar<
     TViewDef extends AnyCalendarView<TEvent> = never,
@@ -80,6 +86,7 @@ export function createCalendar<
 
     return Object.freeze({
       ...parts,
+      Announcer,
       Event: EventPart<TEvent, TEventId, TResourceId>,
       Root,
       ViewSwitcher: ViewSwitcher as ComponentType<CalendarViewSwitcherProps<View>>,

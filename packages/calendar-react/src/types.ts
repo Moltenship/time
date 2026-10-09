@@ -1,9 +1,9 @@
-import type { ResourceId } from "@moltenship/calendar-core";
+import type { CalendarFocus, CalendarSelection, ResourceId } from "@moltenship/calendar-core";
 
 export interface CalendarPublicState<
   TView extends string = string,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TResourceId extends ResourceId = ResourceId,
 > {
   readonly anchorDate: Temporal.PlainDate;
@@ -18,8 +18,8 @@ export type CalendarStateSlice = keyof CalendarPublicState;
 
 export interface CalendarStoreOptions<
   TView extends string = string,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TResourceId extends ResourceId = ResourceId,
 > {
   readonly defaultAnchorDate: Temporal.PlainDate;
@@ -33,8 +33,8 @@ export interface CalendarStoreOptions<
 /** Slices whose value is owned by props. `undefined` leaves a slice uncontrolled. */
 export type CalendarControlledState<
   TView extends string = string,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TResourceId extends ResourceId = ResourceId,
 > = Partial<CalendarPublicState<TView, TSelection, TFocus, TResourceId>>;
 
@@ -54,8 +54,8 @@ export type CalendarStateChangeHandler<TValue, TSlice extends CalendarStateSlice
 
 export type CalendarStateChangeHandlers<
   TView extends string = string,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TResourceId extends ResourceId = ResourceId,
 > = {
   readonly [
@@ -68,8 +68,8 @@ export type CalendarStateChangeHandlers<
 
 export type CalendarActions<
   TView extends string = string,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TResourceId extends ResourceId = ResourceId,
 > = {
   readonly [TSlice in CalendarStateSlice as `set${Capitalize<TSlice>}`]: (
@@ -83,8 +83,8 @@ export type CalendarActions<
  */
 export interface CalendarStore<
   TView extends string = string,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TResourceId extends ResourceId = ResourceId,
 > {
   readonly actions: CalendarActions<TView, TSelection, TFocus, TResourceId>;

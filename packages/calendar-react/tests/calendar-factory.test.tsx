@@ -114,7 +114,7 @@ test("compound controls work anywhere under Root with direct React 19 refs", asy
         </button>
         <button
           data-selection-control
-          onClick={() => actions.setSelection("meeting-1")}
+          onClick={() => actions.setSelection({ eventId: "meeting-1", kind: "event" })}
           type="button"
         >
           Select

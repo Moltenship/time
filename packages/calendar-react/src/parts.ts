@@ -2,7 +2,10 @@ import type { EventId, ResourceId } from "@moltenship/calendar-core";
 import {
   createElement,
   useCallback,
+  useInsertionEffect,
   useMemo,
+  useRef,
+  useState,
   type ChangeEvent,
   type MouseEvent,
   type Ref,
@@ -26,8 +29,10 @@ import {
   type AnyCalendarState,
   type CalendarContexts,
 } from "./context";
+import { CalendarViewRuntimeContext, useInteractionRuntime } from "./interaction";
+import { createRovingFocusStore, RovingFocusSync } from "./roving-focus";
 import { useStateSelector } from "./state-binding";
-import type { AnyCalendarView } from "./views";
+import type { AnyCalendarView, CalendarActiveView } from "./views";
 
 const selectView = (state: AnyCalendarState) => state.view;
 
@@ -179,16 +184,32 @@ export function createCalendarParts(contexts: CalendarContexts) {
   function ActiveView({ fallback = null }: CalendarActiveViewProps) {
     const actions = useRootContext(contexts.actions);
     const activeView = useActiveViewContext(contexts.view);
-    if (activeView === null) return fallback;
-    const { definition, environment, events, options, projection, range } = activeView;
-    return createElement(definition.Renderer, {
-      actions,
-      environment,
-      events,
-      options,
-      projection,
-      range,
+    const { source } = useInteractionRuntime();
+    const latest = useRef<CalendarActiveView<AnyCalendarView> | null>(activeView);
+    useInsertionEffect(() => {
+      latest.current = activeView;
     });
+    const [roving] = useState(createRovingFocusStore);
+    const runtime = useMemo(
+      () => Object.freeze({ getView: () => latest.current!, roving }),
+      [roving],
+    );
+    if (activeView === null) return fallback;
+
+    const { definition, environment, events, options, projection, range } = activeView;
+    return createElement(
+      CalendarViewRuntimeContext,
+      { value: runtime },
+      createElement(definition.Renderer, {
+        actions,
+        environment,
+        events,
+        options,
+        projection,
+        range,
+      }),
+      createElement(RovingFocusSync, { roving, source, view: activeView }),
+    );
   }
 
   function EventPart<TEvent, TEventId extends EventId, TResourceId extends ResourceId>({

@@ -1,6 +1,8 @@
 import type {
   CalendarEnvironmentBase,
   CalendarEventProposal,
+  CalendarFocus,
+  CalendarSelection,
   CalendarTransactionResult,
   CalendarViewStrategy,
   EventId,
@@ -23,6 +25,9 @@ export interface CalendarViewActions {
     proposal: CalendarEventProposal<EventId, ResourceId>,
   ) => Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
   setAnchorDate(anchorDate: Temporal.PlainDate): void;
+  /** Moves the calendar's focus; `useRovingFocus` and `useCalendarKeyboard` call it for you. */
+  setFocus(focus: CalendarFocus | null): void;
+  setSelection(selection: CalendarSelection | null): void;
   setView(view: string): void;
 }
 

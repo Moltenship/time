@@ -1,4 +1,4 @@
-import type { ResourceId } from "@moltenship/calendar-core";
+import type { CalendarFocus, CalendarSelection, ResourceId } from "@moltenship/calendar-core";
 
 import { sameElements, samePlainDate } from "./equality";
 import type {
@@ -113,8 +113,8 @@ export function getCalendarStoreInternals<
 
 export function createCalendarStore<
   TView extends string = string,
-  TSelection = string,
-  TFocus = string,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
   TResourceId extends ResourceId = ResourceId,
 >(
   options: CalendarStoreOptions<TView, TSelection, TFocus, TResourceId>,
