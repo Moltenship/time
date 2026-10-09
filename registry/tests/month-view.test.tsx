@@ -1,9 +1,7 @@
 // @vitest-environment jsdom
 
-import { createCanonicalEventAdapter, createEventSnapshot } from "@moltenship/calendar";
 import { afterEach, expect, test } from "vite-plus/test";
 
-import { MonthEvent } from "../month-view/month-event";
 import { createMonthView } from "../month-view/month-view";
 import { click, render } from "./render";
 import {
@@ -155,20 +153,4 @@ test("keeps numeric and string IDs with the same text apart", async () => {
   expect(ids()).toEqual(["1", "1"]);
   await view.rerender(month([timed(3, "2026-10-20T09:00Z", "2026-10-20T10:00Z")]));
   expect(ids()).toEqual(["3"]);
-});
-
-test("marks events whose change is still pending as busy", async () => {
-  const [event] = createEventSnapshot(events, createCanonicalEventAdapter()).events;
-  const view = await render(
-    <MonthEvent
-      bar={false}
-      endsAfter={false}
-      event={{ ...event!, isPending: true }}
-      label="trip"
-      startsBefore={false}
-    />,
-  );
-  cleanup = view.unmount;
-
-  expect(view.container.querySelector("[data-event-id]")?.getAttribute("aria-busy")).toBe("true");
 });

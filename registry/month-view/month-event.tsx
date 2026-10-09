@@ -1,26 +1,27 @@
-import {
-  eventIdAttributes,
-  type EventId,
-  type NormalizedCalendarEvent,
-  type ResourceId,
-} from "@moltenship/calendar";
+import type { EventId, NormalizedCalendarEvent, ResourceId } from "@moltenship/calendar";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { CSSProperties } from "react";
 
-import { EventChip } from "@registry/calendar/event-chip";
+import { EventChip, useEventChip } from "@registry/calendar/event-chip";
+import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
-export interface MonthEventProps {
+export interface MonthEventProps<TEvent> {
   /** A filled bar (all-day and multi-day events) rather than a dot, time, and title. */
   readonly bar: boolean;
   readonly className?: string;
   readonly color?: CalendarEventColor;
+  /** The first date the element shows the event on. */
+  readonly date: Temporal.PlainDate;
+  /** Dates the element covers from `date`. */
+  readonly days?: number;
   /** The event continues after this element. */
   readonly endsAfter: boolean;
-  readonly event: NormalizedCalendarEvent<unknown, EventId, ResourceId>;
-  /** Accessible name: title, when, and other details the visible text leaves out. */
-  readonly label: string;
+  readonly event: NormalizedCalendarEvent<TEvent, EventId, ResourceId>;
+  /** Whether the element is one of the view's focus targets; a copy in a list is not. */
+  readonly focusTarget?: boolean;
+  readonly labelEvent: EventLabeler<TEvent>;
   /** The event began before this element. */
   readonly startsBefore: boolean;
   readonly style?: CSSProperties;
@@ -32,23 +33,26 @@ export interface MonthEventProps {
  * One event in a month cell. Bars are filled and their clipped ends show where the event
  * continues; other events are a coloured dot, start time, and title.
  */
-export function MonthEvent({
+export function MonthEvent<TEvent>({
   bar,
   className,
   color,
+  date,
+  days,
   endsAfter,
   event,
-  label,
+  focusTarget,
+  labelEvent,
   startsBefore,
   style,
   time,
-}: MonthEventProps) {
+}: MonthEventProps<TEvent>) {
+  const chip = useEventChip(event, { date, days, focusTarget, labelEvent });
+
   return (
     <EventChip
-      aria-label={label}
       color={color}
-      {...eventIdAttributes(event.id)}
-      pending={event.isPending === true}
+      {...chip}
       style={style}
       title={event.title}
       className={cn(

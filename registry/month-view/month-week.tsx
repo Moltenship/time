@@ -1,5 +1,7 @@
 import {
-  limitDayGridLanes,
+  useCalendarInteraction,
+  useRovingFocus,
+  type DayGridOverflow,
   type DayGridSegment,
   type EventDayFragment,
   type EventId,
@@ -7,7 +9,7 @@ import {
   type MonthWeek,
   type ResourceId,
 } from "@moltenship/calendar";
-import { useMemo, type CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
@@ -32,9 +34,13 @@ interface MonthWeekRowProps<TEvent> {
   readonly formats: MonthFormats;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
   readonly labelEvent: EventLabeler<TEvent>;
+  /** Shows every lane instead of `overflow`, while keyboard focus is on an event it hides. */
+  readonly expanded: boolean;
   /** Lanes that fit in a cell, including the one a "+N more" control takes. */
   readonly maxLanes: number;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
+  /** The week's segments limited to `maxLanes`. */
+  readonly overflow: DayGridOverflow<TEvent, EventId, ResourceId>;
   readonly week: MonthWeek<TEvent, EventId, ResourceId>;
 }
 
@@ -61,16 +67,30 @@ function startTime(
     : formats.time(fragment.start.toPlainTime());
 }
 
+/** The segments that show something on a week's `column`, top to bottom. */
+function segmentsOn<TEvent>(segments: readonly Segment<TEvent>[], column: number) {
+  // Lanes are assigned in display order, so the day's events read top to bottom by lane.
+  return segments
+    .filter((segment) => segment.column <= column && column < segment.column + segment.span)
+    .toSorted((left, right) => left.lane - right.lane);
+}
+
+function eventCount(count: number): string {
+  return count === 0 ? "no events" : count === 1 ? "1 event" : `${count} events`;
+}
+
 function DateButton({
   className,
   day,
   formats,
   onOpenDay,
+  tabIndex,
 }: {
   readonly className?: string;
   readonly day: MonthDay;
   readonly formats: MonthFormats;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
+  readonly tabIndex?: number;
 }) {
   return (
     <button
@@ -78,6 +98,7 @@ function DateButton({
       aria-current={day.isToday ? "date" : undefined}
       aria-label={formats.date.format(day.date)}
       onClick={() => onOpenDay(day.date)}
+      tabIndex={tabIndex}
       className={cn(
         "flex items-center justify-center rounded-full font-medium tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
         !day.inMonth && "text-muted-foreground",
@@ -91,6 +112,10 @@ function DateButton({
   );
 }
 
+/**
+ * A day's "+N more" control and a list of all its events, for pointers. Keyboard focus reaches
+ * the hidden events in place: their week row shows every lane while focus is on one.
+ */
 function MoreEvents<TEvent>({
   column,
   count,
@@ -112,15 +137,12 @@ function MoreEvents<TEvent>({
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
   readonly segments: readonly Segment<TEvent>[];
 }) {
-  // Lanes are assigned in display order, so the day's events read top to bottom by lane.
-  const dayEvents = segments
-    .filter((segment) => segment.column <= column && column < segment.column + segment.span)
-    .toSorted((left, right) => left.lane - right.lane);
-
   return (
     <Popover>
       <PopoverTrigger
         aria-label={`${count} more events on ${formats.date.format(day.date)}`}
+        // The view keeps one tab stop; arrow keys reach these events in the grid.
+        tabIndex={-1}
         style={laneStyle(lane)}
         className="absolute start-0 z-1 mx-0.5 truncate rounded-sm px-1.5 text-start text-xs font-medium max-sm:px-1 max-sm:text-[0.625rem] text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
       >
@@ -140,7 +162,7 @@ function MoreEvents<TEvent>({
           />
         </div>
         <div className="-mx-2 flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2 py-1">
-          {dayEvents.map((segment) => {
+          {segmentsOn(segments, column).map((segment) => {
             const fragment = segment.fragments[column - segment.column]!;
             return (
               <MonthEvent
@@ -152,9 +174,11 @@ function MoreEvents<TEvent>({
                 }
                 className="h-6 shrink-0"
                 color={getEventColor?.(segment.event.event)}
+                date={day.date}
                 endsAfter={fragment.endsAfterDay}
                 event={segment.event}
-                label={labelEvent(segment.event)}
+                focusTarget={false}
+                labelEvent={labelEvent}
                 startsBefore={fragment.startsBeforeDay}
                 time={startTime(fragment, formats)}
               />
@@ -167,22 +191,83 @@ function MoreEvents<TEvent>({
 }
 
 /**
- * One week as a grid row of day cells. A cell holds its date (`data-date`, which pointer
- * hit-testing reads), the event segments that start on it, and its "+N more" control; a segment
- * spanning several days stretches over the cells that follow.
+ * A day of the grid and its keyboard focus target. Its date (`data-date`, which pointer
+ * hit-testing reads) sits under the event segments, and shows a keyboard create's range.
+ */
+function MonthDayCell({
+  children,
+  count,
+  day,
+  formats,
+  onOpenDay,
+}: {
+  readonly children: ReactNode;
+  /** Events on the day, including those behind "+N more". */
+  readonly count: number;
+  readonly day: MonthDay;
+  readonly formats: MonthFormats;
+  readonly onOpenDay: (date: Temporal.PlainDate) => void;
+}) {
+  const roving = useRovingFocus({ date: day.date, kind: "day" });
+  const inDraft = useCalendarInteraction(
+    (session) =>
+      session?.eventId === null &&
+      session.proposed.kind === "all-day" &&
+      Temporal.PlainDate.compare(session.proposed.start, day.date) <= 0 &&
+      Temporal.PlainDate.compare(day.date, session.proposed.end) < 0,
+  );
+
+  return (
+    <div
+      role="gridcell"
+      aria-label={`${formats.date.format(day.date)}, ${eventCount(count)}`}
+      {...roving}
+      onKeyDown={(event) => {
+        // Shift+Enter opens the day, as clicking its date does.
+        if (event.key === "Enter" && event.shiftKey && event.target === event.currentTarget) {
+          event.preventDefault();
+          onOpenDay(day.date);
+        }
+      }}
+      className="relative min-w-0 border-e border-calendar-grid last:border-e-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
+    >
+      {/* Events sit outside this element, so a drop target is never the cell a bar starts in. */}
+      <div
+        data-date={day.date.toString()}
+        data-draft={inDraft ? "" : undefined}
+        className={cn(
+          "absolute inset-0 flex justify-center data-draft:bg-calendar-selection",
+          !day.inMonth && "bg-muted/50",
+        )}
+      >
+        <DateButton
+          className="mt-1 h-6 min-w-6 px-1.5 text-xs"
+          day={day}
+          formats={formats}
+          onOpenDay={onOpenDay}
+          tabIndex={-1}
+        />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * One week as a grid row of day cells. A cell holds the event segments that start on it and its
+ * "+N more" control; a segment spanning several days stretches over the cells that follow.
  */
 export function MonthWeekRow<TEvent>({
+  expanded,
   formats,
   getEventColor,
   labelEvent,
   maxLanes,
   onOpenDay,
+  overflow,
   week,
 }: MonthWeekRowProps<TEvent>) {
-  const { hiddenCounts, segments } = useMemo(
-    () => limitDayGridLanes(week, maxLanes),
-    [week, maxLanes],
-  );
+  const segments = expanded ? week.segments : overflow.segments;
 
   return (
     <div
@@ -190,23 +275,13 @@ export function MonthWeekRow<TEvent>({
       className="grid min-h-0 grid-cols-7 border-b border-calendar-grid last:border-b-0"
     >
       {week.days.map((day, column) => (
-        <div
+        <MonthDayCell
           key={day.date.toString()}
-          role="gridcell"
-          className="relative min-w-0 border-e border-calendar-grid last:border-e-0"
+          count={segmentsOn(week.segments, column).length}
+          day={day}
+          formats={formats}
+          onOpenDay={onOpenDay}
         >
-          {/* Events sit outside this element, so a drop target is never the cell a bar starts in. */}
-          <div
-            data-date={day.date.toString()}
-            className={cn("absolute inset-0 flex justify-center", !day.inMonth && "bg-muted/50")}
-          >
-            <DateButton
-              className="mt-1 h-6 min-w-6 px-1.5 text-xs"
-              day={day}
-              formats={formats}
-              onOpenDay={onOpenDay}
-            />
-          </div>
           {segments
             .filter((segment) => segment.column === column)
             .map((segment) => (
@@ -225,18 +300,20 @@ export function MonthWeekRow<TEvent>({
                   segment.endsAfter && "me-0",
                 )}
                 color={getEventColor?.(segment.event.event)}
+                date={day.date}
+                days={segment.span}
                 endsAfter={segment.endsAfter}
                 event={segment.event}
-                label={labelEvent(segment.event)}
+                labelEvent={labelEvent}
                 startsBefore={segment.startsBefore}
                 style={laneStyle(segment.lane, segment.span)}
                 time={startTime(segment.fragments[0]!, formats)}
               />
             ))}
-          {hiddenCounts[column]! > 0 && (
+          {!expanded && overflow.hiddenCounts[column]! > 0 && (
             <MoreEvents
               column={column}
-              count={hiddenCounts[column]!}
+              count={overflow.hiddenCounts[column]!}
               day={day}
               formats={formats}
               getEventColor={getEventColor}
@@ -246,7 +323,7 @@ export function MonthWeekRow<TEvent>({
               segments={week.segments}
             />
           )}
-        </div>
+        </MonthDayCell>
       ))}
     </div>
   );
