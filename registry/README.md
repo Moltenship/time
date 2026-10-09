@@ -57,6 +57,10 @@ npx shadcn@latest add button popover select tooltip
 - Name each event with `useEventLabel` from `@registry/calendar/event-label`: title, when, the
   view's `describeEvent` detail (such as the event's calendar), and "saving" while a change is
   pending. Focus rings are a 2px `outline-ring` outline on `:focus-visible`.
+- Keyboard: a view spreads `useCalendarKeyboard()` on its grid and keeps one tab stop. Cells
+  register with `useRovingFocus`, and events with `useEventChip`, which also marks a grabbed
+  event. Apps render `<Calendar.Announcer messages={calendarAnnouncements} />` from
+  `@registry/calendar/announcements`, the English messages for moves, resizes and creates.
 - Copy is English and lives in the source; consumers own and translate it. Dates are formatted
   with `Intl` from the calendar locale.
 

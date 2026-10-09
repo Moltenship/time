@@ -3,7 +3,7 @@
   "name": "calendar",
   "type": "registry:component",
   "title": "Calendar shell",
-  "description": "Toolbar, view switcher, event chip and accessible event names, and sidebar mini month shared by every calendar view.",
+  "description": "Toolbar, view switcher, event chip, accessible event names, English announcements for screen readers, and sidebar mini month shared by every calendar view.",
   "dependencies": ["@moltenship/calendar", "cn", "lucide-react"],
   "registryDependencies": ["button", "select", "tooltip", "@moltenship/calendar-theme"],
   "files": [
@@ -11,6 +11,11 @@
       "path": "registry/calendar/calendar-toolbar.tsx",
       "type": "registry:component",
       "target": "components/calendar/calendar-toolbar.tsx"
+    },
+    {
+      "path": "registry/calendar/announcements.ts",
+      "type": "registry:lib",
+      "target": "components/calendar/announcements.ts"
     },
     {
       "path": "registry/calendar/event-chip.tsx",
