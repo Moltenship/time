@@ -1,5 +1,12 @@
 import { cn } from "cn";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@registry/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@registry/ui/select";
 
 export interface ViewSwitcherOption<TView extends string> {
   readonly label: string;
@@ -34,17 +41,19 @@ export function ViewSwitcher<TView extends string>({
         <SelectValue />
       </SelectTrigger>
       <SelectContent align="end" alignItemWithTrigger={false}>
-        {options.map((option) => (
-          <SelectItem key={option.value} value={option.value}>
-            {option.label}
-            {/* The trigger shows the label from `items`, so the shortcut only appears in the list. */}
-            {option.shortcut !== undefined && (
-              <kbd className="ml-auto font-sans text-xs text-muted-foreground">
-                {option.shortcut}
-              </kbd>
-            )}
-          </SelectItem>
-        ))}
+        <SelectGroup>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+              {/* The trigger shows the label from `items`, so the shortcut only appears in the list. */}
+              {option.shortcut !== undefined && (
+                <kbd className="ml-auto font-sans text-xs text-muted-foreground">
+                  {option.shortcut}
+                </kbd>
+              )}
+            </SelectItem>
+          ))}
+        </SelectGroup>
       </SelectContent>
     </Select>
   );

@@ -11,7 +11,14 @@ import {
 } from "@registry/ui/dialog";
 import { Input } from "@registry/ui/input";
 import { Label } from "@registry/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@registry/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@registry/ui/select";
 import { Textarea } from "@registry/ui/textarea";
 
 import type { DemoEvent } from "../calendar";
@@ -176,11 +183,13 @@ function EventForm({
             <SelectValue>{(calendarId) => <CalendarOption calendarId={calendarId} />}</SelectValue>
           </SelectTrigger>
           <SelectContent>
-            {demoCalendars.map((calendar) => (
-              <SelectItem key={calendar.id} value={calendar.id}>
-                <CalendarOption calendarId={calendar.id} />
-              </SelectItem>
-            ))}
+            <SelectGroup>
+              {demoCalendars.map((calendar) => (
+                <SelectItem key={calendar.id} value={calendar.id}>
+                  <CalendarOption calendarId={calendar.id} />
+                </SelectItem>
+              ))}
+            </SelectGroup>
           </SelectContent>
         </Select>
       </div>

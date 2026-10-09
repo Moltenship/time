@@ -4,7 +4,14 @@ import { useId } from "react";
 import { Button } from "@registry/ui/button";
 import { Checkbox } from "@registry/ui/checkbox";
 import { Label } from "@registry/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@registry/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@registry/ui/select";
 
 import { localeOptions, timeZoneOptions, weekStartOptions, type DemoSettings } from "../settings";
 
@@ -57,14 +64,16 @@ function Setting({
           <SelectValue />
         </SelectTrigger>
         <SelectContent alignItemWithTrigger={false}>
-          {items.map((item) => (
-            <SelectItem key={item.value} value={item.value}>
-              {item.label}
-              {item.hint !== undefined && (
-                <span className="ml-auto text-xs text-muted-foreground">{item.hint}</span>
-              )}
-            </SelectItem>
-          ))}
+          <SelectGroup>
+            {items.map((item) => (
+              <SelectItem key={item.value} value={item.value}>
+                {item.label}
+                {item.hint !== undefined && (
+                  <span className="ml-auto text-xs text-muted-foreground">{item.hint}</span>
+                )}
+              </SelectItem>
+            ))}
+          </SelectGroup>
         </SelectContent>
       </Select>
     </div>
