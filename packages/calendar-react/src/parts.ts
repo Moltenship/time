@@ -1,4 +1,4 @@
-import type { CalendarFocus, EventId, ResourceId } from "@moltenship/calendar-core";
+import type { EventId, ResourceId } from "@moltenship/calendar-core";
 import {
   createElement,
   useCallback,
@@ -30,7 +30,7 @@ import {
   type CalendarContexts,
 } from "./context";
 import { CalendarViewRuntimeContext, useInteractionRuntime } from "./interaction";
-import { createRovingFocusStore, RovingFocusSync, rovingView } from "./roving-focus";
+import { createRovingFocusStore, RovingFocusSync, viewEntry } from "./roving-focus";
 import { useStateSelector } from "./state-binding";
 import type { AnyCalendarView, CalendarActiveView } from "./views";
 
@@ -184,15 +184,13 @@ export function createCalendarParts(contexts: CalendarContexts) {
   function ActiveView({ fallback = null }: CalendarActiveViewProps) {
     const actions = useRootContext(contexts.actions);
     const activeView = useActiveViewContext(contexts.view);
-    const { read, source } = useInteractionRuntime();
+    const { source } = useInteractionRuntime();
     const latest = useRef<CalendarActiveView<AnyCalendarView> | null>(activeView);
     useInsertionEffect(() => {
       latest.current = activeView;
     });
-    // Starting from the root's focus and the view's entry gives server markup its tab stop.
-    const [roving] = useState(() =>
-      createRovingFocusStore(read().focus as CalendarFocus | null, rovingView(activeView)),
-    );
+    // Starting from the view's entry gives server markup its tab stop.
+    const [roving] = useState(() => createRovingFocusStore(viewEntry(activeView)));
     const runtime = useMemo(
       () => Object.freeze({ getView: () => latest.current, roving }),
       [roving],

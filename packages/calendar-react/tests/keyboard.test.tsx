@@ -548,11 +548,25 @@ test("server markup has exactly one tab stop and hydrates unchanged", async () =
   expect(tabStops(hydrated.container)).toEqual(["2026-10-08"]);
 });
 
-test("server markup falls back to the entry when focus is outside the view", async () => {
+test.each([
+  ["a date outside the view", { date: Temporal.PlainDate.from("2026-11-20"), kind: "day" }],
+  [
+    "a slot, which a month does not render",
+    {
+      date: Temporal.PlainDate.from("2026-10-12"),
+      kind: "slot",
+      time: Temporal.PlainTime.from("09:00"),
+    },
+  ],
+  [
+    "an event on a date it does not cover",
+    { date: Temporal.PlainDate.from("2026-10-20"), eventId: "trip", kind: "event" },
+  ],
+] as const)("server markup enters the view when focus is on %s", async (_, defaultFocus) => {
   const element = (
     <KeyboardFixture
-      defaultFocus={{ date: Temporal.PlainDate.from("2026-11-20"), kind: "day" }}
-      initialEvents={[]}
+      defaultFocus={defaultFocus}
+      initialEvents={[allDay("trip", "2026-10-07", "2026-10-09")]}
     />
   );
   expect(renderToString(element).match(/tabindex="0"/g)).toHaveLength(1);
@@ -561,4 +575,17 @@ test("server markup falls back to the entry when focus is outside the view", asy
   harness = hydrated;
   expect(hydrated.recoverableErrors).toEqual([]);
   expect(tabStops(hydrated.container)).toEqual(["2026-10-08"]);
+});
+
+test("a rendered focus takes the tab stop once its element registers", async () => {
+  const element = (
+    <KeyboardFixture
+      defaultFocus={{ date: Temporal.PlainDate.from("2026-10-14"), kind: "day" }}
+      initialEvents={[]}
+    />
+  );
+  const hydrated = await hydrateWithHarness(element);
+  harness = hydrated;
+  expect(hydrated.recoverableErrors).toEqual([]);
+  expect(tabStops(hydrated.container)).toEqual(["2026-10-14"]);
 });
