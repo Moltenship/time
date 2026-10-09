@@ -182,7 +182,8 @@ export function MiniMonth({
                       tabIndex={day.equals(tabStop) ? 0 : -1}
                       className={cn(
                         "mx-auto flex size-7 items-center justify-center rounded-full text-xs tabular-nums outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
-                        !isSameMonth(day, month) && "text-muted-foreground",
+                        // Muted text is under 4.5:1 on the range band.
+                        !isSameMonth(day, month) && !isVisible && "text-muted-foreground",
                         isSelected && "font-semibold text-calendar-today",
                         isToday &&
                           "bg-calendar-today font-semibold text-calendar-today-foreground hover:bg-calendar-today/90",
