@@ -118,6 +118,47 @@ export type {
 } from "./transactions/types";
 export type { CalendarWallClockDelta } from "./transactions/wall-clock";
 
+export {
+  createPlacementBetween,
+  movePlacementToTarget,
+  resizePlacementToTarget,
+} from "./transactions/targets";
+export type { CalendarInteractionOptions, CalendarInteractionTarget } from "./transactions/targets";
+
+export { sameFocus } from "./navigation/focus";
+export type {
+  CalendarCellFocus,
+  CalendarDayFocus,
+  CalendarEventFocus,
+  CalendarFocus,
+  CalendarSelection,
+  CalendarSlotFocus,
+} from "./navigation/focus";
+export { monthSpatialNavigation } from "./navigation/month";
+export { anchorShowingDate } from "./navigation/reveal";
+export type {
+  CalendarNavigationCommand,
+  CalendarSpatialNavigation,
+  CalendarSpatialNavigationInput,
+} from "./navigation/types";
+
+export {
+  keyboardSessionProposal,
+  moveKeyboardCursor,
+  startKeyboardSession,
+} from "./keyboard/session";
+export type { CalendarKeyboardSession, CalendarKeyboardSessionStart } from "./keyboard/session";
+export { formatPlacementRange } from "./keyboard/announcements";
+export type {
+  CalendarAnnouncementBuilder,
+  CalendarAnnouncementContext,
+  CalendarAnnouncementMessages,
+  CalendarAnnouncer,
+  CalendarInteractionCause,
+  CalendarInteractionPhase,
+  CalendarInteractionUpdate,
+} from "./keyboard/announcements";
+
 export { boundsPolicy } from "./policies/bounds";
 export { minimumDurationPolicy } from "./policies/minimum-duration";
 export { readOnlyPolicy } from "./policies/read-only";

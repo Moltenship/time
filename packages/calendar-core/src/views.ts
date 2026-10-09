@@ -6,6 +6,7 @@ import {
 
 import type { CalendarEnvironmentBase } from "./environment";
 import type { EventId, ResourceId } from "./ids";
+import type { CalendarSpatialNavigation, CalendarSpatialNavigationInput } from "./navigation/types";
 import type { EventSnapshot } from "./snapshots/types";
 
 export interface CalendarViewProjectionInput<TOptions, TEvent = unknown> {
@@ -28,6 +29,10 @@ export interface CalendarViewStrategy<TProjection, TOptions = undefined, TEvent 
     environment: CalendarEnvironmentBase,
     options: TOptions,
   ): PlainDateInterval;
+  /** Where a navigation key moves focus; a view without it has no keyboard navigation. */
+  getSpatialNavigation?(
+    input: CalendarSpatialNavigationInput<TProjection, TOptions>,
+  ): CalendarSpatialNavigation | null;
   getTitle(
     range: PlainDateInterval,
     environment: CalendarEnvironmentBase,
