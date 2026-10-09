@@ -33,6 +33,11 @@
       "target": "components/calendar/mini-month.tsx"
     },
     {
+      "path": "registry/calendar/view-keyboard.ts",
+      "type": "registry:lib",
+      "target": "components/calendar/view-keyboard.ts"
+    },
+    {
       "path": "registry/calendar/view-switcher.tsx",
       "type": "registry:component",
       "target": "components/calendar/view-switcher.tsx"

@@ -16,12 +16,12 @@ import {
   type ResourceId,
   useCalendarAnnouncer,
   useCalendarFocus,
-  useCalendarKeyboard,
   useCalendarPointer,
 } from "@moltenship/calendar";
 import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
+import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import { DATE_ROW_HEIGHT, LANE_HEIGHT, MonthWeekRow, type MonthFormats } from "./month-week";
@@ -139,7 +139,7 @@ function MonthView<TEvent>({
   const maxLanes = useLaneCapacity(body, projection.weeks.length);
   const formats = useMonthFormats(environment.locale);
   const labelEvent = useEventLabel(environment, options.describeEvent);
-  const keyboard = useCalendarKeyboard();
+  const keyboard = useViewKeyboard();
   const overflows = useMemo(
     () => projection.weeks.map((week) => limitDayGridLanes(week, maxLanes)),
     [maxLanes, projection.weeks],
@@ -157,12 +157,7 @@ function MonthView<TEvent>({
       ref={pointerRef}
       role="grid"
       aria-label={getMonthTitle(range, environment)}
-      onBlur={keyboard.onBlur}
-      onKeyDown={(event) => {
-        // React bubbles keys from the "+N more" list's portal through here; its event copies are
-        // not focus targets, so their keys stay native (Enter and Space open the event).
-        if (event.currentTarget.contains(event.target as Node)) keyboard.onKeyDown(event);
-      }}
+      {...keyboard}
       data-slot="month-view"
       className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing"
     >

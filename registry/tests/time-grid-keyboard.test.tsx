@@ -234,3 +234,43 @@ test("Shift+Enter opens the focused day in the day view", async () => {
 
   expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Day 2026-10-08");
 });
+
+test("arrow keys with nowhere to go keep focus and never reach app shortcuts", async () => {
+  // Stands in for an app's "next period" shortcut, which skips keys a view already handled.
+  const appShortcuts = vi.fn<(event: KeyboardEvent) => void>();
+  const listener = (event: KeyboardEvent) => {
+    if (!event.defaultPrevented) appShortcuts(event);
+  };
+  window.addEventListener("keydown", listener);
+  try {
+    const container = await renderWeek({
+      defaultFocus: slot("09:00"),
+      weekEvents: [
+        ...events,
+        timed("a", "2026-10-07T09:00Z", "2026-10-07T10:00Z"),
+        timed("b", "2026-10-07T09:30Z", "2026-10-07T10:30Z"),
+      ],
+    });
+    await tabIn(container);
+    await press("Enter");
+
+    // An event with no neighbour beside it.
+    await press("ArrowRight");
+    expect(focused()).toBe("standup");
+    // The outer event of an overlapping pair, from Wednesday's 9:00 slot.
+    await press("Escape");
+    await press("ArrowLeft");
+    expect(focused()).toBe("Wednesday, October 7 at 9:00 AM");
+    await press("Enter");
+    expect(focused()).toBe("a");
+    await press("ArrowRight");
+    expect(focused()).toBe("b");
+    await press("ArrowRight");
+    expect(focused()).toBe("b");
+
+    expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 4 – 10, 2026");
+    expect(appShortcuts).not.toHaveBeenCalled();
+  } finally {
+    window.removeEventListener("keydown", listener);
+  }
+});

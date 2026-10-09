@@ -3,7 +3,6 @@ import {
   timeGridStrategy,
   timeGridTitle,
   useCalendarAnnouncer,
-  useCalendarKeyboard,
   useCalendarPointer,
   type CalendarViewRendererProps,
   type TimeGridProjection,
@@ -12,6 +11,7 @@ import {
 import { useMemo, useRef } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
+import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import { TimeGridAllDay } from "./time-grid-all-day";
@@ -65,7 +65,7 @@ export function TimeGridView<TEvent>({
     snap,
     timeZone: environment.timeZone,
   });
-  const keyboard = useCalendarKeyboard({ snap });
+  const keyboard = useViewKeyboard({ snap });
   const labelEvent = useEventLabel(environment, options.describeEvent);
   const formatDate = useMemo(() => {
     const format = new Intl.DateTimeFormat(environment.locale, { dateStyle: "full" });

@@ -168,3 +168,20 @@ test("Shift+Enter on an event opens its day", async () => {
 
   expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Day 2026-10-09");
 });
+
+test("keyboard paging crosses an empty range and comes back", async () => {
+  const { container } = await renderAgenda([
+    timed("standup", "2026-10-08T09:00Z", "2026-10-08T09:30Z"),
+  ]);
+  await act(async () => container.querySelector<HTMLElement>('[data-event-id="standup"]')!.focus());
+
+  await press("ArrowDown");
+  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Nov 1 – 28, 2026");
+  expect(document.activeElement?.getAttribute("role")).toBe("group");
+  expect(text(document.activeElement)).toBe("No eventsNothing is scheduled for November 1 – 28.");
+  expect(container.querySelectorAll('[tabindex="0"]')).toHaveLength(1);
+
+  await press("ArrowUp");
+  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 4 – 31, 2026");
+  expect(document.activeElement?.getAttribute("data-event-id")).toBe("standup");
+});
