@@ -1,7 +1,11 @@
 import {
   eventPlacement,
+  formatPlacementRange,
+  type CalendarAnnouncer,
   type CalendarEventPlacement,
   type CalendarEventProposal,
+  type CalendarInteractionUpdate,
+  type CalendarTransactionResult,
   type EventId,
   type EventSnapshot,
   type NormalizedCalendarEvent,
@@ -29,10 +33,20 @@ export interface CalendarPointerOptions<
 > {
   /** Events as rendered, pending changes included; resolves `data-event-id`. */
   readonly events: EventSnapshot<TEvent, TEventId, TResourceId>;
-  /** Receives one proposal per completed drag. Clicks and cancelled drags propose nothing. */
-  readonly onPropose: (proposal: CalendarEventProposal<TEventId, TResourceId>) => void;
+  /**
+   * Receives one proposal per completed drag. Clicks and cancelled drags propose nothing. Return
+   * the transaction's result, as `proposeEventChange` does, to announce whether it was saved.
+   */
+  readonly onPropose: (
+    proposal: CalendarEventProposal<TEventId, TResourceId>,
+  ) => void | PromiseLike<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
   /** The display time zone. */
   readonly timeZone: string;
+  /**
+   * Speaks each drag's start, steps, and outcome, and labels the preview's time range; pass
+   * `useCalendarAnnouncer()`. Without one, ranges are formatted in the runtime's locale.
+   */
+  readonly announcer?: CalendarAnnouncer;
   /** Time-grid day columns, matched to `[data-date]` elements without `data-all-day`. */
   readonly columns?: readonly TimeGridColumn[];
   readonly disabled?: boolean;
@@ -64,6 +78,7 @@ type Gesture<TEvent, TEventId extends EventId, TResourceId extends ResourceId> =
 
 interface Session<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
   active: boolean;
+  readonly announcer: CalendarAnnouncer | undefined;
   frame?: number;
   readonly gesture: Gesture<TEvent, TEventId, TResourceId>;
   readonly ghost: GhostLayer;
@@ -133,7 +148,9 @@ function resolveEvent<TEvent, TEventId extends EventId, TResourceId extends Reso
  * - `data-event-id` on events (spread `eventIdAttributes(id)` to keep numeric IDs distinct), with
  *   `data-resize="start"` or `"end"` on resize handles;
  * - `data-date` (an ISO date) on time-grid day columns and on day cells (month cells, or a time
- *   grid's all-day row, which also carries `data-all-day`).
+ *   grid's all-day row, which also carries `data-all-day`);
+ * - `data-event-time` on the element inside an event that shows its time range, which the
+ *   preview relabels with the proposed range.
  *
  * The preview moves without re-rendering. `onPropose` runs once per drop; a click (less than a few
  * pixels of travel) is left alone, and Escape cancels. Touch drags start with a long-press.
@@ -160,33 +177,64 @@ export function attachCalendarPointer<
       : resizedPlacement(gesture.original, gesture.edge, gesture.grab, target, options);
   }
 
-  function preview(current: Session<TEvent, TEventId, TResourceId>, scrolled = false): void {
+  function announce(
+    current: Session<TEvent, TEventId, TResourceId>,
+    detail:
+      | { readonly phase: "cancel" | "start" | "step" }
+      | { readonly phase: "commit"; readonly proposed: CalendarEventPlacement }
+      | { readonly phase: "reject"; readonly reason: string },
+  ): void {
+    const { gesture } = current;
+    current.announcer?.announce({
+      cause:
+        gesture.kind !== "resize"
+          ? gesture.kind
+          : gesture.edge === "start"
+            ? "resize-start"
+            : "resize-end",
+      event: gesture.kind === "create" ? null : gesture.event,
+      input: "pointer",
+      original: gesture.kind === "create" ? null : gesture.original,
+      proposed: current.placement,
+      ...detail,
+    } as CalendarInteractionUpdate);
+  }
+
+  /** Shows where a drop would land; returns whether that changed. */
+  function preview(current: Session<TEvent, TEventId, TResourceId>, scrolled = false): boolean {
     const target = targetAt(current.surface, current.point.x, current.point.y);
     const placement = target === null ? null : placementAt(current, target);
     if (placement === null) {
       // Nothing to drop here, so show nothing rather than the last valid spot.
+      const changed = current.placement !== null;
       current.placement = null;
       current.ghost.clear();
-      return;
+      return changed;
     }
-    if (!scrolled && current.placement !== null && samePlacement(current.placement, placement)) {
-      return;
-    }
+    const changed = current.placement === null || !samePlacement(current.placement, placement);
+    if (!scrolled && !changed) return false;
 
     current.placement = placement;
     const { gesture } = current;
     const layout = ghostLayout(current.surface, placement, current.options.timeZone);
-    current.ghost.render(
-      layout.rects,
-      layout.axis === "time" && gesture.kind !== "create" ? gesture.element : null,
-    );
+    const template = layout.axis === "time" && gesture.kind !== "create" ? gesture.element : null;
+    const label =
+      template === null
+        ? null
+        : (current.announcer?.formatRange(placement) ??
+          formatPlacementRange(placement, { timeZone: current.options.timeZone }));
+    current.ghost.render(layout.rects, template, label);
+    return changed;
   }
 
   function scrollFrame(): void {
     const current = session;
     if (current === null) return;
-    if (autoScroll(current.scrollContainer, current.point.x, current.point.y)) {
-      preview(current, true);
+    if (
+      autoScroll(current.scrollContainer, current.point.x, current.point.y) &&
+      preview(current, true)
+    ) {
+      announce(current, { phase: "step" });
     }
     current.frame = requestAnimationFrame(scrollFrame);
   }
@@ -202,6 +250,7 @@ export function attachCalendarPointer<
     window.addEventListener("touchmove", preventDefault, { passive: false });
     current.frame = requestAnimationFrame(scrollFrame);
     preview(current);
+    announce(current, { phase: "start" });
   }
 
   function end(): void {
@@ -217,12 +266,18 @@ export function attachCalendarPointer<
 
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
-    window.removeEventListener("pointercancel", end);
+    window.removeEventListener("pointercancel", cancel);
     window.removeEventListener("keydown", onKeyDown, true);
     window.removeEventListener("touchmove", preventDefault);
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.removeEventListener(type, preventDefault);
     }
+  }
+
+  /** Ends the gesture without proposing anything. */
+  function cancel(): void {
+    if (session?.active === true) announce(session, { phase: "cancel" });
+    end();
   }
 
   function proposal(
@@ -245,7 +300,7 @@ export function attachCalendarPointer<
     if (current === null || event.pointerId !== current.pointerId) return;
     current.point = { x: event.clientX, y: event.clientY };
     if (current.active) {
-      preview(current);
+      if (preview(current)) announce(current, { phase: "step" });
       return;
     }
 
@@ -271,7 +326,23 @@ export function attachCalendarPointer<
     const proposed = proposal(current);
     end();
     suppressNextClick();
-    if (proposed !== null) getOptions().onPropose(proposed);
+    if (proposed === null) {
+      announce(current, { phase: "cancel" });
+      return;
+    }
+    const outcome = getOptions().onPropose(proposed);
+    if (outcome === undefined) {
+      announce(current, { phase: "commit", proposed: current.placement! });
+      return;
+    }
+    void Promise.resolve(outcome).then((result) =>
+      announce(
+        current,
+        result.status === "committed"
+          ? { phase: "commit", proposed: result.change.proposed! }
+          : { phase: "reject", reason: result.reason },
+      ),
+    );
   }
 
   function onKeyDown(event: KeyboardEvent): void {
@@ -279,7 +350,7 @@ export function attachCalendarPointer<
     event.preventDefault();
     event.stopPropagation();
     const wasActive = session.active;
-    end();
+    cancel();
     if (wasActive) window.addEventListener("pointerup", suppressNextClick, { once: true });
   }
 
@@ -318,6 +389,7 @@ export function attachCalendarPointer<
 
     const current: Session<TEvent, TEventId, TResourceId> = {
       active: false,
+      announcer: options.announcer,
       gesture,
       ghost: new GhostLayer(region, options.ghostClassName),
       options: { snap: options.snap ?? DEFAULT_SNAP, timeZone: options.timeZone },
@@ -333,7 +405,7 @@ export function attachCalendarPointer<
 
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", end);
+    window.addEventListener("pointercancel", cancel);
     window.addEventListener("keydown", onKeyDown, true);
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.addEventListener(type, preventDefault);

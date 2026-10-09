@@ -237,7 +237,7 @@ export function ghostLayout(
  * Fixed-position preview segments, moved with transforms so a drag never re-renders the view, and
  * clipped to their cells' scroll viewports. Segments are translucent clones of the dragged event,
  * or range boxes for creates and day cells; style them through `[data-calendar-ghost]` or the
- * `--calendar-ghost-*` custom properties.
+ * `--calendar-ghost-*` custom properties. A clone's `[data-event-time]` shows `label`.
  */
 export class GhostLayer {
   readonly #className: string | undefined;
@@ -251,7 +251,7 @@ export class GhostLayer {
     this.#region = region;
   }
 
-  render(rects: readonly GhostRect[], template: HTMLElement | null): void {
+  render(rects: readonly GhostRect[], template: HTMLElement | null, label: string | null): void {
     if (template !== this.#template) {
       this.clear();
       this.#template = template;
@@ -277,6 +277,10 @@ export class GhostLayer {
       style.clipPath = insets.some((inset) => inset > 0)
         ? `inset(${insets.map((inset) => `${inset}px`).join(" ")})`
         : "";
+      if (label === null) return;
+      for (const time of this.#segments[index]!.querySelectorAll("[data-event-time]")) {
+        time.textContent = label;
+      }
     });
   }
 

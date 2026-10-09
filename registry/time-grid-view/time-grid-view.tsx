@@ -2,6 +2,7 @@ import {
   defineCalendarView,
   timeGridStrategy,
   timeGridTitle,
+  useCalendarAnnouncer,
   useCalendarPointer,
   type CalendarViewRendererProps,
   type TimeGridProjection,
@@ -47,6 +48,8 @@ export function TimeGridView<TEvent>({
   const scrollRef = useRef<HTMLDivElement>(null);
   const columns = useMemo(() => days.map(({ column }) => column), [days]);
   const pointerRef = useCalendarPointer({
+    // Labels the drag preview with the proposed range in the calendar's locale.
+    announcer: useCalendarAnnouncer(),
     columns,
     events,
     onPropose: actions.proposeEventChange,

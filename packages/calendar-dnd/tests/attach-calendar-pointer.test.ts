@@ -43,7 +43,9 @@ function setup(
   const proposals: Proposal[] = [];
   detach = attachCalendarPointer(mount.region, () => ({
     events: mount.snapshot,
-    onPropose: (proposal) => proposals.push(proposal),
+    onPropose: (proposal) => {
+      proposals.push(proposal);
+    },
     timeZone,
     ...extra,
   }));

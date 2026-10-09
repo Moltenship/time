@@ -116,13 +116,13 @@ export function TimeGridEvent({ color, formats, label, layout, timeZone }: TimeG
         <span className="truncate">
           {event.title}
           <span className="font-normal opacity-80">
-            , {formats.time.format(start.toPlainTime())}
+            , <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
           </span>
         </span>
       ) : (
         <>
           <span className="line-clamp-2">{event.title}</span>
-          <span className="truncate font-normal tabular-nums opacity-80">
+          <span data-event-time className="truncate font-normal tabular-nums opacity-80">
             {eventTimeRange(start, end, formats)}
           </span>
         </>
