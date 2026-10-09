@@ -1,12 +1,12 @@
-import {
-  eventIdAttributes,
-  type EventDayFragment,
-  type EventId,
-  type ResourceId,
-  type TimeGridEventLayout,
+import type {
+  EventDayFragment,
+  EventId,
+  ResourceId,
+  TimeGridEventLayout,
 } from "@moltenship/calendar";
 
-import { EventChip } from "@registry/calendar/event-chip";
+import { EventChip, useEventChip } from "@registry/calendar/event-chip";
+import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
@@ -19,12 +19,11 @@ export interface TimeGridEventFormats {
   readonly time: Intl.DateTimeFormat;
 }
 
-export interface TimeGridEventProps {
+export interface TimeGridEventProps<TEvent> {
   readonly color?: CalendarEventColor;
   readonly formats: TimeGridEventFormats;
-  /** Accessible name: title, when, and other details the visible text leaves out. */
-  readonly label: string;
-  readonly layout: TimeGridEventLayout<DayFragment>;
+  readonly labelEvent: EventLabeler<TEvent>;
+  readonly layout: TimeGridEventLayout<EventDayFragment<TEvent, EventId, ResourceId>>;
   readonly timeZone: string;
 }
 
@@ -86,19 +85,24 @@ export function eventTimeRange(
  * the edges that belong to this day; continued edges are squared off instead. A short block keeps
  * one handle, and handles take at most a third of the height, so the rest still grabs to move.
  */
-export function TimeGridEvent({ color, formats, label, layout, timeZone }: TimeGridEventProps) {
+export function TimeGridEvent<TEvent>({
+  color,
+  formats,
+  labelEvent,
+  layout,
+  timeZone,
+}: TimeGridEventProps<TEvent>) {
   const { fragment, height, left, top, width } = layout;
   const { event, endsAfterDay, startsBeforeDay } = fragment;
   const [start, end] = wallTimes(fragment, timeZone);
   const compact = height * 24 * 60 < COMPACT_MINUTES;
   const resizable = !event.isReadOnly;
+  const chip = useEventChip(event, { date: fragment.date, labelEvent });
 
   return (
     <EventChip
-      aria-label={label}
       color={color}
-      {...eventIdAttributes(event.id)}
-      pending={event.isPending === true}
+      {...chip}
       className={cn(
         "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)]",
         compact ? "flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" : "py-1",

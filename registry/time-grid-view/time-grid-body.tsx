@@ -16,8 +16,12 @@ export interface TimeGridBodyProps<TEvent> {
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly labelEvent: EventLabeler<TEvent>;
+  /** Opens a date in the day view; Shift+Enter on a slot does so. */
+  readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   /** The scrolling element, which dragging also scrolls near its edges. */
   readonly scrollRef: RefObject<HTMLDivElement | null>;
+  /** Length of a keyboard slot, as the keyboard's snap sets it. */
+  readonly slotMinutes: number;
 }
 
 /** Hour labels from 1:00 to 23:00; midnight sits under the header. */
@@ -40,7 +44,9 @@ export function TimeGridBody<TEvent>({
   environment,
   getEventColor,
   labelEvent,
+  onOpenDay,
   scrollRef,
+  slotMinutes,
 }: TimeGridBodyProps<TEvent>) {
   const { locale, timeZone } = environment;
   const now = useNow();
@@ -62,6 +68,13 @@ export function TimeGridBody<TEvent>({
         weekday: "short",
       }),
       hour: hourFormat(locale),
+      slot: new Intl.DateTimeFormat(locale, {
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        month: "long",
+        weekday: "long",
+      }),
       time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }),
     }),
     [locale],
@@ -112,6 +125,8 @@ export function TimeGridBody<TEvent>({
               day={day}
               getEventColor={getEventColor}
               labelEvent={labelEvent}
+              onOpenDay={onOpenDay}
+              slotMinutes={slotMinutes}
               nowTop={nowPosition?.column === index ? nowPosition.top : null}
               formats={formats}
               timeZone={timeZone}

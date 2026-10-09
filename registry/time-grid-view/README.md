@@ -22,6 +22,10 @@ const views = [
   `data-pending`.
 - The now-line follows `useNow()` in today's column. The body opens on the current time, or on
   08:00 when today is not visible.
+- The grid is one tab stop, entered on today's all-day cell. Arrow keys move between all-day
+  cells, 15-minute slots (one focused slot renders at a time), and events; Space picks up an
+  event to move it (Shift+Space to resize) or drafts an hour-long event on a slot. Pointer and
+  keyboard share the `snap` in `time-grid-view.tsx`.
 
 Pointer hooks for `@moltenship/calendar-dnd`: each day column carries `data-date` over its full
 height, all-day cells carry `data-date` and `data-all-day`, events are buttons with

@@ -88,6 +88,8 @@ export function TimeGridHeader({ actions, days, dayView, environment }: TimeGrid
               {opensDay ? (
                 <button
                   aria-label={`Open ${label}`}
+                  // The grid keeps one tab stop; Shift+Enter on a day's cells opens it.
+                  tabIndex={-1}
                   className="group rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                   onClick={() => {
                     actions.setAnchorDate(date);
