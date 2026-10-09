@@ -137,6 +137,8 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
     register(element: HTMLElement, target: CalendarFocus, days: number) {
       items.set(element, { days, target });
       changed();
+      // The focused target can come back without a calendar update, as when a view re-renders it.
+      if (owed === "focus" && focus !== null && focusLandsOn(focus, target, days)) focusNow();
       return () => {
         if (items.get(element)?.target !== target) return;
         // The focused element is leaving, as when a grabbed event moves between the all-day row

@@ -8,6 +8,9 @@ import type { CalendarCellFocus } from "./focus";
 import type { CalendarSpatialNavigation, CalendarSpatialNavigationInput } from "./types";
 
 type Input = CalendarSpatialNavigationInput<TimeGridProjection<unknown>, unknown>;
+
+/** A time-grid column's nominal height, which layout fractions measure. */
+const DAY_SECONDS = 24 * 60 * 60;
 type Layout = TimeGridProjection<unknown>["days"][number]["events"][number];
 
 /** Whether a wall time exists in the time zone; spring-forward gaps skip some. */
@@ -32,13 +35,15 @@ function slotOn(
   date: Temporal.PlainDate,
   time: Temporal.PlainTime,
   { environment, snap }: Input,
-): CalendarSpatialNavigation {
+): CalendarCellFocus {
   const step = slotDuration(snap);
   for (let wall = floorToSlot(date.toPlainDateTime(time), snap); wall.toPlainDate().equals(date);) {
-    if (exists(wall, environment.timeZone)) return slotFocus(wall);
+    if (exists(wall, environment.timeZone)) {
+      return { date, kind: "slot", time: wall.toPlainTime() };
+    }
     wall = wall.add(step);
   }
-  return dayFocus(date);
+  return { date, kind: "day" };
 }
 
 /** The next slot up or down that exists on the same date; `null` past the day's ends. */
@@ -79,7 +84,7 @@ function fromCell(cell: CalendarCellFocus, input: Input): CalendarSpatialNavigat
   const forward = environment.direction === "rtl" ? -1 : 1;
   const days = range.start.until(range.end).days;
   const across = (next: Temporal.PlainDate) =>
-    cell.kind === "slot" ? slotOn(next, cell.time, input) : dayFocus(next);
+    cell.kind === "slot" ? { focus: slotOn(next, cell.time, input) } : dayFocus(next);
 
   switch (command) {
     case "up":
@@ -87,7 +92,7 @@ function fromCell(cell: CalendarCellFocus, input: Input): CalendarSpatialNavigat
     case "down":
       return cell.kind === "slot"
         ? stepSlot(date, cell.time, 1, input)
-        : slotOn(date, Temporal.PlainTime.from("00:00"), input);
+        : { focus: slotOn(date, Temporal.PlainTime.from("00:00"), input) };
     case "left":
       return across(date.subtract({ days: forward }));
     case "right":
@@ -102,11 +107,11 @@ function fromCell(cell: CalendarCellFocus, input: Input): CalendarSpatialNavigat
       return across(date.add({ days }));
     case "enter": {
       if (cell.kind === "day") return null;
-      const wall = date.toPlainDateTime(cell.time);
+      // The rendered boxes, not the wall-clock endpoints, which a repeated hour can reverse.
+      const at = cell.time.since(Temporal.PlainTime.from("00:00")).total({ unit: "seconds" });
       const covering = columnEvents(projection, date).find(
-        ({ fragment }) =>
-          Temporal.PlainDateTime.compare(fragment.start, wall) <= 0 &&
-          Temporal.PlainDateTime.compare(wall, fragment.end) < 0,
+        ({ height, top }) =>
+          Math.round(top * DAY_SECONDS) <= at && at < Math.round((top + height) * DAY_SECONDS),
       );
       return covering === undefined ? null : eventFocus(date, covering.fragment.event.id);
     }
@@ -145,11 +150,11 @@ function fromColumnEvent(
   index: number,
   input: Input,
 ): CalendarSpatialNavigation | null {
-  const { command, environment, snap } = input;
+  const { command, environment } = input;
   const current = events[index]!;
   const { date, start } = current.fragment;
-  const first = floorToSlot(start, snap);
-  const cell: CalendarCellFocus = { date, kind: "slot", time: first.toPlainTime() };
+  // The event's first slot, or the next real one when its floor falls in a spring-forward gap.
+  const cell = slotOn(date, start.toPlainTime(), input);
   const next = (layout: Layout | undefined) =>
     layout === undefined ? null : eventFocus(date, layout.fragment.event.id);
   const forward = environment.direction === "rtl" ? -1 : 1;
@@ -197,7 +202,7 @@ export function timeGridSpatialNavigation(input: Input): CalendarSpatialNavigati
   const { date } = focus;
   const allDay = eventsOnDate([projection.allDay], date);
   if (focus.kind === "day" || allDay.includes(focus.eventId)) {
-    const below = slotOn(date, Temporal.PlainTime.from("00:00"), input);
+    const below = { focus: slotOn(date, Temporal.PlainTime.from("00:00"), input) };
     const handled = dayEventNavigation(allDay, focus, command, below);
     return handled !== undefined ? handled : fromCell({ date, kind: "day" }, input);
   }

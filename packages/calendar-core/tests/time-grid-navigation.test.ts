@@ -169,3 +169,61 @@ describe("time-grid events", () => {
     expect(navigate("right", event("gone", "2026-03-10"))).toBe("2026-03-11");
   });
 });
+
+describe("time-grid events across DST changes", () => {
+  function navigateIn(
+    zone: string,
+    anchor: string,
+    events: readonly FixtureEvent[],
+    snapTo: { readonly increment: number; readonly smallestUnit: "hour" | "minute" },
+  ) {
+    const env = environment(zone, { firstDay: 7 });
+    const range = timeGridRange(
+      Temporal.PlainDate.from(anchor),
+      { count: 1, kind: "days" },
+      env.weekRules,
+    );
+    const projection = projectTimeGrid(viewInput(snapshotOf(events), range, env));
+    return (command: CalendarNavigationCommand, focus: CalendarFocus) => {
+      const result = timeGridSpatialNavigation({
+        command,
+        environment: env,
+        focus,
+        options: undefined,
+        projection,
+        range,
+        snap: snapTo,
+      });
+      if (result === null || !("focus" in result)) return result;
+      const next = result.focus;
+      if (next.kind === "slot")
+        return `${next.date.toString()}T${next.time.toString({ smallestUnit: "minute" })}`;
+      return next.kind === "event"
+        ? `${next.eventId}@${next.date.toString()}`
+        : next.date.toString();
+    };
+  }
+
+  test("Enter reaches an event whose wall-clock end precedes its start in a repeated hour", () => {
+    // 01:45 daylight time to 01:15 standard time, half an hour across the fall-back change.
+    const navigate = navigateIn(
+      timeZone,
+      "2026-11-01",
+      [timed("late", "2026-11-01T05:45:00Z", "2026-11-01T06:15:00Z")],
+      snap,
+    );
+    expect(navigate("enter", slot("2026-11-01T01:45"))).toBe("late@2026-11-01");
+    expect(navigate("enter", slot("2026-11-01T02:00"))).toBeNull();
+  });
+
+  test("Escape lands on a slot that exists when the event's slot starts in a gap", () => {
+    // Lord Howe moves from 02:00 to 02:30 on October 4 2026; the event starts at 02:45.
+    const navigate = navigateIn(
+      "Australia/Lord_Howe",
+      "2026-10-04",
+      [timed("call", "2026-10-03T15:45:00Z", "2026-10-03T16:15:00Z")],
+      { increment: 1, smallestUnit: "hour" },
+    );
+    expect(navigate("exit", event("call", "2026-10-04"))).toBe("2026-10-04T03:00");
+  });
+});
