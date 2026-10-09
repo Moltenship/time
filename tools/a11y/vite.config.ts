@@ -16,7 +16,15 @@ export default defineConfig({
     browser: {
       enabled: true,
       headless: true,
-      instances: [{ browser: "chromium" }],
+      instances: [
+        { browser: "chromium", exclude: ["tests/reduced-motion.a11y.tsx"] },
+        {
+          browser: "chromium",
+          include: ["tests/reduced-motion.a11y.tsx"],
+          name: "reduced-motion",
+          provider: playwright({ contextOptions: { reducedMotion: "reduce" } }),
+        },
+      ],
       provider: playwright(),
       viewport: { height: 800, width: 1280 },
     },
