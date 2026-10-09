@@ -14,6 +14,7 @@ import { afterEach, expect, test } from "vite-plus/test";
 import type { CalendarEventColor } from "../calendar-theme/event-colors";
 import { createDayView, createWeekView } from "../time-grid-view/time-grid-view";
 import { click, render } from "./render";
+import { ariaLabel, text } from "./view-fixtures";
 
 interface Meeting {
   readonly color?: CalendarEventColor;
@@ -129,6 +130,54 @@ test("renders a week of day columns with headers, hour labels, and today highlig
   expect(labels.map((label) => label.textContent)).toHaveLength(23);
   expect(labels[0]?.textContent).toBe("1 AM");
   expect(labels.at(-1)?.textContent).toBe("11 PM");
+});
+
+test("is a grid of a header row naming each day, an all-day row, and a timed row", async () => {
+  const container = await renderCalendar("week", "2026-10-08");
+  const grid = container.querySelector('[role="grid"]');
+  const [header, allDayRow, timedRow] = [...(grid?.querySelectorAll('[role="row"]') ?? [])];
+  const cells = (row: Element | undefined, role: string) => [
+    ...(row?.querySelectorAll(`[role="${role}"]`) ?? []),
+  ];
+  const holiday = event(container, "holiday")[0];
+  // Text a screen reader reaches: hidden hour labels and icons left out.
+  const spoken = (element: Element) => {
+    const copy = element.cloneNode(true) as Element;
+    for (const hidden of copy.querySelectorAll("[aria-hidden]")) hidden.remove();
+    return text(copy);
+  };
+
+  expect(ariaLabel(grid)).toBe("Oct 5 – 11, 2026");
+  expect(cells(header, "columnheader").map((cell) => ariaLabel(cell) ?? text(cell))).toEqual([
+    "GMT-4",
+    "Monday, October 5, 2026",
+    "Tuesday, October 6, 2026",
+    "Wednesday, October 7, 2026",
+    "Thursday, October 8, 2026",
+    "Friday, October 9, 2026",
+    "Saturday, October 10, 2026",
+    "Sunday, October 11, 2026",
+  ]);
+  expect(cells(allDayRow, "rowheader").map(spoken)).toEqual(["All day"]);
+  expect(cells(allDayRow, "gridcell")).toHaveLength(7);
+  expect(cells(timedRow, "rowheader").map(spoken)).toEqual(["Timed events"]);
+  expect(cells(timedRow, "gridcell").map((cell) => cell.getAttribute("data-date"))).toEqual(
+    columnDates(container),
+  );
+  expect(event(container, "a")[0]?.closest('[role="gridcell"]')?.getAttribute("data-date")).toBe(
+    "2026-10-08",
+  );
+  expect(ariaLabel(event(container, "a")[0])).toBe(
+    "Meeting a, Thursday, October 8, 9:00 – 10:00 AM",
+  );
+  expect(
+    holiday
+      ?.closest('[role="gridcell"]')
+      ?.querySelector("[data-all-day]")
+      ?.getAttribute("data-date"),
+  ).toBe("2026-10-06");
+  expect(holiday?.closest("[data-date]")).toBeNull();
+  expect(ariaLabel(holiday)).toBe("Meeting holiday, all day, Tuesday, October 6");
 });
 
 test("places overlapping events side by side and back-to-back events in a shared lane", async () => {
@@ -340,6 +389,7 @@ test("dims an event while its change is being saved", async () => {
   const [moved] = event(container, "c");
 
   expect(moved!.hasAttribute("data-pending")).toBe(true);
+  expect(ariaLabel(moved)).toBe("Meeting c, Thursday, October 8, 2:00 – 3:00 PM, saving");
   expect(moved!.style.top).toBe(`${(14 / 24) * 100}%`);
   expect(event(container, "a")[0]!.hasAttribute("data-pending")).toBe(false);
 });

@@ -7,6 +7,7 @@ import { click, render } from "./render";
 import {
   allDay,
   anchorDate,
+  ariaLabel,
   clock,
   createTestCalendar,
   text,
@@ -15,7 +16,10 @@ import {
 } from "./view-fixtures";
 
 const Calendar = createTestCalendar(
-  createAgendaView<ColoredEvent>({ getEventColor: (event) => event.data.color }),
+  createAgendaView<ColoredEvent>({
+    describeEvent: (event) => `${event.data.color} calendar`,
+    getEventColor: (event) => event.data.color,
+  }),
 );
 
 let cleanup: (() => Promise<void>) | undefined;
@@ -72,6 +76,24 @@ test("groups events by day with time ranges, all-day badges, and day k of n", as
   expect(container.querySelector('[aria-current="date"]')?.getAttribute("aria-label")).toBe(
     "Thursday, October 8, 2026",
   );
+});
+
+test("is a list of days, each listing its events by their full names", async () => {
+  const { container } = await renderAgenda([
+    timed("standup", "2026-10-08T09:00Z", "2026-10-08T09:30Z"),
+    allDay("conference", "2026-10-07", "2026-10-09"),
+  ]);
+  const list = container.querySelector('[data-slot="agenda-view"]');
+
+  expect(list?.tagName).toBe("OL");
+  expect(ariaLabel(list)).toBe("Oct 4 – 31, 2026");
+  expect(
+    [...(list?.querySelectorAll(":scope > li > ul > li > [data-event-id]") ?? [])].map(ariaLabel),
+  ).toEqual([
+    "conference, all day, Wednesday, October 7 – Thursday, October 8, teal calendar",
+    "conference, all day, Wednesday, October 7 – Thursday, October 8, teal calendar",
+    "standup, Thursday, October 8, 9:00 – 9:30 AM, blue calendar",
+  ]);
 });
 
 test("keeps numeric and string IDs with the same text apart", async () => {

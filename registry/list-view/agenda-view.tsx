@@ -14,12 +14,15 @@ import {
 import { CalendarX2Icon } from "lucide-react";
 import { useMemo } from "react";
 
+import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
 import { AgendaItem } from "./agenda-item";
 
 export interface AgendaViewOptions<TEvent> extends ListViewOptions {
+  /** Extra words for each event's accessible name, such as its calendar. */
+  readonly describeEvent?: EventDescriber<TEvent>;
   /** Picks each event's `data-color`; events without one use the theme's default colour. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
 }
@@ -49,6 +52,7 @@ function AgendaView<TEvent>({
   range,
 }: AgendaViewProps<TEvent>) {
   const formats = useAgendaFormats(environment.locale);
+  const labelEvent = useEventLabel(environment, options.describeEvent);
 
   if (projection.days.length === 0) {
     return (
@@ -64,7 +68,11 @@ function AgendaView<TEvent>({
   }
 
   return (
-    <ol data-slot="agenda-view" className="h-full divide-y divide-calendar-grid overflow-y-auto">
+    <ol
+      aria-label={getListTitle(range, environment)}
+      data-slot="agenda-view"
+      className="h-full divide-y divide-calendar-grid overflow-y-auto"
+    >
       {projection.days.map((day) => (
         <li
           key={day.date.toString()}
@@ -90,7 +98,7 @@ function AgendaView<TEvent>({
                 actions.setView("day");
               }}
               className={cn(
-                "flex size-9 items-center justify-center rounded-full text-lg tabular-nums outline-none hover:bg-accent focus-visible:ring-[3px] focus-visible:ring-ring/50",
+                "flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
                 day.isToday &&
                   "bg-calendar-today text-calendar-today-foreground hover:bg-calendar-today/90",
               )}
@@ -105,6 +113,7 @@ function AgendaView<TEvent>({
                 <AgendaItem
                   color={options.getEventColor?.(item.event.event)}
                   item={item}
+                  label={labelEvent(item.event)}
                   timeFormat={formats.time}
                 />
               </li>

@@ -22,6 +22,8 @@ export interface TimeGridEventFormats {
 export interface TimeGridEventProps {
   readonly color?: CalendarEventColor;
   readonly formats: TimeGridEventFormats;
+  /** Accessible name: title, when, and other details the visible text leaves out. */
+  readonly label: string;
   readonly layout: TimeGridEventLayout<DayFragment>;
   readonly timeZone: string;
 }
@@ -84,7 +86,7 @@ export function eventTimeRange(
  * the edges that belong to this day; continued edges are squared off instead. A short block keeps
  * one handle, and handles take at most a third of the height, so the rest still grabs to move.
  */
-export function TimeGridEvent({ color, formats, layout, timeZone }: TimeGridEventProps) {
+export function TimeGridEvent({ color, formats, label, layout, timeZone }: TimeGridEventProps) {
   const { fragment, height, left, top, width } = layout;
   const { event, endsAfterDay, startsBeforeDay } = fragment;
   const [start, end] = wallTimes(fragment, timeZone);
@@ -93,11 +95,12 @@ export function TimeGridEvent({ color, formats, layout, timeZone }: TimeGridEven
 
   return (
     <EventChip
+      aria-label={label}
       color={color}
       {...eventIdAttributes(event.id)}
-      data-pending={event.isPending === true ? "" : undefined}
+      pending={event.isPending === true}
       className={cn(
-        "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)] data-pending:opacity-60",
+        "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)]",
         compact ? "flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" : "py-1",
         startsBeforeDay && "rounded-t-none",
         endsAfterDay && "rounded-b-none",

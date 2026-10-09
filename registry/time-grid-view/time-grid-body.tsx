@@ -6,6 +6,7 @@ import {
 } from "@moltenship/calendar";
 import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 
+import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import { TimeGridColumn } from "./time-grid-column";
@@ -14,6 +15,7 @@ export interface TimeGridBodyProps<TEvent> {
   readonly days: readonly TimeGridDay<TEvent>[];
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  readonly labelEvent: EventLabeler<TEvent>;
   /** The scrolling element, which dragging also scrolls near its edges. */
   readonly scrollRef: RefObject<HTMLDivElement | null>;
 }
@@ -32,11 +34,12 @@ function hourFormat(locale: Intl.LocalesArgument): Intl.DateTimeFormat {
     : new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });
 }
 
-/** The scrolling 24-hour area: hour gutter, hour lines, and one column per day. */
+/** The grid's timed row, scrolling through 24 hours: hour gutter, hour lines, and a cell per day. */
 export function TimeGridBody<TEvent>({
   days,
   environment,
   getEventColor,
+  labelEvent,
   scrollRef,
 }: TimeGridBodyProps<TEvent>) {
   const { locale, timeZone } = environment;
@@ -84,17 +87,20 @@ export function TimeGridBody<TEvent>({
       data-slot="time-grid-body"
       className="relative min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
     >
-      <div className="flex h-[calc(var(--calendar-hour-height)*24)]">
-        <div aria-hidden className="relative w-(--calendar-gutter-width) shrink-0">
-          {labelledHours.map((hour) => (
-            <span
-              key={hour}
-              className="absolute right-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums"
-              style={{ top: `${(hour / 24) * 100}%` }}
-            >
-              {formats.hour.format(new Temporal.PlainTime(hour))}
-            </span>
-          ))}
+      <div role="row" className="flex h-[calc(var(--calendar-hour-height)*24)]">
+        <div role="rowheader" className="w-(--calendar-gutter-width) shrink-0">
+          <span className="sr-only">Timed events</span>
+          <div aria-hidden className="relative h-full">
+            {labelledHours.map((hour) => (
+              <span
+                key={hour}
+                className="absolute right-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums"
+                style={{ top: `${(hour / 24) * 100}%` }}
+              >
+                {formats.hour.format(new Temporal.PlainTime(hour))}
+              </span>
+            ))}
+          </div>
         </div>
         <div
           className="grid flex-1 bg-[linear-gradient(to_bottom,var(--calendar-grid)_1px,transparent_1px)] bg-size-[100%_var(--calendar-hour-height)]"
@@ -105,6 +111,7 @@ export function TimeGridBody<TEvent>({
               key={day.column.key}
               day={day}
               getEventColor={getEventColor}
+              labelEvent={labelEvent}
               nowTop={nowPosition?.column === index ? nowPosition.top : null}
               formats={formats}
               timeZone={timeZone}

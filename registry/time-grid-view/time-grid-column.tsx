@@ -1,5 +1,6 @@
 import type { TimeGridBand, TimeGridDay } from "@moltenship/calendar";
 
+import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
@@ -8,6 +9,7 @@ import { percent, TimeGridEvent, type TimeGridEventFormats } from "./time-grid-e
 export interface TimeGridColumnProps<TEvent> {
   readonly day: TimeGridDay<TEvent>;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  readonly labelEvent: EventLabeler<TEvent>;
   /** Position of the now-line when the current time falls in this column. */
   readonly nowTop: number | null;
   readonly formats: TimeGridEventFormats;
@@ -19,18 +21,20 @@ function bandStyle({ height, top }: TimeGridBand) {
 }
 
 /**
- * One day's 24 hours. `data-date` marks the full-height column for pointer hit-testing; spring
+ * One day's 24 hours, a cell of the grid's timed row. `data-date` marks the full-height column for pointer hit-testing; spring
  * forward hours are hatched and repeated fall-back hours tinted.
  */
 export function TimeGridColumn<TEvent>({
   day: { column, events, isToday },
   getEventColor,
+  labelEvent,
   nowTop,
   formats,
   timeZone,
 }: TimeGridColumnProps<TEvent>) {
   return (
     <div
+      role="gridcell"
       data-date={column.date.toString()}
       data-today={isToday ? "" : undefined}
       className="relative min-w-0 border-l border-calendar-grid"
@@ -57,6 +61,7 @@ export function TimeGridColumn<TEvent>({
           <TimeGridEvent
             key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
             color={getEventColor?.(layout.fragment.event.event)}
+            label={labelEvent(layout.fragment.event)}
             layout={layout}
             formats={formats}
             timeZone={timeZone}

@@ -22,7 +22,10 @@ function offsetLabel(locale: Intl.LocalesArgument, timeZone: string, day: TimeGr
     .find((part) => part.type === "timeZoneName")?.value;
 }
 
-/** Weekday and date for each column; in a multi-day grid the date can open that day. */
+/**
+ * The grid's header row: the display zone's offset over the hour gutter, then the weekday and date
+ * naming each column. In a multi-day grid the date can open that day.
+ */
 export function TimeGridHeader({ actions, days, dayView, environment }: TimeGridHeaderProps) {
   const { locale, timeZone } = environment;
   const formats = useMemo(
@@ -36,8 +39,11 @@ export function TimeGridHeader({ actions, days, dayView, environment }: TimeGrid
   const opensDay = !single && dayView !== undefined;
 
   return (
-    <div className="flex">
-      <div className="flex w-(--calendar-gutter-width) shrink-0 items-end justify-end pr-2 pb-1 text-[0.625rem] text-calendar-axis">
+    <div role="row" className="flex">
+      <div
+        role="columnheader"
+        className="flex w-(--calendar-gutter-width) shrink-0 items-end justify-end pr-2 pb-1 text-[0.625rem] text-calendar-axis"
+      >
         {days[0] === undefined ? null : offsetLabel(locale, timeZone, days[0])}
       </div>
       <div
@@ -82,7 +88,7 @@ export function TimeGridHeader({ actions, days, dayView, environment }: TimeGrid
               {opensDay ? (
                 <button
                   aria-label={`Open ${label}`}
-                  className="group rounded-full outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50"
+                  className="group rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                   onClick={() => {
                     actions.setAnchorDate(date);
                     actions.setView(dayView);
