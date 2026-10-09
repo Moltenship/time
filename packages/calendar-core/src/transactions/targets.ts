@@ -30,7 +30,7 @@ export interface CalendarInteractionOptions {
 const DROPPED_ALL_DAY_DURATION: Temporal.DurationLike = { hours: 1 };
 
 /** One snap increment. */
-function slotDuration({ increment, smallestUnit }: WallTimeSnapOptions): Temporal.Duration {
+export function slotDuration({ increment, smallestUnit }: WallTimeSnapOptions): Temporal.Duration {
   const unit = smallestUnit.endsWith("s") ? smallestUnit : `${smallestUnit}s`;
   return Temporal.Duration.from({ [unit]: increment } as Temporal.DurationLike);
 }

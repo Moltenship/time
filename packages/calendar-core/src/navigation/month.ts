@@ -1,8 +1,9 @@
-import { plainDateIntervalContains, weekRange } from "@moltenship/calendar-temporal";
+import { weekRange } from "@moltenship/calendar-temporal";
 
 import type { CalendarDirection, IsoDayOfWeek } from "../environment";
 import type { EventId, ResourceId } from "../ids";
 import type { MonthProjection } from "../views/month/month";
+import { dayEventNavigation, dayFocus, eventsOnDate } from "./day-events";
 import type {
   CalendarNavigationCommand,
   CalendarSpatialNavigation,
@@ -10,17 +11,6 @@ import type {
 } from "./types";
 
 type Projection = MonthProjection<unknown, EventId, ResourceId>;
-
-/** The events shown on a date, top to bottom. */
-function eventsOn(projection: Projection, date: Temporal.PlainDate): readonly EventId[] {
-  const week = projection.weeks.find(({ range }) => plainDateIntervalContains(range, date));
-  if (week === undefined) return [];
-  const column = week.range.start.until(date).days;
-  return week.segments
-    .filter((segment) => segment.column <= column && column < segment.column + segment.span)
-    .toSorted((left, right) => left.lane - right.lane)
-    .map((segment) => segment.event.id);
-}
 
 function entry(projection: Projection, command: CalendarNavigationCommand): Temporal.PlainDate {
   const days = projection.weeks.flatMap((week) => week.days);
@@ -59,14 +49,6 @@ function moveDate(
   }
 }
 
-function day(date: Temporal.PlainDate): CalendarSpatialNavigation {
-  return { focus: { date, kind: "day" } };
-}
-
-function event(date: Temporal.PlainDate, eventId: EventId): CalendarSpatialNavigation {
-  return { focus: { date, eventId, kind: "event" } };
-}
-
 /**
  * Spatial navigation for a month grid from `projectMonth`. Day cells move by a day or a week,
  * Home and End go to the week's ends, and Page Up and Page Down by a month, keeping the day where
@@ -80,25 +62,16 @@ export function monthSpatialNavigation({
   focus,
   projection,
 }: CalendarSpatialNavigationInput<Projection, unknown>): CalendarSpatialNavigation | null {
-  if (focus === null) return day(entry(projection, command));
+  if (focus === null) return dayFocus(entry(projection, command));
 
   const { date } = focus;
-  const events = eventsOn(projection, date);
-  if (focus.kind === "event") {
-    const index = events.indexOf(focus.eventId);
-    if (command === "exit") return day(date);
-    if (command === "up" && index !== -1) {
-      return index > 0 ? event(date, events[index - 1]!) : day(date);
-    }
-    if (command === "down" && index !== -1) {
-      return index < events.length - 1
-        ? event(date, events[index + 1]!)
-        : day(date.add({ weeks: 1 }));
-    }
-  } else if (command === "enter") {
-    return events.length === 0 ? null : event(date, events[0]!);
+  if (focus.kind !== "slot") {
+    const events = eventsOnDate(projection.weeks, date);
+    const below = dayFocus(date.add({ weeks: 1 }));
+    const handled = dayEventNavigation(events, focus, command, below);
+    if (handled !== undefined) return handled;
   }
 
   const next = moveDate(date, command, environment.weekRules.firstDay, environment.direction);
-  return next === null ? null : day(next);
+  return next === null ? null : dayFocus(next);
 }

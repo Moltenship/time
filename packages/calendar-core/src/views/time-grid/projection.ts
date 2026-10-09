@@ -3,6 +3,7 @@ import type { EventId, ResourceId } from "../../ids";
 import { layoutDayGridRow, type DayGridRow } from "../../layout/day-grid";
 import { splitEventsByDay, type EventDayFragment } from "../../projection/day-fragments";
 import { queryVisibleEvents } from "../../projection/visible-events";
+import { timeGridSpatialNavigation } from "../../navigation/time-grid";
 import type { CalendarViewProjectionInput, CalendarViewStrategy } from "../../views";
 import { timeGridColumns, type TimeGridColumn } from "./columns";
 import { layoutTimeGrid, type TimeGridEventLayout } from "./layout";
@@ -77,12 +78,13 @@ export function projectTimeGrid<TEvent>({
   });
 }
 
-/** Range, navigation, title, and projection for a day, week, or N-day time grid. */
+/** Range, navigation, keyboard navigation, title, and projection for a day, week, or N-day grid. */
 export function timeGridStrategy<TOptions = undefined, TEvent = unknown>(
   span: TimeGridSpan,
 ): CalendarViewStrategy<TimeGridProjection<TEvent>, TOptions, TEvent> {
   const strategy: CalendarViewStrategy<TimeGridProjection<TEvent>, TOptions, TEvent> = {
     getRange: (anchor, environment) => timeGridRange(anchor, span, environment.weekRules),
+    getSpatialNavigation: timeGridSpatialNavigation,
     getTitle: (range, environment) => timeGridTitle(range, environment.locale),
     navigate: (anchor, delta) => navigateTimeGrid(anchor, delta, span),
     project: projectTimeGrid,

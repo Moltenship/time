@@ -122,6 +122,7 @@ export {
   createPlacementBetween,
   movePlacementToTarget,
   resizePlacementToTarget,
+  slotDuration,
 } from "./transactions/targets";
 export type { CalendarInteractionOptions, CalendarInteractionTarget } from "./transactions/targets";
 
@@ -134,7 +135,9 @@ export type {
   CalendarSelection,
   CalendarSlotFocus,
 } from "./navigation/focus";
+export { listSpatialNavigation } from "./navigation/list";
 export { monthSpatialNavigation } from "./navigation/month";
+export { timeGridSpatialNavigation } from "./navigation/time-grid";
 export { anchorShowingDate } from "./navigation/reveal";
 export type {
   CalendarNavigationCommand,
