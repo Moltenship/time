@@ -1,18 +1,20 @@
 import type { EventId, ListItem, ResourceId } from "@moltenship/calendar";
 
-import { EventChip } from "@registry/calendar/event-chip";
+import { EventChip, useEventChip } from "@registry/calendar/event-chip";
+import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
-export interface AgendaItemProps {
+export interface AgendaItemProps<TEvent> {
   readonly color?: CalendarEventColor;
-  readonly item: ListItem<unknown, EventId, ResourceId>;
-  /** Accessible name: title, when, and other details the visible text leaves out. */
-  readonly label: string;
+  readonly item: ListItem<TEvent, EventId, ResourceId>;
+  readonly labelEvent: EventLabeler<TEvent>;
+  /** Opens the item's day; Shift+Enter on the item does so. */
+  readonly onOpenDay: (date: Temporal.PlainDate) => void;
   readonly timeFormat: Intl.DateTimeFormat;
 }
 
 function timeLabel(
-  { end, event, start, endsAfterDay, startsBeforeDay }: AgendaItemProps["item"],
+  { end, event, start, endsAfterDay, startsBeforeDay }: ListItem<unknown, EventId, ResourceId>,
   format: Intl.DateTimeFormat,
 ) {
   if (event.kind === "all-day" || (startsBeforeDay && endsAfterDay)) return undefined;
@@ -22,15 +24,27 @@ function timeLabel(
 }
 
 /** One agenda row: time range or an "All day" badge, the title, and "Day k of n" for long events. */
-export function AgendaItem({ color, item, label, timeFormat }: AgendaItemProps) {
+export function AgendaItem<TEvent>({
+  color,
+  item,
+  labelEvent,
+  onOpenDay,
+  timeFormat,
+}: AgendaItemProps<TEvent>) {
   const time = timeLabel(item, timeFormat);
+  const chip = useEventChip(item.event, { date: item.date, labelEvent });
 
   return (
     <EventChip
-      aria-label={label}
       color={color}
-      data-event-id={String(item.event.id)}
-      pending={item.event.isPending === true}
+      {...chip}
+      onKeyDown={(event) => {
+        // Shift+Enter opens the item's day, as clicking its date does.
+        if (event.key === "Enter" && event.shiftKey) {
+          event.preventDefault();
+          onOpenDay(item.date);
+        }
+      }}
       className="w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start"
     >
       <span className="flex shrink-0 items-center gap-2 sm:w-44">

@@ -2,6 +2,7 @@ import {
   defineCalendarView,
   getListRange,
   getListTitle,
+  listSpatialNavigation,
   navigateList,
   projectList,
   type CalendarViewProjectionInput,
@@ -10,6 +11,7 @@ import {
   type ListProjection,
   type ListViewOptions,
   type ResourceId,
+  useCalendarKeyboard,
 } from "@moltenship/calendar";
 import { CalendarX2Icon } from "lucide-react";
 import { useMemo } from "react";
@@ -53,6 +55,11 @@ function AgendaView<TEvent>({
 }: AgendaViewProps<TEvent>) {
   const formats = useAgendaFormats(environment.locale);
   const labelEvent = useEventLabel(environment, options.describeEvent);
+  const keyboard = useCalendarKeyboard();
+  const openDay = (date: Temporal.PlainDate) => {
+    actions.setAnchorDate(date);
+    actions.setView("day");
+  };
 
   if (projection.days.length === 0) {
     return (
@@ -70,6 +77,7 @@ function AgendaView<TEvent>({
   return (
     <ol
       aria-label={getListTitle(range, environment)}
+      {...keyboard}
       data-slot="agenda-view"
       className="h-full divide-y divide-calendar-grid overflow-y-auto"
     >
@@ -93,10 +101,9 @@ function AgendaView<TEvent>({
               type="button"
               aria-current={day.isToday ? "date" : undefined}
               aria-label={formats.date.format(day.date)}
-              onClick={() => {
-                actions.setAnchorDate(day.date);
-                actions.setView("day");
-              }}
+              onClick={() => openDay(day.date)}
+              // The list keeps one tab stop; Shift+Enter on an event opens its day.
+              tabIndex={-1}
               className={cn(
                 "flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
                 day.isToday &&
@@ -113,7 +120,8 @@ function AgendaView<TEvent>({
                 <AgendaItem
                   color={options.getEventColor?.(item.event.event)}
                   item={item}
-                  label={labelEvent(item.event)}
+                  labelEvent={labelEvent}
+                  onOpenDay={openDay}
                   timeFormat={formats.time}
                 />
               </li>
@@ -127,7 +135,9 @@ function AgendaView<TEvent>({
 
 /**
  * A chronological agenda named `agenda`: the days that have events, four weeks from the anchor's
- * week unless `weeks` says otherwise. Clicking a date opens the `day` view on it.
+ * week unless `weeks` says otherwise. Clicking a date opens the `day` view on it. From the
+ * keyboard the list is one tab stop: Up and Down move between events, Page Up and Page Down
+ * between days, and Shift+Enter opens an event's day.
  */
 export function createAgendaView<TEvent>(defaultOptions: AgendaViewOptions<TEvent> = {}) {
   return defineCalendarView({
@@ -135,6 +145,7 @@ export function createAgendaView<TEvent>(defaultOptions: AgendaViewOptions<TEven
     defaultOptions,
     strategy: {
       getRange: getListRange,
+      getSpatialNavigation: listSpatialNavigation,
       getTitle: getListTitle,
       navigate: navigateList,
       project: (input: CalendarViewProjectionInput<AgendaViewOptions<TEvent>, TEvent>) =>

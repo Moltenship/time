@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 
+import { act } from "react";
 import { afterEach, expect, test } from "vite-plus/test";
 
 import { createAgendaView } from "../list-view/agenda-view";
@@ -124,4 +125,46 @@ test("explains an empty range", async () => {
   const { container } = await renderAgenda([]);
 
   expect(text(container.querySelector("p + p"))).toBe("Nothing is scheduled for October 4 – 31.");
+});
+
+async function press(key: string, init: KeyboardEventInit = {}) {
+  await act(async () => {
+    (document.activeElement ?? document.body).dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key, ...init }),
+    );
+    await Promise.resolve();
+  });
+}
+
+test("is one tab stop whose arrow and page keys move between events and days", async () => {
+  const { container } = await renderAgenda([
+    timed("standup", "2026-10-08T09:00Z", "2026-10-08T09:30Z"),
+    timed("lunch", "2026-10-08T12:00Z", "2026-10-08T13:00Z"),
+    timed("review", "2026-10-09T15:00Z", "2026-10-09T16:00Z"),
+  ]);
+  const focused = () => document.activeElement?.getAttribute("data-event-id");
+  const stops = [...container.querySelectorAll('[data-slot="agenda-view"] [tabindex="0"]')];
+  expect(stops.map((stop) => stop.getAttribute("data-event-id"))).toEqual(["standup"]);
+  expect(
+    container.querySelector('[aria-label="Thursday, October 8, 2026"]')?.getAttribute("tabindex"),
+  ).toBe("-1");
+
+  await act(async () => (stops[0] as HTMLElement).focus());
+  await press("ArrowDown");
+  expect(focused()).toBe("lunch");
+  await press("PageDown");
+  expect(focused()).toBe("review");
+  await press("Home");
+  expect(focused()).toBe("standup");
+});
+
+test("Shift+Enter on an event opens its day", async () => {
+  const { container } = await renderAgenda([
+    timed("review", "2026-10-09T15:00Z", "2026-10-09T16:00Z"),
+  ]);
+  await act(async () => container.querySelector<HTMLElement>('[data-event-id="review"]')!.focus());
+
+  await press("Enter", { shiftKey: true });
+
+  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Day 2026-10-09");
 });
