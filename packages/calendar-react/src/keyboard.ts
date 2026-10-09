@@ -5,6 +5,7 @@ import {
   sameFocus,
   startKeyboardSession,
   type CalendarCellFocus,
+  type CalendarEventPlacement,
   type CalendarFocus,
   type CalendarInteractionUpdate,
   type CalendarKeyboardSession,
@@ -69,11 +70,14 @@ function createKeyboardHandlers(
   { getView, roving }: CalendarViewRuntime,
   getSnap: () => WallTimeSnapOptions,
 ): CalendarKeyboardHandlers {
+  // Keys reach these handlers only while their view is rendered.
+  const view = () => getView()!;
+
   function navigate(
     command: CalendarNavigationCommand,
     focus: CalendarFocus | null,
   ): CalendarSpatialNavigation | null {
-    const { definition, environment, options, projection, range } = getView();
+    const { definition, environment, options, projection, range } = view();
     return (
       definition.strategy.getSpatialNavigation?.({
         command,
@@ -95,12 +99,12 @@ function createKeyboardHandlers(
   }
 
   function interactionOptions() {
-    return { snap: getSnap(), timeZone: getView().environment.timeZone };
+    return { snap: getSnap(), timeZone: view().environment.timeZone };
   }
 
   /** Navigates the view by whole ranges until it shows `date`. */
   function reveal(date: Temporal.PlainDate) {
-    const { definition, environment, options, range } = getView();
+    const { definition, environment, options, range } = view();
     if (plainDateIntervalContains(range, date)) return;
     const { anchorDate } = source.getSnapshot();
     actions.setAnchorDate(
@@ -124,9 +128,10 @@ function createKeyboardHandlers(
     if ("focus" in result) {
       moveFocus(result.focus);
     } else {
-      const { definition, options } = getView();
-      // Focus enters the next range once it renders.
+      const { definition, options } = view();
+      // Focus enters the next range once it renders, from its end when paging back.
       roving.focusTabStop("after-update");
+      if (result.page < 0) roving.enterFromEnd();
       actions.setAnchorDate(
         definition.strategy.navigate(source.getSnapshot().anchorDate, result.page, options),
       );
@@ -165,7 +170,7 @@ function createKeyboardHandlers(
     }
     if (cause === "create") return false;
 
-    const event = getView().events.get(focus.eventId);
+    const event = view().events.get(focus.eventId);
     const cell = cellOf(navigate("exit", focus));
     if (event === undefined || cell === null) return false;
     const session = startKeyboardSession({ cause, cell, event }, interactionOptions());
@@ -198,6 +203,7 @@ function createKeyboardHandlers(
     const restarted = startKeyboardSession({ cause, cell, event }, interactionOptions());
     const next = { ...current, session: restarted };
     keyboard.set(next);
+    moveFocus(focusOfSession(restarted));
     announce(next, { phase: "start" });
   }
 
@@ -214,14 +220,52 @@ function createKeyboardHandlers(
       return;
     }
     keyboard.set(null);
+    // A later gesture, focus move, or view switch keeps focus where it went.
+    const focused = source.getSnapshot().focus as CalendarFocus | null;
+    const { definition } = view();
+    const owned = () =>
+      keyboard.get() === null &&
+      getView()?.definition === definition &&
+      sameFocus(source.getSnapshot().focus as CalendarFocus | null, focused);
+
     void actions.proposeEventChange(proposal).then((result) => {
       if (result.status === "committed") {
-        announce(current, { phase: "commit", proposed: result.change.proposed! });
+        const { eventId, proposed } = result.change;
+        // A policy may have moved the event off the date focus is on.
+        if (eventId !== null && proposed !== null && owned()) {
+          moveFocus({
+            date: dateOn(proposed, current.session.cursor.date),
+            eventId,
+            kind: "event",
+          });
+        }
+        announce(current, { phase: "commit", proposed: proposed! });
       } else {
-        moveFocus(current.origin);
+        if (owned()) moveFocus(current.origin);
         announce(current, { phase: "reject", reason: result.reason });
       }
     });
+  }
+
+  /** `date` when `placement` covers it, else the placement's first date. */
+  function dateOn(placement: CalendarEventPlacement, date: Temporal.PlainDate): Temporal.PlainDate {
+    const { timeZone } = view().environment;
+    const wall = (point: Temporal.Instant | Temporal.PlainDateTime) =>
+      point instanceof Temporal.Instant
+        ? point.toZonedDateTimeISO(timeZone).toPlainDateTime()
+        : point;
+    // The end is exclusive.
+    const [first, last] =
+      placement.kind === "all-day"
+        ? [placement.start, placement.end.subtract({ days: 1 })]
+        : [
+            wall(placement.start).toPlainDate(),
+            wall(placement.end).subtract({ nanoseconds: 1 }).toPlainDate(),
+          ];
+    return Temporal.PlainDate.compare(first, date) <= 0 &&
+      Temporal.PlainDate.compare(date, last) <= 0
+      ? date
+      : first;
   }
 
   function onGrabbedKey(current: KeyboardGrab, event: KeyboardEvent<HTMLElement>): boolean {

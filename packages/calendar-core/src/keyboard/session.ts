@@ -139,19 +139,21 @@ export function startKeyboardSession<TEventId extends EventId, TResourceId exten
 
 /**
  * Moves the cursor to another cell. A step the gesture cannot take, such as resizing or creating
- * across the all-day row or shrinking an event past its minimum, returns `session` unchanged.
+ * across the all-day row or shrinking an event past its minimum, returns `session` unchanged. A
+ * resize that overshoots the minimum stops there, with the cursor on the edge it reached.
  */
 export function moveKeyboardCursor<TEventId extends EventId, TResourceId extends ResourceId>(
   session: CalendarKeyboardSession<TEventId, TResourceId>,
   cursor: CalendarCellFocus,
   options: CalendarInteractionOptions,
 ): CalendarKeyboardSession<TEventId, TResourceId> {
-  const proposed = placementAt(session.cause, session.original, session.grab, cursor, options);
+  const { cause } = session;
+  const proposed = placementAt(cause, session.original, session.grab, cursor, options);
   if (proposed === null) return session;
-  if (session.cause.startsWith("resize") && placementsEqual(proposed, session.proposed)) {
-    return session;
-  }
-  return { ...session, cursor, proposed };
+  if (cause !== "resize-end" && cause !== "resize-start") return { ...session, cursor, proposed };
+  if (placementsEqual(proposed, session.proposed)) return session;
+  const edge = cause === "resize-start" ? "start" : "end";
+  return { ...session, cursor: edgeCell(proposed, edge, cursor, options), proposed };
 }
 
 /** The proposal committing the session makes; `null` when it would change nothing. */

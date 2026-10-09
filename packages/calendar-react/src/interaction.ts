@@ -22,8 +22,8 @@ export interface CalendarInteractionRuntime {
 
 /** The active view's focus plumbing, provided by `ActiveView`. */
 export interface CalendarViewRuntime {
-  /** The latest active view, read when a key is handled. */
-  readonly getView: () => CalendarActiveView<AnyCalendarView>;
+  /** The latest active view, read when a key is handled; `null` once none is registered. */
+  readonly getView: () => CalendarActiveView<AnyCalendarView> | null;
   readonly roving: RovingFocusStore;
 }
 

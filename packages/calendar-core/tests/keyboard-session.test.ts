@@ -136,6 +136,37 @@ describe("keyboard resize", () => {
     expect(moveKeyboardCursor(shortest, day("2026-10-05"), options)).toBe(shortest);
   });
 
+  test("a jump past the minimum stops at it, with the cursor on the edge it reached", () => {
+    const event = normalized(allDay("trip", "2026-10-07", "2026-10-10"));
+    const end = startKeyboardSession(
+      { cause: "resize-end", cell: day("2026-10-07"), event },
+      options,
+    );
+    const shrunk = moveKeyboardCursor(end, day("2026-10-02"), options);
+    expect(wall(shrunk.proposed)).toBe("all-day 2026-10-07/2026-10-08");
+    expect(cell(shrunk.cursor)).toBe("2026-10-07");
+    expect(moveKeyboardCursor(shrunk, day("2026-09-25"), options)).toBe(shrunk);
+
+    const start = startKeyboardSession(
+      { cause: "resize-start", cell: day("2026-10-07"), event },
+      options,
+    );
+    const raised = moveKeyboardCursor(start, day("2026-10-14"), options);
+    expect(wall(raised.proposed)).toBe("all-day 2026-10-09/2026-10-10");
+    expect(cell(raised.cursor)).toBe("2026-10-09");
+  });
+
+  test("a timed resize jumping a day past its minimum keeps one slot", () => {
+    const event = normalized(nyTimed("focus", "2026-10-07T09:00", "2026-10-07T10:00"));
+    const start = startKeyboardSession(
+      { cause: "resize-end", cell: slot("2026-10-07T09:00"), event },
+      options,
+    );
+    const shrunk = moveKeyboardCursor(start, slot("2026-10-06T09:45"), options);
+    expect(wall(shrunk.proposed)).toBe("2026-10-07T09:00/2026-10-07T09:15");
+    expect(cell(shrunk.cursor)).toBe("2026-10-07T09:00");
+  });
+
   test("grabs the start edge on the event's first day", () => {
     const event = normalized(allDay("trip", "2026-10-06", "2026-10-09"));
     const start = startKeyboardSession(

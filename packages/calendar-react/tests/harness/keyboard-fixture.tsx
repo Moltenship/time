@@ -8,6 +8,7 @@ import {
   type CalendarAnnouncementMessages,
   type CalendarEvent,
   type CalendarEventChange,
+  type CalendarPolicy,
   type DayGridSegment,
   type EventId,
   type MonthProjection,
@@ -137,17 +138,42 @@ export function allDay(id: string, start: string, end: string, title = id): Fixt
   };
 }
 
-/** Applies each accepted change to its events, as an application would. */
+/**
+ * Applies each accepted change to its events, as an application would; `persist` saves it first
+ * and the change rolls back when it rejects.
+ */
 export function KeyboardFixture({
   children,
   initialEvents,
   onChange,
+  persist,
+  policies,
 }: {
   readonly children?: ReactNode;
   readonly initialEvents: readonly FixtureEvent[];
   readonly onChange?: (change: Change) => void;
+  readonly persist?: (change: Change) => Promise<void>;
+  readonly policies?: readonly CalendarPolicy<FixtureEvent, string, string>[];
 }) {
   const [events, setEvents] = useState(initialEvents);
+  const apply = (change: Change) =>
+    setEvents((current) =>
+      change.cause === "create"
+        ? [
+            ...current,
+            {
+              ...change.proposed,
+              data: null,
+              id: `new-${current.length}`,
+              title: "New",
+            } as FixtureEvent,
+          ]
+        : current.map((event) =>
+            event.id === change.eventId && change.proposed !== null
+              ? ({ ...event, ...change.proposed } as FixtureEvent)
+              : event,
+          ),
+    );
   return (
     <KeyboardCalendar.Root
       defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
@@ -157,24 +183,10 @@ export function KeyboardFixture({
       now={Temporal.Instant.from("2026-10-08T12:00:00Z")}
       onEventChange={(change) => {
         onChange?.(change);
-        setEvents((current) =>
-          change.cause === "create"
-            ? [
-                ...current,
-                {
-                  ...change.proposed,
-                  data: null,
-                  id: `new-${current.length}`,
-                  title: "New",
-                } as FixtureEvent,
-              ]
-            : current.map((event) =>
-                event.id === change.eventId && change.proposed !== null
-                  ? ({ ...event, ...change.proposed } as FixtureEvent)
-                  : event,
-              ),
-        );
+        if (persist === undefined) return apply(change);
+        return persist(change).then(() => apply(change));
       }}
+      policies={policies}
       weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
     >
       {children}

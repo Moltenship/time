@@ -1,8 +1,23 @@
 // @vitest-environment jsdom
 
-import type { CalendarEventChange } from "@moltenship/calendar-core";
+import {
+  createCanonicalEventAdapter,
+  type CalendarEventChange,
+  type CalendarPolicy,
+  type CalendarSpatialNavigationInput,
+} from "@moltenship/calendar-core";
+import { plainDateInterval, type PlainDateInterval } from "@moltenship/calendar-temporal";
 import { act } from "react";
+import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, test } from "vite-plus/test";
+
+import {
+  createCalendar,
+  defineCalendarView,
+  useCalendarKeyboard,
+  useRovingFocus,
+  type CalendarViewRendererProps,
+} from "@moltenship/calendar-react";
 
 import {
   allDay,
@@ -11,7 +26,11 @@ import {
   renders,
   type FixtureEvent,
 } from "./harness/keyboard-fixture";
-import { renderWithHarness, type ReactRootHarness } from "./harness/render-harness";
+import {
+  hydrateWithHarness,
+  renderWithHarness,
+  type ReactRootHarness,
+} from "./harness/render-harness";
 import "./setup";
 
 type Change = CalendarEventChange<FixtureEvent, string, string>;
@@ -23,9 +42,23 @@ afterEach(async () => {
   renders.clear();
 });
 
-async function mount(events: readonly FixtureEvent[] = [], onChange?: (change: Change) => void) {
-  harness = await renderWithHarness(<KeyboardFixture initialEvents={events} onChange={onChange} />);
+async function mount(
+  events: readonly FixtureEvent[] = [],
+  onChange?: (change: Change) => void,
+  props: Pick<Parameters<typeof KeyboardFixture>[0], "persist" | "policies"> = {},
+) {
+  harness = await renderWithHarness(
+    <KeyboardFixture initialEvents={events} onChange={onChange} {...props} />,
+  );
   return harness.container;
+}
+
+/** The focused element as `event@segment start` or a date. */
+function focused() {
+  const element = document.activeElement as HTMLElement;
+  return element.dataset.event === undefined
+    ? (element.dataset.date ?? element.tagName)
+    : `${element.dataset.event}@${element.dataset.start}`;
 }
 
 function cell(container: HTMLElement, date: string) {
@@ -265,4 +298,180 @@ test("the announcer reads a repeated message again", async () => {
   expect(region.textContent?.trim()).toBe(first);
   expect(region.getAttribute("aria-live")).toBe("polite");
   expect(region.getAttribute("role")).toBe("status");
+});
+
+describe("focus through edge cases", () => {
+  test("switching resize edges brings focus back across weeks", async () => {
+    const container = await mount([allDay("trip", "2026-10-07", "2026-10-09", "Trip")]);
+    await focus(segment(container, "trip"));
+    await press(" ", { shiftKey: true });
+    await press("ArrowDown");
+    // The end is in next week's row now, and focus followed it there.
+    expect(focused()).toBe("trip@2026-10-11");
+
+    await press(" ", { shiftKey: true });
+    expect(focused()).toBe("trip@2026-10-07");
+    await press("Escape");
+    expect(spoken(container)).toBe("cancel resize-start Trip");
+  });
+
+  test("a resize that jumps past the minimum keeps focus on the event", async () => {
+    const container = await mount([allDay("trip", "2026-10-07", "2026-10-09", "Trip")]);
+    await focus(segment(container, "trip"));
+    await press(" ", { shiftKey: true });
+    await press("ArrowUp");
+    expect(spoken(container)).toBe("Oct 7");
+    expect(focused()).toBe("trip@2026-10-07");
+    expect(tabStops(container)).toEqual(["trip@2026-10-07"]);
+  });
+
+  test("focus follows a policy that moves the committed event", async () => {
+    const toThe20th: CalendarPolicy<FixtureEvent, string, string> = ({ cause, proposed }) =>
+      cause === "move" && proposed !== null
+        ? {
+            proposed: {
+              ...proposed,
+              end: Temporal.PlainDate.from("2026-10-21"),
+              kind: "all-day",
+              start: Temporal.PlainDate.from("2026-10-20"),
+            },
+            type: "adjust",
+          }
+        : { type: "accept" };
+    const container = await mount(
+      [allDay("lunch", "2026-10-07", "2026-10-08", "Lunch")],
+      undefined,
+      {
+        policies: [toThe20th],
+      },
+    );
+    await focus(segment(container, "lunch"));
+    await press(" ");
+    await press("ArrowRight");
+    await press("Enter");
+
+    expect(focused()).toBe("lunch@2026-10-20");
+    expect(tabStops(container)).toEqual(["lunch@2026-10-20"]);
+    expect(spoken(container)).toBe("commit move Lunch Oct 20");
+  });
+
+  test("a late rejection leaves focus with a newer gesture", async () => {
+    let rejectFirst: ((error: Error) => void) | undefined;
+    const container = await mount(
+      [allDay("a", "2026-10-07", "2026-10-08"), allDay("b", "2026-10-14", "2026-10-15")],
+      undefined,
+      {
+        persist: (change) =>
+          change.eventId === "a"
+            ? new Promise((_, reject) => {
+                rejectFirst = reject;
+              })
+            : Promise.resolve(),
+      },
+    );
+    await focus(segment(container, "a"));
+    await press(" ");
+    await press("ArrowRight");
+    await press("Enter");
+
+    await focus(segment(container, "b"));
+    await press(" ");
+    await press("ArrowRight");
+    await act(async () => {
+      rejectFirst!(new Error("offline"));
+      await new Promise((resolve) => setTimeout(resolve));
+    });
+
+    expect(spoken(container)).toBe("reject move a handler-error");
+    expect(segment(container, "a").dataset.start).toBe("2026-10-07");
+    expect(focused()).toBe("b@2026-10-15");
+    await press("Escape");
+    expect(spoken(container)).toBe("cancel move b");
+  });
+});
+
+/** Three days per page; the first and last day page back and forward. */
+function pagedNavigation({
+  command,
+  focus,
+  range,
+}: CalendarSpatialNavigationInput<PlainDateInterval, undefined>) {
+  const last = range.end.subtract({ days: 1 });
+  const day = (date: Temporal.PlainDate) => ({ focus: { date, kind: "day" as const } });
+  if (focus === null) return day(command === "end" ? last : range.start);
+  if (command === "up") {
+    return focus.date.equals(range.start)
+      ? { page: -1 as const }
+      : day(focus.date.subtract({ days: 1 }));
+  }
+  if (command === "down") {
+    return focus.date.equals(last) ? { page: 1 as const } : day(focus.date.add({ days: 1 }));
+  }
+  return null;
+}
+
+function PagedItem({ date }: { readonly date: Temporal.PlainDate }) {
+  return (
+    <button data-date={date.toString()} type="button" {...useRovingFocus({ date, kind: "day" })} />
+  );
+}
+
+function PagedRenderer({ projection }: CalendarViewRendererProps<PlainDateInterval, undefined>) {
+  return (
+    <div {...useCalendarKeyboard()}>
+      {[0, 1, 2].map((offset) => (
+        <PagedItem key={offset} date={projection.start.add({ days: offset })} />
+      ))}
+    </div>
+  );
+}
+
+const PagedCalendar = createCalendar<FixtureEvent>()({
+  eventAdapter: createCanonicalEventAdapter<null, string, string>(),
+  views: [
+    defineCalendarView({
+      name: "paged",
+      strategy: {
+        getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 3 })),
+        getSpatialNavigation: pagedNavigation,
+        getTitle: (range) => range.start.toString(),
+        navigate: (anchor, delta) => anchor.add({ days: 3 * delta }),
+        project: ({ range }) => range,
+      },
+      Renderer: PagedRenderer,
+    }),
+  ],
+});
+
+test("paging back enters the previous range from its end, and forward from its start", async () => {
+  harness = await renderWithHarness(
+    <PagedCalendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="UTC"
+      events={[]}
+      locale="en-US"
+      weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
+    >
+      <PagedCalendar.ActiveView />
+    </PagedCalendar.Root>,
+  );
+  await focus(cell(harness.container, "2026-10-08"));
+
+  await press("ArrowUp");
+  expect(focused()).toBe("2026-10-07");
+  await press("ArrowUp");
+  expect(focused()).toBe("2026-10-06");
+  await press("ArrowDown");
+  await press("ArrowDown");
+  expect(focused()).toBe("2026-10-08");
+});
+
+test("server markup has exactly one tab stop and hydrates unchanged", async () => {
+  const element = <KeyboardFixture initialEvents={[allDay("trip", "2026-10-07", "2026-10-09")]} />;
+  expect(renderToString(element).match(/tabindex="0"/g)).toHaveLength(1);
+
+  const hydrated = await hydrateWithHarness(element);
+  harness = hydrated;
+  expect(hydrated.recoverableErrors).toEqual([]);
+  expect(tabStops(hydrated.container)).toEqual(["2026-10-08"]);
 });
