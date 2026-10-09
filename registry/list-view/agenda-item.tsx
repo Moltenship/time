@@ -31,7 +31,7 @@ export function AgendaItem({ color, item, label, timeFormat }: AgendaItemProps) 
       color={color}
       data-event-id={String(item.event.id)}
       pending={item.event.isPending === true}
-      className="w-full gap-x-3 gap-y-0.5 border-l-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start"
+      className="w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start"
     >
       <span className="flex shrink-0 items-center gap-2 sm:w-44">
         <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-calendar-event-border" />

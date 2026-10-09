@@ -107,7 +107,7 @@ export function TimeGridEvent({ color, formats, label, layout, timeZone }: TimeG
       )}
       style={{
         height: percent(height),
-        left: percent(left),
+        insetInlineStart: percent(left),
         top: percent(top),
         width: percent(width),
       }}

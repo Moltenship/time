@@ -70,14 +70,14 @@ export function CalendarToolbar({ calendar, children, className, start }: Calend
       </TodayTrigger>
       <div className="flex items-center">
         <StepTrigger label="Previous period" Trigger={PreviousTrigger}>
-          <ChevronLeftIcon />
+          <ChevronLeftIcon className="rtl:rotate-180" />
         </StepTrigger>
         <StepTrigger label="Next period" Trigger={NextTrigger}>
-          <ChevronRightIcon />
+          <ChevronRightIcon className="rtl:rotate-180" />
         </StepTrigger>
       </div>
       <Title className="min-w-0 truncate text-base sm:text-xl" />
-      <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">{children}</div>
+      <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">{children}</div>
     </Toolbar>
   );
 }

@@ -94,7 +94,7 @@ export function TimeGridBody<TEvent>({
             {labelledHours.map((hour) => (
               <span
                 key={hour}
-                className="absolute right-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums"
+                className="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums"
                 style={{ top: `${(hour / 24) * 100}%` }}
               >
                 {formats.hour.format(new Temporal.PlainTime(hour))}

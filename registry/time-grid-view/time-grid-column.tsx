@@ -37,7 +37,7 @@ export function TimeGridColumn<TEvent>({
       role="gridcell"
       data-date={column.date.toString()}
       data-today={isToday ? "" : undefined}
-      className="relative min-w-0 border-l border-calendar-grid"
+      className="relative min-w-0 border-s border-calendar-grid"
     >
       {column.gaps.map((band) => (
         <div
@@ -55,8 +55,8 @@ export function TimeGridColumn<TEvent>({
           title="Repeated: clocks moved back"
         />
       ))}
-      {/* The right margin keeps a strip free for creating an event beside busy blocks. */}
-      <div className="absolute inset-y-0 right-2 left-0">
+      {/* The inline-end margin keeps a strip free for creating an event beside busy blocks. */}
+      <div className="absolute inset-y-0 start-0 end-2">
         {events.map((layout) => (
           <TimeGridEvent
             key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
@@ -74,7 +74,7 @@ export function TimeGridColumn<TEvent>({
           data-slot="time-grid-now"
           className={cn(
             "pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-calendar-now",
-            "before:absolute before:-top-1 before:-left-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now",
+            "before:absolute before:-top-1 before:-start-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now",
           )}
           style={{ top: percent(nowTop) }}
         />

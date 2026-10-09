@@ -54,14 +54,16 @@ export function MonthEvent({
       className={cn(
         "gap-1 rounded-sm px-1.5 py-0 max-sm:px-1 max-sm:text-[0.625rem]",
         bar
-          ? [startsBefore && "rounded-l-none border-l-0 pl-0.5", endsAfter && "rounded-r-none"]
+          ? [startsBefore && "rounded-s-none border-s-0 ps-0.5", endsAfter && "rounded-e-none"]
           : // Small screens show compact tinted blocks instead of dot, time, and title.
-            "border-l-0 bg-transparent font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:bg-calendar-event max-sm:text-calendar-event-foreground",
+            "border-s-0 bg-transparent font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:bg-calendar-event max-sm:text-calendar-event-foreground",
         className,
       )}
     >
       {bar ? (
-        startsBefore && <ChevronLeftIcon aria-hidden className="size-3 shrink-0 opacity-70" />
+        startsBefore && (
+          <ChevronLeftIcon aria-hidden className="size-3 shrink-0 opacity-70 rtl:rotate-180" />
+        )
       ) : (
         <span
           aria-hidden
@@ -78,7 +80,9 @@ export function MonthEvent({
       <span className={cn("min-w-0 flex-1 truncate max-sm:text-clip", !bar && "font-medium")}>
         {event.title}
       </span>
-      {bar && endsAfter && <ChevronRightIcon aria-hidden className="size-3 shrink-0 opacity-70" />}
+      {bar && endsAfter && (
+        <ChevronRightIcon aria-hidden className="size-3 shrink-0 opacity-70 rtl:rotate-180" />
+      )}
     </EventChip>
   );
 }

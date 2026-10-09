@@ -47,7 +47,7 @@ export function ViewSwitcher<TView extends string>({
               {option.label}
               {/* The trigger shows the label from `items`, so the shortcut only appears in the list. */}
               {option.shortcut !== undefined && (
-                <kbd className="ml-auto font-sans text-xs text-muted-foreground">
+                <kbd className="ms-auto font-sans text-xs text-muted-foreground">
                   {option.shortcut}
                 </kbd>
               )}

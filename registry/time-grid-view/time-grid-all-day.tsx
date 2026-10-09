@@ -67,7 +67,7 @@ export function TimeGridAllDay<TEvent>({
     >
       <div
         role="rowheader"
-        className="flex w-(--calendar-gutter-width) shrink-0 items-start justify-end pt-0.5 pr-1"
+        className="flex w-(--calendar-gutter-width) shrink-0 items-start justify-end pt-0.5 pe-1"
       >
         <span className="sr-only">All day</span>
         {collapsible && (
@@ -88,7 +88,7 @@ export function TimeGridAllDay<TEvent>({
         style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
       >
         {days.map(({ column: { date, key } }, column) => (
-          <div key={key} role="gridcell" className="relative min-w-0 border-l border-calendar-grid">
+          <div key={key} role="gridcell" className="relative min-w-0 border-s border-calendar-grid">
             {/* Events sit outside this element, so a drop target is never the cell a bar starts in. */}
             <div data-all-day="" data-date={date.toString()} className="absolute inset-0" />
             {segments
@@ -102,8 +102,8 @@ export function TimeGridAllDay<TEvent>({
                   pending={event.isPending === true}
                   className={cn(
                     "absolute start-0 z-1 mx-1 min-w-0 py-0 leading-[1.375rem]",
-                    startsBefore && "ml-0 rounded-l-none",
-                    endsAfter && "mr-0 rounded-r-none",
+                    startsBefore && "ms-0 rounded-s-none",
+                    endsAfter && "me-0 rounded-e-none",
                   )}
                   style={laneStyle(lane, span)}
                 >
@@ -112,7 +112,7 @@ export function TimeGridAllDay<TEvent>({
               ))}
             {collapsed && overflow.hiddenCounts[column]! > 0 && (
               <button
-                className="absolute start-0 z-1 mx-1 truncate rounded-md px-2 text-left text-xs font-medium text-muted-foreground hover:bg-accent focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                className="absolute start-0 z-1 mx-1 truncate rounded-md px-2 text-start text-xs font-medium text-muted-foreground hover:bg-accent focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
                 onClick={() => setExpanded(true)}
                 style={laneStyle(COLLAPSED_LANES - 1)}
                 type="button"

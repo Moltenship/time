@@ -42,7 +42,7 @@ export function TimeGridHeader({ actions, days, dayView, environment }: TimeGrid
     <div role="row" className="flex">
       <div
         role="columnheader"
-        className="flex w-(--calendar-gutter-width) shrink-0 items-end justify-end pr-2 pb-1 text-[0.625rem] text-calendar-axis"
+        className="flex w-(--calendar-gutter-width) shrink-0 items-end justify-end pe-2 pb-1 text-[0.625rem] text-calendar-axis"
       >
         {days[0] === undefined ? null : offsetLabel(locale, timeZone, days[0])}
       </div>

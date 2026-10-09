@@ -27,7 +27,7 @@ export function EventChip({
       type={type}
       className={cn(
         // `data-dragging` marks the event a pointer drag is moving; its preview follows the pointer.
-        "flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-l-3 border-calendar-event-border bg-calendar-event px-2 py-1 text-left text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-pending:opacity-60 dark:hover:brightness-110",
+        "flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event px-2 py-1 text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-pending:opacity-60 dark:hover:brightness-110",
         className,
       )}
       {...props}

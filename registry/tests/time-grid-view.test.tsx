@@ -183,8 +183,8 @@ test("is a grid of a header row naming each day, an all-day row, and a timed row
 test("places overlapping events side by side and back-to-back events in a shared lane", async () => {
   const container = await renderCalendar("week", "2026-10-08");
   const position = (id: string) => {
-    const { left, top, width } = event(container, id)[0]!.style;
-    return [top, left, width];
+    const { insetInlineStart, top, width } = event(container, id)[0]!.style;
+    return [top, insetInlineStart, width];
   };
 
   expect(position("a")).toEqual([`${(9 / 24) * 100}%`, "0%", "50%"]);

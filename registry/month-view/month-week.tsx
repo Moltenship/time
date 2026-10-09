@@ -122,7 +122,7 @@ function MoreEvents<TEvent>({
       <PopoverTrigger
         aria-label={`${count} more events on ${formats.date.format(day.date)}`}
         style={laneStyle(lane)}
-        className="absolute start-0 z-1 mx-0.5 truncate rounded-sm px-1.5 text-left text-xs font-medium max-sm:px-1 max-sm:text-[0.625rem] text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+        className="absolute start-0 z-1 mx-0.5 truncate rounded-sm px-1.5 text-start text-xs font-medium max-sm:px-1 max-sm:text-[0.625rem] text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
       >
         <span className="max-sm:hidden">{count} more</span>
         <span className="sm:hidden">+{count}</span>
@@ -193,7 +193,7 @@ export function MonthWeekRow<TEvent>({
         <div
           key={day.date.toString()}
           role="gridcell"
-          className="relative min-w-0 border-r border-calendar-grid last:border-r-0"
+          className="relative min-w-0 border-e border-calendar-grid last:border-e-0"
         >
           {/* Events sit outside this element, so a drop target is never the cell a bar starts in. */}
           <div
@@ -221,8 +221,8 @@ export function MonthWeekRow<TEvent>({
                 }
                 className={cn(
                   "absolute start-0 z-1 mx-0.5",
-                  segment.startsBefore && "ml-0",
-                  segment.endsAfter && "mr-0",
+                  segment.startsBefore && "ms-0",
+                  segment.endsAfter && "me-0",
                 )}
                 color={getEventColor?.(segment.event.event)}
                 endsAfter={segment.endsAfter}
