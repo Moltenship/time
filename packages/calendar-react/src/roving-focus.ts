@@ -60,7 +60,11 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
   let entryCommand: "end" | "home" = "home";
   let resolved: { readonly element?: HTMLElement; readonly target: CalendarFocus | null } | null =
     null;
-  let focusAfterUpdate = false;
+  /**
+   * DOM focus owed after the next update: to the tab stop, as keyboard navigation asks, or only
+   * to the focused target once it renders, after the element holding DOM focus went away.
+   */
+  let owed: "focus" | "tab-stop" | null = null;
 
   function find(target: CalendarFocus | null): HTMLElement | undefined {
     if (target === null) return undefined;
@@ -103,7 +107,10 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
 
   /** Focuses the tab stop unless focus has moved elsewhere on the page in the meantime. */
   function focusNow() {
-    const { element } = resolve();
+    const { element, target } = resolve();
+    // Owed only to the focus, which has not rendered yet.
+    if (owed === "focus" && (focus === null || target !== focus)) return;
+    owed = null;
     const active = document.activeElement;
     if (element === undefined || element === active) return;
     if (active !== null && active !== document.body && itemAt(active) === undefined) return;
@@ -120,8 +127,8 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
       return focus !== null && focusLandsOn(focus, item.target, item.days) ? focus : item.target;
     },
     focusTabStop(when: "now" | "after-update") {
+      owed = "tab-stop";
       if (when === "now") focusNow();
-      else focusAfterUpdate = true;
     },
     isTabStop(target: CalendarFocus, days: number) {
       const stop = resolve().target;
@@ -132,6 +139,9 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
       changed();
       return () => {
         if (items.get(element)?.target !== target) return;
+        // The focused element is leaving, as when a grabbed event moves between the all-day row
+        // and the columns: focus whatever takes its place.
+        if (element.contains(document.activeElement)) owed ??= "focus";
         items.delete(element);
         changed();
       };
@@ -147,10 +157,7 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
       getEntry = nextEntry;
       if (nextFocus !== null) entryCommand = "home";
       changed();
-      if (focusAfterUpdate) {
-        focusAfterUpdate = false;
-        focusNow();
-      }
+      if (owed !== null) focusNow();
     },
   });
 }

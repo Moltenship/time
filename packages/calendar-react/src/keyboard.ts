@@ -3,6 +3,7 @@ import {
   keyboardSessionProposal,
   moveKeyboardCursor,
   sameFocus,
+  slotDuration,
   startKeyboardSession,
   type CalendarCellFocus,
   type CalendarEventPlacement,
@@ -34,9 +35,16 @@ import { useStateSelector } from "./state-binding";
 import type { CalendarStateSelectorOptions } from "./types";
 
 export interface CalendarKeyboardOptions {
+  /**
+   * How long an event created on a slot starts out, in whole slots; arrow keys then change it
+   * as a pointer drag would. One hour by default. A create on a day starts as that day.
+   */
+  readonly createDuration?: Temporal.DurationLike;
   /** Length and alignment of time-grid slots; pass the pointer layer's `snap`. 15 minutes by default. */
   readonly snap?: WallTimeSnapOptions;
 }
+
+const DEFAULT_CREATE_DURATION: Temporal.DurationLike = { hours: 1 };
 
 /** Handlers for the element that holds a view's focusable cells and events. */
 export interface CalendarKeyboardHandlers {
@@ -68,8 +76,9 @@ type CalendarCommitPlacement = Extract<
 function createKeyboardHandlers(
   { actions, announcements, keyboard, read }: CalendarInteractionRuntime,
   { getView, roving }: CalendarViewRuntime,
-  getSnap: () => WallTimeSnapOptions,
+  getOptions: () => CalendarKeyboardOptions,
 ): CalendarKeyboardHandlers {
+  const getSnap = () => getOptions().snap ?? DEFAULT_SNAP;
   // Keys reach these handlers only while their view is rendered.
   const view = () => getView()!;
 
@@ -157,12 +166,29 @@ function createKeyboardHandlers(
       : { date: session.cursor.date, eventId: session.eventId, kind: "event" };
   }
 
+  /** A slot create starts `createDuration` long: its cursor steps down, as a drag would. */
+  function startCreate(cell: CalendarCellFocus): CalendarKeyboardSession {
+    let session = startKeyboardSession({ cause: "create", cell }, interactionOptions());
+    if (cell.kind !== "slot") return session;
+    const duration = Temporal.Duration.from(getOptions().createDuration ?? DEFAULT_CREATE_DURATION);
+    const slots = Math.round(
+      duration.total({ unit: "minutes" }) / slotDuration(getSnap()).total({ unit: "minutes" }),
+    );
+    for (let step = 1; step < slots; step += 1) {
+      const cursor = cellOf(navigate("down", session.cursor));
+      if (cursor === null) break;
+      session = moveKeyboardCursor(session, cursor, interactionOptions());
+    }
+    return session;
+  }
+
   function grab(focus: CalendarFocus, cause: "create" | "move" | "resize-end"): boolean {
     if (focus.kind !== "event") {
       if (cause !== "create") return false;
-      const session = startKeyboardSession({ cause, cell: focus }, interactionOptions());
+      const session = startCreate(focus);
       const next: KeyboardGrab = { cell: focus, event: null, origin: focus, session };
       keyboard.set(next);
+      moveFocus(focusOfSession(session));
       announce(next, { phase: "start" });
       return true;
     }
@@ -362,7 +388,7 @@ export function useCalendarKeyboard(
     latest.current = options;
   });
   const handlers = useMemo(
-    () => createKeyboardHandlers(interaction, view, () => latest.current.snap ?? DEFAULT_SNAP),
+    () => createKeyboardHandlers(interaction, view, () => latest.current),
     [interaction, view],
   );
   // A view that unmounts mid-gesture leaves nothing grabbed.
