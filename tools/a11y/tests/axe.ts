@@ -26,14 +26,14 @@ type ElementFilter = Readonly<Record<string, (element: Element) => boolean>>;
  * https://github.com/Moltenship/time/issues/97
  */
 const knownViolations: ElementFilter = {
-  // The time grid's day headers are `columnheader`s outside any row.
-  "aria-required-parent": (element) =>
-    element.matches('[data-slot="time-grid"] [role="columnheader"]'),
   // The month's "+N more" popover has no name.
   "aria-dialog-name": isMonthOverflowPopup,
-  // A month's first date shows "Oct 1" but is named "Thursday, October 1, 2026".
+  // Event names lead with the title and add the date ("Standup, Thursday, October 8, 9:30 –
+  // 10:00 AM"), so a chip's visible "9:30 AM Standup" isn't part of them; and a month's first date
+  // shows "Oct 1" but is named "Thursday, October 1, 2026".
   "label-content-name-mismatch": (element) =>
-    element.closest('[data-slot="month-view"] [data-date]') !== null ||
+    element.matches('[data-slot="calendar-event"]') ||
+    element.closest('[data-slot="month-view"] [role="gridcell"]') !== null ||
     isMonthOverflowPopup(element.closest('[role="dialog"]')),
 };
 

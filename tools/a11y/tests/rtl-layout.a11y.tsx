@@ -21,7 +21,11 @@ describe.each(["ltr", "rtl"] as const)("%s layout", (dir) => {
 
   test("month view: days, bars and their continuations follow the reading order", async () => {
     await render(<RegistryScreen dir={dir} view="month" />);
-    const cell = (date: string) => box(`[data-slot="month-view"] [data-date="${date}"]`);
+    const cell = (date: string) =>
+      document
+        .querySelector(`[data-slot="month-view"] [data-date="${date}"]`)!
+        .closest('[role="gridcell"]')!
+        .getBoundingClientRect();
 
     expect(gap(cell("2026-10-12"), cell("2026-10-13"))).toBe(0);
     // The offsite continues from last week: its bar meets the week's inline start, squared off.

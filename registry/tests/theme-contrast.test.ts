@@ -48,10 +48,12 @@ describe.each(["light", "dark"] as const)("%s theme", (theme) => {
   });
 
   test.each(surfaces)("focus ring on %s", (surface) => {
-    // Views draw focus as `ring-ring/50`.
+    // Views outline focus in `outline-ring`; shadcn controls, such as the toolbar's buttons, draw
+    // a `ring-ring/50` halo.
     const [red, green, blue] = tokens.color("--ring");
-    const ring = composite([red, green, blue, 0.5], tokens.color(surface));
+    const halo = composite([red, green, blue, 0.5], tokens.color(surface));
 
-    expect(contrast(ring, tokens.color(surface))).toBeGreaterThanOrEqual(GRAPHIC);
+    expect(contrast(tokens.color("--ring"), tokens.color(surface))).toBeGreaterThanOrEqual(GRAPHIC);
+    expect(contrast(halo, tokens.color(surface))).toBeGreaterThanOrEqual(GRAPHIC);
   });
 });
