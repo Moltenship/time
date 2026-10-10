@@ -2,21 +2,31 @@
  * PROTOTYPE for #119 (timeline annotations). Not for merge.
  *
  * Annotations are read-only, time-based marks beside events: listening sessions, sleep, workouts,
- * focus sessions. They never enter the event overlap layout. By default they draw in a rail at the
- * start of each day column, as capsules with the source's icon inside the top (Amie's look); a
- * `renderMark` and the rail options replace any part of that. In the proposal, the types,
- * `annotationMarks` and `layoutAnnotationMarks` live in calendar-core (a separate snapshot,
- * interval index and projection); here they sit next to the time grid so the demo can try them.
+ * focus sessions. They never enter the event overlap layout.
+ *
+ * Like the rest of the registry, this file is yours to edit. The default composition,
+ * `TimeGridAnnotations`, draws Amie's look from small parts: `AnnotationRail`, `AnnotationMark`
+ * (cva variants, Base UI `render`) and `AnnotationMarkIcon`. Restyle a part with `className` or a
+ * `data-*` selector, recompose the parts in your own component and pass it as
+ * `annotations.Annotations`, or change the parts here. The layout inputs that need numbers, the
+ * rail's size and lanes, stay options because merging and lane packing depend on them.
+ *
+ * In the proposal, the types, `annotationMarks` and `layoutAnnotationMarks` live in calendar-core
+ * (a separate snapshot, interval index and projection) and reach the view through its projection.
  */
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
+import { useRender } from "@base-ui/react/use-render";
 import { instantInterval, timedFragmentBox, type TimeGridColumn } from "@moltenship/calendar";
+import { cva, type VariantProps } from "class-variance-authority";
 import {
+  createContext,
+  use,
   useMemo,
   useState,
+  type ComponentProps,
   type ComponentType,
   type CSSProperties,
-  type ReactElement,
 } from "react";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
@@ -38,23 +48,28 @@ export interface TimeGridAnnotationSource {
   readonly label: string;
   /** The app the data comes from, named in tooltips: "Spotify", "Apple Health". */
   readonly app: string;
+  /** Sets `data-color` on the source's marks. */
   readonly color: CalendarEventColor;
   readonly Icon: ComponentType<{ readonly className?: string }>;
   /** Items closer than this merge into one mark, such as tracks into a listening session. */
   readonly mergeGapMinutes?: number;
-  /** Extra classes for this source's marks, such as a texture for sleep. */
-  readonly markClassName?: string;
 }
 
+/** The numbers the layout needs. The parts read them back as CSS variables. */
 export interface TimeGridAnnotationRail {
   /** The column edge the rail sits on. */
   readonly side?: "start" | "end";
   /** Rail width in px: 18 in a multi-day grid and 30 in a single day by default. */
   readonly width?: number;
-  /** Mark width in px: 12 and 20 by default. A mark shorter than it is wide draws as a circle. */
+  /** Mark width in px: 12 and 20 by default. Marks merge and pack by their drawn size. */
   readonly markWidth?: number;
   /** `pack` shares the rail between overlapping marks; `per-source` gives each source a lane. */
   readonly layout?: "pack" | "per-source";
+}
+
+export interface TimeGridAnnotationsProps {
+  /** The column's marks, merged and placed in the rail. */
+  readonly marks: readonly TimeGridAnnotationMarkLayout[];
 }
 
 export interface TimeGridAnnotationOptions {
@@ -62,11 +77,11 @@ export interface TimeGridAnnotationOptions {
   readonly sources: readonly TimeGridAnnotationSource[];
   /** Marks open a details popover on click; without it they are hover-only. */
   readonly clickable?: boolean;
-  /** `rail` reserves a strip beside events; `overlay` draws full width behind them. */
+  /** `rail` reserves a strip beside events; `overlay` gives the parts the whole column, behind. */
   readonly placement?: "rail" | "overlay";
   readonly rail?: TimeGridAnnotationRail;
-  /** Replaces the default capsule. Spread `props` on the element: they place it and wire hover. */
-  readonly renderMark?: TimeGridAnnotationRenderer;
+  /** Your composition of the parts, in place of `TimeGridAnnotations`. */
+  readonly Annotations?: ComponentType<TimeGridAnnotationsProps>;
 }
 
 /** Items of one source merged into one mark, clipped to a column. */
@@ -86,28 +101,15 @@ export interface TimeGridAnnotationMark {
 
 /** A mark placed in the rail, independent of the column's event lanes. */
 export interface TimeGridAnnotationMarkLayout extends TimeGridAnnotationMark {
-  /** `dot` when the mark is shorter than it is wide, so it draws as a circle. */
+  /** `dot` when the mark is shorter than it is wide, so a capsule draws as a circle. */
   readonly kind: "bar" | "dot";
   readonly lane: number;
   readonly lanes: number;
-  /** Width in px within its lane; 0 when drawn as an overlay. */
+  /** Px from the rail's start edge to the mark. */
+  readonly offset: number;
+  /** Width in px within its lane. */
   readonly width: number;
 }
-
-export interface TimeGridAnnotationMarkProps {
-  readonly className: string;
-  readonly style: CSSProperties;
-  readonly "data-color": CalendarEventColor;
-  readonly "data-continues"?: "start" | "end" | "both";
-  readonly "data-kind": "bar" | "dot";
-  readonly "data-slot": "time-grid-annotation";
-  readonly "data-source": string;
-}
-
-export type TimeGridAnnotationRenderer = (
-  mark: TimeGridAnnotationMarkLayout,
-  props: TimeGridAnnotationMarkProps,
-) => ReactElement;
 
 const MINUTE = 60_000_000_000n;
 /** Gaps shorter than about 3px at the default hour height always merge (compaction). */
@@ -122,6 +124,7 @@ const later = (left: Temporal.Instant, right: Temporal.Instant) =>
 const earlier = (left: Temporal.Instant, right: Temporal.Instant) =>
   Temporal.Instant.compare(left, right) <= 0 ? left : right;
 const larger = (left: bigint, right: bigint) => (left > right ? left : right);
+const percent = (fraction: number) => `${fraction * 100}%`;
 
 /**
  * Sessionizes each source and clips the result to one column. Items also merge when their marks
@@ -191,12 +194,12 @@ export function annotationMarks(
 
 type ResolvedRail = Required<TimeGridAnnotationRail>;
 
-function resolveRail(options: TimeGridAnnotationOptions, dense: boolean): ResolvedRail {
+function resolveRail(rail: TimeGridAnnotationRail | undefined, dense: boolean): ResolvedRail {
   return {
-    layout: options.rail?.layout ?? "pack",
-    markWidth: options.rail?.markWidth ?? (dense ? 12 : 20),
-    side: options.rail?.side ?? "start",
-    width: options.rail?.width ?? (dense ? 18 : 30),
+    layout: rail?.layout ?? "pack",
+    markWidth: rail?.markWidth ?? (dense ? 12 : 20),
+    side: rail?.side ?? "start",
+    width: rail?.width ?? (dense ? 18 : 30),
   };
 }
 
@@ -259,83 +262,11 @@ export function layoutAnnotationMarks(
       kind: mark.height * COLUMN_PX < width ? "dot" : "bar",
       lane: placed.lane,
       lanes: placed.lanes,
+      offset: 2 + placed.lane * laneWidth + (laneWidth - width) / 2,
       width,
     };
   });
 }
-
-const percent = (fraction: number) => `${fraction * 100}%`;
-
-function markProps(
-  mark: TimeGridAnnotationMarkLayout,
-  rail: ResolvedRail,
-  overlay: boolean,
-  clickable: boolean,
-): TimeGridAnnotationMarkProps {
-  const shared = {
-    className: cn("pointer-events-auto absolute", clickable && "cursor-pointer"),
-    "data-color": mark.source.color,
-    "data-continues": mark.startsBeforeDay
-      ? mark.endsAfterDay
-        ? ("both" as const)
-        : ("start" as const)
-      : mark.endsAfterDay
-        ? ("end" as const)
-        : undefined,
-    "data-kind": mark.kind,
-    "data-slot": "time-grid-annotation" as const,
-    "data-source": mark.source.id,
-  };
-  if (overlay) {
-    return {
-      ...shared,
-      style: { height: percent(mark.height), insetInline: 0, top: percent(mark.top) },
-    };
-  }
-  const laneWidth = (rail.width - 4) / mark.lanes;
-  const offset = 2 + mark.lane * laneWidth + (laneWidth - mark.width) / 2;
-  return {
-    ...shared,
-    style: {
-      // A mark is never shorter than it is wide, so a short one is a circle.
-      height: `max(${mark.width}px, calc(${percent(mark.height)} - 1px))`,
-      [rail.side === "start" ? "insetInlineStart" : "insetInlineEnd"]: offset,
-      top: percent(mark.top),
-      width: mark.width,
-    },
-  };
-}
-
-/**
- * The default mark: a capsule in the source's colour with its icon inside the top, or a circle with
- * the icon when short. A part cut off by the day boundary fades out and drops the icon.
- */
-export const renderRailMark: TimeGridAnnotationRenderer = (mark, props) => {
-  const { Icon } = mark.source;
-  return (
-    <div
-      {...props}
-      className={cn(
-        props.className,
-        "rounded-full bg-calendar-event-border shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] transition-[filter] duration-100 hover:brightness-110 motion-reduce:transition-none dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.16)]",
-        mark.startsBeforeDay &&
-          "rounded-t-none mask-[linear-gradient(to_bottom,transparent,black_1.5rem)]",
-        mark.endsAfterDay &&
-          "rounded-b-none mask-[linear-gradient(to_top,transparent,black_1.5rem)]",
-        mark.source.markClassName,
-      )}
-    >
-      {!mark.startsBeforeDay && mark.width >= 10 && (
-        <span
-          data-slot="time-grid-annotation-icon"
-          className="absolute inset-x-px top-px flex aspect-square items-center justify-center rounded-full bg-white/35 text-black/70"
-        >
-          <Icon className="size-[62%]" />
-        </span>
-      )}
-    </div>
-  );
-};
 
 export function useAnnotationHandles() {
   const [handles] = useState(() => ({
@@ -347,38 +278,173 @@ export function useAnnotationHandles() {
 
 export type TimeGridAnnotationHandles = ReturnType<typeof useAnnotationHandles>;
 
-/** Wires a rendered mark to the grid's one tooltip and, when clickable, its one popover. */
-function Mark({
-  clickable,
-  element,
-  handles,
-  mark,
-}: {
+interface AnnotationsContextValue {
   readonly clickable: boolean;
-  readonly element: ReactElement;
   readonly handles: TimeGridAnnotationHandles;
+  readonly placement: "rail" | "overlay";
+  readonly rail: ResolvedRail;
+}
+
+const AnnotationsContext = createContext<AnnotationsContextValue | null>(null);
+const AnnotationMarkContext = createContext<TimeGridAnnotationMarkLayout | null>(null);
+
+function useAnnotations(): AnnotationsContextValue {
+  const context = use(AnnotationsContext);
+  if (context === null) throw new Error("Annotation parts render inside a time grid column.");
+  return context;
+}
+
+/** The mark an `AnnotationMark` renders, for parts inside it. */
+export function useAnnotationMark(): TimeGridAnnotationMarkLayout {
+  const mark = use(AnnotationMarkContext);
+  if (mark === null) throw new Error("useAnnotationMark is for parts inside an AnnotationMark.");
+  return mark;
+}
+
+/** The strip a column's marks sit in: beside events, or across the column for an overlay. */
+export function AnnotationRail({ className, style, ...props }: ComponentProps<"div">) {
+  const { placement, rail } = useAnnotations();
+  return (
+    <div
+      aria-hidden
+      data-slot="annotation-rail"
+      data-placement={placement}
+      data-side={rail.side}
+      className={cn(
+        "pointer-events-none absolute inset-y-0",
+        placement === "overlay"
+          ? "inset-x-0 z-0"
+          : "z-[5] w-(--calendar-annotation-rail-width) data-[side=end]:end-0 data-[side=start]:start-0",
+        className,
+      )}
+      style={{ "--calendar-annotation-rail-width": `${rail.width}px`, ...style } as CSSProperties}
+      {...props}
+    />
+  );
+}
+
+/**
+ * Mark geometry arrives as CSS variables: `--mark-top` and `--mark-height` (fractions of the day),
+ * `--mark-offset` and `--mark-width` (px inside the rail).
+ */
+export const annotationMarkVariants = cva(
+  "pointer-events-auto absolute top-(--mark-top) transition-[filter,background-color] duration-100 motion-reduce:transition-none",
+  {
+    variants: {
+      variant: {
+        /** Amie's look: a capsule never shorter than it is wide, so a short one is a circle. */
+        capsule:
+          "start-(--mark-offset) h-[max(var(--mark-width),calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full bg-calendar-event-border shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] hover:brightness-110 data-ends-after:rounded-b-none data-ends-after:mask-[linear-gradient(to_top,transparent,black_1.5rem)] data-starts-before:rounded-t-none data-starts-before:mask-[linear-gradient(to_bottom,transparent,black_1.5rem)] dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.16)]",
+        /** A thin bar that keeps its true length. */
+        bar: "start-(--mark-offset) h-[max(3px,calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full bg-calendar-event-border hover:brightness-110 data-ends-after:rounded-b-none data-starts-before:rounded-t-none",
+        /** A tint across the whole column behind events; for `placement: "overlay"`. */
+        band: "inset-x-0 h-(--mark-height) border-s-2 border-calendar-event-border bg-calendar-event-border/12 hover:bg-calendar-event-border/24",
+      },
+    },
+    defaultVariants: { variant: "capsule" },
+  },
+);
+
+export interface AnnotationMarkProps
+  extends useRender.ComponentProps<"div">, VariantProps<typeof annotationMarkVariants> {
   readonly mark: TimeGridAnnotationMarkLayout;
-}) {
+}
+
+/**
+ * One mark, wired to the grid's tooltip and, when clickable, its popover. Its children read the
+ * mark through `useAnnotationMark`. `render` swaps the element, as everywhere in Base UI.
+ */
+export function AnnotationMark({
+  className,
+  mark,
+  render,
+  style,
+  variant,
+  ...props
+}: AnnotationMarkProps) {
+  const { clickable, handles } = useAnnotations();
+  const element = useRender({
+    defaultTagName: "div",
+    props: {
+      ...props,
+      className: cn(annotationMarkVariants({ variant }), clickable && "cursor-pointer", className),
+      "data-annotation-id": mark.items[0]!.id,
+      "data-color": mark.source.color,
+      "data-ends-after": mark.endsAfterDay ? "" : undefined,
+      "data-kind": mark.kind,
+      "data-slot": "annotation-mark",
+      "data-source": mark.source.id,
+      "data-starts-before": mark.startsBeforeDay ? "" : undefined,
+      style: {
+        "--mark-height": percent(mark.height),
+        "--mark-offset": `${mark.offset}px`,
+        "--mark-top": percent(mark.top),
+        "--mark-width": `${mark.width}px`,
+        ...style,
+      } as CSSProperties,
+    },
+    render,
+  });
   const tooltip = (
     <TooltipPrimitive.Trigger
       delay={0}
       handle={handles.tooltip}
       payload={mark}
-      // The layer is aria-hidden; the day summary speaks for it. Keep marks out of the tab order.
+      // The rail is aria-hidden; the day summary speaks for it. Keep marks out of the tab order.
       tabIndex={-1}
       render={element}
     />
   );
-  return clickable ? (
-    <PopoverPrimitive.Trigger
-      handle={handles.popover}
-      nativeButton={false}
-      payload={mark}
-      tabIndex={-1}
-      render={tooltip}
-    />
-  ) : (
-    tooltip
+
+  return (
+    <AnnotationMarkContext value={mark}>
+      {clickable ? (
+        <PopoverPrimitive.Trigger
+          handle={handles.popover}
+          nativeButton={false}
+          payload={mark}
+          tabIndex={-1}
+          render={tooltip}
+        />
+      ) : (
+        tooltip
+      )}
+    </AnnotationMarkContext>
+  );
+}
+
+/**
+ * The source's icon in a disc at the top of the mark. Children replace the icon, such as a brand
+ * logo. It hides when the mark continues from the day before or is too narrow for it.
+ */
+export function AnnotationMarkIcon({ children, className, ...props }: ComponentProps<"span">) {
+  const mark = useAnnotationMark();
+  if (mark.startsBeforeDay || mark.width < 10) return null;
+  const { Icon } = mark.source;
+  return (
+    <span
+      data-slot="annotation-mark-icon"
+      className={cn(
+        "absolute inset-x-px top-px flex aspect-square items-center justify-center rounded-full bg-white/35 text-black/70 [&_svg]:size-[62%]",
+        className,
+      )}
+      {...props}
+    >
+      {children ?? <Icon />}
+    </span>
+  );
+}
+
+/** The default composition: Amie's capsules with the source's icon inside the top. */
+export function TimeGridAnnotations({ marks }: TimeGridAnnotationsProps) {
+  return (
+    <AnnotationRail>
+      {marks.map((mark) => (
+        <AnnotationMark key={mark.key} mark={mark}>
+          <AnnotationMarkIcon />
+        </AnnotationMark>
+      ))}
+    </AnnotationRail>
   );
 }
 
@@ -388,7 +454,7 @@ export function annotationEventInset(
   dense: boolean,
 ): CSSProperties | undefined {
   if (options === undefined || options.placement === "overlay") return undefined;
-  const rail = resolveRail(options, dense);
+  const rail = resolveRail(options.rail, dense);
   return rail.side === "start"
     ? { insetInlineStart: rail.width }
     : { insetInlineEnd: Math.max(8, rail.width + 2) };
@@ -436,7 +502,7 @@ export interface TimeGridAnnotationLayerProps {
   readonly options: TimeGridAnnotationOptions;
 }
 
-/** One column's marks: in the rail beside events, or behind them as an overlay. */
+/** One column's annotations: the day summary for screen readers and the composed parts. */
 export function TimeGridAnnotationLayer({
   column,
   dense,
@@ -445,41 +511,34 @@ export function TimeGridAnnotationLayer({
   options,
 }: TimeGridAnnotationLayerProps) {
   const { items, placement = "rail", sources } = options;
-  const overlay = placement === "overlay";
-  const rail = resolveRail(options, dense);
-  const markMinutes = overlay ? 0 : (rail.markWidth / HOUR_PX) * 60;
+  const { layout, markWidth, side, width } = resolveRail(options.rail, dense);
+  const rail = useMemo(
+    () => ({ layout, markWidth, side, width }),
+    [layout, markWidth, side, width],
+  );
+  const markMinutes = placement === "overlay" ? 0 : (markWidth / HOUR_PX) * 60;
   const marks = useMemo(
     () => annotationMarks(column, { items, sources }, { markMinutes }),
     [column, items, markMinutes, sources],
   );
-  const { layout, markWidth, side, width } = rail;
   const layouts = useMemo(
-    () => layoutAnnotationMarks(marks, sources, { layout, markWidth, side, width }),
-    [layout, markWidth, marks, side, sources, width],
+    () => layoutAnnotationMarks(marks, sources, rail),
+    [marks, rail, sources],
   );
   const summary = useMemo(() => annotationSummary(marks, formatTime), [marks, formatTime]);
-  const render = options.renderMark ?? renderRailMark;
   const clickable = options.clickable === true;
+  const context = useMemo(
+    () => ({ clickable, handles, placement, rail }),
+    [clickable, handles, placement, rail],
+  );
+  const Annotations = options.Annotations ?? TimeGridAnnotations;
 
   return (
     <>
       {summary !== "" && <span className="sr-only">{summary}</span>}
-      <div
-        aria-hidden
-        data-slot="time-grid-annotations"
-        data-placement={placement}
-        className={cn("pointer-events-none absolute inset-0", overlay ? "z-0" : "z-[5]")}
-      >
-        {layouts.map((mark) => (
-          <Mark
-            key={mark.key}
-            clickable={clickable}
-            element={render(mark, markProps(mark, rail, overlay, clickable))}
-            handles={handles}
-            mark={mark}
-          />
-        ))}
-      </div>
+      <AnnotationsContext value={context}>
+        <Annotations marks={layouts} />
+      </AnnotationsContext>
     </>
   );
 }
@@ -500,6 +559,7 @@ function itemSummary(mark: TimeGridAnnotationMark): string {
 /**
  * One tooltip and one popover for every mark in the grid, through Base UI's detached triggers, so
  * hundreds of marks do not mount hundreds of roots. The tooltip follows the pointer vertically.
+ * Their content is yours to change here.
  */
 export function TimeGridAnnotationOverlays({
   formatTime,

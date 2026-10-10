@@ -16,8 +16,6 @@ export const annotationSources = [
     Icon: MoonIcon,
     id: "sleep",
     label: "Sleep",
-    // A starry texture from styles.css, through the source's own mark classes.
-    markClassName: "annotation-sleep",
     mergeGapMinutes: 20,
   },
   {
