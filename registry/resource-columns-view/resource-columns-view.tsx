@@ -3,7 +3,9 @@ import {
   resourceColumnsStrategy,
   timeGridTitle,
   useCalendarAnnouncer,
+  useCalendarFocus,
   useCalendarPointer,
+  type CalendarFocus,
   type CalendarViewRendererProps,
   type ResourceColumnsProjection,
   type ResourceVisibilityOptions,
@@ -29,6 +31,8 @@ export interface ResourceColumnsViewOptions<TEvent> extends ResourceVisibilityOp
   /** Colour for an event; sets `data-color` on every element that renders it. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
 }
+
+const selectResource = (focus: CalendarFocus | null) => focus?.resourceId;
 
 /** Pointer and keyboard both step by these slots, so they reach the same times. */
 const snap = { increment: 15, smallestUnit: "minute" } as const;
@@ -56,9 +60,11 @@ export function ResourceColumnsView<TEvent>({
 }: ResourceColumnsViewProps<TEvent>) {
   const keys = useMemo(() => resources.map(({ resource }) => resource.key), [resources]);
   const rtl = environment.direction === "rtl";
+  const focusedResource = useCalendarFocus(selectResource);
   const { scrollRef, scrollbarWidth, virtualizer } = useColumnVirtualizer({
     keys,
     minWidth: MIN_DAY_WIDTH * Math.max(1, columns.length),
+    pinned: resources.findIndex(({ resource }) => resource.id === focusedResource),
     rtl,
   });
   const { followX, followY, sync } = useAxisSync(scrollRef);

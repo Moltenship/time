@@ -252,20 +252,23 @@ test("dragging an event to another resource's column swaps that resource in", as
   expect(change.proposed?.start.toString()).toBe("2026-10-08T14:00:00Z");
 });
 
-test("focus on an event comes back when its column scrolls away and back", async () => {
+test("a focused event keeps its column and DOM focus while it is scrolled out of view", async () => {
   const container = await renderResources(people(200), {
     events: [shift("standup", ["p1"], "2026-10-08T13:00Z", "2026-10-08T13:30Z")],
   });
   const standup = () => container.querySelector<HTMLElement>('[data-event-id="standup"]');
+  const element = standup();
 
-  await act(async () => standup()!.focus());
+  await act(async () => element!.focus());
   await scrollTo(body(container), 100 * 128);
 
-  expect(standup()).toBeNull();
-
-  await scrollTo(body(container), 0);
-
-  expect(document.activeElement).toBe(standup());
+  // p1 renders beside the columns in view, so focus never falls back to the page.
+  expect(renderedResources(container)).toEqual([
+    "p1",
+    ...Array.from({ length: 12 }, (_, index) => `p${99 + index}`),
+  ]);
+  expect(standup()).toBe(element);
+  expect(document.activeElement).toBe(element);
 });
 
 /** jsdom has no layout: give the body a visible width and record where it is scrolled to. */

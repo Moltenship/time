@@ -1,4 +1,10 @@
-import { useVirtualizer, type Rect, type Virtualizer } from "@tanstack/react-virtual";
+import {
+  defaultRangeExtractor,
+  useVirtualizer,
+  type Range,
+  type Rect,
+  type Virtualizer,
+} from "@tanstack/react-virtual";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 /**
@@ -39,17 +45,19 @@ export interface ColumnVirtualizerOptions {
   readonly keys: readonly string[];
   /** The narrowest a column gets, in pixels, before the columns scroll sideways. */
   readonly minWidth: number;
+  /** A column that renders even out of view, such as the one keyboard focus is in; `-1` for none. */
+  readonly pinned: number;
   readonly rtl: boolean;
 }
 
 /**
  * Horizontal virtualization for a row of equal columns in one scroll element: only the columns in
- * view, plus a few either side, render. Columns share the visible width until they reach
+ * view, plus a few either side and the pinned one, render. Columns share the visible width until they reach
  * `minWidth`, and whole-pixel widths keep their edges sharp. Pass `scrollRef` to the element that
  * scrolls, place each virtual item at `start` with `size` on the inline axis, and leave
  * `scrollbarWidth` free at the inline end of anything aligned with the columns outside it.
  */
-export function useColumnVirtualizer({ keys, minWidth, rtl }: ColumnVirtualizerOptions) {
+export function useColumnVirtualizer({ keys, minWidth, pinned, rtl }: ColumnVirtualizerOptions) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [viewport, setViewport] = useState<Viewport>({ rect: INITIAL_RECT, scrollbar: 0 });
   const width = Math.max(minWidth, Math.floor(viewport.rect.width / Math.max(1, keys.length)));
@@ -63,6 +71,17 @@ export function useColumnVirtualizer({ keys, minWidth, rtl }: ColumnVirtualizerO
   }, [signature]);
   const estimateSize = useCallback(() => width, [width]);
   const getScrollElement = useCallback(() => scrollRef.current, []);
+  // The pinned column joins the visible ones, so focus moving there finds its element in the same
+  // commit, and focus stays on it while the user scrolls away.
+  const rangeExtractor = useCallback(
+    (range: Range) => {
+      const indexes = defaultRangeExtractor(range);
+      return pinned === -1 || indexes.includes(pinned)
+        ? indexes
+        : [...indexes, pinned].sort((left, right) => left - right);
+    },
+    [pinned],
+  );
   const observeElementRect = useCallback(
     (instance: ColumnVirtualizer, callback: (rect: Rect) => void) =>
       instance.scrollElement === null
@@ -89,6 +108,7 @@ export function useColumnVirtualizer({ keys, minWidth, rtl }: ColumnVirtualizerO
     isRtl: rtl,
     observeElementRect,
     overscan: OVERSCAN,
+    rangeExtractor,
     // Scroll updates render in the next frame instead of forcing a synchronous React render.
     useFlushSync: false,
   });
