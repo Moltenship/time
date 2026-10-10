@@ -15,15 +15,23 @@ function PreviewSkeleton() {
   );
 }
 
+async function withTemporal<TModule>(load: () => Promise<TModule>): Promise<TModule> {
+  // Chrome and Firefox ship Temporal natively; only load the polyfill where it is missing.
+  if (!("Temporal" in globalThis)) await import("temporal-polyfill/global");
+  // Imported after the polyfill so no calendar module evaluates without Temporal.
+  return load();
+}
+
 // Client-only: today, the time zone and the seeded week all come from the visitor's clock.
-const PreviewIsland = dynamic(
-  async () => {
-    // Chrome and Firefox ship Temporal natively; only load the polyfill where it is missing.
-    if (!("Temporal" in globalThis)) await import("temporal-polyfill/global");
-    // Imported after the polyfill so no calendar module evaluates without Temporal.
-    return import("./calendar");
-  },
-  { loading: PreviewSkeleton, ssr: false },
-);
+const PreviewIsland = dynamic(() => withTemporal(() => import("./calendar")), {
+  loading: PreviewSkeleton,
+  ssr: false,
+});
+
+/** The resource columns view, with its own rooms and people. */
+export const ResourcePreviewIsland = dynamic(() => withTemporal(() => import("./resources")), {
+  loading: PreviewSkeleton,
+  ssr: false,
+});
 
 export default PreviewIsland;

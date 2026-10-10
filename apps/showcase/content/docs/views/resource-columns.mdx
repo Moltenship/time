@@ -1,0 +1,139 @@
+---
+title: Resource columns
+description: A day of rooms or people side by side, grouped by team, with hundreds of columns.
+---
+
+<CalendarPreview view="resources" />
+
+Try it in the [live demo](https://moltenship-time-demo.vercel.app): pick Resources in the view
+switcher.
+
+`createResourceColumnsView` shows one time-grid column for each resource, such as a room or a
+person, for the anchor date. Pass a number of days to give each resource that many day columns.
+Resources with children appear as groups that collapse. Only the columns in view are rendered, so
+the view stays fast with hundreds of resources.
+
+## Add it
+
+Copy `registry/resource-columns-view` into your app, along with `registry/time-grid-view`, whose
+columns, events and all-day row it reuses. You also need the theme and `registry/calendar`, as
+described in [UI source](/docs/installation#ui-source-optional). The view depends on
+`@tanstack/react-virtual`.
+
+```tsx
+import { createResourceColumnsView } from "@/components/calendar/resource-columns-view/resource-columns-view";
+
+export const Calendar = createCalendar<Meeting, Room>()({
+  eventAdapter,
+  views: [createResourceColumnsView<Meeting>({ getEventColor: (meeting) => meeting.color })],
+});
+```
+
+The view is named `resources`. Previous and Next move by its number of days:
+`createResourceColumnsView<Meeting>(options, 3)` shows three days for each resource.
+
+## Resources
+
+Pass the resources to `Root`. Each one has an `id`, a `title`, and optionally a `parentId`, which
+puts it in a group under that resource. Events list the resources they book in `resourceIds`, read
+through your event adapter's `getResourceIds`. An event that books several resources shows in each
+of their columns.
+
+```tsx
+const rooms = [
+  { data: null, id: "floor-1", title: "First floor" },
+  { data: null, id: "orchid", parentId: "floor-1", title: "Orchid" },
+  { data: null, id: "lotus", parentId: "floor-1", title: "Lotus" },
+];
+
+<Calendar.Root resources={rooms} defaultExpandedResourceIds={["floor-1"]} /* … */>
+```
+
+A group's children show while its ID is in `expandedResourceIds`. The chevron on a group's header
+toggles it. To control expansion yourself, pass `expandedResourceIds` and
+`onExpandedResourceIdsChange`. Groups start collapsed unless you list them in
+`defaultExpandedResourceIds`.
+
+## Anatomy
+
+`ResourceColumnsView` renders the parts below. The view builds them itself from its projection, so
+they're not parts you compose: to change one, edit its file. The tree shows where each part lives.
+
+<ResourceColumnsAnatomy />
+
+```txt title="Rendered by ResourceColumnsView"
+ResourceColumnsView              resource-columns-view.tsx
+├── ResourceColumnsHeader        resource-columns-header.tsx, follows the body sideways
+│   └── Resource header          one per rendered resource, under its group bands
+├── ResourceColumnsDates         resource-columns-dates.tsx, over several days
+├── ResourceColumnsAllDay        resource-columns-all-day.tsx, follows the body sideways
+│   └── TimeGridAllDayCells      time-grid-all-day.tsx, one set per resource
+└── ResourceColumnsBody          resource-columns-body.tsx, scrolls both ways
+    ├── Time gutter              --calendar-gutter-width, follows the body down
+    └── Resource column          data-resource-id, one per rendered resource
+        └── TimeGridColumn       time-grid-column.tsx, one per day
+            ├── TimeGridEvent    time-grid-event.tsx
+            └── Now line         data-slot="time-grid-now"
+```
+
+- `useColumnVirtualizer` in `column-virtualizer.ts` decides which columns render. Columns share the
+  width until they are 128px per day, then the view scrolls sideways.
+- The header, all-day row and gutter sit beside the scrolling body, not over it. `useAxisSync` in
+  `axis-sync.ts` moves them with the body's scroll, so a drag never lands on a column hidden behind
+  them.
+
+## Options
+
+<TypeTable
+  type={{
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: "Extra words for each event's accessible name, such as its calendar.",
+    },
+    getEventColor: {
+      type: "(event: TEvent) => CalendarEventColor | undefined",
+      description: (
+        <>
+          The color for each event. See <a href="/docs/theming#event-colors">event colors</a>.
+        </>
+      ),
+    },
+    unassigned: {
+      type: '"hide" | "bucket"',
+      default: '"hide"',
+      description: (
+        <>
+          Events that book no resources: hidden, or shown in an "Unassigned" column after the
+          resources.
+        </>
+      ),
+    },
+  }}
+/>
+
+Set options when you create the view, or per calendar with
+`viewOptions={{ resources: { unassigned: "bucket" } }}` on `Root`.
+
+## What it shows
+
+- **Header:** each resource's name. An expanded group's band names it across its own column and its
+  children's columns. Over several days, a row under the names shows each day's weekday and date.
+- **All-day row:** each resource's all-day events, and timed events of 24 hours or more. Busy days
+  collapse to three rows with "+N more" in every column at once, so the row keeps one height.
+- **Columns:** the same hours, events, daylight-saving bands and now line as the
+  [day view](/docs/views/week-and-day).
+- **Editing:** with `onEventChange` on `Root`, drag an event within its column to move or resize it,
+  or into another resource's column to move it there. A move swaps the resource you dragged from
+  for the one you dropped on and keeps the event's other resources. Drag across empty time or
+  all-day cells to create an event in that resource. See
+  [Interactions](/docs/interactions#drag-resize-and-create).
+- **Accessible names:** events, slots and all-day cells include their resource, as in "Design
+  review, Tuesday, October 6, 10:00 – 11:30 AM, Orchid".
+
+## Markup for interactions
+
+The view connects the pointer layer for you. Each resource's cells sit inside an element with
+`resourceIdAttributes(id)`, which sets `data-resource-id`: a drop or create inside it lands in that
+resource. Inside, the attributes are the [day view's](/docs/views/week-and-day#markup-for-interactions):
+`data-date` on day columns and all-day cells, `data-all-day` on all-day cells, `data-event-id` on
+events, and `data-resize` handles.

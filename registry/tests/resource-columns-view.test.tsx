@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { CalendarEventChange, CalendarResource } from "@moltenship/calendar";
+import type { CalendarEventChange, CalendarFocus, CalendarResource } from "@moltenship/calendar";
 import { act } from "react";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
@@ -18,27 +18,27 @@ afterEach(async () => {
   cleanup = undefined;
 });
 
-async function renderResources(
+interface CalendarOptions {
+  readonly events?: readonly StaffEvent[];
+  readonly expanded?: readonly string[];
+  /** Controls the calendar's focus when set. */
+  readonly focus?: CalendarFocus | null;
+  readonly onEventChange?: (change: Change) => void;
+  readonly unassigned?: "bucket" | "hide";
+}
+
+function calendar(
   resources: readonly CalendarResource<null>[],
-  {
-    events = [],
-    expanded = [],
-    onEventChange,
-    unassigned = "hide",
-  }: {
-    readonly events?: readonly StaffEvent[];
-    readonly expanded?: readonly string[];
-    readonly onEventChange?: (change: Change) => void;
-    readonly unassigned?: "bucket" | "hide";
-  } = {},
+  { events = [], expanded = [], focus, onEventChange, unassigned = "hide" }: CalendarOptions = {},
 ) {
-  const result = await render(
+  return (
     <ResourceCalendar.Root
       defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
       defaultExpandedResourceIds={expanded}
       defaultTimeZone="America/New_York"
       defaultView="resources"
       events={events}
+      focus={focus}
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T16:30Z")}
       onEventChange={onEventChange}
@@ -47,8 +47,15 @@ async function renderResources(
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
       <ResourceCalendar.ActiveView />
-    </ResourceCalendar.Root>,
+    </ResourceCalendar.Root>
   );
+}
+
+async function renderResources(
+  resources: readonly CalendarResource<null>[],
+  options?: CalendarOptions,
+) {
+  const result = await render(calendar(resources, options));
   cleanup = result.unmount;
   return result.container;
 }
@@ -227,4 +234,47 @@ test("dragging an event to another resource's column swaps that resource in", as
   expect(change.cause).toBe("move");
   expect(change.proposed?.resourceIds).toEqual(["p3", "x"]);
   expect(change.proposed?.start.toString()).toBe("2026-10-08T14:00:00Z");
+});
+
+test("focus on an event comes back when its column scrolls away and back", async () => {
+  const container = await renderResources(people(200), {
+    events: [shift("standup", ["p1"], "2026-10-08T13:00Z", "2026-10-08T13:30Z")],
+  });
+  const standup = () => container.querySelector<HTMLElement>('[data-event-id="standup"]');
+
+  await act(async () => standup()!.focus());
+  await scrollTo(body(container), 100 * 128);
+
+  expect(standup()).toBeNull();
+
+  await scrollTo(body(container), 0);
+
+  expect(document.activeElement).toBe(standup());
+});
+
+test("focus on a resource out of view scrolls its column in", async () => {
+  // jsdom has no element scrolling; TanStack scrolls with `scrollTo` when it exists.
+  const scrollTo = vi.fn<(options: ScrollToOptions) => void>();
+  Object.defineProperty(HTMLElement.prototype, "scrollTo", { configurable: true, value: scrollTo });
+  const slot = (resourceId: string): CalendarFocus => ({
+    date: Temporal.PlainDate.from("2026-10-08"),
+    kind: "slot",
+    resourceId,
+    time: Temporal.PlainTime.from("09:00"),
+  });
+  try {
+    const result = await render(calendar(people(200), { focus: slot("p2") }));
+    cleanup = result.unmount;
+    Object.defineProperties(body(result.container), {
+      clientWidth: { value: 960 },
+      scrollWidth: { value: 200 * 128 },
+    });
+
+    await result.rerender(calendar(people(200), { focus: slot("p150") }));
+
+    // Aligned to the viewport's end: p150 spans 149 × 128 to 150 × 128.
+    expect(scrollTo).toHaveBeenLastCalledWith(expect.objectContaining({ left: 150 * 128 - 960 }));
+  } finally {
+    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollTo;
+  }
 });

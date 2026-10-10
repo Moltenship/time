@@ -2,6 +2,7 @@ import {
   AgendaAnatomy,
   CalendarAnatomy,
   MonthAnatomy,
+  ResourceColumnsAnatomy,
   TimeGridAnatomy,
 } from "@/components/anatomy";
 import { CalendarPreview } from "@/components/calendar-preview";
@@ -18,6 +19,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     CalendarAnatomy,
     CalendarPreview,
     MonthAnatomy,
+    ResourceColumnsAnatomy,
     TimeGridAnatomy,
     Step,
     Steps,

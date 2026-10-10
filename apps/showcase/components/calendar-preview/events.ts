@@ -5,6 +5,8 @@ import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 export type PreviewEvent = {
   readonly color: CalendarEventColor;
   readonly id: string;
+  /** Rooms and people the event books, in the resources preview. */
+  readonly resourceIds?: readonly string[];
   readonly title: string;
 } & (
   | {
@@ -131,23 +133,29 @@ export function createPreviewEvents(now: Temporal.ZonedDateTime): readonly Previ
   return events;
 }
 
-export type PreviewEventChange = CalendarEventChange<PreviewEvent, string, never>;
+export type PreviewEventChange = CalendarEventChange<PreviewEvent, string, string>;
 
-/** The events after a drag: moves and resizes take the new placement, and empty time adds one. */
+/**
+ * The events after a drag: moves and resizes take the new placement and resources, and empty
+ * time adds one.
+ */
 export function applyPreviewChange(
   events: readonly PreviewEvent[],
   change: PreviewEventChange,
 ): readonly PreviewEvent[] {
   if (change.cause === "delete") return events.filter(({ id }) => id !== change.eventId);
-  // Preview events have no resources, so only the interval carries over.
-  const { resourceIds: _resourceIds, ...placement } = change.proposed;
+  const { resourceIds, ...placement } = change.proposed;
   if (placement.kind === "floating") return events;
+  const booked = resourceIds.length === 0 ? {} : { resourceIds };
   if (change.cause === "create") {
-    return [...events, { color: "orange", id: change.id, title: "New event", ...placement }];
+    return [
+      ...events,
+      { color: "orange", id: change.id, title: "New event", ...booked, ...placement },
+    ];
   }
   return events.map((event) =>
     event.id === change.eventId
-      ? { color: event.color, id: event.id, title: event.title, ...placement }
+      ? { color: event.color, id: event.id, title: event.title, ...booked, ...placement }
       : event,
   );
 }
