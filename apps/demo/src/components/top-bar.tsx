@@ -16,6 +16,7 @@ const viewOptions: readonly ViewSwitcherOption<DemoView>[] = [
   { label: "Month", shortcut: "M", value: "month" },
   { label: "Agenda", shortcut: "A", value: "agenda" },
   { label: "Resources", shortcut: "R", value: "resources" },
+  { label: "Timeline", shortcut: "L", value: "timeline-week" },
 ];
 
 const selectView = (state: { readonly view: DemoView }) => state.view;
