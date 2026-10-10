@@ -1,0 +1,46 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "resource-timeline-view",
+  "type": "registry:component",
+  "title": "Resource timeline",
+  "description": "Resources as rows and time as columns: a sticky resource column with collapsible groups, a sticky header of hours or days, and two-axis virtualization that renders only the rows and slots in view.",
+  "dependencies": ["@moltenship/calendar", "@tanstack/react-virtual", "cn", "lucide-react"],
+  "registryDependencies": ["button", "@moltenship/calendar-theme"],
+  "files": [
+    {
+      "path": "registry/resource-timeline-view/resource-timeline-grid.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/resource-timeline-view/resource-timeline-grid.tsx"
+    },
+    {
+      "path": "registry/resource-timeline-view/resource-timeline-header.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/resource-timeline-view/resource-timeline-header.tsx"
+    },
+    {
+      "path": "registry/resource-timeline-view/resource-timeline-row.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/resource-timeline-view/resource-timeline-row.tsx"
+    },
+    {
+      "path": "registry/resource-timeline-view/timeline-labels.ts",
+      "type": "registry:lib",
+      "target": "components/calendar/resource-timeline-view/timeline-labels.ts"
+    },
+    {
+      "path": "registry/resource-timeline-view/timeline-scale.ts",
+      "type": "registry:lib",
+      "target": "components/calendar/resource-timeline-view/timeline-scale.ts"
+    },
+    {
+      "path": "registry/resource-timeline-view/use-timeline-virtualizer.ts",
+      "type": "registry:hook",
+      "target": "components/calendar/resource-timeline-view/use-timeline-virtualizer.ts"
+    }
+  ],
+  "meta": {
+    "compatibility": {
+      "@moltenship/calendar": ">=0.0.0"
+    }
+  }
+}
