@@ -2,6 +2,7 @@ import {
   createCalendar,
   createCanonicalEventAdapter,
   type CalendarEvent,
+  type CalendarEventChange,
   type CalendarVisibleRange,
 } from "@moltenship/calendar";
 import { act } from "react";
@@ -44,6 +45,7 @@ const events: readonly Fixture[] = [
 /** What the calendar reported, in order; clear it between tests. */
 export const reported = {
   anchors: [] as Temporal.PlainDate[],
+  changes: [] as CalendarEventChange<Fixture, string, string>[],
   ranges: [] as CalendarVisibleRange<ScrollingView>[],
 };
 
@@ -65,6 +67,9 @@ export function ScrollingScreen({
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T10:20:00Z")}
       onAnchorDateChange={(date) => reported.anchors.push(date)}
+      onEventChange={(change) => {
+        reported.changes.push(change);
+      }}
       onVisibleRangeChange={(range) => reported.ranges.push(range)}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >

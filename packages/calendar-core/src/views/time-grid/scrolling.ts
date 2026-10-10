@@ -38,7 +38,7 @@ export function scrollingTimeGridStrategy<TOptions = undefined, TEvent = unknown
     },
     getTitle: (range, environment) => timeGridTitle(range, environment.locale),
     navigate: (anchor, delta) => navigateTimeGrid(anchor, delta, span),
-    project: (input) => projectTimeGrid({ ...input, range: input.loadRange }),
+    project: (input) => projectTimeGrid({ ...input, range: input.loadRange ?? input.range }),
   };
   return Object.freeze(strategy);
 }

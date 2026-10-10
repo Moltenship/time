@@ -40,6 +40,8 @@ what it shows, so `Calendar.Title`, `onAnchorDateChange`, and a URL that stores 
 scroll. During a long swipe the anchor follows every half page. When the anchor changes any other
 way, from Today, Next, or your own `setAnchorDate`, the view scrolls there: smoothly over a page or
 two, and at once from further away, from the keyboard, or when the system asks for reduced motion.
+With a controlled `anchorDate`, the view stays where it was scrolled until your state catches up,
+even if that takes a few renders.
 
 The month names the month that most of its third row falls in, and dims the days of other months.
 Previous and Next go to the middle of the neighbouring month, so all of it shows.
@@ -79,8 +81,8 @@ from screen readers, so the grid reads as one week, one day, or six weeks.
 ## Dragging
 
 Drag, resize, and create work as in the paged views. While a gesture is under way the view stops
-snapping, and dragging toward an edge scrolls into the days beyond; when you let go, it comes to
-rest on the nearest day.
+snapping, and dragging toward an edge keeps scrolling into the days beyond, rendering them as it
+goes; when you let go, it comes to rest on the nearest day.
 
 ## How it's built
 

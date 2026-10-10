@@ -90,6 +90,11 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
    * to the focused target once it renders, after the element holding DOM focus went away.
    */
   let owed: "focus" | "tab-stop" | null = null;
+  /**
+   * The last element let go while it held DOM focus. It can stay in the document, as a scrolling
+   * view keeps days around the visible ones, and focus on it is still the view's to move.
+   */
+  let released: HTMLElement | null = null;
 
   function find(
     target: CalendarFocus | null,
@@ -144,7 +149,9 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
     owed = null;
     const active = document.activeElement;
     if (element === undefined || element === active) return;
-    if (active !== null && active !== document.body && itemAt(active) === undefined) return;
+    const ours = itemAt(active) !== undefined || released?.contains(active) === true;
+    if (active !== null && active !== document.body && !ours) return;
+    released = null;
     element.focus();
   }
 
@@ -188,7 +195,10 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
         if (items.get(element)?.target !== target) return;
         // The focused element is leaving, as when a grabbed event moves between the all-day row
         // and the columns: focus whatever takes its place.
-        if (element.contains(document.activeElement)) owed ??= "focus";
+        if (element.contains(document.activeElement)) {
+          owed ??= "focus";
+          released = element;
+        }
         items.delete(element);
         changed();
       };

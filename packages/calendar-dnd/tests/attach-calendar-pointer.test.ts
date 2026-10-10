@@ -95,6 +95,32 @@ describe("time grid", () => {
     expect(element.hasAttribute("data-dragging")).toBe(false);
   });
 
+  test("maps columns the view renders mid-gesture to times, as a scrolling view adds days", () => {
+    const grid = mountTimeGrid([meeting]);
+    // The view starts with only the first day's column and renders the next while dragging.
+    let columns: Options["columns"] = grid.columns.filter(
+      ({ date }) => date.toString() === "2026-08-17",
+    );
+    const proposals: Proposal[] = [];
+    detach = attachCalendarPointer(grid.region, () => ({
+      columns,
+      events: grid.snapshot,
+      onPropose: (proposal) => {
+        proposals.push(proposal);
+      },
+      timeZone,
+    }));
+    const element = grid.elements.get("a")!;
+
+    pointer("pointerdown", element, xAt("2026-08-17"), yAt("09:30"));
+    pointer("pointermove", element, xAt("2026-08-17"), yAt("10:30"));
+    columns = grid.columns;
+    pointer("pointermove", element, xAt("2026-08-18"), yAt("11:30"));
+    pointer("pointerup", element, xAt("2026-08-18"), yAt("11:30"));
+
+    expect(interval(proposals[0])).toBe("timed 2026-08-18T11:00:00Z/2026-08-18T12:00:00Z");
+  });
+
   test("leaves clicks alone but swallows the click that ends a drag", () => {
     const grid = mountTimeGrid([meeting]);
     const proposals = setup(grid, { columns: grid.columns });

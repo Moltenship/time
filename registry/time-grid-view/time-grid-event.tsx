@@ -24,6 +24,8 @@ export interface TimeGridEventProps<TEvent> {
   readonly formats: TimeGridEventFormats;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly layout: TimeGridEventLayout<EventDayFragment<TEvent, EventId, ResourceId>>;
+  /** Rendered beside the visible dates of a scrolling grid: not a focus target. */
+  readonly offscreen?: boolean;
   /** The resource this copy shows in, in a view with a column per resource. */
   readonly resourceId?: ResourceId | null;
   readonly timeZone: string;
@@ -92,6 +94,7 @@ export function TimeGridEvent<TEvent>({
   formats,
   labelEvent,
   layout,
+  offscreen,
   resourceId,
   timeZone,
 }: TimeGridEventProps<TEvent>) {
@@ -100,7 +103,7 @@ export function TimeGridEvent<TEvent>({
   const [start, end] = wallTimes(fragment, timeZone);
   const compact = height * 24 * 60 < COMPACT_MINUTES;
   const resizable = !event.isReadOnly;
-  const chip = useEventChip(event, { date: fragment.date, labelEvent, resourceId });
+  const chip = useEventChip(event, { date: fragment.date, labelEvent, offscreen, resourceId });
 
   return (
     <EventChip

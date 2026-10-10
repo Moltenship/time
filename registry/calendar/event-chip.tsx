@@ -53,6 +53,11 @@ export interface EventChipFocusOptions<TEvent> {
   /** Whether the element is one of the view's focus targets; a copy in a list is not. */
   readonly focusTarget?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
+  /**
+   * Rendered beside the visible dates of a scrolling view, ready to scroll into view: neither a
+   * focus target nor in the tab order, so the visible dates keep the view's tab stop.
+   */
+  readonly offscreen?: boolean;
   /** The resource this copy shows in, in a view with a copy per resource. */
   readonly resourceId?: ResourceId | null;
 }
@@ -64,7 +69,14 @@ export interface EventChipFocusOptions<TEvent> {
  */
 export function useEventChip<TEvent>(
   event: NormalizedCalendarEvent<TEvent, EventId, ResourceId>,
-  { date, days = 1, focusTarget = true, labelEvent, resourceId }: EventChipFocusOptions<TEvent>,
+  {
+    date,
+    days = 1,
+    focusTarget = true,
+    labelEvent,
+    offscreen = false,
+    resourceId,
+  }: EventChipFocusOptions<TEvent>,
 ) {
   const grabbed = useCalendarInteraction((session) => session?.eventId === event.id);
   // A grabbed event previews as pending, but nothing is saving until the gesture commits.
@@ -73,7 +85,7 @@ export function useEventChip<TEvent>(
 
   return {
     ...eventIdAttributes(event.id),
-    ...(focusTarget ? roving : undefined),
+    ...(offscreen ? { tabIndex: -1 } : focusTarget ? roving : undefined),
     "aria-label": labelEvent({ ...event, isPending: pending }),
     "data-grabbed": grabbed ? "" : undefined,
     pending,

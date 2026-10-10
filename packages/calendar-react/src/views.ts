@@ -39,9 +39,10 @@ export interface CalendarViewRendererProps<TProjection, TOptions> {
   readonly events: EventSnapshot<unknown, EventId, ResourceId>;
   /**
    * The dates the projection covers: `range`, plus the neighbouring dates a scrolling view keeps
-   * ready (its strategy's `getLoadRange`).
+   * ready (its strategy's `getLoadRange`). `ActiveView` always passes it; a renderer used on its
+   * own falls back to `range`.
    */
-  readonly loadRange: PlainDateInterval;
+  readonly loadRange?: PlainDateInterval;
   readonly options: TOptions;
   readonly projection: TProjection;
   /** The visible dates. */

@@ -40,6 +40,11 @@ interface MonthWeekRowProps<TEvent> {
   readonly expanded: boolean;
   /** Lanes that fit in a cell, including the one a "+N more" control takes. */
   readonly maxLanes: number;
+  /**
+   * Rendered beside the visible weeks of a scrolling month, ready to scroll into view: its days
+   * and events are not focus targets, so the visible weeks keep the view's tab stop.
+   */
+  readonly offscreen?: boolean;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
   /** The week's segments limited to `maxLanes`. */
   readonly overflow: DayGridOverflow<TEvent, EventId, ResourceId>;
@@ -206,6 +211,7 @@ function MonthDayCell({
   count,
   day,
   formats,
+  offscreen,
   onOpenDay,
 }: {
   readonly children: ReactNode;
@@ -213,6 +219,8 @@ function MonthDayCell({
   readonly count: number;
   readonly day: MonthDay;
   readonly formats: MonthFormats;
+  /** Not a focus target, in a week rendered beside the visible ones. */
+  readonly offscreen: boolean;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
 }) {
   const roving = useRovingFocus({ date: day.date, kind: "day" });
@@ -228,7 +236,8 @@ function MonthDayCell({
     <div
       role="gridcell"
       aria-label={`${formats.date.format(day.date)}, ${eventCount(count)}`}
-      {...roving}
+      // Out of the tab order, yet focusable, so focus on it survives a scroll that moves it away.
+      {...(offscreen ? { tabIndex: -1 } : roving)}
       onKeyDown={(event) => {
         // Shift+Enter opens the day, as clicking its date does.
         if (event.key === "Enter" && event.shiftKey && event.target === event.currentTarget) {
@@ -270,6 +279,7 @@ export function MonthWeekRow<TEvent>({
   getEventColor,
   labelEvent,
   maxLanes,
+  offscreen = false,
   onOpenDay,
   overflow,
   week,
@@ -287,6 +297,7 @@ export function MonthWeekRow<TEvent>({
           count={segmentsOn(week.segments, column).length}
           day={day}
           formats={formats}
+          offscreen={offscreen}
           onOpenDay={onOpenDay}
         >
           {segments
@@ -312,6 +323,7 @@ export function MonthWeekRow<TEvent>({
                 endsAfter={segment.endsAfter}
                 event={segment.event}
                 labelEvent={labelEvent}
+                offscreen={offscreen}
                 startsBefore={segment.startsBefore}
                 style={laneStyle(segment.lane, segment.span)}
                 time={startTime(segment.fragments[0]!, formats)}

@@ -24,7 +24,8 @@ export interface ScrollingAxisOptions {
   readonly first: number;
   /**
    * Moves the calendar to show `first` first, once the user has scrolled there: at rest, or every
-   * half page during a long swipe, so the loaded pages keep up with it.
+   * half page during a long swipe or a drag, so the loaded pages keep up with it. A controlled
+   * anchor may follow later; until it changes, the view stays where the user scrolled.
    */
   readonly onScroll: (first: number) => void;
   /** Items the calendar shows at once: its days or weeks. */
@@ -84,9 +85,16 @@ export function useScrollingAxis({
   const latest = useRef({ base, first, onScroll, page });
   /** The base the scroll position was last laid out for. */
   const laidOut = useRef(base);
-  /** The first item the scroll position shows, as far as the calendar knows. */
+  /** The first item the scroll position shows: the range's, or one the user scrolled to. */
   const shown = useRef<number | null>(null);
-  /** Where a scroll this hook started is heading; the user's own scrolling clears it. */
+  /** The range's first item when the axis last laid it out. */
+  const committed = useRef<number | null>(null);
+  /**
+   * Items the user scrolled to that the calendar's range may still catch up with, oldest first:
+   * a controlled anchor can commit after other renders, or after the user has scrolled on.
+   */
+  const proposed = useRef<number[]>([]);
+  /** Where a scroll this hook started is heading; the user's own input clears it. */
   const heading = useRef<number | null>(null);
 
   const size = useCallback(() => {
@@ -127,7 +135,16 @@ export function useScrollingAxis({
       setBase(first - REACH);
       return;
     }
-    if (shown.current === first) return;
+    if (committed.current === first) return;
+    committed.current = first;
+    // The range caught up with a scroll; any later scroll is still on its way.
+    const caughtUp = proposed.current.lastIndexOf(first);
+    if (caughtUp !== -1) {
+      proposed.current.splice(0, caughtUp + 1);
+      return;
+    }
+    // Anything else moved the range, such as Today: show it.
+    proposed.current = [];
     const from = shown.current;
     shown.current = first;
     const target = (first - base) * itemSize;
@@ -160,15 +177,25 @@ export function useScrollingAxis({
       const itemSize = size();
       return itemSize <= 0 ? null : latest.current.base + Math.round(offset(element) / itemSize);
     };
-    /** A pointer drag, resize, or create is in progress: its targets must stay put. */
+    /** A pointer drag, resize, or create is in progress, which snapping must not move. */
     const interacting = () => element.closest("[data-interaction]");
     const show = (item: number) => {
       shown.current = item;
+      proposed.current = [...proposed.current.slice(-15), item];
       latest.current.onScroll(item);
     };
 
-    const settle = () => {
+    const settle = (stopped: boolean) => {
       timer = undefined;
+      if (heading.current !== null) {
+        const target = (heading.current - latest.current.base) * size();
+        if (Math.abs(offset(element) - target) > 1) {
+          // A scroll this hook started is still on its way, as a pause left over from an earlier
+          // scroll can fire mid-way; or it stopped short, as when something else scrolled: finish it.
+          if (stopped) scrollTo(element, target, "instant");
+          return;
+        }
+      }
       heading.current = null;
       const region = interacting();
       if (region !== null) {
@@ -178,7 +205,7 @@ export function useScrollingAxis({
             if (interacting() !== null) return;
             waiting?.disconnect();
             waiting = undefined;
-            settle();
+            settle(true);
           });
           waiting.observe(region, { attributeFilter: ["data-interaction"] });
         }
@@ -198,22 +225,26 @@ export function useScrollingAxis({
     const onScrollEvent = () => {
       const item = nearest();
       const { page } = latest.current;
-      // During a long swipe, keep the loaded pages ahead of what comes into view.
+      // During a long swipe, or a drag scrolling the view, keep the loaded pages ahead of what
+      // comes into view.
       if (
         item !== null &&
         heading.current === null &&
-        interacting() === null &&
         shown.current !== null &&
         Math.abs(item - shown.current) >= Math.max(1, Math.floor(page / 2))
       ) {
         show(item);
       }
       if (timer !== undefined) clearTimeout(timer);
-      timer = setTimeout(settle, SETTLE_MS);
+      timer = setTimeout(settle, SETTLE_MS, false);
     };
     const onScrollEnd = () => {
       if (timer !== undefined) clearTimeout(timer);
-      settle();
+      settle(true);
+    };
+    // The user taking over ends a scroll this hook started, so their scroll moves the range.
+    const onInput = () => {
+      heading.current = null;
     };
     // A new item size moves every item; put the shown one back at the start. Other resizes, such
     // as the all-day row growing, leave a scroll in progress alone.
@@ -232,12 +263,15 @@ export function useScrollingAxis({
             scrollTo(element, (shown.current - latest.current.base) * itemSize, "instant");
           });
 
+    const inputs = ["pointerdown", "touchstart", "wheel"] as const;
     element.addEventListener("scroll", onScrollEvent, { passive: true });
     element.addEventListener("scrollend", onScrollEnd);
+    for (const type of inputs) element.addEventListener(type, onInput, { passive: true });
     resize?.observe(element);
     return () => {
       element.removeEventListener("scroll", onScrollEvent);
       element.removeEventListener("scrollend", onScrollEnd);
+      for (const type of inputs) element.removeEventListener(type, onInput);
       resize?.disconnect();
       waiting?.disconnect();
       if (timer !== undefined) clearTimeout(timer);

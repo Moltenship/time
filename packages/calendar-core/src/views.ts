@@ -19,9 +19,10 @@ export interface CalendarViewProjectionInput<TOptions, TEvent = unknown> {
   readonly instantRange: InstantInterval;
   /**
    * The dates to project: `range`, or more when the strategy's `getLoadRange` keeps dates ready
-   * around it, as a scrolling view keeps its neighbouring pages.
+   * around it, as a scrolling view keeps its neighbouring pages. `Root` always sets it; read it as
+   * `loadRange ?? range` when calling `project` yourself.
    */
-  readonly loadRange: PlainDateInterval;
+  readonly loadRange?: PlainDateInterval;
   readonly options: TOptions;
   /** The visible dates. */
   readonly range: PlainDateInterval;

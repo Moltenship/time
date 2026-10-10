@@ -100,7 +100,7 @@ function ScrollingMonthView<TEvent>({
     page: weeks,
     rtl: false,
   });
-  const start = weekNumber(loadRange.start) - axis.base;
+  const start = weekNumber((loadRange ?? range).start) - axis.base;
 
   // Pointer drags speak through the same messages as the keyboard.
   const announcer = useCalendarAnnouncer();
@@ -177,13 +177,12 @@ function ScrollingMonthView<TEvent>({
           >
             {projection.weeks.map((week, index) => {
               const expanded = index === expandedWeek;
+              const offscreen = !plainDateIntervalContains(range, week.range.start);
               return (
                 <div
                   key={week.range.start.toString()}
                   // Weeks rendered above and below the visible ones are for scrolling into.
-                  aria-hidden={
-                    plainDateIntervalContains(range, week.range.start) ? undefined : true
-                  }
+                  aria-hidden={offscreen ? true : undefined}
                   className={cn(
                     "grid",
                     // A week showing every lane grows over the next ones instead of moving them.
@@ -203,6 +202,7 @@ function ScrollingMonthView<TEvent>({
                     getEventColor={options.getEventColor}
                     labelEvent={labelEvent}
                     maxLanes={maxLanes}
+                    offscreen={offscreen}
                     onOpenDay={openDay}
                     overflow={overflows[index]!}
                     week={week}

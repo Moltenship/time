@@ -44,7 +44,23 @@ const events: readonly Fixture[] = [
     start: Temporal.Instant.from("2026-10-02T09:00:00Z"),
     title: "Before",
   },
+  // Starts before the week from Wednesday October 7, and runs into it.
+  {
+    data: null,
+    end: Temporal.PlainDate.from("2026-10-10"),
+    id: "trip",
+    kind: "all-day",
+    start: Temporal.PlainDate.from("2026-10-05"),
+    title: "Trip",
+  },
 ];
+
+let calendarActions: ReturnType<typeof Calendar.useCalendarActions> | undefined;
+
+function CaptureActions() {
+  calendarActions = Calendar.useCalendarActions();
+  return null;
+}
 
 function Screen({
   onView,
@@ -64,6 +80,7 @@ function Screen({
       onViewChange={onView}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
+      <CaptureActions />
       <Calendar.Title />
       <Calendar.ActiveView />
     </Calendar.Root>
@@ -157,6 +174,58 @@ test("a scrolling month shows six weeks with the anchor's in the third row", asy
   );
   // Dates open the day view unless `dayView` names another.
   expect(onView).toHaveBeenCalledWith("day", expect.anything());
+});
+
+test("days scrolled away give the tab stop back to the visible days", async () => {
+  const container = await show("scrolling-week");
+  const cell = container.querySelector<HTMLElement>(
+    '[data-date="2026-10-07"][data-all-day]',
+  )!.parentElement!;
+  await act(async () => cell.focus());
+  expect(cell.tabIndex).toBe(0);
+
+  // A scroll comes to rest a day later, leaving October 7 rendered but out of view.
+  await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from("2026-10-08")));
+
+  expect(cell.getAttribute("aria-hidden")).toBe("true");
+  expect(cell.tabIndex).toBe(-1);
+  const stops = [...container.querySelectorAll<HTMLElement>('[tabindex="0"]')];
+  expect(stops).toHaveLength(1);
+  expect(stops[0]!.closest('[aria-hidden="true"]')).toBeNull();
+  expect(container.querySelectorAll('[aria-hidden="true"] [tabindex="0"]')).toHaveLength(0);
+});
+
+test("weeks scrolled away give the tab stop back to the visible weeks", async () => {
+  const container = await show("scrolling-month");
+  const cell = container.querySelector<HTMLElement>('[data-date="2026-09-21"]')!.parentElement!;
+  await act(async () => cell.focus());
+  expect(cell.tabIndex).toBe(0);
+
+  await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from("2026-10-14")));
+
+  expect(cell.closest('[aria-hidden="true"]')).not.toBeNull();
+  expect(cell.tabIndex).toBe(-1);
+  expect(container.querySelectorAll('[aria-hidden="true"] [tabindex="0"]')).toHaveLength(0);
+  expect(container.querySelectorAll('[tabindex="0"]')).toHaveLength(1);
+});
+
+test("a bar that starts in days scrolled away stays readable and focusable", async () => {
+  const container = await show("scrolling-week");
+  const bar = container.querySelector<HTMLElement>('[data-event-id="trip"]')!;
+
+  // It renders in the first visible day's cell and reaches back to its own first day.
+  expect(
+    bar.closest('[role="gridcell"]')?.querySelector("[data-date]")?.getAttribute("data-date"),
+  ).toBe("2026-10-07");
+  expect(bar.closest('[aria-hidden="true"]')).toBeNull();
+  expect(bar.style.insetInlineStart).toBe("calc(-2 * (100% + 1px))");
+
+  const cell = container.querySelector<HTMLElement>(
+    '[data-date="2026-10-08"][data-all-day]',
+  )!.parentElement!;
+  await act(async () => cell.focus());
+  await press(cell, "Enter");
+  expect(document.activeElement).toBe(bar);
 });
 
 test("keys page a scrolling week past its visible days", async () => {

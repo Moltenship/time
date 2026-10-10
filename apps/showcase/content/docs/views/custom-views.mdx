@@ -85,16 +85,16 @@ during render and reuses the projection until one of its inputs changes.
 
 `project` receives:
 
-| Field          | Contents                                                                       |
-| -------------- | ------------------------------------------------------------------------------ |
-| `snapshot`     | The validated, indexed events. Query it with `queryTimed` and friends.         |
-| `range`        | The visible dates, from `getRange`                                             |
-| `instantRange` | The same dates as instants in the calendar's time zone, ready for `queryTimed` |
-| `loadRange`    | The dates to project: `getLoadRange`'s, or `range` without it                  |
-| `environment`  | Locale, time zone, week rules, direction, disambiguation                       |
-| `resources`    | The `resources` prop                                                           |
-| `options`      | The view's options after `viewOptions` overrides                               |
-| `today`        | Today's date in the calendar's time zone, or `null` before a clock is known    |
+| Field          | Contents                                                                            |
+| -------------- | ----------------------------------------------------------------------------------- |
+| `snapshot`     | The validated, indexed events. Query it with `queryTimed` and friends.              |
+| `range`        | The visible dates, from `getRange`                                                  |
+| `instantRange` | The same dates as instants in the calendar's time zone, ready for `queryTimed`      |
+| `loadRange`    | The dates to project: `getLoadRange`'s, or `range` without it. Always set by `Root` |
+| `environment`  | Locale, time zone, week rules, direction, disambiguation                            |
+| `resources`    | The `resources` prop                                                                |
+| `options`      | The view's options after `viewOptions` overrides                                    |
+| `today`        | Today's date in the calendar's time zone, or `null` before a clock is known         |
 
 `today` is fixed when `Root` has `now`, so server and browser agree. Without `now` it's `null`
 during server rendering and fills in after hydration.

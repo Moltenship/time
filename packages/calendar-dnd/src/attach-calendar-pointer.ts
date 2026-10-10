@@ -49,7 +49,8 @@ export interface CalendarPointerOptions<
   readonly announcer?: CalendarAnnouncer;
   /**
    * Day columns of the time axis, matched to `[data-date]` elements without `data-all-day`: a
-   * time grid's or a timeline's `columns`.
+   * time grid's or a timeline's `columns`. A new array mid-gesture is picked up, as a view that
+   * renders more days while a drag scrolls it needs.
    */
   readonly columns?: readonly TimeGridColumn[];
   readonly disabled?: boolean;
@@ -94,7 +95,10 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
   readonly pointerId: number;
   readonly pointerType: string;
   readonly scrollContainer: Element;
-  readonly surface: TargetSurface;
+  /** Rebuilt when the view renders new columns mid-gesture, as a scrolling view does. */
+  surface: TargetSurface;
+  /** The `columns` option `surface` was built from. */
+  surfaceColumns: CalendarPointerOptions<TEvent, TEventId, TResourceId>["columns"];
 }
 
 const DEFAULT_SNAP: WallTimeSnapOptions = { increment: 15, smallestUnit: "minute" };
@@ -116,6 +120,12 @@ function suppressNextClick(): void {
   };
   window.addEventListener("click", swallow, { capture: true, once: true });
   setTimeout(() => window.removeEventListener("click", swallow, { capture: true }));
+}
+
+function columnsByDate(
+  columns: readonly TimeGridColumn[] | undefined,
+): ReadonlyMap<string, TimeGridColumn> {
+  return new Map((columns ?? []).map((column) => [column.date.toString(), column]));
 }
 
 function samePlacement(left: CalendarEventPlacement, right: CalendarEventPlacement): boolean {
@@ -214,8 +224,20 @@ export function attachCalendarPointer<
     } as CalendarInteractionUpdate);
   }
 
+  /**
+   * Follows the view's latest columns: a view that scrolls through days renders new ones while a
+   * drag scrolls it, and their cells must map to times like the rest.
+   */
+  function refreshColumns(current: Session<TEvent, TEventId, TResourceId>): void {
+    const { columns } = getOptions();
+    if (columns === current.surfaceColumns) return;
+    current.surfaceColumns = columns;
+    current.surface = { ...current.surface, columns: columnsByDate(columns) };
+  }
+
   /** Shows where a drop would land; returns whether that changed. */
   function preview(current: Session<TEvent, TEventId, TResourceId>, scrolled = false): boolean {
+    refreshColumns(current);
     const target = targetAt(current.surface, current.point.x, current.point.y);
     const placement = target === null ? null : placementAt(current, target);
     if (placement === null) {
@@ -395,7 +417,7 @@ export function attachCalendarPointer<
 
     const surface: TargetSurface = {
       clippers: new Map(),
-      columns: new Map((options.columns ?? []).map((column) => [column.date.toString(), column])),
+      columns: columnsByDate(options.columns),
       region,
     };
     const target = targetAt(surface, event.clientX, event.clientY);
@@ -415,6 +437,7 @@ export function attachCalendarPointer<
       pointerType: event.pointerType,
       scrollContainer: options.scrollContainer?.current ?? scrollableAncestor(event.target),
       surface,
+      surfaceColumns: options.columns,
     };
     session = current;
 

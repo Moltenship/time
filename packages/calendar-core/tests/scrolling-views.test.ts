@@ -132,6 +132,14 @@ describe("scrollingTimeGridStrategy", () => {
     expect(projection.allDay.range.start.toString()).toBe("2026-09-30");
   });
 
+  test("projects only the visible days for a caller that passes no load range", () => {
+    const range = week.getRange(date("2026-10-07"), env, undefined);
+    const { loadRange: _, ...input } = viewInput(snapshotOf([]), range, env);
+
+    expect(week.project(input).days).toHaveLength(7);
+    expect(scrollingMonthStrategy<unknown, FixtureEvent>().project(input).weeks).toHaveLength(1);
+  });
+
   test("keyboard focus enters and moves through the visible days only", () => {
     // Today is loaded but not visible, so focus enters on the first visible day.
     const step = navigation(week, "2026-10-07", "2026-10-03");

@@ -145,11 +145,14 @@ function sameBand(left: TimeGridBand | null, right: TimeGridBand | null): boolea
 function TimeGridSlot({
   focus,
   label,
+  offscreen,
   onOpenDay,
   slotMinutes,
 }: {
   readonly focus: CalendarSlotFocus;
   readonly label: string;
+  /** In a column scrolled away: out of the tab order, yet still holding focus it has. */
+  readonly offscreen: boolean;
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   readonly slotMinutes: number;
 }) {
@@ -160,7 +163,7 @@ function TimeGridSlot({
     <div
       role="button"
       aria-label={label}
-      {...roving}
+      {...(offscreen ? { tabIndex: -1 } : roving)}
       onKeyDown={(event) => {
         // Shift+Enter opens the day, as clicking its header date does.
         if (onOpenDay !== undefined && event.key === "Enter" && event.shiftKey) {
@@ -256,6 +259,7 @@ export function TimeGridColumn<TEvent>({
             labelEvent={labelHere}
             layout={layout}
             formats={formats}
+            offscreen={offscreen}
             resourceId={resourceId}
             timeZone={timeZone}
           />
@@ -282,6 +286,7 @@ export function TimeGridColumn<TEvent>({
           ]
             .filter((part) => part !== undefined)
             .join(", ")}
+          offscreen={offscreen}
           onOpenDay={onOpenDay}
           slotMinutes={slotMinutes}
         />

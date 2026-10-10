@@ -103,7 +103,11 @@ export function scrollingMonthStrategy<TOptions = undefined, TEvent = unknown>(
       return month.with({ day: 15 }).add({ months: delta });
     },
     project: (input) =>
-      projectMonthWeeks(input, input.loadRange, scrollingMonthOf(input.range, weeks)),
+      projectMonthWeeks(
+        input,
+        input.loadRange ?? input.range,
+        scrollingMonthOf(input.range, weeks),
+      ),
   };
   return Object.freeze(strategy);
 }

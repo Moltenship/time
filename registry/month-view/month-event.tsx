@@ -22,6 +22,8 @@ export interface MonthEventProps<TEvent> {
   /** Whether the element is one of the view's focus targets; a copy in a list is not. */
   readonly focusTarget?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
+  /** Rendered in a week beside the visible ones of a scrolling month: not a focus target. */
+  readonly offscreen?: boolean;
   /** The event began before this element. */
   readonly startsBefore: boolean;
   readonly style?: CSSProperties;
@@ -43,11 +45,12 @@ export function MonthEvent<TEvent>({
   event,
   focusTarget,
   labelEvent,
+  offscreen,
   startsBefore,
   style,
   time,
 }: MonthEventProps<TEvent>) {
-  const chip = useEventChip(event, { date, days, focusTarget, labelEvent });
+  const chip = useEventChip(event, { date, days, focusTarget, labelEvent, offscreen });
 
   return (
     <EventChip

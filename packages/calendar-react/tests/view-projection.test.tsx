@@ -113,7 +113,7 @@ const bufferedView = defineCalendarView({
   },
   Renderer: ({ loadRange, range }) => (
     <output
-      data-load-range={`${loadRange.start.toString()}/${loadRange.end.toString()}`}
+      data-load-range={`${loadRange?.start.toString()}/${loadRange?.end.toString()}`}
       data-range={`${range.start.toString()}/${range.end.toString()}`}
     />
   ),

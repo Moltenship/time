@@ -124,7 +124,7 @@ export function ScrollingTimeGridView<TEvent>({
     page: visibleDays,
     rtl: direction === "rtl",
   });
-  const start = epochDay(loadRange.start) - axis.base;
+  const start = epochDay((loadRange ?? range).start) - axis.base;
 
   // Pointer drags speak through the same messages as the keyboard, and the drag preview labels
   // the proposed range in the calendar's locale.

@@ -6,7 +6,8 @@ import { attachCalendarPointer, type CalendarPointerOptions } from "./attach-cal
 /**
  * Pointer move, resize, and create for a view region; see `attachCalendarPointer` for the data
  * attributes the view renders. Returns a ref for the region element. Options are read when a
- * gesture starts, so changing them never re-attaches listeners, and dragging never re-renders.
+ * gesture starts, and `columns` again as it moves, so changing them never re-attaches listeners,
+ * and dragging never re-renders.
  */
 export function useCalendarPointer<
   TEvent,
