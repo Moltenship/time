@@ -15,6 +15,7 @@ export {
   createCalendar,
   createCalendarStore,
   defineCalendarView,
+  useAnchorDateRequests,
   useCalendarAnnotations,
   useCalendarAnnouncer,
   useCalendarFocus,

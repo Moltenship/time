@@ -60,14 +60,17 @@ export const reported = {
 /** A scrolling view under the toolbar, from Wednesday October 7, 2026, with Monday-first weeks. */
 export function ScrollingScreen({
   dir = "ltr",
+  heldAnchor,
   view,
 }: {
   readonly dir?: "ltr" | "rtl";
+  /** A controlled anchor the app never moves, declining every scroll. */
+  readonly heldAnchor?: Temporal.PlainDate;
   readonly view: ScrollingView;
 }) {
   return (
     <Calendar.Root
-      defaultAnchorDate={anchor}
+      {...(heldAnchor === undefined ? { defaultAnchorDate: anchor } : { anchorDate: heldAnchor })}
       defaultTimeZone="UTC"
       defaultView={view}
       direction={dir}

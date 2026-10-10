@@ -492,7 +492,15 @@ export function createCalendarRoot<
       ),
     );
     const interaction = useMemo<CalendarInteractionRuntime>(
-      () => Object.freeze({ actions, announcements, keyboard, read: binding.read, source }),
+      () =>
+        Object.freeze({
+          actions,
+          announcements,
+          keyboard,
+          read: binding.read,
+          requests: binding.subscribeRequests,
+          source,
+        }),
       [actions, announcements, binding, keyboard, source],
     );
 

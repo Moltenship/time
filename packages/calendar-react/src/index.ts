@@ -13,6 +13,7 @@ export { useResourceExpansion, useVisibleResources } from "./resources";
 export type { CalendarResourceExpansion } from "./resources";
 export { useCalendarFocus, useCalendarSelection } from "./selectors";
 export { useNow } from "./use-now";
+export { useAnchorDateRequests } from "./requests";
 export { defineCalendarView } from "./views";
 export type {
   CalendarActiveViewProps,

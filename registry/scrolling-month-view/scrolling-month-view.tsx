@@ -5,6 +5,7 @@ import {
   scrollingMonthAnchor,
   scrollingMonthOf,
   scrollingMonthStrategy,
+  useAnchorDateRequests,
   useCalendarAnnouncer,
   useCalendarFocus,
   useCalendarPointer,
@@ -100,6 +101,11 @@ function ScrollingMonthView<TEvent>({
     page: weeks,
     rtl: false,
   });
+  // Today and Next can ask for the anchor the view already has while a scroll runs ahead of it.
+  const strategy = useMemo(() => scrollingMonthStrategy(weeks), [weeks]);
+  useAnchorDateRequests((date) =>
+    axis.request(weekNumber(strategy.getRange(date, environment, undefined).start)),
+  );
   const start = weekNumber((loadRange ?? range).start) - axis.base;
 
   // Pointer drags speak through the same messages as the keyboard.

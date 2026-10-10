@@ -133,6 +133,26 @@ describe("scrolling views", () => {
     expect(reported.anchors).toEqual([]);
   });
 
+  test("Today brings back the anchor an app kept while the view was scrolled ahead", async () => {
+    // Today is October 8, and the app keeps it as the anchor through any scroll.
+    await render(
+      <Screen heldAnchor={Temporal.PlainDate.from("2026-10-08")} view="scrolling-week" />,
+    );
+    const { position, scrollBy } = axis("scrolling-week");
+    const start = position();
+
+    await scrollBy(1);
+    await vi.waitFor(() => expect(reported.anchors.map(String)).toEqual(["2026-10-09"]), settled);
+    expect(title()).toBe("Oct 8 – 14, 2026");
+    await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.1), settled);
+
+    await act(async () => document.querySelector<HTMLElement>('[aria-label="Today"]')!.click());
+
+    await vi.waitFor(() => expect(Math.abs(position() - start)).toBeLessThan(0.1), settled);
+    // The app hears Today too, so it can drop the date it was offered.
+    expect(reported.anchors.map(String)).toEqual(["2026-10-09", "2026-10-08"]);
+  });
+
   test("keys move through the visible days and scroll a page past them", async () => {
     await render(<Screen view="scrolling-week" />);
     const { position } = axis("scrolling-week");

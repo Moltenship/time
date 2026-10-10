@@ -40,6 +40,12 @@ export interface ScrollingAxis {
   readonly base: number;
   /** Items the canvas holds from `base`. */
   readonly count: number;
+  /**
+   * Tells the axis the calendar was asked to show `first` first, as Today and Next ask: pass it
+   * each `useAnchorDateRequests` date. A request ends any scroll still waiting for the range, and
+   * one for the range the calendar already has scrolls the view back to it.
+   */
+  readonly request: (first: number) => void;
   /** The scrolling element. */
   readonly scrollRef: RefObject<HTMLDivElement | null>;
   /**
@@ -100,6 +106,8 @@ export function useScrollingAxis({
   const proposed = useRef<number | null>(null);
   /** Where a scroll this hook started is heading; the user's own input clears it. */
   const heading = useRef<number | null>(null);
+  /** Set while `onScroll` runs, so the requests it makes aren't taken for navigation. */
+  const proposing = useRef(false);
 
   const size = useCallback(() => {
     const rect = trackRef.current?.getBoundingClientRect();
@@ -205,7 +213,12 @@ export function useScrollingAxis({
     const show = (item: number) => {
       shown.current = item;
       proposed.current = item;
-      latest.current.onScroll(item);
+      proposing.current = true;
+      try {
+        latest.current.onScroll(item);
+      } finally {
+        proposing.current = false;
+      }
     };
 
     const settle = (stopped: boolean) => {
@@ -293,7 +306,20 @@ export function useScrollingAxis({
     };
   }, [offset, place, scrollTo, size]);
 
-  return { base, count, scrollRef, trackRef };
+  const request = useCallback(
+    (item: number) => {
+      if (proposing.current) return;
+      proposed.current = null;
+      // The range doesn't change, so no render follows: show it now.
+      if (item === committed.current && shown.current !== item) {
+        committed.current = null;
+        place();
+      }
+    },
+    [place],
+  );
+
+  return { base, count, request, scrollRef, trackRef };
 }
 
 export interface ScrollSnapPointsProps {

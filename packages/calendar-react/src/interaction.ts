@@ -6,6 +6,7 @@ import type { CalendarSemanticActions } from "./calendar-types";
 import type { AnyCalendarState, CalendarStateSource } from "./context";
 import type { KeyboardSessionStore } from "./keyboard-store";
 import type { RovingFocusStore } from "./roving-focus";
+import type { CalendarRequestListener } from "./store";
 import type { AnyCalendarView, CalendarActiveView } from "./views";
 
 /**
@@ -22,6 +23,8 @@ export interface CalendarInteractionRuntime {
    * callbacks that run after the render that created them.
    */
   readonly read: () => AnyCalendarState;
+  /** Subscribes to every command the root receives, even one that changes nothing. */
+  readonly requests: (listener: CalendarRequestListener) => () => void;
   /** For subscribing; its identity changes with controlled values. */
   readonly source: CalendarStateSource<AnyCalendarState>;
 }

@@ -3,6 +3,7 @@ import {
   eventDateRanges,
   plainDateIntervalContains,
   sameFocus,
+  useAnchorDateRequests,
   scrollingTimeGridStrategy,
   timeGridPosition,
   timeGridTitle,
@@ -166,6 +167,8 @@ export function ScrollingTimeGridView<TEvent>({
     page: visibleDays,
     rtl: direction === "rtl",
   });
+  // Today and Next can ask for the anchor the view already has while a scroll runs ahead of it.
+  useAnchorDateRequests((date) => axis.request(epochDay(date)));
   const start = epochDay((loadRange ?? range).start) - axis.base;
 
   // Pointer drags speak through the same messages as the keyboard, and the drag preview labels

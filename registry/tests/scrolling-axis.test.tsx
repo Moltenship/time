@@ -43,6 +43,7 @@ afterEach(async () => {
 });
 
 let setFirst: (first: number) => void = () => {};
+let request: (first: number) => void = () => {};
 let setPage: (page: number) => void = () => {};
 let setRtl: (rtl: boolean) => void = () => {};
 let rerender: () => void = () => {};
@@ -59,6 +60,7 @@ function Axis({ interacting = false }: { readonly interacting?: boolean }) {
   setRtl = setRtlState;
   rerender = () => setTick((tick) => tick + 1);
   const axis = useScrollingAxis({ axis: "inline", first, onScroll, page, rtl });
+  request = axis.request;
   return (
     <div data-interaction={interacting ? "move" : undefined}>
       <div ref={axis.scrollRef} data-testid="viewport">
@@ -259,4 +261,31 @@ test("a controlled anchor that takes the last of many scrolls leaves the view in
 
   expect(scrolls).toEqual([]);
   expect(shownItem()).toBe(5080);
+});
+
+test("a request for the range the calendar has shows it again over a scroll it declined", async () => {
+  const { finishScroll, shownItem, userScrollsTo } = await show();
+  // The view's own scroll comes back as a request, which changes nothing.
+  onScroll.mockImplementation((item) => request(item));
+  await userScrollsTo(5004);
+  expect(shownItem()).toBe(5004);
+
+  // The app keeps 5000, and Today asks for it: the range doesn't change, so no render follows.
+  await act(async () => request(5000));
+  await finishScroll();
+
+  expect(shownItem()).toBe(5000);
+});
+
+test("a request for another range waits for the range to arrive", async () => {
+  const { finishScroll, shownItem, userScrollsTo } = await show();
+  await userScrollsTo(5004);
+  scrolls = [];
+
+  await act(async () => request(5010));
+  expect(scrolls).toEqual([]);
+  await act(async () => setFirst(5010));
+  await finishScroll();
+
+  expect(shownItem()).toBe(5010);
 });

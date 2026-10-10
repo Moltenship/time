@@ -62,6 +62,9 @@ A few rules:
   `null`.
 - Handlers also run for uncontrolled values, after the calendar updates them. The second argument
   tells you the `previous` value and whether the value is `controlled`.
+- If you haven't applied a change the calendar asked for, the handler also hears a later request
+  for the value you have. For example, Today after a scroll you deferred. Apply the latest value
+  you were given, and you'll drop the earlier change.
 - `Root` needs a date, a time zone, and a view on its first render. The view can come from
   `defaultView`, `view`, or the first registered view. If one is missing, `Root` throws
   `calendar-root-requires-anchor-date`, `calendar-root-requires-time-zone`, or
