@@ -1,16 +1,26 @@
 import {
   defineCalendarView,
   plainDateIntervalContains,
+  sameFocus,
   scrollingTimeGridStrategy,
   timeGridPosition,
   timeGridTitle,
   useCalendarAnnouncer,
+  useCalendarFocus,
   useCalendarPointer,
   useNow,
+  type CalendarFocus,
   type CalendarViewRendererProps,
   type TimeGridProjection,
 } from "@moltenship/calendar";
-import { useMemo, useState, type CSSProperties, type ReactNode, type Ref } from "react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type Ref,
+} from "react";
 
 import { useEventLabel } from "@registry/calendar/event-label";
 import {
@@ -51,6 +61,29 @@ export type ScrollingTimeGridViewProps<TEvent> = CalendarViewRendererProps<
   TimeGridProjection<TEvent>,
   TimeGridViewOptions<TEvent>
 >;
+
+/**
+ * Focus on an all-day bar from a day before the visible ones, moved to the first visible day when
+ * the bar runs on into it; `null` when there's nothing to move. The bar renders from that day once
+ * its start scrolls away, so focus on it has to follow.
+ */
+function barFocusToAdvance(
+  focus: CalendarFocus | null,
+  row: TimeGridProjection<unknown>["allDay"],
+  firstVisible: Temporal.PlainDate,
+): CalendarFocus | null {
+  if (focus?.kind !== "event" || Temporal.PlainDate.compare(focus.date, firstVisible) >= 0) {
+    return null;
+  }
+  const column = (date: Temporal.PlainDate) => row.range.start.until(date).days;
+  const runsOn = row.segments.some(
+    ({ column: start, event, span }) =>
+      event.id === focus.eventId &&
+      start <= column(focus.date) &&
+      column(firstVisible) < start + span,
+  );
+  return runsOn ? { ...focus, date: firstVisible } : null;
+}
 
 /** A row's days across the canvas: the hour gutter, held at the start, then `children` at `start`. */
 function Track({
@@ -174,6 +207,14 @@ export function ScrollingTimeGridView<TEvent>({
 
   const allDayRows = useMemo(() => [{ row: projection.allDay }], [projection.allDay]);
   const collapse = useAllDayCollapse(days, allDayRows);
+  // A bar keeps focus as its focused day scrolls away, from the first visible day it still covers.
+  const focusOnBar = useCalendarFocus(
+    (focus) => barFocusToAdvance(focus, projection.allDay, range.start),
+    { isEqual: sameFocus },
+  );
+  useLayoutEffect(() => {
+    if (focusOnBar !== null) actions.setFocus(focusOnBar);
+  }, [actions, focusOnBar]);
   const now = useNow();
   const nowPosition = useMemo(
     () => (now === null ? null : timeGridPosition(columns, now)),
