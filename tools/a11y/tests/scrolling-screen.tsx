@@ -42,6 +42,14 @@ const events: readonly Fixture[] = [
   },
 ];
 
+/** The calendar's actions, for tests that move it as an app would. */
+export const screen: { actions?: ReturnType<typeof Calendar.useCalendarActions> } = {};
+
+function CaptureActions() {
+  screen.actions = Calendar.useCalendarActions();
+  return null;
+}
+
 /** What the calendar reported, in order; clear it between tests. */
 export const reported = {
   anchors: [] as Temporal.PlainDate[],
@@ -73,6 +81,7 @@ export function ScrollingScreen({
       onVisibleRangeChange={(range) => reported.ranges.push(range)}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
+      <CaptureActions />
       <Calendar.Frame className="flex h-dvh flex-col" dir={dir}>
         <CalendarToolbar calendar={Calendar} className="border-b" />
         <Calendar.Viewport className="min-h-0 flex-1">

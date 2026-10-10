@@ -3,7 +3,7 @@ import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { seriousViolations, setTheme, themes } from "./axe";
 import { press, render } from "./render";
-import { axis, reported, ScrollingScreen as Screen, title } from "./scrolling-screen";
+import { axis, reported, screen, ScrollingScreen as Screen, title } from "./scrolling-screen";
 
 afterEach(() => {
   reported.anchors = [];
@@ -79,6 +79,38 @@ describe("scrolling views", () => {
     await act(async () => document.querySelector<HTMLElement>('[aria-label="Today"]')!.click());
     expect(title()).toBe("Oct 8 – 14, 2026");
     await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.1), settled);
+  });
+
+  test("Next undone before its scroll moves leaves the view where it was", async () => {
+    await render(<Screen view="scrolling-week" />);
+    const { position } = axis("scrolling-week");
+    const start = position();
+
+    await act(async () => {
+      document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click();
+    });
+    await act(async () => screen.actions!.setAnchorDate(Temporal.PlainDate.from("2026-10-07")));
+    await new Promise((resolve) => setTimeout(resolve, 600));
+
+    expect(title()).toBe("Oct 7 – 13, 2026");
+    expect(Math.abs(position() - start)).toBeLessThan(0.1);
+    expect(reported.anchors.map(String)).toEqual(["2026-10-14", "2026-10-07"]);
+  });
+
+  test("switching between the scrolling week and day keeps the day in view", async () => {
+    await render(<Screen view="scrolling-week" />);
+    const start = axis("scrolling-week").position();
+
+    await act(async () => screen.actions!.setView("scrolling-day"));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(title()).toBe("October 7, 2026");
+    expect(Math.abs(axis("scrolling-day").position() - start)).toBeLessThan(0.1);
+
+    await act(async () => screen.actions!.setView("scrolling-week"));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(title()).toBe("Oct 7 – 13, 2026");
+    expect(Math.abs(axis("scrolling-week").position() - start)).toBeLessThan(0.1);
+    expect(reported.anchors).toEqual([]);
   });
 
   test("keys move through the visible days and scroll a page past them", async () => {

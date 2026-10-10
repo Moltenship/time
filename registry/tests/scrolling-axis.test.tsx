@@ -6,9 +6,9 @@ import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 import { useScrollingAxis } from "../calendar/scrolling-axis";
 import { render } from "./render";
 
-/** One item, such as a day, is 100px long; the track is `count` of them. */
+/** The viewport fits a page of items: seven 100px days, or one 700px day. */
 const ITEM = 100;
-const PAGE = 7;
+const VIEWPORT = 700;
 
 let scrolls: { left: number; behavior: ScrollBehavior | undefined }[] = [];
 let cleanup: (() => Promise<void>) | undefined;
@@ -20,7 +20,8 @@ beforeEach(() => {
     this: HTMLElement,
   ) {
     const count = Number(this.dataset.count ?? 0);
-    return DOMRect.fromRect({ height: 10, width: count * ITEM });
+    const item = Number(this.dataset.item ?? ITEM);
+    return DOMRect.fromRect({ height: 10, width: count * item });
   });
   HTMLElement.prototype.scrollTo = function (
     this: HTMLElement,
@@ -41,6 +42,7 @@ afterEach(async () => {
 });
 
 let setFirst: (first: number) => void = () => {};
+let setPage: (page: number) => void = () => {};
 let setRtl: (rtl: boolean) => void = () => {};
 let rerender: () => void = () => {};
 const onScroll = vi.fn<(first: number) => void>();
@@ -49,15 +51,22 @@ const onScroll = vi.fn<(first: number) => void>();
 function Axis({ interacting = false }: { readonly interacting?: boolean }) {
   const [first, setState] = useState(5000);
   const [rtl, setRtlState] = useState(false);
+  const [page, setPageState] = useState(7);
   const [, setTick] = useState(0);
   setFirst = setState;
+  setPage = setPageState;
   setRtl = setRtlState;
   rerender = () => setTick((tick) => tick + 1);
-  const axis = useScrollingAxis({ axis: "inline", first, onScroll, page: PAGE, rtl });
+  const axis = useScrollingAxis({ axis: "inline", first, onScroll, page, rtl });
   return (
     <div data-interaction={interacting ? "move" : undefined}>
       <div ref={axis.scrollRef} data-testid="viewport">
-        <div ref={axis.trackRef} data-count={axis.count} data-base={axis.base} />
+        <div
+          ref={axis.trackRef}
+          data-base={axis.base}
+          data-count={axis.count}
+          data-item={VIEWPORT / page}
+        />
       </div>
     </div>
   );
@@ -68,18 +77,19 @@ async function show(element = <Axis />) {
   const screen = await render(element);
   cleanup = screen.unmount;
   const viewport = screen.container.querySelector<HTMLElement>('[data-testid="viewport"]')!;
-  const base = () =>
-    Number(screen.container.querySelector<HTMLElement>("[data-base]")!.dataset.base);
+  const track = () => screen.container.querySelector<HTMLElement>("[data-base]")!;
+  const base = () => Number(track().dataset.base);
+  const item = () => Number(track().dataset.item);
   /** The user scrolls so `item` leads the view. */
-  const userScrollsTo = async (item: number, end = true) => {
+  const userScrollsTo = async (to: number, end = true) => {
     await act(async () => {
       viewport.dispatchEvent(new Event("wheel"));
-      viewport.scrollLeft = (item - base()) * ITEM;
+      viewport.scrollLeft = (to - base()) * item();
       viewport.dispatchEvent(new Event("scroll"));
       if (end) viewport.dispatchEvent(new Event("scrollend"));
     });
   };
-  const shownItem = () => base() + Math.abs(viewport.scrollLeft) / ITEM;
+  const shownItem = () => base() + Math.abs(viewport.scrollLeft) / item();
   /** The browser's smooth scroll arrives and comes to rest. */
   const finishScroll = async () => {
     await act(async () => {
@@ -181,6 +191,35 @@ test("flipping the direction keeps the same day in view", async () => {
     await rest();
 
     expect(Math.sign(viewport.scrollLeft)).toBe(rtl ? -1 : 1);
+    expect(shownItem()).toBe(5004);
+    expect(onScroll).not.toHaveBeenCalled();
+  }
+});
+
+test("undoing a range before its scroll moves stops that scroll", async () => {
+  const { rest, shownItem, viewport } = await show();
+  await act(async () => setFirst(5007));
+  expect(scrolls.at(-1)?.behavior).toBe("smooth");
+
+  await act(async () => setFirst(5000));
+
+  // An instant scroll to where the view is cancels the smooth one.
+  expect(scrolls.at(-1)).toEqual({ behavior: "instant", left: viewport.scrollLeft });
+  await rest();
+  expect(shownItem()).toBe(5000);
+  expect(onScroll).not.toHaveBeenCalled();
+});
+
+test("switching between a week and a day keeps the shown day", async () => {
+  const { rest, shownItem, userScrollsTo } = await show();
+  await userScrollsTo(5004);
+  onScroll.mockClear();
+
+  for (const page of [1, 7]) {
+    // The same view component renders both, so only the day's width changes.
+    await act(async () => setPage(page));
+    await rest();
+
     expect(shownItem()).toBe(5004);
     expect(onScroll).not.toHaveBeenCalled();
   }

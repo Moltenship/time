@@ -83,9 +83,10 @@ export function useScrollingAxis({
 
   // Read by event handlers, so they see the latest render without re-subscribing.
   const latest = useRef({ base, first, onScroll, page });
-  /** The base and direction the scroll position was last laid out for. */
+  /** The base, direction, and item size the scroll position was last laid out for. */
   const laidOut = useRef(base);
   const laidOutRtl = useRef(rtl);
+  const laidOutSize = useRef(0);
   /** The first item the scroll position shows: the range's, or one the user scrolled to. */
   const shown = useRef<number | null>(null);
   /** The range's first item when the axis last laid it out. */
@@ -127,19 +128,19 @@ export function useScrollingAxis({
     const itemSize = size();
     if (element === null || itemSize <= 0) return;
     const { base, first, page } = latest.current;
-    if (laidOut.current !== base) {
+    const resized = laidOutSize.current > 0 && Math.abs(itemSize - laidOutSize.current) >= 0.5;
+    if ((resized || laidOutRtl.current !== rtl) && shown.current !== null) {
+      // New item sizes move every item, as switching between a week and a day does, and browsers
+      // reset `scrollLeft` when the direction flips: put the shown item back in view.
+      heading.current = null;
+      scrollTo(element, (shown.current - base) * itemSize, "instant");
+    } else if (laidOut.current !== base) {
       // The canvas moved by whole items; keep what is on screen where it is.
       scrollTo(element, offset(element) + (laidOut.current - base) * itemSize, "instant");
-      laidOut.current = base;
     }
-    if (laidOutRtl.current !== rtl) {
-      // Browsers reset `scrollLeft` when the direction flips; put the same item back in view.
-      laidOutRtl.current = rtl;
-      if (shown.current !== null) {
-        heading.current = null;
-        scrollTo(element, (shown.current - base) * itemSize, "instant");
-      }
-    }
+    laidOut.current = base;
+    laidOutRtl.current = rtl;
+    laidOutSize.current = itemSize;
     if (first - base < 2 * page || base + count - first < 3 * page) {
       setBase(first - REACH);
       return;
@@ -154,11 +155,16 @@ export function useScrollingAxis({
     }
     // Anything else moved the range, such as Today: show it, in place of any scroll on its way.
     proposed.current = [];
+    const replacing = heading.current !== null;
     heading.current = null;
     const from = shown.current;
     shown.current = first;
     const target = (first - base) * itemSize;
-    if (Math.abs(offset(element) - target) < 1) return;
+    if (Math.abs(offset(element) - target) < 1) {
+      // Already there, as when Next is undone before its scroll moves: stop that scroll.
+      if (replacing) scrollTo(element, target, "instant");
+      return;
+    }
     // Keys move focus as they scroll, so they jump; so does anything more than two pages away.
     const smooth =
       from !== null &&
@@ -256,21 +262,13 @@ export function useScrollingAxis({
     const onInput = () => {
       heading.current = null;
     };
-    // A new item size moves every item; put the shown one back at the start. Other resizes, such
-    // as the all-day row growing, leave a scroll in progress alone.
-    let measured = size();
+    // A new item size moves every item, which `place` puts back. Other resizes, such as the
+    // all-day row growing, leave a scroll in progress alone.
     const resize =
       view === null || typeof view.ResizeObserver === "undefined"
         ? undefined
         : new view.ResizeObserver(() => {
-            const itemSize = size();
-            if (itemSize <= 0 || Math.abs(itemSize - measured) < 0.5) return;
-            measured = itemSize;
-            if (shown.current === null) {
-              place();
-              return;
-            }
-            scrollTo(element, (shown.current - latest.current.base) * itemSize, "instant");
+            if (Math.abs(size() - laidOutSize.current) >= 0.5) place();
           });
 
     const inputs = ["pointerdown", "touchstart", "wheel"] as const;
