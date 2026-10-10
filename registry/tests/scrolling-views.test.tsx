@@ -294,6 +294,44 @@ test.each([
   },
 );
 
+test("a bar a midnight fold starts a day early keeps focus as the view jumps", async () => {
+  // St John's fell back at 00:01 on November 7, 2010: an event from 00:00 that night also covers
+  // the last minutes of November 6, its first local date.
+  const fold: Fixture = {
+    data: null,
+    end: Temporal.Instant.from("2010-11-10T04:00:00Z"),
+    id: "fold",
+    kind: "timed",
+    start: Temporal.Instant.from("2010-11-07T02:30:00Z"),
+    title: "Fold",
+  };
+  const screen = await render(
+    <Calendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2010-11-06")}
+      defaultTimeZone="America/St_Johns"
+      defaultView="scrolling-day"
+      events={[fold]}
+      locale="en-US"
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <CaptureActions />
+      <Calendar.ActiveView />
+    </Calendar.Root>,
+  );
+  cleanup = screen.unmount;
+  await act(async () =>
+    screen.container.querySelector<HTMLElement>('[data-event-id="fold"]')!.focus(),
+  );
+
+  await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from("2010-11-08")));
+
+  const bar = screen.container.querySelector<HTMLElement>(
+    '[data-event-id="fold"]:not([tabindex="-1"])',
+  );
+  expect(bar).not.toBeNull();
+  expect(document.activeElement).toBe(bar);
+});
+
 test("keys page a scrolling week past its visible days", async () => {
   const container = await show("scrolling-week");
   const grid = container.querySelector<HTMLElement>('[data-slot="scrolling-time-grid"]')!;

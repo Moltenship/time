@@ -203,7 +203,9 @@ export function useScrollingAxis({
     const interacting = () => element.closest("[data-interaction]");
     const show = (item: number) => {
       shown.current = item;
-      proposed.current = [...proposed.current.slice(-15), item];
+      // Every one is kept until the range catches up with it or moves elsewhere, however many
+      // scrolls a controlled anchor falls behind.
+      proposed.current = [...proposed.current, item];
       latest.current.onScroll(item);
     };
 

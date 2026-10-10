@@ -239,3 +239,15 @@ test("a resize of a pixel, a fraction of one per day, keeps the shown day in pla
   expect(shownItem()).toBeCloseTo(5004, 6);
   expect(onScroll).not.toHaveBeenCalled();
 });
+
+test("a controlled anchor many scrolls behind still catches up without pulling the view back", async () => {
+  const { shownItem, userScrollsTo } = await show();
+
+  // Twenty scrolls the app hasn't accepted yet, four days at a time.
+  for (let step = 1; step <= 20; step += 1) await userScrollsTo(5000 + 4 * step);
+  scrolls = [];
+  await act(async () => setFirst(5004));
+
+  expect(scrolls).toEqual([]);
+  expect(shownItem()).toBe(5080);
+});

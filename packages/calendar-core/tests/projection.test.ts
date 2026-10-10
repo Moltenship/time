@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { queryVisibleEvents, splitEventsByDay, visibleInstantRange } from "../src/index";
+import {
+  eventDateRanges,
+  queryVisibleEvents,
+  splitEventsByDay,
+  visibleInstantRange,
+} from "../src/index";
 import { allDay, dates, floating, snapshotOf, timed, type FixtureEvent } from "./view-fixtures";
 
 function fragmentsOf(
@@ -311,5 +316,28 @@ describe("day fragments", () => {
 
     expect(fragmentTimes(overnight, "America/New_York")).toEqual(expected);
     expect(fragmentTimes(overnight, "Asia/Tokyo")).toEqual(expected);
+  });
+});
+
+describe("eventDateRanges", () => {
+  const ranges = (event: FixtureEvent, timeZone: string) =>
+    eventDateRanges(snapshotOf([event]).get(event.id)!, timeZone).map(
+      ({ first, last }) => `${first.toString()}..${last.toString()}`,
+    );
+
+  test("covers an event's local dates, end excluded", () => {
+    expect(ranges(allDay("trip", "2026-10-05", "2026-10-10"), "UTC")).toEqual([
+      "2026-10-05..2026-10-09",
+    ]);
+    expect(ranges(timed("late", "2026-10-08T22:00:00Z", "2026-10-09T00:00:00Z"), "UTC")).toEqual([
+      "2026-10-08..2026-10-08",
+    ]);
+  });
+
+  test("starts a day early when a fold at midnight takes the clock back into it", () => {
+    // St John's fell back at 00:01 on November 7, 2010, to 23:01 on November 6.
+    const fold = timed("fold", "2010-11-07T02:30:00Z", "2010-11-10T04:00:00Z");
+
+    expect(ranges(fold, "America/St_Johns")).toEqual(["2010-11-06..2010-11-10"]);
   });
 });

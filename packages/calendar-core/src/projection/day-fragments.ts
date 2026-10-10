@@ -35,7 +35,8 @@ interface WallRun {
   readonly start: Temporal.PlainDateTime;
 }
 
-interface LocalDateRange {
+/** Consecutive local dates, both ends included. */
+export interface LocalDateRange {
   readonly first: Temporal.PlainDate;
   readonly last: Temporal.PlainDate;
 }

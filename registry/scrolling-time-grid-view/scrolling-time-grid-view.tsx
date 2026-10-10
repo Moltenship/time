@@ -1,5 +1,6 @@
 import {
   defineCalendarView,
+  eventDateRanges,
   plainDateIntervalContains,
   sameFocus,
   scrollingTimeGridStrategy,
@@ -11,9 +12,6 @@ import {
   useNow,
   type CalendarFocus,
   type CalendarViewRendererProps,
-  type EventId,
-  type NormalizedCalendarEvent,
-  type ResourceId,
   type TimeGridProjection,
 } from "@moltenship/calendar";
 import {
@@ -65,21 +63,6 @@ export type ScrollingTimeGridViewProps<TEvent> = CalendarViewRendererProps<
   TimeGridViewOptions<TEvent>
 >;
 
-/** The date an event starts on in the display time zone. */
-function firstDateOf(
-  event: NormalizedCalendarEvent<unknown, EventId, ResourceId>,
-  timeZone: string,
-) {
-  switch (event.kind) {
-    case "all-day":
-      return event.start;
-    case "floating":
-      return event.start.toPlainDate();
-    case "timed":
-      return event.start.toZonedDateTimeISO(timeZone).toPlainDate();
-  }
-}
-
 /**
  * Focus on an all-day bar from a day before the visible ones, moved to the first visible day when
  * the bar runs on into it; `null` when there's nothing to move. The bar renders from that day once
@@ -95,13 +78,18 @@ function barFocusToAdvance(
     return null;
   }
   const visible = row.range.start.until(firstVisible).days;
-  // Segments are clipped to the loaded days, so the event's own start decides what it covered.
+  // Segments are clipped to the loaded days, so the event's own dates decide what it covered:
+  // one run of local dates through both days, which a fold at midnight can start a day early.
   const runsOn = row.segments.some(
     ({ column, event, span }) =>
       event.id === focus.eventId &&
       column <= visible &&
       visible < column + span &&
-      Temporal.PlainDate.compare(firstDateOf(event, timeZone), focus.date) <= 0,
+      eventDateRanges(event, timeZone).some(
+        ({ first, last }) =>
+          Temporal.PlainDate.compare(first, focus.date) <= 0 &&
+          Temporal.PlainDate.compare(firstVisible, last) <= 0,
+      ),
   );
   return runsOn ? { ...focus, date: firstVisible } : null;
 }
