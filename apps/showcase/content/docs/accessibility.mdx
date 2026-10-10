@@ -40,10 +40,16 @@ app's own shortcuts, even where there's nowhere to move.
 | Week, day | An all-day cell              | Enter                        | Go into the day's all-day events                                                                        |
 | Week, day | A timed event                | ↑ ↓                          | Previous or next event in the column                                                                    |
 | Week, day | A timed event                | ← →                          | The event beside it that overlaps it                                                                    |
+| Resources | A day or slot                | ← →                          | Same slot in the previous or next column, crossing into the next resource                               |
+| Resources | A day or slot                | Home, End                    | First or last column                                                                                    |
+| Resources | A day or slot                | Page Up, Page Down           | Same resource, a whole day (or range) earlier or later                                                  |
 | Agenda    | An event                     | ↑ ↓                          | Previous or next event                                                                                  |
 | Agenda    | An event                     | Page Up, Page Down           | First event of the previous or next day                                                                 |
 | Agenda    | An event                     | Home, End                    | First or last event                                                                                     |
 | Agenda    | A range without events       | ↑ or Page Up, ↓ or Page Down | The previous or next range                                                                              |
+
+In the [resource columns](/docs/views/resource-columns#keyboard) view, each resource's days come
+before the next resource's, and inside a column the week and day keys apply.
 
 Shift+Enter opens the view named `day`. In the week view it needs the
 [`dayView`](/docs/views/week-and-day#options) option, and the day view has nothing to open. The
@@ -52,8 +58,9 @@ the layout (see [Right-to-left](#right-to-left)).
 
 ### Changing events
 
-With `onEventChange` on `Root`, the month, week, and day views can change events from the keyboard,
-just as a drag does.
+With `onEventChange` on `Root`, the month, week, day, and resource columns views can change events
+from the keyboard, just as a drag does. Moving a picked-up event into another resource's column
+swaps that resource, as dropping it there would.
 
 | Focus                              | Key                              | Effect                                                                                                                                                                                                |
 | ---------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -101,6 +108,10 @@ is announced. Picking up Standup and moving it down a slot, for example, reads:
    Enter to drop it or Escape to cancel."
 2. "Thursday, October 8, 9:45 – 10:00 AM"
 3. "Moved Standup to Thursday, October 8, 9:45 – 10:00 AM." once `onEventChange` has saved it.
+
+In a calendar with resources, picking up, moving and creating an event also name the resources it
+books, from `Root`'s `resources`: "Moved Standup to Thursday, October 8, 9:45 – 10:00 AM, Orchid."
+While moving, a step names them only when they change.
 
 ### Customize and localize them
 
@@ -162,18 +173,19 @@ const pointerRef = useCalendarPointer({ announcer, events, onPropose, timeZone }
 ### Event names
 
 Every event is a `<button>` named in full: "Standup, Thursday, October 8, 9:30 – 9:45 AM, Work
-calendar, saving". The name leads with the title, then says when, an optional detail, and whether a
-change is still saving. `useEventLabel` builds it in `registry/calendar/event-label.ts`, where the
+calendar, saving". The name leads with the title, then says when, where (the resource, in the
+resource columns view), an optional detail, and whether a change is still saving. `useEventLabel` builds it in `registry/calendar/event-label.ts`, where the
 English words live, so edit or translate them there. Pass `describeEvent: (event) => string` to a
 view to add the detail, such as the calendar's name.
 
 ## ARIA patterns
 
-| View         | Pattern                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Month        | A `grid` labelled with the month ("October 2026"). A header `row` holds a `columnheader` per weekday, named in full. Each week is a `row` of seven `gridcell`s named by date and event count ("Thursday, October 8, 2026, 2 events"). A cell holds its date button and the events that start that day. "+N more" opens a dialog named "Events on Thursday, October 8, 2026".                                                                                                                                                  |
-| Week and day | A `grid` labelled with the range ("Oct 4 – 10, 2026") with three rows: a header row of `columnheader`s (the time zone, then each day); the all-day row, led by an "All day" `rowheader` that also holds the expand toggle (`aria-expanded`), with a `gridcell` per day; and the timed row, led by a "Timed events" `rowheader`, with a `gridcell` per day. Hour labels are hidden from assistive tech. The focused slot renders as a `button` named "Thursday, October 8 at 9:30 AM"; the other slots aren't elements at all. |
-| Agenda       | An `<ol>` labelled with the range, with one `<li>` per day and a `<ul>` of its events. A range without events is a focusable group named "No events".                                                                                                                                                                                                                                                                                                                                                                         |
+| View             | Pattern                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Month            | A `grid` labelled with the month ("October 2026"). A header `row` holds a `columnheader` per weekday, named in full. Each week is a `row` of seven `gridcell`s named by date and event count ("Thursday, October 8, 2026, 2 events"). A cell holds its date button and the events that start that day. "+N more" opens a dialog named "Events on Thursday, October 8, 2026".                                                                                                                                                  |
+| Week and day     | A `grid` labelled with the range ("Oct 4 – 10, 2026") with three rows: a header row of `columnheader`s (the time zone, then each day); the all-day row, led by an "All day" `rowheader` that also holds the expand toggle (`aria-expanded`), with a `gridcell` per day; and the timed row, led by a "Timed events" `rowheader`, with a `gridcell` per day. Hour labels are hidden from assistive tech. The focused slot renders as a `button` named "Thursday, October 8 at 9:30 AM"; the other slots aren't elements at all. |
+| Resource columns | A `grid` labelled with the range, with `aria-colcount` and an `aria-colindex` on every cell, since only the columns in view render. A header `row` has a `columnheader` per resource, named with its groups ("Maya, Design"), and a group's header holds its collapse toggle (`aria-expanded`). Then the all-day and timed rows, as in the week view, with each cell, slot and event named with its resource ("Maya, Thursday, October 8 at 9:30 AM").                                                                        |
+| Agenda           | An `<ol>` labelled with the range, with one `<li>` per day and a `<ul>` of its events. A range without events is a focusable group named "No events".                                                                                                                                                                                                                                                                                                                                                                         |
 
 All views share these:
 

@@ -128,7 +128,28 @@ Set options when you create the view, or per calendar with
   all-day cells to create an event in that resource. See
   [Interactions](/docs/interactions#drag-resize-and-create).
 - **Accessible names:** events, slots and all-day cells include their resource, as in "Design
-  review, Tuesday, October 6, 10:00 – 11:30 AM, Orchid".
+  review, Tuesday, October 6, 10:00 – 11:30 AM, Orchid". Announcements name it too: "Moved Design
+  review to Tuesday, October 6, 10:00 – 11:30 AM, Cedar, Maya, Alex."
+
+## Keyboard
+
+Tab into the preview above, or click a slot, and try these keys. Columns run resource by resource:
+each resource's days, then the next resource. Inside a column the keys are the
+[day view's](/docs/views/week-and-day#keyboard). The
+[Accessibility](/docs/accessibility#keyboard) page has the full map and what a screen reader hears.
+
+| Focus         | Key                | Effect                                                                                       |
+| ------------- | ------------------ | -------------------------------------------------------------------------------------------- |
+| A day or slot | ← →                | Same slot in the previous or next column, crossing into the next resource                    |
+| A day or slot | ← → past the ends  | On to the day before or after the range, in the last or first resource                       |
+| A day or slot | Home, End          | First or last column                                                                         |
+| A day or slot | Page Up, Page Down | Same resource, a whole day (or range) earlier or later                                       |
+| A day or slot | ↑ ↓, Enter         | As in the day view: slots, the all-day cell, and the events covering a slot                  |
+| A day or slot | Space              | Start an event there, in that column's resource                                              |
+| An event      | Space              | Pick it up. ← → move it across columns, and into another resource it swaps that one resource |
+
+Focus can move to a resource that's scrolled out of view: its column renders and scrolls in, and
+it stays rendered while you scroll away, so focus is never lost.
 
 ## Markup for interactions
 
