@@ -222,6 +222,46 @@ describe("scrolling views", () => {
     expect(Temporal.PlainDate.compare(day, Temporal.PlainDate.from("2026-10-20"))).toBe(1);
   });
 
+  test("asking for the anchor mid-drag doesn't stall the drag's scroll", async () => {
+    await render(<Screen view="scrolling-week" />);
+    const { viewport } = axis("scrolling-week");
+    viewport.scrollTop = 400;
+    // A create from an empty slot, with focus outside the grid.
+    const column = viewport.querySelector<HTMLElement>(
+      '[role="gridcell"][data-date="2026-10-09"]',
+    )!;
+    const box = column.getBoundingClientRect();
+    const edge = viewport.getBoundingClientRect().right - 20;
+    const at = (x: number) => ({
+      bubbles: true,
+      button: 0,
+      clientX: x,
+      clientY: box.top + 500,
+      isPrimary: true,
+      pointerId: 1,
+      pointerType: "mouse",
+    });
+    (document.activeElement as HTMLElement | null)?.blur();
+
+    await act(async () => {
+      column.dispatchEvent(new PointerEvent("pointerdown", at(box.left + 10)));
+      column.dispatchEvent(new PointerEvent("pointermove", at(box.left + 30)));
+      column.dispatchEvent(new PointerEvent("pointermove", at(edge)));
+    });
+    await act(async () => screen.actions!.setAnchorDate(Temporal.PlainDate.from("2026-10-07")));
+
+    // The drag keeps scrolling and moving the range past the next half page.
+    await vi.waitFor(() => expect(reported.anchors.length).toBeGreaterThan(0), {
+      interval: 50,
+      timeout: 5000,
+    });
+    await act(async () =>
+      document
+        .elementFromPoint(edge, box.top + 500)!
+        .dispatchEvent(new PointerEvent("pointerup", at(edge))),
+    );
+  });
+
   test("a day view's scroll settles on a whole day", async () => {
     await render(<Screen view="scrolling-day" />);
     const { position, scrollBy } = axis("scrolling-day");

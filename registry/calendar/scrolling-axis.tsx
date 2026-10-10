@@ -180,12 +180,14 @@ export function useScrollingAxis({
       if (replacing) scrollTo(element, target, "instant");
       return;
     }
-    // Keys move focus as they scroll, so they jump; so does anything more than two pages away.
+    // Keys move focus as they scroll, so they jump; so does anything more than two pages away, and
+    // anything during a drag, whose auto-scroll would cut an animation short every frame.
     const smooth =
       from !== null &&
       Math.abs(first - from) <= 2 * page &&
       !prefersReducedMotion(element) &&
-      !element.contains(element.ownerDocument.activeElement);
+      !element.contains(element.ownerDocument.activeElement) &&
+      element.closest("[data-interaction]") === null;
     // A smooth scroll passes other items on its way, which must not move the calendar there.
     if (smooth) heading.current = first;
     scrollTo(element, target, smooth ? "smooth" : "instant");

@@ -330,3 +330,20 @@ test.each([
     expect(onScroll).not.toHaveBeenCalled();
   },
 );
+
+test("a request during a drag jumps, and the drag's scroll goes on moving the range", async () => {
+  const { userScrollsTo, viewport } = await show(<Axis interacting />);
+  // The drag's auto-scroll has moved a day, short of reporting anything.
+  await userScrollsTo(5001, false);
+  scrolls = [];
+
+  await act(async () => request(5000));
+  expect(scrolls.map(({ behavior }) => behavior)).toEqual(["instant"]);
+
+  // Auto-scroll carries on past half a page, which moves the range again.
+  await act(async () => {
+    viewport.scrollLeft += 4 * ITEM;
+    viewport.dispatchEvent(new Event("scroll"));
+  });
+  expect(onScroll).toHaveBeenLastCalledWith(5004);
+});
