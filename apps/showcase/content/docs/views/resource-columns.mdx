@@ -63,14 +63,14 @@ they're not parts you compose: to change one, edit its file. The tree shows wher
 
 ```txt title="Rendered by ResourceColumnsView"
 ResourceColumnsView              resource-columns-view.tsx
-├── ResourceColumnsHeader        resource-columns-header.tsx, follows the body sideways
-│   └── Resource header          one per rendered resource, under its group bands
-├── ResourceColumnsDates         resource-columns-dates.tsx, over several days
-├── ResourceColumnsAllDay        resource-columns-all-day.tsx, follows the body sideways
-│   └── TimeGridAllDayCells      time-grid-all-day.tsx, one set per resource
+├── ResourceColumnsHeader        resource-columns-header.tsx
+│   └── Resource header          one per rendered resource
+├── ResourceColumnsDates         resource-columns-dates.tsx, over N days
+├── ResourceColumnsAllDay        resource-columns-all-day.tsx
+│   └── TimeGridAllDayCells      one set per rendered resource
 └── ResourceColumnsBody          resource-columns-body.tsx, scrolls both ways
-    ├── Time gutter              --calendar-gutter-width, follows the body down
-    └── Resource column          data-resource-id, one per rendered resource
+    ├── Time gutter              --calendar-gutter-width
+    └── Resource column          data-resource-id
         └── TimeGridColumn       time-grid-column.tsx, one per day
             ├── TimeGridEvent    time-grid-event.tsx
             └── Now line         data-slot="time-grid-now"

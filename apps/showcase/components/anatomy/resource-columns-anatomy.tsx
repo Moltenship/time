@@ -30,14 +30,14 @@ const callouts: readonly AnatomyCallout[] = [
   {
     label: "Group band",
     name: "useResourceExpansion",
-    anchor: [WIDTH - 20, LEVEL / 2],
-    side: "right",
+    anchor: [columnLeft(DESIGN) + 60, LEVEL / 2],
+    side: "top",
   },
   {
     label: "Resource header",
     name: "ResourceColumnsHeader",
-    anchor: [columnLeft(ALEX) + 40, LEVEL + LEVEL / 2],
-    side: "right",
+    anchor: [columnLeft(ALEX) + 50, LEVEL + LEVEL / 2],
+    side: "top",
   },
   {
     label: "All-day row",
