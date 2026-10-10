@@ -16,7 +16,11 @@ export interface TimeGridHeaderProps {
 }
 
 /** "GMT-4" for the display zone at the start of the visible range. */
-function offsetLabel(locale: Intl.LocalesArgument, timeZone: string, day: TimeGridDay<unknown>) {
+export function offsetLabel(
+  locale: Intl.LocalesArgument,
+  timeZone: string,
+  day: TimeGridDay<unknown>,
+) {
   return new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: "shortOffset" })
     .formatToParts(day.column.day.start)
     .find((part) => part.type === "timeZoneName")?.value;

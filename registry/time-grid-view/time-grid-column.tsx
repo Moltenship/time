@@ -11,6 +11,7 @@ import {
   type TimeGridColumn as Column,
   type TimeGridDay,
 } from "@moltenship/calendar";
+import { useMemo } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
@@ -18,16 +19,40 @@ import { cn } from "cn";
 
 import { percent, TimeGridEvent, type TimeGridEventFormats } from "./time-grid-event";
 
+export interface TimeGridColumnFormats extends TimeGridEventFormats {
+  /** A slot's date and time, for its accessible name. */
+  readonly slot: Intl.DateTimeFormat;
+}
+
+/** The formats a column reads, made once per locale for all of a grid's columns. */
+export function useTimeGridColumnFormats(locale: Intl.LocalesArgument): TimeGridColumnFormats {
+  return useMemo(
+    () => ({
+      dayTime: new Intl.DateTimeFormat(locale, {
+        hour: "numeric",
+        minute: "2-digit",
+        weekday: "short",
+      }),
+      slot: new Intl.DateTimeFormat(locale, {
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        month: "long",
+        weekday: "long",
+      }),
+      time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }),
+    }),
+    [locale],
+  );
+}
+
 export interface TimeGridColumnProps<TEvent> {
   readonly day: TimeGridDay<TEvent>;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Position of the now-line when the current time falls in this column. */
   readonly nowTop: number | null;
-  readonly formats: TimeGridEventFormats & {
-    /** A slot's date and time, for its accessible name. */
-    readonly slot: Intl.DateTimeFormat;
-  };
+  readonly formats: TimeGridColumnFormats;
   /** Opens a date in the day view; Shift+Enter on a slot does so. */
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   /** Length of a keyboard slot, as the keyboard's snap sets it. */

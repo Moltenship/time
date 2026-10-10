@@ -1,0 +1,45 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "resource-columns-view",
+  "type": "registry:component",
+  "title": "Resource columns view",
+  "description": "A day or N-day time grid with a column per resource: headers grouped by the resource hierarchy with collapsible groups, a sticky hour gutter and header, and horizontal virtualization so hundreds of resources scroll smoothly.",
+  "dependencies": ["@moltenship/calendar", "@tanstack/react-virtual", "cn", "lucide-react"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/time-grid-view"
+  ],
+  "files": [
+    {
+      "path": "registry/resource-columns-view/resource-columns-view.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/resource-columns-view/resource-columns-view.tsx"
+    },
+    {
+      "path": "registry/resource-columns-view/resource-columns-header.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/resource-columns-view/resource-columns-header.tsx"
+    },
+    {
+      "path": "registry/resource-columns-view/resource-columns-body.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/resource-columns-view/resource-columns-body.tsx"
+    },
+    {
+      "path": "registry/resource-columns-view/column-virtualizer.ts",
+      "type": "registry:lib",
+      "target": "components/calendar/resource-columns-view/column-virtualizer.ts"
+    },
+    {
+      "path": "registry/resource-columns-view/axis-sync.ts",
+      "type": "registry:lib",
+      "target": "components/calendar/resource-columns-view/axis-sync.ts"
+    }
+  ],
+  "meta": {
+    "compatibility": {
+      "@moltenship/calendar": ">=0.0.0"
+    }
+  }
+}

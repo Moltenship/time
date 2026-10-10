@@ -9,7 +9,7 @@ import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
-import { TimeGridColumn } from "./time-grid-column";
+import { TimeGridColumn, useTimeGridColumnFormats } from "./time-grid-column";
 
 export interface TimeGridBodyProps<TEvent> {
   readonly days: readonly TimeGridDay<TEvent>[];
@@ -38,6 +38,47 @@ function hourFormat(locale: Intl.LocalesArgument): Intl.DateTimeFormat {
     : new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });
 }
 
+/** The gutter's hour labels, from 1:00 to 23:00, over the full height of the element around it. */
+export function TimeGridHours({ locale }: { readonly locale: Intl.LocalesArgument }) {
+  const format = useMemo(() => hourFormat(locale), [locale]);
+
+  return (
+    <div aria-hidden className="relative h-full">
+      {labelledHours.map((hour) => (
+        <span
+          key={hour}
+          className="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums"
+          style={{ top: `${(hour / 24) * 100}%` }}
+        >
+          {format.format(new Temporal.PlainTime(hour))}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Once the first clock sample arrives (after hydration, `now` starts as null), opens the scroll
+ * element on the current time at `nowTop`, or on 08:00 when the current time is not visible.
+ * Later ticks and navigation keep the user's scroll position.
+ */
+export function useOpeningScroll(
+  scrollRef: RefObject<HTMLElement | null>,
+  now: Temporal.Instant | null,
+  nowTop: number | null,
+): void {
+  const scrolled = useRef(false);
+  useLayoutEffect(() => {
+    const node = scrollRef.current;
+    if (scrolled.current || node === null || now === null) return;
+    scrolled.current = true;
+    node.scrollTop =
+      nowTop === null
+        ? DEFAULT_SCROLL_FRACTION * node.scrollHeight
+        : Math.max(0, nowTop * node.scrollHeight - node.clientHeight / 3);
+  }, [now, nowTop, scrollRef]);
+}
+
 /** The grid's timed row, scrolling through 24 hours: hour gutter, hour lines, and a cell per day. */
 export function TimeGridBody<TEvent>({
   days,
@@ -60,39 +101,8 @@ export function TimeGridBody<TEvent>({
           ),
     [days, now],
   );
-  const formats = useMemo(
-    () => ({
-      dayTime: new Intl.DateTimeFormat(locale, {
-        hour: "numeric",
-        minute: "2-digit",
-        weekday: "short",
-      }),
-      hour: hourFormat(locale),
-      slot: new Intl.DateTimeFormat(locale, {
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        month: "long",
-        weekday: "long",
-      }),
-      time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }),
-    }),
-    [locale],
-  );
-
-  // Once the first clock sample arrives (after hydration, `now` starts as null), open on the
-  // current time, or 08:00 when today is not visible. Later ticks and navigation keep the user's
-  // scroll position.
-  const scrolled = useRef(false);
-  useLayoutEffect(() => {
-    const node = scrollRef.current;
-    if (scrolled.current || node === null || now === null) return;
-    scrolled.current = true;
-    node.scrollTop =
-      nowPosition === null
-        ? DEFAULT_SCROLL_FRACTION * node.scrollHeight
-        : Math.max(0, nowPosition.top * node.scrollHeight - node.clientHeight / 3);
-  }, [now, nowPosition, scrollRef]);
+  const formats = useTimeGridColumnFormats(locale);
+  useOpeningScroll(scrollRef, now, nowPosition?.top ?? null);
 
   return (
     <div
@@ -103,17 +113,7 @@ export function TimeGridBody<TEvent>({
       <div role="row" className="flex h-[calc(var(--calendar-hour-height)*24)]">
         <div role="rowheader" className="w-(--calendar-gutter-width) shrink-0">
           <span className="sr-only">Timed events</span>
-          <div aria-hidden className="relative h-full">
-            {labelledHours.map((hour) => (
-              <span
-                key={hour}
-                className="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums"
-                style={{ top: `${(hour / 24) * 100}%` }}
-              >
-                {formats.hour.format(new Temporal.PlainTime(hour))}
-              </span>
-            ))}
-          </div>
+          <TimeGridHours locale={locale} />
         </div>
         <div
           className="grid flex-1 bg-[linear-gradient(to_bottom,var(--calendar-grid)_1px,transparent_1px)] bg-size-[100%_var(--calendar-hour-height)]"
