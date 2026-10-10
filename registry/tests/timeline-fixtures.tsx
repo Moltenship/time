@@ -72,7 +72,9 @@ export function Timeline({
   direction = "ltr",
   events = [],
   expanded = allSites,
+  focus,
   onEventChange,
+  onFocusChange,
   timeZone = "UTC",
   view = "timeline-month",
 }: {
@@ -82,7 +84,10 @@ export function Timeline({
   readonly direction?: "ltr" | "rtl";
   readonly events?: readonly Booking[];
   readonly expanded?: readonly string[];
+  /** Focus the owner holds; changes then only reach `onFocusChange`. */
+  readonly focus?: CalendarFocus | null;
   readonly onEventChange?: (change: BookingChange) => void;
+  readonly onFocusChange?: (focus: CalendarFocus | null) => void;
   readonly timeZone?: string;
   readonly view?: TimelineName;
 }) {
@@ -95,9 +100,11 @@ export function Timeline({
       defaultView={view}
       direction={direction}
       events={events}
+      focus={focus}
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T12:00:00Z")}
       onEventChange={onEventChange}
+      onFocusChange={onFocusChange}
       resources={sites}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >

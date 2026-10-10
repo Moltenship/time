@@ -6,6 +6,7 @@ import {
   useCalendarAnnouncer,
   useCalendarFocus,
   useCalendarPointer,
+  type CalendarDayFocus,
   type CalendarViewRendererProps,
   type PlainDateInterval,
   type ResourceTimelineOptions,
@@ -45,6 +46,8 @@ function gridLabel(range: PlainDateInterval, locale: Intl.Locale | string): stri
 
 /** Pointer and keyboard both step by these slots in an hour timeline, so they reach the same times. */
 const snap = { increment: 30, smallestUnit: "minute" } as const;
+/** The calendar's default slots, in which it finds where focus enters a view. */
+const entrySnap = { increment: 15, smallestUnit: "minute" } as const;
 
 /**
  * Resources as rows and time as columns, with each resource's events as bars packed into lanes.
@@ -77,7 +80,8 @@ export function ResourceTimelineView<TEvent>({
   const labelEvent = useEventLabel(environment, options.describeEvent);
 
   // Where the calendar enters the view: today or the range's first day in the first row, at the
-  // day's first wall time in an hour timeline.
+  // day's first wall time in an hour timeline. The calendar finds it in its default slots, so ask
+  // with those, whatever this view steps by, or the cell rendered for it isn't the tab stop.
   const entry = useMemo(() => {
     const found = resourceTimelineSpatialNavigation({
       command: "home",
@@ -86,20 +90,26 @@ export function ResourceTimelineView<TEvent>({
       options,
       projection,
       range,
-      snap,
+      snap: entrySnap,
     });
     return found === null || !("focus" in found) || found.focus.kind === "event"
       ? null
       : found.focus;
   }, [environment, options, projection, range]);
 
-  // A time grid's slot is its whole day in a timeline of days, so keys act on the day, as a drag.
+  // A time grid's slot is its whole day in a timeline of days, so keys act on the day, as a drag
+  // does. One day per slot, so a replayed effect asks for the same focus and changes nothing.
   const slot = useCalendarFocus((focus) => (focus?.kind === "slot" ? focus : null));
+  const slotDay = useMemo<CalendarDayFocus | null>(
+    () =>
+      projection.unit === "day" && slot !== null
+        ? { date: slot.date, kind: "day", resourceId: slot.resourceId }
+        : null,
+    [projection.unit, slot],
+  );
   useLayoutEffect(() => {
-    if (projection.unit === "day" && slot !== null) {
-      actions.setFocus({ date: slot.date, kind: "day", resourceId: slot.resourceId });
-    }
-  }, [actions, projection.unit, slot]);
+    if (slotDay !== null) actions.setFocus(slotDay);
+  }, [actions, slotDay]);
 
   return (
     <ResourceTimelineGrid

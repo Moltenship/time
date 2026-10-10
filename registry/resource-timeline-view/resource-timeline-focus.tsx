@@ -28,8 +28,10 @@ export interface CellTargets {
  * Where keyboard focus can land. The first row always holds the view's entry, where the calendar
  * enters it, which is the tab stop until something has focus or when the focus can't show here.
  * The focused cell sits in its row; focus from a view without resources names none and sits in
- * the first row, as navigation moves it from there, and a time grid's slot is its whole day in a
- * timeline of days. These, and a focused event's element, stay rendered while scrolled away.
+ * the first row, as navigation moves it from there. A time grid's slot covers its whole day in a
+ * timeline of days, keeping its kind until the view's request to make it a day is accepted, so it
+ * stays the tab stop while the owner holds it. These, and a focused event's element, stay
+ * rendered while scrolled away.
  */
 export function cellTargets<TEvent>(
   focus: CalendarFocus | null,
@@ -41,8 +43,9 @@ export function cellTargets<TEvent>(
   const perDay = unit === "hour" ? HOURS : 1;
   const slotCount = columns.length * perDay;
   const dayOf = (date: Temporal.PlainDate) => range.start.until(date).days;
+  // A slot from a time grid sits on its whole day in a timeline of days.
   const slotOf = (cell: CalendarCellFocus) =>
-    dayOf(cell.date) * perDay + (cell.kind === "slot" ? cell.time.hour : 0);
+    dayOf(cell.date) * perDay + (unit === "hour" && cell.kind === "slot" ? cell.time.hour : 0);
 
   const cells = new Map<number, CalendarCellFocus[]>([[0, [entry]]]);
   const pinned = { rows: [0], slots: [slotOf(entry)] };
@@ -60,9 +63,7 @@ export function cellTargets<TEvent>(
     const row = day >= 0 && day < columns.length ? rowOf() : -1;
     if (row !== -1) {
       // Named after its row, a resource-less focus can't also match the entry beside it.
-      const resourceId = rows[row]!.resource.id;
-      const cell: CalendarCellFocus =
-        unit === "day" ? { date: focus.date, kind: "day", resourceId } : { ...focus, resourceId };
+      const cell = { ...focus, resourceId: rows[row]!.resource.id };
       const targets = cells.get(row) ?? [];
       if (!targets.some((target) => sameFocus(target, cell))) cells.set(row, [...targets, cell]);
       pinned.rows.push(row);

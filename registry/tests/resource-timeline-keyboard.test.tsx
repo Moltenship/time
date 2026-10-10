@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
-import type { CalendarFocus } from "@moltenship/calendar";
-import { act, type ReactElement } from "react";
+import { sameFocus, type CalendarFocus } from "@moltenship/calendar";
+import { act, StrictMode, type ReactElement } from "react";
+import { renderToString } from "react-dom/server";
 import { afterEach, beforeAll, expect, test, vi } from "vite-plus/test";
 
 import { drag, layOut } from "./pointer";
@@ -360,4 +361,39 @@ test("an hour timeline enters at the first time its day has", async () => {
   await tabIn(container);
   await press("ArrowRight");
   expect(focused()).toBe("Site 1, expanded, Sunday, November 4 at 1:30 AM");
+});
+
+test("a slot its owner holds stays the tab stop on its day, and the view asks once for the day", async () => {
+  const onFocusChange = vi.fn<(focus: CalendarFocus | null) => void>();
+  const container = await show(
+    <StrictMode>
+      <Timeline
+        focus={{
+          date: Temporal.PlainDate.from("2026-10-06"),
+          kind: "slot",
+          resourceId: "site-1-room-2",
+          time: Temporal.PlainTime.from("09:00"),
+        }}
+        onFocusChange={onFocusChange}
+        view="timeline-week"
+      />
+    </StrictMode>,
+  );
+
+  // The owner keeps the slot; its day is still where Tab enters.
+  expect(tabStops(container)).toEqual(["Room 1.2, Tuesday, October 6, 2026"]);
+  // StrictMode replays the effect, which asks for the same day again: no second change.
+  expect(onFocusChange).toHaveBeenCalledTimes(1);
+  expect(sameFocus(onFocusChange.mock.calls[0]![0], day("2026-10-06", "site-1-room-2"))).toBe(true);
+});
+
+test("server markup holds the tab stop when a day starts off the half hour", () => {
+  // Liberia's clocks went forward 44½ minutes at midnight on January 7, 1972.
+  const markup = renderToString(
+    <Timeline anchor="1972-01-07" timeZone="Africa/Monrovia" view="timeline-day" />,
+  );
+  const server = document.createElement("div");
+  server.innerHTML = markup;
+
+  expect(tabStops(server)).toEqual(["Site 1, expanded, Friday, January 7 at 12:45 AM"]);
 });
