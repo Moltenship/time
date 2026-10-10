@@ -2,6 +2,7 @@ import {
   createCalendar,
   createCanonicalEventAdapter,
   plainDateInterval,
+  type CalendarAnnotation,
   type CalendarEvent,
   type CalendarResource,
 } from "@moltenship/calendar";
@@ -16,6 +17,7 @@ import {
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
+import type { TimeGridAnnotationSource } from "@registry/time-grid-view/time-grid-annotations";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
@@ -96,6 +98,49 @@ const events: readonly Fixture[] = [
   allDay("purple", "Offsite", "2026-10-10", "2026-10-14"),
 ];
 
+function NoteIcon({ className }: { readonly className?: string }) {
+  return (
+    <svg aria-hidden className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path d="M9 18V5l12-2v13" />
+    </svg>
+  );
+}
+
+/** Sleep across midnight and a listening session of tracks, so the rail has bars and a dot. */
+const annotationSources: readonly TimeGridAnnotationSource[] = [
+  { color: "purple", id: "sleep", label: "Sleep" },
+  {
+    color: "green",
+    Icon: NoteIcon,
+    id: "music",
+    label: "Music",
+    mergeGap: Temporal.Duration.from({ minutes: 5 }),
+  },
+];
+const annotations: readonly CalendarAnnotation[] = [
+  {
+    end: Temporal.Instant.from("2026-10-08T07:00:00Z"),
+    id: "night",
+    sourceId: "sleep",
+    start: Temporal.Instant.from("2026-10-07T23:00:00Z"),
+    title: "Sleep",
+  },
+  ...[0, 4, 8, 12].map((minutes) => ({
+    end: firstMeeting.add({ minutes: minutes + 3 }),
+    id: `track-${minutes}`,
+    sourceId: "music",
+    start: firstMeeting.add({ minutes }),
+    title: `Track ${minutes / 4 + 1}`,
+  })),
+  {
+    end: Temporal.Instant.from("2026-10-08T15:03:00Z"),
+    id: "short",
+    sourceId: "music",
+    start: Temporal.Instant.from("2026-10-08T15:00:00Z"),
+    title: "One track",
+  },
+];
+
 /** A view under the toolbar, beside a mini month whose selected date is not today. */
 export function RegistryScreen({
   dir,
@@ -107,6 +152,8 @@ export function RegistryScreen({
   return (
     <TooltipProvider>
       <Calendar.Root
+        annotationSources={annotationSources}
+        annotations={annotations}
         defaultAnchorDate={today}
         defaultExpandedResourceIds={["team"]}
         defaultTimeZone="UTC"

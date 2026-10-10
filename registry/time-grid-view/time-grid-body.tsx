@@ -9,13 +9,17 @@ import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
+import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
 import { TimeGridColumn, useTimeGridColumnFormats } from "./time-grid-column";
 
 export interface TimeGridBodyProps<TEvent> {
+  readonly annotations?: TimeGridAnnotationWiring;
   readonly days: readonly TimeGridDay<TEvent>[];
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly labelEvent: EventLabeler<TEvent>;
+  /** Reports the 24-hour row's height in px when it changes, as zooming the hours does. */
+  readonly onColumnHeightChange?: (height: number) => void;
   /** Opens a date in the day view; Shift+Enter on a slot does so. */
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   /** The scrolling element, which dragging also scrolls near its edges. */
@@ -79,12 +83,33 @@ export function useOpeningScroll(
   }, [now, nowTop, scrollRef]);
 }
 
+/** Reports an element's height whenever it changes, such as the 24-hour row when hours zoom. */
+function useHeightObserver(onHeightChange: ((height: number) => void) | undefined) {
+  const ref = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (node === null || onHeightChange === undefined || typeof ResizeObserver === "undefined") {
+      return;
+    }
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry !== undefined && entry.contentRect.height > 0) {
+        onHeightChange(entry.contentRect.height);
+      }
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [onHeightChange]);
+  return ref;
+}
+
 /** The grid's timed row, scrolling through 24 hours: hour gutter, hour lines, and a cell per day. */
 export function TimeGridBody<TEvent>({
+  annotations,
   days,
   environment,
   getEventColor,
   labelEvent,
+  onColumnHeightChange,
   onOpenDay,
   scrollRef,
   slotMinutes,
@@ -103,6 +128,7 @@ export function TimeGridBody<TEvent>({
   );
   const formats = useTimeGridColumnFormats(locale);
   useOpeningScroll(scrollRef, now, nowPosition?.top ?? null);
+  const rowRef = useHeightObserver(onColumnHeightChange);
 
   return (
     <div
@@ -110,7 +136,7 @@ export function TimeGridBody<TEvent>({
       data-slot="time-grid-body"
       className="relative min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
     >
-      <div role="row" className="flex h-[calc(var(--calendar-hour-height)*24)]">
+      <div ref={rowRef} role="row" className="flex h-[calc(var(--calendar-hour-height)*24)]">
         <div role="rowheader" className="w-(--calendar-gutter-width) shrink-0">
           <span className="sr-only">Timed events</span>
           <TimeGridHours locale={locale} />
@@ -122,6 +148,11 @@ export function TimeGridBody<TEvent>({
           {days.map((day, index) => (
             <TimeGridColumn
               key={day.column.key}
+              annotations={
+                annotations === undefined
+                  ? undefined
+                  : { ...annotations, marks: annotations.layout.columns[index] ?? [] }
+              }
               day={day}
               getEventColor={getEventColor}
               labelEvent={labelEvent}

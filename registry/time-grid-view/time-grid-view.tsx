@@ -8,17 +8,30 @@ import {
   type TimeGridProjection,
   type TimeGridSpan,
 } from "@moltenship/calendar";
-import { useMemo, useRef } from "react";
+import { useMemo, useRef, useState } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
+import { annotationFormats } from "./annotation-label";
 import { TimeGridAllDay } from "./time-grid-all-day";
+import {
+  DEFAULT_COLUMN_HEIGHT,
+  TimeGridAnnotationOverlays,
+  useAnnotationHandles,
+  useTimeGridAnnotationLayout,
+  type TimeGridAnnotationOptions,
+} from "./time-grid-annotations";
 import { TimeGridBody } from "./time-grid-body";
 import { TimeGridHeader } from "./time-grid-header";
 
 export interface TimeGridViewOptions<TEvent> {
+  /**
+   * How the root's annotations draw: the rail's size and side, or your own composition of the
+   * annotation parts. Without annotation sources on the root, no rail is reserved.
+   */
+  readonly annotations?: TimeGridAnnotationOptions;
   /** Registered view a week's header date opens, usually `"day"`; without it dates are static. */
   readonly dayView?: string;
   /** Extra words for each event's accessible name, such as its calendar. */
@@ -66,6 +79,24 @@ export function TimeGridView<TEvent>({
     timeZone: environment.timeZone,
   });
   const keyboard = useViewKeyboard({ snap });
+  // Merging and lane packing use drawn sizes, so they follow the body's measured height.
+  const [columnHeight, setColumnHeight] = useState(DEFAULT_COLUMN_HEIGHT);
+  const annotationLayout = useTimeGridAnnotationLayout(columns, options.annotations, {
+    columnHeight,
+    dense: days.length > 1,
+  });
+  const annotationHandles = useAnnotationHandles();
+  const formats = useMemo(
+    () => annotationFormats(environment.locale, environment.timeZone),
+    [environment.locale, environment.timeZone],
+  );
+  const annotations = useMemo(
+    () =>
+      annotationLayout.enabled
+        ? { formats, handles: annotationHandles, layout: annotationLayout }
+        : undefined,
+    [annotationHandles, annotationLayout, formats],
+  );
   const labelEvent = useEventLabel(environment, options.describeEvent);
   const formatDate = useMemo(() => {
     const format = new Intl.DateTimeFormat(environment.locale, { dateStyle: "full" });
@@ -81,41 +112,50 @@ export function TimeGridView<TEvent>({
         };
 
   return (
-    // Rows: day headers, all-day events, and the timed day columns; each starts with a gutter cell.
-    <div
-      ref={pointerRef}
-      role="grid"
-      aria-label={timeGridTitle(range, environment.locale)}
-      {...keyboard}
-      data-slot="time-grid"
-      className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-gutter-width:3rem] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize sm:[--calendar-gutter-width:4rem]"
-    >
-      <div className="shrink-0 overflow-hidden border-b border-calendar-grid [scrollbar-gutter:stable]">
-        <TimeGridHeader
-          actions={actions}
+    <>
+      {/* Rows: day headers, all-day events, and the timed day columns; each starts with a gutter cell. */}
+      <div
+        ref={pointerRef}
+        role="grid"
+        aria-label={timeGridTitle(range, environment.locale)}
+        {...keyboard}
+        data-slot="time-grid"
+        className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-gutter-width:3rem] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize sm:[--calendar-gutter-width:4rem]"
+      >
+        <div className="shrink-0 overflow-hidden border-b border-calendar-grid [scrollbar-gutter:stable]">
+          <TimeGridHeader
+            actions={actions}
+            annotations={annotations}
+            days={days}
+            dayView={options.dayView}
+            environment={environment}
+          />
+          <TimeGridAllDay
+            days={days}
+            formatDate={formatDate}
+            getEventColor={options.getEventColor}
+            labelEvent={labelEvent}
+            onOpenDay={openDay}
+            row={projection.allDay}
+          />
+        </div>
+        <TimeGridBody
+          annotations={annotations}
           days={days}
-          dayView={options.dayView}
           environment={environment}
-        />
-        <TimeGridAllDay
-          days={days}
-          formatDate={formatDate}
           getEventColor={options.getEventColor}
           labelEvent={labelEvent}
+          onColumnHeightChange={setColumnHeight}
           onOpenDay={openDay}
-          row={projection.allDay}
+          scrollRef={scrollRef}
+          slotMinutes={snap.increment}
         />
       </div>
-      <TimeGridBody
-        days={days}
-        environment={environment}
-        getEventColor={options.getEventColor}
-        labelEvent={labelEvent}
-        onOpenDay={openDay}
-        scrollRef={scrollRef}
-        slotMinutes={snap.increment}
-      />
-    </div>
+      {/* Outside the grid: an open popover's Base UI internals must not become grid children. */}
+      {annotations !== undefined && (
+        <TimeGridAnnotationOverlays formatTime={formats.time} handles={annotationHandles} />
+      )}
+    </>
   );
 }
 

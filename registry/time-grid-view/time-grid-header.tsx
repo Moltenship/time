@@ -4,12 +4,17 @@ import type {
   TimeGridColumn,
   TimeGridDay,
 } from "@moltenship/calendar";
-import { useMemo } from "react";
+import { useId, useMemo } from "react";
 
 import { cn } from "cn";
 
+import { describeDayAnnotations } from "./annotation-label";
+import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
+
 export interface TimeGridHeaderProps {
   readonly actions: CalendarViewActions;
+  /** The root's annotations; each day's header describes its own. */
+  readonly annotations?: TimeGridAnnotationWiring;
   readonly days: readonly TimeGridDay<unknown>[];
   /** View a date opens in a multi-day grid; dates are static without one. */
   readonly dayView: string | undefined;
@@ -31,8 +36,15 @@ export function offsetLabel(
  * The grid's header row: the display zone's offset over the hour gutter, then the weekday and date
  * naming each column. In a multi-day grid the date can open that day.
  */
-export function TimeGridHeader({ actions, days, dayView, environment }: TimeGridHeaderProps) {
+export function TimeGridHeader({
+  actions,
+  annotations,
+  days,
+  dayView,
+  environment,
+}: TimeGridHeaderProps) {
   const { locale, timeZone } = environment;
+  const summaryId = useId();
   const formats = useMemo(
     () => ({
       full: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
@@ -55,8 +67,13 @@ export function TimeGridHeader({ actions, days, dayView, environment }: TimeGrid
         className="grid flex-1"
         style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
       >
-        {days.map(({ column: { date }, isToday }) => {
+        {days.map(({ column: { date }, isToday }, index) => {
           const label = formats.full.format(date);
+          const marks = annotations?.layout.columns[index];
+          const summary =
+            annotations === undefined || marks === undefined
+              ? undefined
+              : describeDayAnnotations(marks, annotations.formats);
           const number = (
             <span
               className={cn(
@@ -75,6 +92,7 @@ export function TimeGridHeader({ actions, days, dayView, environment }: TimeGrid
             <div
               key={date.toString()}
               aria-current={isToday ? "date" : undefined}
+              aria-describedby={summary === undefined ? undefined : `${summaryId}-${index}`}
               aria-label={label}
               className={cn(
                 "flex min-w-0 flex-col gap-0.5 py-2",
@@ -106,6 +124,11 @@ export function TimeGridHeader({ actions, days, dayView, environment }: TimeGrid
                 </button>
               ) : (
                 number
+              )}
+              {summary !== undefined && (
+                <span className="sr-only" id={`${summaryId}-${index}`}>
+                  {summary}
+                </span>
               )}
             </div>
           );

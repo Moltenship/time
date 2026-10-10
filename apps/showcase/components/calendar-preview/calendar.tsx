@@ -21,6 +21,7 @@ import {
 import { Button } from "@registry/ui/button";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
+import { createPreviewAnnotations, previewAnnotationSources } from "./annotations";
 import {
   applyPreviewChange,
   createPreviewEvents,
@@ -31,6 +32,8 @@ import {
 export type PreviewView = "week" | "day" | "month" | "agenda";
 
 export interface LiveCalendarProps {
+  /** Add a week of sample annotations: sleep, listening sessions and workouts. */
+  readonly annotations?: boolean;
   /** Show what a screen reader hears in a strip under the calendar. */
   readonly announcements?: boolean;
   /** Show the registry mini month beside the view on large screens. */
@@ -125,6 +128,7 @@ function Sidebar({ today }: { readonly today: Temporal.PlainDate }) {
 
 /** The registry views over seeded events in the visitor's time zone; edits stay in memory. */
 export default function LiveCalendar({
+  annotations = false,
   announcements = false,
   sidebar = false,
   switcher = false,
@@ -132,6 +136,7 @@ export default function LiveCalendar({
 }: LiveCalendarProps) {
   const [now] = useState(() => Temporal.Now.zonedDateTimeISO());
   const [events, setEvents] = useState(() => createPreviewEvents(now));
+  const [sampleAnnotations] = useState(() => (annotations ? createPreviewAnnotations(now) : []));
   const today = now.toPlainDate();
   const [activeView, setActiveView] = useState<PreviewView>(view);
   const wide = useSyncExternalStore(subscribeToWidth, isWide);
@@ -142,6 +147,8 @@ export default function LiveCalendar({
   return (
     <TooltipProvider delay={400}>
       <Calendar.Root
+        annotationSources={annotations ? previewAnnotationSources : undefined}
+        annotations={sampleAnnotations}
         defaultAnchorDate={today}
         defaultTimeZone={now.timeZoneId}
         events={events}

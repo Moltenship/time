@@ -1,5 +1,6 @@
 import {
   AgendaAnatomy,
+  AnnotationsAnatomy,
   CalendarAnatomy,
   MonthAnatomy,
   ResourceColumnsAnatomy,
@@ -17,6 +18,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
     ...defaultMdxComponents,
     AgendaAnatomy,
+    AnnotationsAnatomy,
     CalendarAnatomy,
     CalendarPreview,
     MonthAnatomy,

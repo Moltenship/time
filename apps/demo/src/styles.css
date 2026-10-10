@@ -24,3 +24,19 @@
     @apply bg-background text-foreground antialiased;
   }
 }
+
+/* Sleep marks get a night sky, styled through their data attributes. */
+[data-slot="annotation-mark"][data-source="sleep"] {
+  background:
+    radial-gradient(circle at 20% 30%, oklch(1 0 0 / 0.9) 0 0.7px, transparent 1.2px) 0 0 / 9px 23px,
+    radial-gradient(circle at 75% 60%, oklch(1 0 0 / 0.65) 0 0.5px, transparent 1px) 3px 7px / 11px
+      31px,
+    radial-gradient(circle at 50% 50%, oklch(1 0 0 / 0.5) 0 0.4px, transparent 0.9px) 1px 13px / 7px
+      19px,
+    linear-gradient(to bottom, oklch(0.5 0.19 282), oklch(0.7 0.14 275));
+}
+
+[data-slot="annotation-mark"][data-source="sleep"] [data-slot="annotation-mark-icon"] {
+  background: none;
+  color: white;
+}

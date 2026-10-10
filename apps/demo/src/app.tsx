@@ -7,7 +7,13 @@ import { Button } from "@registry/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@registry/ui/sheet";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
+import {
+  createDemoAnnotations,
+  demoAnnotationSources,
+  useHiddenAnnotationSources,
+} from "./annotations";
 import { DemoCalendar, type DemoEvent } from "./calendar";
+import { ActivityList } from "./components/activity-list";
 import { BrandMark } from "./components/brand";
 import { DocsLink } from "./components/docs-link";
 import { EventDialog } from "./components/event-dialog";
@@ -53,6 +59,18 @@ export function App() {
   const [failSaves, setFailSaves] = useState(false);
   const [notice, showNotice] = useNotice();
   const [hiddenCalendars, toggleCalendar] = useHiddenCalendars();
+  const [hiddenSources, toggleSource] = useHiddenAnnotationSources();
+  // Seeded per day and zone, up to the moment the demo opens.
+  const todayKey = today.toString();
+  const annotations = useMemo(
+    () =>
+      createDemoAnnotations(Temporal.PlainDate.from(todayKey), timeZone, Temporal.Now.instant()),
+    [timeZone, todayKey],
+  );
+  const annotationSources = useMemo(
+    () => demoAnnotationSources.filter(({ id }) => !hiddenSources.has(id)),
+    [hiddenSources],
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const showShortcuts = useCallback(() => setShortcutsOpen(true), []);
@@ -151,6 +169,7 @@ export function App() {
       onToggleCalendar={toggleCalendar}
       today={today}
     >
+      <ActivityList hidden={hiddenSources} onToggle={toggleSource} />
       <SettingsPanel
         failSaves={failSaves}
         onChange={setSettings}
@@ -167,6 +186,8 @@ export function App() {
       <DemoCalendar.Root
         anchorDate={location.date}
         defaultExpandedResourceIds={demoResourceGroups}
+        annotationSources={annotationSources}
+        annotations={annotations}
         events={visibleEvents}
         locale={locale}
         onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}

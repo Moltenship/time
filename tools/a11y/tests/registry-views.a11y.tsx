@@ -12,6 +12,17 @@ describe.each(themes)("registry views, %s theme", (theme) => {
     expect(await seriousViolations()).toEqual([]);
   });
 
+  test("week view's annotation popover", async () => {
+    setTheme(theme);
+    await render(<RegistryScreen view="week" />);
+    await click(
+      document.querySelector<HTMLElement>('[data-slot="annotation-mark"][data-source="music"]'),
+    );
+
+    expect(document.querySelector('[data-slot="popover-content"]')).not.toBeNull();
+    expect(await seriousViolations()).toEqual([]);
+  });
+
   test("month view's +N more popover", async () => {
     setTheme(theme);
     await render(<RegistryScreen view="month" />);

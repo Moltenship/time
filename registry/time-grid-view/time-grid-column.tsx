@@ -20,6 +20,14 @@ import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
+import { describeAnnotationsAt } from "./annotation-label";
+import {
+  annotationEventInset,
+  TimeGridAnnotationProvider,
+  TimeGridAnnotations,
+  type TimeGridAnnotationMarkData,
+  type TimeGridAnnotationWiring,
+} from "./time-grid-annotations";
 import { percent, TimeGridEvent, type TimeGridEventFormats } from "./time-grid-event";
 
 export interface TimeGridColumnFormats extends TimeGridEventFormats {
@@ -58,6 +66,10 @@ export interface TimeGridColumnResource {
 }
 
 export interface TimeGridColumnProps<TEvent> {
+  /** The root's annotations on this column's day, beside its events. */
+  readonly annotations?: TimeGridAnnotationWiring & {
+    readonly marks: readonly TimeGridAnnotationMarkData[];
+  };
   /** The column's `aria-colindex`, in a grid that renders only some of its columns. */
   readonly colIndex?: number;
   readonly day: TimeGridDay<TEvent>;
@@ -108,6 +120,18 @@ function draftBox(column: Column, placement: CalendarEventPlacement): TimeGridBa
     : null;
 }
 
+/** The annotations covering a focused slot, named after its date and time. */
+function slotAnnotations(
+  slot: CalendarSlotFocus,
+  { formats, marks }: NonNullable<TimeGridColumnProps<unknown>["annotations"]>,
+  slotMinutes: number,
+): string | undefined {
+  const start = slot.date
+    .toZonedDateTime({ plainTime: slot.time, timeZone: formats.timeZone })
+    .toInstant();
+  return describeAnnotationsAt(marks, start, start.add({ minutes: slotMinutes }), formats);
+}
+
 function sameBand(left: TimeGridBand | null, right: TimeGridBand | null): boolean {
   return left === right || (left?.top === right?.top && left?.height === right?.height);
 }
@@ -153,6 +177,7 @@ function TimeGridSlot({
  * forward hours are hatched and repeated fall-back hours tinted.
  */
 export function TimeGridColumn<TEvent>({
+  annotations,
   colIndex,
   day: { column, events, isToday },
   getEventColor,
@@ -180,6 +205,7 @@ export function TimeGridColumn<TEvent>({
         : null,
     { isEqual: sameBand },
   );
+  const Annotations = annotations?.layout.options.Annotations ?? TimeGridAnnotations;
   const labelHere = useMemo<EventLabeler<TEvent>>(
     () => (resource === undefined ? labelEvent : (event) => labelEvent(event, resource.title)),
     [labelEvent, resource],
@@ -209,8 +235,16 @@ export function TimeGridColumn<TEvent>({
           title="Repeated: clocks moved back"
         />
       ))}
+      {annotations !== undefined && (
+        <TimeGridAnnotationProvider handles={annotations.handles} layout={annotations.layout}>
+          <Annotations marks={annotations.marks} />
+        </TimeGridAnnotationProvider>
+      )}
       {/* The inline-end margin keeps a strip free for creating an event beside busy blocks. */}
-      <div className="absolute inset-y-0 start-0 end-2">
+      <div
+        className="absolute inset-y-0 start-0 end-2"
+        style={annotations === undefined ? undefined : annotationEventInset(annotations.layout)}
+      >
         {events.map((layout) => (
           <TimeGridEvent
             key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
@@ -235,7 +269,11 @@ export function TimeGridColumn<TEvent>({
         <TimeGridSlot
           // The column's own resource, so a gesture started here stays in it.
           focus={resourceId === undefined ? slot : { ...slot, resourceId }}
-          label={[resource?.title, formats.slot.format(slot.date.toPlainDateTime(slot.time))]
+          label={[
+            resource?.title,
+            formats.slot.format(slot.date.toPlainDateTime(slot.time)),
+            annotations === undefined ? undefined : slotAnnotations(slot, annotations, slotMinutes),
+          ]
             .filter((part) => part !== undefined)
             .join(", ")}
           onOpenDay={onOpenDay}

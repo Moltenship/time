@@ -1,0 +1,230 @@
+---
+title: Annotations
+description: Time-based information beside events, such as listening history, sleep, workouts and focus sessions.
+---
+
+<CalendarPreview view="week" annotations />
+
+Annotations show what happened alongside the events: what you listened to, when you slept, a
+workout, a focus session. Unlike events they are read-only, and they never take part in overlap
+layout, so they never move, narrow or reorder an event. Try them in the
+[live demo](https://moltenship-time-demo.vercel.app); the sidebar's Activity list shows and hides
+each source.
+
+The calendar doesn't fetch anything. Your app loads the data from its integrations and passes it to
+`Root`, the same way it passes events.
+
+## Add them
+
+Describe each source once, then pass the sources and the annotations to `Root`:
+
+```tsx
+import { MoonIcon, MusicIcon } from "lucide-react";
+import type { TimeGridAnnotationSource } from "@/components/calendar/time-grid-view/time-grid-annotations";
+
+const sources: TimeGridAnnotationSource[] = [
+  { id: "sleep", label: "Sleep", color: "purple", Icon: MoonIcon },
+  {
+    id: "music",
+    label: "Music",
+    color: "green",
+    Icon: MusicIcon,
+    // Tracks less than five minutes apart draw as one listening session.
+    mergeGap: Temporal.Duration.from({ minutes: 5 }),
+  },
+];
+
+const annotations = recentlyPlayed.map((play) => ({
+  id: play.id,
+  sourceId: "music",
+  start: Temporal.Instant.from(play.startedAt),
+  end: Temporal.Instant.from(play.endedAt),
+  title: `${play.track} · ${play.artist}`,
+}));
+
+<Calendar.Root annotationSources={sources} annotations={annotations} {...props} />;
+```
+
+The library knows no kinds of source: "sleep" and "music" are your names. Sources show in the order
+you list them, and leaving one out of `annotationSources` hides its annotations. Like events,
+annotations are half-open, `[start, end)`. Invalid ones are skipped and reported through
+`onDiagnosticsChange`.
+
+The week and day views draw annotations as soon as `Root` has sources. Without any, they reserve no
+space for them.
+
+## How they draw
+
+- **A rail beside the events.** Each day column keeps a narrow strip at its start, 18px in the week
+  and 30px in the day. Events move over by that much once, the same in every column, and keep their
+  layout.
+- **Capsules with the source's icon.** Each annotation draws as a capsule in its source's color,
+  with the icon inside its top. A mark is never shorter than it is wide, so a short session is a
+  circle with the icon.
+- **Merging.** A source's annotations closer than its `mergeGap` draw as one mark, such as tracks
+  into a listening session. Marks whose circles would touch merge too, so song-level history stays
+  readable when zoomed out.
+- **Lanes.** When different sources overlap, such as music during a focus session, they share the
+  rail in up to three narrower lanes. Too narrow for an icon, a mark drops it.
+- **Days.** An annotation across midnight shows on both days. A part that starts the day before
+  fades in at the top and has no icon.
+- **Details.** Hovering a mark shows a tooltip, and clicking it opens a popover listing what it
+  merges. Both are Base UI components, one of each for the whole grid.
+
+## Customize
+
+The rail is registry source like the rest of the view, built from small parts you can restyle,
+recompose or edit. From the lightest change to the heaviest:
+
+**CSS.** Each mark has `data-slot="annotation-mark"`, `data-source`, `data-color`, `data-kind`
+(`bar` or `dot`), and `data-starts-before` or `data-ends-after` when it's cut at midnight. The demo
+gives sleep a night sky this way:
+
+```css
+[data-slot="annotation-mark"][data-source="sleep"] {
+  background: linear-gradient(to bottom, oklch(0.5 0.19 282), oklch(0.7 0.14 275));
+}
+```
+
+**Your own composition.** Pass a component as the view's `annotations.Annotations`. It gets one
+column's marks, already merged and placed in lanes, and composes the parts:
+
+```tsx
+import {
+  AnnotationMark,
+  AnnotationMarkIcon,
+  AnnotationRail,
+  type TimeGridAnnotationsProps,
+} from "@/components/calendar/time-grid-view/time-grid-annotations";
+
+function MyAnnotations({ marks }: TimeGridAnnotationsProps) {
+  return (
+    <AnnotationRail>
+      {marks.map((mark) => (
+        <AnnotationMark key={mark.key} mark={mark} className="data-[source=music]:bg-[#1DB954]">
+          <AnnotationMarkIcon>
+            {mark.source.id === "music" ? <SpotifyLogo /> : null}
+          </AnnotationMarkIcon>
+        </AnnotationMark>
+      ))}
+    </AnnotationRail>
+  );
+}
+
+createWeekView<Meeting>({ annotations: { Annotations: MyAnnotations } });
+```
+
+- `AnnotationMark` has the variants `capsule` (default), `bar` (a thin bar that keeps its true
+  length) and `band` (a tint across the column behind events, with `placement: "overlay"`). Base
+  UI's `render` prop swaps its element, for example for a link to the track.
+- `AnnotationMarkIcon` draws the source's `Icon`. Children replace it.
+- `useAnnotationMark()` gives any part inside a mark its mark and width.
+
+**Rail size and lanes.** These are numbers rather than CSS, because merging and lane packing use
+them:
+
+```tsx
+createWeekView<Meeting>({
+  annotations: { rail: { width: 10, markWidth: 4 } }, // thin bars, as in Amie's desktop app
+});
+```
+
+**The parts themselves.** `time-grid-annotations.tsx` is yours: change the capsule, the tooltip or
+the popover there.
+
+**Your own view.** `useTimeGridAnnotations(columns, geometry)` returns the marks for any time-grid
+columns, and `summarizeAnnotationMarks` returns a day's totals per source.
+
+## Anatomy
+
+<AnnotationsAnatomy />
+
+```txt title="Rendered by TimeGridColumn"
+TimeGridColumn                   time-grid-column.tsx
+└── TimeGridAnnotations          time-grid-annotations.tsx, or yours
+    └── AnnotationRail           data-slot="annotation-rail", aria-hidden
+        └── AnnotationMark       data-slot="annotation-mark", one per mark
+            └── AnnotationMarkIcon   data-slot="annotation-mark-icon"
+```
+
+## Options
+
+<TypeTable
+  type={{
+    "rail.width": {
+      type: "number",
+      description: "The rail's width in px.",
+      default: "18 in a week, 30 in a day",
+    },
+    "rail.markWidth": {
+      type: "number",
+      description:
+        "A mark's width in px. Marks are never shorter than this, so short ones are circles.",
+      default: "12 in a week, 20 in a day",
+    },
+    "rail.side": {
+      type: '"start" | "end"',
+      description: "The column edge the rail sits on.",
+      default: '"start"',
+    },
+    "rail.layout": {
+      type: '"pack" | "per-source"',
+      description:
+        "pack shares the rail between overlapping marks; per-source gives each source its own lane.",
+      default: '"pack"',
+    },
+    placement: {
+      type: '"rail" | "overlay"',
+      description:
+        "rail reserves a strip beside events; overlay gives the parts the whole column, behind events.",
+      default: '"rail"',
+    },
+    Annotations: {
+      type: "ComponentType<TimeGridAnnotationsProps>",
+      description: "Your composition of the parts, in place of TimeGridAnnotations.",
+    },
+  }}
+/>
+
+Set them as the week or day view's `annotations` option.
+
+## Keyboard and screen readers
+
+Annotations add no keys and no tab stops: the grid keeps its single tab stop and its
+[key map](/docs/views/week-and-day#keyboard). The rail is `aria-hidden`, and screen readers get the
+same information in words instead:
+
+| Where            | What a screen reader hears                                                                             |
+| ---------------- | ------------------------------------------------------------------------------------------------------ |
+| A day's header   | A summary of its annotations: "Annotations: Sleep until 7:05 AM. Music, 3 times, 2 hours, 10 minutes." |
+| A slot, with ↑ ↓ | The annotations covering it, after its time: "Music, 4 items, 9:00 AM to 9:18 AM"                      |
+
+Hover effects respect `prefers-reduced-motion`.
+
+## Data model
+
+<TypeTable
+  type={{
+    id: { type: "string | number", description: "Unique among annotations.", required: true },
+    sourceId: {
+      type: "string",
+      description: "The source it belongs to. Annotations of sources not given are hidden.",
+      required: true,
+    },
+    start: { type: "Temporal.Instant", description: "Inclusive start.", required: true },
+    end: { type: "Temporal.Instant", description: "Exclusive end, after start.", required: true },
+    title: {
+      type: "string",
+      description: "Shown in tooltips, popovers and slot names.",
+      required: true,
+    },
+    resourceIds: {
+      type: "readonly TResourceId[]",
+      description: "Resources it belongs to. Resource views will use them.",
+    },
+    data: { type: "TData", description: "Anything your own parts need." },
+  }}
+/>
+
+A source has an `id`, a `label` that names it in summaries and tooltips, and an optional
+`mergeGap`. The registry's `TimeGridAnnotationSource` adds `color` and `Icon`.

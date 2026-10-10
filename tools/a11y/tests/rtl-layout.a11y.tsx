@@ -45,11 +45,14 @@ describe.each(["ltr", "rtl"] as const)("%s layout", (dir) => {
 
     expect(gap(hourLabel.getBoundingClientRect(), column("2026-10-05"))).toBe(8);
     expect(gap(column("2026-10-05"), column("2026-10-06"))).toBe(0);
-    // Past the column's 1px divider, with a strip left free at the inline end for creating.
+    // Past the column's 1px divider and the 18px annotation rail at the inline start, with a
+    // strip left free at the inline end for creating.
     expect(insets(box('[data-event-id="blue meeting"]'), column("2026-10-08"))).toEqual({
       end: 8,
-      start: 1,
+      start: 19,
     });
+    const rail = box('[data-date="2026-10-08"] [data-slot="annotation-rail"]');
+    expect(insets(rail, column("2026-10-08")).start).toBe(1);
     const event = getComputedStyle(document.querySelector('[data-event-id="blue meeting"]')!);
     expect(dir === "rtl" ? event.borderRightWidth : event.borderLeftWidth).toBe("3px");
   });
