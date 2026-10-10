@@ -225,10 +225,13 @@ export function resourceTimelineSpatialNavigation(input: Input): CalendarSpatial
   const found = projection.rows.findIndex(({ resource }) => resource.id === focus.resourceId);
   const rowIndex = found === -1 ? 0 : found;
   if (focus.kind === "event") return fromEvent(focus, rowIndex, input);
-  // A day timeline has no slots; an hour timeline keeps a day, as a keyboard gesture on an
-  // all-day bar steps by days.
+  // A day timeline has no slots. An hour timeline keeps a day, as a keyboard gesture on an
+  // all-day bar steps by days, and a slot's own time, as from a view with finer slots: up and
+  // down keep it, and stepping along the row aligns it to the snap.
   return fromCell(
-    focus.kind === "day" ? focus : cellAt(focus.date, focus.time, input),
+    focus.kind === "day" || projection.unit === "hour"
+      ? focus
+      : cellAt(focus.date, focus.time, input),
     rowIndex,
     input,
   );

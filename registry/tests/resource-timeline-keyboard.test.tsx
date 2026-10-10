@@ -387,6 +387,36 @@ test("a slot its owner holds stays the tab stop on its day, and the view asks on
   expect(sameFocus(onFocusChange.mock.calls[0]![0], day("2026-10-06", "site-1-room-2"))).toBe(true);
 });
 
+test("a slot off the half hour keeps its time across rows, and steps along the row align it", async () => {
+  // A time grid's quarter hour, carried into the day timeline.
+  const container = await show(
+    <Timeline
+      defaultFocus={{
+        date: Temporal.PlainDate.from("2026-10-08"),
+        kind: "slot",
+        resourceId: "site-1-room-1",
+        time: Temporal.PlainTime.from("09:15"),
+      }}
+      view="timeline-day"
+    />,
+  );
+  await tabIn(container);
+  await press("ArrowDown");
+  expect(focused()).toBe("Room 1.2, Thursday, October 8 at 9:15 AM");
+  await press("ArrowLeft");
+  expect(focused()).toBe("Room 1.2, Thursday, October 8 at 9:00 AM");
+  await cleanup?.();
+
+  // Liberia's day of January 7, 1972 starts at 00:44:30, so the entry is a quarter past the hour.
+  const monrovia = await show(
+    <Timeline anchor="1972-01-07" timeZone="Africa/Monrovia" view="timeline-day" />,
+  );
+  await tabIn(monrovia);
+  expect(focused()).toBe("Site 1, expanded, Friday, January 7 at 12:45 AM");
+  await press("ArrowRight");
+  expect(focused()).toBe("Site 1, expanded, Friday, January 7 at 1:00 AM");
+});
+
 test("server markup holds the tab stop when a day starts off the half hour", () => {
   // Liberia's clocks went forward 44½ minutes at midnight on January 7, 1972.
   const markup = renderToString(

@@ -211,6 +211,15 @@ describe("resource-timeline navigation", () => {
     expect(week("down", day("orchid", "2026-03-10"))).toBe("lotus:2026-03-10");
   });
 
+  test("a slot off the snap keeps its time across rows, and steps along the row align it", () => {
+    // As from a view with finer slots.
+    expect(hours("down", slot("orchid", "2026-03-08T09:20"))).toBe("lotus:2026-03-08T09:20");
+    expect(hours("left", slot("lotus", "2026-03-08T09:20"))).toBe("lotus:2026-03-08T09:15");
+    expect(hours("right", slot("lotus", "2026-03-08T09:20"))).toBe("lotus:2026-03-08T09:30");
+    // Over days it is its whole day.
+    expect(week("down", slot("orchid", "2026-03-10T09:20"))).toBe("lotus:2026-03-10");
+  });
+
   test("Home, End, and the Page keys move along the range", () => {
     expect(hours("home", slot("lotus", "2026-03-08T09:00"))).toBe("lotus:2026-03-08T00:00");
     expect(hours("end", slot("lotus", "2026-03-08T09:00"))).toBe("lotus:2026-03-08T23:45");
