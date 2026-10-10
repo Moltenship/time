@@ -37,16 +37,14 @@ const announcedResources = new WeakMap<CalendarEventPlacement, readonly Resource
 
 /**
  * Remembers the resources an update announces for its gesture, and returns whether they differ
- * from the ones announced before.
+ * from the ones announced before. A gesture that hasn't named any yet, as a drag that starts off
+ * the view, names them on its first placement.
  */
 function announceResources({ original, proposed }: CalendarInteractionUpdate): boolean {
   if (original === null || proposed === null) return false;
-  const changed = !sameResources(
-    announcedResources.get(original) ?? original.resourceIds,
-    proposed.resourceIds,
-  );
+  const announced = announcedResources.get(original);
   announcedResources.set(original, proposed.resourceIds);
-  return changed;
+  return announced === undefined || !sameResources(announced, proposed.resourceIds);
 }
 
 /**
