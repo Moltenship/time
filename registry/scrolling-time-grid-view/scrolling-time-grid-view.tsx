@@ -13,6 +13,7 @@ import {
   useNow,
   type CalendarFocus,
   type CalendarViewRendererProps,
+  type PlainDateInterval,
   type TimeGridProjection,
 } from "@moltenship/calendar";
 import {
@@ -65,34 +66,42 @@ export type ScrollingTimeGridViewProps<TEvent> = CalendarViewRendererProps<
 >;
 
 /**
- * Focus on an all-day bar from a day before the visible ones, moved to the first visible day when
- * the bar runs on into it; `null` when there's nothing to move. The bar renders from that day once
- * its start scrolls away, so focus on it has to follow, however far the focused day has gone.
+ * Focus on an all-day bar from a day outside the visible ones, moved to the visible day nearest
+ * it that the bar covers; `null` when there's nothing to move. The bar renders from the visible
+ * days once its focused day scrolls away, either way, so focus on it has to follow.
  */
-function barFocusToAdvance(
+function barFocusInView(
   focus: CalendarFocus | null,
   row: TimeGridProjection<unknown>["allDay"],
-  firstVisible: Temporal.PlainDate,
+  visible: PlainDateInterval,
   timeZone: string,
 ): CalendarFocus | null {
-  if (focus?.kind !== "event" || Temporal.PlainDate.compare(focus.date, firstVisible) >= 0) {
-    return null;
+  if (focus?.kind !== "event" || plainDateIntervalContains(visible, focus.date)) return null;
+  const before = Temporal.PlainDate.compare(focus.date, visible.start) < 0;
+  const lastVisible = visible.end.subtract({ days: 1 });
+  for (const { column, event, span } of row.segments) {
+    if (event.id !== focus.eventId) continue;
+    const first = row.range.start.add({ days: column });
+    const last = first.add({ days: span - 1 });
+    const target = before
+      ? Temporal.PlainDate.compare(first, visible.start) > 0
+        ? first
+        : visible.start
+      : Temporal.PlainDate.compare(last, lastVisible) < 0
+        ? last
+        : lastVisible;
+    if (!plainDateIntervalContains(visible, target)) continue;
+    // Segments are clipped to the loaded days, so the event's own dates decide what it covered:
+    // one run of local dates through both days, which a fold at midnight can start a day early.
+    const [from, to] = before ? [focus.date, target] : [target, focus.date];
+    const continuous = eventDateRanges(event, timeZone).some(
+      ({ first: runFirst, last: runLast }) =>
+        Temporal.PlainDate.compare(runFirst, from) <= 0 &&
+        Temporal.PlainDate.compare(to, runLast) <= 0,
+    );
+    if (continuous) return { ...focus, date: target };
   }
-  const visible = row.range.start.until(firstVisible).days;
-  // Segments are clipped to the loaded days, so the event's own dates decide what it covered:
-  // one run of local dates through both days, which a fold at midnight can start a day early.
-  const runsOn = row.segments.some(
-    ({ column, event, span }) =>
-      event.id === focus.eventId &&
-      column <= visible &&
-      visible < column + span &&
-      eventDateRanges(event, timeZone).some(
-        ({ first, last }) =>
-          Temporal.PlainDate.compare(first, focus.date) <= 0 &&
-          Temporal.PlainDate.compare(firstVisible, last) <= 0,
-      ),
-  );
-  return runsOn ? { ...focus, date: firstVisible } : null;
+  return null;
 }
 
 /** A row's days across the canvas: the hour gutter, held at the start, then `children` at `start`. */
@@ -219,9 +228,9 @@ export function ScrollingTimeGridView<TEvent>({
 
   const allDayRows = useMemo(() => [{ row: projection.allDay }], [projection.allDay]);
   const collapse = useAllDayCollapse(days, allDayRows);
-  // A bar keeps focus as its focused day scrolls away, from the first visible day it still covers.
+  // A bar keeps focus as its focused day scrolls away, on the visible day nearest it.
   const focusOnBar = useCalendarFocus(
-    (focus) => barFocusToAdvance(focus, projection.allDay, range.start, timeZone),
+    (focus) => barFocusInView(focus, projection.allDay, range, timeZone),
     { isEqual: sameFocus },
   );
   useLayoutEffect(() => {

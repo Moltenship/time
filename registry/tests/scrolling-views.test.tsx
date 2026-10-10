@@ -332,6 +332,33 @@ test("a bar a midnight fold starts a day early keeps focus as the view jumps", a
   expect(document.activeElement).toBe(bar);
 });
 
+test.each([
+  ["scrolling-day", "2026-10-18", /^Sunday, October 18/],
+  ["scrolling-week", "2026-10-07", /^Tuesday, October 13/],
+] as const)(
+  "%s keeps focus on a long bar as the view scrolls back past its focused day",
+  async (view, back, cell) => {
+    const container = await show(view);
+    await act(async () =>
+      container.querySelector<HTMLElement>('[data-event-id="season"]')!.focus(),
+    );
+    // Forward to October 20, where focus follows the bar, then back before it.
+    await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from("2026-10-20")));
+    await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from(back)));
+
+    const bar = container.querySelector<HTMLElement>(
+      '[data-event-id="season"]:not([tabindex="-1"])',
+    );
+    expect(bar).not.toBeNull();
+    expect(document.activeElement).toBe(bar);
+    // Escape goes to the last visible day the bar covers, without scrolling forward again.
+    const title = text(container.querySelector('[data-calendar-part="title"]'));
+    await press(bar, "Escape");
+    expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe(title);
+    expect(ariaLabel(document.activeElement)).toMatch(cell);
+  },
+);
+
 test("keys page a scrolling week past its visible days", async () => {
   const container = await show("scrolling-week");
   const grid = container.querySelector<HTMLElement>('[data-slot="scrolling-time-grid"]')!;
