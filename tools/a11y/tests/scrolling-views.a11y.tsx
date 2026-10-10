@@ -1,4 +1,4 @@
-import { act } from "react";
+import { act, useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { seriousViolations, setTheme, themes } from "./axe";
@@ -40,6 +40,28 @@ describe.each(["ltr", "rtl"] as const)("scrolling week, %s", (dir) => {
     expect(columns.filter((column) => !column.hasAttribute("aria-hidden"))).toHaveLength(7);
     expect(reported.ranges.at(-1)?.loadRange.start.toString()).toBe("2026-10-20");
   });
+});
+
+test("flipping the direction keeps the week in view", async () => {
+  let flip: () => void = () => {};
+  function Flippable() {
+    const [dir, setDir] = useState<"ltr" | "rtl">("ltr");
+    flip = () => setDir((current) => (current === "ltr" ? "rtl" : "ltr"));
+    return <Screen dir={dir} view="scrolling-week" />;
+  }
+  await render(<Flippable />);
+  const { position } = axis("scrolling-week");
+  const start = position();
+
+  for (let turn = 0; turn < 2; turn += 1) {
+    await act(async () => flip());
+    // Give a reset scroll position time to report itself and settle.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(title()).toBe("Oct 7 – 13, 2026");
+    expect(Math.abs(position() - start)).toBeLessThan(0.1);
+  }
+  expect(reported.anchors).toEqual([]);
 });
 
 describe("scrolling views", () => {

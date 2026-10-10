@@ -83,8 +83,9 @@ export function useScrollingAxis({
 
   // Read by event handlers, so they see the latest render without re-subscribing.
   const latest = useRef({ base, first, onScroll, page });
-  /** The base the scroll position was last laid out for. */
+  /** The base and direction the scroll position was last laid out for. */
   const laidOut = useRef(base);
+  const laidOutRtl = useRef(rtl);
   /** The first item the scroll position shows: the range's, or one the user scrolled to. */
   const shown = useRef<number | null>(null);
   /** The range's first item when the axis last laid it out. */
@@ -131,6 +132,14 @@ export function useScrollingAxis({
       scrollTo(element, offset(element) + (laidOut.current - base) * itemSize, "instant");
       laidOut.current = base;
     }
+    if (laidOutRtl.current !== rtl) {
+      // Browsers reset `scrollLeft` when the direction flips; put the same item back in view.
+      laidOutRtl.current = rtl;
+      if (shown.current !== null) {
+        heading.current = null;
+        scrollTo(element, (shown.current - base) * itemSize, "instant");
+      }
+    }
     if (first - base < 2 * page || base + count - first < 3 * page) {
       setBase(first - REACH);
       return;
@@ -143,8 +152,9 @@ export function useScrollingAxis({
       proposed.current.splice(0, caughtUp + 1);
       return;
     }
-    // Anything else moved the range, such as Today: show it.
+    // Anything else moved the range, such as Today: show it, in place of any scroll on its way.
     proposed.current = [];
+    heading.current = null;
     const from = shown.current;
     shown.current = first;
     const target = (first - base) * itemSize;
@@ -158,7 +168,7 @@ export function useScrollingAxis({
     // A smooth scroll passes other items on its way, which must not move the calendar there.
     if (smooth) heading.current = first;
     scrollTo(element, target, smooth ? "smooth" : "instant");
-  }, [count, offset, scrollTo, size]);
+  }, [count, offset, rtl, scrollTo, size]);
 
   useLayoutEffect(() => {
     latest.current = { base, first, onScroll, page };
