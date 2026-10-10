@@ -103,6 +103,26 @@ export type {
   ResourceColumnsProjection,
   ResourceColumnsProjectionInput,
 } from "./views/resource-columns/projection";
+export {
+  navigateResourceTimeline,
+  resourceTimelineRange,
+  resourceTimelineTitle,
+} from "./views/resource-timeline/range";
+export type { ResourceTimelineSpan } from "./views/resource-timeline/range";
+export { timelineExtent, timelinePosition } from "./views/resource-timeline/geometry";
+export type { TimelineExtent } from "./views/resource-timeline/geometry";
+export {
+  projectResourceTimeline,
+  resourceTimelineStrategy,
+} from "./views/resource-timeline/projection";
+export type {
+  ResourceTimelineBar,
+  ResourceTimelineDayRow,
+  ResourceTimelineHourRow,
+  ResourceTimelineOptions,
+  ResourceTimelineProjection,
+  ResourceTimelineProjectionInput,
+} from "./views/resource-timeline/projection";
 
 export { createEventTransactions } from "./transactions/event-transactions";
 export type { EventTransactions } from "./transactions/event-transactions";
@@ -151,6 +171,8 @@ export type {
 export { listSpatialNavigation } from "./navigation/list";
 export { monthSpatialNavigation } from "./navigation/month";
 export { timeGridSpatialNavigation } from "./navigation/time-grid";
+export { resourceColumnsSpatialNavigation } from "./navigation/resource-columns";
+export { resourceTimelineSpatialNavigation } from "./navigation/resource-timeline";
 export { anchorShowingDate } from "./navigation/reveal";
 export type {
   CalendarNavigationCommand,

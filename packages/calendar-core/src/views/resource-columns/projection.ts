@@ -1,3 +1,4 @@
+import { resourceColumnsSpatialNavigation } from "../../navigation/resource-columns";
 import { splitEventsByDay } from "../../projection/day-fragments";
 import { queryVisibleEvents } from "../../projection/visible-events";
 import {
@@ -76,7 +77,8 @@ export function projectResourceColumns<TEvent>({
 }
 
 /**
- * Range, navigation, title, and projection for resource columns over a day, a week, or N days.
+ * Range, navigation, keyboard navigation, title, and projection for resource columns over a day,
+ * a week, or N days.
  * `options.unassigned` decides where events without resources go.
  */
 export function resourceColumnsStrategy<
@@ -85,6 +87,7 @@ export function resourceColumnsStrategy<
 >(span: TimeGridSpan): CalendarViewStrategy<ResourceColumnsProjection<TEvent>, TOptions, TEvent> {
   const strategy: CalendarViewStrategy<ResourceColumnsProjection<TEvent>, TOptions, TEvent> = {
     getRange: (anchor, environment) => timeGridRange(anchor, span, environment.weekRules),
+    getSpatialNavigation: resourceColumnsSpatialNavigation,
     getTitle: (range, environment) => timeGridTitle(range, environment.locale),
     navigate: (anchor, delta) => navigateTimeGrid(anchor, delta, span),
     project: (input) => projectResourceColumns({ ...input, unassigned: input.options.unassigned }),

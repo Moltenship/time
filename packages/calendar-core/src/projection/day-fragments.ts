@@ -181,7 +181,8 @@ export function splitEventsByDay<TEvent, TEventId extends EventId, TResourceId e
   return Object.freeze(fragments);
 }
 
-function compareEventIds(left: EventId, right: EventId): number {
+/** Numbers before strings, each in natural order, so `1` and `"1"` sort apart. */
+export function compareEventIds(left: EventId, right: EventId): number {
   if (typeof left === "number" && typeof right === "number") return left - right;
   if (typeof left === "number") return -1;
   if (typeof right === "number") return 1;

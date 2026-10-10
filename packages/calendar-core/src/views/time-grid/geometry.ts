@@ -59,35 +59,43 @@ export function timeGridPosition(
 }
 
 /**
- * Vertical extent of the part of an instant interval whose wall time falls on the column's date.
- * The interval is walked one UTC offset at a time, so a piece crossing a fold covers the whole
+ * Where an instant interval falls on the wall clock of `days` consecutive dates from `origin`, as
+ * nanoseconds from `origin`'s midnight, clamped to those dates; `null` when it misses them. The
+ * interval is walked one UTC offset at a time, so a piece crossing a fold covers the whole
  * repeated band (even when the fold crosses midnight), a piece ending at a spring-forward
- * transition stops at the gap, and an interval that never touches the date is empty.
+ * transition stops at the gap, and only offset runs that touch the dates count.
  */
-export function timedFragmentBox(column: TimeGridColumn, interval: InstantInterval): TimeGridBand {
-  const origin = wallEpochNanoseconds(column.date.toPlainDateTime());
-  // Offsets stay within ±24 hours, so only these instants can have a wall time on this date.
-  const windowStart = origin - DAY_NANOSECONDS;
-  const windowEnd = origin + 2n * DAY_NANOSECONDS;
+export function wallExtent(
+  origin: Temporal.PlainDate,
+  days: number,
+  timeZone: string,
+  interval: InstantInterval,
+): { readonly end: bigint; readonly start: bigint } | null {
+  const originNanoseconds = wallEpochNanoseconds(origin.toPlainDateTime());
+  const length = BigInt(days) * DAY_NANOSECONDS;
+  // Offsets stay within ±24 hours, so only these instants can have a wall time on these dates.
+  const windowStart = originNanoseconds - DAY_NANOSECONDS;
+  const windowEnd = originNanoseconds + length + DAY_NANOSECONDS;
   const start = interval.start.epochNanoseconds;
   const end = interval.end.epochNanoseconds < windowEnd ? interval.end.epochNanoseconds : windowEnd;
   let cursor = new globalThis.Temporal.ZonedDateTime(
     start > windowStart ? start : windowStart,
-    column.day.timeZone,
+    timeZone,
   );
-  let top = DAY_NANOSECONDS;
+  let top = length;
   let bottom = 0n;
 
   while (cursor.epochNanoseconds < end) {
     const transition = cursor.getTimeZoneTransition("next");
     const runEnd =
       transition === null || transition.epochNanoseconds >= end ? end : transition.epochNanoseconds;
-    const wallStart = cursor.epochNanoseconds + BigInt(cursor.offsetNanoseconds) - origin;
+    const wallStart =
+      cursor.epochNanoseconds + BigInt(cursor.offsetNanoseconds) - originNanoseconds;
     const wallEnd = wallStart + runEnd - cursor.epochNanoseconds;
 
-    if (wallStart < DAY_NANOSECONDS && wallEnd > 0n) {
+    if (wallStart < length && wallEnd > 0n) {
       const runTop = wallStart > 0n ? wallStart : 0n;
-      const runBottom = wallEnd < DAY_NANOSECONDS ? wallEnd : DAY_NANOSECONDS;
+      const runBottom = wallEnd < length ? wallEnd : length;
       top = runTop < top ? runTop : top;
       bottom = runBottom > bottom ? runBottom : bottom;
     }
@@ -97,12 +105,21 @@ export function timedFragmentBox(column: TimeGridColumn, interval: InstantInterv
     cursor = transition;
   }
 
-  return bottom > top
-    ? Object.freeze({
-        height: Number(bottom - top) / NOMINAL_DAY_NANOSECONDS,
-        top: Number(top) / NOMINAL_DAY_NANOSECONDS,
-      })
-    : Object.freeze({ height: 0, top: 0 });
+  return bottom > top ? { end: bottom, start: top } : null;
+}
+
+/**
+ * Vertical extent of the part of an instant interval whose wall time falls on the column's date,
+ * measured as `wallExtent` does; empty when the interval never touches the date.
+ */
+export function timedFragmentBox(column: TimeGridColumn, interval: InstantInterval): TimeGridBand {
+  const extent = wallExtent(column.date, 1, column.day.timeZone, interval);
+  return extent === null
+    ? Object.freeze({ height: 0, top: 0 })
+    : Object.freeze({
+        height: Number(extent.end - extent.start) / NOMINAL_DAY_NANOSECONDS,
+        top: Number(extent.start) / NOMINAL_DAY_NANOSECONDS,
+      });
 }
 
 /** Vertical extent of a wall-clock range, such as a floating event, in the column's date. */

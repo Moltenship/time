@@ -40,6 +40,8 @@ export interface CalendarAnnouncementContext {
   /** Formats a placement the way the drag preview labels it. */
   readonly formatRange: (placement: CalendarEventInterval) => string;
   readonly locale: Intl.Locale | string;
+  /** A resource's title from the root's resources, to name where an event goes; `undefined` for an unknown ID. */
+  readonly resourceTitle: (resourceId: ResourceId) => string | undefined;
   /** The display time zone. */
   readonly timeZone: string;
 }
