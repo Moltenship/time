@@ -227,7 +227,38 @@ test("an event moved out of its last resource keeps focus where it still shows",
   await press(" ");
   await press("ArrowRight");
 
-  expect(focusedResource()).toBe("p1");
-  expect(document.activeElement?.getAttribute("data-event-id")).toBe("standup");
-  expect(document.activeElement?.hasAttribute("data-grabbed")).toBe(true);
+  const onStandup = () => [
+    document.activeElement?.getAttribute("data-event-id"),
+    document.activeElement?.hasAttribute("data-grabbed"),
+    focusedResource(),
+  ];
+  expect(onStandup()).toEqual(["standup", true, "p1"]);
+  // Later steps stay on that copy.
+  await press("ArrowDown");
+  expect(onStandup()).toEqual(["standup", true, "p1"]);
+});
+
+test("an event moved out of its last resource keeps focus on a copy scrolled out of view", async () => {
+  // Unassigned follows p200, and the event's other copy, in p100, is far out of view.
+  const container = await renderResources({
+    defaultFocus: { date: anchorDate, eventId: "standup", kind: "event", resourceId: "p200" },
+    events: [shift("standup", ["p100", "p200"], "2026-10-08T09:00Z", "2026-10-08T09:30Z")],
+    resources: people(200),
+    unassigned: "bucket",
+  });
+  await tabIn(container);
+  await press(" ");
+  await press("ArrowRight");
+
+  expect([
+    document.activeElement?.getAttribute("data-event-id"),
+    document.activeElement?.hasAttribute("data-grabbed"),
+    focusedResource(),
+  ]).toEqual(["standup", true, "p100"]);
+  // Saving keeps focus on that copy too.
+  await press("Enter");
+  expect([document.activeElement?.getAttribute("data-event-id"), focusedResource()]).toEqual([
+    "standup",
+    "p100",
+  ]);
 });

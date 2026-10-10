@@ -6,6 +6,7 @@ import {
   showsInResource,
   slotDuration,
   startKeyboardSession,
+  visibleResources,
   type CalendarCellFocus,
   type CalendarEventPlacement,
   type CalendarFocus,
@@ -13,9 +14,11 @@ import {
   type CalendarKeyboardSession,
   type CalendarNavigationCommand,
   type CalendarSpatialNavigation,
+  type ResourceTree,
 } from "@moltenship/calendar-core";
 import { plainDateIntervalContains, type WallTimeSnapOptions } from "@moltenship/calendar-temporal";
 import {
+  useContext,
   useEffect,
   useInsertionEffect,
   useMemo,
@@ -32,6 +35,7 @@ import {
   type CalendarViewRuntime,
 } from "./interaction";
 import type { KeyboardGrab } from "./keyboard-store";
+import { CalendarResourcesContext } from "./resources";
 import { useStateSelector } from "./state-binding";
 import type { CalendarStateSelectorOptions } from "./types";
 
@@ -83,6 +87,7 @@ function createKeyboardHandlers(
   { actions, announcements, keyboard, read }: CalendarInteractionRuntime,
   { getView, roving }: CalendarViewRuntime,
   getOptions: () => CalendarKeyboardOptions,
+  resources: ResourceTree | null,
 ): CalendarKeyboardHandlers {
   const getSnap = () => getOptions().snap ?? DEFAULT_SNAP;
   // Keys reach these handlers only while their view is rendered.
@@ -317,16 +322,20 @@ function createKeyboardHandlers(
   }
 
   /**
-   * `resourceId` when `placement` shows in it. Otherwise no resource, so focus lands on whichever
-   * copy of the event renders: its first resource may be hidden or unknown.
+   * The resource focus follows a placement into: `resourceId` when the placement shows there, else
+   * the first resource it books that is visible, so the copy focus moves to renders, even scrolled
+   * out of view, and the unassigned bucket when it books none.
    */
   function resourceOn(
     placement: CalendarEventPlacement,
     resourceId: CalendarFocus["resourceId"],
   ): CalendarFocus["resourceId"] {
-    return resourceId === undefined || showsInResource(placement.resourceIds, resourceId)
-      ? resourceId
-      : undefined;
+    const booked = placement.resourceIds;
+    if (resourceId === undefined || showsInResource(booked, resourceId)) return resourceId;
+    if (booked.length === 0) return null;
+    const visible =
+      resources === null ? [] : visibleResources(resources, read().expandedResourceIds);
+    return booked.find((id) => visible.some((row) => row.id === id));
   }
 
   function onGrabbedKey(current: KeyboardGrab, event: KeyboardEvent<HTMLElement>): boolean {
@@ -424,9 +433,10 @@ export function useCalendarKeyboard(
   useInsertionEffect(() => {
     latest.current = options;
   });
+  const resources = useContext(CalendarResourcesContext);
   const handlers = useMemo(
-    () => createKeyboardHandlers(interaction, view, () => latest.current),
-    [interaction, view],
+    () => createKeyboardHandlers(interaction, view, () => latest.current, resources),
+    [interaction, resources, view],
   );
   // A view that unmounts mid-gesture leaves nothing grabbed.
   const { keyboard } = interaction;
