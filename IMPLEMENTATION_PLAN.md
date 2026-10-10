@@ -20,9 +20,10 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | 0.1 demo, docs | #71–#73, #100    | Demo app, rewritten docs with live previews and anatomy diagrams, landing page with a live week view         |
 | 0.2 keyboard   | #36, #97         | Focus model, spatial navigation, keyboard move/resize/create, announcements; wired into every view and the demo |
 | 0.2 a11y       | #98              | axe checks in CI (`vp run a11y`), token contrast test, reduced motion, RTL layout, accessibility docs         |
+| 0.3 resources  | #39–#41          | Resource model and hierarchy, multi-resource fragments, resource columns and resource timeline views with virtualization, keyboard and pointer moves across resources |
 
-0.1 — Working calendar and 0.2 — Keyboard & accessibility are closed. `main` deploys
-automatically through Vercel's GitHub integration:
+0.1 — Working calendar, 0.2 — Keyboard & accessibility and 0.3 — Resource views are closed.
+`main` deploys automatically through Vercel's GitHub integration:
 
 - Demo: https://moltenship-time-demo.vercel.app
 - Docs: https://moltenship-time.vercel.app
@@ -30,13 +31,15 @@ automatically through Vercel's GitHub integration:
 UI source uses shadcn's default Base UI primitives, not Radix. Dependencies are kept at their
 latest releases.
 
-## Next: 0.3 — Resource views
+## In flight outside the milestones
 
-Not started; waiting for the go-ahead. Milestone:
-[0.3 — Resource views](https://github.com/Moltenship/time/milestone/3). The issues (#39–#42) still
-carry their original scope and get rescoped to Scope / Done when / Later before work starts:
-resource hierarchy and projections first, then resource columns and the resource timeline in
-parallel.
+- #119 timeline annotations (Amie-style rail in the time grid), approved by the owner and built in
+  two PRs: the core/React model, then the registry parts, demo and docs.
+
+## Next: 1.0 — Public release
+
+On hold until the owner has reviewed 0.1–0.3. The issues (#43, #45–#47) still carry their original
+scope and get rescoped to Scope / Done when / Later before work starts.
 
 ## Later
 
@@ -53,7 +56,6 @@ Later milestones:
 
 | Milestone                      | Issues          | Scope                                                                         |
 | ------------------------------ | --------------- | ----------------------------------------------------------------------------- |
-| 1.0 — Public release           | #43, #45–#47    | shadcn registry distribution, testing package, release automation, audit      |
 | Post-1.0 — Recurrence          | #48, #49        | Range-bounded recurrence, exceptions, detached occurrences                    |
 
 Issues in these milestones still carry their original, heavier scope. Rescope each one to
@@ -66,8 +68,12 @@ Scope / Done when / Later before starting it.
 - The issue's "Done when" list is the acceptance check. There are no separate gate issues and no
   evidence attachments.
 - Run `vp check` and `vp test` before pushing, plus any `vp run` gate the change touches.
-- Pullfrog reviews every PR. Fix each comment, or reply in its thread with the reason you didn't.
-- Merge with squash once Pullfrog approves and CI is green. Rebase on `main` first if behind.
+- Every PR gets a code review. Fix each finding, or reply with the reason you didn't. While GitHub
+  Actions is capped on this account, CI and Pullfrog don't run: run `vp run ready` locally and post
+  the result on the PR, and get the review from GPT-6.1-Sol (high) instead of Pullfrog.
+- Merge with squash once the review has no open blocker or should-fix findings, the checks pass
+  (locally while Actions is capped) and the Vercel previews are green. Rebase on `main` first if
+  behind.
 - UI changes include light and dark screenshots. Docs show live, theme-aware UI, not screenshots.
 - Keep native "blocked by" links and this file current when scope or order changes.
 
