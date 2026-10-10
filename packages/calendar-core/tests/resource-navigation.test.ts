@@ -10,6 +10,7 @@ import {
   projectResourceColumns,
   projectResourceTimeline,
   resourceColumnsSpatialNavigation,
+  resizePlacementToTarget,
   resourceTimelineSpatialNavigation,
   startKeyboardSession,
   type CalendarCellFocus,
@@ -303,4 +304,59 @@ test("a keyboard move down a timeline row proposes what a pointer drop there doe
     proposed: pointer,
   });
   expect(pointer.resourceIds).toEqual(["cedar", "orchid"]);
+});
+
+test("a keyboard resize of an all-day bar in an hour timeline steps by days, as a pointer resize", () => {
+  const range = dates("2026-10-08", "2026-10-09");
+  const env = environment(timeZone);
+  const fixture = on(allDay("offsite", "2026-10-08", "2026-10-09"), "lotus");
+  const snapshot = createEventSnapshot(
+    [fixture],
+    createCanonicalEventAdapter<null, string, string>(),
+  );
+  const projection = projectResourceTimeline({
+    ...viewInput(snapshot, range, env),
+    expandedResourceIds: [],
+    resources,
+  });
+  const options = { snap, timeZone };
+  const navigate = (command: CalendarNavigationCommand, focus: CalendarFocus) => {
+    const result = resourceTimelineSpatialNavigation({
+      command,
+      environment: env,
+      focus,
+      options: undefined,
+      projection,
+      range,
+      snap,
+    });
+    return (result as { readonly focus: CalendarCellFocus }).focus;
+  };
+
+  // As the keyboard handler does: the event's cell from "exit", then its end edge.
+  const cell = navigate("exit", event("lotus", "offsite", "2026-10-08"));
+  let session = startKeyboardSession(
+    { cause: "resize-end", cell, event: snapshot.get("offsite")! },
+    options,
+  );
+  expect(session.cursor).toEqual(day("lotus", "2026-10-08"));
+  for (const command of ["right", "page-down"] as const) {
+    session = moveKeyboardCursor(session, navigate(command, session.cursor), options);
+  }
+  const zoned = (wall: string) => Temporal.ZonedDateTime.from(`${wall}[${timeZone}]`);
+  const pointer = resizePlacementToTarget(
+    session.original!,
+    "end",
+    { at: zoned("2026-10-08T23:00"), kind: "time", resourceId: "lotus" },
+    { at: zoned("2026-10-10T23:00"), kind: "time", resourceId: "lotus" },
+    options,
+  );
+
+  expect(session.cursor).toEqual(day("lotus", "2026-10-10"));
+  expect(keyboardSessionProposal(session)).toEqual({
+    cause: "resize-end",
+    eventId: "offsite",
+    proposed: pointer,
+  });
+  expect(pointer).toMatchObject({ end: Temporal.PlainDate.from("2026-10-11"), kind: "all-day" });
 });

@@ -37,10 +37,10 @@ function cellAt(
   return input.projection.unit === "day" ? { date, kind: "day" } : slotOn(date, time, input);
 }
 
-/** The range's last cell: its last day, or the last slot before it ends. */
-function lastCell(input: Input): CalendarCellFocus | null {
-  const { projection, range } = input;
-  return projection.unit === "day"
+/** The range's last cell of a kind: its last day, or the last slot before it ends. */
+function lastCell(kind: CalendarCellFocus["kind"], input: Input): CalendarCellFocus | null {
+  const { range } = input;
+  return kind === "day"
     ? { date: range.end.subtract({ days: 1 }), kind: "day" }
     : stepSlot(range.end, MIDNIGHT, -1, input, true);
 }
@@ -67,20 +67,20 @@ function rowEvents(row: Row, { projection, range }: Input): readonly RowEvent[] 
     });
 }
 
-/** The events covering a cell, top lane first. */
+/** The events covering a cell (a slot, or any part of a day), top lane first. */
 function eventsAt(row: Row, cell: CalendarCellFocus, { projection, range }: Input): EventId[] {
   if (projection.unit === "day") {
     const { laneCount, segments } = row as ResourceTimelineDayRow<unknown>;
     return [...eventsOnDate([{ laneCount, range, segments }], cell.date)];
   }
-  if (cell.kind !== "slot") return [];
-  // Whole nanoseconds along the range, so a bar ending where the slot starts does not cover it.
+  // Whole nanoseconds along the range, so a bar ending where a cell starts does not cover it.
   const total = projection.columns.length * DAY_NANOSECONDS;
-  const at =
+  const from =
     range.start.until(cell.date).days * DAY_NANOSECONDS +
-    cell.time.since(MIDNIGHT).total({ unit: "nanoseconds" });
+    (cell.kind === "slot" ? cell.time.since(MIDNIGHT).total({ unit: "nanoseconds" }) : 0);
+  const to = cell.kind === "slot" ? from + 1 : from + DAY_NANOSECONDS;
   return (row as ResourceTimelineHourRow<unknown>).bars
-    .filter(({ end, start }) => Math.round(start * total) <= at && at < Math.round(end * total))
+    .filter(({ end, start }) => Math.round(start * total) < to && from < Math.round(end * total))
     .toSorted((left, right) => left.lane - right.lane)
     .map(({ event }) => event.id);
 }
@@ -88,7 +88,8 @@ function eventsAt(row: Row, cell: CalendarCellFocus, { projection, range }: Inpu
 /**
  * The cells' own moves: left and right step a day or a slot along the row, past midnight and out
  * of the range; up and down keep the time in the neighbouring row; Home and End go to the range's
- * first and last cell, and the Page keys move by the range.
+ * first and last cell, and the Page keys move by the range. A day stays a day in an hour
+ * timeline, as a resize of an all-day bar needs.
  */
 function fromCell(
   cell: CalendarCellFocus,
@@ -97,8 +98,9 @@ function fromCell(
 ): CalendarSpatialNavigation | null {
   const { command, environment, projection, range } = input;
   const row = projection.rows[rowIndex]!;
-  const time = cell.kind === "slot" ? cell.time : MIDNIGHT;
   const days = range.start.until(range.end).days;
+  const sameKind = (date: Temporal.PlainDate): CalendarCellFocus =>
+    cell.kind === "day" ? { date, kind: "day" } : slotOn(date, cell.time, input);
   const step = (direction: 1 | -1) =>
     inRow(
       cell.kind === "day"
@@ -119,13 +121,16 @@ function fromCell(
       return next === undefined ? null : inRow(cell, next);
     }
     case "home":
-      return inRow(cellAt(range.start, MIDNIGHT, input), row);
+      return inRow(
+        cell.kind === "day" ? sameKind(range.start) : slotOn(range.start, MIDNIGHT, input),
+        row,
+      );
     case "end":
-      return inRow(lastCell(input), row);
+      return inRow(lastCell(cell.kind, input), row);
     case "page-up":
-      return inRow(cellAt(cell.date.subtract({ days }), time, input), row);
+      return inRow(sameKind(cell.date.subtract({ days })), row);
     case "page-down":
-      return inRow(cellAt(cell.date.add({ days }), time, input), row);
+      return inRow(sameKind(cell.date.add({ days })), row);
     case "enter": {
       const [eventId] = eventsAt(row, cell, input);
       if (eventId === undefined) return null;
@@ -190,7 +195,8 @@ function fromEvent(
  * Spatial navigation for a resource timeline from `projectResourceTimeline`: the time grid's moves
  * with its axes swapped.
  *
- * - Cells are days in a day timeline and slots of the snap increment in an hour timeline. Left and
+ * - Cells are days in a day timeline and slots of the snap increment in an hour timeline, where a
+ *   day, as a keyboard resize of an all-day bar holds, steps by days. Left and
  *   right step along the row (past midnight, skipping wall times a spring-forward change removes,
  *   and out of the range, which pages the view), up and down move to the same time in the
  *   previous or next visible row, Home and End to the range's first and last cell, and Page Up
@@ -206,7 +212,8 @@ export function resourceTimelineSpatialNavigation(input: Input): CalendarSpatial
   const { command, focus, projection, range } = input;
   if (projection.rows.length === 0) return null;
   if (focus === null) {
-    if (command === "end") return inRow(lastCell(input), projection.rows.at(-1)!);
+    const kind = projection.unit === "day" ? "day" : "slot";
+    if (command === "end") return inRow(lastCell(kind, input), projection.rows.at(-1)!);
     const { today } = projection;
     const showsToday =
       today !== null &&
@@ -218,6 +225,11 @@ export function resourceTimelineSpatialNavigation(input: Input): CalendarSpatial
   const found = projection.rows.findIndex(({ resource }) => resource.id === focus.resourceId);
   const rowIndex = found === -1 ? 0 : found;
   if (focus.kind === "event") return fromEvent(focus, rowIndex, input);
-  const time = focus.kind === "slot" ? focus.time : MIDNIGHT;
-  return fromCell(cellAt(focus.date, time, input), rowIndex, input);
+  // A day timeline has no slots; an hour timeline keeps a day, as a keyboard gesture on an
+  // all-day bar steps by days.
+  return fromCell(
+    focus.kind === "day" ? focus : cellAt(focus.date, focus.time, input),
+    rowIndex,
+    input,
+  );
 }

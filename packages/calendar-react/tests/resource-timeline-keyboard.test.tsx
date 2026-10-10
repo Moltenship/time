@@ -48,19 +48,35 @@ function Slot({ focus }: { readonly focus: CalendarFocus }) {
 
 let keyboardOptions: CalendarKeyboardOptions = {};
 
-/** One date's hour slots per resource row, as a timeline with hour slots renders them. */
+function Bar({ focus }: { readonly focus: CalendarFocus }) {
+  return (
+    <button
+      data-bar={focus.kind === "event" ? `${focus.eventId}@${String(focus.resourceId)}` : ""}
+      type="button"
+      {...useRovingFocus(focus)}
+    />
+  );
+}
+
+/** One date's hour slots and bars per resource row, as a timeline with hour slots renders them. */
 function TimelineRenderer({ projection }: CalendarViewRendererProps<Projection, object>) {
   const date = projection.columns[0]!.date;
   return (
     <div {...useCalendarKeyboard(keyboardOptions)}>
-      {projection.rows.map(({ resource }) =>
-        hours.map((time) => (
+      {projection.rows.map((row) => [
+        ...hours.map((time) => (
           <Slot
-            focus={{ date, kind: "slot", resourceId: resource.id, time }}
-            key={`${resource.key}:${time.hour}`}
+            focus={{ date, kind: "slot", resourceId: row.resource.id, time }}
+            key={`${row.resource.key}:${time.hour}`}
           />
         )),
-      )}
+        ...("bars" in row ? row.bars : []).map(({ event }) => (
+          <Bar
+            focus={{ date, eventId: event.id, kind: "event", resourceId: row.resource.id }}
+            key={`${row.resource.key}:${event.id}`}
+          />
+        )),
+      ])}
     </div>
   );
 }
@@ -98,12 +114,12 @@ afterEach(async () => {
   keyboardOptions = {};
 });
 
-async function mount() {
+async function mount(events: readonly Booking[] = []) {
   harness = await renderWithHarness(
     <RoomCalendar.Root
       defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
       defaultTimeZone="UTC"
-      events={[]}
+      events={events}
       locale="en-US"
       onEventChange={(change) => {
         changes.push(change);
@@ -117,10 +133,10 @@ async function mount() {
   );
 }
 
-async function press(key: string) {
+async function press(key: string, options: KeyboardEventInit = {}) {
   await act(async () => {
     document.activeElement!.dispatchEvent(
-      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key }),
+      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key, ...options }),
     );
     await Promise.resolve();
   });
@@ -173,4 +189,35 @@ test("announcements name resources by their titles", async () => {
   await press(" ");
 
   expect(spoken()).toBe("start in Room B");
+});
+
+test("an all-day bar resizes by days from the keyboard and commits the new end", async () => {
+  keyboardOptions = { axis: "inline", snap };
+  await mount([
+    {
+      data: null,
+      end: Temporal.PlainDate.from("2026-10-09"),
+      id: "offsite",
+      kind: "all-day",
+      resourceIds: ["a"],
+      start: Temporal.PlainDate.from("2026-10-08"),
+      title: "Offsite",
+    },
+  ]);
+  await act(async () =>
+    harness!.container.querySelector<HTMLElement>('[data-bar="offsite@a"]')!.focus(),
+  );
+
+  await press(" ", { shiftKey: true });
+  await press("ArrowRight");
+  await press("Enter");
+
+  const change = changes.at(-1);
+  expect(change?.cause).toBe("resize-end");
+  expect(change?.proposed).toMatchObject({
+    end: Temporal.PlainDate.from("2026-10-10"),
+    kind: "all-day",
+    resourceIds: ["a"],
+    start: Temporal.PlainDate.from("2026-10-08"),
+  });
 });
