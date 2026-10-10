@@ -176,6 +176,21 @@ describe("time grid", () => {
     expect(interval(proposals[1])).toBe("all-day 2026-08-17/2026-08-19");
   });
 
+  test("starts nothing from a control marked data-calendar-pointer=none", () => {
+    const grid = mountTimeGrid([meeting]);
+    const proposals = setup(grid, { columns: grid.columns });
+    const column = grid.region.querySelector('[data-date="2026-08-17"]:not([data-all-day])')!;
+    const mark = column.appendChild(document.createElement("span"));
+    mark.setAttribute("data-calendar-pointer", "none");
+
+    pointer("pointerdown", mark, 50, yAt("14:20"));
+    pointer("pointermove", mark, 50, yAt("13:10"));
+    expect(ghosts(grid.region)).toHaveLength(0);
+    pointer("pointerup", mark, 50, yAt("13:10"));
+
+    expect(proposals).toEqual([]);
+  });
+
   test("proposes nothing for a create or resize dropped on the other axis", () => {
     const grid = mountTimeGrid([meeting]);
     const proposals = setup(grid, { columns: grid.columns });

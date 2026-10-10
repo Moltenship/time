@@ -9,14 +9,17 @@ import {
   type TimeGridColumn,
 } from "@moltenship/calendar";
 import { cva, type VariantProps } from "class-variance-authority";
+import { XIcon } from "lucide-react";
 import {
   createContext,
   use,
   useMemo,
+  useRef,
   useState,
   type ComponentProps,
   type ComponentType,
   type CSSProperties,
+  type MouseEvent,
   type ReactNode,
 } from "react";
 
@@ -24,6 +27,7 @@ import {
   calendarEventColors,
   type CalendarEventColor,
 } from "@registry/calendar-theme/event-colors";
+import { Button } from "@registry/ui/button";
 import { PopoverContent } from "@registry/ui/popover";
 import { TooltipContent } from "@registry/ui/tooltip";
 import { cn } from "cn";
@@ -248,7 +252,7 @@ export const annotationMarkVariants = cva(
       variant: {
         /** A capsule never shorter than it is wide, so a short one is a circle. */
         capsule:
-          "start-(--mark-offset) h-[max(var(--mark-width),calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full bg-calendar-event-border shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] hover:brightness-110 data-ends-after:rounded-b-none data-ends-after:mask-[linear-gradient(to_top,transparent,black_1.5rem)] data-starts-before:rounded-t-none data-starts-before:mask-[linear-gradient(to_bottom,transparent,black_1.5rem)] dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.16)]",
+          "start-(--mark-offset) h-[max(var(--mark-width),calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full bg-calendar-event-border shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] hover:brightness-110 data-ends-after:rounded-b-none data-ends-after:mask-[linear-gradient(to_top,transparent,black_1.5rem)] data-starts-before:rounded-t-none data-starts-before:mask-[linear-gradient(to_bottom,transparent,black_1.5rem)] data-starts-before:data-ends-after:mask-[linear-gradient(to_bottom,transparent,black_1.5rem,black_calc(100%-1.5rem),transparent)] dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.16)]",
         /** A thin bar that keeps its true length. */
         bar: "start-(--mark-offset) h-[max(3px,calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full bg-calendar-event-border hover:brightness-110 data-ends-after:rounded-b-none data-starts-before:rounded-t-none",
         /** A tint across the column behind events; for `placement: "overlay"`. */
@@ -274,6 +278,7 @@ export function AnnotationMark({
   className,
   mark,
   details = true,
+  onMouseDown,
   render,
   style,
   variant,
@@ -293,12 +298,19 @@ export function AnnotationMark({
       ...props,
       className: cn(annotationMarkVariants({ variant }), details && "cursor-pointer", className),
       "data-annotation-id": String(mark.annotations[0]!.id),
+      // Pressing a mark never starts a drag in the grid.
+      "data-calendar-pointer": "none",
       "data-color": annotationSourceStyle(mark.source).color,
       "data-ends-after": mark.endsAfterDay ? "" : undefined,
       "data-kind": mark.kind,
       "data-slot": "annotation-mark",
       "data-source": mark.source.id,
       "data-starts-before": mark.startsBeforeDay ? "" : undefined,
+      // A click opens the details without focusing the mark, which sits in the aria-hidden rail.
+      onMouseDown: (event: MouseEvent<HTMLDivElement>) => {
+        onMouseDown?.(event);
+        event.preventDefault();
+      },
       style: {
         "--mark-height": `${mark.height * 100}%`,
         "--mark-offset": `${offset}px`,
@@ -375,7 +387,8 @@ export function TimeGridAnnotations({ marks }: TimeGridAnnotationsProps) {
 
 /**
  * One tooltip and one popover for every mark in the grid, through Base UI's detached triggers, so
- * hundreds of marks never mount hundreds of roots. The tooltip follows the pointer vertically.
+ * hundreds of marks never mount hundreds of roots. The tooltip follows the pointer vertically. The
+ * popover keeps focus until it closes, then hands it back to what had it, never to the hidden mark.
  */
 export function TimeGridAnnotationOverlays({
   formatTime,
@@ -384,6 +397,8 @@ export function TimeGridAnnotationOverlays({
   readonly formatTime: (instant: Temporal.Instant) => string;
   readonly handles: TimeGridAnnotationHandles;
 }) {
+  const popup = useRef<HTMLDivElement>(null);
+  const returnFocus = useRef<Element | null>(null);
   const range = (mark: TimeGridAnnotationMarkData) => {
     const { end, start } = annotationRange(mark);
     return `${formatTime(start)} – ${formatTime(end)}`;
@@ -413,12 +428,35 @@ export function TimeGridAnnotationOverlays({
           )
         }
       </TooltipPrimitive.Root>
-      <PopoverPrimitive.Root handle={handles.popover}>
+      <PopoverPrimitive.Root
+        handle={handles.popover}
+        // With a close button this also keeps Base UI's focus guards out of the hidden rail.
+        modal="trap-focus"
+        onOpenChange={(open) => {
+          if (open) returnFocus.current = document.activeElement;
+        }}
+      >
         {({ payload }) => {
           if (payload === undefined) return null;
           const { color, Icon } = annotationSourceStyle(payload.source);
           return (
-            <PopoverContent side="inline-end" align="start" sideOffset={8} className="w-72">
+            <PopoverContent
+              side="inline-end"
+              align="start"
+              sideOffset={8}
+              className="w-72"
+              ref={popup}
+              // Marks open from a pointer, so the popup takes focus rather than its close button.
+              initialFocus={popup}
+              finalFocus={() => {
+                const previous = returnFocus.current;
+                return previous instanceof HTMLElement &&
+                  previous.isConnected &&
+                  previous !== document.body
+                  ? previous
+                  : false;
+              }}
+            >
               <div data-color={color} className="flex items-center gap-2">
                 {Icon !== undefined && (
                   <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-calendar-event-border text-background">
@@ -433,6 +471,12 @@ export function TimeGridAnnotationOverlays({
                   </PopoverPrimitive.Title>
                   <p className="text-xs text-muted-foreground tabular-nums">{range(payload)}</p>
                 </div>
+                <PopoverPrimitive.Close
+                  render={<Button variant="ghost" size="icon-sm" className="ms-auto self-start" />}
+                >
+                  <XIcon />
+                  <span className="sr-only">Close</span>
+                </PopoverPrimitive.Close>
               </div>
               {payload.annotations.length > 1 && (
                 <ul className="flex flex-col gap-1 text-xs">

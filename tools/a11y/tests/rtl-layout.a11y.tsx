@@ -57,6 +57,24 @@ describe.each(["ltr", "rtl"] as const)("%s layout", (dir) => {
     expect(dir === "rtl" ? event.borderRightWidth : event.borderLeftWidth).toBe("3px");
   });
 
+  test("time grid: annotation data never moves or narrows an event", async () => {
+    const events = () =>
+      [...document.querySelectorAll('[data-slot="time-grid-body"] [data-event-id]')].map(
+        (event) => {
+          const { height, left, top, width } = event.getBoundingClientRect();
+          return [event.getAttribute("data-event-id"), left, top, width, height];
+        },
+      );
+    await render(<RegistryScreen dir={dir} view="week" />);
+    const annotated = events();
+    expect(document.querySelectorAll('[data-slot="annotation-mark"]').length).toBeGreaterThan(0);
+    await render(<RegistryScreen annotations={[]} dir={dir} view="week" />);
+
+    expect(document.querySelectorAll('[data-slot="annotation-mark"]')).toHaveLength(0);
+    expect(events()).toEqual(annotated);
+    expect(annotated.length).toBeGreaterThan(0);
+  });
+
   test("resource columns: gutter, columns and their headers follow the reading order", async () => {
     await render(<RegistryScreen dir={dir} view="resources" />);
     const column = (id: string) =>

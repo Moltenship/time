@@ -1,12 +1,16 @@
-import { summarizeAnnotationMarks } from "@moltenship/calendar";
+import {
+  instantInterval,
+  summarizeAnnotationMarks,
+  timedFragmentBox,
+  type TimeGridBand,
+  type TimeGridColumn,
+} from "@moltenship/calendar";
 
 import type { TimeGridAnnotationMarkData } from "./time-grid-annotations";
 
 export interface AnnotationFormats {
   readonly duration: (duration: Temporal.Duration) => string;
   readonly time: (instant: Temporal.Instant) => string;
-  /** The display time zone the times are in. */
-  readonly timeZone: string;
 }
 
 /** "2 hours, 10 minutes", with unit names in the calendar's locale. */
@@ -26,7 +30,6 @@ export function annotationFormats(
         [h > 0 ? hours.format(h) : "", m > 0 || h === 0 ? minutes.format(m) : ""].filter(Boolean),
       ),
     time: (instant) => time.format(instant),
-    timeZone,
   };
 }
 
@@ -63,30 +66,40 @@ export function describeDayAnnotations(
   return `Annotations: ${parts.join(". ")}.`;
 }
 
+/** A mark names this many of its items; the rest are counted, as in the details popover. */
+const NAMED_ITEMS = 5;
+/** Bands this close, as fractions of a day, meet rather than overlap. */
+const EPSILON = 1e-9;
+
 /**
- * The annotations covering `[start, end)`, added to a slot's accessible name: "Music: Nightcall,
- * 9:00 to 9:04 AM".
+ * The annotations drawn across a slot's band, added to its accessible name: "Music: Nightcall,
+ * 9:00 AM to 9:04 AM; Genesis, 9:05 AM to 9:09 AM". Each item is measured as the rail draws it,
+ * so a repeated hour names both of its occurrences, a skipped one names none, and the gap inside
+ * a merged mark names nothing.
  */
 export function describeAnnotationsAt(
   marks: readonly TimeGridAnnotationMarkData[],
-  start: Temporal.Instant,
-  end: Temporal.Instant,
+  column: TimeGridColumn,
+  band: TimeGridBand,
   { time }: AnnotationFormats,
 ): string | undefined {
-  const covering = marks.filter(
-    (mark) =>
-      Temporal.Instant.compare(mark.start, end) < 0 &&
-      Temporal.Instant.compare(mark.end, start) > 0,
-  );
-  if (covering.length === 0) return undefined;
-  return covering
-    .map((mark) => {
-      const range = annotationRange(mark);
-      const what =
-        mark.annotations.length === 1
-          ? `${mark.source.label}: ${mark.annotations[0]!.title}`
-          : `${mark.source.label}, ${mark.annotations.length} items`;
-      return `${what}, ${time(range.start)} to ${time(range.end)}`;
-    })
-    .join("; ");
+  const crosses = ({ height, top }: TimeGridBand) =>
+    top < band.top + band.height - EPSILON && top + height > band.top + EPSILON;
+  const parts = marks.flatMap((mark) => {
+    const items = crosses(mark)
+      ? mark.annotations.filter(({ end, start }) =>
+          crosses(timedFragmentBox(column, instantInterval(start, end))),
+        )
+      : [];
+    if (items.length === 0) return [];
+    const named = items
+      .slice(0, NAMED_ITEMS)
+      .map(
+        ({ end, start, title }) =>
+          `${title === mark.source.label ? "" : `${title}, `}${time(start)} to ${time(end)}`,
+      );
+    if (items.length > NAMED_ITEMS) named.push(`and ${items.length - NAMED_ITEMS} more`);
+    return [`${mark.source.label}: ${named.join("; ")}`];
+  });
+  return parts.length === 0 ? undefined : parts.join(". ");
 }

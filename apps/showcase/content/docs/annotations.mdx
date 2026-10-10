@@ -56,8 +56,9 @@ space for them.
 ## How they draw
 
 - **A rail beside the events.** Each day column keeps a narrow strip at its start, 18px in the week
-  and 30px in the day. Events move over by that much once, the same in every column, and keep their
-  layout.
+  and 30px in the day, whenever the root has annotation sources. Events move over by that much once,
+  the same in every column whatever the data, and keep their layout. With `placement: "overlay"`
+  the parts draw behind events instead and reserve nothing.
 - **Capsules with the source's icon.** Each annotation draws as a capsule in its source's color,
   with the icon inside its top. A mark is never shorter than it is wide, so a short session is a
   circle with the icon.
@@ -69,7 +70,9 @@ space for them.
 - **Days.** An annotation across midnight shows on both days. A part that starts the day before
   fades in at the top and has no icon.
 - **Details.** Hovering a mark shows a tooltip, and clicking it opens a popover listing what it
-  merges. Both are Base UI components, one of each for the whole grid.
+  merges. Both are Base UI components, one of each for the whole grid. The popover keeps focus
+  until Escape, outside click or its close button, then returns it to where it was. Pressing or
+  dragging a mark never starts a new event.
 
 ## Customize
 
@@ -194,10 +197,10 @@ Annotations add no keys and no tab stops: the grid keeps its single tab stop and
 [key map](/docs/views/week-and-day#keyboard). The rail is `aria-hidden`, and screen readers get the
 same information in words instead:
 
-| Where            | What a screen reader hears                                                                             |
-| ---------------- | ------------------------------------------------------------------------------------------------------ |
-| A day's header   | A summary of its annotations: "Annotations: Sleep until 7:05 AM. Music, 3 times, 2 hours, 10 minutes." |
-| A slot, with ↑ ↓ | The annotations covering it, after its time: "Music, 4 items, 9:00 AM to 9:18 AM"                      |
+| Where            | What a screen reader hears                                                                                     |
+| ---------------- | -------------------------------------------------------------------------------------------------------------- |
+| A day's header   | A summary of its annotations: "Annotations: Sleep until 7:05 AM. Music, 3 times, 2 hours, 10 minutes."         |
+| A slot, with ↑ ↓ | The items drawn across it, after its time: "Music: Nightcall, 9:00 AM to 9:04 AM; Genesis, 9:05 AM to 9:09 AM" |
 
 Hover effects respect `prefers-reduced-motion`.
 

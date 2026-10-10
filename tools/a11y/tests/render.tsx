@@ -10,8 +10,10 @@ afterEach(() => {
   mounted = undefined;
 });
 
-/** Renders into the page until the test ends. */
+/** Renders into the page until the test ends or the next render. */
 export async function render(element: ReactNode) {
+  mounted?.unmount();
+  mounted?.container.remove();
   const container = document.createElement("div");
   document.body.append(container);
   const root = createRoot(container);
@@ -22,4 +24,12 @@ export async function render(element: ReactNode) {
 export async function click(element: HTMLElement | null | undefined) {
   if (element == null) throw new Error("click-target-missing");
   await act(async () => element.click());
+}
+
+/** Presses a key on the focused element, as a keyboard would. */
+export async function press(key: string) {
+  const target = document.activeElement ?? document.body;
+  await act(async () => {
+    target.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key }));
+  });
 }

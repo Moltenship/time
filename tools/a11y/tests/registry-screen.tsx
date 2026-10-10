@@ -143,9 +143,11 @@ const annotations: readonly CalendarAnnotation[] = [
 
 /** A view under the toolbar, beside a mini month whose selected date is not today. */
 export function RegistryScreen({
+  annotations: annotationData = annotations,
   dir,
   view,
 }: {
+  readonly annotations?: readonly CalendarAnnotation[];
   readonly dir?: "ltr" | "rtl";
   readonly view: RegistryView;
 }) {
@@ -153,7 +155,7 @@ export function RegistryScreen({
     <TooltipProvider>
       <Calendar.Root
         annotationSources={annotationSources}
-        annotations={annotations}
+        annotations={annotationData}
         defaultAnchorDate={today}
         defaultExpandedResourceIds={["team"]}
         defaultTimeZone="UTC"

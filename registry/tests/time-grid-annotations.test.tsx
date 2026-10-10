@@ -1,15 +1,20 @@
 // @vitest-environment jsdom
 
 import {
+  createAnnotationSnapshot,
   createCalendar,
   createCanonicalEventAdapter,
+  plainDateInterval,
+  projectTimeGridAnnotations,
+  timeGridColumns,
   type AnyCalendarView,
   type CalendarAnnotation,
   type CalendarFocus,
 } from "@moltenship/calendar";
 import { MusicIcon } from "lucide-react";
-import { afterEach, expect, test } from "vite-plus/test";
+import { afterEach, describe, expect, test } from "vite-plus/test";
 
+import { annotationFormats, describeAnnotationsAt } from "../time-grid-view/annotation-label";
 import {
   AnnotationMark,
   AnnotationRail,
@@ -76,10 +81,12 @@ afterEach(async () => {
 });
 
 async function renderDay({
+  data = annotations,
   defaultFocus = null,
   sources = [sleep, music],
   view = createDayView<ColoredEvent>(),
 }: {
+  readonly data?: readonly CalendarAnnotation<unknown, string>[];
   readonly defaultFocus?: CalendarFocus | null;
   readonly sources?: readonly TimeGridAnnotationSource[];
   readonly view?: ReturnType<typeof createDayView<ColoredEvent>>;
@@ -88,7 +95,7 @@ async function renderDay({
   const rendered = await render(
     <Calendar.Root
       annotationSources={sources}
-      annotations={annotations}
+      annotations={data}
       clock={clock}
       defaultAnchorDate={anchorDate}
       defaultFocus={defaultFocus}
@@ -131,17 +138,33 @@ test("draws the root's annotations in a rail, merged per source, with short ones
   const rail = container.querySelector('[data-slot="annotation-rail"]');
   expect(rail?.getAttribute("aria-hidden")).toBe("true");
   expect(rail?.querySelectorAll("[tabindex='0']")).toHaveLength(0);
+  // Pressing a mark never starts a drag.
+  for (const mark of rail!.querySelectorAll('[data-slot="annotation-mark"]')) {
+    expect(mark.getAttribute("data-calendar-pointer")).toBe("none");
+  }
   // The icon draws inside the music marks; sleep has none.
   expect(container.querySelectorAll('[data-slot="annotation-mark-icon"]')).toHaveLength(2);
 });
 
-test("annotations never change event layout; the rail only insets the events' strip", async () => {
-  const withAnnotations = eventBoxes(await renderDay());
+test("annotations never change event layout; sources reserve the same rail on every day", async () => {
+  const strip = (container: ParentNode) =>
+    container.querySelector<HTMLElement>('[data-slot="calendar-event"]')!.parentElement!.style
+      .insetInlineStart;
+  const withAnnotations = await renderDay();
+  const [boxes, inset] = [eventBoxes(withAnnotations), strip(withAnnotations)];
   await cleanup?.();
-  const without = eventBoxes(await renderDay({ sources: [] }));
+  const empty = await renderDay({ data: [] });
+  const [emptyBoxes, emptyInset] = [eventBoxes(empty), strip(empty)];
+  await cleanup?.();
+  const noSources = eventBoxes(await renderDay({ sources: [] }));
 
-  expect(withAnnotations).toEqual(without);
-  expect(withAnnotations).toHaveLength(2);
+  // The data never moves or narrows an event: only the sources decide the rail's strip.
+  expect(boxes).toEqual(emptyBoxes);
+  expect(inset).toBe(emptyInset);
+  expect(inset).toBe("30px");
+  // Lanes and widths inside the strip match a calendar without annotations.
+  expect(boxes).toEqual(noSources);
+  expect(boxes).toHaveLength(2);
 });
 
 test("reserves no rail when the root has no annotation sources", async () => {
@@ -176,8 +199,84 @@ test("names the annotations under a focused slot", async () => {
   });
 
   expect(ariaLabel(container.querySelector('[role="button"][tabindex="0"]'))).toBe(
-    "Thursday, October 8 at 9:00 AM, Music, 2 items, 9:00 AM to 9:09 AM",
+    "Thursday, October 8 at 9:00 AM, Music: Nightcall, 9:00 AM to 9:04 AM; Genesis, 9:05 AM to 9:09 AM",
   );
+});
+
+describe("slot descriptions", () => {
+  const formats = (timeZone: string) => annotationFormats("en-US", timeZone);
+  const slot = (time: string) => {
+    const minutes = Temporal.PlainTime.from(time).hour * 60 + Temporal.PlainTime.from(time).minute;
+    return { height: 15 / (24 * 60), top: minutes / (24 * 60) };
+  };
+  function layout(timeZone: string, date: string, items: CalendarAnnotation<unknown, string>[]) {
+    const columns = timeGridColumns(
+      plainDateInterval(
+        Temporal.PlainDate.from(date),
+        Temporal.PlainDate.from(date).add({ days: 1 }),
+      ),
+      timeZone,
+    );
+    const [marks] = projectTimeGridAnnotations(columns, createAnnotationSnapshot(items), [
+      { id: "music", label: "Music", mergeGap: Temporal.Duration.from({ hours: 1 }) },
+      { id: "sleep", label: "Sleep" },
+    ]);
+    return { column: columns[0]!, marks: marks! };
+  }
+
+  test("name only the items drawn across the slot, not the gaps inside a merged mark", () => {
+    const { column, marks } = layout("UTC", "2026-10-08", [
+      annotation("Nightcall", "music", "2026-10-08T09:00Z", "2026-10-08T09:05Z"),
+      annotation("Genesis", "music", "2026-10-08T09:40Z", "2026-10-08T09:45Z"),
+    ]);
+
+    expect(marks).toHaveLength(1);
+    expect(describeAnnotationsAt(marks, column, slot("09:15"), formats("UTC"))).toBeUndefined();
+    expect(describeAnnotationsAt(marks, column, slot("09:30"), formats("UTC"))).toBe(
+      "Music: Genesis, 9:40 AM to 9:45 AM",
+    );
+  });
+
+  test("name both occurrences of a repeated hour and nothing in a skipped one", () => {
+    const zone = "America/New_York";
+    const fold = layout(zone, "2026-11-01", [
+      annotation("Sleep", "sleep", "2026-11-01T05:05Z", "2026-11-01T05:10Z"),
+      annotation("Repeat", "music", "2026-11-01T06:05Z", "2026-11-01T06:10Z"),
+    ]);
+    expect(describeAnnotationsAt(fold.marks, fold.column, slot("01:00"), formats(zone))).toBe(
+      "Music: Repeat, 1:05 AM to 1:10 AM. Sleep: 1:05 AM to 1:10 AM",
+    );
+
+    // 02:30 doesn't exist on March 8; the 03:30 item draws in its own slot only.
+    const gap = layout(zone, "2026-03-08", [
+      annotation("Later", "music", "2026-03-08T07:30Z", "2026-03-08T07:45Z"),
+    ]);
+    expect(describeAnnotationsAt(gap.marks, gap.column, slot("02:30"), formats(zone))).toBe(
+      undefined,
+    );
+    expect(describeAnnotationsAt(gap.marks, gap.column, slot("03:30"), formats(zone))).toBe(
+      "Music: Later, 3:30 AM to 3:45 AM",
+    );
+  });
+
+  test("count the items past five, as the details popover does", () => {
+    const { column, marks } = layout(
+      "UTC",
+      "2026-10-08",
+      Array.from({ length: 7 }, (_, index) =>
+        annotation(
+          `T${index}`,
+          "music",
+          `2026-10-08T09:0${index}:00Z`,
+          `2026-10-08T09:0${index}:30Z`,
+        ),
+      ),
+    );
+
+    expect(describeAnnotationsAt(marks, column, slot("09:00"), formats("UTC"))).toMatch(
+      /T4, 9:04 AM to 9:04 AM; and 2 more$/,
+    );
+  });
 });
 
 test("a view draws a custom composition of the parts", async () => {

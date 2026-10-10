@@ -120,16 +120,16 @@ function draftBox(column: Column, placement: CalendarEventPlacement): TimeGridBa
     : null;
 }
 
-/** The annotations covering a focused slot, named after its date and time. */
+/** The annotations drawn across a focused slot, named after its date and time. */
 function slotAnnotations(
+  column: Column,
   slot: CalendarSlotFocus,
   { formats, marks }: NonNullable<TimeGridColumnProps<unknown>["annotations"]>,
   slotMinutes: number,
 ): string | undefined {
-  const start = slot.date
-    .toZonedDateTime({ plainTime: slot.time, timeZone: formats.timeZone })
-    .toInstant();
-  return describeAnnotationsAt(marks, start, start.add({ minutes: slotMinutes }), formats);
+  const minutes = slot.time.hour * 60 + slot.time.minute;
+  const band = { height: slotMinutes / DAY_MINUTES, top: minutes / DAY_MINUTES };
+  return describeAnnotationsAt(marks, column, band, formats);
 }
 
 function sameBand(left: TimeGridBand | null, right: TimeGridBand | null): boolean {
@@ -272,7 +272,9 @@ export function TimeGridColumn<TEvent>({
           label={[
             resource?.title,
             formats.slot.format(slot.date.toPlainDateTime(slot.time)),
-            annotations === undefined ? undefined : slotAnnotations(slot, annotations, slotMinutes),
+            annotations === undefined
+              ? undefined
+              : slotAnnotations(column, slot, annotations, slotMinutes),
           ]
             .filter((part) => part !== undefined)
             .join(", ")}

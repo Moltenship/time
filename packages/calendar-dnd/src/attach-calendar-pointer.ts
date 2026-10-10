@@ -162,7 +162,9 @@ function resolveEvent<TEvent, TEventId extends EventId, TResourceId extends Reso
  * - `data-event-time` on the element inside an event that shows its time range, which the
  *   preview relabels with the proposed range;
  * - `data-occludes` on parts that sit over the cells, such as sticky headers: a gesture can't start
- *   or land on the cells scrolled beneath them.
+ *   or land on the cells scrolled beneath them;
+ * - `data-calendar-pointer="none"` on controls of their own inside the region, such as annotation
+ *   marks, so pressing them never starts a drag.
  *
  * The preview moves without re-rendering. `onPropose` runs once per drop; a click (less than a few
  * pixels of travel) is left alone, and Escape cancels. Touch drags start with a long-press.
@@ -371,6 +373,7 @@ export function attachCalendarPointer<
     target: PointerTarget,
     events: EventSnapshot<TEvent, TEventId, TResourceId>,
   ): Gesture<TEvent, TEventId, TResourceId> | null {
+    if (pressed.closest('[data-calendar-pointer="none"]') !== null) return null;
     const element = pressed.closest<HTMLElement>("[data-event-id]");
     if (element === null || !region.contains(element)) return { anchor: target, kind: "create" };
 

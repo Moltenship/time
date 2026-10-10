@@ -1,8 +1,8 @@
-import { describe, expect, test } from "vite-plus/test";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import { seriousViolations, setTheme, themes } from "./axe";
 import { RegistryScreen, registryViews } from "./registry-screen";
-import { click, render } from "./render";
+import { click, press, render } from "./render";
 
 describe.each(themes)("registry views, %s theme", (theme) => {
   test.each(registryViews)("%s view, toolbar and mini month", async (view) => {
@@ -21,6 +21,19 @@ describe.each(themes)("registry views, %s theme", (theme) => {
 
     expect(document.querySelector('[data-slot="popover-content"]')).not.toBeNull();
     expect(await seriousViolations()).toEqual([]);
+    // Focus stays out of the hidden rail: no focus guards there while open, and none after.
+    expect(document.querySelectorAll('[data-slot="annotation-rail"] [tabindex="0"]')).toHaveLength(
+      0,
+    );
+    expect(
+      document.querySelector('[data-slot="popover-content"]')!.contains(document.activeElement),
+    ).toBe(true);
+    await press("Escape");
+    // It closes after its exit animation.
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-slot="popover-content"]')).toBeNull(),
+    );
+    expect(document.activeElement?.closest('[aria-hidden="true"]') ?? null).toBeNull();
   });
 
   test("month view's +N more popover", async () => {
