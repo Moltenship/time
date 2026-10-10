@@ -457,7 +457,10 @@ Day and week share the time-grid strategy and primitives; they are explicit view
 The scrolling views (#105) are separate view definitions, not a mode of the paged ones. Their
 anchor date is the scroll position: the first visible day, or the week in the month's third row.
 A scroll that comes to rest sets `anchorDate`, so title, controlled state and URLs follow it; any
-other anchor change scrolls the view there. Each strategy's `getLoadRange` adds a page on either
+other anchor change scrolls the view there. Only the latest scroll waits for a controlled anchor:
+an anchor equal to it is the owner catching up, and any other is navigation. Commands that ask
+for the anchor the calendar already has, as Today does after a scroll the owner hasn't taken,
+reach views through `useAnchorDateRequests`. Each strategy's `getLoadRange` adds a page on either
 side of the visible range. `Root` projects the load range, and `onVisibleRangeChange` reports both
 ranges after commit, so applications fetch the next page before it scrolls into view; the calendar
 still never fetches.
@@ -623,7 +626,7 @@ defaultView?: ViewName
 onViewChange?: (next: ViewName, detail: StateChangeDetail) => void
 ```
 
-The same pattern applies to anchor date, selection, timezone, focus, and resource expansion. A render-scoped derived reader atom closes over the current controlled inputs and reads primitive atoms only for uncontrolled branches. Controlled inputs are not copied into the store with `useEffect`. Uncontrolled defaults are read exactly once.
+The same pattern applies to anchor date, selection, timezone, focus, and resource expansion. A render-scoped derived reader atom closes over the current controlled inputs and reads primitive atoms only for uncontrolled branches. Controlled inputs are not copied into the store with `useEffect`. Uncontrolled defaults are read exactly once. A command asking for a controlled slice's current value still reaches its handler while the owner holds another change it was told about and hasn't committed, so a deferring owner can drop that change.
 
 Jotai's React bindings own reversible subscription cleanup for unmount and React `Activity` hide/reveal cycles. Permanent logical store destruction is an explicit orchestration action, never an Effect cleanup, because hidden Activities preserve hook state. `selectAtom` owns selector equality and avoids unrelated React commits. The public `getSnapshot` and `getServerSnapshot` methods read the same cached derived atom for orchestration and SSR assertions; explicit defaults and controlled inputs make server and first-client output deterministic.
 
