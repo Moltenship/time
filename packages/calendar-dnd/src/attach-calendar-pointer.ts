@@ -160,7 +160,9 @@ function resolveEvent<TEvent, TEventId extends EventId, TResourceId extends Reso
  *   `resourceIdAttributes(id)`), so a drop in another resource swaps it in the event's
  *   `resourceIds` and a create starts in the resource it began in;
  * - `data-event-time` on the element inside an event that shows its time range, which the
- *   preview relabels with the proposed range.
+ *   preview relabels with the proposed range;
+ * - `data-occludes` on parts that sit over the cells, such as sticky headers: a gesture can't start
+ *   or land on the cells scrolled beneath them.
  *
  * The preview moves without re-rendering. `onPropose` runs once per drop; a click (less than a few
  * pixels of travel) is left alone, and Escape cancels. Touch drags start with a long-press.

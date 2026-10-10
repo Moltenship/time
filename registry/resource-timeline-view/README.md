@@ -62,7 +62,8 @@ day moves from that day; drags step whole days and keep the time. Over hours, ea
 `data-axis="inline"` strip per date with `data-date`, mapped through the projection's `columns`;
 drags step by half an hour. Events are buttons with `data-event-id`, and editable events have
 `data-resize="start"` and `data-resize="end"` handles. Dropping on another row swaps that
-resource into the event's `resourceIds`.
+resource into the event's `resourceIds`. The sticky header and each row's name carry
+`data-occludes`, so a drag can't start on, or land in, the cells scrolled beneath them.
 
 ## Why the axes are sticky, not synchronized
 

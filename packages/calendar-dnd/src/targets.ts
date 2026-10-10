@@ -66,10 +66,12 @@ export function timeColumns(surface: TargetSurface): HTMLElement[] {
 
 /**
  * The day cell or point in a time column under a viewport point, in the resource around the cell.
- * Hit-testing every element at the point finds the cell beneath events that span several cells.
+ * Hit-testing every element at the point finds the cell beneath events that span several cells;
+ * a part marked `data-occludes`, such as a sticky header, hides the cells scrolled beneath it.
  */
 export function targetAt(surface: TargetSurface, x: number, y: number): PointerTarget | null {
   for (const element of document.elementsFromPoint(x, y)) {
+    if (element.closest("[data-occludes]") !== null) return null;
     const cell = element.closest<HTMLElement>("[data-date]");
     if (cell === null || !surface.region.contains(cell)) continue;
 

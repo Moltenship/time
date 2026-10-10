@@ -197,6 +197,8 @@ function ResourceTimelineRowBase<TEvent>({
         role="rowheader"
         aria-colindex={1}
         aria-label={title}
+        // Cells scroll beneath it, so the pointer layer doesn't look through it to them.
+        data-occludes=""
         className={cn(
           "sticky start-0 z-30 flex w-(--calendar-resource-column) shrink-0 items-center gap-1 border-e border-calendar-grid bg-background pe-2 text-sm",
           resource.hasChildren && "bg-muted font-medium",

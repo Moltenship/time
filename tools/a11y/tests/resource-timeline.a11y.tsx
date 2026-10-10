@@ -4,7 +4,7 @@ import {
   type CalendarEvent,
   type CalendarResource,
 } from "@moltenship/calendar";
-import { describe, expect, test } from "vite-plus/test";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import {
@@ -73,9 +73,11 @@ const Calendar = createCalendar<Booking, CalendarResource<null>>()({
 
 function Timeline({
   direction = "ltr",
+  onEventChange,
   view,
 }: {
   readonly direction?: "ltr" | "rtl";
+  readonly onEventChange?: () => void;
   readonly view: "timeline-day" | "timeline-month" | "timeline-week";
 }) {
   return (
@@ -90,6 +92,7 @@ function Timeline({
       events={events}
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T10:20:00Z")}
+      onEventChange={onEventChange}
       resources={resources}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
@@ -133,4 +136,66 @@ test("RTL: days run from the right, behind a resource column that stays there", 
 
   expect(box('[role="rowheader"]').right).toBe(grid.right);
   expect(day(1).right).toBe(grid.right - 208 + 300);
+});
+
+test("the sticky header and resource column hide the cells scrolled beneath them from drags", async () => {
+  const onEventChange = vi.fn();
+  await render(<Timeline onEventChange={onEventChange} view="timeline-month" />);
+  const grid = document.querySelector<HTMLElement>('[data-slot="resource-timeline"]')!;
+  const viewport = grid.querySelector<HTMLElement>('[data-slot="resource-timeline-viewport"]')!;
+  viewport.scrollTop = 100;
+  viewport.scrollLeft = 200;
+  await new Promise((resolve) => requestAnimationFrame(resolve));
+  const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+  /** A mouse drag from one point to another, through real hit testing. */
+  async function dragFrom(from: readonly [number, number], to: readonly [number, number]) {
+    const fire = (type: string, [x, y]: readonly [number, number]) =>
+      (document.elementFromPoint(x, y) ?? document.body).dispatchEvent(
+        new PointerEvent(type, {
+          bubbles: true,
+          button: 0,
+          buttons: type === "pointerup" ? 0 : 1,
+          cancelable: true,
+          clientX: x,
+          clientY: y,
+          isPrimary: true,
+          pointerId: 1,
+          pointerType: "mouse",
+        }),
+      );
+    fire("pointerdown", from);
+    fire("pointermove", [(from[0] + to[0]) / 2, (from[1] + to[1]) / 2]);
+    fire("pointermove", to);
+    await frame();
+    const interaction = grid.getAttribute("data-interaction");
+    fire("pointerup", to);
+    await frame();
+    return interaction;
+  }
+  const center = (element: Element) => {
+    const { height, left, top, width } = element.getBoundingClientRect();
+    return [left + width / 2, top + height / 2] as const;
+  };
+  const header = grid
+    .querySelector('[data-slot="resource-timeline-header"]')!
+    .getBoundingClientRect();
+  const rowHeader = grid.querySelector('[role="rowheader"]')!.getBoundingClientRect();
+
+  // Rows and days have scrolled under the header and the resource column.
+  const [x] = center(grid.querySelector('[role="columnheader"][aria-colindex="10"]')!);
+  expect(await dragFrom([x, header.bottom - 10], [x + 96, header.bottom - 10])).toBeNull();
+  expect(
+    await dragFrom(
+      [rowHeader.left + 150, rowHeader.top + 20],
+      [rowHeader.left + 190, rowHeader.top + 20],
+    ),
+  ).toBeNull();
+  // A bar dropped on the header lands nowhere.
+  const bar = [...grid.querySelectorAll("[data-event-id]")].find(
+    (element) => element.getBoundingClientRect().top > header.bottom,
+  )!;
+  const [barX, barY] = center(bar);
+  expect(await dragFrom([barX, barY], [barX, header.bottom - 10])).toBe("move");
+  expect(grid.querySelectorAll("[data-calendar-ghost]")).toHaveLength(0);
+  expect(onEventChange).not.toHaveBeenCalled();
 });

@@ -13,6 +13,7 @@ import {
   mountResourceColumns,
   mountTimeGrid,
   mountTimelineRows,
+  place,
   pointer,
   timedEvent,
   timeZone,
@@ -551,6 +552,35 @@ describe("timeline rows", () => {
     pointer("pointerup", bar, xAtTime("13:30", "rtl"), yInRow("room-a"));
 
     expect(interval(proposals[0])).toBe("timed 2026-08-17T13:00:00Z/2026-08-17T14:00:00Z");
+  });
+
+  test("sticky parts over the rows hide them from gestures", () => {
+    const timeline = mountTimelineRows([onRooms(meeting, "room-a")]);
+    const proposals = setup(timeline, { columns: timeline.columns });
+    const bar = timeline.elements.get("a@room-a")!;
+    // A sticky header over room-a's row, as when the rows have scrolled beneath it.
+    const header = document.createElement("div");
+    header.setAttribute("data-occludes", "");
+    const label = document.createElement("span");
+    header.append(label);
+    timeline.region.prepend(header);
+    place(header, { height: ROW_HEIGHT, left: 0, top: 0, width: 24 * HOUR_HEIGHT }, 0);
+    place(label, { height: ROW_HEIGHT, left: 0, top: 0, width: 100 }, 0);
+
+    // A drag that starts on it creates nothing in the row beneath.
+    pointer("pointerdown", label, xAtTime("01:00"), yInRow("room-a"));
+    pointer("pointermove", label, xAtTime("03:00"), yInRow("room-a"));
+    pointer("pointerup", label, xAtTime("03:00"), yInRow("room-a"));
+    expect(timeline.region.hasAttribute("data-interaction")).toBe(false);
+
+    // A bar dropped on it lands nowhere, though the row beneath is under the pointer.
+    pointer("pointerdown", bar, xAtTime("09:30"), yInRow("room-b"));
+    pointer("pointermove", bar, xAtTime("11:30"), yInRow("room-b"));
+    pointer("pointermove", bar, xAtTime("11:30"), yInRow("room-a"));
+    expect(ghosts(timeline.region)).toHaveLength(0);
+    pointer("pointerup", bar, xAtTime("11:30"), yInRow("room-a"));
+
+    expect(proposals).toEqual([]);
   });
 
   test("creates along a row in its resource", () => {
