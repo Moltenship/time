@@ -1,32 +1,25 @@
-import type { ResourceId } from "@moltenship/calendar";
+import {
+  useResourceExpansion,
+  type ResourceColumn,
+  type ResourceId,
+  type VisibleResource,
+} from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { ChevronRightIcon } from "lucide-react";
 import { useMemo, type ReactNode, type RefCallback } from "react";
 
 import { cn } from "cn";
 
-/** What a column header shows of its resource. */
-export interface ResourceHeading {
-  readonly depth: number;
-  /** Whether the resource's children show; `undefined` for a resource without children. */
-  readonly expanded?: boolean;
-  readonly id: ResourceId;
-  readonly parentId?: ResourceId;
-  readonly title: string;
-}
-
 export interface ResourceColumnsHeaderProps {
-  /** One `aria-colindex` step per day, after the gutter. */
+  /** The corner over the gutter, such as the time zone's offset. */
+  readonly corner: ReactNode;
+  /** Day columns per resource; each is one `aria-colindex` step after the gutter. */
   readonly days: number;
   /** Follows the body's sideways scroll; see `useAxisSync`. */
   readonly followX: RefCallback<HTMLElement>;
-  readonly headings: readonly ResourceHeading[];
   /** The rendered columns, from the column virtualizer. */
   readonly items: readonly VirtualItem[];
-  /** Shows or hides a resource's children. */
-  readonly onToggle: (id: ResourceId) => void;
-  /** The corner over the gutter, such as the time zone's offset. */
-  readonly corner: ReactNode;
+  readonly resources: readonly ResourceColumn<unknown>[];
   readonly scrollbarWidth: number;
   readonly totalSize: number;
 }
@@ -34,23 +27,50 @@ export interface ResourceColumnsHeaderProps {
 /** Height of one hierarchy level, in rem. */
 const LEVEL = 2;
 
+/** A resource's name, or "Unassigned" for the bucket of events without resources. */
+export function resourceTitle({ resource }: VisibleResource): string {
+  return resource?.title ?? "Unassigned";
+}
+
+/** Shows or hides a group's columns. */
+function GroupToggle({ id, title }: { readonly id: ResourceId; readonly title: string }) {
+  const { expanded, toggle } = useResourceExpansion(id);
+
+  return (
+    <button
+      aria-expanded={expanded}
+      aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`}
+      className="-ms-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+      onClick={toggle}
+      // The grid keeps one tab stop.
+      tabIndex={-1}
+      type="button"
+    >
+      <ChevronRightIcon
+        className={cn("size-4 transition-transform rtl:-scale-x-100", expanded && "rotate-90")}
+      />
+    </button>
+  );
+}
+
 /**
  * One column's header. A resource sits on the row for its depth, under a band for each group it
  * belongs to. An expanded group's own column starts its band, so the band names the group over
  * all of its columns; a collapsed group shows its name with a closed chevron.
  */
 function ResourceHeader({
-  heading: { depth, expanded, id, title },
   groups,
   levels,
-  onToggle,
+  resource,
 }: {
-  readonly heading: ResourceHeading;
-  /** Titles of the groups the resource sits in, outermost first. */
+  /** Names of the groups the resource sits in, outermost first. */
   readonly groups: readonly string[];
   readonly levels: number;
-  readonly onToggle: (id: ResourceId) => void;
+  readonly resource: VisibleResource;
 }) {
+  const { depth, expanded, hasChildren, id } = resource;
+  const title = resourceTitle(resource);
+
   return (
     <div className="flex h-full flex-col">
       {groups.map((_, level) => (
@@ -64,29 +84,15 @@ function ResourceHeader({
       <div
         className={cn(
           "flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2",
-          expanded === true && "bg-muted",
+          expanded && "bg-muted",
         )}
         style={{ height: `${LEVEL}rem` }}
       >
-        {expanded !== undefined && (
-          <button
-            aria-expanded={expanded}
-            aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`}
-            className="-ms-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-            onClick={() => onToggle(id)}
-            // The grid keeps one tab stop.
-            tabIndex={-1}
-            type="button"
-          >
-            <ChevronRightIcon
-              className={cn(
-                "size-4 transition-transform rtl:-scale-x-100",
-                expanded && "rotate-90",
-              )}
-            />
-          </button>
-        )}
-        <span className="truncate text-sm font-medium" title={title}>
+        {hasChildren && id !== null && <GroupToggle id={id} title={title} />}
+        <span
+          className={cn("truncate text-sm font-medium", id === null && "text-muted-foreground")}
+          title={title}
+        >
           {title}
         </span>
         {groups.length > 0 && <span className="sr-only">, {groups.join(", ")}</span>}
@@ -107,24 +113,27 @@ export function ResourceColumnsHeader({
   corner,
   days,
   followX,
-  headings,
   items,
-  onToggle,
+  resources,
   scrollbarWidth,
   totalSize,
 }: ResourceColumnsHeaderProps) {
-  const titles = useMemo(
-    () => new Map(headings.map((heading) => [heading.id, heading] as const)),
-    [headings],
+  // A visible resource's parents are visible too, so its groups are found among the columns.
+  const byId = useMemo(
+    () => new Map(resources.map(({ resource }) => [resource.id, resource] as const)),
+    [resources],
   );
-  const levels = headings.reduce((deepest, { depth }) => Math.max(deepest, depth + 1), 1);
-  const groupsOf = (heading: ResourceHeading) => {
+  const levels = resources.reduce(
+    (deepest, { resource }) => Math.max(deepest, resource.depth + 1),
+    1,
+  );
+  const groupsOf = (resource: VisibleResource) => {
     const groups: string[] = [];
-    for (let parent = heading.parentId; parent !== undefined;) {
-      const group = titles.get(parent);
-      if (group === undefined) break;
-      groups.unshift(group.title);
-      parent = group.parentId;
+    for (let parentId = resource.parentId; parentId !== null;) {
+      const parent = byId.get(parentId);
+      if (parent === undefined) break;
+      groups.unshift(resourceTitle(parent));
+      parentId = parent.parentId;
     }
     return groups;
   };
@@ -144,7 +153,7 @@ export function ResourceColumnsHeader({
       >
         <div ref={followX} className="relative h-full" style={{ width: totalSize }}>
           {items.map(({ index, key, size, start }) => {
-            const heading = headings[index]!;
+            const { resource } = resources[index]!;
             return (
               <div
                 key={key}
@@ -154,12 +163,7 @@ export function ResourceColumnsHeader({
                 className="absolute inset-y-0"
                 style={{ insetInlineStart: start, width: size }}
               >
-                <ResourceHeader
-                  groups={groupsOf(heading)}
-                  heading={heading}
-                  levels={levels}
-                  onToggle={onToggle}
-                />
+                <ResourceHeader groups={groupsOf(resource)} levels={levels} resource={resource} />
               </div>
             );
           })}

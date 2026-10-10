@@ -1,12 +1,15 @@
 import {
   instantInterval,
   sameFocus,
+  showsInResource,
   timedFragmentBox,
   useCalendarFocus,
   useCalendarInteraction,
   useRovingFocus,
   type CalendarEventPlacement,
+  type CalendarFocus,
   type CalendarSlotFocus,
+  type ResourceId,
   type TimeGridBand,
   type TimeGridColumn as Column,
   type TimeGridDay,
@@ -46,7 +49,17 @@ export function useTimeGridColumnFormats(locale: Intl.LocalesArgument): TimeGrid
   );
 }
 
+/** The resource a column shows, in a view with a column per resource. */
+export interface TimeGridColumnResource {
+  /** `null` for the unassigned bucket. */
+  readonly id: ResourceId | null;
+  /** Added to the accessible names of the column's slots and events. */
+  readonly title: string;
+}
+
 export interface TimeGridColumnProps<TEvent> {
+  /** The column's `aria-colindex`, in a grid that renders only some of its columns. */
+  readonly colIndex?: number;
   readonly day: TimeGridDay<TEvent>;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly labelEvent: EventLabeler<TEvent>;
@@ -55,9 +68,21 @@ export interface TimeGridColumnProps<TEvent> {
   readonly formats: TimeGridColumnFormats;
   /** Opens a date in the day view; Shift+Enter on a slot does so. */
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
+  /** The column's resource; without one, the column shows every resource's focus and drafts. */
+  readonly resource?: TimeGridColumnResource;
   /** Length of a keyboard slot, as the keyboard's snap sets it. */
   readonly slotMinutes: number;
   readonly timeZone: string;
+}
+
+/** Whether focus is in a column's or row's resource; a side without one matches any resource. */
+export function inResource(
+  focus: CalendarFocus,
+  resourceId: ResourceId | null | undefined,
+): boolean {
+  return (
+    resourceId === undefined || focus.resourceId === undefined || focus.resourceId === resourceId
+  );
 }
 
 function bandStyle({ height, top }: TimeGridBand) {
@@ -128,27 +153,42 @@ function TimeGridSlot({
  * forward hours are hatched and repeated fall-back hours tinted.
  */
 export function TimeGridColumn<TEvent>({
+  colIndex,
   day: { column, events, isToday },
   getEventColor,
   labelEvent,
   nowTop,
   formats,
   onOpenDay,
+  resource,
   slotMinutes,
   timeZone,
 }: TimeGridColumnProps<TEvent>) {
+  const resourceId = resource?.id;
   const slot = useCalendarFocus(
-    (focus) => (focus?.kind === "slot" && focus.date.equals(column.date) ? focus : null),
+    (focus) =>
+      focus?.kind === "slot" && focus.date.equals(column.date) && inResource(focus, resourceId)
+        ? focus
+        : null,
     { isEqual: sameFocus },
   );
   const draft = useCalendarInteraction(
-    (session) => (session?.eventId === null ? draftBox(column, session.proposed) : null),
+    (session) =>
+      session?.eventId === null &&
+      (resourceId === undefined || showsInResource(session.proposed.resourceIds, resourceId))
+        ? draftBox(column, session.proposed)
+        : null,
     { isEqual: sameBand },
+  );
+  const labelHere = useMemo<EventLabeler<TEvent>>(
+    () => (resource === undefined ? labelEvent : (event) => labelEvent(event, resource.title)),
+    [labelEvent, resource],
   );
 
   return (
     <div
       role="gridcell"
+      aria-colindex={colIndex}
       data-date={column.date.toString()}
       data-today={isToday ? "" : undefined}
       className="relative min-w-0 border-s border-calendar-grid"
@@ -175,9 +215,10 @@ export function TimeGridColumn<TEvent>({
           <TimeGridEvent
             key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
             color={getEventColor?.(layout.fragment.event.event)}
-            labelEvent={labelEvent}
+            labelEvent={labelHere}
             layout={layout}
             formats={formats}
+            resourceId={resourceId}
             timeZone={timeZone}
           />
         ))}
@@ -192,8 +233,11 @@ export function TimeGridColumn<TEvent>({
       </div>
       {slot !== null && (
         <TimeGridSlot
-          focus={slot}
-          label={formats.slot.format(slot.date.toPlainDateTime(slot.time))}
+          // The column's own resource, so a gesture started here stays in it.
+          focus={resourceId === undefined ? slot : { ...slot, resourceId }}
+          label={[resource?.title, formats.slot.format(slot.date.toPlainDateTime(slot.time))]
+            .filter((part) => part !== undefined)
+            .join(", ")}
           onOpenDay={onOpenDay}
           slotMinutes={slotMinutes}
         />

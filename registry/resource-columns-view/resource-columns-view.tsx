@@ -1,9 +1,12 @@
 import {
+  defineCalendarView,
+  resourceColumnsStrategy,
   timeGridTitle,
   useCalendarAnnouncer,
   useCalendarPointer,
   type CalendarViewRendererProps,
-  type ResourceId,
+  type ResourceColumnsProjection,
+  type ResourceVisibilityOptions,
 } from "@moltenship/calendar";
 import { useMemo } from "react";
 
@@ -14,18 +17,17 @@ import { offsetLabel } from "@registry/time-grid-view/time-grid-header";
 
 import { useAxisSync } from "./axis-sync";
 import { useColumnVirtualizer } from "./column-virtualizer";
-import { ResourceColumnsBody, type ResourceDays } from "./resource-columns-body";
+import { ResourceColumnsAllDay } from "./resource-columns-all-day";
+import { ResourceColumnsBody } from "./resource-columns-body";
+import { ResourceColumnsDates } from "./resource-columns-dates";
 import { ResourceColumnsHeader } from "./resource-columns-header";
+import { useFocusedResourceInView } from "./focused-resource";
 
-export interface ResourceColumnsViewOptions<TEvent> {
+export interface ResourceColumnsViewOptions<TEvent> extends ResourceVisibilityOptions {
   /** Extra words for each event's accessible name, such as its calendar. */
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Colour for an event; sets `data-color` on every element that renders it. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
-}
-
-export interface ResourceColumnsProjection<TEvent> {
-  readonly resources: readonly ResourceDays<TEvent>[];
 }
 
 /** Pointer and keyboard both step by these slots, so they reach the same times. */
@@ -40,33 +42,31 @@ export type ResourceColumnsViewProps<TEvent> = CalendarViewRendererProps<
 
 /**
  * A time grid with a column per resource, or a group of day columns per resource over several
- * days, under a sticky header grouped by the resource hierarchy. Only the columns in view render,
- * so hundreds of resources scroll smoothly.
+ * days, under a header grouped by the resource hierarchy. Only the columns in view render, so
+ * hundreds of resources scroll smoothly. Drag an event to another resource's column to move it
+ * there, or within a column as in the day view; changes go to the root's `onEventChange`.
  */
 export function ResourceColumnsView<TEvent>({
   actions,
   environment,
   events,
   options,
-  projection: { resources },
+  projection: { columns, resources },
   range,
 }: ResourceColumnsViewProps<TEvent>) {
-  const days = resources[0]?.days ?? [];
-  const keys = useMemo(
-    () => resources.map(({ heading: { id } }) => `${typeof id}:${id}`),
-    [resources],
-  );
+  const keys = useMemo(() => resources.map(({ resource }) => resource.key), [resources]);
   const { scrollRef, scrollbarWidth, virtualizer } = useColumnVirtualizer({
     keys,
-    minWidth: MIN_DAY_WIDTH * Math.max(1, days.length),
+    minWidth: MIN_DAY_WIDTH * Math.max(1, columns.length),
     rtl: environment.direction === "rtl",
   });
   const { followX, followY, sync } = useAxisSync(scrollRef);
+  useFocusedResourceInView(resources, virtualizer);
   const items = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
-  const headings = useMemo(() => resources.map(({ heading }) => heading), [resources]);
 
-  const columns = useMemo(() => days.map(({ column }) => column), [days]);
+  // Pointer drags speak through the same messages as the keyboard, and the drag preview labels
+  // the proposed range in the calendar's locale. The resource comes from `data-resource-id`.
   const announcer = useCalendarAnnouncer();
   const pointerRef = useCalendarPointer({
     announcer,
@@ -79,47 +79,76 @@ export function ResourceColumnsView<TEvent>({
   });
   const keyboard = useViewKeyboard({ snap });
   const labelEvent = useEventLabel(environment, options.describeEvent);
-  const toggle = (_id: ResourceId) => {};
+  const placed = { items, resources, scrollbarWidth, totalSize };
 
   return (
-    // Rows: resource headers and the timed columns; each starts with a gutter cell.
+    // Rows: resource headers, dates over several days, all-day events, and the timed columns; each
+    // starts with a gutter cell.
     <div
       ref={pointerRef}
       role="grid"
       aria-label={timeGridTitle(range, environment.locale)}
-      aria-colcount={1 + resources.length * days.length}
+      aria-colcount={1 + resources.length * columns.length}
       {...keyboard}
       data-slot="resource-columns"
       className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-gutter-width:3rem] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize sm:[--calendar-gutter-width:4rem]"
     >
       <div className="shrink-0 border-b border-calendar-grid">
         <ResourceColumnsHeader
+          {...placed}
           corner={
-            days[0] === undefined
+            columns[0] === undefined
               ? null
-              : offsetLabel(environment.locale, environment.timeZone, days[0])
+              : offsetLabel(environment.locale, environment.timeZone, columns[0])
           }
-          days={days.length}
+          days={columns.length}
           followX={followX}
-          headings={headings}
-          items={items}
-          onToggle={toggle}
-          scrollbarWidth={scrollbarWidth}
-          totalSize={totalSize}
+        />
+        {columns.length > 1 && resources[0] !== undefined && (
+          <ResourceColumnsDates
+            {...placed}
+            days={resources[0].days}
+            followX={followX}
+            locale={environment.locale}
+          />
+        )}
+        <ResourceColumnsAllDay
+          {...placed}
+          followX={followX}
+          getEventColor={options.getEventColor}
+          labelEvent={labelEvent}
+          locale={environment.locale}
         />
       </div>
       <ResourceColumnsBody
+        {...placed}
         environment={environment}
         followY={followY}
         getEventColor={options.getEventColor}
-        items={items}
         labelEvent={labelEvent}
         onScroll={sync}
-        resources={resources}
         scrollRef={scrollRef}
         slotMinutes={snap.increment}
-        totalSize={totalSize}
       />
     </div>
   );
+}
+
+/**
+ * Resource columns over one day, or `days` days side by side for each resource. Set
+ * `unassigned: "bucket"` to show events without resources in an "Unassigned" column.
+ */
+export function createResourceColumnsView<TEvent = unknown>(
+  defaultOptions: ResourceColumnsViewOptions<TEvent> = {},
+  days = 1,
+) {
+  return defineCalendarView({
+    defaultOptions,
+    name: "resources",
+    strategy: resourceColumnsStrategy<ResourceColumnsViewOptions<TEvent>, TEvent>({
+      count: days,
+      kind: "days",
+    }),
+    Renderer: ResourceColumnsView<TEvent>,
+  });
 }

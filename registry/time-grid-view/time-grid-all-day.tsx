@@ -1,8 +1,10 @@
 import {
   limitDayGridLanes,
+  showsInResource,
   useCalendarFocus,
   useCalendarInteraction,
   useRovingFocus,
+  type DayGridOverflow,
   type DayGridRow,
   type DayGridSegment,
   type EventId,
@@ -18,6 +20,8 @@ import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 import { Button } from "@registry/ui/button";
 
+import { inResource } from "./time-grid-column";
+
 export interface TimeGridAllDayProps<TEvent> {
   readonly days: readonly TimeGridDay<TEvent>[];
   /** Full dates, for the cells' accessible names. */
@@ -29,7 +33,9 @@ export interface TimeGridAllDayProps<TEvent> {
   readonly row: DayGridRow<TEvent, EventId, ResourceId>;
 }
 
+type Row<TEvent> = DayGridRow<TEvent, EventId, ResourceId>;
 type Segment<TEvent> = DayGridSegment<TEvent, EventId, ResourceId>;
+type Overflow<TEvent> = DayGridOverflow<TEvent, EventId, ResourceId>;
 
 /** Lanes shown before the row collapses busy days into "+N more". */
 const COLLAPSED_LANES = 3;
@@ -65,22 +71,27 @@ function eventCount(count: number): string {
 /** A date's all-day cell and keyboard focus target; it shows a keyboard all-day create's range. */
 function AllDayCell({
   children,
+  colIndex,
   count,
   date,
   formatDate,
   onOpenDay,
+  resourceId,
 }: {
   readonly children: ReactNode;
+  readonly colIndex?: number;
   readonly count: number;
   readonly date: Temporal.PlainDate;
   readonly formatDate: (date: Temporal.PlainDate) => string;
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
+  readonly resourceId?: ResourceId | null;
 }) {
-  const roving = useRovingFocus({ date, kind: "day" });
+  const roving = useRovingFocus({ date, kind: "day", resourceId });
   const inDraft = useCalendarInteraction(
     (session) =>
       session?.eventId === null &&
       session.proposed.kind === "all-day" &&
+      (resourceId === undefined || showsInResource(session.proposed.resourceIds, resourceId)) &&
       Temporal.PlainDate.compare(session.proposed.start, date) <= 0 &&
       Temporal.PlainDate.compare(date, session.proposed.end) < 0,
   );
@@ -88,6 +99,7 @@ function AllDayCell({
   return (
     <div
       role="gridcell"
+      aria-colindex={colIndex}
       aria-label={`${formatDate(date)}, ${eventCount(count)}`}
       {...roving}
       onKeyDown={(event) => {
@@ -120,15 +132,17 @@ function AllDayEvent<TEvent>({
   date,
   getEventColor,
   labelEvent,
+  resourceId,
   segment: { endsAfter, event, lane, span, startsBefore },
 }: {
   /** The segment's first date. */
   readonly date: Temporal.PlainDate;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly labelEvent: EventLabeler<TEvent>;
+  readonly resourceId?: ResourceId | null;
   readonly segment: Segment<TEvent>;
 }) {
-  const chip = useEventChip(event, { date, days: span, labelEvent });
+  const chip = useEventChip(event, { date, days: span, labelEvent, resourceId });
 
   return (
     <EventChip
@@ -146,96 +160,187 @@ function AllDayEvent<TEvent>({
   );
 }
 
+/** A row of all-day cells, with its resource in a view that has a row per resource. */
+export interface AllDayRow<TEvent> {
+  readonly resourceId?: ResourceId | null;
+  readonly row: Row<TEvent>;
+}
+
+export interface AllDayCollapse<TEvent> {
+  /** Whether busy days show three lanes and "+N more". */
+  readonly collapsed: boolean;
+  /** Whether any day has more than three lanes. */
+  readonly collapsible: boolean;
+  readonly expand: () => void;
+  /** The rows' height, as CSS. */
+  readonly height: string;
+  /** Each row's three-lane version while collapsed, else `null`, in the order of the rows. */
+  readonly overflows: readonly (Overflow<TEvent> | null)[];
+  readonly toggle: () => void;
+}
+
 /**
- * The grid's all-day row: all-day and multi-day events above the timed columns, collapsing to
- * three lanes until expanded. A day's cell holds the segments that start on it; a span stretches
- * over the cells that follow. Keyboard focus on an event the collapsed row hides expands it.
+ * All-day rows collapse together to three lanes until expanded, and take the height of the
+ * busiest one. Keyboard focus on an event a collapsed row hides expands them.
  */
-export function TimeGridAllDay<TEvent>({
-  days,
-  formatDate,
-  getEventColor,
-  labelEvent,
-  onOpenDay,
-  row,
-}: TimeGridAllDayProps<TEvent>) {
+export function useAllDayCollapse<TEvent>(
+  days: readonly TimeGridDay<TEvent>[],
+  rows: readonly AllDayRow<TEvent>[],
+): AllDayCollapse<TEvent> {
   const [expanded, setExpanded] = useState(false);
-  const overflow = useMemo(() => limitDayGridLanes(row, COLLAPSED_LANES), [row]);
-  const collapsible = overflow.hiddenCounts.some((count) => count > 0);
+  const limited = useMemo(
+    () => rows.map(({ row }) => limitDayGridLanes(row, COLLAPSED_LANES)),
+    [rows],
+  );
+  const collapsible = limited.some(({ hiddenCounts }) => hiddenCounts.some((count) => count > 0));
   const focusHidden = useCalendarFocus((focus) => {
     if (focus?.kind !== "event") return false;
     const column = days.findIndex(({ column: { date } }) => date.equals(focus.date));
     const shows = (segment: Segment<TEvent>) =>
       segment.event.id === focus.eventId && covers(segment, column);
-    return column !== -1 && row.segments.some(shows) && !overflow.segments.some(shows);
+    return (
+      column !== -1 &&
+      rows.some(
+        ({ resourceId, row }, index) =>
+          inResource(focus, resourceId) &&
+          row.segments.some(shows) &&
+          !limited[index]!.segments.some(shows),
+      )
+    );
   });
   const collapsed = collapsible && !expanded && !focusHidden;
-  const segments = collapsed ? overflow.segments : row.segments;
-  const lanes = Math.max(1, collapsed ? COLLAPSED_LANES : row.laneCount);
+  const lanes = collapsed
+    ? COLLAPSED_LANES
+    : rows.reduce((most, { row }) => Math.max(most, row.laneCount), 1);
+
+  return {
+    collapsed,
+    collapsible,
+    expand: () => setExpanded(true),
+    height: `${2 * ROW_PADDING + lanes * (LANE + LANE_GAP) - LANE_GAP}rem`,
+    overflows: collapsed ? limited : rows.map(() => null),
+    toggle: () => setExpanded(collapsed),
+  };
+}
+
+/** The all-day row's header, with the chevron that shows or hides busy days' extra lanes. */
+export function AllDayRowHeader({ collapse }: { readonly collapse: AllDayCollapse<unknown> }) {
+  const { collapsed, collapsible, toggle } = collapse;
 
   return (
     <div
-      role="row"
-      className="flex"
-      style={{ height: `${2 * ROW_PADDING + lanes * (LANE + LANE_GAP) - LANE_GAP}rem` }}
+      role="rowheader"
+      className="flex w-(--calendar-gutter-width) shrink-0 items-start justify-end pt-0.5 pe-1"
     >
-      <div
-        role="rowheader"
-        className="flex w-(--calendar-gutter-width) shrink-0 items-start justify-end pt-0.5 pe-1"
-      >
-        <span className="sr-only">All day</span>
-        {collapsible && (
-          <Button
-            aria-expanded={!collapsed}
-            aria-label={collapsed ? "Show all all-day events" : "Show fewer all-day events"}
-            className="rounded-full"
-            onClick={() => setExpanded(collapsed)}
-            size="icon-sm"
-            // The grid keeps one tab stop; arrow keys reach hidden events and expand the row.
-            tabIndex={-1}
-            variant="ghost"
-          >
-            <ChevronDownIcon className={cn("transition-transform", !collapsed && "rotate-180")} />
-          </Button>
-        )}
-      </div>
-      <div
-        className="grid flex-1"
-        style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
-      >
-        {days.map(({ column: { date, key } }, column) => (
-          <AllDayCell
-            key={key}
-            count={row.segments.filter((segment) => covers(segment, column)).length}
-            date={date}
-            formatDate={formatDate}
-            onOpenDay={onOpenDay}
-          >
-            {segments
-              .filter((segment) => segment.column === column)
-              .map((segment) => (
-                <AllDayEvent
-                  key={`${typeof segment.event.id}:${segment.event.id}`}
-                  date={date}
-                  getEventColor={getEventColor}
-                  labelEvent={labelEvent}
-                  segment={segment}
-                />
-              ))}
-            {collapsed && overflow.hiddenCounts[column]! > 0 && (
-              <button
-                className="absolute start-0 z-1 mx-1 truncate rounded-md px-2 text-start text-xs font-medium text-muted-foreground hover:bg-accent focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-                onClick={() => setExpanded(true)}
-                style={laneStyle(COLLAPSED_LANES - 1)}
-                tabIndex={-1}
-                type="button"
-              >
-                +{overflow.hiddenCounts[column]} more
-              </button>
-            )}
-          </AllDayCell>
-        ))}
-      </div>
+      <span className="sr-only">All day</span>
+      {collapsible && (
+        <Button
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Show all all-day events" : "Show fewer all-day events"}
+          className="rounded-full"
+          onClick={toggle}
+          size="icon-sm"
+          // The grid keeps one tab stop; arrow keys reach hidden events and expand the row.
+          tabIndex={-1}
+          variant="ghost"
+        >
+          <ChevronDownIcon className={cn("transition-transform", !collapsed && "rotate-180")} />
+        </Button>
+      )}
+    </div>
+  );
+}
+
+export interface TimeGridAllDayCellsProps<TEvent> extends TimeGridAllDayProps<TEvent> {
+  /** The first cell's `aria-colindex`, in a grid that renders only some of its columns. */
+  readonly colIndex?: number;
+  /** Shows the rest of a collapsed row. */
+  readonly onExpand: () => void;
+  /** The row's three-lane version while collapsed, from `useAllDayCollapse`. */
+  readonly overflow: Overflow<TEvent> | null;
+  /** The row's resource, in a view with a row per resource. */
+  readonly resourceId?: ResourceId | null;
+}
+
+/**
+ * One all-day row's cells: a day's cell holds the segments that start on it, and a span stretches
+ * over the cells that follow.
+ */
+export function TimeGridAllDayCells<TEvent>({
+  colIndex,
+  days,
+  formatDate,
+  getEventColor,
+  labelEvent,
+  onExpand,
+  onOpenDay,
+  overflow,
+  resourceId,
+  row,
+}: TimeGridAllDayCellsProps<TEvent>) {
+  const segments = overflow?.segments ?? row.segments;
+
+  return (
+    <div
+      className="grid flex-1"
+      style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+    >
+      {days.map(({ column: { date, key } }, column) => (
+        <AllDayCell
+          key={key}
+          colIndex={colIndex === undefined ? undefined : colIndex + column}
+          count={row.segments.filter((segment) => covers(segment, column)).length}
+          date={date}
+          formatDate={formatDate}
+          onOpenDay={onOpenDay}
+          resourceId={resourceId}
+        >
+          {segments
+            .filter((segment) => segment.column === column)
+            .map((segment) => (
+              <AllDayEvent
+                key={`${typeof segment.event.id}:${segment.event.id}`}
+                date={date}
+                getEventColor={getEventColor}
+                labelEvent={labelEvent}
+                resourceId={resourceId}
+                segment={segment}
+              />
+            ))}
+          {overflow !== null && overflow.hiddenCounts[column]! > 0 && (
+            <button
+              className="absolute start-0 z-1 mx-1 truncate rounded-md px-2 text-start text-xs font-medium text-muted-foreground hover:bg-accent focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+              onClick={onExpand}
+              style={laneStyle(COLLAPSED_LANES - 1)}
+              tabIndex={-1}
+              type="button"
+            >
+              +{overflow.hiddenCounts[column]} more
+            </button>
+          )}
+        </AllDayCell>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * The grid's all-day row: all-day and multi-day events above the timed columns, collapsing to
+ * three lanes until expanded.
+ */
+export function TimeGridAllDay<TEvent>(props: TimeGridAllDayProps<TEvent>) {
+  const { days, row } = props;
+  const rows = useMemo(() => [{ row }], [row]);
+  const collapse = useAllDayCollapse(days, rows);
+
+  return (
+    <div role="row" className="flex" style={{ height: collapse.height }}>
+      <AllDayRowHeader collapse={collapse} />
+      <TimeGridAllDayCells
+        {...props}
+        onExpand={collapse.expand}
+        overflow={collapse.overflows[0]!}
+      />
     </div>
   );
 }

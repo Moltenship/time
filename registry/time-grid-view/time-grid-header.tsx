@@ -1,6 +1,7 @@
 import type {
   CalendarEnvironmentBase,
   CalendarViewActions,
+  TimeGridColumn,
   TimeGridDay,
 } from "@moltenship/calendar";
 import { useMemo } from "react";
@@ -15,14 +16,14 @@ export interface TimeGridHeaderProps {
   readonly environment: CalendarEnvironmentBase;
 }
 
-/** "GMT-4" for the display zone at the start of the visible range. */
+/** "GMT-4" for the display zone at the start of a column, such as the first visible day. */
 export function offsetLabel(
   locale: Intl.LocalesArgument,
   timeZone: string,
-  day: TimeGridDay<unknown>,
+  column: TimeGridColumn,
 ) {
   return new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: "shortOffset" })
-    .formatToParts(day.column.day.start)
+    .formatToParts(column.day.start)
     .find((part) => part.type === "timeZoneName")?.value;
 }
 
@@ -48,7 +49,7 @@ export function TimeGridHeader({ actions, days, dayView, environment }: TimeGrid
         role="columnheader"
         className="flex w-(--calendar-gutter-width) shrink-0 items-end justify-end pe-2 pb-1 text-[0.625rem] text-calendar-axis"
       >
-        {days[0] === undefined ? null : offsetLabel(locale, timeZone, days[0])}
+        {days[0] === undefined ? null : offsetLabel(locale, timeZone, days[0].column)}
       </div>
       <div
         className="grid flex-1"

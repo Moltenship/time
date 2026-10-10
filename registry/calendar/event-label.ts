@@ -13,7 +13,8 @@ type Where = Pick<CalendarEnvironmentBase, "locale" | "timeZone">;
 /** Extra words for an event's accessible name, such as the name of its calendar. */
 export type EventDescriber<TEvent> = (event: TEvent) => string | undefined;
 
-export type EventLabeler<TEvent> = (event: LabelledEvent<TEvent>) => string;
+/** An event's accessible name; `place` names where this copy shows, such as its resource. */
+export type EventLabeler<TEvent> = (event: LabelledEvent<TEvent>, place?: string) => string;
 
 interface WhenFormats {
   readonly date: Intl.DateTimeFormat;
@@ -77,8 +78,8 @@ export function eventTitle({ title }: { readonly title: string }): string {
 }
 
 /**
- * Accessible names for events: title, when, the view's `describeEvent` detail, and whether a
- * change is still saving, as in "Standup, Thursday, October 8, 9:00 – 9:30 AM, Work, saving".
+ * Accessible names for events: title, when, where, the view's `describeEvent` detail, and whether
+ * a change is still saving, as in "Standup, Thursday, October 8, 9:00 – 9:30 AM, Work, saving".
  * The English words live here; edit or translate them in place.
  */
 export function useEventLabel<TEvent>(
@@ -86,10 +87,11 @@ export function useEventLabel<TEvent>(
   describe: EventDescriber<TEvent> | undefined,
 ): EventLabeler<TEvent> {
   return useMemo(
-    () => (event) =>
+    () => (event, place) =>
       [
         eventTitle(event),
         describeWhen(event, { locale, timeZone }),
+        place,
         describe?.(event.event),
         event.isPending === true ? "saving" : undefined,
       ]

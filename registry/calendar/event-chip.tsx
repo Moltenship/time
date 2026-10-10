@@ -53,6 +53,8 @@ export interface EventChipFocusOptions<TEvent> {
   /** Whether the element is one of the view's focus targets; a copy in a list is not. */
   readonly focusTarget?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
+  /** The resource this copy shows in, in a view with a copy per resource. */
+  readonly resourceId?: ResourceId | null;
 }
 
 /**
@@ -62,12 +64,12 @@ export interface EventChipFocusOptions<TEvent> {
  */
 export function useEventChip<TEvent>(
   event: NormalizedCalendarEvent<TEvent, EventId, ResourceId>,
-  { date, days = 1, focusTarget = true, labelEvent }: EventChipFocusOptions<TEvent>,
+  { date, days = 1, focusTarget = true, labelEvent, resourceId }: EventChipFocusOptions<TEvent>,
 ) {
   const grabbed = useCalendarInteraction((session) => session?.eventId === event.id);
   // A grabbed event previews as pending, but nothing is saving until the gesture commits.
   const pending = event.isPending === true && !grabbed;
-  const roving = useRovingFocus({ date, eventId: event.id, kind: "event" }, { days });
+  const roving = useRovingFocus({ date, eventId: event.id, kind: "event", resourceId }, { days });
 
   return {
     ...eventIdAttributes(event.id),

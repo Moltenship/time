@@ -1,8 +1,10 @@
 import {
+  resourceIdAttributes,
   timeGridPosition,
   useNow,
   type CalendarEnvironmentBase,
-  type TimeGridDay,
+  type ResourceColumn,
+  type TimeGridPosition,
 } from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type RefCallback, type RefObject } from "react";
@@ -13,15 +15,10 @@ import { TimeGridHours, useOpeningScroll } from "@registry/time-grid-view/time-g
 import {
   TimeGridColumn,
   useTimeGridColumnFormats,
+  type TimeGridColumnFormats,
 } from "@registry/time-grid-view/time-grid-column";
 
-import type { ResourceHeading } from "./resource-columns-header";
-
-/** A resource's day columns, as the body renders them. */
-export interface ResourceDays<TEvent> {
-  readonly days: readonly TimeGridDay<TEvent>[];
-  readonly heading: ResourceHeading;
-}
+import { resourceTitle } from "./resource-columns-header";
 
 export interface ResourceColumnsBodyProps<TEvent> {
   readonly environment: CalendarEnvironmentBase;
@@ -32,12 +29,70 @@ export interface ResourceColumnsBodyProps<TEvent> {
   readonly items: readonly VirtualItem[];
   readonly labelEvent: EventLabeler<TEvent>;
   readonly onScroll: () => void;
-  readonly resources: readonly ResourceDays<TEvent>[];
+  readonly resources: readonly ResourceColumn<TEvent>[];
   /** The scrolling element, which the virtualizer reads and dragging scrolls near its edges. */
   readonly scrollRef: RefObject<HTMLDivElement | null>;
   /** Length of a keyboard slot, as the keyboard's snap sets it. */
   readonly slotMinutes: number;
   readonly totalSize: number;
+}
+
+/**
+ * One resource's day columns. `data-resource-id` around them puts every drop, create, and
+ * keyboard cell inside in this resource.
+ */
+function ResourceDays<TEvent>({
+  column: { days, resource },
+  colIndex,
+  formats,
+  getEventColor,
+  labelEvent,
+  now,
+  size,
+  slotMinutes,
+  start,
+  timeZone,
+}: {
+  readonly column: ResourceColumn<TEvent>;
+  readonly colIndex: number;
+  readonly formats: TimeGridColumnFormats;
+  readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  readonly labelEvent: EventLabeler<TEvent>;
+  readonly now: TimeGridPosition | null;
+  readonly size: number;
+  readonly slotMinutes: number;
+  readonly start: number;
+  readonly timeZone: string;
+}) {
+  const title = resourceTitle(resource);
+  const here = useMemo(() => ({ id: resource.id, title }), [resource.id, title]);
+
+  return (
+    <div
+      {...resourceIdAttributes(resource.id)}
+      className="absolute inset-y-0 grid"
+      style={{
+        gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+        insetInlineStart: start,
+        width: size,
+      }}
+    >
+      {days.map((day, index) => (
+        <TimeGridColumn
+          key={day.column.key}
+          colIndex={colIndex + index}
+          day={day}
+          formats={formats}
+          getEventColor={getEventColor}
+          labelEvent={labelEvent}
+          nowTop={now?.column === index ? now.top : null}
+          resource={here}
+          slotMinutes={slotMinutes}
+          timeZone={timeZone}
+        />
+      ))}
+    </div>
+  );
 }
 
 /**
@@ -95,34 +150,21 @@ export function ResourceColumnsBody<TEvent>({
           className="relative h-[calc(var(--calendar-hour-height)*24)] bg-[linear-gradient(to_bottom,var(--calendar-grid)_1px,transparent_1px)] bg-size-[100%_var(--calendar-hour-height)]"
           style={{ width: totalSize }}
         >
-          {items.map(({ index, key, size, start }) => {
-            const resource = resources[index]!;
-            return (
-              <div
-                key={key}
-                data-resource-id={String(resource.heading.id)}
-                className="absolute inset-y-0 grid"
-                style={{
-                  gridTemplateColumns: `repeat(${resource.days.length}, minmax(0, 1fr))`,
-                  insetInlineStart: start,
-                  width: size,
-                }}
-              >
-                {resource.days.map((day, column) => (
-                  <TimeGridColumn
-                    key={day.column.key}
-                    day={day}
-                    formats={formats}
-                    getEventColor={getEventColor}
-                    labelEvent={labelEvent}
-                    nowTop={nowPosition?.column === column ? nowPosition.top : null}
-                    slotMinutes={slotMinutes}
-                    timeZone={timeZone}
-                  />
-                ))}
-              </div>
-            );
-          })}
+          {items.map(({ index, key, size, start }) => (
+            <ResourceDays
+              key={key}
+              colIndex={2 + index * (days?.length ?? 1)}
+              column={resources[index]!}
+              formats={formats}
+              getEventColor={getEventColor}
+              labelEvent={labelEvent}
+              now={nowPosition}
+              size={size}
+              slotMinutes={slotMinutes}
+              start={start}
+              timeZone={timeZone}
+            />
+          ))}
         </div>
       </div>
     </div>
