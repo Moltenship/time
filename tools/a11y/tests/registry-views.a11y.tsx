@@ -1,4 +1,5 @@
 import { describe, expect, test, vi } from "vite-plus/test";
+import { userEvent } from "vite-plus/test/browser";
 
 import { seriousViolations, setTheme, themes } from "./axe";
 import { RegistryScreen, registryViews } from "./registry-screen";
@@ -54,6 +55,27 @@ describe.each(themes)("registry views, %s theme", (theme) => {
     );
 
     expect(document.activeElement).toBe(previous);
+  });
+
+  test("the annotation popover leaves focus where an outside click put it", async () => {
+    setTheme(theme);
+    await render(<RegistryScreen view="week" />);
+    const field = document.body.appendChild(document.createElement("input"));
+    field.setAttribute("aria-label", "Elsewhere");
+    try {
+      document.querySelector<HTMLElement>('button[aria-label^="Previous"]')!.focus();
+      await click(
+        document.querySelector<HTMLElement>('[data-slot="annotation-mark"][data-source="music"]'),
+      );
+      await userEvent.click(field);
+      await vi.waitFor(() =>
+        expect(document.querySelector('[data-slot="popover-content"]')).toBeNull(),
+      );
+
+      expect(document.activeElement).toBe(field);
+    } finally {
+      field.remove();
+    }
   });
 
   test("month view's +N more popover", async () => {

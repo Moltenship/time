@@ -389,7 +389,8 @@ export function TimeGridAnnotations({ marks }: TimeGridAnnotationsProps) {
 /**
  * One tooltip and one popover for every mark in the grid, through Base UI's detached triggers, so
  * hundreds of marks never mount hundreds of roots. The tooltip follows the pointer vertically. The
- * popover keeps focus until it closes, then hands it back to what had it, never to the hidden mark.
+ * popover keeps focus until it closes, then hands it back to what had it, never to the hidden mark,
+ * unless a click outside focused something else.
  */
 export function TimeGridAnnotationOverlays({
   formatTime,
@@ -452,6 +453,15 @@ export function TimeGridAnnotationOverlays({
               // Marks open from a pointer, so the popup takes focus rather than its close button.
               initialFocus={popup}
               finalFocus={() => {
+                // An outside click that focused something else keeps that focus.
+                const active = document.activeElement;
+                if (
+                  active !== null &&
+                  active !== document.body &&
+                  !popup.current?.contains(active)
+                ) {
+                  return false;
+                }
                 const previous = returnFocus.current;
                 return previous instanceof HTMLElement &&
                   previous.isConnected &&
