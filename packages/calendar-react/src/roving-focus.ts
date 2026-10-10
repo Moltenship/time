@@ -20,18 +20,39 @@ interface RovingItem {
   readonly target: CalendarFocus;
 }
 
-/**
- * Whether `focus` is on an element that shows `target` across `days` dates. A resource on only one
- * side matches any resource, so focus carries over between views with and without resources.
- */
+/** Whether `focus` is on an element that shows `target` across `days` dates. */
 function focusLandsOn(focus: CalendarFocus, target: CalendarFocus, days: number): boolean {
-  const resourceId = target.resourceId === undefined ? undefined : focus.resourceId;
-  if (resourceId !== undefined && resourceId !== target.resourceId) return false;
   if (focus.kind === "event" && target.kind === "event") {
     const offset = target.date.until(focus.date).days;
-    return focus.eventId === target.eventId && offset >= 0 && offset < days;
+    return (
+      focus.eventId === target.eventId &&
+      focus.resourceId === target.resourceId &&
+      offset >= 0 &&
+      offset < days
+    );
   }
-  return sameFocus({ ...focus, resourceId: target.resourceId }, target);
+  return sameFocus(focus, target);
+}
+
+/**
+ * `focus` as it lands on an element showing `target` across `days` dates, or `null` when it does
+ * not. A resource on only one side matches, so focus carries over between views with and without
+ * resources, and then takes the element's resource, keeping its date: one copy is the tab stop,
+ * and keys act in the resource it shows.
+ */
+function landOn(focus: CalendarFocus, target: CalendarFocus, days: number): CalendarFocus | null {
+  const { resourceId } = target;
+  if (focus.resourceId === resourceId) return focusLandsOn(focus, target, days) ? focus : null;
+  if (focus.resourceId !== undefined && resourceId !== undefined) return null;
+  const landed = { ...focus, resourceId };
+  return focusLandsOn(landed, target, days) ? landed : null;
+}
+
+interface ResolvedTabStop {
+  readonly element?: HTMLElement;
+  /** Whether `target` is the focus, landed on its element. */
+  readonly isFocus?: boolean;
+  readonly target: CalendarFocus | null;
 }
 
 /** Where focus enters the active view: its default entry (`"home"`) or its last target. */
@@ -63,31 +84,36 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
   let focus: CalendarFocus | null = null;
   let getEntry = initialEntry;
   let entryCommand: "end" | "home" = "home";
-  let resolved: { readonly element?: HTMLElement; readonly target: CalendarFocus | null } | null =
-    null;
+  let resolved: ResolvedTabStop | null = null;
   /**
    * DOM focus owed after the next update: to the tab stop, as keyboard navigation asks, or only
    * to the focused target once it renders, after the element holding DOM focus went away.
    */
   let owed: "focus" | "tab-stop" | null = null;
 
-  function find(target: CalendarFocus | null): HTMLElement | undefined {
+  function find(
+    target: CalendarFocus | null,
+  ): { readonly element: HTMLElement; readonly target: CalendarFocus } | undefined {
     if (target === null) return undefined;
+    let compatible: { readonly element: HTMLElement; readonly target: CalendarFocus } | undefined;
     for (const [element, item] of items) {
-      if (focusLandsOn(target, item.target, item.days)) return element;
+      const landed = landOn(target, item.target, item.days);
+      // An element in the focus's own resource wins over one that only matches across views.
+      if (landed === target) return { element, target };
+      if (landed !== null) compatible ??= { element, target: landed };
     }
-    return undefined;
+    return compatible;
   }
 
-  function resolve() {
+  function resolve(): ResolvedTabStop {
     if (resolved !== null) return resolved;
     const entry = getEntry(entryCommand);
     // A view without navigation has no entry, so its focus has to stand in.
     if (items.size === 0) return (resolved = { target: entry ?? focus });
-    for (const target of [focus, entry]) {
-      const element = find(target);
-      if (element !== undefined) return (resolved = { element, target });
-    }
+    const found = find(focus);
+    if (found !== undefined) return (resolved = { ...found, isFocus: true });
+    const entered = find(entry);
+    if (entered !== undefined) return (resolved = entered);
     const [element] = [...items.keys()].sort((left, right) =>
       left.compareDocumentPosition(right) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1,
     );
@@ -112,9 +138,9 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
 
   /** Focuses the tab stop unless focus has moved elsewhere on the page in the meantime. */
   function focusNow() {
-    const { element, target } = resolve();
+    const { element, isFocus = false } = resolve();
     // Owed only to the focus, which has not rendered yet.
-    if (owed === "focus" && (focus === null || target !== focus)) return;
+    if (owed === "focus" && !isFocus) return;
     owed = null;
     const active = document.activeElement;
     if (element === undefined || element === active) return;
@@ -143,7 +169,7 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
     focusAt(node: Node) {
       const item = itemAt(node);
       if (item === undefined) return focus;
-      return focus !== null && focusLandsOn(focus, item.target, item.days) ? focus : item.target;
+      return (focus === null ? null : landOn(focus, item.target, item.days)) ?? item.target;
     },
     focusTabStop(when: "now" | "after-update") {
       owed = "tab-stop";
@@ -223,13 +249,21 @@ export function RovingFocusSync({
 }
 
 function focusKey(target: CalendarFocus): string {
+  const { resourceId } = target;
+  // `1` and `"1"` are distinct IDs, and `null` (unassigned) differs from no resource.
+  const resource =
+    resourceId === undefined
+      ? ""
+      : resourceId === null
+        ? "|unassigned"
+        : `|${typeof resourceId}:${resourceId}`;
   switch (target.kind) {
     case "day":
-      return `day:${target.date.toString()}`;
+      return `day:${target.date.toString()}${resource}`;
     case "slot":
-      return `slot:${target.date.toString()}T${target.time.toString()}`;
+      return `slot:${target.date.toString()}T${target.time.toString()}${resource}`;
     case "event":
-      return `event:${typeof target.eventId}:${target.eventId}@${target.date.toString()}`;
+      return `event:${typeof target.eventId}:${target.eventId}@${target.date.toString()}${resource}`;
   }
 }
 
@@ -275,9 +309,9 @@ export function useRovingFocus(
     (event: FocusEvent<HTMLElement>) => {
       if (event.target !== event.currentTarget) return;
       const focus = read().focus as CalendarFocus | null;
-      if (focus === null || !focusLandsOn(focus, latest.current, days)) {
-        actions.setFocus(latest.current);
-      }
+      const landed = focus === null ? null : landOn(focus, latest.current, days);
+      // Focus already on this element stays as it is, keeping an event's date within the element.
+      if (landed === null || landed !== focus) actions.setFocus(landed ?? latest.current);
     },
     [actions, days, read],
   );
