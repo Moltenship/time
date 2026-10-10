@@ -13,7 +13,7 @@ export interface TimeGridAnnotationGeometry {
   readonly minGap?: number;
   /** `pack` shares the rail between overlapping marks; `per-source` gives each source a lane. */
   readonly layout?: "pack" | "per-source";
-  /** In `pack`, marks beyond this many overlapping share the last lane. */
+  /** In `pack`, marks beyond this many overlapping share the last lane. A whole number, 1 or more. */
   readonly maxLanes?: number;
 }
 
@@ -52,15 +52,40 @@ const later = (left: Temporal.Instant, right: Temporal.Instant) =>
 const earlier = (left: Temporal.Instant, right: Temporal.Instant) =>
   Temporal.Instant.compare(left, right) <= 0 ? left : right;
 
-function mergeGapNanoseconds(source: CalendarAnnotationSource): bigint {
-  return source.mergeGap === undefined
-    ? 0n
-    : BigInt(Math.round(source.mergeGap.total({ unit: "nanoseconds" })));
+/** `mergeGap` in nanoseconds from the start of the column's day, so calendar units work too. */
+function mergeGapNanoseconds(
+  source: CalendarAnnotationSource,
+  dayStart: Temporal.Instant,
+  timeZone: string,
+): bigint {
+  if (source.mergeGap === undefined) return 0n;
+  const relativeTo = dayStart.toZonedDateTimeISO(timeZone);
+  return BigInt(Math.round(source.mergeGap.total({ relativeTo, unit: "nanoseconds" })));
 }
+
+interface Group<TData> {
+  annotations: CalendarAnnotation<TData, ResourceId>[];
+  end: Temporal.Instant;
+  start: Temporal.Instant;
+}
+
+/** A key that keeps `1` and `"1"`, and every source and ID pair, apart. */
+const markKey = (
+  source: CalendarAnnotationSource,
+  annotation: CalendarAnnotation<unknown, ResourceId>,
+) => JSON.stringify([source.id, annotation.id]);
+
+const byStart = (
+  left: { readonly start: Temporal.Instant; readonly end: Temporal.Instant },
+  right: typeof left,
+) =>
+  Temporal.Instant.compare(left.start, right.start) ||
+  Temporal.Instant.compare(left.end, right.end);
 
 /**
  * Merges one source's annotations on a column's day: by the source's `mergeGap` in time, and by
- * drawn size, so a short mark's circle never touches the next mark.
+ * drawn size, so marks of one source never touch. Drawn positions follow the wall clock, which
+ * repeats an hour on a fall-back day, so groups are merged again in drawn order until none touch.
  */
 function mergeSource<TSource extends CalendarAnnotationSource, TData>(
   column: TimeGridColumn,
@@ -69,42 +94,58 @@ function mergeSource<TSource extends CalendarAnnotationSource, TData>(
   annotations: readonly CalendarAnnotation<TData, ResourceId>[],
   { minGap, minHeight }: { readonly minGap: number; readonly minHeight: number },
 ): UnplacedMark<TSource, TData>[] {
-  const gap = mergeGapNanoseconds(source);
-  const groups: {
-    annotations: CalendarAnnotation<TData, ResourceId>[];
-    end: Temporal.Instant;
-    start: Temporal.Instant;
-  }[] = [];
-  const box = (start: Temporal.Instant, end: Temporal.Instant) =>
+  const gap = mergeGapNanoseconds(source, day.start, column.day.timeZone);
+  const box = ({ end, start }: Group<TData>) =>
     timedFragmentBox(column, instantInterval(later(start, day.start), earlier(end, day.end)));
+  const drawn = (group: Group<TData>) => {
+    const { height, top } = box(group);
+    return { bottom: top + Math.max(height, minHeight), top };
+  };
+  const touch = (left: Group<TData>, right: Group<TData>) => {
+    const [a, b] = [drawn(left), drawn(right)];
+    return b.top - a.bottom <= minGap && a.top - b.bottom <= minGap;
+  };
+  const merge = (into: Group<TData>, from: Group<TData>) => {
+    into.annotations = [...into.annotations, ...from.annotations].toSorted(byStart);
+    into.start = earlier(into.start, from.start);
+    into.end = later(into.end, from.end);
+  };
 
-  for (const annotation of annotations.toSorted((left, right) =>
-    Temporal.Instant.compare(left.start, right.start),
-  )) {
+  const groups: Group<TData>[] = [];
+  for (const annotation of annotations.toSorted(byStart)) {
+    const next = { annotations: [annotation], end: annotation.end, start: annotation.start };
     const last = groups.at(-1);
-    if (last !== undefined) {
-      const timeGap = annotation.start.epochNanoseconds - last.end.epochNanoseconds;
-      const drawn = box(last.start, last.end);
-      const next = box(annotation.start, annotation.end);
-      if (timeGap <= gap || next.top - (drawn.top + Math.max(drawn.height, minHeight)) <= minGap) {
-        last.annotations.push(annotation);
-        last.end = later(last.end, annotation.end);
-        continue;
+    if (
+      last !== undefined &&
+      (annotation.start.epochNanoseconds - last.end.epochNanoseconds <= gap || touch(last, next))
+    ) {
+      merge(last, next);
+    } else {
+      groups.push(next);
+    }
+  }
+  for (let merged = true; merged;) {
+    merged = false;
+    groups.sort((left, right) => drawn(left).top - drawn(right).top);
+    for (let index = 1; index < groups.length; index++) {
+      if (touch(groups[index - 1]!, groups[index]!)) {
+        merge(groups[index - 1]!, groups.splice(index, 1)[0]!);
+        merged = true;
+        break;
       }
     }
-    groups.push({ annotations: [annotation], end: annotation.end, start: annotation.start });
   }
 
-  return groups.map((group) => {
+  return groups.toSorted(byStart).map((group) => {
     const start = later(group.start, day.start);
     const end = earlier(group.end, day.end);
-    const { height, top } = box(start, end);
+    const { height, top } = box(group);
     return {
       annotations: Object.freeze(group.annotations),
       end,
       endsAfterDay: Temporal.Instant.compare(group.end, day.end) > 0,
       height,
-      key: `${source.id}:${String(group.annotations[0]!.id)}`,
+      key: markKey(source, group.annotations[0]!),
       kind: height < minHeight ? "dot" : "bar",
       source,
       start,
@@ -169,7 +210,12 @@ export function projectTimeGridAnnotations<TSource extends CalendarAnnotationSou
   sources: readonly TSource[],
   geometry: TimeGridAnnotationGeometry = {},
 ): readonly (readonly TimeGridAnnotationMark<TSource, TData>[])[] {
-  const { layout = "pack", maxLanes = DEFAULT_MAX_LANES, minGap = 0, minHeight = 0 } = geometry;
+  const { layout = "pack", minGap = 0, minHeight = 0 } = geometry;
+  // Lanes are whole and at least one.
+  const maxLanes =
+    geometry.maxLanes !== undefined && Number.isFinite(geometry.maxLanes)
+      ? Math.max(1, Math.floor(geometry.maxLanes))
+      : DEFAULT_MAX_LANES;
   return Object.freeze(
     columns.map((column) => {
       const day = column.day.interval;

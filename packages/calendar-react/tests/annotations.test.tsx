@@ -166,3 +166,21 @@ test("invalid annotations are skipped and reported as diagnostics", async () => 
     }),
   ]);
 });
+
+test("a different invalid annotation at the same index reports again", async () => {
+  const onDiagnosticsChange = vi.fn();
+  const invalid = (id: string): Annotation => ({
+    ...annotations[1]!,
+    end: annotations[1]!.start,
+    id,
+  });
+  const harness = await render({ annotations: [invalid("first")], onDiagnosticsChange });
+
+  await harness.render(root({ annotations: [invalid("second")], onDiagnosticsChange }));
+
+  expect(onDiagnosticsChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({
+      issue: expect.objectContaining({ annotation: expect.objectContaining({ id: "second" }) }),
+    }),
+  ]);
+});

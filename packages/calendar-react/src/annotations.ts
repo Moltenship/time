@@ -26,19 +26,16 @@ export function useCalendarAnnotations(): CalendarAnnotations {
 
 /**
  * The root's annotations laid out beside a time grid's columns, one list of marks per column; see
- * `projectTimeGridAnnotations`. `TSource` is the source type given to the root's
- * `annotationSources`, whose objects the marks carry unchanged.
+ * `projectTimeGridAnnotations`. Marks carry the root's source objects unchanged.
  */
-export function useTimeGridAnnotations<
-  TSource extends CalendarAnnotationSource = CalendarAnnotationSource,
->(
+export function useTimeGridAnnotations(
   columns: readonly TimeGridColumn[],
   { layout, maxLanes, minGap, minHeight }: TimeGridAnnotationGeometry = {},
-): readonly (readonly TimeGridAnnotationMark<TSource>[])[] {
+): readonly (readonly TimeGridAnnotationMark[])[] {
   const { snapshot, sources } = useCalendarAnnotations();
   return useMemo(
     () =>
-      projectTimeGridAnnotations(columns, snapshot, sources as readonly TSource[], {
+      projectTimeGridAnnotations(columns, snapshot, sources, {
         layout,
         maxLanes,
         minGap,

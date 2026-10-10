@@ -124,7 +124,7 @@ describe("time-grid annotation projection", () => {
     const [monday] = projectTimeGridAnnotations(columns, snapshot, [music, focus]);
 
     expect(ids(monday!)).toEqual([["t1", "t2", "t3"], ["t4"], ["f1"]]);
-    expect(monday![0]).toMatchObject({ key: "music:t1", top: expect.closeTo(9 / 24) });
+    expect(monday![0]).toMatchObject({ key: '["music","t1"]', top: expect.closeTo(9 / 24) });
     expect(monday![0]!.end.toString()).toBe("2026-10-05T09:18:00Z");
   });
 
@@ -161,22 +161,22 @@ describe("time-grid annotation projection", () => {
       );
 
     expect(place({})).toEqual([
-      ["music:m", 0, 3],
-      ["focus:f", 1, 3],
-      ["focus:late", 0, 1],
-      ["sleep:s", 2, 3],
+      ['["music","m"]', 0, 3],
+      ['["focus","f"]', 1, 3],
+      ['["focus","late"]', 0, 1],
+      ['["sleep","s"]', 2, 3],
     ]);
     expect(place({ maxLanes: 2 })).toEqual([
-      ["music:m", 0, 2],
-      ["focus:f", 1, 2],
-      ["focus:late", 0, 1],
-      ["sleep:s", 1, 2],
+      ['["music","m"]', 0, 2],
+      ['["focus","f"]', 1, 2],
+      ['["focus","late"]', 0, 1],
+      ['["sleep","s"]', 1, 2],
     ]);
     expect(place({ layout: "per-source" })).toEqual([
-      ["music:m", 0, 3],
-      ["focus:f", 1, 3],
-      ["focus:late", 1, 3],
-      ["sleep:s", 2, 3],
+      ['["music","m"]', 0, 3],
+      ['["focus","f"]', 1, 3],
+      ['["focus","late"]', 1, 3],
+      ['["sleep","s"]', 2, 3],
     ]);
   });
 
@@ -203,6 +203,126 @@ describe("time-grid annotation projection", () => {
   });
 });
 
+describe("time-grid annotation edge cases", () => {
+  test("keys keep numeric and string IDs and source boundaries apart", () => {
+    const snapshot = createAnnotationSnapshot([
+      // Overlapping marks of two sources whose "source:id" strings would both read "a:b:c".
+      annotation("c", "a:b", "2026-10-05T09:00Z", "2026-10-05T10:00Z"),
+      annotation("b:c", "a", "2026-10-05T09:30Z", "2026-10-05T10:30Z"),
+      // Hours apart, so they don't merge: the IDs 1 and "1".
+      { ...annotation("1", "s", "2026-10-05T12:00Z", "2026-10-05T12:30Z"), id: 1 },
+      annotation("1", "s", "2026-10-05T15:00Z", "2026-10-05T15:30Z"),
+    ]);
+    const sources = [
+      { id: "a:b", label: "AB" },
+      { id: "a", label: "A" },
+      { id: "s", label: "S" },
+    ];
+    const [monday] = projectTimeGridAnnotations(columns, snapshot, sources);
+
+    expect(new Set(monday!.map(({ key }) => key)).size).toBe(4);
+    expect(monday!.slice(0, 2).map(({ lane, lanes }) => [lane, lanes])).toEqual([
+      [0, 2],
+      [1, 2],
+    ]);
+  });
+
+  test("merges by drawn position on a fall-back day only when marks touch", () => {
+    const [fallBack] = timeGridColumns(dates("2026-11-01", "2026-11-02"), "America/New_York");
+    // 01:50–01:55 EDT, then 01:10–01:15 EST: later in time, drawn earlier.
+    const apart = createAnnotationSnapshot([
+      annotation("first", "sleep", "2026-11-01T05:50Z", "2026-11-01T05:55Z"),
+      annotation("second", "sleep", "2026-11-01T06:10Z", "2026-11-01T06:15Z"),
+    ]);
+    expect(ids(projectTimeGridAnnotations([fallBack!], apart, [sleep])[0]!)).toEqual([
+      ["first"],
+      ["second"],
+    ]);
+
+    // 01:05 EDT and 01:10 EST draw on top of each other: they merge, and nothing of one source
+    // overlaps afterwards.
+    const overlapping = createAnnotationSnapshot([
+      annotation("early", "sleep", "2026-11-01T05:05Z", "2026-11-01T05:15Z"),
+      annotation("repeat", "sleep", "2026-11-01T06:10Z", "2026-11-01T06:20Z"),
+      annotation("apart", "sleep", "2026-11-01T05:40Z", "2026-11-01T05:45Z"),
+    ]);
+    const marks = projectTimeGridAnnotations([fallBack!], overlapping, [sleep])[0]!;
+    const sorted = marks.toSorted((left, right) => left.top - right.top);
+    for (let index = 1; index < sorted.length; index++) {
+      expect(sorted[index]!.top).toBeGreaterThan(
+        sorted[index - 1]!.top + sorted[index - 1]!.height,
+      );
+    }
+    expect(
+      marks
+        .flatMap((mark) => mark.annotations.map(({ id }) => String(id)))
+        .toSorted((left, right) => left.localeCompare(right)),
+    ).toEqual(["apart", "early", "repeat"]);
+  });
+
+  test("accepts merge gaps in calendar units", () => {
+    const weekly = { id: "music", label: "Music", mergeGap: Temporal.Duration.from({ weeks: 1 }) };
+    const snapshot = createAnnotationSnapshot([
+      annotation("a", "music", "2026-10-05T09:00Z", "2026-10-05T09:05Z"),
+      annotation("b", "music", "2026-10-05T20:00Z", "2026-10-05T20:05Z"),
+    ]);
+
+    expect(ids(projectTimeGridAnnotations(columns, snapshot, [weekly])[0]!)).toEqual([["a", "b"]]);
+    expect(projectTimeGridAnnotations(columns, createAnnotationSnapshot([]), [weekly])[0]).toEqual(
+      [],
+    );
+  });
+
+  test("keeps lanes whole and at least one", () => {
+    const snapshot = createAnnotationSnapshot([
+      annotation("m", "music", "2026-10-05T09:00Z", "2026-10-05T11:00Z"),
+      annotation("s", "sleep", "2026-10-05T10:00Z", "2026-10-05T10:30Z"),
+    ]);
+    for (const maxLanes of [0, 1.5, Number.NaN]) {
+      const marks = projectTimeGridAnnotations(columns, snapshot, [music, sleep], { maxLanes })[0]!;
+      for (const { lane, lanes } of marks) {
+        expect(Number.isInteger(lane) && lane >= 0 && Number.isInteger(lanes) && lanes >= 1).toBe(
+          true,
+        );
+      }
+    }
+  });
+
+  test("merges contained and equal-start items, and keeps per-source lanes for sources without marks", () => {
+    const snapshot = createAnnotationSnapshot([
+      annotation("outer", "music", "2026-10-05T09:00Z", "2026-10-05T11:00Z"),
+      annotation("inner", "music", "2026-10-05T09:30Z", "2026-10-05T10:00Z"),
+      annotation("twin", "music", "2026-10-05T09:00Z", "2026-10-05T09:10Z"),
+    ]);
+    const [monday] = projectTimeGridAnnotations(columns, snapshot, [sleep, focus, music], {
+      layout: "per-source",
+    });
+
+    expect(ids(monday!)).toEqual([["twin", "outer", "inner"]]);
+    expect(monday![0]!.end.toString()).toBe("2026-10-05T11:00:00Z");
+    expect(monday![0]).toMatchObject({ lane: 2, lanes: 3 });
+  });
+
+  test("skips a day removed by a date-line change and clips around a spring-forward gap", () => {
+    // Samoa skipped 2011-12-30.
+    const samoa = timeGridColumns(dates("2011-12-29", "2011-12-31"), "Pacific/Apia");
+    const skipped = createAnnotationSnapshot([
+      annotation("across", "sleep", "2011-12-29T08:00Z", "2011-12-30T12:00Z"),
+    ]);
+    expect(projectTimeGridAnnotations(samoa, skipped, [sleep])[1]).toEqual([]);
+
+    const [springForward] = timeGridColumns(dates("2026-03-08", "2026-03-09"), "America/New_York");
+    const start = Temporal.Instant.from("2026-03-08T06:30Z");
+    const end = Temporal.Instant.from("2026-03-08T07:30Z");
+    const gap = createAnnotationSnapshot([
+      annotation("gap", "sleep", start.toString(), end.toString()),
+    ]);
+    expect(projectTimeGridAnnotations([springForward!], gap, [sleep])[0]![0]).toMatchObject(
+      timedFragmentBox(springForward!, instantInterval(start, end)),
+    );
+  });
+});
+
 describe("annotation summaries", () => {
   test("summarizes each source's marks on a day in source order", () => {
     const snapshot = createAnnotationSnapshot([
@@ -225,5 +345,23 @@ describe("annotation summaries", () => {
       ["music", 2, "PT2H10M", false],
     ]);
     expect(summaries[1]!.end.toString()).toBe("2026-10-05T19:30:00Z");
+  });
+
+  test("rounds the summed duration, not each mark's", () => {
+    const quick = { id: "quick", label: "Quick" };
+    const snapshot = createAnnotationSnapshot(
+      [0, 10, 20, 30].map((minute) =>
+        annotation(
+          `q${minute}`,
+          "quick",
+          `2026-10-05T09:${String(minute).padStart(2, "0")}:00Z`,
+          `2026-10-05T09:${String(minute).padStart(2, "0")}:40Z`,
+        ),
+      ),
+    );
+    const [monday] = projectTimeGridAnnotations(columns, snapshot, [quick]);
+
+    // Four 40-second marks are 160 seconds: three minutes, where rounding each would give four.
+    expect(summarizeAnnotationMarks(monday!)[0]!.duration.toString()).toBe("PT3M");
   });
 });

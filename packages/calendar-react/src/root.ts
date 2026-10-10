@@ -124,6 +124,7 @@ function sameDiagnostics(
         case "invalid-annotation":
           return (
             other.code === "invalid-annotation" &&
+            other.issue.annotation === diagnostic.issue.annotation &&
             other.issue.code === diagnostic.issue.code &&
             other.issue.index === diagnostic.issue.index
           );
