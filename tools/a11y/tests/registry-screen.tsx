@@ -139,6 +139,14 @@ const annotations: readonly CalendarAnnotation[] = [
     start: Temporal.Instant.from("2026-10-08T15:00:00Z"),
     title: "One track",
   },
+  // A dot at the day's very end, which must stay inside the day.
+  {
+    end: Temporal.Instant.from("2026-10-08T23:59:30Z"),
+    id: "late",
+    sourceId: "music",
+    start: Temporal.Instant.from("2026-10-08T23:59:00Z"),
+    title: "Last track",
+  },
 ];
 
 /** A view under the toolbar, beside a mini month whose selected date is not today. */

@@ -243,18 +243,19 @@ export function AnnotationRail({ className, style, ...props }: ComponentProps<"d
 
 /**
  * Geometry arrives as CSS variables: `--mark-top` and `--mark-height` as fractions of the day,
- * `--mark-offset` and `--mark-width` in px inside the rail.
+ * `--mark-offset` and `--mark-width` in px inside the rail. A variant's `--mark-min-height` keeps
+ * a short mark near midnight inside the day, drawn up from its end as the layout measures it.
  */
 export const annotationMarkVariants = cva(
-  "pointer-events-auto absolute top-(--mark-top) transition-[filter,background-color] duration-100 motion-reduce:transition-none",
+  "pointer-events-auto absolute top-[min(var(--mark-top),calc(100%_-_var(--mark-min-height,0px)))] transition-[filter,background-color] duration-100 motion-reduce:transition-none",
   {
     variants: {
       variant: {
         /** A capsule never shorter than it is wide, so a short one is a circle. */
         capsule:
-          "start-(--mark-offset) h-[max(var(--mark-width),calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full bg-calendar-event-border shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] hover:brightness-110 data-ends-after:rounded-b-none data-ends-after:mask-[linear-gradient(to_top,transparent,black_1.5rem)] data-starts-before:rounded-t-none data-starts-before:mask-[linear-gradient(to_bottom,transparent,black_1.5rem)] data-starts-before:data-ends-after:mask-[linear-gradient(to_bottom,transparent,black_1.5rem,black_calc(100%-1.5rem),transparent)] dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.16)]",
+          "start-(--mark-offset) h-[max(var(--mark-min-height),calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full [--mark-min-height:var(--mark-width)] bg-calendar-event-border shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] hover:brightness-110 data-ends-after:rounded-b-none data-ends-after:mask-[linear-gradient(to_top,transparent,black_1.5rem)] data-starts-before:rounded-t-none data-starts-before:mask-[linear-gradient(to_bottom,transparent,black_1.5rem)] data-starts-before:data-ends-after:mask-[linear-gradient(to_bottom,transparent,black_1.5rem,black_calc(100%-1.5rem),transparent)] dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.16)]",
         /** A thin bar that keeps its true length. */
-        bar: "start-(--mark-offset) h-[max(3px,calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full bg-calendar-event-border hover:brightness-110 data-ends-after:rounded-b-none data-starts-before:rounded-t-none",
+        bar: "start-(--mark-offset) h-[max(var(--mark-min-height),calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full [--mark-min-height:3px] bg-calendar-event-border hover:brightness-110 data-ends-after:rounded-b-none data-starts-before:rounded-t-none",
         /** A tint across the column behind events; for `placement: "overlay"`. */
         band: "inset-x-0 h-(--mark-height) border-s-2 border-calendar-event-border bg-calendar-event-border/12 hover:bg-calendar-event-border/24",
       },
@@ -433,7 +434,9 @@ export function TimeGridAnnotationOverlays({
         // With a close button this also keeps Base UI's focus guards out of the hidden rail.
         modal="trap-focus"
         onOpenChange={(open) => {
-          if (open) returnFocus.current = document.activeElement;
+          // Clicking another mark while open keeps focus in the popup: keep the first target.
+          const active = document.activeElement;
+          if (open && !popup.current?.contains(active)) returnFocus.current = active;
         }}
       >
         {({ payload }) => {

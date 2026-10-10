@@ -57,23 +57,26 @@ describe.each(["ltr", "rtl"] as const)("%s layout", (dir) => {
     expect(dir === "rtl" ? event.borderRightWidth : event.borderLeftWidth).toBe("3px");
   });
 
-  test("time grid: annotation data never moves or narrows an event", async () => {
-    const events = () =>
-      [...document.querySelectorAll('[data-slot="time-grid-body"] [data-event-id]')].map(
-        (event) => {
+  test.each(["week", "day"] as const)(
+    "%s view: annotation data never moves or narrows an event",
+    async (view) => {
+      const body = () => document.querySelector('[data-slot="time-grid-body"]')!;
+      const events = () =>
+        [...body().querySelectorAll("[data-event-id]")].map((event) => {
           const { height, left, top, width } = event.getBoundingClientRect();
           return [event.getAttribute("data-event-id"), left, top, width, height];
-        },
-      );
-    await render(<RegistryScreen dir={dir} view="week" />);
-    const annotated = events();
-    expect(document.querySelectorAll('[data-slot="annotation-mark"]').length).toBeGreaterThan(0);
-    await render(<RegistryScreen annotations={[]} dir={dir} view="week" />);
+        });
+      await render(<RegistryScreen dir={dir} view={view} />);
+      const annotated = { events: events(), scrollHeight: body().scrollHeight };
+      // Including the dot at 23:59, which draws up from midnight rather than past it.
+      expect(document.querySelector('[data-annotation-id="late"]')).not.toBeNull();
+      await render(<RegistryScreen annotations={[]} dir={dir} view={view} />);
 
-    expect(document.querySelectorAll('[data-slot="annotation-mark"]')).toHaveLength(0);
-    expect(events()).toEqual(annotated);
-    expect(annotated.length).toBeGreaterThan(0);
-  });
+      expect(document.querySelectorAll('[data-slot="annotation-mark"]')).toHaveLength(0);
+      expect({ events: events(), scrollHeight: body().scrollHeight }).toEqual(annotated);
+      expect(annotated.events.length).toBeGreaterThan(0);
+    },
+  );
 
   test("resource columns: gutter, columns and their headers follow the reading order", async () => {
     await render(<RegistryScreen dir={dir} view="resources" />);

@@ -36,6 +36,26 @@ describe.each(themes)("registry views, %s theme", (theme) => {
     expect(document.activeElement?.closest('[aria-hidden="true"]') ?? null).toBeNull();
   });
 
+  test("the annotation popover returns focus past a switch between marks", async () => {
+    setTheme(theme);
+    await render(<RegistryScreen view="week" />);
+    const previous = document.querySelector<HTMLElement>('button[aria-label^="Previous"]')!;
+    previous.focus();
+    await click(
+      document.querySelector<HTMLElement>('[data-slot="annotation-mark"][data-source="music"]'),
+    );
+    await click(
+      document.querySelector<HTMLElement>('[data-slot="annotation-mark"][data-source="sleep"]'),
+    );
+    expect(document.querySelector('[data-slot="popover-content"]')!.textContent).toContain("Sleep");
+    await press("Escape");
+    await vi.waitFor(() =>
+      expect(document.querySelector('[data-slot="popover-content"]')).toBeNull(),
+    );
+
+    expect(document.activeElement).toBe(previous);
+  });
+
   test("month view's +N more popover", async () => {
     setTheme(theme);
     await render(<RegistryScreen view="month" />);
