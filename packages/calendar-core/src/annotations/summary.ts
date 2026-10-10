@@ -34,13 +34,17 @@ export function summarizeAnnotationMarks<TSource extends CalendarAnnotationSourc
         (latest, mark) => (Temporal.Instant.compare(mark.end, latest) > 0 ? mark.end : latest),
         list[0]!.end,
       );
-      const nanoseconds = list.reduce((sum, mark) => sum + mark.duration.total("nanoseconds"), 0);
+      // Each mark's time fits a double exactly; their sum may not, so it's added up in bigints.
+      const nanoseconds = list.reduce(
+        (sum, mark) => sum + BigInt(mark.duration.total("nanoseconds")),
+        0n,
+      );
       return Object.freeze({
         count: list.length,
-        duration: Temporal.Duration.from({ nanoseconds }).round({
-          largestUnit: "hours",
-          smallestUnit: "minutes",
-        }),
+        duration: Temporal.Duration.from({
+          nanoseconds: Number(nanoseconds % 1_000_000_000n),
+          seconds: Number(nanoseconds / 1_000_000_000n),
+        }).round({ largestUnit: "hours", smallestUnit: "minutes" }),
         end,
         endsAfterDay: list.some((mark) => mark.endsAfterDay),
         source,

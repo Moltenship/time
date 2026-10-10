@@ -474,6 +474,28 @@ describe("annotation summaries", () => {
     expect(summarizeAnnotationMarks(monday!)[0]!.duration.toString()).toBe("PT3M");
   });
 
+  test("adds durations up exactly before rounding", () => {
+    // 3,000 merged pairs across a repeated hour, each spanning an hour, and one 1 ns short: just
+    // under 3,000 hours and 30 seconds, which a double rounds up to the next minute.
+    const [fallBack] = timeGridColumns(dates("2026-11-01", "2026-11-02"), "America/New_York");
+    const items = Array.from({ length: 3000 }, (_, index) =>
+      [0, 1].map((hour) => {
+        const start = Temporal.Instant.from("2026-11-01T05:00Z").add({
+          hours: hour,
+          seconds: index,
+        });
+        const end = start.add({ nanoseconds: index === 2999 ? 9_999_999 : 10_000_000 });
+        return annotation(`${hour}-${index}`, "sleep", start.toString(), end.toString());
+      }),
+    ).flat();
+    const [marks] = projectTimeGridAnnotations([fallBack!], createAnnotationSnapshot(items), [
+      sleep,
+    ]);
+
+    expect(marks).toHaveLength(3000);
+    expect(summarizeAnnotationMarks(marks!)[0]!.duration.toString()).toBe("PT3000H");
+  });
+
   test("counts only each date's own time in a fold across midnight", () => {
     // 23:50 on the 6th to 00:01 on the 7th, then 23:01–23:15 on the 6th again: 24 minutes on the
     // 6th and one on the 7th, though the 6th's mark spans 25 minutes of instants.
