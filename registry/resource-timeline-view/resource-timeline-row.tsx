@@ -1,14 +1,16 @@
 import {
   resourceIdAttributes,
   useResourceExpansion,
-  type DayGridSegment,
-  type EventId,
+  type CalendarCellFocus,
   type IsoDayOfWeek,
   type ResourceId,
+  type ResourceTimelineDayRow,
+  type ResourceTimelineHourRow,
+  type TimeGridColumn,
 } from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { ChevronRightIcon } from "lucide-react";
-import { memo, useCallback, useMemo } from "react";
+import { memo, useCallback, useMemo, type CSSProperties } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
@@ -16,20 +18,33 @@ import { cn } from "cn";
 import { Button } from "@registry/ui/button";
 
 import { ResourceTimelineEvent } from "./resource-timeline-event";
+import {
+  GroupCellTarget,
+  TimelineCellTarget,
+  useRowCell,
+  useRowDraft,
+} from "./resource-timeline-focus";
 import type { TimelineLabels } from "./timeline-labels";
-import type { ResourceTimelineRow as Row } from "./timeline-rows";
-import type { TimelineSlot } from "./timeline-scale";
+import { anchorSlot, placeBars, rowBars, slotsCovered } from "./timeline-placement";
+import type { TimelineSlot, TimelineSlotUnit } from "./timeline-scale";
 
 export interface ResourceTimelineRowProps<TEvent> {
+  /** The range's dates on the wall clock, for hour rows' strips and keyboard drafts. */
+  readonly columns: readonly TimeGridColumn[];
+  /** Where focus enters the view, held by the first row while nothing has focus. */
+  readonly entry: CalendarCellFocus | null;
   /** A timed event's start time, shown on bars of a single day. */
   readonly formatTime: (instant: Temporal.Instant) => string;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly labels: TimelineLabels;
-  readonly row: Row<TEvent>;
+  readonly row: ResourceTimelineDayRow<TEvent> | ResourceTimelineHourRow<TEvent>;
   /** Width of each slot, in pixels. */
   readonly slotWidth: number;
   readonly slots: readonly TimelineSlot[];
+  /** Length of a keyboard step in an hour row, in minutes. */
+  readonly snapMinutes: number;
+  readonly unit: TimelineSlotUnit;
   /** Where the row sits among all rows, and how tall it is. */
   readonly virtualRow: VirtualItem;
   /** The slots in view. */
@@ -37,8 +52,7 @@ export interface ResourceTimelineRowProps<TEvent> {
   readonly weekend: readonly IsoDayOfWeek[];
 }
 
-/** Space between a bar and the grid lines at the ends it doesn't continue past, in pixels. */
-const BAR_INSET = 2;
+const HOURS = 24;
 
 function eventCount(count: number): string {
   return count === 0 ? "no events" : count === 1 ? "1 event" : `${count} events`;
@@ -53,6 +67,8 @@ function ResourceToggle({ id, title }: { readonly id: ResourceId; readonly title
       aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`}
       onClick={toggle}
       size="icon-xs"
+      // The grid keeps one tab stop; Shift+Enter on the group's cells toggles it.
+      tabIndex={-1}
       variant="ghost"
     >
       <ChevronRightIcon
@@ -62,65 +78,108 @@ function ResourceToggle({ id, title }: { readonly id: ResourceId; readonly title
   );
 }
 
-interface PlacedSegment<TEvent> {
-  /** Where the bar starts relative to its cell, and its width, in pixels. */
+/**
+ * A date's wall clock along an hour row, for the pointer layer (`data-axis="inline"`), with the
+ * hours a clock change skips hatched and the hours it repeats tinted.
+ */
+function HourStrip({
+  column,
+  offset,
+  width,
+}: {
+  readonly column: TimeGridColumn;
   readonly offset: number;
-  readonly segment: DayGridSegment<TEvent, EventId, ResourceId>;
   readonly width: number;
+}) {
+  const band = ({ height, top }: { readonly height: number; readonly top: number }) => ({
+    insetInlineStart: `${top * 100}%`,
+    width: `${height * 100}%`,
+  });
+  return (
+    <div
+      data-axis="inline"
+      data-date={column.date.toString()}
+      className="absolute inset-y-0"
+      style={{ insetInlineStart: offset, width }}
+    >
+      {column.gaps.map((gap) => (
+        <div
+          key={`gap:${gap.top}`}
+          className="absolute inset-y-0 bg-[repeating-linear-gradient(45deg,transparent_0_5px,var(--calendar-grid)_5px_6px)]"
+          style={band(gap)}
+          title="Skipped: clocks moved forward"
+        />
+      ))}
+      {column.folds.map((fold) => (
+        <div
+          key={`fold:${fold.top}`}
+          className="absolute inset-y-0 bg-calendar-selection"
+          style={band(fold)}
+          title="Repeated: clocks moved back"
+        />
+      ))}
+    </div>
+  );
 }
 
-/**
- * The segments in view, each under the first visible day it covers: a bar that starts off-screen
- * still renders inside a cell of the grid, and reaches across the cells after it.
- */
-function placeSegments<TEvent>(
-  segments: readonly DayGridSegment<TEvent, EventId, ResourceId>[],
-  visibleSlots: readonly VirtualItem[],
-  slotWidth: number,
-): ReadonlyMap<number, readonly PlacedSegment<TEvent>[]> {
-  const placed = new Map<number, PlacedSegment<TEvent>[]>();
-  const first = visibleSlots[0]?.index;
-  const last = visibleSlots.at(-1)?.index;
-  if (first === undefined || last === undefined) return placed;
-  for (const segment of segments) {
-    const { column, endsAfter, span, startsBefore } = segment;
-    if (column + span <= first || column > last) continue;
-    const anchor = Math.max(column, first);
-    const start = startsBefore ? 0 : BAR_INSET;
-    const end = endsAfter ? 0 : BAR_INSET;
-    const cell = placed.get(anchor) ?? [];
-    cell.push({
-      offset: (column - anchor) * slotWidth + start,
-      segment,
-      width: span * slotWidth - start - end,
-    });
-    placed.set(anchor, cell);
-  }
-  return placed;
+/** The focused cell's target, named after its row; a group's can expand and collapse it. */
+function CellTarget({
+  group,
+  label,
+  title,
+  ...props
+}: {
+  readonly cell: CalendarCellFocus;
+  readonly group: ResourceId | null;
+  readonly label: string;
+  readonly style: CSSProperties;
+  readonly title: string;
+}) {
+  return group === null ? (
+    <TimelineCellTarget {...props} label={`${title}, ${label}`} />
+  ) : (
+    <GroupCellTarget {...props} groupId={group} label={label} title={title} />
+  );
 }
 
 function ResourceTimelineRowBase<TEvent>({
+  columns,
+  entry,
   formatTime,
   getEventColor,
   labelEvent,
   labels,
-  row: { resource, segments },
+  row,
   slotWidth,
   slots,
+  snapMinutes,
+  unit,
   virtualRow,
   visibleSlots,
   weekend,
 }: ResourceTimelineRowProps<TEvent>) {
+  const { resource } = row;
   const title = resource.resource?.title ?? "Unassigned";
+  const bars = useMemo(() => rowBars(row, slots.length, formatTime), [formatTime, row, slots]);
   const placed = useMemo(
-    () => placeSegments(segments, visibleSlots, slotWidth),
-    [segments, slotWidth, visibleSlots],
+    () => placeBars(bars, slots, visibleSlots, slotWidth),
+    [bars, slotWidth, slots, visibleSlots],
   );
   // An event with several resources shows in each row; its name says which one this is.
   const labelInRow = useCallback<EventLabeler<TEvent>>(
     (event) => labelEvent(event, title),
     [labelEvent, title],
   );
+  const cell = useRowCell(resource.id, entry);
+  const draft = useRowDraft(resource.id, columns, slots.length);
+  const perDay = unit === "hour" ? HOURS : 1;
+  const origin = slots[0]?.date;
+  const cellSlot =
+    cell === null || origin === undefined
+      ? null
+      : origin.until(cell.date).days * perDay + (cell.kind === "slot" ? cell.time.hour : 0);
+  const draftSlot =
+    draft === null ? undefined : anchorSlot(visibleSlots, ...slotsCovered(...draft));
 
   return (
     <div
@@ -151,40 +210,81 @@ function ResourceTimelineRowBase<TEvent>({
         )}
         <span className="truncate">{title}</span>
       </div>
-      {visibleSlots.map((item) => {
+      {visibleSlots.map((item, position) => {
         const slot = slots[item.index]!;
-        const count = segments.filter(
-          ({ column, span }) => column <= item.index && item.index < column + span,
+        const count = bars.filter(
+          ({ end, start }) => start < item.index + 1 && end > item.index,
         ).length;
+        // An hour row's date strip sits in the first rendered cell of that date.
+        const dateIndex = Math.floor(item.index / perDay);
+        const dateStart = dateIndex * perDay;
+        const previous = visibleSlots[position - 1];
+        const strip =
+          unit === "hour" && (previous === undefined || previous.index < dateStart)
+            ? columns[dateIndex]
+            : undefined;
         return (
           <div
             key={item.key}
             role="gridcell"
             aria-colindex={item.index + 2}
             aria-label={`${title}, ${labels.slotName(slot)}, ${eventCount(count)}`}
-            data-weekend={weekend.includes(slot.date.dayOfWeek as IsoDayOfWeek) ? "" : undefined}
+            data-weekend={
+              unit === "day" && weekend.includes(slot.date.dayOfWeek as IsoDayOfWeek)
+                ? ""
+                : undefined
+            }
             className="absolute inset-y-0 border-s border-calendar-grid data-weekend:bg-calendar-weekend"
             style={{ insetInlineStart: item.start, width: item.size }}
           >
-            {/* The day the pointer is over. Bars sit outside it, so grabbing a bar by a later
-                day finds that day, not the one whose cell holds the bar. */}
-            <div data-date={slot.date.toString()} className="absolute inset-0" />
-            {placed.get(item.index)?.map(({ offset, segment, width }) => (
+            {/* The day the pointer is over. Bars sit beside it, not in it, so grabbing a bar by a
+                later day finds that day rather than the one whose cell holds the bar. */}
+            {unit === "day" && (
+              <div data-date={slot.date.toString()} className="absolute inset-0" />
+            )}
+            {strip !== undefined && (
+              <HourStrip
+                column={strip}
+                offset={(dateStart - item.index) * slotWidth}
+                width={perDay * slotWidth}
+              />
+            )}
+            {draft !== null && draftSlot === item.index && (
+              <div
+                aria-hidden
+                data-slot="resource-timeline-draft"
+                className="pointer-events-none absolute inset-y-1 rounded-sm bg-calendar-selection"
+                style={{
+                  insetInlineStart: (draft[0] - item.index) * slotWidth,
+                  width: (draft[1] - draft[0]) * slotWidth,
+                }}
+              />
+            )}
+            {placed.get(item.index)?.map((bar) => (
               <ResourceTimelineEvent
-                key={`${typeof segment.event.id}:${segment.event.id}`}
-                color={getEventColor?.(segment.event.event)}
-                date={slots[segment.column]!.date}
+                key={`${typeof bar.event.id}:${bar.event.id}`}
+                bar={bar}
+                color={getEventColor?.(bar.event.event)}
                 labelEvent={labelInRow}
-                offset={offset}
-                segment={segment}
-                time={
-                  segment.event.kind === "timed" && segment.span === 1 && !segment.startsBefore
-                    ? formatTime(segment.event.start)
-                    : undefined
-                }
-                width={width}
+                resourceId={resource.id}
               />
             ))}
+            {cell !== null && cellSlot === item.index && (
+              <CellTarget
+                cell={cell}
+                group={resource.hasChildren ? resource.id : null}
+                label={labels.cellName(cell)}
+                style={
+                  cell.kind === "slot"
+                    ? {
+                        insetInlineStart: (cell.time.minute / 60) * slotWidth,
+                        width: (snapMinutes / 60) * slotWidth,
+                      }
+                    : { insetInlineStart: 0, width: perDay * slotWidth }
+                }
+                title={title}
+              />
+            )}
           </div>
         );
       })}
@@ -194,7 +294,7 @@ function ResourceTimelineRowBase<TEvent>({
 
 /**
  * One resource: its name in the sticky resource column, indented by depth, with a toggle when it
- * has children, then a cell for each day in view holding the bars that start there. Group rows
+ * has children, then a cell for each slot in view holding the bars that start there. Group rows
  * are tinted.
  */
 export const ResourceTimelineRow = memo(ResourceTimelineRowBase) as typeof ResourceTimelineRowBase;

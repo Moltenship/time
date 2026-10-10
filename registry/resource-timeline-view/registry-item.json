@@ -3,7 +3,7 @@
   "name": "resource-timeline-view",
   "type": "registry:component",
   "title": "Resource timeline",
-  "description": "Resources as rows and days as columns for a week or a month: a sticky resource column with collapsible groups, a sticky header, events as bars packed into lanes, a now-line, drag across days and rows, and two-axis virtualization that renders only the rows and days in view.",
+  "description": "Resources as rows and time as columns for a day of hours or a week or month of days: a sticky resource column with collapsible groups, a sticky header, events as bars packed into lanes, a now-line, drag and keyboard moves along time and across rows, and two-axis virtualization that renders only the rows and slots in view.",
   "dependencies": ["@moltenship/calendar", "@tanstack/react-virtual", "cn", "lucide-react"],
   "registryDependencies": ["button", "@moltenship/calendar", "@moltenship/calendar-theme"],
   "files": [
@@ -33,14 +33,19 @@
       "target": "components/calendar/resource-timeline-view/resource-timeline-event.tsx"
     },
     {
-      "path": "registry/resource-timeline-view/timeline-rows.ts",
-      "type": "registry:lib",
-      "target": "components/calendar/resource-timeline-view/timeline-rows.ts"
+      "path": "registry/resource-timeline-view/resource-timeline-focus.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/resource-timeline-view/resource-timeline-focus.tsx"
     },
     {
       "path": "registry/resource-timeline-view/timeline-labels.ts",
       "type": "registry:lib",
       "target": "components/calendar/resource-timeline-view/timeline-labels.ts"
+    },
+    {
+      "path": "registry/resource-timeline-view/timeline-placement.ts",
+      "type": "registry:lib",
+      "target": "components/calendar/resource-timeline-view/timeline-placement.ts"
     },
     {
       "path": "registry/resource-timeline-view/timeline-scale.ts",

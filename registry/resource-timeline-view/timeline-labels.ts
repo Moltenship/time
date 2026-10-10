@@ -1,8 +1,11 @@
+import type { CalendarCellFocus } from "@moltenship/calendar";
 import { useMemo } from "react";
 
 import type { TimelineSlot, TimelineSlotGroup, TimelineSlotUnit } from "./timeline-scale";
 
 export interface TimelineLabels {
+  /** The keyboard's cell in full: a day, "Monday, October 5, 2026", or a slot, with its time. */
+  readonly cellName: (cell: CalendarCellFocus) => string;
   /** The header's upper row: "Thursday, October 8, 2026" over hours, "October 2026" over days. */
   readonly group: (group: TimelineSlotGroup) => string;
   /** A slot's header: "9 AM" (or "09:00"), or "Mon" over the day number. */
@@ -31,6 +34,7 @@ export function useTimelineLabels(
       const month = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" });
       const weekday = new Intl.DateTimeFormat(locale, { weekday: "short" });
       return {
+        cellName: ({ date }) => fullDate.format(date),
         group: ({ date }) => month.format(date),
         slot: ({ date }) => weekday.format(date),
         slotName: ({ date }) => fullDate.format(date),
@@ -45,6 +49,10 @@ export function useTimelineLabels(
       weekday: "long",
     });
     return {
+      cellName: (cell) =>
+        cell.kind === "slot"
+          ? dateTime.format(cell.date.toPlainDateTime(cell.time))
+          : fullDate.format(cell.date),
       group: ({ date }) => fullDate.format(date),
       slot: ({ start }) => hour.format(start.toPlainTime()),
       slotName: ({ start }) => dateTime.format(start),

@@ -8,6 +8,7 @@ import { describe, expect, test } from "vite-plus/test";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import {
+  createTimelineDayView,
   createTimelineMonthView,
   createTimelineWeekView,
 } from "@registry/resource-timeline-view/resource-timeline-view";
@@ -38,7 +39,7 @@ function booking(
   const from = Temporal.Instant.from(start);
   return {
     data: { color },
-    end: from.add({ hours }),
+    end: from.add({ minutes: hours * 60 }),
     id: title,
     kind: "timed",
     resourceIds,
@@ -52,6 +53,7 @@ const events: readonly Booking[] = [
   booking("green", "Review", ["site-0-room-0", "site-0-room-2"], "2026-10-06T13:00:00Z", 2),
   booking("purple", "Workshop", ["site-0-room-1"], "2026-10-07T09:00:00Z", 30),
   booking("orange", "Audit", ["site-2-room-3"], "2026-10-08T10:00:00Z", 1),
+  booking("pink", "Check-in", ["site-0-room-3"], "2026-10-08T08:00:00Z", 0.25),
   booking("teal", "Lunch", [], "2026-10-09T12:00:00Z", 1),
 ];
 
@@ -65,6 +67,7 @@ const Calendar = createCalendar<Booking, CalendarResource<null>>()({
   views: [
     createTimelineWeekView<Booking>({ getEventColor, unassigned: "bucket" }),
     createTimelineMonthView<Booking>({ getEventColor }),
+    createTimelineDayView<Booking>({ getEventColor }),
   ],
 });
 
@@ -73,7 +76,7 @@ function Timeline({
   view,
 }: {
   readonly direction?: "ltr" | "rtl";
-  readonly view: "timeline-month" | "timeline-week";
+  readonly view: "timeline-day" | "timeline-month" | "timeline-week";
 }) {
   return (
     <Calendar.Root
@@ -98,7 +101,7 @@ function Timeline({
 }
 
 describe.each(themes)("resource timeline, %s theme", (theme) => {
-  test.each(["timeline-week", "timeline-month"] as const)("%s", async (view) => {
+  test.each(["timeline-day", "timeline-week", "timeline-month"] as const)("%s", async (view) => {
     setTheme(theme);
     await render(<Timeline view={view} />);
 

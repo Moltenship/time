@@ -1,114 +1,29 @@
 // @vitest-environment jsdom
 
-import {
-  createCalendar,
-  createCanonicalEventAdapter,
-  type CalendarEvent,
-  type CalendarEventChange,
-  type CalendarResource,
-} from "@moltenship/calendar";
-import { StrictMode, act } from "react";
+import { StrictMode, act, type ReactElement } from "react";
 import { hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeAll, expect, test, vi } from "vite-plus/test";
 
-import {
-  createTimelineMonthView,
-  createTimelineWeekView,
-} from "../resource-timeline-view/resource-timeline-view";
 import { drag, layOut } from "./pointer";
 import { click, render } from "./render";
+import {
+  allDay,
+  booking,
+  dayTarget,
+  row,
+  rows,
+  scrollTo,
+  StubResizeObserver,
+  Timeline,
+  viewport,
+  type BookingChange,
+} from "./timeline-fixtures";
 import { ariaLabel, text } from "./view-fixtures";
 
-type Booking = CalendarEvent<null, string, string>;
-type Change = CalendarEventChange<Booking, string, string>;
-
 beforeAll(() => {
-  // jsdom lays nothing out, so the viewport keeps the timeline's initial 1024 × 640 geometry.
-  vi.stubGlobal(
-    "ResizeObserver",
-    class {
-      disconnect() {}
-      observe() {}
-    },
-  );
+  vi.stubGlobal("ResizeObserver", StubResizeObserver);
 });
-
-/** 50 sites of 9 rooms each: 500 resources. */
-const sites: readonly CalendarResource<null>[] = Array.from({ length: 50 }, (_, site) => [
-  { data: null, id: `site-${site + 1}`, title: `Site ${site + 1}` },
-  ...Array.from({ length: 9 }, (_, room) => ({
-    data: null,
-    id: `site-${site + 1}-room-${room + 1}`,
-    parentId: `site-${site + 1}`,
-    title: `Room ${site + 1}.${room + 1}`,
-  })),
-]).flat();
-const allSites = sites.filter(({ parentId }) => parentId === undefined).map(({ id }) => id);
-
-function booking(id: string, resourceIds: readonly string[], start: string, end: string) {
-  return {
-    data: null,
-    end: Temporal.Instant.from(end),
-    id,
-    kind: "timed",
-    resourceIds,
-    start: Temporal.Instant.from(start),
-    title: id,
-  } as const satisfies Booking;
-}
-
-function allDay(id: string, resourceIds: readonly string[], start: string, end: string) {
-  return {
-    data: null,
-    end: Temporal.PlainDate.from(end),
-    id,
-    kind: "all-day",
-    resourceIds,
-    start: Temporal.PlainDate.from(start),
-    title: id,
-  } as const satisfies Booking;
-}
-
-const Calendar = createCalendar<Booking, CalendarResource<null>>()({
-  eventAdapter: createCanonicalEventAdapter<null, string, string>(),
-  views: [
-    createTimelineMonthView<Booking>(),
-    createTimelineWeekView<Booking>({ unassigned: "bucket" }),
-  ],
-});
-
-function Timeline({
-  direction = "ltr",
-  events = [],
-  expanded = allSites,
-  onEventChange,
-  view = "timeline-month",
-}: {
-  readonly direction?: "ltr" | "rtl";
-  readonly events?: readonly Booking[];
-  readonly expanded?: readonly string[];
-  readonly onEventChange?: (change: Change) => void;
-  readonly view?: "timeline-month" | "timeline-week";
-}) {
-  return (
-    <Calendar.Root
-      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
-      defaultExpandedResourceIds={expanded}
-      defaultTimeZone="UTC"
-      defaultView={view}
-      direction={direction}
-      events={events}
-      locale="en-US"
-      now={Temporal.Instant.from("2026-10-08T12:00:00Z")}
-      onEventChange={onEventChange}
-      resources={sites}
-      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-    >
-      <Calendar.ActiveView />
-    </Calendar.Root>
-  );
-}
 
 let cleanup: (() => Promise<void>) | undefined;
 
@@ -117,30 +32,10 @@ afterEach(async () => {
   cleanup = undefined;
 });
 
-async function show(element: React.ReactElement) {
+async function show(element: ReactElement) {
   const view = await render(element);
   cleanup = view.unmount;
   return view.container;
-}
-
-const viewport = (container: Element) =>
-  container.querySelector<HTMLElement>('[data-slot="resource-timeline-viewport"]')!;
-const rows = (container: Element) => [
-  ...container.querySelectorAll<HTMLElement>('[role="row"][data-resource-id]'),
-];
-const row = (container: Element, id: string) =>
-  container.querySelector<HTMLElement>(`[role="row"][data-resource-id="${id}"]`)!;
-const cell = (container: Element, id: string, date: string) =>
-  row(container, id).querySelector<HTMLElement>(`[data-date="${date}"]`)!;
-
-async function scrollTo(element: HTMLElement, { left = 0, top = 0 }) {
-  await act(async () => {
-    Object.defineProperties(element, {
-      scrollLeft: { configurable: true, value: left, writable: true },
-      scrollTop: { configurable: true, value: top, writable: true },
-    });
-    element.dispatchEvent(new Event("scroll"));
-  });
 }
 
 test("500 resources over a month render only the rows and days in view", async () => {
@@ -219,7 +114,7 @@ test("an event shows in each of its resources' rows, named after the row", async
   expect(ariaLabel(copies[0]?.closest('[role="gridcell"]'))).toBe(
     "Room 1.1, Monday, October 5, 2026, 1 event",
   );
-  expect(ariaLabel(cell(container, "site-1-room-2", "2026-10-05").parentElement)).toBe(
+  expect(ariaLabel(dayTarget(container, "site-1-room-2", "2026-10-05").parentElement)).toBe(
     "Room 1.2, Monday, October 5, 2026, no events",
   );
 });
@@ -248,7 +143,7 @@ test("bars span their days and stack in lanes, and the row grows to fit them", a
 });
 
 test("dragging a bar onto another row moves it to that resource on that day", async () => {
-  const onEventChange = vi.fn<(change: Change) => void>();
+  const onEventChange = vi.fn<(change: BookingChange) => void>();
   const container = await show(
     <Timeline
       events={[booking("Review", ["site-1-room-1"], "2026-10-05T09:00Z", "2026-10-05T10:00Z")]}
@@ -265,8 +160,8 @@ test("dragging a bar onto another row moves it to that resource on that day", as
   });
   layOut([
     [event, { ...box(5, 1), width: 44 }],
-    [cell(container, "site-1-room-1", "2026-10-05"), box(5, 1)],
-    [cell(container, "site-1-room-3", "2026-10-07"), box(7, 3)],
+    [dayTarget(container, "site-1-room-1", "2026-10-05"), box(5, 1)],
+    [dayTarget(container, "site-1-room-3", "2026-10-07"), box(7, 3)],
   ]);
 
   drag(event, [
@@ -284,7 +179,7 @@ test("dragging a bar onto another row moves it to that resource on that day", as
 });
 
 test("a bar grabbed by a later day moves and resizes from that day", async () => {
-  const onEventChange = vi.fn<(change: Change) => void>();
+  const onEventChange = vi.fn<(change: BookingChange) => void>();
   const container = await show(
     <Timeline
       events={[allDay("Audit", ["site-1-room-1"], "2026-10-05", "2026-10-07")]}
@@ -293,7 +188,7 @@ test("a bar grabbed by a later day moves and resizes from that day", async () =>
   );
   const event = container.querySelector('[data-event-id="Audit"]')!;
   const handle = event.querySelector('[data-resize="end"]')!;
-  const day = (date: number) => cell(container, "site-1-room-1", `2026-10-0${date}`);
+  const day = (date: number) => dayTarget(container, "site-1-room-1", `2026-10-0${date}`);
   // The bar starts in October 5's cell and covers the 6th; days are 48px wide from x = 0.
   layOut([
     [handle, { height: 24, width: 6, x: 90, y: 0 }],
@@ -316,7 +211,7 @@ test("a bar grabbed by a later day moves and resizes from that day", async () =>
     [120, 10],
   ]);
 
-  const [[move], [resize]] = onEventChange.mock.calls as [[Change], [Change]];
+  const [[move], [resize]] = onEventChange.mock.calls as [[BookingChange], [BookingChange]];
   expect(`${move.proposed?.start.toString()}/${move.proposed?.end.toString()}`).toBe(
     "2026-10-07/2026-10-09",
   );
@@ -326,13 +221,13 @@ test("a bar grabbed by a later day moves and resizes from that day", async () =>
 });
 
 test("dragging across empty days creates an all-day event in that row", async () => {
-  const onEventChange = vi.fn<(change: Change) => void>();
+  const onEventChange = vi.fn<(change: BookingChange) => void>();
   const container = await show(<Timeline onEventChange={onEventChange} />);
-  const start = cell(container, "site-1-room-2", "2026-10-05");
+  const start = dayTarget(container, "site-1-room-2", "2026-10-05");
   layOut([
     [start, { height: 44, width: 48, x: 0, y: 0 }],
-    [cell(container, "site-1-room-2", "2026-10-06"), { height: 44, width: 48, x: 48, y: 0 }],
-    [cell(container, "site-1-room-2", "2026-10-07"), { height: 44, width: 48, x: 96, y: 0 }],
+    [dayTarget(container, "site-1-room-2", "2026-10-06"), { height: 44, width: 48, x: 48, y: 0 }],
+    [dayTarget(container, "site-1-room-2", "2026-10-07"), { height: 44, width: 48, x: 96, y: 0 }],
   ]);
 
   drag(start, [
@@ -347,6 +242,66 @@ test("dragging across empty days creates an all-day event in that row", async ()
   expect(change.proposed?.kind).toBe("all-day");
   expect(`${change.proposed?.start.toString()}/${change.proposed?.end.toString()}`).toBe(
     "2026-10-05/2026-10-08",
+  );
+});
+
+test("the day view lays bars along its hours, over a date strip per row", async () => {
+  const container = await show(
+    <Timeline
+      events={[
+        booking("Review", ["site-1-room-1"], "2026-10-08T09:00Z", "2026-10-08T10:30Z"),
+        booking("Overnight", ["site-1-room-2"], "2026-10-07T22:00Z", "2026-10-08T02:00Z"),
+      ]}
+      view="timeline-day"
+    />,
+  );
+  const review = container.querySelector<HTMLElement>('[data-event-id="Review"]')!;
+  const overnight = container.querySelector<HTMLElement>('[data-event-id="Overnight"]')!;
+  const strip = row(container, "site-1-room-1").querySelector<HTMLElement>(
+    '[data-axis="inline"][data-date="2026-10-08"]',
+  );
+  const now = container.querySelector<HTMLElement>('[data-slot="resource-timeline-now"]');
+
+  expect(container.querySelector('[role="grid"]')?.getAttribute("aria-colcount")).toBe("25");
+  // 56px hours: 9:00 – 10:30 starts in the 9 AM cell and spans an hour and a half.
+  expect(review.closest('[role="gridcell"]')?.getAttribute("aria-colindex")).toBe("11");
+  expect([review.style.insetInlineStart, review.style.width]).toEqual(["2px", "80px"]);
+  // Starting the evening before, it continues from midnight, squared off, without a start handle.
+  expect(overnight.closest('[role="gridcell"]')?.getAttribute("aria-colindex")).toBe("2");
+  expect([overnight.style.insetInlineStart, overnight.style.width]).toEqual(["0px", "110px"]);
+  expect(overnight.querySelector('[data-resize="start"]')).toBeNull();
+  expect(strip?.style.width).toBe(`${24 * 56}px`);
+  expect(now?.style.insetInlineStart).toBe(`${208 + 12 * 56}px`);
+});
+
+test("dragging a bar along an hour row moves it by half hours, onto another row's resource", async () => {
+  const onEventChange = vi.fn<(change: BookingChange) => void>();
+  const container = await show(
+    <Timeline
+      events={[booking("Review", ["site-1-room-1"], "2026-10-08T09:00Z", "2026-10-08T10:30Z")]}
+      onEventChange={onEventChange}
+      view="timeline-day"
+    />,
+  );
+  const event = container.querySelector('[data-event-id="Review"]')!;
+  const hour = (hours: number) => hours * 56;
+  // Each row's date strip spans the day, 56px an hour from x = 0; rows are 44px tall.
+  layOut([
+    [event, { height: 24, width: hour(1.5), x: hour(9), y: 6 }],
+    [dayTarget(container, "site-1-room-1", "2026-10-08"), { height: 44, width: hour(24) }],
+    [dayTarget(container, "site-1-room-3", "2026-10-08"), { height: 44, width: hour(24), y: 88 }],
+  ]);
+
+  drag(event, [
+    [hour(9.25), 10],
+    [hour(9.75), 20],
+    [hour(11.25), 98],
+  ]);
+
+  const { proposed } = onEventChange.mock.calls[0]![0];
+  expect(proposed?.resourceIds).toEqual(["site-1-room-3"]);
+  expect(`${proposed?.start.toString()}/${proposed?.end.toString()}`).toBe(
+    "2026-10-08T11:00:00Z/2026-10-08T12:30:00Z",
   );
 });
 

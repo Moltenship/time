@@ -1,30 +1,22 @@
 import {
   defineCalendarView,
-  getMonthTitle,
-  navigateMonth,
-  navigateTimeGrid,
-  plainDateInterval,
-  timeGridPosition,
-  timeGridRange,
-  timeGridTitle,
+  resourceTimelineStrategy,
+  resourceTimelineTitle,
   useCalendarAnnouncer,
   useCalendarPointer,
-  useNow,
-  type CalendarEnvironmentBase,
   type CalendarViewRendererProps,
-  type CalendarViewStrategy,
   type PlainDateInterval,
-  type ResourceVisibilityOptions,
+  type ResourceTimelineOptions,
+  type ResourceTimelineProjection,
+  type ResourceTimelineSpan,
 } from "@moltenship/calendar";
-import { useMemo } from "react";
-
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
+import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import { ResourceTimelineGrid } from "./resource-timeline-grid";
-import { projectResourceTimeline, type ResourceTimelineProjection } from "./timeline-rows";
 
-export interface ResourceTimelineViewOptions<TEvent> extends ResourceVisibilityOptions {
+export interface ResourceTimelineViewOptions<TEvent> extends ResourceTimelineOptions {
   /** Extra words for each event's accessible name, such as its calendar. */
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Colour for an event; sets `data-color` on every element that renders it. */
@@ -36,108 +28,95 @@ export type ResourceTimelineViewProps<TEvent> = CalendarViewRendererProps<
   ResourceTimelineViewOptions<TEvent>
 >;
 
+/** The grid's name: the title the toolbar shows for the range, "October 2026" for a month. */
+function gridLabel(range: PlainDateInterval, locale: Intl.Locale | string): string {
+  const days = range.start.until(range.end).days;
+  const month = range.start.day === 1 && range.end.equals(range.start.add({ months: 1 }));
+  return resourceTimelineTitle(
+    range,
+    month ? { kind: "month" } : { count: days, kind: "days" },
+    locale,
+  );
+}
+
+/** Pointer and keyboard both step by these slots in an hour timeline, so they reach the same times. */
+const snap = { increment: 30, smallestUnit: "minute" } as const;
+
 /**
- * Resources as rows and days as columns, with each resource's events as bars packed into lanes.
- * The header and the resource column stay in view, groups collapse, and only the rows and days
- * in view render. Drag a bar along its row or onto another resource to move it, drag its ends to
- * resize it by days, or drag across empty days to create an all-day event; changes go to the
- * root's `onEventChange`.
+ * Resources as rows and time as columns, with each resource's events as bars packed into lanes.
+ * The header and the resource column stay in view, groups collapse, and only the rows and slots
+ * in view render. Drag a bar along its row or onto another resource to move it, its ends to
+ * resize it, or across empty time to create an event; changes go to the root's `onEventChange`.
+ * From the keyboard the grid is one tab stop: arrow keys move along a row and between rows, and
+ * Space picks up an event (Shift+Space to resize) or starts one on the focused cell.
  */
 export function ResourceTimelineView<TEvent>({
   actions,
   environment,
   events,
   options,
-  projection: { columns, rows },
+  projection,
   range,
 }: ResourceTimelineViewProps<TEvent>) {
-  // Days are `data-date` cells inside each resource's row, so drags step whole days and can
-  // change rows; the announcer speaks them and labels the drag preview in the calendar's locale.
+  // Hour rows map a pointer along their date strips through the columns; day rows have plain day
+  // cells, which steps drags by whole days. Drags speak through the same messages as the keyboard.
   const announcer = useCalendarAnnouncer();
   const pointerRef = useCalendarPointer({
     announcer,
+    columns: projection.unit === "hour" ? projection.columns : undefined,
     events,
     onPropose: actions.proposeEventChange,
+    snap,
     timeZone: environment.timeZone,
   });
+  const keyboard = useViewKeyboard({ axis: "inline", snap });
   const labelEvent = useEventLabel(environment, options.describeEvent);
-  const now = useNow();
-  const today = now?.toZonedDateTimeISO(environment.timeZone).toPlainDate() ?? null;
-  const nowAt = useMemo(() => {
-    const position = now === null ? null : timeGridPosition(columns, now);
-    return position === null ? null : (position.column + position.top) / columns.length;
-  }, [columns, now]);
 
   return (
     <ResourceTimelineGrid
       environment={environment}
       getEventColor={options.getEventColor}
-      label={timelineTitle(range, environment)}
+      keyboard={keyboard}
+      label={gridLabel(range, environment.locale)}
       labelEvent={labelEvent}
-      now={nowAt}
+      projection={projection}
       range={range}
       ref={pointerRef}
-      rows={rows}
-      today={today}
+      snapMinutes={snap.increment}
     />
   );
 }
 
-type TimelineSpan = "month" | "week";
-
-/** "October 2026" for a calendar month, "Oct 5 – 11, 2026" for a week. */
-function timelineTitle(range: PlainDateInterval, environment: CalendarEnvironmentBase): string {
-  return range.start.day === 1 && range.end.equals(range.start.add({ months: 1 }))
-    ? getMonthTitle(range, environment)
-    : timeGridTitle(range, environment.locale);
-}
-
-// Until #39 adds `resourceTimelineStrategy`, the ranges, titles and navigation come from the
-// week and month views'.
-function timelineStrategy<TEvent>(span: TimelineSpan) {
-  const strategy: CalendarViewStrategy<
-    ResourceTimelineProjection<TEvent>,
-    ResourceTimelineViewOptions<TEvent>,
-    TEvent
-  > = {
-    getRange: (anchor, environment) => {
-      if (span === "week") return timeGridRange(anchor, { kind: "week" }, environment.weekRules);
-      const first = anchor.with({ day: 1 });
-      return plainDateInterval(first, first.add({ months: 1 }));
-    },
-    getTitle: timelineTitle,
-    navigate: (anchor, delta) =>
-      span === "week"
-        ? navigateTimeGrid(anchor, delta, { kind: "week" })
-        : navigateMonth(anchor, delta),
-    project: projectResourceTimeline,
-  };
-  return Object.freeze(strategy);
-}
-
 function timelineView<const TName extends string, TEvent>(
   name: TName,
-  span: TimelineSpan,
+  span: ResourceTimelineSpan,
   defaultOptions: ResourceTimelineViewOptions<TEvent>,
 ) {
   return defineCalendarView({
     defaultOptions,
     name,
-    strategy: timelineStrategy<TEvent>(span),
+    strategy: resourceTimelineStrategy<ResourceTimelineViewOptions<TEvent>, TEvent>(span),
     Renderer: ResourceTimelineView<TEvent>,
   });
+}
+
+/** The anchor date in hours, named `timeline-day`. */
+export function createTimelineDayView<TEvent = unknown>(
+  defaultOptions: ResourceTimelineViewOptions<TEvent> = {},
+) {
+  return timelineView("timeline-day", { count: 1, kind: "days" }, defaultOptions);
 }
 
 /** A week of days, starting on the calendar's `weekRules.firstDay`, named `timeline-week`. */
 export function createTimelineWeekView<TEvent = unknown>(
   defaultOptions: ResourceTimelineViewOptions<TEvent> = {},
 ) {
-  return timelineView("timeline-week", "week", defaultOptions);
+  return timelineView("timeline-week", { kind: "week" }, defaultOptions);
 }
 
 /** The anchor's calendar month, day by day, named `timeline-month`. */
 export function createTimelineMonthView<TEvent = unknown>(
   defaultOptions: ResourceTimelineViewOptions<TEvent> = {},
 ) {
-  return timelineView("timeline-month", "month", defaultOptions);
+  return timelineView("timeline-month", { kind: "month" }, defaultOptions);
 }

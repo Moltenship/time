@@ -1,6 +1,12 @@
 import type { CalendarDirection } from "@moltenship/calendar";
-import { useVirtualizer, type Rect, type Virtualizer } from "@tanstack/react-virtual";
-import { useCallback, useLayoutEffect, useRef, useState } from "react";
+import {
+  defaultRangeExtractor,
+  useVirtualizer,
+  type Range,
+  type Rect,
+  type Virtualizer,
+} from "@tanstack/react-virtual";
+import { useCallback, useLayoutEffect, useMemo, useRef, useState } from "react";
 
 /**
  * The viewport's size until the browser measures one. The server render and hydration both lay
@@ -28,6 +34,16 @@ export function timelineColumns(
 
 type TimelineAxis = Virtualizer<HTMLDivElement, HTMLDivElement>;
 
+/** The items in view, plus `pinned` wherever it is, so the focused row and slot always render. */
+function rangeWith(pinned: number | null) {
+  return (range: Range) => {
+    const indexes = defaultRangeExtractor(range);
+    return pinned === null || pinned < 0 || pinned >= range.count || indexes.includes(pinned)
+      ? indexes
+      : [...indexes, pinned].sort((left, right) => left - right);
+  };
+}
+
 export interface TimelineVirtualizerOptions {
   readonly direction: CalendarDirection;
   /** Height of the sticky header above the first row. */
@@ -40,18 +56,22 @@ export interface TimelineVirtualizerOptions {
     readonly count: number;
     readonly key: (index: number) => string;
     readonly height: (index: number) => number;
+    /** A row that renders even out of view, such as the focused one. */
+    readonly pinned: number | null;
   };
   /** Columns: a stable key for each index; their width comes from `timelineColumns`. */
   readonly slots: {
     readonly count: number;
     readonly key: (index: number) => string;
     readonly minWidth: number;
+    /** A slot that renders even out of view, such as the focused one. */
+    readonly pinned: number | null;
   };
 }
 
 /**
  * Resource rows and time slots as two virtualizers over one native scroll viewport (ADR 0020).
- * Only the rows and slots in view, plus a few beyond, render. Both axes key items by stable IDs,
+ * Only the rows and slots in view, plus a few beyond and the pinned ones, render. Both axes key items by stable IDs,
  * lay out against `INITIAL_VIEWPORT` until the browser measures the viewport, and never force
  * synchronous React updates, so server markup hydrates as is. The time axis follows the
  * calendar's direction; switching it keeps the same logical time in view.
@@ -83,6 +103,19 @@ export function useTimelineVirtualizer({
     return () => observer.disconnect();
   }, []);
   const slotSize = useCallback(() => slotWidth, [slotWidth]);
+  const rowRange = useMemo(() => rangeWith(rows.pinned), [rows.pinned]);
+  const slotRange = useMemo(() => rangeWith(slots.pinned), [slots.pinned]);
+  const isRtl = direction === "rtl";
+  // TanStack Virtual scrolls to a positive `left`, but RTL offsets run negative from the start.
+  const scrollAlong = useCallback(
+    (
+      offset: number,
+      { adjustments = 0, behavior }: { adjustments?: number; behavior?: ScrollBehavior },
+      axis: TimelineAxis,
+    ) =>
+      axis.scrollElement?.scrollTo?.({ behavior, left: (offset + adjustments) * (isRtl ? -1 : 1) }),
+    [isRtl],
+  );
 
   const rowAxis = useVirtualizer<HTMLDivElement, HTMLDivElement>({
     count: rows.count,
@@ -94,6 +127,7 @@ export function useTimelineVirtualizer({
     observeElementRect: observeViewport,
     overscan: 4,
     paddingStart: headerHeight,
+    rangeExtractor: rowRange,
     scrollPaddingStart: headerHeight,
     useFlushSync: false,
   });
@@ -105,11 +139,13 @@ export function useTimelineVirtualizer({
     horizontal: true,
     initialOffset: 0,
     initialRect: INITIAL_VIEWPORT,
-    isRtl: direction === "rtl",
+    isRtl,
     observeElementRect: observeViewport,
     overscan: 2,
     paddingStart: columnWidth,
+    rangeExtractor: slotRange,
     scrollPaddingStart: columnWidth,
+    scrollToFn: scrollAlong,
     useFlushSync: false,
   });
 
