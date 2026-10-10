@@ -2,6 +2,7 @@ import {
   createCalendar,
   createCanonicalEventAdapter,
   type CalendarEvent,
+  type CalendarFocus,
   type CalendarResource,
 } from "@moltenship/calendar";
 import { describe, expect, test, vi } from "vite-plus/test";
@@ -72,31 +73,38 @@ const Calendar = createCalendar<Booking, CalendarResource<null>>()({
 });
 
 function Timeline({
+  defaultFocus = null,
   direction = "ltr",
   onEventChange,
+  shown = events,
+  size = "h-[600px] w-[1000px]",
   view,
 }: {
+  readonly defaultFocus?: CalendarFocus | null;
   readonly direction?: "ltr" | "rtl";
   readonly onEventChange?: () => void;
+  readonly shown?: readonly Booking[];
+  readonly size?: string;
   readonly view: "timeline-day" | "timeline-month" | "timeline-week";
 }) {
   return (
     <Calendar.Root
       defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultFocus={defaultFocus}
       defaultExpandedResourceIds={resources
         .filter(({ id, parentId }) => parentId === undefined && id !== "site-1")
         .map(({ id }) => id)}
       defaultTimeZone="UTC"
       defaultView={view}
       direction={direction}
-      events={events}
+      events={shown}
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T10:20:00Z")}
       onEventChange={onEventChange}
       resources={resources}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
-      <Calendar.Frame className="h-[600px] w-[1000px]" dir={direction}>
+      <Calendar.Frame className={size} dir={direction}>
         <Calendar.ActiveView />
       </Calendar.Frame>
     </Calendar.Root>
@@ -198,4 +206,41 @@ test("the sticky header and resource column hide the cells scrolled beneath them
   expect(await dragFrom([barX, barY], [barX, header.bottom - 10])).toBe("move");
   expect(grid.querySelectorAll("[data-calendar-ghost]")).toHaveLength(0);
   expect(onEventChange).not.toHaveBeenCalled();
+});
+
+const tabStops = () => document.querySelectorAll('[data-slot="resource-timeline"] [tabindex="0"]');
+
+test("an empty day keeps one tab stop after it opens on now and scrolls both axes", async () => {
+  const frame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+  await render(<Timeline shown={[]} size="h-[420px] w-[500px]" view="timeline-day" />);
+  await frame();
+  const viewport = document.querySelector<HTMLElement>('[data-slot="resource-timeline-viewport"]')!;
+
+  // A day opens on the current time, scrolled well past midnight's entry.
+  expect(viewport.scrollLeft).toBeGreaterThan(200);
+  expect(tabStops()).toHaveLength(1);
+  viewport.scrollTop = 400;
+  viewport.scrollLeft = 900;
+  await frame();
+  expect(tabStops()).toHaveLength(1);
+  (tabStops()[0] as HTMLElement).focus();
+  expect(document.activeElement?.getAttribute("aria-label")).toBe(
+    "Site 1, expanded, Thursday, October 8 at 12:00 AM",
+  );
+});
+
+test("focus kept from a view without resources leaves one tab stop, on the first row", async () => {
+  // A week or month view's day focus names no resource.
+  await render(
+    <Timeline
+      defaultFocus={{ date: Temporal.PlainDate.from("2026-10-06"), kind: "day" }}
+      shown={[]}
+      view="timeline-week"
+    />,
+  );
+
+  expect(tabStops()).toHaveLength(1);
+  expect(tabStops()[0]?.getAttribute("aria-label")).toBe(
+    "Site 1, expanded, Tuesday, October 6, 2026",
+  );
 });

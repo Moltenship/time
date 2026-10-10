@@ -55,14 +55,18 @@ test("500 resources over a month render only the rows and days in view", async (
 
 test("scrolling swaps rows and days in and out by their stable keys", async () => {
   const container = await show(<Timeline />);
-  const first = rows(container)[0];
+  const [first, second] = rows(container);
 
   await scrollTo(viewport(container), { left: 48 * 10, top: 44 * 250 });
   const rendered = rows(container);
   const days = [...container.querySelectorAll('[role="columnheader"]')].map(ariaLabel);
 
-  expect(first?.isConnected).toBe(false);
-  expect(rendered.length).toBeLessThan(25);
+  // The first row and today stay, as they hold the tab stop; the rest come and go.
+  expect(first?.isConnected).toBe(true);
+  expect(second?.isConnected).toBe(false);
+  expect(days).toContain("Thursday, October 8, 2026");
+  // The rows in view, a few beyond, and the first.
+  expect(rendered.length).toBeLessThanOrEqual(25);
   expect(rendered.map((element) => element.getAttribute("aria-label"))).toContain("Room 26.1");
   expect(days).not.toContain("Thursday, October 1, 2026");
   expect(days).toContain("Thursday, October 15, 2026");

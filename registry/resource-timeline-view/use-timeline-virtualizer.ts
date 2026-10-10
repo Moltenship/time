@@ -34,13 +34,16 @@ export function timelineColumns(
 
 type TimelineAxis = Virtualizer<HTMLDivElement, HTMLDivElement>;
 
-/** The items in view, plus `pinned` wherever it is, so the focused row and slot always render. */
-function rangeWith(pinned: number | null) {
+/** The items in view, plus the pinned ones wherever they are, such as the focused row and slot. */
+function rangeWith(pinned: readonly number[]) {
   return (range: Range) => {
     const indexes = defaultRangeExtractor(range);
-    return pinned === null || pinned < 0 || pinned >= range.count || indexes.includes(pinned)
+    const missing = pinned.filter(
+      (index) => index >= 0 && index < range.count && !indexes.includes(index),
+    );
+    return missing.length === 0
       ? indexes
-      : [...indexes, pinned].sort((left, right) => left - right);
+      : [...indexes, ...missing].sort((left, right) => left - right);
   };
 }
 
@@ -56,16 +59,16 @@ export interface TimelineVirtualizerOptions {
     readonly count: number;
     readonly key: (index: number) => string;
     readonly height: (index: number) => number;
-    /** A row that renders even out of view, such as the focused one. */
-    readonly pinned: number | null;
+    /** Rows that render even out of view, such as the focused one. */
+    readonly pinned: readonly number[];
   };
   /** Columns: a stable key for each index; their width comes from `timelineColumns`. */
   readonly slots: {
     readonly count: number;
     readonly key: (index: number) => string;
     readonly minWidth: number;
-    /** A slot that renders even out of view, such as the focused one. */
-    readonly pinned: number | null;
+    /** Slots that render even out of view, such as the focused one. */
+    readonly pinned: readonly number[];
   };
 }
 

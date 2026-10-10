@@ -1,33 +1,95 @@
 import {
   sameFocus,
-  useResourceExpansion,
   timelineExtent,
-  useCalendarFocus,
   useCalendarInteraction,
+  useResourceExpansion,
   useRovingFocus,
   type CalendarCellFocus,
+  type CalendarFocus,
+  type EventId,
+  type PlainDateInterval,
   type ResourceId,
+  type ResourceTimelineProjection,
   type TimeGridColumn,
 } from "@moltenship/calendar";
 import type { CSSProperties, KeyboardEvent } from "react";
 
+const HOURS = 24;
+
+export interface CellTargets {
+  /** The cells each row renders a keyboard target for, by row index. */
+  readonly cells: ReadonlyMap<number, readonly CalendarCellFocus[]>;
+  /** Rows and slots that render even when scrolled away, so the targets and a focused event do. */
+  readonly rows: readonly number[];
+  readonly slots: readonly number[];
+}
+
 /**
- * The cell keyboard focus is on in this row. While nothing has focus, the first row also holds
- * the view's entry, so tabbing in has somewhere to land.
+ * Where keyboard focus can land. The first row always holds the view's entry, today or the
+ * range's first day (at midnight in an hour timeline), which is the tab stop until something
+ * has focus or when the focus can't show here. The focused cell sits in its row; focus from a
+ * view without resources names none and sits in the first row, as navigation moves it from
+ * there. These, and a focused event's first slot, stay rendered while scrolled away.
  */
-export function useRowCell(
-  resourceId: ResourceId | null,
-  entry: CalendarCellFocus | null,
-): CalendarCellFocus | null {
-  return useCalendarFocus(
-    (focus) =>
-      focus === null
-        ? entry
-        : focus.kind !== "event" && focus.resourceId === resourceId
-          ? focus
-          : null,
-    { isEqual: sameFocus },
-  );
+export function cellTargets<TEvent>(
+  focus: CalendarFocus | null,
+  { columns, rows, today, unit }: ResourceTimelineProjection<TEvent>,
+  range: PlainDateInterval,
+): CellTargets {
+  const first = rows[0];
+  if (first === undefined) return { cells: new Map(), rows: [], slots: [] };
+  const perDay = unit === "hour" ? HOURS : 1;
+  const slotCount = columns.length * perDay;
+  const inRange = (date: Temporal.PlainDate) =>
+    Temporal.PlainDate.compare(range.start, date) <= 0 &&
+    Temporal.PlainDate.compare(date, range.end) < 0;
+  const slotOf = (cell: CalendarCellFocus) =>
+    range.start.until(cell.date).days * perDay + (cell.kind === "slot" ? cell.time.hour : 0);
+
+  const date = today !== null && inRange(today) ? today : range.start;
+  const entry: CalendarCellFocus =
+    unit === "day"
+      ? { date, kind: "day", resourceId: first.resource.id }
+      : { date, kind: "slot", resourceId: first.resource.id, time: new Temporal.PlainTime() };
+  const cells = new Map<number, CalendarCellFocus[]>([[0, [entry]]]);
+  const pinned = { rows: [0], slots: [slotOf(entry)] };
+  const rowOf = (resourceId: ResourceId | null | undefined, eventId?: EventId) =>
+    resourceId !== undefined
+      ? rows.findIndex(({ resource }) => resource.id === resourceId)
+      : eventId === undefined
+        ? 0
+        : rows.findIndex((row) => eventStart(row, eventId, slotCount) !== undefined);
+
+  if (focus !== null && focus.kind !== "event" && inRange(focus.date)) {
+    const row = rowOf(focus.resourceId);
+    if (row !== -1) {
+      // Named after its row, a resource-less focus can't also match the entry beside it.
+      const cell = { ...focus, resourceId: rows[row]!.resource.id };
+      const targets = cells.get(row) ?? [];
+      if (!targets.some((target) => sameFocus(target, cell))) cells.set(row, [...targets, cell]);
+      pinned.rows.push(row);
+      pinned.slots.push(slotOf(cell));
+    }
+  } else if (focus?.kind === "event") {
+    const row = rowOf(focus.resourceId, focus.eventId);
+    const slot = row === -1 ? undefined : eventStart(rows[row]!, focus.eventId, slotCount);
+    if (slot !== undefined) {
+      pinned.rows.push(row);
+      pinned.slots.push(slot);
+    }
+  }
+  return { cells, ...pinned };
+}
+
+/** The slot an event's bar starts in within a row; `undefined` when the row doesn't show it. */
+function eventStart<TEvent>(
+  row: ResourceTimelineProjection<TEvent>["rows"][number],
+  eventId: EventId,
+  slotCount: number,
+): number | undefined {
+  if ("segments" in row) return row.segments.find(({ event }) => event.id === eventId)?.column;
+  const bar = row.bars.find(({ event }) => event.id === eventId);
+  return bar === undefined ? undefined : Math.min(slotCount - 1, Math.floor(bar.start * slotCount));
 }
 
 type Stretch = readonly [start: number, end: number];

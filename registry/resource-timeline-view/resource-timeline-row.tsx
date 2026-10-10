@@ -18,12 +18,7 @@ import { cn } from "cn";
 import { Button } from "@registry/ui/button";
 
 import { ResourceTimelineEvent } from "./resource-timeline-event";
-import {
-  GroupCellTarget,
-  TimelineCellTarget,
-  useRowCell,
-  useRowDraft,
-} from "./resource-timeline-focus";
+import { GroupCellTarget, TimelineCellTarget, useRowDraft } from "./resource-timeline-focus";
 import type { TimelineLabels } from "./timeline-labels";
 import { anchorSlot, placeBars, rowBars, slotsCovered } from "./timeline-placement";
 import type { TimelineSlot, TimelineSlotUnit } from "./timeline-scale";
@@ -31,8 +26,8 @@ import type { TimelineSlot, TimelineSlotUnit } from "./timeline-scale";
 export interface ResourceTimelineRowProps<TEvent> {
   /** The range's dates on the wall clock, for hour rows' strips and keyboard drafts. */
   readonly columns: readonly TimeGridColumn[];
-  /** Where focus enters the view, held by the first row while nothing has focus. */
-  readonly entry: CalendarCellFocus | null;
+  /** The cells of this row with a keyboard target: the focused one, and the entry in the first. */
+  readonly cells: readonly CalendarCellFocus[];
   /** A timed event's start time, shown on bars of a single day. */
   readonly formatTime: (instant: Temporal.Instant) => string;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
@@ -143,8 +138,8 @@ function CellTarget({
 }
 
 function ResourceTimelineRowBase<TEvent>({
+  cells,
   columns,
-  entry,
   formatTime,
   getEventColor,
   labelEvent,
@@ -170,13 +165,12 @@ function ResourceTimelineRowBase<TEvent>({
     (event) => labelEvent(event, title),
     [labelEvent, title],
   );
-  const cell = useRowCell(resource.id, entry);
   const draft = useRowDraft(resource.id, columns, slots.length);
   const perDay = unit === "hour" ? HOURS : 1;
   const origin = slots[0]?.date;
-  const cellSlot =
-    cell === null || origin === undefined
-      ? null
+  const slotOf = (cell: CalendarCellFocus) =>
+    origin === undefined
+      ? -1
       : origin.until(cell.date).days * perDay + (cell.kind === "slot" ? cell.time.hour : 0);
   const draftSlot =
     draft === null ? undefined : anchorSlot(visibleSlots, ...slotsCovered(...draft));
@@ -271,22 +265,25 @@ function ResourceTimelineRowBase<TEvent>({
                 resourceId={resource.id}
               />
             ))}
-            {cell !== null && cellSlot === item.index && (
-              <CellTarget
-                cell={cell}
-                group={resource.hasChildren ? resource.id : null}
-                label={labels.cellName(cell)}
-                style={
-                  cell.kind === "slot"
-                    ? {
-                        insetInlineStart: (cell.time.minute / 60) * slotWidth,
-                        width: (snapMinutes / 60) * slotWidth,
-                      }
-                    : { insetInlineStart: 0, width: perDay * slotWidth }
-                }
-                title={title}
-              />
-            )}
+            {cells
+              .filter((cell) => slotOf(cell) === item.index)
+              .map((cell) => (
+                <CellTarget
+                  key={`${cell.kind}:${cell.date.toString()}${cell.kind === "slot" ? `T${cell.time.toString()}` : ""}`}
+                  cell={cell}
+                  group={resource.hasChildren ? resource.id : null}
+                  label={labels.cellName(cell)}
+                  style={
+                    cell.kind === "slot"
+                      ? {
+                          insetInlineStart: (cell.time.minute / 60) * slotWidth,
+                          width: (snapMinutes / 60) * slotWidth,
+                        }
+                      : { insetInlineStart: 0, width: perDay * slotWidth }
+                  }
+                  title={title}
+                />
+              ))}
           </div>
         );
       })}

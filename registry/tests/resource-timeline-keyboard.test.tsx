@@ -222,3 +222,42 @@ test("in RTL the arrow keys follow the reading direction", async () => {
   await press("ArrowRight");
   expect(focused()).toBe("Room 1.1, Wednesday, October 7, 2026");
 });
+
+const tabStops = (container: Element) =>
+  [...container.querySelectorAll('[role="grid"] [tabindex="0"]')].map(ariaLabel);
+
+test("an empty day keeps its tab stop however far either axis scrolls first", async () => {
+  const container = await show(<Timeline view="timeline-day" />);
+
+  // As after opening on the current time, then scrolling down the resources.
+  await scrollTo(viewport(container), { left: 12 * 56 });
+  await scrollTo(viewport(container), { left: 12 * 56, top: 44 * 300 });
+
+  expect(tabStops(container)).toEqual(["Site 1, expanded, Thursday, October 8 at 12:00 AM"]);
+  await tabIn(container);
+  await press("ArrowDown");
+  expect(focused()).toBe("Room 1.1, Thursday, October 8 at 12:00 AM");
+});
+
+test("focus kept from a view without resources enters on the first row", async () => {
+  // A month or week view's focus names no resource.
+  const today = await show(
+    <Timeline
+      defaultFocus={{ date: Temporal.PlainDate.from("2026-10-08"), kind: "day" }}
+      view="timeline-week"
+    />,
+  );
+  expect(tabStops(today)).toEqual(["Site 1, expanded, Thursday, October 8, 2026"]);
+  await cleanup?.();
+
+  const tuesday = await show(
+    <Timeline
+      defaultFocus={{ date: Temporal.PlainDate.from("2026-10-06"), kind: "day" }}
+      view="timeline-week"
+    />,
+  );
+  expect(tabStops(tuesday)).toEqual(["Site 1, expanded, Tuesday, October 6, 2026"]);
+  await tabIn(tuesday);
+  await press("ArrowDown");
+  expect(focused()).toBe("Room 1.1, Tuesday, October 6, 2026");
+});
