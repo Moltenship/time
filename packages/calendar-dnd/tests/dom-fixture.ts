@@ -326,3 +326,71 @@ export function mountResourceColumns(events: readonly TestEvent[]) {
     ),
   };
 }
+
+/** Timeline: a 960px strip per resource row for one date, 40px per hour, rows 40px tall. */
+export const ROW_HEIGHT = 40;
+
+export function xAtTime(time: string, direction: "ltr" | "rtl" = "ltr"): number {
+  const { hour, minute } = Temporal.PlainTime.from(time);
+  const offset = (hour + minute / 60) * HOUR_HEIGHT;
+  return direction === "rtl" ? 24 * HOUR_HEIGHT - offset : offset;
+}
+
+export function yInRow(resourceId: (typeof resourceIds)[number]): number {
+  return resourceIds.indexOf(resourceId) * ROW_HEIGHT + ROW_HEIGHT / 2;
+}
+
+export function mountTimelineRows(
+  events: readonly TestEvent[],
+  { direction = "ltr" }: { readonly direction?: "ltr" | "rtl" } = {},
+) {
+  resetLayout();
+  const region = element({ dir: direction });
+  document.body.append(region);
+
+  const strips = new Map<string, HTMLElement>();
+  resourceIds.forEach((resourceId, index) => {
+    const row = element(resourceIdAttributes(resourceId));
+    const strip = element({ "data-axis": "inline", "data-date": resourceDate });
+    const box = { height: ROW_HEIGHT, left: 0, top: index * ROW_HEIGHT, width: 24 * HOUR_HEIGHT };
+    row.append(place(strip, box, 2));
+    region.append(row);
+    strips.set(resourceId, strip);
+  });
+
+  const elements = new Map<string, HTMLElement>();
+  for (const event of events) {
+    if (event.kind !== "timed") continue;
+    for (const resourceId of event.resourceIds ?? []) {
+      const strip = strips.get(resourceId)!;
+      const start = xAtTime(event.start.toZonedDateTimeISO(timeZone).toPlainTime().toString());
+      const width = (event.start.until(event.end).total({ unit: "minutes" }) / 60) * HOUR_HEIGHT;
+      const left = direction === "rtl" ? 24 * HOUR_HEIGHT - start - width : start;
+      const { top } = strip.getBoundingClientRect();
+      const node = place(
+        element(eventIdAttributes(event.id)),
+        { height: ROW_HEIGHT, left, top, width },
+        1,
+      );
+      node.textContent = event.title;
+      strip.append(node);
+      elements.set(`${event.id}@${resourceId}`, node);
+    }
+  }
+
+  return {
+    columns: timeGridColumns(
+      plainDateInterval(
+        Temporal.PlainDate.from(resourceDate),
+        Temporal.PlainDate.from(resourceDate).add({ days: 1 }),
+      ),
+      timeZone,
+    ),
+    elements,
+    region,
+    snapshot: createEventSnapshot(
+      events,
+      createCanonicalEventAdapter<null, string | number, string>(),
+    ),
+  };
+}

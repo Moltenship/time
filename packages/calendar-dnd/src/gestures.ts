@@ -11,11 +11,16 @@ import {
 import type { WallTimeSnapOptions } from "@moltenship/calendar-temporal";
 
 /**
- * What the pointer is over: a height in a time-grid column, or a whole day cell, and in a resource
- * view the resource around it (`null` for the unassigned bucket).
+ * What the pointer is over: a point in a time column, or a whole day cell, and in a resource view
+ * the resource around it (`null` for the unassigned bucket).
  */
 export type PointerTarget = (
-  | { readonly column: TimeGridColumn; readonly kind: "time"; readonly y: number }
+  | {
+      readonly column: TimeGridColumn;
+      readonly kind: "time";
+      /** How far through the column's nominal day, from `0` at midnight to `1` at the next. */
+      readonly y: number;
+    }
   | { readonly date: Temporal.PlainDate; readonly kind: "day" }
 ) & { readonly resourceId?: ResourceId | null };
 

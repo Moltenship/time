@@ -12,7 +12,14 @@ import {
   plainDateInterval,
 } from "@moltenship/calendar-temporal";
 
-import { dayCells, showsInCell, timeColumns, type TargetSurface } from "./targets";
+import {
+  dayCells,
+  isInline,
+  isRightToLeft,
+  showsInCell,
+  timeColumns,
+  type TargetSurface,
+} from "./targets";
 
 interface Bounds {
   readonly bottom: number;
@@ -111,15 +118,23 @@ function timeColumnRects(
 
     const box = timedFragmentBox(column, instantInterval(from, to));
     const rect = rectOf(cell);
-    return [
-      {
-        height: box.height * rect.height,
-        left: rect.left,
-        top: rect.top + box.top * rect.height,
-        visible: visibleBounds(surface, cell, rectOf),
-        width: rect.width,
-      },
-    ];
+    const visible = visibleBounds(surface, cell, rectOf);
+    if (!isInline(cell)) {
+      return [
+        {
+          height: box.height * rect.height,
+          left: rect.left,
+          top: rect.top + box.top * rect.height,
+          visible,
+          width: rect.width,
+        },
+      ];
+    }
+    // A timeline's date strip runs the day along its inline axis.
+    const width = box.height * rect.width;
+    const offset = box.top * rect.width;
+    const left = isRightToLeft(cell) ? rect.right - offset - width : rect.left + offset;
+    return [{ height: rect.height, left, top: rect.top, visible, width }];
   });
 }
 

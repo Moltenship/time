@@ -28,6 +28,24 @@ export function showsInCell(placement: CalendarEventPlacement, cell: Element): b
   return resourceId === undefined || showsInResource(placement.resourceIds, resourceId);
 }
 
+/** Whether a time column runs along the inline axis, as a timeline's date strip does. */
+export function isInline(cell: Element): boolean {
+  return cell.getAttribute("data-axis") === "inline";
+}
+
+/** Whether the inline axis runs from the right, as `dir="rtl"` on an ancestor sets. */
+export function isRightToLeft(cell: Element): boolean {
+  return cell.closest("[dir]")?.getAttribute("dir") === "rtl";
+}
+
+/** How far through its day a point is in a time column: down it, or from its inline start. */
+function along(cell: Element, x: number, y: number): number {
+  const rect = cell.getBoundingClientRect();
+  if (!isInline(cell)) return rect.height > 0 ? (y - rect.top) / rect.height : 0;
+  if (rect.width <= 0) return 0;
+  return (isRightToLeft(cell) ? rect.right - x : x - rect.left) / rect.width;
+}
+
 export function isTimeColumn(surface: TargetSurface, cell: Element): boolean {
   const date = cell.getAttribute("data-date");
   return date !== null && !cell.hasAttribute("data-all-day") && surface.columns.has(date);
@@ -47,7 +65,7 @@ export function timeColumns(surface: TargetSurface): HTMLElement[] {
 }
 
 /**
- * The day cell or time-column height under a viewport point, in the resource around the cell.
+ * The day cell or point in a time column under a viewport point, in the resource around the cell.
  * Hit-testing every element at the point finds the cell beneath events that span several cells.
  */
 export function targetAt(surface: TargetSurface, x: number, y: number): PointerTarget | null {
@@ -62,13 +80,7 @@ export function targetAt(surface: TargetSurface, x: number, y: number): PointerT
       return { date: Temporal.PlainDate.from(date), kind: "day", ...resource };
     }
 
-    const rect = cell.getBoundingClientRect();
-    return {
-      column,
-      kind: "time",
-      y: rect.height > 0 ? (y - rect.top) / rect.height : 0,
-      ...resource,
-    };
+    return { column, kind: "time", y: along(cell, x, y), ...resource };
   }
   return null;
 }

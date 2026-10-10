@@ -47,7 +47,10 @@ export interface CalendarPointerOptions<
    * `useCalendarAnnouncer()`. Without one, ranges are formatted in the runtime's locale.
    */
   readonly announcer?: CalendarAnnouncer;
-  /** Time-grid day columns, matched to `[data-date]` elements without `data-all-day`. */
+  /**
+   * Day columns of the time axis, matched to `[data-date]` elements without `data-all-day`: a
+   * time grid's or a timeline's `columns`.
+   */
   readonly columns?: readonly TimeGridColumn[];
   readonly disabled?: boolean;
   /** Extra classes for the preview segments. */
@@ -150,7 +153,9 @@ function resolveEvent<TEvent, TEventId extends EventId, TResourceId extends Reso
  * - `data-event-id` on events (spread `eventIdAttributes(id)` to keep numeric IDs distinct), with
  *   `data-resize="start"` or `"end"` on resize handles;
  * - `data-date` (an ISO date) on time-grid day columns and on day cells (month cells, or a time
- *   grid's all-day row, which also carries `data-all-day`);
+ *   grid's all-day row, which also carries `data-all-day`); a time column with
+ *   `data-axis="inline"`, such as a timeline's strip for one date, runs its day from the inline
+ *   start, the right under `dir="rtl"`;
  * - in a resource view, `data-resource-id` on each cell or an element around it (spread
  *   `resourceIdAttributes(id)`), so a drop in another resource swaps it in the event's
  *   `resourceIds` and a create starts in the resource it began in;
