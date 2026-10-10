@@ -165,12 +165,21 @@ function createKeyboardHandlers(
     } as CalendarInteractionUpdate);
   }
 
-  /** Follows the grabbed event into the cursor's date and resource, or a create's cell. */
+  /**
+   * Follows the grabbed event into the cursor's date and resource, or a create's cell. A move out
+   * of the event's last copy in a resource, as into the unassigned bucket, follows it to a resource
+   * it still shows in.
+   */
   function focusOfSession(session: CalendarKeyboardSession): CalendarFocus {
-    const { cursor, eventId } = session;
+    const { cursor, eventId, proposed } = session;
     return eventId === null
       ? cursor
-      : { date: cursor.date, eventId, kind: "event", resourceId: cursor.resourceId };
+      : {
+          date: cursor.date,
+          eventId,
+          kind: "event",
+          resourceId: resourceOn(proposed, cursor.resourceId),
+        };
   }
 
   /** A slot create starts `createDuration` long: its cursor steps later, as a drag would. */

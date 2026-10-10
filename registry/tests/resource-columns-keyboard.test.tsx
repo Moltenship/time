@@ -25,11 +25,15 @@ afterEach(async () => {
 async function renderResources({
   defaultFocus = null,
   direction,
+  events = [standup],
   onEventChange = () => {},
   resources = people(3),
+  unassigned = "hide",
 }: {
   readonly defaultFocus?: CalendarFocus | null;
   readonly direction?: "ltr" | "rtl";
+  readonly events?: readonly StaffEvent[];
+  readonly unassigned?: "bucket" | "hide";
   readonly onEventChange?: (change: Change) => void;
   readonly resources?: readonly CalendarResource<null>[];
 } = {}) {
@@ -40,12 +44,12 @@ async function renderResources({
       defaultTimeZone="UTC"
       defaultView="resources"
       direction={direction}
-      events={[standup]}
+      events={events}
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T12:00Z")}
       onEventChange={onEventChange}
       resources={resources}
-      viewOptions={{ resources: { unassigned: "hide" } }}
+      viewOptions={{ resources: { unassigned } }}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
       <ResourceCalendar.ActiveView />
@@ -208,4 +212,21 @@ test("moving an event to another resource from the keyboard gives the pointer's 
   expect(fromKeyboard.proposed).toEqual(fromPointer.proposed);
   expect(fromKeyboard.proposed?.resourceIds).toEqual(["p2"]);
   expect(spoken(container)).toBe("Moved standup to Thursday, October 8, 9:00 – 9:30 AM, Person 2.");
+});
+
+test("an event moved out of its last resource keeps focus where it still shows", async () => {
+  // Unassigned follows p2: moving the p2 copy there unbooks p2, so the event shows only in p1.
+  const container = await renderResources({
+    defaultFocus: { date: anchorDate, eventId: "standup", kind: "event", resourceId: "p2" },
+    events: [shift("standup", ["p1", "p2"], "2026-10-08T09:00Z", "2026-10-08T09:30Z")],
+    resources: people(2),
+    unassigned: "bucket",
+  });
+  await tabIn(container);
+  await press(" ");
+  await press("ArrowRight");
+
+  expect(focusedResource()).toBe("p1");
+  expect(document.activeElement?.getAttribute("data-event-id")).toBe("standup");
+  expect(document.activeElement?.hasAttribute("data-grabbed")).toBe(true);
 });
