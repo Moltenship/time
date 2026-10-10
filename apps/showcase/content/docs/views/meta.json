@@ -1,4 +1,12 @@
 {
   "title": "Views",
-  "pages": ["index", "week-and-day", "month", "agenda", "resource-columns", "custom-views"]
+  "pages": [
+    "index",
+    "week-and-day",
+    "month",
+    "agenda",
+    "resource-columns",
+    "resource-timeline",
+    "custom-views"
+  ]
 }

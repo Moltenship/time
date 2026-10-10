@@ -50,6 +50,7 @@ describe("anatomy diagrams", () => {
     "time-grid-anatomy.tsx",
     "agenda-anatomy.tsx",
     "resource-columns-anatomy.tsx",
+    "resource-timeline-anatomy.tsx",
   ])("%s names parts that exist in the code", async (file) => {
     const sources = (
       await Promise.all(

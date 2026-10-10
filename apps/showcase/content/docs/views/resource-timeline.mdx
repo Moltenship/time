@@ -1,0 +1,157 @@
+---
+title: Resource timeline
+description: Rooms or people as rows and days as columns, for a week or a month, with hundreds of rows.
+---
+
+<CalendarPreview view="timeline" />
+
+Try it in the [live demo](https://moltenship-time-demo.vercel.app): pick Timeline in the view
+switcher.
+
+`createTimelineWeekView` and `createTimelineMonthView` show one row for each resource, such as a
+room or a person, and one column for each day. Each resource's events are bars in its row.
+Resources with children appear as groups that collapse. Only the rows and days in view are
+rendered, so the timeline stays fast with hundreds of resources over a whole month.
+
+## Add it
+
+Copy `registry/resource-timeline-view` into your app (it uses shadcn's `button`), along with the
+theme and `registry/calendar`, as described in [UI source](/docs/installation#ui-source-optional).
+The view depends on `@tanstack/react-virtual`.
+
+```tsx
+import {
+  createTimelineMonthView,
+  createTimelineWeekView,
+} from "@/components/calendar/resource-timeline-view/resource-timeline-view";
+
+const getEventColor = (meeting: Meeting) => meeting.color;
+
+export const Calendar = createCalendar<Meeting, Room>()({
+  eventAdapter,
+  views: [
+    createTimelineWeekView<Meeting>({ getEventColor }),
+    createTimelineMonthView<Meeting>({ getEventColor }),
+  ],
+});
+```
+
+The views are named `timeline-week` and `timeline-month`. The week starts on
+`weekRules.firstDay`, and the month view shows the anchor's calendar month, from the 1st to its last
+day. Previous and Next move by a week or a month.
+
+## Resources
+
+Pass the resources to `Root`, as for [resource columns](/docs/views/resource-columns#resources).
+Each one has an `id`, a `title`, and optionally a `parentId`, which puts it in a group under that
+resource. Events list the resources they book in `resourceIds`, read through your event adapter's
+`getResourceIds`. An event that books several resources shows in each of their rows.
+
+```tsx
+const rooms = [
+  { data: null, id: "floor-1", title: "First floor" },
+  { data: null, id: "orchid", parentId: "floor-1", title: "Orchid" },
+  { data: null, id: "lotus", parentId: "floor-1", title: "Lotus" },
+];
+
+<Calendar.Root resources={rooms} defaultExpandedResourceIds={["floor-1"]} /* … */>
+```
+
+A group's children show while its ID is in `expandedResourceIds`. The chevron beside a group's name
+toggles it. To control expansion yourself, pass `expandedResourceIds` and
+`onExpandedResourceIdsChange`. Groups start collapsed unless you list them in
+`defaultExpandedResourceIds`.
+
+## Anatomy
+
+`ResourceTimelineView` renders the parts below. The view builds them itself from its projection, so
+they're not parts you compose: to change one, edit its file. The tree shows where each part lives.
+
+<ResourceTimelineAnatomy />
+
+```txt title="Rendered by ResourceTimelineView"
+ResourceTimelineView             resource-timeline-view.tsx
+└── ResourceTimelineGrid         resource-timeline-grid.tsx, scrolls both ways
+    ├── ResourceTimelineHeader   resource-timeline-header.tsx, sticky at the top
+    │   ├── Month                stays in view while you scroll sideways
+    │   └── Day                  one per rendered day
+    ├── ResourceTimelineRow      resource-timeline-row.tsx, one per rendered resource
+    │   ├── Resource name        sticky at the inline start, with a group's toggle
+    │   └── Day cell             data-date
+    │       └── ResourceTimelineEvent   resource-timeline-event.tsx
+    └── Now line                 data-slot="resource-timeline-now"
+```
+
+- `useTimelineVirtualizer` in `use-timeline-virtualizer.ts` decides which rows and days render. Days
+  share the width the resource column leaves until they are 48px wide, then the view scrolls
+  sideways. The resource column is 208px wide, or 128px on narrow screens.
+- The header and the resource column are `position: sticky` inside the one scrolling element, so
+  they move with it exactly and a row's name stays inside its row for screen readers.
+- A row is as tall as its lanes need, and at least 44px.
+
+## Options
+
+<TypeTable
+  type={{
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: "Extra words for each event's accessible name, such as its calendar.",
+    },
+    getEventColor: {
+      type: "(event: TEvent) => CalendarEventColor | undefined",
+      description: (
+        <>
+          The color for each event. See <a href="/docs/theming#event-colors">event colors</a>.
+        </>
+      ),
+    },
+    unassigned: {
+      type: '"hide" | "bucket"',
+      default: '"hide"',
+      description: (
+        <>
+          Events that book no resources: hidden, or shown in an "Unassigned" row after the
+          resources.
+        </>
+      ),
+    },
+  }}
+/>
+
+Set options when you create the view, or per calendar with
+`viewOptions={{ "timeline-week": { unassigned: "bucket" } }}` on `Root`.
+
+## What it shows
+
+- **Header:** the month, and each day's weekday and date, with today highlighted and marked
+  `aria-current="date"`. Weekends are tinted down every row.
+- **Rows:** each resource's name, indented under its group. Groups are tinted, and their chevron
+  shows or hides their children.
+- **Events:** laid out like a [month](/docs/views/month) row. A timed event within one day shows its
+  title and start time, as "Standup 9:30 AM", and drops the time when the day is too narrow. Longer events span their days, and an event that
+  starts before or ends after the range is squared off at that edge. Events that overlap stack in
+  lanes, and the row grows to fit them.
+- **Current time:** a line through today at the current time, from
+  [`useNow()`](/docs/concepts/time#the-current-time).
+- **Editing:** with `onEventChange` on `Root`, drag an event along its row to move it by whole days,
+  keeping its time, or onto another row to move it to that resource. A move swaps the resource you
+  dragged from for the one you dropped on and keeps the event's other resources. Drag an event's
+  start or end edge to change its days, and drag across empty days to create an all-day event in
+  that resource. See [Interactions](/docs/interactions#drag-resize-and-create).
+- **Accessible names:** the grid is named after the range, each row after its resource, and each
+  day cell after its resource, date and number of events, as in "Orchid, Monday, October 5, 2026,
+  2 events". Events end with their resource, as in "Design review, Tuesday, October 6, 10:00 – 11:30
+  AM, Orchid".
+
+## Keyboard
+
+Tab moves through the events in view, and Enter or Space opens one, as a click does. A group's
+chevron is a button too: Tab to it and press Enter or Space to collapse or expand the group.
+
+## Markup for interactions
+
+The view connects the pointer layer for you. Each resource's row has `resourceIdAttributes(id)`,
+which sets `data-resource-id`: a drop or create inside it lands in that resource. Each day cell has
+an inner element with `data-date`, beside the events rather than around them, so dragging an event
+by a later day moves it from that day. Events are buttons with `data-event-id`, and events you can
+edit have `data-resize="start"` and `data-resize="end"` handles.
