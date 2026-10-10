@@ -74,13 +74,13 @@ test("names the resources an event books when it is picked up, moved, or created
   expect(say({ ...booked, phase: "start", proposed: booked.original }, titled)).toBe(
     "Picked up standup, Thursday, October 8, 9:00 – 9:30 AM, Orchid, Maya.",
   );
-  // Steps name the resources only once the move changes them; unknown IDs are left out.
-  expect(say({ ...booked, phase: "step", proposed: inResources(["orchid", "maya"]) }, titled)).toBe(
-    "Thursday, October 8, 9:00 – 9:30 AM",
-  );
-  expect(
-    say({ ...booked, phase: "step", proposed: inResources(["lotus", "maya", "gone"]) }, titled),
-  ).toBe("Thursday, October 8, 9:00 – 9:30 AM, Lotus, Maya");
+  // A step names the resources when they change from the step before; unknown IDs are left out.
+  const step = (resourceIds: readonly string[]) =>
+    say({ ...booked, phase: "step", proposed: inResources(resourceIds) }, titled);
+  expect(step(["orchid", "maya"])).toBe("Thursday, October 8, 9:00 – 9:30 AM");
+  expect(step(["lotus", "maya", "gone"])).toBe("Thursday, October 8, 9:00 – 9:30 AM, Lotus, Maya");
+  expect(step(["lotus", "maya", "gone"])).toBe("Thursday, October 8, 9:00 – 9:30 AM");
+  expect(step(["orchid", "maya"])).toBe("Thursday, October 8, 9:00 – 9:30 AM, Orchid, Maya");
   expect(
     say({ ...booked, phase: "commit", proposed: inResources(["lotus", "maya"]) }, titled),
   ).toBe("Moved standup to Thursday, October 8, 9:00 – 9:30 AM, Lotus, Maya.");

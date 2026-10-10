@@ -171,6 +171,13 @@ test("moving an event to another resource from the keyboard gives the pointer's 
   );
   await press("ArrowRight");
   expect(spoken(container)).toBe("Thursday, October 8, 9:00 – 9:30 AM, Person 2");
+  // Out to Person 2 and back names both; a step that keeps the resource names none.
+  await press("ArrowLeft");
+  expect(spoken(container)).toBe("Thursday, October 8, 9:00 – 9:30 AM, Person 1");
+  await press("ArrowRight");
+  await press("ArrowDown");
+  expect(spoken(container)).toBe("Thursday, October 8, 9:15 – 9:45 AM");
+  await press("ArrowUp");
   await press("Enter");
 
   const fromPointer = pointerChange.mock.calls[0]![0];

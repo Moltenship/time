@@ -28,6 +28,24 @@ function sameResources(left: readonly ResourceId[], right: readonly ResourceId[]
 }
 
 /**
+ * The resources each move last announced, by the placement it started from, which keyboard and
+ * pointer updates carry unchanged through a gesture. A step names the resources when they differ
+ * from the step before, so moving out to another resource and back names both.
+ */
+const announcedResources = new WeakMap<CalendarEventPlacement, readonly ResourceId[]>();
+
+/** Whether a step's resources differ from the last ones announced for its gesture. */
+function resourcesChanged({ original, proposed }: CalendarInteractionUpdate): boolean {
+  if (original === null || proposed === null) return false;
+  const changed = !sameResources(
+    announcedResources.get(original) ?? original.resourceIds,
+    proposed.resourceIds,
+  );
+  announcedResources.set(original, proposed.resourceIds);
+  return changed;
+}
+
+/**
  * When a placement is and, with `resources`, the resources it books that the calendar knows:
  * "Thursday, October 8, 9:00 – 9:30 AM, Orchid, Maya".
  */
@@ -47,7 +65,7 @@ function describePlacement(
  * English announcements for moves, resizes, and creates, from the keyboard or a pointer. Render
  * them through `<Calendar.Announcer messages={calendarAnnouncements} />`, and edit or translate
  * them here. In a calendar with resources, picking up, moving and creating an event name the
- * resources it books, and a step names them when a move changes them; a resize can't.
+ * resources it books, and a step names them when the move changes them; a resize can't.
  */
 export const calendarAnnouncements: CalendarAnnouncementMessages = {
   start: (update, where) => {
@@ -62,14 +80,10 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
     }[update.cause];
     return update.input === "keyboard" ? `${opening} ${keyboardHints[update.cause]}` : opening;
   },
-  step: ({ original, proposed }, where) =>
-    proposed === null
+  step: (update, where) =>
+    update.proposed === null
       ? null
-      : describePlacement(
-          proposed,
-          where,
-          original !== null && !sameResources(original.resourceIds, proposed.resourceIds),
-        ),
+      : describePlacement(update.proposed, where, resourcesChanged(update)),
   commit: (update, where) => {
     switch (update.cause) {
       case "create":
