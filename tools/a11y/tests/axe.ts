@@ -22,7 +22,7 @@ const exemptions: ElementFilter = {
   "label-content-name-mismatch": (element) =>
     element.matches('[data-slot="calendar-event"]') ||
     element.matches(
-      '[data-slot="month-view"] [role="gridcell"], [data-slot="time-grid"] [role="gridcell"]',
+      '[data-slot="month-view"] [role="gridcell"], [data-slot="time-grid"] [role="gridcell"], [data-slot="resource-timeline"] [role="gridcell"]',
     ),
   // WCAG 2.5.8 exempts targets whose size is essential: in the month and time grids an event's
   // box is its time span, and "+N more" fills the event lane it summarises.

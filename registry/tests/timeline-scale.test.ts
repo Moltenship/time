@@ -1,21 +1,11 @@
 import { plainDateInterval } from "@moltenship/calendar";
 import { expect, test } from "vite-plus/test";
 
-import {
-  defaultSlotUnit,
-  timelineSlotGroups,
-  timelineSlots,
-} from "../resource-timeline-view/timeline-scale";
+import { timelineSlotGroups, timelineSlots } from "../resource-timeline-view/timeline-scale";
 import { timelineColumns } from "../resource-timeline-view/use-timeline-virtualizer";
 
 const range = (start: string, end: string) =>
   plainDateInterval(Temporal.PlainDate.from(start), Temporal.PlainDate.from(end));
-
-test("a day has hour slots and anything longer has day slots", () => {
-  expect(defaultSlotUnit(range("2026-10-08", "2026-10-09"))).toBe("hour");
-  expect(defaultSlotUnit(range("2026-10-05", "2026-10-12"))).toBe("day");
-  expect(defaultSlotUnit(range("2026-10-01", "2026-11-01"))).toBe("day");
-});
 
 test("hour slots follow the nominal 24-hour wall clock, even on a clock-change day", () => {
   // Clocks go back in New York on November 1, 2026; the timeline still draws 24 hours.

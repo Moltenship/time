@@ -26,11 +26,6 @@ export interface TimelineSlotGroup {
 /** Hours of the nominal wall-clock day, as the time grid draws it. */
 const HOURS = Array.from({ length: 24 }, (_, hour) => new Temporal.PlainTime(hour));
 
-/** Hours for a single day, days for anything longer. */
-export function defaultSlotUnit(range: PlainDateInterval): TimelineSlotUnit {
-  return range.start.until(range.end).days === 1 ? "hour" : "day";
-}
-
 /** The columns of a range: 24 nominal hours per date, or one per date. */
 export function timelineSlots(
   range: PlainDateInterval,
