@@ -2,6 +2,7 @@ import type { CalendarEventPlacement } from "@moltenship/calendar";
 import { describe, expect, test } from "vite-plus/test";
 
 import { applyEventChange, demoEventPolicy } from "../src/event-changes";
+import type { DemoResourceId } from "../src/resources";
 import { createSeedEvents } from "../src/seed";
 
 const events = createSeedEvents(Temporal.PlainDate.from("2026-10-08"), "UTC");
@@ -15,7 +16,7 @@ const event = timedSeedEvent("Design review");
 const original = { end: event.end, kind: "timed", resourceIds: [], start: event.start } as const;
 const others = events.filter(({ id }) => id !== event.id);
 
-function update(proposed: CalendarEventPlacement<never>) {
+function update(proposed: CalendarEventPlacement<DemoResourceId>) {
   return { cause: "move", event, eventId: event.id, id: "move", original, proposed } as const;
 }
 
@@ -29,6 +30,25 @@ describe("event changes", () => {
     expect(moved).toMatchObject({ description: "Calendar views v2", title: "Design review" });
     expect([String(moved?.start), String(moved?.end)]).toEqual([String(start), String(end)]);
     expect(next.filter(({ id }) => id !== event.id)).toEqual(others);
+  });
+
+  test("move an event to other rooms and people, or off all of them", () => {
+    const { end, start } = event;
+    const swapped = applyEventChange(
+      events,
+      update({ end, kind: "timed", resourceIds: ["room-cedar", "person-maya"], start }),
+    );
+    const cleared = applyEventChange(
+      events,
+      update({ end, kind: "timed", resourceIds: [], start }),
+    );
+
+    expect(event.resourceIds).toEqual(["room-orchid", "person-maya", "person-alex"]);
+    expect(swapped.find(({ id }) => id === event.id)?.resourceIds).toEqual([
+      "room-cedar",
+      "person-maya",
+    ]);
+    expect(cleared.find(({ id }) => id === event.id)).not.toHaveProperty("resourceIds");
   });
 
   test("turn a timed event into an all-day one", () => {

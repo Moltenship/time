@@ -2,11 +2,14 @@ import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
 
 import type { DemoCalendarId } from "./calendars";
 import { demoViews } from "./placeholder-views";
+import type { DemoResource, DemoResourceId } from "./resources";
 
 interface DemoEventBase {
   readonly calendarId: DemoCalendarId;
   readonly description?: string;
   readonly id: string;
+  /** Rooms and people the event books; left out when it books none. */
+  readonly resourceIds?: readonly DemoResourceId[];
   readonly title: string;
 }
 
@@ -20,13 +23,13 @@ export type DemoEvent = DemoEventBase &
       }
   );
 
-const noResourceIds: readonly never[] = [];
+const noResourceIds: readonly DemoResourceId[] = [];
 
-export const DemoCalendar = createCalendar<DemoEvent, never>()({
+export const DemoCalendar = createCalendar<DemoEvent, DemoResource>()({
   eventAdapter: defineEventAdapter<DemoEvent>()({
     getId: (event) => event.id,
     getInterval: (event) => event,
-    getResourceIds: () => noResourceIds,
+    getResourceIds: (event) => event.resourceIds ?? noResourceIds,
     getTitle: (event) => event.title,
   }),
   views: demoViews,

@@ -2,6 +2,7 @@ import type { CalendarEventInterval } from "@moltenship/calendar";
 
 import type { DemoEvent } from "./calendar";
 import type { DemoCalendarId } from "./calendars";
+import type { DemoResourceId } from "./resources";
 
 /**
  * The editable form of an event, in wall-clock fields of the display time zone. All-day end dates
@@ -18,6 +19,8 @@ export interface EventDraft {
   readonly endTime: Temporal.PlainTime;
   /** Set when editing an existing event. */
   readonly id?: string;
+  /** Rooms and people the event books, kept as they are; the dialog does not edit them. */
+  readonly resourceIds?: readonly DemoResourceId[];
   readonly startDate: Temporal.PlainDate;
   /** The start's original UTC offset, which picks the same occurrence of a repeated wall time. */
   readonly startOffset?: string;
@@ -72,17 +75,24 @@ export function draftFromEvent(event: DemoEvent, timeZone: string): EventDraft {
     calendarId: event.calendarId,
     description: event.description ?? "",
     id: event.id,
+    resourceIds: event.resourceIds,
     title: event.title,
   };
 }
 
-/** A new event for a range dragged out in a view. */
+/** A new event for a range dragged out in a view, in the resource it was dragged out in. */
 export function draftFromPlacement(
-  placement: CalendarEventInterval,
+  placement: CalendarEventInterval & { readonly resourceIds?: readonly DemoResourceId[] },
   timeZone: string,
   calendarId: DemoCalendarId,
 ): EventDraft {
-  return { ...intervalFields(placement, timeZone), calendarId, description: "", title: "" };
+  return {
+    ...intervalFields(placement, timeZone),
+    calendarId,
+    description: "",
+    resourceIds: placement.resourceIds,
+    title: "",
+  };
 }
 
 /**
@@ -150,11 +160,13 @@ export function eventFromDraft(draft: EventDraft, timeZone: string, id: string):
   if (title === "") return { error: "Add a title." };
 
   const description = draft.description.trim();
+  const { resourceIds = [] } = draft;
   const base = {
     calendarId: draft.calendarId,
     id,
     title,
     ...(description === "" ? {} : { description }),
+    ...(resourceIds.length === 0 ? {} : { resourceIds }),
   };
   if (draft.allDay) {
     if (Temporal.PlainDate.compare(draft.endDate, draft.startDate) < 0) {

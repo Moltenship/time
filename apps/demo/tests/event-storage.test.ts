@@ -16,6 +16,11 @@ describe("event storage", () => {
     expect(parsed?.find(({ kind }) => kind === "all-day")?.start).toBeInstanceOf(
       Temporal.PlainDate,
     );
+    expect(parsed?.find(({ title }) => title === "Design review")?.resourceIds).toEqual([
+      "room-orchid",
+      "person-maya",
+      "person-alex",
+    ]);
   });
 
   test.each([
@@ -25,6 +30,10 @@ describe("event storage", () => {
     [
       "an unknown calendar",
       JSON.stringify([{ ...JSON.parse(serializeEvents(events))[0], calendarId: "gone" }]),
+    ],
+    [
+      "an unknown resource",
+      JSON.stringify([{ ...JSON.parse(serializeEvents(events))[0], resourceIds: ["gone"] }]),
     ],
     [
       "an unparseable instant",

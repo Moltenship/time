@@ -121,6 +121,28 @@ describe("event drafts", () => {
     expect([allDayDraft.allDay, allDayDraft.endDate.toString()]).toEqual([true, "2026-10-14"]);
   });
 
+  test("keep the rooms and people of a range dragged out in a resource and of edited events", () => {
+    const draft = draftFromPlacement(
+      {
+        end: date("2026-10-14"),
+        kind: "all-day",
+        resourceIds: ["room-lotus"],
+        start: date("2026-10-13"),
+      },
+      timeZone,
+      "work",
+    );
+    const booked: DemoEvent = { ...timed, resourceIds: ["person-jordan"] };
+    const saved = eventFromDraft({ ...draft, title: "Workshop" }, timeZone, "new");
+    const edited = eventFromDraft(draftFromEvent(booked, timeZone), timeZone, booked.id);
+
+    expect("event" in saved && saved.event.resourceIds).toEqual(["room-lotus"]);
+    expect("event" in edited && edited.event.resourceIds).toEqual(["person-jordan"]);
+    expect(eventFromDraft(draftFromEvent(timed, timeZone), timeZone, "x")).not.toHaveProperty(
+      "event.resourceIds",
+    );
+  });
+
   test("start new events at the next half hour today and at 09:00 on other days", () => {
     const now = Temporal.ZonedDateTime.from(`2026-10-08T10:05[${timeZone}]`);
 

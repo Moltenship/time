@@ -5,23 +5,29 @@ import type {
 } from "@moltenship/calendar";
 
 import type { DemoEvent } from "./calendar";
+import type { DemoResourceId } from "./resources";
 
-export type DemoEventChange = CalendarEventChange<DemoEvent, string, never>;
+export type DemoEventChange = CalendarEventChange<DemoEvent, string, DemoResourceId>;
 
 /** A calendar policy: demo events are timed or all-day. */
-export function demoEventPolicy(change: DemoEventChange): CalendarPolicyDecision<never> {
+export function demoEventPolicy(change: DemoEventChange): CalendarPolicyDecision<DemoResourceId> {
   if (change.proposed?.kind === "floating") {
     return { reason: "Demo events are timed or all-day.", type: "reject" };
   }
   return { type: "accept" };
 }
 
-function withPlacement(event: DemoEvent, placement: CalendarEventPlacement<never>): DemoEvent {
+function withPlacement(
+  event: DemoEvent,
+  placement: CalendarEventPlacement<DemoResourceId>,
+): DemoEvent {
+  const { resourceIds } = placement;
   const base = {
     calendarId: event.calendarId,
     id: event.id,
     title: event.title,
     ...(event.description === undefined ? {} : { description: event.description }),
+    ...(resourceIds.length === 0 ? {} : { resourceIds }),
   };
   if (placement.kind === "timed") {
     return { ...base, end: placement.end, kind: "timed", start: placement.start };

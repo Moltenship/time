@@ -1,6 +1,9 @@
 import { describe, expect, test } from "vite-plus/test";
 
+import { createResourceTree, visibleResources } from "@moltenship/calendar";
+
 import type { DemoEvent } from "../src/calendar";
+import { demoResourceGroups, demoResources } from "../src/resources";
 import { createSeedEvents } from "../src/seed";
 
 const today = Temporal.PlainDate.from("2026-10-08");
@@ -57,5 +60,35 @@ describe("seed events", () => {
     expect(standup?.start.toZonedDateTimeISO(timeZone).toPlainTime().toString()).toBe("09:30:00");
     expect(dates[0]?.toString()).toBe("2026-09-28");
     expect(dates.at(-1)?.toString()).toBe("2026-10-18");
+  });
+
+  test("book rooms and people grouped by team, some several at once and some none", () => {
+    const tree = createResourceTree(demoResources);
+    const known = new Set<string>(demoResources.map(({ id }) => id));
+    const booked = events.flatMap(({ resourceIds = [] }) => resourceIds);
+    const outline = visibleResources(tree, demoResourceGroups).map(
+      ({ depth, id }) => `${"  ".repeat(depth)}${id}`,
+    );
+
+    expect(outline).toEqual([
+      "room-orchid",
+      "room-lotus",
+      "room-cedar",
+      "team-design",
+      "  person-maya",
+      "  person-alex",
+      "team-engineering",
+      "  person-sam",
+      "  person-lee",
+      "  person-jordan",
+    ]);
+    expect(booked.every((id) => known.has(id))).toBe(true);
+    expect(events.some(({ resourceIds = [] }) => resourceIds.length > 1)).toBe(true);
+    expect(
+      events.some((event) => event.calendarId === "work" && event.resourceIds === undefined),
+    ).toBe(true);
+    expect(
+      events.some((event) => event.kind === "all-day" && event.resourceIds !== undefined),
+    ).toBe(true);
   });
 });

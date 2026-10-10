@@ -1,22 +1,31 @@
 import type { DemoEvent } from "./calendar";
 import { isDemoCalendarId } from "./calendars";
+import { isDemoResourceId } from "./resources";
 import { isRecord } from "./storage";
 
 function parseEvent(value: unknown): DemoEvent {
   if (!isRecord(value)) throw new TypeError("invalid-stored-event");
-  const { calendarId, description, end, id, kind, start, title } = value;
+  const { calendarId, description, end, id, kind, resourceIds, start, title } = value;
   if (
     typeof id !== "string" ||
     typeof title !== "string" ||
     typeof start !== "string" ||
     typeof end !== "string" ||
     !isDemoCalendarId(calendarId) ||
-    (description !== undefined && typeof description !== "string")
+    (description !== undefined && typeof description !== "string") ||
+    (resourceIds !== undefined &&
+      !(Array.isArray(resourceIds) && resourceIds.every(isDemoResourceId)))
   ) {
     throw new TypeError("invalid-stored-event");
   }
 
-  const base = { calendarId, id, title, ...(description === undefined ? {} : { description }) };
+  const base = {
+    calendarId,
+    id,
+    title,
+    ...(description === undefined ? {} : { description }),
+    ...(resourceIds === undefined ? {} : { resourceIds }),
+  };
   if (kind === "timed") {
     return { ...base, end: Temporal.Instant.from(end), kind, start: Temporal.Instant.from(start) };
   }

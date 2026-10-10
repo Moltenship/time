@@ -1,12 +1,40 @@
 import type { DemoEvent } from "./calendar";
 import type { DemoCalendarId } from "./calendars";
+import type { DemoResourceId } from "./resources";
 
 type Weekday = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 
 /**
+ * The rooms and people work events book, by title. Some book several resources, one books a
+ * team, and work events left out (such as "Team lunch") stay unassigned, like every personal one.
+ */
+const resourceAssignments: Readonly<Record<string, readonly DemoResourceId[]>> = {
+  "1:1 with Maya": ["room-lotus", "person-maya", "person-sam"],
+  "Customer call: Acme": ["person-sam"],
+  "Deploy window": ["person-jordan"],
+  "Design review": ["room-orchid", "person-maya", "person-alex"],
+  "Focus time": ["person-lee"],
+  "Interview debrief": ["room-lotus", "person-alex", "person-lee"],
+  "Interview: frontend engineer": ["room-lotus", "person-alex", "person-lee"],
+  "Quarterly planning": ["room-cedar"],
+  "Release freeze": ["team-engineering"],
+  "Release retro": ["room-cedar", "team-engineering"],
+  "Roadmap review": ["room-orchid"],
+  "Sprint planning": ["room-cedar", "team-engineering"],
+  Standup: ["room-orchid"],
+  "Team offsite": ["team-design", "team-engineering"],
+  "Weekly planning": ["room-cedar", "person-sam", "person-lee"],
+};
+
+function resourcesOf(title: string): Pick<DemoEvent, "resourceIds"> {
+  const resourceIds = resourceAssignments[title];
+  return resourceIds === undefined ? {} : { resourceIds };
+}
+
+/**
  * Seeds roughly two weeks of events around `today` (last week, this week, next week) at local
  * wall-clock times in `timeZone`. It covers overlaps, all-day and multi-day events, events that
- * cross midnight, and 15-minute items.
+ * cross midnight, 15-minute items, and work events booking rooms and people.
  */
 export function createSeedEvents(today: Temporal.PlainDate, timeZone: string): DemoEvent[] {
   const monday = today.subtract({ days: today.dayOfWeek - 1 });
@@ -33,6 +61,7 @@ export function createSeedEvents(today: Temporal.PlainDate, timeZone: string): D
       start: start.toInstant(),
       title,
       ...(description === undefined ? {} : { description }),
+      ...resourcesOf(title),
     });
   }
 
@@ -50,6 +79,7 @@ export function createSeedEvents(today: Temporal.PlainDate, timeZone: string): D
       kind: "all-day",
       start,
       title,
+      ...resourcesOf(title),
     });
   }
 

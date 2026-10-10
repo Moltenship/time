@@ -29,6 +29,7 @@ import {
   type EventDraft,
 } from "./event-draft";
 import { useHiddenCalendars } from "./hidden-calendars";
+import { demoResourceGroups, demoResources } from "./resources";
 import { useDemoSettings } from "./settings";
 import { useCalendarLocation } from "./url-state";
 
@@ -165,12 +166,14 @@ export function App() {
     <TooltipProvider delay={400}>
       <DemoCalendar.Root
         anchorDate={location.date}
+        defaultExpandedResourceIds={demoResourceGroups}
         events={visibleEvents}
         locale={locale}
         onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
         onEventChange={persistChange}
         onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
         policies={demoPolicies}
+        resources={demoResources}
         timeZone={timeZone}
         view={location.view}
         weekRules={weekRules}
