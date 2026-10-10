@@ -36,12 +36,12 @@ function sameResources(left: readonly ResourceId[], right: readonly ResourceId[]
 const announcedResources = new WeakMap<CalendarEventPlacement, readonly ResourceId[]>();
 
 /**
- * Remembers the resources an update announces for its gesture, and returns whether they differ
- * from the ones announced before. A gesture that hasn't named any yet, as a drag that starts off
- * the view, names them on its first placement.
+ * Remembers the resources a move announces, and returns whether they differ from the ones it
+ * announced before. A move that hasn't named any yet, as a drag that starts off the view, names
+ * them on its first placement. Resizes and creates keep their resources, so they never track them.
  */
-function announceResources({ original, proposed }: CalendarInteractionUpdate): boolean {
-  if (original === null || proposed === null) return false;
+function announceResources({ cause, original, proposed }: CalendarInteractionUpdate): boolean {
+  if (cause !== "move" || original === null || proposed === null) return false;
   const announced = announcedResources.get(original);
   announcedResources.set(original, proposed.resourceIds);
   return announced === undefined || !sameResources(announced, proposed.resourceIds);

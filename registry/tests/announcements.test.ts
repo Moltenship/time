@@ -89,6 +89,15 @@ test("names the resources an event books when it is picked up, moved, or created
     "Thursday, October 8, 9:00 – 9:30 AM, Orchid",
   );
 
+  // A resize keeps its resources, so it never names them, even after starting off the view.
+  const resizing = { ...offView, cause: "resize-end", original: inResources(["orchid"]) } as const;
+  expect(say({ ...resizing, phase: "start", proposed: null }, titled)).toBe(
+    "Resizing the end of standup.",
+  );
+  expect(say({ ...resizing, phase: "step", proposed: inResources(["orchid"]) }, titled)).toBe(
+    "Thursday, October 8, 9:00 – 9:30 AM",
+  );
+
   // A drag that starts over another resource announces it, so going back names the original.
   const dragged = { ...update, original: inResources(["orchid"]) };
   expect(say({ ...dragged, phase: "start", proposed: inResources(["lotus"]) }, titled)).toBe(
