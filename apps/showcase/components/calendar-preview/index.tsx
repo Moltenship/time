@@ -4,16 +4,20 @@ import PreviewIsland, { ResourcePreviewIsland } from "./island";
 export interface CalendarPreviewProps extends Partial<Omit<LiveCalendarProps, "view">> {
   /** Tailwind classes for the frame's size; replaces the default for the view. */
   readonly size?: string;
-  /** A view of the main preview, or `"resources"` for resource columns of rooms and people. */
-  readonly view?: PreviewView | "resources";
+  /**
+   * A view of the main preview, or a view of rooms and people: `"resources"` for resource columns,
+   * `"timeline"` for the resource timeline.
+   */
+  readonly view?: PreviewView | "resources" | "timeline";
 }
 
 // Heights that fit the docs column; the day view is phone-width.
-const frameSizes: Record<PreviewView | "resources", string> = {
+const frameSizes: Record<PreviewView | "resources" | "timeline", string> = {
   agenda: "h-[30rem]",
   day: "mx-auto h-[36rem] max-w-sm",
   month: "h-[36rem]",
   resources: "h-[36rem]",
+  timeline: "h-[32rem]",
   week: "h-[32rem]",
 };
 
@@ -29,6 +33,8 @@ export function CalendarPreview({ size, view = "week", ...props }: CalendarPrevi
       >
         {view === "resources" ? (
           <ResourcePreviewIsland />
+        ) : view === "timeline" ? (
+          <ResourcePreviewIsland view="timeline-week" />
         ) : (
           <PreviewIsland view={view} {...props} />
         )}
@@ -38,7 +44,7 @@ export function CalendarPreview({ size, view = "week", ...props }: CalendarPrevi
           ? "Live, in your time zone. Tab into the calendar or click a day, then try the keys below."
           : view === "agenda" && props.switcher !== true
             ? "Live, in your time zone."
-            : view === "resources"
+            : view === "resources" || view === "timeline"
               ? "Live, in your time zone. Drag events between rooms and people, or resize and create them."
               : "Live, in your time zone. Drag to move, resize or create events."}
       </figcaption>

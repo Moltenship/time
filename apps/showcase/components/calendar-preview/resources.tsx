@@ -4,6 +4,7 @@ import { useState } from "react";
 import { calendarAnnouncements } from "@registry/calendar/announcements";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
+import { createTimelineWeekView } from "@registry/resource-timeline-view/resource-timeline-view";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { applyPreviewChange, createPreviewEvents, type PreviewEvent } from "./events";
@@ -50,11 +51,18 @@ const Calendar = createCalendar<PreviewEvent, CalendarResource<null>>()({
     getResourceIds: (event) => event.resourceIds ?? noResourceIds,
     getTitle: (event) => event.title,
   }),
-  views: [createResourceColumnsView<PreviewEvent>({ getEventColor })],
+  views: [
+    createResourceColumnsView<PreviewEvent>({ getEventColor }),
+    createTimelineWeekView<PreviewEvent>({ getEventColor }),
+  ],
 });
 
-/** The resource columns view over today's bookings in the visitor's time zone. */
-export default function ResourceCalendar() {
+/** A resource view over this week's bookings in the visitor's time zone. */
+export default function ResourceCalendar({
+  view = "resources",
+}: {
+  readonly view?: (typeof Calendar.views)[number]["name"];
+}) {
   const [now] = useState(() => Temporal.Now.zonedDateTimeISO());
   const [events, setEvents] = useState<readonly PreviewEvent[]>(() =>
     createPreviewEvents(now).map((event) => {
@@ -69,6 +77,7 @@ export default function ResourceCalendar() {
         defaultAnchorDate={now.toPlainDate()}
         defaultExpandedResourceIds={["design", "engineering"]}
         defaultTimeZone={now.timeZoneId}
+        defaultView={view}
         events={events}
         locale="en-US"
         onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}

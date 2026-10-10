@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@moltenship/calendar": "workspace:*",
+    "@tanstack/react-virtual": "catalog:",
     "fumadocs-core": "catalog:",
     "fumadocs-mdx": "catalog:",
     "fumadocs-ui": "catalog:",
