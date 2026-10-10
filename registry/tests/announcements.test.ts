@@ -3,6 +3,7 @@ import {
   createEventSnapshot,
   type CalendarAnnouncementContext,
   type CalendarInteractionUpdate,
+  type ResourceId,
 } from "@moltenship/calendar";
 import { expect, test } from "vite-plus/test";
 
@@ -27,12 +28,12 @@ const update = {
   proposed: standup!,
 } as const;
 
-function say(next: CalendarInteractionUpdate) {
+function say(next: CalendarInteractionUpdate, context = where) {
   const build = calendarAnnouncements[next.phase] as (
     update: CalendarInteractionUpdate,
     context: CalendarAnnouncementContext,
   ) => string | null;
-  return build(next, where)?.replace(/\s/g, " ") ?? null;
+  return build(next, context)?.replace(/\s/g, " ") ?? null;
 }
 
 test("leaves keyboard hints out of pointer gestures", () => {
@@ -58,4 +59,45 @@ test("explains rejections, and says nothing when a newer change replaced this on
   expect(say({ ...update, cause: "create", event: null, phase: "cancel" })).toBe(
     "Cancelled the new event.",
   );
+});
+
+test("names the resources an event books when it is picked up, moved, or created", () => {
+  const titles: Readonly<Record<string, string>> = {
+    lotus: "Lotus",
+    maya: "Maya",
+    orchid: "Orchid",
+  };
+  const inResources = (resourceIds: readonly string[]) => ({ ...standup!, resourceIds });
+  const booked = { ...update, original: inResources(["orchid", "maya"]) };
+  const titled = { ...where, resourceTitle: (id: ResourceId) => titles[id] };
+
+  expect(say({ ...booked, phase: "start", proposed: booked.original }, titled)).toBe(
+    "Picked up standup, Thursday, October 8, 9:00 – 9:30 AM, Orchid, Maya.",
+  );
+  // Steps name the resources only once the move changes them; unknown IDs are left out.
+  expect(say({ ...booked, phase: "step", proposed: inResources(["orchid", "maya"]) }, titled)).toBe(
+    "Thursday, October 8, 9:00 – 9:30 AM",
+  );
+  expect(
+    say({ ...booked, phase: "step", proposed: inResources(["lotus", "maya", "gone"]) }, titled),
+  ).toBe("Thursday, October 8, 9:00 – 9:30 AM, Lotus, Maya");
+  expect(
+    say({ ...booked, phase: "commit", proposed: inResources(["lotus", "maya"]) }, titled),
+  ).toBe("Moved standup to Thursday, October 8, 9:00 – 9:30 AM, Lotus, Maya.");
+  expect(
+    say(
+      {
+        ...booked,
+        cause: "create",
+        event: null,
+        original: null,
+        phase: "commit",
+        proposed: inResources(["lotus"]),
+      },
+      titled,
+    ),
+  ).toBe("New event for Thursday, October 8, 9:00 – 9:30 AM, Lotus.");
+  expect(
+    say({ ...booked, cause: "resize-end", phase: "commit", proposed: booked.original }, titled),
+  ).toBe("standup now runs Thursday, October 8, 9:00 – 9:30 AM.");
 });

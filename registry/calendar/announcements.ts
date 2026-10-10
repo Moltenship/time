@@ -1,7 +1,10 @@
 import type {
+  CalendarAnnouncementContext,
   CalendarAnnouncementMessages,
+  CalendarEventPlacement,
   CalendarInteractionCause,
   CalendarInteractionUpdate,
+  ResourceId,
 } from "@moltenship/calendar";
 
 import { describeWhen, eventTitle } from "@registry/calendar/event-label";
@@ -20,14 +23,37 @@ function subject({ event }: Pick<CalendarInteractionUpdate, "event">): string {
   return event === null ? "the new event" : eventTitle(event);
 }
 
+function sameResources(left: readonly ResourceId[], right: readonly ResourceId[]): boolean {
+  return left.length === right.length && left.every((id) => right.includes(id));
+}
+
+/**
+ * When a placement is and, with `resources`, the resources it books that the calendar knows:
+ * "Thursday, October 8, 9:00 – 9:30 AM, Orchid, Maya".
+ */
+function describePlacement(
+  placement: CalendarEventPlacement,
+  where: CalendarAnnouncementContext,
+  resources: boolean,
+): string {
+  const when = describeWhen(placement, where);
+  const titles = resources
+    ? placement.resourceIds.map(where.resourceTitle).filter((title) => title !== undefined)
+    : [];
+  return [when, ...titles].join(", ");
+}
+
 /**
  * English announcements for moves, resizes, and creates, from the keyboard or a pointer. Render
  * them through `<Calendar.Announcer messages={calendarAnnouncements} />`, and edit or translate
- * them here.
+ * them here. In a calendar with resources, picking up, moving and creating an event name the
+ * resources it books, and a step names them when a move changes them; a resize can't.
  */
 export const calendarAnnouncements: CalendarAnnouncementMessages = {
   start: (update, where) => {
-    const when = update.proposed === null ? "" : `, ${describeWhen(update.proposed, where)}`;
+    const resources = update.cause === "create" || update.cause === "move";
+    const when =
+      update.proposed === null ? "" : `, ${describePlacement(update.proposed, where, resources)}`;
     const opening = {
       create: `New event${when}.`,
       move: `Picked up ${subject(update)}${when}.`,
@@ -36,17 +62,23 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
     }[update.cause];
     return update.input === "keyboard" ? `${opening} ${keyboardHints[update.cause]}` : opening;
   },
-  step: ({ proposed }, where) => (proposed === null ? null : describeWhen(proposed, where)),
+  step: ({ original, proposed }, where) =>
+    proposed === null
+      ? null
+      : describePlacement(
+          proposed,
+          where,
+          original !== null && !sameResources(original.resourceIds, proposed.resourceIds),
+        ),
   commit: (update, where) => {
-    const when = describeWhen(update.proposed, where);
     switch (update.cause) {
       case "create":
-        return `New event for ${when}.`;
+        return `New event for ${describePlacement(update.proposed, where, true)}.`;
       case "move":
-        return `Moved ${subject(update)} to ${when}.`;
+        return `Moved ${subject(update)} to ${describePlacement(update.proposed, where, true)}.`;
       case "resize-end":
       case "resize-start":
-        return `${subject(update)} now runs ${when}.`;
+        return `${subject(update)} now runs ${describeWhen(update.proposed, where)}.`;
     }
   },
   reject: (update) => {
