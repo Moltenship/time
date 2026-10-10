@@ -1,5 +1,6 @@
 import {
   useResourceExpansion,
+  type CalendarResource,
   type ResourceColumn,
   type ResourceId,
   type VisibleResource,
@@ -17,12 +18,16 @@ export interface ResourceColumnsHeaderProps {
   readonly days: number;
   /** Follows the body's sideways scroll; see `useAxisSync`. */
   readonly followX: RefCallback<HTMLElement>;
+  /** The avatar or icon before each resource's name; see the view's `getResourceIcon`. */
+  readonly getResourceIcon?: ResourceIconGetter;
   /** The rendered columns, from the column virtualizer. */
   readonly items: readonly VirtualItem[];
   readonly resources: readonly ResourceColumn<unknown>[];
   readonly scrollbarWidth: number;
   readonly totalSize: number;
 }
+
+export type ResourceIconGetter = (resource: CalendarResource<unknown, ResourceId>) => ReactNode;
 
 /** Height of one hierarchy level, in rem. */
 const LEVEL = 2;
@@ -63,10 +68,12 @@ function GroupToggle({ id, title }: { readonly id: ResourceId; readonly title: s
  * all of its columns; a collapsed group shows its name with a closed chevron.
  */
 function ResourceHeader({
+  getResourceIcon,
   groups,
   levels,
   resource,
 }: {
+  readonly getResourceIcon: ResourceIconGetter | undefined;
   /** Names of the groups the resource sits in, outermost first. */
   readonly groups: readonly string[];
   readonly levels: number;
@@ -74,6 +81,8 @@ function ResourceHeader({
 }) {
   const { depth, expanded, hasChildren, id } = resource;
   const title = resourceTitle(resource);
+  // The unassigned bucket has no resource, so it gets no icon.
+  const icon = resource.resource === null ? undefined : getResourceIcon?.(resource.resource);
 
   return (
     <div className="flex h-full flex-col">
@@ -93,6 +102,11 @@ function ResourceHeader({
         style={{ height: `${LEVEL}rem` }}
       >
         {hasChildren && id !== null && <GroupToggle id={id} title={title} />}
+        {icon !== undefined && icon !== null && (
+          <span aria-hidden className="flex shrink-0 items-center" data-slot="resource-icon">
+            {icon}
+          </span>
+        )}
         <span
           className={cn("truncate text-sm font-medium", id === null && "text-muted-foreground")}
           title={title}
@@ -117,6 +131,7 @@ export function ResourceColumnsHeader({
   corner,
   days,
   followX,
+  getResourceIcon,
   items,
   resources,
   scrollbarWidth,
@@ -167,7 +182,12 @@ export function ResourceColumnsHeader({
                 className="absolute inset-y-0"
                 style={{ insetInlineStart: start, width: size }}
               >
-                <ResourceHeader groups={groupsOf(resource)} levels={levels} resource={resource} />
+                <ResourceHeader
+                  getResourceIcon={getResourceIcon}
+                  groups={groupsOf(resource)}
+                  levels={levels}
+                  resource={resource}
+                />
               </div>
             );
           })}

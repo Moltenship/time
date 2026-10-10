@@ -54,6 +54,57 @@ toggles it. To control expansion yourself, pass `expandedResourceIds` and
 `onExpandedResourceIdsChange`. Groups start collapsed unless you list them in
 `defaultExpandedResourceIds`.
 
+## Avatars and icons
+
+Columns often mix people and rooms. `getResourceIcon` tells them apart: it draws something before
+each resource's name, such as a person's avatar or a room's icon. In the preview above, people show
+their avatar and rooms a door. Return `undefined` to draw nothing; here, the teams keep just their
+chevron.
+
+Keep what the icon needs in each resource's `data`, and pass your resource type as the view's
+second type parameter so the function can read it:
+
+```tsx
+import type { CalendarResource } from "@moltenship/calendar";
+import { DoorOpenIcon } from "lucide-react";
+
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+
+// For example { data: { avatar: "/avatars/maya.png", kind: "person" }, id: "maya", title: "Maya" }
+type Resource = CalendarResource<
+  { kind: "room" } | { kind: "team" } | { avatar: string; kind: "person" }
+>;
+
+function getResourceIcon({ data, title }: Resource) {
+  if (data.kind === "person") {
+    return (
+      <Avatar size="sm">
+        <AvatarImage alt="" src={data.avatar} />
+        <AvatarFallback>{title.slice(0, 1)}</AvatarFallback>
+      </Avatar>
+    );
+  }
+  if (data.kind === "room") {
+    return (
+      <span className="flex size-6 items-center justify-center rounded-md bg-muted text-muted-foreground">
+        <DoorOpenIcon className="size-3.5" />
+      </span>
+    );
+  }
+  return undefined;
+}
+
+const view = createResourceColumnsView<Meeting, Resource>({ getResourceIcon });
+```
+
+- `Avatar` is shadcn's: `npx shadcn@latest add avatar`. It shows the fallback, here the person's
+  initial, until the image loads, and keeps it if the image fails.
+- A header row is 2rem tall, so keep icons at 24px (`size-6`) or smaller. Giving rooms a square tile
+  the size of an avatar keeps the names lined up.
+- The icon sits after a group's chevron, so groups can have one too. The Unassigned column never
+  gets one.
+- Screen readers skip the icon, because the name beside it already says who or what the column is.
+
 ## Anatomy
 
 `ResourceColumnsView` renders the parts below. The view builds them itself from its projection, so
@@ -65,6 +116,7 @@ they're not parts you compose: to change one, edit its file. The tree shows wher
 ResourceColumnsView              resource-columns-view.tsx
 ├── ResourceColumnsHeader        resource-columns-header.tsx
 │   └── Resource header          one per rendered resource
+│       └── Resource icon        getResourceIcon, data-slot="resource-icon"
 ├── ResourceColumnsDates         resource-columns-dates.tsx, over N days
 ├── ResourceColumnsAllDay        resource-columns-all-day.tsx
 │   └── TimeGridAllDayCells      one set per rendered resource
@@ -98,6 +150,15 @@ ResourceColumnsView              resource-columns-view.tsx
         </>
       ),
     },
+    getResourceIcon: {
+      type: "(resource: TResource) => ReactNode",
+      description: (
+        <>
+          An avatar or icon before each resource's name. See{" "}
+          <a href="#avatars-and-icons">avatars and icons</a>.
+        </>
+      ),
+    },
     unassigned: {
       type: '"hide" | "bucket"',
       default: '"hide"',
@@ -116,8 +177,9 @@ Set options when you create the view, or per calendar with
 
 ## What it shows
 
-- **Header:** each resource's name. An expanded group's band names it across its own column and its
-  children's columns. Over several days, a row under the names shows each day's weekday and date.
+- **Header:** each resource's name, after its avatar or icon if you set `getResourceIcon`. An
+  expanded group's band names it across its own column and its children's columns. Over several
+  days, a row under the names shows each day's weekday and date.
 - **All-day row:** each resource's all-day events, and timed events of 24 hours or more. Busy days
   collapse to three rows with "+N more" in every column at once, so the row keeps one height.
 - **Columns:** the same hours, events, daylight-saving bands and now line as the
