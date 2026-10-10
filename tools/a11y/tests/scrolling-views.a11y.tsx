@@ -273,6 +273,22 @@ describe("scrolling views", () => {
     await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.02), settled);
   });
 
+  test("a day view scrolled down to the evening still stops a swipe at the next day", async () => {
+    await render(<Screen view="scrolling-day" />);
+    const { position, viewport } = axis("scrolling-day");
+    const start = position();
+    const day = viewport.getBoundingClientRect().width;
+    await act(async () => {
+      viewport.scrollTop = viewport.scrollHeight;
+    });
+
+    // A swipe worth more than two days, which snapping stops at the next one.
+    await act(async () => viewport.scrollBy({ behavior: "instant", left: day * 2.6 }));
+
+    await vi.waitFor(() => expect(title()).toBe("October 8, 2026"), settled);
+    await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.02), settled);
+  });
+
   test("the month scrolls by weeks and names the month of its third row", async () => {
     await render(<Screen view="scrolling-month" />);
     const { position, scrollBy } = axis("scrolling-month");

@@ -1,5 +1,7 @@
 import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
+import { cn } from "cn";
+
 /** Items the canvas holds on each side of the view: years of days, far past any swipe. */
 const REACH = 1000;
 /** Without `scrollend`, a scroll has settled once it has been still this long. */
@@ -358,15 +360,18 @@ export function ScrollSnapPoints({ axis, base, first, page, size, stop }: Scroll
       {points.map((item) => (
         <div
           key={item}
-          className={
-            stop === true
-              ? "absolute size-px snap-start snap-always"
-              : "absolute size-px snap-start"
-          }
+          // Each point spans the other axis, so it stays in view however far that axis scrolls:
+          // browsers skip snap points out of view, which let a fling pass days in a day view
+          // scrolled down to the evening.
+          className={cn(
+            "absolute snap-start",
+            axis === "inline" ? "inset-y-0 w-px" : "inset-x-0 h-px",
+            stop === true && "snap-always",
+          )}
           style={
             axis === "inline"
-              ? { insetInlineStart: `calc(${item - base} * ${size})`, top: 0 }
-              : { insetInlineStart: 0, top: `calc(${item - base} * ${size})` }
+              ? { insetInlineStart: `calc(${item - base} * ${size})` }
+              : { top: `calc(${item - base} * ${size})` }
           }
         />
       ))}
