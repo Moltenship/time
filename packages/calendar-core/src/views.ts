@@ -7,16 +7,20 @@ import {
 import type { CalendarEnvironmentBase } from "./environment";
 import type { EventId, ResourceId } from "./ids";
 import type { CalendarSpatialNavigation, CalendarSpatialNavigationInput } from "./navigation/types";
+import type { ResourceTree } from "./resources/tree";
 import type { EventSnapshot } from "./snapshots/types";
 
 export interface CalendarViewProjectionInput<TOptions, TEvent = unknown> {
   readonly environment: CalendarEnvironmentBase;
+  /** Resources whose children show; see `visibleResources`. */
+  readonly expandedResourceIds: readonly ResourceId[];
   /** The visible dates resolved to instants in the display time zone. */
   readonly instantRange: InstantInterval;
   readonly options: TOptions;
   /** The visible dates. */
   readonly range: PlainDateInterval;
-  readonly resources: readonly unknown[];
+  /** The root's resources by `parentId`, built once per resource list. */
+  readonly resources: ResourceTree;
   readonly snapshot: EventSnapshot<TEvent, EventId, ResourceId>;
   /** The current date in the display time zone, or `null` until a clock is available. */
   readonly today: Temporal.PlainDate | null;

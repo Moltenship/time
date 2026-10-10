@@ -1,6 +1,11 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { projectTimeGrid, resolveViewInstantRange, timeGridStrategy } from "../src/index";
+import {
+  createResourceTree,
+  projectTimeGrid,
+  resolveViewInstantRange,
+  timeGridStrategy,
+} from "../src/index";
 import { allDay, dates, environment, floating, snapshotOf, timed } from "./view-fixtures";
 
 const events = [
@@ -74,10 +79,11 @@ describe("time-grid strategy", () => {
     const range = day.getRange(anchor, env, undefined);
     const projection = day.project({
       environment: env,
+      expandedResourceIds: [],
       instantRange: resolveViewInstantRange(range, "UTC"),
       options: undefined,
       range,
-      resources: [],
+      resources: createResourceTree([]),
       snapshot: snapshotOf(events),
       today: null,
     });

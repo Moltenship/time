@@ -3,6 +3,7 @@ import { plainDateInterval, type PlainDateInterval } from "@moltenship/calendar-
 import {
   createCanonicalEventAdapter,
   createEventSnapshot,
+  createResourceTree,
   resolveViewInstantRange,
   type CalendarEnvironmentBase,
   type CalendarEvent,
@@ -76,10 +77,11 @@ export function viewInput<TEvent>(
 ): CalendarViewProjectionInput<unknown, TEvent> {
   return {
     environment,
+    expandedResourceIds: [],
     instantRange: resolveViewInstantRange(range, environment.timeZone),
     options: undefined,
     range,
-    resources: [],
+    resources: createResourceTree([]),
     snapshot,
     today: today === null ? null : Temporal.PlainDate.from(today),
   };

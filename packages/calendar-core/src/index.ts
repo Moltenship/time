@@ -59,6 +59,10 @@ export { getListRange, getListTitle, navigateList, projectList } from "./views/l
 export type { ListDay, ListItem, ListProjection, ListViewOptions } from "./views/list/list";
 
 export type { CalendarResource } from "./resources";
+export { createResourceTree } from "./resources/tree";
+export type { ResourceTree, ResourceTreeInput, ResourceTreeNode } from "./resources/tree";
+export { groupByResource, showsInResource, visibleResources } from "./resources/visible";
+export type { ResourceVisibilityOptions, VisibleResource } from "./resources/visible";
 export type {
   CalendarDirection,
   CalendarEnvironment,
@@ -90,6 +94,15 @@ export type {
   TimeGridProjectionInput,
 } from "./views/time-grid/projection";
 export type { TimedOverlapOptions } from "./layout/timed-overlap";
+export {
+  projectResourceColumns,
+  resourceColumnsStrategy,
+} from "./views/resource-columns/projection";
+export type {
+  ResourceColumn,
+  ResourceColumnsProjection,
+  ResourceColumnsProjectionInput,
+} from "./views/resource-columns/projection";
 
 export { createEventTransactions } from "./transactions/event-transactions";
 export type { EventTransactions } from "./transactions/event-transactions";
@@ -165,6 +178,7 @@ export type {
 export { boundsPolicy } from "./policies/bounds";
 export { minimumDurationPolicy } from "./policies/minimum-duration";
 export { readOnlyPolicy } from "./policies/read-only";
+export { readOnlyResourcesPolicy } from "./policies/read-only-resources";
 export { snapPolicy } from "./policies/snap";
 export type {
   CalendarPolicy,

@@ -46,18 +46,22 @@ export type CalendarKeyboardSessionStart<
     };
 
 /** The slot a wall time falls in. */
-function slotOf(wallTime: Temporal.PlainDateTime, snap: WallTimeSnapOptions): CalendarCellFocus {
+function slotOf(
+  wallTime: Temporal.PlainDateTime,
+  snap: WallTimeSnapOptions,
+  resourceId: CalendarCellFocus["resourceId"],
+): CalendarCellFocus {
   const start = wallTime.round({
     roundingIncrement: snap.increment,
     roundingMode: "floor",
     smallestUnit: snap.smallestUnit,
   });
-  return { date: start.toPlainDate(), kind: "slot", time: start.toPlainTime() };
+  return { date: start.toPlainDate(), kind: "slot", resourceId, time: start.toPlainTime() };
 }
 
 /**
- * The cell at an edge of the event, on the axis of the cell its element sits in, so stepping the
- * cursor moves that edge and focus stays on the event.
+ * The cell at an edge of the event, on the axis and in the resource of the cell its element sits
+ * in, so stepping the cursor moves that edge and focus stays on the event.
  */
 function edgeCell(
   placement: CalendarEventPlacement,
@@ -65,25 +69,30 @@ function edgeCell(
   cell: CalendarCellFocus,
   { snap, timeZone }: CalendarInteractionOptions,
 ): CalendarCellFocus {
+  const { resourceId } = cell;
   if (placement.kind === "all-day") {
     const date = edge === "start" ? placement.start : placement.end.subtract({ days: 1 });
-    return { date, kind: "day" };
+    return { date, kind: "day", resourceId };
   }
   const { end, start } = wallClockEndpoints(placement, timeZone);
   // The end is exclusive, so its edge is the last slot or day the event covers.
   const at = (edge === "start" ? start : end.subtract({ nanoseconds: 1 })).toPlainDateTime();
-  return cell.kind === "day" ? { date: at.toPlainDate(), kind: "day" } : slotOf(at, snap);
+  return cell.kind === "day"
+    ? { date: at.toPlainDate(), kind: "day", resourceId }
+    : slotOf(at, snap, resourceId);
 }
 
 function targetOf(
   cell: CalendarCellFocus,
   { snap, timeZone }: CalendarInteractionOptions,
 ): CalendarInteractionTarget {
+  const { resourceId } = cell;
   return cell.kind === "day"
-    ? { date: cell.date, kind: "day" }
+    ? { date: cell.date, kind: "day", resourceId }
     : {
         at: snapZonedWallTime(cell.date.toPlainDateTime(cell.time), { ...snap, timeZone }),
         kind: "time",
+        resourceId,
       };
 }
 

@@ -1,3 +1,5 @@
+import type { PlainDateInterval } from "@moltenship/calendar-temporal";
+
 import type { CalendarEventInterval } from "../../events";
 import type { EventId, ResourceId } from "../../ids";
 import { layoutDayGridRow, type DayGridRow } from "../../layout/day-grid";
@@ -46,22 +48,18 @@ export function belongsInTimeGridAllDayRow(interval: CalendarEventInterval): boo
   }
 }
 
-/** Splits the visible events into the all-day row and per-day columns of positioned blocks. */
-export function projectTimeGrid<TEvent>({
-  environment,
-  range,
-  snapshot,
-  today,
-}: TimeGridProjectionInput<TEvent>): TimeGridProjection<TEvent> {
-  const { timeZone } = environment;
-  const fragments = splitEventsByDay(
-    queryVisibleEvents(snapshot, range, timeZone),
-    range,
-    timeZone,
-  );
+/**
+ * Lays day fragments out as a time grid: the all-day row across `range` and positioned blocks in
+ * each of its `columns`.
+ */
+export function timeGridOf<TEvent>(
+  fragments: readonly EventDayFragment<TEvent, EventId, ResourceId>[],
+  columns: readonly TimeGridColumn[],
+  range: PlainDateInterval,
+  today: Temporal.PlainDate | null,
+): TimeGridProjection<TEvent> {
   const allDay = fragments.filter((fragment) => belongsInTimeGridAllDayRow(fragment.event));
   const timed = fragments.filter((fragment) => !belongsInTimeGridAllDayRow(fragment.event));
-  const columns = timeGridColumns(range, timeZone);
   const layouts = layoutTimeGrid(columns, timed, { minHeight: MINIMUM_EVENT_HEIGHT });
 
   return Object.freeze({
@@ -76,6 +74,22 @@ export function projectTimeGrid<TEvent>({
       ),
     ),
   });
+}
+
+/** Splits the visible events into the all-day row and per-day columns of positioned blocks. */
+export function projectTimeGrid<TEvent>({
+  environment,
+  range,
+  snapshot,
+  today,
+}: TimeGridProjectionInput<TEvent>): TimeGridProjection<TEvent> {
+  const { timeZone } = environment;
+  const fragments = splitEventsByDay(
+    queryVisibleEvents(snapshot, range, timeZone),
+    range,
+    timeZone,
+  );
+  return timeGridOf(fragments, timeGridColumns(range, timeZone), range, today);
 }
 
 /** Range, navigation, keyboard navigation, title, and projection for a day, week, or N-day grid. */

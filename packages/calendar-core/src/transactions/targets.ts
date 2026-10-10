@@ -13,11 +13,14 @@ import type { CalendarWallClockDelta } from "./wall-clock";
 
 /**
  * What a pointer or keyboard interaction is over: a snapped wall-clock time in a time-grid
- * column, or a whole day (a month cell, or a time grid's all-day row).
+ * column, or a whole day (a month cell, or a time grid's all-day row). In a resource view it is
+ * also in a resource, or in the unassigned bucket (`null`); views without resources leave
+ * `resourceId` out.
  */
-export type CalendarInteractionTarget =
+export type CalendarInteractionTarget = (
   | { readonly at: Temporal.ZonedDateTime; readonly kind: "time" }
-  | { readonly date: Temporal.PlainDate; readonly kind: "day" };
+  | { readonly date: Temporal.PlainDate; readonly kind: "day" }
+) & { readonly resourceId?: ResourceId | null };
 
 export interface CalendarInteractionOptions {
   /** Time-grid slots: the shortest a resize leaves a timed event, and a created event's unit. */
@@ -64,11 +67,52 @@ function deltaBetween(
 }
 
 /**
+ * The event's resources after one of its fragments moves from resource `from` to `to`: `to` takes
+ * `from`'s place, so the event moves rather than gaining a copy. `null` is the unassigned bucket:
+ * leaving it adds `to`, and entering it drops `from`. A resource the event already has is not
+ * repeated.
+ */
+function reassignResource<TResourceId extends ResourceId>(
+  resourceIds: readonly TResourceId[],
+  from: TResourceId | null,
+  to: TResourceId | null,
+): readonly TResourceId[] {
+  if (from === to) return resourceIds;
+  const kept = resourceIds.filter((resourceId) => resourceId !== from);
+  if (to === null || kept.includes(to)) return kept;
+  const index = from === null ? -1 : resourceIds.indexOf(from);
+  return index === -1 ? [...resourceIds, to] : resourceIds.with(index, to);
+}
+
+/** Whether both targets are in the same resource, or neither view has resources. */
+function sameResource(left: CalendarInteractionTarget, right: CalendarInteractionTarget): boolean {
+  return left.resourceId === right.resourceId;
+}
+
+/**
  * Where an event grabbed at `grab` lands over `target`. Moves within one axis keep the event's
  * kind; a timed event over a day becomes all-day, and an all-day event over a time becomes a
- * one-hour timed event.
+ * one-hour timed event. Moving to another resource swaps that resource in the event's
+ * `resourceIds`, keeping its others.
  */
 export function movePlacementToTarget<TResourceId extends ResourceId>(
+  original: CalendarEventPlacement<TResourceId>,
+  grab: CalendarInteractionTarget,
+  target: CalendarInteractionTarget,
+  options: Pick<CalendarInteractionOptions, "timeZone">,
+): CalendarEventPlacement<TResourceId> {
+  const moved = moveInTime(original, grab, target, options);
+  if (grab.resourceId === undefined || target.resourceId === undefined) return moved;
+  // Targets carry the view's resource IDs, which are the event's own resource ID type.
+  const resourceIds = reassignResource(
+    original.resourceIds,
+    grab.resourceId as TResourceId | null,
+    target.resourceId as TResourceId | null,
+  );
+  return resourceIds === original.resourceIds ? moved : { ...moved, resourceIds };
+}
+
+function moveInTime<TResourceId extends ResourceId>(
   original: CalendarEventPlacement<TResourceId>,
   grab: CalendarInteractionTarget,
   target: CalendarInteractionTarget,
@@ -101,7 +145,9 @@ export function movePlacementToTarget<TResourceId extends ResourceId>(
   return moveEventPlacement(original, deltaBetween(start, target.at, original.kind), { timeZone });
 }
 
-/** The placement after moving one edge from `grab` to `target`; `null` across axes. */
+/**
+ * The placement after moving one edge from `grab` to `target`; `null` across axes or resources.
+ */
 export function resizePlacementToTarget<TResourceId extends ResourceId>(
   original: CalendarEventPlacement<TResourceId>,
   edge: "start" | "end",
@@ -109,6 +155,7 @@ export function resizePlacementToTarget<TResourceId extends ResourceId>(
   target: CalendarInteractionTarget,
   { snap, timeZone }: CalendarInteractionOptions,
 ): CalendarEventPlacement<TResourceId> | null {
+  if (!sameResource(grab, target)) return null;
   if (grab.kind === "time" && target.kind === "time") {
     return resizeEventPlacement(original, edge, deltaBetween(grab.at, target.at, original.kind), {
       minimumDuration: slotDuration(snap),
@@ -128,23 +175,25 @@ export function resizePlacementToTarget<TResourceId extends ResourceId>(
 
 /**
  * A new event covering the cells from `anchor` to `target`: slots starting at their snapped
- * times, or whole days. `null` across axes.
+ * times, or whole days, in the anchor's resource. `null` across axes or resources.
  */
 export function createPlacementBetween<TResourceId extends ResourceId>(
   anchor: CalendarInteractionTarget,
   target: CalendarInteractionTarget,
   { snap }: Pick<CalendarInteractionOptions, "snap">,
 ): CalendarEventPlacement<TResourceId> | null {
+  if (!sameResource(anchor, target)) return null;
+  const resourceIds = (anchor.resourceId == null ? [] : [anchor.resourceId]) as TResourceId[];
   if (anchor.kind === "time" && target.kind === "time") {
     const slot = slotDuration(snap);
     const cell = ({ at }: typeof anchor) =>
       ({ end: at.add(slot).toInstant(), kind: "timed", start: at.toInstant() }) as const;
-    return createEventPlacement(cell(anchor), cell(target));
+    return createEventPlacement(cell(anchor), cell(target), resourceIds);
   }
   if (anchor.kind === "day" && target.kind === "day") {
     const cell = ({ date }: typeof anchor) =>
       ({ end: date.add({ days: 1 }), kind: "all-day", start: date }) as const;
-    return createEventPlacement(cell(anchor), cell(target));
+    return createEventPlacement(cell(anchor), cell(target), resourceIds);
   }
   return null;
 }
