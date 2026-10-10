@@ -128,19 +128,25 @@ export function useScrollingAxis({
     const itemSize = size();
     if (element === null || itemSize <= 0) return;
     const { base, first, page } = latest.current;
-    const resized = laidOutSize.current > 0 && Math.abs(itemSize - laidOutSize.current) >= 0.5;
-    if ((resized || laidOutRtl.current !== rtl) && shown.current !== null) {
-      // New item sizes move every item, as switching between a week and a day does, and browsers
-      // reset `scrollLeft` when the direction flips: put the shown item back in view.
+    // A new item size moves every item, as switching between a week and a day or resizing the
+    // window does; a fraction of a pixel per item adds up across the canvas, so measure the move.
+    const shift =
+      shown.current === null || laidOutSize.current === 0
+        ? 0
+        : (shown.current - base) * Math.abs(itemSize - laidOutSize.current);
+    if ((shift >= 0.5 || laidOutRtl.current !== rtl) && shown.current !== null) {
+      // Browsers also reset `scrollLeft` when the direction flips: put the shown item back.
       heading.current = null;
       scrollTo(element, (shown.current - base) * itemSize, "instant");
+      laidOutSize.current = itemSize;
     } else if (laidOut.current !== base) {
       // The canvas moved by whole items; keep what is on screen where it is.
       scrollTo(element, offset(element) + (laidOut.current - base) * itemSize, "instant");
     }
     laidOut.current = base;
     laidOutRtl.current = rtl;
-    laidOutSize.current = itemSize;
+    // Only the size the offset was laid out for, so small changes can't add up unnoticed.
+    if (laidOutSize.current === 0) laidOutSize.current = itemSize;
     if (first - base < 2 * page || base + count - first < 3 * page) {
       setBase(first - REACH);
       return;
@@ -262,13 +268,13 @@ export function useScrollingAxis({
     const onInput = () => {
       heading.current = null;
     };
-    // A new item size moves every item, which `place` puts back. Other resizes, such as the
-    // all-day row growing, leave a scroll in progress alone.
+    // A new item size moves every item, which `place` puts back once the move is visible. Other
+    // resizes, such as the all-day row growing, leave a scroll in progress alone.
     const resize =
       view === null || typeof view.ResizeObserver === "undefined"
         ? undefined
         : new view.ResizeObserver(() => {
-            if (Math.abs(size() - laidOutSize.current) >= 0.5) place();
+            if (size() !== laidOutSize.current) place();
           });
 
     const inputs = ["pointerdown", "touchstart", "wheel"] as const;

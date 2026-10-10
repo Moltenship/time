@@ -228,6 +228,19 @@ test("a bar that starts in days scrolled away stays readable and focusable", asy
   expect(document.activeElement).toBe(bar);
 });
 
+test("keys leave a bar focused by pointer from the first visible day it covers", async () => {
+  const container = await show("scrolling-week");
+  const bar = container.querySelector<HTMLElement>('[data-event-id="trip"]')!;
+
+  // A click focuses the bar with no earlier focus on the event.
+  await act(async () => bar.focus());
+  await press(bar, "Escape");
+
+  // Escape returns to October 7, the first day it shows on, rather than paging back to October 5.
+  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 7 – 13, 2026");
+  expect(ariaLabel(document.activeElement)).toMatch(/^Wednesday, October 7/);
+});
+
 test("keys page a scrolling week past its visible days", async () => {
   const container = await show("scrolling-week");
   const grid = container.querySelector<HTMLElement>('[data-slot="scrolling-time-grid"]')!;

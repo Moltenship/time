@@ -97,6 +97,26 @@ describe("scrolling views", () => {
     expect(reported.anchors.map(String)).toEqual(["2026-10-14", "2026-10-07"]);
   });
 
+  test("a viewport a pixel narrower keeps the leading day at the start", async () => {
+    await render(<Screen view="scrolling-week" />);
+    const { scrollBy, viewport } = axis("scrolling-week");
+    await scrollBy(4);
+    await vi.waitFor(() => expect(title()).toBe("Oct 11 – 17, 2026"), settled);
+    const leading = () =>
+      viewport.querySelector('[role="gridcell"][data-date="2026-10-11"]')!.getBoundingClientRect()
+        .left;
+    const before = leading();
+
+    // Each day narrows by a seventh of a pixel, a thousand days from the canvas start.
+    await act(async () => {
+      viewport.style.width = `${viewport.getBoundingClientRect().width - 1}px`;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(Math.abs(leading() - before)).toBeLessThan(1);
+    expect(title()).toBe("Oct 11 – 17, 2026");
+  });
+
   test("switching between the scrolling week and day keeps the day in view", async () => {
     await render(<Screen view="scrolling-week" />);
     const start = axis("scrolling-week").position();

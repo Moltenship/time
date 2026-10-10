@@ -8,13 +8,14 @@ import { render } from "./render";
 
 /** The viewport fits a page of items: seven 100px days, or one 700px day. */
 const ITEM = 100;
-const VIEWPORT = 700;
+let viewportWidth = 700;
 
 let scrolls: { left: number; behavior: ScrollBehavior | undefined }[] = [];
 let cleanup: (() => Promise<void>) | undefined;
 
 beforeEach(() => {
   scrolls = [];
+  viewportWidth = 700;
   // jsdom lays nothing out: give the track a length and let `scrollTo` move the element.
   vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (
     this: HTMLElement,
@@ -65,7 +66,7 @@ function Axis({ interacting = false }: { readonly interacting?: boolean }) {
           ref={axis.trackRef}
           data-base={axis.base}
           data-count={axis.count}
-          data-item={VIEWPORT / page}
+          data-item={viewportWidth / page}
         />
       </div>
     </div>
@@ -223,4 +224,18 @@ test("switching between a week and a day keeps the shown day", async () => {
     expect(shownItem()).toBe(5004);
     expect(onScroll).not.toHaveBeenCalled();
   }
+});
+
+test("a resize of a pixel, a fraction of one per day, keeps the shown day in place", async () => {
+  const { rest, shownItem, userScrollsTo } = await show();
+  await userScrollsTo(5004);
+  onScroll.mockClear();
+
+  // Each day grows by a seventh of a pixel; a thousand days from the canvas start, that's 143px.
+  viewportWidth = 701;
+  await act(async () => rerender());
+  await rest();
+
+  expect(shownItem()).toBeCloseTo(5004, 6);
+  expect(onScroll).not.toHaveBeenCalled();
 });

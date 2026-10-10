@@ -150,7 +150,10 @@ function AllDayEvent<TEvent>({
   segment: { endsAfter, event, lane, span, startsBefore },
   stickyLabel,
 }: {
-  /** The segment's first date. */
+  /**
+   * The first date it is a focus target on: the date of the cell it renders in, so keys move on
+   * from what is visible.
+   */
   readonly date: Temporal.PlainDate;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly labelEvent: EventLabeler<TEvent>;
@@ -163,7 +166,13 @@ function AllDayEvent<TEvent>({
   /** Keep the title in view past the hour gutter while the bar's start scrolls under it. */
   readonly stickyLabel: boolean;
 }) {
-  const chip = useEventChip(event, { date, days: span, labelEvent, offscreen, resourceId });
+  const chip = useEventChip(event, {
+    date,
+    days: span - offset,
+    labelEvent,
+    offscreen,
+    resourceId,
+  });
 
   return (
     <EventChip
@@ -355,7 +364,7 @@ export function TimeGridAllDayCells<TEvent>({
             .map((segment) => (
               <AllDayEvent
                 key={`${typeof segment.event.id}:${segment.event.id}`}
-                date={days[segment.column]!.column.date}
+                date={date}
                 getEventColor={getEventColor}
                 labelEvent={labelEvent}
                 offset={column - segment.column}
