@@ -47,9 +47,9 @@
       "target": "components/calendar/resource-columns-view/axis-sync.ts"
     },
     {
-      "path": "registry/resource-columns-view/focused-resource.ts",
+      "path": "registry/resource-columns-view/focused-column.ts",
       "type": "registry:lib",
-      "target": "components/calendar/resource-columns-view/focused-resource.ts"
+      "target": "components/calendar/resource-columns-view/focused-column.ts"
     }
   ],
   "meta": {

@@ -51,3 +51,9 @@ export const ResourceCalendar = createCalendar<StaffEvent, CalendarResource<null
   eventAdapter: createCanonicalEventAdapter<null, string, string>(),
   views: [createResourceColumnsView<StaffEvent>({ unassigned: "bucket" })],
 });
+
+/** The same resources over a week: seven day columns each. */
+export const ResourceWeekCalendar = createCalendar<StaffEvent, CalendarResource<null>>()({
+  eventAdapter: createCanonicalEventAdapter<null, string, string>(),
+  views: [createResourceColumnsView<StaffEvent>({}, 7)],
+});

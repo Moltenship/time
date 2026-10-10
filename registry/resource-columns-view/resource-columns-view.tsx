@@ -21,7 +21,7 @@ import { ResourceColumnsAllDay } from "./resource-columns-all-day";
 import { ResourceColumnsBody } from "./resource-columns-body";
 import { ResourceColumnsDates } from "./resource-columns-dates";
 import { ResourceColumnsHeader } from "./resource-columns-header";
-import { useFocusedResourceInView } from "./focused-resource";
+import { useFocusedColumnInView } from "./focused-column";
 
 export interface ResourceColumnsViewOptions<TEvent> extends ResourceVisibilityOptions {
   /** Extra words for each event's accessible name, such as its calendar. */
@@ -55,13 +55,14 @@ export function ResourceColumnsView<TEvent>({
   range,
 }: ResourceColumnsViewProps<TEvent>) {
   const keys = useMemo(() => resources.map(({ resource }) => resource.key), [resources]);
+  const rtl = environment.direction === "rtl";
   const { scrollRef, scrollbarWidth, virtualizer } = useColumnVirtualizer({
     keys,
     minWidth: MIN_DAY_WIDTH * Math.max(1, columns.length),
-    rtl: environment.direction === "rtl",
+    rtl,
   });
   const { followX, followY, sync } = useAxisSync(scrollRef);
-  useFocusedResourceInView(resources, virtualizer);
+  useFocusedColumnInView({ resources, rtl, scrollRef, virtualizer });
   const items = virtualizer.getVirtualItems();
   const totalSize = virtualizer.getTotalSize();
 

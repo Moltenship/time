@@ -6,7 +6,14 @@ import { afterEach, expect, test, vi } from "vite-plus/test";
 
 import { drag, layOut } from "./pointer";
 import { click, render } from "./render";
-import { people, ResourceCalendar, shift, shiftAllDay, type StaffEvent } from "./resource-fixtures";
+import {
+  people,
+  ResourceCalendar,
+  ResourceWeekCalendar,
+  shift,
+  shiftAllDay,
+  type StaffEvent,
+} from "./resource-fixtures";
 import { ariaLabel, text } from "./view-fixtures";
 
 type Change = CalendarEventChange<StaffEvent, string, string>;
@@ -19,6 +26,7 @@ afterEach(async () => {
 });
 
 interface CalendarOptions {
+  readonly direction?: "ltr" | "rtl";
   readonly events?: readonly StaffEvent[];
   readonly expanded?: readonly string[];
   /** Controls the calendar's focus when set. */
@@ -29,7 +37,14 @@ interface CalendarOptions {
 
 function calendar(
   resources: readonly CalendarResource<null>[],
-  { events = [], expanded = [], focus, onEventChange, unassigned = "hide" }: CalendarOptions = {},
+  {
+    direction,
+    events = [],
+    expanded = [],
+    focus,
+    onEventChange,
+    unassigned = "hide",
+  }: CalendarOptions = {},
 ) {
   return (
     <ResourceCalendar.Root
@@ -37,6 +52,7 @@ function calendar(
       defaultExpandedResourceIds={expanded}
       defaultTimeZone="America/New_York"
       defaultView="resources"
+      direction={direction}
       events={events}
       focus={focus}
       locale="en-US"
@@ -252,29 +268,73 @@ test("focus on an event comes back when its column scrolls away and back", async
   expect(document.activeElement).toBe(standup());
 });
 
-test("focus on a resource out of view scrolls its column in", async () => {
-  // jsdom has no element scrolling; TanStack scrolls with `scrollTo` when it exists.
-  const scrollTo = vi.fn<(options: ScrollToOptions) => void>();
-  Object.defineProperty(HTMLElement.prototype, "scrollTo", { configurable: true, value: scrollTo });
-  const slot = (resourceId: string): CalendarFocus => ({
-    date: Temporal.PlainDate.from("2026-10-08"),
-    kind: "slot",
-    resourceId,
-    time: Temporal.PlainTime.from("09:00"),
+/** jsdom has no layout: give the body a visible width and record where it is scrolled to. */
+function scrollable(element: HTMLElement, width: number): number[] {
+  let left = 0;
+  const writes: number[] = [];
+  Object.defineProperties(element, {
+    clientWidth: { configurable: true, value: width },
+    scrollLeft: {
+      configurable: true,
+      get: () => left,
+      set: (value: number) => {
+        left = value;
+        writes.push(value);
+      },
+    },
   });
-  try {
-    const result = await render(calendar(people(200), { focus: slot("p2") }));
+  return writes;
+}
+
+const slot = (resourceId: string, date = "2026-10-08"): CalendarFocus => ({
+  date: Temporal.PlainDate.from(date),
+  kind: "slot",
+  resourceId,
+  time: Temporal.PlainTime.from("09:00"),
+});
+
+test.each(["ltr", "rtl"] as const)(
+  "focus on a resource out of view scrolls its column in (%s)",
+  async (direction) => {
+    const result = await render(calendar(people(200), { direction, focus: slot("p2") }));
     cleanup = result.unmount;
-    Object.defineProperties(body(result.container), {
-      clientWidth: { value: 960 },
-      scrollWidth: { value: 200 * 128 },
-    });
+    const writes = scrollable(body(result.container), 960);
 
-    await result.rerender(calendar(people(200), { focus: slot("p150") }));
+    await result.rerender(calendar(people(200), { direction, focus: slot("p150") }));
 
-    // Aligned to the viewport's end: p150 spans 149 × 128 to 150 × 128.
-    expect(scrollTo).toHaveBeenLastCalledWith(expect.objectContaining({ left: 150 * 128 - 960 }));
-  } finally {
-    delete (HTMLElement.prototype as Partial<HTMLElement>).scrollTo;
-  }
+    // Just far enough to show p150, which spans 149 × 128 to 150 × 128; RTL scrolls negative.
+    expect(writes).toEqual([(direction === "rtl" ? -1 : 1) * (150 * 128 - 960)]);
+  },
+);
+
+test("focus on another day of a resource wider than the view scrolls to that day", async () => {
+  const week = (focus: CalendarFocus | null) => (
+    <ResourceWeekCalendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="America/New_York"
+      defaultView="resources"
+      events={[]}
+      focus={focus}
+      locale="en-US"
+      resources={people(1)}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <ResourceWeekCalendar.ActiveView />
+    </ResourceWeekCalendar.Root>
+  );
+  const result = await render(week(null));
+  cleanup = result.unmount;
+  // The resource's seven days take 960px; only 400px show.
+  const writes = scrollable(body(result.container), 400);
+
+  await result.rerender(week(slot("p1", "2026-10-14")));
+  await result.rerender(
+    week({ date: Temporal.PlainDate.from("2026-10-08"), kind: "day", resourceId: "p1" }),
+  );
+  // Moving within the view's own range scrolls nothing more.
+  await result.rerender(week(slot("p1", "2026-10-09")));
+
+  expect(writes).toHaveLength(2);
+  expect(writes[0]).toBeCloseTo(960 - 400);
+  expect(writes[1]).toBe(0);
 });
