@@ -4,7 +4,10 @@ import { useState } from "react";
 import { calendarAnnouncements } from "@registry/calendar/announcements";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
-import { createTimelineWeekView } from "@registry/resource-timeline-view/resource-timeline-view";
+import {
+  createTimelineDayView,
+  createTimelineWeekView,
+} from "@registry/resource-timeline-view/resource-timeline-view";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { applyPreviewChange, createPreviewEvents, type PreviewEvent } from "./events";
@@ -54,6 +57,7 @@ const Calendar = createCalendar<PreviewEvent, CalendarResource<null>>()({
   views: [
     createResourceColumnsView<PreviewEvent>({ getEventColor }),
     createTimelineWeekView<PreviewEvent>({ getEventColor }),
+    createTimelineDayView<PreviewEvent>({ getEventColor }),
   ],
 });
 

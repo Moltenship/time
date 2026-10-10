@@ -6,18 +6,21 @@ export interface CalendarPreviewProps extends Partial<Omit<LiveCalendarProps, "v
   readonly size?: string;
   /**
    * A view of the main preview, or a view of rooms and people: `"resources"` for resource columns,
-   * `"timeline"` for the resource timeline.
+   * `"timeline"` and `"timeline-day"` for the resource timeline over a week or a day.
    */
-  readonly view?: PreviewView | "resources" | "timeline";
+  readonly view?: PreviewView | ResourceView;
 }
 
+type ResourceView = "resources" | "timeline" | "timeline-day";
+
 // Heights that fit the docs column; the day view is phone-width.
-const frameSizes: Record<PreviewView | "resources" | "timeline", string> = {
+const frameSizes: Record<PreviewView | ResourceView, string> = {
   agenda: "h-[30rem]",
   day: "mx-auto h-[36rem] max-w-sm",
   month: "h-[36rem]",
   resources: "h-[36rem]",
   timeline: "h-[32rem]",
+  "timeline-day": "h-[32rem]",
   week: "h-[32rem]",
 };
 
@@ -33,8 +36,8 @@ export function CalendarPreview({ size, view = "week", ...props }: CalendarPrevi
       >
         {view === "resources" ? (
           <ResourcePreviewIsland />
-        ) : view === "timeline" ? (
-          <ResourcePreviewIsland view="timeline-week" />
+        ) : view === "timeline" || view === "timeline-day" ? (
+          <ResourcePreviewIsland view={view === "timeline" ? "timeline-week" : "timeline-day"} />
         ) : (
           <PreviewIsland view={view} {...props} />
         )}
@@ -44,7 +47,7 @@ export function CalendarPreview({ size, view = "week", ...props }: CalendarPrevi
           ? "Live, in your time zone. Tab into the calendar or click a day, then try the keys below."
           : view === "agenda" && props.switcher !== true
             ? "Live, in your time zone."
-            : view === "resources" || view === "timeline"
+            : view === "resources" || view === "timeline" || view === "timeline-day"
               ? "Live, in your time zone. Drag events between rooms and people, or resize and create them."
               : "Live, in your time zone. Drag to move, resize or create events."}
       </figcaption>
