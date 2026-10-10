@@ -47,7 +47,11 @@ function GroupToggle({ id, title }: { readonly id: ResourceId; readonly title: s
       type="button"
     >
       <ChevronRightIcon
-        className={cn("size-4 transition-transform rtl:-scale-x-100", expanded && "rotate-90")}
+        className={cn(
+          "size-4 transition-transform rtl:-scale-x-100",
+          // Down when open: RTL mirrors it to point left, so it turns the other way.
+          expanded && "rotate-90 rtl:-rotate-90",
+        )}
       />
     </button>
   );

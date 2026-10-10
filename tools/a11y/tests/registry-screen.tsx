@@ -3,6 +3,7 @@ import {
   createCanonicalEventAdapter,
   plainDateInterval,
   type CalendarEvent,
+  type CalendarResource,
 } from "@moltenship/calendar";
 
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
@@ -14,33 +15,56 @@ import {
 } from "@registry/calendar-theme/event-colors";
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
+import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
 type Fixture = CalendarEvent<{ readonly color: CalendarEventColor }, string>;
 
 const getEventColor = (event: Fixture) => event.data.color;
-const Calendar = createCalendar<Fixture, never>()({
+const Calendar = createCalendar<Fixture, CalendarResource<null>>()({
   eventAdapter: createCanonicalEventAdapter<{ readonly color: CalendarEventColor }, string>(),
   views: [
     createWeekView<Fixture>({ dayView: "day", getEventColor }),
     createDayView<Fixture>({ getEventColor }),
     createMonthView<Fixture>({ getEventColor }),
     createAgendaView<Fixture>({ getEventColor }),
+    createResourceColumnsView<Fixture>({ getEventColor }),
   ],
 });
 
 export type RegistryView = (typeof Calendar.views)[number]["name"];
-export const registryViews: readonly RegistryView[] = ["month", "week", "day", "agenda"];
+export const registryViews: readonly RegistryView[] = [
+  "month",
+  "week",
+  "day",
+  "agenda",
+  "resources",
+];
 const viewOptions = registryViews.map((value) => ({ label: value, value }));
 
 const today = Temporal.PlainDate.from("2026-10-08");
 const firstMeeting = Temporal.Instant.from("2026-10-08T08:00:00Z");
 const firstCall = Temporal.Instant.from("2026-10-05T15:00:00Z");
 
-function timed(color: CalendarEventColor, title: string, start: Temporal.Instant, minutes: number) {
+/** A group of two people and a room, for the resources view; the meetings book them in turn. */
+const resources: readonly CalendarResource<null>[] = [
+  { data: null, id: "team", title: "Team" },
+  { data: null, id: "ada", parentId: "team", title: "Ada" },
+  { data: null, id: "grace", parentId: "team", title: "Grace" },
+  { data: null, id: "orchid", title: "Orchid" },
+];
+const bookable = ["ada", "grace", "orchid"];
+
+function timed(
+  color: CalendarEventColor,
+  title: string,
+  start: Temporal.Instant,
+  minutes: number,
+  resourceIds: readonly string[] = [],
+) {
   const end = start.add({ minutes });
-  return { data: { color }, end, id: title, kind: "timed", start, title } as const;
+  return { data: { color }, end, id: title, kind: "timed", resourceIds, start, title } as const;
 }
 
 function allDay(color: CalendarEventColor, title: string, start: string, end: string) {
@@ -60,7 +84,9 @@ function allDay(color: CalendarEventColor, title: string, start: string, end: st
  */
 const events: readonly Fixture[] = [
   ...calendarEventColors.map((color, index) =>
-    timed(color, `${color} meeting`, firstMeeting.add({ hours: index }), 45),
+    timed(color, `${color} meeting`, firstMeeting.add({ hours: index }), 45, [
+      bookable[index % bookable.length]!,
+    ]),
   ),
   ...calendarEventColors.map((color, index) =>
     timed(color, `${color} call`, firstCall.add({ hours: 24 * (index % 7) }), 30),
@@ -82,11 +108,13 @@ export function RegistryScreen({
     <TooltipProvider>
       <Calendar.Root
         defaultAnchorDate={today}
+        defaultExpandedResourceIds={["team"]}
         defaultTimeZone="UTC"
         defaultView={view}
         events={events}
         locale="en-US"
         now={Temporal.Instant.from("2026-10-08T10:20:00Z")}
+        resources={resources}
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >
         <Calendar.Frame className="flex h-dvh" dir={dir}>

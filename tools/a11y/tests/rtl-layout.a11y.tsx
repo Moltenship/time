@@ -54,6 +54,27 @@ describe.each(["ltr", "rtl"] as const)("%s layout", (dir) => {
     expect(dir === "rtl" ? event.borderRightWidth : event.borderLeftWidth).toBe("3px");
   });
 
+  test("resource columns: gutter, columns and their headers follow the reading order", async () => {
+    await render(<RegistryScreen dir={dir} view="resources" />);
+    const column = (id: string) =>
+      box(`[data-slot="resource-columns-body"] [data-resource-id="${id}"]`);
+    const header = (title: string) =>
+      [...document.querySelectorAll('[role="columnheader"]')]
+        .find((cell) => cell.querySelector(`[title="${title}"]`) !== null)!
+        .getBoundingClientRect();
+
+    expect(gap(box('[data-slot="resource-columns"] [role="rowheader"]'), column("team"))).toBe(0);
+    expect(gap(column("team"), column("ada"))).toBe(0);
+    expect(gap(column("ada"), column("grace"))).toBe(0);
+    expect(Math.round(header("Ada").left)).toBe(Math.round(column("ada").left));
+    expect(Math.round(header("Ada").right)).toBe(Math.round(column("ada").right));
+    // Mirrored in RTL, the open group's chevron turns the other way to point down.
+    const toggle = getComputedStyle(document.querySelector('[aria-label="Collapse Team"] svg')!);
+    expect([toggle.rotate, toggle.scale]).toEqual(
+      dir === "rtl" ? ["-90deg", "-1 1"] : ["90deg", "none"],
+    );
+  });
+
   test("agenda: each day's date precedes its events", async () => {
     await render(<RegistryScreen dir={dir} view="agenda" />);
     const day = document.querySelector('[data-slot="agenda-view"] [data-date="2026-10-08"]')!;
