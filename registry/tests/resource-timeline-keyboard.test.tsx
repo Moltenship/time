@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { sameFocus, type CalendarFocus } from "@moltenship/calendar";
-import { act, StrictMode, type ReactElement } from "react";
+import { act, StrictMode, type ComponentProps, type ReactElement } from "react";
 import { renderToString } from "react-dom/server";
 import { afterEach, beforeAll, expect, test, vi } from "vite-plus/test";
 
@@ -415,6 +415,37 @@ test("a slot off the half hour keeps its time across rows, and steps along the r
   expect(focused()).toBe("Site 1, expanded, Friday, January 7 at 12:45 AM");
   await press("ArrowRight");
   expect(focused()).toBe("Site 1, expanded, Friday, January 7 at 1:00 AM");
+});
+
+test("Space on a slot off the half hour drafts an hour from the half hour it rounds to", async () => {
+  const created = async (props: ComponentProps<typeof Timeline>) => {
+    const onEventChange = vi.fn<(change: BookingChange) => void>();
+    const container = await show(
+      <Timeline {...props} onEventChange={onEventChange} view="timeline-day" />,
+    );
+    await tabIn(container);
+    await press(" ");
+    await press("Enter");
+    await cleanup?.();
+    cleanup = undefined;
+    const proposed = onEventChange.mock.calls[0]?.[0].proposed;
+    return `${proposed?.start.toString()}/${proposed?.end.toString()}`;
+  };
+
+  // The Monrovia entry is at 00:45; a time grid's 09:15 is carried in.
+  expect(await created({ anchor: "1972-01-07", timeZone: "Africa/Monrovia" })).toBe(
+    "1972-01-07T01:00:00Z/1972-01-07T02:00:00Z",
+  );
+  expect(
+    await created({
+      defaultFocus: {
+        date: Temporal.PlainDate.from("2026-10-08"),
+        kind: "slot",
+        resourceId: "site-1-room-1",
+        time: Temporal.PlainTime.from("09:15"),
+      },
+    }),
+  ).toBe("2026-10-08T09:30:00Z/2026-10-08T10:30:00Z");
 });
 
 test("server markup holds the tab stop when a day starts off the half hour", () => {

@@ -227,4 +227,17 @@ describe("keyboard create", () => {
     );
     expect(moveKeyboardCursor(start, day("2026-10-07"), options)).toBe(start);
   });
+
+  test("a slot off the snap creates from the slot it rounds to", () => {
+    // As from a view with five-minute slots.
+    const start = startKeyboardSession(
+      { cause: "create", cell: slot("2026-10-07T09:10") },
+      options,
+    );
+    expect(cell(start.cursor)).toBe("2026-10-07T09:15");
+    expect(wall(start.proposed)).toBe("2026-10-07T09:15/2026-10-07T09:30");
+    expect(wall(walk(start, [slot("2026-10-07T09:30")]).proposed)).toBe(
+      "2026-10-07T09:15/2026-10-07T09:45",
+    );
+  });
 });
