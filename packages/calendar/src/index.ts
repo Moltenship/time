@@ -15,6 +15,7 @@ export {
   createCalendar,
   createCalendarStore,
   defineCalendarView,
+  useCalendarAnnotations,
   useCalendarAnnouncer,
   useCalendarFocus,
   useCalendarInteraction,
@@ -23,6 +24,7 @@ export {
   useNow,
   useResourceExpansion,
   useRovingFocus,
+  useTimeGridAnnotations,
   useVisibleResources,
 } from "@moltenship/calendar-react";
 export type {
@@ -30,6 +32,7 @@ export type {
   CalendarActions,
   CalendarActiveView,
   CalendarActiveViewProps,
+  CalendarAnnotations,
   CalendarAnnouncerProps,
   CalendarContextValue,
   CalendarControlledState,

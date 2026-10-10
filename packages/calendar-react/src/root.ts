@@ -1,10 +1,12 @@
 import {
   applyEventOverlay,
+  createAnnotationSnapshot,
   createEventSnapshotCache,
   createEventTransactions,
   createResourceTree,
   readOnlyPolicy,
   resolveViewInstantRange,
+  type AnnotationSnapshotIssue,
   type CalendarEnvironment,
   type CalendarEnvironmentBase,
   type CalendarEventChangeHandler,
@@ -39,6 +41,7 @@ import type {
   CalendarRootProps,
   CalendarSemanticActions,
 } from "./calendar-types";
+import { CalendarAnnotationsContext } from "./annotations";
 import { createAnnouncerChannel } from "./announcer";
 import { CalendarNowSourceContext, type CalendarContexts } from "./context";
 import {
@@ -85,6 +88,7 @@ interface CommittedRootInputs<TEvent, TEventId extends EventId, TResourceId exte
 }
 
 const noResources: readonly never[] = Object.freeze([]);
+const noAnnotations: readonly never[] = Object.freeze([]);
 const todaySampleIntervalMs = 60_000;
 
 function sameLocale(left: Intl.Locale | string, right: Intl.Locale | string): boolean {
@@ -114,9 +118,20 @@ function sameDiagnostics(
     left.every((diagnostic, index) => {
       const other = right[index];
       if (other === undefined || other.code !== diagnostic.code) return false;
-      return diagnostic.code === "invalid-event"
-        ? other.code === "invalid-event" && sameIssue(diagnostic.issue, other.issue)
-        : other.code === "unregistered-active-view" && other.viewName === diagnostic.viewName;
+      switch (diagnostic.code) {
+        case "invalid-event":
+          return other.code === "invalid-event" && sameIssue(diagnostic.issue, other.issue);
+        case "invalid-annotation":
+          return (
+            other.code === "invalid-annotation" &&
+            other.issue.code === diagnostic.issue.code &&
+            other.issue.index === diagnostic.issue.index
+          );
+        case "unregistered-active-view":
+          return (
+            other.code === "unregistered-active-view" && other.viewName === diagnostic.viewName
+          );
+      }
     })
   );
 }
@@ -125,6 +140,7 @@ function collectDiagnostics<TEvent, TEventId extends EventId>(
   view: string,
   viewIsRegistered: boolean,
   issues: readonly EventSnapshotIssue<TEvent, TEventId>[],
+  annotationIssues: readonly AnnotationSnapshotIssue[],
 ): readonly CalendarDiagnostic<TEvent, TEventId>[] {
   const diagnostics: CalendarDiagnostic<TEvent, TEventId>[] = [];
   if (!viewIsRegistered) {
@@ -134,6 +150,9 @@ function collectDiagnostics<TEvent, TEventId extends EventId>(
   }
   for (const issue of issues) {
     diagnostics.push(Object.freeze({ code: "invalid-event", issue, severity: "error" }));
+  }
+  for (const issue of annotationIssues) {
+    diagnostics.push(Object.freeze({ code: "invalid-annotation", issue, severity: "error" }));
   }
   return Object.freeze(diagnostics);
 }
@@ -202,6 +221,8 @@ export function createCalendarRoot<
 
   return function Root({
     anchorDate,
+    annotationSources = noAnnotations,
+    annotations = noAnnotations,
     children,
     clock,
     defaultAnchorDate,
@@ -333,6 +354,17 @@ export function createCalendarRoot<
       [stableResources],
     );
     const stableExpandedResourceIds = useStableValue(state.expandedResourceIds, sameElements);
+    // Annotations get their own snapshot, so they never invalidate event projections.
+    const stableAnnotations = useStableValue(annotations, sameElements);
+    const annotationSnapshot = useMemo(
+      () => createAnnotationSnapshot(stableAnnotations),
+      [stableAnnotations],
+    );
+    const stableAnnotationSources = useStableValue(annotationSources, sameElements);
+    const annotationContext = useMemo(
+      () => Object.freeze({ snapshot: annotationSnapshot, sources: stableAnnotationSources }),
+      [annotationSnapshot, stableAnnotationSources],
+    );
 
     const activeDefinition = viewsByName.get(state.view);
     const viewOverrides = viewOptions as ViewOptionsOverrides;
@@ -385,7 +417,12 @@ export function createCalendarRoot<
     ]);
 
     const diagnostics = useStableValue(
-      collectDiagnostics(state.view, activeDefinition !== undefined, eventSnapshot.issues),
+      collectDiagnostics(
+        state.view,
+        activeDefinition !== undefined,
+        eventSnapshot.issues,
+        annotationSnapshot.issues,
+      ),
       sameDiagnostics,
     );
     // Callbacks and options are read from the last commit, so inline values need no memoization.
@@ -481,7 +518,11 @@ export function createCalendarRoot<
                 createElement(
                   CalendarResourcesContext,
                   { value: resourceTree },
-                  createElement(CalendarInteractionContext, { value: interaction }, children),
+                  createElement(
+                    CalendarAnnotationsContext,
+                    { value: annotationContext },
+                    createElement(CalendarInteractionContext, { value: interaction }, children),
+                  ),
                 ),
               ),
             ),

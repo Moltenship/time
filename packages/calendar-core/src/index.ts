@@ -1,5 +1,5 @@
-export { isEventId, isResourceId } from "./ids";
-export type { CalendarEntityId, EventId, ResourceId } from "./ids";
+export { isAnnotationId, isEventId, isResourceId } from "./ids";
+export type { AnnotationId, CalendarEntityId, EventId, ResourceId } from "./ids";
 
 export {
   createCanonicalEventAdapter,
@@ -57,6 +57,18 @@ export type { MonthDay, MonthProjection, MonthWeek } from "./views/month/month";
 
 export { getListRange, getListTitle, navigateList, projectList } from "./views/list/list";
 export type { ListDay, ListItem, ListProjection, ListViewOptions } from "./views/list/list";
+
+export { createAnnotationSnapshot } from "./annotations/snapshot";
+export { summarizeAnnotationMarks } from "./annotations/summary";
+export type { AnnotationSourceSummary } from "./annotations/summary";
+export { projectTimeGridAnnotations } from "./annotations/time-grid";
+export type { TimeGridAnnotationGeometry, TimeGridAnnotationMark } from "./annotations/time-grid";
+export type {
+  AnnotationSnapshot,
+  AnnotationSnapshotIssue,
+  CalendarAnnotation,
+  CalendarAnnotationSource,
+} from "./annotations/types";
 
 export type { CalendarResource } from "./resources";
 export { createResourceTree } from "./resources/tree";

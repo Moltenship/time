@@ -1,5 +1,7 @@
 "use client";
 
+export { useCalendarAnnotations, useTimeGridAnnotations } from "./annotations";
+export type { CalendarAnnotations } from "./annotations";
 export { useCalendarAnnouncer } from "./announcer";
 export { createCalendar } from "./calendar";
 export { createCalendarStore } from "./store";

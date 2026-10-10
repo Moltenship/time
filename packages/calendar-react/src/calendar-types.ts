@@ -1,4 +1,7 @@
 import type {
+  AnnotationSnapshotIssue,
+  CalendarAnnotation,
+  CalendarAnnotationSource,
   CalendarAnnouncementMessages,
   CalendarEnvironment,
   CalendarFocus,
@@ -60,6 +63,11 @@ export type CalendarDiagnostic<TEvent, TEventId extends EventId> =
   | {
       readonly code: "invalid-event";
       readonly issue: EventSnapshotIssue<TEvent, TEventId>;
+      readonly severity: "error";
+    }
+  | {
+      readonly code: "invalid-annotation";
+      readonly issue: AnnotationSnapshotIssue;
       readonly severity: "error";
     };
 
@@ -124,6 +132,14 @@ interface CalendarRootBaseProps<
   TEventId extends EventId,
   TResourceId extends ResourceId,
 > {
+  /** The sources views show annotations of, in order. Leave one out to hide its annotations. */
+  readonly annotationSources?: readonly CalendarAnnotationSource[];
+  /**
+   * Time-based information shown beside events, such as listening sessions or sleep. Annotations
+   * are read-only and never change event layout. Invalid ones are skipped and reported through
+   * `onDiagnosticsChange`.
+   */
+  readonly annotations?: readonly CalendarAnnotation<unknown, TResourceId>[];
   readonly children?: ReactNode;
   readonly defaultExpandedResourceIds?: readonly TResourceId[];
   readonly defaultFocus?: TFocus | null;

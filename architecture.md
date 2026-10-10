@@ -457,6 +457,34 @@ interface CalendarResource<TData = unknown, TResourceId extends ResourceId = str
 
 An event with multiple resources creates one render fragment per visible resource while retaining one canonical event identity. Grouping, collapse state, order, and visibility are view state. Capacity and booking rules remain application policies.
 
+### 7.4 Annotations
+
+Annotations are time-based information shown beside events without being events: listening sessions, sleep, workouts, focus blocks (#119).
+
+```ts
+interface CalendarAnnotation<TData = unknown, TResourceId extends ResourceId = ResourceId> {
+  id: AnnotationId;
+  sourceId: string;
+  start: Temporal.Instant;
+  end: Temporal.Instant;
+  title: string;
+  resourceIds?: readonly TResourceId[];
+  data?: TData;
+}
+
+interface CalendarAnnotationSource {
+  id: string;
+  label: string;
+  mergeGap?: Temporal.Duration;
+}
+```
+
+- **Separate from events.** `Root` takes `annotations` and `annotationSources` next to `events`. Annotations get their own validated snapshot and interval index, and never enter the event snapshot, overlap layout, policies or transactions. Changing them never reruns event projection.
+- **Sibling projection.** `projectTimeGridAnnotations` lays annotations out per column, in rail lanes of their own. It merges a source's items by its `mergeGap` and by drawn size, so short marks never touch. Views take only the numbers the layout needs (minimum height, gap, lanes).
+- **Sources are app-defined.** The library knows no source kinds. Leaving a source out of `annotationSources` hides its annotations.
+- **Read-only and accessible.** Marks are not focus targets. Screen readers get per-day summaries (`summarizeAnnotationMarks`), and a focused slot names the annotations that cover it.
+- **Presentation lives in the registry** as composable parts.
+
 ## 8. React composition API
 
 ### 8.1 Typed factory
