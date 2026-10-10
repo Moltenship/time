@@ -3,6 +3,12 @@ import { useState } from "react";
 
 import { calendarAnnouncements } from "@registry/calendar/announcements";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
+import {
+  ResourceHeaderIcon,
+  ResourceHeaderTitle,
+  ResourceHeaderToggle,
+  type ResourceHeaderProps,
+} from "@registry/resource-columns-view/resource-header";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import {
   createTimelineDayView,
@@ -60,24 +66,27 @@ function DoorOpenIcon({ className }: { readonly className?: string }) {
   );
 }
 
-/** People show their avatar and rooms a door; teams have their chevron. */
-function getResourceIcon({ data, title }: PreviewResource) {
-  if (data.kind === "person") {
-    return (
-      <Avatar size="sm">
-        <AvatarImage alt="" src={data.avatar} />
-        <AvatarFallback>{title.slice(0, 1)}</AvatarFallback>
-      </Avatar>
-    );
-  }
-  if (data.kind === "room") {
-    return (
-      <span className="flex size-6 items-center justify-center rounded-md bg-muted text-muted-foreground">
-        <DoorOpenIcon className="size-3.5" />
-      </span>
-    );
-  }
-  return undefined;
+/** People show their avatar and rooms a door; teams keep just their chevron. */
+function ResourceHeader({ resource, title }: ResourceHeaderProps<PreviewResource>) {
+  return (
+    <>
+      <ResourceHeaderToggle />
+      {resource?.data.kind === "person" && (
+        <ResourceHeaderIcon>
+          <Avatar size="sm">
+            <AvatarImage alt="" src={resource.data.avatar} />
+            <AvatarFallback>{title.slice(0, 1)}</AvatarFallback>
+          </Avatar>
+        </ResourceHeaderIcon>
+      )}
+      {resource?.data.kind === "room" && (
+        <ResourceHeaderIcon className="size-6 justify-center rounded-md bg-muted text-muted-foreground">
+          <DoorOpenIcon className="size-3.5" />
+        </ResourceHeaderIcon>
+      )}
+      <ResourceHeaderTitle />
+    </>
+  );
 }
 
 /** The rooms and people each work event books, by title; personal events book none. */
@@ -109,7 +118,7 @@ const Calendar = createCalendar<PreviewEvent, PreviewResource>()({
     getTitle: (event) => event.title,
   }),
   views: [
-    createResourceColumnsView<PreviewEvent, PreviewResource>({ getEventColor, getResourceIcon }),
+    createResourceColumnsView<PreviewEvent, PreviewResource>({ getEventColor, ResourceHeader }),
     createTimelineWeekView<PreviewEvent>({ getEventColor }),
     createTimelineDayView<PreviewEvent>({ getEventColor }),
   ],

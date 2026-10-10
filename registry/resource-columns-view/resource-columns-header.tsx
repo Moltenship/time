@@ -1,15 +1,14 @@
-import {
-  useResourceExpansion,
-  type CalendarResource,
-  type ResourceColumn,
-  type ResourceId,
-  type VisibleResource,
-} from "@moltenship/calendar";
+import type { ResourceColumn, VisibleResource } from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
-import { ChevronRightIcon } from "lucide-react";
-import { useMemo, type ReactNode, type RefCallback } from "react";
+import { useMemo, type ComponentType, type ReactNode, type RefCallback } from "react";
 
 import { cn } from "cn";
+
+import {
+  DefaultResourceHeader,
+  ResourceHeaderContext,
+  type ResourceHeaderProps,
+} from "./resource-header";
 
 export interface ResourceColumnsHeaderProps {
   /** The corner over the gutter, such as the time zone's offset. */
@@ -18,16 +17,14 @@ export interface ResourceColumnsHeaderProps {
   readonly days: number;
   /** Follows the body's sideways scroll; see `useAxisSync`. */
   readonly followX: RefCallback<HTMLElement>;
-  /** The avatar or icon before each resource's name; see the view's `getResourceIcon`. */
-  readonly getResourceIcon?: ResourceIconGetter;
   /** The rendered columns, from the column virtualizer. */
   readonly items: readonly VirtualItem[];
+  /** Draws each resource's name row; see the view's `ResourceHeader`. */
+  readonly ResourceHeader?: ComponentType<ResourceHeaderProps>;
   readonly resources: readonly ResourceColumn<unknown>[];
   readonly scrollbarWidth: number;
   readonly totalSize: number;
 }
-
-export type ResourceIconGetter = (resource: CalendarResource<unknown, ResourceId>) => ReactNode;
 
 /** Height of one hierarchy level, in rem. */
 const LEVEL = 2;
@@ -37,52 +34,26 @@ export function resourceTitle({ resource }: VisibleResource): string {
   return resource?.title ?? "Unassigned";
 }
 
-/** Shows or hides a group's columns. */
-function GroupToggle({ id, title }: { readonly id: ResourceId; readonly title: string }) {
-  const { expanded, toggle } = useResourceExpansion(id);
-
-  return (
-    <button
-      aria-expanded={expanded}
-      aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`}
-      className="-ms-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-      onClick={toggle}
-      // The grid keeps one tab stop.
-      tabIndex={-1}
-      type="button"
-    >
-      <ChevronRightIcon
-        className={cn(
-          "size-4 transition-transform rtl:-scale-x-100",
-          // Down when open: RTL mirrors it to point left, so it turns the other way.
-          expanded && "rotate-90 rtl:-rotate-90",
-        )}
-      />
-    </button>
-  );
-}
-
 /**
  * One column's header. A resource sits on the row for its depth, under a band for each group it
  * belongs to. An expanded group's own column starts its band, so the band names the group over
- * all of its columns; a collapsed group shows its name with a closed chevron.
+ * all of its columns; a collapsed group shows its name with a closed chevron. `ResourceHeader`
+ * draws the name row; the bands, sizes and the group names screen readers hear stay here.
  */
-function ResourceHeader({
-  getResourceIcon,
+function ResourceHeaderCell({
   groups,
   levels,
   resource,
+  ResourceHeader,
 }: {
-  readonly getResourceIcon: ResourceIconGetter | undefined;
   /** Names of the groups the resource sits in, outermost first. */
   readonly groups: readonly string[];
   readonly levels: number;
   readonly resource: VisibleResource;
+  readonly ResourceHeader: ComponentType<ResourceHeaderProps>;
 }) {
-  const { depth, expanded, hasChildren, id } = resource;
+  const { depth, expanded } = resource;
   const title = resourceTitle(resource);
-  // The unassigned bucket has no resource, so it gets no icon.
-  const icon = resource.resource === null ? undefined : getResourceIcon?.(resource.resource);
 
   return (
     <div className="flex h-full flex-col">
@@ -95,24 +66,16 @@ function ResourceHeader({
         />
       ))}
       <div
+        data-slot="resource-header"
         className={cn(
           "flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2",
           expanded && "bg-muted",
         )}
         style={{ height: `${LEVEL}rem` }}
       >
-        {hasChildren && id !== null && <GroupToggle id={id} title={title} />}
-        {icon !== undefined && icon !== null && (
-          <span aria-hidden className="flex shrink-0 items-center" data-slot="resource-icon">
-            {icon}
-          </span>
-        )}
-        <span
-          className={cn("truncate text-sm font-medium", id === null && "text-muted-foreground")}
-          title={title}
-        >
-          {title}
-        </span>
+        <ResourceHeaderContext value={{ groups, title, visible: resource }}>
+          <ResourceHeader resource={resource.resource} title={title} />
+        </ResourceHeaderContext>
         {groups.length > 0 && <span className="sr-only">, {groups.join(", ")}</span>}
       </div>
       <div
@@ -131,8 +94,8 @@ export function ResourceColumnsHeader({
   corner,
   days,
   followX,
-  getResourceIcon,
   items,
+  ResourceHeader = DefaultResourceHeader,
   resources,
   scrollbarWidth,
   totalSize,
@@ -182,11 +145,11 @@ export function ResourceColumnsHeader({
                 className="absolute inset-y-0"
                 style={{ insetInlineStart: start, width: size }}
               >
-                <ResourceHeader
-                  getResourceIcon={getResourceIcon}
+                <ResourceHeaderCell
                   groups={groupsOf(resource)}
                   levels={levels}
                   resource={resource}
+                  ResourceHeader={ResourceHeader}
                 />
               </div>
             );

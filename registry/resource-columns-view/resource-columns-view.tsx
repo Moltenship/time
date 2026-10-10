@@ -12,7 +12,7 @@ import {
   type ResourceId,
   type ResourceVisibilityOptions,
 } from "@moltenship/calendar";
-import { useMemo, type ReactNode } from "react";
+import { useMemo, type ComponentType } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
@@ -24,7 +24,8 @@ import { useColumnVirtualizer } from "./column-virtualizer";
 import { ResourceColumnsAllDay } from "./resource-columns-all-day";
 import { ResourceColumnsBody } from "./resource-columns-body";
 import { ResourceColumnsDates } from "./resource-columns-dates";
-import { ResourceColumnsHeader, type ResourceIconGetter } from "./resource-columns-header";
+import { ResourceColumnsHeader } from "./resource-columns-header";
+import type { ResourceHeaderProps } from "./resource-header";
 import { useFocusedColumnInView } from "./focused-column";
 
 export interface ResourceColumnsViewOptions<
@@ -36,10 +37,10 @@ export interface ResourceColumnsViewOptions<
   /** Colour for an event; sets `data-color` on every element that renders it. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   /**
-   * What to draw before a resource's name, such as a person's avatar or a room's icon, so people
-   * and rooms tell apart at a glance. Screen readers skip it: the name sits right beside it.
+   * Your composition of the `resource-header.tsx` parts, in place of `DefaultResourceHeader`, such
+   * as an avatar before each person's name and an icon before each room's.
    */
-  readonly getResourceIcon?: (resource: TResource) => ReactNode;
+  readonly ResourceHeader?: ComponentType<ResourceHeaderProps<TResource>>;
 }
 
 const selectResource = (focus: CalendarFocus | null) => focus?.resourceId;
@@ -127,7 +128,7 @@ export function ResourceColumnsView<
           days={columns.length}
           followX={followX}
           // The projection's resources are untyped; `TResource` is the type the app gave the root.
-          getResourceIcon={options.getResourceIcon as ResourceIconGetter | undefined}
+          ResourceHeader={options.ResourceHeader as ComponentType<ResourceHeaderProps> | undefined}
         />
         {columns.length > 1 && resources[0] !== undefined && (
           <ResourceColumnsDates
@@ -162,7 +163,7 @@ export function ResourceColumnsView<
 /**
  * Resource columns over one day, or `days` days side by side for each resource. Set
  * `unassigned: "bucket"` to show events without resources in an "Unassigned" column. Pass the
- * root's resource type as `TResource` to read your own fields in `getResourceIcon`.
+ * root's resource type as `TResource` to read your own fields in `ResourceHeader`.
  */
 export function createResourceColumnsView<
   TEvent = unknown,
