@@ -273,6 +273,25 @@ describe("time-grid annotation edge cases", () => {
     );
   });
 
+  test("measures marks at the day's end where they draw, up from midnight", () => {
+    // A quarter-hour minimum: a dot at 23:59 draws over 23:45–24:00, onto one at 23:40.
+    const geometry = { minHeight: 15 * MINUTE };
+    const snapshot = createAnnotationSnapshot([
+      annotation("a", "sleep", "2026-10-05T23:40Z", "2026-10-05T23:41Z"),
+      annotation("b", "sleep", "2026-10-05T23:59Z", "2026-10-05T23:59:30Z"),
+      annotation("c", "focus", "2026-10-05T23:59Z", "2026-10-05T23:59:30Z"),
+    ]);
+    const [monday] = projectTimeGridAnnotations(columns, snapshot, [sleep, focus], geometry);
+
+    expect(ids(monday!)).toEqual([["a", "b"], ["c"]]);
+    // Its true time stays in `top`; only the drawn extent moves, and lanes see it overlap.
+    expect(monday![1]!.top).toBeCloseTo((23 * 60 + 59) * MINUTE);
+    expect(monday!.map(({ lane, lanes }) => [lane, lanes])).toEqual([
+      [0, 2],
+      [1, 2],
+    ]);
+  });
+
   test("lets marks that meet exactly share a lane", () => {
     const snapshot = createAnnotationSnapshot([
       annotation("m", "music", "2026-10-05T00:01Z", "2026-10-05T00:05Z"),

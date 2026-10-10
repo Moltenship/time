@@ -5,7 +5,10 @@ import type { AnnotationSnapshot, CalendarAnnotation, CalendarAnnotationSource }
 
 /** How marks draw in a time grid's rail, as fractions of a column's 24-hour axis. */
 export interface TimeGridAnnotationGeometry {
-  /** The shortest a mark draws. A rail draws marks at least as tall as they are wide. */
+  /**
+   * The shortest a mark draws. A rail draws marks at least as tall as they are wide. One too close
+   * to midnight to fit draws up from the day's end instead, so it never overflows the day.
+   */
   readonly minHeight?: number;
   /** Marks of one source closer than this merge, so they never touch. */
   readonly minGap?: number;
@@ -223,10 +226,14 @@ function mergeSource<TSource extends CalendarAnnotationSource, TData>(
   // Drawn sizes in whole nanoseconds of wall time, so marks that meet exactly always touch.
   const minGap = wallNanoseconds(geometry.minGap);
   const minHeight = wallNanoseconds(geometry.minHeight);
-  const drawnBottom = ({ part }: Group<TData>) =>
-    part.bottom - part.top > minHeight ? part.bottom : part.top + minHeight;
+  const drawnTop = ({ part }: Group<TData>) =>
+    part.top + minHeight > DAY_NANOSECONDS ? DAY_NANOSECONDS - minHeight : part.top;
+  const drawnBottom = (group: Group<TData>) => {
+    const top = drawnTop(group);
+    return group.part.bottom - top > minHeight ? group.part.bottom : top + minHeight;
+  };
   const touch = (left: Group<TData>, right: Group<TData>) =>
-    right.part.top - drawnBottom(left) <= minGap && left.part.top - drawnBottom(right) <= minGap;
+    drawnTop(right) - drawnBottom(left) <= minGap && drawnTop(left) - drawnBottom(right) <= minGap;
   const merge = (into: Group<TData>, from: Group<TData>) => {
     // Each group is merged away at most once, so appending stays linear; members sort at the end.
     for (const annotation of from.annotations) into.annotations.push(annotation);
@@ -247,7 +254,8 @@ function mergeSource<TSource extends CalendarAnnotationSource, TData>(
   );
 
   // In time order first, then once more in drawn order, which differs only in a repeated hour.
-  // Sorted by top, a merged group keeps its top and its bottom only grows, so one sweep is enough.
+  // Sorted by drawn top, a merged group keeps its top and its bottom only grows, so one sweep is
+  // enough.
   const inTime: Group<TData>[] = [];
   for (const next of singles) {
     const last = inTime.at(-1);
@@ -258,7 +266,9 @@ function mergeSource<TSource extends CalendarAnnotationSource, TData>(
     }
   }
   const groups: Group<TData>[] = [];
-  for (const next of inTime.sort((left, right) => compareBigInts(left.part.top, right.part.top))) {
+  for (const next of inTime.sort((left, right) =>
+    compareBigInts(drawnTop(left), drawnTop(right)),
+  )) {
     const last = groups.at(-1);
     if (last !== undefined && touch(last, next)) merge(last, next);
     else groups.push(next);
@@ -285,7 +295,7 @@ function mergeSource<TSource extends CalendarAnnotationSource, TData>(
         startsBeforeDay: before,
         top: Number(top) / NOMINAL_DAY_NANOSECONDS,
       };
-      return { bottom: drawnBottom(group), mark, top };
+      return { bottom: drawnBottom(group), mark, top: drawnTop(group) };
     });
 }
 
