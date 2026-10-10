@@ -718,6 +718,9 @@ importers:
       '@moltenship/calendar':
         specifier: workspace:*
         version: link:../packages/calendar
+      '@tanstack/react-virtual':
+        specifier: 'catalog:'
+        version: 3.14.13(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       class-variance-authority:
         specifier: 'catalog:'
         version: 0.7.1
