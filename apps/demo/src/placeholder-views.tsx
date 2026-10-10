@@ -1,6 +1,7 @@
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
+import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
 
 import type { DemoEvent } from "./calendar";
@@ -18,4 +19,5 @@ export const demoViews = [
   createDayView<DemoEvent>(options),
   createMonthView<DemoEvent>(options),
   createAgendaView<DemoEvent>(options),
+  createResourceColumnsView<DemoEvent>(options),
 ] as const;

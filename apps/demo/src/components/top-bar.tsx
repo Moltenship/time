@@ -15,6 +15,7 @@ const viewOptions: readonly ViewSwitcherOption<DemoView>[] = [
   { label: "Week", shortcut: "W", value: "week" },
   { label: "Month", shortcut: "M", value: "month" },
   { label: "Agenda", shortcut: "A", value: "agenda" },
+  { label: "Resources", shortcut: "R", value: "resources" },
 ];
 
 const selectView = (state: { readonly view: DemoView }) => state.view;
@@ -49,7 +50,13 @@ export function TopBar({ onOpenSidebar, onShowShortcuts }: TopBarProps) {
         </>
       }
     >
-      <ViewSwitcher onValueChange={setView} options={viewOptions} value={view} />
+      <ViewSwitcher
+        // Wide enough for "Resources".
+        className="sm:w-32"
+        onValueChange={setView}
+        options={viewOptions}
+        value={view}
+      />
       <Tooltip>
         <TooltipTrigger
           render={

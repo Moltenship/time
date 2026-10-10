@@ -20,6 +20,7 @@ export const shortcuts: readonly Shortcut[] = [
   { command: { type: "view", view: "week" }, keys: ["w"], label: "Week view" },
   { command: { type: "view", view: "month" }, keys: ["m"], label: "Month view" },
   { command: { type: "view", view: "agenda" }, keys: ["a"], label: "Agenda view" },
+  { command: { type: "view", view: "resources" }, keys: ["r"], label: "Resources view" },
   { command: { type: "create" }, keys: ["c"], label: "Create an event" },
   { command: { type: "help" }, keys: ["?"], label: "Show keyboard shortcuts" },
 ];
