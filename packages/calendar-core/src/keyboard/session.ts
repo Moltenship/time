@@ -98,7 +98,8 @@ function targetOf(
 
 /**
  * The cell as its target snaps it: a slot off the snap, as from a view with finer slots, moves
- * onto the slot it rounds to.
+ * onto the slot it rounds to, or past a gap to where the gap ends. That end can sit off the snap
+ * itself, so the cell is for stepping from, not for snapping again.
  */
 function snappedCell(
   cell: CalendarCellFocus,
@@ -133,19 +134,20 @@ function placementAt<TResourceId extends ResourceId>(
 
 /**
  * Grabs an event to move or resize it, or a cell to create an event in. A resize grabs the edge,
- * so the cursor starts at the event's first or last slot or day. A create grabs the slot the
- * cell's target snaps to, so the cursor steps whole slots from where the event starts.
+ * so the cursor starts at the event's first or last slot or day. A create starts where the cell's
+ * target snaps to, with the cursor on that slot, so it steps whole slots from where the event
+ * starts.
  */
 export function startKeyboardSession<TEventId extends EventId, TResourceId extends ResourceId>(
   start: CalendarKeyboardSessionStart<TEventId, TResourceId>,
   options: CalendarInteractionOptions,
 ): CalendarKeyboardSession<TEventId, TResourceId> {
   if (start.cause === "create") {
-    const cell = snappedCell(start.cell, options);
+    const { cell } = start;
     const proposed = placementAt<TResourceId>("create", null, cell, cell, options)!;
     return {
       cause: "create",
-      cursor: cell,
+      cursor: snappedCell(cell, options),
       eventId: null,
       grab: cell,
       original: null,

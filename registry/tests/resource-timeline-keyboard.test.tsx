@@ -446,6 +446,19 @@ test("Space on a slot off the half hour drafts an hour from the half hour it rou
       },
     }),
   ).toBe("2026-10-08T09:30:00Z/2026-10-08T10:30:00Z");
+  // Nepal skipped 00:00 to 00:15 on January 1, 1986, so 23:45 rounds to where the gap ends.
+  expect(
+    await created({
+      anchor: "1985-12-31",
+      defaultFocus: {
+        date: Temporal.PlainDate.from("1985-12-31"),
+        kind: "slot",
+        resourceId: "site-1-room-1",
+        time: Temporal.PlainTime.from("23:45"),
+      },
+      timeZone: "Asia/Kathmandu",
+    }),
+  ).toBe("1985-12-31T18:30:00Z/1985-12-31T19:15:00Z");
 });
 
 test("server markup holds the tab stop when a day starts off the half hour", () => {

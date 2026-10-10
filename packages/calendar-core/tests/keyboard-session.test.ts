@@ -240,4 +240,19 @@ describe("keyboard create", () => {
       "2026-10-07T09:15/2026-10-07T09:45",
     );
   });
+
+  test("a slot that rounds into a gap creates from the gap's end, without snapping it again", () => {
+    // Nepal went from +05:30 to +05:45 at midnight on January 1, 1986: 00:00 to 00:15 never was.
+    const nepal = {
+      snap: { increment: 30, smallestUnit: "minute" },
+      timeZone: "Asia/Kathmandu",
+    } as const;
+    const start = startKeyboardSession({ cause: "create", cell: slot("1985-12-31T23:45") }, nepal);
+    const { proposed } = start;
+
+    expect(cell(start.cursor)).toBe("1986-01-01T00:15");
+    expect(
+      proposed.kind === "timed" && `${proposed.start.toString()}/${proposed.end.toString()}`,
+    ).toBe("1985-12-31T18:30:00Z/1985-12-31T19:00:00Z");
+  });
 });
