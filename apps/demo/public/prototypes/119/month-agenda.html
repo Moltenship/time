@@ -1,0 +1,1386 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>#119 Timeline annotations: month, agenda and resource timeline (prototype)</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+      }
+      .page {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-bottom: 8px;
+        color: var(--foreground, #0a0a0a);
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        align-items: center;
+        font-size: 12px;
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--border, #e5e5e5);
+        border-radius: 8px;
+        padding: 2px;
+        gap: 2px;
+        background: var(--card, transparent);
+      }
+      .seg button {
+        all: unset;
+        cursor: pointer;
+        padding: 4px 9px;
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--muted-foreground, #737373);
+        white-space: nowrap;
+      }
+      .seg button[aria-pressed="true"] {
+        background: var(--secondary, #f5f5f5);
+        color: var(--foreground, #0a0a0a);
+        font-weight: 600;
+      }
+      .ctl-label {
+        color: var(--muted-foreground, #737373);
+        margin-inline-end: 4px;
+      }
+      .note {
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--muted-foreground, #666);
+        margin: 0;
+      }
+      .note b {
+        color: var(--foreground, #111);
+        font-weight: 600;
+      }
+      h3.sec {
+        margin: 10px 0 0;
+        font-size: 14px;
+        font-weight: 600;
+      }
+      .chrome-off .controls,
+      .chrome-off .note,
+      .chrome-off h3.sec {
+        display: none;
+      }
+
+      .cal {
+        --radius: 0.625rem;
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.145 0 0);
+        --popover: oklch(1 0 0);
+        --popover-foreground: oklch(0.145 0 0);
+        --primary: oklch(0.205 0 0);
+        --secondary: oklch(0.97 0 0);
+        --muted: oklch(0.97 0 0);
+        --muted-foreground: oklch(0.556 0 0);
+        --accent: oklch(0.97 0 0);
+        --border: oklch(0.922 0 0);
+        --ring: oklch(0.25 0 0);
+        --calendar-grid: var(--border);
+        --calendar-axis: var(--muted-foreground);
+        --calendar-today: oklch(0.52 0.215 262.9);
+        --calendar-today-foreground: oklch(0.985 0 0);
+        --calendar-now: oklch(0.637 0.237 25.3);
+        --calendar-event: color-mix(in oklch, var(--primary) 8%, var(--background));
+        --calendar-event-foreground: var(--foreground);
+        --calendar-event-border: var(--primary);
+        color-scheme: light;
+        background: var(--background);
+        color: var(--foreground);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .cal.dark {
+        --background: oklch(0.145 0 0);
+        --foreground: oklch(0.985 0 0);
+        --popover: oklch(0.205 0 0);
+        --popover-foreground: oklch(0.985 0 0);
+        --primary: oklch(0.922 0 0);
+        --secondary: oklch(0.269 0 0);
+        --muted: oklch(0.269 0 0);
+        --muted-foreground: oklch(0.708 0 0);
+        --accent: oklch(0.269 0 0);
+        --border: oklch(1 0 0 / 10%);
+        --ring: oklch(0.8 0 0);
+        --calendar-today: oklch(0.707 0.165 254.6);
+        --calendar-today-foreground: oklch(0.145 0 0);
+        --calendar-now: oklch(0.704 0.191 22.2);
+        color-scheme: dark;
+      }
+      .cal [data-color],
+      .tip[data-color] {
+        --calendar-event: oklch(0.95 calc(var(--h-c) * 0.3) var(--h-h));
+        --calendar-event-foreground: oklch(0.37 calc(var(--h-c) * 0.8) var(--h-h));
+        --calendar-event-border: oklch(0.63 var(--h-c) var(--h-h));
+        --calendar-annotation: oklch(0.68 calc(var(--h-c) * 1.05) var(--h-h));
+      }
+      .cal.dark [data-color] {
+        --calendar-event: oklch(0.32 calc(var(--h-c) * 0.45) var(--h-h));
+        --calendar-event-foreground: oklch(0.93 calc(var(--h-c) * 0.35) var(--h-h));
+        --calendar-event-border: oklch(0.72 var(--h-c) var(--h-h));
+        --calendar-annotation: oklch(0.74 var(--h-c) var(--h-h));
+      }
+      [data-color="blue"] {
+        --h-h: 258;
+        --h-c: 0.17;
+      }
+      [data-color="green"] {
+        --h-h: 150;
+        --h-c: 0.15;
+      }
+      [data-color="red"] {
+        --h-h: 25;
+        --h-c: 0.19;
+      }
+      [data-color="orange"] {
+        --h-h: 55;
+        --h-c: 0.17;
+      }
+      [data-color="yellow"] {
+        --h-h: 90;
+        --h-c: 0.15;
+      }
+      [data-color="purple"] {
+        --h-h: 300;
+        --h-c: 0.18;
+      }
+      [data-color="pink"] {
+        --h-h: 350;
+        --h-c: 0.18;
+      }
+      [data-color="teal"] {
+        --h-h: 190;
+        --h-c: 0.12;
+      }
+      [data-color="gray"] {
+        --h-h: 260;
+        --h-c: 0.015;
+      }
+
+      .tb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .tb h2 {
+        font-size: 17px;
+        font-weight: 600;
+        margin: 0 6px 0 2px;
+        letter-spacing: -0.01em;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        padding: 0 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--background);
+        color: var(--foreground);
+        font:
+          500 12px/1 ui-sans-serif,
+          system-ui,
+          sans-serif;
+      }
+      .btn.icon {
+        width: 28px;
+        padding: 0;
+      }
+      .tb .sp {
+        flex: 1;
+      }
+      .vs {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 2px;
+        gap: 2px;
+      }
+      .vs span {
+        padding: 4px 9px;
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--muted-foreground);
+      }
+      .vs span.on {
+        background: var(--secondary);
+        color: var(--foreground);
+        font-weight: 600;
+      }
+      svg {
+        flex: none;
+      }
+
+      /* ---------- Month ---------- */
+      .mh {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        border-bottom: 1px solid var(--calendar-grid);
+      }
+      .mh span {
+        text-align: center;
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--muted-foreground);
+        padding: 6px 0;
+      }
+      .mw {
+        display: grid;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        border-bottom: 1px solid var(--calendar-grid);
+        height: 112px;
+      }
+      .mw:last-child {
+        border-bottom: 0;
+      }
+      .mc {
+        position: relative;
+        border-inline-end: 1px solid var(--calendar-grid);
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        padding-bottom: 4px;
+      }
+      .mc:last-child {
+        border-inline-end: 0;
+      }
+      .mc[data-out] .dn {
+        color: var(--muted-foreground);
+      }
+      .mc[data-weekend] {
+        background: color-mix(in oklch, var(--muted) 45%, transparent);
+      }
+      .dr {
+        position: relative;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 28px;
+      }
+      .dn {
+        margin-top: 4px;
+        height: 22px;
+        min-width: 22px;
+        padding: 0 5px;
+        box-sizing: border-box;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+      }
+      .mc[data-today] .dn {
+        background: var(--calendar-today);
+        color: var(--calendar-today-foreground);
+      }
+      .mev {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 20px;
+        margin: 0 2px 2px;
+        padding: 0 5px;
+        border-radius: 4px;
+        font-size: 11.5px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        color: var(--foreground);
+      }
+      .mev .dot {
+        width: 7px;
+        height: 7px;
+        border-radius: 999px;
+        background: var(--calendar-event-border);
+        flex: none;
+      }
+      .mev .tm {
+        color: var(--muted-foreground);
+        font-weight: 400;
+        font-variant-numeric: tabular-nums;
+      }
+      .mev.bar {
+        background: var(--calendar-event);
+        color: var(--calendar-event-foreground);
+        border-inline-start: 3px solid var(--calendar-event-border);
+        border-radius: 5px;
+      }
+      .more {
+        margin: 0 2px;
+        padding: 0 5px;
+        font-size: 11.5px;
+        font-weight: 500;
+        color: var(--muted-foreground);
+      }
+      /* M1: 24-hour day strip at the bottom of each cell */
+      .strip {
+        position: relative;
+        margin: auto 6px 0;
+        height: 8px;
+        border-radius: 3px;
+        background: color-mix(in oklch, var(--muted) 85%, transparent);
+        overflow: hidden;
+        cursor: default;
+      }
+      .cal.dark .strip {
+        background: oklch(1 0 0 / 7%);
+      }
+      .strip i {
+        position: absolute;
+        inset-block: 0;
+        background: var(--calendar-annotation);
+      }
+      .strip i[data-src="sleep"] {
+        inset-block: 0;
+        opacity: 0.55;
+      }
+      .strip i[data-src="coding"] {
+        inset-block: 4px 0;
+      }
+      .strip i[data-src="spotify"] {
+        inset-block: 0 4px;
+      }
+      .strip:hover {
+        outline: 1px solid var(--ring);
+        outline-offset: 1px;
+      }
+      .ticks {
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          to right,
+          transparent calc(50% - 0.5px),
+          color-mix(in oklch, var(--foreground) 25%, transparent) calc(50% - 0.5px)
+            calc(50% + 0.5px),
+          transparent calc(50% + 0.5px)
+        );
+        pointer-events: none;
+      }
+      /* M2: source badges in the date row */
+      .badges {
+        margin: auto 4px 0;
+        display: flex;
+        gap: 1px;
+        flex-wrap: nowrap;
+        overflow: hidden;
+      }
+      .badges span {
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+        height: 16px;
+        padding: 0 3px;
+        border-radius: 999px;
+        color: var(--calendar-annotation);
+        font-size: 9.5px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        cursor: default;
+      }
+      .badges svg {
+        width: 11px;
+        height: 11px;
+      }
+      .badges span:hover {
+        background: color-mix(in oklch, var(--calendar-annotation) 15%, transparent);
+      }
+      .badges-left {
+        inset-inline-start: 4px;
+        inset-inline-end: auto;
+      }
+
+      /* ---------- Agenda ---------- */
+      .ag {
+        display: flex;
+        flex-direction: column;
+        border-top: 1px solid var(--calendar-grid);
+      }
+      .agd {
+        display: flex;
+        gap: 16px;
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--calendar-grid);
+      }
+      .agd:last-child {
+        border-bottom: 0;
+      }
+      .agh {
+        width: 44px;
+        flex: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding-top: 4px;
+      }
+      .agh .wd {
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .agh .num {
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+      }
+      .agd[data-today] .agh .wd {
+        color: var(--calendar-today);
+      }
+      .agd[data-today] .agh .num {
+        background: var(--calendar-today);
+        color: var(--calendar-today-foreground);
+      }
+      .agl {
+        flex: 1;
+        min-width: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        padding: 2px 0;
+      }
+      .sum {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        padding: 4px 0 6px;
+      }
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        height: 22px;
+        padding: 0 8px;
+        border-radius: 999px;
+        font-size: 11.5px;
+        font-weight: 500;
+        background: color-mix(in oklch, var(--calendar-annotation) 14%, transparent);
+        color: color-mix(in oklch, var(--calendar-annotation) 55%, var(--foreground));
+        cursor: default;
+      }
+      .pill svg {
+        width: 12px;
+        height: 12px;
+      }
+      .pill .m {
+        font-weight: 400;
+        opacity: 0.8;
+      }
+      .ai {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 30px;
+        padding: 0 8px;
+        border-radius: 8px;
+        font-size: 13.5px;
+      }
+      .ai:hover {
+        background: var(--accent);
+      }
+      .ai .when {
+        width: 150px;
+        flex: none;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--muted-foreground);
+        font-variant-numeric: tabular-nums;
+        font-size: 13px;
+      }
+      .ai .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--calendar-event-border);
+        flex: none;
+      }
+      .ai .tt {
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ai.ann {
+        min-height: 24px;
+        color: var(--muted-foreground);
+        font-size: 12.5px;
+      }
+      .ai.ann:hover {
+        background: transparent;
+      }
+      .ai.ann .when {
+        font-size: 12px;
+      }
+      .ai.ann .dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        background: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--calendar-annotation);
+      }
+      .ai.ann .dot svg {
+        width: 12px;
+        height: 12px;
+      }
+      .ai.ann .tt {
+        border-inline-start: 2px dotted
+          color-mix(in oklch, var(--calendar-annotation) 70%, transparent);
+        padding-inline-start: 8px;
+      }
+
+      /* ---------- Resource timeline sketch ---------- */
+      .rt {
+        display: grid;
+        grid-template-columns: 110px minmax(0, 1fr);
+        border-top: 1px solid var(--calendar-grid);
+        font-size: 12px;
+      }
+      .rt .rh {
+        border-bottom: 1px solid var(--calendar-grid);
+        border-inline-end: 1px solid var(--calendar-grid);
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+        gap: 8px;
+        height: 46px;
+        font-weight: 500;
+        min-width: 0;
+      }
+      .rt .rh .av {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: var(--muted);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: 600;
+        color: var(--muted-foreground);
+        flex: none;
+      }
+      .rt .axis {
+        position: relative;
+        height: 26px;
+        border-bottom: 1px solid var(--calendar-grid);
+      }
+      .rt .axis span {
+        position: absolute;
+        top: 6px;
+        transform: translateX(-50%);
+        font-size: 10px;
+        color: var(--calendar-axis);
+        font-variant-numeric: tabular-nums;
+      }
+      .rt .corner {
+        height: 26px;
+        border-bottom: 1px solid var(--calendar-grid);
+        border-inline-end: 1px solid var(--calendar-grid);
+        font-size: 10px;
+        color: var(--calendar-axis);
+        display: flex;
+        align-items: center;
+        padding: 0 10px;
+      }
+      .rt .lane {
+        position: relative;
+        height: 46px;
+        border-bottom: 1px solid var(--calendar-grid);
+        background: repeating-linear-gradient(
+          to right,
+          var(--calendar-grid) 0 1px,
+          transparent 1px calc(100% / 12)
+        );
+      }
+      .rt .lane.global {
+        height: 18px;
+        background: color-mix(in oklch, var(--muted) 50%, transparent);
+      }
+      .rt .rh.global {
+        height: 18px;
+        font-size: 10px;
+        font-weight: 500;
+        color: var(--muted-foreground);
+      }
+      .rt .bar {
+        position: absolute;
+        top: 9px;
+        height: 24px;
+        box-sizing: border-box;
+        border-radius: 6px;
+        border-inline-start: 3px solid var(--calendar-event-border);
+        background: var(--calendar-event);
+        color: var(--calendar-event-foreground);
+        font-size: 11.5px;
+        font-weight: 500;
+        padding: 0 6px;
+        display: flex;
+        align-items: center;
+        white-space: nowrap;
+        overflow: hidden;
+        box-shadow: 0 0 0 1px var(--background);
+      }
+      .rt .rail {
+        position: absolute;
+        bottom: 3px;
+        height: 4px;
+        border-radius: 999px;
+        background: var(--calendar-annotation);
+        cursor: default;
+      }
+      .rt .ooo {
+        position: absolute;
+        inset-block: 0;
+        background: repeating-linear-gradient(
+          -45deg,
+          color-mix(in oklch, var(--calendar-annotation) 22%, transparent) 0 1px,
+          transparent 1px 6px
+        );
+        border-inline-start: 2px solid var(--calendar-annotation);
+        cursor: default;
+      }
+      .rt .ooo span {
+        position: absolute;
+        top: 3px;
+        inset-inline-start: 6px;
+        font-size: 10px;
+        font-weight: 600;
+        color: color-mix(in oklch, var(--calendar-annotation) 60%, var(--foreground));
+      }
+      .rt .gmark {
+        position: absolute;
+        top: 4px;
+        height: 10px;
+        border-radius: 3px;
+        background: color-mix(in oklch, var(--calendar-annotation) 35%, transparent);
+        border-inline-start: 2px solid var(--calendar-annotation);
+        cursor: default;
+      }
+
+      .tip {
+        position: fixed;
+        z-index: 50;
+        max-width: 270px;
+        padding: 7px 10px;
+        border-radius: 6px;
+        background: var(--foreground);
+        color: var(--background);
+        font:
+          400 12px/1.4 ui-sans-serif,
+          system-ui,
+          sans-serif;
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.1s;
+      }
+      .tip.on {
+        opacity: 1;
+      }
+      .tip b {
+        font-weight: 600;
+      }
+      .tip .row {
+        display: flex;
+        justify-content: space-between;
+        gap: 14px;
+      }
+      .tip .row span:last-child {
+        opacity: 0.7;
+        font-variant-numeric: tabular-nums;
+      }
+      .sr {
+        border: 1px dashed var(--border, #ddd);
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--muted-foreground, #666);
+      }
+      .sr b {
+        color: var(--foreground, #111);
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .tip {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" id="page">
+      <div class="controls">
+        <span><span class="ctl-label">Theme</span><span class="seg" id="theme"></span></span>
+        <span><span class="ctl-label">Month</span><span class="seg" id="month"></span></span>
+        <span><span class="ctl-label">Agenda</span><span class="seg" id="agenda"></span></span>
+      </div>
+      <h3 class="sec">Month</h3>
+      <p class="note" id="month-note"></p>
+      <div class="cal" id="m"></div>
+      <h3 class="sec">Agenda</h3>
+      <p class="note" id="agenda-note"></p>
+      <div class="cal" id="a"></div>
+      <div class="sr" id="sr"></div>
+      <h3 class="sec">Resource timeline (sketch)</h3>
+      <p class="note">
+        <b>Per-resource annotations</b> (with <code>resourceIds</code>) draw as a rail along the
+        bottom of that resource's row: focus sessions, an out-of-office band.
+        <b>Calendar-wide annotations</b> (no <code>resourceIds</code>) get one thin row under the
+        time axis, so they are never copied into every row.
+      </p>
+      <div class="cal" id="r"></div>
+    </div>
+    <div class="tip" id="tip" role="tooltip"></div>
+    <script>
+      const DAY = 1440;
+      const m = (hhmm) => {
+        const [h, mm] = hhmm.split(":").map(Number);
+        return h * 60 + mm;
+      };
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const ICONS = {
+        music:
+          '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+        moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+        activity:
+          '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+        target:
+          '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+        code: '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
+        plane:
+          '<path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/>',
+        sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2m-7.07-14.07 1.41 1.41m11.32 11.32 1.41 1.41M2 12h2m16 0h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>',
+        left: '<path d="m15 18-6-6 6-6"/>',
+        right: '<path d="m9 18 6-6-6-6"/>',
+      };
+      const svg = (name, size = 12) =>
+        `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`;
+      const SOURCES = {
+        sleep: { label: "Sleep", app: "Oura", color: "purple", icon: "moon" },
+        spotify: { label: "Spotify", app: "Spotify", color: "green", icon: "music" },
+        workout: { label: "Workout", app: "Apple Health", color: "orange", icon: "activity" },
+        focus: { label: "Focus", app: "Focus mode", color: "teal", icon: "target" },
+        coding: { label: "Coding", app: "WakaTime", color: "yellow", icon: "code" },
+      };
+      const ORDER = ["sleep", "coding", "focus", "spotify", "workout"];
+      const fmt = (min) =>
+        `${String(Math.floor(min / 60) % 24).padStart(2, "0")}:${String(Math.round(min % 60)).padStart(2, "0")}`;
+      const dur = (min) => {
+        const h = Math.floor(min / 60),
+          mm = Math.round(min % 60);
+        return h === 0 ? `${mm}m` : mm === 0 ? `${h}h` : `${h}h ${mm}m`;
+      };
+
+      // Month range: Monday 28 September to Sunday 1 November 2026. Day index 0 = 28 Sep.
+      const MONTH_DATES = Array.from({ length: 35 }, (_, i) => {
+        const d = new Date(Date.UTC(2026, 8, 28 + i));
+        return { day: d.getUTCDate(), month: d.getUTCMonth(), dow: (d.getUTCDay() + 6) % 7 };
+      });
+      const TODAY = 12; // Sat 10 Oct
+      const rand = mulberry32(1190);
+
+      // Merged annotations per day (what the projection would hand the month cell), in day minutes.
+      const perDay = Array.from({ length: 35 }, () => []);
+      const put = (absStart, absEnd, source, extra = {}) => {
+        for (
+          let d = Math.max(0, Math.floor(absStart / DAY));
+          d <= Math.min(34, Math.floor((absEnd - 1) / DAY));
+          d++
+        ) {
+          const from = d * DAY;
+          perDay[d].push({
+            source,
+            start: Math.max(absStart, from) - from,
+            end: Math.min(absEnd, from + DAY) - from,
+            startsBefore: absStart < from,
+            endsAfter: absEnd > from + DAY,
+            ...extra,
+          });
+        }
+      };
+      for (let d = -1; d < 35; d++) {
+        if (d >= 26 && d <= 30) continue; // Travel: no sleep data synced (shows how gaps look)
+        const weekend = (d + 7) % 7 >= 4;
+        const bed = (d + 1) * DAY - 50 + Math.round(rand() * 100) + (weekend ? 45 : 0);
+        const wake = (d + 1) * DAY + 400 + Math.round(rand() * 70) + (weekend ? 70 : 0);
+        put(bed, wake, "sleep", {
+          title: "Sleep",
+          score: 68 + Math.round(rand() * 25),
+          total: wake - bed,
+        });
+      }
+      const sessionCounts = [];
+      for (let d = 0; d < 35; d++) {
+        const dow = MONTH_DATES[d].dow;
+        const n = 1 + Math.floor(rand() * 4);
+        sessionCounts.push(n);
+        for (let i = 0; i < n; i++) {
+          const s = d * DAY + 420 + Math.round(rand() * 900);
+          put(s, s + 15 + Math.round(rand() * 80), "spotify", {
+            tracks: 4 + Math.floor(rand() * 18),
+          });
+        }
+        if (dow < 5) {
+          for (const [a, b] of [
+            [600, 740],
+            [840, 1080],
+          ]) {
+            let t = d * DAY + a + rand() * 20;
+            while (t < d * DAY + b) {
+              const len = 20 + rand() * 60;
+              put(t, Math.min(t + len, d * DAY + b), "coding");
+              t += len + 15 + rand() * 30;
+            }
+          }
+          if (rand() < 0.4) {
+            const s = d * DAY + 540 + Math.round(rand() * 300);
+            put(s, s + 50 + Math.round(rand() * 60), "focus", {
+              title: rand() < 0.5 ? "Deep work" : "Do Not Disturb",
+            });
+          }
+        }
+        if ([0, 2, 5].includes(dow) && rand() < 0.75) {
+          const s = d * DAY + (dow === 5 ? 780 : 1110);
+          put(s, s + 35 + Math.round(rand() * 30), "workout", {
+            title: dow === 5 ? "Run club" : dow === 0 ? "Evening run" : "Strength training",
+          });
+        }
+      }
+
+      const EVENTS = {
+        0: [["09:30", "Standup", "blue"]],
+        1: [
+          ["10:00", "Quarterly planning", "blue"],
+          ["19:00", "Climbing", "pink"],
+        ],
+        2: [
+          ["09:30", "Standup", "blue"],
+          ["12:30", "Lunch with Leo", "pink"],
+        ],
+        3: [
+          ["11:00", "Interview", "blue"],
+          ["18:00", "Book club", "pink"],
+        ],
+        4: [["09:30", "Standup", "blue"]],
+        5: [["12:00", "Brunch", "pink"]],
+        7: [
+          ["09:30", "Standup", "blue"],
+          ["11:00", "Design review", "blue"],
+          ["12:30", "Lunch with Ana", "pink"],
+          ["15:00", "Deep work: RFC", "gray"],
+        ],
+        8: [
+          ["10:30", "Sprint planning", "blue"],
+          ["14:00", "Interview", "blue"],
+          ["17:30", "Dentist", "pink"],
+        ],
+        9: [
+          ["11:00", "Customer call", "blue"],
+          ["16:00", "Pairing", "blue"],
+          ["19:30", "Dinner", "pink"],
+        ],
+        10: [
+          ["12:00", "Team lunch", "pink"],
+          ["15:00", "Roadmap sync", "blue"],
+        ],
+        11: [
+          ["12:00", "Demo day", "red"],
+          ["16:00", "Weekly review", "blue"],
+        ],
+        12: [
+          ["10:00", "Farmers market", "pink"],
+          ["13:00", "Run club", "pink"],
+          ["19:00", "Cinema", "pink"],
+        ],
+        13: [
+          ["11:00", "Brunch", "pink"],
+          ["16:00", "Call grandma", "pink"],
+        ],
+        14: [
+          ["09:30", "Standup", "blue"],
+          ["14:00", "1:1 Maria", "blue"],
+        ],
+        16: [["10:00", "Offsite prep", "blue"]],
+        17: [["13:00", "Lunch", "pink"]],
+        18: [["17:00", "Retro", "blue"]],
+        21: [["09:30", "Standup", "blue"]],
+        22: [["15:00", "Board update", "red"]],
+        24: [["18:30", "Concert", "pink"]],
+        28: [["09:30", "Standup", "blue"]],
+        32: [["11:00", "1:1 Maria", "blue"]],
+      };
+      const ALL_DAY = [
+        [11, 1, "Release 0.3 cut", "red"],
+        [26, 5, "Lisbon trip", "orange"],
+        [13, 1, "Mom's birthday", "pink"],
+      ];
+
+      const params = new URLSearchParams(location.search);
+      const state = {
+        theme:
+          params.get("theme") ??
+          (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"),
+        month: params.get("month") ?? "strip",
+        agenda: params.get("agenda") ?? "inline",
+      };
+      if (params.get("chrome") === "0") document.getElementById("page").classList.add("chrome-off");
+      const only = params.get("only");
+      if (only)
+        for (const id of ["m", "a", "r"])
+          if (id !== only) {
+            const el = document.getElementById(id);
+            el.style.display = "none";
+          }
+      if (only) {
+        document.getElementById("sr").style.display = only === "a" ? "" : "none";
+        for (const n of document.querySelectorAll("h3.sec, .note")) n.style.display = "none";
+      }
+
+      function totals(list) {
+        const out = {};
+        for (const a of list) {
+          out[a.source] ??= { total: 0, count: 0, items: [] };
+          out[a.source].total += a.end - a.start;
+          out[a.source].count++;
+          out[a.source].items.push(a);
+        }
+        return out;
+      }
+      function short(min) {
+        return min >= 60
+          ? `${Math.round(min / 6) / 10}h`.replace(".0h", "h")
+          : `${Math.round(min)}m`;
+      }
+
+      function daySummaryHTML(d) {
+        const t = totals(perDay[d]);
+        const rows = [];
+        if (t.sleep) {
+          const s = t.sleep.items.find((a) => a.startsBefore) ?? t.sleep.items[0];
+          rows.push([
+            "moon",
+            "Sleep",
+            s.startsBefore ? `until ${fmt(s.end)}` : `from ${fmt(s.start)}`,
+          ]);
+        }
+        if (t.spotify)
+          rows.push(["music", `Spotify · ${t.spotify.count} sessions`, dur(t.spotify.total)]);
+        if (t.coding) rows.push(["code", "Coding", dur(t.coding.total)]);
+        if (t.focus)
+          rows.push([
+            "target",
+            t.focus.items[0].title,
+            `${fmt(t.focus.items[0].start)}–${fmt(t.focus.items[0].end)}`,
+          ]);
+        if (t.workout)
+          rows.push([
+            "activity",
+            t.workout.items[0].title,
+            `${fmt(t.workout.items[0].start)} · ${dur(t.workout.total)}`,
+          ]);
+        return (
+          rows
+            .map(([icon, k, v]) => `<div class="row"><span>${k}</span><span>${v}</span></div>`)
+            .join("") || "No annotations"
+        );
+      }
+      function spokenSummary(d) {
+        const t = totals(perDay[d]);
+        const parts = [];
+        if (t.sleep) {
+          const s = t.sleep.items.find((a) => a.startsBefore) ?? t.sleep.items[0];
+          parts.push(
+            `Sleep ${s.startsBefore ? "until" : "from"} ${fmt(s.startsBefore ? s.end : s.start)}`,
+          );
+        }
+        if (t.spotify)
+          parts.push(
+            `Spotify, ${t.spotify.count} sessions, ${dur(t.spotify.total).replace("h", " hours").replace("m", " minutes")}`,
+          );
+        if (t.coding)
+          parts.push(
+            `Coding, ${dur(t.coding.total).replace("h", " hours").replace("m", " minutes")}`,
+          );
+        if (t.workout)
+          parts.push(`${t.workout.items[0].title} at ${fmt(t.workout.items[0].start)}`);
+        return parts.join(". ") + ".";
+      }
+
+      function renderMonth() {
+        const el = document.getElementById("m");
+        el.className = `cal${state.theme === "dark" ? " dark" : ""}`;
+        const weeks = [];
+        for (let w = 0; w < 5; w++) {
+          const cells = [];
+          for (let c = 0; c < 7; c++) {
+            const d = w * 7 + c;
+            const info = MONTH_DATES[d];
+            const ev = EVENTS[d] ?? [];
+            const allDay = ALL_DAY.filter(([s, len]) => d >= s && d < s + len);
+            const max = 3 - allDay.length;
+            const shown = ev.slice(0, ev.length > max ? max - 1 : max);
+            const t = totals(perDay[d]);
+            let ann = "";
+            if (state.month === "strip") {
+              ann = `<div class="strip" data-day="${d}" aria-hidden="true"><span class="ticks"></span>${ORDER.flatMap((s) => (t[s]?.items ?? []).map((a) => `<i data-src="${s}" data-color="${SOURCES[s].color}" style="inset-inline-start:${(a.start / DAY) * 100}%;width:max(2px, ${((a.end - a.start) / DAY) * 100}%)"></i>`)).join("")}</div>`;
+            } else {
+              const badges = [];
+              const night = t.sleep?.items.find((a) => a.end < 720);
+              if (night) badges.push(["sleep", short(night.total)]);
+              if (t.spotify) badges.push(["spotify", short(t.spotify.total)]);
+              if (t.workout) badges.push(["workout", ""]);
+              ann = `<div class="badges" data-day="${d}">${badges.map(([s, v]) => `<span data-color="${SOURCES[s].color}" data-src="${s}">${svg(SOURCES[s].icon, 11)}${v}</span>`).join("")}</div>`;
+            }
+            cells.push(`<div class="mc" ${info.month !== 9 ? "data-out" : ""} ${d === TODAY ? "data-today" : ""} ${info.dow >= 5 ? "data-weekend" : ""} data-day="${d}">
+        <div class="dr"><span class="dn">${info.day === 1 ? (info.month === 9 ? "1 Oct" : "1 Nov") : info.day}</span></div>
+        ${allDay.map(([s, len, title, color]) => `<div class="mev bar" data-color="${color}">${d === s || c === 0 ? title : "&nbsp;"}</div>`).join("")}
+        ${shown.map(([tm, title, color]) => `<div class="mev" data-color="${color}"><span class="dot"></span><span class="tm">${tm}</span>${title}</div>`).join("")}
+        ${ev.length > shown.length ? `<div class="more">${ev.length - shown.length} more</div>` : ""}
+        ${ann}
+      </div>`);
+          }
+          weeks.push(`<div class="mw">${cells.join("")}</div>`);
+        }
+        el.innerHTML = `
+    <div class="tb"><button class="btn">Today</button><button class="btn icon">${svg("left", 15)}</button><button class="btn icon">${svg("right", 15)}</button><h2>October 2026</h2><span class="sp"></span>
+      <span class="vs"><span>Day</span><span>Week</span><span class="on">Month</span><span>Agenda</span></span></div>
+    <div><div class="mh">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"].map((x) => `<span>${x}</span>`).join("")}</div>${weeks.join("")}</div>`;
+        document.getElementById("month-note").innerHTML =
+          state.month === "strip"
+            ? "<b>M1 · Day strip.</b> Each cell ends with a 24-hour micro-timeline (midnight to midnight, tick at noon). Sleep fills the full height at both ends, activity sources split the top and bottom halves. It never takes an event lane: the strip sits in the cell's bottom padding. Hover for the day's totals."
+            : "<b>M2 · Source badges.</b> Icons with a daily total in the date row (sleep length, listening time, a workout mark). Cheapest in space, but shows no time of day. Hover for the day's totals.";
+      }
+
+      const AGENDA_DAYS = [10, 11, 12];
+      const AG_EVENTS = {
+        10: [
+          ["09:30", "09:45", "Standup", "blue"],
+          ["12:00", "13:00", "Team lunch", "pink"],
+          ["15:00", "16:00", "Roadmap sync", "blue"],
+          ["15:30", "16:00", "Recruiting sync", "gray"],
+          ["18:00", "18:30", "Call Mom", "pink"],
+        ],
+        11: [
+          ["all", "", "Release 0.3 cut", "red"],
+          ["09:30", "09:45", "Standup", "blue"],
+          ["12:00", "13:00", "Demo day", "red"],
+          ["16:00", "17:00", "Weekly review", "blue"],
+          ["18:30", "20:00", "Drinks @ Fabrika", "pink"],
+        ],
+        12: [
+          ["10:00", "11:30", "Farmers market", "pink"],
+          ["13:00", "14:00", "Run club", "pink"],
+          ["19:00", "21:00", "Cinema", "pink"],
+        ],
+      };
+      // Fixed, realistic annotations for the agenda days.
+      const AG_ANN = {
+        10: [
+          ["sleep", "23:48", "07:02", "Sleep · 7h 14m", true],
+          ["spotify", "08:10", "08:50", "Listening · 11 tracks"],
+          ["focus", "09:00", "10:55", "Pomodoro × 4"],
+          ["spotify", "09:00", "11:40", "Listening · 38 tracks"],
+          ["coding", "10:04", "12:20", "Coding · time · 2h 05m"],
+          ["workout", "19:00", "19:40", "Yoga · 140 kcal"],
+          ["spotify", "20:30", "21:30", "Listening · 16 tracks"],
+        ],
+        11: [
+          ["sleep", "01:10", "09:12", "Sleep · 8h 02m"],
+          ["spotify", "08:00", "08:45", "Listening · 12 tracks"],
+          ["focus", "13:30", "15:00", "Deep work · DND"],
+          ["spotify", "13:30", "15:00", "Listening · 24 tracks"],
+          ["coding", "14:02", "15:50", "Coding · moltenship-demo · 1h 31m"],
+          ["spotify", "18:45", "19:15", "Listening · 8 tracks"],
+        ],
+        12: [
+          ["sleep", "00:25", "08:31", "Sleep · 8h 06m"],
+          ["spotify", "10:05", "11:25", "Listening · 21 tracks"],
+          ["workout", "13:05", "13:52", "Run club · 8.1 km"],
+          ["spotify", "14:30", "15:00", "Listening · 8 tracks"],
+          ["spotify", "22:30", "23:20", "Listening · 13 tracks"],
+        ],
+      };
+      function renderAgenda() {
+        const el = document.getElementById("a");
+        el.className = `cal${state.theme === "dark" ? " dark" : ""}`;
+        const days = AGENDA_DAYS.map((d) => {
+          const info = MONTH_DATES[d];
+          const anns = AG_ANN[d].map(([source, s, e, label, until]) => ({
+            source,
+            start: m(s),
+            end: m(e) < m(s) ? m(e) + DAY : m(e),
+            label,
+            sKey: until ? -1 : m(s),
+          }));
+          const t = {};
+          for (const a of anns) {
+            t[a.source] ??= { total: 0, count: 0, first: a };
+            t[a.source].total += a.end - a.start;
+            t[a.source].count++;
+          }
+          const pills = ORDER.filter((s) => t[s])
+            .map((s) => {
+              const x = t[s];
+              const text =
+                s === "sleep"
+                  ? `Sleep <span class="m">${dur(x.total)}</span>`
+                  : s === "spotify"
+                    ? `Spotify <span class="m">${x.count} sessions · ${dur(x.total)}</span>`
+                    : s === "workout"
+                      ? `${x.first.label.split(" · ")[0]} <span class="m">${fmt(x.first.start)}</span>`
+                      : s === "focus"
+                        ? `Focus <span class="m">${dur(x.total)}</span>`
+                        : `Coding <span class="m">${dur(x.total)}</span>`;
+              return `<span class="pill" data-color="${SOURCES[s].color}" data-src="${s}">${svg(SOURCES[s].icon)}${text}</span>`;
+            })
+            .join("");
+          const rows = AG_EVENTS[d].map(([s, e, title, color]) => ({
+            kind: "event",
+            sKey: s === "all" ? -2 : m(s),
+            html: `<div class="ai" data-color="${color}"><span class="when"><span class="dot"></span>${s === "all" ? `<span class="pill" data-color="${color}" style="height:18px;padding:0 7px;font-size:11px;background:var(--calendar-event);color:var(--calendar-event-foreground)">All day</span>` : `${s} – ${e}`}</span><span class="tt">${title}</span></div>`,
+          }));
+          if (state.agenda === "inline") {
+            for (const a of anns) {
+              if (a.source === "spotify" || a.source === "coding") continue; // activity stays in the summary
+              const span =
+                a.sKey === -1 ? `Until ${fmt(a.end)}` : `${fmt(a.start)} – ${fmt(a.end % DAY)}`;
+              rows.push({
+                kind: "ann",
+                sKey: a.sKey === -1 ? -1 : a.start + 0.1,
+                html: `<div class="ai ann" data-color="${SOURCES[a.source].color}" aria-hidden="true"><span class="when"><span class="dot">${svg(SOURCES[a.source].icon)}</span>${span}</span><span class="tt">${a.label}</span></div>`,
+              });
+            }
+          }
+          rows.sort((x, y) => x.sKey - y.sKey);
+          return `<div class="agd" ${d === TODAY ? "data-today" : ""} data-day="${d}">
+      <div class="agh"><span class="wd">${["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"][info.dow]}</span><span class="num">${info.day}</span></div>
+      <div class="agl"><div class="sum" role="note" aria-label="Annotations">${pills}</div>${rows.map((r) => r.html).join("")}</div></div>`;
+        }).join("");
+        el.innerHTML = `
+    <div class="tb"><button class="btn">Today</button><button class="btn icon">${svg("left", 15)}</button><button class="btn icon">${svg("right", 15)}</button><h2>8 – 10 October 2026</h2><span class="sp"></span>
+      <span class="vs"><span>Day</span><span>Week</span><span>Month</span><span class="on">Agenda</span></span></div>
+    <div class="ag">${days}</div>`;
+        document.getElementById("agenda-note").innerHTML =
+          state.agenda === "inline"
+            ? "<b>Summary + inline.</b> Each day opens with summary pills, one per source. Long, meaningful annotations (sleep, workouts, focus) also appear inline in time order as muted, non-interactive rows with the source icon and a dotted rule. High-frequency sources (music, coding) stay in the pill."
+            : "<b>Summary only.</b> Each day opens with summary pills, one per source; the event list is unchanged. The agenda is the library's dense, screen-reader-first view, so annotations stay out of the item list.";
+        const d = TODAY;
+        document.getElementById("sr").innerHTML =
+          `<b>Screen reader, agenda:</b> each day's pills are one <code>role="note"</code> labelled “Annotations”, read before the day's events: “Annotations: Sleep 8 hours 6 minutes. Spotify, 4 sessions, 2 hours 40 minutes. Run club at 13:05.” Inline annotation rows are <code>aria-hidden</code>, so the list keeps one item per event and the roving focus never stops on them.`;
+      }
+
+      function renderResources() {
+        const el = document.getElementById("r");
+        el.className = `cal${state.theme === "dark" ? " dark" : ""}`;
+        const H0 = 8 * 60,
+          H1 = 20 * 60,
+          span = H1 - H0;
+        const x = (min) => `${((min - H0) / span) * 100}%`;
+        const w = (a, b) => `${((b - a) / span) * 100}%`;
+        const people = [
+          [
+            "AN",
+            "Ana",
+            [
+              ["09:30", "09:45", "Standup", "blue"],
+              ["11:00", "12:00", "Design review", "blue"],
+              ["15:00", "16:30", "Deep work", "gray"],
+            ],
+            [
+              ["focus", "09:50", "11:00", "Focus"],
+              ["focus", "15:00", "16:30", "Do Not Disturb"],
+            ],
+            null,
+          ],
+          [
+            "MA",
+            "Maria",
+            [
+              ["09:30", "09:45", "Standup", "blue"],
+              ["14:00", "15:00", "Interview", "blue"],
+              ["17:00", "17:30", "1:1 Ana", "blue"],
+            ],
+            [["focus", "10:00", "12:00", "Focus"]],
+            null,
+          ],
+          ["LE", "Leo", [], [], ["13:00", "20:00", "Out of office · flight to Lisbon"]],
+          [
+            "TM",
+            "Timofey",
+            [
+              ["09:30", "09:45", "Standup", "blue"],
+              ["11:00", "12:00", "Design review", "blue"],
+              ["16:00", "17:30", "Pairing", "blue"],
+            ],
+            [
+              ["focus", "12:30", "14:00", "Focus"],
+              ["focus", "18:00", "19:30", "Focus"],
+            ],
+            null,
+          ],
+        ];
+        const axis = Array.from(
+          { length: 11 },
+          (_, i) =>
+            `<span style="left:${(((i + 1) * 60) / span) * 100}%">${String(9 + i).padStart(2, "0")}:00</span>`,
+        ).join("");
+        const rows = people
+          .map(
+            ([init, name, evs, anns, ooo]) => `
+    <div class="rh"><span class="av">${init}</span>${name}</div>
+    <div class="lane">
+      ${ooo ? `<div class="ooo" data-color="orange" data-tip="${ooo[2]} · ${ooo[0]}–${ooo[1]}" style="left:${x(m(ooo[0]))};width:${w(m(ooo[0]), m(ooo[1]))}"><span>${svg("plane", 10)} ${ooo[2]}</span></div>` : ""}
+      ${evs.map(([s, e, t, c]) => `<div class="bar" data-color="${c}" style="left:${x(m(s))};width:${w(m(s), m(e))}">${t}</div>`).join("")}
+      ${anns.map(([src, s, e, t]) => `<div class="rail" data-color="${SOURCES[src].color}" data-tip="${t} · ${s}–${e} · ${name}" style="left:${x(m(s))};width:${w(m(s), m(e))}"></div>`).join("")}
+    </div>`,
+          )
+          .join("");
+        el.innerHTML = `
+    <div class="tb"><button class="btn">Today</button><button class="btn icon">${svg("left", 15)}</button><button class="btn icon">${svg("right", 15)}</button><h2>Thursday, 8 October</h2><span class="sp"></span>
+      <span class="vs"><span>Columns</span><span class="on">Timeline</span></span></div>
+    <div class="rt">
+      <div class="corner">GMT+4</div><div class="axis">${axis}</div>
+      <div class="rh global">All</div>
+      <div class="lane global"><div class="gmark" data-color="yellow" data-tip="Office open · 08:00–19:00 (calendar-wide)" style="left:${x(480)};width:${w(480, 1140)};top:4px"></div><div class="gmark" data-color="red" data-tip="Deploy freeze · 16:00–20:00 (calendar-wide)" style="left:${x(960)};width:${w(960, 1200)};top:4px;height:10px;opacity:.9"></div></div>
+      ${rows}
+    </div>`;
+      }
+
+      const tip = document.getElementById("tip");
+      function showTip(target, html) {
+        const cal = target.closest(".cal");
+        tip.style.setProperty(
+          "--foreground",
+          getComputedStyle(cal).getPropertyValue("--foreground"),
+        );
+        tip.style.setProperty(
+          "--background",
+          getComputedStyle(cal).getPropertyValue("--background"),
+        );
+        tip.innerHTML = html;
+        tip.className = "tip on";
+        const r = target.getBoundingClientRect();
+        const w = tip.offsetWidth,
+          h = tip.offsetHeight;
+        let left = r.left + r.width / 2 - w / 2;
+        left = Math.max(4, Math.min(left, document.documentElement.clientWidth - w - 4));
+        const top = r.top - h - 8 > 0 ? r.top - h - 8 : r.bottom + 8;
+        tip.style.left = `${left}px`;
+        tip.style.top = `${top}px`;
+      }
+      document.addEventListener("pointerover", (e) => {
+        const strip = e.target.closest(".strip, .badges");
+        const pill = e.target.closest(".pill[data-src]");
+        const rt = e.target.closest("[data-tip]");
+        if (strip) {
+          const d = Number(strip.dataset.day);
+          const info = MONTH_DATES[d];
+          showTip(
+            strip,
+            `<b>${["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"][info.dow]}, ${info.day} ${info.month === 9 ? "October" : info.month === 8 ? "September" : "November"}</b>${daySummaryHTML(d)}`,
+          );
+        } else if (pill) {
+          const d = Number(pill.closest(".agd").dataset.day),
+            src = pill.dataset.src;
+          const list = AG_ANN[d].filter(([source]) => source === src);
+          showTip(
+            pill,
+            `<b>${SOURCES[src].label}</b> <span style="opacity:.7">· ${SOURCES[src].app} · read-only</span>${list.map(([, a, b, label]) => `<div class="row"><span>${label.split(" · ").slice(1).join(" · ") || label}</span><span>${a}–${b}</span></div>`).join("")}`,
+          );
+        } else if (rt)
+          showTip(
+            rt,
+            `<b>${rt.dataset.tip.split(" · ")[0]}</b><br><span style="opacity:.75">${rt.dataset.tip.split(" · ").slice(1).join(" · ")}</span>`,
+          );
+        else tip.className = "tip";
+      });
+
+      function renderControls() {
+        const seg = (id, options, key) => {
+          const el = document.getElementById(id);
+          el.innerHTML = options
+            .map(
+              ([v, label]) =>
+                `<button aria-pressed="${state[key] === v}" data-v="${v}">${label}</button>`,
+            )
+            .join("");
+          for (const b of el.querySelectorAll("button"))
+            b.onclick = () => {
+              state[key] = b.dataset.v;
+              render();
+            };
+        };
+        seg(
+          "theme",
+          [
+            ["light", "Light"],
+            ["dark", "Dark"],
+          ],
+          "theme",
+        );
+        seg(
+          "month",
+          [
+            ["strip", "M1 · Day strip"],
+            ["badges", "M2 · Badges"],
+          ],
+          "month",
+        );
+        seg(
+          "agenda",
+          [
+            ["inline", "Summary + inline"],
+            ["summary", "Summary only"],
+          ],
+          "agenda",
+        );
+      }
+      function render() {
+        renderMonth();
+        renderAgenda();
+        renderResources();
+        renderControls();
+      }
+      render();
+      if (params.has("hover")) {
+        const t = document.querySelector(params.get("hover"));
+        if (t) t.dispatchEvent(new PointerEvent("pointerover", { bubbles: true }));
+      }
+    </script>
+  </body>
+</html>

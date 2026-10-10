@@ -13,9 +13,13 @@ import {
   SelectValue,
 } from "@registry/ui/select";
 
+import { annotationVariants, isAnnotationSetting, type AnnotationSetting } from "../annotations";
 import { localeOptions, timeZoneOptions, weekStartOptions, type DemoSettings } from "../settings";
 
 export interface SettingsPanelProps {
+  /** PROTOTYPE (#119): which annotation variant the week and day views draw. */
+  readonly annotations: AnnotationSetting;
+  readonly onAnnotationsChange: (value: AnnotationSetting) => void;
   /** Makes every move, resize and delete fail after the simulated save delay. */
   readonly failSaves: boolean;
   readonly onChange: (settings: DemoSettings) => void;
@@ -81,6 +85,8 @@ function Setting({
 }
 
 export function SettingsPanel({
+  annotations,
+  onAnnotationsChange,
   failSaves,
   onChange,
   onFailSavesChange,
@@ -119,6 +125,14 @@ export function SettingsPanel({
         label="Date format"
         onValueChange={(locale) => onChange({ ...settings, locale })}
         value={settings.locale}
+      />
+      <Setting
+        items={annotationVariants}
+        label="Annotations (prototype #119)"
+        onValueChange={(value) => {
+          if (isAnnotationSetting(value)) onAnnotationsChange(value);
+        }}
+        value={annotations}
       />
       <Label className="mt-1 font-normal">
         <Checkbox

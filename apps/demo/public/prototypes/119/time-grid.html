@@ -1,0 +1,1989 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>#119 Timeline annotations: time grid variants (prototype)</title>
+    <style>
+      /* ---------- Page chrome: follows the host theme, with fallbacks for standalone use ---------- */
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+      }
+      .page {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-bottom: 8px;
+        color: var(--foreground, #0a0a0a);
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px 16px;
+        align-items: center;
+        font-size: 12px;
+      }
+      .seg {
+        display: inline-flex;
+        border: 1px solid var(--border, #e5e5e5);
+        border-radius: 8px;
+        padding: 2px;
+        gap: 2px;
+        background: var(--card, transparent);
+      }
+      .seg button {
+        all: unset;
+        cursor: pointer;
+        padding: 4px 9px;
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--muted-foreground, #737373);
+        white-space: nowrap;
+      }
+      .seg button[aria-pressed="true"] {
+        background: var(--secondary, #f5f5f5);
+        color: var(--foreground, #0a0a0a);
+        font-weight: 600;
+      }
+      .seg button:focus-visible {
+        outline: 2px solid var(--ring, #333);
+      }
+      .ctl-label {
+        color: var(--muted-foreground, #737373);
+        margin-inline-end: 4px;
+      }
+      .controls label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        color: var(--muted-foreground, #737373);
+      }
+      .controls input[type="range"] {
+        width: 110px;
+        accent-color: var(--foreground, #111);
+      }
+      .note {
+        font-size: 12.5px;
+        line-height: 1.5;
+        color: var(--muted-foreground, #666);
+        margin: 0;
+      }
+      .note b {
+        color: var(--foreground, #111);
+        font-weight: 600;
+      }
+      .pc {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4px 16px;
+        font-size: 12px;
+        line-height: 1.45;
+        color: var(--muted-foreground, #666);
+      }
+      .pc ul {
+        margin: 0;
+        padding-inline-start: 16px;
+      }
+      .pc h4 {
+        margin: 0 0 2px;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--foreground, #111);
+      }
+      .chrome-off .controls,
+      .chrome-off .note,
+      .chrome-off .pc,
+      .chrome-off .below {
+        display: none;
+      }
+
+      /* ---------- Calendar theme: registry/calendar-theme/calendar-theme.css ---------- */
+      .cal {
+        --radius: 0.625rem;
+        --background: oklch(1 0 0);
+        --foreground: oklch(0.145 0 0);
+        --card: oklch(1 0 0);
+        --popover: oklch(1 0 0);
+        --popover-foreground: oklch(0.145 0 0);
+        --primary: oklch(0.205 0 0);
+        --secondary: oklch(0.97 0 0);
+        --muted: oklch(0.97 0 0);
+        --muted-foreground: oklch(0.556 0 0);
+        --accent: oklch(0.97 0 0);
+        --border: oklch(0.922 0 0);
+        --ring: oklch(0.25 0 0);
+        --calendar-grid: var(--border);
+        --calendar-axis: var(--muted-foreground);
+        --calendar-today: oklch(0.52 0.215 262.9);
+        --calendar-today-foreground: oklch(0.985 0 0);
+        --calendar-now: oklch(0.637 0.237 25.3);
+        --calendar-selection: color-mix(in oklch, var(--calendar-today) 12%, transparent);
+        --calendar-event: color-mix(in oklch, var(--primary) 8%, var(--background));
+        --calendar-event-foreground: var(--foreground);
+        --calendar-event-border: var(--primary);
+        --hh: 48px;
+        --gutter: 46px;
+        color-scheme: light;
+        background: var(--background);
+        color: var(--foreground);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .cal.dark {
+        --background: oklch(0.145 0 0);
+        --foreground: oklch(0.985 0 0);
+        --card: oklch(0.205 0 0);
+        --popover: oklch(0.205 0 0);
+        --popover-foreground: oklch(0.985 0 0);
+        --primary: oklch(0.922 0 0);
+        --secondary: oklch(0.269 0 0);
+        --muted: oklch(0.269 0 0);
+        --muted-foreground: oklch(0.708 0 0);
+        --accent: oklch(0.269 0 0);
+        --border: oklch(1 0 0 / 10%);
+        --ring: oklch(0.8 0 0);
+        --calendar-today: oklch(0.707 0.165 254.6);
+        --calendar-today-foreground: oklch(0.145 0 0);
+        --calendar-now: oklch(0.704 0.191 22.2);
+        --calendar-selection: color-mix(in oklch, var(--calendar-today) 18%, transparent);
+        color-scheme: dark;
+      }
+      .cal [data-color] {
+        --calendar-event: oklch(0.95 calc(var(--h-c) * 0.3) var(--h-h));
+        --calendar-event-foreground: oklch(0.37 calc(var(--h-c) * 0.8) var(--h-h));
+        --calendar-event-border: oklch(0.63 var(--h-c) var(--h-h));
+        /* Proposed: one more derived token for annotation marks (bars, rails, lanes, badges). */
+        --calendar-annotation: oklch(0.68 calc(var(--h-c) * 1.05) var(--h-h));
+      }
+      .cal.dark [data-color] {
+        --calendar-event: oklch(0.32 calc(var(--h-c) * 0.45) var(--h-h));
+        --calendar-event-foreground: oklch(0.93 calc(var(--h-c) * 0.35) var(--h-h));
+        --calendar-event-border: oklch(0.72 var(--h-c) var(--h-h));
+        --calendar-annotation: oklch(0.74 var(--h-c) var(--h-h));
+      }
+      [data-color="blue"] {
+        --h-h: 258;
+        --h-c: 0.17;
+      }
+      [data-color="green"] {
+        --h-h: 150;
+        --h-c: 0.15;
+      }
+      [data-color="red"] {
+        --h-h: 25;
+        --h-c: 0.19;
+      }
+      [data-color="orange"] {
+        --h-h: 55;
+        --h-c: 0.17;
+      }
+      [data-color="yellow"] {
+        --h-h: 90;
+        --h-c: 0.15;
+      }
+      [data-color="purple"] {
+        --h-h: 300;
+        --h-c: 0.18;
+      }
+      [data-color="pink"] {
+        --h-h: 350;
+        --h-c: 0.18;
+      }
+      [data-color="teal"] {
+        --h-h: 190;
+        --h-c: 0.12;
+      }
+      [data-color="gray"] {
+        --h-h: 260;
+        --h-c: 0.015;
+      }
+
+      /* Toolbar (registry/calendar/calendar-toolbar.tsx, abridged) */
+      .tb {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .tb h2 {
+        font-size: 17px;
+        font-weight: 600;
+        margin: 0 6px 0 2px;
+        letter-spacing: -0.01em;
+      }
+      .btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 28px;
+        padding: 0 10px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: var(--background);
+        color: var(--foreground);
+        font: 500 12px/1 inherit;
+      }
+      .btn.icon {
+        width: 28px;
+        padding: 0;
+      }
+      .tb .sp {
+        flex: 1;
+      }
+      .vs {
+        display: inline-flex;
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 2px;
+        gap: 2px;
+      }
+      .vs span {
+        padding: 4px 9px;
+        border-radius: 6px;
+        font-size: 12px;
+        color: var(--muted-foreground);
+      }
+      .vs span.on {
+        background: var(--secondary);
+        color: var(--foreground);
+        font-weight: 600;
+      }
+
+      /* Grid */
+      .tg {
+        display: flex;
+        flex-direction: column;
+        border-top: 1px solid var(--calendar-grid);
+      }
+      .row {
+        display: grid;
+        grid-template-columns: var(--gutter) repeat(var(--n), minmax(0, 1fr));
+      }
+      .hd {
+        border-bottom: 1px solid var(--calendar-grid);
+      }
+      .hd .gz {
+        display: flex;
+        align-items: flex-end;
+        justify-content: flex-end;
+        padding: 0 8px 6px 0;
+        font-size: 10px;
+        color: var(--calendar-axis);
+      }
+      .hd .day {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 8px 0 6px;
+        min-width: 0;
+      }
+      .hd .wd {
+        font-size: 11px;
+        font-weight: 500;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--muted-foreground);
+      }
+      .hd .num {
+        width: 36px;
+        height: 36px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-variant-numeric: tabular-nums;
+      }
+      .hd [data-today] .wd {
+        color: var(--calendar-today);
+      }
+      .hd [data-today] .num {
+        background: var(--calendar-today);
+        color: var(--calendar-today-foreground);
+      }
+      .single .hd .day {
+        align-items: flex-start;
+        padding-inline-start: 8px;
+      }
+      /* Date-scoped annotation (working location), like Google Calendar */
+      .loc {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        height: 16px;
+        padding: 0 6px;
+        border-radius: 999px;
+        font-size: 10px;
+        color: var(--muted-foreground);
+        border: 1px solid var(--calendar-grid);
+        white-space: nowrap;
+        max-width: 100%;
+        overflow: hidden;
+        cursor: default;
+      }
+      .loc svg {
+        width: 10px;
+        height: 10px;
+        flex: none;
+      }
+      .loc.none {
+        visibility: hidden;
+      }
+      .ad {
+        border-bottom: 1px solid var(--calendar-grid);
+        min-height: 26px;
+      }
+      .ad .gz {
+        font-size: 10px;
+        color: var(--calendar-axis);
+        display: flex;
+        align-items: center;
+        justify-content: flex-end;
+        padding-inline-end: 8px;
+      }
+      .ad .cell {
+        border-inline-start: 1px solid var(--calendar-grid);
+        padding: 2px 4px 3px 2px;
+        min-width: 0;
+      }
+      .chip {
+        display: flex;
+        align-items: center;
+        height: 20px;
+        border-radius: 6px;
+        border-inline-start: 3px solid var(--calendar-event-border);
+        background: var(--calendar-event);
+        color: var(--calendar-event-foreground);
+        font:
+          500 11px/1 ui-sans-serif,
+          system-ui,
+          sans-serif;
+        padding: 0 6px;
+        white-space: nowrap;
+        overflow: hidden;
+      }
+
+      .body {
+        position: relative;
+        height: 470px;
+        overflow-y: auto;
+        scrollbar-gutter: stable;
+      }
+      .single .body {
+        height: 470px;
+      }
+      .canvas {
+        position: relative;
+        height: calc(var(--hh) * 24);
+        display: grid;
+        grid-template-columns: var(--gutter) repeat(var(--n), minmax(0, 1fr));
+        background: linear-gradient(to bottom, var(--calendar-grid) 1px, transparent 1px) 0 0 / 100%
+          var(--hh);
+        background-position-x: var(--gutter);
+        background-repeat: repeat-y;
+      }
+      .hours {
+        position: relative;
+      }
+      .hours span {
+        position: absolute;
+        inset-inline-end: 8px;
+        transform: translateY(-50%);
+        font-size: 10px;
+        color: var(--calendar-axis);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .col {
+        position: relative;
+        border-inline-start: 1px solid var(--calendar-grid);
+        min-width: 0;
+      }
+      .col[data-weekend] {
+        background: color-mix(in oklch, var(--muted) 45%, transparent);
+      }
+      .evs {
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: var(--ev-start, 0px);
+        inset-inline-end: var(--ev-end, 8px);
+      }
+      .ev {
+        position: absolute;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        overflow: hidden;
+        border: 0;
+        margin: 0;
+        border-radius: calc(var(--radius) * 0.8);
+        border-inline-start: 3px solid var(--calendar-event-border);
+        background: var(--calendar-event);
+        color: var(--calendar-event-foreground);
+        font:
+          500 12px/1.25 ui-sans-serif,
+          system-ui,
+          sans-serif;
+        padding: 4px 6px;
+        text-align: start;
+        box-shadow: 0 0 0 1px var(--background);
+        cursor: default;
+      }
+      .ev .t {
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+      }
+      .ev .t.one {
+        -webkit-line-clamp: 1;
+      }
+      .ev .tm {
+        font-weight: 400;
+        opacity: 0.8;
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ev.compact {
+        flex-direction: row;
+        align-items: center;
+        font-size: 11px;
+        line-height: 1;
+        padding: 0 6px;
+        white-space: nowrap;
+      }
+      .ev.compact span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      .ev:hover {
+        filter: brightness(0.97);
+      }
+      .cal.dark .ev:hover {
+        filter: brightness(1.1);
+      }
+      .now {
+        position: absolute;
+        inset-inline: 0;
+        height: 2px;
+        transform: translateY(-50%);
+        background: var(--calendar-now);
+        z-index: 6;
+        pointer-events: none;
+      }
+      .now::before {
+        content: "";
+        position: absolute;
+        top: -4px;
+        inset-inline-start: -6px;
+        width: 10px;
+        height: 10px;
+        border-radius: 999px;
+        background: var(--calendar-now);
+      }
+
+      /* ---------- Annotations ---------- */
+      .ann {
+        position: absolute;
+        box-sizing: border-box;
+        cursor: default;
+      }
+      .clickable .ann {
+        cursor: pointer;
+      }
+      .ann:focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 1px;
+      }
+      /* Hover reveals the annotation's extent across the column, behind events. */
+      .hover-band {
+        position: absolute;
+        inset-inline: 0;
+        display: none;
+        pointer-events: none;
+        z-index: 0;
+        background: color-mix(in oklch, var(--calendar-annotation) 12%, transparent);
+        border-block: 1px dashed color-mix(in oklch, var(--calendar-annotation) 60%, transparent);
+      }
+      .hover-band.on {
+        display: block;
+      }
+      .evs {
+        z-index: 2;
+      }
+      .ann-layer {
+        position: absolute;
+        inset: 0;
+        pointer-events: none;
+        z-index: 3;
+      }
+      .ann-layer .ann {
+        pointer-events: auto;
+      }
+      .ann-layer.under {
+        z-index: 1;
+      }
+
+      /* A: edge bars, Amie-style capsules in a gutter at the column's inline start */
+      .a-bar {
+        border-radius: 999px;
+        background: var(--calendar-annotation);
+        box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--calendar-annotation) 70%, black);
+        transition:
+          transform 0.12s ease-out,
+          filter 0.12s;
+        transform-origin: center;
+      }
+      .cal.dark .a-bar {
+        box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--calendar-annotation) 70%, white);
+      }
+      .a-bar[data-sb] {
+        border-start-start-radius: 0;
+        border-start-end-radius: 0;
+      }
+      .a-bar[data-ea] {
+        border-end-start-radius: 0;
+        border-end-end-radius: 0;
+      }
+      .a-bar:hover,
+      .a-bar[data-active] {
+        transform: scaleX(1.5);
+        filter: saturate(1.2);
+      }
+
+      /* B: annotation rail with level of detail: bars when tall enough, icon badges when short */
+      .b-rail {
+        position: absolute;
+        inset-block: 0;
+        inset-inline-start: 0;
+        width: var(--rail);
+        background: color-mix(in oklch, var(--muted) 55%, transparent);
+        pointer-events: none;
+      }
+      .cal.dark .b-rail {
+        background: color-mix(in oklch, var(--muted) 30%, transparent);
+      }
+      .b-bar {
+        border-radius: 999px;
+        background: linear-gradient(
+          to bottom,
+          color-mix(in oklch, var(--calendar-annotation) 85%, white),
+          var(--calendar-annotation)
+        );
+        transition: box-shadow 0.12s;
+      }
+      .b-bar[data-src="sleep"] {
+        background:
+          radial-gradient(circle at 30% 18%, oklch(1 0 0 / 0.9) 0 0.6px, transparent 1px) 0 0 / 6px
+            11px,
+          radial-gradient(circle at 70% 60%, oklch(1 0 0 / 0.7) 0 0.5px, transparent 1px) 0 0 / 7px
+            13px,
+          linear-gradient(to bottom, oklch(0.55 0.17 285), oklch(0.72 0.13 275));
+      }
+      .b-bar[data-sb] {
+        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28px);
+        mask-image: linear-gradient(to bottom, transparent, #000 28px);
+        border-start-start-radius: 0;
+        border-start-end-radius: 0;
+      }
+      .b-bar[data-ea] {
+        -webkit-mask-image: linear-gradient(to top, transparent, #000 28px);
+        mask-image: linear-gradient(to top, transparent, #000 28px);
+        border-end-start-radius: 0;
+        border-end-end-radius: 0;
+      }
+      .b-bar:hover,
+      .b-bar[data-active] {
+        box-shadow:
+          0 0 0 2px var(--background),
+          0 0 0 3.5px var(--calendar-annotation);
+      }
+      .b-badge {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: var(--background);
+        color: var(--calendar-annotation);
+        box-shadow: inset 0 0 0 1.5px var(--calendar-annotation);
+        transition: transform 0.12s ease-out;
+      }
+      .b-badge svg {
+        width: 62%;
+        height: 62%;
+      }
+      .b-badge.solid {
+        background: var(--calendar-annotation);
+        color: var(--background);
+        box-shadow: none;
+      }
+      .b-badge:hover,
+      .b-badge[data-active] {
+        transform: scale(1.15);
+      }
+      .b-badge .count {
+        position: absolute;
+        top: -5px;
+        inset-inline-end: -6px;
+        min-width: 12px;
+        height: 12px;
+        padding: 0 2px;
+        box-sizing: border-box;
+        border-radius: 999px;
+        background: var(--foreground);
+        color: var(--background);
+        font:
+          600 8px/12px ui-sans-serif,
+          system-ui,
+          sans-serif;
+        text-align: center;
+      }
+      .b-cap {
+        position: absolute;
+        inset-inline-start: 50%;
+        translate: -50% 0;
+      }
+
+      /* C: translucent background bands behind events */
+      .c-band {
+        inset-inline: 0;
+        background: color-mix(in oklch, var(--calendar-annotation) 13%, transparent);
+        border-inline-start: 2px solid var(--calendar-annotation);
+        transition: background 0.12s;
+      }
+      .cal.dark .c-band {
+        background: color-mix(in oklch, var(--calendar-annotation) 16%, transparent);
+      }
+      .c-band[data-src="focus"] {
+        background: repeating-linear-gradient(
+          -45deg,
+          color-mix(in oklch, var(--calendar-annotation) 22%, transparent) 0 1px,
+          transparent 1px 6px
+        );
+      }
+      .c-band:hover,
+      .c-band[data-active] {
+        background: color-mix(in oklch, var(--calendar-annotation) 24%, transparent);
+      }
+      .c-label {
+        position: absolute;
+        top: 2px;
+        inset-inline-start: 4px;
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        font:
+          600 10px/14px ui-sans-serif,
+          system-ui,
+          sans-serif;
+        color: color-mix(in oklch, var(--calendar-annotation) 65%, var(--foreground));
+        white-space: nowrap;
+        max-width: calc(100% - 8px);
+        overflow: hidden;
+      }
+      .c-label svg {
+        width: 10px;
+        height: 10px;
+        flex: none;
+      }
+
+      /* D: one hairline lane per source in the inline-end strip */
+      .d-lane {
+        border-radius: 2px;
+        background: var(--calendar-annotation);
+        transition:
+          filter 0.12s,
+          transform 0.12s;
+      }
+      .d-lane:hover,
+      .d-lane[data-active] {
+        transform: scaleX(1.8);
+        filter: saturate(1.3);
+      }
+      .d-track {
+        position: absolute;
+        inset-block: 0;
+        border-radius: 2px;
+        background: color-mix(in oklch, var(--calendar-grid) 70%, transparent);
+        pointer-events: none;
+        opacity: 0;
+        transition: opacity 0.15s;
+      }
+      .col:hover .d-track {
+        opacity: 1;
+      }
+
+      /* Tooltip (registry/ui/tooltip.tsx look: bg-foreground, text-background) */
+      .tip {
+        position: fixed;
+        z-index: 50;
+        max-width: 260px;
+        padding: 6px 10px;
+        border-radius: 6px;
+        background: var(--foreground);
+        color: var(--background);
+        font:
+          400 12px/1.35 ui-sans-serif,
+          system-ui,
+          sans-serif;
+        pointer-events: none;
+        opacity: 0;
+        transform: scale(0.95);
+        transform-origin: var(--origin, left center);
+        transition:
+          opacity 0.1s,
+          transform 0.1s;
+      }
+      .tip.on {
+        opacity: 1;
+        transform: none;
+      }
+      .tip b {
+        font-weight: 600;
+      }
+      .tip .m {
+        opacity: 0.7;
+      }
+      .tip::after {
+        content: "";
+        position: absolute;
+        top: calc(50% - 5px);
+        width: 10px;
+        height: 10px;
+        background: inherit;
+        border-radius: 2px;
+        transform: rotate(45deg);
+      }
+      .tip[data-side="right"]::after {
+        left: -4px;
+      }
+      .tip[data-side="left"]::after {
+        right: -4px;
+      }
+      /* Popover (registry/ui/popover.tsx look) */
+      .pop {
+        position: fixed;
+        z-index: 51;
+        width: 264px;
+        box-sizing: border-box;
+        padding: 10px;
+        border-radius: var(--radius);
+        background: var(--popover);
+        color: var(--popover-foreground);
+        box-shadow:
+          0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent),
+          0 6px 16px -4px rgb(0 0 0 / 0.18);
+        font:
+          400 13px/1.4 ui-sans-serif,
+          system-ui,
+          sans-serif;
+        display: none;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .pop.on {
+        display: flex;
+        animation: pop-in 0.1s ease-out;
+      }
+      @keyframes pop-in {
+        from {
+          opacity: 0;
+          transform: scale(0.96);
+        }
+      }
+      .pop .ph {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .pop .ico {
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--calendar-annotation);
+        color: var(--background);
+        flex: none;
+      }
+      .pop .ico svg {
+        width: 15px;
+        height: 15px;
+      }
+      .pop .ttl {
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .pop .sub {
+        font-size: 12px;
+        color: var(--muted-foreground);
+      }
+      .pop ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        font-size: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+      }
+      .pop li {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+      }
+      .pop li span:last-child {
+        color: var(--muted-foreground);
+        font-variant-numeric: tabular-nums;
+        white-space: nowrap;
+      }
+      .pop li span:first-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .pop .ft {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 11px;
+        color: var(--muted-foreground);
+        border-top: 1px solid var(--border);
+        padding-top: 8px;
+      }
+      .pop .ft .btn {
+        height: 24px;
+        font-size: 11px;
+        gap: 4px;
+      }
+      .pop .ft .btn svg {
+        width: 11px;
+        height: 11px;
+      }
+      .hyp {
+        display: flex;
+        height: 22px;
+        gap: 1px;
+        align-items: flex-end;
+      }
+      .hyp i {
+        flex: 1;
+        border-radius: 1px;
+        background: var(--calendar-annotation);
+      }
+
+      .below {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+        gap: 12px;
+        font-size: 12px;
+        color: var(--muted-foreground, #666);
+      }
+      .legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 12px;
+        align-items: center;
+      }
+      .legend label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        cursor: pointer;
+        color: var(--foreground, #111);
+      }
+      .legend .sw {
+        width: 10px;
+        height: 10px;
+        border-radius: 3px;
+        background: var(--calendar-annotation);
+      }
+      .sr {
+        border: 1px dashed var(--border, #ddd);
+        border-radius: 8px;
+        padding: 8px 10px;
+        line-height: 1.45;
+      }
+      .sr b {
+        color: var(--foreground, #111);
+      }
+      .stats {
+        font-variant-numeric: tabular-nums;
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .a-bar,
+        .b-badge,
+        .d-lane,
+        .tip,
+        .c-band,
+        .b-bar {
+          transition: none !important;
+        }
+        .a-bar:hover,
+        .a-bar[data-active],
+        .d-lane:hover,
+        .d-lane[data-active],
+        .b-badge:hover,
+        .b-badge[data-active] {
+          transform: none;
+        }
+        .pop.on {
+          animation: none;
+        }
+      }
+      @media (max-width: 560px) {
+        .pc,
+        .below {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page" id="page">
+      <div class="controls">
+        <span><span class="ctl-label">Variant</span><span class="seg" id="variant"></span></span>
+        <span><span class="ctl-label">View</span><span class="seg" id="view"></span></span>
+      </div>
+      <div class="controls">
+        <span><span class="ctl-label">Theme</span><span class="seg" id="theme"></span></span>
+        <span><span class="ctl-label">Data</span><span class="seg" id="mode"></span></span>
+        <label>Zoom <input id="zoom" type="range" min="20" max="96" step="2" /></label>
+        <label><input id="clickable" type="checkbox" /> onAnnotationClick</label>
+      </div>
+      <p class="note" id="note"></p>
+      <div class="pc" id="pc"></div>
+      <div id="cal" class="cal"></div>
+      <div class="below">
+        <div>
+          <div class="legend" id="legend"></div>
+          <div class="stats" id="stats" style="margin-top: 6px"></div>
+        </div>
+        <div class="sr" id="sr"></div>
+      </div>
+    </div>
+    <div class="tip" id="tip" role="tooltip"></div>
+    <div class="pop" id="pop" role="dialog" aria-modal="false"></div>
+
+    <script>
+      // ---------------------------------------------------------------------------------------------
+      // Data. Minutes are wall-clock minutes from Monday 5 October 2026 00:00 in the display zone.
+      // ---------------------------------------------------------------------------------------------
+      const DAY = 1440;
+      const DATES = [5, 6, 7, 8, 9, 10, 11];
+      const WEEKDAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+      const LONG_DAYS = [
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+      ];
+      const TODAY = 5;
+      const NOW = 15 * 60 + 40;
+      const m = (hhmm) => {
+        const [h, mm] = hhmm.split(":").map(Number);
+        return h * 60 + mm;
+      };
+      const at = (day, hhmm) => day * DAY + m(hhmm);
+
+      function mulberry32(a) {
+        return function () {
+          a |= 0;
+          a = (a + 0x6d2b79f5) | 0;
+          let t = Math.imul(a ^ (a >>> 15), 1 | a);
+          t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+          return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+        };
+      }
+      const rand = mulberry32(119);
+
+      const ICONS = {
+        music:
+          '<path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/>',
+        moon: '<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/>',
+        activity:
+          '<path d="M22 12h-2.48a2 2 0 0 0-1.93 1.46l-2.35 8.36a.25.25 0 0 1-.48 0L9.24 2.18a.25.25 0 0 0-.48 0l-2.35 8.36A2 2 0 0 1 4.49 12H2"/>',
+        target:
+          '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+        code: '<path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/>',
+        home: '<path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+        building:
+          '<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/>',
+        ext: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3"/>',
+        left: '<path d="m15 18-6-6 6-6"/>',
+        right: '<path d="m9 18 6-6-6-6"/>',
+      };
+      const svg = (name, extra = "") =>
+        `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${ICONS[name]}</svg>`;
+
+      // Sources: what an app registers once; colour reuses the event palette through data-color.
+      const SOURCES = {
+        sleep: {
+          label: "Sleep",
+          app: "Oura",
+          color: "purple",
+          icon: "moon",
+          mergeGap: 20,
+          noun: "Sleep",
+        },
+        spotify: {
+          label: "Spotify",
+          app: "Spotify",
+          color: "green",
+          icon: "music",
+          mergeGap: 5,
+          noun: "Listening session",
+        },
+        workout: {
+          label: "Workouts",
+          app: "Apple Health",
+          color: "orange",
+          icon: "activity",
+          mergeGap: 0,
+          noun: "Workout",
+        },
+        focus: {
+          label: "Focus",
+          app: "Focus mode",
+          color: "teal",
+          icon: "target",
+          mergeGap: 0,
+          noun: "Focus session",
+        },
+        coding: {
+          label: "Coding",
+          app: "WakaTime",
+          color: "yellow",
+          icon: "code",
+          mergeGap: 15,
+          noun: "Coding",
+        },
+      };
+      const SOURCE_ORDER = ["sleep", "spotify", "workout", "focus", "coding"];
+
+      const TRACKS = [
+        ["Digital Love", "Daft Punk"],
+        ["Midnight City", "M83"],
+        ["Genesis", "Justice"],
+        ["Tadow", "Masego, FKJ"],
+        ["Nightcall", "Kavinsky"],
+        ["Innerbloom", "RÜFÜS DU SOL"],
+        ["Teardrop", "Massive Attack"],
+        ["Intro", "The xx"],
+        ["Gooey", "Glass Animals"],
+        ["Redbone", "Childish Gambino"],
+        ["Dreams", "Fleetwood Mac"],
+        ["Strobe", "deadmau5"],
+        ["Sunset Lover", "Petit Biscuit"],
+        ["A Moment Apart", "ODESZA"],
+        ["Holocene", "Bon Iver"],
+        ["Get Lucky", "Daft Punk"],
+        ["Cola", "CamelPhat, Elderbrook"],
+        ["Breathe", "Télépopmusik"],
+        ["Opus", "Eric Prydz"],
+        ["Nights", "Frank Ocean"],
+      ];
+
+      const raw = [];
+      let seq = 0;
+      const add = (source, start, end, extra = {}) =>
+        raw.push({ id: `${source}-${seq++}`, source, start, end, ...extra });
+
+      // Sleep: the night before Monday through Sunday morning, plus Sunday night.
+      const nights = [
+        ["-1", "23:52", "07:05"],
+        [0, "23:31", "06:58"],
+        [1, "00:12", "07:20"],
+        [2, "23:05", "06:40"],
+        [3, "23:48", "07:02"],
+        [4, "01:10", "09:12"],
+        [5, "00:25", "08:31"],
+        [6, "23:20", "07:00"],
+      ];
+      for (const [d, bed, wake] of nights) {
+        const day = Number(d);
+        const bedMin = m(bed);
+        const start = bedMin > 12 * 60 ? day * DAY + bedMin : (day + 1) * DAY + bedMin;
+        const end = (day + 1) * DAY + m(wake);
+        add("sleep", start, end, { title: "Sleep", score: 70 + Math.round(rand() * 22) });
+      }
+      // Spotify: sessions made of individual tracks, like the Web API's recently-played history.
+      const sessions = [
+        [0, "08:05", 45],
+        [0, "15:05", 80],
+        [0, "21:10", 55],
+        [1, "08:20", 35],
+        [1, "13:40", 25],
+        [1, "22:00", 40],
+        [2, "07:55", 50],
+        [2, "10:30", 20],
+        [2, "16:00", 90],
+        [3, "08:10", 40],
+        [3, "09:00", 160],
+        [3, "20:30", 60],
+        [4, "08:00", 45],
+        [4, "13:30", 90],
+        [4, "18:45", 30],
+        [5, "10:05", 80],
+        [5, "14:30", 30],
+        [5, "22:30", 50],
+        [6, "11:00", 30],
+        [6, "17:00", 60],
+      ];
+      for (const [day, hhmm, dur] of sessions) {
+        let t = at(day, hhmm);
+        const end = t + dur;
+        while (t < end - 1) {
+          const len = 2.4 + rand() * 3.2;
+          const [title, artist] = TRACKS[Math.floor(rand() * TRACKS.length)];
+          add("spotify", t, Math.min(t + len, end), { title, artist });
+          t += len + (rand() < 0.1 ? 3 + rand() * 6 : rand() * 0.3);
+        }
+      }
+      add("workout", at(0, "07:12"), at(0, "07:48"), {
+        title: "Morning run",
+        stats: [
+          ["Distance", "5.2 km"],
+          ["Pace", "6:55 /km"],
+          ["Avg heart rate", "148 bpm"],
+        ],
+      });
+      add("workout", at(2, "18:35"), at(2, "19:24"), {
+        title: "Strength training",
+        stats: [
+          ["Active energy", "312 kcal"],
+          ["Avg heart rate", "121 bpm"],
+        ],
+      });
+      add("workout", at(3, "19:00"), at(3, "19:40"), {
+        title: "Yoga",
+        stats: [
+          ["Active energy", "140 kcal"],
+          ["Avg heart rate", "96 bpm"],
+        ],
+      });
+      add("workout", at(5, "13:05"), at(5, "13:52"), {
+        title: "Run club",
+        stats: [
+          ["Distance", "8.1 km"],
+          ["Pace", "5:48 /km"],
+          ["Avg heart rate", "151 bpm"],
+        ],
+      });
+      add("focus", at(1, "09:00"), at(1, "10:15"), { title: "Do Not Disturb", held: 7 });
+      for (const s of ["09:00", "09:30", "10:00", "10:30"])
+        add("focus", at(3, s), at(3, s) + 25, { title: "Pomodoro", held: Math.round(rand() * 4) });
+      add("focus", at(4, "13:30"), at(4, "15:00"), { title: "Deep work", held: 12 });
+      // Coding: WakaTime-style heartbeats merged into durations with a 15-minute timeout.
+      for (let day = 0; day < 5; day++) {
+        for (const [from, to] of [
+          ["10:00", "12:20"],
+          ["14:00", day === 4 ? "15:50" : "18:00"],
+        ]) {
+          let t = at(day, from) + rand() * 15;
+          const end = at(day, to);
+          while (t < end) {
+            const len = 3 + rand() * 22;
+            add("coding", t, Math.min(t + len, end), {
+              title: rand() < 0.7 ? "time" : "moltenship-demo",
+              language: rand() < 0.8 ? "TypeScript" : "CSS",
+            });
+            t += len + (rand() < 0.15 ? 18 + rand() * 20 : 1 + rand() * 9);
+          }
+        }
+      }
+
+      const EVENTS = [
+        [0, "09:30", "09:45", "Standup", "blue"],
+        [0, "11:00", "12:00", "Design review: annotations", "blue"],
+        [0, "12:30", "13:30", "Lunch with Ana", "pink"],
+        [0, "15:00", "16:30", "Deep work: RFC", "gray"],
+        [0, "17:00", "17:30", "1:1 Maria", "blue"],
+        [1, "09:30", "09:45", "Standup", "blue"],
+        [1, "10:30", "11:30", "Sprint planning", "blue"],
+        [1, "14:00", "15:00", "Interview: frontend", "blue"],
+        [1, "14:30", "15:30", "Vendor call", "gray"],
+        [1, "17:30", "18:15", "Dentist", "pink"],
+        [2, "09:30", "09:45", "Standup", "blue"],
+        [2, "11:00", "11:45", "Customer call · Acme", "blue"],
+        [2, "13:00", "14:00", "Lunch", "pink"],
+        [2, "16:00", "17:30", "Pairing: resource timeline", "blue"],
+        [2, "19:30", "21:30", "Dinner with friends", "pink"],
+        [3, "09:30", "09:45", "Standup", "blue"],
+        [3, "12:00", "13:00", "Team lunch", "pink"],
+        [3, "15:00", "16:00", "Roadmap sync", "blue"],
+        [3, "15:30", "16:00", "Recruiting sync", "gray"],
+        [3, "18:00", "18:30", "Call Mom", "pink"],
+        [4, "09:30", "09:45", "Standup", "blue"],
+        [4, "12:00", "13:00", "Demo day", "red"],
+        [4, "16:00", "17:00", "Weekly review", "blue"],
+        [4, "18:30", "20:00", "Drinks @ Fabrika", "pink"],
+        [5, "10:00", "11:30", "Farmers market", "pink"],
+        [5, "13:00", "14:00", "Run club", "pink"],
+        [5, "19:00", "21:00", "Cinema", "pink"],
+        [6, "11:00", "12:30", "Brunch", "pink"],
+        [6, "16:00", "16:30", "Call grandma", "pink"],
+        [6, "20:00", "20:30", "Plan the week", "gray"],
+      ].map(([day, s, e, title, color], i) => ({
+        id: `e${i}`,
+        day,
+        start: m(s),
+        end: m(e),
+        title,
+        color,
+      }));
+      const ALL_DAY = { 4: ["Release 0.3 cut", "red"], 6: ["Mom's birthday", "pink"] };
+      const LOCATIONS = { 0: "Office", 1: "Home", 2: "Office", 3: "Home", 4: "Office" };
+
+      // ---------------------------------------------------------------------------------------------
+      // Projection: split by day, merge per source (sessionize + compaction), lay out per variant.
+      // ---------------------------------------------------------------------------------------------
+      const params = new URLSearchParams(location.search);
+      const prefersDark = matchMedia("(prefers-color-scheme: dark)").matches;
+      const state = {
+        variant: params.get("variant") ?? "B",
+        view: params.get("view") ?? "week",
+        theme: params.get("theme") ?? (prefersDark ? "dark" : "light"),
+        mode: params.get("mode") ?? "sessions",
+        zoom: Number(params.get("zoom") ?? 48),
+        clickable: params.get("clickable") !== "0",
+        hidden: new Set((params.get("hide") ?? "").split(",").filter(Boolean)),
+        srDay: TODAY,
+      };
+      if (params.get("chrome") === "0") document.getElementById("page").classList.add("chrome-off");
+
+      const fmt = (min) => {
+        const h = Math.floor(min / 60) % 24;
+        const mm = Math.round(min % 60);
+        return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+      };
+      const dur = (min) => {
+        const h = Math.floor(min / 60);
+        const mm = Math.round(min % 60);
+        return h === 0 ? `${mm}m` : mm === 0 ? `${h}h` : `${h}h ${mm}m`;
+      };
+      const spokenDur = (min) => {
+        const h = Math.floor(min / 60);
+        const mm = Math.round(min % 60);
+        return [
+          h ? `${h} hour${h > 1 ? "s" : ""}` : "",
+          mm ? `${mm} minute${mm > 1 ? "s" : ""}` : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+      };
+
+      function fragmentsForDay(day) {
+        const from = day * DAY,
+          to = from + DAY;
+        return raw
+          .filter((a) => !state.hidden.has(a.source) && a.start < to && a.end > from)
+          .map((a) => ({
+            ...a,
+            item: a,
+            day,
+            start: Math.max(a.start, from) - from,
+            end: Math.min(a.end, to) - from,
+            startsBefore: a.start < from,
+            endsAfter: a.end > to,
+          }));
+      }
+
+      /** Sessionize per source; at low zoom, gaps shorter than a few pixels merge too (compaction). */
+      function project(day) {
+        const ppm = state.zoom / 60;
+        const out = [];
+        for (const source of SOURCE_ORDER) {
+          const frags = fragmentsForDay(day)
+            .filter((f) => f.source === source)
+            .sort((a, b) => a.start - b.start);
+          const gap = state.mode === "raw" ? -1 : Math.max(SOURCES[source].mergeGap, 3 / ppm);
+          for (const f of frags) {
+            const last = out.at(-1);
+            if (last && last.source === source && f.start - last.end <= gap) {
+              last.end = Math.max(last.end, f.end);
+              last.items.push(f.item);
+              last.endsAfter ||= f.endsAfter;
+            } else out.push({ ...f, id: `${f.id}@${day}`, items: [f.item] });
+          }
+        }
+        return out;
+      }
+
+      /** Overlapping marks share lanes inside the gutter, never the events' lanes. */
+      function assignLanes(anns, max) {
+        const sorted = [...anns].sort((a, b) => a.start - b.start || b.end - a.end);
+        const ends = [];
+        for (const a of sorted) {
+          let lane = ends.findIndex((e) => e <= a.start);
+          if (lane === -1) {
+            lane = ends.length;
+            ends.push(a.end);
+          } else ends[lane] = a.end;
+          a.lane = Math.min(lane, max - 1);
+        }
+        return Math.min(ends.length, max);
+      }
+
+      function layoutEvents(events) {
+        const sorted = [...events].sort((a, b) => a.start - b.start || b.end - a.end);
+        const groups = [];
+        let group = null,
+          groupEnd = -1;
+        for (const e of sorted) {
+          if (group && e.start < groupEnd) {
+            group.push(e);
+            groupEnd = Math.max(groupEnd, e.end);
+          } else {
+            group = [e];
+            groups.push(group);
+            groupEnd = e.end;
+          }
+        }
+        for (const g of groups) {
+          const ends = [];
+          for (const e of g) {
+            let lane = ends.findIndex((x) => x <= e.start);
+            if (lane === -1) {
+              lane = ends.length;
+              ends.push(e.end);
+            } else ends[lane] = e.end;
+            e.lane = lane;
+          }
+          for (const e of g) e.lanes = ends.length;
+        }
+        return sorted;
+      }
+
+      const pct = (min) => `${(min / DAY) * 100}%`;
+      const index = new Map();
+
+      function annAttrs(a, cls, style) {
+        index.set(a.id, a);
+        const s = SOURCES[a.source];
+        const tag = state.clickable ? 'role="button" tabindex="-1"' : "";
+        return `class="ann ${cls}" data-ann="${a.id}" data-src="${a.source}" data-color="${s.color}" ${a.startsBefore ? "data-sb" : ""} ${a.endsAfter ? "data-ea" : ""} ${tag} style="${style}"`;
+      }
+
+      const VARIANTS = {
+        A: {
+          name: "Edge bars",
+          note: "<b>A · Edge bars.</b> Amie's desktop look: thin capsules in a fixed gutter at the inline start of each day column. Events are inset by the gutter once, for every column, so nothing reflows when data arrives.",
+          pros: [
+            "Closest to the issue and the Amie reference",
+            "Lowest visual weight; reads like a margin note",
+            "Gutter is constant, so event lanes never change",
+          ],
+          cons: [
+            "3+ concurrent sources don't fit; they share 2 sub-lanes",
+            "No room for icons: tooltip or legend needed",
+            "Short items get only 3px of hit target",
+          ],
+          evStart: (single) => (single ? 14 : 10),
+          render(anns, single) {
+            const lanes = assignLanes(anns, 2);
+            const geo = single
+              ? lanes > 1
+                ? [
+                    [3, 4],
+                    [8, 4],
+                  ]
+                : [[4, 6]]
+              : lanes > 1
+                ? [
+                    [2, 3],
+                    [6, 3],
+                  ]
+                : [[3, 4]];
+            return `<div class="ann-layer">${anns
+              .map((a) => {
+                const [x, w] = geo[a.lane] ?? geo[0];
+                return `<div ${annAttrs(a, "a-bar", `top:${pct(a.start)};height:max(3px, calc(${pct(a.end - a.start)} - 1px));inset-inline-start:${x}px;width:${w}px`)}></div>`;
+              })
+              .join("")}</div>`;
+          },
+        },
+        B: {
+          name: "Rail",
+          note: "<b>B · Annotation rail.</b> Amie's mobile look: a dedicated narrow rail per column. Long annotations draw as bars, short ones turn into icon badges at their start time, and badges that collide cluster with a count. A cut-off start or end fades out.",
+          pros: [
+            "Level of detail scales from day to week and zoom",
+            "Icons identify the source without a legend",
+            "Many sources coexist (sub-lanes, clusters)",
+          ],
+          cons: [
+            "Costs a fixed 18px per week column (34px in day)",
+            "Badges show a point, not a duration",
+            "Needs a merge/LOD step in core (cheap, pure)",
+          ],
+          evStart: (single) => (single ? 38 : 18),
+          render(anns, single) {
+            const ppm = state.zoom / 60;
+            const rail = single ? 34 : 18,
+              badge = single ? 22 : 14,
+              barW = single ? 12 : 6;
+            const bars = [],
+              badges = [];
+            for (const a of anns) ((a.end - a.start) * ppm >= badge + 4 ? bars : badges).push(a);
+            const lanes = assignLanes(bars, 3);
+            const w = lanes === 1 ? barW : lanes === 2 ? barW - 1 : barW - 2;
+            const total = lanes * w + (lanes - 1) * 2;
+            let html = `<div class="b-rail" style="--rail:${rail}px"></div><div class="ann-layer">`;
+            for (const a of bars) {
+              const x = (rail - total) / 2 + a.lane * (w + 2);
+              html += `<div ${annAttrs(a, "b-bar", `top:${pct(a.start)};height:calc(${pct(a.end - a.start)} - 1px);inset-inline-start:${x}px;width:${w}px`)}></div>`;
+              if (single && (a.end - a.start) * ppm > 40 && !a.startsBefore) {
+                html += `<div ${annAttrs(a, "b-badge solid", `position:absolute;top:calc(${pct(a.start)} + 3px);inset-inline-start:${(rail - badge) / 2}px;width:${badge}px;height:${badge}px`)}>${svg(SOURCES[a.source].icon)}</div>`;
+              }
+            }
+            // Cluster badges whose discs would overlap.
+            const sorted = badges.sort((a, b) => a.start - b.start);
+            const clusters = [];
+            for (const a of sorted) {
+              const last = clusters.at(-1);
+              if (last && (a.start - last.start) * ppm < badge + 2) last.members.push(a);
+              else clusters.push({ start: a.start, members: [a] });
+            }
+            for (const c of clusters) {
+              const lead = c.members[0];
+              const a =
+                c.members.length === 1
+                  ? lead
+                  : { ...lead, id: `${lead.id}+${c.members.length}`, cluster: c.members };
+              html += `<div ${annAttrs(a, "b-badge", `top:calc(${pct(c.start)} - ${badge / 2 - 3}px);inset-inline-start:${(rail - badge) / 2}px;width:${badge}px;height:${badge}px`)}>${svg(SOURCES[lead.source].icon)}${c.members.length > 1 ? `<span class="count">${c.members.length}</span>` : ""}</div>`;
+            }
+            return html + "</div>";
+          },
+        },
+        C: {
+          name: "Background band",
+          note: "<b>C · Background band.</b> Annotations tint the full column width behind events, like FullCalendar's background events or Google's working hours. Events keep their full width and draw on top.",
+          pros: [
+            "Zero width cost; best for long states (sleep, DND, OOO)",
+            "Hatching and labels fit in the empty time",
+            "Familiar from business hours and background events",
+          ],
+          cons: [
+            "Hidden under busy days; hover hits only the gaps",
+            "Many short items turn into noise (see Spotify, coding)",
+            "Competes with selection, DST and business-hours tints",
+          ],
+          evStart: () => 0,
+          render(anns) {
+            const ppm = state.zoom / 60;
+            return `<div class="ann-layer under">${anns
+              .map((a) => {
+                const s = SOURCES[a.source];
+                const label =
+                  (a.end - a.start) * ppm >= 18 && a.source !== "spotify" && a.source !== "coding"
+                    ? `<span class="c-label">${svg(s.icon)}${s.noun === "Sleep" ? "Sleep" : a.title} · ${dur(a.end - a.start)}</span>`
+                    : "";
+                return `<div ${annAttrs(a, "c-band", `top:${pct(a.start)};height:${pct(a.end - a.start)}`)}>${label}</div>`;
+              })
+              .join("")}</div>`;
+          },
+        },
+        D: {
+          name: "Source lanes",
+          note: "<b>D · Source micro-lanes.</b> One hairline lane per source, in a fixed order, in the strip at the inline end of each column. Today's time grid already keeps 8px free there for creating events.",
+          pros: [
+            "Position encodes the source: easy to compare across days",
+            "Concurrent sources never collide",
+            "Reuses the existing end strip",
+          ],
+          cons: [
+            "2px marks are hard to see and to hit",
+            "Width grows with the number of sources",
+            "Lanes are empty most of the time",
+          ],
+          evEnd: (single, n) => (single ? 8 + n * 5 : 6 + n * 3),
+          evStart: () => 0,
+          render(anns, single, sources) {
+            const w = single ? 4 : 2,
+              gap = 1;
+            let html = `<div class="ann-layer">`;
+            sources.forEach((src, i) => {
+              html += `<div class="d-track" style="inset-inline-end:${2 + i * (w + gap)}px;width:${w}px"></div>`;
+            });
+            for (const a of anns) {
+              const i = sources.indexOf(a.source);
+              html += `<div ${annAttrs(a, "d-lane", `top:${pct(a.start)};height:max(2px, calc(${pct(a.end - a.start)} - 1px));inset-inline-end:${2 + i * (w + gap)}px;width:${w}px`)}></div>`;
+            }
+            return html + "</div>";
+          },
+        },
+      };
+
+      // ---------------------------------------------------------------------------------------------
+      // Rendering
+      // ---------------------------------------------------------------------------------------------
+      const cal = document.getElementById("cal");
+      let scrollTop = null;
+
+      function render() {
+        index.clear();
+        hideTip();
+        hidePop();
+        const single = state.view === "day";
+        const days = single ? [TODAY] : [0, 1, 2, 3, 4, 5, 6];
+        const variant = VARIANTS[state.variant];
+        const activeSources = SOURCE_ORDER.filter((s) => !state.hidden.has(s));
+        cal.className = `cal${state.theme === "dark" ? " dark" : ""}${single ? " single" : ""}${state.clickable ? " clickable" : ""}`;
+        cal.style.setProperty("--n", days.length);
+        cal.style.setProperty("--hh", `${state.zoom}px`);
+        cal.style.setProperty("--ev-start", `${variant.evStart(single)}px`);
+        cal.style.setProperty(
+          "--ev-end",
+          `${variant.evEnd ? variant.evEnd(single, activeSources.length) : 8}px`,
+        );
+
+        const old = cal.querySelector(".body");
+        if (old) scrollTop = old.scrollTop / old.scrollHeight;
+
+        let rendered = 0,
+          items = 0;
+        const projected = new Map(days.map((d) => [d, project(d)]));
+        for (const anns of projected.values()) {
+          rendered += anns.length;
+          items += anns.reduce((n, a) => n + a.items.length, 0);
+        }
+
+        const head = days
+          .map(
+            (d) => `
+    <div class="day" ${d === TODAY ? "data-today" : ""}>
+      <span class="wd">${WEEKDAYS[d]}</span><span class="num">${DATES[d]}</span>
+      <span class="loc ${LOCATIONS[d] ? "" : "none"}" data-loc="${d}">${svg(LOCATIONS[d] === "Home" ? "home" : "building")}${LOCATIONS[d] ?? "—"}</span>
+    </div>`,
+          )
+          .join("");
+        const allDay = days
+          .map(
+            (d) =>
+              `<div class="cell">${ALL_DAY[d] ? `<div class="chip" data-color="${ALL_DAY[d][1]}">${ALL_DAY[d][0]}</div>` : ""}</div>`,
+          )
+          .join("");
+        const hours = Array.from(
+          { length: 23 },
+          (_, i) =>
+            `<span style="top:${((i + 1) / 24) * 100}%">${String(i + 1).padStart(2, "0")}:00</span>`,
+        ).join("");
+        const cols = days
+          .map((d) => {
+            const evs = layoutEvents(EVENTS.filter((e) => e.day === d));
+            const anns = projected.get(d);
+            return `<div class="col" data-day="${d}" ${d >= 5 ? "data-weekend" : ""}>
+      <div class="hover-band"></div>
+      ${variant.render(anns, single, activeSources)}
+      <div class="evs">${evs
+        .map((e) => {
+          const compact = e.end - e.start < 45;
+          const short = e.end - e.start < 75;
+          const style = `top:${pct(e.start)};height:${pct(e.end - e.start)};inset-inline-start:${(e.lane / e.lanes) * 100}%;width:${100 / e.lanes}%`;
+          return compact
+            ? `<button class="ev compact" data-color="${e.color}" style="${style}"><span>${e.title}<span style="font-weight:400;opacity:.8">, ${fmt(e.start)}</span></span></button>`
+            : `<button class="ev" data-color="${e.color}" style="${style}"><span class="t${short ? " one" : ""}">${e.title}</span><span class="tm">${fmt(e.start)} – ${fmt(e.end)}</span></button>`;
+        })
+        .join("")}</div>
+      ${d === TODAY ? `<div class="now" style="top:${pct(NOW)}"></div>` : ""}
+    </div>`;
+          })
+          .join("");
+
+        cal.innerHTML = `
+    <div class="tb">
+      <button class="btn">Today</button>
+      <button class="btn icon" aria-label="Previous">${svg("left", 'width="15" height="15"')}</button>
+      <button class="btn icon" aria-label="Next">${svg("right", 'width="15" height="15"')}</button>
+      <h2>${single ? "Saturday, 10 October 2026" : "October 2026"}</h2>
+      <span class="sp"></span>
+      <span class="vs"><span class="${single ? "on" : ""}">Day</span><span class="${single ? "" : "on"}">Week</span><span>Month</span><span>Agenda</span></span>
+    </div>
+    <div class="tg">
+      <div class="row hd"><div class="gz">GMT+4</div>${head}</div>
+      <div class="row ad"><div class="gz">all-day</div>${allDay}</div>
+      <div class="body"><div class="canvas"><div class="hours" aria-hidden="true">${hours}</div>${cols}</div></div>
+    </div>`;
+
+        const body = cal.querySelector(".body");
+        quietUntil = performance.now() + 400;
+        body.scrollTop =
+          scrollTop === null ? (7 / 24) * body.scrollHeight : scrollTop * body.scrollHeight;
+
+        document.getElementById("note").innerHTML = variant.note;
+        document.getElementById("pc").innerHTML =
+          `<div><h4>Pros</h4><ul>${variant.pros.map((p) => `<li>${p}</li>`).join("")}</ul></div><div><h4>Cons</h4><ul>${variant.cons.map((p) => `<li>${p}</li>`).join("")}</ul></div>`;
+        document.getElementById("stats").textContent =
+          `${state.mode === "raw" ? "Raw" : "Merged"}: ${items} source items → ${rendered} annotation elements in view (${state.zoom}px per hour).`;
+        renderLegend();
+        renderSr();
+        renderControls();
+      }
+
+      function renderLegend() {
+        document.getElementById("legend").innerHTML = SOURCE_ORDER.map(
+          (s) => `
+    <label data-color="${SOURCES[s].color}" class="${state.theme === "dark" ? "dark-sw" : ""}"><input type="checkbox" data-src="${s}" ${state.hidden.has(s) ? "" : "checked"} />
+    <span class="sw" style="background:${swatch(s)}"></span>${SOURCES[s].label}<span style="color:var(--muted-foreground,#888)"> · ${SOURCES[s].app}</span></label>`,
+        ).join("");
+        for (const box of document.querySelectorAll("#legend input"))
+          box.onchange = () => {
+            box.checked ? state.hidden.delete(box.dataset.src) : state.hidden.add(box.dataset.src);
+            render();
+          };
+      }
+      function swatch(s) {
+        const c = { purple: 300, green: 150, orange: 55, teal: 190, yellow: 90 }[SOURCES[s].color];
+        return `oklch(.68 .16 ${c})`;
+      }
+
+      /** What a screen reader gets: one summary per day, instead of a focus stop per annotation. */
+      function daySummary(day) {
+        const anns = project(day);
+        if (anns.length === 0) return "No annotations.";
+        const parts = [];
+        for (const s of SOURCE_ORDER) {
+          const list = anns.filter((a) => a.source === s);
+          if (!list.length) continue;
+          const total = list.reduce((n, a) => n + (a.end - a.start), 0);
+          if (s === "sleep")
+            parts.push(
+              list
+                .map(
+                  (a) =>
+                    `Sleep ${a.startsBefore ? "until" : "from"} ${a.startsBefore ? fmt(a.end) : fmt(a.start)}${a.startsBefore || a.endsAfter ? "" : `–${fmt(a.end)}`}`,
+                )
+                .join(", "),
+            );
+          else if (s === "workout")
+            parts.push(
+              list.map((a) => `${a.items[0].title} ${fmt(a.start)}–${fmt(a.end)}`).join(", "),
+            );
+          else
+            parts.push(
+              `${SOURCES[s].label}: ${list.length} ${list.length === 1 ? "session" : "sessions"}, ${spokenDur(total)}`,
+            );
+        }
+        return parts.join(". ") + ".";
+      }
+      function renderSr() {
+        const d = state.srDay;
+        document.getElementById("sr").innerHTML =
+          `<b>Screen reader, ${LONG_DAYS[d]} ${DATES[d]} October</b> (hover a column): “Annotations. ${daySummary(d)}” Read from the day's column header via <code>aria-describedby</code>. The marks themselves are <code>aria-hidden</code>.`;
+      }
+
+      function renderControls() {
+        const seg = (id, options, key) => {
+          const el = document.getElementById(id);
+          el.innerHTML = options
+            .map(
+              ([v, label]) =>
+                `<button aria-pressed="${state[key] === v}" data-v="${v}">${label}</button>`,
+            )
+            .join("");
+          for (const b of el.querySelectorAll("button"))
+            b.onclick = () => {
+              state[key] = key === "zoom" ? Number(b.dataset.v) : b.dataset.v;
+              render();
+            };
+        };
+        seg(
+          "variant",
+          Object.entries(VARIANTS).map(([k, v]) => [k, `${k} · ${v.name}`]),
+          "variant",
+        );
+        seg(
+          "view",
+          [
+            ["week", "Week"],
+            ["day", "Day"],
+          ],
+          "view",
+        );
+        seg(
+          "theme",
+          [
+            ["light", "Light"],
+            ["dark", "Dark"],
+          ],
+          "theme",
+        );
+        seg(
+          "mode",
+          [
+            ["sessions", "Merged sessions"],
+            ["raw", "Raw (per track)"],
+          ],
+          "mode",
+        );
+        const zoom = document.getElementById("zoom");
+        zoom.value = state.zoom;
+        zoom.oninput = () => {
+          state.zoom = Number(zoom.value);
+          render();
+        };
+        const click = document.getElementById("clickable");
+        click.checked = state.clickable;
+        click.onchange = () => {
+          state.clickable = click.checked;
+          render();
+        };
+      }
+
+      // ---------------------------------------------------------------------------------------------
+      // Hover tooltip (Base UI Tooltip, side="inline-end", trackCursorAxis="y") and click popover.
+      // ---------------------------------------------------------------------------------------------
+      const tip = document.getElementById("tip");
+      const pop = document.getElementById("pop");
+      let active = null;
+
+      function describe(a) {
+        const s = SOURCES[a.source];
+        const span = `${a.startsBefore ? "…" : ""}${fmt(a.start)}–${fmt(a.end)}${a.endsAfter ? "…" : ""}`;
+        if (a.cluster)
+          return `<b>${a.cluster.length} annotations</b> · ${fmt(a.start)}<br><span class="m">${a.cluster.map((c) => `${SOURCES[c.source].label} ${fmt(c.start)}–${fmt(c.end)}`).join("<br>")}</span>`;
+        const n = a.items.length;
+        const detail =
+          a.source === "spotify"
+            ? `${n} ${n === 1 ? "track" : "tracks"}${n === 1 ? ` · ${a.items[0].title}` : ""}`
+            : a.source === "coding"
+              ? `${a.items[0].title} · ${a.items[0].language}`
+              : a.source === "sleep"
+                ? `Sleep score ${a.items[0].score}`
+                : a.source === "workout"
+                  ? a.items[0].title
+                  : `${a.items[0].title}`;
+        return `<b>${s.noun}</b> · ${span}<br><span class="m">${s.app} · ${detail} · ${dur(a.end - a.start)}</span>`;
+      }
+
+      function setActive(a, el) {
+        for (const x of cal.querySelectorAll("[data-active]")) x.removeAttribute("data-active");
+        cal.querySelectorAll(".hover-band.on").forEach((b) => b.classList.remove("on"));
+        active = a;
+        if (!a || !el) return;
+        for (const x of cal.querySelectorAll(`[data-ann="${CSS.escape(a.id)}"]`))
+          x.setAttribute("data-active", "");
+        if (state.variant === "C") return;
+        const band = el.closest(".col").querySelector(".hover-band");
+        band.dataset.color = SOURCES[a.source].color;
+        band.style.top = pct(a.start);
+        band.style.height = pct(a.end - a.start);
+        band.classList.add("on");
+      }
+
+      function place(el, rect, y, width) {
+        const vw = document.documentElement.clientWidth;
+        const right = rect.right + 8 + width < vw;
+        el.dataset.side = right ? "right" : "left";
+        el.style.setProperty("--origin", right ? "left center" : "right center");
+        el.style.left = `${right ? rect.right + 8 : rect.left - 8 - width}px`;
+        el.style.top = `${y}px`;
+      }
+
+      function showTip(el, y) {
+        const a = index.get(el.dataset.ann);
+        if (!a) return;
+        tip.innerHTML = describe(a);
+        tip.className = `tip on${state.theme === "dark" ? "" : ""}`;
+        tip.style.setProperty(
+          "--foreground",
+          getComputedStyle(cal).getPropertyValue("--foreground"),
+        );
+        tip.style.setProperty(
+          "--background",
+          getComputedStyle(cal).getPropertyValue("--background"),
+        );
+        const w = tip.offsetWidth,
+          h = tip.offsetHeight;
+        const rect = el.getBoundingClientRect();
+        place(tip, rect, Math.min(Math.max(y - h / 2, rect.top - h / 2), rect.bottom - h / 2), w);
+        setActive(a, el);
+      }
+      function hideTip() {
+        tip.className = "tip";
+        if (!pop.classList.contains("on")) setActive(null);
+      }
+
+      function popBody(a) {
+        const s = SOURCES[a.source];
+        const it = a.items[0];
+        if (a.cluster)
+          return `<ul>${a.cluster.map((c) => `<li><span>${SOURCES[c.source].noun}</span><span>${fmt(c.start)}–${fmt(c.end)}</span></li>`).join("")}</ul>`;
+        if (a.source === "spotify") {
+          const shown = a.items
+            .slice(0, 4)
+            .map(
+              (t) =>
+                `<li><span>${t.title} — ${t.artist}</span><span>${fmt(t.start % DAY)}</span></li>`,
+            )
+            .join("");
+          return `<ul>${shown}${a.items.length > 4 ? `<li><span style="color:var(--muted-foreground)">and ${a.items.length - 4} more</span><span></span></li>` : ""}</ul>`;
+        }
+        if (a.source === "sleep") {
+          const r = mulberry32(it.start);
+          const stages = Array.from(
+            { length: 36 },
+            () => [0.25, 0.55, 0.8, 1][Math.floor(r() * 4)],
+          );
+          return `<div class="hyp" aria-hidden="true">${stages.map((h) => `<i style="height:${h * 100}%;opacity:${0.45 + h * 0.55}"></i>`).join("")}</div>
+      <ul><li><span>Asleep</span><span>${dur(it.end - it.start - 22)}</span></li><li><span>Deep · REM</span><span>1h 24m · 1h 51m</span></li><li><span>Sleep score</span><span>${it.score}</span></li></ul>`;
+        }
+        if (a.source === "workout")
+          return `<ul>${it.stats.map(([k, v]) => `<li><span>${k}</span><span>${v}</span></li>`).join("")}</ul>`;
+        if (a.source === "focus")
+          return `<ul><li><span>Mode</span><span>${it.title}</span></li><li><span>Notifications held</span><span>${it.held}</span></li></ul>`;
+        const byProject = {};
+        for (const x of a.items) byProject[x.title] = (byProject[x.title] ?? 0) + (x.end - x.start);
+        return `<ul>${Object.entries(byProject)
+          .map(([k, v]) => `<li><span>${k}</span><span>${dur(v)}</span></li>`)
+          .join("")}<li><span>Heartbeats merged</span><span>${a.items.length}</span></li></ul>`;
+      }
+
+      function showPop(el, y) {
+        const a = index.get(el.dataset.ann);
+        if (!a) return;
+        const s = SOURCES[a.source];
+        pop.dataset.color = s.color;
+        pop.className = `pop on${state.theme === "dark" ? " dark" : ""}`;
+        for (const v of [
+          "--popover",
+          "--popover-foreground",
+          "--foreground",
+          "--background",
+          "--muted-foreground",
+          "--border",
+          "--radius",
+        ])
+          pop.style.setProperty(v, getComputedStyle(cal).getPropertyValue(v));
+        const title = a.cluster
+          ? `${a.cluster.length} annotations`
+          : a.source === "workout" || a.source === "focus"
+            ? a.items[0].title
+            : s.noun;
+        pop.innerHTML = `
+    <div class="ph"><span class="ico" data-color="${s.color}">${svg(s.icon)}</span>
+      <div><div class="ttl">${title}</div><div class="sub">${a.startsBefore ? "…" : ""}${fmt(a.start)} – ${fmt(a.end)}${a.endsAfter ? "…" : ""} · ${dur(a.end - a.start)}</div></div></div>
+    ${popBody(a)}
+    <div class="ft"><span>Read-only · ${s.app}</span><span class="btn">${a.source === "spotify" ? "Open in Spotify" : `Open ${s.app}`} ${svg("ext")}</span></div>`;
+        pop.style.setProperty(
+          "--calendar-annotation",
+          getComputedStyle(el).getPropertyValue("--calendar-annotation"),
+        );
+        const rect = el.getBoundingClientRect();
+        place(
+          pop,
+          rect,
+          Math.max(8, Math.min(y - 40, innerHeight - pop.offsetHeight - 8)),
+          pop.offsetWidth,
+        );
+        hideTip();
+        setActive(a, el);
+      }
+      function hidePop() {
+        pop.className = "pop";
+        setActive(null);
+      }
+
+      cal.addEventListener("pointerover", (e) => {
+        const el = e.target.closest(".ann");
+        const col = e.target.closest(".col");
+        if (col && Number(col.dataset.day) !== state.srDay) {
+          state.srDay = Number(col.dataset.day);
+          renderSr();
+        }
+        if (el && !pop.classList.contains("on")) showTip(el, e.clientY);
+      });
+      cal.addEventListener("pointermove", (e) => {
+        const el = e.target.closest(".ann");
+        if (el && tip.classList.contains("on")) {
+          const h = tip.offsetHeight,
+            rect = el.getBoundingClientRect();
+          tip.style.top = `${Math.min(Math.max(e.clientY - h / 2, rect.top - h / 2), rect.bottom - h / 2)}px`;
+        }
+      });
+      cal.addEventListener("pointerout", (e) => {
+        if (e.target.closest(".ann") && !e.relatedTarget?.closest?.(".ann")) hideTip();
+      });
+      cal.addEventListener("click", (e) => {
+        const el = e.target.closest(".ann");
+        if (el && state.clickable) {
+          e.stopPropagation();
+          showPop(el, e.clientY);
+        }
+      });
+      // Programmatic scrolls (initial position, re-render) must not close what a query param opened.
+      let quietUntil = 0;
+      cal.addEventListener(
+        "scroll",
+        () => {
+          if (performance.now() > quietUntil) {
+            hideTip();
+            hidePop();
+          }
+        },
+        true,
+      );
+      document.addEventListener("click", (e) => {
+        if (!e.target.closest(".pop")) hidePop();
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") hidePop();
+      });
+      cal.addEventListener("pointerover", (e) => {
+        const loc = e.target.closest(".loc");
+        if (!loc) return;
+        const d = Number(loc.dataset.loc);
+        tip.innerHTML = `<b>Working location</b> · ${LOCATIONS[d]}<br><span class="m">All-day annotation, rendered in the day header</span>`;
+        tip.style.setProperty(
+          "--foreground",
+          getComputedStyle(cal).getPropertyValue("--foreground"),
+        );
+        tip.style.setProperty(
+          "--background",
+          getComputedStyle(cal).getPropertyValue("--background"),
+        );
+        tip.className = "tip on";
+        const r = loc.getBoundingClientRect();
+        place(tip, r, r.top + r.height / 2 - tip.offsetHeight / 2, tip.offsetWidth);
+        loc.addEventListener("pointerleave", () => (tip.className = "tip"), { once: true });
+      });
+
+      // Fix the hover band colour: it reads --calendar-annotation from its data-color.
+      render();
+      if (params.has("hover")) {
+        const target = cal.querySelector(`.ann[data-src="${params.get("hover")}"]`);
+        if (target) {
+          const r = target.getBoundingClientRect();
+          showTip(target, r.top + Math.min(r.height / 2, 30));
+        }
+      }
+      if (params.has("pop")) {
+        const list = [...cal.querySelectorAll(`.ann[data-src="${params.get("pop")}"]`)];
+        const target = list[Number(params.get("popIndex") ?? 0)] ?? list[0];
+        if (target) {
+          const r = target.getBoundingClientRect();
+          showPop(target, r.top + 20);
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -7,6 +7,12 @@ import { Button } from "@registry/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@registry/ui/sheet";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
+import {
+  annotationSources,
+  createDemoAnnotations,
+  isAnnotationSetting,
+  type AnnotationSetting,
+} from "./annotations";
 import { DemoCalendar, type DemoEvent } from "./calendar";
 import { BrandMark } from "./components/brand";
 import { DocsLink } from "./components/docs-link";
@@ -88,6 +94,34 @@ export function App() {
   );
   const shownEvent = events.find(({ id }) => id === openEvent?.eventId);
 
+  // PROTOTYPE (#119): `?annotations=edge|rail|band|lanes|off` picks the variant; rail by default.
+  const [annotationSetting, setAnnotationSetting] = useState<AnnotationSetting>(() => {
+    const value = new URLSearchParams(window.location.search).get("annotations");
+    return isAnnotationSetting(value) ? value : "rail";
+  });
+  const changeAnnotationSetting = useCallback((value: AnnotationSetting) => {
+    setAnnotationSetting(value);
+    const url = new URL(window.location.href);
+    url.searchParams.set("annotations", value);
+    window.history.replaceState(window.history.state, "", url);
+  }, []);
+  const annotationItems = useMemo(
+    () => createDemoAnnotations(today, timeZone, Temporal.Now.instant()),
+    // Regenerated per day and zone, not per clock tick.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    [today.toString(), timeZone],
+  );
+  const viewOptions = useMemo(() => {
+    if (annotationSetting === "off") return undefined;
+    const annotations = {
+      clickable: true,
+      items: annotationItems,
+      sources: annotationSources,
+      variant: annotationSetting,
+    };
+    return { day: { annotations }, week: { annotations } };
+  }, [annotationItems, annotationSetting]);
+
   // Counts resets, so a save that was still in flight when the data was reset is dropped instead
   // of editing the fresh seed, whose event IDs repeat.
   const resets = useRef(0);
@@ -152,6 +186,8 @@ export function App() {
       today={today}
     >
       <SettingsPanel
+        annotations={annotationSetting}
+        onAnnotationsChange={changeAnnotationSetting}
         failSaves={failSaves}
         onChange={setSettings}
         onFailSavesChange={setFailSaves}
@@ -176,6 +212,7 @@ export function App() {
         resources={demoResources}
         timeZone={timeZone}
         view={location.view}
+        viewOptions={viewOptions}
         weekRules={weekRules}
       >
         <KeyboardShortcuts onCreate={openCreate} onHelp={showShortcuts} />

@@ -9,9 +9,16 @@ import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
+import {
+  TimeGridAnnotationOverlays,
+  useAnnotationHandles,
+  type TimeGridAnnotationOptions,
+} from "./time-grid-annotations";
 import { TimeGridColumn } from "./time-grid-column";
 
 export interface TimeGridBodyProps<TEvent> {
+  /** PROTOTYPE (#119): read-only marks beside events. */
+  readonly annotations?: TimeGridAnnotationOptions;
   readonly days: readonly TimeGridDay<TEvent>[];
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
@@ -40,6 +47,7 @@ function hourFormat(locale: Intl.LocalesArgument): Intl.DateTimeFormat {
 
 /** The grid's timed row, scrolling through 24 hours: hour gutter, hour lines, and a cell per day. */
 export function TimeGridBody<TEvent>({
+  annotations,
   days,
   environment,
   getEventColor,
@@ -79,6 +87,21 @@ export function TimeGridBody<TEvent>({
     }),
     [locale],
   );
+
+  const handles = useAnnotationHandles();
+  const annotationProps = useMemo(() => {
+    if (annotations === undefined) return undefined;
+    const format = new Intl.DateTimeFormat(locale, {
+      hour: "numeric",
+      minute: "2-digit",
+      timeZone,
+    });
+    return {
+      formatTime: (instant: Temporal.Instant) => format.format(instant),
+      handles,
+      options: annotations,
+    };
+  }, [annotations, handles, locale, timeZone]);
 
   // Once the first clock sample arrives (after hydration, `now` starts as null), open on the
   // current time, or 08:00 when today is not visible. Later ticks and navigation keep the user's
@@ -122,6 +145,7 @@ export function TimeGridBody<TEvent>({
           {days.map((day, index) => (
             <TimeGridColumn
               key={day.column.key}
+              annotations={annotationProps}
               day={day}
               getEventColor={getEventColor}
               labelEvent={labelEvent}
@@ -134,6 +158,9 @@ export function TimeGridBody<TEvent>({
           ))}
         </div>
       </div>
+      {annotationProps !== undefined && (
+        <TimeGridAnnotationOverlays formatTime={annotationProps.formatTime} handles={handles} />
+      )}
     </div>
   );
 }

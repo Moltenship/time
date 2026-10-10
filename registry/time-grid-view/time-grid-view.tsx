@@ -15,10 +15,13 @@ import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import { TimeGridAllDay } from "./time-grid-all-day";
+import type { TimeGridAnnotationOptions } from "./time-grid-annotations";
 import { TimeGridBody } from "./time-grid-body";
 import { TimeGridHeader } from "./time-grid-header";
 
 export interface TimeGridViewOptions<TEvent> {
+  /** PROTOTYPE (#119): read-only annotation marks beside events. */
+  readonly annotations?: TimeGridAnnotationOptions;
   /** Registered view a week's header date opens, usually `"day"`; without it dates are static. */
   readonly dayView?: string;
   /** Extra words for each event's accessible name, such as its calendar. */
@@ -107,6 +110,7 @@ export function TimeGridView<TEvent>({
         />
       </div>
       <TimeGridBody
+        annotations={options.annotations}
         days={days}
         environment={environment}
         getEventColor={options.getEventColor}

@@ -16,9 +16,21 @@ import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
+import {
+  annotationEventInset,
+  TimeGridAnnotationLayer,
+  type TimeGridAnnotationHandles,
+  type TimeGridAnnotationOptions,
+} from "./time-grid-annotations";
 import { percent, TimeGridEvent, type TimeGridEventFormats } from "./time-grid-event";
 
 export interface TimeGridColumnProps<TEvent> {
+  /** PROTOTYPE (#119): annotation marks for this column. */
+  readonly annotations?: {
+    readonly formatTime: (instant: Temporal.Instant) => string;
+    readonly handles: TimeGridAnnotationHandles;
+    readonly options: TimeGridAnnotationOptions;
+  };
   readonly day: TimeGridDay<TEvent>;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly labelEvent: EventLabeler<TEvent>;
@@ -103,6 +115,7 @@ function TimeGridSlot({
  * forward hours are hatched and repeated fall-back hours tinted.
  */
 export function TimeGridColumn<TEvent>({
+  annotations,
   day: { column, events, isToday },
   getEventColor,
   labelEvent,
@@ -144,8 +157,19 @@ export function TimeGridColumn<TEvent>({
           title="Repeated: clocks moved back"
         />
       ))}
+      {annotations !== undefined && (
+        <TimeGridAnnotationLayer
+          column={column}
+          formatTime={annotations.formatTime}
+          handles={annotations.handles}
+          options={annotations.options}
+        />
+      )}
       {/* The inline-end margin keeps a strip free for creating an event beside busy blocks. */}
-      <div className="absolute inset-y-0 start-0 end-2">
+      <div
+        className="absolute inset-y-0 start-0 end-2"
+        style={annotationEventInset(annotations?.options)}
+      >
         {events.map((layout) => (
           <TimeGridEvent
             key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
