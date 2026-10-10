@@ -25,56 +25,52 @@ export interface CellTargets {
 }
 
 /**
- * Where keyboard focus can land. The first row always holds the view's entry, today or the
- * range's first day (at midnight in an hour timeline), which is the tab stop until something
- * has focus or when the focus can't show here. The focused cell sits in its row; focus from a
- * view without resources names none and sits in the first row, as navigation moves it from
- * there. These, and a focused event's first slot, stay rendered while scrolled away.
+ * Where keyboard focus can land. The first row always holds the view's entry, where the calendar
+ * enters it, which is the tab stop until something has focus or when the focus can't show here.
+ * The focused cell sits in its row; focus from a view without resources names none and sits in
+ * the first row, as navigation moves it from there, and a time grid's slot is its whole day in a
+ * timeline of days. These, and a focused event's element, stay rendered while scrolled away.
  */
 export function cellTargets<TEvent>(
   focus: CalendarFocus | null,
-  { columns, rows, today, unit }: ResourceTimelineProjection<TEvent>,
+  entry: CalendarCellFocus | null,
+  { columns, rows, unit }: ResourceTimelineProjection<TEvent>,
   range: PlainDateInterval,
 ): CellTargets {
-  const first = rows[0];
-  if (first === undefined) return { cells: new Map(), rows: [], slots: [] };
+  if (entry === null) return { cells: new Map(), rows: [], slots: [] };
   const perDay = unit === "hour" ? HOURS : 1;
   const slotCount = columns.length * perDay;
-  const inRange = (date: Temporal.PlainDate) =>
-    Temporal.PlainDate.compare(range.start, date) <= 0 &&
-    Temporal.PlainDate.compare(date, range.end) < 0;
-  // A slot from a time grid sits on its whole day in a timeline of days.
+  const dayOf = (date: Temporal.PlainDate) => range.start.until(date).days;
   const slotOf = (cell: CalendarCellFocus) =>
-    range.start.until(cell.date).days * perDay +
-    (unit === "hour" && cell.kind === "slot" ? cell.time.hour : 0);
+    dayOf(cell.date) * perDay + (cell.kind === "slot" ? cell.time.hour : 0);
 
-  const date = today !== null && inRange(today) ? today : range.start;
-  const entry: CalendarCellFocus =
-    unit === "day"
-      ? { date, kind: "day", resourceId: first.resource.id }
-      : { date, kind: "slot", resourceId: first.resource.id, time: new Temporal.PlainTime() };
   const cells = new Map<number, CalendarCellFocus[]>([[0, [entry]]]);
   const pinned = { rows: [0], slots: [slotOf(entry)] };
-  const rowOf = (resourceId: ResourceId | null | undefined, eventId?: EventId) =>
-    resourceId !== undefined
-      ? rows.findIndex(({ resource }) => resource.id === resourceId)
+  if (focus === null) return { cells, ...pinned };
+
+  const day = dayOf(focus.date);
+  const rowOf = (eventId?: EventId) =>
+    focus.resourceId !== undefined
+      ? rows.findIndex(({ resource }) => resource.id === focus.resourceId)
       : eventId === undefined
         ? 0
-        : rows.findIndex((row) => eventStart(row, eventId, slotCount) !== undefined);
+        : rows.findIndex((row) => eventStart(row, eventId, day, slotCount) !== undefined);
 
-  if (focus !== null && focus.kind !== "event" && inRange(focus.date)) {
-    const row = rowOf(focus.resourceId);
+  if (focus.kind !== "event") {
+    const row = day >= 0 && day < columns.length ? rowOf() : -1;
     if (row !== -1) {
       // Named after its row, a resource-less focus can't also match the entry beside it.
-      const cell = { ...focus, resourceId: rows[row]!.resource.id };
+      const resourceId = rows[row]!.resource.id;
+      const cell: CalendarCellFocus =
+        unit === "day" ? { date: focus.date, kind: "day", resourceId } : { ...focus, resourceId };
       const targets = cells.get(row) ?? [];
       if (!targets.some((target) => sameFocus(target, cell))) cells.set(row, [...targets, cell]);
       pinned.rows.push(row);
       pinned.slots.push(slotOf(cell));
     }
-  } else if (focus?.kind === "event") {
-    const row = rowOf(focus.resourceId, focus.eventId);
-    const slot = row === -1 ? undefined : eventStart(rows[row]!, focus.eventId, slotCount);
+  } else {
+    const row = rowOf(focus.eventId);
+    const slot = row === -1 ? undefined : eventStart(rows[row]!, focus.eventId, day, slotCount);
     if (slot !== undefined) {
       pinned.rows.push(row);
       pinned.slots.push(slot);
@@ -83,13 +79,21 @@ export function cellTargets<TEvent>(
   return { cells, ...pinned };
 }
 
-/** The slot an event's bar starts in within a row; `undefined` when the row doesn't show it. */
+/**
+ * The slot an event's element starts in within a row; `undefined` when the row doesn't show it.
+ * Over days, an event around a date the wall clock skips shows in pieces: the one holding `day`.
+ */
 function eventStart<TEvent>(
   row: ResourceTimelineProjection<TEvent>["rows"][number],
   eventId: EventId,
+  day: number,
   slotCount: number,
 ): number | undefined {
-  if ("segments" in row) return row.segments.find(({ event }) => event.id === eventId)?.column;
+  if ("segments" in row) {
+    const pieces = row.segments.filter(({ event }) => event.id === eventId);
+    const piece = pieces.find(({ column, span }) => column <= day && day < column + span);
+    return (piece ?? pieces[0])?.column;
+  }
   const bar = row.bars.find(({ event }) => event.id === eventId);
   return bar === undefined ? undefined : Math.min(slotCount - 1, Math.floor(bar.start * slotCount));
 }

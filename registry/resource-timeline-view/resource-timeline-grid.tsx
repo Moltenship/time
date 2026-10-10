@@ -22,6 +22,8 @@ import { timelineSlotGroups, timelineSlots, type TimelineSlotUnit } from "./time
 import { useTimelineVirtualizer } from "./use-timeline-virtualizer";
 
 export interface ResourceTimelineGridProps<TEvent> {
+  /** Where the calendar enters the grid; its cell renders wherever the grid scrolls. */
+  readonly entry: CalendarCellFocus | null;
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   /** The view's keyboard handlers; the grid is its one tab stop. */
@@ -60,6 +62,7 @@ function rowHeight(laneCount: number): number {
  * the time axis runs in the calendar's direction.
  */
 export function ResourceTimelineGrid<TEvent>({
+  entry,
   environment,
   getEventColor,
   keyboard,
@@ -90,7 +93,10 @@ export function ResourceTimelineGrid<TEvent>({
   // focus finds its element at once, and the browser scrolls it into view clear of the sticky
   // header and column (`scroll-padding`).
   const focus = useCalendarFocus((current) => current);
-  const targets = useMemo(() => cellTargets(focus, projection, range), [focus, projection, range]);
+  const targets = useMemo(
+    () => cellTargets(focus, entry, projection, range),
+    [entry, focus, projection, range],
+  );
   const { columnWidth, rowAxis, slotWidth, timeAxis, viewportRef } = useTimelineVirtualizer({
     direction,
     headerHeight: HEADER_HEIGHT,

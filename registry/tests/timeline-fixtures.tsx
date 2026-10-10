@@ -67,26 +67,31 @@ export type TimelineName = (typeof Calendar.views)[number]["name"];
 
 /** The timeline views over the 500 resources, on Thursday, October 8, 2026, at noon UTC. */
 export function Timeline({
+  anchor = "2026-10-08",
   defaultFocus = null,
   direction = "ltr",
   events = [],
   expanded = allSites,
   onEventChange,
+  timeZone = "UTC",
   view = "timeline-month",
 }: {
+  /** The date shown, which another time zone can put in a clock change. */
+  readonly anchor?: string;
   readonly defaultFocus?: CalendarFocus | null;
   readonly direction?: "ltr" | "rtl";
   readonly events?: readonly Booking[];
   readonly expanded?: readonly string[];
   readonly onEventChange?: (change: BookingChange) => void;
+  readonly timeZone?: string;
   readonly view?: TimelineName;
 }) {
   return (
     <Calendar.Root
-      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultAnchorDate={Temporal.PlainDate.from(anchor)}
       defaultExpandedResourceIds={expanded}
       defaultFocus={defaultFocus}
-      defaultTimeZone="UTC"
+      defaultTimeZone={timeZone}
       defaultView={view}
       direction={direction}
       events={events}

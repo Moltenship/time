@@ -1,8 +1,10 @@
 import {
   defineCalendarView,
+  resourceTimelineSpatialNavigation,
   resourceTimelineStrategy,
   resourceTimelineTitle,
   useCalendarAnnouncer,
+  useCalendarFocus,
   useCalendarPointer,
   type CalendarViewRendererProps,
   type PlainDateInterval,
@@ -10,6 +12,8 @@ import {
   type ResourceTimelineProjection,
   type ResourceTimelineSpan,
 } from "@moltenship/calendar";
+import { useLayoutEffect, useMemo } from "react";
+
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
@@ -72,8 +76,34 @@ export function ResourceTimelineView<TEvent>({
   const keyboard = useViewKeyboard({ axis: "inline", snap });
   const labelEvent = useEventLabel(environment, options.describeEvent);
 
+  // Where the calendar enters the view: today or the range's first day in the first row, at the
+  // day's first wall time in an hour timeline.
+  const entry = useMemo(() => {
+    const found = resourceTimelineSpatialNavigation({
+      command: "home",
+      environment,
+      focus: null,
+      options,
+      projection,
+      range,
+      snap,
+    });
+    return found === null || !("focus" in found) || found.focus.kind === "event"
+      ? null
+      : found.focus;
+  }, [environment, options, projection, range]);
+
+  // A time grid's slot is its whole day in a timeline of days, so keys act on the day, as a drag.
+  const slot = useCalendarFocus((focus) => (focus?.kind === "slot" ? focus : null));
+  useLayoutEffect(() => {
+    if (projection.unit === "day" && slot !== null) {
+      actions.setFocus({ date: slot.date, kind: "day", resourceId: slot.resourceId });
+    }
+  }, [actions, projection.unit, slot]);
+
   return (
     <ResourceTimelineGrid
+      entry={entry}
       environment={environment}
       getEventColor={options.getEventColor}
       keyboard={keyboard}

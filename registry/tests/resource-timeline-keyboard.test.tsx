@@ -295,3 +295,69 @@ test("a time grid's slot focus lands on its whole day in a timeline of days", as
     cleanup = undefined;
   }
 });
+
+test("Space on a time grid's slot in a timeline of days drafts all-day, as a drag would", async () => {
+  const onEventChange = vi.fn<(change: BookingChange) => void>();
+  const container = await show(
+    <Timeline
+      defaultFocus={{
+        date: Temporal.PlainDate.from("2026-10-06"),
+        kind: "slot",
+        resourceId: "site-1-room-2",
+        time: Temporal.PlainTime.from("09:00"),
+      }}
+      onEventChange={onEventChange}
+      view="timeline-week"
+    />,
+  );
+  await tabIn(container);
+  expect(focused()).toBe("Room 1.2, Tuesday, October 6, 2026");
+  await press(" ");
+  await press("ArrowRight");
+  await press("Enter");
+
+  const [change] = onEventChange.mock.calls[0]!;
+  expect(`${change.proposed?.start.toString()}/${change.proposed?.end.toString()}`).toBe(
+    "2026-10-06/2026-10-08",
+  );
+});
+
+test("an event in pieces around a skipped date keeps the focused piece rendered", async () => {
+  // Samoa skipped Friday, December 30, 2011, so a stay across it shows on either side.
+  const container = await show(
+    <Timeline
+      anchor="2011-12-01"
+      defaultFocus={{
+        date: Temporal.PlainDate.from("2011-12-28"),
+        eventId: "Stay",
+        kind: "event",
+        resourceId: "site-1-room-1",
+      }}
+      events={[booking("Stay", ["site-1-room-1"], "2011-12-28T20:00Z", "2011-12-30T20:00Z")]}
+      timeZone="Pacific/Apia"
+    />,
+  );
+  const column = () => document.activeElement?.closest('[role="gridcell"]')?.ariaColIndex;
+
+  // Both pieces are scrolled away; the focused one, from December 28, renders.
+  expect(container.querySelectorAll('[data-event-id="Stay"]')).toHaveLength(1);
+  await tabIn(container);
+  expect(column()).toBe("29");
+
+  await press("ArrowRight");
+  expect(column()).toBe("32");
+  await press("Escape");
+  expect(focused()).toBe("Room 1.1, Saturday, December 31, 2011");
+});
+
+test("an hour timeline enters at the first time its day has", async () => {
+  // Brazil's clocks went forward at midnight on November 4, 2018: the day starts at 01:00.
+  const container = await show(
+    <Timeline anchor="2018-11-04" timeZone="America/Sao_Paulo" view="timeline-day" />,
+  );
+
+  expect(tabStops(container)).toEqual(["Site 1, expanded, Sunday, November 4 at 1:00 AM"]);
+  await tabIn(container);
+  await press("ArrowRight");
+  expect(focused()).toBe("Site 1, expanded, Sunday, November 4 at 1:30 AM");
+});

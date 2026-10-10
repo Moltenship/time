@@ -49,7 +49,8 @@ const views = [
   it. Focus is the calendar's focus, a resource and a time, so it survives virtualization: the
   entry and the focused row and slot always render, so there's always a tab stop, and the browser
   scrolls them into view clear of the sticky header and column (`scroll-padding`). Focus from a
-  view without resources lands on the first row.
+  view without resources lands on the first row, and a time grid's slot becomes its whole day in
+  a timeline of days.
 - ARIA: a `grid` whose header row has a column header per slot, and a row per resource named by
   the resource, with a row header and a cell per slot ("Room 101, Monday, October 5, 2026, 2
   events"). `aria-rowcount`, `aria-colcount` and the indexes count every resource and slot, not
