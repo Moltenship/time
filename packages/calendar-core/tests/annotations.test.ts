@@ -273,6 +273,19 @@ describe("time-grid annotation edge cases", () => {
     );
   });
 
+  test("lets marks that meet exactly share a lane", () => {
+    const snapshot = createAnnotationSnapshot([
+      annotation("m", "music", "2026-10-05T00:01Z", "2026-10-05T00:05Z"),
+      annotation("s", "sleep", "2026-10-05T00:05Z", "2026-10-05T00:06Z"),
+    ]);
+    const [monday] = projectTimeGridAnnotations(columns, snapshot, [music, sleep]);
+
+    expect(monday!.map(({ lane, lanes }) => [lane, lanes])).toEqual([
+      [0, 1],
+      [0, 1],
+    ]);
+  });
+
   test("keeps lanes whole and at least one", () => {
     const snapshot = createAnnotationSnapshot([
       annotation("m", "music", "2026-10-05T09:00Z", "2026-10-05T11:00Z"),
@@ -440,5 +453,37 @@ describe("annotation summaries", () => {
 
     // Four 40-second marks are 160 seconds: three minutes, where rounding each would give four.
     expect(summarizeAnnotationMarks(monday!)[0]!.duration.toString()).toBe("PT3M");
+  });
+
+  test("counts only each date's own time in a fold across midnight", () => {
+    // 23:50 on the 6th to 00:01 on the 7th, then 23:01–23:15 on the 6th again: 24 minutes on the
+    // 6th and one on the 7th, though the 6th's mark spans 25 minutes of instants.
+    const stJohns = timeGridColumns(dates("2010-11-06", "2010-11-08"), "America/St_Johns");
+    const snapshot = createAnnotationSnapshot([
+      annotation("across", "sleep", "2010-11-07T02:20Z", "2010-11-07T02:45Z"),
+    ]);
+    const days = projectTimeGridAnnotations(stJohns, snapshot, [sleep]);
+
+    expect(days.map((marks) => marks[0]!.duration.toString())).toEqual(["PT24M", "PT1M"]);
+    expect(days.map((marks) => summarizeAnnotationMarks(marks)[0]!.duration.toString())).toEqual([
+      "PT24M",
+      "PT1M",
+    ]);
+  });
+
+  test("ends at the latest mark's end when a repeated hour reorders marks", () => {
+    // 01:05–01:15 EDT and 01:10–01:20 EST draw together and merge; 01:40–01:45 EDT stays apart.
+    const [fallBack] = timeGridColumns(dates("2026-11-01", "2026-11-02"), "America/New_York");
+    const snapshot = createAnnotationSnapshot([
+      annotation("early", "sleep", "2026-11-01T05:05Z", "2026-11-01T05:15Z"),
+      annotation("apart", "sleep", "2026-11-01T05:40Z", "2026-11-01T05:45Z"),
+      annotation("repeat", "sleep", "2026-11-01T06:10Z", "2026-11-01T06:20Z"),
+    ]);
+    const [marks] = projectTimeGridAnnotations([fallBack!], snapshot, [sleep]);
+    const [summary] = summarizeAnnotationMarks(marks!);
+
+    expect(ids(marks!)).toEqual([["early", "repeat"], ["apart"]]);
+    expect(summary!.start.toString()).toBe("2026-11-01T05:05:00Z");
+    expect(summary!.end.toString()).toBe("2026-11-01T06:20:00Z");
   });
 });

@@ -8,9 +8,9 @@ export interface AnnotationSourceSummary<
   readonly source: TSource;
   /** How many marks the source has on the day. */
   readonly count: number;
-  /** Their total time on the day, in hours and minutes. */
+  /** Their total time on the day, in hours and minutes, gaps inside merged marks included. */
   readonly duration: Temporal.Duration;
-  /** The first mark's start and the last mark's end on the day. */
+  /** The earliest start and the latest end of its marks on the day. */
   readonly start: Temporal.Instant;
   readonly end: Temporal.Instant;
   readonly startsBeforeDay: boolean;
@@ -24,26 +24,28 @@ export function summarizeAnnotationMarks<TSource extends CalendarAnnotationSourc
   const bySource = Map.groupBy(marks, (mark) => mark.source);
   return Object.freeze(
     [...bySource].map(([source, list]) => {
-      const sorted = list.toSorted((left, right) =>
-        Temporal.Instant.compare(left.start, right.start),
+      // In a repeated hour the latest end needn't belong to the latest start.
+      const start = list.reduce(
+        (earliest, mark) =>
+          Temporal.Instant.compare(mark.start, earliest) < 0 ? mark.start : earliest,
+        list[0]!.start,
       );
-      const first = sorted[0]!;
-      const last = sorted.at(-1)!;
-      const nanoseconds = sorted.reduce(
-        (sum, mark) => sum + (mark.end.epochNanoseconds - mark.start.epochNanoseconds),
-        0n,
+      const end = list.reduce(
+        (latest, mark) => (Temporal.Instant.compare(mark.end, latest) > 0 ? mark.end : latest),
+        list[0]!.end,
       );
+      const nanoseconds = list.reduce((sum, mark) => sum + mark.duration.total("nanoseconds"), 0);
       return Object.freeze({
-        count: sorted.length,
-        duration: Temporal.Duration.from({ nanoseconds: Number(nanoseconds) }).round({
+        count: list.length,
+        duration: Temporal.Duration.from({ nanoseconds }).round({
           largestUnit: "hours",
           smallestUnit: "minutes",
         }),
-        end: last.end,
-        endsAfterDay: last.endsAfterDay,
+        end,
+        endsAfterDay: list.some((mark) => mark.endsAfterDay),
         source,
-        start: first.start,
-        startsBeforeDay: first.startsBeforeDay,
+        start,
+        startsBeforeDay: list.some((mark) => mark.startsBeforeDay),
       });
     }),
   );

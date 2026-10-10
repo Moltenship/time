@@ -30,6 +30,8 @@ export interface TimeGridAnnotationMark<
    */
   readonly start: Temporal.Instant;
   readonly end: Temporal.Instant;
+  /** The time between `start` and `end` on the column's date; less than their difference only in a fold. */
+  readonly duration: Temporal.Duration;
   readonly startsBeforeDay: boolean;
   readonly endsAfterDay: boolean;
   /** Fractions of the column's 24-hour axis, like event layouts. */
@@ -49,6 +51,13 @@ type UnplacedMark<TSource extends CalendarAnnotationSource, TData> = Omit<
   TimeGridAnnotationMark<TSource, TData>,
   "lane" | "lanes"
 >;
+
+/** A mark before lanes, with its drawn extent in whole nanoseconds of wall time from midnight. */
+interface Unplaced<TSource extends CalendarAnnotationSource, TData> {
+  readonly bottom: bigint;
+  readonly mark: UnplacedMark<TSource, TData>;
+  readonly top: bigint;
+}
 
 /** Instants with one UTC offset, `[start, end)`; `shift` turns them into wall time from midnight. */
 interface OffsetRun {
@@ -130,6 +139,21 @@ function dayPart(runs: readonly OffsetRun[], start: bigint, end: bigint): DayPar
   return part === null ? null : { ...part, after, before };
 }
 
+/** How much of `[start, end)` has wall time on the date of `runs`. */
+function timeOnDate(runs: readonly OffsetRun[], start: bigint, end: bigint): bigint {
+  let total = 0n;
+  for (const run of runs) {
+    const from = [start, run.start, -run.shift].reduce((left, right) =>
+      right > left ? right : left,
+    );
+    const to = [end, run.end, DAY_NANOSECONDS - run.shift].reduce((left, right) =>
+      right < left ? right : left,
+    );
+    if (to > from) total += to - from;
+  }
+  return total;
+}
+
 function union(left: DayPart, right: DayPart): DayPart {
   return {
     after: left.after || right.after,
@@ -194,7 +218,7 @@ function mergeSource<TSource extends CalendarAnnotationSource, TData>(
   source: TSource,
   annotations: readonly CalendarAnnotation<TData, ResourceId>[],
   geometry: { readonly minGap: number; readonly minHeight: number },
-): UnplacedMark<TSource, TData>[] {
+): Unplaced<TSource, TData>[] {
   const gap = mergeGapNanoseconds(source, dayStart, column.day.timeZone);
   // Drawn sizes in whole nanoseconds of wall time, so marks that meet exactly always touch.
   const minGap = wallNanoseconds(geometry.minGap);
@@ -245,8 +269,12 @@ function mergeSource<TSource extends CalendarAnnotationSource, TData>(
     .map((group) => {
       const { after, before, bottom, end, start, top } = group.part;
       const members = group.annotations.sort(byStart);
-      return {
+      const duration = Temporal.Duration.from({
+        nanoseconds: Number(timeOnDate(runs, start, end)),
+      }).round({ largestUnit: "hours" });
+      const mark: UnplacedMark<TSource, TData> = {
         annotations: Object.freeze(members),
+        duration,
         end: Temporal.Instant.fromEpochNanoseconds(end),
         endsAfterDay: after,
         height: Number(bottom - top) / NOMINAL_DAY_NANOSECONDS,
@@ -257,51 +285,50 @@ function mergeSource<TSource extends CalendarAnnotationSource, TData>(
         startsBeforeDay: before,
         top: Number(top) / NOMINAL_DAY_NANOSECONDS,
       };
+      return { bottom: drawnBottom(group), mark, top };
     });
 }
 
-/** Assigns rail lanes among marks only; event lanes never change. */
+/**
+ * Assigns rail lanes among marks only; event lanes never change. Packing compares whole
+ * nanoseconds, so marks that meet exactly can share a lane.
+ */
 function placeInLanes<TSource extends CalendarAnnotationSource, TData>(
-  marks: readonly UnplacedMark<TSource, TData>[],
+  marks: readonly Unplaced<TSource, TData>[],
   sources: readonly TSource[],
-  {
-    layout,
-    maxLanes,
-    minHeight,
-  }: Required<Pick<TimeGridAnnotationGeometry, "layout" | "maxLanes" | "minHeight">>,
+  { layout, maxLanes }: Required<Pick<TimeGridAnnotationGeometry, "layout" | "maxLanes">>,
 ): readonly TimeGridAnnotationMark<TSource, TData>[] {
   const placed = new Map<string, { lane: number; lanes: number }>();
   if (layout === "per-source") {
-    for (const mark of marks) {
+    for (const { mark } of marks) {
       placed.set(mark.key, { lane: sources.indexOf(mark.source), lanes: sources.length });
     }
   } else {
-    const drawnEnd = (mark: UnplacedMark<TSource, TData>) =>
-      mark.top + Math.max(mark.height, minHeight);
-    let group: UnplacedMark<TSource, TData>[] = [];
-    let groupEnd = -Infinity;
+    let group: Unplaced<TSource, TData>[] = [];
+    let groupEnd = 0n;
     const flush = () => {
-      const ends: number[] = [];
-      const lanes = group.map((mark) => {
-        let lane = ends.findIndex((end) => end <= mark.top);
-        if (lane === -1) lane = ends.push(drawnEnd(mark)) - 1;
-        else ends[lane] = drawnEnd(mark);
+      const ends: bigint[] = [];
+      const lanes = group.map(({ bottom, top }) => {
+        let lane = ends.findIndex((end) => end <= top);
+        if (lane === -1) lane = ends.push(bottom) - 1;
+        else ends[lane] = bottom;
         return Math.min(lane, maxLanes - 1);
       });
-      group.forEach((mark, index) =>
+      group.forEach(({ mark }, index) =>
         placed.set(mark.key, { lane: lanes[index]!, lanes: Math.min(ends.length, maxLanes) }),
       );
       group = [];
-      groupEnd = -Infinity;
     };
-    for (const mark of marks.toSorted((left, right) => left.top - right.top)) {
-      if (group.length > 0 && mark.top >= groupEnd) flush();
-      group.push(mark);
-      groupEnd = Math.max(groupEnd, drawnEnd(mark));
+    for (const next of marks.toSorted((left, right) => compareBigInts(left.top, right.top))) {
+      if (group.length > 0 && next.top >= groupEnd) flush();
+      groupEnd = group.length === 0 || next.bottom > groupEnd ? next.bottom : groupEnd;
+      group.push(next);
     }
     flush();
   }
-  return Object.freeze(marks.map((mark) => Object.freeze({ ...mark, ...placed.get(mark.key)! })));
+  return Object.freeze(
+    marks.map(({ mark }) => Object.freeze({ ...mark, ...placed.get(mark.key)! })),
+  );
 }
 
 /**
@@ -342,7 +369,7 @@ export function projectTimeGridAnnotations<TSource extends CalendarAnnotationSou
           minHeight,
         }),
       );
-      return placeInLanes(marks, sources, { layout, maxLanes, minHeight });
+      return placeInLanes(marks, sources, { layout, maxLanes });
     }),
   );
 }
