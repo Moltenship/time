@@ -1,6 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { timeGridColumns, type CalendarEventPlacement } from "@moltenship/calendar-core";
+import {
+  createCanonicalEventAdapter,
+  createEventSnapshot,
+  moveKeyboardCursor,
+  startKeyboardSession,
+  timeGridColumns,
+  type CalendarEventPlacement,
+} from "@moltenship/calendar-core";
 import { plainDateInterval } from "@moltenship/calendar-temporal";
 
 import {
@@ -236,5 +243,74 @@ describe("create", () => {
       "all-day 2026-03-07/2026-03-10",
     );
     expect(createdPlacement(day("2026-03-09"), at("2026-03-06", "09:00"), options)).toBeNull();
+  });
+});
+
+describe("resources", () => {
+  const inRoom = (target: PointerTarget, resourceId: string | null): PointerTarget => ({
+    ...target,
+    resourceId,
+  });
+  const slot = (wall: string, resourceId: string | null) => {
+    const dateTime = Temporal.PlainDateTime.from(wall);
+    return {
+      date: dateTime.toPlainDate(),
+      kind: "slot",
+      resourceId,
+      time: dateTime.toPlainTime(),
+    } as const;
+  };
+
+  test("a drop in another resource proposes what the keyboard does, across a DST change", () => {
+    const event = createEventSnapshot(
+      [{ ...timed("2026-03-07T09:00", "2026-03-07T10:00"), data: null, id: "a", title: "a" }],
+      createCanonicalEventAdapter<null, string, string>(),
+    ).get("a")!;
+    const original = timed("2026-03-07T09:00", "2026-03-07T10:00");
+    const pointer = movedPlacement(
+      original,
+      inRoom(at("2026-03-07", "09:00"), "room"),
+      inRoom(at("2026-03-08", "11:00"), "lab"),
+      options,
+    );
+    const keyboard = moveKeyboardCursor(
+      startKeyboardSession(
+        { cause: "move", cell: slot("2026-03-07T09:00", "room"), event },
+        options,
+      ),
+      slot("2026-03-08T11:00", "lab"),
+      options,
+    );
+
+    expect(wall(pointer)).toBe("2026-03-08T11:00/2026-03-08T12:00");
+    expect(pointer.resourceIds).toEqual(["lab"]);
+    expect(keyboard.proposed).toEqual(pointer);
+  });
+
+  test("creates in the anchor's resource and refuses to resize or create across resources", () => {
+    const created = createdPlacement<string>(
+      inRoom(at("2026-03-06", "09:05"), null),
+      inRoom(at("2026-03-06", "09:50"), null),
+      options,
+    );
+
+    expect(wall(created)).toBe("2026-03-06T09:00/2026-03-06T10:00");
+    expect(created?.resourceIds).toEqual([]);
+    expect(
+      createdPlacement(
+        inRoom(day("2026-03-06"), "room"),
+        inRoom(day("2026-03-07"), "lab"),
+        options,
+      ),
+    ).toBeNull();
+    expect(
+      resizedPlacement(
+        timed("2026-03-06T09:00", "2026-03-06T10:00"),
+        "end",
+        inRoom(at("2026-03-06", "10:00"), "room"),
+        inRoom(at("2026-03-06", "11:00"), "lab"),
+        options,
+      ),
+    ).toBeNull();
   });
 });

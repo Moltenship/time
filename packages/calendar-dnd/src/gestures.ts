@@ -10,10 +10,14 @@ import {
 } from "@moltenship/calendar-core";
 import type { WallTimeSnapOptions } from "@moltenship/calendar-temporal";
 
-/** What the pointer is over: a height in a time-grid column, or a whole day cell. */
-export type PointerTarget =
+/**
+ * What the pointer is over: a height in a time-grid column, or a whole day cell, and in a resource
+ * view the resource around it (`null` for the unassigned bucket).
+ */
+export type PointerTarget = (
   | { readonly column: TimeGridColumn; readonly kind: "time"; readonly y: number }
-  | { readonly date: Temporal.PlainDate; readonly kind: "day" };
+  | { readonly date: Temporal.PlainDate; readonly kind: "day" }
+) & { readonly resourceId?: ResourceId | null };
 
 export interface GestureOptions {
   readonly snap: WallTimeSnapOptions;
@@ -27,13 +31,17 @@ function interactionTarget(
 ): CalendarInteractionTarget {
   return target.kind === "day"
     ? target
-    : { at: timeGridDateTimeAt(target.column, target.y, { snap }), kind: "time" };
+    : {
+        at: timeGridDateTimeAt(target.column, target.y, { snap }),
+        kind: "time",
+        resourceId: target.resourceId,
+      };
 }
 
 /**
  * Where a dragged event lands. Moves within one axis keep the event's kind; dropping a timed event
  * on a day cell makes it all-day, and dropping an all-day event on a time column makes it a
- * one-hour timed event.
+ * one-hour timed event. Dropping in another resource swaps that resource in `resourceIds`.
  */
 export function movedPlacement<TResourceId extends ResourceId>(
   original: CalendarEventPlacement<TResourceId>,

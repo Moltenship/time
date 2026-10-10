@@ -9,11 +9,13 @@ import {
   HOUR_HEIGHT,
   cellCenter,
   mountMonth,
+  mountResourceColumns,
   mountTimeGrid,
   pointer,
   timedEvent,
   timeZone,
   xAt,
+  xIn,
   yAt,
   type TestEvent,
 } from "./dom-fixture";
@@ -426,5 +428,71 @@ describe("month grid", () => {
     pointer("pointerup", cell, to.x, to.y);
 
     expect(interval(proposals[0])).toBe("all-day 2026-08-20/2026-08-26");
+  });
+});
+
+describe("resource columns", () => {
+  const onRooms = (event: TestEvent, ...resourceIds: string[]): TestEvent => ({
+    ...event,
+    resourceIds,
+  });
+
+  function resources(proposal: Proposal | undefined) {
+    return proposal === undefined || proposal.cause === "delete"
+      ? undefined
+      : proposal.proposed.resourceIds;
+  }
+
+  test("drops an event in another resource by swapping that resource", () => {
+    const grid = mountResourceColumns([onRooms(meeting, "room-a")]);
+    const proposals = setup(grid, { columns: grid.columns });
+    const element = grid.elements.get("a@room-a")!;
+
+    pointer("pointerdown", element, xIn("room-a"), yAt("09:30"));
+    pointer("pointermove", element, xIn("room-b"), yAt("09:30"));
+
+    // The preview shows only in the resource the event will render in.
+    expect(ghosts(grid.region).map((ghost) => ghost.style.transform)).toEqual([
+      `translate3d(100px, ${yAt("09:00")}px, 0)`,
+    ]);
+    pointer("pointerup", element, xIn("room-b"), yAt("09:30"));
+
+    expect(proposals).toHaveLength(1);
+    expect(interval(proposals[0])).toBe("timed 2026-08-17T09:00:00Z/2026-08-17T10:00:00Z");
+    expect(resources(proposals[0])).toEqual(["room-b"]);
+  });
+
+  test("moves one fragment of a multi-resource event without copying it", () => {
+    const grid = mountResourceColumns([onRooms(meeting, "room-a", "room-b")]);
+    const proposals = setup(grid, { columns: grid.columns });
+    const element = grid.elements.get("a@room-a")!;
+
+    pointer("pointerdown", element, xIn("room-a"), yAt("09:30"));
+    pointer("pointermove", element, xIn("room-a"), yAt("11:30"));
+    expect(ghosts(grid.region)).toHaveLength(2);
+    pointer("pointermove", element, xIn("room-b"), yAt("11:30"));
+    expect(ghosts(grid.region)).toHaveLength(1);
+    pointer("pointerup", element, xIn("room-b"), yAt("11:30"));
+
+    expect(interval(proposals[0])).toBe("timed 2026-08-17T11:00:00Z/2026-08-17T12:00:00Z");
+    expect(resources(proposals[0])).toEqual(["room-b"]);
+  });
+
+  test("creates in the resource the drag starts in and not across resources", () => {
+    const grid = mountResourceColumns([]);
+    const proposals = setup(grid, { columns: grid.columns });
+    const [, roomB] = grid.region.children;
+
+    pointer("pointerdown", roomB!, xIn("room-b"), yAt("13:00"));
+    pointer("pointermove", roomB!, xIn("room-b"), yAt("14:40"));
+    pointer("pointerup", roomB!, xIn("room-b"), yAt("14:40"));
+    pointer("pointerdown", roomB!, xIn("room-b"), yAt("16:00"));
+    pointer("pointermove", roomB!, xIn("room-a"), yAt("17:00"));
+    expect(ghosts(grid.region)).toHaveLength(0);
+    pointer("pointerup", roomB!, xIn("room-a"), yAt("17:00"));
+
+    expect(proposals).toHaveLength(1);
+    expect(interval(proposals[0])).toBe("timed 2026-08-17T13:00:00Z/2026-08-17T14:45:00Z");
+    expect(resources(proposals[0])).toEqual(["room-b"]);
   });
 });

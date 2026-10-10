@@ -12,7 +12,7 @@ import {
   plainDateInterval,
 } from "@moltenship/calendar-temporal";
 
-import { dayCells, timeColumns, type TargetSurface } from "./targets";
+import { dayCells, showsInCell, timeColumns, type TargetSurface } from "./targets";
 
 interface Bounds {
   readonly bottom: number;
@@ -101,6 +101,7 @@ function timeColumnRects(
 ): GhostRect[] {
   const { end, start } = instantEndpoints(placement, timeZone);
   return timeColumns(surface).flatMap((cell) => {
+    if (!showsInCell(placement, cell)) return [];
     const column = surface.columns.get(cell.getAttribute("data-date")!)!;
     const day = column.day.interval;
     if (day === null) return [];
@@ -174,7 +175,7 @@ function dayCellRects(
   const rects: GhostRect[] = [];
 
   for (const cell of cells) {
-    if (!dates.has(cell.getAttribute("data-date")!)) continue;
+    if (!dates.has(cell.getAttribute("data-date")!) || !showsInCell(placement, cell)) continue;
 
     const rect = rectOf(cell);
     const visible = visibleBounds(surface, cell, rectOf);
@@ -207,8 +208,9 @@ function dayCellRects(
 
 /**
  * Viewport boxes that preview a placement where the view will render it: in time columns, or in
- * day cells for all-day and 24-hour-plus events, which a time grid shows in its all-day row.
- * Boxes outside their cell's scroll viewport are left out.
+ * day cells for all-day and 24-hour-plus events, which a time grid shows in its all-day row. In a
+ * resource view only the placement's resources get boxes. Boxes outside their cell's scroll
+ * viewport are left out.
  */
 export function ghostLayout(
   surface: TargetSurface,

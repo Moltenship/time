@@ -6,6 +6,8 @@ export {
   attachCalendarPointer,
   eventIdAttributes,
   eventIdOf,
+  resourceIdAttributes,
+  resourceIdOf,
   useCalendarPointer,
 } from "@moltenship/calendar-dnd";
 export type { CalendarPointerOptions } from "@moltenship/calendar-dnd";
@@ -19,7 +21,9 @@ export {
   useCalendarKeyboard,
   useCalendarSelection,
   useNow,
+  useResourceExpansion,
   useRovingFocus,
+  useVisibleResources,
 } from "@moltenship/calendar-react";
 export type {
   AnyCalendarView,
@@ -40,6 +44,7 @@ export type {
   CalendarPartIds,
   CalendarPartRefs,
   CalendarPublicState,
+  CalendarResourceExpansion,
   CalendarRootProps,
   CalendarRovingFocusOptions,
   CalendarRovingFocusProps,

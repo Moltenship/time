@@ -119,7 +119,9 @@ function samePlacement(left: CalendarEventPlacement, right: CalendarEventPlaceme
   return (
     left.kind === right.kind &&
     left.start.toString() === right.start.toString() &&
-    left.end.toString() === right.end.toString()
+    left.end.toString() === right.end.toString() &&
+    left.resourceIds.length === right.resourceIds.length &&
+    left.resourceIds.every((resourceId) => right.resourceIds.includes(resourceId))
   );
 }
 
@@ -149,6 +151,9 @@ function resolveEvent<TEvent, TEventId extends EventId, TResourceId extends Reso
  *   `data-resize="start"` or `"end"` on resize handles;
  * - `data-date` (an ISO date) on time-grid day columns and on day cells (month cells, or a time
  *   grid's all-day row, which also carries `data-all-day`);
+ * - in a resource view, `data-resource-id` on each cell or an element around it (spread
+ *   `resourceIdAttributes(id)`), so a drop in another resource swaps it in the event's
+ *   `resourceIds` and a create starts in the resource it began in;
  * - `data-event-time` on the element inside an event that shows its time range, which the
  *   preview relabels with the proposed range.
  *

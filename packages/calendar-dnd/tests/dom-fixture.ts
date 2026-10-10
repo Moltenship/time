@@ -6,7 +6,7 @@ import {
 } from "@moltenship/calendar-core";
 import { plainDateInterval } from "@moltenship/calendar-temporal";
 
-import { eventIdAttributes } from "../src/index";
+import { eventIdAttributes, resourceIdAttributes } from "../src/index";
 
 /**
  * jsdom has no layout, hit testing, or PointerEvent. These helpers give fixture elements fixed
@@ -253,6 +253,71 @@ export function mountMonth(events: readonly TestEvent[]) {
   }
 
   return {
+    elements,
+    region,
+    snapshot: createEventSnapshot(
+      events,
+      createCanonicalEventAdapter<null, string | number, string>(),
+    ),
+  };
+}
+
+/** Resource columns: one date, a 100px-wide column per resource with its own all-day cell. */
+export const resourceIds = ["room-a", "room-b"] as const;
+export const resourceDate = gridDates[0];
+
+export function xIn(resourceId: (typeof resourceIds)[number]): number {
+  return resourceIds.indexOf(resourceId) * COLUMN_WIDTH + COLUMN_WIDTH / 2;
+}
+
+export function mountResourceColumns(events: readonly TestEvent[]) {
+  resetLayout();
+  const region = element({});
+  document.body.append(region);
+
+  const columns = new Map<string, HTMLElement>();
+  resourceIds.forEach((resourceId, index) => {
+    const left = index * COLUMN_WIDTH;
+    const wrapper = element(resourceIdAttributes(resourceId));
+    const width = COLUMN_WIDTH;
+    const allDay = element({ "data-all-day": "", "data-date": resourceDate });
+    const column = element({ "data-date": resourceDate });
+    wrapper.append(
+      place(allDay, { height: ALL_DAY_HEIGHT, left, top: 0, width }, 2),
+      place(column, { height: 24 * HOUR_HEIGHT, left, top: ALL_DAY_HEIGHT, width }, 2),
+    );
+    region.append(wrapper);
+    columns.set(resourceId, column);
+  });
+
+  // An event with several resources renders once in each of their columns.
+  const elements = new Map<string, HTMLElement>();
+  for (const event of events) {
+    if (event.kind !== "timed") continue;
+    for (const resourceId of event.resourceIds ?? []) {
+      const column = columns.get(resourceId)!;
+      const top = yAt(event.start.toZonedDateTimeISO(timeZone).toPlainTime().toString());
+      const height = (event.start.until(event.end).total({ unit: "minutes" }) / 60) * HOUR_HEIGHT;
+      const left = column.getBoundingClientRect().left;
+      const node = place(
+        element(eventIdAttributes(event.id)),
+        { height, left, top, width: COLUMN_WIDTH },
+        1,
+      );
+      node.textContent = event.title;
+      column.append(node);
+      elements.set(`${event.id}@${resourceId}`, node);
+    }
+  }
+
+  return {
+    columns: timeGridColumns(
+      plainDateInterval(
+        Temporal.PlainDate.from(resourceDate),
+        Temporal.PlainDate.from(resourceDate).add({ days: 1 }),
+      ),
+      timeZone,
+    ),
     elements,
     region,
     snapshot: createEventSnapshot(
