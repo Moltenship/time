@@ -7,6 +7,8 @@ export { useCalendarInteraction, useCalendarKeyboard } from "./keyboard";
 export type { CalendarKeyboardHandlers, CalendarKeyboardOptions } from "./keyboard";
 export { useRovingFocus } from "./roving-focus";
 export type { CalendarRovingFocusOptions, CalendarRovingFocusProps } from "./roving-focus";
+export { useResourceExpansion, useVisibleResources } from "./resources";
+export type { CalendarResourceExpansion } from "./resources";
 export { useCalendarFocus, useCalendarSelection } from "./selectors";
 export { useNow } from "./use-now";
 export { defineCalendarView } from "./views";

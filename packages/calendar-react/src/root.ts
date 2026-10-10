@@ -2,12 +2,14 @@ import {
   applyEventOverlay,
   createEventSnapshotCache,
   createEventTransactions,
+  createResourceTree,
   readOnlyPolicy,
   resolveViewInstantRange,
   type CalendarEnvironment,
   type CalendarEnvironmentBase,
   type CalendarEventChangeHandler,
   type CalendarPolicy,
+  type CalendarResource,
   type EventAdapter,
   type EventId,
   type EventSnapshot,
@@ -48,6 +50,7 @@ import {
 } from "./equality";
 import { CalendarInteractionContext, type CalendarInteractionRuntime } from "./interaction";
 import { createKeyboardSessionStore } from "./keyboard-store";
+import { CalendarResourcesContext } from "./resources";
 import { useCalendarStateBinding } from "./state-binding";
 import type { CalendarRootStoreBinding } from "./store";
 import { useNowFrom } from "./use-now";
@@ -321,6 +324,13 @@ export function createCalendarRoot<
     // New events confirm resolved changes; this runs before paint, so none shows stale.
     useLayoutEffect(() => transactions.reconcile(eventSnapshot), [eventSnapshot, transactions]);
     const stableResources = useStableValue(resources, sameElements);
+    // Built once per resource list, so expanding and collapsing reuse it. Resource views read
+    // resources as `CalendarResource`s.
+    const resourceTree = useMemo(
+      () => createResourceTree(stableResources as unknown as readonly CalendarResource[]),
+      [stableResources],
+    );
+    const stableExpandedResourceIds = useStableValue(state.expandedResourceIds, sameElements);
 
     const activeDefinition = viewsByName.get(state.view);
     const viewOverrides = viewOptions as ViewOptionsOverrides;
@@ -350,10 +360,11 @@ export function createCalendarRoot<
         options,
         projection: activeDefinition.strategy.project({
           environment: viewEnvironment,
+          expandedResourceIds: stableExpandedResourceIds,
           instantRange,
           options,
           range,
-          resources: stableResources,
+          resources: resourceTree,
           snapshot: visibleSnapshot,
           today,
         }),
@@ -364,7 +375,8 @@ export function createCalendarRoot<
       activeDefinition,
       options,
       range,
-      stableResources,
+      resourceTree,
+      stableExpandedResourceIds,
       today,
       viewEnvironment,
       visibleSnapshot,
@@ -460,7 +472,11 @@ export function createCalendarRoot<
               createElement(
                 contexts.view,
                 { value: activeView },
-                createElement(CalendarInteractionContext, { value: interaction }, children),
+                createElement(
+                  CalendarResourcesContext,
+                  { value: resourceTree },
+                  createElement(CalendarInteractionContext, { value: interaction }, children),
+                ),
               ),
             ),
           ),

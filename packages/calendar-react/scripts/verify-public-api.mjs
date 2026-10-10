@@ -1,8 +1,8 @@
 import { readFile } from "node:fs/promises";
 import { gzipSync } from "node:zlib";
 
-const maximumRuntimeBytes = 50 * 1024;
-const maximumGzipBytes = 13.5 * 1024;
+const maximumRuntimeBytes = 56 * 1024;
+const maximumGzipBytes = 15 * 1024;
 
 const runtime = await readFile(new URL("../dist/index.mjs", import.meta.url), "utf8");
 

@@ -32,7 +32,7 @@ function defineGateView<const TName extends string>(name: TName, defaultOptions:
         gateProjections.increment();
         return {
           eventIds: snapshot.queryTimed(instantRange).map((event) => event.id),
-          resourceCount: resources.length,
+          resourceCount: resources.byId.size,
         };
       },
     },

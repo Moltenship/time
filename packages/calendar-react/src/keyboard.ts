@@ -3,6 +3,7 @@ import {
   keyboardSessionProposal,
   moveKeyboardCursor,
   sameFocus,
+  showsInResource,
   slotDuration,
   startKeyboardSession,
   type CalendarCellFocus,
@@ -159,11 +160,12 @@ function createKeyboardHandlers(
     } as CalendarInteractionUpdate);
   }
 
-  /** Follows the grabbed event, or the cell a create has reached. */
+  /** Follows the grabbed event into the cursor's date and resource, or a create's cell. */
   function focusOfSession(session: CalendarKeyboardSession): CalendarFocus {
-    return session.eventId === null
-      ? session.cursor
-      : { date: session.cursor.date, eventId: session.eventId, kind: "event" };
+    const { cursor, eventId } = session;
+    return eventId === null
+      ? cursor
+      : { date: cursor.date, eventId, kind: "event", resourceId: cursor.resourceId };
   }
 
   /** A slot create starts `createDuration` long: its cursor steps down, as a drag would. */
@@ -257,10 +259,12 @@ function createKeyboardHandlers(
         const { eventId, proposed } = result.change;
         // A policy may have moved the event off the date focus is on.
         if (eventId !== null && proposed !== null && owned()) {
+          const { cursor } = current.session;
           moveFocus({
-            date: dateOn(proposed, current.session.cursor.date),
+            date: dateOn(proposed, cursor.date),
             eventId,
             kind: "event",
+            resourceId: resourceOn(proposed, cursor.resourceId),
           });
         }
         announce(current, { phase: "commit", proposed: proposed! });
@@ -290,6 +294,17 @@ function createKeyboardHandlers(
       Temporal.PlainDate.compare(date, last) <= 0
       ? date
       : first;
+  }
+
+  /** `resourceId` when `placement` shows in it, else its first resource or the unassigned bucket. */
+  function resourceOn(
+    placement: CalendarEventPlacement,
+    resourceId: CalendarFocus["resourceId"],
+  ): CalendarFocus["resourceId"] {
+    if (resourceId === undefined || showsInResource(placement.resourceIds, resourceId)) {
+      return resourceId;
+    }
+    return placement.resourceIds[0] ?? null;
   }
 
   function onGrabbedKey(current: KeyboardGrab, event: KeyboardEvent<HTMLElement>): boolean {

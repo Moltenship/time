@@ -20,13 +20,18 @@ interface RovingItem {
   readonly target: CalendarFocus;
 }
 
-/** Whether `focus` is on an element that shows `target` across `days` dates. */
+/**
+ * Whether `focus` is on an element that shows `target` across `days` dates. A resource on only one
+ * side matches any resource, so focus carries over between views with and without resources.
+ */
 function focusLandsOn(focus: CalendarFocus, target: CalendarFocus, days: number): boolean {
+  const resourceId = target.resourceId === undefined ? undefined : focus.resourceId;
+  if (resourceId !== undefined && resourceId !== target.resourceId) return false;
   if (focus.kind === "event" && target.kind === "event") {
     const offset = target.date.until(focus.date).days;
     return focus.eventId === target.eventId && offset >= 0 && offset < days;
   }
-  return sameFocus(focus, target);
+  return sameFocus({ ...focus, resourceId: target.resourceId }, target);
 }
 
 /** Where focus enters the active view: its default entry (`"home"`) or its last target. */
