@@ -2,6 +2,7 @@ import {
   belongsInTimeGridAllDayRow,
   splitEventsByDay,
   timedFragmentBox,
+  timelineExtent,
   type CalendarEventPlacement,
   type NormalizedCalendarEvent,
   type ResourceId,
@@ -108,7 +109,7 @@ function timeColumnRects(
 ): GhostRect[] {
   const { end, start } = instantEndpoints(placement, timeZone);
   return timeColumns(surface).flatMap((cell) => {
-    if (!showsInCell(placement, cell)) return [];
+    if (isInline(cell) || !showsInCell(placement, cell)) return [];
     const column = surface.columns.get(cell.getAttribute("data-date")!)!;
     const day = column.day.interval;
     if (day === null) return [];
@@ -118,23 +119,46 @@ function timeColumnRects(
 
     const box = timedFragmentBox(column, instantInterval(from, to));
     const rect = rectOf(cell);
-    const visible = visibleBounds(surface, cell, rectOf);
-    if (!isInline(cell)) {
-      return [
-        {
-          height: box.height * rect.height,
-          left: rect.left,
-          top: rect.top + box.top * rect.height,
-          visible,
-          width: rect.width,
-        },
-      ];
-    }
-    // A timeline's date strip runs the day along its inline axis.
-    const width = box.height * rect.width;
-    const offset = box.top * rect.width;
+    return [
+      {
+        height: box.height * rect.height,
+        left: rect.left,
+        top: rect.top + box.top * rect.height,
+        visible: visibleBounds(surface, cell, rectOf),
+        width: rect.width,
+      },
+    ];
+  });
+}
+
+/**
+ * Boxes along a timeline's date strips, measured as the timeline lays out its bars: every kind of
+ * placement, all-day and day-long ones included, with floating ones on their wall clock.
+ */
+function inlineStripRects(
+  surface: TargetSurface,
+  strips: readonly HTMLElement[],
+  placement: CalendarEventPlacement<ResourceId>,
+  rectOf: RectReader,
+): GhostRect[] {
+  return strips.flatMap((cell) => {
+    if (!showsInCell(placement, cell)) return [];
+    const column = surface.columns.get(cell.getAttribute("data-date")!)!;
+    const extent = timelineExtent([column], placement);
+    if (extent === null) return [];
+    const rect = rectOf(cell);
+    const width = (extent.end - extent.start) * rect.width;
+    const offset = extent.start * rect.width;
     const left = isRightToLeft(cell) ? rect.right - offset - width : rect.left + offset;
-    return [{ height: rect.height, left, top: rect.top, visible, width }];
+    return [
+      {
+        height: rect.height,
+        left,
+        top: rect.top,
+        visible: visibleBounds(surface, cell, rectOf),
+        width,
+      },
+    ];
   });
 }
 
@@ -222,10 +246,10 @@ function dayCellRects(
 }
 
 /**
- * Viewport boxes that preview a placement where the view will render it: in time columns, or in
- * day cells for all-day and 24-hour-plus events, which a time grid shows in its all-day row. In a
- * resource view only the placement's resources get boxes. Boxes outside their cell's scroll
- * viewport are left out.
+ * Viewport boxes that preview a placement where the view will render it: along a timeline's date
+ * strips, in time columns, or in day cells for all-day and 24-hour-plus events, which a time grid
+ * shows in its all-day row. In a resource view only the placement's resources get boxes. Boxes
+ * outside their cell's scroll viewport are left out.
  */
 export function ghostLayout(
   surface: TargetSurface,
@@ -241,12 +265,15 @@ export function ghostLayout(
     }
     return rect;
   };
+  const strips = timeColumns(surface).filter(isInline);
   const layout: GhostLayout =
-    placement.kind !== "all-day" &&
-    surface.columns.size > 0 &&
-    !belongsInTimeGridAllDayRow(placement)
-      ? { axis: "time", rects: timeColumnRects(surface, placement, timeZone, rectOf) }
-      : { axis: "day", rects: dayCellRects(surface, placement, timeZone, rectOf) };
+    strips.length > 0
+      ? { axis: "time", rects: inlineStripRects(surface, strips, placement, rectOf) }
+      : placement.kind !== "all-day" &&
+          surface.columns.size > 0 &&
+          !belongsInTimeGridAllDayRow(placement)
+        ? { axis: "time", rects: timeColumnRects(surface, placement, timeZone, rectOf) }
+        : { axis: "day", rects: dayCellRects(surface, placement, timeZone, rectOf) };
   return { ...layout, rects: layout.rects.filter(isVisible) };
 }
 

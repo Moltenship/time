@@ -501,6 +501,16 @@ describe("resource columns", () => {
   });
 });
 
+/** A ghost's position and width in whole pixels; inline offsets are fractions of the strip. */
+function box(ghost: HTMLElement) {
+  const [left, top] = ghost.style.transform.match(/-?[\d.]+(?=px)/g)!.map(Number);
+  return {
+    left: Math.round(left!),
+    top: Math.round(top!),
+    width: Math.round(Number.parseFloat(ghost.style.width)),
+  };
+}
+
 describe("timeline rows", () => {
   const onRooms = (event: TestEvent, ...resourceIds: string[]): TestEvent => ({
     ...event,
@@ -521,8 +531,7 @@ describe("timeline rows", () => {
 
     const [ghost, ...rest] = ghosts(timeline.region);
     expect(rest).toHaveLength(0);
-    expect(ghost!.style.transform).toBe(`translate3d(${xAtTime("11:00")}px, ${ROW_HEIGHT}px, 0)`);
-    expect(ghost!.style.width).toBe(`${HOUR_HEIGHT}px`);
+    expect(box(ghost!)).toEqual({ left: xAtTime("11:00"), top: ROW_HEIGHT, width: HOUR_HEIGHT });
     pointer("pointerup", bar, xAtTime("11:30"), yInRow("room-b"));
 
     expect(interval(proposals[0])).toBe("timed 2026-08-17T11:00:00Z/2026-08-17T12:00:00Z");
@@ -538,7 +547,7 @@ describe("timeline rows", () => {
     pointer("pointermove", bar, xAtTime("13:30", "rtl"), yInRow("room-a"));
     const [ghost] = ghosts(timeline.region);
     // The ghost's inline start is on the right, so its left edge sits at the end time.
-    expect(ghost!.style.transform).toBe(`translate3d(${xAtTime("14:00", "rtl")}px, 0px, 0)`);
+    expect(box(ghost!)).toEqual({ left: xAtTime("14:00", "rtl"), top: 0, width: HOUR_HEIGHT });
     pointer("pointerup", bar, xAtTime("13:30", "rtl"), yInRow("room-a"));
 
     expect(interval(proposals[0])).toBe("timed 2026-08-17T13:00:00Z/2026-08-17T14:00:00Z");

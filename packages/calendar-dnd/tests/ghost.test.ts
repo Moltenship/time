@@ -8,6 +8,7 @@ import {
   projectTimeGrid,
   splitEventsByDay,
   timeGridColumns,
+  timelineExtent,
   type CalendarEnvironmentBase,
   type CalendarEventPlacement,
 } from "@moltenship/calendar-core";
@@ -356,4 +357,73 @@ test("orders rendered dates by date, including years past 9999", () => {
   );
   expect(splitRanges).toEqual(["9999-12-30/+010000-01-02"]);
   expect(rects.map(({ left, width }) => ({ left, width }))).toEqual([{ left: 100, width: 200 }]);
+});
+
+describe("timeline date strips", () => {
+  /** Date strips side by side in one row, 24px per hour, as an hour timeline lays them out. */
+  function mountStrips(days: typeof columns): TargetSurface {
+    resetLayout();
+    const region = document.createElement("div");
+    document.body.append(region);
+    days.forEach(({ date }, index) => {
+      const strip = document.createElement("div");
+      strip.setAttribute("data-axis", "inline");
+      strip.setAttribute("data-date", date.toString());
+      region.append(place(strip, { height: 40, left: index * 576, top: 0, width: 576 }, 2));
+    });
+    return {
+      clippers: new Map(),
+      columns: new Map(days.map((column) => [column.date.toString(), column])),
+      region,
+    };
+  }
+
+  /** Each strip's box in hours along the row, as the timeline projection measures it. */
+  function hoursAlong(surface: TargetSurface, placement: CalendarEventPlacement<string>) {
+    return ghostLayout(surface, placement, timeZone).rects.map(
+      ({ left, width }) => `${Math.round(left / 24)}–${Math.round((left + width) / 24)}`,
+    );
+  }
+
+  test("preview all-day and day-long bars along the strips, as the timeline renders them", () => {
+    const surface = mountStrips(columns);
+
+    expect(
+      hoursAlong(surface, {
+        end: Temporal.PlainDate.from("2026-11-01"),
+        kind: "all-day",
+        resourceIds: [],
+        start: Temporal.PlainDate.from("2026-10-31"),
+      }),
+    ).toEqual(["0–24"]);
+    expect(
+      hoursAlong(
+        surface,
+        timed(
+          "2026-10-31T09:00-04:00[America/New_York]",
+          "2026-11-01T10:00-05:00[America/New_York]",
+        ),
+      ),
+    ).toEqual(["9–24", "24–34"]);
+  });
+
+  test("measure floating bars on their wall clock, through a spring-forward gap", () => {
+    // 2026-03-08 skips 02:00–03:00 in New York; the timeline still draws a one-hour bar there.
+    const march = timeGridColumns(
+      plainDateInterval(
+        Temporal.PlainDate.from("2026-03-08"),
+        Temporal.PlainDate.from("2026-03-09"),
+      ),
+      timeZone,
+    );
+    const placement: CalendarEventPlacement<string> = {
+      end: Temporal.PlainDateTime.from("2026-03-08T03:00"),
+      kind: "floating",
+      resourceIds: [],
+      start: Temporal.PlainDateTime.from("2026-03-08T02:00"),
+    };
+
+    expect(hoursAlong(mountStrips(march), placement)).toEqual(["2–3"]);
+    expect(timelineExtent(march, placement)).toEqual({ end: 3 / 24, start: 2 / 24 });
+  });
 });
