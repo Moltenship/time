@@ -87,7 +87,7 @@ function createKeyboardHandlers(
   { actions, announcements, keyboard, read }: CalendarInteractionRuntime,
   { getView, roving }: CalendarViewRuntime,
   getOptions: () => CalendarKeyboardOptions,
-  resources: ResourceTree | null,
+  getResources: () => ResourceTree | null,
 ): CalendarKeyboardHandlers {
   const getSnap = () => getOptions().snap ?? DEFAULT_SNAP;
   // Keys reach these handlers only while their view is rendered.
@@ -333,8 +333,9 @@ function createKeyboardHandlers(
     const booked = placement.resourceIds;
     if (resourceId === undefined || showsInResource(booked, resourceId)) return resourceId;
     if (booked.length === 0) return null;
-    const visible =
-      resources === null ? [] : visibleResources(resources, read().expandedResourceIds);
+    // The latest resources: a save can finish after the root's resources change.
+    const tree = getResources();
+    const visible = tree === null ? [] : visibleResources(tree, read().expandedResourceIds);
     return booked.find((id) => visible.some((row) => row.id === id));
   }
 
@@ -429,14 +430,20 @@ export function useCalendarKeyboard(
 ): CalendarKeyboardHandlers {
   const interaction = useInteractionRuntime();
   const view = useViewRuntime();
-  const latest = useRef(options);
-  useInsertionEffect(() => {
-    latest.current = options;
-  });
   const resources = useContext(CalendarResourcesContext);
+  const latest = useRef({ options, resources });
+  useInsertionEffect(() => {
+    latest.current = { options, resources };
+  });
   const handlers = useMemo(
-    () => createKeyboardHandlers(interaction, view, () => latest.current, resources),
-    [interaction, resources, view],
+    () =>
+      createKeyboardHandlers(
+        interaction,
+        view,
+        () => latest.current.options,
+        () => latest.current.resources,
+      ),
+    [interaction, view],
   );
   // A view that unmounts mid-gesture leaves nothing grabbed.
   const { keyboard } = interaction;

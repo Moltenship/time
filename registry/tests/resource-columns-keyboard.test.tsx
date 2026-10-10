@@ -262,3 +262,46 @@ test("an event moved out of its last resource keeps focus on a copy scrolled out
     "p100",
   ]);
 });
+
+test("a save that finishes after the resources change keeps focus on a copy that still shows", async () => {
+  let save!: () => void;
+  const onEventChange = () => new Promise<void>((resolve) => (save = resolve));
+  const calendar = (resources: readonly CalendarResource<null>[]) => (
+    <ResourceCalendar.Root
+      defaultAnchorDate={anchorDate}
+      defaultFocus={{ date: anchorDate, eventId: "standup", kind: "event", resourceId: "p3" }}
+      defaultTimeZone="UTC"
+      defaultView="resources"
+      events={[shift("standup", ["p1", "p2", "p3"], "2026-10-08T09:00Z", "2026-10-08T09:30Z")]}
+      locale="en-US"
+      onEventChange={onEventChange}
+      resources={resources}
+      viewOptions={{ resources: { unassigned: "bucket" } }}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <ResourceCalendar.ActiveView />
+    </ResourceCalendar.Root>
+  );
+  const view = await render(calendar(people(3)));
+  cleanup = view.unmount;
+  await tabIn(view.container);
+  await press(" ");
+  // Into Unassigned: the move unbooks p3, so focus follows the event to p1.
+  await press("ArrowRight");
+  await press("Enter");
+
+  // While saving, p1 moves into a collapsed group, so only the p2 copy still shows.
+  await view.rerender(
+    calendar([
+      { data: null, id: "group", title: "Group" },
+      { data: null, id: "p1", parentId: "group", title: "Person 1" },
+      ...people(3).slice(1),
+    ]),
+  );
+  await act(async () => save());
+
+  expect([document.activeElement?.getAttribute("data-event-id"), focusedResource()]).toEqual([
+    "standup",
+    "p2",
+  ]);
+});
