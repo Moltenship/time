@@ -2,21 +2,27 @@
  * PROTOTYPE for #119 (timeline annotations). Not for merge.
  *
  * Annotations are read-only, time-based marks beside events: listening sessions, sleep, workouts,
- * focus sessions. They never enter the event overlap layout. In the proposal, the types and
- * `annotationMarks` live in calendar-core (a separate snapshot, interval index and projection);
- * here they sit next to the time grid so the demo can try the visual variants.
+ * focus sessions. They never enter the event overlap layout. By default they draw in a rail at the
+ * start of each day column, as capsules with the source's icon inside the top (Amie's look); a
+ * `renderMark` and the rail options replace any part of that. In the proposal, the types,
+ * `annotationMarks` and `layoutAnnotationMarks` live in calendar-core (a separate snapshot,
+ * interval index and projection); here they sit next to the time grid so the demo can try them.
  */
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import { instantInterval, timedFragmentBox, type TimeGridColumn } from "@moltenship/calendar";
-import { useMemo, useState, type ComponentType, type CSSProperties, type ReactNode } from "react";
+import {
+  useMemo,
+  useState,
+  type ComponentType,
+  type CSSProperties,
+  type ReactElement,
+} from "react";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { PopoverContent } from "@registry/ui/popover";
 import { TooltipContent } from "@registry/ui/tooltip";
 import { cn } from "cn";
-
-export type TimeGridAnnotationVariant = "edge" | "rail" | "band" | "lanes";
 
 export interface TimeGridAnnotation {
   readonly id: string;
@@ -36,14 +42,31 @@ export interface TimeGridAnnotationSource {
   readonly Icon: ComponentType<{ readonly className?: string }>;
   /** Items closer than this merge into one mark, such as tracks into a listening session. */
   readonly mergeGapMinutes?: number;
+  /** Extra classes for this source's marks, such as a texture for sleep. */
+  readonly markClassName?: string;
+}
+
+export interface TimeGridAnnotationRail {
+  /** The column edge the rail sits on. */
+  readonly side?: "start" | "end";
+  /** Rail width in px: 18 in a multi-day grid and 30 in a single day by default. */
+  readonly width?: number;
+  /** Mark width in px: 12 and 20 by default. A mark shorter than it is wide draws as a circle. */
+  readonly markWidth?: number;
+  /** `pack` shares the rail between overlapping marks; `per-source` gives each source a lane. */
+  readonly layout?: "pack" | "per-source";
 }
 
 export interface TimeGridAnnotationOptions {
   readonly items: readonly TimeGridAnnotation[];
   readonly sources: readonly TimeGridAnnotationSource[];
-  readonly variant: TimeGridAnnotationVariant;
   /** Marks open a details popover on click; without it they are hover-only. */
   readonly clickable?: boolean;
+  /** `rail` reserves a strip beside events; `overlay` draws full width behind them. */
+  readonly placement?: "rail" | "overlay";
+  readonly rail?: TimeGridAnnotationRail;
+  /** Replaces the default capsule. Spread `props` on the element: they place it and wire hover. */
+  readonly renderMark?: TimeGridAnnotationRenderer;
 }
 
 /** Items of one source merged into one mark, clipped to a column. */
@@ -61,30 +84,59 @@ export interface TimeGridAnnotationMark {
   readonly end: Temporal.Instant;
 }
 
+/** A mark placed in the rail, independent of the column's event lanes. */
+export interface TimeGridAnnotationMarkLayout extends TimeGridAnnotationMark {
+  /** `dot` when the mark is shorter than it is wide, so it draws as a circle. */
+  readonly kind: "bar" | "dot";
+  readonly lane: number;
+  readonly lanes: number;
+  /** Width in px within its lane; 0 when drawn as an overlay. */
+  readonly width: number;
+}
+
+export interface TimeGridAnnotationMarkProps {
+  readonly className: string;
+  readonly style: CSSProperties;
+  readonly "data-color": CalendarEventColor;
+  readonly "data-continues"?: "start" | "end" | "both";
+  readonly "data-kind": "bar" | "dot";
+  readonly "data-slot": "time-grid-annotation";
+  readonly "data-source": string;
+}
+
+export type TimeGridAnnotationRenderer = (
+  mark: TimeGridAnnotationMarkLayout,
+  props: TimeGridAnnotationMarkProps,
+) => ReactElement;
+
 const MINUTE = 60_000_000_000n;
 /** Gaps shorter than about 3px at the default hour height always merge (compaction). */
 const MIN_GAP_MINUTES = 4;
-/** Below this, a rail shows a badge at the start instead of a bar. */
-const RAIL_BAR_MINUTES = 22;
-const RAIL_WIDTH = 18;
-const BADGE = 14;
+/** The registry's default `--calendar-hour-height` (3rem); the real projection gets view geometry. */
+const HOUR_PX = 48;
+const COLUMN_PX = 24 * HOUR_PX;
+const MAX_LANES = 3;
 
 const later = (left: Temporal.Instant, right: Temporal.Instant) =>
   Temporal.Instant.compare(left, right) >= 0 ? left : right;
 const earlier = (left: Temporal.Instant, right: Temporal.Instant) =>
   Temporal.Instant.compare(left, right) <= 0 ? left : right;
+const larger = (left: bigint, right: bigint) => (left > right ? left : right);
 
 /**
- * Sessionizes each source and clips the result to one column. A linear scan stands in for the
- * annotation snapshot's interval index.
+ * Sessionizes each source and clips the result to one column. Items also merge when their marks
+ * would touch: a mark is at least `markMinutes` tall, the time its circle covers. A linear scan
+ * stands in for the annotation snapshot's interval index.
  */
 export function annotationMarks(
   column: TimeGridColumn,
   { items, sources }: Pick<TimeGridAnnotationOptions, "items" | "sources">,
+  { markMinutes = 0 }: { readonly markMinutes?: number } = {},
 ): readonly TimeGridAnnotationMark[] {
   const day = column.day.interval;
   if (day === null) return [];
   const marks: TimeGridAnnotationMark[] = [];
+  const markLength = BigInt(Math.round(markMinutes * 60)) * 1_000_000_000n;
 
   for (const source of sources) {
     const gap = BigInt(Math.max(source.mergeGapMinutes ?? 0, MIN_GAP_MINUTES)) * MINUTE;
@@ -103,7 +155,12 @@ export function annotationMarks(
     }[] = [];
     for (const item of visible) {
       const last = groups.at(-1);
-      if (last !== undefined && item.start.epochNanoseconds - last.end.epochNanoseconds <= gap) {
+      if (
+        last !== undefined &&
+        item.start.epochNanoseconds -
+          larger(last.end.epochNanoseconds, last.start.epochNanoseconds + markLength) <=
+          gap
+      ) {
         last.items.push(item);
         last.end = later(last.end, item.end);
       } else {
@@ -132,39 +189,153 @@ export function annotationMarks(
   return marks;
 }
 
-/** Packs overlapping marks into at most `max` sub-lanes of the gutter, never into event lanes. */
-function gutterLanes(marks: readonly TimeGridAnnotationMark[], max: number) {
-  const ends: number[] = [];
-  const lanes = new Map<string, number>();
-  for (const mark of marks.toSorted((left, right) => left.top - right.top)) {
-    let lane = ends.findIndex((end) => end <= mark.top);
-    if (lane === -1) {
-      lane = ends.length;
-      ends.push(mark.top + mark.height);
-    } else {
-      ends[lane] = mark.top + mark.height;
-    }
-    lanes.set(mark.key, Math.min(lane, max - 1));
-  }
-  return { count: Math.min(ends.length, max), lanes };
+type ResolvedRail = Required<TimeGridAnnotationRail>;
+
+function resolveRail(options: TimeGridAnnotationOptions, dense: boolean): ResolvedRail {
+  return {
+    layout: options.rail?.layout ?? "pack",
+    markWidth: options.rail?.markWidth ?? (dense ? 12 : 20),
+    side: options.rail?.side ?? "start",
+    width: options.rail?.width ?? (dense ? 18 : 30),
+  };
 }
 
-/** Where the events sit inside a column, so annotations get their own strip. */
-export function annotationEventInset(
-  options: TimeGridAnnotationOptions | undefined,
-): CSSProperties | undefined {
-  switch (options?.variant) {
-    case undefined:
-    case "band":
-      return undefined;
-    case "edge":
-      return { insetInlineStart: 10 };
-    case "rail":
-      return { insetInlineStart: RAIL_WIDTH };
-    case "lanes":
-      return { insetInlineEnd: 8 + options.sources.length * 3 };
+/**
+ * Places marks in the rail: overlapping marks, counting a circle's full size, share it in up to
+ * three lanes per collision group. Event lanes are never involved.
+ */
+export function layoutAnnotationMarks(
+  marks: readonly TimeGridAnnotationMark[],
+  sources: readonly TimeGridAnnotationSource[],
+  rail: ResolvedRail,
+): readonly TimeGridAnnotationMarkLayout[] {
+  const markFraction = rail.markWidth / COLUMN_PX;
+  const drawnEnd = (mark: TimeGridAnnotationMark) => mark.top + Math.max(mark.height, markFraction);
+  const lanes = new Map<string, { lane: number; lanes: number }>();
+
+  if (rail.layout === "per-source") {
+    for (const mark of marks) {
+      const lane = sources.findIndex((source) => source.id === mark.source.id);
+      lanes.set(mark.key, { lane, lanes: sources.length });
+    }
+  } else {
+    let group: TimeGridAnnotationMark[] = [];
+    let groupEnd = -1;
+    const flush = () => {
+      const ends: number[] = [];
+      const assigned = group.map((mark) => {
+        let lane = ends.findIndex((end) => end <= mark.top);
+        if (lane === -1) {
+          lane = ends.length;
+          ends.push(drawnEnd(mark));
+        } else {
+          ends[lane] = drawnEnd(mark);
+        }
+        return [mark.key, Math.min(lane, MAX_LANES - 1)] as const;
+      });
+      for (const [key, lane] of assigned) {
+        lanes.set(key, { lane, lanes: Math.min(ends.length, MAX_LANES) });
+      }
+      group = [];
+      groupEnd = -1;
+    };
+    for (const mark of marks.toSorted((left, right) => left.top - right.top)) {
+      if (group.length > 0 && mark.top >= groupEnd) flush();
+      group.push(mark);
+      groupEnd = Math.max(groupEnd, drawnEnd(mark));
+    }
+    flush();
   }
+
+  return marks.map((mark) => {
+    const placed = lanes.get(mark.key)!;
+    const laneWidth = (rail.width - 4) / placed.lanes;
+    const width = Math.max(
+      2,
+      Math.min(rail.markWidth, Math.floor(laneWidth) - (placed.lanes > 1 ? 1 : 0)),
+    );
+    return {
+      ...mark,
+      kind: mark.height * COLUMN_PX < width ? "dot" : "bar",
+      lane: placed.lane,
+      lanes: placed.lanes,
+      width,
+    };
+  });
 }
+
+const percent = (fraction: number) => `${fraction * 100}%`;
+
+function markProps(
+  mark: TimeGridAnnotationMarkLayout,
+  rail: ResolvedRail,
+  overlay: boolean,
+  clickable: boolean,
+): TimeGridAnnotationMarkProps {
+  const shared = {
+    className: cn("pointer-events-auto absolute", clickable && "cursor-pointer"),
+    "data-color": mark.source.color,
+    "data-continues": mark.startsBeforeDay
+      ? mark.endsAfterDay
+        ? ("both" as const)
+        : ("start" as const)
+      : mark.endsAfterDay
+        ? ("end" as const)
+        : undefined,
+    "data-kind": mark.kind,
+    "data-slot": "time-grid-annotation" as const,
+    "data-source": mark.source.id,
+  };
+  if (overlay) {
+    return {
+      ...shared,
+      style: { height: percent(mark.height), insetInline: 0, top: percent(mark.top) },
+    };
+  }
+  const laneWidth = (rail.width - 4) / mark.lanes;
+  const offset = 2 + mark.lane * laneWidth + (laneWidth - mark.width) / 2;
+  return {
+    ...shared,
+    style: {
+      // A mark is never shorter than it is wide, so a short one is a circle.
+      height: `max(${mark.width}px, calc(${percent(mark.height)} - 1px))`,
+      [rail.side === "start" ? "insetInlineStart" : "insetInlineEnd"]: offset,
+      top: percent(mark.top),
+      width: mark.width,
+    },
+  };
+}
+
+/**
+ * The default mark: a capsule in the source's colour with its icon inside the top, or a circle with
+ * the icon when short. A part cut off by the day boundary fades out and drops the icon.
+ */
+export const renderRailMark: TimeGridAnnotationRenderer = (mark, props) => {
+  const { Icon } = mark.source;
+  return (
+    <div
+      {...props}
+      className={cn(
+        props.className,
+        "rounded-full bg-calendar-event-border shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] transition-[filter] duration-100 hover:brightness-110 motion-reduce:transition-none dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.16)]",
+        mark.startsBeforeDay &&
+          "rounded-t-none mask-[linear-gradient(to_bottom,transparent,black_1.5rem)]",
+        mark.endsAfterDay &&
+          "rounded-b-none mask-[linear-gradient(to_top,transparent,black_1.5rem)]",
+        mark.source.markClassName,
+      )}
+    >
+      {!mark.startsBeforeDay && mark.width >= 10 && (
+        <span
+          data-slot="time-grid-annotation-icon"
+          className="absolute inset-x-px top-px flex aspect-square items-center justify-center rounded-full bg-white/35 text-black/70"
+        >
+          <Icon className="size-[62%]" />
+        </span>
+      )}
+    </div>
+  );
+};
 
 export function useAnnotationHandles() {
   const [handles] = useState(() => ({
@@ -176,31 +347,18 @@ export function useAnnotationHandles() {
 
 export type TimeGridAnnotationHandles = ReturnType<typeof useAnnotationHandles>;
 
-const percent = (fraction: number) => `${fraction * 100}%`;
-
+/** Wires a rendered mark to the grid's one tooltip and, when clickable, its one popover. */
 function Mark({
-  className,
   clickable,
+  element,
   handles,
   mark,
-  style,
-  children,
 }: {
-  readonly className: string;
   readonly clickable: boolean;
+  readonly element: ReactElement;
   readonly handles: TimeGridAnnotationHandles;
-  readonly mark: TimeGridAnnotationMark;
-  readonly style: CSSProperties;
-  readonly children?: ReactNode;
+  readonly mark: TimeGridAnnotationMarkLayout;
 }) {
-  const base = (
-    <div
-      data-slot="time-grid-annotation"
-      data-color={mark.source.color}
-      className={cn("pointer-events-auto absolute", clickable && "cursor-pointer", className)}
-      style={style}
-    />
-  );
   const tooltip = (
     <TooltipPrimitive.Trigger
       delay={0}
@@ -208,10 +366,8 @@ function Mark({
       payload={mark}
       // The layer is aria-hidden; the day summary speaks for it. Keep marks out of the tab order.
       tabIndex={-1}
-      render={base}
-    >
-      {children}
-    </TooltipPrimitive.Trigger>
+      render={element}
+    />
   );
   return clickable ? (
     <PopoverPrimitive.Trigger
@@ -226,153 +382,16 @@ function Mark({
   );
 }
 
-function EdgeMarks({ marks, ...shared }: LayerProps) {
-  const { count, lanes } = gutterLanes(marks, 2);
-  return marks.map((mark) => {
-    const lane = lanes.get(mark.key) ?? 0;
-    return (
-      <Mark
-        key={mark.key}
-        mark={mark}
-        {...shared}
-        className={cn(
-          "rounded-full bg-calendar-event-border transition-transform duration-100 hover:scale-x-150 motion-reduce:transition-none motion-reduce:hover:scale-x-100",
-          mark.startsBeforeDay && "rounded-t-none",
-          mark.endsAfterDay && "rounded-b-none",
-        )}
-        style={{
-          height: `max(3px, calc(${percent(mark.height)} - 1px))`,
-          insetInlineStart: count > 1 ? 2 + lane * 4 : 3,
-          top: percent(mark.top),
-          width: count > 1 ? 3 : 4,
-        }}
-      />
-    );
-  });
-}
-
-function RailMarks({ marks, ...shared }: LayerProps) {
-  const bars = marks.filter((mark) => mark.minutes >= RAIL_BAR_MINUTES);
-  const { count, lanes } = gutterLanes(bars, 3);
-  const width = count === 1 ? 6 : count === 2 ? 5 : 4;
-  const total = count * width + (count - 1) * 2;
-  // Badges that would overlap cluster into one, led by the earliest.
-  const badges: TimeGridAnnotationMark[][] = [];
-  for (const mark of marks
-    .filter((mark) => mark.minutes < RAIL_BAR_MINUTES)
-    .toSorted((left, right) => left.top - right.top)) {
-    const last = badges.at(-1);
-    if (last !== undefined && (mark.top - last[0]!.top) * 24 * 48 < BADGE + 2) last.push(mark);
-    else badges.push([mark]);
-  }
-
-  return (
-    <>
-      <div
-        aria-hidden
-        className="absolute inset-y-0 start-0 bg-muted/50 dark:bg-muted/30"
-        style={{ width: RAIL_WIDTH }}
-      />
-      {bars.map((mark) => (
-        <Mark
-          key={mark.key}
-          mark={mark}
-          {...shared}
-          className={cn(
-            "rounded-full bg-calendar-event-border hover:ring-2 hover:ring-calendar-event-border hover:ring-offset-2 hover:ring-offset-background",
-            mark.startsBeforeDay &&
-              "rounded-t-none mask-[linear-gradient(to_bottom,transparent,black_1.75rem)]",
-            mark.endsAfterDay &&
-              "rounded-b-none mask-[linear-gradient(to_top,transparent,black_1.75rem)]",
-          )}
-          style={{
-            height: `calc(${percent(mark.height)} - 1px)`,
-            insetInlineStart: (RAIL_WIDTH - total) / 2 + (lanes.get(mark.key) ?? 0) * (width + 2),
-            top: percent(mark.top),
-            width,
-          }}
-        />
-      ))}
-      {badges.map((cluster) => {
-        const lead = cluster[0]!;
-        const { Icon } = lead.source;
-        return (
-          <Mark
-            key={lead.key}
-            mark={
-              cluster.length === 1
-                ? lead
-                : { ...lead, items: cluster.flatMap((mark) => mark.items) }
-            }
-            {...shared}
-            className="flex items-center justify-center rounded-full bg-background text-calendar-event-border ring-[1.5px] ring-calendar-event-border ring-inset transition-transform duration-100 hover:scale-110 motion-reduce:transition-none motion-reduce:hover:scale-100"
-            style={{
-              height: BADGE,
-              insetInlineStart: (RAIL_WIDTH - BADGE) / 2,
-              top: `calc(${percent(lead.top)} - 4px)`,
-              width: BADGE,
-            }}
-          >
-            <Icon className="size-2.5" />
-            {cluster.length > 1 && (
-              <span className="absolute -end-1.5 -top-1.5 flex h-3 min-w-3 items-center justify-center rounded-full bg-foreground px-0.5 text-[0.5rem] leading-none font-semibold text-background tabular-nums">
-                {cluster.length}
-              </span>
-            )}
-          </Mark>
-        );
-      })}
-    </>
-  );
-}
-
-function BandMarks({ marks, ...shared }: LayerProps) {
-  return marks.map((mark) => {
-    const { Icon } = mark.source;
-    return (
-      <Mark
-        key={mark.key}
-        mark={mark}
-        {...shared}
-        className="border-s-2 border-calendar-event-border bg-calendar-event-border/12 hover:bg-calendar-event-border/24"
-        style={{ height: percent(mark.height), insetInline: 0, top: percent(mark.top) }}
-      >
-        {mark.minutes >= 30 && mark.source.mergeGapMinutes === undefined && (
-          <span className="absolute start-1 top-0.5 flex max-w-[calc(100%-0.5rem)] items-center gap-1 truncate text-[0.625rem] font-semibold text-calendar-event-foreground">
-            <Icon className="size-2.5 shrink-0" />
-            {mark.items[0]!.title}
-          </span>
-        )}
-      </Mark>
-    );
-  });
-}
-
-function LaneMarks({
-  marks,
-  sources,
-  ...shared
-}: LayerProps & { readonly sources: readonly TimeGridAnnotationSource[] }) {
-  return marks.map((mark) => (
-    <Mark
-      key={mark.key}
-      mark={mark}
-      {...shared}
-      className="rounded-[1px] bg-calendar-event-border transition-transform duration-100 hover:scale-x-[1.8] motion-reduce:transition-none motion-reduce:hover:scale-x-100"
-      style={{
-        height: `max(2px, calc(${percent(mark.height)} - 1px))`,
-        insetInlineEnd: 2 + sources.findIndex((source) => source.id === mark.source.id) * 3,
-        top: percent(mark.top),
-        width: 2,
-      }}
-    />
-  ));
-}
-
-interface LayerProps {
-  readonly clickable: boolean;
-  readonly handles: TimeGridAnnotationHandles;
-  readonly marks: readonly TimeGridAnnotationMark[];
+/** Where the events sit inside a column, so a rail gets its own strip. */
+export function annotationEventInset(
+  options: TimeGridAnnotationOptions | undefined,
+  dense: boolean,
+): CSSProperties | undefined {
+  if (options === undefined || options.placement === "overlay") return undefined;
+  const rail = resolveRail(options, dense);
+  return rail.side === "start"
+    ? { insetInlineStart: rail.width }
+    : { insetInlineEnd: Math.max(8, rail.width + 2) };
 }
 
 function spokenMinutes(minutes: number): string {
@@ -410,25 +429,37 @@ export function annotationSummary(
 
 export interface TimeGridAnnotationLayerProps {
   readonly column: TimeGridColumn;
+  /** Whether the grid shows several days, which narrows the default rail. */
+  readonly dense: boolean;
   readonly formatTime: (instant: Temporal.Instant) => string;
   readonly handles: TimeGridAnnotationHandles;
   readonly options: TimeGridAnnotationOptions;
 }
 
-/** One column's marks, behind events for the band variant and beside them otherwise. */
+/** One column's marks: in the rail beside events, or behind them as an overlay. */
 export function TimeGridAnnotationLayer({
   column,
+  dense,
   formatTime,
   handles,
   options,
 }: TimeGridAnnotationLayerProps) {
-  const { items, sources, variant } = options;
+  const { items, placement = "rail", sources } = options;
+  const overlay = placement === "overlay";
+  const rail = resolveRail(options, dense);
+  const markMinutes = overlay ? 0 : (rail.markWidth / HOUR_PX) * 60;
   const marks = useMemo(
-    () => annotationMarks(column, { items, sources }),
-    [column, items, sources],
+    () => annotationMarks(column, { items, sources }, { markMinutes }),
+    [column, items, markMinutes, sources],
+  );
+  const { layout, markWidth, side, width } = rail;
+  const layouts = useMemo(
+    () => layoutAnnotationMarks(marks, sources, { layout, markWidth, side, width }),
+    [layout, markWidth, marks, side, sources, width],
   );
   const summary = useMemo(() => annotationSummary(marks, formatTime), [marks, formatTime]);
-  const shared = { clickable: options.clickable === true, handles, marks };
+  const render = options.renderMark ?? renderRailMark;
+  const clickable = options.clickable === true;
 
   return (
     <>
@@ -436,13 +467,18 @@ export function TimeGridAnnotationLayer({
       <div
         aria-hidden
         data-slot="time-grid-annotations"
-        data-variant={variant}
-        className={cn("pointer-events-none absolute inset-0", variant === "band" ? "z-0" : "z-[5]")}
+        data-placement={placement}
+        className={cn("pointer-events-none absolute inset-0", overlay ? "z-0" : "z-[5]")}
       >
-        {variant === "edge" && <EdgeMarks {...shared} />}
-        {variant === "rail" && <RailMarks {...shared} />}
-        {variant === "band" && <BandMarks {...shared} />}
-        {variant === "lanes" && <LaneMarks {...shared} sources={sources} />}
+        {layouts.map((mark) => (
+          <Mark
+            key={mark.key}
+            clickable={clickable}
+            element={render(mark, markProps(mark, rail, overlay, clickable))}
+            handles={handles}
+            mark={mark}
+          />
+        ))}
       </div>
     </>
   );

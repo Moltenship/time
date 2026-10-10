@@ -565,99 +565,62 @@
         filter: saturate(1.2);
       }
 
-      /* B: annotation rail with level of detail: bars when tall enough, icon badges when short */
-      .b-rail {
-        position: absolute;
-        inset-block: 0;
-        inset-inline-start: 0;
-        width: var(--rail);
-        background: color-mix(in oklch, var(--muted) 55%, transparent);
-        pointer-events: none;
-      }
-      .cal.dark .b-rail {
-        background: color-mix(in oklch, var(--muted) 30%, transparent);
-      }
-      .b-bar {
+      /* B: Amie's rail: a capsule per annotation with the icon inside its top, a circle when short */
+      .b-mark {
         border-radius: 999px;
-        background: linear-gradient(
-          to bottom,
-          color-mix(in oklch, var(--calendar-annotation) 85%, white),
-          var(--calendar-annotation)
-        );
-        transition: box-shadow 0.12s;
+        background: var(--calendar-annotation);
+        box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.14);
+        transition: filter 0.12s;
       }
-      .b-bar[data-src="sleep"] {
-        background:
-          radial-gradient(circle at 30% 18%, oklch(1 0 0 / 0.9) 0 0.6px, transparent 1px) 0 0 / 6px
-            11px,
-          radial-gradient(circle at 70% 60%, oklch(1 0 0 / 0.7) 0 0.5px, transparent 1px) 0 0 / 7px
-            13px,
-          linear-gradient(to bottom, oklch(0.55 0.17 285), oklch(0.72 0.13 275));
+      .cal.dark .b-mark {
+        box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16);
       }
-      .b-bar[data-sb] {
-        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 28px);
-        mask-image: linear-gradient(to bottom, transparent, #000 28px);
+      .b-mark:hover,
+      .b-mark[data-active] {
+        filter: brightness(1.1);
+      }
+      .b-mark[data-sb] {
+        -webkit-mask-image: linear-gradient(to bottom, transparent, #000 24px);
+        mask-image: linear-gradient(to bottom, transparent, #000 24px);
         border-start-start-radius: 0;
         border-start-end-radius: 0;
       }
-      .b-bar[data-ea] {
-        -webkit-mask-image: linear-gradient(to top, transparent, #000 28px);
-        mask-image: linear-gradient(to top, transparent, #000 28px);
+      .b-mark[data-ea] {
+        -webkit-mask-image: linear-gradient(to top, transparent, #000 24px);
+        mask-image: linear-gradient(to top, transparent, #000 24px);
         border-end-start-radius: 0;
         border-end-end-radius: 0;
       }
-      .b-bar:hover,
-      .b-bar[data-active] {
-        box-shadow:
-          0 0 0 2px var(--background),
-          0 0 0 3.5px var(--calendar-annotation);
-      }
-      .b-badge {
+      .b-icon {
+        position: absolute;
+        inset-inline: 1px;
+        top: 1px;
+        aspect-ratio: 1;
+        border-radius: 999px;
         display: flex;
         align-items: center;
         justify-content: center;
-        border-radius: 999px;
-        background: var(--background);
-        color: var(--calendar-annotation);
-        box-shadow: inset 0 0 0 1.5px var(--calendar-annotation);
-        transition: transform 0.12s ease-out;
+        background: rgb(255 255 255 / 0.35);
+        color: rgb(0 0 0 / 0.7);
       }
-      .b-badge svg {
+      .b-icon svg {
         width: 62%;
         height: 62%;
       }
-      .b-badge.solid {
-        background: var(--calendar-annotation);
-        color: var(--background);
-        box-shadow: none;
+      .b-mark[data-src="sleep"] {
+        background:
+          radial-gradient(circle at 20% 30%, oklch(1 0 0 / 0.9) 0 0.7px, transparent 1.2px) 0 0 /
+            9px 23px,
+          radial-gradient(circle at 75% 60%, oklch(1 0 0 / 0.65) 0 0.5px, transparent 1px) 3px 7px /
+            11px 31px,
+          radial-gradient(circle at 50% 50%, oklch(1 0 0 / 0.5) 0 0.4px, transparent 0.9px) 1px
+            13px / 7px 19px,
+          linear-gradient(to bottom, oklch(0.5 0.19 282), oklch(0.7 0.14 275));
       }
-      .b-badge:hover,
-      .b-badge[data-active] {
-        transform: scale(1.15);
+      .b-mark[data-src="sleep"] .b-icon {
+        background: none;
+        color: white;
       }
-      .b-badge .count {
-        position: absolute;
-        top: -5px;
-        inset-inline-end: -6px;
-        min-width: 12px;
-        height: 12px;
-        padding: 0 2px;
-        box-sizing: border-box;
-        border-radius: 999px;
-        background: var(--foreground);
-        color: var(--background);
-        font:
-          600 8px/12px ui-sans-serif,
-          system-ui,
-          sans-serif;
-        text-align: center;
-      }
-      .b-cap {
-        position: absolute;
-        inset-inline-start: 50%;
-        translate: -50% 0;
-      }
-
       /* C: translucent background bands behind events */
       .c-band {
         inset-inline: 0;
@@ -1317,9 +1280,18 @@
             .filter((f) => f.source === source)
             .sort((a, b) => a.start - b.start);
           const gap = state.mode === "raw" ? -1 : Math.max(SOURCES[source].mergeGap, 3 / ppm);
+          // In the rail a mark is at least as tall as it is wide, so touching circles merge too.
+          const markMin =
+            state.variant === "B" && state.mode !== "raw"
+              ? (state.view === "day" ? 20 : 12) / ppm
+              : 0;
           for (const f of frags) {
             const last = out.at(-1);
-            if (last && last.source === source && f.start - last.end <= gap) {
+            if (
+              last &&
+              last.source === source &&
+              f.start - Math.max(last.end, last.start + markMin) <= gap
+            ) {
               last.end = Math.max(last.end, f.end);
               last.items.push(f.item);
               last.endsAfter ||= f.endsAfter;
@@ -1387,7 +1359,7 @@
       const VARIANTS = {
         A: {
           name: "Edge bars",
-          note: "<b>A · Edge bars.</b> Amie's desktop look: thin capsules in a fixed gutter at the inline start of each day column. Events are inset by the gutter once, for every column, so nothing reflows when data arrives.",
+          note: "<b>A · Edge bars</b> (custom renderer). Amie's desktop look: thin capsules in a fixed gutter at the inline start of each day column. Events are inset by the gutter once, for every column, so nothing reflows when data arrives.",
           pros: [
             "Closest to the issue and the Amie reference",
             "Lowest visual weight; reads like a margin note",
@@ -1423,60 +1395,67 @@
           },
         },
         B: {
-          name: "Rail",
-          note: "<b>B · Annotation rail.</b> Amie's mobile look: a dedicated narrow rail per column. Long annotations draw as bars, short ones turn into icon badges at their start time, and badges that collide cluster with a count. A cut-off start or end fades out.",
+          name: "Rail (Amie)",
+          note: "<b>B · Annotation rail</b> (chosen). Amie's look: each annotation is a capsule in a narrow rail at the start of the column, with the source's icon inside its top; a short one is a circle with the icon. Same-source items whose circles would touch merge into one capsule. Overlapping sources share the rail in narrower lanes, and a part cut off by the day boundary fades out. A, C and D are the same API with a custom <code>renderMark</code>.",
           pros: [
-            "Level of detail scales from day to week and zoom",
-            "Icons identify the source without a legend",
-            "Many sources coexist (sub-lanes, clusters)",
+            "Icon inside the mark names the source without a legend",
+            "Scales from day to week and with zoom (bar, circle, merge)",
+            "Fixed gutter: event lanes never change",
           ],
           cons: [
-            "Costs a fixed 18px per week column (34px in day)",
-            "Badges show a point, not a duration",
-            "Needs a merge/LOD step in core (cheap, pure)",
+            "Costs 18px per week column (30px in a day)",
+            "3+ overlapping sources get narrow lanes without icons",
+            "Needs the merge and lane step in core (pure, cheap)",
           ],
-          evStart: (single) => (single ? 38 : 18),
+          evStart: (single) => (single ? 30 : 18),
           render(anns, single) {
             const ppm = state.zoom / 60;
-            const rail = single ? 34 : 18,
-              badge = single ? 22 : 14,
-              barW = single ? 12 : 6;
-            const bars = [],
-              badges = [];
-            for (const a of anns) ((a.end - a.start) * ppm >= badge + 4 ? bars : badges).push(a);
-            const lanes = assignLanes(bars, 3);
-            const w = lanes === 1 ? barW : lanes === 2 ? barW - 1 : barW - 2;
-            const total = lanes * w + (lanes - 1) * 2;
-            let html = `<div class="b-rail" style="--rail:${rail}px"></div><div class="ann-layer">`;
-            for (const a of bars) {
-              const x = (rail - total) / 2 + a.lane * (w + 2);
-              html += `<div ${annAttrs(a, "b-bar", `top:${pct(a.start)};height:calc(${pct(a.end - a.start)} - 1px);inset-inline-start:${x}px;width:${w}px`)}></div>`;
-              if (single && (a.end - a.start) * ppm > 40 && !a.startsBefore) {
-                html += `<div ${annAttrs(a, "b-badge solid", `position:absolute;top:calc(${pct(a.start)} + 3px);inset-inline-start:${(rail - badge) / 2}px;width:${badge}px;height:${badge}px`)}>${svg(SOURCES[a.source].icon)}</div>`;
+            const rail = single ? 30 : 18,
+              markW = single ? 20 : 12;
+            const markMin = markW / ppm;
+            const drawnEnd = (a) => Math.max(a.end, a.start + markMin);
+            const groups = [];
+            let group = [],
+              groupEnd = -1;
+            for (const a of [...anns].sort((x, y) => x.start - y.start)) {
+              if (group.length && a.start >= groupEnd) {
+                groups.push(group);
+                group = [];
+                groupEnd = -1;
               }
+              group.push(a);
+              groupEnd = Math.max(groupEnd, drawnEnd(a));
             }
-            // Cluster badges whose discs would overlap.
-            const sorted = badges.sort((a, b) => a.start - b.start);
-            const clusters = [];
-            for (const a of sorted) {
-              const last = clusters.at(-1);
-              if (last && (a.start - last.start) * ppm < badge + 2) last.members.push(a);
-              else clusters.push({ start: a.start, members: [a] });
-            }
-            for (const c of clusters) {
-              const lead = c.members[0];
-              const a =
-                c.members.length === 1
-                  ? lead
-                  : { ...lead, id: `${lead.id}+${c.members.length}`, cluster: c.members };
-              html += `<div ${annAttrs(a, "b-badge", `top:calc(${pct(c.start)} - ${badge / 2 - 3}px);inset-inline-start:${(rail - badge) / 2}px;width:${badge}px;height:${badge}px`)}>${svg(SOURCES[lead.source].icon)}${c.members.length > 1 ? `<span class="count">${c.members.length}</span>` : ""}</div>`;
+            if (group.length) groups.push(group);
+            let html = `<div class="ann-layer">`;
+            for (const g of groups) {
+              const ends = [];
+              for (const a of g) {
+                let lane = ends.findIndex((e) => e <= a.start);
+                if (lane === -1) {
+                  lane = ends.length;
+                  ends.push(drawnEnd(a));
+                } else ends[lane] = drawnEnd(a);
+                a.lane = Math.min(lane, 2);
+              }
+              const lanes = Math.min(ends.length, 3);
+              const laneW = (rail - 4) / lanes;
+              const w = Math.max(2, Math.min(markW, Math.floor(laneW) - (lanes > 1 ? 1 : 0)));
+              for (const a of g) {
+                const x = 2 + a.lane * laneW + (laneW - w) / 2;
+                const icon =
+                  !a.startsBefore && w >= 10
+                    ? `<span class="b-icon">${svg(SOURCES[a.source].icon)}</span>`
+                    : "";
+                html += `<div ${annAttrs(a, "b-mark", `top:${pct(a.start)};height:max(${w}px, calc(${pct(a.end - a.start)} - 1px));inset-inline-start:${x}px;width:${w}px`)}>${icon}</div>`;
+              }
             }
             return html + "</div>";
           },
         },
         C: {
           name: "Background band",
-          note: "<b>C · Background band.</b> Annotations tint the full column width behind events, like FullCalendar's background events or Google's working hours. Events keep their full width and draw on top.",
+          note: "<b>C · Background band</b> (custom renderer, <code>placement: overlay</code>). Annotations tint the full column width behind events, like FullCalendar's background events or Google's working hours. Events keep their full width and draw on top.",
           pros: [
             "Zero width cost; best for long states (sleep, DND, OOO)",
             "Hatching and labels fit in the empty time",
@@ -1504,7 +1483,7 @@
         },
         D: {
           name: "Source lanes",
-          note: "<b>D · Source micro-lanes.</b> One hairline lane per source, in a fixed order, in the strip at the inline end of each column. Today's time grid already keeps 8px free there for creating events.",
+          note: "<b>D · Source micro-lanes</b> (custom renderer, <code>layout: per-source</code>). One hairline lane per source, in a fixed order, in the strip at the inline end of each column. Today's time grid already keeps 8px free there for creating events.",
           pros: [
             "Position encodes the source: easy to compare across days",
             "Concurrent sources never collide",

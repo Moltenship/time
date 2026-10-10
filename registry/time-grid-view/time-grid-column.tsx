@@ -27,6 +27,8 @@ import { percent, TimeGridEvent, type TimeGridEventFormats } from "./time-grid-e
 export interface TimeGridColumnProps<TEvent> {
   /** PROTOTYPE (#119): annotation marks for this column. */
   readonly annotations?: {
+    /** Whether the grid shows several days, which narrows the default rail. */
+    readonly dense: boolean;
     readonly formatTime: (instant: Temporal.Instant) => string;
     readonly handles: TimeGridAnnotationHandles;
     readonly options: TimeGridAnnotationOptions;
@@ -160,6 +162,7 @@ export function TimeGridColumn<TEvent>({
       {annotations !== undefined && (
         <TimeGridAnnotationLayer
           column={column}
+          dense={annotations.dense}
           formatTime={annotations.formatTime}
           handles={annotations.handles}
           options={annotations.options}
@@ -168,7 +171,7 @@ export function TimeGridColumn<TEvent>({
       {/* The inline-end margin keeps a strip free for creating an event beside busy blocks. */}
       <div
         className="absolute inset-y-0 start-0 end-2"
-        style={annotationEventInset(annotations?.options)}
+        style={annotationEventInset(annotations?.options, annotations?.dense ?? true)}
       >
         {events.map((layout) => (
           <TimeGridEvent

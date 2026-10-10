@@ -7,7 +7,6 @@ import { ActivityIcon, CodeXmlIcon, MoonIcon, MusicIcon, TargetIcon } from "luci
 import type {
   TimeGridAnnotation,
   TimeGridAnnotationSource,
-  TimeGridAnnotationVariant,
 } from "@registry/time-grid-view/time-grid-annotations";
 
 export const annotationSources = [
@@ -17,6 +16,8 @@ export const annotationSources = [
     Icon: MoonIcon,
     id: "sleep",
     label: "Sleep",
+    // A starry texture from styles.css, through the source's own mark classes.
+    markClassName: "annotation-sleep",
     mergeGapMinutes: 20,
   },
   {
@@ -39,16 +40,14 @@ export const annotationSources = [
   },
 ] as const satisfies readonly TimeGridAnnotationSource[];
 
+/** The default rail, the three other looks as custom renderers, or nothing. */
 export const annotationVariants = [
+  { label: "Rail (default)", value: "rail" },
+  { label: "Custom: edge bars", value: "edge" },
+  { label: "Custom: background band", value: "band" },
+  { label: "Custom: source lanes", value: "lanes" },
   { label: "Off", value: "off" },
-  { label: "A · Edge bars", value: "edge" },
-  { label: "B · Rail", value: "rail" },
-  { label: "C · Background band", value: "band" },
-  { label: "D · Source lanes", value: "lanes" },
-] as const satisfies readonly {
-  readonly label: string;
-  readonly value: TimeGridAnnotationVariant | "off";
-}[];
+] as const satisfies readonly { readonly label: string; readonly value: string }[];
 
 export type AnnotationSetting = (typeof annotationVariants)[number]["value"];
 

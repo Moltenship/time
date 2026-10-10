@@ -7,6 +7,7 @@ import { Button } from "@registry/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@registry/ui/sheet";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
+import { customAnnotationStyles } from "./annotation-renderers";
 import {
   annotationSources,
   createDemoAnnotations,
@@ -117,7 +118,7 @@ export function App() {
       clickable: true,
       items: annotationItems,
       sources: annotationSources,
-      variant: annotationSetting,
+      ...(annotationSetting === "rail" ? undefined : customAnnotationStyles[annotationSetting]),
     };
     return { day: { annotations }, week: { annotations } };
   }, [annotationItems, annotationSetting]);

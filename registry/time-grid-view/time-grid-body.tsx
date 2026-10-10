@@ -97,11 +97,12 @@ export function TimeGridBody<TEvent>({
       timeZone,
     });
     return {
+      dense: days.length > 1,
       formatTime: (instant: Temporal.Instant) => format.format(instant),
       handles,
       options: annotations,
     };
-  }, [annotations, handles, locale, timeZone]);
+  }, [annotations, days.length, handles, locale, timeZone]);
 
   // Once the first clock sample arrives (after hydration, `now` starts as null), open on the
   // current time, or 08:00 when today is not visible. Later ticks and navigation keep the user's
