@@ -397,3 +397,31 @@ test("server markup holds the tab stop when a day starts off the half hour", () 
 
   expect(tabStops(server)).toEqual(["Site 1, expanded, Friday, January 7 at 12:45 AM"]);
 });
+
+test("announcements name the resource an event is in, and the one a move takes it to", async () => {
+  const container = await show(
+    <Timeline
+      defaultFocus={{
+        date: Temporal.PlainDate.from("2026-10-05"),
+        eventId: "Review",
+        kind: "event",
+        resourceId: "site-1-room-1",
+      }}
+      events={[booking("Review", ["site-1-room-1"], "2026-10-05T09:00Z", "2026-10-05T10:00Z")]}
+      onEventChange={() => {}}
+    />,
+  );
+  const spoken = () =>
+    container
+      .querySelector('[data-calendar-part="announcer"]')
+      ?.textContent?.replace(/\s/g, " ")
+      .trim();
+  await tabIn(container);
+
+  await press(" ");
+  expect(spoken()).toMatch(/^Picked up Review, Monday, October 5, 9:00 – 10:00 AM, Room 1\.1\./);
+  await press("ArrowDown");
+  expect(spoken()).toBe("Monday, October 5, 9:00 – 10:00 AM, Room 1.2");
+  await press("Enter");
+  expect(spoken()).toBe("Moved Review to Monday, October 5, 9:00 – 10:00 AM, Room 1.2.");
+});
