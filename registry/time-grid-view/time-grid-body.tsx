@@ -84,7 +84,7 @@ export function useOpeningScroll(
 }
 
 /** Reports an element's height whenever it changes, such as the 24-hour row when hours zoom. */
-function useHeightObserver(onHeightChange: ((height: number) => void) | undefined) {
+export function useHeightObserver(onHeightChange: ((height: number) => void) | undefined) {
   const ref = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     const node = ref.current;

@@ -64,7 +64,9 @@ Renderer props. The related types are `CalendarViewStrategy`, `CalendarViewProje
 `CalendarViewRendererProps`.
 
 `resolveViewInstantRange(range, timeZone)` turns visible dates into the instant range that `Root`
-passes to `project` as `instantRange`. Use it to run a strategy outside React, for example in a test.
+passes to `project` as `instantRange`, and `resolveViewLoadRange(strategy, anchor, environment,
+options, range)` gives the `loadRange` it passes. Use them to run a strategy outside React, for
+example in a test.
 
 ## Root
 
@@ -195,6 +197,16 @@ own.
         </>
       ),
       default: '"compatible"',
+    },
+    onVisibleRangeChange: {
+      type: "(range: CalendarVisibleRange) => void",
+      description: (
+        <>
+          Called after mount and whenever the active view, its dates, or the time zone change, with
+          the visible <code>range</code> and the <code>loadRange</code> to have events for. See{" "}
+          <a href="/docs/views/scrolling#loading-events-as-you-scroll">loading events</a>.
+        </>
+      ),
     },
     onDiagnosticsChange: {
       type: "(diagnostics) => void",

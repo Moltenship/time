@@ -13,7 +13,8 @@ export type TimeGridSpan =
 
 const MAXIMUM_TIME_GRID_DAYS = 7;
 
-function dayCount(span: TimeGridSpan): number {
+/** The span's number of days; a `days` count outside one to seven throws `RangeError`. */
+export function timeGridDayCount(span: TimeGridSpan): number {
   if (span.kind === "week") {
     return 7;
   }
@@ -32,7 +33,7 @@ export function timeGridRange(
 ): PlainDateInterval {
   return span.kind === "week"
     ? weekRange(anchor, { weekStartsOn: weekRules.firstDay })
-    : plainDateInterval(anchor, anchor.add({ days: dayCount(span) }));
+    : plainDateInterval(anchor, anchor.add({ days: timeGridDayCount(span) }));
 }
 
 /** Moves the anchor by one whole span: a day, a week, or `count` days. */
@@ -41,7 +42,7 @@ export function navigateTimeGrid(
   delta: number,
   span: TimeGridSpan,
 ): Temporal.PlainDate {
-  return anchor.add({ days: delta * dayCount(span) });
+  return anchor.add({ days: delta * timeGridDayCount(span) });
 }
 
 /** "October 8, 2026" for one day, "Oct 6 – 12, 2026" for several, in the given locale. */

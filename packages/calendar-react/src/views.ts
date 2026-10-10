@@ -37,8 +37,14 @@ export interface CalendarViewRendererProps<TProjection, TOptions> {
   readonly environment: CalendarEnvironmentBase;
   /** The events the projection was built from, pending changes included. */
   readonly events: EventSnapshot<unknown, EventId, ResourceId>;
+  /**
+   * The dates the projection covers: `range`, plus the neighbouring dates a scrolling view keeps
+   * ready (its strategy's `getLoadRange`).
+   */
+  readonly loadRange: PlainDateInterval;
   readonly options: TOptions;
   readonly projection: TProjection;
+  /** The visible dates. */
   readonly range: PlainDateInterval;
 }
 
@@ -88,6 +94,10 @@ export type CalendarActiveView<TViewDef extends AnyCalendarView> = TViewDef exte
       /** The events the projection was built from, pending changes included. */
       readonly events: EventSnapshot<unknown, EventId, ResourceId>;
       readonly instantRange: InstantInterval;
+      /** `loadRange` resolved to instants in the display time zone. */
+      readonly loadInstantRange: InstantInterval;
+      /** The dates the projection covers: `range`, or more for a scrolling view. */
+      readonly loadRange: PlainDateInterval;
       readonly options: TViewDef["defaultOptions"];
       readonly projection: ReturnType<TViewDef["strategy"]["project"]>;
       readonly range: PlainDateInterval;

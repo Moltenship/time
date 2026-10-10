@@ -197,7 +197,7 @@ export function createCalendarParts(contexts: CalendarContexts) {
     );
     if (activeView === null) return fallback;
 
-    const { definition, environment, events, options, projection, range } = activeView;
+    const { definition, environment, events, loadRange, options, projection, range } = activeView;
     return createElement(
       CalendarViewRuntimeContext,
       { value: runtime },
@@ -205,6 +205,7 @@ export function createCalendarParts(contexts: CalendarContexts) {
         actions,
         environment,
         events,
+        loadRange,
         options,
         projection,
         range,

@@ -44,13 +44,23 @@ The title reads "Oct 5 – 9", and the list has five days.
       required: true,
     },
     navigate: {
-      type: "(anchor, delta, options) => Temporal.PlainDate",
+      type: "(anchor, delta, options, environment) => Temporal.PlainDate",
       description: (
         <>
           The anchor date after moving <code>delta</code> steps. Previous and Next pass -1 and 1.
         </>
       ),
       required: true,
+    },
+    getLoadRange: {
+      type: "(anchor, environment, options) => PlainDateInterval",
+      description: (
+        <>
+          The dates to project and have events for, around the visible ones, as a{" "}
+          <a href="/docs/views/scrolling">scrolling view</a> keeps a page on each side. It must
+          contain <code>getRange</code>&apos;s dates. Without it, the view projects what it shows.
+        </>
+      ),
     },
     getTitle: {
       type: "(range, environment, options) => string",
@@ -80,6 +90,7 @@ during render and reuses the projection until one of its inputs changes.
 | `snapshot`     | The validated, indexed events. Query it with `queryTimed` and friends.         |
 | `range`        | The visible dates, from `getRange`                                             |
 | `instantRange` | The same dates as instants in the calendar's time zone, ready for `queryTimed` |
+| `loadRange`    | The dates to project: `getLoadRange`'s, or `range` without it                  |
 | `environment`  | Locale, time zone, week rules, direction, disambiguation                       |
 | `resources`    | The `resources` prop                                                           |
 | `options`      | The view's options after `viewOptions` overrides                               |
@@ -108,6 +119,7 @@ The Renderer is a regular component, so it can use hooks. It receives:
 | ------------- | ----------------------------------------------------------------------------------------------------- |
 | `projection`  | What `project` returned                                                                               |
 | `range`       | The visible dates                                                                                     |
+| `loadRange`   | The dates `project` covered: `range`, or the strategy's wider `getLoadRange`                          |
 | `options`     | The view's options                                                                                    |
 | `environment` | Locale, time zone, week rules, direction, disambiguation                                              |
 | `events`      | The snapshot `project` received, with [pending changes](/docs/interactions#pending-changes) applied   |
@@ -136,7 +148,8 @@ Components inside `Root` can read the active view without being part of it:
 - `Calendar.useVisibleRange()` returns the visible dates, or `null` when the active view isn't
   registered.
 - `Calendar.useViewProjection()` returns the active view's `view` name, `definition`,
-  `projection`, `range`, `instantRange`, `options`, `environment`, and `events`, or `null`. Check `view` to
+  `projection`, `range`, `instantRange`, `loadRange`, `loadInstantRange`, `options`,
+  `environment`, and `events`, or `null`. Check `view` to
   narrow `projection` to that view's type.
 - `useNow({ intervalMs })` returns the current instant for a now-line and re-renders on each tick.
   It's `null` during server rendering and hydration unless `Root` has `now`.

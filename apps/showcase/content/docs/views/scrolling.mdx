@@ -1,0 +1,94 @@
+---
+title: Scrolling views
+description: Week, day and month views that scroll without end and come to rest on a day or week.
+---
+
+<CalendarPreview view="scrolling-week" />
+
+Try them in the [live demo](https://moltenship-time-demo.vercel.app): turn on "Scroll day, week and
+month" in the settings.
+
+The [week and day](/docs/views/week-and-day) and [month](/docs/views/month) views move a page at a
+time. The scrolling versions move as far as you scroll, as Apple's Calendar does on iPad: the week
+and day views scroll sideways and come to rest on a day, and the month scrolls up and down and comes
+to rest on a week. They're separate views, so the paged ones keep working as they are, and you can
+register both.
+
+## Add them
+
+Copy `registry/scrolling-time-grid-view` and `registry/scrolling-month-view` into your app, along
+with the items they build on (`registry/time-grid-view` and `registry/month-view`), the theme, and
+`registry/calendar`, as described in [UI source](/docs/installation#ui-source-optional). Then
+register the views:
+
+<include meta='title="calendar.tsx"'>../../examples/scrolling-views.tsx#views</include>
+
+The views are named `scrolling-week`, `scrolling-day`, and `scrolling-month`, and take the same
+options as their paged versions. `dayView` names the view a date opens; it defaults to `"day"` in
+the month.
+
+## How they move
+
+| View              | Shows                                  | Comes to rest on | Previous and Next      | Today                         |
+| ----------------- | -------------------------------------- | ---------------- | ---------------------- | ----------------------------- |
+| `scrolling-week`  | Seven days from the anchor date        | A day            | Seven days             | Today in the first column     |
+| `scrolling-day`   | The anchor date; a swipe moves one day | A day            | One day                | Today                         |
+| `scrolling-month` | Six weeks, the anchor's week third     | A week           | The neighbouring month | Today's week in the third row |
+
+The anchor date is the scroll position. When a scroll comes to rest, the view sets `anchorDate` to
+what it shows, so `Calendar.Title`, `onAnchorDateChange`, and a URL that stores the date follow the
+scroll. During a long swipe the anchor follows every half page. When the anchor changes any other
+way, from Today, Next, or your own `setAnchorDate`, the view scrolls there: smoothly over a page or
+two, and at once from further away, from the keyboard, or when the system asks for reduced motion.
+
+The month names the month that most of its third row falls in, and dims the days of other months.
+Previous and Next go to the middle of the neighbouring month, so all of it shows.
+
+<CalendarPreview view="scrolling-month" />
+
+## Loading events as you scroll
+
+Each scrolling view renders a page of days or weeks on either side of what it shows, with their
+events, so a swipe never reveals an empty page. Its strategy reports those dates as its
+**load range**, and `onVisibleRangeChange` on `Root` hands them to you: after the first render, and
+whenever the view, its dates, or the time zone change, but not when only `events` do.
+
+Fetch events for `loadRange` and pass them in `events`. The next page is then loaded before it
+scrolls into view:
+
+<include meta='title="scrolling-calendar.tsx"'>../../examples/scrolling-views.tsx#loading</include>
+
+| Field              | Contents                                                     |
+| ------------------ | ------------------------------------------------------------ |
+| `view`             | The active view's name                                       |
+| `range`            | The visible dates                                            |
+| `instantRange`     | `range` as instants in the calendar's time zone              |
+| `loadRange`        | The dates to have events for: `range` and a page either side |
+| `loadInstantRange` | `loadRange` as instants, ready to send to an API             |
+
+Paged views report too: their `loadRange` is the visible `range`. Time still never fetches or keeps
+events itself; keep what you've loaded in your own state.
+
+## Keyboard
+
+The keys work as in the [week and day](/docs/views/week-and-day#keyboard) and
+[month](/docs/views/month) views, over the dates on screen. Moving past the last visible day, or
+pressing Page Down, scrolls a whole page. Days and weeks rendered around the visible ones are hidden
+from screen readers, so the grid reads as one week, one day, or six weeks.
+
+## Dragging
+
+Drag, resize, and create work as in the paged views. While a gesture is under way the view stops
+snapping, and dragging toward an edge scrolls into the days beyond; when you let go, it comes to
+rest on the nearest day.
+
+## How it's built
+
+`useScrollingAxis` in `registry/calendar/scrolling-axis.tsx` places days, or weeks, on an axis
+thousands of items long, and the view renders only the items near its load range. The header,
+all-day row, and hour gutter are sticky in the same scrolling element, so they never lag behind the
+days. Scroll positions are never React state: the view renders again only when the anchor moves.
+
+Server markup puts the visible dates at the start of the axis, so the page shows them before
+scripts run. Once laid out, the axis extends before them and the scroll position follows, before
+the browser paints. In right-to-left layouts, pass `direction="rtl"` to `Root`.

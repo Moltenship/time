@@ -52,7 +52,18 @@ export type { EventDayFragment } from "./projection/day-fragments";
 export { layoutDayGridRow, limitDayGridLanes } from "./layout/day-grid";
 export type { DayGridOverflow, DayGridRow, DayGridSegment } from "./layout/day-grid";
 
-export { getMonthRange, getMonthTitle, navigateMonth, projectMonth } from "./views/month/month";
+export {
+  getMonthRange,
+  getMonthTitle,
+  navigateMonth,
+  projectMonth,
+  projectMonthWeeks,
+} from "./views/month/month";
+export {
+  scrollingMonthAnchor,
+  scrollingMonthOf,
+  scrollingMonthStrategy,
+} from "./views/month/scrolling";
 export type { MonthDay, MonthProjection, MonthWeek } from "./views/month/month";
 
 export { getListRange, getListTitle, navigateList, projectList } from "./views/list/list";
@@ -84,7 +95,7 @@ export type {
   IsoDayOfWeek,
 } from "./environment";
 
-export { resolveViewInstantRange } from "./views";
+export { resolveViewInstantRange, resolveViewLoadRange } from "./views";
 export type { CalendarViewProjectionInput, CalendarViewStrategy } from "./views";
 
 export { navigateTimeGrid, timeGridRange, timeGridTitle } from "./views/time-grid/range";
@@ -100,6 +111,7 @@ export {
   projectTimeGrid,
   timeGridStrategy,
 } from "./views/time-grid/projection";
+export { scrollingTimeGridStrategy } from "./views/time-grid/scrolling";
 export type {
   TimeGridDay,
   TimeGridProjection,

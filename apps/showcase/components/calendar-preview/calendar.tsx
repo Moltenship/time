@@ -12,6 +12,11 @@ import { MiniMonth } from "@registry/calendar/mini-month";
 import { ViewSwitcher } from "@registry/calendar/view-switcher";
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
+import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
+import {
+  createScrollingDayView,
+  createScrollingWeekView,
+} from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
 import {
   createDayView,
   createWeekView,
@@ -29,7 +34,14 @@ import {
   type PreviewEventChange,
 } from "./events";
 
-export type PreviewView = "week" | "day" | "month" | "agenda";
+export type PreviewView =
+  | "week"
+  | "day"
+  | "month"
+  | "agenda"
+  | "scrolling-week"
+  | "scrolling-day"
+  | "scrolling-month";
 
 export interface LiveCalendarProps {
   /** Add a week of sample annotations: sleep, listening sessions and workouts. */
@@ -73,6 +85,9 @@ const Calendar = createCalendar<PreviewEvent, never>()({
     createDayView<PreviewEvent>({ getEventColor }),
     createMonthView<PreviewEvent>({ getEventColor }),
     createAgendaView<PreviewEvent>({ getEventColor }),
+    createScrollingWeekView<PreviewEvent>({ dayView: "scrolling-day", getEventColor }),
+    createScrollingDayView<PreviewEvent>({ getEventColor }),
+    createScrollingMonthView<PreviewEvent>({ dayView: "scrolling-day", getEventColor }),
   ],
 });
 
@@ -81,6 +96,9 @@ const viewLabels: Record<PreviewView, string> = {
   day: "Day",
   month: "Month",
   agenda: "Agenda",
+  "scrolling-week": "Week",
+  "scrolling-day": "Day",
+  "scrolling-month": "Month",
 };
 const viewOptions = (["week", "day", "month", "agenda"] as const).map((value) => ({
   label: viewLabels[value],

@@ -20,7 +20,7 @@ import type {
   NormalizedCalendarEvent,
   ResourceId,
 } from "@moltenship/calendar-core";
-import type { PlainDateInterval } from "@moltenship/calendar-temporal";
+import type { InstantInterval, PlainDateInterval } from "@moltenship/calendar-temporal";
 import type { ComponentPropsWithRef, ComponentType, ReactNode, RefObject } from "react";
 
 import type {
@@ -123,6 +123,22 @@ export interface CalendarContextValue<
   readonly state: CalendarPublicState<TViewDef["name"], TSelection, TFocus, TResourceId>;
 }
 
+/** What the active view shows and which events it needs, as `onVisibleRangeChange` reports it. */
+export interface CalendarVisibleRange<TView extends string = string> {
+  /** `range` resolved to instants in the display time zone. */
+  readonly instantRange: InstantInterval;
+  /** `loadRange` resolved to instants in the display time zone. */
+  readonly loadInstantRange: InstantInterval;
+  /**
+   * The dates to have events for: `range`, plus the pages a scrolling view keeps ready on each
+   * side, so a swipe shows their events at once.
+   */
+  readonly loadRange: PlainDateInterval;
+  /** The visible dates. */
+  readonly range: PlainDateInterval;
+  readonly view: TView;
+}
+
 interface CalendarRootBaseProps<
   TEvent,
   TResource,
@@ -170,6 +186,12 @@ interface CalendarRootBaseProps<
   readonly onSelectionChange?: CalendarStateChangeHandler<TSelection | null, "selection">;
   readonly onTimeZoneChange?: CalendarStateChangeHandler<string, "timeZone">;
   readonly onViewChange?: CalendarStateChangeHandler<TViewDef["name"], "view">;
+  /**
+   * Called after the active view first shows its dates and whenever they, the view, or the time
+   * zone change, but not when only events do. Load events for `loadRange`, and a scrolling view's
+   * next pages are ready before they scroll into view.
+   */
+  readonly onVisibleRangeChange?: (range: CalendarVisibleRange<TViewDef["name"]>) => void;
   /** Run in order on every proposed change, after the built-in read-only check. */
   readonly policies?: readonly CalendarPolicy<TEvent, TEventId, TResourceId>[];
   readonly resources?: readonly TResource[];

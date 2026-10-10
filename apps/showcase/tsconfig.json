@@ -18,6 +18,10 @@
       "@/components/calendar/time-grid-view/*": ["../../registry/time-grid-view/*"],
       "@/components/calendar/month-view/*": ["../../registry/month-view/*"],
       "@/components/calendar/list-view/*": ["../../registry/list-view/*"],
+      "@/components/calendar/scrolling-month-view/*": ["../../registry/scrolling-month-view/*"],
+      "@/components/calendar/scrolling-time-grid-view/*": [
+        "../../registry/scrolling-time-grid-view/*"
+      ],
       "@/components/calendar/event-colors": ["../../registry/calendar-theme/event-colors"],
       "@/components/calendar/*": ["../../registry/calendar/*"],
       "@/*": ["./*"],

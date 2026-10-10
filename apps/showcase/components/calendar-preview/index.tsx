@@ -22,6 +22,9 @@ const frameSizes: Record<PreviewView | ResourceView, string> = {
   timeline: "h-[32rem]",
   "timeline-day": "h-[32rem]",
   week: "h-[32rem]",
+  "scrolling-day": "mx-auto h-[36rem] max-w-sm",
+  "scrolling-month": "h-[36rem]",
+  "scrolling-week": "h-[32rem]",
 };
 
 /**
@@ -49,7 +52,9 @@ export function CalendarPreview({ size, view = "week", ...props }: CalendarPrevi
             ? "Live, in your time zone."
             : view === "resources" || view === "timeline" || view === "timeline-day"
               ? "Live, in your time zone. Drag events between rooms and people, or resize and create them."
-              : "Live, in your time zone. Drag to move, resize or create events."}
+              : view.startsWith("scrolling-")
+                ? "Live, in your time zone. Scroll or swipe through the days, and drag to move, resize or create events."
+                : "Live, in your time zone. Drag to move, resize or create events."}
       </figcaption>
     </figure>
   );

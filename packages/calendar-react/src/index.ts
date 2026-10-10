@@ -33,6 +33,7 @@ export type {
   CalendarTriggerProps,
   CalendarViewSwitcherProps,
   CalendarViewportProps,
+  CalendarVisibleRange,
   CreateCalendarOptions,
 } from "./calendar-types";
 export type { UseNowOptions } from "./use-now";

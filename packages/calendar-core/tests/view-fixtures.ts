@@ -68,17 +68,19 @@ export function environment(
   };
 }
 
-/** The input a calendar root hands to `strategy.project` for `range`. */
+/** The input a calendar root hands to `strategy.project` for `range` and its `loadRange`. */
 export function viewInput<TEvent>(
   snapshot: EventSnapshot<TEvent, string, string>,
   range: PlainDateInterval,
   environment: CalendarEnvironmentBase,
   today: string | null = null,
+  loadRange: PlainDateInterval = range,
 ): CalendarViewProjectionInput<unknown, TEvent> {
   return {
     environment,
     expandedResourceIds: [],
     instantRange: resolveViewInstantRange(range, environment.timeZone),
+    loadRange,
     options: undefined,
     range,
     resources: createResourceTree([]),

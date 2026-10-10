@@ -406,11 +406,17 @@ interface CalendarViewStrategy<TName extends string, TOptions> {
     environment: CalendarEnvironment,
     options: TOptions,
   ): DateRange;
+  /** Dates projected and loaded around the visible range; defaults to it. */
+  getLoadRange?(
+    anchor: Temporal.PlainDate,
+    environment: CalendarEnvironment,
+    options: TOptions,
+  ): DateRange;
   navigate(
     anchor: Temporal.PlainDate,
     direction: -1 | 1,
-    environment: CalendarEnvironment,
     options: TOptions,
+    environment?: CalendarEnvironment,
   ): Temporal.PlainDate;
   getTitle(range: DateRange, environment: CalendarEnvironment, options: TOptions): string;
   project(input: ViewProjectionInput, options: TOptions): ViewProjection;
@@ -441,8 +447,25 @@ This is a semver-protected plugin contract. Custom views do not import internal 
 | List/agenda       | Chronological grouped occurrences/fragments                      | Vertical TanStack Virtual                                       | Keyboard-first equivalent and dense-data fallback                    |
 | Resource columns  | One day with horizontal resource columns and vertical time       | Horizontal resource virtualization                              | Sticky time axis, resource headers, zero-to-many resource projection |
 | Resource timeline | Resource rows with horizontal time                               | Composed row/time virtualizers                                  | Sticky resource axis, configurable range and resolution              |
+| Scrolling week/day | 1–7 day time grid from the anchor, scrolling sideways by days    | Anchored day axis; a page of days rendered either side          | Snaps to days; anchor follows the scroll; load range for prefetching |
+| Scrolling month   | Six week rows, the anchor's week third, scrolling by weeks        | Anchored week axis; a page of weeks rendered either side        | Snaps to weeks; named by the month of the third row                  |
 
 Day and week share the time-grid strategy and primitives; they are explicit view variants, not one component controlled by boolean flags.
+
+### 7.2.1 Scrolling views
+
+The scrolling views (#105) are separate view definitions, not a mode of the paged ones. Their
+anchor date is the scroll position: the first visible day, or the week in the month's third row.
+A scroll that comes to rest sets `anchorDate`, so title, controlled state and URLs follow it; any
+other anchor change scrolls the view there. Each strategy's `getLoadRange` adds a page on either
+side of the visible range. `Root` projects the load range, and `onVisibleRangeChange` reports both
+ranges after commit, so applications fetch the next page before it scrolls into view; the calendar
+still never fetches.
+
+The registry renders them on an axis of numbered days or weeks thousands of items long
+(`useScrollingAxis`), with CSS scroll snapping. Scroll offsets stay out of React state: the view
+re-renders only when the anchor moves, at rest or every half page of a long swipe. Server markup
+places the visible range at the axis start, and the axis extends before it in a layout effect.
 
 ### 7.3 Resource model
 
@@ -728,6 +751,8 @@ TanStack Virtual is the maintained virtualization primitive for list and resourc
 - Overscan is velocity-aware within bounded limits.
 - SSR supplies deterministic initial rectangles and ranges where practical.
 - Direct DOM positioning may be enabled for scroll-only position updates, while semantic range changes still enter React.
+- Scrolling views follow the same rule: scroll offsets never enter React; the anchor date, and
+  with it the projected load range, changes at most every half page.
 
 Time-grid event rendering is bounded by the queried visible interval and fragment count. The library never creates a droppable DOM node for every possible slot.
 

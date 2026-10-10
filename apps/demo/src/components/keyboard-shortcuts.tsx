@@ -1,15 +1,18 @@
 import { useEffect } from "react";
 
 import { DemoCalendar } from "../calendar";
+import { viewFor } from "../scrolling";
 import { shortcutCommand } from "../shortcuts";
 
 export interface KeyboardShortcutsProps {
   readonly onCreate: () => void;
   readonly onHelp: () => void;
+  /** Whether d, w, and m open the scrolling day, week, and month. */
+  readonly scrolling: boolean;
 }
 
 /** Global shortcuts: t today, d/w/m/a views, j/k or ←/→ to step, c to create, ? for help. */
-export function KeyboardShortcuts({ onCreate, onHelp }: KeyboardShortcutsProps) {
+export function KeyboardShortcuts({ onCreate, onHelp, scrolling }: KeyboardShortcutsProps) {
   const actions = DemoCalendar.useCalendarActions();
 
   useEffect(() => {
@@ -17,7 +20,7 @@ export function KeyboardShortcuts({ onCreate, onHelp }: KeyboardShortcutsProps) 
       const command = shortcutCommand(event);
       if (command === undefined) return;
       event.preventDefault();
-      if (command.type === "view") actions.setView(command.view);
+      if (command.type === "view") actions.setView(viewFor(command.view, scrolling));
       else if (command.type === "create") onCreate();
       else if (command.type === "help") onHelp();
       else if (command.type === "next") actions.navigateNext();
@@ -26,7 +29,7 @@ export function KeyboardShortcuts({ onCreate, onHelp }: KeyboardShortcutsProps) 
     };
     window.addEventListener("keydown", listener);
     return () => window.removeEventListener("keydown", listener);
-  }, [actions, onCreate, onHelp]);
+  }, [actions, onCreate, onHelp, scrolling]);
 
   return null;
 }

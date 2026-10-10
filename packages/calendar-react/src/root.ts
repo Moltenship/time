@@ -6,6 +6,7 @@ import {
   createResourceTree,
   readOnlyPolicy,
   resolveViewInstantRange,
+  resolveViewLoadRange,
   type AnnotationSnapshotIssue,
   type CalendarEnvironment,
   type CalendarEnvironmentBase,
@@ -40,6 +41,7 @@ import type {
   CalendarMeta,
   CalendarRootProps,
   CalendarSemanticActions,
+  CalendarVisibleRange,
 } from "./calendar-types";
 import { CalendarAnnotationsContext } from "./annotations";
 import { createAnnouncerChannel } from "./announcer";
@@ -82,6 +84,7 @@ interface CommittedRootInputs<TEvent, TEventId extends EventId, TResourceId exte
     | ((diagnostics: readonly CalendarDiagnostic<TEvent, TEventId>[]) => void)
     | undefined;
   readonly onEventChange: CalendarEventChangeHandler<TEvent, TEventId, TResourceId> | undefined;
+  readonly onVisibleRangeChange: ((range: CalendarVisibleRange<string>) => void) | undefined;
   readonly policies: readonly CalendarPolicy<TEvent, TEventId, TResourceId>[] | undefined;
   readonly resourceTree: ResourceTree;
   readonly viewOptions: ViewOptionsOverrides;
@@ -178,7 +181,8 @@ function createSemanticActions<
     const view = viewsByName.get(latest.view);
     if (view === undefined) return;
     const options = resolveViewOptions(view, committed.current.viewOptions?.[latest.view]);
-    actions.setAnchorDate(view.strategy.navigate(latest.anchorDate, delta, options));
+    const { environment } = committed.current;
+    actions.setAnchorDate(view.strategy.navigate(latest.anchorDate, delta, options, environment));
   }
 
   return Object.freeze({
@@ -248,6 +252,7 @@ export function createCalendarRoot<
     onSelectionChange,
     onTimeZoneChange,
     onViewChange,
+    onVisibleRangeChange,
     policies,
     resources = noResources,
     selection,
@@ -379,24 +384,53 @@ export function createCalendarRoot<
       activeDefinition?.strategy.getRange(state.anchorDate, viewEnvironment, options),
       sameRange,
     );
+    const loadRange = useStableValue(
+      activeDefinition === undefined || range === undefined
+        ? undefined
+        : resolveViewLoadRange(
+            activeDefinition.strategy,
+            state.anchorDate,
+            viewEnvironment,
+            options,
+            range,
+          ),
+      sameRange,
+    );
     const instant = useNowFrom(environment, todaySampleIntervalMs);
     const today = useStableValue(
       instant === null ? null : instant.toZonedDateTimeISO(state.timeZone).toPlainDate(),
       samePlainDate,
     );
+    // Ranges and their instants change together, so range observers see one value per change.
+    const visibleRange = useMemo<CalendarVisibleRange<View> | null>(
+      () =>
+        activeDefinition === undefined || range === undefined || loadRange === undefined
+          ? null
+          : Object.freeze({
+              instantRange: resolveViewInstantRange(range, viewEnvironment.timeZone),
+              loadInstantRange: resolveViewInstantRange(loadRange, viewEnvironment.timeZone),
+              loadRange,
+              range,
+              view: activeDefinition.name as View,
+            }),
+      [activeDefinition, loadRange, range, viewEnvironment.timeZone],
+    );
     const activeView = useMemo<CalendarActiveView<AnyCalendarView> | null>(() => {
-      if (activeDefinition === undefined || range === undefined) return null;
-      const instantRange = resolveViewInstantRange(range, viewEnvironment.timeZone);
+      if (activeDefinition === undefined || visibleRange === null) return null;
+      const { instantRange, loadInstantRange, loadRange, range } = visibleRange;
       return Object.freeze({
         definition: activeDefinition,
         environment: viewEnvironment,
         events: visibleSnapshot,
         instantRange,
+        loadInstantRange,
+        loadRange,
         options,
         projection: activeDefinition.strategy.project({
           environment: viewEnvironment,
           expandedResourceIds: stableExpandedResourceIds,
           instantRange,
+          loadRange,
           options,
           range,
           resources: resourceTree,
@@ -409,7 +443,7 @@ export function createCalendarRoot<
     }, [
       activeDefinition,
       options,
-      range,
+      visibleRange,
       resourceTree,
       stableExpandedResourceIds,
       today,
@@ -432,6 +466,7 @@ export function createCalendarRoot<
       eventSnapshot,
       onDiagnosticsChange,
       onEventChange,
+      onVisibleRangeChange,
       policies,
       resourceTree,
       viewOptions: viewOverrides,
@@ -441,6 +476,11 @@ export function createCalendarRoot<
       committed.current = committedInputs;
     });
     useEffect(() => committed.current.onDiagnosticsChange?.(diagnostics), [diagnostics]);
+    // After the commit that shows a range, so loading its events never delays it; new events and
+    // other updates don't repeat it.
+    useEffect(() => {
+      if (visibleRange !== null) committed.current.onVisibleRangeChange?.(visibleRange);
+    }, [visibleRange]);
     const actions = useMemo(
       () => createSemanticActions(binding, viewsByName, committed, transactions, readOnly),
       [binding, transactions],

@@ -6,6 +6,7 @@ import { Button } from "@registry/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/ui/tooltip";
 
 import { DemoCalendar, type DemoView } from "../calendar";
+import { viewFor } from "../scrolling";
 import { BrandMark } from "./brand";
 import { DocsLink } from "./docs-link";
 import { ThemeToggle } from "./theme-toggle";
@@ -24,11 +25,17 @@ const selectView = (state: { readonly view: DemoView }) => state.view;
 export interface TopBarProps {
   readonly onOpenSidebar: () => void;
   readonly onShowShortcuts: () => void;
+  /** Whether day, week, and month are their scrolling versions. */
+  readonly scrolling: boolean;
 }
 
-export function TopBar({ onOpenSidebar, onShowShortcuts }: TopBarProps) {
+export function TopBar({ onOpenSidebar, onShowShortcuts, scrolling }: TopBarProps) {
   const view = DemoCalendar.useCalendarSelector(selectView);
   const { setView } = DemoCalendar.useCalendarActions();
+  const options = viewOptions.map((option) => ({
+    ...option,
+    value: viewFor(option.value, scrolling),
+  }));
 
   return (
     <CalendarToolbar
@@ -55,7 +62,7 @@ export function TopBar({ onOpenSidebar, onShowShortcuts }: TopBarProps) {
         // Wide enough for "Resources".
         className="sm:w-32"
         onValueChange={setView}
-        options={viewOptions}
+        options={options}
         value={view}
       />
       <Tooltip>

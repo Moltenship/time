@@ -54,7 +54,8 @@ Views can then filter by resource with `snapshot.eventsForResource(roomId)` or
 ## Changing events
 
 Time never edits, saves, or fetches your events. When your data changes, update your own state and
-pass a new array.
+pass a new array. To fetch only the dates on screen, load the `loadRange` that
+[`onVisibleRangeChange`](/docs/views/scrolling#loading-events-as-you-scroll) reports.
 
 Treat your records as immutable: change a record by replacing it with a new object. Time compares
 the array item by item, so a new array with the same records in the same order counts as unchanged,

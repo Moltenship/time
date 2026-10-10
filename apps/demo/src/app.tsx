@@ -37,6 +37,7 @@ import {
 import { useHiddenCalendars } from "./hidden-calendars";
 import { demoResourceGroups, demoResources } from "./resources";
 import { useDemoSettings } from "./settings";
+import { viewFor } from "./scrolling";
 import { useCalendarLocation } from "./url-state";
 
 /** How long a simulated save takes, so the pending state is visible. */
@@ -52,9 +53,18 @@ interface OpenEvent {
 export function App() {
   const [systemTimeZone] = useState(() => Temporal.Now.timeZoneId());
   const [settings, setSettings] = useDemoSettings();
-  const { locale, timeZone, weekStartsOn } = settings;
+  const { locale, scrolling, timeZone, weekStartsOn } = settings;
   const today = (useNow() ?? Temporal.Now.instant()).toZonedDateTimeISO(timeZone).toPlainDate();
   const [location, setLocation] = useCalendarLocation(today);
+  // The settings choose between paged and scrolling day, week, and month, even for a shared URL.
+  const view = viewFor(location.view, scrolling);
+  const changeSettings = useCallback(
+    (next: typeof settings) => {
+      setSettings(next);
+      setLocation((current) => ({ ...current, view: viewFor(current.view, next.scrolling) }));
+    },
+    [setLocation, setSettings],
+  );
   const { applyChange, events, resetEvents, saveEvent } = useDemoEvents(timeZone);
   const [failSaves, setFailSaves] = useState(false);
   const [notice, showNotice] = useNotice();
@@ -172,7 +182,7 @@ export function App() {
       <ActivityList hidden={hiddenSources} onToggle={toggleSource} />
       <SettingsPanel
         failSaves={failSaves}
-        onChange={setSettings}
+        onChange={changeSettings}
         onFailSavesChange={setFailSaves}
         onReset={resetDemoData}
         settings={settings}
@@ -196,12 +206,16 @@ export function App() {
         policies={demoPolicies}
         resources={demoResources}
         timeZone={timeZone}
-        view={location.view}
+        view={view}
         weekRules={weekRules}
       >
-        <KeyboardShortcuts onCreate={openCreate} onHelp={showShortcuts} />
+        <KeyboardShortcuts onCreate={openCreate} onHelp={showShortcuts} scrolling={scrolling} />
         <DemoCalendar.Frame className="flex h-dvh flex-col">
-          <TopBar onOpenSidebar={() => setSidebarOpen(true)} onShowShortcuts={showShortcuts} />
+          <TopBar
+            onOpenSidebar={() => setSidebarOpen(true)}
+            onShowShortcuts={showShortcuts}
+            scrolling={scrolling}
+          />
           <div className="flex min-h-0 flex-1">
             <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
             <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:rounded-xl lg:border lg:bg-card">

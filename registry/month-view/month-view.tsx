@@ -69,7 +69,7 @@ function useLaneCapacity(body: RefObject<HTMLElement | null>, weekCount: number)
  * The week whose lane limit hides the event keyboard focus is on, or -1. That week shows all of
  * its lanes, so arrow keys reach every event without opening "+N more".
  */
-function weekHidingFocus<TEvent>(
+export function weekHidingFocus<TEvent>(
   focus: CalendarFocus | null,
   weeks: MonthProjection<TEvent, EventId, ResourceId>["weeks"],
   overflows: readonly DayGridOverflow<TEvent, EventId, ResourceId>[],
@@ -104,7 +104,7 @@ function rowSizes(weeks: readonly { readonly laneCount: number }[], expandedWeek
     .join(" ");
 }
 
-function useMonthFormats(locale: Intl.LocalesArgument): MonthFormats {
+export function useMonthFormats(locale: Intl.LocalesArgument): MonthFormats {
   return useMemo(() => {
     const hour = new Intl.DateTimeFormat(locale, { hour: "numeric" });
     const hourMinute = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });

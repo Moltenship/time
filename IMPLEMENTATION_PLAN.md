@@ -33,6 +33,10 @@ latest releases.
 
 ## In flight outside the milestones
 
+- #105 scrolling views: week, day and month that scroll without end and snap to days or weeks,
+  as separate registry views, with `getLoadRange` on strategies and `onVisibleRangeChange` on
+  `Root` for loading events ahead of the scroll.
+
 - #119 timeline annotations (Amie-style rail in the time grid), approved by the owner and being
   implemented in two phases: the core/React model in #124, then the registry parts, demo and docs.
   Draft #122 is the prototype and won't be merged.

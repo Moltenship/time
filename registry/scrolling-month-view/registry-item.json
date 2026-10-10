@@ -1,0 +1,25 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "scrolling-month-view",
+  "type": "registry:component",
+  "title": "Scrolling month view",
+  "description": "A month of weeks that scrolls up and down without end and comes to rest on a week: rows share the height, the month most of the third row falls in names the view, and weeks a page either side render with their events, \"+N more\" popovers, drag and keys.",
+  "dependencies": ["@moltenship/calendar", "cn", "lucide-react"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/month-view"
+  ],
+  "files": [
+    {
+      "path": "registry/scrolling-month-view/scrolling-month-view.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/scrolling-month-view/scrolling-month-view.tsx"
+    }
+  ],
+  "meta": {
+    "compatibility": {
+      "@moltenship/calendar": ">=0.0.0"
+    }
+  }
+}

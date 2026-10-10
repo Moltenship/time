@@ -6,6 +6,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@registry/ui/popover";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@registry/ui/sheet";
 
 import { click, render } from "./render";
+import { axis, ScrollingScreen, title } from "./scrolling-screen";
 
 function position(element: Element) {
   const { opacity, scale, transform, translate } = getComputedStyle(element);
@@ -103,5 +104,18 @@ describe("prefers-reduced-motion: reduce", () => {
 
     expect(group.animationName).toBe("none");
     await act(() => transition.finished);
+  });
+
+  test("a scrolling view jumps to its next range instead of scrolling there", async () => {
+    await render(<ScrollingScreen view="scrolling-week" />);
+    const { position } = axis("scrolling-week");
+    const start = position();
+
+    await act(async () =>
+      document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click(),
+    );
+
+    expect(title()).toBe("Oct 14 – 20, 2026");
+    expect(Math.abs(position() - start - 7)).toBeLessThan(0.1);
   });
 });

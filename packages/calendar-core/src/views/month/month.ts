@@ -68,8 +68,22 @@ export function getMonthTitle(
 export function projectMonth<TEvent>(
   input: CalendarViewProjectionInput<unknown, TEvent>,
 ): MonthProjection<TEvent, EventId, ResourceId> {
-  const { environment, range, snapshot, today } = input;
-  const month = monthOf(range);
+  return projectMonthWeeks(input, input.range, monthOf(input.range));
+}
+
+/**
+ * Week rows over `range`, which starts a week: each packs all of its events into lanes, and the
+ * days of `month` are `inMonth`.
+ */
+export function projectMonthWeeks<TEvent>(
+  {
+    environment,
+    snapshot,
+    today,
+  }: Pick<CalendarViewProjectionInput<unknown, TEvent>, "environment" | "snapshot" | "today">,
+  range: PlainDateInterval,
+  month: Temporal.PlainDate,
+): MonthProjection<TEvent, EventId, ResourceId> {
   const fragments = splitEventsByDay(
     queryVisibleEvents(snapshot, range, environment.timeZone),
     range,

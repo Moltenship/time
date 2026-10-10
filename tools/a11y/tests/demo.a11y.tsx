@@ -7,8 +7,10 @@ import { click, render } from "./render";
 const views = ["week", "day", "month", "agenda"] as const;
 
 /** Opens the demo the way a link does: the view comes from the URL, the events from the seed. */
-async function renderDemo(view: (typeof views)[number]) {
+async function renderDemo(view: (typeof views)[number], { scrolling = false } = {}) {
   localStorage.clear();
+  // Scrolling day, week, and month, as the settings switch turns them on.
+  if (scrolling) localStorage.setItem("moltenship-demo:settings", JSON.stringify({ scrolling }));
   history.replaceState(null, "", `?view=${view}`);
   await render(<App />);
 }
@@ -18,6 +20,14 @@ describe.each(themes)("demo, %s theme", (theme) => {
     setTheme(theme);
     await renderDemo(view);
 
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test.each(["week", "day", "month"] as const)("scrolling %s view", async (view) => {
+    setTheme(theme);
+    await renderDemo(view, { scrolling: true });
+
+    expect(document.querySelector('[data-slot^="scrolling-"]')).not.toBeNull();
     expect(await seriousViolations()).toEqual([]);
   });
 

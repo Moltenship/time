@@ -122,6 +122,13 @@ export function SettingsPanel({
       />
       <Label className="mt-1 font-normal">
         <Checkbox
+          checked={settings.scrolling}
+          onCheckedChange={(checked) => onChange({ ...settings, scrolling: checked === true })}
+        />
+        Scroll day, week and month
+      </Label>
+      <Label className="font-normal">
+        <Checkbox
           checked={failSaves}
           onCheckedChange={(checked) => onFailSavesChange(checked === true)}
         />

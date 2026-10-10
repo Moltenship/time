@@ -81,6 +81,7 @@ describe("time-grid strategy", () => {
       environment: env,
       expandedResourceIds: [],
       instantRange: resolveViewInstantRange(range, "UTC"),
+      loadRange: range,
       options: undefined,
       range,
       resources: createResourceTree([]),

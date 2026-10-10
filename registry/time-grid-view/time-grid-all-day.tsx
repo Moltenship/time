@@ -1,5 +1,6 @@
 import {
   limitDayGridLanes,
+  plainDateIntervalContains,
   showsInResource,
   useCalendarFocus,
   useCalendarInteraction,
@@ -8,6 +9,7 @@ import {
   type DayGridRow,
   type DayGridSegment,
   type EventId,
+  type PlainDateInterval,
   type ResourceId,
   type TimeGridDay,
 } from "@moltenship/calendar";
@@ -75,6 +77,7 @@ function AllDayCell({
   count,
   date,
   formatDate,
+  offscreen,
   onOpenDay,
   resourceId,
 }: {
@@ -83,6 +86,8 @@ function AllDayCell({
   readonly count: number;
   readonly date: Temporal.PlainDate;
   readonly formatDate: (date: Temporal.PlainDate) => string;
+  /** Rendered beside the visible dates of a scrolling grid, so hidden from assistive technology. */
+  readonly offscreen: boolean;
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   readonly resourceId?: ResourceId | null;
 }) {
@@ -100,6 +105,7 @@ function AllDayCell({
     <div
       role="gridcell"
       aria-colindex={colIndex}
+      aria-hidden={offscreen ? true : undefined}
       aria-label={`${formatDate(date)}, ${eventCount(count)}`}
       {...roving}
       onKeyDown={(event) => {
@@ -134,6 +140,7 @@ function AllDayEvent<TEvent>({
   labelEvent,
   resourceId,
   segment: { endsAfter, event, lane, span, startsBefore },
+  stickyLabel,
 }: {
   /** The segment's first date. */
   readonly date: Temporal.PlainDate;
@@ -141,6 +148,8 @@ function AllDayEvent<TEvent>({
   readonly labelEvent: EventLabeler<TEvent>;
   readonly resourceId?: ResourceId | null;
   readonly segment: Segment<TEvent>;
+  /** Keep the title in view past the hour gutter while the bar's start scrolls under it. */
+  readonly stickyLabel: boolean;
 }) {
   const chip = useEventChip(event, { date, days: span, labelEvent, resourceId });
 
@@ -152,10 +161,19 @@ function AllDayEvent<TEvent>({
         "absolute start-0 z-1 mx-1 min-w-0 py-0 leading-[1.375rem]",
         startsBefore && "ms-0 rounded-s-none",
         endsAfter && "me-0 rounded-e-none",
+        // Clipping without a scroll container lets the title stick to the scrolling grid.
+        stickyLabel && "overflow-clip",
       )}
       style={laneStyle(lane, span)}
     >
-      <span className="truncate">{event.title}</span>
+      <span
+        className={cn(
+          "truncate",
+          stickyLabel && "sticky start-[calc(var(--calendar-gutter-width)+0.5rem)]",
+        )}
+      >
+        {event.title}
+      </span>
     </EventChip>
   );
 }
@@ -260,6 +278,16 @@ export interface TimeGridAllDayCellsProps<TEvent> extends TimeGridAllDayProps<TE
   readonly overflow: Overflow<TEvent> | null;
   /** The row's resource, in a view with a row per resource. */
   readonly resourceId?: ResourceId | null;
+  /**
+   * The dates on screen, when the grid renders days around them while it scrolls; the others are
+   * hidden from assistive technology. All of `days` by default.
+   */
+  readonly shown?: PlainDateInterval;
+  /**
+   * Keep bar titles in view past the hour gutter, for a grid that scrolls sideways under a sticky
+   * gutter: a bar that starts in days scrolled away still shows its title.
+   */
+  readonly stickyLabels?: boolean;
 }
 
 /**
@@ -277,6 +305,8 @@ export function TimeGridAllDayCells<TEvent>({
   overflow,
   resourceId,
   row,
+  shown,
+  stickyLabels = false,
 }: TimeGridAllDayCellsProps<TEvent>) {
   const segments = overflow?.segments ?? row.segments;
 
@@ -292,6 +322,7 @@ export function TimeGridAllDayCells<TEvent>({
           count={row.segments.filter((segment) => covers(segment, column)).length}
           date={date}
           formatDate={formatDate}
+          offscreen={shown !== undefined && !plainDateIntervalContains(shown, date)}
           onOpenDay={onOpenDay}
           resourceId={resourceId}
         >
@@ -305,6 +336,7 @@ export function TimeGridAllDayCells<TEvent>({
                 labelEvent={labelEvent}
                 resourceId={resourceId}
                 segment={segment}
+                stickyLabel={stickyLabels}
               />
             ))}
           {overflow !== null && overflow.hiddenCounts[column]! > 0 && (

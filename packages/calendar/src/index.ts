@@ -70,6 +70,7 @@ export type {
   CalendarViewRendererProps,
   CalendarViewSwitcherProps,
   CalendarViewportProps,
+  CalendarVisibleRange,
   CreateCalendarOptions,
   UseNowOptions,
 } from "@moltenship/calendar-react";

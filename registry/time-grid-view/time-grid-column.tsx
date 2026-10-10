@@ -78,6 +78,8 @@ export interface TimeGridColumnProps<TEvent> {
   /** Position of the now-line when the current time falls in this column. */
   readonly nowTop: number | null;
   readonly formats: TimeGridColumnFormats;
+  /** Rendered beside the visible dates of a scrolling grid, so hidden from assistive technology. */
+  readonly offscreen?: boolean;
   /** Opens a date in the day view; Shift+Enter on a slot does so. */
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   /** The column's resource; without one, the column shows every resource's focus and drafts. */
@@ -184,6 +186,7 @@ export function TimeGridColumn<TEvent>({
   labelEvent,
   nowTop,
   formats,
+  offscreen = false,
   onOpenDay,
   resource,
   slotMinutes,
@@ -215,6 +218,7 @@ export function TimeGridColumn<TEvent>({
     <div
       role="gridcell"
       aria-colindex={colIndex}
+      aria-hidden={offscreen ? true : undefined}
       data-date={column.date.toString()}
       data-today={isToday ? "" : undefined}
       className="relative min-w-0 border-s border-calendar-grid"

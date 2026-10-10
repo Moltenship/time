@@ -4,6 +4,8 @@ import { isRecord, usePersistentState } from "./storage";
 
 export interface DemoSettings {
   readonly locale: string;
+  /** Whether day, week, and month scroll continuously instead of paging. */
+  readonly scrolling: boolean;
   readonly timeZone: string;
   readonly weekStartsOn: IsoDayOfWeek;
 }
@@ -54,9 +56,10 @@ export function parseSettings(stored: string | null, defaults: DemoSettings): De
   try {
     const value: unknown = JSON.parse(stored ?? "{}");
     if (!isRecord(value)) return defaults;
-    const { locale, timeZone, weekStartsOn } = value;
+    const { locale, scrolling, timeZone, weekStartsOn } = value;
     return {
       locale: localeOptions.find((option) => option.value === locale)?.value ?? defaults.locale,
+      scrolling: typeof scrolling === "boolean" ? scrolling : defaults.scrolling,
       timeZone: isSupportedTimeZone(timeZone) ? timeZone : defaults.timeZone,
       weekStartsOn:
         weekStartOptions.find((option) => option.value === weekStartsOn)?.value ??
@@ -75,6 +78,7 @@ export function useDemoSettings() {
     (stored) =>
       parseSettings(stored, {
         locale: "en-US",
+        scrolling: false,
         timeZone: Temporal.Now.timeZoneId(),
         weekStartsOn: 7,
       }),

@@ -1,0 +1,30 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "scrolling-time-grid-view",
+  "type": "registry:component",
+  "title": "Scrolling week and day views",
+  "description": "Week and day time grids that scroll sideways without end and come to rest on a day, as in Apple's Calendar on iPad: a sticky header, all-day row and hour gutter over day columns rendered a page either side with their events, keyboard paging, and drag, resize and create across the scroll.",
+  "dependencies": ["@base-ui/react", "@moltenship/calendar", "cn", "lucide-react"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/time-grid-view"
+  ],
+  "files": [
+    {
+      "path": "registry/scrolling-time-grid-view/scrolling-time-grid-view.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/scrolling-time-grid-view/scrolling-time-grid-view.tsx"
+    },
+    {
+      "path": "registry/scrolling-time-grid-view/scrolling-time-grid-scroll.ts",
+      "type": "registry:lib",
+      "target": "components/calendar/scrolling-time-grid-view/scrolling-time-grid-scroll.ts"
+    }
+  ],
+  "meta": {
+    "compatibility": {
+      "@moltenship/calendar": ">=0.0.0"
+    }
+  }
+}
