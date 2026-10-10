@@ -310,13 +310,22 @@ export function useScrollingAxis({
     (item: number) => {
       if (proposing.current) return;
       proposed.current = null;
-      // The range doesn't change, so no render follows: show it now.
-      if (item === committed.current && shown.current !== item) {
+      if (item !== committed.current) return;
+      // The range doesn't change, so no render follows: show it now if the view has moved off it,
+      // even mid-scroll, before the scroll has reported where it went. Scrolling there stops the
+      // user's scroll, so it can't come to rest elsewhere.
+      const element = scrollRef.current;
+      const itemSize = size();
+      const moved =
+        element !== null &&
+        itemSize > 0 &&
+        Math.abs(offset(element) - (item - latest.current.base) * itemSize) >= 1;
+      if (shown.current !== item || moved) {
         committed.current = null;
         place();
       }
     },
-    [place],
+    [offset, place, size],
   );
 
   return { base, count, request, scrollRef, trackRef };

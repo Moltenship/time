@@ -22,16 +22,20 @@ beforeEach(() => {
   ) {
     const count = Number(this.dataset.count ?? 0);
     const item = Number(this.dataset.item ?? ITEM);
-    return DOMRect.fromRect({ height: 10, width: count * item });
+    return DOMRect.fromRect({ height: count * item, width: count * item });
   });
   HTMLElement.prototype.scrollTo = function (
     this: HTMLElement,
     options?: ScrollToOptions | number,
   ) {
-    const { behavior, left = 0 } = options as ScrollToOptions;
-    scrolls.push({ behavior, left });
+    // `left` records the position along either axis.
+    const { behavior, left, top } = options as ScrollToOptions;
+    const position = left ?? top ?? 0;
+    scrolls.push({ behavior, left: position });
     // A smooth scroll is still on its way until the test finishes it.
-    if (behavior !== "smooth") this.scrollLeft = left;
+    if (behavior === "smooth") return;
+    if (top === undefined) this.scrollLeft = position;
+    else this.scrollTop = position;
   } as HTMLElement["scrollTo"];
 });
 
@@ -50,7 +54,14 @@ let rerender: () => void = () => {};
 const onScroll = vi.fn<(first: number) => void>();
 
 /** A view on the axis whose range only moves when the test says so, as a controlled anchor. */
-function Axis({ interacting = false }: { readonly interacting?: boolean }) {
+function Axis({
+  block = false,
+  interacting = false,
+}: {
+  /** Weeks down the block axis, as the month scrolls, rather than days across. */
+  readonly block?: boolean;
+  readonly interacting?: boolean;
+}) {
   const [first, setState] = useState(5000);
   const [rtl, setRtlState] = useState(false);
   const [page, setPageState] = useState(7);
@@ -59,11 +70,17 @@ function Axis({ interacting = false }: { readonly interacting?: boolean }) {
   setPage = setPageState;
   setRtl = setRtlState;
   rerender = () => setTick((tick) => tick + 1);
-  const axis = useScrollingAxis({ axis: "inline", first, onScroll, page, rtl });
+  const axis = useScrollingAxis({
+    axis: block ? "block" : "inline",
+    first,
+    onScroll,
+    page,
+    rtl,
+  });
   request = axis.request;
   return (
     <div data-interaction={interacting ? "move" : undefined}>
-      <div ref={axis.scrollRef} data-testid="viewport">
+      <div ref={axis.scrollRef} data-axis={block ? "block" : "inline"} data-testid="viewport">
         <div
           ref={axis.trackRef}
           data-base={axis.base}
@@ -83,20 +100,21 @@ async function show(element = <Axis />) {
   const track = () => screen.container.querySelector<HTMLElement>("[data-base]")!;
   const base = () => Number(track().dataset.base);
   const item = () => Number(track().dataset.item);
+  const along = viewport.dataset.axis === "block" ? "scrollTop" : "scrollLeft";
   /** The user scrolls so `item` leads the view. */
   const userScrollsTo = async (to: number, end = true) => {
     await act(async () => {
       viewport.dispatchEvent(new Event("wheel"));
-      viewport.scrollLeft = (to - base()) * item();
+      viewport[along] = (to - base()) * item();
       viewport.dispatchEvent(new Event("scroll"));
       if (end) viewport.dispatchEvent(new Event("scrollend"));
     });
   };
-  const shownItem = () => base() + Math.abs(viewport.scrollLeft) / item();
+  const shownItem = () => base() + Math.abs(viewport[along]) / item();
   /** The browser's smooth scroll arrives and comes to rest. */
   const finishScroll = async () => {
     await act(async () => {
-      viewport.scrollLeft = scrolls.at(-1)!.left;
+      viewport[along] = scrolls.at(-1)!.left;
       viewport.dispatchEvent(new Event("scroll"));
       viewport.dispatchEvent(new Event("scrollend"));
     });
@@ -271,7 +289,9 @@ test("a request for the range the calendar has shows it again over a scroll it d
   expect(shownItem()).toBe(5004);
 
   // The app keeps 5000, and Today asks for it: the range doesn't change, so no render follows.
+  scrolls = [];
   await act(async () => request(5000));
+  expect(scrolls).toHaveLength(1);
   await finishScroll();
 
   expect(shownItem()).toBe(5000);
@@ -289,3 +309,24 @@ test("a request for another range waits for the range to arrive", async () => {
 
   expect(shownItem()).toBe(5010);
 });
+
+test.each([
+  ["days across", false],
+  ["weeks down", true],
+])(
+  "a request for the range the calendar has stops a short scroll before it settles (%s)",
+  async (_, block) => {
+    const { finishScroll, rest, shownItem, userScrollsTo } = await show(<Axis block={block} />);
+
+    // A day's scroll, short of the half page that would report it, still on its way.
+    await userScrollsTo(5001, false);
+    scrolls = [];
+    await act(async () => request(5000));
+    // Any scroll the request started arrives; either way the user's scroll then comes to rest.
+    if (scrolls.length > 0) await finishScroll();
+    else await rest();
+
+    expect(shownItem()).toBe(5000);
+    expect(onScroll).not.toHaveBeenCalled();
+  },
+);
