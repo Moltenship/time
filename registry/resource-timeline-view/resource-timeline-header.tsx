@@ -57,7 +57,7 @@ export const ResourceTimelineHeader = memo(function ResourceTimelineHeader({
             }}
           >
             <span className="sticky start-(--calendar-resource-column) inline-block px-2 pt-1 text-xs font-medium whitespace-nowrap">
-              {labels.group(group)}
+              <bdi>{labels.group(group)}</bdi>
             </span>
           </div>
         ))}
@@ -93,7 +93,8 @@ export const ResourceTimelineHeader = memo(function ResourceTimelineHeader({
                 </span>
               </>
             ) : (
-              labels.slot(slot)
+              // Isolated, so "11 PM" keeps its order in a right-to-left layout.
+              <bdi>{labels.slot(slot)}</bdi>
             )}
           </div>
         );
