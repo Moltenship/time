@@ -44,6 +44,15 @@ const events: readonly Fixture[] = [
     start: Temporal.Instant.from("2026-10-02T09:00:00Z"),
     title: "Before",
   },
+  // A month-long holiday, which outlasts any page of loaded days.
+  {
+    data: null,
+    end: Temporal.PlainDate.from("2026-10-30"),
+    id: "season",
+    kind: "all-day",
+    start: Temporal.PlainDate.from("2026-10-05"),
+    title: "Season",
+  },
   // Starts before the week from Wednesday October 7, and runs into it.
   {
     data: null,
@@ -224,7 +233,10 @@ test("a bar that starts in days scrolled away stays readable and focusable", asy
     '[data-date="2026-10-08"][data-all-day]',
   )!.parentElement!;
   await act(async () => cell.focus());
+  // The month-long holiday is the day's first all-day event; the trip is next.
   await press(cell, "Enter");
+  expect(document.activeElement?.getAttribute("data-event-id")).toBe("season");
+  await press(document.activeElement, "ArrowDown");
   expect(document.activeElement).toBe(bar);
 });
 
@@ -257,6 +269,30 @@ test("a focused bar keeps focus as the day it was focused on scrolls away", asyn
   expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 9 – 15, 2026");
   expect(ariaLabel(document.activeElement)).toMatch(/^Friday, October 9/);
 });
+
+test.each([
+  ["scrolling-week", "2026-10-20"],
+  ["scrolling-day", "2026-10-09"],
+] as const)(
+  "%s keeps focus on a long bar when the view jumps past its loaded days",
+  async (view, to) => {
+    const container = await show(view);
+    await act(async () =>
+      container.querySelector<HTMLElement>('[data-event-id="season"]')!.focus(),
+    );
+
+    // October 7, where focus was, is no longer even loaded.
+    await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from(to)));
+
+    const bar = container.querySelector<HTMLElement>(
+      '[data-event-id="season"]:not([tabindex="-1"])',
+    );
+    expect(
+      bar?.closest('[role="gridcell"]')?.querySelector("[data-date]")?.getAttribute("data-date"),
+    ).toBe(to);
+    expect(document.activeElement).toBe(bar);
+  },
+);
 
 test("keys page a scrolling week past its visible days", async () => {
   const container = await show("scrolling-week");
