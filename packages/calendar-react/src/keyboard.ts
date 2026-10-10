@@ -316,15 +316,17 @@ function createKeyboardHandlers(
       : first;
   }
 
-  /** `resourceId` when `placement` shows in it, else its first resource or the unassigned bucket. */
+  /**
+   * `resourceId` when `placement` shows in it. Otherwise no resource, so focus lands on whichever
+   * copy of the event renders: its first resource may be hidden or unknown.
+   */
   function resourceOn(
     placement: CalendarEventPlacement,
     resourceId: CalendarFocus["resourceId"],
   ): CalendarFocus["resourceId"] {
-    if (resourceId === undefined || showsInResource(placement.resourceIds, resourceId)) {
-      return resourceId;
-    }
-    return placement.resourceIds[0] ?? null;
+    return resourceId === undefined || showsInResource(placement.resourceIds, resourceId)
+      ? resourceId
+      : undefined;
   }
 
   function onGrabbedKey(current: KeyboardGrab, event: KeyboardEvent<HTMLElement>): boolean {

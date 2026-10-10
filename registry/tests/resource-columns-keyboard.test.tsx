@@ -216,9 +216,10 @@ test("moving an event to another resource from the keyboard gives the pointer's 
 
 test("an event moved out of its last resource keeps focus where it still shows", async () => {
   // Unassigned follows p2: moving the p2 copy there unbooks p2, so the event shows only in p1.
+  // "gone" isn't a resource of the calendar, so it has no column to take focus.
   const container = await renderResources({
     defaultFocus: { date: anchorDate, eventId: "standup", kind: "event", resourceId: "p2" },
-    events: [shift("standup", ["p1", "p2"], "2026-10-08T09:00Z", "2026-10-08T09:30Z")],
+    events: [shift("standup", ["gone", "p1", "p2"], "2026-10-08T09:00Z", "2026-10-08T09:30Z")],
     resources: people(2),
     unassigned: "bucket",
   });
