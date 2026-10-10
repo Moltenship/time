@@ -25,7 +25,8 @@ export interface ScrollingAxisOptions {
   /**
    * Moves the calendar to show `first` first, once the user has scrolled there: at rest, or every
    * half page during a long swipe or a drag, so the loaded pages keep up with it. A controlled
-   * anchor may follow later; until it changes, the view stays where the user scrolled.
+   * anchor may accept the latest of these later; until it changes, the view stays where the user
+   * scrolled, and any other anchor moves the view to it.
    */
   readonly onScroll: (first: number) => void;
   /** Items the calendar shows at once: its days or weeks. */
@@ -92,10 +93,11 @@ export function useScrollingAxis({
   /** The range's first item when the axis last laid it out. */
   const committed = useRef<number | null>(null);
   /**
-   * Items the user scrolled to that the calendar's range may still catch up with, oldest first:
-   * a controlled anchor can commit after other renders, or after the user has scrolled on.
+   * The last item the user scrolled to, until the calendar's range catches up with it: a
+   * controlled anchor can commit after other renders. Only the latest counts, so any other range,
+   * however it came about, is navigation the view follows.
    */
-  const proposed = useRef<number[]>([]);
+  const proposed = useRef<number | null>(null);
   /** Where a scroll this hook started is heading; the user's own input clears it. */
   const heading = useRef<number | null>(null);
 
@@ -153,14 +155,13 @@ export function useScrollingAxis({
     }
     if (committed.current === first) return;
     committed.current = first;
-    // The range caught up with a scroll; any later scroll is still on its way.
-    const caughtUp = proposed.current.lastIndexOf(first);
-    if (caughtUp !== -1) {
-      proposed.current.splice(0, caughtUp + 1);
+    // The range caught up with the user's scroll.
+    if (proposed.current === first) {
+      proposed.current = null;
       return;
     }
     // Anything else moved the range, such as Today: show it, in place of any scroll on its way.
-    proposed.current = [];
+    proposed.current = null;
     const replacing = heading.current !== null;
     heading.current = null;
     const from = shown.current;
@@ -203,9 +204,7 @@ export function useScrollingAxis({
     const interacting = () => element.closest("[data-interaction]");
     const show = (item: number) => {
       shown.current = item;
-      // Every one is kept until the range catches up with it or moves elsewhere, however many
-      // scrolls a controlled anchor falls behind.
-      proposed.current = [...proposed.current, item];
+      proposed.current = item;
       latest.current.onScroll(item);
     };
 

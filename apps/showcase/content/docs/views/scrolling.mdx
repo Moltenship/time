@@ -40,8 +40,9 @@ what it shows, so `Calendar.Title`, `onAnchorDateChange`, and a URL that stores 
 scroll. During a long swipe the anchor follows every half page. When the anchor changes any other
 way, from Today, Next, or your own `setAnchorDate`, the view scrolls there: smoothly over a page or
 two, and at once from further away, from the keyboard, or when the system asks for reduced motion.
-With a controlled `anchorDate`, the view stays where it was scrolled until your state catches up,
-even if that takes a few renders.
+With a controlled `anchorDate`, the view stays where it was scrolled until your state takes the
+latest date `onAnchorDateChange` sent, even a few renders later; any other `anchorDate` moves the
+view to it. If you defer the update, commit the latest date rather than each one in turn.
 
 The month names the month that most of its third row falls in, and dims the days of other months.
 Previous and Next go to the middle of the neighbouring month, so all of it shows.

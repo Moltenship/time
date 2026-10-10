@@ -116,7 +116,7 @@ test("opens on the range, with room to scroll either way", async () => {
   expect(scrolls.at(-1)?.behavior).toBe("instant");
 });
 
-test("a range that commits late does not pull the view back, even past other renders", async () => {
+test("a range that commits the latest scroll late does not pull the view back", async () => {
   const { finishScroll, shownItem, userScrollsTo } = await show();
 
   await userScrollsTo(5004);
@@ -125,18 +125,27 @@ test("a range that commits late does not pull the view back, even past other ren
   scrolls = [];
   await act(async () => rerender());
   expect(scrolls).toEqual([]);
-  // The user scrolls on, and then the first proposal commits.
+  // The user scrolls on, and the app then takes the latest date.
   await userScrollsTo(5009);
-  await act(async () => setFirst(5004));
-  expect(scrolls).toEqual([]);
-  expect(shownItem()).toBe(5009);
   await act(async () => setFirst(5009));
   expect(scrolls).toEqual([]);
+  expect(shownItem()).toBe(5009);
 
   // A range the user didn't scroll to is shown.
   await act(async () => setFirst(5012));
   await finishScroll();
   expect(shownItem()).toBe(5012);
+});
+
+test("any range but the latest scroll moves the view, as a date picked after rejected scrolls", async () => {
+  const { finishScroll, shownItem, userScrollsTo } = await show();
+
+  // The app keeps its anchor through many scrolls, back and forth.
+  for (let step = 0; step < 50; step += 1) await userScrollsTo(step % 2 === 0 ? 5004 : 5009);
+  await act(async () => setFirst(5004));
+  await finishScroll();
+
+  expect(shownItem()).toBe(5004);
 });
 
 test("the user taking over a scroll to the next page moves the range as they go", async () => {
@@ -240,13 +249,13 @@ test("a resize of a pixel, a fraction of one per day, keeps the shown day in pla
   expect(onScroll).not.toHaveBeenCalled();
 });
 
-test("a controlled anchor many scrolls behind still catches up without pulling the view back", async () => {
+test("a controlled anchor that takes the last of many scrolls leaves the view in place", async () => {
   const { shownItem, userScrollsTo } = await show();
 
-  // Twenty scrolls the app hasn't accepted yet, four days at a time.
+  // Twenty scrolls, four days at a time, before the app takes the last one.
   for (let step = 1; step <= 20; step += 1) await userScrollsTo(5000 + 4 * step);
   scrolls = [];
-  await act(async () => setFirst(5004));
+  await act(async () => setFirst(5080));
 
   expect(scrolls).toEqual([]);
   expect(shownItem()).toBe(5080);
