@@ -24,10 +24,12 @@ afterEach(async () => {
 
 async function renderResources({
   defaultFocus = null,
+  direction,
   onEventChange = () => {},
   resources = people(3),
 }: {
   readonly defaultFocus?: CalendarFocus | null;
+  readonly direction?: "ltr" | "rtl";
   readonly onEventChange?: (change: Change) => void;
   readonly resources?: readonly CalendarResource<null>[];
 } = {}) {
@@ -37,6 +39,7 @@ async function renderResources({
       defaultFocus={defaultFocus}
       defaultTimeZone="UTC"
       defaultView="resources"
+      direction={direction}
       events={[standup]}
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T12:00Z")}
@@ -105,6 +108,17 @@ test("arrow keys cross resource columns, and past the last resource page to the 
     "Person 1, Friday, October 9, 2026, no all-day events",
     "p1",
   ]);
+});
+
+test("in RTL, the arrow keys follow the layout: left is the next resource", async () => {
+  const container = await renderResources({ direction: "rtl" });
+  await tabIn(container);
+  await press("ArrowDown");
+
+  await press("ArrowLeft");
+  expect(focusedResource()).toBe("p2");
+  await press("ArrowRight");
+  expect(focusedResource()).toBe("p1");
 });
 
 test("End reaches a resource scrolled out of view and focuses its column", async () => {
