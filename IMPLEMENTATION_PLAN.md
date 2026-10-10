@@ -19,7 +19,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | 0.1 editing    | #35, #37         | Transactions with optimistic overlay; native Pointer Events move, resize and create in `calendar-dnd`        |
 | 0.1 demo, docs | #71–#73, #100    | Demo app, rewritten docs with live previews and anatomy diagrams, landing page with a live week view         |
 | 0.2 keyboard   | #36, #97         | Focus model, spatial navigation, keyboard move/resize/create, announcements; wired into every view and the demo |
-| 0.2 a11y       | #98              | axe checks in CI (`vp run a11y`), token contrast test, reduced motion, RTL layout, accessibility docs         |
+| 0.2 a11y       | #98              | axe checks (`vp run a11y`), configured in CI and currently run locally, token contrast test, reduced motion, RTL layout, accessibility docs         |
 | 0.3 resources  | #39–#41          | Resource model and hierarchy, multi-resource fragments, resource columns and resource timeline views with virtualization, keyboard and pointer moves across resources |
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility and 0.3 — Resource views are closed.
@@ -33,8 +33,9 @@ latest releases.
 
 ## In flight outside the milestones
 
-- #119 timeline annotations (Amie-style rail in the time grid), approved by the owner and built in
-  two PRs: the core/React model, then the registry parts, demo and docs.
+- #119 timeline annotations (Amie-style rail in the time grid), approved by the owner and being
+  implemented in two phases: the core/React model in #124, then the registry parts, demo and docs.
+  Draft #122 is the prototype and won't be merged.
 
 ## Next: 1.0 — Public release
 
@@ -72,8 +73,8 @@ Scope / Done when / Later before starting it.
   Actions is capped on this account, CI and Pullfrog don't run: run `vp run ready` locally and post
   the result on the PR, and get the review from GPT-6.1-Sol (high) instead of Pullfrog.
 - Merge with squash once the review has no open blocker or should-fix findings, the checks pass
-  (locally while Actions is capped) and the Vercel previews are green. Rebase on `main` first if
-  behind.
+  (locally while Actions is capped) and the Vercel previews are green. If Vercel rate-limits
+  deployments, retry after the limit resets. Rebase on `main` first if behind.
 - UI changes include light and dark screenshots. Docs show live, theme-aware UI, not screenshots.
 - Keep native "blocked by" links and this file current when scope or order changes.
 
