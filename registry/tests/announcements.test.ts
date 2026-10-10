@@ -81,6 +81,15 @@ test("names the resources an event books when it is picked up, moved, or created
   expect(step(["lotus", "maya", "gone"])).toBe("Thursday, October 8, 9:00 – 9:30 AM, Lotus, Maya");
   expect(step(["lotus", "maya", "gone"])).toBe("Thursday, October 8, 9:00 – 9:30 AM");
   expect(step(["orchid", "maya"])).toBe("Thursday, October 8, 9:00 – 9:30 AM, Orchid, Maya");
+
+  // A drag that starts over another resource announces it, so going back names the original.
+  const dragged = { ...update, original: inResources(["orchid"]) };
+  expect(say({ ...dragged, phase: "start", proposed: inResources(["lotus"]) }, titled)).toBe(
+    "Picked up standup, Thursday, October 8, 9:00 – 9:30 AM, Lotus.",
+  );
+  expect(say({ ...dragged, phase: "step", proposed: inResources(["orchid"]) }, titled)).toBe(
+    "Thursday, October 8, 9:00 – 9:30 AM, Orchid",
+  );
   expect(
     say({ ...booked, phase: "commit", proposed: inResources(["lotus", "maya"]) }, titled),
   ).toBe("Moved standup to Thursday, October 8, 9:00 – 9:30 AM, Lotus, Maya.");

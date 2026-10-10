@@ -30,12 +30,16 @@ function sameResources(left: readonly ResourceId[], right: readonly ResourceId[]
 /**
  * The resources each move last announced, by the placement it started from, which keyboard and
  * pointer updates carry unchanged through a gesture. A step names the resources when they differ
- * from the step before, so moving out to another resource and back names both.
+ * from the last announcement, so moving out to another resource and back names both, even when a
+ * drag starts over another resource.
  */
 const announcedResources = new WeakMap<CalendarEventPlacement, readonly ResourceId[]>();
 
-/** Whether a step's resources differ from the last ones announced for its gesture. */
-function resourcesChanged({ original, proposed }: CalendarInteractionUpdate): boolean {
+/**
+ * Remembers the resources an update announces for its gesture, and returns whether they differ
+ * from the ones announced before.
+ */
+function announceResources({ original, proposed }: CalendarInteractionUpdate): boolean {
   if (original === null || proposed === null) return false;
   const changed = !sameResources(
     announcedResources.get(original) ?? original.resourceIds,
@@ -69,6 +73,7 @@ function describePlacement(
  */
 export const calendarAnnouncements: CalendarAnnouncementMessages = {
   start: (update, where) => {
+    announceResources(update);
     const resources = update.cause === "create" || update.cause === "move";
     const when =
       update.proposed === null ? "" : `, ${describePlacement(update.proposed, where, resources)}`;
@@ -83,7 +88,7 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
   step: (update, where) =>
     update.proposed === null
       ? null
-      : describePlacement(update.proposed, where, resourcesChanged(update)),
+      : describePlacement(update.proposed, where, announceResources(update)),
   commit: (update, where) => {
     switch (update.cause) {
       case "create":

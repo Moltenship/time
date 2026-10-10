@@ -5,7 +5,7 @@ import { act } from "react";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
 import { calendarAnnouncements } from "../calendar/announcements";
-import { drag, layOut } from "./pointer";
+import { drag, layOut, pointer } from "./pointer";
 import { render } from "./render";
 import { people, ResourceCalendar, shift, type StaffEvent } from "./resource-fixtures";
 import { ariaLabel, text } from "./view-fixtures";
@@ -141,18 +141,40 @@ test("End reaches a resource scrolled out of view and focuses its column", async
   expect(rendered()).toHaveLength(11);
 });
 
-test("moving an event to another resource from the keyboard gives the pointer's change", async () => {
-  const pointerChange = vi.fn<(change: Change) => void>();
-  const pointer = await renderResources({ onEventChange: pointerChange });
-  // 100px resource columns, 100px an hour from midnight.
-  const columns = [...pointer.querySelectorAll('[data-slot="resource-columns-body"] [data-date]')];
-  const event = pointer.querySelector('[data-event-id="standup"]')!;
+/** Lays out 100px resource columns, 100px an hour from midnight, with standup in the first. */
+function layOutColumns(container: HTMLElement) {
+  const columns = [
+    ...container.querySelectorAll('[data-slot="resource-columns-body"] [data-date]'),
+  ];
+  const event = container.querySelector('[data-event-id="standup"]')!;
   layOut([
     [event, { height: 50, width: 100, x: 0, y: 900 }],
     ...columns.map(
       (column, index) => [column, { height: 2400, width: 100, x: index * 100, y: 0 }] as const,
     ),
   ]);
+  return event;
+}
+
+test("a drag that starts over another resource names the original one on its way back", async () => {
+  const container = await renderResources();
+  const event = layOutColumns(container);
+
+  await act(async () => {
+    pointer(event, "pointerdown", [50, 910]);
+    pointer(event, "pointermove", [150, 910]);
+  });
+  expect(spoken(container)).toBe(
+    "Picked up standup, Thursday, October 8, 9:00 – 9:30 AM, Person 2.",
+  );
+  await act(async () => pointer(event, "pointermove", [50, 910]));
+  expect(spoken(container)).toBe("Thursday, October 8, 9:00 – 9:30 AM, Person 1");
+  await act(async () => pointer(event, "pointerup", [50, 910]));
+});
+
+test("moving an event to another resource from the keyboard gives the pointer's change", async () => {
+  const pointerChange = vi.fn<(change: Change) => void>();
+  const event = layOutColumns(await renderResources({ onEventChange: pointerChange }));
   drag(event, [
     [50, 910],
     [150, 910],

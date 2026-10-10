@@ -15,19 +15,21 @@ export function layOut(boxes: readonly (readonly [Element, DOMRectInit])[]) {
       });
 }
 
+/** Dispatches a primary mouse pointer event at a viewport point. */
+export function pointer(element: Element, type: string, [x, y]: readonly [number, number]) {
+  const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
+  Object.defineProperties(event, {
+    isPrimary: { value: true },
+    pointerId: { value: 1 },
+    pointerType: { value: "mouse" },
+  });
+  element.dispatchEvent(event);
+}
+
 export function drag(element: Element, points: readonly (readonly [number, number])[]) {
-  const pointer = (type: string, [x, y]: readonly [number, number]) => {
-    const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
-    Object.defineProperties(event, {
-      isPrimary: { value: true },
-      pointerId: { value: 1 },
-      pointerType: { value: "mouse" },
-    });
-    element.dispatchEvent(event);
-  };
   act(() => {
-    pointer("pointerdown", points[0]!);
-    for (const point of points.slice(1)) pointer("pointermove", point);
-    pointer("pointerup", points.at(-1)!);
+    pointer(element, "pointerdown", points[0]!);
+    for (const point of points.slice(1)) pointer(element, "pointermove", point);
+    pointer(element, "pointerup", points.at(-1)!);
   });
 }
