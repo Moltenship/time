@@ -480,7 +480,7 @@ interface CalendarAnnotationSource {
 ```
 
 - **Separate from events.** `Root` takes `annotations` and `annotationSources` next to `events`. Annotations get their own validated snapshot and interval index, and never enter the event snapshot, overlap layout, policies or transactions. Changing them never reruns event projection.
-- **Sibling projection.** `projectTimeGridAnnotations` lays annotations out per column, in rail lanes of their own. It merges a source's items by its `mergeGap` and by drawn size, so short marks never touch. Views take only the numbers the layout needs (minimum height, gap, lanes).
+- **Sibling projection.** `projectTimeGridAnnotations` lays annotations out per column, in rail lanes of their own. It merges a source's items by its `mergeGap` and by drawn size, so short marks never touch. Like events, items land on the dates their wall clock reads, one UTC offset at a time, so a fold that crosses midnight follows the wall clock. Views take only the numbers the layout needs (minimum height, gap, lanes).
 - **Sources are app-defined.** The library knows no source kinds. Leaving a source out of `annotationSources` hides its annotations.
 - **Read-only and accessible.** Marks are not focus targets. Screen readers get per-day summaries (`summarizeAnnotationMarks`), and a focused slot names the annotations that cover it.
 - **Presentation lives in the registry** as composable parts.

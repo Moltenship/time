@@ -1,8 +1,6 @@
-import { instantInterval } from "@moltenship/calendar-temporal";
-
 import type { ResourceId } from "../ids";
 import type { TimeGridColumn } from "../views/time-grid/columns";
-import { timedFragmentBox } from "../views/time-grid/geometry";
+import { wallEpochNanoseconds } from "../views/time-grid/geometry";
 import type { AnnotationSnapshot, CalendarAnnotation, CalendarAnnotationSource } from "./types";
 
 /** How marks draw in a time grid's rail, as fractions of a column's 24-hour axis. */
@@ -26,7 +24,10 @@ export interface TimeGridAnnotationMark<
   readonly annotations: readonly CalendarAnnotation<TData, ResourceId>[];
   readonly key: string;
   readonly source: TSource;
-  /** The part on the column's day, `[start, end)`. */
+  /**
+   * The first and last instants whose wall time is on the column's date, `[start, end)`. A fold
+   * crossing midnight can put another date's time between them.
+   */
   readonly start: Temporal.Instant;
   readonly end: Temporal.Instant;
   readonly startsBeforeDay: boolean;
@@ -41,16 +42,111 @@ export interface TimeGridAnnotationMark<
 }
 
 const DEFAULT_MAX_LANES = 3;
+const DAY_NANOSECONDS = 86_400_000_000_000n;
+const NOMINAL_DAY_NANOSECONDS = 86_400_000_000_000;
 
 type UnplacedMark<TSource extends CalendarAnnotationSource, TData> = Omit<
   TimeGridAnnotationMark<TSource, TData>,
   "lane" | "lanes"
 >;
 
-const later = (left: Temporal.Instant, right: Temporal.Instant) =>
-  Temporal.Instant.compare(left, right) >= 0 ? left : right;
-const earlier = (left: Temporal.Instant, right: Temporal.Instant) =>
-  Temporal.Instant.compare(left, right) <= 0 ? left : right;
+/** Instants with one UTC offset, `[start, end)`; `shift` turns them into wall time from midnight. */
+interface OffsetRun {
+  readonly end: bigint;
+  readonly shift: bigint;
+  readonly start: bigint;
+}
+
+/**
+ * The instants that can fall on a column's date, one run per UTC offset. Offsets stay within ±24
+ * hours, so only instants within a day of the date's wall-clock span can have a wall time on it.
+ */
+function dateOffsetRuns(column: TimeGridColumn): readonly OffsetRun[] {
+  const midnight = wallEpochNanoseconds(column.date.toPlainDateTime());
+  const end = midnight + 2n * DAY_NANOSECONDS;
+  const runs: OffsetRun[] = [];
+  let cursor = new globalThis.Temporal.ZonedDateTime(
+    midnight - DAY_NANOSECONDS,
+    column.day.timeZone,
+  );
+  for (;;) {
+    const transition = cursor.getTimeZoneTransition("next");
+    const runEnd =
+      transition === null || transition.epochNanoseconds >= end ? end : transition.epochNanoseconds;
+    runs.push({
+      end: runEnd,
+      shift: BigInt(cursor.offsetNanoseconds) - midnight,
+      start: cursor.epochNanoseconds,
+    });
+    if (runEnd === end) return runs;
+    cursor = transition!;
+  }
+}
+
+/** Where something falls on a column's date. */
+interface DayPart {
+  /** Wall time from midnight, clamped to the date, as `wallExtent` measures it. */
+  top: bigint;
+  bottom: bigint;
+  /** The first and last instants whose wall time is on the date, `[start, end)`. */
+  start: bigint;
+  end: bigint;
+  /** It also has wall time on an earlier or a later date. */
+  before: boolean;
+  after: boolean;
+}
+
+/**
+ * The part of `[start, end)` on the date of `runs`, or `null` when none of its wall time is on
+ * the date. Each offset run is measured on its own, like events, so a fold that crosses midnight
+ * puts the repeated time on the date its wall clock reads.
+ */
+function dayPart(runs: readonly OffsetRun[], start: bigint, end: bigint): DayPart | null {
+  let part: DayPart | null = null;
+  let before = false;
+  let after = false;
+  for (const run of runs) {
+    const from = start > run.start ? start : run.start;
+    const to = end < run.end ? end : run.end;
+    if (from >= to) continue;
+    const wallFrom = from + run.shift;
+    const wallTo = to + run.shift;
+    before ||= wallFrom < 0n;
+    after ||= wallTo > DAY_NANOSECONDS;
+    if (wallFrom >= DAY_NANOSECONDS || wallTo <= 0n) continue;
+    const top = wallFrom > 0n ? wallFrom : 0n;
+    const bottom = wallTo < DAY_NANOSECONDS ? wallTo : DAY_NANOSECONDS;
+    // The flags are set once every run is seen.
+    const piece = {
+      after: false,
+      before: false,
+      bottom,
+      end: bottom - run.shift,
+      start: top - run.shift,
+      top,
+    };
+    part = part === null ? piece : union(part, piece);
+  }
+  return part === null ? null : { ...part, after, before };
+}
+
+function union(left: DayPart, right: DayPart): DayPart {
+  return {
+    after: left.after || right.after,
+    before: left.before || right.before,
+    bottom: left.bottom > right.bottom ? left.bottom : right.bottom,
+    end: left.end > right.end ? left.end : right.end,
+    start: left.start < right.start ? left.start : right.start,
+    top: left.top < right.top ? left.top : right.top,
+  };
+}
+
+/** A fraction of the 24-hour axis within `[0, 1]`; anything else, such as `NaN`, is `0`. */
+const axisFraction = (value: number | undefined) => Math.min(1, Math.max(0, value || 0));
+
+/** A fraction of the 24-hour axis in nanoseconds of wall time. */
+const wallNanoseconds = (fraction: number) =>
+  BigInt(Math.round(fraction * NOMINAL_DAY_NANOSECONDS));
 
 /** `mergeGap` in nanoseconds from the start of the column's day, so calendar units work too. */
 function mergeGapNanoseconds(
@@ -63,10 +159,12 @@ function mergeGapNanoseconds(
   return BigInt(Math.round(source.mergeGap.total({ relativeTo, unit: "nanoseconds" })));
 }
 
+/** Annotations that draw as one mark: their whole span in time, and their part on the date. */
 interface Group<TData> {
-  annotations: CalendarAnnotation<TData, ResourceId>[];
-  end: Temporal.Instant;
-  start: Temporal.Instant;
+  readonly annotations: CalendarAnnotation<TData, ResourceId>[];
+  end: bigint;
+  part: DayPart;
+  start: bigint;
 }
 
 /** A key that keeps `1` and `"1"`, and every source and ID pair, apart. */
@@ -82,77 +180,84 @@ const byStart = (
   Temporal.Instant.compare(left.start, right.start) ||
   Temporal.Instant.compare(left.end, right.end);
 
+const compareBigInts = (left: bigint, right: bigint) => (left < right ? -1 : left > right ? 1 : 0);
+
 /**
- * Merges one source's annotations on a column's day: by the source's `mergeGap` in time, and by
+ * Merges one source's annotations on a column's date: by the source's `mergeGap` in time, and by
  * drawn size, so marks of one source never touch. Drawn positions follow the wall clock, which
- * repeats an hour on a fall-back day, so groups are merged again in drawn order until none touch.
+ * repeats an hour on a fall-back day, so groups are swept again in drawn order.
  */
 function mergeSource<TSource extends CalendarAnnotationSource, TData>(
   column: TimeGridColumn,
-  day: { readonly start: Temporal.Instant; readonly end: Temporal.Instant },
+  dayStart: Temporal.Instant,
+  runs: readonly OffsetRun[],
   source: TSource,
   annotations: readonly CalendarAnnotation<TData, ResourceId>[],
-  { minGap, minHeight }: { readonly minGap: number; readonly minHeight: number },
+  geometry: { readonly minGap: number; readonly minHeight: number },
 ): UnplacedMark<TSource, TData>[] {
-  const gap = mergeGapNanoseconds(source, day.start, column.day.timeZone);
-  const box = ({ end, start }: Group<TData>) =>
-    timedFragmentBox(column, instantInterval(later(start, day.start), earlier(end, day.end)));
-  const drawn = (group: Group<TData>) => {
-    const { height, top } = box(group);
-    return { bottom: top + Math.max(height, minHeight), top };
-  };
-  const touch = (left: Group<TData>, right: Group<TData>) => {
-    const [a, b] = [drawn(left), drawn(right)];
-    return b.top - a.bottom <= minGap && a.top - b.bottom <= minGap;
-  };
+  const gap = mergeGapNanoseconds(source, dayStart, column.day.timeZone);
+  // Drawn sizes in whole nanoseconds of wall time, so marks that meet exactly always touch.
+  const minGap = wallNanoseconds(geometry.minGap);
+  const minHeight = wallNanoseconds(geometry.minHeight);
+  const drawnBottom = ({ part }: Group<TData>) =>
+    part.bottom - part.top > minHeight ? part.bottom : part.top + minHeight;
+  const touch = (left: Group<TData>, right: Group<TData>) =>
+    right.part.top - drawnBottom(left) <= minGap && left.part.top - drawnBottom(right) <= minGap;
   const merge = (into: Group<TData>, from: Group<TData>) => {
-    into.annotations = [...into.annotations, ...from.annotations].toSorted(byStart);
-    into.start = earlier(into.start, from.start);
-    into.end = later(into.end, from.end);
+    // Each group is merged away at most once, so appending stays linear; members sort at the end.
+    for (const annotation of from.annotations) into.annotations.push(annotation);
+    into.start = into.start < from.start ? into.start : from.start;
+    into.end = into.end > from.end ? into.end : from.end;
+    into.part = union(into.part, from.part);
   };
 
-  const groups: Group<TData>[] = [];
-  for (const annotation of annotations.toSorted(byStart)) {
-    const next = { annotations: [annotation], end: annotation.end, start: annotation.start };
-    const last = groups.at(-1);
-    if (
-      last !== undefined &&
-      (annotation.start.epochNanoseconds - last.end.epochNanoseconds <= gap || touch(last, next))
-    ) {
+  const singles: Group<TData>[] = [];
+  for (const annotation of annotations) {
+    const start = annotation.start.epochNanoseconds;
+    const end = annotation.end.epochNanoseconds;
+    const part = dayPart(runs, start, end);
+    if (part !== null) singles.push({ annotations: [annotation], end, part, start });
+  }
+  singles.sort(
+    (left, right) => compareBigInts(left.start, right.start) || compareBigInts(left.end, right.end),
+  );
+
+  // In time order first, then once more in drawn order, which differs only in a repeated hour.
+  // Sorted by top, a merged group keeps its top and its bottom only grows, so one sweep is enough.
+  const inTime: Group<TData>[] = [];
+  for (const next of singles) {
+    const last = inTime.at(-1);
+    if (last !== undefined && (next.start - last.end <= gap || touch(last, next))) {
       merge(last, next);
     } else {
-      groups.push(next);
+      inTime.push(next);
     }
   }
-  for (let merged = true; merged;) {
-    merged = false;
-    groups.sort((left, right) => drawn(left).top - drawn(right).top);
-    for (let index = 1; index < groups.length; index++) {
-      if (touch(groups[index - 1]!, groups[index]!)) {
-        merge(groups[index - 1]!, groups.splice(index, 1)[0]!);
-        merged = true;
-        break;
-      }
-    }
+  const groups: Group<TData>[] = [];
+  for (const next of inTime.sort((left, right) => compareBigInts(left.part.top, right.part.top))) {
+    const last = groups.at(-1);
+    if (last !== undefined && touch(last, next)) merge(last, next);
+    else groups.push(next);
   }
 
-  return groups.toSorted(byStart).map((group) => {
-    const start = later(group.start, day.start);
-    const end = earlier(group.end, day.end);
-    const { height, top } = box(group);
-    return {
-      annotations: Object.freeze(group.annotations),
-      end,
-      endsAfterDay: Temporal.Instant.compare(group.end, day.end) > 0,
-      height,
-      key: markKey(source, group.annotations[0]!),
-      kind: height < minHeight ? "dot" : "bar",
-      source,
-      start,
-      startsBeforeDay: Temporal.Instant.compare(group.start, day.start) < 0,
-      top,
-    };
-  });
+  return groups
+    .sort((left, right) => compareBigInts(left.part.start, right.part.start))
+    .map((group) => {
+      const { after, before, bottom, end, start, top } = group.part;
+      const members = group.annotations.sort(byStart);
+      return {
+        annotations: Object.freeze(members),
+        end: Temporal.Instant.fromEpochNanoseconds(end),
+        endsAfterDay: after,
+        height: Number(bottom - top) / NOMINAL_DAY_NANOSECONDS,
+        key: markKey(source, members[0]!),
+        kind: bottom - top < minHeight ? "dot" : "bar",
+        source,
+        start: Temporal.Instant.fromEpochNanoseconds(start),
+        startsBeforeDay: before,
+        top: Number(top) / NOMINAL_DAY_NANOSECONDS,
+      };
+    });
 }
 
 /** Assigns rail lanes among marks only; event lanes never change. */
@@ -210,7 +315,9 @@ export function projectTimeGridAnnotations<TSource extends CalendarAnnotationSou
   sources: readonly TSource[],
   geometry: TimeGridAnnotationGeometry = {},
 ): readonly (readonly TimeGridAnnotationMark<TSource, TData>[])[] {
-  const { layout = "pack", minGap = 0, minHeight = 0 } = geometry;
+  const { layout = "pack" } = geometry;
+  const minGap = axisFraction(geometry.minGap);
+  const minHeight = axisFraction(geometry.minHeight);
   // Lanes are whole and at least one.
   const maxLanes =
     geometry.maxLanes !== undefined && Number.isFinite(geometry.maxLanes)
@@ -220,15 +327,20 @@ export function projectTimeGridAnnotations<TSource extends CalendarAnnotationSou
     columns.map((column) => {
       const day = column.day.interval;
       if (day === null) return Object.freeze([]);
-      const visible = snapshot.query(day.start, day.end);
-      const marks = sources.flatMap((source) =>
-        mergeSource(
-          column,
-          day,
-          source,
-          visible.filter((annotation) => annotation.sourceId === source.id),
-          { minGap, minHeight },
+      const runs = dateOffsetRuns(column);
+      // Every instant that may have wall time on the date; `dayPart` keeps those that do.
+      const nearby = Map.groupBy(
+        snapshot.query(
+          Temporal.Instant.fromEpochNanoseconds(runs[0]!.start),
+          Temporal.Instant.fromEpochNanoseconds(runs.at(-1)!.end),
         ),
+        (annotation) => annotation.sourceId,
+      );
+      const marks = sources.flatMap((source) =>
+        mergeSource(column, day.start, runs, source, nearby.get(source.id) ?? [], {
+          minGap,
+          minHeight,
+        }),
       );
       return placeInLanes(marks, sources, { layout, maxLanes, minHeight });
     }),

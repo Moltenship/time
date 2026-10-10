@@ -323,6 +323,83 @@ describe("time-grid annotation edge cases", () => {
   });
 });
 
+describe("time-grid annotation folds and scale", () => {
+  // St. John's fell back at 00:01 on 2010-11-07, to 23:01 on the 6th: the fold crosses midnight.
+  const stJohns = timeGridColumns(dates("2010-11-06", "2010-11-08"), "America/St_Johns");
+
+  test("puts repeated time on the date its wall clock reads", () => {
+    // 23:10–23:30 on the 6th, after the clocks went back: instants that the 7th's span holds.
+    const snapshot = createAnnotationSnapshot([
+      annotation("repeat", "sleep", "2010-11-07T02:40Z", "2010-11-07T03:00Z"),
+    ]);
+    const [saturday, sunday] = projectTimeGridAnnotations(stJohns, snapshot, [sleep]);
+
+    expect(sunday).toEqual([]);
+    expect(saturday![0]).toMatchObject({
+      end: Temporal.Instant.from("2010-11-07T03:00Z"),
+      endsAfterDay: false,
+      start: Temporal.Instant.from("2010-11-07T02:40Z"),
+      startsBeforeDay: false,
+    });
+    expect(saturday![0]!.top).toBeCloseTo((23 * 60 + 10) * MINUTE);
+    expect(saturday![0]!.height).toBeCloseTo(20 * MINUTE);
+  });
+
+  test("splits an annotation across a fold at midnight like an event", () => {
+    // 23:50 on the 6th to 00:01 on the 7th, then 23:01–23:15 on the 6th again.
+    const start = Temporal.Instant.from("2010-11-07T02:20Z");
+    const end = Temporal.Instant.from("2010-11-07T02:45Z");
+    const snapshot = createAnnotationSnapshot([
+      annotation("across", "sleep", start.toString(), end.toString()),
+    ]);
+    const [saturday, sunday] = projectTimeGridAnnotations(stJohns, snapshot, [sleep]);
+
+    expect(saturday![0]).toMatchObject({
+      ...timedFragmentBox(stJohns[0]!, instantInterval(start, end)),
+      end,
+      endsAfterDay: true,
+      start,
+      startsBeforeDay: false,
+    });
+    expect(sunday![0]).toMatchObject({
+      ...timedFragmentBox(stJohns[1]!, instantInterval(start, end)),
+      end: Temporal.Instant.from("2010-11-07T02:31Z"),
+      endsAfterDay: false,
+      start: Temporal.Instant.from("2010-11-07T02:30Z"),
+      startsBeforeDay: true,
+    });
+  });
+
+  test("merges many items in linear time", () => {
+    // Back to back, 4 seconds each: one mark.
+    const day = Temporal.Instant.from("2026-10-05T00:00Z");
+    const many = Array.from({ length: 20_000 }, (_, index) =>
+      annotation(
+        `m${index}`,
+        "sleep",
+        day.add({ seconds: index * 4 }).toString(),
+        day.add({ seconds: index * 4 + 4 }).toString(),
+      ),
+    );
+    const [monday] = projectTimeGridAnnotations(columns, createAnnotationSnapshot(many), [sleep]);
+    expect(ids(monday!)).toEqual([many.map(({ id }) => id)]);
+
+    // On a fall-back day, items a second apart in each 1 o'clock hour only touch in drawn order.
+    const [fallBack] = timeGridColumns(dates("2026-11-01", "2026-11-02"), "America/New_York");
+    const first = Temporal.Instant.from("2026-11-01T05:00Z");
+    const second = Temporal.Instant.from("2026-11-01T06:00:01Z");
+    const interleaved = Array.from({ length: 3000 }, (_, index) => {
+      const from = (index % 2 === 0 ? first : second).add({ seconds: index - (index % 2) });
+      return annotation(`f${index}`, "sleep", from.toString(), from.add({ seconds: 1 }).toString());
+    });
+    const [marks] = projectTimeGridAnnotations([fallBack!], createAnnotationSnapshot(interleaved), [
+      sleep,
+    ]);
+    expect(marks).toHaveLength(1);
+    expect(marks![0]!.annotations).toHaveLength(3000);
+  });
+});
+
 describe("annotation summaries", () => {
   test("summarizes each source's marks on a day in source order", () => {
     const snapshot = createAnnotationSnapshot([
