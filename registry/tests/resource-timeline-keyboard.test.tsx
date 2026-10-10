@@ -261,3 +261,37 @@ test("focus kept from a view without resources enters on the first row", async (
   await press("ArrowDown");
   expect(focused()).toBe("Room 1.1, Tuesday, October 6, 2026");
 });
+
+test("focus on the entry keeps one tab stop and one row when scrolled far away", async () => {
+  const container = await show(<Timeline />);
+  await tabIn(container);
+
+  // The entry and the focus pin the same row and day.
+  await scrollTo(viewport(container), { left: 1200, top: 13_200 });
+
+  expect(tabStops(container)).toEqual(["Site 1, expanded, Thursday, October 8, 2026"]);
+  expect(container.querySelectorAll('[role="row"][data-resource-id="site-1"]')).toHaveLength(1);
+  expect(container.querySelectorAll('[role="columnheader"][aria-colindex="9"]')).toHaveLength(1);
+});
+
+test("a time grid's slot focus lands on its whole day in a timeline of days", async () => {
+  for (const time of ["01:00", "09:00"]) {
+    const container = await show(
+      <Timeline
+        defaultFocus={{
+          date: Temporal.PlainDate.from("2026-10-06"),
+          kind: "slot",
+          time: Temporal.PlainTime.from(time),
+        }}
+        view="timeline-week"
+      />,
+    );
+    const stop = container.querySelector<HTMLElement>('[role="grid"] [tabindex="0"]');
+
+    expect(ariaLabel(stop)).toBe("Site 1, expanded, Tuesday, October 6, 2026");
+    // Tuesday is the week's second day, after the resource column.
+    expect(stop?.closest('[role="gridcell"]')?.getAttribute("aria-colindex")).toBe("3");
+    await cleanup?.();
+    cleanup = undefined;
+  }
+});

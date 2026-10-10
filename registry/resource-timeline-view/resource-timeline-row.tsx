@@ -171,7 +171,8 @@ function ResourceTimelineRowBase<TEvent>({
   const slotOf = (cell: CalendarCellFocus) =>
     origin === undefined
       ? -1
-      : origin.until(cell.date).days * perDay + (cell.kind === "slot" ? cell.time.hour : 0);
+      : origin.until(cell.date).days * perDay +
+        (unit === "hour" && cell.kind === "slot" ? cell.time.hour : 0);
   const draftSlot =
     draft === null ? undefined : anchorSlot(visibleSlots, ...slotsCovered(...draft));
 
@@ -274,7 +275,7 @@ function ResourceTimelineRowBase<TEvent>({
                   group={resource.hasChildren ? resource.id : null}
                   label={labels.cellName(cell)}
                   style={
-                    cell.kind === "slot"
+                    unit === "hour" && cell.kind === "slot"
                       ? {
                           insetInlineStart: (cell.time.minute / 60) * slotWidth,
                           width: (snapMinutes / 60) * slotWidth,

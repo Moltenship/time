@@ -38,7 +38,8 @@ type TimelineAxis = Virtualizer<HTMLDivElement, HTMLDivElement>;
 function rangeWith(pinned: readonly number[]) {
   return (range: Range) => {
     const indexes = defaultRangeExtractor(range);
-    const missing = pinned.filter(
+    // The entry and the focus can pin the same index; each renders once.
+    const missing = [...new Set(pinned)].filter(
       (index) => index >= 0 && index < range.count && !indexes.includes(index),
     );
     return missing.length === 0

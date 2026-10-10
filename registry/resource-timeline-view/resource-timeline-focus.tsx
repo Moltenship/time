@@ -43,8 +43,10 @@ export function cellTargets<TEvent>(
   const inRange = (date: Temporal.PlainDate) =>
     Temporal.PlainDate.compare(range.start, date) <= 0 &&
     Temporal.PlainDate.compare(date, range.end) < 0;
+  // A slot from a time grid sits on its whole day in a timeline of days.
   const slotOf = (cell: CalendarCellFocus) =>
-    range.start.until(cell.date).days * perDay + (cell.kind === "slot" ? cell.time.hour : 0);
+    range.start.until(cell.date).days * perDay +
+    (unit === "hour" && cell.kind === "slot" ? cell.time.hour : 0);
 
   const date = today !== null && inRange(today) ? today : range.start;
   const entry: CalendarCellFocus =
