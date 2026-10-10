@@ -11,6 +11,7 @@ import {
   type CalendarPolicy,
   type CalendarResource,
   type EventAdapter,
+  type ResourceTree,
   type EventId,
   type EventSnapshot,
   type EventSnapshotIssue,
@@ -79,6 +80,7 @@ interface CommittedRootInputs<TEvent, TEventId extends EventId, TResourceId exte
     | undefined;
   readonly onEventChange: CalendarEventChangeHandler<TEvent, TEventId, TResourceId> | undefined;
   readonly policies: readonly CalendarPolicy<TEvent, TEventId, TResourceId>[] | undefined;
+  readonly resourceTree: ResourceTree;
   readonly viewOptions: ViewOptionsOverrides;
 }
 
@@ -393,6 +395,7 @@ export function createCalendarRoot<
       onDiagnosticsChange,
       onEventChange,
       policies,
+      resourceTree,
       viewOptions: viewOverrides,
     };
     const committed = useRef(committedInputs);
@@ -405,7 +408,10 @@ export function createCalendarRoot<
       [binding, transactions],
     );
     const [announcements] = useState(() =>
-      createAnnouncerChannel(() => committed.current.environment),
+      createAnnouncerChannel(
+        () => committed.current.environment,
+        () => committed.current.resourceTree,
+      ),
     );
     const interaction = useMemo<CalendarInteractionRuntime>(
       () => Object.freeze({ actions, announcements, keyboard, read: binding.read, source }),

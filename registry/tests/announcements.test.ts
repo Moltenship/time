@@ -16,6 +16,7 @@ const [standup] = createEventSnapshot(
 const where: CalendarAnnouncementContext = {
   formatRange: () => "",
   locale: "en-US",
+  resourceTitle: () => undefined,
   timeZone: "UTC",
 };
 const update = {

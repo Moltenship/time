@@ -6,6 +6,8 @@ import {
   type CalendarEnvironmentBase,
   type CalendarEventInterval,
   type CalendarInteractionUpdate,
+  type ResourceId,
+  type ResourceTree,
 } from "@moltenship/calendar-core";
 import {
   createElement,
@@ -48,9 +50,10 @@ function buildMessage(
   return build(update, context);
 }
 
-/** `getEnvironment` reads the root's committed environment when an update arrives. */
+/** `getEnvironment` and `getResources` read the root's last commit when an update arrives. */
 export function createAnnouncerChannel(
   getEnvironment: () => Pick<CalendarEnvironmentBase, "locale" | "timeZone">,
+  getResources: () => ResourceTree,
 ): AnnouncerChannel {
   const mounted: MountedAnnouncer[] = [];
 
@@ -60,13 +63,22 @@ export function createAnnouncerChannel(
     return format(placement, { locale, timeZone });
   }
 
+  function resourceTitle(resourceId: ResourceId): string | undefined {
+    return getResources().byId.get(resourceId)?.resource.title;
+  }
+
   return Object.freeze({
     announcer: Object.freeze({
       announce(update: CalendarInteractionUpdate) {
         const current = mounted.at(-1);
         if (current === undefined) return;
         const { locale, timeZone } = getEnvironment();
-        const text = buildMessage(current.getMessages(), update, { formatRange, locale, timeZone });
+        const text = buildMessage(current.getMessages(), update, {
+          formatRange,
+          locale,
+          resourceTitle,
+          timeZone,
+        });
         if (text !== null && text !== "") current.speak(text);
       },
       formatRange,

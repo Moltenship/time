@@ -37,6 +37,11 @@ import type { CalendarStateSelectorOptions } from "./types";
 
 export interface CalendarKeyboardOptions {
   /**
+   * Which way time runs through the view's slots: down the block axis, as in a time grid (the
+   * default), or along the inline axis, as in a timeline. A slot create grows that way.
+   */
+  readonly axis?: "block" | "inline";
+  /**
    * How long an event created on a slot starts out, in whole slots; arrow keys then change it
    * as a pointer drag would. One hour by default. A create on a day starts as that day.
    */
@@ -168,16 +173,22 @@ function createKeyboardHandlers(
       : { date: cursor.date, eventId, kind: "event", resourceId: cursor.resourceId };
   }
 
-  /** A slot create starts `createDuration` long: its cursor steps down, as a drag would. */
+  /** A slot create starts `createDuration` long: its cursor steps later, as a drag would. */
   function startCreate(cell: CalendarCellFocus): CalendarKeyboardSession {
     let session = startKeyboardSession({ cause: "create", cell }, interactionOptions());
     if (cell.kind !== "slot") return session;
+    const later =
+      getOptions().axis !== "inline"
+        ? "down"
+        : view().environment.direction === "rtl"
+          ? "left"
+          : "right";
     const duration = Temporal.Duration.from(getOptions().createDuration ?? DEFAULT_CREATE_DURATION);
     const slots = Math.round(
       duration.total({ unit: "minutes" }) / slotDuration(getSnap()).total({ unit: "minutes" }),
     );
     for (let step = 1; step < slots; step += 1) {
-      const cursor = cellOf(navigate("down", session.cursor));
+      const cursor = cellOf(navigate(later, session.cursor));
       if (cursor === null) break;
       session = moveKeyboardCursor(session, cursor, interactionOptions());
     }
