@@ -3,9 +3,10 @@ import type { AnnotationId, ResourceId } from "../ids";
 /**
  * Time-based information shown beside events without being one: a listening session, a night's
  * sleep, a focus block. Annotations are read-only and never take part in event layout. Like
- * events, they are half-open, `[start, end)`.
+ * events, they are half-open, `[start, end)`. `TResourceId` defaults to `never`, so annotations
+ * without resources fit any calendar.
  */
-export interface CalendarAnnotation<TData = unknown, TResourceId extends ResourceId = ResourceId> {
+export interface CalendarAnnotation<TData = unknown, TResourceId extends ResourceId = never> {
   readonly id: AnnotationId;
   /** The `CalendarAnnotationSource` it belongs to; annotations of unknown sources are not shown. */
   readonly sourceId: string;

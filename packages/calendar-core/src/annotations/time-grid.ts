@@ -1,5 +1,6 @@
 import { instantInterval } from "@moltenship/calendar-temporal";
 
+import type { ResourceId } from "../ids";
 import type { TimeGridColumn } from "../views/time-grid/columns";
 import { timedFragmentBox } from "../views/time-grid/geometry";
 import type { AnnotationSnapshot, CalendarAnnotation, CalendarAnnotationSource } from "./types";
@@ -22,7 +23,7 @@ export interface TimeGridAnnotationMark<
   TData = unknown,
 > {
   /** The annotations it merges, in time order. */
-  readonly annotations: readonly CalendarAnnotation<TData>[];
+  readonly annotations: readonly CalendarAnnotation<TData, ResourceId>[];
   readonly key: string;
   readonly source: TSource;
   /** The part on the column's day, `[start, end)`. */
@@ -65,12 +66,12 @@ function mergeSource<TSource extends CalendarAnnotationSource, TData>(
   column: TimeGridColumn,
   day: { readonly start: Temporal.Instant; readonly end: Temporal.Instant },
   source: TSource,
-  annotations: readonly CalendarAnnotation<TData>[],
+  annotations: readonly CalendarAnnotation<TData, ResourceId>[],
   { minGap, minHeight }: { readonly minGap: number; readonly minHeight: number },
 ): UnplacedMark<TSource, TData>[] {
   const gap = mergeGapNanoseconds(source);
   const groups: {
-    annotations: CalendarAnnotation<TData>[];
+    annotations: CalendarAnnotation<TData, ResourceId>[];
     end: Temporal.Instant;
     start: Temporal.Instant;
   }[] = [];
