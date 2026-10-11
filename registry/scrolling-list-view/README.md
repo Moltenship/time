@@ -19,7 +19,9 @@ const views = [createScrollingAgendaView<Meeting>({ dayView: "scrolling-day", ge
   scroll keeps the list where it is, and Today still brings it back.
 - Days that load in above or below, or change between, keep the day on top in place. Past the
   last loaded day, the end of the list fills the view and says "Loading events…" while `loading`
-  is set, or that nothing more is scheduled; with no days loaded it shows the empty state.
+  is set, or that nothing more is scheduled. When the weeks shown have no events, the empty state
+  stands in for them: as the end of the list, or as an item among the days after them, and keys
+  page on from it.
   Scrolling on past either end moves a page that way, once per gesture, so the list crosses weeks
   without events.
 - Keys work as in the agenda over the range's events. Moving past its ends pages the calendar and

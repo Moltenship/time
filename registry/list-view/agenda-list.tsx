@@ -97,6 +97,8 @@ export interface AgendaListProps<TEvent> {
   /** Every day listed, counted for `aria-setsize`. */
   readonly days: number;
   readonly describeEvent?: EventDescriber<TEvent>;
+  /** What the empty row shows among the days, for dates shown without events; a scrolling agenda's. */
+  readonly empty?: ReactNode;
   /** What the end row, a viewport tall, shows; a scrolling agenda has one. */
   readonly end?: ReactNode;
   readonly environment: CalendarEnvironmentBase;
@@ -109,14 +111,15 @@ export interface AgendaListProps<TEvent> {
 
 /**
  * The days in view as an `<ol>` in one scrolling element, each placed by the virtualizer and
- * numbered among all the days listed, then the end of the list when there is one. Without days
- * there's no list, only the end.
+ * numbered among all the days listed, with a scrolling agenda's empty row among them; then the end
+ * of the list when there is one. Without days there's no list, only the end.
  */
 export function AgendaList<TEvent>({
   "aria-label": label,
   before = 0,
   days,
   describeEvent,
+  empty,
   end,
   environment,
   getEventColor,
@@ -130,6 +133,12 @@ export function AgendaList<TEvent>({
   const keyboard = useViewKeyboard();
   const { focusWithin, scrollRef, viewportHeight, virtualizer } = list;
   const items = virtualizer.getVirtualItems();
+  // Each item's place in the list, for `aria-posinset`: the days, and the empty row among them.
+  const ordinals = useMemo(() => {
+    let place = before;
+    return rows.map((row) => (row.kind === "end" ? place : place++));
+  }, [before, rows]);
+  const size = days + (rows.some(({ kind }) => kind === "empty") ? 1 : 0);
 
   return (
     <div
@@ -152,25 +161,32 @@ export function AgendaList<TEvent>({
         >
           {items.map(({ index, key, start }) => {
             const row = rows[index]!;
-            if (row.kind !== "day") return null;
-            const position = before + index;
-            return (
+            if (row.kind === "end") return null;
+            const position = ordinals[index]!;
+            const item = {
+              "aria-posinset": position + 1,
+              "aria-setsize": size,
+              className: cn(
+                "absolute inset-x-0",
+                position < size - 1 && "border-b border-calendar-grid",
+              ),
+              "data-index": index,
+              ref: virtualizer.measureElement,
+              style: { top: start },
+            };
+            return row.kind === "empty" ? (
+              <li key={key} {...item}>
+                {empty}
+              </li>
+            ) : (
               <AgendaDay
                 key={key}
-                ref={virtualizer.measureElement}
-                aria-posinset={position + 1}
-                aria-setsize={days}
-                data-index={index}
+                {...item}
                 day={row.day}
                 formats={formats}
                 getEventColor={getEventColor}
                 labelEvent={labelEvent}
                 onOpenDay={onOpenDay}
-                className={cn(
-                  "absolute inset-x-0",
-                  position < days - 1 && "border-b border-calendar-grid",
-                )}
-                style={{ top: start }}
               />
             );
           })}

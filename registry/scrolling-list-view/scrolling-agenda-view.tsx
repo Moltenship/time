@@ -38,9 +38,9 @@ function useHydrating(): boolean {
 }
 
 /**
- * The days with events in the loaded dates, then the end of the list. Without any from the anchor
- * date on, the end shows the empty state, and scrolling on past it moves through the weeks without
- * events.
+ * The days with events in the loaded dates, then the end of the list. When the dates shown have
+ * none, the empty state stands in for them, at the end or among the days after them; past the end
+ * of the list, scrolling on moves through the weeks without events.
  */
 function ScrollingAgendaView<TEvent>({
   actions,
@@ -55,7 +55,10 @@ function ScrollingAgendaView<TEvent>({
   // Server markup starts the list at the anchor date, so it's on top before scripts run; the days
   // above join once hydrated, and the virtualizer keeps the anchor's day where it is.
   const hydrating = useHydrating();
-  const allRows = useMemo(() => agendaRows(projection.days, loaded), [loaded, projection.days]);
+  const allRows = useMemo(
+    () => agendaRows(projection.days, { loaded, shown: range }),
+    [loaded, projection.days, range],
+  );
   const skipped = hydrating ? Math.min(rowFrom(allRows, range.start), days) : 0;
   const rows = useMemo(() => allRows.slice(skipped), [allRows, skipped]);
   const list = useAgendaList({ initialRow: rowFrom(rows, range.start), range, rows });
@@ -69,22 +72,29 @@ function ScrollingAgendaView<TEvent>({
   const formats = useAgendaFormats(environment.locale);
   const loading = options.loading === true;
   const endRow = rows.at(-1);
-  // The first day from the anchor date; without one, the end of the list stands for the weeks
-  // shown and holds the empty state, even below days loaded before them.
-  const first = rows[rowFrom(rows, range.start)];
-  const firstDay = first?.kind === "day" ? first.day : undefined;
+  const empty = rows.some((row) => row.kind === "empty" || (row.kind === "end" && row.shown));
+  const emptyState = (
+    <div className="flex flex-1 items-center justify-center p-6 text-center">
+      <EmptyAgenda
+        dates={formats.range.formatRange(range.start, range.end.subtract({ days: 1 }))}
+        loading={loading}
+        start={range.start}
+      />
+    </div>
+  );
 
-  // The empty state had focus when the weeks shown got days, which takes it away: focus moves on
+  // The empty state had focus when the dates shown got days, which takes it away: focus moves on
   // to their first event, where Tab lands, instead of falling to the page.
-  const hadDays = useRef(firstDay !== undefined);
+  const wasEmpty = useRef(empty);
   useLayoutEffect(() => {
-    const arrived = !hadDays.current && firstDay !== undefined;
-    hadDays.current = firstDay !== undefined;
+    const filled = wasEmpty.current && !empty;
+    wasEmpty.current = empty;
     const page = list.scrollRef.current?.ownerDocument;
-    const item = firstDay?.items[0];
-    if (!arrived || !list.focusWithin.within || page?.activeElement !== page?.body) return;
-    if (firstDay !== undefined && item !== undefined) {
-      actions.setFocus({ date: firstDay.date, eventId: item.event.id, kind: "event" });
+    if (!filled || !list.focusWithin.within || page?.activeElement !== page?.body) return;
+    const row = rows[rowFrom(rows, range.start)];
+    const item = row?.kind === "day" ? row.day.items[0] : undefined;
+    if (row?.kind === "day" && item !== undefined) {
+      actions.setFocus({ date: row.day.date, eventId: item.event.id, kind: "event" });
     }
   });
 
@@ -96,15 +106,10 @@ function ScrollingAgendaView<TEvent>({
       describeEvent={options.describeEvent}
       environment={environment}
       getEventColor={options.getEventColor}
+      empty={emptyState}
       end={
-        firstDay === undefined ? (
-          <div className="flex flex-1 items-center justify-center p-6 text-center">
-            <EmptyAgenda
-              dates={formats.range.formatRange(range.start, range.end.subtract({ days: 1 }))}
-              loading={loading}
-              start={range.start}
-            />
-          </div>
+        endRow?.kind === "end" && endRow.shown ? (
+          emptyState
         ) : (
           <AgendaEndMessage
             empty={endRow?.kind === "end" ? endRow.empty : null}

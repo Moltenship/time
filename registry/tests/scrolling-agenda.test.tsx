@@ -137,6 +137,14 @@ function fitScrollHeight() {
   });
 }
 
+/** Scrolls to the end of the list, as far as it goes, as the user would. */
+const toEnd = () =>
+  act(async () => {
+    scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+    scroller().scrollTop = scroller().scrollHeight - 640;
+    scroller().dispatchEvent(new Event("scroll"));
+  });
+
 /** Scrolls the list as the user would: input, a scroll to `top`, then the scroll at rest. */
 async function scrollTo(top: number) {
   await act(async () => {
@@ -347,8 +355,13 @@ test("scrolling past either end of the loaded days crosses weeks without events"
   await wheel(100);
   await wheel(100);
   expect(title()).toBe("Nov 6 – 12, 2026");
-  // The next day with events has loaded and come to the top.
-  expect(scroller().scrollTop).toBe(rowTop("2026-11-19"));
+  // The weeks shown are still empty, as their empty state says on top, and the next day with
+  // events has loaded below it.
+  expect(scroller().scrollTop).toBe(0);
+  expect(text(document.querySelector('[role="group"]'))).toBe(
+    "No eventsNothing is scheduled for November 6 – 12.",
+  );
+  expect(renderedDays()).toEqual(["2026-11-19"]);
 
   // Back up, past the first loaded day, a week at a time until the first event loads.
   await act(async () => {
@@ -361,16 +374,16 @@ test("scrolling past either end of the loaded days crosses weeks without events"
     await wheel(-100);
     titles.push(title());
   }
-  // Coming to rest on top moved the anchor to November 19; each gesture then moves a week.
+  // On top is the empty state of the weeks shown, so resting there keeps the anchor; each gesture
+  // then moves a week.
   expect(titles).toEqual([
-    "Nov 19 – 25, 2026",
-    "Nov 12 – 18, 2026",
-    "Nov 5 – 11, 2026",
-    "Oct 29 – Nov 4, 2026",
-    "Oct 22 – 28, 2026",
-    "Oct 15 – 21, 2026",
+    "Nov 6 – 12, 2026",
+    "Oct 30 – Nov 5, 2026",
+    "Oct 23 – 29, 2026",
+    "Oct 16 – 22, 2026",
+    "Oct 9 – 15, 2026",
   ]);
-  expect(renderedDays()).toEqual(["2026-10-08"]);
+  expect(renderedDays()).toContain("2026-10-08");
 });
 
 /** A touch at `clientY` on the list; jsdom's events carry it as a plain property. */
@@ -388,6 +401,8 @@ test("past the end while events load, the list holds the date it moved to", asyn
   fitScrollHeight();
   const screen = await render(<Agenda events={[]} weeks={1} />);
   cleanup = screen.unmount;
+  // Below the empty state, the end of the list, where scrolling on moves the calendar.
+  await toEnd();
   await act(async () =>
     scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 100 })),
   );
@@ -429,6 +444,7 @@ test("a finger held still mid-scroll goes on moving the anchor when it moves aga
 test("a swipe past the end of the loaded days moves a page once, until the finger lifts", async () => {
   fitScrollHeight();
   await show(<Agenda events={[]} weeks={1} />);
+  await toEnd();
 
   await touch("touchstart", 400);
   await touch("touchmove", 360);
@@ -438,6 +454,7 @@ test("a swipe past the end of the loaded days moves a page once, until the finge
   expect(title()).toBe("Oct 15 – 21, 2026");
   await touch("touchend");
 
+  await toEnd();
   await touch("touchstart", 400);
   await touch("touchmove", 360);
   expect(title()).toBe("Oct 22 – 28, 2026");
@@ -451,6 +468,7 @@ test("the rest of a wheel gesture past the end keeps the date it moved to", asyn
   fitScrollHeight();
   const screen = await render(<Agenda events={[]} weeks={1} />);
   cleanup = screen.unmount;
+  await toEnd();
   // Two wheel events of one gesture.
   for (let step = 0; step < 2; step += 1) {
     await act(async () =>
@@ -504,6 +522,7 @@ test("turning the wheel back as days load in scrolls them, not the date it moved
   cleanup = screen.unmount;
   const wheel = (deltaY: number) =>
     act(async () => scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY })));
+  await toEnd();
   await wheel(100);
   await screen.rerender(<Agenda events={arriving} weeks={1} />);
   expect(scroller().scrollTop).toBe(rowTop("2026-10-15"));
@@ -518,4 +537,35 @@ test("turning the wheel back as days load in scrolls them, not the date it moved
   await screen.rerender(<Agenda events={arriving} weeks={1} />);
 
   expect(scroller().scrollTop).toBe(scrolledTo);
+});
+
+test("weeks shown without events keep their empty state among the days around them", async () => {
+  const on = (date: string) => timed(date, `${date}T09:00Z`, `${date}T10:00Z`);
+  const screen = await render(<Agenda events={[on("2026-10-07"), on("2026-10-20")]} weeks={1} />);
+  cleanup = screen.unmount;
+  const stops = () => [...document.querySelectorAll('[data-slot="agenda-view"] [tabindex="0"]')];
+  const group = document.querySelector<HTMLElement>('[role="group"]')!;
+
+  // An item between October 7 and October 20, where October 8 – 14 fall, and where Tab lands.
+  const items = [...document.querySelectorAll('[data-slot="agenda-view"] > ol > li')];
+  expect(items.map((item) => item.getAttribute("data-date") ?? text(item))).toEqual([
+    "2026-10-07",
+    "No eventsNothing is scheduled for October 8 – 14.",
+    "2026-10-20",
+  ]);
+  expect(items.map((item) => item.getAttribute("aria-posinset"))).toEqual(["1", "2", "3"]);
+  expect(items.every((item) => item.getAttribute("aria-setsize") === "3")).toBe(true);
+  expect(stops()).toEqual([group]);
+
+  await act(async () => group.focus());
+  // A day after the weeks shown leaves them empty, and the empty state keeps focus.
+  await screen.rerender(
+    <Agenda events={[on("2026-10-07"), on("2026-10-20"), on("2026-10-21")]} weeks={1} />,
+  );
+  expect(document.activeElement?.getAttribute("role")).toBe("group");
+
+  await screen.rerender(
+    <Agenda events={[on("2026-10-07"), on("2026-10-09"), on("2026-10-20")]} weeks={1} />,
+  );
+  expect(document.activeElement?.getAttribute("data-event-id")).toBe("2026-10-09");
 });

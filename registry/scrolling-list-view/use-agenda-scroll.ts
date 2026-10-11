@@ -118,10 +118,13 @@ export function useAgendaScroll({
   useAnchorDateRequests((date, requested) => {
     if (proposing.current) return;
     // Focus moves to the next event and scrolls it into view: the list is where it should be.
-    // Without days, as from the empty state, the list holds the date for the days that load in.
+    // From the empty state there's no event to follow, so the list holds the date as days load.
     if (keying.current) {
       proposed.current = date;
-      if (latest.current.rows.every(({ kind }) => kind === "end")) target.current = date;
+      const rows = latest.current.rows;
+      if (rows.some((row) => row.kind === "empty" || (row.kind === "end" && row.shown))) {
+        target.current = date;
+      }
       return;
     }
     proposed.current = null;
