@@ -95,6 +95,42 @@ describe("time grid", () => {
     expect(element.hasAttribute("data-dragging")).toBe(false);
   });
 
+  test("reports the draft once a step while dragging, and null when the drag ends", () => {
+    const grid = mountTimeGrid([meeting]);
+    const drafts: (string | null)[] = [];
+    setup(grid, {
+      columns: grid.columns,
+      onPreview: (draft) =>
+        drafts.push(
+          draft === null
+            ? null
+            : `${String(draft.eventId)} ${draft.proposed.start.toString()}/${draft.proposed.end.toString()}`,
+        ),
+    });
+    const element = grid.elements.get("a")!;
+
+    pointer("pointerdown", element, xAt("2026-08-17"), yAt("09:30"));
+    pointer("pointermove", element, xAt("2026-08-17"), yAt("10:40"));
+    // Within the same slot step, nothing new is reported.
+    pointer("pointermove", element, xAt("2026-08-17"), yAt("10:44"));
+    pointer("pointermove", element, xAt("2026-08-18"), yAt("10:44"));
+    pointer("pointerup", element, xAt("2026-08-18"), yAt("10:44"));
+
+    expect(drafts).toEqual([
+      "a 2026-08-17T10:15:00Z/2026-08-17T11:15:00Z",
+      "a 2026-08-18T10:15:00Z/2026-08-18T11:15:00Z",
+      null,
+    ]);
+
+    // A create's draft has no event, and Escape ends it too.
+    drafts.length = 0;
+    const column = grid.region.querySelector('[data-date="2026-08-17"]:not([data-all-day])')!;
+    pointer("pointerdown", column, 50, yAt("14:00"));
+    pointer("pointermove", column, 50, yAt("15:10"));
+    window.dispatchEvent(new KeyboardEvent("keydown", { cancelable: true, key: "Escape" }));
+    expect(drafts).toEqual(["null 2026-08-17T14:00:00Z/2026-08-17T15:15:00Z", null]);
+  });
+
   test("maps columns the view renders mid-gesture to times, as a scrolling view adds days", () => {
     const grid = mountTimeGrid([meeting]);
     // The view starts with only the first day's column and renders the next while dragging.
