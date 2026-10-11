@@ -276,7 +276,7 @@ test.each(["block", "warn"] as const)(
     );
     await settle();
 
-    const saved = parseEvents(stored.get("moltenship-demo:events") ?? null)?.find(
+    const saved = parseEvents(stored.get(eventsStorageKey) ?? null)?.find(
       ({ id }) => id === "focus-time",
     );
     if (workingHours === "block") {
