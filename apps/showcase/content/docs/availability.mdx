@@ -315,8 +315,12 @@ The range can also be a placement, all-day or floating, read on `timeZone`. In R
 | `useDraftBusy(resourceId)`       | A resource during the draft: `{ events, outsideHours }`, or `null` without one      |
 
 Drafts step by slots, so these change at most once a step. `useDraftBusy` works the draft's busy
-resources out once for every header that asks, and a header re-renders only when its own answer
-changes. To flag or prevent double-booking on save, add `conflictPolicy({ mode: "warn" | "block" })`
+resources out once for every header that asks. During a pointer drag or a keyboard create, a header
+re-renders only when its own answer changes; a keyboard move or resize changes the events the view
+shows on each step, so headers re-render then too, which stays cheap.
+
+An all-day draft shows who has busy time that day, even though an all-day event is free by default
+and so doesn't conflict under `conflictPolicy`; the status is information, not a rule. To flag or prevent double-booking on save, add `conflictPolicy({ mode: "warn" | "block" })`
 to the root's `policies`; it runs the same query, with the reason `"resource-conflict"`.
 
 ### Customize

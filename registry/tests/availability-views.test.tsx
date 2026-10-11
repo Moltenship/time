@@ -464,6 +464,12 @@ test("while an event is placed, resource headers say who's busy or outside their
 });
 
 test("the draft status takes your words, or your own part in place of the badge", async () => {
+  const DraftStatus = ({ events, outsideHours }: ResourceDraftStatusProps) => (
+    <span data-ring={events.length > 0 ? "busy" : outsideHours ? "away" : "free"}>
+      {events.map((event) => event.title).join(", ")}
+    </span>
+  );
+
   const labels = { busy: () => "Occupé", outsideHours: () => "Hors horaires" };
   const words = await draftAtLunch("resources", { resourceStatus: { labels } });
   expect(
@@ -471,11 +477,13 @@ test("the draft status takes your words, or your own part in place of the badge"
   ).toEqual(["Occupé", "Hors horaires", "Hors horaires"]);
   await cleanup?.();
 
-  const DraftStatus = ({ events, outsideHours }: ResourceDraftStatusProps) => (
-    <span data-ring={events.length > 0 ? "busy" : outsideHours ? "away" : "free"}>
-      {events.map((event) => event.title).join(", ")}
-    </span>
-  );
+  // A part without words still leaves the status in a column header's name.
+  const columns = await draftAtLunch("resources", { resourceStatus: { DraftStatus } });
+  const nia = columns.querySelector('[data-slot="resource-header"]')!;
+  expect(nia.querySelector("[data-ring]")?.getAttribute("data-ring")).toBe("busy");
+  expect(text(nia.closest('[role="columnheader"]')!)).toBe("Nia, LunchBusy");
+  await cleanup?.();
+
   vi.stubGlobal("ResizeObserver", StubResizeObserver);
   const timeline = await draftAtLunch("timeline-day", { resourceStatus: { DraftStatus } });
   const row = (id: string) =>

@@ -2,6 +2,7 @@ import {
   busyResources,
   fitsAvailability,
   type CalendarDraft,
+  type CalendarKeyboardSession,
   type CalendarEventInterval,
   type EventId,
   type EventSnapshot,
@@ -9,13 +10,14 @@ import {
   type ResourceId,
 } from "@moltenship/calendar-core";
 import type { InstantInterval } from "@moltenship/calendar-temporal";
-import { useContext, useMemo, useRef, useSyncExternalStore } from "react";
+import { useMemo, useRef, useSyncExternalStore } from "react";
 
 import { useCalendarAvailability } from "./availability";
 import type { CalendarStateSource } from "./context";
 import { useInteractionRuntime } from "./interaction";
 import { useStableValue } from "./use-stable-value";
-import { CalendarEventsContext } from "./status";
+import { sameElements } from "./equality";
+import { useCalendarEvents } from "./status";
 
 type AnyDraft = CalendarDraft<EventId, ResourceId>;
 type AnyEvents = EventSnapshot<unknown, EventId, ResourceId>;
@@ -56,26 +58,14 @@ export function createDraftStore(): DraftStore {
   });
 }
 
-function useEvents(): AnyEvents {
-  const events = useContext(CalendarEventsContext);
-  if (events === null) throw new Error("calendar-hook-outside-root");
-  return events;
-}
-
 function sameIds(
   left: readonly ResourceId[] | undefined,
   right: readonly ResourceId[] | undefined,
 ) {
-  return (
-    left === right ||
-    (left !== undefined &&
-      right !== undefined &&
-      left.length === right.length &&
-      left.every((id, index) => id === right[index]))
-  );
+  return left === right || (left !== undefined && right !== undefined && sameElements(left, right));
 }
 
-function sameRange(
+function sameInterval(
   left: InstantInterval | CalendarEventInterval | null,
   right: InstantInterval | CalendarEventInterval | null,
 ) {
@@ -104,9 +94,9 @@ export function useBusyResources(
     resourceIds,
   }: { readonly exclude?: EventId | null; readonly resourceIds?: readonly ResourceId[] } = {},
 ): CalendarBusyResources {
-  const events = useEvents();
+  const events = useCalendarEvents();
   const { timeZone } = useCalendarAvailability();
-  const stableRange = useStableValue(range, sameRange);
+  const stableRange = useStableValue(range, sameInterval);
   const ids = useStableValue(resourceIds, sameIds);
   return useMemo(
     () =>
@@ -135,12 +125,27 @@ function busyFor(draft: AnyDraft, events: AnyEvents, timeZone: string): Calendar
   return busy;
 }
 
+/** Each keyboard session as a draft, the same object for as long as the session is. */
+const sessionDrafts = new WeakMap<CalendarKeyboardSession, AnyDraft>();
+
+function draftOf(session: CalendarKeyboardSession): AnyDraft {
+  let draft = sessionDrafts.get(session);
+  if (draft === undefined) {
+    draft = Object.freeze({ eventId: session.eventId, proposed: session.proposed });
+    sessionDrafts.set(session, draft);
+  }
+  return draft;
+}
+
 /** Subscribes to the keyboard's and the pointer's drafts. */
 function useDraftSource(): CalendarStateSource<AnyDraft | null> {
   const { keyboard, pointerDraft } = useInteractionRuntime();
   return useMemo(
     () => ({
-      getSnapshot: () => keyboard.grabs.getSnapshot()?.session ?? pointerDraft.getSnapshot(),
+      getSnapshot: () => {
+        const session = keyboard.grabs.getSnapshot()?.session;
+        return session === undefined ? pointerDraft.getSnapshot() : draftOf(session);
+      },
       subscribe: (listener: () => void) => {
         const stops = [keyboard.grabs.subscribe(listener), pointerDraft.subscribe(listener)];
         return () => {
@@ -191,7 +196,7 @@ function sameBusy(left: CalendarDraftBusy | null, right: CalendarDraftBusy | nul
  */
 export function useDraftBusy(resourceId: ResourceId | null): CalendarDraftBusy | null {
   const source = useDraftSource();
-  const events = useEvents();
+  const events = useCalendarEvents();
   const availability = useCalendarAvailability();
   const last = useRef<CalendarDraftBusy | null>(null);
   const read = () => {
