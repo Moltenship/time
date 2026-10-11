@@ -17,11 +17,11 @@ between hidden, shown, warn and block.
 Pass the calendar's hours to `Root` as `availability`, and add `availabilityPolicy` to its policies:
 
 ```tsx
-import { availabilityPolicy } from "@moltenship/calendar";
+import { availabilityPolicy, type CalendarAvailability } from "@moltenship/calendar";
 
 const time = Temporal.PlainTime.from;
 
-const officeHours = {
+const officeHours: CalendarAvailability = {
   weekly: [{ days: [1, 2, 3, 4, 5], start: time("09:00"), end: time("17:00") }],
   exceptions: [
     { date: Temporal.PlainDate.from("2026-12-25"), label: "Christmas" },
@@ -64,7 +64,9 @@ as `invalid-availability`. The calendar never throws over them.
 Resources follow the calendar's hours unless they have their own:
 
 ```tsx
-const weekdays = (start: string, end: string) => ({
+import type { AvailabilityRule } from "@moltenship/calendar";
+
+const weekdays = (start: string, end: string): AvailabilityRule => ({
   days: [1, 2, 3, 4, 5],
   start: Temporal.PlainTime.from(start),
   end: Temporal.PlainTime.from(end),
