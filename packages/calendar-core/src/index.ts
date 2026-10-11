@@ -84,12 +84,17 @@ export type {
 
 export { createAvailabilitySnapshot } from "./availability/snapshot";
 export type { AvailabilitySnapshotInput } from "./availability/snapshot";
+export { busyAt } from "./availability/busy";
+export type { BusyQuery, BusyStatus } from "./availability/busy";
+export type { ClosedTime, UnavailableReason } from "./availability/closures";
 export {
   closedDates,
   projectTimeGridAvailability,
   projectTimelineAvailability,
 } from "./availability/projection";
-export type { ClosedDate } from "./availability/projection";
+export type { AvailabilityBand, AvailabilityExtent, ClosedDate } from "./availability/projection";
+export { availabilityAt, resourceStatusAt } from "./availability/status";
+export type { AvailabilityStatus, ResourceStatus } from "./availability/status";
 export type {
   AvailabilityException,
   AvailabilityHours,

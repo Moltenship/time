@@ -4,7 +4,7 @@ import {
   plainDateInterval,
 } from "@moltenship/calendar-temporal";
 
-import { isClosedOn } from "../availability/projection";
+import { isClosedOn } from "../availability/closures";
 import { wallBoundary } from "../availability/schedule";
 import type { AvailabilitySchedule } from "../availability/types";
 import type { EventId, ResourceId } from "../ids";

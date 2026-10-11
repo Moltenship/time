@@ -342,21 +342,25 @@ describe("projections", () => {
     timeZone: newYork,
   });
 
+  const hours = { opensAfter: false, opensBefore: false, reason: "outside-hours" } as const;
+  const weekend = { ...hours, reason: "closed-day" } as const;
+
   test("a time grid gets each column's closed time as bands on its 24-hour axis", () => {
     const columns = timeGridColumns(
       plainDateInterval(date("2026-10-08"), date("2026-10-11")),
       newYork,
     );
     const bands = projectTimeGridAvailability(columns, snapshot.calendar);
+    // Open time meets a band only inside the column, not past its midnights.
     expect(bands[0]).toEqual([
-      { height: 9 / 24, top: 0 },
-      { height: 7 / 24, top: 17 / 24 },
+      { ...hours, height: 9 / 24, opensAfter: true, top: 0 },
+      { ...hours, height: 7 / 24, opensBefore: true, top: 17 / 24 },
     ]);
-    expect(bands[2]).toEqual([{ height: 1, top: 0 }]);
+    expect(bands[2]).toEqual([{ ...weekend, height: 1, top: 0 }]);
     // London's day, seen from New York.
     expect(projectTimeGridAvailability(columns, snapshot.forResource("london"))[0]).toEqual([
-      { height: 4 / 24, top: 0 },
-      { height: 12 / 24, top: 12 / 24 },
+      { ...hours, height: 4 / 24, opensAfter: true, top: 0 },
+      { ...hours, height: 12 / 24, opensBefore: true, top: 12 / 24 },
     ]);
     expect(projectTimeGridAvailability(columns, null)).toEqual([[], [], []]);
   });
@@ -371,8 +375,8 @@ describe("projections", () => {
       timeZone: newYork,
     }).calendar;
     expect(projectTimeGridAvailability(columns, sunday)[0]).toEqual([
-      { height: 9 / 24, top: 0 },
-      { height: 7 / 24, top: 17 / 24 },
+      { ...hours, height: 9 / 24, opensAfter: true, top: 0 },
+      { ...hours, height: 7 / 24, opensBefore: true, top: 17 / 24 },
     ]);
   });
 
@@ -382,8 +386,8 @@ describe("projections", () => {
       newYork,
     );
     expect(projectTimelineAvailability(columns, snapshot.calendar)).toEqual([
-      { end: 9 / 24, start: 0 },
-      { end: 1, start: 17 / 24 },
+      { ...hours, end: 9 / 24, opensAfter: true, start: 0 },
+      { ...hours, end: 1, opensBefore: true, start: 17 / 24 },
     ]);
     expect(projectTimelineAvailability(columns, null)).toEqual([]);
   });
@@ -395,9 +399,9 @@ describe("projections", () => {
       newYork,
     );
     expect([...closed.values()]).toEqual([
-      { date: date("2026-12-25"), label: "Christmas" },
-      { date: date("2026-12-26") },
-      { date: date("2026-12-27") },
+      { date: date("2026-12-25"), label: "Christmas", reason: "exception" },
+      { date: date("2026-12-26"), reason: "closed-day" },
+      { date: date("2026-12-27"), reason: "closed-day" },
     ]);
     expect(
       closedDates(plainDateInterval(date("2026-12-21"), date("2026-12-28")), null, newYork).size,
