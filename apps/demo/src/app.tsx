@@ -1,4 +1,10 @@
-import { eventIdOf, useNow, type CalendarWeekRules, type EventId } from "@moltenship/calendar";
+import {
+  availabilityPolicy,
+  eventIdOf,
+  useNow,
+  type CalendarWeekRules,
+  type EventId,
+} from "@moltenship/calendar";
 import { PlusIcon } from "lucide-react";
 import { useCallback, useMemo, useRef, useState, type MouseEvent } from "react";
 
@@ -12,6 +18,7 @@ import {
   demoAnnotationSources,
   useHiddenAnnotationSources,
 } from "./annotations";
+import { demoAvailability, demoResourcesWithHours } from "./availability";
 import { DemoCalendar, type DemoEvent } from "./calendar";
 import { ActivityList } from "./components/activity-list";
 import { BrandMark } from "./components/brand";
@@ -35,7 +42,7 @@ import {
   type EventDraft,
 } from "./event-draft";
 import { useHiddenCalendars } from "./hidden-calendars";
-import { demoResourceGroups, demoResources } from "./resources";
+import { demoResourceGroups, demoResources, type DemoResourceId } from "./resources";
 import { useDemoSettings } from "./settings";
 import { viewFor } from "./scrolling";
 import { useCalendarLocation } from "./url-state";
@@ -43,6 +50,14 @@ import { useCalendarLocation } from "./url-state";
 /** How long a simulated save takes, so the pending state is visible. */
 const saveDelayMs = 600;
 const demoPolicies = [demoEventPolicy];
+const warnOutsideHours = [
+  demoEventPolicy,
+  availabilityPolicy<DemoEvent, string, DemoResourceId>({ mode: "warn" }),
+];
+const blockOutsideHours = [
+  demoEventPolicy,
+  availabilityPolicy<DemoEvent, string, DemoResourceId>({ mode: "block" }),
+];
 
 interface OpenEvent {
   readonly anchor: HTMLElement;
@@ -53,7 +68,7 @@ interface OpenEvent {
 export function App() {
   const [systemTimeZone] = useState(() => Temporal.Now.timeZoneId());
   const [settings, setSettings] = useDemoSettings();
-  const { locale, overlapLayout, scrolling, timeZone, weekStartsOn } = settings;
+  const { locale, overlapLayout, scrolling, timeZone, weekStartsOn, workingHours } = settings;
   const today = (useNow() ?? Temporal.Now.instant()).toZonedDateTimeISO(timeZone).toPlainDate();
   const [location, setLocation] = useCalendarLocation(today);
   // The settings choose between paged and scrolling day, week, and month, even for a shared URL.
@@ -77,6 +92,18 @@ export function App() {
       createDemoAnnotations(Temporal.PlainDate.from(todayKey), timeZone, Temporal.Now.instant()),
     [timeZone, todayKey],
   );
+  // Hidden working hours leave no shading and nothing for the policies to check.
+  const availability = useMemo(
+    () =>
+      workingHours === "off" ? undefined : demoAvailability(Temporal.PlainDate.from(todayKey)),
+    [todayKey, workingHours],
+  );
+  const policies =
+    workingHours === "warn"
+      ? warnOutsideHours
+      : workingHours === "block"
+        ? blockOutsideHours
+        : demoPolicies;
   const annotationSources = useMemo(
     () => demoAnnotationSources.filter(({ id }) => !hiddenSources.has(id)),
     [hiddenSources],
@@ -159,6 +186,9 @@ export function App() {
         throw new Error("simulated-save-failure");
       }
       applyChange(change);
+      if (change.warnings?.includes("outside-availability") === true) {
+        showNotice("Saved outside working hours.");
+      }
     },
     [applyChange, failSaves, showNotice, timeZone],
   );
@@ -209,13 +239,14 @@ export function App() {
         defaultExpandedResourceIds={demoResourceGroups}
         annotationSources={annotationSources}
         annotations={annotations}
+        availability={availability}
         events={visibleEvents}
         locale={locale}
         onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
         onEventChange={persistChange}
         onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
-        policies={demoPolicies}
-        resources={demoResources}
+        policies={policies}
+        resources={workingHours === "off" ? demoResources : demoResourcesWithHours}
         timeZone={timeZone}
         view={view}
         viewOptions={viewOptions}

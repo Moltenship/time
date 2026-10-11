@@ -10,7 +10,18 @@ export interface DemoSettings {
   readonly scrolling: boolean;
   readonly timeZone: string;
   readonly weekStartsOn: IsoDayOfWeek;
+  /** Whether views shade time outside working hours, and what a change into it does. */
+  readonly workingHours: WorkingHours;
 }
+
+export type WorkingHours = (typeof workingHoursOptions)[number]["value"];
+
+export const workingHoursOptions = [
+  { label: "Hidden", value: "off" },
+  { label: "Shown", value: "show" },
+  { label: "Shown, warn outside", value: "warn" },
+  { label: "Shown, block outside", value: "block" },
+] as const;
 
 export const localeOptions = [
   { label: "English (US)", value: "en-US" },
@@ -64,7 +75,7 @@ export function parseSettings(stored: string | null, defaults: DemoSettings): De
   try {
     const value: unknown = JSON.parse(stored ?? "{}");
     if (!isRecord(value)) return defaults;
-    const { locale, overlapLayout, scrolling, timeZone, weekStartsOn } = value;
+    const { locale, overlapLayout, scrolling, timeZone, weekStartsOn, workingHours } = value;
     return {
       locale: localeOptions.find((option) => option.value === locale)?.value ?? defaults.locale,
       overlapLayout:
@@ -75,6 +86,9 @@ export function parseSettings(stored: string | null, defaults: DemoSettings): De
       weekStartsOn:
         weekStartOptions.find((option) => option.value === weekStartsOn)?.value ??
         defaults.weekStartsOn,
+      workingHours:
+        workingHoursOptions.find((option) => option.value === workingHours)?.value ??
+        defaults.workingHours,
     };
   } catch {
     return defaults;
@@ -93,6 +107,7 @@ export function useDemoSettings() {
         scrolling: false,
         timeZone: Temporal.Now.timeZoneId(),
         weekStartsOn: 7,
+        workingHours: "warn",
       }),
     serializeSettings,
   );

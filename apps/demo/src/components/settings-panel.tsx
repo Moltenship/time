@@ -18,6 +18,7 @@ import {
   overlapLayoutOptions,
   timeZoneOptions,
   weekStartOptions,
+  workingHoursOptions,
   type DemoSettings,
 } from "../settings";
 
@@ -134,6 +135,15 @@ export function SettingsPanel({
           if (option !== undefined) onChange({ ...settings, overlapLayout: option.value });
         }}
         value={settings.overlapLayout}
+      />
+      <Setting
+        items={workingHoursOptions}
+        label="Working hours"
+        onValueChange={(value) => {
+          const option = workingHoursOptions.find((candidate) => candidate.value === value);
+          if (option !== undefined) onChange({ ...settings, workingHours: option.value });
+        }}
+        value={settings.workingHours}
       />
       <Label className="mt-1 font-normal">
         <Checkbox

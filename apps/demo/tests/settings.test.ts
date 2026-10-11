@@ -8,12 +8,13 @@ const defaults = {
   scrolling: false,
   timeZone: "Europe/Berlin",
   weekStartsOn: 7,
+  workingHours: "warn",
 } as const;
 
 test("keeps valid stored settings and replaces each invalid field with its default", () => {
   expect(
     parseSettings(
-      '{"locale":"de-DE","overlapLayout":"stack","scrolling":true,"timeZone":"Asia/Tokyo","weekStartsOn":1}',
+      '{"locale":"de-DE","overlapLayout":"stack","scrolling":true,"timeZone":"Asia/Tokyo","weekStartsOn":1,"workingHours":"block"}',
       defaults,
     ),
   ).toEqual({
@@ -22,10 +23,11 @@ test("keeps valid stored settings and replaces each invalid field with its defau
     scrolling: true,
     timeZone: "Asia/Tokyo",
     weekStartsOn: 1,
+    workingHours: "block",
   });
   expect(
     parseSettings(
-      '{"locale":"xx","overlapLayout":"grid","scrolling":"yes","timeZone":"Mars/Base","weekStartsOn":3}',
+      '{"locale":"xx","overlapLayout":"grid","scrolling":"yes","timeZone":"Mars/Base","weekStartsOn":3,"workingHours":"later"}',
       defaults,
     ),
   ).toEqual(defaults);
