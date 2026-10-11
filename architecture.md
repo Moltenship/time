@@ -464,8 +464,8 @@ an anchor equal to it is the owner catching up, and any other is navigation. Com
 for the anchor the calendar already has, as Today does after a scroll the owner hasn't taken,
 reach views through `useAnchorDateRequests`. Each strategy's `getLoadRange` adds a page on either
 side of the visible range. The scrolling agenda (#131) follows the same rules over a list of days:
-its range starts at the anchor date, since the list rests on any day, and keys that page past the
-range leave the scrolling to focus. `Root` projects the load range, and `onVisibleRangeChange` reports both
+its range starts at the anchor date, since the list rests on any day; Today and picked dates jump
+there at once rather than glide; and keys that page past the range leave the scrolling to focus. `Root` projects the load range, and `onVisibleRangeChange` reports both
 ranges after commit, so applications fetch the next page before it scrolls into view; the calendar
 still never fetches.
 

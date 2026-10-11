@@ -14,7 +14,7 @@ const views = [createScrollingAgendaView<Meeting>({ dayView: "scrolling-day", ge
   `onVisibleRangeChange` reports. Only the days in view render.
 - The anchor date is the day on top. When a scroll comes to rest, the anchor moves there, and on
   a long scroll every half page on the way, so the next weeks load before they come into view.
-  Today, Previous, Next, and any other anchor scroll the list to that date, and hold it on top
+  Today, Previous, Next, and any other anchor jump the list to that date at once, and hold it on top
   while its events load, until the user scrolls. A controlled anchor that hasn't taken the latest
   scroll keeps the list where it is, and Today still brings it back.
 - Days that load in above or below, or change between, keep the day on top in place. Past the

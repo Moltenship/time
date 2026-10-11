@@ -54,10 +54,11 @@ views: [createScrollingAgendaView<Meeting>({ dayView: "scrolling-day", getEventC
   day on top, so `Calendar.Title`, `onAnchorDateChange`, and a URL that stores the date follow it.
   On a long scroll it moves every half page on the way, so the next weeks load before they scroll
   into view.
-- **Today, Previous, Next, and any other anchor date scroll the list** to put that date on top, or
-  the next day with events, and hold it there while its events load, until you scroll. With a
-  controlled `anchorDate`, the list stays where it was scrolled until your state takes the latest
-  date `onAnchorDateChange` sent, as in the other
+- **Today, Previous, Next, and any other anchor date jump the list** to put that date on top, or
+  the next day with events, at once, as Google Calendar's agenda does, rather than gliding there as
+  the other scrolling views do over a page or two. The list holds that date on top while its events
+  load, until you scroll. With a controlled `anchorDate`, the list stays where it was scrolled until
+  your state takes the latest date `onAnchorDateChange` sent, as in the other
   [scrolling views](/docs/views/scrolling#how-they-move).
 - **Only the days in view render.** Each is measured once it renders, as its events wrap, and days
   that load above or below the ones on screen don't move them.

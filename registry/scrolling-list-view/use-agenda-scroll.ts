@@ -37,8 +37,8 @@ export interface AgendaScrollOptions {
  * Keeps the list's scroll position and the anchor date together. When the user scrolls, the
  * anchor moves to the date on top once the scroll comes to rest, and on the way whenever that date
  * is half the range away, so the loaded dates, and the events loaded for them, keep ahead. Any
- * other anchor, from mounting, Today, Next, or a picked date, scrolls the list to put that date,
- * or the next one with events, on top, and holds it there while rows load in, until the user
+ * other anchor, from mounting, Today, Next, or a picked date, jumps the list to put that date, or
+ * the next one with events, on top, and holds it there while rows load in, until the user
  * scrolls. Keys that page past the range move focus instead, which scrolls the list as far as the
  * next event. A controlled anchor may take the latest scroll later: until it changes, the list
  * stays where it was scrolled, and any other anchor moves the list to it.
@@ -61,14 +61,6 @@ export function useAgendaScroll({
   const keying = useRef(false);
   /** The range the list last laid out. */
   const shown = useRef(range);
-  /**
-   * Where a smooth scroll to the target is heading, over which rows; the user's own input ends it,
-   * and rows that change on the way can stop it.
-   */
-  const heading = useRef<{
-    readonly offset: number;
-    readonly rows: readonly AgendaRow<unknown>[];
-  } | null>(null);
   // Read by event handlers, so they see the latest render without subscribing again.
   const latest = useRef({ anchor, onScroll, range, rows });
   useInsertionEffect(() => {
@@ -76,55 +68,29 @@ export function useAgendaScroll({
   });
 
   /**
-   * Scrolls the target's row to the top: for navigation, smoothly when it's within two screens and
-   * the system doesn't ask for reduced motion, and at once otherwise, as the scrolling views do.
+   * Scrolls the target's row to the top, at once: a jump, as Google Calendar's agenda makes, which
+   * motion settings needn't tone down and data arriving on the way can't stop short.
    */
-  const show = useCallback(
-    (navigation = false) => {
-      const element = scrollRef.current;
-      const date = target.current;
-      if (element === null || date === null) return;
-      const index = rowFrom(latest.current.rows, date);
-      const offset = virtualizer.getOffsetForIndex(index, "start")?.[0];
-      if (offset === undefined) return;
-      const distance = Math.abs(offset - element.scrollTop);
-      if (distance < 1) {
-        heading.current = null;
-        return;
-      }
-      // Already gliding there. Rows that changed on the way may have stopped the glide, as the
-      // list keeps what is on top in place, so it starts again from where the list is.
-      const glide = heading.current;
-      if (
-        glide !== null &&
-        glide.rows === latest.current.rows &&
-        Math.abs(glide.offset - offset) < 1
-      ) {
-        return;
-      }
-      const smooth =
-        (navigation || heading.current !== null) &&
-        distance <= 2 * element.clientHeight &&
-        element.ownerDocument.defaultView?.matchMedia?.("(prefers-reduced-motion: reduce)")
-          .matches !== true;
-      heading.current = smooth ? { offset, rows: latest.current.rows } : null;
-      virtualizer.scrollToOffset(offset, { behavior: smooth ? "smooth" : "auto" });
-    },
-    [scrollRef, virtualizer],
-  );
+  const show = useCallback(() => {
+    const element = scrollRef.current;
+    const date = target.current;
+    if (element === null || date === null) return;
+    const index = rowFrom(latest.current.rows, date);
+    const offset = virtualizer.getOffsetForIndex(index, "start")?.[0];
+    if (offset === undefined || Math.abs(offset - element.scrollTop) < 1) return;
+    virtualizer.scrollToIndex(index, { align: "start", behavior: "auto" });
+  }, [scrollRef, virtualizer]);
 
   useLayoutEffect(() => {
-    let navigation = false;
     if (!sameRange(shown.current, range)) {
       shown.current = range;
       // An anchor that caught up with the user's latest scroll leaves the list where it is; any
       // other is navigation, which the list follows.
-      navigation = proposed.current === null || !proposed.current.equals(anchor);
-      if (navigation) target.current = anchor;
+      if (proposed.current === null || !proposed.current.equals(anchor)) target.current = anchor;
       proposed.current = null;
     }
     // Rows that load in, or are measured, move the target's row: put it back on top.
-    show(navigation);
+    show();
   });
 
   // Today can ask for the anchor the list already has, as when a controlled anchor didn't follow
@@ -144,7 +110,7 @@ export function useAgendaScroll({
     proposed.current = null;
     if (requested === null || !sameRange(requested, shown.current)) return;
     target.current = date;
-    show(true);
+    show();
   });
 
   useEffect(() => {
@@ -259,7 +225,6 @@ export function useAgendaScroll({
         }
       }
       target.current = null;
-      heading.current = null;
       touched = true;
       // Once per wheel gesture, which ends when the wheel has been still a moment.
       if (event instanceof WheelEvent && event.deltaY !== 0 && pastEnd(event.deltaY > 0)) {

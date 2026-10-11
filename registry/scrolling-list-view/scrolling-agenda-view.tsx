@@ -133,7 +133,7 @@ function ScrollingAgendaView<TEvent>({
  * An agenda named `scrolling-agenda` that scrolls through days without end: the days with events
  * `weeks` either way of the anchor date and a page on, of which only those in view render. The
  * anchor date follows the day on top as the list comes to rest, so the title and the load range
- * follow the scroll; Today, Previous, Next, and picked dates scroll the list to their date. The
+ * follow the scroll; Today, Previous, Next, and picked dates jump the list to their date. The
  * keys are the agenda's, and moving past the range's ends pages it. Clicking a date opens
  * `dayView`.
  */
