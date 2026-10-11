@@ -1,4 +1,5 @@
 import {
+  availabilityPolicy,
   createCalendar,
   defineCalendarView,
   defineEventAdapter,
@@ -30,6 +31,7 @@ import { Button } from "@registry/ui/button";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { createPreviewAnnotations, previewAnnotationSources } from "./annotations";
+import { previewAvailability } from "./availability";
 import {
   applyPreviewChange,
   createPreviewEvents,
@@ -54,6 +56,8 @@ export interface LiveCalendarProps {
   readonly annotations?: boolean;
   /** Show what a screen reader hears in a strip under the calendar. */
   readonly announcements?: boolean;
+  /** Add office hours, shaded, that warn about changes outside them. */
+  readonly availability?: boolean;
   /**
    * A year of events either way of today, fetched from a pretend server as the view scrolls, in
    * place of the seeded weeks.
@@ -71,6 +75,8 @@ const noResourceIds: readonly never[] = [];
 const weekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] } as const;
 const getEventColor = (event: PreviewEvent) => event.color;
 const timeGridOptions: TimeGridViewOptions<PreviewEvent> = { dayView: "day", getEventColor };
+/** Changes outside working hours are saved, flagged, and announced as outside them. */
+const availabilityPolicies = [availabilityPolicy<PreviewEvent, string, never>({ mode: "warn" })];
 
 // Narrow screens show the week as three columns; the registry renderer draws any time-grid span.
 const threeDayView = defineCalendarView({
@@ -174,6 +180,7 @@ function Sidebar({ today }: { readonly today: Temporal.PlainDate }) {
 export default function LiveCalendar({
   annotations = false,
   announcements = false,
+  availability = false,
   longRange = false,
   sidebar = false,
   switcher = false,
@@ -196,6 +203,7 @@ export default function LiveCalendar({
       <Calendar.Root
         annotationSources={annotations ? previewAnnotationSources : undefined}
         annotations={sampleAnnotations}
+        availability={availability ? previewAvailability(today) : undefined}
         defaultAnchorDate={today}
         defaultTimeZone={now.timeZoneId}
         events={events}
@@ -203,6 +211,7 @@ export default function LiveCalendar({
         onEventChange={changeEvent}
         onViewChange={(next) => setActiveView(next === "3-day" ? "week" : next)}
         onVisibleRangeChange={longRange ? fetched.load : undefined}
+        policies={availability ? availabilityPolicies : undefined}
         view={activeView === "week" && !wide ? "3-day" : activeView}
         viewOptions={longRange ? { "scrolling-agenda": { loading: fetched.loading } } : undefined}
         weekRules={weekRules}

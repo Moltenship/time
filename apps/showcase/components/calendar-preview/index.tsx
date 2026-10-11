@@ -40,9 +40,12 @@ export function CalendarPreview({ size, view = "week", ...props }: CalendarPrevi
         className={`overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm ${size ?? frameSizes[view]}`}
       >
         {view === "resources" ? (
-          <ResourcePreviewIsland />
+          <ResourcePreviewIsland availability={props.availability} />
         ) : view === "timeline" || view === "timeline-day" ? (
-          <ResourcePreviewIsland view={view === "timeline" ? "timeline-week" : "timeline-day"} />
+          <ResourcePreviewIsland
+            availability={props.availability}
+            view={view === "timeline" ? "timeline-week" : "timeline-day"}
+          />
         ) : (
           <PreviewIsland view={view} {...props} />
         )}

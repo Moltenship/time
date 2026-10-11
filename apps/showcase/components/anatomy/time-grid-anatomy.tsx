@@ -46,6 +46,12 @@ const callouts: readonly AnatomyCallout[] = [
     side: "bottom",
   },
   { label: "Time gutter", name: "--calendar-gutter-width", anchor: [12, hourY(12)], side: "left" },
+  {
+    label: "Outside working hours",
+    name: "TimeGridAvailability",
+    anchor: [columnLeft(2) + COLUMN - 12, (BODY_TOP + hourY(9)) / 2],
+    side: "right",
+  },
   { label: "Now line", name: "useNow", anchor: [columnLeft(2), hourY(9.67)], side: "right" },
   {
     label: "Overlap lanes",
@@ -111,6 +117,14 @@ function Header() {
 function Body() {
   return (
     <g>
+      {/* Working hours start at 9 AM; the half hour before it is shaded. */}
+      <rect
+        x={GUTTER}
+        y={BODY_TOP}
+        width={WIDTH - GUTTER}
+        height={hourY(9) - BODY_TOP}
+        className="fill-calendar-unavailable"
+      />
       {[9, 10, 11, 12, 13].map((hour) => (
         <g key={hour}>
           <GridLine x1={GUTTER} x2={WIDTH} y1={hourY(hour)} y2={hourY(hour)} />
@@ -292,7 +306,10 @@ function Events() {
   );
 }
 
-/** Day headers, the all-day row, the time gutter, day columns, events, and the now line. */
+/**
+ * Day headers, the all-day row, the time gutter, day columns, shading outside working hours,
+ * events, and the now line.
+ */
 export function TimeGridAnatomy() {
   return (
     <Anatomy

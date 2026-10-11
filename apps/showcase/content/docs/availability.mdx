@@ -1,0 +1,188 @@
+---
+title: Availability
+description: Working hours, closed days and holidays, people and rooms in their own time zones, and a policy that keeps bookings inside them.
+---
+
+<CalendarPreview view="week" availability announcements />
+
+Availability is when the calendar, or a person or a room, can be booked. Views shade the time
+outside it, the month mutes closed days, and a policy decides what happens to a change that lands
+outside: it can be blocked, or saved with a warning. Drag an event into the evening above and the
+screen reader strip says "outside working hours". Try it with people in other time zones in the
+[live demo](https://moltenship-time-demo.vercel.app), where the Working hours setting switches
+between hidden, shown, warn and block.
+
+## Add working hours
+
+Pass the calendar's hours to `Root` as `availability`, and add `availabilityPolicy` to its policies:
+
+```tsx
+import { availabilityPolicy } from "@moltenship/calendar";
+
+const time = Temporal.PlainTime.from;
+
+const officeHours = {
+  weekly: [{ days: [1, 2, 3, 4, 5], start: time("09:00"), end: time("17:00") }],
+  exceptions: [
+    { date: Temporal.PlainDate.from("2026-12-25"), label: "Christmas" },
+    {
+      date: Temporal.PlainDate.from("2026-12-24"),
+      hours: [{ start: time("09:00"), end: time("12:00") }],
+    },
+  ],
+};
+
+const policies = [availabilityPolicy<Meeting, string, string>({ mode: "warn" })];
+
+<Calendar.Root availability={officeHours} policies={policies} {...props} />;
+```
+
+Without `availabilityPolicy`, views still shade the hours, but nothing stops a change outside
+them.
+
+## Hours and exceptions
+
+- **Weekly hours.** Each rule opens `start` to `end` on its `days`, ISO days of the week from `1`
+  (Monday) to `7` (Sunday). A day can have several rules, such as a lunch break between two. An
+  `end` at or before `start` runs past midnight, so `22:00` to `06:00` is a night and `00:00` to
+  `00:00` a whole day. Leave `weekly` out to open every day all day.
+- **Exceptions.** An exception replaces one date's hours. Without `hours` it closes the date; its
+  `label`, such as "Christmas", names the closed day in the month.
+- **Time zones.** The hours are on the display time zone's clock unless `availability.timeZone`
+  says otherwise, such as the office's.
+- **Daylight saving time.** Hours are half-open, `[start, end)`, and read on the wall clock. On a
+  spring-forward day, hours that start in the skipped hour open when the clock jumps. On a
+  fall-back day, hours that end in the repeated hour close after the repeat, so they cover both.
+
+Invalid rules, exceptions and time zones are left out and reported through `onDiagnosticsChange`
+as `invalid-availability`. The calendar never throws over them.
+
+## People and rooms
+
+<CalendarPreview view="resources" availability />
+
+Resources follow the calendar's hours unless they have their own:
+
+```tsx
+const weekdays = (start: string, end: string) => ({
+  days: [1, 2, 3, 4, 5],
+  start: Temporal.PlainTime.from(start),
+  end: Temporal.PlainTime.from(end),
+});
+
+const resources = [
+  {
+    id: "orchid",
+    title: "Orchid",
+    data: room,
+    availability: { weekly: [weekdays("08:00", "20:00")] },
+  },
+  { id: "alex", title: "Alex", data: person, timeZone: "America/Los_Angeles" },
+  { id: "lee", title: "Lee", data: person, timeZone: "Asia/Kolkata" },
+];
+```
+
+- **Own hours.** A resource's `weekly` replaces the calendar's. Its `exceptions` add to the
+  calendar's, so a company holiday closes every room, and the resource's own win on the same date.
+- **Own time zone.** A resource with a `timeZone` keeps its hours on that clock: Alex's 9 to 5 in
+  Los Angeles shows as the evening in Berlin.
+- **One time axis.** Resource columns and the timeline keep a single axis in the display time
+  zone. Only the shading follows each resource's clock, and its header shows its local time and
+  UTC offset, such as "7:18 AM GMT-7", while that clock differs from the display time zone's.
+- **The same instant.** Moving an event to a resource in another time zone keeps its instant: a
+  9:00 call in New York stays 9:00 in New York, which is 14:00 for London.
+
+## Keep changes inside
+
+`availabilityPolicy({ mode })` checks every move, resize and create, whether it comes from a drag,
+the keyboard, or `actions.proposeEventChange`. A timed event must fall in open time for the
+calendar and for every resource it books, and an all-day event on dates with open time. Only what a
+change alters is checked, so events already outside the hours can still be edited.
+
+| Mode      | Outside the hours, the change is…                                                            |
+| --------- | -------------------------------------------------------------------------------------------- |
+| `"block"` | Rejected with the reason `"outside-availability"`, and the event goes back where it was.     |
+| `"warn"`  | Saved, with `"outside-availability"` in its `warnings`, so you can say so or ask to confirm. |
+
+While a gesture is in progress, its preview shows what the policies would say: a drag preview or a
+keyboard-moved event gets a dashed outline, red when the change would be rejected and amber when it
+would be saved with a warning. Your own UI can ask the same question with
+`actions.checkEventChange(proposal)`, which runs the policies without saving anything.
+
+## Keyboard and screen readers
+
+Availability adds no keys and no tab stops; each view keeps its [key map](/docs/accessibility).
+The shading is hidden from screen readers, which hear the same information in words:
+
+| Where                              | What a screen reader hears                                                     |
+| ---------------------------------- | ------------------------------------------------------------------------------ |
+| A time-grid slot, with ↑ ↓         | "Thursday, October 8 at 8:45 AM, outside working hours"                        |
+| A month day or a timeline day      | "Friday, December 25, 2026, Christmas, closed, no events"                      |
+| A step of a move, resize or create | "Thursday, October 8, 4:45 – 5:15 PM, outside working hours"                   |
+| A blocked drop                     | "Standup can't go outside working hours, so it's back where it was."           |
+| A saved change with a warning      | "Moved Standup to Thursday, October 8, 4:45 – 5:15 PM, outside working hours." |
+| A resource header in another zone  | "Lee, local time 7:48 PM GMT+5:30"                                             |
+
+The messages live in `announcements.ts` in your copy of the registry source, ready to translate.
+
+## Anatomy
+
+<TimeGridAnatomy />
+
+```txt title="Rendered by TimeGridColumn"
+TimeGridColumn                   time-grid-column.tsx
+├── TimeGridAvailability         time-grid-availability.tsx, data-slot="time-grid-unavailable"
+├── TimeGridAnnotations          time-grid-annotations.tsx
+└── TimeGridEvent                time-grid-event.tsx
+```
+
+- **Time grid and resource columns.** `TimeGridAvailability` draws a band behind the events for
+  each closed stretch of a column, in `--calendar-unavailable`.
+- **Timeline.** `TimelineAvailability` shades hour rows along each resource's closed time; day rows
+  mark closed days with `data-closed`.
+- **Month.** A closed day's cell gets `data-closed` and `--calendar-closed`, light enough that its
+  date and events stay readable.
+- **Resource headers.** `ResourceHeaderTime` shows a resource's local time; add it to your own
+  `ResourceHeader` composition.
+
+## Your own view
+
+The shading is separate from the event projection, like annotations, so working hours never
+change event layout. These hooks give a view what to draw, for the calendar's hours or, with a
+resource ID, that resource's:
+
+| Hook                                    | Returns                                                          |
+| --------------------------------------- | ---------------------------------------------------------------- |
+| `useTimeGridAvailability(columns, id?)` | The closed bands of each time-grid column, as fractions of 24 h  |
+| `useTimelineAvailability(columns, id?)` | The closed stretches along a timeline, as fractions of its width |
+| `useClosedDates(range, id?)`            | The dates with no open time, keyed by ISO date, with a `label`   |
+| `useCalendarAvailability()`             | The resolved hours: `calendar`, `forResource(id)`, `timeZone`    |
+
+Each schedule answers `available(range)`, `unavailable(range)` and `isAvailable(range)` for any
+instant range, and resolves each date once, so views can ask on every render.
+
+## Data model
+
+<TypeTable
+  type={{
+    weekly: {
+      type: "AvailabilityRule[]",
+      description:
+        "Hours by day of the week: { days, start, end }. Without it every day is open; an empty list opens only the exceptions.",
+    },
+    exceptions: {
+      type: "AvailabilityException[]",
+      description:
+        "Dates with other hours: { date, hours?, label? }. Without hours the date is closed.",
+    },
+    timeZone: {
+      type: "string",
+      description:
+        "The clock the calendar's hours are on. A resource's hours follow its own timeZone instead.",
+      default: "the display time zone",
+    },
+  }}
+/>
+
+A resource's `availability` takes `weekly` and `exceptions`, and its `timeZone` sits on the
+resource itself.

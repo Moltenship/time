@@ -1,10 +1,16 @@
-import { createCalendar, defineEventAdapter, type CalendarResource } from "@moltenship/calendar";
+import {
+  availabilityPolicy,
+  createCalendar,
+  defineEventAdapter,
+  type CalendarResource,
+} from "@moltenship/calendar";
 import { useState } from "react";
 
 import { calendarAnnouncements } from "@registry/calendar/announcements";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import {
   ResourceHeaderIcon,
+  ResourceHeaderTime,
   ResourceHeaderTitle,
   ResourceHeaderToggle,
   type ResourceHeaderProps,
@@ -17,6 +23,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@registry/ui/avatar";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
+import { hours, previewAvailability } from "./availability";
 import { applyPreviewChange, createPreviewEvents, type PreviewEvent } from "./events";
 
 type PreviewResource = CalendarResource<
@@ -84,10 +91,36 @@ function ResourceHeader({ resource, title }: ResourceHeaderProps<PreviewResource
           <DoorOpenIcon className="size-3.5" />
         </ResourceHeaderIcon>
       )}
-      <ResourceHeaderTitle />
+      <span className="flex min-w-0 flex-col">
+        <ResourceHeaderTitle />
+        <ResourceHeaderTime />
+      </span>
     </>
   );
 }
+
+/**
+ * Hours for the rooms and people whose hours differ from the office's, with Alex in Los Angeles
+ * and Lee in Bengaluru.
+ */
+function withHours(resource: PreviewResource): PreviewResource {
+  switch (resource.id) {
+    case "orchid":
+      return { ...resource, availability: { weekly: [hours([1, 2, 3, 4, 5], "08:00", "20:00")] } };
+    case "sam":
+      return { ...resource, availability: { weekly: [hours([1, 2, 3, 4, 5], "08:00", "16:00")] } };
+    case "alex":
+      return { ...resource, timeZone: "America/Los_Angeles" };
+    case "lee":
+      return { ...resource, timeZone: "Asia/Kolkata" };
+    default:
+      return resource;
+  }
+}
+
+const resourcesWithHours = resources.map(withHours);
+/** Changes outside working hours are saved, flagged, and announced as outside them. */
+const availabilityPolicies = [availabilityPolicy<PreviewEvent, string, string>({ mode: "warn" })];
 
 /** The rooms and people each work event books, by title; personal events book none. */
 const bookings: Readonly<Record<string, readonly string[]>> = {
@@ -124,10 +157,15 @@ const Calendar = createCalendar<PreviewEvent, PreviewResource>()({
   ],
 });
 
-/** A resource view over this week's bookings in the visitor's time zone. */
+/**
+ * A resource view over this week's bookings in the visitor's time zone; with `availability`, the
+ * office's hours and the people's own, two of them in other time zones.
+ */
 export default function ResourceCalendar({
+  availability = false,
   view = "resources",
 }: {
+  readonly availability?: boolean;
   readonly view?: (typeof Calendar.views)[number]["name"];
 }) {
   const [now] = useState(() => Temporal.Now.zonedDateTimeISO());
@@ -141,6 +179,7 @@ export default function ResourceCalendar({
   return (
     <TooltipProvider delay={400}>
       <Calendar.Root
+        availability={availability ? previewAvailability(now.toPlainDate()) : undefined}
         defaultAnchorDate={now.toPlainDate()}
         defaultExpandedResourceIds={["design", "engineering"]}
         defaultTimeZone={now.timeZoneId}
@@ -148,7 +187,8 @@ export default function ResourceCalendar({
         events={events}
         locale="en-US"
         onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}
-        resources={resources}
+        policies={availability ? availabilityPolicies : undefined}
+        resources={availability ? resourcesWithHours : resources}
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >
         <Calendar.Frame className="flex h-full flex-col">

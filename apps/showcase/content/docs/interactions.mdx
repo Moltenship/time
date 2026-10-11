@@ -72,6 +72,7 @@ them to `Root` as `policies`, as in the example above.
 | `snapPolicy({ minutes: 15 })`            | Rounds timed changes to a grid in the calendar's time zone                                                                 |
 | `minimumDurationPolicy({ minutes: 15 })` | Lengthens timed events that would be shorter than the minimum                                                              |
 | `boundsPolicy({ start, end })`           | Rejects changes that end up outside the given instants                                                                     |
+| `availabilityPolicy({ mode })`           | Blocks changes outside [working hours](/docs/availability), or saves them with a warning in `change.warnings`              |
 | `readOnlyPolicy()`                       | Rejects changes to events your adapter marks with `isReadOnly`. `Root` always runs it first, so you don't need to pass it. |
 
 A policy is a function, so you can write your own. This one keeps meetings out of the all-day row.
