@@ -289,7 +289,7 @@ describe("scrolling views", () => {
     await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.02), settled);
   });
 
-  test("the month scrolls by weeks and names the month of its third row", async () => {
+  test("the month rests where it's scrolled and names the month of its third row", async () => {
     await render(<Screen view="scrolling-month" />);
     const { position, scrollBy } = axis("scrolling-month");
     const start = position();
@@ -298,9 +298,10 @@ describe("scrolling views", () => {
     await scrollBy(4.4);
 
     await vi.waitFor(() => expect(title()).toBe("November 2026"), settled);
-    // The anchor is the start of the third visible week.
+    // The anchor is the start of the third week from the one nearest the top.
     expect(reported.anchors.at(-1)?.toString()).toBe("2026-11-02");
-    await vi.waitFor(() => expect(Math.abs(position() - start - 4)).toBeLessThan(0.1), settled);
+    // Without snapping, the view stays where the scroll left it.
+    expect(Math.abs(position() - start - 4.4)).toBeLessThan(0.05);
   });
 });
 

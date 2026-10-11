@@ -17,7 +17,7 @@ import {
 import { useLayoutEffect, useMemo, useState, type CSSProperties, type RefObject } from "react";
 
 import { useEventLabel } from "@registry/calendar/event-label";
-import { epochDay, ScrollSnapPoints, useScrollingAxis } from "@registry/calendar/scrolling-axis";
+import { epochDay, useScrollingAxis } from "@registry/calendar/scrolling-axis";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import {
   useMonthFormats,
@@ -76,8 +76,8 @@ function useLaneCapacity(track: RefObject<HTMLElement | null>, count: number): n
 }
 
 /**
- * Weeks that scroll up and down without end and come to rest on a week: rows share the height
- * between the visible weeks, and the month most of the focus row falls in names the view and
+ * Weeks that scroll up and down without end, coming to rest wherever the user leaves them, with
+ * the week nearest the top as the first row: rows share the height between the visible weeks, and the month most of the focus row falls in names the view and
  * keeps its days bright. Rows render for a page of weeks above and below, with their events, and
  * dragging and keys work as in the month view.
  */
@@ -100,6 +100,8 @@ function ScrollingMonthView<TEvent>({
       actions.setAnchorDate(scrollingMonthAnchor(range.start.add({ weeks: week - first }), weeks)),
     page: weeks,
     rtl: false,
+    // Snapping each week makes a fast fling feel stuck; the month scrolls freely, as a feed does.
+    snap: false,
   });
   // Today and Next can ask for the anchor the view already has while a scroll runs ahead of it.
   const strategy = useMemo(() => scrollingMonthStrategy(weeks), [weeks]);
@@ -160,7 +162,7 @@ function ScrollingMonthView<TEvent>({
       <div
         ref={axis.scrollRef}
         data-slot="scrolling-month-viewport"
-        className="relative min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [container-type:size] in-data-interaction:snap-none"
+        className="relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain [container-type:size]"
         style={
           {
             "--calendar-week-height": `max(${MIN_ROW_HEIGHT}px, calc(100cqh / ${weeks}))`,
@@ -173,7 +175,6 @@ function ScrollingMonthView<TEvent>({
           className="relative flex flex-col"
           style={{ height: `calc(${axis.count} * ${WEEK})` }}
         >
-          <ScrollSnapPoints axis="block" base={axis.base} first={first} page={weeks} size={WEEK} />
           <div
             className="grid shrink-0"
             style={{
@@ -224,8 +225,8 @@ function ScrollingMonthView<TEvent>({
 }
 
 /**
- * A month of weeks that scrolls up and down, a week at a time, named `scrolling-month`. `weeks`
- * rows share the height, six by default; Previous and Next move a month. Clicking a date opens
+ * A month of weeks that scrolls freely up and down, named `scrolling-month`. `weeks` rows share
+ * the height, six by default; Previous and Next move a month. Clicking a date opens
  * `dayView`. Pass default options here; a root can override them through
  * `viewOptions["scrolling-month"]`.
  */

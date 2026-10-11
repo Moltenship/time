@@ -35,6 +35,13 @@ export interface ScrollingAxisOptions {
   readonly page: number;
   /** Whether the inline axis runs right to left. */
   readonly rtl: boolean;
+  /**
+   * Whether the view comes to rest on an item, as the time grid does on a day. Pair it with
+   * `ScrollSnapPoints` and a mandatory snap type on the scrolling element. Without it the view
+   * rests wherever the user leaves it, as the month does, and the item nearest the start is the
+   * range's first.
+   */
+  readonly snap: boolean;
 }
 
 export interface ScrollingAxis {
@@ -67,9 +74,9 @@ function prefersReducedMotion(element: Element): boolean {
 
 /**
  * A scroll axis that never ends: numbered items, such as days, on a canvas `2 × REACH` items
- * long, of which the view renders only those near the calendar's range. The user scrolls freely
- * (snap points come from `ScrollSnapPoints`), and each settled position becomes the calendar's
- * range through `onScroll`. When the range changes otherwise, as Today and Next do, the axis
+ * long, of which the view renders only those near the calendar's range. The user scrolls freely,
+ * coming to rest on an item with `snap`, and each settled position becomes the calendar's range
+ * through `onScroll`. When the range changes otherwise, as Today and Next do, the axis
  * scrolls there: smoothly over a page or two, at once further away, from the keyboard, or with
  * reduced motion. Scroll positions are never React state, so scrolling renders only when the
  * range moves.
@@ -84,6 +91,7 @@ export function useScrollingAxis({
   onScroll,
   page,
   rtl,
+  snap,
 }: ScrollingAxisOptions): ScrollingAxis {
   const scrollRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -91,7 +99,7 @@ export function useScrollingAxis({
   const count = 2 * REACH + page;
 
   // Read by event handlers, so they see the latest render without re-subscribing.
-  const latest = useRef({ base, first, onScroll, page });
+  const latest = useRef({ base, first, onScroll, page, snap });
   /** The base, direction, and item size the scroll position was last laid out for. */
   const laidOut = useRef(base);
   const laidOutRtl = useRef(rtl);
@@ -196,7 +204,7 @@ export function useScrollingAxis({
   }, [count, offset, rtl, scrollTo, size]);
 
   useLayoutEffect(() => {
-    latest.current = { base, first, onScroll, page };
+    latest.current = { base, first, onScroll, page, snap };
     place();
   });
 
@@ -253,9 +261,9 @@ export function useScrollingAxis({
       }
       const item = nearest();
       if (item === null) return;
-      // Snapping normally leaves the view on an item; where the browser didn't, finish the job.
       const target = (item - latest.current.base) * size();
-      if (Math.abs(offset(element) - target) > 1) {
+      if (latest.current.snap && Math.abs(offset(element) - target) > 1) {
+        // Snapping normally leaves the view on an item; where the browser didn't, finish the job.
         heading.current = item;
         scrollTo(element, target, prefersReducedMotion(element) ? "instant" : "smooth");
       }

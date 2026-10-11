@@ -57,10 +57,13 @@ const onScroll = vi.fn<(first: number) => void>();
 function Axis({
   block = false,
   interacting = false,
+  snap = true,
 }: {
   /** Weeks down the block axis, as the month scrolls, rather than days across. */
   readonly block?: boolean;
   readonly interacting?: boolean;
+  /** Whether the view comes to rest on an item; the month's scrolls freely. */
+  readonly snap?: boolean;
 }) {
   const [first, setState] = useState(5000);
   const [rtl, setRtlState] = useState(false);
@@ -76,6 +79,7 @@ function Axis({
     onScroll,
     page,
     rtl,
+    snap,
   });
   request = axis.request;
   return (
@@ -193,6 +197,42 @@ test("a drag that scrolls the view still moves the range, without snapping it", 
   await userScrollsTo(5009.5);
   // At rest, the view waits for the gesture to end before coming to rest on a day.
   expect(scrolls).toEqual([]);
+});
+
+test("a snapping view the browser left between items comes to rest on the nearest", async () => {
+  const { finishScroll, shownItem, userScrollsTo } = await show();
+  scrolls = [];
+
+  await userScrollsTo(5004.4);
+  expect(scrolls).toEqual([{ behavior: "smooth", left: expect.any(Number) }]);
+  await finishScroll();
+
+  expect(shownItem()).toBe(5004);
+  expect(onScroll).toHaveBeenLastCalledWith(5004);
+});
+
+test("a free view rests where the user left it, with the nearest item first", async () => {
+  const { shownItem, userScrollsTo } = await show(<Axis block snap={false} />);
+  scrolls = [];
+
+  await userScrollsTo(5004.4);
+  await userScrollsTo(5009.6);
+
+  expect(scrolls).toEqual([]);
+  expect(shownItem()).toBeCloseTo(5009.6);
+  expect(onScroll.mock.calls).toEqual([[5004], [5010]]);
+});
+
+test("a request for the range a free view rests near lines the view up with it", async () => {
+  const { finishScroll, shownItem, userScrollsTo } = await show(<Axis block snap={false} />);
+  await userScrollsTo(5004.4);
+  await act(async () => setFirst(5004));
+  expect(shownItem()).toBeCloseTo(5004.4);
+
+  await act(async () => request(5004));
+  await finishScroll();
+
+  expect(shownItem()).toBe(5004);
 });
 
 test("a range that replaces one still being scrolled to wins", async () => {

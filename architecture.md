@@ -466,7 +466,9 @@ ranges after commit, so applications fetch the next page before it scrolls into 
 still never fetches.
 
 The registry renders them on an axis of numbered days or weeks thousands of items long
-(`useScrollingAxis`), with CSS scroll snapping. Scroll offsets stay out of React state: the view
+(`useScrollingAxis`). The time grid comes to rest on a day through CSS scroll snapping; the month
+scrolls freely, as snapping each week made a fast fling feel stuck, and its first row is the week
+nearest the top. Scroll offsets stay out of React state: the view
 re-renders only when the anchor moves, at rest or every half page of a long swipe. Server markup
 places the visible range at the axis start, and the axis extends before it in a layout effect.
 

@@ -175,6 +175,7 @@ export function ScrollingTimeGridView<TEvent>({
     onScroll: (first) => actions.setAnchorDate(fromEpochDay(first)),
     page: visibleDays,
     rtl: direction === "rtl",
+    snap: true,
   });
   // Today and Next can ask for the anchor the view already has while a scroll runs ahead of it.
   useAnchorDateRequests((date) => axis.request(epochDay(date)));

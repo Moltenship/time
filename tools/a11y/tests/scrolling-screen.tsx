@@ -104,8 +104,11 @@ export function axis(view: ScrollingView) {
       ? '[data-slot="scrolling-month-viewport"]'
       : '[data-slot="scrolling-time-grid-viewport"]',
   )!;
-  // One snap point per item: their spread gives the item length without one item's rounding.
-  const points = [...viewport.querySelectorAll(".snap-start")].map((point) => {
+  // The spread of the snap points, one per day, or of the week rows, gives one item's length
+  // without the rounding of any one of them.
+  const points = [
+    ...viewport.querySelectorAll(view === "scrolling-month" ? '[role="row"]' : ".snap-start"),
+  ].map((point) => {
     const { left, top } = point.getBoundingClientRect();
     return view === "scrolling-month" ? top : left;
   });
