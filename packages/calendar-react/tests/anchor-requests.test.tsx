@@ -59,7 +59,9 @@ async function holdAnchor() {
   let actions: CalendarSemanticActions | undefined;
   function Probe() {
     actions = Calendar.useCalendarActions() as unknown as CalendarSemanticActions;
-    useAnchorDateRequests((requested) => requests.push(requested.toString()));
+    useAnchorDateRequests((requested, range) =>
+      requests.push(`${requested.toString()} ${range?.start.toString()}–${range?.end.toString()}`),
+    );
     return null;
   }
   harnesses.push(
@@ -105,5 +107,9 @@ test("anchor date requests reach views, even for the date the calendar already h
   await run(() => actions().setAnchorDate(date("2026-08-15")));
   await run(() => actions().navigateNext());
 
-  expect(requests).toEqual(["2026-08-15", "2026-08-16"]);
+  // Each with the dates the active view shows for it.
+  expect(requests).toEqual([
+    "2026-08-15 2026-08-15–2026-08-16",
+    "2026-08-16 2026-08-16–2026-08-17",
+  ]);
 });

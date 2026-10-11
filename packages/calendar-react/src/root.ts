@@ -496,6 +496,14 @@ export function createCalendarRoot<
           actions,
           announcements,
           keyboard,
+          rangeOf: (anchor: Temporal.PlainDate) => {
+            const { view } = binding.read();
+            const definition = viewsByName.get(view);
+            if (definition === undefined) return null;
+            const { environment, viewOptions } = committed.current;
+            const options = resolveViewOptions(definition, viewOptions?.[view]);
+            return definition.strategy.getRange(anchor, environment, options);
+          },
           read: binding.read,
           requests: binding.subscribeRequests,
           source,

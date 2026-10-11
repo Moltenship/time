@@ -116,7 +116,9 @@ function ScrollingMonthView<TEvent>({
     },
   });
   // Today and Next can ask for the anchor the view already has while a scroll runs ahead of it.
-  useAnchorDateRequests((date) => axis.request(monthStart(date)));
+  useAnchorDateRequests((_, requested) => {
+    if (requested !== null) axis.request(weekNumber(requested.start));
+  });
   const start = weekNumber((loadRange ?? range).start) - axis.base;
 
   // Pointer drags speak through the same messages as the keyboard.

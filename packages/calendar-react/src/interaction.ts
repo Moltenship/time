@@ -1,4 +1,4 @@
-import type { WallTimeSnapOptions } from "@moltenship/calendar-temporal";
+import type { PlainDateInterval, WallTimeSnapOptions } from "@moltenship/calendar-temporal";
 import { createContext, useContext, type Context } from "react";
 
 import type { AnnouncerChannel } from "./announcer";
@@ -18,6 +18,8 @@ export interface CalendarInteractionRuntime {
   readonly actions: CalendarSemanticActions<any, any, any, any, any, any>;
   readonly announcements: AnnouncerChannel;
   readonly keyboard: KeyboardSessionStore;
+  /** The dates the active view shows for `anchor`; `null` without a registered view. */
+  readonly rangeOf: (anchor: Temporal.PlainDate) => PlainDateInterval | null;
   /**
    * The latest state, controlled slices and requests not yet committed included; read it in
    * callbacks that run after the render that created them.

@@ -182,11 +182,10 @@ export function ScrollingTimeGridView<TEvent>({
     // Whole pages from the range, so a week stays a calendar week and three days move three.
     snapTo: (day) => first + Math.round((day - first) / visibleDays) * visibleDays,
   });
-  // Today and Next can ask for the range the view already has while a scroll runs ahead of it. A
-  // date inside the range asks for it, as Today does in this week; any other moves the range.
-  useAnchorDateRequests((date) =>
-    axis.request(epochDay(plainDateIntervalContains(range, date) ? range.start : date)),
-  );
+  // Today and Next can ask for the range the view already has while a scroll runs ahead of it.
+  useAnchorDateRequests((_, requested) => {
+    if (requested !== null) axis.request(epochDay(requested.start));
+  });
   const start = epochDay((loadRange ?? range).start) - axis.base;
 
   // Pointer drags speak through the same messages as the keyboard, and the drag preview labels

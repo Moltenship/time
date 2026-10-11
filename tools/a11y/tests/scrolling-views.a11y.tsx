@@ -55,6 +55,25 @@ describe.each(["ltr", "rtl"] as const)("scrolling week, %s", (dir) => {
   });
 });
 
+test("a 3-day view held at its anchor stays put for a date that starts another range", async () => {
+  // The app keeps October 7 through any change.
+  await render(
+    <Screen heldAnchor={Temporal.PlainDate.from("2026-10-07")} view="scrolling-3-day" />,
+  );
+  const { dragBy, position } = axis("scrolling-3-day");
+  const start = position();
+  await dragBy(1.7);
+  await vi.waitFor(() => expect(reported.anchors.map(String)).toEqual(["2026-10-10"]), settled);
+  expect(Math.abs(position() - start - 3)).toBeLessThan(0.1);
+
+  // October 8 lies in the range the app kept, but starts another one, which the app declines too.
+  await act(async () => screen.actions!.setAnchorDate(Temporal.PlainDate.from("2026-10-08")));
+  await new Promise((resolve) => setTimeout(resolve, 400));
+
+  expect(Math.abs(position() - start - 3)).toBeLessThan(0.1);
+  expect(reported.anchors.map(String)).toEqual(["2026-10-10", "2026-10-08"]);
+});
+
 test("a 3-day view swipes three days at a time", async () => {
   await render(<Screen view="scrolling-3-day" />);
   const { dragBy, position } = axis("scrolling-3-day");

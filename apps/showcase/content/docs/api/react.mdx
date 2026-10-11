@@ -309,10 +309,12 @@ instant from the nearest `Root`'s `now` or `clock`, or the system clock, and sam
 `intervalMs` (one minute by default). It returns `null` during server rendering and hydration unless
 `Root` has `now`.
 
-`useAnchorDateRequests(listener)` calls `listener` with every date the calendar is asked to show:
-from Previous, Next, Today, keys paging past the view, or `setAnchorDate`. That includes a date
-that is already the anchor. A view whose scroll position can run ahead of the anchor uses it to
-show the anchor again when Today asks for it. The [scrolling views](/docs/views/scrolling) do this.
+`useAnchorDateRequests(listener)` calls `listener(date, range)` with every date the calendar is
+asked to show: from Previous, Next, Today, keys paging past the view, or `setAnchorDate`. That
+includes a date that is already the anchor. `range` holds the dates the active view shows for
+`date`, so a week view can tell Today inside its week from a date that moves it. A view whose
+scroll position can run ahead of the anchor uses it to show its range again when Today asks for
+it. The [scrolling views](/docs/views/scrolling) do this.
 
 ### Actions
 
