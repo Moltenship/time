@@ -26,8 +26,8 @@ export const demoViews = [
   createDayView<DemoEvent>(options),
   createMonthView<DemoEvent>(options),
   createAgendaView<DemoEvent>(options),
-  createResourceColumnsView<DemoEvent>(options),
-  createTimelineWeekView<DemoEvent>(options),
+  createResourceColumnsView<DemoEvent>({ ...options, resourceStatus: true }),
+  createTimelineWeekView<DemoEvent>({ ...options, resourceStatus: true }),
   // The same day, week, month, and agenda, scrolling continuously; settings switch between the sets.
   createScrollingWeekView<DemoEvent>({ ...options, dayView: "scrolling-day" }),
   createScrollingDayView<DemoEvent>(options),
