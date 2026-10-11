@@ -3,8 +3,8 @@
   "name": "list-view",
   "type": "registry:component",
   "title": "Agenda view",
-  "description": "Chronological agenda grouped by day with sticky dates, Intl time ranges, all-day badges, \"Day k of n\" for multi-day events, and an empty state.",
-  "dependencies": ["@moltenship/calendar", "cn", "lucide-react"],
+  "description": "Chronological agenda grouped by day, virtualized so only the days in view render: sticky dates, Intl time ranges, all-day badges, \"Day k of n\" for multi-day events, and empty and loading states. The scrolling agenda builds on its parts.",
+  "dependencies": ["@moltenship/calendar", "@tanstack/react-virtual", "cn", "lucide-react"],
   "registryDependencies": ["@moltenship/calendar", "@moltenship/calendar-theme"],
   "files": [
     {
@@ -13,9 +13,34 @@
       "target": "components/calendar/list-view/agenda-view.tsx"
     },
     {
+      "path": "registry/list-view/agenda-list.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/list-view/agenda-list.tsx"
+    },
+    {
+      "path": "registry/list-view/agenda-day.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/list-view/agenda-day.tsx"
+    },
+    {
       "path": "registry/list-view/agenda-item.tsx",
       "type": "registry:component",
       "target": "components/calendar/list-view/agenda-item.tsx"
+    },
+    {
+      "path": "registry/list-view/agenda-states.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/list-view/agenda-states.tsx"
+    },
+    {
+      "path": "registry/list-view/agenda-rows.ts",
+      "type": "registry:lib",
+      "target": "components/calendar/list-view/agenda-rows.ts"
+    },
+    {
+      "path": "registry/list-view/use-agenda-virtualizer.ts",
+      "type": "registry:hook",
+      "target": "components/calendar/list-view/use-agenda-virtualizer.ts"
     }
   ],
   "meta": {

@@ -84,7 +84,7 @@ test("is a list of days, each listing its events by their full names", async () 
     timed("standup", "2026-10-08T09:00Z", "2026-10-08T09:30Z"),
     allDay("conference", "2026-10-07", "2026-10-09"),
   ]);
-  const list = container.querySelector('[data-slot="agenda-view"]');
+  const list = container.querySelector('[data-slot="agenda-view"] > ol');
 
   expect(list?.tagName).toBe("OL");
   expect(ariaLabel(list)).toBe("Oct 4 – 31, 2026");
@@ -194,4 +194,41 @@ test("keyboard paging crosses an empty range and comes back", async () => {
   await press("ArrowUp");
   expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 4 – 31, 2026");
   expect(document.activeElement?.getAttribute("data-event-id")).toBe("standup");
+});
+
+test("of 10,000 events over two years, renders only the days in view, numbered among all", async () => {
+  const anchorWeek = Temporal.PlainDate.from("2026-10-04");
+  const events = Array.from({ length: 10_000 }, (_, index) => {
+    const start = anchorWeek
+      .add({ days: index % 728 })
+      .toZonedDateTime({ plainTime: { hour: 6 + Math.floor(index / 728) }, timeZone: "UTC" });
+    const iso = (time: Temporal.ZonedDateTime) => time.toInstant().toString();
+    return timed(`event-${index}`, iso(start), iso(start.add({ minutes: 30 })));
+  });
+  const view = await render(
+    <Calendar.Root
+      clock={clock}
+      defaultAnchorDate={anchorDate}
+      defaultTimeZone="UTC"
+      defaultView="agenda"
+      events={events}
+      locale="en-US"
+      viewOptions={{ agenda: { weeks: 104 } }}
+      weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
+    >
+      <Calendar.Title />
+      <Calendar.ActiveView />
+    </Calendar.Root>,
+  );
+  cleanup = view.unmount;
+  const days = () => [...view.container.querySelectorAll("li[data-date]")];
+
+  expect(text(view.container.querySelector('[data-calendar-part="title"]'))).toBe(
+    "Oct 4, 2026 – Sep 30, 2028",
+  );
+  expect(days().length).toBeLessThan(12);
+  expect(view.container.querySelectorAll("[data-event-id]").length).toBeLessThan(160);
+  expect(days()[0]?.getAttribute("data-date")).toBe("2026-10-04");
+  expect(days()[0]?.getAttribute("aria-posinset")).toBe("1");
+  expect(days().every((day) => day.getAttribute("aria-setsize") === "728")).toBe(true);
 });
