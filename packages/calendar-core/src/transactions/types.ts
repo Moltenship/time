@@ -23,6 +23,15 @@ export type CalendarChangeCause =
   | "update"
   | "delete";
 
+/**
+ * A change being drafted, by pointer or keyboard, before it is proposed: the event it changes
+ * (`null` when creating) and where it would land.
+ */
+export interface CalendarDraft<TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly eventId: TEventId | null;
+  readonly proposed: CalendarEventPlacement<TResourceId>;
+}
+
 export type CalendarEventProposal<TEventId extends EventId, TResourceId extends ResourceId> =
   | {
       readonly cause: "create";
