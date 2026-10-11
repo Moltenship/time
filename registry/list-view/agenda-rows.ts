@@ -79,6 +79,14 @@ export function rowFrom(rows: readonly AgendaRow<unknown>[], date: Temporal.Plai
   return index === -1 ? rows.length : index;
 }
 
+/**
+ * What a row shows on screen, kept on top as rows change: its key, except for the end row standing
+ * in for the dates shown, which is their empty state, as the empty row is once days come after.
+ */
+export function placeKey(row: AgendaRow<unknown>): string {
+  return row.kind === "end" && row.shown ? "empty" : row.key;
+}
+
 /** The date a row lists, which the anchor moves to when the row is on top. */
 export function rowDate(row: AgendaRow<unknown>): Temporal.PlainDate {
   return row.kind === "day" ? row.day.date : row.kind === "empty" ? row.range.start : row.from;

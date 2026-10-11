@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-virtual";
 import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
-import { estimateRowHeight, type AgendaRow } from "./agenda-rows";
+import { estimateRowHeight, placeKey, type AgendaRow } from "./agenda-rows";
 
 /**
  * The viewport's size until the browser measures it. The server and the first client render both
@@ -122,8 +122,9 @@ export function useAgendaVirtualizer({
   });
 
   // TanStack keeps the row on top only when rows come or go at the ends. Days can also change in
-  // between, as when one event moves to a day above the view and another leaves a day below it:
-  // keep the row on top, and how far into it the view is, whatever changed.
+  // between, as when one event moves to a day above the view and another leaves a day below it,
+  // and the empty state can move from the end into the days: keep what is on top, and how far into
+  // it the view is, whatever changed.
   const onTop = useRef<{ readonly into: number; readonly key: string } | null>(null);
   const laidOut = useRef(rows);
   useLayoutEffect(() => {
@@ -131,12 +132,15 @@ export function useAgendaVirtualizer({
     if (element === null) return;
     const remember = () => {
       const item = virtualizer.getVirtualItemForOffset(element.scrollTop);
+      const row = item === undefined ? undefined : rows[item.index];
       onTop.current =
-        item === undefined ? null : { into: element.scrollTop - item.start, key: String(item.key) };
+        item === undefined || row === undefined
+          ? null
+          : { into: element.scrollTop - item.start, key: placeKey(row) };
     };
     const top = onTop.current;
     if (laidOut.current !== rows && top !== null) {
-      const index = rows.findIndex(({ key }) => key === top.key);
+      const index = rows.findIndex((row) => placeKey(row) === top.key);
       const start = index === -1 ? undefined : virtualizer.measurementsCache[index]?.start;
       if (start !== undefined && Math.abs(start + top.into - element.scrollTop) >= 1) {
         virtualizer.scrollToOffset(start + top.into);

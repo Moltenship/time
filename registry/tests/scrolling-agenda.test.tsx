@@ -569,3 +569,31 @@ test("weeks shown without events keep their empty state among the days around th
   );
   expect(document.activeElement?.getAttribute("data-event-id")).toBe("2026-10-09");
 });
+
+test("the empty state stays on top as days come in after the weeks shown", async () => {
+  fitScrollHeight();
+  const screen = await render(<Agenda events={[]} weeks={1} />);
+  cleanup = screen.unmount;
+  // The mouse is down in the list, which lets go of the date the list held on top.
+  await act(async () => {
+    scroller().dispatchEvent(
+      Object.assign(new Event("pointerdown", { bubbles: true }), { pointerType: "mouse" }),
+    );
+    scroller().dispatchEvent(new Event("scroll"));
+  });
+
+  await screen.rerender(
+    <Agenda events={[timed("review", "2026-10-20T09:00Z", "2026-10-20T10:00Z")]} weeks={1} />,
+  );
+  await act(async () => scroller().dispatchEvent(new Event("scrollend")));
+
+  // The empty state is now an item before October 20, and still on top.
+  expect(scroller().scrollTop).toBe(0);
+  expect(
+    document.querySelector('[data-slot="agenda-view"] > ol > li')?.getAttribute("role"),
+  ).toBeNull();
+  expect(text(document.querySelector('[data-slot="agenda-view"] > ol > li'))).toBe(
+    "No eventsNothing is scheduled for October 8 – 14.",
+  );
+  expect(title()).toBe("Oct 8 – 14, 2026");
+});
