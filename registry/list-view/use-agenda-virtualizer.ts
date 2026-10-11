@@ -8,7 +8,7 @@ import {
 } from "@tanstack/react-virtual";
 import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
-import { estimateRowHeight, placeKey, type AgendaRow } from "./agenda-rows";
+import { estimateRowHeight, placeKey, rowDate, rowFrom, type AgendaRow } from "./agenda-rows";
 
 /**
  * The viewport's size until the browser measures it. The server and the first client render both
@@ -125,7 +125,11 @@ export function useAgendaVirtualizer({
   // between, as when one event moves to a day above the view and another leaves a day below it,
   // and the empty state can move from the end into the days: keep what is on top, and how far into
   // it the view is, whatever changed.
-  const onTop = useRef<{ readonly into: number; readonly key: string } | null>(null);
+  const onTop = useRef<{
+    readonly date: Temporal.PlainDate;
+    readonly into: number;
+    readonly key: string;
+  } | null>(null);
   const laidOut = useRef(rows);
   useLayoutEffect(() => {
     const element = scrollRef.current;
@@ -136,14 +140,18 @@ export function useAgendaVirtualizer({
       onTop.current =
         item === undefined || row === undefined
           ? null
-          : { into: element.scrollTop - item.start, key: placeKey(row) };
+          : { date: rowDate(row), into: element.scrollTop - item.start, key: placeKey(row) };
     };
     const top = onTop.current;
     if (laidOut.current !== rows && top !== null) {
-      const index = rows.findIndex((row) => placeKey(row) === top.key);
-      const start = index === -1 ? undefined : virtualizer.measurementsCache[index]?.start;
-      if (start !== undefined && Math.abs(start + top.into - element.scrollTop) >= 1) {
-        virtualizer.scrollToOffset(start + top.into);
+      // What was on top went away, as an empty state when its dates get events or a day when its
+      // last event goes: the first row from its date takes its place, from the top.
+      const kept = rows.findIndex((row) => placeKey(row) === top.key);
+      const index = kept === -1 ? rowFrom(rows, top.date) : kept;
+      const into = kept === -1 ? 0 : top.into;
+      const start = virtualizer.measurementsCache[index]?.start;
+      if (start !== undefined && Math.abs(start + into - element.scrollTop) >= 1) {
+        virtualizer.scrollToOffset(start + into);
       }
     }
     laidOut.current = rows;

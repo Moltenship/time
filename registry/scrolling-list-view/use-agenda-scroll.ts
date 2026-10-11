@@ -195,15 +195,14 @@ export function useAgendaScroll({
     const propose = (settled: boolean) => {
       if (!touched || target.current !== null) return;
       const item = virtualizer.getVirtualItemForOffset(element.scrollTop);
-      const row = item === undefined ? undefined : latest.current.rows[item.index];
-      if (row === undefined) return;
+      const { anchor, range, rows } = latest.current;
+      const row = item === undefined ? undefined : rows[item.index];
+      // The anchor's own row on top, the first from its date, is where the list should be.
+      if (item === undefined || row === undefined || item.index === rowFrom(rows, anchor)) return;
       const date = rowDate(row);
-      const { anchor, range } = latest.current;
       const away = Math.abs(anchor.until(date).days);
       const half = anchor.until(range.end).days / 2;
-      if (away === 0 || (!settled && away < half) || proposed.current?.equals(date) === true) {
-        return;
-      }
+      if ((!settled && away < half) || proposed.current?.equals(date) === true) return;
       moveTo(date);
       // Scrolled past the last day: the days after it come in above the end row, which stays put,
       // so bring the first of them to the top.

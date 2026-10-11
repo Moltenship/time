@@ -597,3 +597,23 @@ test("the empty state stays on top as days come in after the weeks shown", async
   );
   expect(title()).toBe("Oct 8 – 14, 2026");
 });
+
+test("a day arriving in the empty weeks shown takes their empty state's place on top", async () => {
+  fitScrollHeight();
+  const screen = await render(<Agenda events={[]} weeks={1} />);
+  cleanup = screen.unmount;
+  await act(async () => {
+    scroller().dispatchEvent(
+      Object.assign(new Event("pointerdown", { bubbles: true }), { pointerType: "mouse" }),
+    );
+    scroller().dispatchEvent(new Event("scroll"));
+  });
+
+  await screen.rerender(
+    <Agenda events={[timed("lunch", "2026-10-10T12:00Z", "2026-10-10T13:00Z")]} weeks={1} />,
+  );
+  await act(async () => scroller().dispatchEvent(new Event("scrollend")));
+
+  expect(scroller().scrollTop).toBe(rowTop("2026-10-10"));
+  expect(title()).toBe("Oct 8 – 14, 2026");
+});
