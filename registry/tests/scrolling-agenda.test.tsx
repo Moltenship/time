@@ -442,3 +442,42 @@ test("a swipe past the end of the loaded days moves a page once, until the finge
   await touch("touchmove", 360);
   expect(title()).toBe("Oct 22 – 28, 2026");
 });
+
+const arriving = ["2026-10-08", "2026-10-15", "2026-10-22"].map((date) =>
+  timed(date, `${date}T09:00Z`, `${date}T10:00Z`),
+);
+
+test("the rest of a wheel gesture past the end keeps the date it moved to", async () => {
+  fitScrollHeight();
+  const screen = await render(<Agenda events={[]} weeks={1} />);
+  cleanup = screen.unmount;
+  // Two wheel events of one gesture.
+  for (let step = 0; step < 2; step += 1) {
+    await act(async () =>
+      scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 100 })),
+    );
+  }
+  expect(title()).toBe("Oct 15 – 21, 2026");
+
+  await screen.rerender(<Agenda events={arriving} weeks={1} />);
+
+  expect(title()).toBe("Oct 15 – 21, 2026");
+  expect(scroller().scrollTop).toBe(rowTop("2026-10-15"));
+});
+
+test("keys paging from the empty state hold the date, and focus moves to its events", async () => {
+  fitScrollHeight();
+  const screen = await render(<Agenda events={[]} weeks={1} />);
+  cleanup = screen.unmount;
+  await act(async () => document.querySelector<HTMLElement>('[role="group"]')!.focus());
+
+  await press("ArrowDown");
+  expect(title()).toBe("Oct 15 – 21, 2026");
+  expect(document.activeElement?.getAttribute("role")).toBe("group");
+
+  await screen.rerender(<Agenda events={arriving} weeks={1} />);
+
+  expect(title()).toBe("Oct 15 – 21, 2026");
+  expect(scroller().scrollTop).toBe(rowTop("2026-10-15"));
+  expect(document.activeElement?.getAttribute("data-event-id")).toBe("2026-10-15");
+});

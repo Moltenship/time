@@ -118,8 +118,10 @@ export function useAgendaScroll({
   useAnchorDateRequests((date, requested) => {
     if (proposing.current) return;
     // Focus moves to the next event and scrolls it into view: the list is where it should be.
+    // Without days, as from the empty state, the list holds the date for the days that load in.
     if (keying.current) {
       proposed.current = date;
+      if (latest.current.rows.every(({ kind }) => kind === "end")) target.current = date;
       return;
     }
     proposed.current = null;
@@ -217,13 +219,19 @@ export function useAgendaScroll({
       settle();
     };
     const onInput = (event: Event) => {
+      if (event instanceof WheelEvent && wheeledOn !== undefined) {
+        // The rest of a wheel gesture that moved past an end, which holds the date it moved to.
+        clearTimeout(wheeledOn);
+        wheeledOn = setTimeout(() => {
+          wheeledOn = undefined;
+        }, SETTLE_MS);
+        return;
+      }
       target.current = null;
       heading.current = null;
       touched = true;
-      if (event instanceof WheelEvent && event.deltaY !== 0) {
-        // Once per wheel gesture, which ends when the wheel has been still a moment.
-        if (wheeledOn === undefined && !pastEnd(event.deltaY > 0)) return;
-        clearTimeout(wheeledOn);
+      // Once per wheel gesture, which ends when the wheel has been still a moment.
+      if (event instanceof WheelEvent && event.deltaY !== 0 && pastEnd(event.deltaY > 0)) {
         wheeledOn = setTimeout(() => {
           wheeledOn = undefined;
         }, SETTLE_MS);

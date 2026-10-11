@@ -7,7 +7,7 @@ import {
   type ListProjection,
   type ResourceId,
 } from "@moltenship/calendar";
-import { useMemo, useSyncExternalStore } from "react";
+import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 import { AgendaList, useAgendaFormats, useAgendaList } from "@registry/list-view/agenda-list";
 import { agendaRows, rowFrom } from "@registry/list-view/agenda-rows";
@@ -68,6 +68,21 @@ function ScrollingAgendaView<TEvent>({
   const formats = useAgendaFormats(environment.locale);
   const loading = options.loading === true;
   const endRow = rows.at(-1);
+
+  // The empty state had focus when days came in, which takes it away: focus moves on to the first
+  // event from the anchor date, where Tab lands, instead of falling to the page.
+  const hadDays = useRef(days > 0);
+  useLayoutEffect(() => {
+    const arrived = !hadDays.current && days > 0;
+    hadDays.current = days > 0;
+    const page = list.scrollRef.current?.ownerDocument;
+    if (!arrived || !list.focusWithin.within || page?.activeElement !== page?.body) return;
+    const row = rows[Math.min(rowFrom(rows, range.start), rows.length - 2)];
+    const item = row?.kind === "day" ? row.day.items[0] : undefined;
+    if (row?.kind === "day" && item !== undefined) {
+      actions.setFocus({ date: row.day.date, eventId: item.event.id, kind: "event" });
+    }
+  });
 
   return (
     <AgendaList
