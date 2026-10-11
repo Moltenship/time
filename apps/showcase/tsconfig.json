@@ -19,6 +19,7 @@
       "@/components/calendar/month-view/*": ["../../registry/month-view/*"],
       "@/components/calendar/list-view/*": ["../../registry/list-view/*"],
       "@/components/calendar/scrolling-month-view/*": ["../../registry/scrolling-month-view/*"],
+      "@/components/calendar/scrolling-list-view/*": ["../../registry/scrolling-list-view/*"],
       "@/components/calendar/scrolling-time-grid-view/*": [
         "../../registry/scrolling-time-grid-view/*"
       ],

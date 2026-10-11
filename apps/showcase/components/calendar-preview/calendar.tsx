@@ -13,6 +13,7 @@ import { MiniMonth } from "@registry/calendar/mini-month";
 import { ViewSwitcher } from "@registry/calendar/view-switcher";
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
+import { createScrollingAgendaView } from "@registry/scrolling-list-view/scrolling-agenda-view";
 import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
 import {
   createScrollingDayView,
@@ -35,6 +36,7 @@ import {
   type PreviewEvent,
   type PreviewEventChange,
 } from "./events";
+import { useLongRangeEvents } from "./long-range";
 
 export type PreviewView =
   | "week"
@@ -44,13 +46,19 @@ export type PreviewView =
   | "scrolling-week"
   | "scrolling-3-day"
   | "scrolling-day"
-  | "scrolling-month";
+  | "scrolling-month"
+  | "scrolling-agenda";
 
 export interface LiveCalendarProps {
   /** Add a week of sample annotations: sleep, listening sessions and workouts. */
   readonly annotations?: boolean;
   /** Show what a screen reader hears in a strip under the calendar. */
   readonly announcements?: boolean;
+  /**
+   * A year of events either way of today, fetched from a pretend server as the view scrolls, in
+   * place of the seeded weeks.
+   */
+  readonly longRange?: boolean;
   /** Show the registry mini month beside the view on large screens. */
   readonly sidebar?: boolean;
   /** Add a view switcher for all four views. */
@@ -103,6 +111,7 @@ const Calendar = createCalendar<PreviewEvent, never>()({
     scrollingThreeDayView,
     createScrollingDayView<PreviewEvent>({ getEventColor }),
     createScrollingMonthView<PreviewEvent>({ dayView: "scrolling-day", getEventColor }),
+    createScrollingAgendaView<PreviewEvent>({ dayView: "scrolling-day", getEventColor }),
   ],
 });
 
@@ -115,6 +124,7 @@ const viewLabels: Record<PreviewView, string> = {
   "scrolling-3-day": "3 days",
   "scrolling-day": "Day",
   "scrolling-month": "Month",
+  "scrolling-agenda": "Agenda",
 };
 const viewOptions = (["week", "day", "month", "agenda"] as const).map((value) => ({
   label: viewLabels[value],
@@ -164,12 +174,15 @@ function Sidebar({ today }: { readonly today: Temporal.PlainDate }) {
 export default function LiveCalendar({
   annotations = false,
   announcements = false,
+  longRange = false,
   sidebar = false,
   switcher = false,
   view,
 }: LiveCalendarProps) {
   const [now] = useState(() => Temporal.Now.zonedDateTimeISO());
-  const [events, setEvents] = useState(() => createPreviewEvents(now));
+  const [seeded, setSeeded] = useState(() => createPreviewEvents(now));
+  const fetched = useLongRangeEvents(now);
+  const [events, setEvents] = longRange ? [fetched.events, fetched.setEvents] : [seeded, setSeeded];
   const [sampleAnnotations] = useState(() => (annotations ? createPreviewAnnotations(now) : []));
   const today = now.toPlainDate();
   const [activeView, setActiveView] = useState<PreviewView>(view);
@@ -189,7 +202,9 @@ export default function LiveCalendar({
         locale={locale}
         onEventChange={changeEvent}
         onViewChange={(next) => setActiveView(next === "3-day" ? "week" : next)}
+        onVisibleRangeChange={longRange ? fetched.load : undefined}
         view={activeView === "week" && !wide ? "3-day" : activeView}
+        viewOptions={longRange ? { "scrolling-agenda": { loading: fetched.loading } } : undefined}
         weekRules={weekRules}
       >
         <Calendar.Frame className="flex h-full flex-col">

@@ -449,6 +449,7 @@ This is a semver-protected plugin contract. Custom views do not import internal 
 | Resource timeline | Resource rows with horizontal time                               | Composed row/time virtualizers                                  | Sticky resource axis, configurable range and resolution              |
 | Scrolling week/day | The anchor's week or 1–7 days from it, swiping sideways by pages | Anchored day axis; a page of days rendered either side          | Snaps a page at a time; anchor follows the scroll; load range for prefetching |
 | Scrolling month   | Six week rows from the week of the anchor month's first day       | Anchored week axis; a page of weeks rendered either side        | Snaps a month at a time; named by the anchor's month                 |
+| Scrolling agenda  | Days with events, `weeks` from the anchor date                   | Vertical TanStack Virtual over a page of weeks either side      | Rests on any day; anchor follows the day on top; load range for prefetching |
 
 Day and week share the time-grid strategy and primitives; they are explicit view variants, not one component controlled by boolean flags.
 
@@ -462,7 +463,9 @@ other anchor change scrolls the view there. Only the latest scroll waits for a c
 an anchor equal to it is the owner catching up, and any other is navigation. Commands that ask
 for the anchor the calendar already has, as Today does after a scroll the owner hasn't taken,
 reach views through `useAnchorDateRequests`. Each strategy's `getLoadRange` adds a page on either
-side of the visible range. `Root` projects the load range, and `onVisibleRangeChange` reports both
+side of the visible range. The scrolling agenda (#131) follows the same rules over a list of days:
+its range starts at the anchor date, since the list rests on any day, and keys that page past the
+range leave the scrolling to focus. `Root` projects the load range, and `onVisibleRangeChange` reports both
 ranges after commit, so applications fetch the next page before it scrolls into view; the calendar
 still never fetches.
 
@@ -752,7 +755,9 @@ Business hours and availability are interval providers, not special events. They
 
 TanStack Virtual is the maintained virtualization primitive for list and resource axes. It remains behind calendar view adapters.
 
-- List view uses one vertical virtualizer.
+- List view uses one vertical virtualizer over measured day rows. Rows that load in above or below
+  keep the day on top where it is (TanStack's key anchoring), and the focused day stays rendered
+  while focus is in the list.
 - Resource columns use a horizontal virtualizer with stable resource keys.
 - Resource timeline composes vertical resource and horizontal time virtualizers.
 - Sticky headers/axes render outside the virtual item container.

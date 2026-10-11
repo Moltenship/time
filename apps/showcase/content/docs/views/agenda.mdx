@@ -1,6 +1,6 @@
 ---
 title: Agenda
-description: A chronological list of upcoming events, grouped by day.
+description: A chronological list of upcoming events, grouped by day, and a version that scrolls through months or years.
 ---
 
 <CalendarPreview view="agenda" />
@@ -8,7 +8,9 @@ description: A chronological list of upcoming events, grouped by day.
 Try it in the [live demo](https://moltenship-time-demo.vercel.app): pick Agenda in the view switcher.
 
 `createAgendaView` lists the events in the coming weeks, one group per day. Days without events are
-left out.
+left out. Only the days in view render, so a long range, such as `weeks: 104`, stays fast. For a
+list that scrolls without end and loads events as you go, use the
+[scrolling agenda](#scrolling-agenda).
 
 ## Add it
 
@@ -24,7 +26,56 @@ export const Calendar = createCalendar<Meeting>()({
 });
 ```
 
-The view is named `agenda`.
+The view is named `agenda`. It renders with `@tanstack/react-virtual`, which the registry item
+installs.
+
+## Scrolling agenda
+
+<CalendarPreview view="scrolling-agenda" longRange />
+
+`createScrollingAgendaView` from `registry/scrolling-list-view` is the agenda as a
+[scrolling view](/docs/views/scrolling): one list that scrolls through months or years, with the
+anchor date on top. This preview holds a year of events either way of today, a few thousand of
+them, and fetches them from a pretend server as you scroll. Try it in the demo with "Scroll day,
+week, month and agenda" on in the settings.
+
+```tsx
+import { createScrollingAgendaView } from "@/components/calendar/scrolling-list-view/scrolling-agenda-view";
+
+views: [createScrollingAgendaView<Meeting>({ dayView: "scrolling-day", getEventColor })];
+```
+
+| View               | Shows                            | Loads              | Previous and Next | Today        |
+| ------------------ | -------------------------------- | ------------------ | ----------------- | ------------ |
+| `scrolling-agenda` | `weeks` from the anchor date (4) | A page either side | `weeks`           | Today on top |
+
+- **The anchor date is the day on top.** The range starts at the anchor date rather than its week,
+  since the list comes to rest on any day. When a scroll comes to rest, the anchor date moves to the
+  day on top, so `Calendar.Title`, `onAnchorDateChange`, and a URL that stores the date follow it.
+  On a long scroll it moves every half page on the way, so the next weeks load before they scroll
+  into view.
+- **Today, Previous, Next, and any other anchor date scroll the list** to put that date on top, or
+  the next day with events, and hold it there while its events load, until you scroll. With a
+  controlled `anchorDate`, the list stays where it was scrolled until your state takes the latest
+  date `onAnchorDateChange` sent, as in the other
+  [scrolling views](/docs/views/scrolling#how-they-move).
+- **Only the days in view render.** Each is measured once it renders, as its events wrap, and days
+  that load above or below the ones on screen don't move them.
+- **The end of the list** follows the last loaded day. It's as tall as the view, so any day can
+  scroll to the top, and says "Loading events…" while `loading` is set, or that nothing more is
+  scheduled.
+
+### Loading events as you scroll
+
+The scrolling agenda's load range is a page of weeks either way of the ones it shows. As with the
+other scrolling views, `onVisibleRangeChange` on `Root` reports it after the first render and
+whenever the anchor date moves it. Fetch what you haven't fetched yet, and set `loading` while some
+is on its way:
+
+<include meta='title="long-agenda.tsx"'>../../examples/long-agenda.tsx#loading</include>
+
+While `loading` is set, the end of the list says "Loading events…", and a view without events
+shows a loading state in place of the empty one. Time never fetches or keeps events itself.
 
 ## Anatomy
 
@@ -36,14 +87,18 @@ each part lives.
 
 ```txt title="Rendered by AgendaView"
 AgendaView                       agenda-view.tsx
-├── Day group                    data-date, one per day with events
-│   ├── Day group header         weekday and date
-│   └── AgendaItem               agenda-item.tsx, one per event
-└── Empty state                  instead of the groups when nothing is scheduled
+├── AgendaList                   agenda-list.tsx, scrolls the days in view
+│   ├── Day group                agenda-day.tsx, data-date, one per day
+│   │   ├── Day group header     weekday and date, sticky
+│   │   └── AgendaItem           agenda-item.tsx, one per event
+│   └── End of list              agenda-states.tsx, AgendaEnd: scrolling agenda only
+└── Empty state                  agenda-states.tsx, EmptyAgenda: in place of the list
 ```
 
 `AgendaItem` shows the time range or an "All day" badge, the title, and "Day 2 of 3", which comes
-from `dayIndex` and `dayCount`.
+from `dayIndex` and `dayCount`. `use-agenda-virtualizer.ts` decides which days render. The
+scrolling agenda's `ScrollingAgendaView` renders the same parts, and `use-agenda-scroll.ts` in
+`registry/scrolling-list-view` keeps its scroll position and the anchor date together.
 
 ## Options
 
@@ -52,7 +107,7 @@ from `dayIndex` and `dayCount`.
     weeks: {
       type: "number",
       description:
-        "How many whole weeks to show, starting with the week of the anchor date. Previous and Next move by the same number of weeks.",
+        "How many whole weeks to show, from the week of the anchor date, or from the anchor date itself in the scrolling agenda. Previous and Next move by the same number of weeks.",
       default: "4",
     },
     getEventColor: {
@@ -62,6 +117,21 @@ from `dayIndex` and `dayCount`.
           The color for each event. See <a href="/docs/theming#event-colors">event colors</a>.
         </>
       ),
+    },
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: "Extra words for each event's accessible name, such as its calendar.",
+    },
+    loading: {
+      type: "boolean",
+      description:
+        "Events for the view's dates are still being fetched: the view says they're loading instead of that nothing is scheduled.",
+      default: "false",
+    },
+    dayView: {
+      type: "string",
+      description: "Scrolling agenda only: the registered view a date opens.",
+      default: '"day"',
     },
   }}
 />
@@ -73,7 +143,8 @@ from `dayIndex` and `dayCount`.
 - **Times** are formatted as a range with `Intl`, as in "10:00 – 11:30 AM". Events that started the
   day before read "Until 2:00 AM"; events that run into the next day read "From 10:00 PM".
 - **All-day events** show an "All day" badge, and events longer than a day show "Day 2 of 3".
-- **Empty range:** a short message when the weeks shown have no events.
+- **Empty range:** a short message when the weeks shown have no events, or a loading one while
+  `loading` is set.
 - **Clicking a date** opens that day in the view named `day`. Register a
   [day view](/docs/views/week-and-day) so the click has somewhere to go.
 - **Changes being saved:** events with a [pending change](/docs/interactions#pending-changes) get
@@ -95,5 +166,16 @@ page has the full map.
 | An event               | Shift+Enter                  | Open its date in the day view           |
 | A range without events | ↑ or Page Up, ↓ or Page Down | The previous or next range              |
 
-Moving past the first or last event shows the previous or next weeks. The agenda doesn't move or
-create events from the keyboard, since it has no days or times to move them to.
+Moving past the first or last event shows the previous or next weeks. In the scrolling agenda the
+keys move through the weeks it shows, and moving past them pages on as focus moves to the next
+event, scrolling it into view. The list scrolls to keep the focused event in view, and the focused
+day stays rendered while focus is in the list. Focus belongs to an event on a date, not to an
+element: if its day scrolls out of the loaded weeks, focus goes with it, and it returns once the day
+is in view again. The agenda doesn't move or create events from the keyboard, since it has no days or
+times to move them to.
+
+## Screen readers
+
+The list is an `<ol>` named by its weeks. Only the days in view render, so each day's `<li>`
+carries `aria-posinset` and `aria-setsize`, counting every day listed: "list item, 5 of 41". The
+list is `aria-busy` while `loading` is set.

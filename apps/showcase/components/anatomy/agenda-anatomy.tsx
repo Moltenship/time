@@ -5,7 +5,9 @@ import type { AnatomyCallout } from "./layout";
 import { GridLine, Surface } from "./shapes";
 
 const WIDTH = 440;
-const LIST_HEIGHT = 200;
+/** Three day groups, then the end of the list. */
+const END_Y = 3 * 70 + 18;
+const LIST_HEIGHT = END_Y + 22;
 const EMPTY_TOP = LIST_HEIGHT + 16;
 const HEIGHT = EMPTY_TOP + 100;
 /** The sticky date column and where items start, scaled from `px-6`, `w-12`, and `gap-6`. */
@@ -22,6 +24,7 @@ const callouts: readonly AnatomyCallout[] = [
   { label: "All-day badge", anchor: [ITEM_LEFT + 36, 12], side: "top" },
   { label: "Item", name: "AgendaItem", anchor: [WIDTH - 12, 49], side: "right" },
   { label: "Day k of n", name: "dayCount", anchor: [312, 91], side: "right" },
+  { label: "End of list", name: "AgendaEnd", anchor: [WIDTH - 12, END_Y], side: "right" },
   { label: "Empty state", anchor: [0, EMPTY_TOP + 50], side: "left" },
 ];
 
@@ -157,6 +160,16 @@ function ListFigure() {
           </g>
         );
       })}
+      <text
+        x={WIDTH / 2}
+        y={END_Y}
+        fontSize={9.5}
+        textAnchor="middle"
+        dominantBaseline="central"
+        className="fill-muted-foreground"
+      >
+        Nothing more is scheduled through Wednesday, November 4.
+      </text>
     </g>
   );
 }
@@ -209,7 +222,7 @@ function EmptyFigure() {
   );
 }
 
-/** Day groups with their date, items, the "All day" badge, and the empty state. */
+/** Day groups with their date, items, the "All day" badge, the end of the list, and the empty state. */
 export function AgendaAnatomy() {
   return (
     <Anatomy label="Parts of the agenda view" width={WIDTH} height={HEIGHT} callouts={callouts}>
