@@ -129,8 +129,17 @@ export function TimeGridEvent<TEvent>({
   // A title that doesn't fit shows in full in a tooltip while the event is hovered or focused.
   return (
     <TooltipPrimitive.Root
-      disabled={offscreen}
-      onOpenChange={(open) => setTitleShown(open && isClipped(titleRef.current))}
+      // Not while a keyboard gesture moves the event.
+      disabled={offscreen || chip["data-grabbed"] !== undefined}
+      onOpenChange={(open, details) => {
+        // Escape belongs to the calendar, which cancels a gesture or leaves the event with it; the
+        // tooltip only closes.
+        if (details.reason === "escape-key") {
+          details.cancel();
+          details.allowPropagation();
+        }
+        setTitleShown(open && isClipped(titleRef.current));
+      }}
       open={titleShown}
     >
       {/* Base UI's own trigger, so the event keeps `data-slot="calendar-event"`. */}

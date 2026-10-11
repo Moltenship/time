@@ -62,10 +62,12 @@ const events: readonly Fixture[] = [
 
 function OverlapScreen({
   dir,
+  onEventChange,
   overlapLayout,
   view = "week",
 }: {
   readonly dir?: "ltr" | "rtl";
+  readonly onEventChange?: () => void;
   readonly overlapLayout: OverlapLayout;
   readonly view?: "resources" | "week";
 }) {
@@ -78,6 +80,7 @@ function OverlapScreen({
         events={events}
         locale="en-US"
         now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
+        onEventChange={onEventChange}
         resources={resources}
         viewOptions={{ resources: { overlapLayout }, week: { overlapLayout } }}
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
@@ -212,5 +215,30 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
 
     await act(async () => long.focus());
     await vi.waitFor(() => expect(tooltip()).not.toBeNull());
+  });
+
+  test("Escape still reaches the calendar while the title tooltip is open", async () => {
+    const onEventChange = vi.fn();
+    await render(<OverlapScreen dir={dir} onEventChange={onEventChange} overlapLayout="stack" />);
+    const title = "Quarterly planning with the infrastructure and platform teams";
+    const tooltip = () => document.querySelector('[data-slot="tooltip-content"]');
+
+    // Picked up and moved, Escape cancels the move.
+    await act(async () => eventElement(title).focus());
+    await vi.waitFor(() => expect(tooltip()).not.toBeNull());
+    await userEvent.keyboard(" ");
+    await userEvent.keyboard("{ArrowDown}");
+    await userEvent.keyboard("{Escape}");
+    await userEvent.keyboard("{Enter}");
+    expect(document.querySelector("[data-grabbed]")).toBeNull();
+    expect(onEventChange).not.toHaveBeenCalled();
+
+    // Focused, Escape leaves the event for the slot it starts in.
+    await act(async () => eventElement(title).focus());
+    await vi.waitFor(() => expect(tooltip()).not.toBeNull());
+    await userEvent.keyboard("{Escape}");
+    expect(document.activeElement?.getAttribute("aria-label")).toBe(
+      "Thursday, October 8 at 4:00 PM",
+    );
   });
 });
