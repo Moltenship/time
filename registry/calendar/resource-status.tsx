@@ -53,8 +53,8 @@ function summarizeResourceStatus(
 
 /**
  * A resource's status now on the calendar's clock, in words: " until 3:00 PM" on the display
- * clock, with the weekday when that is later this week, and the date further out. `null` while server rendering, and for the
- * unassigned bucket.
+ * clock, with the weekday within the next six days, and the date further out. `null` while
+ * server rendering, and for the unassigned bucket.
  */
 export function useResourceStatusSummary(
   { locale, timeZone }: Environment,
