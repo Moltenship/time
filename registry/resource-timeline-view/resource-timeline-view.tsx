@@ -32,6 +32,8 @@ export interface ResourceTimelineViewOptions<TEvent> extends ResourceTimelineOpt
    * and of the band, date and resource, such as a gradient into working hours or a tint for rooms.
    */
   readonly renderUnavailable?: UnavailableTimeRender;
+  /** Shows each resource's status now in its row header, such as "Busy until 3:00 PM". */
+  readonly resourceStatus?: boolean;
 }
 
 export type ResourceTimelineViewProps<TEvent> = CalendarViewRendererProps<
@@ -130,6 +132,7 @@ export function ResourceTimelineView<TEvent>({
       range={range}
       ref={pointerRef}
       renderUnavailable={options.renderUnavailable}
+      resourceStatus={options.resourceStatus === true}
       snapMinutes={snap.increment}
     />
   );

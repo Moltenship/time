@@ -60,8 +60,13 @@ describe.each(["light", "dark"] as const)("%s theme", (theme) => {
     expect(contrast(tokens.color("--foreground"), unavailable)).toBeGreaterThanOrEqual(TEXT);
   });
 
-  test.each(surfaces)("invalid and warning marks on %s", (surface) => {
-    for (const mark of ["--calendar-invalid", "--calendar-warning"]) {
+  test.each(surfaces)("invalid, warning and status marks on %s", (surface) => {
+    for (const mark of [
+      "--calendar-invalid",
+      "--calendar-warning",
+      "--calendar-busy",
+      "--calendar-free",
+    ]) {
       expect(contrast(tokens.color(mark), tokens.color(surface))).toBeGreaterThanOrEqual(GRAPHIC);
     }
   });

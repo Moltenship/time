@@ -8,6 +8,7 @@ import {
 import { ChevronRightIcon } from "lucide-react";
 import { createContext, use, type ComponentProps } from "react";
 
+import { ResourceStatusBadge, useResourceStatusSummary } from "@registry/calendar/resource-status";
 import { ResourceTime } from "@registry/calendar/resource-time";
 import { cn } from "cn";
 
@@ -26,6 +27,8 @@ export interface ResourceHeaderContextValue {
   readonly environment: Pick<CalendarEnvironmentBase, "locale" | "timeZone">;
   /** Names of the groups the resource sits in, outermost first. */
   readonly groups: readonly string[];
+  /** Whether the default header shows the resource's status; see the view's `resourceStatus`. */
+  readonly status: boolean;
   readonly title: string;
   readonly visible: VisibleResource;
 }
@@ -122,16 +125,41 @@ export function ResourceHeaderTime({ className, ...props }: ComponentProps<"span
 }
 
 /**
+ * The resource's status now, such as "Busy until 3:00 PM", as a badge; nothing for the
+ * Unassigned column or while server rendering. The view's `resourceStatus` makes room for it.
+ */
+export function ResourceHeaderStatus({ className, ...props }: ComponentProps<"span">) {
+  const { environment, visible } = useResourceHeader();
+  const summary = useResourceStatusSummary(environment, visible.id);
+  if (summary === null) return null;
+  return (
+    <>
+      {/* Read after the name and local time, which the header's name runs on from. */}
+      <span className="sr-only">, </span>
+      <ResourceStatusBadge className={className} summary={summary} {...props} />
+    </>
+  );
+}
+
+/**
  * The default composition: a group's chevron, then the name, with the local time under it for a
- * resource in another time zone.
+ * resource in another time zone, and its status beside that with the view's `resourceStatus`.
  */
 export function DefaultResourceHeader() {
+  const { status } = useResourceHeader();
   return (
     <>
       <ResourceHeaderToggle />
       <span className="flex min-w-0 flex-col">
         <ResourceHeaderTitle />
-        <ResourceHeaderTime />
+        {status ? (
+          <span className="flex min-w-0 items-center gap-1">
+            <ResourceHeaderStatus />
+            <ResourceHeaderTime />
+          </span>
+        ) : (
+          <ResourceHeaderTime />
+        )}
       </span>
     </>
   );

@@ -29,11 +29,15 @@ export interface ResourceColumnsHeaderProps {
   readonly ResourceHeader?: ComponentType<ResourceHeaderProps>;
   readonly resources: readonly ResourceColumn<unknown>[];
   readonly scrollbarWidth: number;
+  /** Whether the default header shows each resource's status. */
+  readonly status: boolean;
   readonly totalSize: number;
 }
 
 /** Height of one hierarchy level, in rem. */
 const LEVEL = 2;
+/** A name row with room for the status badge under the name, in rem. */
+const STATUS_ROW = 2.75;
 
 /** A resource's name, or "Unassigned" for the bucket of events without resources. */
 export function resourceTitle({ resource }: VisibleResource): string {
@@ -52,6 +56,7 @@ function ResourceHeaderCell({
   levels,
   resource,
   ResourceHeader,
+  status,
 }: {
   readonly environment: Pick<CalendarEnvironmentBase, "locale" | "timeZone">;
   /** Names of the groups the resource sits in, outermost first. */
@@ -59,6 +64,7 @@ function ResourceHeaderCell({
   readonly levels: number;
   readonly resource: VisibleResource;
   readonly ResourceHeader: ComponentType<ResourceHeaderProps>;
+  readonly status: boolean;
 }) {
   const { depth, expanded } = resource;
   const title = resourceTitle(resource);
@@ -79,9 +85,9 @@ function ResourceHeaderCell({
           "flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2",
           expanded && "bg-muted",
         )}
-        style={{ height: `${LEVEL}rem` }}
+        style={{ height: `${status ? STATUS_ROW : LEVEL}rem` }}
       >
-        <ResourceHeaderContext value={{ environment, groups, title, visible: resource }}>
+        <ResourceHeaderContext value={{ environment, groups, status, title, visible: resource }}>
           <ResourceHeader resource={resource.resource} title={title} />
         </ResourceHeaderContext>
         {groups.length > 0 && <span className="sr-only">, {groups.join(", ")}</span>}
@@ -107,6 +113,7 @@ export function ResourceColumnsHeader({
   ResourceHeader = DefaultResourceHeader,
   resources,
   scrollbarWidth,
+  status,
   totalSize,
 }: ResourceColumnsHeaderProps) {
   // A visible resource's parents are visible too, so its groups are found among the columns.
@@ -130,7 +137,11 @@ export function ResourceColumnsHeader({
   };
 
   return (
-    <div role="row" className="flex" style={{ height: `${levels * LEVEL}rem` }}>
+    <div
+      role="row"
+      className="flex"
+      style={{ height: `${(levels - 1) * LEVEL + (status ? STATUS_ROW : LEVEL)}rem` }}
+    >
       <div
         role="columnheader"
         aria-colindex={1}
@@ -160,6 +171,7 @@ export function ResourceColumnsHeader({
                   levels={levels}
                   resource={resource}
                   ResourceHeader={ResourceHeader}
+                  status={status}
                 />
               </div>
             );

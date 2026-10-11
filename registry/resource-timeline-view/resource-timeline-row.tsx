@@ -11,12 +11,18 @@ import {
   type ResourceTimelineDayRow,
   type ResourceTimelineHourRow,
   type TimeGridColumn,
+  type VisibleResource,
 } from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { ChevronRightIcon } from "lucide-react";
 import { memo, useCallback, useMemo, type CSSProperties } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import {
+  ResourceStatusBadge,
+  useResourceStatusSummary,
+  type ResourceStatusSummary,
+} from "@registry/calendar/resource-status";
 import { ResourceTime, useResourceTime } from "@registry/calendar/resource-time";
 import {
   draftCheckClassName,
@@ -55,6 +61,8 @@ export interface ResourceTimelineRowProps<TEvent> {
   readonly range: PlainDateInterval;
   /** Replaces the shading of closed time and closed days; see `UnavailableTimeRender`. */
   readonly renderUnavailable?: UnavailableTimeRender;
+  /** Whether the row header shows the resource's status. */
+  readonly resourceStatus: boolean;
   readonly row: ResourceTimelineDayRow<TEvent> | ResourceTimelineHourRow<TEvent>;
   /** Width of each slot, in pixels. */
   readonly slotWidth: number;
@@ -94,6 +102,66 @@ function ResourceToggle({ id, title }: { readonly id: ResourceId; readonly title
       />
     </Button>
   );
+}
+
+interface RowHeaderProps {
+  readonly environment: Pick<CalendarEnvironmentBase, "locale" | "timeZone">;
+  readonly resource: VisibleResource;
+  readonly title: string;
+}
+
+/**
+ * The sticky resource cell: a group's toggle, the name, the local time for a resource on another
+ * clock, and its status when the view shows it. Its name says all of them.
+ */
+function RowHeader({
+  environment,
+  resource,
+  status,
+  title,
+}: RowHeaderProps & { readonly status: ResourceStatusSummary | null }) {
+  const localTime = useResourceTime(environment, resource.resource?.timeZone);
+  return (
+    <div
+      role="rowheader"
+      aria-colindex={1}
+      aria-label={[title, localTime === null ? undefined : `local time ${localTime}`, status?.text]
+        .filter((part) => part !== undefined)
+        .join(", ")}
+      // Cells scroll beneath it, so the pointer layer doesn't look through it to them.
+      data-occludes=""
+      className={cn(
+        "sticky start-0 z-30 flex w-(--calendar-resource-column) shrink-0 items-center gap-1 border-e border-calendar-grid bg-background pe-2 text-sm",
+        resource.hasChildren && "bg-muted font-medium",
+      )}
+      style={{ paddingInlineStart: `${0.25 + resource.depth}rem` }}
+    >
+      {resource.hasChildren && resource.id !== null ? (
+        <ResourceToggle id={resource.id} title={title} />
+      ) : (
+        <span aria-hidden className="size-6 shrink-0" />
+      )}
+      {status === null ? (
+        <span className="truncate">{title}</span>
+      ) : (
+        <span className="flex min-w-0 flex-col items-start gap-0.5">
+          <span className="max-w-full truncate">{title}</span>
+          <ResourceStatusBadge summary={status} />
+        </span>
+      )}
+      <ResourceTime
+        className="ms-auto"
+        environment={environment}
+        timeZone={resource.resource?.timeZone}
+      />
+    </div>
+  );
+}
+
+/** `RowHeader` with the resource's status now, so rows without it keep no clock. */
+function RowHeaderWithStatus(props: RowHeaderProps) {
+  const status = useResourceStatusSummary(props.environment, props.resource.id);
+  return <RowHeader {...props} status={status} />;
 }
 
 /**
@@ -170,6 +238,7 @@ function ResourceTimelineRowBase<TEvent>({
   labels,
   range,
   renderUnavailable,
+  resourceStatus,
   row,
   slotWidth,
   slots,
@@ -200,7 +269,6 @@ function ResourceTimelineRowBase<TEvent>({
     () => (unit === "hour" ? closedTime : closedDayExtents(closedDays, range)),
     [closedDays, closedTime, range, unit],
   );
-  const localTime = useResourceTime(environment, resource.resource?.timeZone);
   const perDay = unit === "hour" ? HOURS : 1;
   const origin = slots[0]?.date;
   const slotOf = (cell: CalendarCellFocus) =>
@@ -242,30 +310,11 @@ function ResourceTimelineRowBase<TEvent>({
       )}
       style={{ height: virtualRow.size, top: virtualRow.start }}
     >
-      <div
-        role="rowheader"
-        aria-colindex={1}
-        aria-label={localTime === null ? title : `${title}, local time ${localTime}`}
-        // Cells scroll beneath it, so the pointer layer doesn't look through it to them.
-        data-occludes=""
-        className={cn(
-          "sticky start-0 z-30 flex w-(--calendar-resource-column) shrink-0 items-center gap-1 border-e border-calendar-grid bg-background pe-2 text-sm",
-          resource.hasChildren && "bg-muted font-medium",
-        )}
-        style={{ paddingInlineStart: `${0.25 + resource.depth}rem` }}
-      >
-        {resource.hasChildren && resource.id !== null ? (
-          <ResourceToggle id={resource.id} title={title} />
-        ) : (
-          <span aria-hidden className="size-6 shrink-0" />
-        )}
-        <span className="truncate">{title}</span>
-        <ResourceTime
-          className="ms-auto"
-          environment={environment}
-          timeZone={resource.resource?.timeZone}
-        />
-      </div>
+      {resourceStatus ? (
+        <RowHeaderWithStatus environment={environment} resource={resource} title={title} />
+      ) : (
+        <RowHeader environment={environment} resource={resource} status={null} title={title} />
+      )}
       <TimelineAvailability
         days={range.start.until(range.end).days}
         extents={shaded}

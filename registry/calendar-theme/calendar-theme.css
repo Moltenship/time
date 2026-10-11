@@ -43,6 +43,8 @@
   --color-calendar-weekend: var(--calendar-weekend);
   --color-calendar-unavailable: var(--calendar-unavailable);
   --color-calendar-closed: var(--calendar-closed);
+  --color-calendar-busy: var(--calendar-busy);
+  --color-calendar-free: var(--calendar-free);
   --color-calendar-invalid: var(--calendar-invalid);
   --color-calendar-warning: var(--calendar-warning);
   --color-calendar-event: var(--calendar-event);
@@ -86,6 +88,9 @@
      */
     --calendar-unavailable: color-mix(in oklch, var(--muted-foreground) 9%, transparent);
     --calendar-closed: color-mix(in oklch, var(--muted-foreground) 4%, transparent);
+    /* The dot of a resource's status badge: busy with events, or free in working hours. */
+    --calendar-busy: oklch(0.577 0.215 27.3);
+    --calendar-free: oklch(0.56 0.14 150);
     /* A preview the policies would reject, or let through flagged, such as outside working hours. */
     --calendar-invalid: var(--destructive);
     --calendar-warning: oklch(0.58 0.13 65);
@@ -123,6 +128,8 @@
     /* A dark surface has little room to darken, so closed time lightens instead. */
     --calendar-unavailable: color-mix(in oklch, var(--foreground) 7%, transparent);
     --calendar-closed: color-mix(in oklch, var(--foreground) 4%, transparent);
+    --calendar-busy: oklch(0.704 0.191 22.2);
+    --calendar-free: oklch(0.74 0.16 150);
     --calendar-warning: oklch(0.8 0.14 80);
   }
 

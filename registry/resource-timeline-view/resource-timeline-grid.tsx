@@ -37,6 +37,8 @@ export interface ResourceTimelineGridProps<TEvent> {
   /** The grid element, for the pointer layer and the keyboard. */
   readonly ref?: Ref<HTMLDivElement>;
   readonly renderUnavailable?: UnavailableTimeRender;
+  /** Whether row headers show each resource's status. */
+  readonly resourceStatus: boolean;
   /** Length of a keyboard step in an hour timeline, in minutes. */
   readonly snapMinutes: number;
 }
@@ -74,6 +76,7 @@ export function ResourceTimelineGrid<TEvent>({
   range,
   ref,
   renderUnavailable,
+  resourceStatus,
   snapMinutes,
 }: ResourceTimelineGridProps<TEvent>) {
   const { direction, locale, timeZone, weekRules } = environment;
@@ -177,6 +180,7 @@ export function ResourceTimelineGrid<TEvent>({
               labels={labels}
               range={range}
               renderUnavailable={renderUnavailable}
+              resourceStatus={resourceStatus}
               row={rows[virtualRow.index]!}
               slotWidth={slotWidth}
               slots={slots}
