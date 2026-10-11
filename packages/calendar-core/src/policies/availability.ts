@@ -2,9 +2,9 @@ import {
   instantInterval,
   iteratePlainDates,
   plainDateInterval,
-  zonedDayRange,
 } from "@moltenship/calendar-temporal";
 
+import { isClosedOn } from "../availability/projection";
 import { wallBoundary } from "../availability/schedule";
 import type { AvailabilitySchedule } from "../availability/types";
 import type { EventId, ResourceId } from "../ids";
@@ -57,10 +57,7 @@ function fits(
     }
     case "all-day":
       return Array.from(iteratePlainDates(plainDateInterval(placement.start, placement.end))).every(
-        (date) => {
-          const day = zonedDayRange(date, schedule.timeZone).interval;
-          return day === null || schedule.available(day).length > 0;
-        },
+        (date) => !isClosedOn(schedule, date, schedule.timeZone),
       );
   }
 }

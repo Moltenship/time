@@ -241,6 +241,15 @@ describe("resources", () => {
     expect(tokyo.forResource("here")).toBe(tokyo.calendar);
   });
 
+  test("a repeated resource ID keeps its first resource, as the resource tree does", () => {
+    const repeated = createAvailabilitySnapshot({
+      availability: office,
+      resources: [{ id: "room" }, { availability: { weekly: [] }, id: "room" }],
+      timeZone: newYork,
+    });
+    expect(repeated.forResource("room")).toBe(repeated.calendar);
+  });
+
   test("invalid rules, exceptions, and time zones are left out and reported", () => {
     const bad = createAvailabilitySnapshot({
       availability: {
@@ -276,6 +285,15 @@ describe("resources", () => {
 });
 
 test("entries of the wrong shape are reported, never thrown over", () => {
+  // A list with a hole, which `every` skips.
+  const days: (1 | 2)[] = [];
+  days.length = 1;
+  const holes = createAvailabilitySnapshot({
+    availability: { weekly: [{ days, end: time("17:00"), start: time("09:00") }] },
+    timeZone: newYork,
+  });
+  expect(holes.issues.map(({ code }) => code)).toEqual(["invalid-availability-rule"]);
+
   const odd = createAvailabilitySnapshot({
     availability: { exceptions: [null], weekly: [null] } as never,
     resources: [

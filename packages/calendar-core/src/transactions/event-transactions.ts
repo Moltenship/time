@@ -297,7 +297,15 @@ export function createEventTransactions<
         events,
         timeZone: context.timeZone,
       });
-      if (!isPromiseLike(outcome)) return outcome;
+      if (!isPromiseLike(outcome)) {
+        // As `commit` does: a policy may have adjusted the placement until it is empty.
+        const { change: adjusted } = outcome;
+        return outcome.status === "accepted" &&
+          adjusted.proposed !== null &&
+          !isNonEmptyInterval(adjusted.proposed)
+          ? { change: adjusted, reason: "invalid-placement", status: "rejected" }
+          : outcome;
+      }
       // Previews can't wait; the commit asks again.
       outcome.then(undefined, () => undefined);
       return null;

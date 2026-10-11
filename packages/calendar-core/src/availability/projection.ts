@@ -102,6 +102,21 @@ export function projectTimelineAvailability(
 }
 
 /**
+ * Whether no time on `date`'s wall clock in `timeZone` is open, a repeated hour after midnight
+ * included. A date the time zone skips is never closed.
+ */
+export function isClosedOn(
+  schedule: AvailabilitySchedule,
+  date: Temporal.PlainDate,
+  timeZone: string,
+): boolean {
+  if (zonedDayRange(date, timeZone).interval === null) return false;
+  return schedule
+    .available(datesWindow(date, 1))
+    .every((open) => wallExtent(date, 1, timeZone, open) === null);
+}
+
+/**
  * The dates of `range` without open time on their day in `timeZone`, keyed by ISO date in date
  * order, such as weekends and holidays to mute in a month. An exception on the same date of the
  * schedule's wall clock lends its label.
@@ -114,9 +129,7 @@ export function closedDates(
   const closed = new Map<string, ClosedDate>();
   if (schedule === null) return closed;
   for (const date of iteratePlainDates(range)) {
-    if (zonedDayRange(date, timeZone).interval === null) continue;
-    const open = schedule.available(datesWindow(date, 1));
-    if (open.some((interval) => wallExtent(date, 1, timeZone, interval) !== null)) continue;
+    if (!isClosedOn(schedule, date, timeZone)) continue;
     const label = schedule.exceptionOn(date)?.label;
     closed.set(date.toString(), Object.freeze(label === undefined ? { date } : { date, label }));
   }

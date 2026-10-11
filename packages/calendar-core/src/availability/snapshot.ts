@@ -40,7 +40,8 @@ function isDay(value: unknown): value is IsoDayOfWeek {
 function isRule(value: unknown): value is AvailabilityRule {
   if (!isHours(value)) return false;
   const { days } = value as Partial<AvailabilityRule>;
-  return Array.isArray(days) && days.every(isDay);
+  // `Array.from` turns holes into `undefined`, which `every` would skip.
+  return Array.isArray(days) && Array.from(days).every(isDay);
 }
 
 function isTimeZone(value: unknown): value is string {
@@ -156,9 +157,13 @@ export function createAvailabilitySnapshot({
 
   const calendar = calendarOn(calendarZone);
   const byResource = new Map<ResourceId, AvailabilitySchedule | null>();
+  // A repeated ID keeps its first resource, as the resource tree does.
+  const seen = new Set<ResourceId>();
   for (const resource of resources) {
     const { availability: own, id } = resource;
-    if (byResource.has(id) || (own == null && resource.timeZone === undefined)) continue;
+    if (seen.has(id)) continue;
+    seen.add(id);
+    if (own == null && resource.timeZone === undefined) continue;
     const reportOwn = reporter(id);
     const zone = zoneOf(resource.timeZone, calendarZone, reportOwn);
     if (own == null) {

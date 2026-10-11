@@ -189,6 +189,30 @@ describe("availability policy", () => {
     ).toEqual({ type: "accept" });
   });
 
+  test("an all-day date open only in its repeated hour after midnight fits", () => {
+    // St. John's fell back from 00:01 NDT to 23:01 NST, so November 1's first minute includes
+    // October 31's repeated hour.
+    const stJohns = "America/St_Johns";
+    const repeatOnly = createAvailabilitySnapshot({
+      availability: {
+        exceptions: [
+          { date: date("2009-11-01"), hours: [{ end: time("00:01"), start: time("00:00") }] },
+        ],
+        weekly: [],
+      },
+      timeZone: stJohns,
+    });
+    const october31 = change("create", {
+      end: date("2009-11-01"),
+      kind: "all-day",
+      resourceIds: [],
+      start: date("2009-10-31"),
+    });
+    expect(decide(block, october31, { availability: repeatOnly, timeZone: stJohns })).toEqual({
+      type: "accept",
+    });
+  });
+
   test("accepts everything without availability", () => {
     const evening = change("move", timed("2026-10-08T22:00", "2026-10-08T23:00"));
     expect(decide(block, evening, { availability: undefined })).toEqual({ type: "accept" });
@@ -239,6 +263,15 @@ describe("warnings", () => {
     expect(
       transactions.check(proposal, { ...base, policies: [async () => ({ type: "accept" })] }),
     ).toBeNull();
+    // An adjustment that empties the placement is rejected, as committing it would be.
+    const emptied: Policy = ({ proposed }) => ({
+      proposed: { ...proposed!, end: proposed!.start } as CalendarEventPlacement<string>,
+      type: "adjust",
+    });
+    expect(transactions.check(proposal, { ...base, policies: [emptied] })).toMatchObject({
+      reason: "invalid-placement",
+      status: "rejected",
+    });
     expect(transactions.getPending().size).toBe(0);
     expect(onEventChange).not.toHaveBeenCalled();
 
