@@ -172,6 +172,16 @@ ResourceColumnsView              resource-columns-view.tsx
         </>
       ),
     },
+    overlapLayout: {
+      type: '"columns" | "equal" | "stack"',
+      default: '"columns"',
+      description: (
+        <>
+          How overlapping events share a resource's column, as in the{" "}
+          <a href="/docs/views/week-and-day#overlapping-events">week and day views</a>.
+        </>
+      ),
+    },
     ResourceHeader: {
       type: "ComponentType<ResourceHeaderProps<TResource>>",
       default: "DefaultResourceHeader",
@@ -179,6 +189,16 @@ ResourceColumnsView              resource-columns-view.tsx
         <>
           Draws each header's name row from the <code>resource-header.tsx</code> parts. See{" "}
           <a href="#avatars-and-icons">avatars and icons</a>.
+        </>
+      ),
+    },
+    stackIndent: {
+      type: "number",
+      default: "0.15",
+      description: (
+        <>
+          Under <code>"stack"</code>, how far each level is indented, as a fraction of the column
+          width.
         </>
       ),
     },

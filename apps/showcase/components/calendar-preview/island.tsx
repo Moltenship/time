@@ -34,4 +34,10 @@ export const ResourcePreviewIsland = dynamic(() => withTemporal(() => import("./
   ssr: false,
 });
 
+/** Three busy days with a toggle between the overlap layouts. */
+export const OverlapPreviewIsland = dynamic(() => withTemporal(() => import("./overlap")), {
+  loading: PreviewSkeleton,
+  ssr: false,
+});
+
 export default PreviewIsland;

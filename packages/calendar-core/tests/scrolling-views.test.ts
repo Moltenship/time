@@ -122,6 +122,34 @@ describe("scrollingTimeGridStrategy", () => {
     }
   });
 
+  test("lays out overlapping events by the view's overlap layout", () => {
+    const range = oneDay.getRange(date("2026-10-08"), env, undefined);
+    const layOut = (options: unknown) =>
+      oneDay
+        .project({
+          ...viewInput(
+            snapshotOf([
+              timed("a", "2026-10-08T09:00Z", "2026-10-08T10:00Z"),
+              timed("b", "2026-10-08T09:30Z", "2026-10-08T10:30Z"),
+            ]),
+            range,
+            env,
+          ),
+          options,
+        })
+        .days.find(({ column }) => column.date.equals(range.start))!
+        .events.map(({ left, width }) => [left, width]);
+
+    expect(layOut(undefined)).toEqual([
+      [0, 0.5],
+      [0.5, 0.5],
+    ]);
+    expect(layOut({ overlapLayout: "stack", stackIndent: 0.25 })).toEqual([
+      [0, 1],
+      [0.25, 0.75],
+    ]);
+  });
+
   test("projects every loaded day, events included", () => {
     const range = week.getRange(date("2026-10-07"), env, undefined);
     const loadRange = resolveViewLoadRange(week, date("2026-10-07"), env, undefined, range);

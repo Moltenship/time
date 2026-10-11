@@ -1,5 +1,5 @@
 import type { LiveCalendarProps, PreviewView } from "./calendar";
-import PreviewIsland, { ResourcePreviewIsland } from "./island";
+import PreviewIsland, { OverlapPreviewIsland, ResourcePreviewIsland } from "./island";
 
 export interface CalendarPreviewProps extends Partial<Omit<LiveCalendarProps, "view">> {
   /** Tailwind classes for the frame's size; replaces the default for the view. */
@@ -56,6 +56,20 @@ export function CalendarPreview({ size, view = "week", ...props }: CalendarPrevi
               : view.startsWith("scrolling-")
                 ? "Live, in your time zone. Scroll or swipe through the days, and drag to move, resize or create events."
                 : "Live, in your time zone. Drag to move, resize or create events."}
+      </figcaption>
+    </figure>
+  );
+}
+
+/** Three busy days in the time grid, with a live toggle between the overlap layouts. */
+export function OverlapLayoutPreview() {
+  return (
+    <figure className="not-prose my-6">
+      <div className="h-[32rem] overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm">
+        <OverlapPreviewIsland />
+      </div>
+      <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
+        Live. Switch the layout, or drag events to see the others make room.
       </figcaption>
     </figure>
   );

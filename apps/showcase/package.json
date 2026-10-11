@@ -17,6 +17,7 @@
     "types:check": "fumadocs-mdx && next typegen && tsc --noEmit"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@moltenship/calendar": "workspace:*",
     "@tanstack/react-virtual": "catalog:",
     "fumadocs-core": "catalog:",

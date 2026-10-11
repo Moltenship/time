@@ -57,7 +57,8 @@ TimeGridView                     time-grid-view.tsx
 
 - The gutter is `--calendar-gutter-width` wide: 3rem, or 4rem from the `sm` breakpoint.
 - An event's `TimeGridEventLayout` sets its `top` and `height` from its times, and its `left` and
-  `width` from the lanes it shares with overlapping events.
+  `width` from the [overlap layout](#overlapping-events). A column renders its events in layout
+  order, so a stacked event draws over the ones it overlaps.
 - `useNow()` moves the now line.
 
 ## Options
@@ -81,6 +82,26 @@ TimeGridView                     time-grid-view.tsx
         </>
       ),
     },
+    overlapLayout: {
+      type: '"columns" | "equal" | "stack"',
+      default: '"columns"',
+      description: (
+        <>
+          How overlapping events share a day column. See{" "}
+          <a href="#overlapping-events">overlapping events</a>.
+        </>
+      ),
+    },
+    stackIndent: {
+      type: "number",
+      default: "0.15",
+      description: (
+        <>
+          Under <code>"stack"</code>, how far each level is indented, as a fraction of the column
+          width.
+        </>
+      ),
+    },
   }}
 />
 
@@ -95,7 +116,7 @@ Set options when you create the view, or per calendar with
   to three rows with "+N more", and a chevron in the corner expands the row.
 - **Hours:** labels come from `Intl`, so they read "1 PM" or "13:00" depending on the locale. Each hour
   is `--calendar-hour-height` tall (3rem by default).
-- **Events:** overlapping events sit side by side. Events shorter than 45 minutes show on one line,
+- **Events:** overlapping events sit side by side, or as `overlapLayout` sets. Events shorter than 45 minutes show on one line,
   as "Standup, 9:30 AM". Events that run past midnight show their real times on both days, as
   "10:00 PM – 2:00 AM".
 - **Daylight saving time:** hours skipped when the clocks go forward are hatched, and hours repeated
@@ -112,6 +133,43 @@ Set options when you create the view, or per calendar with
 The day view works on narrow screens:
 
 <CalendarPreview view="day" />
+
+## Overlapping events
+
+`overlapLayout` sets how events that overlap share a day column. Switch between the layouts here,
+and drag an event to see the others make room:
+
+<OverlapLayoutPreview />
+
+- **`"columns"`** (the default) puts overlapping events side by side, in as few lanes as they
+  need. Each event widens into lanes that stay free beside it, as Google Calendar draws them.
+- **`"equal"`** uses the same lanes, but every event in a busy stretch is one lane wide, so the
+  lanes line up.
+- **`"stack"`** cascades them. Each event is indented past the earlier events it overlaps and drawn
+  on top of them, reaching to the column's end. `stackIndent` sets the indent as a fraction of the
+  column width (0.15 by default). A deep stack indents less, so the top event keeps at least half
+  the column. Hover or focus a covered event to bring it to the top and read its title.
+
+```tsx
+createWeekView<Meeting>({ dayView: "day", overlapLayout: "stack" });
+
+// Or switch it at runtime, per view:
+<Calendar.Root viewOptions={{ week: { overlapLayout }, day: { overlapLayout } }} />;
+```
+
+Every layout keeps the same rules:
+
+- Events that touch, one ending as the next starts, never count as overlapping.
+- Overlapping events form a group, laid out on its own, so a change to one group never moves
+  events in another.
+- The order is fixed: by start, then longer first, then event ID. It's the order events are drawn
+  in, and the order ↑ and ↓ walk them. ← and → step to the overlapping event drawn beside, and
+  mirror right to left.
+- An event picked up with the keyboard, and changes still being saved, are laid out the same way,
+  so an event lands where it will stay.
+
+The resource columns view takes the same options, for each resource's column. The
+[scrolling](/docs/views/scrolling) week and day views do too.
 
 ## Keyboard
 

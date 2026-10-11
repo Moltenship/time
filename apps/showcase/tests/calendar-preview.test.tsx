@@ -5,6 +5,7 @@ import { createRoot } from "react-dom/client";
 import { afterEach, beforeAll, expect, test, vi } from "vite-plus/test";
 
 import LiveCalendar from "../components/calendar-preview/calendar";
+import OverlapCalendar from "../components/calendar-preview/overlap";
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -66,4 +67,22 @@ test("a single-view preview opens a date in the day view and offers the way back
 
   expect(container.querySelector('[data-slot="month-view"]')).not.toBeNull();
   expect(backButton(container)).toBeUndefined();
+});
+
+test("the overlap preview lays its busy days out by the layout its toggle picks", async () => {
+  const container = await render(<OverlapCalendar />);
+  // Hiring sync starts with Design review, so it sits beside or over it.
+  const hiringSync = () =>
+    container.querySelector<HTMLElement>('[data-event-id="busy-1-1"]')?.style.insetInlineStart;
+  const toggle = (label: string) =>
+    [...container.querySelectorAll("button")].find((button) => button.textContent === label);
+
+  expect(toggle("Columns")?.getAttribute("aria-pressed")).toBe("true");
+  expect(hiringSync()).toBe(`${(1 / 3) * 100}%`);
+
+  await click(toggle("Stack"));
+
+  expect(toggle("Stack")?.getAttribute("aria-pressed")).toBe("true");
+  expect(toggle("Columns")?.getAttribute("aria-pressed")).toBe("false");
+  expect(hiringSync()).toBe(`${0.15 * 100}%`);
 });
