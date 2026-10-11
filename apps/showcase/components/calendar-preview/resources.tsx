@@ -4,15 +4,18 @@ import {
   defineEventAdapter,
   type CalendarResource,
 } from "@moltenship/calendar";
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 
 import { calendarAnnouncements } from "@registry/calendar/announcements";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import {
   ResourceHeaderIcon,
+  ResourceHeaderStatus,
   ResourceHeaderTime,
   ResourceHeaderTitle,
   ResourceHeaderToggle,
+  useResourceHeader,
   type ResourceHeaderProps,
 } from "@registry/resource-columns-view/resource-header";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
@@ -75,6 +78,7 @@ function DoorOpenIcon({ className }: { readonly className?: string }) {
 
 /** People show their avatar and rooms a door; teams keep just their chevron. */
 function ResourceHeader({ resource, title }: ResourceHeaderProps<PreviewResource>) {
+  const { status } = useResourceHeader();
   return (
     <>
       <ResourceHeaderToggle />
@@ -93,10 +97,54 @@ function ResourceHeader({ resource, title }: ResourceHeaderProps<PreviewResource
       )}
       <span className="flex min-w-0 flex-col">
         <ResourceHeaderTitle />
-        <ResourceHeaderTime />
+        {status ? (
+          <span className="flex min-w-0 items-center gap-1">
+            <ResourceHeaderStatus />
+            <ResourceHeaderTime />
+          </span>
+        ) : (
+          <ResourceHeaderTime />
+        )}
       </span>
     </>
   );
+}
+
+/** Rooms' closed time in a cool tint; people's keeps the default. */
+const tintRooms: UnavailableTimeRender = (props, { resource }) =>
+  (resource?.data as PreviewResource["data"] | undefined)?.kind === "room" ? (
+    <div
+      {...props}
+      style={
+        {
+          ...props.style,
+          "--calendar-unavailable": "color-mix(in oklch, var(--color-sky-500) 14%, transparent)",
+        } as CSSProperties
+      }
+    />
+  ) : (
+    <div {...props} />
+  );
+const statusOptions = { renderUnavailable: tintRooms, resourceStatus: true } as const;
+
+/** Meetings in progress as the page opens, and one later, so some rooms and people are busy. */
+function busyNow(now: Temporal.ZonedDateTime): readonly PreviewEvent[] {
+  const start = now.round({ roundingIncrement: 15, roundingMode: "floor", smallestUnit: "minute" });
+  const meeting = (id: string, title: string, from: number, minutes: number, ids: string[]) =>
+    ({
+      color: "blue",
+      end: start.add({ minutes: from + minutes }).toInstant(),
+      id,
+      kind: "timed",
+      resourceIds: ids,
+      start: start.add({ minutes: from }).toInstant(),
+      title,
+    }) as const;
+  return [
+    meeting("busy-workshop", "Client workshop", -30, 90, ["orchid", "maya"]),
+    meeting("busy-pairing", "Pairing session", -15, 60, ["sam", "jordan"]),
+    meeting("busy-interview", "Candidate chat", 60, 45, ["lotus", "alex"]),
+  ];
 }
 
 /**
@@ -163,18 +211,22 @@ const Calendar = createCalendar<PreviewEvent, PreviewResource>()({
  */
 export default function ResourceCalendar({
   availability = false,
+  status = false,
   view = "resources",
 }: {
   readonly availability?: boolean;
+  /** Status badges, a tint for rooms' closed time, and meetings in progress now. */
+  readonly status?: boolean;
   readonly view?: (typeof Calendar.views)[number]["name"];
 }) {
   const [now] = useState(() => Temporal.Now.zonedDateTimeISO());
-  const [events, setEvents] = useState<readonly PreviewEvent[]>(() =>
-    createPreviewEvents(now).map((event) => {
+  const [events, setEvents] = useState<readonly PreviewEvent[]>(() => [
+    ...createPreviewEvents(now).map((event) => {
       const resourceIds = bookings[event.title];
       return resourceIds === undefined ? event : { ...event, resourceIds };
     }),
-  );
+    ...(status ? busyNow(now) : []),
+  ]);
 
   return (
     <TooltipProvider delay={400}>
@@ -189,6 +241,15 @@ export default function ResourceCalendar({
         onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}
         policies={availability ? availabilityPolicies : undefined}
         resources={availability ? resourcesWithHours : resources}
+        viewOptions={
+          status
+            ? {
+                resources: statusOptions,
+                "timeline-day": statusOptions,
+                "timeline-week": statusOptions,
+              }
+            : undefined
+        }
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >
         <Calendar.Frame className="flex h-full flex-col">
