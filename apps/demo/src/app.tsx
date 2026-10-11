@@ -1,5 +1,6 @@
 import {
   availabilityPolicy,
+  conflictPolicy,
   eventIdOf,
   useNow,
   type CalendarWeekRules,
@@ -50,15 +51,28 @@ import { useCalendarLocation } from "./url-state";
 
 /** How long a simulated save takes, so the pending state is visible. */
 const saveDelayMs = 600;
-const demoPolicies = [demoEventPolicy];
+/** Double-booking a room or person is allowed, as it can be on purpose, and flagged. */
+const flagConflicts = conflictPolicy<DemoEvent, string, DemoResourceId>({ mode: "warn" });
+const demoPolicies = [demoEventPolicy, flagConflicts];
 const warnOutsideHours = [
   demoEventPolicy,
   availabilityPolicy<DemoEvent, string, DemoResourceId>({ mode: "warn" }),
+  flagConflicts,
 ];
 const blockOutsideHours = [
   demoEventPolicy,
   availabilityPolicy<DemoEvent, string, DemoResourceId>({ mode: "block" }),
+  flagConflicts,
 ];
+
+/** What a saved change's warnings say. */
+function warningNotice(warnings: readonly string[] | undefined): string | null {
+  const outside = warnings?.includes("outside-availability") === true;
+  const conflict = warnings?.includes("resource-conflict") === true;
+  if (outside && conflict) return "Saved outside working hours, double-booking someone.";
+  if (outside) return "Saved outside working hours.";
+  return conflict ? "Saved, double-booking someone who's busy then." : null;
+}
 
 interface OpenEvent {
   readonly anchor: HTMLElement;
@@ -190,9 +204,8 @@ export function App() {
         throw new Error("simulated-save-failure");
       }
       applyChange(change);
-      if (change.warnings?.includes("outside-availability") === true) {
-        showNotice("Saved outside working hours.");
-      }
+      const notice = warningNotice(change.warnings);
+      if (notice !== null) showNotice(notice);
     },
     [applyChange, failSaves, showNotice, timeZone],
   );
@@ -315,9 +328,8 @@ export function App() {
             onSave={(event, warnings) => {
               saveEvent(event);
               setDraft(null);
-              if (warnings.includes("outside-availability")) {
-                showNotice("Saved outside working hours.");
-              }
+              const notice = warningNotice(warnings);
+              if (notice !== null) showNotice(notice);
             }}
             returnFocus={openEvent?.anchor ?? createdFrom}
             timeZone={timeZone}

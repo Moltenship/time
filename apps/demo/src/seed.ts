@@ -24,6 +24,14 @@ const resourceAssignments: Readonly<Record<string, readonly DemoResourceId[]>> =
   Standup: ["room-orchid"],
   "Team offsite": ["team-design", "team-engineering"],
   "Weekly planning": ["room-cedar", "person-sam", "person-lee"],
+  // The larger team's week, below.
+  "Customer demo": ["room-juniper", "person-ana", "person-rosa", "person-theo"],
+  "Design crit": ["room-maple", "person-noor", "person-kai", "person-zoe"],
+  "Paris sync": ["person-ines", "person-ravi", "person-cleo"],
+  "Pairing: payments": ["room-aspen", "person-mia", "person-omar"],
+  "Pipeline review": ["room-willow", "person-ana", "person-ben", "person-cleo", "person-leo"],
+  "1:1 with Ivy": ["room-birch", "person-ivy", "person-yuki"],
+  "Hiring panel": ["room-lotus", "person-kai", "person-mia", "person-leo"],
 };
 
 function resourcesOf(title: string): Pick<DemoEvent, "resourceIds"> {
@@ -150,6 +158,26 @@ export function createSeedEvents(today: Temporal.PlainDate, timeZone: string): D
   timed("family", "Kids' football match", [1, 6], "10:00", { hours: 1, minutes: 30 });
   timed("fitness", "Hike", [1, 6], "13:00", { hours: 4 });
   timed("family", "Call grandma", [1, 7], "17:00", { minutes: 15 });
+
+  // The larger team's week, overlapping so booking a room among many shows who's busy. Times
+  // shift a little each day.
+  for (const week of [-1, 0, 1]) {
+    for (const weekday of [1, 2, 3, 4, 5] as const) {
+      const shift = (time: string) =>
+        Temporal.PlainTime.from(time)
+          .add({ minutes: ((weekday * 30) % 90) - 30 })
+          .toString({ smallestUnit: "minute" });
+      timed("work", "Pipeline review", [week, weekday], shift("09:30"), { minutes: 45 });
+      timed("work", "Design crit", [week, weekday], shift("11:00"), { hours: 1 });
+      timed("work", "Pairing: payments", [week, weekday], "13:00", { hours: 1, minutes: 30 });
+      timed("work", "Customer demo", [week, weekday], shift("14:30"), { hours: 1 });
+      timed("work", "1:1 with Ivy", [week, weekday], "16:00", { minutes: 30 });
+      if (weekday % 2 === 1) {
+        timed("work", "Paris sync", [week, weekday], "08:30", { minutes: 30 });
+        timed("work", "Hiring panel", [week, weekday], shift("10:30"), { hours: 1, minutes: 30 });
+      }
+    }
+  }
 
   return events;
 }

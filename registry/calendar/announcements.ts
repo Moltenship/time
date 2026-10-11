@@ -23,6 +23,7 @@ const keyboardHints: Readonly<Record<CalendarInteractionCause, string>> = {
 /** Policy reasons a gesture can run into, as a step or a saved change mentions them. */
 const concerns: Readonly<Record<string, string>> = {
   "outside-availability": "outside working hours",
+  "resource-conflict": "double-booked",
 };
 
 /**
@@ -141,6 +142,10 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
         return update.cause === "create"
           ? "Can't create an event outside working hours."
           : `${subject(update)} can't go outside working hours, so it's back where it was.`;
+      case "resource-conflict":
+        return update.cause === "create"
+          ? "Can't create an event there: someone it books is busy then."
+          : `${subject(update)} would double-book someone, so it's back where it was.`;
       default:
         return `Couldn't save ${subject(update)}, so it's back where it was.`;
     }
