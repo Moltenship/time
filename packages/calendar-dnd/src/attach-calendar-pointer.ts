@@ -3,6 +3,7 @@ import {
   formatPlacementRange,
   type CalendarAnnouncer,
   type CalendarEventPlacement,
+  type CalendarDraft,
   type CalendarEventProposal,
   type CalendarInteractionCheck,
   type CalendarInteractionUpdate,
@@ -64,6 +65,12 @@ export interface CalendarPointerOptions<
    */
   readonly columns?: readonly TimeGridColumn[];
   readonly disabled?: boolean;
+  /**
+   * Hears the draft as the preview moves: once per change of where a drop would land, and `null`
+   * when the gesture ends or leaves the view. Pass `useCalendarDraftReporter()` so the root's
+   * draft hooks, such as `useDraftBusy`, follow pointer drags too.
+   */
+  readonly onPreview?: (draft: CalendarDraft<TEventId, TResourceId> | null) => void;
   /** Extra classes for the preview segments. */
   readonly ghostClassName?: string;
   /**
@@ -270,6 +277,7 @@ export function attachCalendarPointer<
       current.placement = null;
       current.check = null;
       current.ghost.clear();
+      if (changed) getOptions().onPreview?.(null);
       return changed;
     }
     const changed = current.placement === null || !samePlacement(current.placement, placement);
@@ -279,6 +287,10 @@ export function attachCalendarPointer<
     if (changed) {
       const proposed = proposal(current);
       current.check = proposed === null ? null : (getOptions().check?.(proposed) ?? null);
+      getOptions().onPreview?.({
+        eventId: current.gesture.kind === "create" ? null : current.gesture.event.id,
+        proposed: placement,
+      });
     }
     const { gesture } = current;
     const layout = ghostLayout(current.surface, placement, current.options.timeZone);
@@ -323,6 +335,7 @@ export function attachCalendarPointer<
     if (current === null) return;
     session = null;
 
+    if (current.placement !== null) getOptions().onPreview?.(null);
     clearTimeout(current.longPress);
     if (current.frame !== undefined) cancelAnimationFrame(current.frame);
     current.ghost.clear();

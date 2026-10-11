@@ -196,6 +196,7 @@ export type {
   CalendarEventDeleteChange,
   CalendarEventPlacement,
   CalendarEventPlacementInput,
+  CalendarDraft,
   CalendarEventProposal,
   CalendarEventUpdateChange,
   CalendarPendingPlacements,
@@ -251,7 +252,7 @@ export type {
   CalendarInteractionUpdate,
 } from "./keyboard/announcements";
 
-export { availabilityPolicy } from "./policies/availability";
+export { availabilityPolicy, fitsAvailability } from "./policies/availability";
 export { conflictPolicy } from "./policies/conflict";
 export type { ConflictPolicyOptions } from "./policies/conflict";
 export type { AvailabilityPolicyOptions } from "./policies/availability";

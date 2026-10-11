@@ -4,6 +4,7 @@ import { createContext, useContext, type Context } from "react";
 import type { AnnouncerChannel } from "./announcer";
 import type { CalendarSemanticActions } from "./calendar-types";
 import type { AnyCalendarState, CalendarStateSource } from "./context";
+import type { DraftStore } from "./draft";
 import type { KeyboardSessionStore } from "./keyboard-store";
 import type { RovingFocusStore } from "./roving-focus";
 import type { CalendarRequestListener } from "./store";
@@ -18,6 +19,8 @@ export interface CalendarInteractionRuntime {
   readonly actions: CalendarSemanticActions<any, any, any, any, any, any>;
   readonly announcements: AnnouncerChannel;
   readonly keyboard: KeyboardSessionStore;
+  /** The pointer's draft while a drag previews a change; the keyboard's is in `keyboard`. */
+  readonly pointerDraft: DraftStore;
   /**
    * The dates the view on screen shows for `anchor`, as of the last commit, so a change of view
    * still waiting for its owner doesn't count; `null` without one.

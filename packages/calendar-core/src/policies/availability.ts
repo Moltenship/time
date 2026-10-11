@@ -30,8 +30,11 @@ export function sameTime(left: CalendarEventPlacement, right: CalendarEventPlace
   );
 }
 
-/** Whether a placement fits a schedule: its time is open, or every date of an all-day one is. */
-function fits(
+/**
+ * Whether a placement fits a schedule: its time is open, or every date of an all-day one is.
+ * Floating times read on `timeZone`'s wall clock, as the views show them; `null` hours always fit.
+ */
+export function fitsAvailability(
   placement: CalendarEventPlacement<ResourceId>,
   schedule: AvailabilitySchedule | null,
   timeZone: string,
@@ -89,7 +92,7 @@ export function availabilityPolicy<
         ? after.filter((resourceId) => !booked(original.resourceIds).includes(resourceId))
         : after;
     const outside = checked.some(
-      (resourceId) => !fits(proposed, availability.forResource(resourceId), timeZone),
+      (resourceId) => !fitsAvailability(proposed, availability.forResource(resourceId), timeZone),
     );
     if (!outside) return { type: "accept" };
     return mode === "warn" ? { reason, type: "warn" } : { reason, type: "reject" };

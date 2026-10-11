@@ -60,6 +60,7 @@ import {
   shallowEqual,
 } from "./equality";
 import { CalendarInteractionContext, type CalendarInteractionRuntime } from "./interaction";
+import { createDraftStore } from "./draft";
 import { createKeyboardSessionStore } from "./keyboard-store";
 import { CalendarResourcesContext } from "./resources";
 import { useCalendarStateBinding } from "./state-binding";
@@ -379,6 +380,7 @@ export function createCalendarRoot<
       transactions.getPending,
     );
     const [keyboard] = useState(createKeyboardSessionStore);
+    const [pointerDraft] = useState(createDraftStore);
     const preview = useSyncExternalStore(
       keyboard.subscribe,
       keyboard.getPreview,
@@ -551,6 +553,7 @@ export function createCalendarRoot<
           actions,
           announcements,
           keyboard,
+          pointerDraft,
           rangeOf: (anchor: Temporal.PlainDate) => {
             // The view on screen, which is the one listening, even while a controlled owner has
             // yet to take a change of view asked for in the same handler.
@@ -563,7 +566,7 @@ export function createCalendarRoot<
           requests: binding.subscribeRequests,
           source,
         }),
-      [actions, announcements, binding, keyboard, source],
+      [actions, announcements, binding, keyboard, pointerDraft, source],
     );
 
     const [refs] = useState(() =>
