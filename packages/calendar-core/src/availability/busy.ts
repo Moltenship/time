@@ -2,8 +2,10 @@ import {
   instantInterval,
   plainDateInterval,
   plainDateTimeInterval,
+  type InstantInterval,
 } from "@moltenship/calendar-temporal";
 
+import type { CalendarEventInterval } from "../events";
 import type { EventId, ResourceId } from "../ids";
 import type { EventSnapshot, NormalizedCalendarEvent } from "../snapshots/types";
 
@@ -28,13 +30,87 @@ export interface BusyQuery<TResourceId extends ResourceId> {
   readonly timeZone: string;
 }
 
+export interface BusyResourcesQuery<TEventId extends EventId, TResourceId extends ResourceId> {
+  /** An event that doesn't count, such as the one being moved, so it never conflicts with itself. */
+  readonly exclude?: TEventId;
+  /** The resources to ask about; without them, every resource. */
+  readonly resourceIds?: readonly TResourceId[];
+  /** The wall clock all-day and floating events are on, as the views show them. */
+  readonly timeZone: string;
+}
+
+interface Span<TEvent> {
+  readonly end: Temporal.Instant;
+  readonly event: TEvent;
+  readonly start: Temporal.Instant;
+}
+
 /** How far ahead a busy status looks. */
 const HORIZON = { hours: 31 * 24 } as const;
 
 /**
- * Whether events occupy `at`, as `BusyStatus`. Timed events count by their instants, floating
- * ones by their wall times and all-day ones by their dates, both in `timeZone`. Being busy is
- * separate from working hours: see `availabilityAt` for those.
+ * Whether an event makes its resources busy: the adapter's `isBusy`, or by default every timed
+ * and floating event and no all-day one, as a calendar's "show as" does.
+ */
+export function isBusyEvent(event: {
+  readonly isBusy?: boolean | undefined;
+  readonly kind: CalendarEventInterval["kind"];
+}): boolean {
+  return event.isBusy ?? event.kind !== "all-day";
+}
+
+const before = (left: Temporal.Instant, right: Temporal.Instant) =>
+  Temporal.Instant.compare(left, right) < 0;
+
+/** A placement or interval as instants, with all-day and floating ones read in `timeZone`. */
+function instantsOf(
+  interval: InstantInterval | CalendarEventInterval,
+  timeZone: string,
+): InstantInterval {
+  if (!("kind" in interval) || interval.kind === "timed") {
+    return instantInterval(interval.start, interval.end);
+  }
+  return instantInterval(
+    interval.start.toZonedDateTime(timeZone).toInstant(),
+    interval.end.toZonedDateTime(timeZone).toInstant(),
+  );
+}
+
+/**
+ * The busy events overlapping `range`, half-open, by start: one query of each of the snapshot's
+ * interval indexes, narrowed to `resourceIds`, whatever their number.
+ */
+function busySpans<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
+  events: EventSnapshot<TEvent, TEventId, TResourceId>,
+  range: InstantInterval,
+  timeZone: string,
+  resourceIds?: readonly TResourceId[],
+  exclude?: TEventId,
+): Span<NormalizedCalendarEvent<TEvent, TEventId, TResourceId>>[] {
+  const options = resourceIds === undefined ? undefined : { resourceIds };
+  const wall = (instant: Temporal.Instant) => instant.toZonedDateTimeISO(timeZone);
+  const { end, start } = range;
+  return [
+    ...events.queryTimed(range, options),
+    ...events.queryFloating(
+      plainDateTimeInterval(wall(start).toPlainDateTime(), wall(end).toPlainDateTime()),
+      options,
+    ),
+    ...events.queryAllDay(
+      plainDateInterval(wall(start).toPlainDate(), wall(end).toPlainDate().add({ days: 1 })),
+      options,
+    ),
+  ]
+    .filter((event) => isBusyEvent(event) && event.id !== exclude)
+    .map((event) => ({ ...instantsOf(event, timeZone), event }))
+    .filter((span) => before(span.start, end) && before(start, span.end))
+    .sort((left, right) => Temporal.Instant.compare(left.start, right.start));
+}
+
+/**
+ * Whether busy events occupy `at`, as `BusyStatus`: timed events by their instants, floating
+ * ones by their wall times and all-day ones by their dates, both in `timeZone`. Which events are
+ * busy is `isBusyEvent`'s call. Being busy is separate from working hours: see `availabilityAt`.
  */
 export function busyAt<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
   events: EventSnapshot<TEvent, TEventId, TResourceId>,
@@ -54,42 +130,26 @@ export function occupancy<TEvent, TEventId extends EventId, TResourceId extends 
   readonly status: BusyStatus<NormalizedCalendarEvent<TEvent, TEventId, TResourceId>>;
 } {
   const horizon = at.add(HORIZON);
-  const options = resourceId === undefined ? undefined : { resourceIds: [resourceId] };
-  const wall = (instant: Temporal.Instant) => instant.toZonedDateTimeISO(timeZone);
-  const instant = (point: Temporal.PlainDate | Temporal.PlainDateTime) =>
-    point.toZonedDateTime(timeZone).toInstant();
-  const spans = [
-    ...events.queryTimed(instantInterval(at, horizon), options),
-    ...events.queryFloating(
-      plainDateTimeInterval(wall(at).toPlainDateTime(), wall(horizon).toPlainDateTime()),
-      options,
-    ),
-    ...events.queryAllDay(
-      plainDateInterval(wall(at).toPlainDate(), wall(horizon).toPlainDate().add({ days: 1 })),
-      options,
-    ),
-  ]
-    .map((event) =>
-      event.kind === "timed"
-        ? { end: event.end, event, start: event.start }
-        : { end: instant(event.end), event, start: instant(event.start) },
-    )
-    .filter(({ end }) => Temporal.Instant.compare(end, at) > 0)
-    .sort((left, right) => Temporal.Instant.compare(left.start, right.start));
+  const spans = busySpans(
+    events,
+    instantInterval(at, horizon),
+    timeZone,
+    resourceId === undefined ? undefined : [resourceId],
+  );
 
-  const current = spans.filter(({ start }) => Temporal.Instant.compare(start, at) <= 0);
+  const current = spans.filter(({ start }) => !before(at, start));
   if (current.length === 0) {
     const nextEventAt = spans[0]?.start ?? null;
     return { changesAt: nextEventAt, status: Object.freeze({ busy: false, nextEventAt }) };
   }
-  let free = at;
+  let freeAt = at;
   let changesAt: Temporal.Instant | null = null;
   for (const { end, start } of spans) {
-    if (Temporal.Instant.compare(start, free) > 0) break;
-    if (Temporal.Instant.compare(end, free) > 0) free = end;
+    if (before(freeAt, start)) break;
+    if (before(freeAt, end)) freeAt = end;
     // The events in progress change when one ends or another starts.
-    const change = Temporal.Instant.compare(start, at) > 0 ? start : end;
-    if (changesAt === null || Temporal.Instant.compare(change, changesAt) < 0) changesAt = change;
+    const change = before(at, start) ? start : end;
+    if (changesAt === null || before(change, changesAt)) changesAt = change;
   }
   return {
     changesAt,
@@ -97,7 +157,35 @@ export function occupancy<TEvent, TEventId extends EventId, TResourceId extends 
       busy: true,
       events: Object.freeze(current.map(({ event }) => event)),
       // Past the horizon, events not queried could still follow on.
-      freeAt: Temporal.Instant.compare(free, horizon) < 0 ? free : null,
+      freeAt: before(freeAt, horizon) ? freeAt : null,
     }),
   };
+}
+
+/**
+ * The resources busy during `range`, such as a meeting being placed, with the events that make
+ * them busy, by start; free resources are absent. One query of each of the snapshot's interval
+ * indexes, bucketed by each event's resources, so a busy person never marks the others. Ranges
+ * are half-open instants, so back-to-back events don't conflict; `range` can be a placement,
+ * read as `busyAt` reads events. Which events are busy is `isBusyEvent`'s call.
+ */
+export function busyResources<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
+  events: EventSnapshot<TEvent, TEventId, TResourceId>,
+  range: InstantInterval | CalendarEventInterval,
+  { exclude, resourceIds, timeZone }: BusyResourcesQuery<TEventId, TResourceId>,
+): ReadonlyMap<TResourceId, readonly NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[]> {
+  type Booking = NormalizedCalendarEvent<TEvent, TEventId, TResourceId>;
+  const interval = instantsOf(range, timeZone);
+  const busy = new Map<TResourceId, Booking[]>();
+  if (!before(interval.start, interval.end)) return busy;
+  const asked = resourceIds === undefined ? undefined : new Set<ResourceId>(resourceIds);
+  for (const { event } of busySpans(events, interval, timeZone, resourceIds, exclude)) {
+    for (const resourceId of event.resourceIds) {
+      if (asked !== undefined && !asked.has(resourceId)) continue;
+      const list = busy.get(resourceId);
+      if (list === undefined) busy.set(resourceId, [event]);
+      else list.push(event);
+    }
+  }
+  return busy;
 }

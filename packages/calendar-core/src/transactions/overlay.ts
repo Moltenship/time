@@ -30,6 +30,7 @@ function pendingEvent<TEvent, TEventId extends EventId, TResourceId extends Reso
     id: current.id,
     inputIndex: current.inputIndex,
     isPending: true,
+    ...(current.isBusy === undefined ? {} : { isBusy: current.isBusy }),
     isReadOnly: current.isReadOnly,
     resourceIds: placement.resourceIds,
     revision: current.revision,

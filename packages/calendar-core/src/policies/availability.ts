@@ -22,7 +22,7 @@ export interface AvailabilityPolicyOptions {
 const reason = "outside-availability";
 
 /** Whether two placements cover the same time; a timed one's source time zone doesn't count. */
-function sameTime(left: CalendarEventPlacement, right: CalendarEventPlacement): boolean {
+export function sameTime(left: CalendarEventPlacement, right: CalendarEventPlacement): boolean {
   return (
     left.kind === right.kind &&
     left.start.toString() === right.start.toString() &&

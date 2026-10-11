@@ -95,6 +95,11 @@ export interface EventAdapter<TEvent, TEventId extends EventId, TResourceId exte
   getRevision?(event: TEvent): string | number;
   getTitle(event: TEvent): string;
   isReadOnly?(event: TEvent): boolean;
+  /**
+   * Whether the event makes its resources busy, as "show as busy" or "free" does. Without it,
+   * timed and floating events are busy and all-day ones, such as a holiday banner, are free.
+   */
+  isBusy?(event: TEvent): boolean;
 }
 
 export function defineEventAdapter<TEvent>() {

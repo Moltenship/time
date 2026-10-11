@@ -37,6 +37,7 @@ const DEFAULT_QUERY_CACHE_SIZE = 128;
 interface EventStructureBase<TEventId extends EventId, TResourceId extends ResourceId> {
   readonly endKey: bigint;
   readonly id: TEventId;
+  readonly isBusy?: boolean;
   readonly isReadOnly: boolean;
   readonly resourceIds: readonly TResourceId[];
   readonly revision?: string | number;
@@ -81,6 +82,7 @@ function materializeEvent<TEvent, TEventId extends EventId, TResourceId extends 
     event,
     id: structure.id,
     inputIndex,
+    ...(structure.isBusy === undefined ? {} : { isBusy: structure.isBusy }),
     isReadOnly: structure.isReadOnly,
     resourceIds: structure.resourceIds,
     revision: structure.revision,
@@ -118,6 +120,7 @@ function structuresEqual<TEventId extends EventId, TResourceId extends ResourceI
     intervalsEqual(left, right) &&
     left.title === right.title &&
     left.isReadOnly === right.isReadOnly &&
+    left.isBusy === right.isBusy &&
     left.revision === right.revision &&
     left.resourceIds.length === right.resourceIds.length &&
     left.resourceIds.every((resourceId, index) => resourceId === right.resourceIds[index])
@@ -558,9 +561,28 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
     }
   }
 
+  let isBusy: boolean | undefined;
+  if (adapter.isBusy !== undefined) {
+    try {
+      const value: unknown = adapter.isBusy(event);
+      if (typeof value !== "boolean") throw new TypeError("event-busy-must-be-a-boolean");
+      isBusy = value;
+    } catch (error) {
+      return Object.freeze({
+        accessor: "isBusy",
+        code: "adapter-error",
+        event,
+        eventId,
+        index,
+        message: errorMessage(error),
+      });
+    }
+  }
+
   const base = {
     ...keys,
     id: eventId,
+    ...(isBusy === undefined ? {} : { isBusy }),
     isReadOnly,
     resourceIds,
     revision,

@@ -84,8 +84,8 @@ export type {
 
 export { createAvailabilitySnapshot } from "./availability/snapshot";
 export type { AvailabilitySnapshotInput } from "./availability/snapshot";
-export { busyAt } from "./availability/busy";
-export type { BusyQuery, BusyStatus } from "./availability/busy";
+export { busyAt, busyResources, isBusyEvent } from "./availability/busy";
+export type { BusyQuery, BusyResourcesQuery, BusyStatus } from "./availability/busy";
 export type { ClosedTime, UnavailableReason } from "./availability/closures";
 export {
   closedDates,
@@ -252,6 +252,8 @@ export type {
 } from "./keyboard/announcements";
 
 export { availabilityPolicy } from "./policies/availability";
+export { conflictPolicy } from "./policies/conflict";
+export type { ConflictPolicyOptions } from "./policies/conflict";
 export type { AvailabilityPolicyOptions } from "./policies/availability";
 export { boundsPolicy } from "./policies/bounds";
 export { minimumDurationPolicy } from "./policies/minimum-duration";
