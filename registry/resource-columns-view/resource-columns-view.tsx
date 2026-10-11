@@ -46,8 +46,8 @@ export interface ResourceColumnsViewOptions<
    */
   readonly ResourceHeader?: ComponentType<ResourceHeaderProps<TResource>>;
   /**
-   * Shows each resource's status now in the default header, such as "Busy until 3:00 PM"; add
-   * `ResourceHeaderStatus` to your own `ResourceHeader` instead.
+   * Shows each resource's status now, such as "Busy until 3:00 PM", and makes room for it in the
+   * header: in the default one, or where your own `ResourceHeader` puts `ResourceHeaderStatus`.
    */
   readonly resourceStatus?: boolean;
   /**

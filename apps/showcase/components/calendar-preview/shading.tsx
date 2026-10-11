@@ -22,7 +22,7 @@ const Calendar = createCalendar<PreviewEvent, never>()({
 });
 
 /** The recipes in `global.css`, by the `data-recipe` they style under. */
-export const shadingRecipes = [
+const shadingRecipes = [
   { label: "Default", value: "default" },
   { label: "Gradient", value: "gradient" },
   { label: "Hatching", value: "hatching" },

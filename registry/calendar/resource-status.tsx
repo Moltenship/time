@@ -31,7 +31,7 @@ function earliest(...instants: (Temporal.Instant | null)[]): Temporal.Instant | 
 }
 
 /** A status in words: busy first, then free, outside hours, or closed for the day. */
-export function summarizeResourceStatus(
+function summarizeResourceStatus(
   { availability, busy }: CalendarResourceStatus,
   until: Until,
 ): ResourceStatusSummary {
@@ -53,7 +53,7 @@ export function summarizeResourceStatus(
 
 /**
  * A resource's status now on the calendar's clock, in words: " until 3:00 PM" on the display
- * clock, with the weekday when that isn't today. `null` while server rendering, and for the
+ * clock, with the weekday when that is later this week, and the date further out. `null` while server rendering, and for the
  * unassigned bucket.
  */
 export function useResourceStatusSummary(
@@ -71,6 +71,13 @@ export function useResourceStatusSummary(
         timeZone,
         weekday: "short",
       }),
+      date: new Intl.DateTimeFormat(locale, {
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        month: "short",
+        timeZone,
+      }),
       time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone }),
     }),
     [locale, timeZone],
@@ -79,8 +86,10 @@ export function useResourceStatusSummary(
   const today = now.toZonedDateTimeISO(timeZone).toPlainDate();
   const until: Until = (instant) => {
     if (instant === null) return "";
-    const sameDay = instant.toZonedDateTimeISO(timeZone).toPlainDate().equals(today);
-    return ` until ${(sameDay ? formats.time : formats.dayTime).format(instant.epochMilliseconds)}`;
+    const days = today.until(instant.toZonedDateTimeISO(timeZone).toPlainDate()).days;
+    // A weekday names only the coming week; further out, the date does.
+    const format = days === 0 ? formats.time : days < 7 ? formats.dayTime : formats.date;
+    return ` until ${format.format(instant.epochMilliseconds)}`;
   };
   return summarizeResourceStatus(status, until);
 }

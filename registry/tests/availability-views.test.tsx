@@ -69,11 +69,13 @@ async function renderView(
     defaultFocus = null,
     events = [],
     onEventChange,
+    now = Temporal.Instant.from("2026-10-08T16:30:00Z"),
     options,
   }: {
     readonly defaultFocus?: CalendarFocus | null;
     readonly events?: readonly Shift[];
     readonly onEventChange?: (change: CalendarEventChange<Shift, string, string>) => void;
+    readonly now?: Temporal.Instant;
     /** Options for every view. */
     readonly options?: object;
   } = {},
@@ -87,7 +89,7 @@ async function renderView(
       defaultView={view}
       events={events}
       locale="en-US"
-      now={Temporal.Instant.from("2026-10-08T16:30:00Z")}
+      now={now}
       onEventChange={onEventChange}
       resources={team}
       viewOptions={
@@ -159,7 +161,7 @@ test("resource columns shade each resource's hours on its own clock and show its
 
   const headerTimes = [...container.querySelectorAll('[data-slot="resource-time"]')].map(text);
   // 16:30 UTC is 5:30 PM in London; New York's own clock needs no local time.
-  expect(headerTimes).toEqual(["local time 5:30 PM GMT+1"]);
+  expect(headerTimes).toEqual([", local time 5:30 PM GMT+1"]);
 });
 
 test("moving an event to a resource in another time zone keeps its instant", async () => {
@@ -363,7 +365,7 @@ test("resource headers show each resource's status in words with resourceStatus"
   ]);
   // The header's name says it, after the name and local time.
   expect(text(badges[1]!.closest('[role="columnheader"]')!)).toBe(
-    "Leolocal time 5:30 PM GMT+1, Outside hours until Mon 4:00 AM",
+    "Leo, local time 5:30 PM GMT+1, Outside hours until Mon 4:00 AM",
   );
 });
 
@@ -382,5 +384,30 @@ test("timeline row headers name each resource's status with resourceStatus", asy
   );
   expect(text(header("ny").querySelector('[data-slot="resource-status"]')!)).toBe(
     "Busy until 1:30 PM",
+  );
+});
+
+test("badges say free until the next event or closing, and closed days with their label", async () => {
+  // 13:00 UTC on Thursday is 9:00 AM in New York: Nia is free until lunch, at noon.
+  const container = await renderView("resources", {
+    events: [lunch],
+    now: Temporal.Instant.from("2026-10-08T13:00:00Z"),
+    options: { resourceStatus: true },
+  });
+  const words = () =>
+    [...container.querySelectorAll<HTMLElement>('[data-slot="resource-status"]')].map((badge) => [
+      badge.dataset.state,
+      text(badge),
+    ]);
+  expect(words()[0]).toEqual(["free", "Free until 12:00 PM"]);
+  await cleanup?.();
+
+  // Friday is the offsite, so New York is closed all day.
+  const friday = await renderView("resources", {
+    now: Temporal.Instant.from("2026-10-09T15:00:00Z"),
+    options: { resourceStatus: true },
+  });
+  expect(text(friday.querySelector('[data-slot="resource-status"]')!)).toBe(
+    "Closed today, Offsite",
   );
 });

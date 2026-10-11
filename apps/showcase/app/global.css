@@ -83,7 +83,8 @@
  */
 [data-recipe="gradient"] [data-slot="time-grid-unavailable"] {
   --calendar-unavailable: color-mix(in oklch, var(--muted-foreground) 16%, transparent);
-  --fade: calc(var(--calendar-hour-height) * 1.5);
+  /* Never more than half the band, so a short closure between open hours still shows. */
+  --fade: min(calc(var(--calendar-hour-height) * 1.5), 50%);
 }
 [data-recipe="gradient"] [data-slot="time-grid-unavailable"][data-opens-after] {
   mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent);

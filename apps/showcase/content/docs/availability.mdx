@@ -114,7 +114,8 @@ where it meets open time, so CSS can restyle it:
 /* Gradient: closed time fades out over the last hour and a half before working hours. */
 [data-slot="time-grid-unavailable"] {
   --calendar-unavailable: color-mix(in oklch, var(--muted-foreground) 16%, transparent);
-  --fade: calc(var(--calendar-hour-height) * 1.5);
+  /* Never more than half the band, so a short closure between open hours still shows. */
+  --fade: min(calc(var(--calendar-hour-height) * 1.5), 50%);
 }
 [data-slot="time-grid-unavailable"][data-opens-after] {
   mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent);
@@ -199,6 +200,7 @@ availabilityAt(availability, now, "maya");
 // { available: true, closesAt: Temporal.Instant }
 // { available: false, reason: "outside-hours" | "closed-day" | "exception", label?, opensAt }
 
+// `events` is the root's event snapshot, as views get it in their props.
 busyAt(events, now, { resourceId: "maya", timeZone: "Europe/Berlin" });
 // { busy: true, events: [...], freeAt: Temporal.Instant }
 // { busy: false, nextEventAt: Temporal.Instant | null }
@@ -243,7 +245,7 @@ resource:
 | Closed today  | "Closed today", or "Closed today, Company holiday"         |
 
 The words carry the state; the dot before them is colored with `--calendar-busy` or
-`--calendar-free`. Times are on the display clock, with the weekday when it isn't today. Busy
+`--calendar-free`. Times are on the display clock, with the weekday later this week and the date further out. Busy
 wins over the hours, so a late call shows as busy. The badge is shadcn's Base UI `Badge`. In
 your own `ResourceHeader`, add `ResourceHeaderStatus` where you want it:
 
@@ -267,8 +269,11 @@ function ResourceHeader() {
 }
 ```
 
-For a badge anywhere else, `useResourceStatusSummary(environment, resourceId)` from
-`resource-status.tsx` returns the words and state, and `ResourceStatusBadge` draws them.
+`ResourceHeaderStatus` shows nothing for a group, whose own bookings aren't its members', or
+without `resourceStatus`, which makes room for it in the header. For a badge anywhere else,
+`useResourceStatusSummary(environment, resourceId)` from `resource-status.tsx` returns the words
+and state, and `ResourceStatusBadge` draws them; `environment` is the `locale` and `timeZone` a
+view gets in its props.
 
 ## Keep changes inside
 

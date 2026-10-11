@@ -8,6 +8,8 @@ export interface ResourceTimeProps extends Omit<ComponentProps<"span">, "childre
   readonly environment: Pick<CalendarEnvironmentBase, "locale" | "timeZone">;
   /** The resource's own time zone, if it keeps one. */
   readonly timeZone: string | undefined;
+  /** Reads a comma before it, after a name it follows in an accessible name. */
+  readonly separator?: boolean;
 }
 
 function clockFor(locale: Intl.Locale | string, timeZone: string | undefined) {
@@ -45,7 +47,13 @@ export function useResourceTime(
 }
 
 /** `useResourceTime` as small print, which screen readers hear as "local time". */
-export function ResourceTime({ className, environment, timeZone, ...props }: ResourceTimeProps) {
+export function ResourceTime({
+  className,
+  environment,
+  separator = false,
+  timeZone,
+  ...props
+}: ResourceTimeProps) {
   const time = useResourceTime(environment, timeZone);
   if (time === null) return null;
 
@@ -55,7 +63,7 @@ export function ResourceTime({ className, environment, timeZone, ...props }: Res
       className={cn("shrink-0 text-[0.625rem] text-muted-foreground tabular-nums", className)}
       {...props}
     >
-      <span className="sr-only">local time </span>
+      <span className="sr-only">{separator ? ", local time " : "local time "}</span>
       {time}
     </span>
   );

@@ -64,29 +64,34 @@ export function EventPopover({
               }}
             >
               <div className="-mt-1 -mr-1 flex justify-end">
-                <Button
-                  aria-label="Edit event"
-                  onClick={() => {
-                    handingOffToEditor.current = true;
-                    onEdit(event);
-                  }}
-                  size="icon-sm"
-                  variant="ghost"
-                >
-                  <PencilIcon />
-                </Button>
-                <Button
-                  aria-label="Delete event"
-                  onClick={() => {
-                    onClose();
-                    // Goes through onEventChange, so a failed save brings the event back.
-                    void actions.proposeEventChange({ cause: "delete", eventId: event.id });
-                  }}
-                  size="icon-sm"
-                  variant="ghost"
-                >
-                  <Trash2Icon />
-                </Button>
+                {/* A live meeting is made fresh on each visit and can't be changed. */}
+                {event.live !== true && (
+                  <Button
+                    aria-label="Edit event"
+                    onClick={() => {
+                      handingOffToEditor.current = true;
+                      onEdit(event);
+                    }}
+                    size="icon-sm"
+                    variant="ghost"
+                  >
+                    <PencilIcon />
+                  </Button>
+                )}
+                {event.live !== true && (
+                  <Button
+                    aria-label="Delete event"
+                    onClick={() => {
+                      onClose();
+                      // Goes through onEventChange, so a failed save brings the event back.
+                      void actions.proposeEventChange({ cause: "delete", eventId: event.id });
+                    }}
+                    size="icon-sm"
+                    variant="ghost"
+                  >
+                    <Trash2Icon />
+                  </Button>
+                )}
                 <PopoverPrimitive.Close
                   render={<Button aria-label="Close" size="icon-sm" variant="ghost" />}
                 >
