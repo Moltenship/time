@@ -209,6 +209,9 @@ busyAt(events, now, { resourceId: "maya", timeZone: "Europe/Berlin" });
 - **Time zones.** Hours are read on the resource's own clock, as the shading is, and are safe
   across daylight saving changes. All-day and floating events count on the wall clock you pass,
   usually the display time zone, as the views show them.
+- **Which events are busy.** Timed and floating events are; all-day ones, such as a holiday
+  banner, aren't, as in Google Calendar. The event adapter's `isBusy` overrides that; see
+  [Customize](#customize).
 - **Overlaps.** `events` lists everything in progress. `freeAt` is when the last of a run of
   overlapping or back-to-back events ends, so a 10:00 standup followed by an 11:00 review is busy
   until the review ends.
@@ -275,6 +278,134 @@ without `resourceStatus`, which makes room for it in the header. For a badge any
 and state, and `ResourceStatusBadge` draws them; `environment` is the `locale` and `timeZone` a
 view gets in its props.
 
+## Scheduling: who's busy?
+
+<CalendarPreview view="timeline-day" availability status />
+
+While you place an event, by dragging or with the keyboard, each resource's header says whether
+it's busy then: **Busy** when an event overlaps the draft, **Outside hours** when the time is
+outside its hours, **Free** otherwise. Create or move an event above, and watch the row headers.
+The draft's own event never conflicts with itself, and events that only touch don't conflict.
+
+It all rests on one function. `busyResources` answers for many resources at once, with one query
+of the event index, bucketed by each event's resources, so a busy person never marks the others:
+
+```ts
+import { busyResources } from "@moltenship/calendar";
+
+const busy = busyResources(
+  events,
+  { start, end },
+  {
+    exclude: "evt_42", // the event being moved, if any
+    resourceIds: ["room-orchid", "room-lotus", "maya"], // or leave out for every resource
+    timeZone: "Europe/Berlin", // for all-day and floating events
+  },
+);
+busy.get("maya"); // [standup, review]: the events that make Maya busy then
+busy.has("room-lotus"); // false: free resources are absent
+```
+
+The range can also be a placement, all-day or floating, read on `timeZone`. In React:
+
+| Hook                             | Returns                                                                             |
+| -------------------------------- | ----------------------------------------------------------------------------------- |
+| `useBusyResources(range, opts?)` | `busyResources` over the root's events, once per change of events or range          |
+| `useCalendarDraft()`             | The change being placed, by pointer or keyboard: `{ eventId, proposed }`, or `null` |
+| `useDraftBusy(resourceId)`       | A resource during the draft: `{ events, outsideHours }`, or `null` without one      |
+
+Drafts step by slots, so these change at most once a step. `useDraftBusy` works the draft's busy
+resources out once for every header that asks, and a header re-renders only when its own answer
+changes. To flag or prevent double-booking on save, add `conflictPolicy({ mode: "warn" | "block" })`
+to the root's `policies`; it runs the same query, with the reason `"resource-conflict"`.
+
+### Customize
+
+Everything the views draw is a layer over these hooks, so you can replace any of it.
+
+**Your own status in the header.** Pass `resourceStatus` options instead of `true`. `DraftStatus`
+draws the status during a draft in place of the badge, and gets the resource, its busy events and
+whether the draft is outside its hours. Headers also carry `data-busy` and `data-outside-hours`
+during a draft, so CSS alone can style them.
+
+```tsx
+function AvatarRing({ resource, events, outsideHours }: ResourceDraftStatusProps) {
+  const ring =
+    events.length > 0 ? "ring-red-500" : outsideHours ? "ring-amber-500" : "ring-green-500";
+  return (
+    <span
+      className={`size-5 rounded-full ring-2 ${ring}`}
+      title={events.map((e) => e.title).join(", ")}
+    />
+  );
+}
+
+createResourceColumnsView<Meeting>({ resourceStatus: { DraftStatus: AvatarRing } });
+```
+
+```css
+[data-slot="resource-header"][data-busy] {
+  background: color-mix(in oklch, var(--calendar-busy) 12%, transparent);
+}
+```
+
+**Your own words.** `labels` replaces the English the badge shows and screen readers hear, now and
+during a draft. `until` is a time on the display clock, absent during a draft:
+
+```ts
+createTimelineWeekView<Meeting>({
+  resourceStatus: {
+    labels: {
+      busy: (until) => (until ? `Occupé jusqu'à ${until}` : "Occupé"),
+      free: (until) => (until ? `Libre jusqu'à ${until}` : "Libre"),
+      outsideHours: (until) => (until ? `Hors horaires jusqu'à ${until}` : "Hors horaires"),
+      closedToday: (label) => (label ? `Fermé aujourd'hui, ${label}` : "Fermé aujourd'hui"),
+    },
+  },
+});
+```
+
+**Your own idea of busy.** The event adapter's `isBusy` is the one place that decides, for the
+status, the draft headers, `busyResources` and `conflictPolicy` alike:
+
+```ts
+const eventAdapter = defineEventAdapter<Meeting>()({
+  // ...getId, getInterval, getResourceIds, getTitle
+  // Focus time and tentative meetings leave you bookable; all-day ones block when marked busy.
+  isBusy: (meeting) =>
+    meeting.title !== "Focus time" &&
+    meeting.showAs !== "tentative" &&
+    (meeting.kind !== "all-day" || meeting.showAs === "busy"),
+});
+```
+
+**Your own "who's busy" UI.** Any component can ask. The [live demo](https://moltenship-time-demo.vercel.app)'s
+event dialog has a room and people picker split into Available and Busy, built on
+`useBusyResources` rather than shipped as a part; busy rooms stay selectable, since a double
+booking can be on purpose:
+
+```tsx
+function RoomPicker({ interval, eventId }: { interval: CalendarEventInterval; eventId?: string }) {
+  const busy = useBusyResources(interval, { exclude: eventId });
+  const [free, taken] = partition(rooms, (room) => !busy.has(room.id));
+  return (
+    <>
+      <Group title="Available" rooms={free} />
+      <Group
+        title="Busy"
+        rooms={taken}
+        chip={(room) =>
+          busy
+            .get(room.id)!
+            .map((e) => e.title)
+            .join(", ")
+        }
+      />
+    </>
+  );
+}
+```
+
 ## Keep changes inside
 
 `availabilityPolicy({ mode })` checks every move, resize and create, whether it comes from a drag,
@@ -309,6 +440,7 @@ The shading is hidden from screen readers, which hear the same information in wo
 | A saved change with a warning      | "Moved Standup to Thursday, October 8, 4:45 – 5:15 PM, outside working hours." |
 | A resource header in another zone  | "Lee, local time 7:48 PM GMT+5:30"                                             |
 | A resource header with its status  | "Maya, Busy until 3:00 PM"                                                     |
+| A resource header during a draft   | "Maya, Busy", or "Leo, Outside hours"                                          |
 
 The messages live in `announcements.ts` in your copy of the registry source, ready to translate.
 
