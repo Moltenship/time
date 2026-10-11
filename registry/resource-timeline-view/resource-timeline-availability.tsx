@@ -79,7 +79,8 @@ export function TimelineAvailability({
       key={extent.start}
       band={extent}
       className="inset-y-0 bg-calendar-unavailable"
-      date={origin.add({ days: Math.floor(extent.start * days) })}
+      // A day's start can land a hair below its whole number, as 15 / 22 * 22 does.
+      date={origin.add({ days: Math.floor(extent.start * days + 1e-9) })}
       end={extent.end}
       render={render}
       resource={resource}

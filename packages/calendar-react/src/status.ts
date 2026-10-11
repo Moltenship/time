@@ -125,6 +125,12 @@ export function useResourceStatus(
     store?.getSnapshot ?? serverSnapshot,
     serverSnapshot,
   );
-  const pinned = useMemo(() => (fixed === undefined ? null : compute(fixed)), [compute, fixed]);
+  // By value, so an `at` made inline on each render computes once.
+  const pinnedAt = fixed?.epochNanoseconds;
+  const pinned = useMemo(
+    () =>
+      pinnedAt === undefined ? null : compute(Temporal.Instant.fromEpochNanoseconds(pinnedAt)),
+    [compute, pinnedAt],
+  );
   return pinned ?? sampled;
 }

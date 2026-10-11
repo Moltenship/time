@@ -60,7 +60,7 @@ export function isClosedOn(
 }
 
 /** Why closed time on a date of the schedule's wall clock is closed, with its exception's label. */
-export function closedReason(
+function closedReason(
   schedule: AvailabilitySchedule,
   date: Temporal.PlainDate,
 ): Pick<ClosedTime, "label" | "reason"> {
