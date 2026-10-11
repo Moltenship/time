@@ -28,7 +28,7 @@ function timed(
   end: string,
   resourceIds: readonly string[] = [],
   zone = timeZone,
-): CalendarEventPlacement<string> {
+): Extract<CalendarEventPlacement<string>, { readonly kind: "timed" }> {
   const at = (value: string) => Temporal.ZonedDateTime.from(`${value}[${zone}]`).toInstant();
   return { end: at(end), kind: "timed", resourceIds, start: at(start) };
 }
@@ -51,6 +51,7 @@ const availability = createAvailabilitySnapshot({
 });
 
 const placements: Readonly<Record<string, CalendarEventPlacement<string>>> = {
+  evening: timed("2026-10-08T19:00", "2026-10-08T20:00"),
   late: timed("2026-10-08T19:00", "2026-10-08T20:00", ["always"]),
   standup: timed("2026-10-08T09:00", "2026-10-08T10:00"),
 };
@@ -139,6 +140,17 @@ describe("availability policy", () => {
       ),
     ).toEqual({ type: "accept" });
     expect(decide(block, change("delete", null, "late"))).toEqual({ type: "accept" });
+    // A new source time zone keeps the instants, so an event outside the hours stays editable.
+    expect(
+      decide(
+        block,
+        change(
+          "update",
+          { ...timed("2026-10-08T19:00", "2026-10-08T20:00"), sourceTimeZone: "Europe/London" },
+          "evening",
+        ),
+      ),
+    ).toEqual({ type: "accept" });
   });
 
   test("all-day changes need open time on every date, and floating ones read the display wall clock", () => {
@@ -166,6 +178,15 @@ describe("availability policy", () => {
     expect(decide(block, change("move", floating("2026-10-08T08:00", "2026-10-08T10:00")))).toEqual(
       outside,
     );
+    // On the spring-forward Sunday, 02:30 never happens: the range starts when the clock jumps
+    // to 03:00, and one wholly inside the skipped hour takes no time.
+    const always = createAvailabilitySnapshot({ availability: {}, timeZone });
+    const acrossGap = change("create", floating("2026-03-08T02:30", "2026-03-08T03:15"));
+    expect(decide(warn, acrossGap, { availability: always })).toEqual({ type: "accept" });
+    expect(decide(block, acrossGap)).toEqual(outside);
+    expect(
+      decide(block, change("create", floating("2026-03-08T02:15", "2026-03-08T02:45"))),
+    ).toEqual({ type: "accept" });
   });
 
   test("accepts everything without availability", () => {

@@ -5,9 +5,9 @@ import {
   zonedDayRange,
 } from "@moltenship/calendar-temporal";
 
+import { wallBoundary } from "../availability/schedule";
 import type { AvailabilitySchedule } from "../availability/types";
 import type { EventId, ResourceId } from "../ids";
-import { intervalsEqual } from "../internal/interval-equality";
 import type { CalendarEventPlacement } from "../transactions/types";
 import type { CalendarPolicy } from "./types";
 
@@ -21,6 +21,15 @@ export interface AvailabilityPolicyOptions {
 
 const reason = "outside-availability";
 
+/** Whether two placements cover the same time; a timed one's source time zone doesn't count. */
+function sameTime(left: CalendarEventPlacement, right: CalendarEventPlacement): boolean {
+  return (
+    left.kind === right.kind &&
+    left.start.toString() === right.start.toString() &&
+    left.end.toString() === right.end.toString()
+  );
+}
+
 /** Whether a placement fits a schedule: its time is open, or every date of an all-day one is. */
 function fits(
   placement: CalendarEventPlacement<ResourceId>,
@@ -31,14 +40,21 @@ function fits(
   switch (placement.kind) {
     case "timed":
       return schedule.isAvailable(instantInterval(placement.start, placement.end));
-    case "floating":
-      // Floating times read on the display time zone's wall clock, as the views show them.
-      return schedule.isAvailable(
-        instantInterval(
-          placement.start.toZonedDateTime(timeZone).toInstant(),
-          placement.end.toZonedDateTime(timeZone).toInstant(),
-        ),
+    case "floating": {
+      // Floating times read on the display time zone's wall clock, as the views show them. Times
+      // in a skipped hour take the jump past it, so one wholly inside it takes no time at all.
+      const start = wallBoundary(placement.start, timeZone, "start");
+      const end = wallBoundary(placement.end, timeZone, "end");
+      return (
+        start >= end ||
+        schedule.isAvailable(
+          instantInterval(
+            Temporal.Instant.fromEpochNanoseconds(start),
+            Temporal.Instant.fromEpochNanoseconds(end),
+          ),
+        )
       );
+    }
     case "all-day":
       return Array.from(iteratePlainDates(plainDateInterval(placement.start, placement.end))).every(
         (date) => {
@@ -72,7 +88,7 @@ export function availabilityPolicy<
       resourceIds.length === 0 ? [null] : resourceIds;
     const after = booked(proposed.resourceIds);
     const checked =
-      original !== null && intervalsEqual(original, proposed)
+      original !== null && sameTime(original, proposed)
         ? after.filter((resourceId) => !booked(original.resourceIds).includes(resourceId))
         : after;
     const outside = checked.some(

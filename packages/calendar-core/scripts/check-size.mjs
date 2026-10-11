@@ -2,8 +2,8 @@ import { readFile } from "node:fs/promises";
 import { gzipSync } from "node:zlib";
 
 const ESM_PATH = new URL("../dist/index.mjs", import.meta.url);
-const RAW_BUDGET_BYTES = 148 * 1024;
-const GZIP_BUDGET_BYTES = 38 * 1024;
+const RAW_BUDGET_BYTES = 152 * 1024;
+const GZIP_BUDGET_BYTES = 39 * 1024;
 
 const esm = await readFile(ESM_PATH);
 const measurements = {

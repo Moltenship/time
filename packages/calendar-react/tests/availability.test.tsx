@@ -142,3 +142,20 @@ test("invalid hours are left out and reported as diagnostics", async () => {
     }),
   ]);
 });
+
+test("invalid entries recreated inline rerender without throwing", async () => {
+  const onDiagnosticsChange = vi.fn();
+  const broken = () => ({ exceptions: [null], weekly: [null] }) as unknown as CalendarAvailability;
+  const harness = await render({ availability: broken(), onDiagnosticsChange });
+
+  await harness.render(root({ availability: broken(), onDiagnosticsChange }));
+
+  expect(onDiagnosticsChange).toHaveBeenLastCalledWith([
+    expect.objectContaining({
+      issue: expect.objectContaining({ code: "invalid-availability-exception" }),
+    }),
+    expect.objectContaining({
+      issue: expect.objectContaining({ code: "invalid-availability-rule" }),
+    }),
+  ]);
+});

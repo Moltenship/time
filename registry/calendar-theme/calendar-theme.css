@@ -116,16 +116,20 @@
   }
 
   /*
-   * A drag preview's range the policies would reject or flag: dashed, so the state doesn't rest
-   * on colour alone. Event previews are clones of their chip, which marks itself.
+   * A drag preview the policies would reject or flag: outlined in dashes, so the state doesn't
+   * rest on colour alone, with a rejected range tinted. An outline, because the preview's own
+   * inline shadow would hide a ring.
    */
-  [data-calendar-ghost="range"][data-invalid] {
-    --calendar-ghost-background: color-mix(in oklch, var(--calendar-invalid) 15%, transparent);
+  [data-calendar-ghost][data-invalid] {
     outline: 2px dashed var(--calendar-invalid);
     outline-offset: -2px;
   }
 
-  [data-calendar-ghost="range"][data-warning] {
+  [data-calendar-ghost="range"][data-invalid] {
+    --calendar-ghost-background: color-mix(in oklch, var(--calendar-invalid) 15%, transparent);
+  }
+
+  [data-calendar-ghost][data-warning] {
     outline: 2px dashed var(--calendar-warning);
     outline-offset: -2px;
   }

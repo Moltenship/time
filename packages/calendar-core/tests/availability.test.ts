@@ -275,6 +275,27 @@ describe("resources", () => {
   });
 });
 
+test("entries of the wrong shape are reported, never thrown over", () => {
+  const odd = createAvailabilitySnapshot({
+    availability: { exceptions: [null], weekly: [null] } as never,
+    resources: [
+      { availability: null, id: "none", timeZone: "Europe/London" },
+      { availability: { exceptions: "soon", weekly: "always" }, id: "words" },
+    ] as never,
+    timeZone: newYork,
+  });
+  expect(odd.issues.map(({ code, resourceId }) => [code, resourceId])).toEqual([
+    ["invalid-availability-exception", undefined],
+    ["invalid-availability-rule", undefined],
+    ["invalid-availability-exception", "words"],
+    ["invalid-availability-rule", "words"],
+  ]);
+  // The calendar's empty weekly list closes every day; "words" keeps it.
+  expect(odd.calendar!.available(day("2026-10-08"))).toEqual([]);
+  expect(odd.forResource("words")!.available(day("2026-10-08"))).toEqual([]);
+  expect(odd.forResource("none")!.timeZone).toBe("Europe/London");
+});
+
 describe("projections", () => {
   const snapshot = createAvailabilitySnapshot({
     availability: office,
@@ -342,5 +363,61 @@ describe("projections", () => {
     expect(
       closedDates(plainDateInterval(date("2026-12-21"), date("2026-12-28")), null, newYork).size,
     ).toBe(0);
+  });
+});
+
+describe("a repeated hour after midnight", () => {
+  // St. John's fell back at 00:01 on November 1, 2009: the clock went from 00:01 NDT back to
+  // 23:01 NST on October 31, so October 31's last hour repeats after its nominal end.
+  const stJohns = "America/St_Johns";
+  const columns = timeGridColumns(
+    plainDateInterval(date("2009-10-31"), date("2009-11-01")),
+    stJohns,
+  );
+  const minutes = (fractions: readonly [number, number][]) =>
+    fractions.map(([from, to]) => [Math.round(from * 1440), Math.round(to * 1440)]);
+  // Open from Saturday noon UTC to 03:00 UTC on Sunday: 09:30 NDT on October 31 until 23:30 NST,
+  // in the repeated hour.
+  const saturday = createAvailabilitySnapshot({
+    availability: {
+      timeZone: "UTC",
+      weekly: [{ days: [6], end: time("03:00"), start: time("12:00") }],
+    },
+    timeZone: stJohns,
+  }).calendar;
+
+  test("shades the closed time of both occurrences", () => {
+    const [bands] = projectTimeGridAvailability(columns, saturday);
+    expect(minutes(bands!.map(({ height, top }) => [top, top + height]))).toEqual([
+      [0, 570],
+      [1410, 1440],
+    ]);
+    expect(
+      minutes(projectTimelineAvailability(columns, saturday).map(({ end, start }) => [start, end])),
+    ).toEqual([
+      [0, 570],
+      [1410, 1440],
+    ]);
+  });
+
+  test("a date open only in its repeated hour is not closed", () => {
+    const repeatOnly = createAvailabilitySnapshot({
+      availability: {
+        exceptions: [
+          { date: date("2009-11-01"), hours: [{ end: time("02:50"), start: time("02:40") }] },
+        ],
+        timeZone: "UTC",
+        weekly: [],
+      },
+      timeZone: stJohns,
+    }).calendar;
+    // 02:40–02:50 UTC on November 1 is 23:10–23:20 NST on October 31.
+    expect([
+      ...closedDates(
+        plainDateInterval(date("2009-10-31"), date("2009-11-02")),
+        repeatOnly,
+        stJohns,
+      ).keys(),
+    ]).toEqual(["2009-11-01"]);
   });
 });

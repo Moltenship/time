@@ -2,11 +2,12 @@ import {
   instantInterval,
   iteratePlainDates,
   zonedDayRange,
+  type InstantInterval,
   type PlainDateInterval,
 } from "@moltenship/calendar-temporal";
 
 import type { TimeGridBand, TimeGridColumn } from "../views/time-grid/columns";
-import { timedFragmentBox } from "../views/time-grid/geometry";
+import { timedFragmentBox, wallEpochNanoseconds, wallExtent } from "../views/time-grid/geometry";
 import { timelineExtent, type TimelineExtent } from "../views/resource-timeline/geometry";
 import type { AvailabilitySchedule } from "./types";
 
@@ -16,12 +17,43 @@ export interface ClosedDate {
   readonly label?: string;
 }
 
+const DAY_NANOSECONDS = 86_400_000_000_000n;
 const noBands: readonly TimeGridBand[] = Object.freeze([]);
 
 /**
+ * Every instant whose wall time can fall on `days` dates from `first`. Offsets stay within ±24
+ * hours, so a day either side covers them, a repeated hour after the last midnight included.
+ */
+function datesWindow(first: Temporal.PlainDate, days: number): InstantInterval {
+  const midnight = wallEpochNanoseconds(first.toPlainDateTime());
+  return instantInterval(
+    Temporal.Instant.fromEpochNanoseconds(midnight - DAY_NANOSECONDS),
+    Temporal.Instant.fromEpochNanoseconds(midnight + BigInt(days + 1) * DAY_NANOSECONDS),
+  );
+}
+
+/** Joins overlapping bands, as a repeated hour closed twice gives; others keep their objects. */
+function joinBands(bands: readonly TimeGridBand[]): readonly TimeGridBand[] {
+  const joined: TimeGridBand[] = [];
+  for (const band of bands.toSorted((left, right) => left.top - right.top)) {
+    const last = joined.at(-1);
+    if (last === undefined || band.top > last.top + last.height) {
+      joined.push(band);
+    } else if (band.top + band.height > last.top + last.height) {
+      joined[joined.length - 1] = Object.freeze({
+        height: band.top + band.height - last.top,
+        top: last.top,
+      });
+    }
+  }
+  return Object.freeze(joined);
+}
+
+/**
  * The closed time of each time-grid column, as bands on its 24-hour axis, measured like events:
- * a band across a repeated hour covers it, and one ending at a skipped hour stops there. `null`
- * hours are always open, so no column has bands.
+ * a band across a repeated hour covers it, and one ending at a skipped hour stops there. A wall
+ * time closed in either of its occurrences is shaded. `null` hours are always open, so no column
+ * has bands.
  */
 export function projectTimeGridAvailability(
   columns: readonly TimeGridColumn[],
@@ -29,11 +61,10 @@ export function projectTimeGridAvailability(
 ): readonly (readonly TimeGridBand[])[] {
   return Object.freeze(
     columns.map((column) => {
-      const day = column.day.interval;
-      if (schedule === null || day === null) return noBands;
-      return Object.freeze(
+      if (schedule === null || column.day.interval === null) return noBands;
+      return joinBands(
         schedule
-          .unavailable(day)
+          .unavailable(datesWindow(column.date, 1))
           .map((closed) => timedFragmentBox(column, closed))
           .filter((band) => band.height > 0),
       );
@@ -49,22 +80,25 @@ export function projectTimelineAvailability(
   columns: readonly TimeGridColumn[],
   schedule: AvailabilitySchedule | null,
 ): readonly TimelineExtent[] {
-  const first = columns[0]?.day;
-  const last = columns.at(-1)?.day;
-  if (
-    schedule === null ||
-    first === undefined ||
-    last === undefined ||
-    Temporal.Instant.compare(first.start, last.end) >= 0
-  ) {
-    return Object.freeze([]);
+  const first = columns[0];
+  if (schedule === null || first === undefined) return Object.freeze([]);
+  const extents = schedule
+    .unavailable(datesWindow(first.date, columns.length))
+    .map((closed) => timelineExtent(columns, { ...closed, kind: "timed" }))
+    .filter((extent) => extent !== null)
+    .sort((left, right) => left.start - right.start);
+  const joined: TimelineExtent[] = [];
+  for (const extent of extents) {
+    const last = joined.at(-1);
+    // Closed time in both occurrences of a repeated hour overlaps on the wall clock.
+    if (last !== undefined && extent.start <= last.end) {
+      if (extent.end > last.end)
+        joined[joined.length - 1] = Object.freeze({ ...last, end: extent.end });
+    } else {
+      joined.push(extent);
+    }
   }
-  return Object.freeze(
-    schedule
-      .unavailable(instantInterval(first.start, last.end))
-      .map(({ end, start }) => timelineExtent(columns, { end, kind: "timed", start }))
-      .filter((extent) => extent !== null),
-  );
+  return Object.freeze(joined);
 }
 
 /**
@@ -80,8 +114,9 @@ export function closedDates(
   const closed = new Map<string, ClosedDate>();
   if (schedule === null) return closed;
   for (const date of iteratePlainDates(range)) {
-    const day = zonedDayRange(date, timeZone).interval;
-    if (day === null || schedule.available(day).length > 0) continue;
+    if (zonedDayRange(date, timeZone).interval === null) continue;
+    const open = schedule.available(datesWindow(date, 1));
+    if (open.some((interval) => wallExtent(date, 1, timeZone, interval) !== null)) continue;
     const label = schedule.exceptionOn(date)?.label;
     closed.set(date.toString(), Object.freeze(label === undefined ? { date } : { date, label }));
   }

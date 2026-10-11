@@ -6,6 +6,7 @@ import type {
   AvailabilityException,
   AvailabilityHours,
   AvailabilityIssue,
+  AvailabilityRule,
   AvailabilitySchedule,
   AvailabilitySnapshot,
   CalendarAvailability,
@@ -36,6 +37,12 @@ function isDay(value: unknown): value is IsoDayOfWeek {
   return Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 7;
 }
 
+function isRule(value: unknown): value is AvailabilityRule {
+  if (!isHours(value)) return false;
+  const { days } = value as Partial<AvailabilityRule>;
+  return Array.isArray(days) && days.every(isDay);
+}
+
 function isTimeZone(value: unknown): value is string {
   if (typeof value !== "string") return false;
   try {
@@ -46,15 +53,20 @@ function isTimeZone(value: unknown): value is string {
   }
 }
 
-/** Hours by ISO day of the week, leaving out invalid rules; `null` without rules at all. */
+/** Hours by ISO day of the week, leaving out invalid rules; `fallback` without a list of rules. */
 function weeklyHours(
   weekly: ResourceAvailability["weekly"],
   report: Report,
+  fallback: ScheduleHours["weekly"],
 ): ScheduleHours["weekly"] {
-  if (weekly === undefined) return null;
+  if (weekly === undefined) return fallback;
+  if (!Array.isArray(weekly)) {
+    report("invalid-availability-rule", weekly);
+    return fallback;
+  }
   const days = Array.from({ length: 8 }, (): AvailabilityHours[] => []);
   for (const rule of weekly) {
-    if (!isHours(rule) || !Array.isArray(rule.days) || !rule.days.every(isDay)) {
+    if (!isRule(rule)) {
       report("invalid-availability-rule", rule);
       continue;
     }
@@ -69,7 +81,11 @@ function exceptionsByDate(
   report: Report,
   into: ReadonlyMap<string, AvailabilityException> = new Map(),
 ): ReadonlyMap<string, AvailabilityException> {
-  if (exceptions === undefined || exceptions.length === 0) return into;
+  if (exceptions === undefined) return into;
+  if (!Array.isArray(exceptions)) {
+    report("invalid-availability-exception", exceptions);
+    return into;
+  }
   const byDate = new Map(into);
   const own = new Set<string>();
   for (const exception of exceptions) {
@@ -120,11 +136,11 @@ export function createAvailabilitySnapshot({
   const report = reporter();
   const calendarZone = zoneOf(availability?.timeZone, timeZone, report);
   const calendarHours: ScheduleHours | null =
-    availability === undefined
+    availability == null
       ? null
       : {
           exceptions: exceptionsByDate(availability.exceptions, report),
-          weekly: weeklyHours(availability.weekly, report),
+          weekly: weeklyHours(availability.weekly, report, null),
         };
   const shared = new Map<string, AvailabilitySchedule>();
   /** The calendar's hours on a time zone, resolved once per zone. */
@@ -142,19 +158,16 @@ export function createAvailabilitySnapshot({
   const byResource = new Map<ResourceId, AvailabilitySchedule | null>();
   for (const resource of resources) {
     const { availability: own, id } = resource;
-    if (byResource.has(id) || (own === undefined && resource.timeZone === undefined)) continue;
+    if (byResource.has(id) || (own == null && resource.timeZone === undefined)) continue;
     const reportOwn = reporter(id);
     const zone = zoneOf(resource.timeZone, calendarZone, reportOwn);
-    if (own === undefined) {
+    if (own == null) {
       byResource.set(id, calendarOn(zone));
       continue;
     }
     const hours: ScheduleHours = {
       exceptions: exceptionsByDate(own.exceptions, reportOwn, calendarHours?.exceptions),
-      weekly:
-        own.weekly === undefined
-          ? (calendarHours?.weekly ?? null)
-          : weeklyHours(own.weekly, reportOwn),
+      weekly: weeklyHours(own.weekly, reportOwn, calendarHours?.weekly ?? null),
     };
     byResource.set(id, createAvailabilitySchedule(hours, zone));
   }

@@ -63,18 +63,23 @@ export function sameWeekRules(left: CalendarWeekRules, right: CalendarWeekRules)
   );
 }
 
+const isRecord = (value: unknown): value is object => typeof value === "object" && value !== null;
+
+/**
+ * Lists by element: identical values, or records `same` matches. Anything else, such as an
+ * invalid entry the snapshot reports, matches only itself.
+ */
 function sameList<T>(
   left: readonly T[] | undefined,
   right: readonly T[] | undefined,
   same: (left: T, right: T) => boolean,
 ): boolean {
-  return (
-    left === right ||
-    (left !== undefined &&
-      right !== undefined &&
-      left.length === right.length &&
-      left.every((value, index) => same(value, right[index]!)))
-  );
+  if (left === right) return true;
+  if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
+  return left.every((value: T, index) => {
+    const other = right[index] as T;
+    return Object.is(value, other) || (isRecord(value) && isRecord(other) && same(value, other));
+  });
 }
 
 /** Temporal dates and times by value; anything else, such as invalid input, by identity. */
@@ -92,15 +97,18 @@ function sameHours(left: AvailabilityHours, right: AvailabilityHours): boolean {
   return sameTemporal(left.start, right.start) && sameTemporal(left.end, right.end);
 }
 
-/** Compares working hours by value, so an inline `availability` keeps its shading cached. */
+/**
+ * Compares working hours by value, so an inline `availability` keeps its shading cached. Invalid
+ * entries never throw here; the snapshot reports them.
+ */
 export function sameAvailability(
   left: CalendarAvailability | undefined,
   right: CalendarAvailability | undefined,
 ): boolean {
   return (
     left === right ||
-    (left !== undefined &&
-      right !== undefined &&
+    (isRecord(left) &&
+      isRecord(right) &&
       left.timeZone === right.timeZone &&
       sameList(
         left.weekly,

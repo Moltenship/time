@@ -19,10 +19,11 @@ const allDay: readonly AvailabilityHours[] = Object.freeze([
 ]);
 
 /**
- * The instant a wall time opens or closes at. A skipped wall time takes the jump past it. A
- * repeated one opens at its first occurrence and closes at its second, so hours cover both.
+ * The instant, in epoch nanoseconds, a wall time opens or closes at. A skipped wall time takes the
+ * jump past it. A repeated one opens at its first occurrence and closes at its second, so hours
+ * cover both.
  */
-function boundary(
+export function wallBoundary(
   dateTime: Temporal.PlainDateTime,
   timeZone: string,
   edge: "end" | "start",
@@ -79,9 +80,9 @@ export function createAvailabilitySchedule(
       exception === undefined ? (weekly?.[date.dayOfWeek] ?? allDay) : (exception.hours ?? []);
     const spans = merge(
       hours.flatMap(({ end, start }): Span[] => {
-        const from = boundary(date.toPlainDateTime(start), timeZone, "start");
+        const from = wallBoundary(date.toPlainDateTime(start), timeZone, "start");
         const endDate = Temporal.PlainTime.compare(end, start) <= 0 ? date.add({ days: 1 }) : date;
-        const to = boundary(endDate.toPlainDateTime(end), timeZone, "end");
+        const to = wallBoundary(endDate.toPlainDateTime(end), timeZone, "end");
         return to > from ? [[from, to]] : [];
       }),
     );
