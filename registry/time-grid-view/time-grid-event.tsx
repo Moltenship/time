@@ -1,13 +1,16 @@
+import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import type {
   EventDayFragment,
   EventId,
   ResourceId,
   TimeGridEventLayout,
 } from "@moltenship/calendar";
+import { useRef, useState } from "react";
 
 import { EventChip, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import { TooltipContent } from "@registry/ui/tooltip";
 import { cn } from "cn";
 
 type DayFragment = EventDayFragment<unknown, EventId, ResourceId>;
@@ -67,6 +70,21 @@ function rangeDash(
 }
 
 /**
+ * Whether a title shows less than all of itself: cut short by its clamp or by its event's box.
+ * Rounding can leave a pixel of overflow on a title that fits, so a pixel doesn't count.
+ */
+function isClipped(title: HTMLElement | null): boolean {
+  const box = title?.closest("[data-event-id]")?.getBoundingClientRect();
+  return (
+    title != null &&
+    box !== undefined &&
+    (title.scrollWidth > title.clientWidth + 1 ||
+      title.scrollHeight > title.clientHeight + 1 ||
+      title.getBoundingClientRect().bottom > box.bottom + 1)
+  );
+}
+
+/**
  * "18:15 – 19:00", or with the end's weekday when it falls on a later date ("18:15 – ter., 18:00"),
  * so an overnight event never reads as ending before it starts. Ending at the next midnight still
  * reads as a time.
@@ -105,55 +123,72 @@ export function TimeGridEvent<TEvent>({
   const compact = height * 24 * 60 < COMPACT_MINUTES;
   const resizable = !event.isReadOnly;
   const chip = useEventChip(event, { date: fragment.date, labelEvent, offscreen, resourceId });
+  const titleRef = useRef<HTMLSpanElement>(null);
+  const [titleShown, setTitleShown] = useState(false);
 
+  // A title that doesn't fit shows in full in a tooltip while the event is hovered or focused.
   return (
-    <EventChip
-      color={color}
-      {...chip}
-      className={cn(
-        // Raised while hovered, and above that while focused, so a stacked event's title shows
-        // over the ones covering it, wherever the pointer rests.
-        "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)] hover:z-10 focus:z-20 focus-visible:z-20",
-        compact ? "flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" : "py-1",
-        startsBeforeDay && "rounded-t-none",
-        endsAfterDay && "rounded-b-none",
-      )}
-      style={{
-        height: percent(height),
-        insetInlineStart: percent(left),
-        top: percent(top),
-        width: percent(width),
-      }}
+    <TooltipPrimitive.Root
+      disabled={offscreen}
+      onOpenChange={(open) => setTitleShown(open && isClipped(titleRef.current))}
+      open={titleShown}
     >
-      {compact ? (
-        <span className="truncate">
-          {event.title}
-          <span className="font-normal opacity-80">
-            , <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
+      {/* Base UI's own trigger, so the event keeps `data-slot="calendar-event"`. */}
+      <TooltipPrimitive.Trigger
+        render={
+          <EventChip
+            color={color}
+            {...chip}
+            className={cn(
+              // Raised while hovered, and above that while focused, so a stacked event's title shows
+              // over the ones covering it, wherever the pointer rests.
+              "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)] hover:z-10 focus:z-20 focus-visible:z-20",
+              compact ? "flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" : "py-1",
+              startsBeforeDay && "rounded-t-none",
+              endsAfterDay && "rounded-b-none",
+            )}
+            style={{
+              height: percent(height),
+              insetInlineStart: percent(left),
+              top: percent(top),
+              width: percent(width),
+            }}
+          />
+        }
+      >
+        {compact ? (
+          <span ref={titleRef} className="truncate">
+            {event.title}
+            <span className="font-normal opacity-80">
+              , <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
+            </span>
           </span>
-        </span>
-      ) : (
-        <>
-          <span className="line-clamp-2">{event.title}</span>
-          <span data-event-time className="truncate font-normal tabular-nums opacity-80">
-            {eventTimeRange(start, end, formats)}
-          </span>
-        </>
-      )}
-      {resizable && !startsBeforeDay && (!compact || endsAfterDay) && (
-        <span
-          aria-hidden
-          data-resize="start"
-          className="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize"
-        />
-      )}
-      {resizable && !endsAfterDay && (
-        <span
-          aria-hidden
-          data-resize="end"
-          className="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40"
-        />
-      )}
-    </EventChip>
+        ) : (
+          <>
+            <span ref={titleRef} className="line-clamp-2">
+              {event.title}
+            </span>
+            <span data-event-time className="truncate font-normal tabular-nums opacity-80">
+              {eventTimeRange(start, end, formats)}
+            </span>
+          </>
+        )}
+        {resizable && !startsBeforeDay && (!compact || endsAfterDay) && (
+          <span
+            aria-hidden
+            data-resize="start"
+            className="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize"
+          />
+        )}
+        {resizable && !endsAfterDay && (
+          <span
+            aria-hidden
+            data-resize="end"
+            className="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40"
+          />
+        )}
+      </TooltipPrimitive.Trigger>
+      <TooltipContent>{event.title}</TooltipContent>
+    </TooltipPrimitive.Root>
   );
 }

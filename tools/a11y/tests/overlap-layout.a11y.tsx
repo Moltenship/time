@@ -6,12 +6,13 @@ import {
   type OverlapLayout,
 } from "@moltenship/calendar";
 import { act } from "react";
-import { describe, expect, test } from "vite-plus/test";
+import { describe, expect, test, vi } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
+import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { seriousViolations, setTheme, themes } from "./axe";
 import { render } from "./render";
@@ -45,7 +46,10 @@ function timed(color: CalendarEventColor, title: string, start: string, end: str
   } as const;
 }
 
-/** A busy Thursday for Ada: a workshop under a talk and a call, then three reviews at once. */
+/**
+ * A busy Thursday for Ada: a workshop under a talk and a call, three reviews at once, and a
+ * half-hour meeting whose title can't fit.
+ */
 const events: readonly Fixture[] = [
   timed("blue", "Workshop", "09:00", "12:00"),
   timed("green", "Talk", "09:30", "10:30"),
@@ -53,6 +57,7 @@ const events: readonly Fixture[] = [
   timed("purple", "Review 1", "13:00", "14:00"),
   timed("red", "Review 2", "13:00", "14:00"),
   timed("teal", "Review 3", "13:00", "14:00"),
+  timed("green", "Quarterly planning with the infrastructure and platform teams", "16:00", "16:30"),
 ];
 
 function OverlapScreen({
@@ -65,23 +70,25 @@ function OverlapScreen({
   readonly view?: "resources" | "week";
 }) {
   return (
-    <Calendar.Root
-      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
-      defaultTimeZone="UTC"
-      defaultView={view}
-      events={events}
-      locale="en-US"
-      now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
-      resources={resources}
-      viewOptions={{ resources: { overlapLayout }, week: { overlapLayout } }}
-      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-    >
-      <Calendar.Frame className="flex h-dvh flex-col" dir={dir}>
-        <Calendar.Viewport className="min-h-0 flex-1">
-          <Calendar.ActiveView />
-        </Calendar.Viewport>
-      </Calendar.Frame>
-    </Calendar.Root>
+    <TooltipProvider>
+      <Calendar.Root
+        defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+        defaultTimeZone="UTC"
+        defaultView={view}
+        events={events}
+        locale="en-US"
+        now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
+        resources={resources}
+        viewOptions={{ resources: { overlapLayout }, week: { overlapLayout } }}
+        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+      >
+        <Calendar.Frame className="flex h-dvh flex-col" dir={dir}>
+          <Calendar.Viewport className="min-h-0 flex-1">
+            <Calendar.ActiveView />
+          </Calendar.Viewport>
+        </Calendar.Frame>
+      </Calendar.Root>
+    </TooltipProvider>
   );
 }
 
@@ -182,5 +189,28 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
 
     expect(eventAt(...title)).toBe(reviews[0]);
     await userEvent.unhover(reviews[2]!);
+  });
+
+  test("an event whose title doesn't fit shows it in full while hovered or focused", async () => {
+    await render(<OverlapScreen dir={dir} overlapLayout="stack" />);
+    const long = eventElement("Quarterly planning with the infrastructure and platform teams");
+    const tooltip = () => document.querySelector('[data-slot="tooltip-content"]');
+
+    await userEvent.hover(eventElement("Review 3"));
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(tooltip()).toBeNull();
+
+    await userEvent.hover(long);
+    await vi.waitFor(() =>
+      expect(tooltip()?.textContent).toBe(
+        "Quarterly planning with the infrastructure and platform teams",
+      ),
+    );
+    expect(await seriousViolations()).toEqual([]);
+    await userEvent.unhover(long);
+    await vi.waitFor(() => expect(tooltip()).toBeNull());
+
+    await act(async () => long.focus());
+    await vi.waitFor(() => expect(tooltip()).not.toBeNull());
   });
 });
