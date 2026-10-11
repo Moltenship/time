@@ -38,8 +38,9 @@ function useHydrating(): boolean {
 }
 
 /**
- * The days with events in the loaded dates, then the end of the list. Without any, the end shows
- * the empty state, and scrolling on past it moves through the weeks without events.
+ * The days with events in the loaded dates, then the end of the list. Without any from the anchor
+ * date on, the end shows the empty state, and scrolling on past it moves through the weeks without
+ * events.
  */
 function ScrollingAgendaView<TEvent>({
   actions,
@@ -68,19 +69,22 @@ function ScrollingAgendaView<TEvent>({
   const formats = useAgendaFormats(environment.locale);
   const loading = options.loading === true;
   const endRow = rows.at(-1);
+  // The first day from the anchor date; without one, the end of the list stands for the weeks
+  // shown and holds the empty state, even below days loaded before them.
+  const first = rows[rowFrom(rows, range.start)];
+  const firstDay = first?.kind === "day" ? first.day : undefined;
 
-  // The empty state had focus when days came in, which takes it away: focus moves on to the first
-  // event from the anchor date, where Tab lands, instead of falling to the page.
-  const hadDays = useRef(days > 0);
+  // The empty state had focus when the weeks shown got days, which takes it away: focus moves on
+  // to their first event, where Tab lands, instead of falling to the page.
+  const hadDays = useRef(firstDay !== undefined);
   useLayoutEffect(() => {
-    const arrived = !hadDays.current && days > 0;
-    hadDays.current = days > 0;
+    const arrived = !hadDays.current && firstDay !== undefined;
+    hadDays.current = firstDay !== undefined;
     const page = list.scrollRef.current?.ownerDocument;
+    const item = firstDay?.items[0];
     if (!arrived || !list.focusWithin.within || page?.activeElement !== page?.body) return;
-    const row = rows[Math.min(rowFrom(rows, range.start), rows.length - 2)];
-    const item = row?.kind === "day" ? row.day.items[0] : undefined;
-    if (row?.kind === "day" && item !== undefined) {
-      actions.setFocus({ date: row.day.date, eventId: item.event.id, kind: "event" });
+    if (firstDay !== undefined && item !== undefined) {
+      actions.setFocus({ date: firstDay.date, eventId: item.event.id, kind: "event" });
     }
   });
 
@@ -93,7 +97,7 @@ function ScrollingAgendaView<TEvent>({
       environment={environment}
       getEventColor={options.getEventColor}
       end={
-        days === 0 ? (
+        firstDay === undefined ? (
           <div className="flex flex-1 items-center justify-center p-6 text-center">
             <EmptyAgenda
               dates={formats.range.formatRange(range.start, range.end.subtract({ days: 1 }))}

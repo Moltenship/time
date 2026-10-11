@@ -18,7 +18,7 @@ import {
  * the title names it. A page of weeks either way is projected too (`getLoadRange`), so the list
  * scrolls on into them and their events can load before they come into view. Previous and Next
  * move a page. Keyboard navigation moves through the range's events and pages past its ends, as in
- * the paged agenda.
+ * the paged agenda; a range without events is entered at its first date.
  */
 export function scrollingListStrategy<
   TOptions extends ListViewOptions | undefined = ListViewOptions,
@@ -36,9 +36,12 @@ export function scrollingListStrategy<
     getRange: (anchor, _environment, options) =>
       plainDateInterval(anchor, anchor.add({ weeks: listWeeks(options ?? {}) })),
     getSpatialNavigation: (input) => {
-      const { projection, range } = input;
+      const { focus, projection, range } = input;
       // Only the range's days take part, so keys page past its ends as in the paged agenda.
       const days = projection.days.filter(({ date }) => plainDateIntervalContains(range, date));
+      // Without events in the range, focus enters at its first date, where a view says it's empty,
+      // even with events loaded around it.
+      if (focus === null && days.length === 0) return { focus: { date: range.start, kind: "day" } };
       return listSpatialNavigation({ ...input, projection: { ...projection, days } });
     },
     getTitle: (range, environment) => getListTitle(range, environment),

@@ -139,8 +139,9 @@ export function useAgendaScroll({
     /** Whether a finger or mouse button is down, so a pause doesn't end the user's scroll. */
     let touching = false;
     let pressing = false;
-    /** Set during a wheel gesture that has moved the calendar on past an end. */
+    /** Set during a wheel gesture that has moved the calendar on past an end, and which way. */
     let wheeledOn: ReturnType<typeof setTimeout> | undefined;
+    let wheeledLater = true;
     /** Where the finger was when it last moved the list, and whether its swipe moved past an end. */
     let fingerY: number | null = null;
     let swipedOn = false;
@@ -155,6 +156,16 @@ export function useAgendaScroll({
       }
     };
 
+    /** The end row, when the list is at its end and can't scroll on to later days. */
+    const endOnTop = () => {
+      const item = virtualizer.getVirtualItemForOffset(element.scrollTop);
+      const row = item === undefined ? undefined : latest.current.rows[item.index];
+      const atEnd = element.scrollTop >= element.scrollHeight - element.clientHeight - 1;
+      return row?.kind === "end" && atEnd ? row : undefined;
+    };
+    /** Whether the list can't scroll on that way: past its last day, or to before its first. */
+    const atEnd = (later: boolean) => (later ? endOnTop() !== undefined : element.scrollTop <= 0);
+
     /**
      * At either end of the loaded days the list can't scroll on, so scrolling on moves the calendar
      * a page that way instead: the list crosses weeks without events. Days that load in above wait
@@ -162,21 +173,13 @@ export function useAgendaScroll({
      * Returns whether it moved.
      */
     const pastEnd = (later: boolean): boolean => {
-      const item = virtualizer.getVirtualItemForOffset(element.scrollTop);
-      const row = item === undefined ? undefined : latest.current.rows[item.index];
-      const { anchor, range } = latest.current;
-      if (!later) {
-        if (element.scrollTop > 0) return false;
-      } else if (
-        row?.kind !== "end" ||
-        element.scrollTop < element.scrollHeight - element.clientHeight - 1
-      ) {
-        return false;
-      }
+      if (!atEnd(later)) return false;
       // This move, not the scroll that reached the end, says where the calendar is.
       clearTimeout(timer);
       touched = false;
-      if (row?.kind === "end" && later) {
+      const { anchor, range } = latest.current;
+      const row = endOnTop();
+      if (later && row !== undefined) {
         const date = Temporal.PlainDate.compare(row.from, anchor) > 0 ? row.from : range.end;
         moveTo(date);
         target.current = date;
@@ -220,18 +223,24 @@ export function useAgendaScroll({
     };
     const onInput = (event: Event) => {
       if (event instanceof WheelEvent && wheeledOn !== undefined) {
-        // The rest of a wheel gesture that moved past an end, which holds the date it moved to.
+        // The rest of a wheel gesture that moved past an end, which holds the date it moved to
+        // while it pushes on against that end. Turning back, or scrolling on through days that
+        // have loaded, is the user's own scroll again.
         clearTimeout(wheeledOn);
-        wheeledOn = setTimeout(() => {
-          wheeledOn = undefined;
-        }, SETTLE_MS);
-        return;
+        wheeledOn = undefined;
+        if (event.deltaY !== 0 && event.deltaY > 0 === wheeledLater && atEnd(wheeledLater)) {
+          wheeledOn = setTimeout(() => {
+            wheeledOn = undefined;
+          }, SETTLE_MS);
+          return;
+        }
       }
       target.current = null;
       heading.current = null;
       touched = true;
       // Once per wheel gesture, which ends when the wheel has been still a moment.
       if (event instanceof WheelEvent && event.deltaY !== 0 && pastEnd(event.deltaY > 0)) {
+        wheeledLater = event.deltaY > 0;
         wheeledOn = setTimeout(() => {
           wheeledOn = undefined;
         }, SETTLE_MS);

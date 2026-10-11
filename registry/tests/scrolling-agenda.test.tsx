@@ -481,3 +481,41 @@ test("keys paging from the empty state hold the date, and focus moves to its eve
   expect(scroller().scrollTop).toBe(rowTop("2026-10-15"));
   expect(document.activeElement?.getAttribute("data-event-id")).toBe("2026-10-15");
 });
+
+test("the empty state keeps focus until days come in from the anchor date, then hands it on", async () => {
+  fitScrollHeight();
+  const october7 = timed("2026-10-07", "2026-10-07T09:00Z", "2026-10-07T10:00Z");
+  const october8 = timed("2026-10-08", "2026-10-08T09:00Z", "2026-10-08T10:00Z");
+  const screen = await render(<Agenda events={[]} weeks={1} />);
+  cleanup = screen.unmount;
+  await act(async () => document.querySelector<HTMLElement>('[role="group"]')!.focus());
+
+  // A day before the anchor date loads: the weeks shown are still empty.
+  await screen.rerender(<Agenda events={[october7]} weeks={1} />);
+  expect(document.activeElement?.getAttribute("role")).toBe("group");
+
+  await screen.rerender(<Agenda events={[october7, october8]} weeks={1} />);
+  expect(document.activeElement?.getAttribute("data-event-id")).toBe("2026-10-08");
+});
+
+test("turning the wheel back as days load in scrolls them, not the date it moved to", async () => {
+  fitScrollHeight();
+  const screen = await render(<Agenda events={[]} weeks={1} />);
+  cleanup = screen.unmount;
+  const wheel = (deltaY: number) =>
+    act(async () => scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY })));
+  await wheel(100);
+  await screen.rerender(<Agenda events={arriving} weeks={1} />);
+  expect(scroller().scrollTop).toBe(rowTop("2026-10-15"));
+
+  // Still the same gesture, now turned back up through the days that loaded.
+  await wheel(-100);
+  const scrolledTo = rowTop("2026-10-15") - 40;
+  await act(async () => {
+    scroller().scrollTop = scrolledTo;
+    scroller().dispatchEvent(new Event("scroll"));
+  });
+  await screen.rerender(<Agenda events={arriving} weeks={1} />);
+
+  expect(scroller().scrollTop).toBe(scrolledTo);
+});

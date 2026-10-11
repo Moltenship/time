@@ -59,7 +59,9 @@ function navigation(anchor: string) {
       if (result === null) return null;
       if ("page" in result) return `page ${result.page}`;
       const { focus: next } = result;
-      return next.kind === "event" ? `${next.eventId}@${next.date.toString()}` : null;
+      return next.kind === "event"
+        ? `${next.eventId}@${next.date.toString()}`
+        : next.date.toString();
     },
   };
 }
@@ -111,6 +113,15 @@ describe("scrolling agenda", () => {
     // The events loaded beyond the range are reached by paging, which scrolls the view on.
     expect(navigate("down", item("review", "2026-10-20"))).toBe("page 1");
     expect(navigate("up", item("standup", "2026-10-07"))).toBe("page -1");
+  });
+
+  test("enters a range without events at its first date, whatever is loaded around it", () => {
+    const { days, navigate } = navigation("2026-11-11");
+
+    // October 20 and November 10 are loaded, but nothing falls in the four weeks from November 11.
+    expect(days).toEqual(["2026-10-20", "2026-11-10"]);
+    expect(navigate("home", null)).toBe("2026-11-11");
+    expect(navigate("down", { date: date("2026-11-11"), kind: "day" })).toBe("page 1");
   });
 
   test("pages so the next range starts where this one ends", () => {
