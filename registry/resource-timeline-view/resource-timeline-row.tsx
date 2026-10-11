@@ -19,9 +19,11 @@ import { memo, useCallback, useMemo, type CSSProperties } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import {
-  ResourceStatusBadge,
-  useResourceStatusSummary,
-  type ResourceStatusSummary,
+  draftStatusAttributes,
+  ResourceStatusPart,
+  useResourceHeaderStatus,
+  type ResourceHeaderStatusValue,
+  type ResourceStatusOptions,
 } from "@registry/calendar/resource-status";
 import { ResourceTime, useResourceTime } from "@registry/calendar/resource-time";
 import {
@@ -61,8 +63,8 @@ export interface ResourceTimelineRowProps<TEvent> {
   readonly range: PlainDateInterval;
   /** Replaces the shading of closed time and closed days; see `UnavailableTimeRender`. */
   readonly renderUnavailable?: UnavailableTimeRender;
-  /** Whether the row header shows the resource's status. */
-  readonly resourceStatus: boolean;
+  /** How the row header shows the resource's status; `null` without it. */
+  readonly resourceStatus: ResourceStatusOptions | null;
   readonly row: ResourceTimelineDayRow<TEvent> | ResourceTimelineHourRow<TEvent>;
   /** Width of each slot, in pixels. */
   readonly slotWidth: number;
@@ -119,15 +121,17 @@ function RowHeader({
   resource,
   status,
   title,
-}: RowHeaderProps & { readonly status: ResourceStatusSummary | null }) {
+}: RowHeaderProps & { readonly status: ResourceHeaderStatusValue | null }) {
   const localTime = useResourceTime(environment, resource.resource?.timeZone);
+  const words = status?.summary?.text;
   return (
     <div
       role="rowheader"
       aria-colindex={1}
-      aria-label={[title, localTime === null ? undefined : `local time ${localTime}`, status?.text]
+      aria-label={[title, localTime === null ? undefined : `local time ${localTime}`, words]
         .filter((part) => part !== undefined)
         .join(", ")}
+      {...draftStatusAttributes(status)}
       // Cells scroll beneath it, so the pointer layer doesn't look through it to them.
       data-occludes=""
       className={cn(
@@ -155,7 +159,7 @@ function RowHeader({
           <span className="max-w-full truncate">{title}</span>
           {/* The badge keeps its words; the local time gives way, and the name says both. */}
           <span className="flex max-w-full min-w-0 items-center gap-1">
-            <ResourceStatusBadge className="shrink-0" summary={status} />
+            <ResourceStatusPart className="shrink-0" status={status} />
             <ResourceTime
               aria-hidden
               className="min-w-0 shrink truncate"
@@ -170,11 +174,14 @@ function RowHeader({
 }
 
 /**
- * `RowHeader` with the resource's status now, so rows without it keep no clock. Groups have none:
- * their own bookings aren't their members'.
+ * `RowHeader` with the resource's status, now and during a draft, so rows without it keep no
+ * clock. Groups have none: their own bookings aren't their members'.
  */
-function RowHeaderWithStatus(props: RowHeaderProps) {
-  const status = useResourceStatusSummary(props.environment, props.resource.id);
+function RowHeaderWithStatus({
+  options,
+  ...props
+}: RowHeaderProps & { readonly options: ResourceStatusOptions }) {
+  const status = useResourceHeaderStatus(props.environment, props.resource, options);
   return <RowHeader {...props} status={status} />;
 }
 
@@ -324,8 +331,13 @@ function ResourceTimelineRowBase<TEvent>({
       )}
       style={{ height: virtualRow.size, top: virtualRow.start }}
     >
-      {resourceStatus && !resource.hasChildren ? (
-        <RowHeaderWithStatus environment={environment} resource={resource} title={title} />
+      {resourceStatus !== null && !resource.hasChildren ? (
+        <RowHeaderWithStatus
+          options={resourceStatus}
+          environment={environment}
+          resource={resource}
+          title={title}
+        />
       ) : (
         <RowHeader environment={environment} resource={resource} status={null} title={title} />
       )}

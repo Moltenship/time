@@ -8,7 +8,10 @@ import {
 import { ChevronRightIcon } from "lucide-react";
 import { createContext, use, type ComponentProps } from "react";
 
-import { ResourceStatusBadge, useResourceStatusSummary } from "@registry/calendar/resource-status";
+import {
+  ResourceStatusPart,
+  type ResourceHeaderStatusValue,
+} from "@registry/calendar/resource-status";
 import { ResourceTime } from "@registry/calendar/resource-time";
 import { cn } from "cn";
 
@@ -27,8 +30,11 @@ export interface ResourceHeaderContextValue {
   readonly environment: Pick<CalendarEnvironmentBase, "locale" | "timeZone">;
   /** Names of the groups the resource sits in, outermost first. */
   readonly groups: readonly string[];
-  /** Whether the default header shows the resource's status; see the view's `resourceStatus`. */
-  readonly status: boolean;
+  /**
+   * The resource's status, now or during a draft, with the view's `resourceStatus`; `null`
+   * without it, for a group, or for the Unassigned column.
+   */
+  readonly status: ResourceHeaderStatusValue | null;
   readonly title: string;
   readonly visible: VisibleResource;
 }
@@ -127,23 +133,19 @@ export function ResourceHeaderTime({ className, ...props }: ComponentProps<"span
 }
 
 /**
- * The resource's status now, such as "Busy until 3:00 PM", as a badge, with the view's
- * `resourceStatus`, which makes room for it. Nothing without it, for a group or the Unassigned
- * column, or while server rendering.
+ * The resource's status, with the view's `resourceStatus`, which makes room for it: during a
+ * draft, whether it's busy or outside its hours then, and otherwise now, such as "Busy until
+ * 3:00 PM", as a badge or the option's `DraftStatus`. Nothing without it, for a group, whose own
+ * bookings aren't its members', for the Unassigned column, or while server rendering.
  */
-export function ResourceHeaderStatus({ className, ...props }: ComponentProps<"span">) {
-  const { environment, status, visible } = useResourceHeader();
-  // A group's own bookings aren't its members', so a group shows no status of its own.
-  const summary = useResourceStatusSummary(
-    environment,
-    status && !visible.hasChildren ? visible.id : null,
-  );
-  if (summary === null) return null;
+export function ResourceHeaderStatus({ className }: { readonly className?: string }) {
+  const { status } = useResourceHeader();
+  if (status === null || (status.summary === null && status.draft === null)) return null;
   return (
     <>
       {/* Read after the name and local time, which the header's name runs on from. */}
       <span className="sr-only">, </span>
-      <ResourceStatusBadge className={className} summary={summary} {...props} />
+      <ResourceStatusPart className={className} status={status} />
     </>
   );
 }
@@ -159,7 +161,7 @@ export function DefaultResourceHeader() {
       <ResourceHeaderToggle />
       <span className="flex min-w-0 flex-col">
         <ResourceHeaderTitle />
-        {status ? (
+        {status !== null ? (
           <span className="flex min-w-0 items-center gap-1">
             {/* The badge keeps its words and the local time gives way after it, out of sight in
                 a narrow column; the name still reads the time first. */}

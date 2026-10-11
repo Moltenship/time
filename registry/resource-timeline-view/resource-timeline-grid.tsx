@@ -11,6 +11,7 @@ import {
 import { useCallback, useLayoutEffect, useMemo, useRef, type CSSProperties, type Ref } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import type { ResourceStatusOptions } from "@registry/calendar/resource-status";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
@@ -38,7 +39,7 @@ export interface ResourceTimelineGridProps<TEvent> {
   readonly ref?: Ref<HTMLDivElement>;
   readonly renderUnavailable?: UnavailableTimeRender;
   /** Whether row headers show each resource's status. */
-  readonly resourceStatus: boolean;
+  readonly resourceStatus: ResourceStatusOptions | null;
   /** Length of a keyboard step in an hour timeline, in minutes. */
   readonly snapMinutes: number;
 }

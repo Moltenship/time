@@ -6,6 +6,11 @@ import type {
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type ComponentType, type ReactNode, type RefCallback } from "react";
 
+import {
+  draftStatusAttributes,
+  useResourceHeaderStatus,
+  type ResourceStatusOptions,
+} from "@registry/calendar/resource-status";
 import { cn } from "cn";
 
 import {
@@ -29,8 +34,8 @@ export interface ResourceColumnsHeaderProps {
   readonly ResourceHeader?: ComponentType<ResourceHeaderProps>;
   readonly resources: readonly ResourceColumn<unknown>[];
   readonly scrollbarWidth: number;
-  /** Whether the default header shows each resource's status. */
-  readonly status: boolean;
+  /** How headers show each resource's status; `null` without it. */
+  readonly status: ResourceStatusOptions | null;
   readonly totalSize: number;
 }
 
@@ -64,10 +69,11 @@ function ResourceHeaderCell({
   readonly levels: number;
   readonly resource: VisibleResource;
   readonly ResourceHeader: ComponentType<ResourceHeaderProps>;
-  readonly status: boolean;
+  readonly status: ResourceStatusOptions | null;
 }) {
   const { depth, expanded } = resource;
   const title = resourceTitle(resource);
+  const headerStatus = useResourceHeaderStatus(environment, resource, status);
 
   return (
     <div className="flex h-full flex-col">
@@ -81,15 +87,18 @@ function ResourceHeaderCell({
       ))}
       <div
         data-slot="resource-header"
+        {...draftStatusAttributes(headerStatus)}
         className={cn(
           // A container, so header parts can fit themselves to the column's width.
           "@container flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2",
           expanded && "bg-muted",
         )}
         // Groups show no status, so their name row keeps the height their members' bands have.
-        style={{ height: `${status && !resource.hasChildren ? STATUS_ROW : LEVEL}rem` }}
+        style={{ height: `${status !== null && !resource.hasChildren ? STATUS_ROW : LEVEL}rem` }}
       >
-        <ResourceHeaderContext value={{ environment, groups, status, title, visible: resource }}>
+        <ResourceHeaderContext
+          value={{ environment, groups, status: headerStatus, title, visible: resource }}
+        >
           <ResourceHeader resource={resource.resource} title={title} />
         </ResourceHeaderContext>
         {groups.length > 0 && <span className="sr-only">, {groups.join(", ")}</span>}
@@ -142,7 +151,7 @@ export function ResourceColumnsHeader({
     <div
       role="row"
       className="flex"
-      style={{ height: `${(levels - 1) * LEVEL + (status ? STATUS_ROW : LEVEL)}rem` }}
+      style={{ height: `${(levels - 1) * LEVEL + (status !== null ? STATUS_ROW : LEVEL)}rem` }}
     >
       <div
         role="columnheader"

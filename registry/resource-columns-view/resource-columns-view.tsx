@@ -4,6 +4,7 @@ import {
   timeGridTitle,
   useCalendarAnnouncer,
   useCalendarFocus,
+  useCalendarDraftReporter,
   useCalendarPointer,
   type CalendarFocus,
   type CalendarResource,
@@ -16,6 +17,10 @@ import {
 import { useMemo, type ComponentType } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
+import {
+  resourceStatusOptions,
+  type ResourceStatusOptions,
+} from "@registry/calendar/resource-status";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
@@ -46,10 +51,12 @@ export interface ResourceColumnsViewOptions<
    */
   readonly ResourceHeader?: ComponentType<ResourceHeaderProps<TResource>>;
   /**
-   * Shows each resource's status now, such as "Busy until 3:00 PM", and makes room for it in the
-   * header: in the default one, or where your own `ResourceHeader` puts `ResourceHeaderStatus`.
+   * Shows each resource's status and makes room for it in the header, in the default one or where
+   * your own `ResourceHeader` puts `ResourceHeaderStatus`: now, such as "Busy until 3:00 PM", and
+   * while an event is being placed, whether it's busy or outside its hours then, so you see who's
+   * free. Pass options for your own words or your own draft status in place of the badge.
    */
-  readonly resourceStatus?: boolean;
+  readonly resourceStatus?: boolean | ResourceStatusOptions;
   /**
    * Replaces the shading of closed time: an element, or a function of its props and of the band,
    * date and resource, such as a gradient into working hours or a tint for rooms; `resource` is the column's.
@@ -106,11 +113,14 @@ export function ResourceColumnsView<
   // Pointer drags speak through the same messages as the keyboard, and the drag preview labels
   // the proposed range in the calendar's locale. The resource comes from `data-resource-id`.
   const announcer = useCalendarAnnouncer();
+  // Drags report their draft, so headers show who's busy then.
+  const reportDraft = useCalendarDraftReporter();
   const pointerRef = useCalendarPointer({
     announcer,
     check: actions.checkEventChange,
     columns,
     events,
+    onPreview: reportDraft,
     onPropose: actions.proposeEventChange,
     scrollContainer: scrollRef,
     snap,
@@ -145,7 +155,7 @@ export function ResourceColumnsView<
           followX={followX}
           // The projection's resources are untyped; `TResource` is the type the app gave the root.
           ResourceHeader={options.ResourceHeader as ComponentType<ResourceHeaderProps> | undefined}
-          status={options.resourceStatus === true}
+          status={resourceStatusOptions(options.resourceStatus)}
         />
         {columns.length > 1 && resources[0] !== undefined && (
           <ResourceColumnsDates

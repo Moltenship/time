@@ -5,6 +5,7 @@ import {
   resourceTimelineTitle,
   useCalendarAnnouncer,
   useCalendarFocus,
+  useCalendarDraftReporter,
   useCalendarPointer,
   type CalendarDayFocus,
   type CalendarViewRendererProps,
@@ -16,6 +17,10 @@ import {
 import { useLayoutEffect, useMemo } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
+import {
+  resourceStatusOptions,
+  type ResourceStatusOptions,
+} from "@registry/calendar/resource-status";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
@@ -32,8 +37,12 @@ export interface ResourceTimelineViewOptions<TEvent> extends ResourceTimelineOpt
    * and of the band, date and resource, such as a gradient into working hours or a tint for rooms.
    */
   readonly renderUnavailable?: UnavailableTimeRender;
-  /** Shows each resource's status now in its row header, such as "Busy until 3:00 PM". */
-  readonly resourceStatus?: boolean;
+  /**
+   * Shows each resource's status in its row header: now, such as "Busy until 3:00 PM", and while
+   * an event is being placed, whether it's busy or outside its hours then, so you see who's free.
+   * Pass options for your own words or your own draft status in place of the badge.
+   */
+  readonly resourceStatus?: boolean | ResourceStatusOptions;
 }
 
 export type ResourceTimelineViewProps<TEvent> = CalendarViewRendererProps<
@@ -76,11 +85,14 @@ export function ResourceTimelineView<TEvent>({
   // Hour rows map a pointer along their date strips through the columns; day rows have plain day
   // cells, which steps drags by whole days. Drags speak through the same messages as the keyboard.
   const announcer = useCalendarAnnouncer();
+  // Drags report their draft, so headers show who's busy then.
+  const reportDraft = useCalendarDraftReporter();
   const pointerRef = useCalendarPointer({
     announcer,
     check: actions.checkEventChange,
     columns: projection.unit === "hour" ? projection.columns : undefined,
     events,
+    onPreview: reportDraft,
     onPropose: actions.proposeEventChange,
     snap,
     timeZone: environment.timeZone,
@@ -132,7 +144,7 @@ export function ResourceTimelineView<TEvent>({
       range={range}
       ref={pointerRef}
       renderUnavailable={options.renderUnavailable}
-      resourceStatus={options.resourceStatus === true}
+      resourceStatus={resourceStatusOptions(options.resourceStatus)}
       snapMinutes={snap.increment}
     />
   );

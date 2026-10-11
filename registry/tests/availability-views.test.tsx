@@ -9,6 +9,7 @@ import {
   type CalendarFocus,
   type CalendarResource,
 } from "@moltenship/calendar";
+import { act } from "react";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
 import { createMonthView } from "../month-view/month-view";
@@ -18,6 +19,7 @@ import {
   createTimelineWeekView,
 } from "../resource-timeline-view/resource-timeline-view";
 import { createWeekView } from "../time-grid-view/time-grid-view";
+import type { ResourceDraftStatusProps } from "../calendar/resource-status";
 import type { UnavailableTimeRender } from "../calendar/unavailable-time";
 import { drag, layOut } from "./pointer";
 import { render } from "./render";
@@ -410,4 +412,78 @@ test("badges say free until the next event or closing, and closed days with thei
   expect(text(friday.querySelector('[data-slot="resource-status"]')!)).toBe(
     "Closed today, Offsite",
   );
+});
+
+async function press(key: string) {
+  await act(async () => {
+    (document.activeElement ?? document.body).dispatchEvent(
+      new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key }),
+    );
+    await Promise.resolve();
+  });
+}
+
+/** Starts a keyboard create on Nia's 12:30 PM slot, during her lunch. */
+async function draftAtLunch(view: "resources" | "timeline-day", options: object) {
+  const container = await renderView(view, {
+    defaultFocus: {
+      date: Temporal.PlainDate.from("2026-10-08"),
+      kind: "slot",
+      resourceId: "ny",
+      time: time(view === "resources" ? "12:30" : "12:00"),
+    },
+    events: [lunch],
+    options,
+  });
+  await act(async () =>
+    container.querySelector<HTMLElement>('[role="grid"] [tabindex="0"]')!.focus(),
+  );
+  await press(" ");
+  return container;
+}
+
+test("while an event is placed, resource headers say who's busy or outside their hours then", async () => {
+  const container = await draftAtLunch("resources", { resourceStatus: true });
+  const headers = [...container.querySelectorAll<HTMLElement>('[data-slot="resource-header"]')];
+  const read = headers.map((element) => [
+    text(element.querySelector('[data-slot="resource-status"]')),
+    element.hasAttribute("data-busy"),
+    element.hasAttribute("data-outside-hours"),
+  ]);
+  // Nia is at lunch; at 12:30 PM in New York, London (5:30 PM) and Nadia's night are closed.
+  expect(read).toEqual([
+    ["Busy", true, false],
+    ["Outside hours", false, true],
+    ["Outside hours", false, true],
+  ]);
+  // Escape ends the draft, and the headers go back to the status now.
+  await press("Escape");
+  expect(container.querySelector('[data-slot="resource-header"]')?.hasAttribute("data-busy")).toBe(
+    false,
+  );
+});
+
+test("the draft status takes your words, or your own part in place of the badge", async () => {
+  const labels = { busy: () => "Occupé", outsideHours: () => "Hors horaires" };
+  const words = await draftAtLunch("resources", { resourceStatus: { labels } });
+  expect(
+    [...words.querySelectorAll('[data-slot="resource-status"]')].map((badge) => text(badge)),
+  ).toEqual(["Occupé", "Hors horaires", "Hors horaires"]);
+  await cleanup?.();
+
+  const DraftStatus = ({ events, outsideHours }: ResourceDraftStatusProps) => (
+    <span data-ring={events.length > 0 ? "busy" : outsideHours ? "away" : "free"}>
+      {events.map((event) => event.title).join(", ")}
+    </span>
+  );
+  vi.stubGlobal("ResizeObserver", StubResizeObserver);
+  const timeline = await draftAtLunch("timeline-day", { resourceStatus: { DraftStatus } });
+  const row = (id: string) =>
+    timeline.querySelector(`[role="row"][data-resource-id="${id}"] [role="rowheader"]`)!;
+  expect(row("ny").querySelector("[data-ring]")?.getAttribute("data-ring")).toBe("busy");
+  expect(text(row("ny").querySelector("[data-ring]"))).toBe("Lunch");
+  expect(row("ny").hasAttribute("data-busy")).toBe(true);
+  // Screen readers hear the status in the default words, whatever the part draws.
+  expect(ariaLabel(row("ny"))).toBe("Nia, Busy");
+  expect(ariaLabel(row("london"))).toBe("Leo, local time 5:30 PM GMT+1, Outside hours");
 });
