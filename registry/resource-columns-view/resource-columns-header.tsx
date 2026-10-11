@@ -82,10 +82,12 @@ function ResourceHeaderCell({
       <div
         data-slot="resource-header"
         className={cn(
-          "flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2",
+          // A container, so header parts can fit themselves to the column's width.
+          "@container flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2",
           expanded && "bg-muted",
         )}
-        style={{ height: `${status ? STATUS_ROW : LEVEL}rem` }}
+        // Groups show no status, so their name row keeps the height their members' bands have.
+        style={{ height: `${status && !resource.hasChildren ? STATUS_ROW : LEVEL}rem` }}
       >
         <ResourceHeaderContext value={{ environment, groups, status, title, visible: resource }}>
           <ResourceHeader resource={resource.resource} title={title} />

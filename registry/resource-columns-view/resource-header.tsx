@@ -161,7 +161,9 @@ export function DefaultResourceHeader() {
         <ResourceHeaderTitle />
         {status ? (
           <span className="flex min-w-0 items-center gap-1">
-            <ResourceHeaderTime />
+            {/* The badge keeps its words and the local time gives way after it, out of sight in
+                a narrow column; the name still reads the time first. */}
+            <ResourceHeaderTime className="order-last min-w-0 shrink @max-[11rem]:sr-only" />
             <ResourceHeaderStatus />
           </span>
         ) : (
