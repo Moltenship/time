@@ -134,10 +134,14 @@ export function useAgendaScroll({
     let timer: ReturnType<typeof setTimeout> | undefined;
     /** Whether the user has scrolled since the list last came to rest. */
     let touched = false;
-    /** Set during a wheel gesture or swipe that has moved the calendar on past the end. */
-    let movedOn: ReturnType<typeof setTimeout> | undefined;
-    /** Where a finger was when it last moved the list, to tell a swipe up past the end. */
+    /** Whether a finger or mouse button is down, so a pause doesn't end the user's scroll. */
+    let touching = false;
+    let pressing = false;
+    /** Set during a wheel gesture that has moved the calendar on past an end. */
+    let wheeledOn: ReturnType<typeof setTimeout> | undefined;
+    /** Where the finger was when it last moved the list, and whether its swipe moved past an end. */
     let fingerY: number | null = null;
+    let swipedOn = false;
 
     const moveTo = (date: Temporal.PlainDate) => {
       proposed.current = date;
@@ -151,33 +155,33 @@ export function useAgendaScroll({
 
     /**
      * At either end of the loaded days the list can't scroll on, so scrolling on moves the calendar
-     * a page that way instead, once per gesture: the list crosses weeks without events. Days that
-     * load in above wait there; those after the last day come to the top.
+     * a page that way instead: the list crosses weeks without events. Days that load in above wait
+     * there; past the last day, the list holds the date it moved to on top as days load in.
+     * Returns whether it moved.
      */
-    const onPastEnd = (later: boolean) => {
+    const pastEnd = (later: boolean): boolean => {
       const item = virtualizer.getVirtualItemForOffset(element.scrollTop);
       const row = item === undefined ? undefined : latest.current.rows[item.index];
-      const atEnd = later
-        ? row?.kind === "end" &&
-          element.scrollTop >= element.scrollHeight - element.clientHeight - 1
-        : element.scrollTop <= 0;
-      if (!atEnd) return;
-      if (movedOn === undefined) {
-        // This move, not the scroll that reached the end, says where the calendar is.
-        clearTimeout(timer);
-        touched = false;
-        const { anchor, range } = latest.current;
-        const page = anchor.until(range.end);
-        if (!later) moveTo(anchor.subtract(page));
-        else if (row?.kind === "end") {
-          moveTo(Temporal.PlainDate.compare(row.from, anchor) > 0 ? row.from : range.end);
-          target.current = row.from;
-        }
+      const { anchor, range } = latest.current;
+      if (!later) {
+        if (element.scrollTop > 0) return false;
+      } else if (
+        row?.kind !== "end" ||
+        element.scrollTop < element.scrollHeight - element.clientHeight - 1
+      ) {
+        return false;
       }
-      clearTimeout(movedOn);
-      movedOn = setTimeout(() => {
-        movedOn = undefined;
-      }, SETTLE_MS);
+      // This move, not the scroll that reached the end, says where the calendar is.
+      clearTimeout(timer);
+      touched = false;
+      if (row?.kind === "end" && later) {
+        const date = Temporal.PlainDate.compare(row.from, anchor) > 0 ? row.from : range.end;
+        moveTo(date);
+        target.current = date;
+      } else {
+        moveTo(anchor.subtract(anchor.until(range.end)));
+      }
+      return true;
     };
 
     const propose = (settled: boolean) => {
@@ -200,24 +204,39 @@ export function useAgendaScroll({
     const settle = () => {
       timer = undefined;
       propose(true);
-      touched = false;
+      // A finger or the scrollbar held still is the same scroll, which goes on when it moves.
+      if (!touching && !pressing) touched = false;
     };
     const onScrollEvent = () => {
       propose(false);
-      if (timer !== undefined) clearTimeout(timer);
+      clearTimeout(timer);
       timer = setTimeout(settle, SETTLE_MS);
     };
     const onScrollEnd = () => {
-      if (timer !== undefined) clearTimeout(timer);
+      clearTimeout(timer);
       settle();
     };
     const onInput = (event: Event) => {
       target.current = null;
       heading.current = null;
       touched = true;
-      if (event instanceof WheelEvent && event.deltaY !== 0) onPastEnd(event.deltaY > 0);
+      if (event instanceof WheelEvent && event.deltaY !== 0) {
+        // Once per wheel gesture, which ends when the wheel has been still a moment.
+        if (wheeledOn === undefined && !pastEnd(event.deltaY > 0)) return;
+        clearTimeout(wheeledOn);
+        wheeledOn = setTimeout(() => {
+          wheeledOn = undefined;
+        }, SETTLE_MS);
+      }
       // Desktop Safari has no `TouchEvent` to test against.
-      if (event.type === "touchstart") fingerY = (event as TouchEvent).touches[0]?.clientY ?? null;
+      if (event.type === "touchstart") {
+        touching = true;
+        swipedOn = false;
+        fingerY = (event as TouchEvent).touches[0]?.clientY ?? null;
+      }
+      if (event.type === "pointerdown" && (event as PointerEvent).pointerType === "mouse") {
+        pressing = true;
+      }
       if (event instanceof KeyboardEvent && NAVIGATION_KEYS.has(event.key)) {
         // The calendar handles the key as it bubbles on, then the flag clears. Browsers run
         // microtasks between listeners, so only a task waits for the calendar's.
@@ -229,24 +248,39 @@ export function useAgendaScroll({
     };
 
     const onTouchMove = (event: TouchEvent) => {
+      touched = true;
       const y = event.touches[0]?.clientY;
       if (y === undefined || fingerY === null || Math.abs(fingerY - y) < SWIPE_PX) return;
-      // A finger moving up scrolls toward later days.
-      onPastEnd(y < fingerY);
+      // A finger moving up scrolls toward later days; a swipe moves past an end once.
+      if (!swipedOn) swipedOn = pastEnd(y < fingerY);
       fingerY = y;
     };
+    const onTouchEnd = () => {
+      touching = false;
+    };
+    const onPointerUp = () => {
+      pressing = false;
+    };
+    const view = element.ownerDocument.defaultView;
 
     element.addEventListener("scroll", onScrollEvent, { passive: true });
     element.addEventListener("scrollend", onScrollEnd);
     element.addEventListener("touchmove", onTouchMove, { passive: true });
+    for (const type of ["touchend", "touchcancel"]) element.addEventListener(type, onTouchEnd);
+    // The button can come up anywhere, as after dragging the scrollbar off the list.
+    for (const type of ["pointerup", "pointercancel"]) view?.addEventListener(type, onPointerUp);
     for (const type of INPUTS) element.addEventListener(type, onInput, { passive: true });
     return () => {
       element.removeEventListener("scroll", onScrollEvent);
       element.removeEventListener("scrollend", onScrollEnd);
       element.removeEventListener("touchmove", onTouchMove);
+      for (const type of ["touchend", "touchcancel"]) element.removeEventListener(type, onTouchEnd);
+      for (const type of ["pointerup", "pointercancel"]) {
+        view?.removeEventListener(type, onPointerUp);
+      }
       for (const type of INPUTS) element.removeEventListener(type, onInput);
       clearTimeout(timer);
-      clearTimeout(movedOn);
+      clearTimeout(wheeledOn);
     };
   }, [scrollRef, virtualizer]);
 }

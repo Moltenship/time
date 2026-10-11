@@ -121,6 +121,22 @@ const title = () => text(document.querySelector('[data-calendar-part="title"]'))
 const rowTop = (date: string) =>
   Number.parseFloat(document.querySelector<HTMLElement>(`li[data-date="${date}"]`)!.style.top);
 
+/** Makes the list as tall as its rows, so the end of it, which fills the view, is as far as it scrolls. */
+function fitScrollHeight() {
+  vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    const rows = [...this.querySelectorAll<HTMLElement>(":scope > ol, :scope > div")];
+    return Math.max(
+      0,
+      ...rows.map(
+        (row) =>
+          Number.parseFloat(row.style.top || "0") + Number.parseFloat(row.style.height || "0"),
+      ),
+    );
+  });
+}
+
 /** Scrolls the list as the user would: input, a scroll to `top`, then the scroll at rest. */
 async function scrollTo(top: number) {
   await act(async () => {
@@ -303,17 +319,7 @@ test("scrolling past either end of the loaded days crosses weeks without events"
       weeks={1}
     />,
   );
-  // As tall as the list, so the end of it, which fills the view, is as far as it scrolls.
-  vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (
-    this: HTMLElement,
-  ) {
-    const rows = [...this.querySelectorAll<HTMLElement>(":scope > ol, :scope > div")];
-    return Math.max(
-      0,
-      ...rows.map((row) => row.offsetTop + Number.parseFloat(row.style.height || "0")),
-      Number.parseFloat(this.querySelector<HTMLElement>(":scope > ol")?.style.height ?? "0"),
-    );
-  });
+  fitScrollHeight();
   const scrollToEnd = () =>
     act(async () => {
       scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
@@ -365,4 +371,74 @@ test("scrolling past either end of the loaded days crosses weeks without events"
     "Oct 15 – 21, 2026",
   ]);
   expect(renderedDays()).toEqual(["2026-10-08"]);
+});
+
+/** A touch at `clientY` on the list; jsdom's events carry it as a plain property. */
+function touch(type: "touchend" | "touchmove" | "touchstart", clientY = 0) {
+  return act(async () => {
+    scroller().dispatchEvent(
+      Object.assign(new Event(type, { bubbles: true }), { touches: [{ clientY }] }),
+    );
+  });
+}
+
+const settleTime = () => act(() => new Promise((resolve) => setTimeout(resolve, 200)));
+
+test("past the end while events load, the list holds the date it moved to", async () => {
+  fitScrollHeight();
+  const screen = await render(<Agenda events={[]} weeks={1} />);
+  cleanup = screen.unmount;
+  await act(async () =>
+    scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: 100 })),
+  );
+  expect(title()).toBe("Oct 15 – 21, 2026");
+
+  const days = ["2026-10-08", "2026-10-15", "2026-10-22"];
+  await screen.rerender(
+    <Agenda
+      events={days.map((date) => timed(date, `${date}T09:00Z`, `${date}T10:00Z`))}
+      weeks={1}
+    />,
+  );
+
+  expect(title()).toBe("Oct 15 – 21, 2026");
+  expect(scroller().scrollTop).toBe(rowTop("2026-10-15"));
+});
+
+test("a finger held still mid-scroll goes on moving the anchor when it moves again", async () => {
+  await show(<Agenda />);
+  await touch("touchstart", 400);
+  await act(async () => {
+    scroller().scrollTop = rowTop("2026-10-09") + 10;
+    scroller().dispatchEvent(new Event("scroll"));
+  });
+  await settleTime();
+  expect(title()).toBe("Oct 9, 2026 – Oct 7, 2027");
+
+  // Still the same touch: the finger moves on without lifting.
+  await touch("touchmove", 200);
+  await act(async () => {
+    scroller().scrollTop = rowTop("2026-10-11") + 10;
+    scroller().dispatchEvent(new Event("scroll"));
+    scroller().dispatchEvent(new Event("scrollend"));
+  });
+  expect(title()).toBe("Oct 11, 2026 – Oct 9, 2027");
+  await touch("touchend");
+});
+
+test("a swipe past the end of the loaded days moves a page once, until the finger lifts", async () => {
+  fitScrollHeight();
+  await show(<Agenda events={[]} weeks={1} />);
+
+  await touch("touchstart", 400);
+  await touch("touchmove", 360);
+  expect(title()).toBe("Oct 15 – 21, 2026");
+  await settleTime();
+  await touch("touchmove", 320);
+  expect(title()).toBe("Oct 15 – 21, 2026");
+  await touch("touchend");
+
+  await touch("touchstart", 400);
+  await touch("touchmove", 360);
+  expect(title()).toBe("Oct 22 – 28, 2026");
 });
