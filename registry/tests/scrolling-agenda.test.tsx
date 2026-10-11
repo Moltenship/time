@@ -617,3 +617,51 @@ test("a day arriving in the empty weeks shown takes their empty state's place on
   expect(scroller().scrollTop).toBe(rowTop("2026-10-10"));
   expect(title()).toBe("Oct 8 – 14, 2026");
 });
+
+test("a glide to a picked date that rows stop on the way starts again", async () => {
+  const daily = (first: string) =>
+    [first, "2026-10-09", "2026-10-10", "2026-10-11", "2026-10-12", "2026-10-13", "2026-10-14"].map(
+      (date) => timed(date === first ? "first" : date, `${date}T09:00Z`, `${date}T10:00Z`),
+    );
+  const glides: number[] = [];
+  // A smooth scroll is still on its way until the test finishes it.
+  HTMLElement.prototype.scrollTo = function (
+    this: HTMLElement,
+    options?: ScrollToOptions | number,
+  ) {
+    const { behavior, top = 0 } = options as ScrollToOptions;
+    if (behavior === "smooth") glides.push(top);
+    else this.scrollTop = top;
+  } as HTMLElement["scrollTo"];
+  const screen = await render(<Agenda events={daily("2026-10-08")} weeks={1} />);
+  cleanup = screen.unmount;
+
+  await act(async () => actions!.setAnchorDate(Temporal.PlainDate.from("2026-10-12")));
+  expect(glides).toEqual([rowTop("2026-10-12")]);
+  // The day on top moves before the glide arrives, and the list keeps a day in its place.
+  await screen.rerender(<Agenda events={daily("2026-10-07")} weeks={1} />);
+
+  expect(glides).toEqual([rowTop("2026-10-12"), rowTop("2026-10-12")]);
+});
+
+test("coming back to a held anchor's day tells the owner, so a late scroll can't win", async () => {
+  const onAnchorDateChange = vi.fn<(date: Temporal.PlainDate) => void>();
+  const held = (date: string) => (
+    <Agenda heldAnchor={Temporal.PlainDate.from(date)} onAnchorDateChange={onAnchorDateChange} />
+  );
+  const screen = await render(held("2026-10-08"));
+  cleanup = screen.unmount;
+  const anchorTop = rowTop("2026-10-08");
+
+  await scrollTo(rowTop("2026-10-11") + 10);
+  await scrollTo(anchorTop);
+
+  expect(onAnchorDateChange.mock.calls.map(([date]) => date.toString())).toEqual([
+    "2026-10-11",
+    "2026-10-08",
+  ]);
+  // An owner that commits the earlier scroll anyway moves the list there, as navigation.
+  await screen.rerender(held("2026-10-11"));
+  expect(title()).toBe("Oct 11, 2026 – Oct 9, 2027");
+  expect(scroller().scrollTop).toBe(rowTop("2026-10-11"));
+});

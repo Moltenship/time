@@ -61,8 +61,14 @@ export function useAgendaScroll({
   const keying = useRef(false);
   /** The range the list last laid out. */
   const shown = useRef(range);
-  /** Where a smooth scroll to the target is heading; the user's own input ends it. */
-  const heading = useRef<number | null>(null);
+  /**
+   * Where a smooth scroll to the target is heading, over which rows; the user's own input ends it,
+   * and rows that change on the way can stop it.
+   */
+  const heading = useRef<{
+    readonly offset: number;
+    readonly rows: readonly AgendaRow<unknown>[];
+  } | null>(null);
   // Read by event handlers, so they see the latest render without subscribing again.
   const latest = useRef({ anchor, onScroll, range, rows });
   useInsertionEffect(() => {
@@ -86,14 +92,22 @@ export function useAgendaScroll({
         heading.current = null;
         return;
       }
-      // Already gliding there.
-      if (heading.current !== null && Math.abs(heading.current - offset) < 1) return;
+      // Already gliding there. Rows that changed on the way may have stopped the glide, as the
+      // list keeps what is on top in place, so it starts again from where the list is.
+      const glide = heading.current;
+      if (
+        glide !== null &&
+        glide.rows === latest.current.rows &&
+        Math.abs(glide.offset - offset) < 1
+      ) {
+        return;
+      }
       const smooth =
         (navigation || heading.current !== null) &&
         distance <= 2 * element.clientHeight &&
         element.ownerDocument.defaultView?.matchMedia?.("(prefers-reduced-motion: reduce)")
           .matches !== true;
-      heading.current = smooth ? offset : null;
+      heading.current = smooth ? { offset, rows: latest.current.rows } : null;
       virtualizer.scrollToOffset(offset, { behavior: smooth ? "smooth" : "auto" });
     },
     [scrollRef, virtualizer],
@@ -197,8 +211,15 @@ export function useAgendaScroll({
       const item = virtualizer.getVirtualItemForOffset(element.scrollTop);
       const { anchor, range, rows } = latest.current;
       const row = item === undefined ? undefined : rows[item.index];
-      // The anchor's own row on top, the first from its date, is where the list should be.
-      if (item === undefined || row === undefined || item.index === rowFrom(rows, anchor)) return;
+      if (item === undefined || row === undefined) return;
+      // The anchor's own row on top, the first from its date, is where the list should be. Back
+      // there at rest, the list says so, so an owner still holding an earlier scroll drops it.
+      if (item.index === rowFrom(rows, anchor)) {
+        if (settled && proposed.current !== null && !proposed.current.equals(anchor)) {
+          moveTo(anchor);
+        }
+        return;
+      }
       const date = rowDate(row);
       const away = Math.abs(anchor.until(date).days);
       const half = anchor.until(range.end).days / 2;
