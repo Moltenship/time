@@ -40,4 +40,10 @@ export const OverlapPreviewIsland = dynamic(() => withTemporal(() => import("./o
   ssr: false,
 });
 
+/** This week's office hours, shaded by a recipe a toggle picks. */
+export const ShadingPreviewIsland = dynamic(() => withTemporal(() => import("./shading")), {
+  loading: PreviewSkeleton,
+  ssr: false,
+});
+
 export default PreviewIsland;

@@ -1,9 +1,15 @@
 import type { LiveCalendarProps, PreviewView } from "./calendar";
-import PreviewIsland, { OverlapPreviewIsland, ResourcePreviewIsland } from "./island";
+import PreviewIsland, {
+  OverlapPreviewIsland,
+  ResourcePreviewIsland,
+  ShadingPreviewIsland,
+} from "./island";
 
 export interface CalendarPreviewProps extends Partial<Omit<LiveCalendarProps, "view">> {
   /** Tailwind classes for the frame's size; replaces the default for the view. */
   readonly size?: string;
+  /** In a view of rooms and people, a status badge on each, with some busy now. */
+  readonly status?: boolean;
   /**
    * A view of the main preview, or a view of rooms and people: `"resources"` for resource columns,
    * `"timeline"` and `"timeline-day"` for the resource timeline over a week or a day.
@@ -33,17 +39,18 @@ const frameSizes: Record<PreviewView | ResourceView, string> = {
  * The registry views, live: navigate, drag, resize and create. The frame is sized on the server,
  * so the calendar loading into it never shifts the page.
  */
-export function CalendarPreview({ size, view = "week", ...props }: CalendarPreviewProps) {
+export function CalendarPreview({ size, status, view = "week", ...props }: CalendarPreviewProps) {
   return (
     <figure className="not-prose my-6">
       <div
         className={`overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm ${size ?? frameSizes[view]}`}
       >
         {view === "resources" ? (
-          <ResourcePreviewIsland availability={props.availability} />
+          <ResourcePreviewIsland availability={props.availability} status={status} />
         ) : view === "timeline" || view === "timeline-day" ? (
           <ResourcePreviewIsland
             availability={props.availability}
+            status={status}
             view={view === "timeline" ? "timeline-week" : "timeline-day"}
           />
         ) : (
@@ -76,6 +83,20 @@ export function OverlapLayoutPreview() {
       </div>
       <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
         Live. Switch the layout, or drag events to see the others make room.
+      </figcaption>
+    </figure>
+  );
+}
+
+/** This week's working hours, shaded by the recipe a toggle picks. */
+export function ShadingRecipesPreview() {
+  return (
+    <figure className="not-prose my-6">
+      <div className="h-[32rem] overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm">
+        <ShadingPreviewIsland />
+      </div>
+      <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
+        Live, in your time zone. Switch the recipe, and the theme, to see each in light and dark.
       </figcaption>
     </figure>
   );

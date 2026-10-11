@@ -7,7 +7,11 @@ import {
   ResourceTimelineAnatomy,
   TimeGridAnatomy,
 } from "@/components/anatomy";
-import { CalendarPreview, OverlapLayoutPreview } from "@/components/calendar-preview";
+import {
+  CalendarPreview,
+  OverlapLayoutPreview,
+  ShadingRecipesPreview,
+} from "@/components/calendar-preview";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
@@ -23,6 +27,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     CalendarPreview,
     MonthAnatomy,
     OverlapLayoutPreview,
+    ShadingRecipesPreview,
     ResourceColumnsAnatomy,
     ResourceTimelineAnatomy,
     TimeGridAnatomy,

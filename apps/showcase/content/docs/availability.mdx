@@ -1,13 +1,14 @@
 ---
 title: Availability
-description: Working hours, closed days and holidays, people and rooms in their own time zones, and a policy that keeps bookings inside them.
+description: Working hours, closed days and holidays, people and rooms in their own time zones, shading you can restyle, a busy or free status, and a policy that keeps bookings inside working hours.
 ---
 
 <CalendarPreview view="week" availability announcements />
 
-Availability is when the calendar, or a person or a room, can be booked. Views shade the time
-outside it, the month mutes closed days, and a policy decides what happens to a change that lands
-outside: it can be blocked, or saved with a warning. Drag an event into the evening above and the
+Business hours are open, and everything else is shaded: the evenings, the weekend and Friday's
+holiday. Availability is when the calendar, or a person or a room, can be booked. Views shade the
+time outside it, the month mutes closed days, and a policy decides what happens to a change that
+lands outside it: the change can be blocked, or saved with a warning. Drag an event into the evening above and the
 screen reader strip says "outside working hours". Try it with people in other time zones in the
 [live demo](https://moltenship-time-demo.vercel.app), where the Working hours setting switches
 between hidden, shown, warn and block.
@@ -94,6 +95,181 @@ const resources = [
 - **The same instant.** Moving an event to a resource in another time zone keeps its instant: a
   9:00 call in New York stays 9:00 in New York, which is 14:00 for London.
 
+## Customize the shading
+
+Each stretch of closed time is a `div` hidden from screen readers. It carries why it is closed and
+where it meets open time, so CSS can restyle it:
+
+| Attribute or variable                   | Value                                                                                   |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| `data-slot`                             | `time-grid-unavailable`, `resource-timeline-unavailable` or `month-closed`              |
+| `data-reason`                           | `outside-hours`, `closed-day` (no weekly hours that day) or `exception` (a closed date) |
+| `data-label`                            | The exception's `label`, such as "Company holiday"                                      |
+| `data-opens-before`, `data-opens-after` | Present where open time meets the band's start or end in the view                       |
+| `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                  |
+
+<ShadingRecipesPreview />
+
+```css title="globals.css"
+/* Gradient: closed time fades out over the last hour and a half before working hours. */
+[data-slot="time-grid-unavailable"] {
+  --calendar-unavailable: color-mix(in oklch, var(--muted-foreground) 16%, transparent);
+  --fade: calc(var(--calendar-hour-height) * 1.5);
+}
+[data-slot="time-grid-unavailable"][data-opens-after] {
+  mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent);
+}
+[data-slot="time-grid-unavailable"][data-opens-before] {
+  mask-image: linear-gradient(to top, black calc(100% - var(--fade)), transparent);
+}
+[data-slot="time-grid-unavailable"][data-opens-before][data-opens-after] {
+  mask-image: linear-gradient(
+    transparent,
+    black var(--fade),
+    black calc(100% - var(--fade)),
+    transparent
+  );
+}
+
+/* Hatching, with holidays tinted. */
+[data-slot="time-grid-unavailable"] {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 6px,
+    color-mix(in oklch, var(--muted-foreground) 25%, transparent) 6px 7px
+  );
+}
+[data-slot="time-grid-unavailable"][data-reason="exception"] {
+  background-color: color-mix(in oklch, var(--brand) 8%, transparent);
+}
+
+/* A brand tint, through the token every view reads. */
+:root {
+  --calendar-unavailable: color-mix(in oklch, var(--brand) 12%, transparent);
+}
+```
+
+The default tint is `--calendar-unavailable` for closed time and `--calendar-closed` for closed
+days in the month. In the dark theme closed time is lighter than open time, since a near-black
+surface has little room to get darker. Recipes built on `--muted-foreground` or your own tokens
+follow the theme the same way.
+
+To draw something else, pass `renderUnavailable` to a view. It works like Base UI's `render`:
+give it an element, or a function of the band's props and its state. The state holds the `band`
+(its `reason`, `label` and edges), the column's `date` and the `resource` whose hours it shows,
+so rooms can look different from people. Keep the props on your element: they place it and keep it
+hidden from screen readers.
+
+```tsx
+import type { UnavailableTimeRender } from "@/components/calendar/unavailable-time";
+
+const tintRooms: UnavailableTimeRender = (props, { resource }) =>
+  // Views hand over resources as the root got them; read your own fields from `data`.
+  (resource?.data as Room | Person | undefined)?.kind === "room" ? (
+    <div
+      {...props}
+      style={{
+        ...props.style,
+        "--calendar-unavailable": "color-mix(in oklch, var(--color-sky-500) 14%, transparent)",
+      }}
+    />
+  ) : (
+    <div {...props} />
+  );
+
+const views = [
+  createWeekView<Meeting>({ renderUnavailable: tintRooms }),
+  createResourceColumnsView<Meeting, Room | Person>({ renderUnavailable: tintRooms }),
+];
+```
+
+Every view takes `renderUnavailable`: week, day, month, the scrolling views, resource columns and
+the timeline.
+
+## Busy or available
+
+Working hours and events answer two different questions. **Unavailable** means outside working
+hours. **Busy** means an event occupies the time. A person can be busy outside their hours, at a
+late call, or free during them. The status API keeps the two apart:
+
+```ts
+import { availabilityAt, busyAt, resourceStatusAt } from "@moltenship/calendar";
+
+availabilityAt(availability, now, "maya");
+// { available: true, closesAt: Temporal.Instant }
+// { available: false, reason: "outside-hours" | "closed-day" | "exception", label?, opensAt }
+
+busyAt(events, now, { resourceId: "maya", timeZone: "Europe/Berlin" });
+// { busy: true, events: [...], freeAt: Temporal.Instant }
+// { busy: false, nextEventAt: Temporal.Instant | null }
+```
+
+- **Time zones.** Hours are read on the resource's own clock, as the shading is, and are safe
+  across daylight saving changes. All-day and floating events count on the wall clock you pass,
+  usually the display time zone, as the views show them.
+- **Overlaps.** `events` lists everything in progress. `freeAt` is when the last of a run of
+  overlapping or back-to-back events ends, so a 10:00 standup followed by an 11:00 review is busy
+  until the review ends.
+- **Horizons.** `opensAt` and `closesAt` look up to a year ahead, and `freeAt` and `nextEventAt`
+  a month ahead. They are `null` past that.
+
+In React, `useResourceStatus(resourceId, at?)` returns both, plus `changesAt`, the next instant
+either can change. Without `at` it follows the calendar's `clock` or `now`. It re-renders only
+when the status changes, waking at `changesAt` rather than on every tick. It is `null` while
+server rendering, unless the calendar fixes `now`.
+
+```tsx
+import { useResourceStatus } from "@moltenship/calendar";
+
+function Presence({ id }: { id: string }) {
+  const status = useResourceStatus(id);
+  if (status === null) return null;
+  return status.busy.busy ? "In a meeting" : status.availability.available ? "Around" : "Away";
+}
+```
+
+## Busy badge in resource views
+
+<CalendarPreview view="resources" availability status />
+
+Set `resourceStatus: true` on the resource columns or timeline view to show a badge on each
+resource:
+
+| State         | Shows                                                      |
+| ------------- | ---------------------------------------------------------- |
+| Busy          | "Busy until 3:00 PM", while events occupy it               |
+| Free          | "Free until 5:00 PM", until its next event or closing time |
+| Outside hours | "Outside hours until Mon 9:00 AM", until it opens          |
+| Closed today  | "Closed today", or "Closed today, Company holiday"         |
+
+The words carry the state; the dot before them is colored with `--calendar-busy` or
+`--calendar-free`. Times are on the display clock, with the weekday when it isn't today. Busy
+wins over the hours, so a late call shows as busy. The badge is shadcn's Base UI `Badge`. In
+your own `ResourceHeader`, add `ResourceHeaderStatus` where you want it:
+
+```tsx
+import {
+  ResourceHeaderStatus,
+  ResourceHeaderTitle,
+  ResourceHeaderToggle,
+} from "@/components/calendar/resource-columns-view/resource-header";
+
+function ResourceHeader() {
+  return (
+    <>
+      <ResourceHeaderToggle />
+      <span className="flex min-w-0 flex-col">
+        <ResourceHeaderTitle />
+        <ResourceHeaderStatus />
+      </span>
+    </>
+  );
+}
+```
+
+For a badge anywhere else, `useResourceStatusSummary(environment, resourceId)` from
+`resource-status.tsx` returns the words and state, and `ResourceStatusBadge` draws them.
+
 ## Keep changes inside
 
 `availabilityPolicy({ mode })` checks every move, resize and create, whether it comes from a drag,
@@ -127,6 +303,7 @@ The shading is hidden from screen readers, which hear the same information in wo
 | A blocked drop                     | "Standup can't go outside working hours, so it's back where it was."           |
 | A saved change with a warning      | "Moved Standup to Thursday, October 8, 4:45 – 5:15 PM, outside working hours." |
 | A resource header in another zone  | "Lee, local time 7:48 PM GMT+5:30"                                             |
+| A resource header with its status  | "Maya, Busy until 3:00 PM"                                                     |
 
 The messages live in `announcements.ts` in your copy of the registry source, ready to translate.
 
@@ -141,14 +318,14 @@ TimeGridColumn                   time-grid-column.tsx
 └── TimeGridEvent                time-grid-event.tsx
 ```
 
-- **Time grid and resource columns.** `TimeGridAvailability` draws a band behind the events for
-  each closed stretch of a column, in `--calendar-unavailable`.
-- **Timeline.** `TimelineAvailability` shades hour rows along each resource's closed time; day rows
-  mark closed days with `data-closed`.
-- **Month.** A closed day's cell gets `data-closed` and `--calendar-closed`, light enough that its
-  date and events stay readable.
-- **Resource headers.** `ResourceHeaderTime` shows a resource's local time; add it to your own
-  `ResourceHeader` composition.
+- **Time grid and resource columns.** `TimeGridAvailability` draws an `UnavailableTime` band behind
+  the events for each closed stretch of a column, in `--calendar-unavailable`.
+- **Timeline.** `TimelineAvailability` shades each resource's closed time along hour rows, and its
+  closed days along day rows, whose cells also get `data-closed`.
+- **Month.** A closed day gets a `month-closed` band in `--calendar-closed`, light enough that its
+  date and events stay readable, and its cell gets `data-closed`.
+- **Resource headers.** `ResourceHeaderTime` shows a resource's local time and
+  `ResourceHeaderStatus` its status; add them to your own `ResourceHeader` composition.
 
 ## Your own view
 
@@ -156,12 +333,16 @@ The shading is separate from the event projection, like annotations, so working 
 change event layout. These hooks give a view what to draw, for the calendar's hours or, with a
 resource ID, that resource's:
 
-| Hook                                    | Returns                                                          |
-| --------------------------------------- | ---------------------------------------------------------------- |
-| `useTimeGridAvailability(columns, id?)` | The closed bands of each time-grid column, as fractions of 24 h  |
-| `useTimelineAvailability(columns, id?)` | The closed stretches along a timeline, as fractions of its width |
-| `useClosedDates(range, id?)`            | The dates with no open time, keyed by ISO date, with a `label`   |
-| `useCalendarAvailability()`             | The resolved hours: `calendar`, `forResource(id)`, `timeZone`    |
+| Hook                                    | Returns                                                                     |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| `useTimeGridAvailability(columns, id?)` | The closed bands of each time-grid column, as fractions of 24 h             |
+| `useTimelineAvailability(columns, id?)` | The closed stretches along a timeline, as fractions of its width            |
+| `useClosedDates(range, id?)`            | The dates with no open time, keyed by ISO date, with a `reason` and `label` |
+| `useResourceStatus(id?, at?)`           | Working hours and events at an instant, and when either changes             |
+| `useCalendarAvailability()`             | The resolved hours: `calendar`, `forResource(id)`, `timeZone`               |
+
+Bands and stretches carry their `reason`, `label`, `opensBefore` and `opensAfter`, as the
+attributes above do.
 
 Each schedule answers `available(range)`, `unavailable(range)` and `isAvailable(range)` for any
 instant range, and resolves each date once, so views can ask on every render.

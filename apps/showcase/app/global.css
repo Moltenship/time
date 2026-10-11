@@ -76,3 +76,41 @@
 .prose a {
   text-decoration-color: var(--color-brand);
 }
+
+/*
+ * The shading recipes on the Availability page, keyed on the data each closed band carries. An
+ * app writes the same rules without the `[data-recipe]` scope.
+ */
+[data-recipe="gradient"] [data-slot="time-grid-unavailable"] {
+  --calendar-unavailable: color-mix(in oklch, var(--muted-foreground) 16%, transparent);
+  --fade: calc(var(--calendar-hour-height) * 1.5);
+}
+[data-recipe="gradient"] [data-slot="time-grid-unavailable"][data-opens-after] {
+  mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent);
+}
+[data-recipe="gradient"] [data-slot="time-grid-unavailable"][data-opens-before] {
+  mask-image: linear-gradient(to top, black calc(100% - var(--fade)), transparent);
+}
+[data-recipe="gradient"] [data-slot="time-grid-unavailable"][data-opens-before][data-opens-after] {
+  mask-image: linear-gradient(
+    transparent,
+    black var(--fade),
+    black calc(100% - var(--fade)),
+    transparent
+  );
+}
+
+[data-recipe="hatching"] [data-slot="time-grid-unavailable"] {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 6px,
+    color-mix(in oklch, var(--muted-foreground) 25%, transparent) 6px 7px
+  );
+}
+[data-recipe="hatching"] [data-slot="time-grid-unavailable"][data-reason="exception"] {
+  background-color: color-mix(in oklch, var(--brand) 8%, transparent);
+}
+
+[data-recipe="brand"] {
+  --calendar-unavailable: color-mix(in oklch, var(--brand) 12%, transparent);
+}
