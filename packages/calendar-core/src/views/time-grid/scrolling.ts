@@ -2,7 +2,7 @@ import { plainDateInterval, plainDateIntervalContains } from "@moltenship/calend
 
 import { timeGridSpatialNavigation } from "../../navigation/time-grid";
 import type { CalendarViewStrategy } from "../../views";
-import { projectTimeGrid, type TimeGridProjection } from "./projection";
+import { overlapLayoutOf, projectTimeGrid, type TimeGridProjection } from "./projection";
 import {
   navigateTimeGrid,
   timeGridDayCount,
@@ -17,7 +17,8 @@ import {
  * each swipe keeps the span's alignment: a week stays a calendar week, and a 3-day view moves
  * three days. A page of days on each side is projected too (`getLoadRange`), so a swipe shows
  * their events at once; Previous and Next move a whole page. Keyboard navigation moves through
- * the visible days and pages past their ends, as in `timeGridStrategy`.
+ * the visible days and pages past their ends, and overlapping events follow the view's options, as
+ * in `timeGridStrategy`.
  */
 export function scrollingTimeGridStrategy<TOptions = undefined, TEvent = unknown>(
   span: TimeGridSpan,
@@ -40,7 +41,12 @@ export function scrollingTimeGridStrategy<TOptions = undefined, TEvent = unknown
     },
     getTitle: (range, environment) => timeGridTitle(range, environment.locale),
     navigate: (anchor, delta) => navigateTimeGrid(anchor, delta, span),
-    project: (input) => projectTimeGrid({ ...input, range: input.loadRange ?? input.range }),
+    project: (input) =>
+      projectTimeGrid({
+        ...input,
+        ...overlapLayoutOf(input.options),
+        range: input.loadRange ?? input.range,
+      }),
   };
   return Object.freeze(strategy);
 }

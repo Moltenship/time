@@ -1,3 +1,4 @@
+import type { OverlapLayoutOptions } from "../../layout/timed-overlap";
 import { resourceColumnsSpatialNavigation } from "../../navigation/resource-columns";
 import { splitEventsByDay } from "../../projection/day-fragments";
 import { queryVisibleEvents } from "../../projection/visible-events";
@@ -9,7 +10,7 @@ import {
 } from "../../resources/visible";
 import type { CalendarViewProjectionInput, CalendarViewStrategy } from "../../views";
 import { timeGridColumns, type TimeGridColumn } from "../time-grid/columns";
-import { timeGridOf, type TimeGridProjection } from "../time-grid/projection";
+import { overlapLayoutOf, timeGridOf, type TimeGridProjection } from "../time-grid/projection";
 import {
   navigateTimeGrid,
   timeGridRange,
@@ -36,20 +37,23 @@ export type ResourceColumnsProjectionInput<TEvent> = Pick<
   CalendarViewProjectionInput<unknown, TEvent>,
   "environment" | "expandedResourceIds" | "range" | "resources" | "snapshot" | "today"
 > &
+  OverlapLayoutOptions &
   ResourceVisibilityOptions;
 
 /**
- * A time grid per visible resource, laid out like `projectTimeGrid`: fragments, overlap lanes,
- * and the all-day row, over one or more days. An event with several resources shows in each of
- * their columns. The events are queried and split by day once, and the day columns, with their
- * DST bands, are shared.
+ * A time grid per visible resource, laid out like `projectTimeGrid`: fragments, overlapping
+ * events as `overlapLayout` chooses, and the all-day row, over one or more days. An event with
+ * several resources shows in each of their columns. The events are queried and split by day once,
+ * and the day columns, with their DST bands, are shared.
  */
 export function projectResourceColumns<TEvent>({
   environment,
   expandedResourceIds,
+  overlapLayout,
   range,
   resources,
   snapshot,
+  stackIndent,
   today,
   unassigned,
 }: ResourceColumnsProjectionInput<TEvent>): ResourceColumnsProjection<TEvent> {
@@ -62,13 +66,14 @@ export function projectResourceColumns<TEvent>({
   );
   const columns = timeGridColumns(range, timeZone);
   const byResource = groupByResource(fragments, visible);
+  const layout = { overlapLayout, stackIndent };
 
   return Object.freeze({
     columns,
     resources: Object.freeze(
       visible.map((resource, index) =>
         Object.freeze({
-          ...timeGridOf(byResource[index]!, columns, range, today),
+          ...timeGridOf(byResource[index]!, columns, range, today, layout),
           resource,
         }),
       ),
@@ -79,7 +84,8 @@ export function projectResourceColumns<TEvent>({
 /**
  * Range, navigation, keyboard navigation, title, and projection for resource columns over a day,
  * a week, or N days.
- * `options.unassigned` decides where events without resources go.
+ * `options.unassigned` decides where events without resources go, and `options.overlapLayout`
+ * and `options.stackIndent` how overlapping events share a column.
  */
 export function resourceColumnsStrategy<
   TOptions extends ResourceVisibilityOptions = ResourceVisibilityOptions,
@@ -90,7 +96,12 @@ export function resourceColumnsStrategy<
     getSpatialNavigation: resourceColumnsSpatialNavigation,
     getTitle: (range, environment) => timeGridTitle(range, environment.locale),
     navigate: (anchor, delta) => navigateTimeGrid(anchor, delta, span),
-    project: (input) => projectResourceColumns({ ...input, unassigned: input.options.unassigned }),
+    project: (input) =>
+      projectResourceColumns({
+        ...input,
+        ...overlapLayoutOf(input.options),
+        unassigned: input.options.unassigned,
+      }),
   };
   return Object.freeze(strategy);
 }

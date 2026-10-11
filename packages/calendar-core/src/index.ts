@@ -136,7 +136,11 @@ export type {
   TimeGridProjection,
   TimeGridProjectionInput,
 } from "./views/time-grid/projection";
-export type { TimedOverlapOptions } from "./layout/timed-overlap";
+export type {
+  OverlapLayout,
+  OverlapLayoutOptions,
+  TimedOverlapOptions,
+} from "./layout/timed-overlap";
 export {
   projectResourceColumns,
   resourceColumnsStrategy,

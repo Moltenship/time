@@ -3,6 +3,7 @@ import type { PlainDateInterval } from "@moltenship/calendar-temporal";
 import type { CalendarEventInterval } from "../../events";
 import type { EventId, ResourceId } from "../../ids";
 import { layoutDayGridRow, type DayGridRow } from "../../layout/day-grid";
+import type { OverlapLayoutOptions } from "../../layout/timed-overlap";
 import { splitEventsByDay, type EventDayFragment } from "../../projection/day-fragments";
 import { queryVisibleEvents } from "../../projection/visible-events";
 import { timeGridSpatialNavigation } from "../../navigation/time-grid";
@@ -31,7 +32,18 @@ export interface TimeGridProjection<TEvent> {
 export type TimeGridProjectionInput<TEvent> = Pick<
   CalendarViewProjectionInput<unknown, TEvent>,
   "environment" | "range" | "snapshot" | "today"
->;
+> &
+  OverlapLayoutOptions;
+
+/**
+ * The overlap layout a view's options choose. A time-grid strategy takes options of any type, so
+ * it reads them only from an object.
+ */
+export function overlapLayoutOf(options: unknown): OverlapLayoutOptions {
+  if (typeof options !== "object" || options === null) return {};
+  const { overlapLayout, stackIndent } = options as OverlapLayoutOptions;
+  return { overlapLayout, stackIndent };
+}
 
 /**
  * Like Google Calendar, an event of 24 hours or more sits in a time grid's all-day row, not in
@@ -50,17 +62,18 @@ export function belongsInTimeGridAllDayRow(interval: CalendarEventInterval): boo
 
 /**
  * Lays day fragments out as a time grid: the all-day row across `range` and positioned blocks in
- * each of its `columns`.
+ * each of its `columns`, overlapping as `layout` chooses.
  */
 export function timeGridOf<TEvent>(
   fragments: readonly EventDayFragment<TEvent, EventId, ResourceId>[],
   columns: readonly TimeGridColumn[],
   range: PlainDateInterval,
   today: Temporal.PlainDate | null,
+  layout: OverlapLayoutOptions,
 ): TimeGridProjection<TEvent> {
   const allDay = fragments.filter((fragment) => belongsInTimeGridAllDayRow(fragment.event));
   const timed = fragments.filter((fragment) => !belongsInTimeGridAllDayRow(fragment.event));
-  const layouts = layoutTimeGrid(columns, timed, { minHeight: MINIMUM_EVENT_HEIGHT });
+  const layouts = layoutTimeGrid(columns, timed, { ...layout, minHeight: MINIMUM_EVENT_HEIGHT });
 
   return Object.freeze({
     allDay: layoutDayGridRow(range, allDay),
@@ -76,11 +89,16 @@ export function timeGridOf<TEvent>(
   });
 }
 
-/** Splits the visible events into the all-day row and per-day columns of positioned blocks. */
+/**
+ * Splits the visible events into the all-day row and per-day columns of positioned blocks, which
+ * overlap as `overlapLayout` chooses.
+ */
 export function projectTimeGrid<TEvent>({
   environment,
+  overlapLayout,
   range,
   snapshot,
+  stackIndent,
   today,
 }: TimeGridProjectionInput<TEvent>): TimeGridProjection<TEvent> {
   const { timeZone } = environment;
@@ -89,10 +107,16 @@ export function projectTimeGrid<TEvent>({
     range,
     timeZone,
   );
-  return timeGridOf(fragments, timeGridColumns(range, timeZone), range, today);
+  return timeGridOf(fragments, timeGridColumns(range, timeZone), range, today, {
+    overlapLayout,
+    stackIndent,
+  });
 }
 
-/** Range, navigation, keyboard navigation, title, and projection for a day, week, or N-day grid. */
+/**
+ * Range, navigation, keyboard navigation, title, and projection for a day, week, or N-day grid.
+ * Overlapping events follow the `overlapLayout` and `stackIndent` in the view's options.
+ */
 export function timeGridStrategy<TOptions = undefined, TEvent = unknown>(
   span: TimeGridSpan,
 ): CalendarViewStrategy<TimeGridProjection<TEvent>, TOptions, TEvent> {
@@ -101,7 +125,7 @@ export function timeGridStrategy<TOptions = undefined, TEvent = unknown>(
     getSpatialNavigation: timeGridSpatialNavigation,
     getTitle: (range, environment) => timeGridTitle(range, environment.locale),
     navigate: (anchor, delta) => navigateTimeGrid(anchor, delta, span),
-    project: projectTimeGrid,
+    project: (input) => projectTimeGrid({ ...input, ...overlapLayoutOf(input.options) }),
   };
   return Object.freeze(strategy);
 }

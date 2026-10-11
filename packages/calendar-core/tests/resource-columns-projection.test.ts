@@ -7,6 +7,7 @@ import {
   resourceColumnsStrategy,
   timeGridTitle,
   type CalendarResource,
+  type OverlapLayout,
   type ResourceColumnsProjection,
 } from "../src/index";
 import {
@@ -222,5 +223,31 @@ describe("resource-columns strategy", () => {
       "unassigned",
     ]);
     expect(projection.columns).toHaveLength(3);
+  });
+
+  test("lays each resource's overlapping events out by the view's overlap layout", () => {
+    const range = dates("2026-10-08", "2026-10-09");
+    const layOut = (overlapLayout: OverlapLayout) =>
+      resourceColumnsStrategy<
+        { readonly overlapLayout: OverlapLayout; readonly unassigned?: "bucket" | "hide" },
+        FixtureEvent
+      >({ count: 1, kind: "days" })
+        .project({
+          ...viewInput(snapshot, range, env),
+          expandedResourceIds: ["floor-1"],
+          options: { overlapLayout },
+          resources,
+        })
+        .resources.slice(1, 3)
+        .map(({ days }) => days[0]!.events.map(box));
+
+    expect(layOut("equal")).toEqual([
+      ["standup 9:00-9:30 0.00/0.50", "pairing 9:15-10:00 0.50/0.50"],
+      ["pairing 9:15-10:00 0.00/1.00"],
+    ]);
+    expect(layOut("stack")).toEqual([
+      ["standup 9:00-9:30 0.00/1.00", "pairing 9:15-10:00 0.15/0.85"],
+      ["pairing 9:15-10:00 0.00/1.00"],
+    ]);
   });
 });
