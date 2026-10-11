@@ -10,6 +10,8 @@ export {
   useTimelineAvailability,
 } from "./availability";
 export { createCalendar } from "./calendar";
+export { useResourceStatus } from "./status";
+export type { CalendarResourceStatus } from "./status";
 export { createCalendarStore } from "./store";
 export { useCalendarInteraction, useCalendarKeyboard } from "./keyboard";
 export type { CalendarKeyboardHandlers, CalendarKeyboardOptions } from "./keyboard";

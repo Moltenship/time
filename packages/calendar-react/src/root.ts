@@ -64,6 +64,7 @@ import { createKeyboardSessionStore } from "./keyboard-store";
 import { CalendarResourcesContext } from "./resources";
 import { useCalendarStateBinding } from "./state-binding";
 import type { CalendarRootStoreBinding } from "./store";
+import { CalendarEventsContext } from "./status";
 import { useNowFrom } from "./use-now";
 import { useStableValue } from "./use-stable-value";
 import { resolveViewOptions, type AnyCalendarView, type CalendarActiveView } from "./views";
@@ -634,7 +635,11 @@ export function createCalendarRoot<
                     createElement(
                       CalendarAvailabilityContext,
                       { value: availabilitySnapshot },
-                      createElement(CalendarInteractionContext, { value: interaction }, children),
+                      createElement(
+                        CalendarEventsContext,
+                        { value: visibleSnapshot as EventSnapshot<unknown, EventId, ResourceId> },
+                        createElement(CalendarInteractionContext, { value: interaction }, children),
+                      ),
                     ),
                   ),
                 ),

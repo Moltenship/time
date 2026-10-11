@@ -2,12 +2,12 @@ import {
   closedDates,
   projectTimeGridAvailability,
   projectTimelineAvailability,
+  type AvailabilityBand,
+  type AvailabilityExtent,
   type AvailabilitySnapshot,
   type ClosedDate,
   type ResourceId,
-  type TimeGridBand,
   type TimeGridColumn,
-  type TimelineExtent,
 } from "@moltenship/calendar-core";
 import type { PlainDateInterval } from "@moltenship/calendar-temporal";
 import { createContext, useContext, useMemo, type Context } from "react";
@@ -24,13 +24,14 @@ export function useCalendarAvailability(): AvailabilitySnapshot {
 }
 
 /**
- * The closed time of each time-grid column, as bands on its 24-hour axis: the calendar's, or with
- * `resourceId` that resource's, on its own time zone. See `projectTimeGridAvailability`.
+ * The closed time of each time-grid column, as bands on its 24-hour axis with their reasons: the
+ * calendar's, or with `resourceId` that resource's, on its own time zone. See
+ * `projectTimeGridAvailability`.
  */
 export function useTimeGridAvailability(
   columns: readonly TimeGridColumn[],
   resourceId?: ResourceId | null,
-): readonly (readonly TimeGridBand[])[] {
+): readonly (readonly AvailabilityBand[])[] {
   const schedule = useCalendarAvailability().forResource(resourceId ?? null);
   return useMemo(() => projectTimeGridAvailability(columns, schedule), [columns, schedule]);
 }
@@ -42,7 +43,7 @@ export function useTimeGridAvailability(
 export function useTimelineAvailability(
   columns: readonly TimeGridColumn[],
   resourceId?: ResourceId | null,
-): readonly TimelineExtent[] {
+): readonly AvailabilityExtent[] {
   const schedule = useCalendarAvailability().forResource(resourceId ?? null);
   return useMemo(() => projectTimelineAvailability(columns, schedule), [columns, schedule]);
 }

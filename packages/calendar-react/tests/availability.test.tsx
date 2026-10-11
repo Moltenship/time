@@ -16,10 +16,12 @@ import {
   defineCalendarView,
   useCalendarAvailability,
   useClosedDates,
+  useResourceStatus,
   useTimeGridAvailability,
 } from "@moltenship/calendar-react";
+import { act } from "react";
 
-import { gateWeekRules } from "./harness/builders";
+import { createTestCalendarClock, gateWeekRules } from "./harness/builders";
 import { renderWithHarness, type ReactRootHarness } from "./harness/render-harness";
 import "./setup";
 
@@ -111,10 +113,11 @@ test("views shade the calendar's closed time and each resource's on its own time
   const { container } = await render();
 
   expect(shading(container)).toEqual([
-    // Thursday: 09:00–17:00 in New York, and 09:00–17:00 London time, 04:00–12:00 here.
-    "0-9,17-24 | 0-4,12-24 | open",
-    // Friday is an offsite for everyone.
-    "0-24 | 0-24 | Offsite",
+    // Thursday: 09:00–17:00 in New York, and 09:00–17:00 London time, 04:00–12:00 here. London's
+    // closed time splits at its midnight, 19:00 here, where Friday's offsite takes over.
+    "0-9,17-24 | 0-4,12-19,19-24 | open",
+    // Friday is an offsite for everyone, then London's Saturday starts.
+    "0-24 | 0-19,19-24 | Offsite",
     "0-24 | 0-24 | closed",
   ]);
 });
@@ -171,5 +174,95 @@ test("fixing a rule's days list replaces the hours, holes included", async () =>
 
   await harness.render(root({ availability: rule([4]) }));
 
-  expect(shading(harness.container)[0]).toBe("0-9,17-24 | 0-4,12-24 | open");
+  expect(shading(harness.container)[0]).toBe("0-9,17-24 | 0-4,12-19,19-24 | open");
+});
+
+const meetings: readonly Meeting[] = [
+  ["standup", "2026-10-08T10:00", "2026-10-08T11:00"],
+  ["review", "2026-10-08T10:30", "2026-10-08T12:00"],
+].map(([id, start, end]) => ({
+  data: null,
+  end: Temporal.ZonedDateTime.from(`${end}[America/New_York]`).toInstant(),
+  id: id!,
+  kind: "timed",
+  resourceIds: ["london"],
+  start: Temporal.ZonedDateTime.from(`${start}[America/New_York]`).toInstant(),
+  title: id!,
+}));
+
+let statusRenders = 0;
+
+function StatusProbe({ at }: { readonly at?: Temporal.Instant }) {
+  statusRenders += 1;
+  const status = useResourceStatus("london", at);
+  if (status === null) return <p data-status>pending</p>;
+  const { availability, busy } = status;
+  return (
+    <p data-status>
+      {availability.available ? "open" : availability.reason}{" "}
+      {busy.busy ? busy.events.map(({ id }) => id).join("+") : "free"}
+    </p>
+  );
+}
+
+test("a resource's status follows the clock and re-renders only when it changes", async () => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+  try {
+    const clock = createTestCalendarClock(Temporal.Instant.from("2026-10-08T14:45:00Z"));
+    const harness = await renderWithHarness(
+      <Calendar.Root
+        availability={office()}
+        clock={clock}
+        defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+        events={meetings}
+        locale="en-US"
+        resources={resources}
+        timeZone="America/New_York"
+        weekRules={gateWeekRules}
+      >
+        <StatusProbe />
+      </Calendar.Root>,
+    );
+    harnesses.push(harness);
+    const text = () => harness.container.querySelector("[data-status]")?.textContent;
+    // 10:45 in New York is 15:45 in London, inside its hours.
+    expect(text()).toBe("open standup+review");
+    const renders = statusRenders;
+
+    // Minutes pass without a change: no render.
+    clock.set(Temporal.Instant.from("2026-10-08T14:50:00Z"));
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+    expect(statusRenders).toBe(renders);
+
+    // The standup ends at 11:00; the status changes then, without waiting for a minute's tick.
+    clock.set(Temporal.Instant.from("2026-10-08T15:00:00Z"));
+    await act(() => vi.advanceTimersByTimeAsync(10 * 60_000));
+    expect(text()).toBe("open review");
+
+    // London closes at 17:00, which is 12:00 in New York, as the review ends.
+    clock.set(Temporal.Instant.from("2026-10-08T16:00:00Z"));
+    await act(() => vi.advanceTimersByTimeAsync(60_000));
+    expect(text()).toBe("outside-hours free");
+  } finally {
+    vi.useRealTimers();
+  }
+});
+
+test("a resource's status at a given instant", async () => {
+  const harness = await renderWithHarness(
+    <Calendar.Root
+      availability={office()}
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      events={meetings}
+      locale="en-US"
+      resources={resources}
+      timeZone="America/New_York"
+      weekRules={gateWeekRules}
+    >
+      <StatusProbe at={Temporal.Instant.from("2026-10-09T15:00:00Z")} />
+    </Calendar.Root>,
+  );
+  harnesses.push(harness);
+  // The offsite closes Friday.
+  expect(harness.container.querySelector("[data-status]")?.textContent).toBe("exception free");
 });
