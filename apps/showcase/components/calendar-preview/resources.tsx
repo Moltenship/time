@@ -99,8 +99,8 @@ function ResourceHeader({ resource, title }: ResourceHeaderProps<PreviewResource
         <ResourceHeaderTitle />
         {status ? (
           <span className="flex min-w-0 items-center gap-1">
-            <ResourceHeaderStatus />
             <ResourceHeaderTime />
+            <ResourceHeaderStatus />
           </span>
         ) : (
           <ResourceHeaderTime />
