@@ -3,6 +3,7 @@ import {
   useClosedDates,
   useRovingFocus,
   type ClosedDate,
+  type ClosedTime,
   type DayGridOverflow,
   type DayGridSegment,
   type EventDayFragment,
@@ -19,6 +20,7 @@ import {
   previewCheckAttributes,
   useDraftCheck,
 } from "@registry/calendar/preview-check";
+import { UnavailableTime, type UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@registry/ui/popover";
@@ -55,6 +57,8 @@ interface MonthWeekRowProps<TEvent> {
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
   /** The week's segments limited to `maxLanes`. */
   readonly overflow: DayGridOverflow<TEvent, EventId, ResourceId>;
+  /** Replaces the shading of closed days; see `UnavailableTimeRender`. */
+  readonly renderUnavailable?: UnavailableTimeRender;
   readonly week: MonthWeek<TEvent, EventId, ResourceId>;
 }
 
@@ -222,10 +226,11 @@ function MonthDayCell({
   formats,
   offscreen,
   onOpenDay,
+  renderUnavailable,
 }: {
   readonly children: ReactNode;
-  /** Set when the day has no working hours. */
-  readonly closed: ClosedDate | undefined;
+  /** Set when the day has no working hours, with whether the days beside it in the week do. */
+  readonly closed: (ClosedDate & ClosedTime) | undefined;
   /** Events on the day, including those behind "+N more". */
   readonly count: number;
   readonly day: MonthDay;
@@ -233,6 +238,7 @@ function MonthDayCell({
   /** Not a focus target, in a week rendered beside the visible ones. */
   readonly offscreen: boolean;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
+  readonly renderUnavailable?: UnavailableTimeRender;
 }) {
   const roving = useRovingFocus({ date: day.date, kind: "day" });
   const inDraft = useCalendarInteraction(
@@ -266,6 +272,18 @@ function MonthDayCell({
       }}
       className="relative min-w-0 border-e border-calendar-grid last:border-e-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
     >
+      {closed !== undefined && (
+        <UnavailableTime
+          band={closed}
+          className="inset-0 bg-calendar-closed"
+          date={day.date}
+          end={1}
+          render={renderUnavailable}
+          resource={null}
+          slot="month-closed"
+          start={0}
+        />
+      )}
       {/* Events sit outside this element, so a drop target is never the cell a bar starts in. */}
       <div
         data-closed={closed === undefined ? undefined : ""}
@@ -273,9 +291,9 @@ function MonthDayCell({
         data-draft={inDraft ? "" : undefined}
         {...previewCheckAttributes(inDraft ? draftCheck : undefined)}
         className={cn(
-          "absolute inset-0 flex justify-center data-closed:bg-calendar-closed data-draft:bg-calendar-selection",
+          "absolute inset-0 flex justify-center data-draft:bg-calendar-selection",
           draftCheckClassName,
-          !day.inMonth && "bg-muted/50",
+          !day.inMonth && closed === undefined && "bg-muted/50",
         )}
       >
         <DateButton
@@ -304,10 +322,23 @@ export function MonthWeekRow<TEvent>({
   offscreen = false,
   onOpenDay,
   overflow,
+  renderUnavailable,
   week,
 }: MonthWeekRowProps<TEvent>) {
   const segments = expanded ? week.segments : overflow.segments;
   const closed = useClosedDates(week.range);
+  const isClosed = (column: number) => closed.has(week.days[column]?.date.toString() ?? "");
+  /** A closed day, opening on a side where the week has an open day beside it. */
+  const closedDay = (column: number) => {
+    const day = closed.get(week.days[column]!.date.toString());
+    return (
+      day && {
+        ...day,
+        opensAfter: column < week.days.length - 1 && !isClosed(column + 1),
+        opensBefore: column > 0 && !isClosed(column - 1),
+      }
+    );
+  };
 
   return (
     <div
@@ -317,12 +348,13 @@ export function MonthWeekRow<TEvent>({
       {week.days.map((day, column) => (
         <MonthDayCell
           key={day.date.toString()}
-          closed={closed.get(day.date.toString())}
+          closed={closedDay(column)}
           count={segmentsOn(week.segments, column).length}
           day={day}
           formats={formats}
           offscreen={offscreen}
           onOpenDay={onOpenDay}
+          renderUnavailable={renderUnavailable}
         >
           {segments
             .filter((segment) => segment.column === column)

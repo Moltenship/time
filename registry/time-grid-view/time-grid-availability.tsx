@@ -1,14 +1,18 @@
 import {
   useTimeGridAvailability,
+  type AvailabilityBand,
+  type CalendarResource,
   type ResourceId,
   type TimeGridBand,
   type TimeGridColumn,
 } from "@moltenship/calendar";
 import { useMemo } from "react";
 
+import { UnavailableTime, type UnavailableTimeRender } from "@registry/calendar/unavailable-time";
+
 import { percent } from "./time-grid-event";
 
-const noBands: readonly TimeGridBand[] = Object.freeze([]);
+const noBands: readonly AvailabilityBand[] = Object.freeze([]);
 
 /**
  * A column's closed time from the root's working hours: the calendar's, or with `resourceId` that
@@ -17,7 +21,7 @@ const noBands: readonly TimeGridBand[] = Object.freeze([]);
 export function useColumnAvailability(
   column: TimeGridColumn,
   resourceId?: ResourceId | null,
-): readonly TimeGridBand[] {
+): readonly AvailabilityBand[] {
   const columns = useMemo(() => [column], [column]);
   return useTimeGridAvailability(columns, resourceId)[0] ?? noBands;
 }
@@ -34,17 +38,33 @@ export function isUnavailableIn(bands: readonly TimeGridBand[], band: TimeGridBa
 }
 
 /**
- * Shading over a column's closed time, behind its events. Screen readers hear it in the focused
- * slot's name instead, so the shading is hidden from them.
+ * Shading over a column's closed time, behind its events; `render` replaces it. Screen readers
+ * hear it in the focused slot's name instead, so the shading is hidden from them.
  */
-export function TimeGridAvailability({ bands }: { readonly bands: readonly TimeGridBand[] }) {
-  return bands.map(({ height, top }) => (
-    <div
-      key={top}
-      aria-hidden
-      data-slot="time-grid-unavailable"
-      className="pointer-events-none absolute inset-x-0 bg-calendar-unavailable"
-      style={{ height: percent(height), top: percent(top) }}
+export function TimeGridAvailability({
+  bands,
+  date,
+  render,
+  resource,
+}: {
+  readonly bands: readonly AvailabilityBand[];
+  readonly date: Temporal.PlainDate;
+  readonly render?: UnavailableTimeRender;
+  /** The resource whose hours these are; `null` for the calendar's own. */
+  readonly resource: CalendarResource<unknown, ResourceId> | null;
+}) {
+  return bands.map((band) => (
+    <UnavailableTime
+      key={band.top}
+      band={band}
+      className="inset-x-0 bg-calendar-unavailable"
+      date={date}
+      end={band.top + band.height}
+      render={render}
+      resource={resource}
+      slot="time-grid-unavailable"
+      start={band.top}
+      style={{ height: percent(band.height), top: percent(band.top) }}
     />
   ));
 }

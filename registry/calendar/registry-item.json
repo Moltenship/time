@@ -3,8 +3,8 @@
   "name": "calendar",
   "type": "registry:component",
   "title": "Calendar shell",
-  "description": "Toolbar, view switcher, event chip, accessible event names, English announcements for screen readers, sidebar mini month, and the endless scroll axis shared by every calendar view.",
-  "dependencies": ["@moltenship/calendar", "cn", "lucide-react"],
+  "description": "Toolbar, view switcher, event chip, accessible event names, English announcements for screen readers, sidebar mini month, the endless scroll axis, and the replaceable shading of closed time shared by every calendar view.",
+  "dependencies": ["@base-ui/react", "@moltenship/calendar", "cn", "lucide-react"],
   "registryDependencies": ["button", "select", "tooltip", "@moltenship/calendar-theme"],
   "files": [
     {
@@ -46,6 +46,11 @@
       "path": "registry/calendar/scrolling-axis.tsx",
       "type": "registry:component",
       "target": "components/calendar/scrolling-axis.tsx"
+    },
+    {
+      "path": "registry/calendar/unavailable-time.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/unavailable-time.tsx"
     },
     {
       "path": "registry/calendar/view-keyboard.ts",

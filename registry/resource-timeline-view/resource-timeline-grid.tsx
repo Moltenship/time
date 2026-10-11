@@ -11,6 +11,7 @@ import {
 import { useCallback, useLayoutEffect, useMemo, useRef, type CSSProperties, type Ref } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import { LANE_GAP, LANE_HEIGHT, ROW_PADDING } from "./resource-timeline-event";
@@ -35,6 +36,7 @@ export interface ResourceTimelineGridProps<TEvent> {
   readonly range: PlainDateInterval;
   /** The grid element, for the pointer layer and the keyboard. */
   readonly ref?: Ref<HTMLDivElement>;
+  readonly renderUnavailable?: UnavailableTimeRender;
   /** Length of a keyboard step in an hour timeline, in minutes. */
   readonly snapMinutes: number;
 }
@@ -71,6 +73,7 @@ export function ResourceTimelineGrid<TEvent>({
   projection,
   range,
   ref,
+  renderUnavailable,
   snapMinutes,
 }: ResourceTimelineGridProps<TEvent>) {
   const { direction, locale, timeZone, weekRules } = environment;
@@ -173,6 +176,7 @@ export function ResourceTimelineGrid<TEvent>({
               labelEvent={labelEvent}
               labels={labels}
               range={range}
+              renderUnavailable={renderUnavailable}
               row={rows[virtualRow.index]!}
               slotWidth={slotWidth}
               slots={slots}

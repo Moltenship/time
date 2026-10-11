@@ -18,6 +18,7 @@ import {
   createTimelineWeekView,
 } from "../resource-timeline-view/resource-timeline-view";
 import { createWeekView } from "../time-grid-view/time-grid-view";
+import type { UnavailableTimeRender } from "../calendar/unavailable-time";
 import { drag, layOut } from "./pointer";
 import { render } from "./render";
 import { StubResizeObserver } from "./timeline-fixtures";
@@ -68,10 +69,12 @@ async function renderView(
     defaultFocus = null,
     events = [],
     onEventChange,
+    renderUnavailable,
   }: {
     readonly defaultFocus?: CalendarFocus | null;
     readonly events?: readonly Shift[];
     readonly onEventChange?: (change: CalendarEventChange<Shift, string, string>) => void;
+    readonly renderUnavailable?: UnavailableTimeRender;
   } = {},
 ) {
   const result = await render(
@@ -86,6 +89,11 @@ async function renderView(
       now={Temporal.Instant.from("2026-10-08T16:30:00Z")}
       onEventChange={onEventChange}
       resources={team}
+      viewOptions={
+        renderUnavailable === undefined
+          ? undefined
+          : Object.fromEntries(Calendar.views.map(({ name }) => [name, { renderUnavailable }]))
+      }
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
       <Calendar.ActiveView />
@@ -143,8 +151,8 @@ test("resource columns shade each resource's hours on its own clock and show its
     container.querySelector(`[data-slot="resource-columns-body"] [data-resource-id="${id}"]`)!;
 
   expect(shading(column("ny"))).toEqual(["0-9", "17-24"]);
-  // 09:00–17:00 in London is 04:00–12:00 in New York.
-  expect(shading(column("london"))).toEqual(["0-4", "12-24"]);
+  // 09:00–17:00 in London is 04:00–12:00 in New York; London's Friday offsite starts at 19:00.
+  expect(shading(column("london"))).toEqual(["0-4", "12-19", "19-24"]);
   // Nadia's own night shift replaces the calendar's hours: Thursday 22:00 to Friday 06:00.
   expect(shading(column("night"))).toEqual(["0-22"]);
 
@@ -203,12 +211,13 @@ test("timelines shade hour rows on each resource's clock and mute closed days", 
       ({ style }) => style.width,
     );
 
-  // A 24-slot timeline: closed hours are 9 + 7 wide in New York, 4 + 12 in London.
+  // A 24-slot timeline: closed hours are 9 + 7 wide in New York, 4 + 7 + 5 in London, where
+  // Friday's offsite starts at 19:00 New York time.
   const slot = parseFloat(stretches("ny")[0]!) / 9;
   const inSlots = (id: string) =>
     stretches(id).map((width) => Math.round((parseFloat(width) / slot) * 100) / 100);
   expect(inSlots("ny")).toEqual([9, 7]);
-  expect(inSlots("london")).toEqual([4, 12]);
+  expect(inSlots("london")).toEqual([4, 7, 5]);
   expect(ariaLabel(row("london").querySelector('[role="rowheader"]'))).toBe(
     "Leo, local time 5:30 PM GMT+1",
   );
@@ -251,4 +260,75 @@ test("a timeline's keyboard targets say when their time or day is closed", async
     defaultFocus: { date: Temporal.PlainDate.from("2026-10-09"), kind: "day", resourceId: "ny" },
   });
   expect(targets(week, "ny")).toContainEqual(expect.stringMatching(/^Nia, .*October 9.*, closed$/));
+});
+
+test("closed time says why, where open time meets it, and where it sits", async () => {
+  const container = await renderView("week");
+  const bands = (date: string) => [
+    ...container.querySelectorAll<HTMLElement>(
+      `[data-date="${date}"]:not([data-all-day]) [data-slot="time-grid-unavailable"]`,
+    ),
+  ];
+  const [morning, evening] = bands("2026-10-08");
+
+  expect(morning!.dataset).toMatchObject({ opensAfter: "", reason: "outside-hours" });
+  expect(morning!.hasAttribute("data-opens-before")).toBe(false);
+  expect(evening!.dataset).toMatchObject({ opensBefore: "", reason: "outside-hours" });
+  expect(morning!.getAttribute("aria-hidden")).toBe("true");
+  expect(evening!.style.getPropertyValue("--band-start")).toMatch(/^70\.83/);
+  expect(evening!.style.getPropertyValue("--band-end")).toBe("100%");
+  expect(bands("2026-10-09")[0]!.dataset).toMatchObject({ label: "Offsite", reason: "exception" });
+  expect(bands("2026-10-10")[0]!.dataset).toMatchObject({ reason: "closed-day" });
+});
+
+test("closed days say why, in the month and along a timeline of days", async () => {
+  const month = await renderView("month");
+  const closed = [...month.querySelectorAll<HTMLElement>('[data-slot="month-closed"]')];
+  // October's month grid starts on Monday, September 28; the first closed days are a weekend.
+  expect(closed[0]!.dataset).toMatchObject({ opensBefore: "", reason: "closed-day" });
+  const offsite = month.querySelector<HTMLElement>(
+    '[role="gridcell"]:has([data-date="2026-10-09"]) [data-slot="month-closed"]',
+  )!;
+  expect(offsite.dataset).toMatchObject({ label: "Offsite", opensBefore: "", reason: "exception" });
+  // The weekend follows the offsite, so open time meets neither side's edge between them.
+  expect(offsite.hasAttribute("data-opens-after")).toBe(false);
+  await cleanup?.();
+
+  vi.stubGlobal("ResizeObserver", StubResizeObserver);
+  const week = await renderView("timeline-week");
+  const stretches = [
+    ...week.querySelectorAll<HTMLElement>(
+      '[role="row"][data-resource-id="ny"] [data-slot="resource-timeline-unavailable"]',
+    ),
+  ].map(({ dataset }) => [dataset.reason, dataset.label]);
+  // Monday to Sunday: the offsite on Friday, then the weekend.
+  expect(stretches).toEqual([
+    ["exception", "Offsite"],
+    ["closed-day", undefined],
+  ]);
+});
+
+test("a view's renderUnavailable replaces the shading, per resource", async () => {
+  const renderUnavailable: UnavailableTimeRender = (props, { band, date, resource }) => (
+    <div
+      {...props}
+      data-date-of={date.toString()}
+      data-tint={resource?.id === "london" ? "abroad" : "home"}
+      data-why={band.reason}
+    />
+  );
+  const container = await renderView("resources", { renderUnavailable });
+  const tints = (id: string) =>
+    [
+      ...container.querySelectorAll<HTMLElement>(
+        `[data-slot="resource-columns-body"] [data-resource-id="${id}"] [data-slot="time-grid-unavailable"]`,
+      ),
+    ].map(({ dataset }) => `${dataset.tint} ${dataset.why} ${dataset.dateOf}`);
+
+  expect(tints("ny")).toEqual(["home outside-hours 2026-10-08", "home outside-hours 2026-10-08"]);
+  expect(tints("london")).toEqual([
+    "abroad outside-hours 2026-10-08",
+    "abroad outside-hours 2026-10-08",
+    "abroad exception 2026-10-08",
+  ]);
 });

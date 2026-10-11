@@ -21,6 +21,7 @@ import {
 import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
@@ -31,6 +32,11 @@ export interface MonthViewOptions<TEvent> {
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Picks each event's `data-color`; events without one use the theme's default colour. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  /**
+   * Replaces the shading of closed days: an element, or a function of its props and of the band,
+   * date and resource, such as hatching for holidays.
+   */
+  readonly renderUnavailable?: UnavailableTimeRender;
 }
 
 type MonthViewProps<TEvent> = CalendarViewRendererProps<
@@ -195,6 +201,7 @@ function MonthView<TEvent>({
             maxLanes={maxLanes}
             onOpenDay={openDay}
             overflow={overflows[index]!}
+            renderUnavailable={options.renderUnavailable}
             week={week}
           />
         ))}

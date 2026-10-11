@@ -16,6 +16,7 @@ import {
 import { useMemo, type ComponentType } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { offsetLabel } from "@registry/time-grid-view/time-grid-header";
@@ -44,6 +45,11 @@ export interface ResourceColumnsViewOptions<
    * as an avatar before each person's name and an icon before each room's.
    */
   readonly ResourceHeader?: ComponentType<ResourceHeaderProps<TResource>>;
+  /**
+   * Replaces the shading of closed time: an element, or a function of its props and of the band,
+   * date and resource, such as a gradient into working hours or a tint for rooms; `resource` is the column's.
+   */
+  readonly renderUnavailable?: UnavailableTimeRender;
 }
 
 const selectResource = (focus: CalendarFocus | null) => focus?.resourceId;
@@ -158,6 +164,7 @@ export function ResourceColumnsView<
         getEventColor={options.getEventColor}
         labelEvent={labelEvent}
         onScroll={sync}
+        renderUnavailable={options.renderUnavailable}
         scrollRef={scrollRef}
         slotMinutes={snap.increment}
       />

@@ -394,6 +394,7 @@ export function ScrollingTimeGridView<TEvent>({
                       nowTop={nowPosition?.column === index ? nowPosition.top : null}
                       offscreen={!plainDateIntervalContains(range, day.column.date)}
                       onOpenDay={openDay}
+                      renderUnavailable={options.renderUnavailable}
                       slotMinutes={snap.increment}
                       timeZone={timeZone}
                     />

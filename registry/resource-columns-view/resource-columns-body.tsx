@@ -10,6 +10,7 @@ import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type RefCallback, type RefObject } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { TimeGridHours, useOpeningScroll } from "@registry/time-grid-view/time-grid-body";
 import {
@@ -29,6 +30,7 @@ export interface ResourceColumnsBodyProps<TEvent> {
   readonly items: readonly VirtualItem[];
   readonly labelEvent: EventLabeler<TEvent>;
   readonly onScroll: () => void;
+  readonly renderUnavailable?: UnavailableTimeRender;
   readonly resources: readonly ResourceColumn<TEvent>[];
   /** The scrolling element, which the virtualizer reads and dragging scrolls near its edges. */
   readonly scrollRef: RefObject<HTMLDivElement | null>;
@@ -48,6 +50,7 @@ function ResourceDays<TEvent>({
   getEventColor,
   labelEvent,
   now,
+  renderUnavailable,
   size,
   slotMinutes,
   start,
@@ -59,13 +62,17 @@ function ResourceDays<TEvent>({
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly now: TimeGridPosition | null;
+  readonly renderUnavailable?: UnavailableTimeRender;
   readonly size: number;
   readonly slotMinutes: number;
   readonly start: number;
   readonly timeZone: string;
 }) {
   const title = resourceTitle(resource);
-  const here = useMemo(() => ({ id: resource.id, title }), [resource.id, title]);
+  const here = useMemo(
+    () => ({ id: resource.id, resource: resource.resource, title }),
+    [resource.id, resource.resource, title],
+  );
 
   return (
     <div
@@ -86,6 +93,7 @@ function ResourceDays<TEvent>({
           getEventColor={getEventColor}
           labelEvent={labelEvent}
           nowTop={now?.column === index ? now.top : null}
+          renderUnavailable={renderUnavailable}
           resource={here}
           slotMinutes={slotMinutes}
           timeZone={timeZone}
@@ -107,6 +115,7 @@ export function ResourceColumnsBody<TEvent>({
   items,
   labelEvent,
   onScroll,
+  renderUnavailable,
   resources,
   scrollRef,
   slotMinutes,
@@ -159,6 +168,7 @@ export function ResourceColumnsBody<TEvent>({
               getEventColor={getEventColor}
               labelEvent={labelEvent}
               now={nowPosition}
+              renderUnavailable={renderUnavailable}
               size={size}
               slotMinutes={slotMinutes}
               start={start}

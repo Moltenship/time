@@ -8,6 +8,7 @@ import {
   useRovingFocus,
   type CalendarEventPlacement,
   type CalendarFocus,
+  type CalendarResource,
   type CalendarSlotFocus,
   type ResourceId,
   type TimeGridBand,
@@ -22,6 +23,7 @@ import {
   previewCheckAttributes,
   useDraftCheck,
 } from "@registry/calendar/preview-check";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
@@ -71,6 +73,8 @@ export function useTimeGridColumnFormats(locale: Intl.LocalesArgument): TimeGrid
 export interface TimeGridColumnResource {
   /** `null` for the unassigned bucket. */
   readonly id: ResourceId | null;
+  /** `null` for the unassigned bucket. */
+  readonly resource: CalendarResource<unknown, ResourceId> | null;
   /** Added to the accessible names of the column's slots and events. */
   readonly title: string;
 }
@@ -94,6 +98,8 @@ export interface TimeGridColumnProps<TEvent> {
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   /** The column's resource; without one, the column shows every resource's focus and drafts. */
   readonly resource?: TimeGridColumnResource;
+  /** Replaces the shading of closed time; see `UnavailableTimeRender`. */
+  readonly renderUnavailable?: UnavailableTimeRender;
   /** Length of a keyboard slot, as the keyboard's snap sets it. */
   readonly slotMinutes: number;
   readonly timeZone: string;
@@ -205,6 +211,7 @@ export function TimeGridColumn<TEvent>({
   formats,
   offscreen = false,
   onOpenDay,
+  renderUnavailable,
   resource,
   slotMinutes,
   timeZone,
@@ -242,7 +249,12 @@ export function TimeGridColumn<TEvent>({
       data-today={isToday ? "" : undefined}
       className="relative min-w-0 border-s border-calendar-grid"
     >
-      <TimeGridAvailability bands={unavailable} />
+      <TimeGridAvailability
+        bands={unavailable}
+        date={column.date}
+        render={renderUnavailable}
+        resource={resource?.resource ?? null}
+      />
       {column.gaps.map((band) => (
         <div
           key={`gap:${band.top}`}

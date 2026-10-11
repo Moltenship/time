@@ -231,6 +231,7 @@ function ScrollingMonthView<TEvent>({
                     offscreen={offscreen}
                     onOpenDay={openDay}
                     overflow={overflows[index]!}
+                    renderUnavailable={options.renderUnavailable}
                     week={week}
                   />
                 </div>

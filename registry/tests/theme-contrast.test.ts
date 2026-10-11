@@ -49,6 +49,17 @@ describe.each(["light", "dark"] as const)("%s theme", (theme) => {
     }
   });
 
+  test.each(surfaces)("closed time stands apart from open time on %s", (surface) => {
+    // Shading is a tint, not a mark, so it needs no 3:1; these floors keep it visible, as the
+    // light theme's is, and text on it readable.
+    const unavailable = tokens.paint("--calendar-unavailable", surface);
+    expect(contrast(unavailable, tokens.color(surface))).toBeGreaterThanOrEqual(1.1);
+    expect(
+      contrast(tokens.paint("--calendar-closed", surface), tokens.color(surface)),
+    ).toBeGreaterThanOrEqual(1.04);
+    expect(contrast(tokens.color("--foreground"), unavailable)).toBeGreaterThanOrEqual(TEXT);
+  });
+
   test.each(surfaces)("invalid and warning marks on %s", (surface) => {
     for (const mark of ["--calendar-invalid", "--calendar-warning"]) {
       expect(contrast(tokens.color(mark), tokens.color(surface))).toBeGreaterThanOrEqual(GRAPHIC);

@@ -23,11 +23,16 @@ import {
   previewCheckAttributes,
   useDraftCheck,
 } from "@registry/calendar/preview-check";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 import { Button } from "@registry/ui/button";
 
-import { isUnavailableIn, TimelineAvailability } from "./resource-timeline-availability";
+import {
+  closedDayExtents,
+  isUnavailableIn,
+  TimelineAvailability,
+} from "./resource-timeline-availability";
 import { ResourceTimelineEvent } from "./resource-timeline-event";
 import { GroupCellTarget, TimelineCellTarget, useRowDraft } from "./resource-timeline-focus";
 import type { TimelineLabels } from "./timeline-labels";
@@ -48,6 +53,8 @@ export interface ResourceTimelineRowProps<TEvent> {
   readonly labels: TimelineLabels;
   /** The visible dates, for closed days in a day row. */
   readonly range: PlainDateInterval;
+  /** Replaces the shading of closed time and closed days; see `UnavailableTimeRender`. */
+  readonly renderUnavailable?: UnavailableTimeRender;
   readonly row: ResourceTimelineDayRow<TEvent> | ResourceTimelineHourRow<TEvent>;
   /** Width of each slot, in pixels. */
   readonly slotWidth: number;
@@ -162,6 +169,7 @@ function ResourceTimelineRowBase<TEvent>({
   labelEvent,
   labels,
   range,
+  renderUnavailable,
   row,
   slotWidth,
   slots,
@@ -188,6 +196,10 @@ function ResourceTimelineRowBase<TEvent>({
   // The resource's own hours, on its own clock: shaded along an hour row, days muted in a day row.
   const closedTime = useTimelineAvailability(unit === "hour" ? columns : noColumns, resource.id);
   const closedDays = useClosedDates(range, resource.id);
+  const shaded = useMemo(
+    () => (unit === "hour" ? closedTime : closedDayExtents(closedDays, range)),
+    [closedDays, closedTime, range, unit],
+  );
   const localTime = useResourceTime(environment, resource.resource?.timeZone);
   const perDay = unit === "hour" ? HOURS : 1;
   const origin = slots[0]?.date;
@@ -254,9 +266,14 @@ function ResourceTimelineRowBase<TEvent>({
           timeZone={resource.resource?.timeZone}
         />
       </div>
-      {unit === "hour" && (
-        <TimelineAvailability extents={closedTime} width={slots.length * slotWidth} />
-      )}
+      <TimelineAvailability
+        days={range.start.until(range.end).days}
+        extents={shaded}
+        origin={range.start}
+        render={renderUnavailable}
+        resource={resource.resource}
+        width={slots.length * slotWidth}
+      />
       {visibleSlots.map((item, position) => {
         const slot = slots[item.index]!;
         const count = bars.filter(
@@ -287,7 +304,7 @@ function ResourceTimelineRowBase<TEvent>({
                 ? ""
                 : undefined
             }
-            className="absolute inset-y-0 border-s border-calendar-grid data-closed:bg-calendar-unavailable data-weekend:bg-calendar-weekend"
+            className="absolute inset-y-0 border-s border-calendar-grid data-weekend:bg-calendar-weekend"
             style={{ insetInlineStart: item.start, width: item.size }}
           >
             {/* The day the pointer is over. Bars sit beside it, not in it, so grabbing a bar by a

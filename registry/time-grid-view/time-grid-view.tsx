@@ -12,6 +12,7 @@ import {
 import { useMemo, useRef, useState } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
@@ -43,6 +44,11 @@ export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions {
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Colour for an event; sets `data-color` on every element that renders it. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /**
+   * Replaces the shading of closed time: an element, or a function of its props and of the band,
+   * date and resource, such as a gradient into working hours or a tint for rooms.
+   */
+  readonly renderUnavailable?: UnavailableTimeRender;
 }
 
 /** Pointer and keyboard both step by these slots, so they reach the same times. */
@@ -153,6 +159,7 @@ export function TimeGridView<TEvent>({
           labelEvent={labelEvent}
           onColumnHeightChange={setColumnHeight}
           onOpenDay={openDay}
+          renderUnavailable={options.renderUnavailable}
           scrollRef={scrollRef}
           slotMinutes={snap.increment}
         />

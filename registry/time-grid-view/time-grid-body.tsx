@@ -7,6 +7,7 @@ import {
 import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
@@ -22,6 +23,7 @@ export interface TimeGridBodyProps<TEvent> {
   readonly onColumnHeightChange?: (height: number) => void;
   /** Opens a date in the day view; Shift+Enter on a slot does so. */
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
+  readonly renderUnavailable?: UnavailableTimeRender;
   /** The scrolling element, which dragging also scrolls near its edges. */
   readonly scrollRef: RefObject<HTMLDivElement | null>;
   /** Length of a keyboard slot, as the keyboard's snap sets it. */
@@ -111,6 +113,7 @@ export function TimeGridBody<TEvent>({
   labelEvent,
   onColumnHeightChange,
   onOpenDay,
+  renderUnavailable,
   scrollRef,
   slotMinutes,
 }: TimeGridBodyProps<TEvent>) {
@@ -157,6 +160,7 @@ export function TimeGridBody<TEvent>({
               getEventColor={getEventColor}
               labelEvent={labelEvent}
               onOpenDay={onOpenDay}
+              renderUnavailable={renderUnavailable}
               slotMinutes={slotMinutes}
               nowTop={nowPosition?.column === index ? nowPosition.top : null}
               formats={formats}
