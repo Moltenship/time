@@ -25,7 +25,6 @@ export function anchorShowingDate<TOptions>(
       current,
       comparePlainDates(date, range.start) < 0 ? -1 : 1,
       options,
-      environment,
     );
   }
   return date;

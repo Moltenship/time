@@ -339,59 +339,36 @@ describe("scrolling views", () => {
     await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.02), settled);
   });
 
-  test("the month rests where it's scrolled and names the month of its third row", async () => {
+  test("the month swipes a month at a time", async () => {
     await render(<Screen view="scrolling-month" />);
-    const { position, scrollBy } = axis("scrolling-month");
+    const { dragBy, position, scrollBy } = axis("scrolling-month");
     const start = position();
+    // October's first row is the week of Thursday October 1.
     expect(title()).toBe("October 2026");
 
-    await scrollBy(4.4);
-
+    // Past halfway to November, whose first row is four weeks on.
+    await dragBy(2.5);
     await vi.waitFor(() => expect(title()).toBe("November 2026"), settled);
-    // The anchor is the start of the third week from the one nearest the top.
-    expect(reported.anchors.at(-1)?.toString()).toBe("2026-11-02");
-    // Without snapping, the view stays where the scroll left it.
-    expect(Math.abs(position() - start - 4.4)).toBeLessThan(0.05);
+    expect(reported.anchors.map(String)).toEqual(["2026-11-01"]);
+    await vi.waitFor(() => expect(Math.abs(position() - start - 4)).toBeLessThan(0.05), settled);
+
+    // Short of halfway to December, it comes back.
+    await dragBy(1.5);
+    await vi.waitFor(() => expect(Math.abs(position() - start - 4)).toBeLessThan(0.05), settled);
+
+    // A step, as a wheel makes, goes on to December, five weeks on.
+    await scrollBy(1);
+    await vi.waitFor(() => expect(title()).toBe("December 2026"), settled);
+    await vi.waitFor(() => expect(Math.abs(position() - start - 9)).toBeLessThan(0.05), settled);
   });
 });
 
-describe("scrolling month at rest between weeks", () => {
-  /** Whether each rendered week shows in the viewport, and whether it's hidden from screen readers. */
-  const weeks = () => {
-    const { viewport } = axis("scrolling-month");
-    const bounds = viewport.getBoundingClientRect();
-    return [...viewport.querySelectorAll('[role="row"]')].map((row) => {
-      const { bottom, top } = row.getBoundingClientRect();
-      return {
-        hidden: row.closest('[aria-hidden="true"]') !== null,
-        shows: bottom > bounds.top + 1 && top < bounds.bottom - 1,
-      };
-    });
-  };
-
-  test.each([
-    ["below", 4.4],
-    ["above", 4.6],
-  ])("a week it rests partly on %s still reads", async (_, weeksDown) => {
+describe("scrolling month resizes", () => {
+  test("resizing keeps the month on its page", async () => {
     await render(<Screen view="scrolling-month" />);
-    const { scrollBy } = axis("scrolling-month");
-
-    await scrollBy(weeksDown);
-
-    await vi.waitFor(() => expect(title()).toBe("November 2026"), settled);
-    await vi.waitFor(() => {
-      const shown = weeks();
-      // Six weeks and the one the view rests partly on.
-      expect(shown.filter((week) => week.shows)).toHaveLength(7);
-      for (const week of shown) expect(week.hidden).toBe(!week.shows);
-    }, settled);
-  });
-
-  test("resizing keeps the month where it rests", async () => {
-    await render(<Screen view="scrolling-month" />);
-    const { scrollBy, viewport } = axis("scrolling-month");
+    const { dragBy, viewport } = axis("scrolling-month");
     const start = axis("scrolling-month").position();
-    await scrollBy(4.4);
+    await dragBy(2.5);
     await vi.waitFor(() => expect(title()).toBe("November 2026"), settled);
 
     // Taller rows, as when the window grows; a flexible height would ignore `height`.
@@ -403,7 +380,7 @@ describe("scrolling month at rest between weeks", () => {
     expect(viewport.getBoundingClientRect().height).toBe(height + 90);
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    expect(Math.abs(axis("scrolling-month").position() - start - 4.4)).toBeLessThan(0.05);
+    expect(Math.abs(axis("scrolling-month").position() - start - 4)).toBeLessThan(0.05);
     expect(title()).toBe("November 2026");
   });
 
@@ -422,7 +399,7 @@ describe("scrolling month at rest between weeks", () => {
     expect(reported.anchors.map(String)).toEqual(["2027-03-07"]);
   });
 
-  test("shrinking the month enough to clamp its old offset keeps it where it rests", async () => {
+  test("shrinking the month enough to clamp its old offset keeps it on its page", async () => {
     await render(<Screen view="scrolling-month" />);
     const { viewport } = axis("scrolling-month");
     const resize = (height: number) =>
@@ -433,13 +410,13 @@ describe("scrolling month at rest between weeks", () => {
       });
     await resize(1500);
     const start = axis("scrolling-month").position();
-    await axis("scrolling-month").scrollBy(4.4);
+    await axis("scrolling-month").dragBy(2.5);
     await vi.waitFor(() => expect(title()).toBe("November 2026"), settled);
 
     // A third the height: the old offset lies past the end of the shorter canvas.
     await resize(500);
 
-    expect(Math.abs(axis("scrolling-month").position() - start - 4.4)).toBeLessThan(0.05);
+    expect(Math.abs(axis("scrolling-month").position() - start - 4)).toBeLessThan(0.05);
     expect(title()).toBe("November 2026");
   });
 });

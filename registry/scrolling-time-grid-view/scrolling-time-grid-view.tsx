@@ -60,6 +60,8 @@ import { useOpeningTime, useStickyHeaderPadding } from "./scrolling-time-grid-sc
 const snap = { increment: 15, smallestUnit: "minute" } as const;
 /** One day's width: the viewport past the hour gutter, shared by the visible days. */
 const DAY = "var(--calendar-day-width)";
+/** Pages with snap points either way of the range, past any a swipe reaches before it renders. */
+const SNAP_PAGES = 6;
 
 export type ScrollingTimeGridViewProps<TEvent> = CalendarViewRendererProps<
   TimeGridProjection<TEvent>,
@@ -170,13 +172,15 @@ export function ScrollingTimeGridView<TEvent>({
   const { direction, locale, timeZone } = environment;
   const visibleDays = range.start.until(range.end).days;
   const columns = useMemo(() => days.map(({ column }) => column), [days]);
+  const first = epochDay(range.start);
   const axis = useScrollingAxis({
     axis: "inline",
-    first: epochDay(range.start),
-    onScroll: (first) => actions.setAnchorDate(fromEpochDay(first)),
+    first,
+    onScroll: (day) => actions.setAnchorDate(fromEpochDay(day)),
     page: visibleDays,
     rtl: direction === "rtl",
-    snap: true,
+    // Whole pages from the range, so a week stays a calendar week and three days move three.
+    snapTo: (day) => first + Math.round((day - first) / visibleDays) * visibleDays,
   });
   // Today and Next can ask for the range the view already has while a scroll runs ahead of it. A
   // date inside the range asks for it, as Today does in this week; any other moves the range.
@@ -353,8 +357,10 @@ export function ScrollingTimeGridView<TEvent>({
                   <ScrollSnapPoints
                     axis="inline"
                     base={axis.base}
-                    first={epochDay(range.start)}
-                    page={visibleDays}
+                    points={Array.from(
+                      { length: 2 * SNAP_PAGES + 1 },
+                      (_, index) => first + (index - SNAP_PAGES) * visibleDays,
+                    )}
                     size={DAY}
                   />
                 }

@@ -1,6 +1,6 @@
 ---
 title: Scrolling views
-description: Week, day and month views that scroll without end, swiping a page sideways or down a feed of weeks.
+description: Week, day and month views that scroll without end, swiping a page at a time.
 ---
 
 <Tabs items={["Week", "3 days", "Day"]}>
@@ -19,10 +19,10 @@ Try them in the [live demo](https://moltenship-time-demo.vercel.app): turn on "S
 month" in the settings.
 
 The [week and day](/docs/views/week-and-day) and [month](/docs/views/month) views move a page at a
-time. The scrolling versions follow your finger, as Apple's Calendar does on iPad: the week and day
-views swipe sideways a page at a time, so a week comes to rest on the next week and a day on the
-next day, and the month scrolls freely up and down, as a feed does. They're separate views, so the paged ones keep working as they are, and you can
-register both.
+time. The scrolling versions follow your finger, as Apple's Calendar does on iPad, and swipe a page at a
+time: the week and day views sideways, so a week comes to rest on the next week and a day on the
+next day, and the month up and down, a month at a time. They're separate views, so the paged ones
+keep working as they are, and you can register both.
 
 ## Add them
 
@@ -41,12 +41,12 @@ the month. For another number of days, define a view with
 
 ## How they move
 
-| View              | Shows                               | A swipe moves      | Previous and Next      | Today                         |
-| ----------------- | ----------------------------------- | ------------------ | ---------------------- | ----------------------------- |
-| `scrolling-week`  | The anchor's week, from `weekRules` | A week             | A week                 | Today's week                  |
-| `scrolling-3-day` | Three days from the anchor date     | Three days         | Three days             | Today in the first column     |
-| `scrolling-day`   | The anchor date                     | A day              | A day                  | Today                         |
-| `scrolling-month` | Six weeks, the anchor's week third  | As far as it flies | The neighbouring month | Today's week in the third row |
+| View              | Shows                               | A swipe moves | Previous and Next | Today                     |
+| ----------------- | ----------------------------------- | ------------- | ----------------- | ------------------------- |
+| `scrolling-week`  | The anchor's week, from `weekRules` | A week        | A week            | Today's week              |
+| `scrolling-3-day` | Three days from the anchor date     | Three days    | Three days        | Today in the first column |
+| `scrolling-day`   | The anchor date                     | A day         | A day             | Today                     |
+| `scrolling-month` | Six weeks from the week of the 1st  | A month       | A month           | Today's month             |
 
 The anchor date is the scroll position. A swipe follows your finger and comes to rest on the
 next page, or back on this one if it went less than halfway; a fling moves one page. When a
@@ -58,10 +58,9 @@ With a controlled `anchorDate`, the view stays where it was scrolled until your 
 latest date `onAnchorDateChange` sent, even a few renders later; any other `anchorDate` moves the
 view to it. If you defer the update, commit the latest date rather than each one in turn.
 
-The month doesn't snap, so a fast fling runs on smoothly. It comes to rest wherever you leave it,
-and the week nearest the top counts as its first row. It names the month that most of its
-third row falls in, and dims the days of other months. Previous and Next go to the middle of the
-neighbouring month, so all of it shows, and line its weeks up with the top again.
+The month shows the anchor's month as the paged month does: six weeks from the one that holds its
+first day, which every month fits, with the days of other months dimmed. A swipe comes to rest on
+the next month with its first week on top; months run four to six weeks, so the distance varies.
 
 <CalendarPreview view="scrolling-month" />
 
@@ -93,8 +92,7 @@ events itself; keep what you've loaded in your own state.
 The keys work as in the [week and day](/docs/views/week-and-day#keyboard) and
 [month](/docs/views/month) views, over the dates on screen. Moving past the last visible day, or
 pressing Page Down, scrolls a whole page. Days and weeks rendered around the visible ones are hidden
-from screen readers, so the grid reads as one week, one day, or six weeks. Where the month rests
-partly on a seventh week, that week reads too; keys reach it by scrolling, as past any edge.
+from screen readers, so the grid reads as one week, one day, or six weeks.
 
 ## Dragging
 
@@ -107,8 +105,7 @@ gesture is under way, and come to rest on the nearest page when you let go.
 `useScrollingAxis` in `registry/calendar/scrolling-axis.tsx` places days, or weeks, on an axis
 thousands of items long, and the view renders only the items near its load range. The header,
 all-day row, and hour gutter are sticky in the same scrolling element, so they never lag behind the
-days. Scroll positions are never React state: the view renders again when the anchor moves, and the
-month also when it comes to rest showing a different set of weeks.
+days. Scroll positions are never React state: the view renders again only when the anchor moves.
 
 Server markup puts the visible dates at the start of the axis, so the page shows them before
 scripts run. Once laid out, the axis extends before them and the scroll position follows, before

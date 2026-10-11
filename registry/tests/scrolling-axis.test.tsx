@@ -57,13 +57,10 @@ const onScroll = vi.fn<(first: number) => void>();
 function Axis({
   block = false,
   interacting = false,
-  snap = true,
 }: {
   /** Weeks down the block axis, as the month scrolls, rather than days across. */
   readonly block?: boolean;
   readonly interacting?: boolean;
-  /** Whether the view comes to rest on an item; the month's scrolls freely. */
-  readonly snap?: boolean;
 }) {
   const [first, setState] = useState(5000);
   const [rtl, setRtlState] = useState(false);
@@ -79,7 +76,8 @@ function Axis({
     onScroll,
     page,
     rtl,
-    snap,
+    // Whole pages from the range, as the time grid's.
+    snapTo: (item) => first + Math.round((item - first) / page) * page,
   });
   request = axis.request;
   return (
@@ -230,34 +228,10 @@ test("a snapping view's pages keep the range's alignment", async () => {
   expect(onScroll).toHaveBeenLastCalledWith(5010);
 });
 
-test("a free view rests where the user left it, with the nearest item first", async () => {
-  const { shownItem, userScrollsTo } = await show(<Axis block snap={false} />);
-  scrolls = [];
-
-  await userScrollsTo(5004.4);
-  await userScrollsTo(5009.6);
-
-  expect(scrolls).toEqual([]);
-  expect(shownItem()).toBeCloseTo(5009.6);
-  expect(onScroll.mock.calls).toEqual([[5004], [5010]]);
-});
-
-test("a free view resting between items stays there when the items resize", async () => {
-  const { shownItem, userScrollsTo } = await show(<Axis block snap={false} />);
-  await userScrollsTo(5004.4);
-  await act(async () => setFirst(5004));
-
-  // Taller weeks, as when the window grows.
-  viewportWidth = 800;
-  await act(async () => rerender());
-
-  expect(shownItem()).toBeCloseTo(5004.4);
-});
-
 test("a resize before an instant navigation's scroll reports keeps the view where it went", async () => {
-  const { shownItem, userScrollsTo } = await show(<Axis block snap={false} />);
-  await userScrollsTo(5004.4);
-  await act(async () => setFirst(5004));
+  const { shownItem, userScrollsTo } = await show(<Axis block />);
+  await userScrollsTo(5007);
+  await act(async () => setFirst(5007));
   // A date far away jumps there, and the window grows before the jump's scroll event.
   await act(async () => setFirst(5100));
 
@@ -278,18 +252,6 @@ test("items resizing with nothing observed doesn't stop scrolls moving the range
   await userScrollsTo(5007);
 
   expect(onScroll).toHaveBeenLastCalledWith(5007);
-});
-
-test("a request for the range a free view rests near lines the view up with it", async () => {
-  const { finishScroll, shownItem, userScrollsTo } = await show(<Axis block snap={false} />);
-  await userScrollsTo(5004.4);
-  await act(async () => setFirst(5004));
-  expect(shownItem()).toBeCloseTo(5004.4);
-
-  await act(async () => request(5004));
-  await finishScroll();
-
-  expect(shownItem()).toBe(5004);
 });
 
 test("a range that replaces one still being scrolled to wins", async () => {

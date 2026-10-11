@@ -181,8 +181,7 @@ function createSemanticActions<
     const view = viewsByName.get(latest.view);
     if (view === undefined) return;
     const options = resolveViewOptions(view, committed.current.viewOptions?.[latest.view]);
-    const { environment } = committed.current;
-    actions.setAnchorDate(view.strategy.navigate(latest.anchorDate, delta, options, environment));
+    actions.setAnchorDate(view.strategy.navigate(latest.anchorDate, delta, options));
   }
 
   return Object.freeze({

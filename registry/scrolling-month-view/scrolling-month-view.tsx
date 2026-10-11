@@ -17,7 +17,7 @@ import {
 import { useLayoutEffect, useMemo, useState, type CSSProperties, type RefObject } from "react";
 
 import { useEventLabel } from "@registry/calendar/event-label";
-import { epochDay, useScrollingAxis } from "@registry/calendar/scrolling-axis";
+import { epochDay, ScrollSnapPoints, useScrollingAxis } from "@registry/calendar/scrolling-axis";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import {
   useMonthFormats,
@@ -43,6 +43,8 @@ const MIN_ROW_HEIGHT = 80;
 const INITIAL_LANES = 3;
 /** One week's height: the viewport shared by the visible weeks. */
 const WEEK = "var(--calendar-week-height)";
+/** Months with snap points either way of the range, past any a swipe reaches before it renders. */
+const SNAP_MONTHS = 6;
 
 /** A week's number from the week of 1970-01-01; weeks that start on the same weekday count by one. */
 function weekNumber(date: Temporal.PlainDate): number {
@@ -76,11 +78,10 @@ function useLaneCapacity(track: RefObject<HTMLElement | null>, count: number): n
 }
 
 /**
- * Weeks that scroll up and down without end, coming to rest wherever the user leaves them, with
- * the week nearest the top as the first row. Rows share the height between the visible weeks,
- * and the month most of the focus row falls in names the view and keeps its days bright. Rows
- * render for a page of weeks above and below, with their events, and dragging and keys work as
- * in the month view.
+ * Weeks that swipe up and down without end, a month at a time: each month comes to rest with the
+ * week of its first day on top, names the view, and keeps its days bright. Rows share the height
+ * between the visible weeks and render for a page of weeks above and below, with their events,
+ * and dragging and keys work as in the month view.
  */
 function ScrollingMonthView<TEvent>({
   actions,
@@ -94,21 +95,28 @@ function ScrollingMonthView<TEvent>({
   const { locale, timeZone } = environment;
   const weeks = range.start.until(range.end).days / 7;
   const first = weekNumber(range.start);
+  const month = scrollingMonthOf(range);
+  const strategy = useMemo(() => scrollingMonthStrategy(weeks), [weeks]);
+  /** The week a month's page starts at: the one that holds its first day. */
+  const monthStart = (date: Temporal.PlainDate) =>
+    weekNumber(strategy.getRange(date, environment, undefined).start);
+  const weekStart = (week: number) => range.start.add({ weeks: week - first });
   const axis = useScrollingAxis({
     axis: "block",
     first,
-    onScroll: (week) =>
-      actions.setAnchorDate(scrollingMonthAnchor(range.start.add({ weeks: week - first }), weeks)),
+    onScroll: (week) => actions.setAnchorDate(scrollingMonthAnchor(weekStart(week))),
     page: weeks,
     rtl: false,
-    // Snapping each week makes a fast fling feel stuck; the month scrolls freely, as a feed does.
-    snap: false,
+    // The nearest of the months around the week there: months run four to six weeks.
+    snapTo: (week) => {
+      const near = scrollingMonthAnchor(weekStart(Math.round(week)));
+      return [-1, 0, 1]
+        .map((months) => monthStart(near.add({ months })))
+        .reduce((best, start) => (Math.abs(start - week) < Math.abs(best - week) ? start : best));
+    },
   });
   // Today and Next can ask for the anchor the view already has while a scroll runs ahead of it.
-  const strategy = useMemo(() => scrollingMonthStrategy(weeks), [weeks]);
-  useAnchorDateRequests((date) =>
-    axis.request(weekNumber(strategy.getRange(date, environment, undefined).start)),
-  );
+  useAnchorDateRequests((date) => axis.request(monthStart(date)));
   const start = weekNumber((loadRange ?? range).start) - axis.base;
 
   // Pointer drags speak through the same messages as the keyboard.
@@ -131,7 +139,6 @@ function ScrollingMonthView<TEvent>({
   const expandedWeek = useCalendarFocus((focus) =>
     weekHidingFocus(focus, projection.weeks, overflows),
   );
-  const month = scrollingMonthOf(range, weeks);
   const title = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(month);
   const dayView = options.dayView ?? "day";
   const openDay = (date: Temporal.PlainDate) => {
@@ -163,7 +170,7 @@ function ScrollingMonthView<TEvent>({
       <div
         ref={axis.scrollRef}
         data-slot="scrolling-month-viewport"
-        className="relative min-h-0 flex-1 overflow-y-auto overscroll-y-contain [container-type:size]"
+        className="relative min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [container-type:size] in-data-interaction:snap-none"
         style={
           {
             "--calendar-week-height": `max(${MIN_ROW_HEIGHT}px, calc(100cqh / ${weeks}))`,
@@ -176,6 +183,14 @@ function ScrollingMonthView<TEvent>({
           className="relative flex flex-col"
           style={{ height: `calc(${axis.count} * ${WEEK})` }}
         >
+          <ScrollSnapPoints
+            axis="block"
+            base={axis.base}
+            points={Array.from({ length: 2 * SNAP_MONTHS + 1 }, (_, index) =>
+              monthStart(month.add({ months: index - SNAP_MONTHS })),
+            )}
+            size={WEEK}
+          />
           <div
             className="grid shrink-0"
             style={{
@@ -186,16 +201,11 @@ function ScrollingMonthView<TEvent>({
             {projection.weeks.map((week, index) => {
               const expanded = index === expandedWeek;
               const offscreen = !plainDateIntervalContains(range, week.range.start);
-              const number = weekNumber(week.range.start);
-              // Weeks rendered above and below the visible ones are for scrolling into. One the
-              // view rests partly on still reads, but keys keep to the range and page past it.
-              const hidden =
-                offscreen &&
-                (axis.inView === null || number < axis.inView.start || number >= axis.inView.end);
               return (
                 <div
                   key={week.range.start.toString()}
-                  aria-hidden={hidden ? true : undefined}
+                  // Weeks rendered above and below the visible ones are for scrolling into.
+                  aria-hidden={offscreen ? true : undefined}
                   className={cn(
                     "grid",
                     // A week showing every lane grows over the next ones instead of moving them.
@@ -231,8 +241,8 @@ function ScrollingMonthView<TEvent>({
 }
 
 /**
- * A month of weeks that scrolls freely up and down, named `scrolling-month`. `weeks` rows share
- * the height, six by default; Previous and Next move a month. Clicking a date opens
+ * A month of weeks that swipes up and down a month at a time, named `scrolling-month`. `weeks`
+ * rows share the height, six by default, which every month fits; Previous and Next move a month. Clicking a date opens
  * `dayView`. Pass default options here; a root can override them through
  * `viewOptions["scrolling-month"]`.
  */

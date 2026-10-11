@@ -165,7 +165,7 @@ test("a scrolling day view shows one day and names its header for that day", asy
   expect(container.querySelector('[aria-label^="Open "]')).toBeNull();
 });
 
-test("a scrolling month shows six weeks with the anchor's in the third row", async () => {
+test("a scrolling month shows six weeks from the week of its month's first day", async () => {
   const onView = vi.fn<(view: string) => void>();
   const container = await show("scrolling-month", onView);
   const rows = [
@@ -176,7 +176,7 @@ test("a scrolling month shows six weeks with the anchor's in the third row", asy
   expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("October 2026");
   expect(rows).toHaveLength(18);
   expect(visible.map((row) => row.querySelector("[data-date]")?.getAttribute("data-date"))).toEqual(
-    ["2026-09-21", "2026-09-28", "2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26"],
+    ["2026-09-28", "2026-10-05", "2026-10-12", "2026-10-19", "2026-10-26", "2026-11-02"],
   );
 
   await act(async () =>
@@ -207,11 +207,12 @@ test("days scrolled away give the tab stop back to the visible days", async () =
 
 test("weeks scrolled away give the tab stop back to the visible weeks", async () => {
   const container = await show("scrolling-month");
-  const cell = container.querySelector<HTMLElement>('[data-date="2026-09-21"]')!.parentElement!;
+  const cell = container.querySelector<HTMLElement>('[data-date="2026-09-28"]')!.parentElement!;
   await act(async () => cell.focus());
   expect(cell.tabIndex).toBe(0);
 
-  await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from("2026-10-14")));
+  // A swipe comes to rest on November, leaving September 28's week rendered but out of view.
+  await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from("2026-11-14")));
 
   expect(cell.closest('[aria-hidden="true"]')).not.toBeNull();
   expect(cell.tabIndex).toBe(-1);

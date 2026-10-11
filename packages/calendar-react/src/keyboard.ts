@@ -148,13 +148,11 @@ function createKeyboardHandlers(
     if ("focus" in result) {
       moveFocus(result.focus);
     } else {
-      const { definition, environment, options } = view();
+      const { definition, options } = view();
       // Focus enters the next range once it renders, from its end when paging back.
       roving.focusTabStop("after-update");
       if (result.page < 0) roving.enterFromEnd();
-      actions.setAnchorDate(
-        definition.strategy.navigate(read().anchorDate, result.page, options, environment),
-      );
+      actions.setAnchorDate(definition.strategy.navigate(read().anchorDate, result.page, options));
       actions.setFocus(null);
     }
     return true;

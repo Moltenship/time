@@ -25,10 +25,10 @@ export interface ScrollingAxisOptions {
   /** The number of the first item the calendar's range shows, such as `epochDay(range.start)`. */
   readonly first: number;
   /**
-   * Moves the calendar to show `first` first, once the user has scrolled there: at rest, or every
-   * half page during a long swipe or a drag, so the loaded pages keep up with it. A controlled
-   * anchor may accept the latest of these later; until it changes, the view stays where the user
-   * scrolled, and any other anchor moves the view to it.
+   * Moves the calendar to show `first` first, once the user has scrolled there: at rest, or as a
+   * long swipe or a drag passes halfway to another page, so the loaded pages keep up with it. A
+   * controlled anchor may accept the latest of these later; until it changes, the view stays
+   * where the user scrolled, and any other anchor moves the view to it.
    */
   readonly onScroll: (first: number) => void;
   /** Items the calendar shows at once: its days or weeks. */
@@ -36,13 +36,12 @@ export interface ScrollingAxisOptions {
   /** Whether the inline axis runs right to left. */
   readonly rtl: boolean;
   /**
-   * Whether the view moves a page at a time, coming to rest a whole number of pages from the
-   * range's first item, as the time grid does: a week on the next week, three days on the next
-   * three, keeping the range's alignment. Pair it with `ScrollSnapPoints` and a mandatory snap
-   * type on the scrolling element. Without it the view rests wherever the user leaves it, as the
-   * month does, and the item nearest the start is the range's first.
+   * The item a page starts at nearest `item`, a position that can fall between two items: where
+   * the view comes to rest, and the first item it moves the calendar to. A week's pages are whole
+   * weeks from its range, a month's the weeks that hold each month's first day. Render
+   * `ScrollSnapPoints` at the same items, on a scrolling element with a mandatory snap type.
    */
-  readonly snap: boolean;
+  readonly snapTo: (item: number) => number;
 }
 
 export interface ScrollingAxis {
@@ -50,12 +49,6 @@ export interface ScrollingAxis {
   readonly base: number;
   /** Items the canvas holds from `base`. */
   readonly count: number;
-  /**
-   * Without `snap`, the items any part of which shows once the view rests where the range is,
-   * `end` exclusive: one more than the range's own where it rests between two. `null` with
-   * `snap`, and from a new range until the view comes to rest on it.
-   */
-  readonly inView: { readonly end: number; readonly start: number } | null;
   /**
    * Tells the axis the calendar was asked to show `first` first, as Today and Next ask: pass it
    * each `useAnchorDateRequests` date. A request ends any scroll still waiting for the range, and
@@ -81,12 +74,12 @@ function prefersReducedMotion(element: Element): boolean {
 
 /**
  * A scroll axis that never ends: numbered items, such as days, on a canvas `2 × REACH` items
- * long, of which the view renders only those near the calendar's range. The user scrolls, coming
- * to rest a page on with `snap` or anywhere without, and each settled position becomes the
- * calendar's range through `onScroll`. When the range changes otherwise, as Today and Next do, the axis
- * scrolls there: smoothly over a page or two, at once further away, from the keyboard, or with
- * reduced motion. Scroll positions are never React state, so scrolling renders only when the
- * range moves, or, without `snap`, when the view comes to rest showing other items.
+ * long, of which the view renders only those near the calendar's range. The user swipes a page
+ * at a time, coming to rest where `snapTo` says a page starts, and each settled position becomes
+ * the calendar's range through `onScroll`. When the range changes otherwise, as Today and Next do,
+ * the axis scrolls there: smoothly over a page or two, at once further away, from the keyboard, or
+ * with reduced motion. Scroll positions are never React state, so scrolling renders only when the
+ * range moves.
  *
  * Server markup and the first render put the range at the canvas's start, so the page shows it
  * before scripts run. Once laid out, the canvas extends before it and the scroll position follows
@@ -98,17 +91,15 @@ export function useScrollingAxis({
   onScroll,
   page,
   rtl,
-  snap,
+  snapTo,
 }: ScrollingAxisOptions): ScrollingAxis {
   const scrollRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [base, setBase] = useState(first);
   const count = 2 * REACH + page;
-  /** Where a free view last came to rest: the item it showed first, and the items in view. */
-  const [rest, setRest] = useState<{ end: number; first: number; start: number } | null>(null);
 
   // Read by event handlers, so they see the latest render without re-subscribing.
-  const latest = useRef({ base, first, onScroll, page, snap });
+  const latest = useRef({ base, first, onScroll, page, snapTo });
   /** The base, direction, and item size the scroll position was last laid out for. */
   const laidOut = useRef(base);
   const laidOutRtl = useRef(rtl);
@@ -127,11 +118,6 @@ export function useScrollingAxis({
   const heading = useRef<number | null>(null);
   /** Set while `onScroll` runs, so the requests it makes aren't taken for navigation. */
   const proposing = useRef(false);
-  /**
-   * Where the view is, in items with their fraction, for the item size it was laid out for: a
-   * resize can clamp the scroll offset before `place` sees it.
-   */
-  const position = useRef<number | null>(null);
 
   const size = useCallback(() => {
     const rect = trackRef.current?.getBoundingClientRect();
@@ -169,19 +155,13 @@ export function useScrollingAxis({
     const element = scrollRef.current;
     const itemSize = size();
     if (element === null || itemSize <= 0) return;
-    const { base, first, page, snap } = latest.current;
+    const { base, first, page } = latest.current;
     // A new item size moves every item, as switching between a week and a day or resizing the
     // window does; a fraction of a pixel per item adds up across the canvas, so measure the move.
     if ((drift(itemSize) >= 0.5 || laidOutRtl.current !== rtl) && shown.current !== null) {
-      // Browsers also reset `scrollLeft` when the direction flips: put the shown item back. A free
-      // view keeps the part of an item it rests past, unless a scroll is on its way to an item.
-      const at =
-        !snap && heading.current === null && laidOutRtl.current === rtl && position.current !== null
-          ? position.current
-          : shown.current;
+      // Browsers also reset `scrollLeft` when the direction flips: put the shown item back.
       heading.current = null;
-      scrollTo(element, (at - base) * itemSize, "instant");
-      position.current = at;
+      scrollTo(element, (shown.current - base) * itemSize, "instant");
       laidOutSize.current = itemSize;
     } else if (laidOut.current !== base) {
       // The canvas moved by whole items; keep what is on screen where it is.
@@ -212,7 +192,6 @@ export function useScrollingAxis({
     if (Math.abs(offset(element) - target) < 1) {
       // Already there, as when Next is undone before its scroll moves: stop that scroll.
       if (replacing) scrollTo(element, target, "instant");
-      position.current = base + offset(element) / itemSize;
       return;
     }
     // Keys move focus as they scroll, so they jump; so does anything more than two pages away, and
@@ -226,12 +205,10 @@ export function useScrollingAxis({
     // A smooth scroll passes other items on its way, which must not move the calendar there.
     if (smooth) heading.current = first;
     scrollTo(element, target, smooth ? "smooth" : "instant");
-    // A resize can come before this scroll reports itself, and must start from where it went.
-    if (!smooth) position.current = base + offset(element) / itemSize;
   }, [count, drift, offset, rtl, scrollTo, size]);
 
   useLayoutEffect(() => {
-    latest.current = { base, first, onScroll, page, snap };
+    latest.current = { base, first, onScroll, page, snapTo };
     place();
   });
 
@@ -242,34 +219,12 @@ export function useScrollingAxis({
     let timer: ReturnType<typeof setTimeout> | undefined;
     let waiting: MutationObserver | undefined;
 
-    /** The item nearest the start of the view. */
-    /** The item nearest the start of the view, or with `snap` the nearest a page on. */
+    /** The item the page nearest the start of the view starts at. */
     const nearest = () => {
       const itemSize = size();
       if (itemSize <= 0) return null;
-      const { base, first, page, snap } = latest.current;
-      const item = base + offset(element) / itemSize;
-      // Whole pages from the range keep its alignment, such as calendar weeks.
-      return snap ? first + Math.round((item - first) / page) * page : Math.round(item);
-    };
-    /** Without snapping, the view can rest between items: note which of them show. */
-    const measure = () => {
-      const itemSize = size();
-      if (latest.current.snap || itemSize <= 0 || shown.current === null) return;
-      const at = offset(element) / itemSize;
-      const length = (axis === "inline" ? element.clientWidth : element.clientHeight) / itemSize;
-      // A pixel either way is layout rounding, not a sliver of an item.
-      const pixel = 1 / itemSize;
-      const next = {
-        end: latest.current.base + Math.ceil(at + length - pixel),
-        first: shown.current,
-        start: latest.current.base + Math.floor(at + pixel),
-      };
-      setRest((current) =>
-        current?.end === next.end && current.first === next.first && current.start === next.start
-          ? current
-          : next,
-      );
+      const { base, snapTo } = latest.current;
+      return snapTo(base + offset(element) / itemSize);
     };
     /** A pointer drag, resize, or create is in progress, which snapping must not move. */
     const interacting = () => element.closest("[data-interaction]");
@@ -283,8 +238,6 @@ export function useScrollingAxis({
         proposing.current = false;
       }
     };
-
-    /** The item size changed and `place` hasn't laid it out, so the offset is about to move. */
     /**
      * The item size changed and `place` hasn't laid it out, so the offset is about to move: lay
      * it out now, since the size can change without anything observed resizing.
@@ -325,30 +278,26 @@ export function useScrollingAxis({
       const item = nearest();
       if (item === null) return;
       const target = (item - latest.current.base) * size();
-      if (latest.current.snap && Math.abs(offset(element) - target) > 1) {
-        // Snapping normally leaves the view on an item; where the browser didn't, finish the job.
+      if (Math.abs(offset(element) - target) > 1) {
+        // Snapping normally leaves the view on a page; where the browser didn't, finish the job.
         heading.current = item;
         scrollTo(element, target, prefersReducedMotion(element) ? "instant" : "smooth");
       }
       if (item !== shown.current) show(item);
-      measure();
     };
 
     const onScrollEvent = () => {
       // A scroll the resize made, clamping the offset, is no position of the user's; the scroll
       // that lays the resize out reports where the view is.
       if (unplaced()) return;
-      const itemSize = size();
-      if (itemSize > 0) position.current = latest.current.base + offset(element) / itemSize;
       const item = nearest();
-      const { page } = latest.current;
-      // During a long swipe, or a drag scrolling the view, keep the loaded pages ahead of what
-      // comes into view.
+      // Past halfway to another page, during a long swipe or a drag scrolling the view: keep the
+      // loaded pages ahead of what comes into view.
       if (
         item !== null &&
         heading.current === null &&
         shown.current !== null &&
-        Math.abs(item - shown.current) >= Math.max(1, Math.floor(page / 2))
+        item !== shown.current
       ) {
         show(item);
       }
@@ -370,7 +319,6 @@ export function useScrollingAxis({
         ? undefined
         : new view.ResizeObserver(() => {
             if (size() !== laidOutSize.current) place();
-            measure();
           });
 
     const inputs = ["pointerdown", "touchstart", "wheel"] as const;
@@ -388,7 +336,7 @@ export function useScrollingAxis({
       waiting?.disconnect();
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [axis, drift, offset, place, scrollTo, size]);
+  }, [drift, offset, place, scrollTo, size]);
 
   const request = useCallback(
     (item: number) => {
@@ -412,35 +360,27 @@ export function useScrollingAxis({
     [offset, place, size],
   );
 
-  const inView =
-    rest !== null && rest.first === first ? { end: rest.end, start: rest.start } : null;
-  return { base, count, inView, request, scrollRef, trackRef };
+  return { base, count, request, scrollRef, trackRef };
 }
 
 export interface ScrollSnapPointsProps {
   readonly axis: "block" | "inline";
   readonly base: number;
-  /** The first item the calendar shows. */
-  readonly first: number;
-  /** Items the calendar shows at once, and the distance between points. */
-  readonly page: number;
+  /**
+   * The items pages start at, the axis's `snapTo` stops: a few pages either way of the range,
+   * past any a swipe reaches before the view renders again.
+   */
+  readonly points: readonly number[];
   /** One item's length on the axis, as CSS. */
   readonly size: string;
 }
 
-/** Snap points on either side of the range, past any page a swipe can reach before it renders. */
-const SNAP_PAGES = 6;
-
 /**
- * A snap point a page apart for a few pages either way, from the range's first item, so a swipe
- * comes to rest on the next page, as a week does on the next week. Each point stops a fling, so
- * a swipe moves one page. Place it in the element the items are positioned in.
+ * A snap point where each page starts, so a swipe comes to rest on the next page, as a week does
+ * on the next week. Each point stops a fling, so a swipe moves one page. Place it in the element
+ * the items are positioned in.
  */
-export function ScrollSnapPoints({ axis, base, first, page, size }: ScrollSnapPointsProps) {
-  const points = Array.from(
-    { length: 2 * SNAP_PAGES + 1 },
-    (_, index) => first + (index - SNAP_PAGES) * page,
-  );
+export function ScrollSnapPoints({ axis, base, points, size }: ScrollSnapPointsProps) {
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
       {points.map((item) => (

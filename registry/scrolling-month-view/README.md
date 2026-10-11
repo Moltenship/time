@@ -1,6 +1,6 @@
 # Scrolling month view
 
-A month of weeks that scrolls up and down without end, as a feed does. Built on
+A month of weeks that swipes up and down without end, a month at a time. Built on
 `scrollingMonthStrategy` from `@moltenship/calendar` and the parts of `registry/month-view`.
 
 ```tsx
@@ -9,14 +9,11 @@ import { createScrollingMonthView } from "@/components/calendar/scrolling-month-
 const views = [createScrollingMonthView<Meeting>({ dayView: "scrolling-day", getEventColor })];
 ```
 
-- The view is named `scrolling-month`. Six weeks share the height (pass a second argument for
-  another count), and rows never shrink below 80px.
-- The month scrolls freely and comes to rest wherever it's left; the week nearest the top counts
-  as the first row. Snapping each week made a fast fling feel stuck. A week the view rests partly
-  on stays readable by screen readers, though keys keep to the six weeks and scroll past them.
-- The anchor's week is the third row. The month most of that week falls in names the view and
-  keeps its days bright. Previous and Next go to the middle of the neighbouring month, so the
-  whole of it shows; Today puts today's week in the third row.
+- The view is named `scrolling-month`. Six weeks share the height, which every month fits (pass
+  a second argument for another count), and rows never shrink below 80px.
+- It shows the anchor's month from the week that holds its first day, and keeps that month's days
+  bright. A swipe comes to rest on the next month with its first week on top, four to six weeks
+  on; Previous and Next move a month, and Today shows today's month.
 - A page of weeks above and below renders with its events, and `onVisibleRangeChange` reports it
   as the load range.
 - Clicking a date opens `dayView`, `"day"` by default. A week whose hidden events have keyboard

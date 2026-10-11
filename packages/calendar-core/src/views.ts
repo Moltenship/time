@@ -59,16 +59,7 @@ export interface CalendarViewStrategy<TProjection, TOptions = undefined, TEvent 
     environment: CalendarEnvironmentBase,
     options: TOptions,
   ): string;
-  /**
-   * The anchor `delta` pages away, as Previous and Next move. Calendars pass their environment, so
-   * a page can depend on week rules; it is optional only for callers outside a calendar.
-   */
-  navigate(
-    anchor: Temporal.PlainDate,
-    delta: number,
-    options: TOptions,
-    environment?: CalendarEnvironmentBase,
-  ): Temporal.PlainDate;
+  navigate(anchor: Temporal.PlainDate, delta: number, options: TOptions): Temporal.PlainDate;
   project(input: CalendarViewProjectionInput<TOptions, TEvent>): TProjection;
 }
 

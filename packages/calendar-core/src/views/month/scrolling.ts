@@ -19,50 +19,36 @@ function assertWeekCount(weeks: number): void {
   }
 }
 
-/** The row the anchor's week sits in, counted from the top: the third of six. */
-function focusRow(weeks: number): number {
-  return Math.floor((weeks - 1) / 2);
+/**
+ * The first day of the month a scrolling month shows: the month its first week ends in, since
+ * that week holds the month's first day.
+ */
+export function scrollingMonthOf(range: PlainDateInterval): Temporal.PlainDate {
+  return range.start.add({ days: 6 }).with({ day: 1 });
 }
 
 /**
- * The first day of the month a scrolling month is on: the month that holds most of its focus
- * week, the row the anchor's week sits in.
+ * The anchor of the scrolling month whose first row is `firstWeek`, as a view moves the calendar
+ * after the user swipes to it: the first day of that month.
  */
-export function scrollingMonthOf(range: PlainDateInterval, weeks: number): Temporal.PlainDate {
-  return monthFrom(range.start, weeks);
+export function scrollingMonthAnchor(firstWeek: Temporal.PlainDate): Temporal.PlainDate {
+  return firstWeek.add({ days: 6 }).with({ day: 1 });
 }
 
-/**
- * The anchor that puts `firstWeek` at the top of a scrolling month of `weeks` rows, as a view
- * moves the calendar after the user scrolls.
- */
-export function scrollingMonthAnchor(
-  firstWeek: Temporal.PlainDate,
-  weeks: number,
-): Temporal.PlainDate {
-  return firstWeek.add({ weeks: focusRow(weeks) });
-}
-
-/** The month of the focus week's middle day, below the first visible week. */
-function monthFrom(firstWeek: Temporal.PlainDate, weeks: number): Temporal.PlainDate {
-  return firstWeek.add({ days: 3, weeks: focusRow(weeks) }).with({ day: 1 });
-}
-
+/** The week that holds the first day of the anchor's month. */
 function firstWeek(
   anchor: Temporal.PlainDate,
   environment: CalendarEnvironmentBase,
-  weeks: number,
 ): Temporal.PlainDate {
-  const { start } = weekRange(anchor, { weekStartsOn: environment.weekRules.firstDay });
-  return start.subtract({ weeks: focusRow(weeks) });
+  return weekRange(anchor.with({ day: 1 }), { weekStartsOn: environment.weekRules.firstDay }).start;
 }
 
 /**
- * A month that scrolls through weeks instead of paging: `weeks` rows with the anchor's week as
- * the focus row (the third of six), which names the month. A page of weeks above and below is
- * projected too (`getLoadRange`), so a swipe shows their events at once. Previous and Next go to
- * the middle of the neighbouring month, so the whole of it shows; the days of the named month are
- * `inMonth`. Keyboard navigation moves through the visible weeks as in a month grid.
+ * A month that swipes up and down a month at a time instead of paging: `weeks` rows from the week
+ * that holds the anchor's month's first day, six by default, so every month fits. A page of weeks
+ * above and below is projected too (`getLoadRange`), so a swipe shows their events at once; the
+ * days of the month are `inMonth`. Previous and Next move a month. Keyboard navigation moves
+ * through the visible weeks as in a month grid.
  */
 export function scrollingMonthStrategy<TOptions = undefined, TEvent = unknown>(
   weeks = 6,
@@ -75,11 +61,11 @@ export function scrollingMonthStrategy<TOptions = undefined, TEvent = unknown>(
     TEvent
   > = {
     getLoadRange: (anchor, environment) => {
-      const start = firstWeek(anchor, environment, weeks);
+      const start = firstWeek(anchor, environment);
       return plainDateInterval(start.subtract({ weeks }), start.add({ weeks: 2 * weeks }));
     },
     getRange: (anchor, environment) => {
-      const start = firstWeek(anchor, environment, weeks);
+      const start = firstWeek(anchor, environment);
       return plainDateInterval(start, start.add({ weeks }));
     },
     getSpatialNavigation: (input) => {
@@ -92,22 +78,11 @@ export function scrollingMonthStrategy<TOptions = undefined, TEvent = unknown>(
     },
     getTitle: (range, environment) =>
       new Intl.DateTimeFormat(environment.locale, { month: "long", year: "numeric" }).format(
-        scrollingMonthOf(range, weeks),
+        scrollingMonthOf(range),
       ),
-    navigate: (anchor, delta, _options, environment) => {
-      // The month the anchor's week mostly falls in; the anchor's own without week rules.
-      const month =
-        environment === undefined
-          ? anchor.with({ day: 1 })
-          : monthFrom(firstWeek(anchor, environment, weeks), weeks);
-      return month.with({ day: 15 }).add({ months: delta });
-    },
+    navigate: (anchor, delta) => anchor.with({ day: 1 }).add({ months: delta }),
     project: (input) =>
-      projectMonthWeeks(
-        input,
-        input.loadRange ?? input.range,
-        scrollingMonthOf(input.range, weeks),
-      ),
+      projectMonthWeeks(input, input.loadRange ?? input.range, scrollingMonthOf(input.range)),
   };
   return Object.freeze(strategy);
 }

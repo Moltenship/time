@@ -185,40 +185,33 @@ describe("scrollingTimeGridStrategy", () => {
 describe("scrollingMonthStrategy", () => {
   const month = scrollingMonthStrategy<unknown, FixtureEvent>();
 
-  test("puts the anchor's week in the third of six rows and loads six weeks each way", () => {
+  test("shows six weeks from the week of its month's first day, and loads six each way", () => {
+    // October 1, 2026 is a Thursday, in the week from Monday September 28.
     expect(ranges(month, "2026-10-08")).toEqual({
-      load: "2026-08-10 → 2026-12-14",
-      range: "2026-09-21 → 2026-11-02",
+      load: "2026-08-17 → 2026-12-21",
+      range: "2026-09-28 → 2026-11-09",
       title: "October 2026",
     });
+    expect(ranges(month, "2026-10-31").range).toBe("2026-09-28 → 2026-11-09");
   });
 
-  test("anchors a scroll position so its first week stays on top", () => {
-    const anchor = scrollingMonthAnchor(date("2026-09-14"), 6);
-    expect(anchor.toString()).toBe("2026-09-28");
-    expect(ranges(month, anchor.toString()).range).toBe("2026-09-14 → 2026-10-26");
+  test("anchors a swipe on the month its first row holds the first day of", () => {
+    expect(scrollingMonthAnchor(date("2026-10-26")).toString()).toBe("2026-11-01");
+    expect(scrollingMonthAnchor(date("2026-09-28")).toString()).toBe("2026-10-01");
+    expect(scrollingMonthOf(dates("2026-10-26", "2026-12-07")).toString()).toBe("2026-11-01");
   });
 
-  test("names the month that holds most of the anchor's week", () => {
-    // Monday October 26 to Sunday November 1 is mostly October.
-    expect(ranges(month, "2026-11-01").title).toBe("October 2026");
-    expect(ranges(month, "2026-11-02").title).toBe("November 2026");
-    expect(scrollingMonthOf(dates("2026-09-14", "2026-10-26"), 6).toString()).toBe("2026-10-01");
-  });
-
-  test("moves to the middle of the neighbouring month, showing all of it", () => {
-    // September 28's week (to October 4) is October's first, so Next goes to November.
-    expect(month.navigate(date("2026-09-28"), 1, undefined, env).toString()).toBe("2026-11-15");
-    expect(month.navigate(date("2026-10-08"), -1, undefined, env).toString()).toBe("2026-09-15");
-    expect(ranges(month, "2026-11-15").range).toBe("2026-10-26 → 2026-12-07");
-    // Without week rules, the anchor's own month.
-    expect(month.navigate(date("2026-09-28"), 1, undefined).toString()).toBe("2026-10-15");
+  test("moves a month at a time", () => {
+    expect(month.navigate(date("2026-10-08"), 1, undefined).toString()).toBe("2026-11-01");
+    expect(month.navigate(date("2026-10-08"), -1, undefined).toString()).toBe("2026-09-01");
+    // November 1 is a Sunday, so November's first row starts in October.
+    expect(ranges(month, "2026-11-01").range).toBe("2026-10-26 → 2026-12-07");
   });
 
   test("takes its row count", () => {
     expect(ranges(scrollingMonthStrategy<unknown, FixtureEvent>(5), "2026-10-08")).toEqual({
-      load: "2026-08-17 → 2026-11-30",
-      range: "2026-09-21 → 2026-10-26",
+      load: "2026-08-24 → 2026-12-07",
+      range: "2026-09-28 → 2026-11-02",
       title: "October 2026",
     });
     for (const weeks of [0, 13, 1.5]) {
@@ -244,13 +237,13 @@ describe("scrollingMonthStrategy", () => {
 
     expect(step("home", null)).toBe("2026-10-01");
     expect(step("end", null)).toBe("2026-10-31");
-    expect(navigation(month, "2026-10-08", "2026-09-22")("home", null)).toBe("2026-09-22");
+    expect(navigation(month, "2026-10-08", "2026-09-29")("home", null)).toBe("2026-09-29");
     expect(step("down", day("2026-10-29"))).toBe("2026-11-05");
   });
 
   test("reveals a date by whole months", () => {
     expect(
-      anchorShowingDate(month, date("2026-10-08"), date("2026-11-05"), env, undefined).toString(),
-    ).toBe("2026-11-15");
+      anchorShowingDate(month, date("2026-10-08"), date("2026-11-12"), env, undefined).toString(),
+    ).toBe("2026-11-01");
   });
 });
