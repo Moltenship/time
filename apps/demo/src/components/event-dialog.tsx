@@ -24,7 +24,8 @@ import { Textarea } from "@registry/ui/textarea";
 
 import { DemoCalendar, type DemoEvent } from "../calendar";
 import { demoCalendars, isDemoCalendarId } from "../calendars";
-import { eventFromDraft, moveDraftStart, type EventDraft } from "../event-draft";
+import { eventFromDraft, intervalFromDraft, moveDraftStart, type EventDraft } from "../event-draft";
+import { ResourcePicker } from "./resource-picker";
 import type { DemoResourceId } from "../resources";
 
 export interface EventDialogProps {
@@ -104,6 +105,7 @@ function EventForm({
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState<string>();
   const update = (next: Partial<EventDraft>) => setDraft((current) => ({ ...current, ...next }));
+  const interval = intervalFromDraft(draft, timeZone);
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -222,6 +224,14 @@ function EventForm({
           </SelectContent>
         </Select>
       </div>
+      {draft.calendarId === "work" && (
+        <ResourcePicker
+          eventId={initial.id}
+          interval={"error" in interval ? null : interval}
+          onChange={(resourceIds) => update({ resourceIds })}
+          value={draft.resourceIds ?? []}
+        />
+      )}
       <div className="grid gap-2">
         <Label htmlFor={`${id}-description`}>Description</Label>
         <Textarea

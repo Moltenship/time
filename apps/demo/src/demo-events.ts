@@ -14,7 +14,7 @@ function seedAroundToday(timeZone: string) {
 }
 
 /** The storage key; a new one when the seed changes, so returning visitors get the new seed. */
-export const eventsStorageKey = "moltenship-demo:events:v2";
+export const eventsStorageKey = "moltenship-demo:events:v3";
 
 /** Demo events in memory, persisted to localStorage, and seeded around today on first visit. */
 export function useDemoEvents(timeZone: string) {

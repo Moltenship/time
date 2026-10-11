@@ -62,7 +62,7 @@ describe("seed events", () => {
     expect(dates.at(-1)?.toString()).toBe("2026-10-18");
   });
 
-  test("book rooms and people grouped by team, some several at once and some none", () => {
+  test("book many rooms and people grouped by team, some several at once and some none", () => {
     const tree = createResourceTree(demoResources);
     const known = new Set<string>(demoResources.map(({ id }) => id));
     const booked = events.flatMap(({ resourceIds = [] }) => resourceIds);
@@ -70,18 +70,15 @@ describe("seed events", () => {
       ({ depth, id }) => `${"  ".repeat(depth)}${id}`,
     );
 
-    expect(outline).toEqual([
-      "room-orchid",
-      "room-lotus",
-      "room-cedar",
+    // 31 rooms and people: eight rooms, then three teams.
+    expect(outline).toHaveLength(31);
+    expect(outline.slice(0, 8).every((line) => line.startsWith("room-"))).toBe(true);
+    expect(outline.filter((line) => line.startsWith("team-"))).toEqual([
       "team-design",
-      "  person-maya",
-      "  person-alex",
       "team-engineering",
-      "  person-sam",
-      "  person-lee",
-      "  person-jordan",
+      "team-sales",
     ]);
+    expect(outline.filter((line) => line.startsWith("  person-"))).toHaveLength(20);
     expect(booked.every((id) => known.has(id))).toBe(true);
     expect(events.some(({ resourceIds = [] }) => resourceIds.length > 1)).toBe(true);
     expect(

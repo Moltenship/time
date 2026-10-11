@@ -19,7 +19,7 @@ export interface EventDraft {
   readonly endTime: Temporal.PlainTime;
   /** Set when editing an existing event. */
   readonly id?: string;
-  /** Rooms and people the event books, kept as they are; the dialog does not edit them. */
+  /** Rooms and people the event books. */
   readonly resourceIds?: readonly DemoResourceId[];
   readonly startDate: Temporal.PlainDate;
   /** The start's original UTC offset, which picks the same occurrence of a repeated wall time. */
@@ -155,37 +155,43 @@ export function moveDraftStart(
   };
 }
 
-export function eventFromDraft(draft: EventDraft, timeZone: string, id: string): EventDraftResult {
-  const title = draft.title.trim();
-  if (title === "") return { error: "Add a title." };
-
-  const description = draft.description.trim();
-  const { resourceIds = [] } = draft;
-  const base = {
-    calendarId: draft.calendarId,
-    id,
-    title,
-    ...(description === "" ? {} : { description }),
-    ...(resourceIds.length === 0 ? {} : { resourceIds }),
-  };
+/** The draft's time as an event's interval, or why it has none. */
+export function intervalFromDraft(
+  draft: EventDraft,
+  timeZone: string,
+):
+  | Extract<CalendarEventInterval, { readonly kind: "all-day" | "timed" }>
+  | { readonly error: string } {
   if (draft.allDay) {
     if (Temporal.PlainDate.compare(draft.endDate, draft.startDate) < 0) {
       return { error: "The event ends before it starts." };
     }
-    return {
-      event: {
-        ...base,
-        end: draft.endDate.add({ days: 1 }),
-        kind: "all-day",
-        start: draft.startDate,
-      },
-    };
+    return { end: draft.endDate.add({ days: 1 }), kind: "all-day", start: draft.startDate };
   }
-
   const start = resolveWallTime(draft.startDate, draft.startTime, timeZone, draft.startOffset);
   const end = resolveWallTime(draft.endDate, draft.endTime, timeZone, draft.endOffset);
   if (Temporal.Instant.compare(end, start) <= 0) {
     return { error: "The event must end after it starts." };
   }
-  return { event: { ...base, end, kind: "timed", start } };
+  return { end, kind: "timed", start };
+}
+
+export function eventFromDraft(draft: EventDraft, timeZone: string, id: string): EventDraftResult {
+  const title = draft.title.trim();
+  if (title === "") return { error: "Add a title." };
+  const interval = intervalFromDraft(draft, timeZone);
+  if ("error" in interval) return interval;
+
+  const description = draft.description.trim();
+  const { resourceIds = [] } = draft;
+  return {
+    event: {
+      calendarId: draft.calendarId,
+      id,
+      title,
+      ...(description === "" ? {} : { description }),
+      ...(resourceIds.length === 0 ? {} : { resourceIds }),
+      ...interval,
+    },
+  };
 }
