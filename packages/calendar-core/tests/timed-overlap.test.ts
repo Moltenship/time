@@ -263,23 +263,37 @@ describe.each(policies)("the %s layout's contract", (overlapLayout) => {
   });
 
   test("never lets back-to-back events collide", () => {
+    // Quarter hours as shares of a day, measured from midnight as the time grid measures them:
+    // `top + height` can land a hair past the next event's top, as 10/24 + 1/24 does past 11/24.
     const chain = fc
       .array(fc.integer({ max: 8, min: 1 }), { maxLength: 12, minLength: 1 })
-      .map((heights) => {
-        let top = 0;
-        return heights.map((height, index) => {
-          const item = { height, key: `e${index}`, top };
-          top += height;
-          return item;
-        });
-      });
+      .chain((lengths) =>
+        fc
+          .integer({ max: 96 - lengths.reduce((sum, length) => sum + length, 0), min: 0 })
+          .map((first) => {
+            let start = first;
+            return lengths.map((length, index) => {
+              const item = { height: length / 96, key: `e${index}`, top: start / 96 };
+              start += length;
+              return item;
+            });
+          }),
+      );
 
+    expect(layout(items("a 10-11", "b 11-11.25")).map(({ width }) => width)).toEqual([1, 1]);
+    expect(
+      layout([
+        { height: 1 / 24, key: "a", top: 10 / 24 },
+        { height: 1 / 96, key: "b", top: 11 / 24 },
+      ]).map(({ width }) => width),
+    ).toEqual([1, 1]);
     fc.assert(
       fc.property(chain, (input) => {
         expect(layout(input).map(({ left, width }) => [left, width])).toEqual(
           input.map(() => [0, 1]),
         );
       }),
+      { numRuns: 300 },
     );
   });
 });

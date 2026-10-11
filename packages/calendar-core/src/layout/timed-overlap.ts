@@ -52,6 +52,11 @@ interface Entry<TItem> {
 
 type Place<TItem> = (entry: Entry<TItem>, left: number, width: number) => void;
 
+/**
+ * Edges this close count as one, so rounding never makes back-to-back items collide: 10/24 + 1/24,
+ * an hour from 10:00 as a share of the day, lands a hair past 11/24.
+ */
+const EDGE_TOLERANCE = 1e-9;
 const DEFAULT_STACK_INDENT = 0.15;
 /** The furthest a stack indents its deepest item, as a fraction of the column width. */
 const MAX_STACK_INSET = 0.5;
@@ -67,15 +72,31 @@ function compareEntries<TItem extends TimedOverlapItem>(
   );
 }
 
+/** Whether something ending at `bottom` is clear of `edge`, so an item starting there misses it. */
+function endsBy(bottom: number, edge: number): boolean {
+  return bottom <= edge + EDGE_TOLERANCE;
+}
+
 function overlaps<TItem>(left: Entry<TItem>, right: Entry<TItem>): boolean {
-  return left.top < right.bottom && right.top < left.bottom;
+  return !endsBy(left.bottom, right.top) && !endsBy(right.bottom, left.top);
+}
+
+/**
+ * Whether two placed items share some height, as the layout measures collisions: an item ending
+ * where another starts does not.
+ */
+export function placementsOverlap(
+  left: Pick<TimedOverlapItem, "height" | "top">,
+  right: Pick<TimedOverlapItem, "height" | "top">,
+): boolean {
+  return !endsBy(left.top + left.height, right.top) && !endsBy(right.top + right.height, left.top);
 }
 
 /** Gives each entry the lowest lane free at its top; returns the entries in each lane. */
 function assignLanes<TItem>(group: readonly Entry<TItem>[]): readonly (readonly Entry<TItem>[])[] {
   const lanes: Entry<TItem>[][] = [];
   for (const entry of group) {
-    const free = lanes.findIndex((lane) => lane.at(-1)!.bottom <= entry.top);
+    const free = lanes.findIndex((lane) => endsBy(lane.at(-1)!.bottom, entry.top));
     entry.lane = free < 0 ? lanes.length : free;
     (lanes[entry.lane] ??= []).push(entry);
   }
@@ -110,7 +131,7 @@ function placeStack<TItem>(
   let open: Entry<TItem>[] = [];
   let deepest = 0;
   for (const entry of group) {
-    open = open.filter((other) => other.bottom > entry.top);
+    open = open.filter((other) => !endsBy(other.bottom, entry.top));
     entry.lane = open.reduce(
       (depth, other) => (overlaps(entry, other) ? Math.max(depth, other.lane + 1) : depth),
       0,
@@ -181,7 +202,7 @@ export function layoutTimedOverlaps<TItem extends TimedOverlapItem>(
   let groupBottom = -Infinity;
 
   for (const entry of entries) {
-    if (entry.top >= groupBottom) {
+    if (endsBy(groupBottom, entry.top)) {
       placeGroup(group);
       group = [];
     }

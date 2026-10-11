@@ -93,10 +93,10 @@ const denseGolden: Record<OverlapLayout, readonly string[]> = {
     "t09 11:00-11:45 0.429/0.571",
     "t10 11:15-12:00 0.143/0.143",
     "t11 11:30-12:15 0.286/0.143",
-    "t12 11:45-12:30 0.429/0.143",
+    "t12 11:45-12:30 0.429/0.571",
     "t13 12:00-12:45 0.143/0.143",
-    "t14 12:15-13:00 0.571/0.429",
-    "t15 12:30-13:15 0.286/0.286",
+    "t14 12:15-13:00 0.286/0.143",
+    "t15 12:30-13:15 0.429/0.571",
     "t16 12:45-13:30 0.143/0.143",
     "b1 14:00-15:00 0.143/0.143",
     "b2 14:00-15:00 0.286/0.143",
@@ -121,8 +121,8 @@ const denseGolden: Record<OverlapLayout, readonly string[]> = {
     "t11 11:30-12:15 0.286/0.143",
     "t12 11:45-12:30 0.429/0.143",
     "t13 12:00-12:45 0.143/0.143",
-    "t14 12:15-13:00 0.571/0.143",
-    "t15 12:30-13:15 0.286/0.143",
+    "t14 12:15-13:00 0.286/0.143",
+    "t15 12:30-13:15 0.429/0.143",
     "t16 12:45-13:30 0.143/0.143",
     "b1 14:00-15:00 0.143/0.143",
     "b2 14:00-15:00 0.286/0.143",
@@ -366,4 +366,38 @@ describe.each(policies)("the %s overlap layout", (policy) => {
       ]);
     },
   );
+
+  test("left and right never step to a back-to-back event", () => {
+    const env = environment("UTC");
+    const range = dates("2026-10-08", "2026-10-09");
+    // d starts as b ends, so the two never share a moment, though 10/24 + 1/24 > 11/24.
+    const projection = project(
+      [
+        timed("a", "2026-10-08T09:00Z", "2026-10-08T11:00Z"),
+        timed("b", "2026-10-08T10:00Z", "2026-10-08T11:00Z"),
+        timed("c", "2026-10-08T10:30Z", "2026-10-08T12:00Z"),
+        timed("d", "2026-10-08T11:00Z", "2026-10-08T12:00Z"),
+      ],
+      ["2026-10-08", "2026-10-09"],
+      policy,
+      env,
+    );
+    const move = (command: "left" | "right") => {
+      const result = timeGridSpatialNavigation({
+        command,
+        environment: env,
+        focus: { date: range.start, eventId: "d", kind: "event" },
+        options: undefined,
+        projection,
+        range,
+        snap: { increment: 15, smallestUnit: "minute" },
+      });
+      return result !== null && "focus" in result && result.focus.kind === "event"
+        ? result.focus.eventId
+        : null;
+    };
+
+    // In lanes, d takes a's lane beside c; in a stack, it sits on c.
+    expect([move("left"), move("right")]).toEqual(policy === "stack" ? ["c", null] : [null, "c"]);
+  });
 });

@@ -2,6 +2,7 @@ import type { WallTimeSnapOptions } from "@moltenship/calendar-temporal";
 
 import type { EventId, ResourceId } from "../ids";
 import type { DayGridRow } from "../layout/day-grid";
+import { placementsOverlap } from "../layout/timed-overlap";
 import { slotDuration } from "../transactions/targets";
 import type { TimeGridProjection } from "../views/time-grid/projection";
 import { dayEventNavigation, dayFocus, eventFocus, eventsOnDate } from "./day-events";
@@ -228,8 +229,7 @@ function besideEvent(events: readonly Layout[], current: Layout, side: 1 | -1): 
   const overlapping = events.filter(
     (other) =>
       other !== current &&
-      other.top < current.top + current.height &&
-      current.top < other.top + other.height &&
+      placementsOverlap(other, current) &&
       Math.sign(other.left - current.left) === side,
   );
   return overlapping.toSorted(
