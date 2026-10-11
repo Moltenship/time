@@ -4,9 +4,11 @@ import {
   createCanonicalEventAdapter,
   type CalendarAvailability,
   type CalendarEvent,
+  type CalendarResource,
 } from "@moltenship/calendar";
 import { expect, test } from "vite-plus/test";
 
+import { createTimelineDayView } from "@registry/resource-timeline-view/resource-timeline-view";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 
 import { render } from "./render";
@@ -110,3 +112,42 @@ test("drag previews outside working hours are outlined in dashes", async () => {
   // Inside working hours, the same drag is not outlined.
   expect(await previewOutline([x, at(15.1)], [x, at(16)])).toMatchObject({ outlineStyle: "none" });
 });
+
+test.each(["ltr", "rtl"] as const)(
+  "%s: a timeline shades closed hours from the reading start, beside the resource column",
+  async (direction) => {
+    const Timeline = createCalendar<Meeting, CalendarResource<null>>()({
+      eventAdapter: createCanonicalEventAdapter<null, string>(),
+      views: [createTimelineDayView<Meeting>()],
+    });
+    await render(
+      <Timeline.Root
+        availability={officeHours}
+        defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+        defaultTimeZone="UTC"
+        direction={direction}
+        events={[]}
+        locale="en-US"
+        now={Temporal.Instant.from("2026-10-08T00:30:00Z")}
+        resources={[{ data: null, id: "ada", title: "Ada" }]}
+        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+      >
+        <div className="h-dvh" dir={direction}>
+          <Timeline.ActiveView />
+        </div>
+      </Timeline.Root>,
+    );
+    const viewport = document.querySelector<HTMLElement>(
+      '[data-slot="resource-timeline-viewport"]',
+    )!;
+    viewport.scrollLeft = 0;
+    await frame();
+    const header = document.querySelector('[role="rowheader"]')!.getBoundingClientRect();
+    // The first stretch is midnight to 09:00, which starts where the resource column ends.
+    const [early] = document.querySelectorAll('[data-slot="resource-timeline-unavailable"]');
+    const box = early!.getBoundingClientRect();
+
+    if (direction === "ltr") expect(Math.round(box.left)).toBe(Math.round(header.right));
+    else expect(Math.round(box.right)).toBe(Math.round(header.left));
+  },
+);

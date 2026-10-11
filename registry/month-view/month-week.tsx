@@ -1,6 +1,8 @@
 import {
   useCalendarInteraction,
+  useClosedDates,
   useRovingFocus,
+  type ClosedDate,
   type DayGridOverflow,
   type DayGridSegment,
   type EventDayFragment,
@@ -209,10 +211,12 @@ function MoreEvents<TEvent>({
 
 /**
  * A day of the grid and its keyboard focus target. Its date (`data-date`, which pointer
- * hit-testing reads) sits under the event segments, and shows a keyboard create's range.
+ * hit-testing reads) sits under the event segments, and shows a keyboard create's range. A day
+ * outside the calendar's working hours is muted, and its name says why.
  */
 function MonthDayCell({
   children,
+  closed,
   count,
   day,
   formats,
@@ -220,6 +224,8 @@ function MonthDayCell({
   onOpenDay,
 }: {
   readonly children: ReactNode;
+  /** Set when the day has no working hours. */
+  readonly closed: ClosedDate | undefined;
   /** Events on the day, including those behind "+N more". */
   readonly count: number;
   readonly day: MonthDay;
@@ -241,7 +247,14 @@ function MonthDayCell({
   return (
     <div
       role="gridcell"
-      aria-label={`${formats.date.format(day.date)}, ${eventCount(count)}`}
+      aria-label={[
+        formats.date.format(day.date),
+        closed?.label,
+        closed === undefined ? undefined : "closed",
+        eventCount(count),
+      ]
+        .filter((part) => part !== undefined)
+        .join(", ")}
       // Out of the tab order, yet focusable, so focus on it survives a scroll that moves it away.
       {...(offscreen ? { tabIndex: -1 } : roving)}
       onKeyDown={(event) => {
@@ -255,11 +268,12 @@ function MonthDayCell({
     >
       {/* Events sit outside this element, so a drop target is never the cell a bar starts in. */}
       <div
+        data-closed={closed === undefined ? undefined : ""}
         data-date={day.date.toString()}
         data-draft={inDraft ? "" : undefined}
         {...previewCheckAttributes(inDraft ? draftCheck : undefined)}
         className={cn(
-          "absolute inset-0 flex justify-center data-draft:bg-calendar-selection",
+          "absolute inset-0 flex justify-center data-closed:bg-calendar-closed data-draft:bg-calendar-selection",
           draftCheckClassName,
           !day.inMonth && "bg-muted/50",
         )}
@@ -293,6 +307,7 @@ export function MonthWeekRow<TEvent>({
   week,
 }: MonthWeekRowProps<TEvent>) {
   const segments = expanded ? week.segments : overflow.segments;
+  const closed = useClosedDates(week.range);
 
   return (
     <div
@@ -302,6 +317,7 @@ export function MonthWeekRow<TEvent>({
       {week.days.map((day, column) => (
         <MonthDayCell
           key={day.date.toString()}
+          closed={closed.get(day.date.toString())}
           count={segmentsOn(week.segments, column).length}
           day={day}
           formats={formats}

@@ -167,10 +167,12 @@ export function ResourceTimelineGrid<TEvent>({
               key={virtualRow.key}
               columns={columns}
               cells={targets.cells.get(virtualRow.index) ?? noCells}
+              environment={environment}
               formatTime={formatTime}
               getEventColor={getEventColor}
               labelEvent={labelEvent}
               labels={labels}
+              range={range}
               row={rows[virtualRow.index]!}
               slotWidth={slotWidth}
               slots={slots}

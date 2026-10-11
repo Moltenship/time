@@ -1,4 +1,8 @@
-import type { ResourceColumn, VisibleResource } from "@moltenship/calendar";
+import type {
+  CalendarEnvironmentBase,
+  ResourceColumn,
+  VisibleResource,
+} from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type ComponentType, type ReactNode, type RefCallback } from "react";
 
@@ -15,6 +19,8 @@ export interface ResourceColumnsHeaderProps {
   readonly corner: ReactNode;
   /** Day columns per resource; each is one `aria-colindex` step after the gutter. */
   readonly days: number;
+  /** The calendar's locale and display time zone, for each resource's local time. */
+  readonly environment: Pick<CalendarEnvironmentBase, "locale" | "timeZone">;
   /** Follows the body's sideways scroll; see `useAxisSync`. */
   readonly followX: RefCallback<HTMLElement>;
   /** The rendered columns, from the column virtualizer. */
@@ -41,11 +47,13 @@ export function resourceTitle({ resource }: VisibleResource): string {
  * draws the name row; the bands, sizes and the group names screen readers hear stay here.
  */
 function ResourceHeaderCell({
+  environment,
   groups,
   levels,
   resource,
   ResourceHeader,
 }: {
+  readonly environment: Pick<CalendarEnvironmentBase, "locale" | "timeZone">;
   /** Names of the groups the resource sits in, outermost first. */
   readonly groups: readonly string[];
   readonly levels: number;
@@ -73,7 +81,7 @@ function ResourceHeaderCell({
         )}
         style={{ height: `${LEVEL}rem` }}
       >
-        <ResourceHeaderContext value={{ groups, title, visible: resource }}>
+        <ResourceHeaderContext value={{ environment, groups, title, visible: resource }}>
           <ResourceHeader resource={resource.resource} title={title} />
         </ResourceHeaderContext>
         {groups.length > 0 && <span className="sr-only">, {groups.join(", ")}</span>}
@@ -93,6 +101,7 @@ function ResourceHeaderCell({
 export function ResourceColumnsHeader({
   corner,
   days,
+  environment,
   followX,
   items,
   ResourceHeader = DefaultResourceHeader,
@@ -146,6 +155,7 @@ export function ResourceColumnsHeader({
                 style={{ insetInlineStart: start, width: size }}
               >
                 <ResourceHeaderCell
+                  environment={environment}
                   groups={groupsOf(resource)}
                   levels={levels}
                   resource={resource}

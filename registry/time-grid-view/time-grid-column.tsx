@@ -33,6 +33,11 @@ import {
   type TimeGridAnnotationMarkData,
   type TimeGridAnnotationWiring,
 } from "./time-grid-annotations";
+import {
+  isUnavailableIn,
+  TimeGridAvailability,
+  useColumnAvailability,
+} from "./time-grid-availability";
 import { percent, TimeGridEvent, type TimeGridEventFormats } from "./time-grid-event";
 
 export interface TimeGridColumnFormats extends TimeGridEventFormats {
@@ -127,6 +132,12 @@ function draftBox(column: Column, placement: CalendarEventPlacement): TimeGridBa
     : null;
 }
 
+/** Where a slot sits on its column's 24-hour axis. */
+function slotBand(slot: CalendarSlotFocus, slotMinutes: number): TimeGridBand {
+  const minutes = slot.time.hour * 60 + slot.time.minute;
+  return { height: slotMinutes / DAY_MINUTES, top: minutes / DAY_MINUTES };
+}
+
 /** The annotations drawn across a focused slot, named after its date and time. */
 function slotAnnotations(
   column: Column,
@@ -134,9 +145,7 @@ function slotAnnotations(
   { formats, marks }: NonNullable<TimeGridColumnProps<unknown>["annotations"]>,
   slotMinutes: number,
 ): string | undefined {
-  const minutes = slot.time.hour * 60 + slot.time.minute;
-  const band = { height: slotMinutes / DAY_MINUTES, top: minutes / DAY_MINUTES };
-  return describeAnnotationsAt(marks, column, band, formats);
+  return describeAnnotationsAt(marks, column, slotBand(slot, slotMinutes), formats);
 }
 
 function sameBand(left: TimeGridBand | null, right: TimeGridBand | null): boolean {
@@ -217,6 +226,7 @@ export function TimeGridColumn<TEvent>({
     { isEqual: sameBand },
   );
   const draftCheck = useDraftCheck();
+  const unavailable = useColumnAvailability(column, resourceId);
   const Annotations = annotations?.layout.options.Annotations ?? TimeGridAnnotations;
   const labelHere = useMemo<EventLabeler<TEvent>>(
     () => (resource === undefined ? labelEvent : (event) => labelEvent(event, resource.title)),
@@ -232,6 +242,7 @@ export function TimeGridColumn<TEvent>({
       data-today={isToday ? "" : undefined}
       className="relative min-w-0 border-s border-calendar-grid"
     >
+      <TimeGridAvailability bands={unavailable} />
       {column.gaps.map((band) => (
         <div
           key={`gap:${band.top}`}
@@ -290,6 +301,9 @@ export function TimeGridColumn<TEvent>({
           label={[
             resource?.title,
             formats.slot.format(slot.date.toPlainDateTime(slot.time)),
+            isUnavailableIn(unavailable, slotBand(slot, slotMinutes))
+              ? "outside working hours"
+              : undefined,
             annotations === undefined
               ? undefined
               : slotAnnotations(column, slot, annotations, slotMinutes),

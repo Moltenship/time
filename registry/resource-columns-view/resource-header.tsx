@@ -1,5 +1,6 @@
 import {
   useResourceExpansion,
+  type CalendarEnvironmentBase,
   type CalendarResource,
   type ResourceId,
   type VisibleResource,
@@ -7,6 +8,7 @@ import {
 import { ChevronRightIcon } from "lucide-react";
 import { createContext, use, type ComponentProps } from "react";
 
+import { ResourceTime } from "@registry/calendar/resource-time";
 import { cn } from "cn";
 
 /** What the view hands a resource header; the parts read the rest through `useResourceHeader`. */
@@ -20,6 +22,8 @@ export interface ResourceHeaderProps<
 }
 
 export interface ResourceHeaderContextValue {
+  /** The calendar's locale and display time zone. */
+  readonly environment: Pick<CalendarEnvironmentBase, "locale" | "timeZone">;
   /** Names of the groups the resource sits in, outermost first. */
   readonly groups: readonly string[];
   readonly title: string;
@@ -101,12 +105,34 @@ export function ResourceHeaderTitle({ children, className, ...props }: Component
   );
 }
 
-/** The default composition: a group's chevron, then the name. */
+/**
+ * The resource's local time and UTC offset, while its `timeZone` keeps a different clock from the
+ * display time zone; nothing otherwise.
+ */
+export function ResourceHeaderTime({ className, ...props }: ComponentProps<"span">) {
+  const { environment, visible } = useResourceHeader();
+  return (
+    <ResourceTime
+      className={cn("truncate leading-none", className)}
+      environment={environment}
+      timeZone={visible.resource?.timeZone}
+      {...props}
+    />
+  );
+}
+
+/**
+ * The default composition: a group's chevron, then the name, with the local time under it for a
+ * resource in another time zone.
+ */
 export function DefaultResourceHeader() {
   return (
     <>
       <ResourceHeaderToggle />
-      <ResourceHeaderTitle />
+      <span className="flex min-w-0 flex-col">
+        <ResourceHeaderTitle />
+        <ResourceHeaderTime />
+      </span>
     </>
   );
 }

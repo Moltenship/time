@@ -3,6 +3,7 @@ import {
   createCanonicalEventAdapter,
   plainDateInterval,
   type CalendarAnnotation,
+  type CalendarAvailability,
   type CalendarEvent,
   type CalendarResource,
 } from "@moltenship/calendar";
@@ -49,13 +50,28 @@ const today = Temporal.PlainDate.from("2026-10-08");
 const firstMeeting = Temporal.Instant.from("2026-10-08T08:00:00Z");
 const firstCall = Temporal.Instant.from("2026-10-05T15:00:00Z");
 
-/** A group of two people and a room, for the resources view; the meetings book them in turn. */
+/**
+ * A group of two people and a room, for the resources view; the meetings book them in turn. Grace
+ * works from London, so her hours and her header's local time follow its clock.
+ */
 const resources: readonly CalendarResource<null>[] = [
   { data: null, id: "team", title: "Team" },
   { data: null, id: "ada", parentId: "team", title: "Ada" },
-  { data: null, id: "grace", parentId: "team", title: "Grace" },
+  { data: null, id: "grace", parentId: "team", timeZone: "Europe/London", title: "Grace" },
   { data: null, id: "orchid", title: "Orchid" },
 ];
+
+/** Weekdays 09:00 to 17:00, shaded outside; a closed Friday mutes its day in the month. */
+const availability: CalendarAvailability = {
+  exceptions: [{ date: Temporal.PlainDate.from("2026-10-09"), label: "Offsite" }],
+  weekly: [
+    {
+      days: [1, 2, 3, 4, 5],
+      end: Temporal.PlainTime.from("17:00"),
+      start: Temporal.PlainTime.from("09:00"),
+    },
+  ],
+};
 const bookable = ["ada", "grace", "orchid"];
 
 function timed(
@@ -164,6 +180,7 @@ export function RegistryScreen({
       <Calendar.Root
         annotationSources={annotationSources}
         annotations={annotationData}
+        availability={availability}
         defaultAnchorDate={today}
         defaultExpandedResourceIds={["team"]}
         defaultTimeZone="UTC"

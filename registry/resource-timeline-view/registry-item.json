@@ -28,6 +28,11 @@
       "target": "components/calendar/resource-timeline-view/resource-timeline-row.tsx"
     },
     {
+      "path": "registry/resource-timeline-view/resource-timeline-availability.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/resource-timeline-view/resource-timeline-availability.tsx"
+    },
+    {
       "path": "registry/resource-timeline-view/resource-timeline-event.tsx",
       "type": "registry:component",
       "target": "components/calendar/resource-timeline-view/resource-timeline-event.tsx"

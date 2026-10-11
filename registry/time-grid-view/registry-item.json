@@ -45,6 +45,11 @@
       "target": "components/calendar/time-grid-view/time-grid-column.tsx"
     },
     {
+      "path": "registry/time-grid-view/time-grid-availability.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/time-grid-view/time-grid-availability.tsx"
+    },
+    {
       "path": "registry/time-grid-view/time-grid-event.tsx",
       "type": "registry:component",
       "target": "components/calendar/time-grid-view/time-grid-event.tsx"

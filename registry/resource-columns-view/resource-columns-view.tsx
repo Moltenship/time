@@ -130,6 +130,7 @@ export function ResourceColumnsView<
               : offsetLabel(environment.locale, environment.timeZone, columns[0])
           }
           days={columns.length}
+          environment={environment}
           followX={followX}
           // The projection's resources are untyped; `TResource` is the type the app gave the root.
           ResourceHeader={options.ResourceHeader as ComponentType<ResourceHeaderProps> | undefined}

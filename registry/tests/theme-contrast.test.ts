@@ -41,6 +41,14 @@ describe.each(["light", "dark"] as const)("%s theme", (theme) => {
     }
   });
 
+  test.each(surfaces)("dates on closed days on %s", (surface) => {
+    // A closed day mutes its cell; its date, and an out-of-month date, stay readable on it.
+    const closed = tokens.paint("--calendar-closed", surface);
+    for (const text of ["--foreground", "--muted-foreground"]) {
+      expect(contrast(tokens.color(text), closed)).toBeGreaterThanOrEqual(TEXT);
+    }
+  });
+
   test.each(surfaces)("invalid and warning marks on %s", (surface) => {
     for (const mark of ["--calendar-invalid", "--calendar-warning"]) {
       expect(contrast(tokens.color(mark), tokens.color(surface))).toBeGreaterThanOrEqual(GRAPHIC);

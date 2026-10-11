@@ -38,6 +38,11 @@
       "target": "components/calendar/preview-check.ts"
     },
     {
+      "path": "registry/calendar/resource-time.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/resource-time.tsx"
+    },
+    {
       "path": "registry/calendar/scrolling-axis.tsx",
       "type": "registry:component",
       "target": "components/calendar/scrolling-axis.tsx"
