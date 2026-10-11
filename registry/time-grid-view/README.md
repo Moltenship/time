@@ -14,6 +14,10 @@ const views = [
 
 - The header shows the weekday and date and highlights today. Pass `dayView: "day"` to the week
   view to make each date open that registered view.
+- Overlapping events sit side by side, each widening into free lanes. Set `overlapLayout:
+  "equal"` for lanes of equal width, or `"stack"` to cascade them, each indented past the events
+  it overlaps by `stackIndent` (a fraction of the column) and drawn on top. A stacked event rises
+  to the top while hovered or focused, so its title stays readable.
 - All-day events and events of 24 hours or more sit in the all-day row, which collapses busy days
   to three lanes with "+N more".
 - Columns use a nominal 24-hour wall clock. Spring-forward hours are hatched, repeated fall-back

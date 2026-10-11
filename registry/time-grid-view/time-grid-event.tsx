@@ -85,7 +85,8 @@ export function eventTimeRange(
 }
 
 /**
- * A positioned event: title and time range, or one compact line when short. Resize handles mark
+ * A positioned event: title and time range, or one compact line when short. Render a column's
+ * events in layout order, so stacked events draw over the ones they overlap. Resize handles mark
  * the edges that belong to this day; continued edges are squared off instead. A short block keeps
  * one handle, and handles take at most a third of the height, so the rest still grabs to move.
  */
@@ -110,7 +111,8 @@ export function TimeGridEvent<TEvent>({
       color={color}
       {...chip}
       className={cn(
-        "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)]",
+        // Raised while hovered or focused, so a stacked event's title shows over the ones above it.
+        "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)] hover:z-10 focus:z-10",
         compact ? "flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" : "py-1",
         startsBeforeDay && "rounded-t-none",
         endsAfterDay && "rounded-b-none",

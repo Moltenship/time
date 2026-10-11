@@ -5,6 +5,7 @@ import {
   useCalendarAnnouncer,
   useCalendarPointer,
   type CalendarViewRendererProps,
+  type OverlapLayoutOptions,
   type TimeGridProjection,
   type TimeGridSpan,
 } from "@moltenship/calendar";
@@ -26,7 +27,11 @@ import {
 import { TimeGridBody } from "./time-grid-body";
 import { TimeGridHeader } from "./time-grid-header";
 
-export interface TimeGridViewOptions<TEvent> {
+/**
+ * Overlapping events sit side by side in lanes (`overlapLayout: "columns"`, the default), in lanes
+ * of equal width (`"equal"`), or cascade (`"stack"`, indented by `stackIndent`).
+ */
+export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions {
   /**
    * How the root's annotations draw: the rail's size and side, or your own composition of the
    * annotation parts. Without annotation sources on the root, no rail is reserved.

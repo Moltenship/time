@@ -12,3 +12,4 @@ A day or N-day time grid with a column per resource, built on the week and day v
   Columns share the width until they reach 128px per day, then the grid scrolls sideways.
 - The header and the hour gutter sit beside the scrolling body rather than over it and follow its
   scroll, so a drag never targets a column hidden under them.
+- Overlapping events follow `overlapLayout` and `stackIndent`, as in the week and day views.
