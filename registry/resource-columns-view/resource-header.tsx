@@ -143,7 +143,7 @@ export function ResourceHeaderStatus({ className, ...props }: ComponentProps<"sp
 
 /**
  * The default composition: a group's chevron, then the name, with the local time under it for a
- * resource in another time zone, and its status beside that with the view's `resourceStatus`.
+ * resource in another time zone and, with the view's `resourceStatus`, its status after that.
  */
 export function DefaultResourceHeader() {
   const { status } = useResourceHeader();
@@ -154,8 +154,8 @@ export function DefaultResourceHeader() {
         <ResourceHeaderTitle />
         {status ? (
           <span className="flex min-w-0 items-center gap-1">
-            <ResourceHeaderStatus />
             <ResourceHeaderTime />
+            <ResourceHeaderStatus />
           </span>
         ) : (
           <ResourceHeaderTime />
