@@ -6,7 +6,9 @@ import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 
 import { App } from "../src/app";
 import type { DemoEvent } from "../src/calendar";
+import { eventsStorageKey } from "../src/demo-events";
 import { parseEvents, serializeEvents } from "../src/event-storage";
+import { createRoutineEvents } from "../src/routine";
 import { createSeedEvents } from "../src/seed";
 
 declare global {
@@ -39,7 +41,7 @@ let stored = new Map<string, string>();
 beforeEach(() => {
   // Node's experimental localStorage global shadows jsdom's, so stub a small one.
   stored = new Map([
-    ["moltenship-demo:events", serializeEvents([focusTime, lunch])],
+    [eventsStorageKey, serializeEvents([focusTime, lunch])],
     [
       "moltenship-demo:settings",
       JSON.stringify({ locale: "en-US", timeZone: "UTC", weekStartsOn: 7 }),
@@ -177,7 +179,7 @@ test("the month view moves an event with the keyboard, saves it and says so", as
   await pastSaveDelay();
   expect(announced()).toBe("Moved Focus time to Friday, October 9, 10:00 AM – 12:00 PM.");
 
-  const saved = parseEvents(stored.get("moltenship-demo:events") ?? null);
+  const saved = parseEvents(stored.get(eventsStorageKey) ?? null);
   expect(saved?.find(({ id }) => id === "focus-time")?.start.toString()).toBe(
     "2026-10-09T10:00:00Z",
   );
@@ -218,12 +220,12 @@ test("deletes persist after the save delay and roll back when saves fail", async
   await deleteFromPopover("lunch");
   await pastSaveDelay();
   expect(eventButton("lunch")).toBeNull();
-  expect(stored.get("moltenship-demo:events")).not.toContain('"lunch"');
+  expect(stored.get(eventsStorageKey)).not.toContain('"lunch"');
 });
 
 test("a reset during an in-flight delete keeps the fresh seed intact", async () => {
   const today = Temporal.Now.plainDateISO("UTC");
-  stored.set("moltenship-demo:events", serializeEvents(createSeedEvents(today, "UTC")));
+  stored.set(eventsStorageKey, serializeEvents(createSeedEvents(today, "UTC")));
   history.replaceState(null, "", `/?view=day&date=${today.toString()}`);
   await act(async () => root.render(<App />));
   const deletedId = container.querySelector<HTMLElement>("[data-event-id]")?.dataset.eventId;
@@ -237,8 +239,11 @@ test("a reset during an in-flight delete keeps the fresh seed intact", async () 
   await act(async () => reset?.click());
   await pastSaveDelay();
 
-  const ids = parseEvents(stored.get("moltenship-demo:events") ?? null)?.map(({ id }) => id);
+  const ids = parseEvents(stored.get(eventsStorageKey) ?? null)?.map(({ id }) => id);
   expect(ids).toContain(deletedId);
-  expect(ids).toHaveLength(createSeedEvents(today, "UTC").length);
+  // The fresh seed adds a year of routine either way of the three detailed weeks.
+  expect(ids).toHaveLength(
+    createSeedEvents(today, "UTC").length + createRoutineEvents(today, "UTC").length,
+  );
   expect(eventButton(deletedId)).not.toBeNull();
 });

@@ -2,6 +2,7 @@ import type { DemoView } from "./calendar";
 
 /** The paged views and their scrolling versions. */
 const scrollingViews = {
+  agenda: "scrolling-agenda",
   day: "scrolling-day",
   month: "scrolling-month",
   week: "scrolling-week",
@@ -14,7 +15,7 @@ const pagedViews = new Map<DemoView, PagedView>(
 );
 
 /**
- * `view` in the set the settings choose: day, week, and month become their scrolling versions
+ * `view` in the set the settings choose: day, week, month, and agenda become their scrolling versions
  * while `scrolling` is on, and back again when it is off. Other views stay as they are.
  */
 export function viewFor(view: DemoView, scrolling: boolean): DemoView {

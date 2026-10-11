@@ -3,16 +3,23 @@ import { useCallback } from "react";
 import type { DemoEvent } from "./calendar";
 import { applyEventChange, type DemoEventChange } from "./event-changes";
 import { parseEvents, serializeEvents } from "./event-storage";
+import { createRoutineEvents } from "./routine";
 import { createSeedEvents } from "./seed";
 import { usePersistentState } from "./storage";
 
-const seedAroundToday = (timeZone: string) =>
-  createSeedEvents(Temporal.Now.plainDateISO(timeZone), timeZone);
+/** Three detailed weeks around today, and a year of routine either way for the agenda to scroll. */
+function seedAroundToday(timeZone: string) {
+  const today = Temporal.Now.plainDateISO(timeZone);
+  return [...createSeedEvents(today, timeZone), ...createRoutineEvents(today, timeZone)];
+}
+
+/** The storage key; a new one when the seed changes, so returning visitors get the new seed. */
+export const eventsStorageKey = "moltenship-demo:events:v2";
 
 /** Demo events in memory, persisted to localStorage, and seeded around today on first visit. */
 export function useDemoEvents(timeZone: string) {
   const [events, setEvents] = usePersistentState<readonly DemoEvent[]>(
-    "moltenship-demo:events",
+    eventsStorageKey,
     (stored) => parseEvents(stored) ?? seedAroundToday(timeZone),
     serializeEvents,
   );

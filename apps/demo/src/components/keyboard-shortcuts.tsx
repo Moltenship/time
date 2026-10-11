@@ -7,7 +7,7 @@ import { shortcutCommand } from "../shortcuts";
 export interface KeyboardShortcutsProps {
   readonly onCreate: () => void;
   readonly onHelp: () => void;
-  /** Whether d, w, and m open the scrolling day, week, and month. */
+  /** Whether d, w, m, and a open the scrolling day, week, month, and agenda. */
   readonly scrolling: boolean;
 }
 
