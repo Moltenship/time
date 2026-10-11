@@ -67,6 +67,7 @@ export {
 export type { MonthDay, MonthProjection, MonthWeek } from "./views/month/month";
 
 export { getListRange, getListTitle, navigateList, projectList } from "./views/list/list";
+export { scrollingListStrategy } from "./views/list/scrolling";
 export type { ListDay, ListItem, ListProjection, ListViewOptions } from "./views/list/list";
 
 export { createAnnotationSnapshot } from "./annotations/snapshot";

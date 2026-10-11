@@ -46,7 +46,8 @@ export interface ListProjection<TEvent, TEventId extends EventId, TResourceId ex
   readonly range: PlainDateInterval;
 }
 
-function listWeeks(options: ListViewOptions): number {
+/** The `weeks` option, four by default; anything but a positive whole number throws. */
+export function listWeeks(options: ListViewOptions): number {
   const weeks = options.weeks ?? DEFAULT_LIST_WEEKS;
   if (!Number.isSafeInteger(weeks) || weeks < 1) {
     throw new RangeError("invalid-list-weeks");
