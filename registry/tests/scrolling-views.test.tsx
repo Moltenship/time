@@ -53,13 +53,13 @@ const events: readonly Fixture[] = [
     start: Temporal.PlainDate.from("2026-10-05"),
     title: "Season",
   },
-  // Starts before the week from Wednesday October 7, and runs into it.
+  // Starts before the week of Monday October 5, and runs into the next.
   {
     data: null,
-    end: Temporal.PlainDate.from("2026-10-10"),
+    end: Temporal.PlainDate.from("2026-10-14"),
     id: "trip",
     kind: "all-day",
-    start: Temporal.PlainDate.from("2026-10-05"),
+    start: Temporal.PlainDate.from("2026-10-02"),
     title: "Trip",
   },
 ];
@@ -116,14 +116,15 @@ test("numbers days from 1970 for the scrolling axis", () => {
   );
 });
 
-test("a scrolling week renders a week on each side and exposes only the visible days", async () => {
+test("a scrolling week shows the anchor's week, renders one each side, and exposes only its days", async () => {
   const container = await show("scrolling-week");
   const columns = [...container.querySelectorAll('[role="gridcell"][data-date]')];
 
-  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 7 – 13, 2026");
+  // Wednesday October 7's week, from Monday.
+  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 5 – 11, 2026");
   expect(columns.map((column) => column.getAttribute("data-date"))).toEqual(
     Array.from({ length: 21 }, (_, index) =>
-      Temporal.PlainDate.from("2026-09-30").add({ days: index }).toString(),
+      Temporal.PlainDate.from("2026-09-28").add({ days: index }).toString(),
     ),
   );
   expect(
@@ -131,13 +132,13 @@ test("a scrolling week renders a week on each side and exposes only the visible 
       .filter((column) => !column.hasAttribute("aria-hidden"))
       .map((column) => column.getAttribute("data-date")),
   ).toEqual([
+    "2026-10-05",
+    "2026-10-06",
     "2026-10-07",
     "2026-10-08",
     "2026-10-09",
     "2026-10-10",
     "2026-10-11",
-    "2026-10-12",
-    "2026-10-13",
   ]);
   // Events on the loaded days around the view render too, ready to scroll into view.
   expect(
@@ -148,7 +149,7 @@ test("a scrolling week renders a week on each side and exposes only the visible 
   );
   // The time-zone corner, then one header per visible day.
   expect(headers).toHaveLength(7);
-  expect(ariaLabel(headers[1])).toBe("Thursday, October 8, 2026");
+  expect(ariaLabel(headers[1])).toBe("Tuesday, October 6, 2026");
 });
 
 test("a scrolling day view shows one day and names its header for that day", async () => {
@@ -193,8 +194,8 @@ test("days scrolled away give the tab stop back to the visible days", async () =
   await act(async () => cell.focus());
   expect(cell.tabIndex).toBe(0);
 
-  // A scroll comes to rest a day later, leaving October 7 rendered but out of view.
-  await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from("2026-10-08")));
+  // A swipe comes to rest on the next week, leaving October 7 rendered but out of view.
+  await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from("2026-10-12")));
 
   expect(cell.getAttribute("aria-hidden")).toBe("true");
   expect(cell.tabIndex).toBe(-1);
@@ -225,18 +226,16 @@ test("a bar that starts in days scrolled away stays readable and focusable", asy
   // It renders in the first visible day's cell and reaches back to its own first day.
   expect(
     bar.closest('[role="gridcell"]')?.querySelector("[data-date]")?.getAttribute("data-date"),
-  ).toBe("2026-10-07");
+  ).toBe("2026-10-05");
   expect(bar.closest('[aria-hidden="true"]')).toBeNull();
-  expect(bar.style.insetInlineStart).toBe("calc(-2 * (100% + 1px))");
+  expect(bar.style.insetInlineStart).toBe("calc(-3 * (100% + 1px))");
 
   const cell = container.querySelector<HTMLElement>(
     '[data-date="2026-10-08"][data-all-day]',
   )!.parentElement!;
   await act(async () => cell.focus());
-  // The month-long holiday is the day's first all-day event; the trip is next.
+  // The trip, which starts first, is the day's first all-day event.
   await press(cell, "Enter");
-  expect(document.activeElement?.getAttribute("data-event-id")).toBe("season");
-  await press(document.activeElement, "ArrowDown");
   expect(document.activeElement).toBe(bar);
 });
 
@@ -248,40 +247,40 @@ test("keys leave a bar focused by pointer from the first visible day it covers",
   await act(async () => bar.focus());
   await press(bar, "Escape");
 
-  // Escape returns to October 7, the first day it shows on, rather than paging back to October 5.
-  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 7 – 13, 2026");
-  expect(ariaLabel(document.activeElement)).toMatch(/^Wednesday, October 7/);
+  // Escape returns to October 5, the first day it shows on, rather than paging back to October 2.
+  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 5 – 11, 2026");
+  expect(ariaLabel(document.activeElement)).toMatch(/^Monday, October 5/);
 });
 
 test("a focused bar keeps focus as the day it was focused on scrolls away", async () => {
   const container = await show("scrolling-week");
   await act(async () => container.querySelector<HTMLElement>('[data-event-id="trip"]')!.focus());
 
-  // A scroll comes to rest on October 9: the bar, through October 9, now renders from there.
-  await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from("2026-10-09")));
+  // A swipe comes to rest on the next week: the bar, through October 13, now renders from there.
+  await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from("2026-10-12")));
 
   const bar = container.querySelector<HTMLElement>('[data-event-id="trip"]:not([tabindex="-1"])');
   expect(
     bar?.closest('[role="gridcell"]')?.querySelector("[data-date]")?.getAttribute("data-date"),
-  ).toBe("2026-10-09");
+  ).toBe("2026-10-12");
   expect(document.activeElement).toBe(bar);
   await press(bar, "Escape");
-  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 9 – 15, 2026");
-  expect(ariaLabel(document.activeElement)).toMatch(/^Friday, October 9/);
+  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 12 – 18, 2026");
+  expect(ariaLabel(document.activeElement)).toMatch(/^Monday, October 12/);
 });
 
 test.each([
-  ["scrolling-week", "2026-10-20"],
-  ["scrolling-day", "2026-10-09"],
+  ["scrolling-week", "2026-10-20", "2026-10-19"],
+  ["scrolling-day", "2026-10-09", "2026-10-09"],
 ] as const)(
   "%s keeps focus on a long bar when the view jumps past its loaded days",
-  async (view, to) => {
+  async (view, to, first) => {
     const container = await show(view);
     await act(async () =>
       container.querySelector<HTMLElement>('[data-event-id="season"]')!.focus(),
     );
 
-    // October 7, where focus was, is no longer even loaded.
+    // The day where focus was is no longer even loaded.
     await act(async () => calendarActions!.setAnchorDate(Temporal.PlainDate.from(to)));
 
     const bar = container.querySelector<HTMLElement>(
@@ -289,7 +288,7 @@ test.each([
     );
     expect(
       bar?.closest('[role="gridcell"]')?.querySelector("[data-date]")?.getAttribute("data-date"),
-    ).toBe(to);
+    ).toBe(first);
     expect(document.activeElement).toBe(bar);
   },
 );
@@ -334,7 +333,7 @@ test("a bar a midnight fold starts a day early keeps focus as the view jumps", a
 
 test.each([
   ["scrolling-day", "2026-10-18", /^Sunday, October 18/],
-  ["scrolling-week", "2026-10-07", /^Tuesday, October 13/],
+  ["scrolling-week", "2026-10-07", /^Sunday, October 11/],
 ] as const)(
   "%s keeps focus on a long bar as the view scrolls back past its focused day",
   async (view, back, cell) => {
@@ -368,8 +367,8 @@ test("keys page a scrolling week past its visible days", async () => {
   await press(document.activeElement, "End");
   await press(document.activeElement, "ArrowRight");
 
-  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 14 – 20, 2026");
-  expect(ariaLabel(document.activeElement)).toMatch(/^Wednesday, October 14/);
+  expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Oct 12 – 18, 2026");
+  expect(ariaLabel(document.activeElement)).toMatch(/^Monday, October 12/);
 });
 
 test.each(["scrolling-week", "scrolling-day", "scrolling-month"] as const)(

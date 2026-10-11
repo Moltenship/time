@@ -15,6 +15,7 @@ import {
   type CalendarViewRendererProps,
   type PlainDateInterval,
   type TimeGridProjection,
+  type TimeGridSpan,
 } from "@moltenship/calendar";
 import {
   useLayoutEffect,
@@ -150,9 +151,9 @@ function Track({
 }
 
 /**
- * Day columns that scroll sideways without end and come to rest on a day, as in Apple's
- * Calendar on iPad: a week view shows seven days from any day, a day view one, and a swipe moves
- * the calendar's range there. The header, all-day row, and hour gutter stay in place while the
+ * Day columns that scroll sideways without end, a page at a time, as in Apple's Calendar on
+ * iPad: a week swipes to the next week, three days to the next three, and a day to the next day,
+ * and the calendar's range follows. The header, all-day row, and hour gutter stay in place while the
  * days scroll under them. A page of days on each side is rendered with its events, and keys,
  * dragging, and creating work as in `TimeGridView`.
  */
@@ -177,8 +178,11 @@ export function ScrollingTimeGridView<TEvent>({
     rtl: direction === "rtl",
     snap: true,
   });
-  // Today and Next can ask for the anchor the view already has while a scroll runs ahead of it.
-  useAnchorDateRequests((date) => axis.request(epochDay(date)));
+  // Today and Next can ask for the range the view already has while a scroll runs ahead of it. A
+  // date inside the range asks for it, as Today does in this week; any other moves the range.
+  useAnchorDateRequests((date) =>
+    axis.request(epochDay(plainDateIntervalContains(range, date) ? range.start : date)),
+  );
   const start = epochDay((loadRange ?? range).start) - axis.base;
 
   // Pointer drags speak through the same messages as the keyboard, and the drag preview labels
@@ -352,8 +356,6 @@ export function ScrollingTimeGridView<TEvent>({
                     first={epochDay(range.start)}
                     page={visibleDays}
                     size={DAY}
-                    // A day view's fling moves one day.
-                    stop={visibleDays === 1}
                   />
                 }
                 ref={axis.trackRef}
@@ -406,30 +408,30 @@ export function ScrollingTimeGridView<TEvent>({
 
 function scrollingTimeGridView<const TName extends string, TEvent>(
   name: TName,
-  days: number,
+  span: TimeGridSpan,
   defaultOptions: TimeGridViewOptions<TEvent>,
 ) {
   return defineCalendarView({
     defaultOptions,
     name,
-    strategy: scrollingTimeGridStrategy<TimeGridViewOptions<TEvent>, TEvent>(days),
+    strategy: scrollingTimeGridStrategy<TimeGridViewOptions<TEvent>, TEvent>(span),
     Renderer: ScrollingTimeGridView<TEvent>,
   });
 }
 
 /**
- * Seven days from the anchor, scrolling sideways a day at a time, named `scrolling-week`. Today
- * and picking a date put that date first; Previous and Next move seven days.
+ * The anchor's week, starting on `weekRules.firstDay`, swiping to the week before or after,
+ * named `scrolling-week`. Previous and Next move a week, and Today shows today's week.
  */
 export function createScrollingWeekView<TEvent = unknown>(
   defaultOptions: TimeGridViewOptions<TEvent> = {},
 ) {
-  return scrollingTimeGridView("scrolling-week", 7, defaultOptions);
+  return scrollingTimeGridView("scrolling-week", { kind: "week" }, defaultOptions);
 }
 
 /** The anchor date, swiping to the day before or after, named `scrolling-day`. */
 export function createScrollingDayView<TEvent = unknown>(
   defaultOptions: TimeGridViewOptions<TEvent> = {},
 ) {
-  return scrollingTimeGridView("scrolling-day", 1, defaultOptions);
+  return scrollingTimeGridView("scrolling-day", { count: 1, kind: "days" }, defaultOptions);
 }

@@ -85,14 +85,20 @@ describe("resolveViewLoadRange", () => {
 });
 
 describe("scrollingTimeGridStrategy", () => {
-  const week = scrollingTimeGridStrategy<unknown, FixtureEvent>(7);
-  const oneDay = scrollingTimeGridStrategy<unknown, FixtureEvent>(1);
+  const week = scrollingTimeGridStrategy<unknown, FixtureEvent>({ kind: "week" });
+  const threeDays = scrollingTimeGridStrategy<unknown, FixtureEvent>({ count: 3, kind: "days" });
+  const oneDay = scrollingTimeGridStrategy<unknown, FixtureEvent>({ count: 1, kind: "days" });
 
-  test("shows the days from the anchor and loads a page on each side", () => {
+  test("shows the anchor's week, or days from the anchor, and loads a page on each side", () => {
     expect(ranges(week, "2026-10-07")).toEqual({
-      load: "2026-09-30 → 2026-10-21",
-      range: "2026-10-07 → 2026-10-14",
-      title: "Oct 7 – 13, 2026",
+      load: "2026-09-28 → 2026-10-19",
+      range: "2026-10-05 → 2026-10-12",
+      title: "Oct 5 – 11, 2026",
+    });
+    expect(ranges(threeDays, "2026-10-07")).toEqual({
+      load: "2026-10-04 → 2026-10-13",
+      range: "2026-10-07 → 2026-10-10",
+      title: "Oct 7 – 9, 2026",
     });
     expect(ranges(oneDay, "2026-10-08")).toEqual({
       load: "2026-10-07 → 2026-10-10",
@@ -101,15 +107,18 @@ describe("scrollingTimeGridStrategy", () => {
     });
   });
 
-  test("pages by its day count from any day", () => {
+  test("pages by its span", () => {
     expect(week.navigate(date("2026-10-07"), 1, undefined).toString()).toBe("2026-10-14");
     expect(week.navigate(date("2026-10-07"), -1, undefined).toString()).toBe("2026-09-30");
+    expect(threeDays.navigate(date("2026-10-07"), 1, undefined).toString()).toBe("2026-10-10");
     expect(oneDay.navigate(date("2026-10-08"), -1, undefined).toString()).toBe("2026-10-07");
   });
 
   test("rejects day counts outside one to seven", () => {
     for (const count of [0, 8, 2.5]) {
-      expect(() => scrollingTimeGridStrategy(count)).toThrow("invalid-time-grid-day-count");
+      expect(() => scrollingTimeGridStrategy({ count, kind: "days" })).toThrow(
+        "invalid-time-grid-day-count",
+      );
     }
   });
 
@@ -127,9 +136,9 @@ describe("scrollingTimeGridStrategy", () => {
     );
 
     expect(projection.days).toHaveLength(21);
-    expect(projection.days[0]!.column.date.toString()).toBe("2026-09-30");
-    expect(projection.days[1]!.events.map(({ fragment }) => fragment.event.id)).toEqual(["before"]);
-    expect(projection.allDay.range.start.toString()).toBe("2026-09-30");
+    expect(projection.days[0]!.column.date.toString()).toBe("2026-09-28");
+    expect(projection.days[3]!.events.map(({ fragment }) => fragment.event.id)).toEqual(["before"]);
+    expect(projection.allDay.range.start.toString()).toBe("2026-09-28");
   });
 
   test("projects only the visible days for a caller that passes no load range", () => {
@@ -144,27 +153,32 @@ describe("scrollingTimeGridStrategy", () => {
     // Today is loaded but not visible, so focus enters on the first visible day.
     const step = navigation(week, "2026-10-07", "2026-10-03");
 
-    expect(step("home", null)).toBe("2026-10-07");
-    expect(step("end", null)).toBe("2026-10-13");
-    expect(step("home", day("2026-10-10"))).toBe("2026-10-07");
-    expect(step("end", day("2026-10-10"))).toBe("2026-10-13");
+    expect(step("home", null)).toBe("2026-10-05");
+    expect(step("end", null)).toBe("2026-10-11");
+    expect(step("home", day("2026-10-08"))).toBe("2026-10-05");
+    expect(step("end", day("2026-10-08"))).toBe("2026-10-11");
     // Past either end, focus goes to the neighbouring day, which the calendar then reveals.
-    expect(step("right", day("2026-10-13"))).toBe("2026-10-14");
-    expect(step("left", day("2026-10-07"))).toBe("2026-10-06");
-    expect(step("page-down", day("2026-10-09"))).toBe("2026-10-16");
+    expect(step("right", day("2026-10-11"))).toBe("2026-10-12");
+    expect(step("left", day("2026-10-05"))).toBe("2026-10-04");
+    expect(step("page-down", day("2026-10-07"))).toBe("2026-10-14");
   });
 
   test("enters on today when it is visible", () => {
     expect(navigation(week, "2026-10-07", "2026-10-09")("home", null)).toBe("2026-10-09");
   });
 
-  test("reveals a date a whole page at a time, keeping the leading day of the week", () => {
-    expect(anchorShowingDate(week, date("2026-10-07"), date("2026-10-14"), env, undefined)).toEqual(
-      date("2026-10-14"),
-    );
-    expect(anchorShowingDate(week, date("2026-10-07"), date("2026-10-02"), env, undefined)).toEqual(
-      date("2026-09-30"),
-    );
+  test("reveals a date a whole page at a time, keeping to the span's pages", () => {
+    const shows = (strategy: typeof week, anchor: string, target: string) =>
+      strategy.getRange(
+        anchorShowingDate(strategy, date(anchor), date(target), env, undefined),
+        env,
+        undefined,
+      );
+
+    expect(span(shows(week, "2026-10-07", "2026-10-14"))).toBe("2026-10-12 → 2026-10-19");
+    expect(span(shows(week, "2026-10-07", "2026-10-02"))).toBe("2026-09-28 → 2026-10-05");
+    expect(span(shows(threeDays, "2026-10-07", "2026-10-12"))).toBe("2026-10-10 → 2026-10-13");
+    expect(span(shows(threeDays, "2026-10-07", "2026-10-05"))).toBe("2026-10-04 → 2026-10-07");
   });
 });
 

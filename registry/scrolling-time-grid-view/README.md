@@ -1,7 +1,7 @@
 # Scrolling time-grid view
 
-Week and day views that scroll sideways without end and come to rest on a day, as in Apple's
-Calendar on iPad. Built on `scrollingTimeGridStrategy` from `@moltenship/calendar` and the parts
+Week and day views that swipe sideways without end, a page at a time, as in Apple's Calendar on
+iPad: a week comes to rest on the next week, and a day on the next day. Built on `scrollingTimeGridStrategy` from `@moltenship/calendar` and the parts
 of `registry/time-grid-view`.
 
 ```tsx
@@ -18,11 +18,13 @@ const views = [
 
 - The views are named `scrolling-week` and `scrolling-day` and take the week and day views'
   options. Register them beside `week` and `day` or instead of them.
-- For another number of days, define a view with `scrollingTimeGridStrategy(days)` and
-  `ScrollingTimeGridView`, as `scrolling-3-day` does in the docs.
-- The anchor date is the first visible day, so the week shows seven days from any day. A scroll
-  that comes to rest moves the anchor there; Previous and Next scroll a whole page, and Today
-  scrolls today to the first column. From the keyboard, or with reduced motion, the view jumps
+- For another number of days, define a view with
+  `scrollingTimeGridStrategy({ count, kind: "days" })` and `ScrollingTimeGridView`, as
+  `scrolling-3-day` does in the docs; it swipes that many days at a time.
+- The week is the anchor's calendar week, starting on `weekRules.firstDay`; the day and other
+  spans start at the anchor. A swipe comes to rest on the next page, or back on this one if it
+  went less than halfway, and moves the anchor there; Previous and Next scroll a whole page, and
+  Today scrolls to today's week, or today. From the keyboard, or with reduced motion, the view jumps
   instead of animating.
 - A page of days either side renders with its events, and the strategy's `getLoadRange` reports
   it through `onVisibleRangeChange`, so an app can fetch the next week before it scrolls in.

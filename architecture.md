@@ -447,15 +447,16 @@ This is a semver-protected plugin contract. Custom views do not import internal 
 | List/agenda       | Chronological grouped occurrences/fragments                      | Vertical TanStack Virtual                                       | Keyboard-first equivalent and dense-data fallback                    |
 | Resource columns  | One day with horizontal resource columns and vertical time       | Horizontal resource virtualization                              | Sticky time axis, resource headers, zero-to-many resource projection |
 | Resource timeline | Resource rows with horizontal time                               | Composed row/time virtualizers                                  | Sticky resource axis, configurable range and resolution              |
-| Scrolling week/day | 1–7 day time grid from the anchor, scrolling sideways by days    | Anchored day axis; a page of days rendered either side          | Snaps to days; anchor follows the scroll; load range for prefetching |
-| Scrolling month   | Six week rows, the anchor's week third, scrolling by weeks        | Anchored week axis; a page of weeks rendered either side        | Snaps to weeks; named by the month of the third row                  |
+| Scrolling week/day | The anchor's week or 1–7 days from it, swiping sideways by pages | Anchored day axis; a page of days rendered either side          | Snaps a page at a time; anchor follows the scroll; load range for prefetching |
+| Scrolling month   | Six week rows, the anchor's week third, scrolling freely          | Anchored week axis; a page of weeks rendered either side        | No snapping; named by the month of the third row                     |
 
 Day and week share the time-grid strategy and primitives; they are explicit view variants, not one component controlled by boolean flags.
 
 ### 7.2.1 Scrolling views
 
 The scrolling views (#105) are separate view definitions, not a mode of the paged ones. Their
-anchor date is the scroll position: the first visible day, or the week in the month's third row.
+anchor date is the scroll position: the first visible day of a time grid's page, or the week in
+the month's third row.
 A scroll that comes to rest sets `anchorDate`, so title, controlled state and URLs follow it; any
 other anchor change scrolls the view there. Only the latest scroll waits for a controlled anchor:
 an anchor equal to it is the owner catching up, and any other is navigation. Commands that ask
@@ -466,9 +467,11 @@ ranges after commit, so applications fetch the next page before it scrolls into 
 still never fetches.
 
 The registry renders them on an axis of numbered days or weeks thousands of items long
-(`useScrollingAxis`). The time grid comes to rest on a day through CSS scroll snapping; the month
-scrolls freely, as snapping each week made a fast fling feel stuck, and its first row is the week
-nearest the top. Scroll offsets stay out of React state: the view
+(`useScrollingAxis`). The time grid swipes a page at a time through CSS scroll snapping, with snap
+points a whole page apart from the range's start, so a week stays a calendar week and a 3-day view
+moves three days; mid-swipe commits and settling round to those pages too. The month scrolls
+freely, as snapping each week made a fast fling feel stuck, and its first row is the week nearest
+the top. Scroll offsets stay out of React state: the view
 re-renders only when the anchor moves, at rest or every half page of a long swipe. Server markup
 places the visible range at the axis start, and the axis extends before it in a layout effect.
 

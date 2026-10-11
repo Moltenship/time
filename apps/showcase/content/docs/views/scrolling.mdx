@@ -1,6 +1,6 @@
 ---
 title: Scrolling views
-description: Week, day and month views that scroll without end, sideways by days or down a feed of weeks.
+description: Week, day and month views that scroll without end, swiping a page sideways or down a feed of weeks.
 ---
 
 <Tabs items={["Week", "3 days", "Day"]}>
@@ -19,9 +19,9 @@ Try them in the [live demo](https://moltenship-time-demo.vercel.app): turn on "S
 month" in the settings.
 
 The [week and day](/docs/views/week-and-day) and [month](/docs/views/month) views move a page at a
-time. The scrolling versions move as far as you scroll, as Apple's Calendar does on iPad: the week
-and day views scroll sideways and come to rest on a day, and the month scrolls freely up and down,
-as a feed does. They're separate views, so the paged ones keep working as they are, and you can
+time. The scrolling versions follow your finger, as Apple's Calendar does on iPad: the week and day
+views swipe sideways a page at a time, so a week comes to rest on the next week and a day on the
+next day, and the month scrolls freely up and down, as a feed does. They're separate views, so the paged ones keep working as they are, and you can
 register both.
 
 ## Add them
@@ -35,20 +35,22 @@ register the views:
 
 The views are named `scrolling-week`, `scrolling-day`, and `scrolling-month`, and take the same
 options as their paged versions. `dayView` names the view a date opens; it defaults to `"day"` in
-the month. For another number of days, define a view with `scrollingTimeGridStrategy(days)` and
-`ScrollingTimeGridView`, as `scrolling-3-day` does above.
+the month. For another number of days, define a view with
+`scrollingTimeGridStrategy({ count, kind: "days" })` and `ScrollingTimeGridView`, as
+`scrolling-3-day` does above; it swipes that many days at a time.
 
 ## How they move
 
-| View              | Shows                                  | Comes to rest on | Previous and Next      | Today                         |
-| ----------------- | -------------------------------------- | ---------------- | ---------------------- | ----------------------------- |
-| `scrolling-week`  | Seven days from the anchor date        | A day            | Seven days             | Today in the first column     |
-| `scrolling-3-day` | Three days from the anchor date        | A day            | Three days             | Today in the first column     |
-| `scrolling-day`   | The anchor date; a swipe moves one day | A day            | One day                | Today                         |
-| `scrolling-month` | Six weeks, the anchor's week third     | Anywhere         | The neighbouring month | Today's week in the third row |
+| View              | Shows                               | A swipe moves      | Previous and Next      | Today                         |
+| ----------------- | ----------------------------------- | ------------------ | ---------------------- | ----------------------------- |
+| `scrolling-week`  | The anchor's week, from `weekRules` | A week             | A week                 | Today's week                  |
+| `scrolling-3-day` | Three days from the anchor date     | Three days         | Three days             | Today in the first column     |
+| `scrolling-day`   | The anchor date                     | A day              | A day                  | Today                         |
+| `scrolling-month` | Six weeks, the anchor's week third  | As far as it flies | The neighbouring month | Today's week in the third row |
 
-The anchor date is the scroll position. When a scroll comes to rest, the view sets `anchorDate` to
-what it shows, so `Calendar.Title`, `onAnchorDateChange`, and a URL that stores the date follow the
+The anchor date is the scroll position. A swipe follows your finger and comes to rest on the
+next page, or back on this one if it went less than halfway; a fling moves one page. When a
+scroll comes to rest, the view sets `anchorDate` to what it shows, so `Calendar.Title`, `onAnchorDateChange`, and a URL that stores the date follow the
 scroll. During a long swipe the anchor follows every half page. When the anchor changes any other
 way, from Today, Next, or your own `setAnchorDate`, the view scrolls there: smoothly over a page or
 two, and at once from further away, from the keyboard, or when the system asks for reduced motion.
@@ -98,7 +100,7 @@ partly on a seventh week, that week reads too; keys reach it by scrolling, as pa
 
 Drag, resize, and create work as in the paged views. Dragging toward an edge keeps scrolling into
 the days or weeks beyond, rendering them as it goes. The week and day views stop snapping while a
-gesture is under way, and come to rest on the nearest day when you let go.
+gesture is under way, and come to rest on the nearest page when you let go.
 
 ## How it's built
 

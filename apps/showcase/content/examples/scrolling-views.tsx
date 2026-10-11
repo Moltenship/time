@@ -22,11 +22,15 @@ import { eventAdapter, weekRules, type Meeting } from "./quick-start";
 
 const getEventColor = (meeting: Meeting) => meeting.color;
 
-// Any number of days: the strategy places them, and the week's renderer draws them.
+// Any number of days, swiping that many at a time: the strategy places them, and the week's
+// renderer draws them.
 const scrollingThreeDayView = defineCalendarView({
   defaultOptions: { dayView: "scrolling-day", getEventColor },
   name: "scrolling-3-day",
-  strategy: scrollingTimeGridStrategy<TimeGridViewOptions<Meeting>, Meeting>(3),
+  strategy: scrollingTimeGridStrategy<TimeGridViewOptions<Meeting>, Meeting>({
+    count: 3,
+    kind: "days",
+  }),
   Renderer: ScrollingTimeGridView<Meeting>,
 });
 

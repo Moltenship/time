@@ -1,6 +1,8 @@
 import {
   createCalendar,
   createCanonicalEventAdapter,
+  defineCalendarView,
+  scrollingTimeGridStrategy,
   type CalendarEvent,
   type CalendarEventChange,
   type CalendarVisibleRange,
@@ -12,13 +14,28 @@ import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolli
 import {
   createScrollingDayView,
   createScrollingWeekView,
+  ScrollingTimeGridView,
 } from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
+import type { TimeGridViewOptions } from "@registry/time-grid-view/time-grid-view";
 
 type Fixture = CalendarEvent<null, string>;
 
 const Calendar = createCalendar<Fixture>()({
   eventAdapter: createCanonicalEventAdapter<null, string>(),
-  views: [createScrollingWeekView(), createScrollingDayView(), createScrollingMonthView()],
+  views: [
+    createScrollingWeekView(),
+    defineCalendarView({
+      defaultOptions: {},
+      name: "scrolling-3-day",
+      strategy: scrollingTimeGridStrategy<TimeGridViewOptions<Fixture>, Fixture>({
+        count: 3,
+        kind: "days",
+      }),
+      Renderer: ScrollingTimeGridView<Fixture>,
+    }),
+    createScrollingDayView(),
+    createScrollingMonthView(),
+  ],
 });
 export type ScrollingView = (typeof Calendar.views)[number]["name"];
 
@@ -104,15 +121,19 @@ export function axis(view: ScrollingView) {
       ? '[data-slot="scrolling-month-viewport"]'
       : '[data-slot="scrolling-time-grid-viewport"]',
   )!;
-  // The spread of the snap points, one per day, or of the week rows, gives one item's length
-  // without the rounding of any one of them.
+  // The spread of the snap points, a page of visible days apart, or of the week rows, gives one
+  // item's length without the rounding of any one of them.
   const points = [
     ...viewport.querySelectorAll(view === "scrolling-month" ? '[role="row"]' : ".snap-start"),
   ].map((point) => {
     const { left, top } = point.getBoundingClientRect();
     return view === "scrolling-month" ? top : left;
   });
-  const size = Math.abs(points.at(-1)! - points[0]!) / (points.length - 1);
+  const apart =
+    view === "scrolling-month"
+      ? 1
+      : viewport.querySelectorAll('[role="gridcell"][data-date]:not([aria-hidden])').length;
+  const size = Math.abs(points.at(-1)! - points[0]!) / (points.length - 1) / apart;
   /**
    * Weeks from 1970 to the top of the view, by the week row there: its rounding stays within the
    * row, where a row length rounded to layout units would add up across a thousand weeks.
@@ -133,6 +154,22 @@ export function axis(view: ScrollingView) {
     /** Items from a fixed start to the start of the view; compare positions, not their values. */
     position: () =>
       view === "scrolling-month" ? monthPosition() : Math.abs(viewport.scrollLeft) / size,
+    /**
+     * Moves the view `items` on toward later dates and leaves it there, as a drag let go there
+     * does: the browser snaps to the nearest page, where a step such as `scrollBy` or a wheel
+     * tick snaps on to the next.
+     */
+    dragBy: (items: number, dir: "ltr" | "rtl" = "ltr") =>
+      act(async () =>
+        viewport.scrollTo(
+          view === "scrolling-month"
+            ? { behavior: "instant", top: viewport.scrollTop + items * size }
+            : {
+                behavior: "instant",
+                left: viewport.scrollLeft + items * size * (dir === "rtl" ? -1 : 1),
+              },
+        ),
+      ),
     /** Scrolls by `items` along the axis, toward later dates. */
     scrollBy: (items: number, dir: "ltr" | "rtl" = "ltr") =>
       act(async () =>

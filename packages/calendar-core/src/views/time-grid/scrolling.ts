@@ -12,21 +12,23 @@ import {
 } from "./range";
 
 /**
- * A time grid that scrolls through days instead of paging: `days` columns starting at the anchor,
- * which is the first visible day, so any day can lead the view. A page of days on each side is
- * projected too (`getLoadRange`), so a swipe shows their events at once; Previous and Next move a
- * whole page. Keyboard navigation moves through the visible days and pages past their ends, as in
- * `timeGridStrategy`.
+ * A time grid that scrolls through days instead of paging: the anchor's week, or `count` days
+ * starting at the anchor, as `timeGridStrategy` shows them. A view swipes a page at a time, so
+ * each swipe keeps the span's alignment: a week stays a calendar week, and a 3-day view moves
+ * three days. A page of days on each side is projected too (`getLoadRange`), so a swipe shows
+ * their events at once; Previous and Next move a whole page. Keyboard navigation moves through
+ * the visible days and pages past their ends, as in `timeGridStrategy`.
  */
 export function scrollingTimeGridStrategy<TOptions = undefined, TEvent = unknown>(
-  days: number,
+  span: TimeGridSpan,
 ): CalendarViewStrategy<TimeGridProjection<TEvent>, TOptions, TEvent> {
-  const span: TimeGridSpan = { count: days, kind: "days" };
-  timeGridDayCount(span);
+  const days = timeGridDayCount(span);
 
   const strategy: CalendarViewStrategy<TimeGridProjection<TEvent>, TOptions, TEvent> = {
-    getLoadRange: (anchor) =>
-      plainDateInterval(anchor.subtract({ days }), anchor.add({ days: 2 * days })),
+    getLoadRange: (anchor, environment) => {
+      const range = timeGridRange(anchor, span, environment.weekRules);
+      return plainDateInterval(range.start.subtract({ days }), range.end.add({ days }));
+    },
     getRange: (anchor, environment) => timeGridRange(anchor, span, environment.weekRules),
     getSpatialNavigation: (input) => {
       const { projection, range } = input;

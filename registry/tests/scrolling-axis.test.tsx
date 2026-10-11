@@ -143,17 +143,17 @@ test("opens on the range, with room to scroll either way", async () => {
 test("a range that commits the latest scroll late does not pull the view back", async () => {
   const { finishScroll, shownItem, userScrollsTo } = await show();
 
-  await userScrollsTo(5004);
-  expect(onScroll).toHaveBeenLastCalledWith(5004);
+  await userScrollsTo(5007);
+  expect(onScroll).toHaveBeenLastCalledWith(5007);
   // The app hasn't moved its anchor yet, and something else renders the view.
   scrolls = [];
   await act(async () => rerender());
   expect(scrolls).toEqual([]);
   // The user scrolls on, and the app then takes the latest date.
-  await userScrollsTo(5009);
-  await act(async () => setFirst(5009));
+  await userScrollsTo(5014);
+  await act(async () => setFirst(5014));
   expect(scrolls).toEqual([]);
-  expect(shownItem()).toBe(5009);
+  expect(shownItem()).toBe(5014);
 
   // A range the user didn't scroll to is shown.
   await act(async () => setFirst(5012));
@@ -165,11 +165,11 @@ test("any range but the latest scroll moves the view, as a date picked after rej
   const { finishScroll, shownItem, userScrollsTo } = await show();
 
   // The app keeps its anchor through many scrolls, back and forth.
-  for (let step = 0; step < 50; step += 1) await userScrollsTo(step % 2 === 0 ? 5004 : 5009);
-  await act(async () => setFirst(5004));
+  for (let step = 0; step < 50; step += 1) await userScrollsTo(step % 2 === 0 ? 5007 : 5014);
+  await act(async () => setFirst(5007));
   await finishScroll();
 
-  expect(shownItem()).toBe(5004);
+  expect(shownItem()).toBe(5007);
 });
 
 test("the user taking over a scroll to the next page moves the range as they go", async () => {
@@ -178,10 +178,10 @@ test("the user taking over a scroll to the next page moves the range as they go"
   expect(scrolls.at(-1)).toEqual({ behavior: "smooth", left: expect.any(Number) });
   onScroll.mockClear();
 
-  // Mid-way, the user scrolls far on before the smooth scroll settles.
-  await userScrollsTo(5020, false);
+  // Mid-way, the user scrolls two pages on before the smooth scroll settles.
+  await userScrollsTo(5021, false);
 
-  expect(onScroll).toHaveBeenCalledWith(5020);
+  expect(onScroll).toHaveBeenCalledWith(5021);
 });
 
 test("a drag that scrolls the view still moves the range, without snapping it", async () => {
@@ -192,23 +192,42 @@ test("a drag that scrolls the view still moves the range, without snapping it", 
     viewport.scrollLeft += 4.5 * ITEM;
     viewport.dispatchEvent(new Event("scroll"));
   });
-  expect(onScroll).toHaveBeenLastCalledWith(5005);
+  // Past half a page: the next page.
+  expect(onScroll).toHaveBeenLastCalledWith(5007);
 
   await userScrollsTo(5009.5);
-  // At rest, the view waits for the gesture to end before coming to rest on a day.
+  // At rest, the view waits for the gesture to end before coming to rest on a page.
   expect(scrolls).toEqual([]);
 });
 
-test("a snapping view the browser left between items comes to rest on the nearest", async () => {
+test.each([
+  ["on to the next page past halfway", 5004.4, 5007],
+  ["back short of halfway", 5002.6, 5000],
+  ["on to the page before past halfway", 4995.2, 4993],
+])("a snapping view left between pages comes to rest %s", async (_, to, page) => {
   const { finishScroll, shownItem, userScrollsTo } = await show();
   scrolls = [];
 
-  await userScrollsTo(5004.4);
+  await userScrollsTo(to);
   expect(scrolls).toEqual([{ behavior: "smooth", left: expect.any(Number) }]);
   await finishScroll();
 
-  expect(shownItem()).toBe(5004);
-  expect(onScroll).toHaveBeenLastCalledWith(5004);
+  expect(shownItem()).toBe(page);
+  if (page === 5000) expect(onScroll).not.toHaveBeenCalled();
+  else expect(onScroll).toHaveBeenLastCalledWith(page);
+});
+
+test("a snapping view's pages keep the range's alignment", async () => {
+  const { finishScroll, shownItem, userScrollsTo } = await show();
+  // Today, say, puts a Wednesday first.
+  await act(async () => setFirst(5003));
+  await finishScroll();
+
+  await userScrollsTo(5008);
+  await finishScroll();
+
+  expect(shownItem()).toBe(5010);
+  expect(onScroll).toHaveBeenLastCalledWith(5010);
 });
 
 test("a free view rests where the user left it, with the nearest item first", async () => {
@@ -263,7 +282,7 @@ test("a range that replaces one still being scrolled to wins", async () => {
 
 test("flipping the direction keeps the same day in view", async () => {
   const { rest, shownItem, userScrollsTo, viewport } = await show();
-  await userScrollsTo(5004);
+  await userScrollsTo(5007);
   onScroll.mockClear();
 
   for (const rtl of [true, false]) {
@@ -273,7 +292,7 @@ test("flipping the direction keeps the same day in view", async () => {
     await rest();
 
     expect(Math.sign(viewport.scrollLeft)).toBe(rtl ? -1 : 1);
-    expect(shownItem()).toBe(5004);
+    expect(shownItem()).toBe(5007);
     expect(onScroll).not.toHaveBeenCalled();
   }
 });
@@ -294,7 +313,7 @@ test("undoing a range before its scroll moves stops that scroll", async () => {
 
 test("switching between a week and a day keeps the shown day", async () => {
   const { rest, shownItem, userScrollsTo } = await show();
-  await userScrollsTo(5004);
+  await userScrollsTo(5007);
   onScroll.mockClear();
 
   for (const page of [1, 7]) {
@@ -302,14 +321,14 @@ test("switching between a week and a day keeps the shown day", async () => {
     await act(async () => setPage(page));
     await rest();
 
-    expect(shownItem()).toBe(5004);
+    expect(shownItem()).toBe(5007);
     expect(onScroll).not.toHaveBeenCalled();
   }
 });
 
 test("a resize of a pixel, a fraction of one per day, keeps the shown day in place", async () => {
   const { rest, shownItem, userScrollsTo } = await show();
-  await userScrollsTo(5004);
+  await userScrollsTo(5007);
   onScroll.mockClear();
 
   // Each day grows by a seventh of a pixel; a thousand days from the canvas start, that's 143px.
@@ -317,28 +336,28 @@ test("a resize of a pixel, a fraction of one per day, keeps the shown day in pla
   await act(async () => rerender());
   await rest();
 
-  expect(shownItem()).toBeCloseTo(5004, 6);
+  expect(shownItem()).toBeCloseTo(5007, 6);
   expect(onScroll).not.toHaveBeenCalled();
 });
 
 test("a controlled anchor that takes the last of many scrolls leaves the view in place", async () => {
   const { shownItem, userScrollsTo } = await show();
 
-  // Twenty scrolls, four days at a time, before the app takes the last one.
-  for (let step = 1; step <= 20; step += 1) await userScrollsTo(5000 + 4 * step);
+  // Twenty scrolls, a page at a time, before the app takes the last one.
+  for (let step = 1; step <= 20; step += 1) await userScrollsTo(5000 + 7 * step);
   scrolls = [];
-  await act(async () => setFirst(5080));
+  await act(async () => setFirst(5140));
 
   expect(scrolls).toEqual([]);
-  expect(shownItem()).toBe(5080);
+  expect(shownItem()).toBe(5140);
 });
 
 test("a request for the range the calendar has shows it again over a scroll it declined", async () => {
   const { finishScroll, shownItem, userScrollsTo } = await show();
   // The view's own scroll comes back as a request, which changes nothing.
   onScroll.mockImplementation((item) => request(item));
-  await userScrollsTo(5004);
-  expect(shownItem()).toBe(5004);
+  await userScrollsTo(5007);
+  expect(shownItem()).toBe(5007);
 
   // The app keeps 5000, and Today asks for it: the range doesn't change, so no render follows.
   scrolls = [];
@@ -351,15 +370,15 @@ test("a request for the range the calendar has shows it again over a scroll it d
 
 test("a request for another range waits for the range to arrive", async () => {
   const { finishScroll, shownItem, userScrollsTo } = await show();
-  await userScrollsTo(5004);
+  await userScrollsTo(5007);
   scrolls = [];
 
-  await act(async () => request(5010));
+  await act(async () => request(5014));
   expect(scrolls).toEqual([]);
-  await act(async () => setFirst(5010));
+  await act(async () => setFirst(5014));
   await finishScroll();
 
-  expect(shownItem()).toBe(5010);
+  expect(shownItem()).toBe(5014);
 });
 
 test.each([
@@ -392,10 +411,10 @@ test("a request during a drag jumps, and the drag's scroll goes on moving the ra
   await act(async () => request(5000));
   expect(scrolls.map(({ behavior }) => behavior)).toEqual(["instant"]);
 
-  // Auto-scroll carries on past half a page, which moves the range again.
+  // Auto-scroll carries on past half a page, which moves the range to the next one.
   await act(async () => {
     viewport.scrollLeft += 4 * ITEM;
     viewport.dispatchEvent(new Event("scroll"));
   });
-  expect(onScroll).toHaveBeenLastCalledWith(5004);
+  expect(onScroll).toHaveBeenLastCalledWith(5007);
 });

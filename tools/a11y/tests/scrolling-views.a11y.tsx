@@ -14,32 +14,61 @@ afterEach(() => {
 const settled = { interval: 50, timeout: 3000 };
 
 describe.each(["ltr", "rtl"] as const)("scrolling week, %s", (dir) => {
-  test("a scroll that stops between days comes to rest on the nearest and moves the range", async () => {
+  test("a swipe past halfway comes to rest on the next week and moves the range", async () => {
     await render(<Screen dir={dir} view="scrolling-week" />);
     const { position, scrollBy } = axis("scrolling-week");
     const start = position();
-    expect(title()).toBe("Oct 7 – 13, 2026");
+    // Wednesday October 7's week, from Monday.
+    expect(title()).toBe("Oct 5 – 11, 2026");
 
-    await scrollBy(2.4, dir);
+    await scrollBy(4.4, dir);
 
-    await vi.waitFor(() => expect(title()).toBe("Oct 9 – 15, 2026"), settled);
-    expect(reported.anchors.at(-1)?.toString()).toBe("2026-10-09");
-    await vi.waitFor(() => expect(Math.abs(position() - start - 2)).toBeLessThan(0.1), settled);
+    await vi.waitFor(() => expect(title()).toBe("Oct 12 – 18, 2026"), settled);
+    expect(reported.anchors.at(-1)?.toString()).toBe("2026-10-12");
+    await vi.waitFor(() => expect(Math.abs(position() - start - 7)).toBeLessThan(0.1), settled);
+  });
+
+  test("a drag let go short of halfway comes back to the week", async () => {
+    await render(<Screen dir={dir} view="scrolling-week" />);
+    const { dragBy, position } = axis("scrolling-week");
+    const start = position();
+
+    await dragBy(2.4, dir);
+
+    await vi.waitFor(() => expect(Math.abs(position() - start)).toBeLessThan(0.1), settled);
+    expect(title()).toBe("Oct 5 – 11, 2026");
+    expect(reported.anchors).toEqual([]);
   });
 
   test("a long swipe keeps the days around the view rendered as it passes them", async () => {
     await render(<Screen dir={dir} view="scrolling-week" />);
     const { scrollBy, viewport } = axis("scrolling-week");
 
-    for (let step = 0; step < 5; step += 1) await scrollBy(4, dir);
+    for (let step = 0; step < 5; step += 1) await scrollBy(7, dir);
 
-    await vi.waitFor(() => expect(title()).toBe("Oct 27 – Nov 2, 2026"), settled);
+    await vi.waitFor(() => expect(title()).toBe("Nov 9 – 15, 2026"), settled);
     const columns = [...viewport.querySelectorAll('[role="gridcell"][data-date]')];
-    expect(columns.map((column) => column.getAttribute("data-date"))).toContain("2026-11-02");
+    expect(columns.map((column) => column.getAttribute("data-date"))).toContain("2026-11-22");
     // Only the visible days reach assistive technology.
     expect(columns.filter((column) => !column.hasAttribute("aria-hidden"))).toHaveLength(7);
-    expect(reported.ranges.at(-1)?.loadRange.start.toString()).toBe("2026-10-20");
+    expect(reported.ranges.at(-1)?.loadRange.start.toString()).toBe("2026-11-02");
   });
+});
+
+test("a 3-day view swipes three days at a time", async () => {
+  await render(<Screen view="scrolling-3-day" />);
+  const { dragBy, position } = axis("scrolling-3-day");
+  const start = position();
+  expect(title()).toBe("Oct 7 – 9, 2026");
+
+  await dragBy(1.7);
+  await vi.waitFor(() => expect(title()).toBe("Oct 10 – 12, 2026"), settled);
+  await vi.waitFor(() => expect(Math.abs(position() - start - 3)).toBeLessThan(0.1), settled);
+
+  // Short of halfway, it comes back.
+  await dragBy(1.2);
+  await vi.waitFor(() => expect(Math.abs(position() - start - 3)).toBeLessThan(0.1), settled);
+  expect(reported.anchors.map(String)).toEqual(["2026-10-10"]);
 });
 
 test("flipping the direction keeps the week in view", async () => {
@@ -58,7 +87,7 @@ test("flipping the direction keeps the week in view", async () => {
     // Give a reset scroll position time to report itself and settle.
     await new Promise((resolve) => setTimeout(resolve, 300));
 
-    expect(title()).toBe("Oct 7 – 13, 2026");
+    expect(title()).toBe("Oct 5 – 11, 2026");
     expect(Math.abs(position() - start)).toBeLessThan(0.1);
   }
   expect(reported.anchors).toEqual([]);
@@ -73,12 +102,13 @@ describe("scrolling views", () => {
     await act(async () =>
       document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click(),
     );
-    expect(title()).toBe("Oct 14 – 20, 2026");
+    expect(title()).toBe("Oct 12 – 18, 2026");
     await vi.waitFor(() => expect(Math.abs(position() - start - 7)).toBeLessThan(0.1), settled);
 
+    // Today, October 8, is in the first week.
     await act(async () => document.querySelector<HTMLElement>('[aria-label="Today"]')!.click());
-    expect(title()).toBe("Oct 8 – 14, 2026");
-    await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.1), settled);
+    expect(title()).toBe("Oct 5 – 11, 2026");
+    await vi.waitFor(() => expect(Math.abs(position() - start)).toBeLessThan(0.1), settled);
   });
 
   test("Next undone before its scroll moves leaves the view where it was", async () => {
@@ -92,7 +122,7 @@ describe("scrolling views", () => {
     await act(async () => screen.actions!.setAnchorDate(Temporal.PlainDate.from("2026-10-07")));
     await new Promise((resolve) => setTimeout(resolve, 600));
 
-    expect(title()).toBe("Oct 7 – 13, 2026");
+    expect(title()).toBe("Oct 5 – 11, 2026");
     expect(Math.abs(position() - start)).toBeLessThan(0.1);
     expect(reported.anchors.map(String)).toEqual(["2026-10-14", "2026-10-07"]);
   });
@@ -100,10 +130,10 @@ describe("scrolling views", () => {
   test("a viewport a pixel narrower keeps the leading day at the start", async () => {
     await render(<Screen view="scrolling-week" />);
     const { scrollBy, viewport } = axis("scrolling-week");
-    await scrollBy(4);
-    await vi.waitFor(() => expect(title()).toBe("Oct 11 – 17, 2026"), settled);
+    await scrollBy(7);
+    await vi.waitFor(() => expect(title()).toBe("Oct 12 – 18, 2026"), settled);
     const leading = () =>
-      viewport.querySelector('[role="gridcell"][data-date="2026-10-11"]')!.getBoundingClientRect()
+      viewport.querySelector('[role="gridcell"][data-date="2026-10-12"]')!.getBoundingClientRect()
         .left;
     const before = leading();
 
@@ -114,21 +144,22 @@ describe("scrolling views", () => {
     await new Promise((resolve) => setTimeout(resolve, 300));
 
     expect(Math.abs(leading() - before)).toBeLessThan(1);
-    expect(title()).toBe("Oct 11 – 17, 2026");
+    expect(title()).toBe("Oct 12 – 18, 2026");
   });
 
   test("switching between the scrolling week and day keeps the day in view", async () => {
     await render(<Screen view="scrolling-week" />);
     const start = axis("scrolling-week").position();
 
+    // The week starts on Monday the 5th; the day view shows the anchor, Wednesday the 7th.
     await act(async () => screen.actions!.setView("scrolling-day"));
     await new Promise((resolve) => setTimeout(resolve, 300));
     expect(title()).toBe("October 7, 2026");
-    expect(Math.abs(axis("scrolling-day").position() - start)).toBeLessThan(0.1);
+    expect(Math.abs(axis("scrolling-day").position() - start - 2)).toBeLessThan(0.1);
 
     await act(async () => screen.actions!.setView("scrolling-week"));
     await new Promise((resolve) => setTimeout(resolve, 300));
-    expect(title()).toBe("Oct 7 – 13, 2026");
+    expect(title()).toBe("Oct 5 – 11, 2026");
     expect(Math.abs(axis("scrolling-week").position() - start)).toBeLessThan(0.1);
     expect(reported.anchors).toEqual([]);
   });
@@ -141,16 +172,17 @@ describe("scrolling views", () => {
     const { position, scrollBy } = axis("scrolling-week");
     const start = position();
 
-    await scrollBy(1);
-    await vi.waitFor(() => expect(reported.anchors.map(String)).toEqual(["2026-10-09"]), settled);
-    expect(title()).toBe("Oct 8 – 14, 2026");
-    await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.1), settled);
+    await scrollBy(7);
+    await vi.waitFor(() => expect(reported.anchors.map(String)).toEqual(["2026-10-12"]), settled);
+    expect(title()).toBe("Oct 5 – 11, 2026");
+    await vi.waitFor(() => expect(Math.abs(position() - start - 7)).toBeLessThan(0.1), settled);
 
+    // Today asks for October 8, inside the week the app kept, so the range doesn't change.
     await act(async () => document.querySelector<HTMLElement>('[aria-label="Today"]')!.click());
 
     await vi.waitFor(() => expect(Math.abs(position() - start)).toBeLessThan(0.1), settled);
     // The app hears Today too, so it can drop the date it was offered.
-    expect(reported.anchors.map(String)).toEqual(["2026-10-09", "2026-10-08"]);
+    expect(reported.anchors.map(String)).toEqual(["2026-10-12", "2026-10-08"]);
   });
 
   test("keys move through the visible days and scroll a page past them", async () => {
@@ -164,11 +196,11 @@ describe("scrolling views", () => {
     );
 
     await press("End");
-    expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Tuesday, October 13/);
+    expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Sunday, October 11/);
     await press("ArrowRight");
 
-    expect(title()).toBe("Oct 14 – 20, 2026");
-    expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Wednesday, October 14/);
+    expect(title()).toBe("Oct 12 – 18, 2026");
+    expect(document.activeElement?.getAttribute("aria-label")).toMatch(/^Monday, October 12/);
     // From the keyboard, the view jumps rather than animating past the focus.
     expect(Math.abs(position() - start - 7)).toBeLessThan(0.1);
   });
@@ -197,11 +229,11 @@ describe("scrolling views", () => {
       event.dispatchEvent(new PointerEvent("pointermove", at(edge)));
     });
     // Held at the edge, the drag scrolls on until the days at the edge were never rendered when
-    // it began: the week from October 7 rendered October 1 to 20.
+    // it began: the week of October 5 rendered September 28 to October 18.
     await vi.waitFor(
       () => {
         const last = reported.anchors.at(-1);
-        expect(last !== undefined && last.since("2026-10-16").sign >= 0).toBe(true);
+        expect(last !== undefined && last.since("2026-10-19").sign >= 0).toBe(true);
       },
       { interval: 50, timeout: 10_000 },
     );
@@ -217,9 +249,9 @@ describe("scrolling views", () => {
     expect(change?.cause).toBe("move");
     const start = change?.proposed?.start;
     expect(start instanceof Temporal.Instant).toBe(true);
-    // A timed move, landing past October 20, the last day rendered when the drag began.
+    // A timed move, landing past October 18, the last day rendered when the drag began.
     const day = (start as Temporal.Instant).toZonedDateTimeISO("UTC").toPlainDate();
-    expect(Temporal.PlainDate.compare(day, Temporal.PlainDate.from("2026-10-20"))).toBe(1);
+    expect(Temporal.PlainDate.compare(day, Temporal.PlainDate.from("2026-10-18"))).toBe(1);
   });
 
   test("asking for the anchor mid-drag doesn't stall the drag's scroll", async () => {

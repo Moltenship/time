@@ -75,11 +75,14 @@ const threeDayView = defineCalendarView({
   Renderer: TimeGridView<PreviewEvent>,
 });
 
-// Three days at a time, scrolling a day at a time.
+// Three days at a time, swiping to the next three.
 const scrollingThreeDayView = defineCalendarView({
   defaultOptions: { dayView: "scrolling-day", getEventColor },
   name: "scrolling-3-day",
-  strategy: scrollingTimeGridStrategy<TimeGridViewOptions<PreviewEvent>, PreviewEvent>(3),
+  strategy: scrollingTimeGridStrategy<TimeGridViewOptions<PreviewEvent>, PreviewEvent>({
+    count: 3,
+    kind: "days",
+  }),
   Renderer: ScrollingTimeGridView<PreviewEvent>,
 });
 

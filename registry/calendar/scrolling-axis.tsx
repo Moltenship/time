@@ -36,10 +36,11 @@ export interface ScrollingAxisOptions {
   /** Whether the inline axis runs right to left. */
   readonly rtl: boolean;
   /**
-   * Whether the view comes to rest on an item, as the time grid does on a day. Pair it with
-   * `ScrollSnapPoints` and a mandatory snap type on the scrolling element. Without it the view
-   * rests wherever the user leaves it, as the month does, and the item nearest the start is the
-   * range's first.
+   * Whether the view moves a page at a time, coming to rest a whole number of pages from the
+   * range's first item, as the time grid does: a week on the next week, three days on the next
+   * three, keeping the range's alignment. Pair it with `ScrollSnapPoints` and a mandatory snap
+   * type on the scrolling element. Without it the view rests wherever the user leaves it, as the
+   * month does, and the item nearest the start is the range's first.
    */
   readonly snap: boolean;
 }
@@ -80,9 +81,9 @@ function prefersReducedMotion(element: Element): boolean {
 
 /**
  * A scroll axis that never ends: numbered items, such as days, on a canvas `2 × REACH` items
- * long, of which the view renders only those near the calendar's range. The user scrolls freely,
- * coming to rest on an item with `snap`, and each settled position becomes the calendar's range
- * through `onScroll`. When the range changes otherwise, as Today and Next do, the axis
+ * long, of which the view renders only those near the calendar's range. The user scrolls, coming
+ * to rest a page on with `snap` or anywhere without, and each settled position becomes the
+ * calendar's range through `onScroll`. When the range changes otherwise, as Today and Next do, the axis
  * scrolls there: smoothly over a page or two, at once further away, from the keyboard, or with
  * reduced motion. Scroll positions are never React state, so scrolling renders only when the
  * range moves, or, without `snap`, when the view comes to rest showing other items.
@@ -239,9 +240,14 @@ export function useScrollingAxis({
     let waiting: MutationObserver | undefined;
 
     /** The item nearest the start of the view. */
+    /** The item nearest the start of the view, or with `snap` the nearest a page on. */
     const nearest = () => {
       const itemSize = size();
-      return itemSize <= 0 ? null : latest.current.base + Math.round(offset(element) / itemSize);
+      if (itemSize <= 0) return null;
+      const { base, first, page, snap } = latest.current;
+      const item = base + offset(element) / itemSize;
+      // Whole pages from the range keep its alignment, such as calendar weeks.
+      return snap ? first + Math.round((item - first) / page) * page : Math.round(item);
     };
     /** Without snapping, the view can rest between items: note which of them show. */
     const measure = () => {
@@ -402,21 +408,25 @@ export interface ScrollSnapPointsProps {
   readonly base: number;
   /** The first item the calendar shows. */
   readonly first: number;
-  /** Items the calendar shows at once. */
+  /** Items the calendar shows at once, and the distance between points. */
   readonly page: number;
-  /** Stop at every item, so a fling moves one page, as a day view's does. */
-  readonly stop?: boolean;
   /** One item's length on the axis, as CSS. */
   readonly size: string;
 }
 
+/** Snap points on either side of the range, past any page a swipe can reach before it renders. */
+const SNAP_PAGES = 6;
+
 /**
- * One snap point per item for a few pages either way, so a fling comes to rest on a day or week
- * even past the items rendered so far. Place it in the element the items are positioned in.
+ * A snap point a page apart for a few pages either way, from the range's first item, so a swipe
+ * comes to rest on the next page, as a week does on the next week. Each point stops a fling, so
+ * a swipe moves one page. Place it in the element the items are positioned in.
  */
-export function ScrollSnapPoints({ axis, base, first, page, size, stop }: ScrollSnapPointsProps) {
-  const reach = 4 * page + 8;
-  const points = Array.from({ length: 2 * reach + page }, (_, index) => first - reach + index);
+export function ScrollSnapPoints({ axis, base, first, page, size }: ScrollSnapPointsProps) {
+  const points = Array.from(
+    { length: 2 * SNAP_PAGES + 1 },
+    (_, index) => first + (index - SNAP_PAGES) * page,
+  );
   return (
     <div aria-hidden className="pointer-events-none absolute inset-0">
       {points.map((item) => (
@@ -426,9 +436,8 @@ export function ScrollSnapPoints({ axis, base, first, page, size, stop }: Scroll
           // browsers skip snap points out of view, which let a fling pass days in a day view
           // scrolled down to the evening.
           className={cn(
-            "absolute snap-start",
+            "absolute snap-start snap-always",
             axis === "inline" ? "inset-y-0 w-px" : "inset-x-0 h-px",
-            stop === true && "snap-always",
           )}
           style={
             axis === "inline"

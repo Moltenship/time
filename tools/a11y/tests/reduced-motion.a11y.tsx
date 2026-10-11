@@ -115,7 +115,7 @@ describe("prefers-reduced-motion: reduce", () => {
       document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click(),
     );
 
-    expect(title()).toBe("Oct 14 – 20, 2026");
+    expect(title()).toBe("Oct 12 – 18, 2026");
     expect(Math.abs(position() - start - 7)).toBeLessThan(0.1);
   });
 });
