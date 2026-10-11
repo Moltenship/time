@@ -403,6 +403,32 @@ describe("scrolling month resizes", () => {
     expect(title()).toBe("November 2026");
   });
 
+  test("a short viewport still shows every week of the month", async () => {
+    await render(<Screen view="scrolling-month" />);
+    const { viewport } = axis("scrolling-month");
+    await act(async () => {
+      viewport.style.flex = "none";
+      viewport.style.height = "320px";
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+    /** The month's own weeks, each wholly on screen. */
+    const weeksOnScreen = () => {
+      const bounds = viewport.getBoundingClientRect();
+      const rows = [...viewport.querySelectorAll('[role="row"]')].filter(
+        (row) => row.closest('[aria-hidden="true"]') === null,
+      );
+      return rows.filter((row) => {
+        const { bottom, top } = row.getBoundingClientRect();
+        return top >= bounds.top - 1 && bottom <= bounds.bottom + 1;
+      }).length;
+    };
+    expect(weeksOnScreen()).toBe(6);
+
+    await axis("scrolling-month").dragBy(2.5);
+    await vi.waitFor(() => expect(title()).toBe("November 2026"), settled);
+    await vi.waitFor(() => expect(weeksOnScreen()).toBe(6), settled);
+  });
+
   test("a resize before a jump's scroll reports keeps the month where it jumped", async () => {
     await render(<Screen view="scrolling-month" />);
     const { viewport } = axis("scrolling-month");

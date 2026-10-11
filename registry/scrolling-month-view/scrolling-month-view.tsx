@@ -37,8 +37,6 @@ type ScrollingMonthViewProps<TEvent> = CalendarViewRendererProps<
   ScrollingMonthViewOptions<TEvent>
 >;
 
-/** Rows never shrink below this; shorter viewports show fewer of them. */
-const MIN_ROW_HEIGHT = 80;
 /** Lane count before the first measurement, e.g. while rendering on the server. */
 const INITIAL_LANES = 3;
 /** One week's height: the viewport shared by the visible weeks. */
@@ -175,7 +173,9 @@ function ScrollingMonthView<TEvent>({
         className="relative min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [container-type:size] in-data-interaction:snap-none"
         style={
           {
-            "--calendar-week-height": `max(${MIN_ROW_HEIGHT}px, calc(100cqh / ${weeks}))`,
+            // Always a whole month on screen, so every date is on a page: short viewports show
+            // fewer event lanes rather than fewer weeks.
+            "--calendar-week-height": `calc(100cqh / ${weeks})`,
           } as CSSProperties
         }
       >

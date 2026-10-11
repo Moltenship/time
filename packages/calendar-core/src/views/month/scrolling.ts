@@ -46,9 +46,9 @@ function firstWeek(
 }
 
 /**
- * A month that swipes up and down a month at a time instead of paging: `weeks` rows from the week
- * that holds the anchor's month's first day, six to twelve, so every month fits; six by default. A page of weeks
- * above and below is projected too (`getLoadRange`), so a swipe shows their events at once; the
+ * A month that scrolls up and down, swiping a month at a time: `weeks` rows from the week that
+ * holds the anchor's month's first day, six to twelve, so every month fits; six by default. A
+ * page of weeks above and below is projected too (`getLoadRange`), so a swipe shows their events at once; the
  * days of the month are `inMonth`. Previous and Next move a month. Keyboard navigation moves
  * through the visible weeks as in a month grid.
  */

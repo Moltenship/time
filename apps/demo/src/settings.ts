@@ -4,7 +4,7 @@ import { isRecord, usePersistentState } from "./storage";
 
 export interface DemoSettings {
   readonly locale: string;
-  /** Whether day, week, and month scroll continuously instead of paging. */
+  /** Whether day, week, and month are the scrolling views, which swipe a page at a time. */
   readonly scrolling: boolean;
   readonly timeZone: string;
   readonly weekStartsOn: IsoDayOfWeek;
