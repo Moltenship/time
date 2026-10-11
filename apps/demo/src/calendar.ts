@@ -8,6 +8,8 @@ interface DemoEventBase {
   readonly calendarId: DemoCalendarId;
   readonly description?: string;
   readonly id: string;
+  /** Made around the present on each visit, not stored, so it can't be changed; see `busyNowEvents`. */
+  readonly live?: true;
   /** Rooms and people the event books; left out when it books none. */
   readonly resourceIds?: readonly DemoResourceId[];
   readonly title: string;
@@ -31,6 +33,7 @@ export const DemoCalendar = createCalendar<DemoEvent, DemoResource>()({
     getInterval: (event) => event,
     getResourceIds: (event) => event.resourceIds ?? noResourceIds,
     getTitle: (event) => event.title,
+    isReadOnly: (event) => event.live === true,
   }),
   views: demoViews,
 });

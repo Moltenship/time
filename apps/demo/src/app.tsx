@@ -32,6 +32,7 @@ import { ShortcutsDialog } from "./components/shortcuts-dialog";
 import { Sidebar } from "./components/sidebar";
 import { ThemeToggle } from "./components/theme-toggle";
 import { TopBar } from "./components/top-bar";
+import { busyNowEvents } from "./busy-now";
 import { useDemoEvents } from "./demo-events";
 import { demoEventPolicy, type DemoEventChange } from "./event-changes";
 import { useFollowEventElement } from "./event-anchor";
@@ -133,9 +134,11 @@ export function App() {
   // a keyboard create ended on. Base UI's default covers the Create button and the "c" key.
   const [createdFrom, setCreatedFrom] = useState<HTMLElement | null>(null);
   const sheetRef = useRef<HTMLDivElement>(null);
+  // Meetings in progress as the demo opens, so the resource views show people and rooms busy.
+  const busyNow = useMemo(() => busyNowEvents(Temporal.Now.instant(), timeZone), [timeZone]);
   const visibleEvents = useMemo(
-    () => events.filter((event) => !hiddenCalendars.has(event.calendarId)),
-    [events, hiddenCalendars],
+    () => [...events, ...busyNow].filter((event) => !hiddenCalendars.has(event.calendarId)),
+    [busyNow, events, hiddenCalendars],
   );
   const weekRules = useMemo<CalendarWeekRules>(
     () => ({ firstDay: weekStartsOn, minimalDays: weekStartsOn === 1 ? 4 : 1, weekend: [6, 7] }),
