@@ -6,8 +6,9 @@ import {
   type CalendarEvent,
   type CalendarResource,
 } from "@moltenship/calendar";
-import { expect, test } from "vite-plus/test";
+import { describe, expect, test } from "vite-plus/test";
 
+import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createTimelineDayView } from "@registry/resource-timeline-view/resource-timeline-view";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 
@@ -151,3 +152,67 @@ test.each(["ltr", "rtl"] as const)(
     else expect(Math.round(box.right)).toBe(Math.round(header.left));
   },
 );
+
+describe.each(["columns", "equal", "stack"] as const)("%s overlap layout", (overlapLayout) => {
+  test.each(["week", "resources"] as const)(
+    "the %s view paints events over the shading",
+    async (view) => {
+      const Overlapping = createCalendar<Meeting, CalendarResource<null>>()({
+        eventAdapter: createCanonicalEventAdapter<null, string>(),
+        views: [createWeekView<Meeting>(), createResourceColumnsView<Meeting>()],
+      });
+      // Three overlapping events after hours, so every one of them sits on shading.
+      const late = (id: string, start: string, end: string): Meeting => ({
+        data: null,
+        end: Temporal.Instant.from(`2026-10-08T${end}:00Z`),
+        id,
+        kind: "timed",
+        resourceIds: ["ada"],
+        start: Temporal.Instant.from(`2026-10-08T${start}:00Z`),
+        title: id,
+      });
+      await render(
+        <Overlapping.Root
+          availability={officeHours}
+          defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+          defaultTimeZone="UTC"
+          defaultView={view}
+          events={[
+            late("talk", "18:00", "19:30"),
+            late("dinner", "18:30", "20:00"),
+            late("call", "19:00", "19:45"),
+          ]}
+          locale="en-US"
+          now={Temporal.Instant.from("2026-10-08T18:00:00Z")}
+          resources={[{ data: null, id: "ada", title: "Ada" }]}
+          viewOptions={{ resources: { overlapLayout }, week: { overlapLayout } }}
+          weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+        >
+          <div className="h-dvh">
+            <Overlapping.ActiveView />
+          </div>
+        </Overlapping.Root>,
+      );
+      const body = document.querySelector<HTMLElement>(
+        '[data-slot="time-grid-body"], [data-slot="resource-columns-body"]',
+      )!;
+      body.scrollTop = (17 / 24) * body.scrollHeight;
+      await frame();
+      // Let the shading take part in hit testing, which follows paint order.
+      const bands = document.querySelectorAll<HTMLElement>('[data-slot="time-grid-unavailable"]');
+      expect(bands.length).toBeGreaterThan(0);
+      for (const band of bands) band.style.pointerEvents = "auto";
+
+      const events = [
+        ...document.querySelectorAll<HTMLElement>("[data-event-id]:not([data-calendar-ghost])"),
+      ];
+      expect(events).toHaveLength(3);
+      for (const event of events) {
+        const { left, top } = event.getBoundingClientRect();
+        expect(
+          document.elementFromPoint(left + 4, top + 4)?.closest("[data-event-id]"),
+        ).not.toBeNull();
+      }
+    },
+  );
+});
