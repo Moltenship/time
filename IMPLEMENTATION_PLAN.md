@@ -21,8 +21,14 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | 0.2 keyboard   | #36, #97         | Focus model, spatial navigation, keyboard move/resize/create, announcements; wired into every view and the demo |
 | 0.2 a11y       | #98              | axe checks (`vp run a11y`), configured in CI and currently run locally, token contrast test, reduced motion, RTL layout, accessibility docs         |
 | 0.3 resources  | #39–#41          | Resource model and hierarchy, multi-resource fragments, resource columns and resource timeline views with virtualization, keyboard and pointer moves across resources |
+| 0.4 availability | #129           | Working hours and exceptions, `block`/`warn` availability policy, closed-time shading in the time grid, resource columns, timeline and month, per-resource time zones with local time in headers |
+| 0.4 layout     | #130             | `columns`, `equal` and `stack` overlap policies in the time grid and resource columns                        |
+| 0.4 agenda     | #131             | Virtualized agenda with sticky date headers and focus kept by key; a scrolling agenda over months or years that loads events by range |
+| Scrolling views | #105            | Week, day and month views that scroll without end; `getLoadRange` on strategies and `onVisibleRangeChange` on `Root` |
+| Annotations    | #119             | Timeline annotations: core model and snapshot, `annotations` / `annotationSources` on `Root`, a rail in the time grid |
 
-0.1 — Working calendar, 0.2 — Keyboard & accessibility and 0.3 — Resource views are closed.
+0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
+0.4 — Availability, layout & scale are closed.
 `main` deploys automatically through Vercel's GitHub integration:
 
 - Demo: https://moltenship-time-demo.vercel.app
@@ -31,19 +37,9 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 UI source uses shadcn's default Base UI primitives, not Radix. Dependencies are kept at their
 latest releases.
 
-## In flight outside the milestones
-
-- #105 scrolling views: week, day and month that scroll without end and snap to days or weeks,
-  as separate registry views, with `getLoadRange` on strategies and `onVisibleRangeChange` on
-  `Root` for loading events ahead of the scroll.
-
-- #119 timeline annotations (Amie-style rail in the time grid), approved by the owner and being
-  implemented in two phases: the core/React model in #124, then the registry parts, demo and docs.
-  Draft #122 is the prototype and won't be merged.
-
 ## Next: 1.0 — Public release
 
-On hold until the owner has reviewed 0.1–0.3. The issues (#43, #45–#47) still carry their original
+On hold until the owner has reviewed 0.1–0.4. The issues (#43, #45–#47) still carry their original
 scope and get rescoped to Scope / Done when / Later before work starts.
 
 ## Later
@@ -51,11 +47,14 @@ scope and get rescoped to Scope / Done when / Later before work starts.
 Deferred work. Each item is listed under "Later" in the issue it came from; open a new issue when
 one is picked up.
 
-- List virtualization for large ranges (#30)
-- Business hours and availability (#32)
-- Equal, compact and stacked overlap policies (#33)
+- Annotations in month, agenda and resource views (#132)
+- Cross-browser test matrix: Chromium, Firefox, WebKit (#133)
+- Agenda follow-ups from #136 (#138)
+- Capacity rules, buffers between bookings, free-slot search (#129)
+- Per-calendar or per-resource overlap policy overrides (#130)
+- Agenda grouping by calendar or resource, search and filter (#131)
 - Optional dnd-kit adapter (#37)
-- Layout and frame budgets, browser matrix
+- Layout and frame budgets
 
 Later milestones:
 
@@ -76,9 +75,10 @@ Scope / Done when / Later before starting it.
 - Every PR gets a code review. Fix each finding, or reply with the reason you didn't. While GitHub
   Actions is capped on this account, CI and Pullfrog don't run: run `vp run ready` locally and post
   the result on the PR, and get the review from GPT-6.1-Sol (high) instead of Pullfrog.
-- Merge with squash once the review has no open blocker or should-fix findings, the checks pass
-  (locally while Actions is capped) and the Vercel previews are green. If Vercel rate-limits
-  deployments, retry after the limit resets. Rebase on `main` first if behind.
+- Merge with squash once the review has no open blocker or should-fix findings and the checks pass
+  (locally while Actions is capped). The Vercel checks don't gate merges. When Vercel's daily deploy
+  limit is hit, production catches up with the next deploy after it resets. Rebase on `main` first
+  if behind.
 - UI changes include light and dark screenshots. Docs show live, theme-aware UI, not screenshots.
 - Keep native "blocked by" links and this file current when scope or order changes.
 
