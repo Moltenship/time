@@ -18,6 +18,8 @@ const views = [
 
 - The views are named `scrolling-week` and `scrolling-day` and take the week and day views'
   options. Register them beside `week` and `day` or instead of them.
+- For another number of days, define a view with `scrollingTimeGridStrategy(days)` and
+  `ScrollingTimeGridView`, as `scrolling-3-day` does in the docs.
 - The anchor date is the first visible day, so the week shows seven days from any day. A scroll
   that comes to rest moves the anchor there; Previous and Next scroll a whole page, and Today
   scrolls today to the first column. From the keyboard, or with reduced motion, the view jumps

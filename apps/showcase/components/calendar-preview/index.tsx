@@ -22,6 +22,7 @@ const frameSizes: Record<PreviewView | ResourceView, string> = {
   timeline: "h-[32rem]",
   "timeline-day": "h-[32rem]",
   week: "h-[32rem]",
+  "scrolling-3-day": "h-[32rem]",
   "scrolling-day": "mx-auto h-[36rem] max-w-sm",
   "scrolling-month": "h-[36rem]",
   "scrolling-week": "h-[32rem]",

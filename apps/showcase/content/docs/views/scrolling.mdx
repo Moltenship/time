@@ -1,17 +1,27 @@
 ---
 title: Scrolling views
-description: Week, day and month views that scroll without end and come to rest on a day or week.
+description: Week, day and month views that scroll without end, sideways by days or down a feed of weeks.
 ---
 
-<CalendarPreview view="scrolling-week" />
+<Tabs items={["Week", "3 days", "Day"]}>
+  <Tab>
+    <CalendarPreview view="scrolling-week" />
+  </Tab>
+  <Tab>
+    <CalendarPreview view="scrolling-3-day" />
+  </Tab>
+  <Tab>
+    <CalendarPreview view="scrolling-day" />
+  </Tab>
+</Tabs>
 
 Try them in the [live demo](https://moltenship-time-demo.vercel.app): turn on "Scroll day, week and
 month" in the settings.
 
 The [week and day](/docs/views/week-and-day) and [month](/docs/views/month) views move a page at a
 time. The scrolling versions move as far as you scroll, as Apple's Calendar does on iPad: the week
-and day views scroll sideways and come to rest on a day, and the month scrolls up and down and comes
-to rest on a week. They're separate views, so the paged ones keep working as they are, and you can
+and day views scroll sideways and come to rest on a day, and the month scrolls freely up and down,
+as a feed does. They're separate views, so the paged ones keep working as they are, and you can
 register both.
 
 ## Add them
@@ -25,15 +35,17 @@ register the views:
 
 The views are named `scrolling-week`, `scrolling-day`, and `scrolling-month`, and take the same
 options as their paged versions. `dayView` names the view a date opens; it defaults to `"day"` in
-the month.
+the month. For another number of days, define a view with `scrollingTimeGridStrategy(days)` and
+`ScrollingTimeGridView`, as `scrolling-3-day` does above.
 
 ## How they move
 
 | View              | Shows                                  | Comes to rest on | Previous and Next      | Today                         |
 | ----------------- | -------------------------------------- | ---------------- | ---------------------- | ----------------------------- |
 | `scrolling-week`  | Seven days from the anchor date        | A day            | Seven days             | Today in the first column     |
+| `scrolling-3-day` | Three days from the anchor date        | A day            | Three days             | Today in the first column     |
 | `scrolling-day`   | The anchor date; a swipe moves one day | A day            | One day                | Today                         |
-| `scrolling-month` | Six weeks, the anchor's week third     | A week           | The neighbouring month | Today's week in the third row |
+| `scrolling-month` | Six weeks, the anchor's week third     | Anywhere         | The neighbouring month | Today's week in the third row |
 
 The anchor date is the scroll position. When a scroll comes to rest, the view sets `anchorDate` to
 what it shows, so `Calendar.Title`, `onAnchorDateChange`, and a URL that stores the date follow the
@@ -44,8 +56,10 @@ With a controlled `anchorDate`, the view stays where it was scrolled until your 
 latest date `onAnchorDateChange` sent, even a few renders later; any other `anchorDate` moves the
 view to it. If you defer the update, commit the latest date rather than each one in turn.
 
-The month names the month that most of its third row falls in, and dims the days of other months.
-Previous and Next go to the middle of the neighbouring month, so all of it shows.
+The month doesn't snap, so a fast fling runs on smoothly. It comes to rest wherever you leave it,
+and the week nearest the top counts as its first row. It names the month that most of its
+third row falls in, and dims the days of other months. Previous and Next go to the middle of the
+neighbouring month, so all of it shows, and line its weeks up with the top again.
 
 <CalendarPreview view="scrolling-month" />
 
@@ -81,9 +95,9 @@ from screen readers, so the grid reads as one week, one day, or six weeks.
 
 ## Dragging
 
-Drag, resize, and create work as in the paged views. While a gesture is under way the view stops
-snapping, and dragging toward an edge keeps scrolling into the days beyond, rendering them as it
-goes; when you let go, it comes to rest on the nearest day.
+Drag, resize, and create work as in the paged views. Dragging toward an edge keeps scrolling into
+the days or weeks beyond, rendering them as it goes. The week and day views stop snapping while a
+gesture is under way, and come to rest on the nearest day when you let go.
 
 ## How it's built
 
