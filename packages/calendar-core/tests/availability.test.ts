@@ -12,6 +12,7 @@ import {
   projectTimeGridAvailability,
   projectTimelineAvailability,
   timeGridColumns,
+  type AvailabilityHours,
   type AvailabilitySchedule,
   type CalendarAvailability,
 } from "../src/index";
@@ -106,6 +107,18 @@ describe("weekly rules and exceptions", () => {
     expect(schedule.available(day("2026-12-25"))).toEqual([]);
     expect(schedule.exceptionOn(date("2026-12-25"))?.label).toBe("Christmas");
     expect(schedule.exceptionOn(date("2026-12-28"))).toBeUndefined();
+  });
+
+  test("an exception's date counts by its ISO date, whatever its calendar", () => {
+    const gregorian = calendarOf({
+      ...office,
+      exceptions: [{ date: date("2026-10-08").withCalendar("gregory"), label: "Closure" }],
+    });
+    expect(gregorian.available(day("2026-10-08"))).toEqual([]);
+    expect(gregorian.exceptionOn(date("2026-10-08"))?.label).toBe("Closure");
+    expect(gregorian.exceptionOn(date("2026-10-08").withCalendar("japanese"))?.label).toBe(
+      "Closure",
+    );
   });
 
   test("without weekly hours every day is open, and exceptions still close dates", () => {
@@ -288,11 +301,19 @@ test("entries of the wrong shape are reported, never thrown over", () => {
   // A list with a hole, which `every` skips.
   const days: (1 | 2)[] = [];
   days.length = 1;
+  const hours: AvailabilityHours[] = [];
+  hours.length = 1;
   const holes = createAvailabilitySnapshot({
-    availability: { weekly: [{ days, end: time("17:00"), start: time("09:00") }] },
+    availability: {
+      exceptions: [{ date: date("2026-10-08"), hours }],
+      weekly: [{ days, end: time("17:00"), start: time("09:00") }],
+    },
     timeZone: newYork,
   });
-  expect(holes.issues.map(({ code }) => code)).toEqual(["invalid-availability-rule"]);
+  expect(holes.issues.map(({ code }) => code)).toEqual([
+    "invalid-availability-exception",
+    "invalid-availability-rule",
+  ]);
 
   const odd = createAvailabilitySnapshot({
     availability: { exceptions: [null], weekly: [null] } as never,

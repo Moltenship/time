@@ -1,7 +1,7 @@
 import type { IsoDayOfWeek } from "../environment";
 import type { ResourceId } from "../ids";
 import type { CalendarResource } from "../resources";
-import { createAvailabilitySchedule, type ScheduleHours } from "./schedule";
+import { createAvailabilitySchedule, isoDateKey, type ScheduleHours } from "./schedule";
 import type {
   AvailabilityException,
   AvailabilityHours,
@@ -93,13 +93,14 @@ function exceptionsByDate(
     const { date, hours, label } = (exception ?? {}) as Partial<AvailabilityException>;
     if (
       !(date instanceof Temporal.PlainDate) ||
-      (hours !== undefined && (!Array.isArray(hours) || !hours.every(isHours))) ||
+      // `Array.from` turns holes into `undefined`, which `every` would skip.
+      (hours !== undefined && (!Array.isArray(hours) || !Array.from(hours).every(isHours))) ||
       (label !== undefined && typeof label !== "string")
     ) {
       report("invalid-availability-exception", exception);
       continue;
     }
-    const key = date.toString();
+    const key = isoDateKey(date);
     if (own.has(key)) {
       report("duplicate-exception-date", exception);
       continue;

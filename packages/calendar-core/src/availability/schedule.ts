@@ -5,8 +5,14 @@ import type { AvailabilityException, AvailabilityHours, AvailabilitySchedule } f
 
 /** Validated hours: by ISO day of the week (index 1 to 7), or `null` when open all week. */
 export interface ScheduleHours {
+  /** By `isoDateKey`. */
   readonly exceptions: ReadonlyMap<string, AvailabilityException>;
   readonly weekly: readonly (readonly AvailabilityHours[])[] | null;
+}
+
+/** A date's ISO year, month and day, whatever calendar it is in, such as `2026-10-08`. */
+export function isoDateKey(date: Temporal.PlainDate): string {
+  return date.toString({ calendarName: "never" });
 }
 
 /** `[start, end)` in epoch nanoseconds. */
@@ -72,7 +78,7 @@ export function createAvailabilitySchedule(
 
   /** The open spans that start on a date, as its exception or its day of the week has them. */
   function spansOn(date: Temporal.PlainDate): readonly Span[] {
-    const key = date.toString();
+    const key = isoDateKey(date);
     const cached = dates.get(key);
     if (cached !== undefined) return cached;
     const exception = exceptions.get(key);
@@ -129,7 +135,7 @@ export function createAvailabilitySchedule(
 
   return Object.freeze({
     available,
-    exceptionOn: (date: Temporal.PlainDate) => exceptions.get(date.toString()),
+    exceptionOn: (date: Temporal.PlainDate) => exceptions.get(isoDateKey(date)),
     isAvailable(range: InstantInterval) {
       const [open, ...rest] = available(range);
       return (
