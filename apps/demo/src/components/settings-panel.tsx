@@ -13,7 +13,13 @@ import {
   SelectValue,
 } from "@registry/ui/select";
 
-import { localeOptions, timeZoneOptions, weekStartOptions, type DemoSettings } from "../settings";
+import {
+  localeOptions,
+  overlapLayoutOptions,
+  timeZoneOptions,
+  weekStartOptions,
+  type DemoSettings,
+} from "../settings";
 
 export interface SettingsPanelProps {
   /** Makes every move, resize and delete fail after the simulated save delay. */
@@ -119,6 +125,15 @@ export function SettingsPanel({
         label="Date format"
         onValueChange={(locale) => onChange({ ...settings, locale })}
         value={settings.locale}
+      />
+      <Setting
+        items={overlapLayoutOptions}
+        label="Overlapping events"
+        onValueChange={(value) => {
+          const option = overlapLayoutOptions.find((candidate) => candidate.value === value);
+          if (option !== undefined) onChange({ ...settings, overlapLayout: option.value });
+        }}
+        value={settings.overlapLayout}
       />
       <Label className="mt-1 font-normal">
         <Checkbox

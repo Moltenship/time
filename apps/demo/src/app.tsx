@@ -53,7 +53,7 @@ interface OpenEvent {
 export function App() {
   const [systemTimeZone] = useState(() => Temporal.Now.timeZoneId());
   const [settings, setSettings] = useDemoSettings();
-  const { locale, scrolling, timeZone, weekStartsOn } = settings;
+  const { locale, overlapLayout, scrolling, timeZone, weekStartsOn } = settings;
   const today = (useNow() ?? Temporal.Now.instant()).toZonedDateTimeISO(timeZone).toPlainDate();
   const [location, setLocation] = useCalendarLocation(today);
   // The settings choose between paged and scrolling day, week, and month, even for a shared URL.
@@ -115,6 +115,17 @@ export function App() {
     [weekStartsOn],
   );
   const shownEvent = events.find(({ id }) => id === openEvent?.eventId);
+  // Every view that lays out timed events in columns follows the overlap setting.
+  const viewOptions = useMemo(() => {
+    const layout = { overlapLayout };
+    return {
+      day: layout,
+      resources: layout,
+      "scrolling-day": layout,
+      "scrolling-week": layout,
+      week: layout,
+    };
+  }, [overlapLayout]);
 
   // Counts resets, so a save that was still in flight when the data was reset is dropped instead
   // of editing the fresh seed, whose event IDs repeat.
@@ -207,6 +218,7 @@ export function App() {
         resources={demoResources}
         timeZone={timeZone}
         view={view}
+        viewOptions={viewOptions}
         weekRules={weekRules}
       >
         <KeyboardShortcuts onCreate={openCreate} onHelp={showShortcuts} scrolling={scrolling} />

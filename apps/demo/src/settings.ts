@@ -1,9 +1,11 @@
-import type { IsoDayOfWeek } from "@moltenship/calendar";
+import type { IsoDayOfWeek, OverlapLayout } from "@moltenship/calendar";
 
 import { isRecord, usePersistentState } from "./storage";
 
 export interface DemoSettings {
   readonly locale: string;
+  /** How overlapping events share a column in the day, week and resource views. */
+  readonly overlapLayout: OverlapLayout;
   /** Whether day, week, and month are the scrolling views, which swipe a page at a time. */
   readonly scrolling: boolean;
   readonly timeZone: string;
@@ -18,6 +20,12 @@ export const localeOptions = [
   { label: "Português (Brasil)", value: "pt-BR" },
   { label: "日本語", value: "ja-JP" },
 ] as const;
+
+export const overlapLayoutOptions = [
+  { label: "Side by side", value: "columns" },
+  { label: "Equal columns", value: "equal" },
+  { label: "Stacked", value: "stack" },
+] as const satisfies readonly { readonly label: string; readonly value: OverlapLayout }[];
 
 export const weekStartOptions = [
   { label: "Sunday", value: 7 },
@@ -56,9 +64,12 @@ export function parseSettings(stored: string | null, defaults: DemoSettings): De
   try {
     const value: unknown = JSON.parse(stored ?? "{}");
     if (!isRecord(value)) return defaults;
-    const { locale, scrolling, timeZone, weekStartsOn } = value;
+    const { locale, overlapLayout, scrolling, timeZone, weekStartsOn } = value;
     return {
       locale: localeOptions.find((option) => option.value === locale)?.value ?? defaults.locale,
+      overlapLayout:
+        overlapLayoutOptions.find((option) => option.value === overlapLayout)?.value ??
+        defaults.overlapLayout,
       scrolling: typeof scrolling === "boolean" ? scrolling : defaults.scrolling,
       timeZone: isSupportedTimeZone(timeZone) ? timeZone : defaults.timeZone,
       weekStartsOn:
@@ -78,6 +89,7 @@ export function useDemoSettings() {
     (stored) =>
       parseSettings(stored, {
         locale: "en-US",
+        overlapLayout: "columns",
         scrolling: false,
         timeZone: Temporal.Now.timeZoneId(),
         weekStartsOn: 7,

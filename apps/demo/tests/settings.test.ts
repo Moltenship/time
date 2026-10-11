@@ -4,6 +4,7 @@ import { parseSettings, timeZoneOptions } from "../src/settings";
 
 const defaults = {
   locale: "en-US",
+  overlapLayout: "columns",
   scrolling: false,
   timeZone: "Europe/Berlin",
   weekStartsOn: 7,
@@ -12,18 +13,19 @@ const defaults = {
 test("keeps valid stored settings and replaces each invalid field with its default", () => {
   expect(
     parseSettings(
-      '{"locale":"de-DE","scrolling":true,"timeZone":"Asia/Tokyo","weekStartsOn":1}',
+      '{"locale":"de-DE","overlapLayout":"stack","scrolling":true,"timeZone":"Asia/Tokyo","weekStartsOn":1}',
       defaults,
     ),
   ).toEqual({
     locale: "de-DE",
+    overlapLayout: "stack",
     scrolling: true,
     timeZone: "Asia/Tokyo",
     weekStartsOn: 1,
   });
   expect(
     parseSettings(
-      '{"locale":"xx","scrolling":"yes","timeZone":"Mars/Base","weekStartsOn":3}',
+      '{"locale":"xx","overlapLayout":"grid","scrolling":"yes","timeZone":"Mars/Base","weekStartsOn":3}',
       defaults,
     ),
   ).toEqual(defaults);
