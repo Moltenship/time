@@ -61,9 +61,9 @@ export function ResourcePicker({ eventId, interval, onChange, value }: ResourceP
           const heading = `${id}-${group.title}`;
           return (
             <div key={group.title} role="group" aria-labelledby={heading} className="grid gap-1">
-              <h3 id={heading} className="px-1 text-xs font-medium text-muted-foreground">
+              <div id={heading} className="px-1 text-xs font-medium text-muted-foreground">
                 {group.title}
-              </h3>
+              </div>
               {members.map((resource) => {
                 const events = busy.get(resource.id) ?? [];
                 return (

@@ -44,6 +44,8 @@ export const resourceStatusLabels: ResourceStatusLabels = {
 
 /** What a resource header's status gets during a draft; see `ResourceStatusOptions`. */
 export interface ResourceDraftStatusProps extends CalendarDraftBusy {
+  /** The classes the badge would get in its place, such as how it sits in its row. */
+  readonly className?: string;
   /** The resource, or `null` for the Unassigned column. */
   readonly resource: CalendarResource<unknown, ResourceId> | null;
 }
@@ -247,7 +249,16 @@ export function ResourceStatusPart({
   const { DraftStatus } = options;
   if (draft !== null && DraftStatus !== undefined) {
     return (
-      <DraftStatus events={draft.events} outsideHours={draft.outsideHours} resource={resource} />
+      <>
+        <DraftStatus
+          className={className}
+          events={draft.events}
+          outsideHours={draft.outsideHours}
+          resource={resource}
+        />
+        {/* Your part draws the status as it likes; screen readers still hear it in words. */}
+        {summary !== null && <span className="sr-only">{summary.text}</span>}
+      </>
     );
   }
   return summary === null ? null : <ResourceStatusBadge className={className} summary={summary} />;

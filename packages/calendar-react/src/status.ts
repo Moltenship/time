@@ -101,13 +101,19 @@ function createStatusClock(
  * while server rendering unless the calendar fixes `now`. A `null` resource turns it off, such as
  * for the Unassigned column, with nothing computed or scheduled.
  */
+/** The root's events, pending changes included, for hooks that work in any factory. */
+export function useCalendarEvents(): AnyEventSnapshot {
+  const events = useContext(CalendarEventsContext);
+  if (events === null) throw new Error("calendar-hook-outside-root");
+  return events;
+}
+
 export function useResourceStatus(
   resourceId?: ResourceId | null,
   at?: Temporal.Instant,
 ): CalendarResourceStatus | null {
   const availability = useCalendarAvailability();
-  const events = useContext(CalendarEventsContext);
-  if (events === null) throw new Error("calendar-hook-outside-root");
+  const events = useCalendarEvents();
   const source = useContext(CalendarNowSourceContext);
   const fixed = at ?? source?.now;
   const { timeZone } = availability;
