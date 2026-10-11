@@ -159,3 +159,17 @@ test("invalid entries recreated inline rerender without throwing", async () => {
     }),
   ]);
 });
+
+test("fixing a rule's days list replaces the hours, holes included", async () => {
+  const days: (1 | 4)[] = [];
+  days.length = 1;
+  const rule = (ruleDays: readonly (1 | 4)[]): CalendarAvailability => ({
+    weekly: [{ days: ruleDays, end: time("17:00"), start: time("09:00") }],
+  });
+  const harness = await render({ availability: rule(days) });
+  expect(shading(harness.container)[0]).toBe("0-24 | 0-24 | closed");
+
+  await harness.render(root({ availability: rule([4]) }));
+
+  expect(shading(harness.container)[0]).toBe("0-9,17-24 | 0-4,12-24 | open");
+});

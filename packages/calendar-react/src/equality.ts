@@ -76,7 +76,8 @@ function sameList<T>(
 ): boolean {
   if (left === right) return true;
   if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) return false;
-  return left.every((value: T, index) => {
+  // `Array.from` turns holes into `undefined`, which `every` would skip.
+  return Array.from(left).every((value: T, index) => {
     const other = right[index] as T;
     return Object.is(value, other) || (isRecord(value) && isRecord(other) && same(value, other));
   });

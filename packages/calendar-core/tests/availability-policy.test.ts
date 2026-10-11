@@ -286,4 +286,38 @@ describe("warnings", () => {
       expect.objectContaining({ proposed: evening, warnings: ["outside-availability"] }),
     );
   });
+
+  test("checks see the events proposals see, once new events replace a saved change", async () => {
+    const adapter = createCanonicalEventAdapter<null, string, string>();
+    const transactions = createEventTransactions<TestEvent, string, string>();
+    const evening = timed("2026-10-08T19:00", "2026-10-08T20:00");
+    const move = { cause: "move", eventId: "standup", proposed: evening } as const;
+    const before = createEventSnapshot(events, adapter);
+    // Saved, but the application's events don't show it yet, so it stays pending.
+    await transactions.propose(move, {
+      availability,
+      onEventChange: () => Promise.resolve(),
+      snapshot: before,
+      timeZone,
+    });
+    expect(transactions.getPending().get("standup")).toEqual(evening);
+
+    // The application moved the standup to 11:00 instead.
+    const after = createEventSnapshot(
+      events.map((event) =>
+        event.id === "standup"
+          ? { ...event, ...timed("2026-10-08T11:00", "2026-10-08T12:00") }
+          : event,
+      ),
+      adapter,
+    );
+    const context = { availability, policies: [block], snapshot: after, timeZone };
+    expect(transactions.check(move, context)).toMatchObject({
+      reason: "outside-availability",
+      status: "rejected",
+    });
+    expect(await transactions.propose(move, { ...context, onEventChange: () => {} })).toMatchObject(
+      { reason: "outside-availability", status: "rejected" },
+    );
+  });
 });

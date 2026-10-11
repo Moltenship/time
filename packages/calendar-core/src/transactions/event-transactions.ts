@@ -34,7 +34,8 @@ export interface EventTransactions<
   ) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
   /**
    * Runs a proposal through the policies without showing or saving it, as a gesture's preview
-   * does. `null` for an unknown event, or when a policy answers asynchronously.
+   * does, against the same events `propose` would see. `null` for an unknown event, or when a
+   * policy answers asynchronously.
    */
   readonly check: (
     proposal: CalendarEventProposal<TEventId, TResourceId>,
@@ -285,6 +286,7 @@ export function createEventTransactions<
     proposal: CalendarEventProposal<TEventId, TResourceId>,
     context: Omit<Context, "onEventChange">,
   ): CalendarPolicyResult<TEvent, TEventId, TResourceId> | null {
+    reconcile(context.snapshot);
     const events = applyEventOverlay(context.snapshot, pending);
     const change = createChange(proposal, "check", events);
     if (change === undefined) return null;
