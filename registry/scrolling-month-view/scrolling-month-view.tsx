@@ -107,7 +107,7 @@ function ScrollingMonthView<TEvent>({
     onScroll: (week) => actions.setAnchorDate(scrollingMonthAnchor(weekStart(week))),
     page: weeks,
     rtl: false,
-    // The nearest of the months around the week there: months run four to six weeks.
+    // The nearest of the months around the week there: their first weeks are four or five apart.
     snapTo: (week) => {
       const near = scrollingMonthAnchor(weekStart(Math.round(week)));
       return [-1, 0, 1]
@@ -244,8 +244,8 @@ function ScrollingMonthView<TEvent>({
 
 /**
  * A month of weeks that swipes up and down a month at a time, named `scrolling-month`. `weeks`
- * rows share the height, six by default, which every month fits; Previous and Next move a month. Clicking a date opens
- * `dayView`. Pass default options here; a root can override them through
+ * rows share the height: six by default, which every month fits, up to twelve. Previous and Next
+ * move a month. Clicking a date opens `dayView`. Pass default options here; a root can override them through
  * `viewOptions["scrolling-month"]`.
  */
 export function createScrollingMonthView<TEvent = unknown>(

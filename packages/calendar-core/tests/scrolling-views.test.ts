@@ -209,12 +209,13 @@ describe("scrollingMonthStrategy", () => {
   });
 
   test("takes its row count", () => {
-    expect(ranges(scrollingMonthStrategy<unknown, FixtureEvent>(5), "2026-10-08")).toEqual({
-      load: "2026-08-24 → 2026-12-07",
-      range: "2026-09-28 → 2026-11-02",
+    expect(ranges(scrollingMonthStrategy<unknown, FixtureEvent>(8), "2026-10-08")).toEqual({
+      load: "2026-08-03 → 2027-01-18",
+      range: "2026-09-28 → 2026-11-23",
       title: "October 2026",
     });
-    for (const weeks of [0, 13, 1.5]) {
+    // Fewer than six rows leave a long month's last week on no page.
+    for (const weeks of [0, 5, 13, 1.5]) {
       expect(() => scrollingMonthStrategy(weeks)).toThrow("invalid-scrolling-month-week-count");
     }
   });

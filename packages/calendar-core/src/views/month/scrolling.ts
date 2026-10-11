@@ -11,10 +11,12 @@ import { monthSpatialNavigation } from "../../navigation/month";
 import type { CalendarViewStrategy } from "../../views";
 import { projectMonthWeeks, type MonthProjection } from "./month";
 
+/** Rows every month fits in: fewer leave a long month's last days on no page at all. */
+const MINIMUM_WEEKS = 6;
 const MAXIMUM_WEEKS = 12;
 
 function assertWeekCount(weeks: number): void {
-  if (!Number.isSafeInteger(weeks) || weeks < 1 || weeks > MAXIMUM_WEEKS) {
+  if (!Number.isSafeInteger(weeks) || weeks < MINIMUM_WEEKS || weeks > MAXIMUM_WEEKS) {
     throw new RangeError("invalid-scrolling-month-week-count");
   }
 }
@@ -45,7 +47,7 @@ function firstWeek(
 
 /**
  * A month that swipes up and down a month at a time instead of paging: `weeks` rows from the week
- * that holds the anchor's month's first day, six by default, so every month fits. A page of weeks
+ * that holds the anchor's month's first day, six to twelve, so every month fits; six by default. A page of weeks
  * above and below is projected too (`getLoadRange`), so a swipe shows their events at once; the
  * days of the month are `inMonth`. Previous and Next move a month. Keyboard navigation moves
  * through the visible weeks as in a month grid.

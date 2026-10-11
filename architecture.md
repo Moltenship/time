@@ -469,8 +469,8 @@ still never fetches.
 The registry renders them on an axis of numbered days or weeks thousands of items long
 (`useScrollingAxis`). The time grid swipes a page at a time through CSS scroll snapping, with snap
 points a whole page apart from the range's start, so a week stays a calendar week and a 3-day view
-moves three days; the month's snap points sit at the week holding each month's first day, four to
-six weeks apart. The view tells the axis where its pages start, and mid-swipe commits and settling
+moves three days; the month's snap points sit at the week holding each month's first day, four or
+five weeks apart. The view tells the axis where its pages start, and mid-swipe commits and settling
 round to those pages too. Scroll offsets stay out of React state: the view re-renders only when the
 anchor moves, at rest or halfway to another page during a long swipe. Server markup
 places the visible range at the axis start, and the axis extends before it in a layout effect.

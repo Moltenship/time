@@ -31,6 +31,17 @@ const dayView = defineCalendarView({
   Renderer: () => null,
 });
 
+const pairView = defineCalendarView({
+  name: "pair",
+  strategy: {
+    getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 2 })),
+    getTitle: (range) => range.start.toString(),
+    navigate: (anchor, delta) => anchor.add({ days: 2 * delta }),
+    project: () => null,
+  },
+  Renderer: () => null,
+});
+
 const Calendar = createCalendar<Shift>()({
   eventAdapter: defineEventAdapter<Shift>()({
     getId: (shift) => shift.id,
@@ -42,7 +53,7 @@ const Calendar = createCalendar<Shift>()({
     getResourceIds: () => [],
     getTitle: (shift) => shift.id,
   }),
-  views: [dayView],
+  views: [dayView, pairView],
 });
 
 const harnesses: ReactRootHarness[] = [];
@@ -112,4 +123,39 @@ test("anchor date requests reach views, even for the date the calendar already h
     "2026-08-15 2026-08-15–2026-08-16",
     "2026-08-16 2026-08-16–2026-08-17",
   ]);
+});
+
+test("a request's range is the view on screen's, even beside a change of view its owner hasn't taken", async () => {
+  const requests: string[] = [];
+  let actions: CalendarSemanticActions | undefined;
+  function Probe() {
+    actions = Calendar.useCalendarActions() as unknown as CalendarSemanticActions;
+    useAnchorDateRequests((requested, range) =>
+      requests.push(`${requested.toString()} ${range?.start.toString()}–${range?.end.toString()}`),
+    );
+    return null;
+  }
+  harnesses.push(
+    await renderWithHarness(
+      <Calendar.Root
+        defaultAnchorDate={date("2026-08-15")}
+        defaultTimeZone="UTC"
+        events={[]}
+        locale="en-GB"
+        onViewChange={() => {}}
+        view="day"
+        weekRules={gateWeekRules}
+      >
+        <Probe />
+      </Calendar.Root>,
+    ),
+  );
+
+  // Opening a date in another view, in one handler, as a view's day header does.
+  await act(async () => {
+    actions!.setView("pair");
+    actions!.setAnchorDate(date("2026-08-20"));
+  });
+
+  expect(requests).toEqual(["2026-08-20 2026-08-20–2026-08-21"]);
 });

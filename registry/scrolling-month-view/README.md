@@ -10,10 +10,10 @@ const views = [createScrollingMonthView<Meeting>({ dayView: "scrolling-day", get
 ```
 
 - The view is named `scrolling-month`. Six weeks share the height, which every month fits (pass
-  a second argument for another count), and rows never shrink below 80px.
+  a second argument for more, up to twelve), and rows never shrink below 80px.
 - It shows the anchor's month from the week that holds its first day, and keeps that month's days
-  bright. A swipe comes to rest on the next month with its first week on top, four to six weeks
-  on; Previous and Next move a month, and Today shows today's month.
+  bright. A swipe comes to rest on the next month with its first week on top, four or five
+  weeks on; Previous and Next move a month, and Today shows today's month.
 - A page of weeks above and below renders with its events, and `onVisibleRangeChange` reports it
   as the load range.
 - Clicking a date opens `dayView`, `"day"` by default. A week whose hidden events have keyboard

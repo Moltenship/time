@@ -18,7 +18,10 @@ export interface CalendarInteractionRuntime {
   readonly actions: CalendarSemanticActions<any, any, any, any, any, any>;
   readonly announcements: AnnouncerChannel;
   readonly keyboard: KeyboardSessionStore;
-  /** The dates the active view shows for `anchor`; `null` without a registered view. */
+  /**
+   * The dates the view on screen shows for `anchor`, as of the last commit, so a change of view
+   * still waiting for its owner doesn't count; `null` without one.
+   */
   readonly rangeOf: (anchor: Temporal.PlainDate) => PlainDateInterval | null;
   /**
    * The latest state, controlled slices and requests not yet committed included; read it in

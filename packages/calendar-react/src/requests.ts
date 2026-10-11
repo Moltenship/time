@@ -6,7 +6,7 @@ import { useInteractionRuntime } from "./interaction";
 /**
  * Calls `listener` whenever something asks the calendar for an anchor date: Previous, Next,
  * Today, keys paging past the view, or `setAnchorDate`, even a date that is already the anchor.
- * `range` is what the active view shows for that date, so a view can tell a request for the
+ * `range` is what the view on screen shows for that date, so a view can tell a request for the
  * range it has, as Today in this week, from one that moves it. A view whose scroll position can
  * run ahead of the anchor, as a scrolling view's does while a controlled anchor catches up, uses
  * it to show its range again when asked.

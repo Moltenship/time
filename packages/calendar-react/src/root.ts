@@ -77,6 +77,8 @@ export interface CalendarRootConfig<
 type ViewOptionsOverrides = Readonly<Record<string, object | undefined>> | undefined;
 
 interface CommittedRootInputs<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  /** The view on screen. */
+  readonly activeView: CalendarActiveView<AnyCalendarView> | null;
   readonly environment: CalendarEnvironment;
   /** The application's events, without pending changes. */
   readonly eventSnapshot: EventSnapshot<TEvent, TEventId, TResourceId>;
@@ -461,6 +463,7 @@ export function createCalendarRoot<
     );
     // Callbacks and options are read from the last commit, so inline values need no memoization.
     const committedInputs: CommittedRootInputs<TEvent, TEventId, TResourceId> = {
+      activeView,
       environment,
       eventSnapshot,
       onDiagnosticsChange,
@@ -497,12 +500,12 @@ export function createCalendarRoot<
           announcements,
           keyboard,
           rangeOf: (anchor: Temporal.PlainDate) => {
-            const { view } = binding.read();
-            const definition = viewsByName.get(view);
-            if (definition === undefined) return null;
-            const { environment, viewOptions } = committed.current;
-            const options = resolveViewOptions(definition, viewOptions?.[view]);
-            return definition.strategy.getRange(anchor, environment, options);
+            // The view on screen, which is the one listening, even while a controlled owner has
+            // yet to take a change of view asked for in the same handler.
+            const view = committed.current.activeView;
+            return view === null
+              ? null
+              : view.definition.strategy.getRange(anchor, view.environment, view.options);
           },
           read: binding.read,
           requests: binding.subscribeRequests,
