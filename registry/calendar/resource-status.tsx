@@ -117,7 +117,10 @@ export function ResourceStatusBadge({ className, summary, ...props }: ResourceSt
         aria-hidden
         className="size-1.5 shrink-0 rounded-full bg-muted-foreground in-data-[state=busy]:bg-calendar-busy in-data-[state=free]:bg-calendar-free"
       />
-      <span className="truncate">{summary.text}</span>
+      {/* Its own direction, so a cut-short English status keeps its first word in RTL. */}
+      <span dir="auto" className="truncate">
+        {summary.text}
+      </span>
     </Badge>
   );
 }

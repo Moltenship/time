@@ -82,8 +82,9 @@ function ResourceHeader({ resource, title }: ResourceHeaderProps<PreviewResource
   return (
     <>
       <ResourceHeaderToggle />
+      {/* In a narrow column with a status, the badge needs the icon's room more. */}
       {resource?.data.kind === "person" && (
-        <ResourceHeaderIcon>
+        <ResourceHeaderIcon className={status ? "@max-[11rem]:hidden" : undefined}>
           <Avatar size="sm">
             <AvatarImage alt="" src={resource.data.avatar} />
             <AvatarFallback>{title.slice(0, 1)}</AvatarFallback>
@@ -91,7 +92,9 @@ function ResourceHeader({ resource, title }: ResourceHeaderProps<PreviewResource
         </ResourceHeaderIcon>
       )}
       {resource?.data.kind === "room" && (
-        <ResourceHeaderIcon className="size-6 justify-center rounded-md bg-muted text-muted-foreground">
+        <ResourceHeaderIcon
+          className={`size-6 justify-center rounded-md bg-muted text-muted-foreground ${status ? "@max-[11rem]:hidden" : ""}`}
+        >
           <DoorOpenIcon className="size-3.5" />
         </ResourceHeaderIcon>
       )}
