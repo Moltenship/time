@@ -23,7 +23,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | 0.3 resources  | #39–#41          | Resource model and hierarchy, multi-resource fragments, resource columns and resource timeline views with virtualization, keyboard and pointer moves across resources |
 | 0.4 availability | #129           | Working hours and exceptions, `block`/`warn` availability policy, closed-time shading in the time grid, resource columns, timeline and month, per-resource time zones with local time in headers |
 | 0.4 layout     | #130             | `columns`, `equal` and `stack` overlap policies in the time grid and resource columns                        |
-| 0.4 agenda     | #131             | Virtualized agenda with sticky date headers and focus kept by key; a scrolling agenda over months or years that loads events by range |
+| 0.4 agenda     | #131             | Virtualized agenda with sticky date headers and focus kept by key; a scrolling agenda over months or years that lets apps load events by range |
 | Scrolling views | #105            | Week, day and month views that scroll without end; `getLoadRange` on strategies and `onVisibleRangeChange` on `Root` |
 | Annotations    | #119             | Timeline annotations: core model and snapshot, `annotations` / `annotationSources` on `Root`, a rail in the time grid |
 
@@ -44,8 +44,8 @@ scope and get rescoped to Scope / Done when / Later before work starts.
 
 ## Later
 
-Deferred work. Each item is listed under "Later" in the issue it came from; open a new issue when
-one is picked up.
+Deferred work. Use the linked open issue where one exists; otherwise open a new issue from the source
+issue's "Later" section when work starts.
 
 - Annotations in month, agenda and resource views (#132)
 - Cross-browser test matrix: Chromium, Firefox, WebKit (#133)
