@@ -95,9 +95,12 @@ const resources = [
 ## Keep changes inside
 
 `availabilityPolicy({ mode })` checks every move, resize and create, whether it comes from a drag,
-the keyboard, or `actions.proposeEventChange`. A timed event must fall in open time for the
-calendar and for every resource it books, and an all-day event on dates with open time. Only what a
-change alters is checked, so events already outside the hours can still be edited.
+the keyboard, or `actions.proposeEventChange`. An event with resources must fit the hours of each
+resource it books, on that resource's clock: its own hours, or the calendar's when it has none. So a
+room open until 20:00 takes an 18:00 booking even when the office closes at 17:00. An event without
+resources must fit the calendar's hours. A timed event must fall in open time, and an all-day event
+on dates with open time. Only what a change alters is checked, so events already outside the hours
+can still be edited.
 
 | Mode      | Outside the hours, the change is…                                                            |
 | --------- | -------------------------------------------------------------------------------------------- |

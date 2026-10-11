@@ -198,6 +198,25 @@ function ResourceTimelineRowBase<TEvent>({
         (unit === "hour" && cell.kind === "slot" ? cell.time.hour : 0);
   const draftSlot =
     draft === null ? undefined : anchorSlot(visibleSlots, ...slotsCovered(...draft));
+  /**
+   * What a name says about working hours over `[from, to)`, in slots: "closed" for a day of a day
+   * row, "outside working hours" for time of an hour row.
+   */
+  const availabilityNote = (date: Temporal.PlainDate, from: number, to: number) => {
+    if (unit === "day") return closedDays.has(date.toString()) ? "closed" : undefined;
+    return isUnavailableIn(closedTime, from / slots.length, to / slots.length)
+      ? "outside working hours"
+      : undefined;
+  };
+  /** A keyboard target's name: its cell, then what working hours say about it. */
+  const targetLabel = (cell: CalendarCellFocus) => {
+    const from =
+      slotOf(cell) + (unit === "hour" && cell.kind === "slot" ? cell.time.minute / 60 : 0);
+    const to =
+      unit === "hour" && cell.kind === "slot" ? from + snapMinutes / 60 : slotOf(cell) + perDay;
+    const note = availabilityNote(cell.date, from, to);
+    return note === undefined ? labels.cellName(cell) : `${labels.cellName(cell)}, ${note}`;
+  };
 
   return (
     <div
@@ -251,30 +270,20 @@ function ResourceTimelineRowBase<TEvent>({
           unit === "hour" && (previous === undefined || previous.index < dateStart)
             ? columns[dateIndex]
             : undefined;
-        const closed =
-          unit === "day"
-            ? closedDays.has(slot.date.toString())
-            : isUnavailableIn(
-                closedTime,
-                item.index / slots.length,
-                (item.index + 1) / slots.length,
-              );
+        const note = availabilityNote(slot.date, item.index, item.index + 1);
         return (
           <div
             key={item.key}
             role="gridcell"
             aria-colindex={item.index + 2}
-            aria-label={[
-              title,
-              labels.slotName(slot),
-              closed ? (unit === "day" ? "closed" : "outside working hours") : undefined,
-              eventCount(count),
-            ]
+            aria-label={[title, labels.slotName(slot), note, eventCount(count)]
               .filter((part) => part !== undefined)
               .join(", ")}
-            data-closed={unit === "day" && closed ? "" : undefined}
+            data-closed={unit === "day" && note !== undefined ? "" : undefined}
             data-weekend={
-              unit === "day" && !closed && weekend.includes(slot.date.dayOfWeek as IsoDayOfWeek)
+              unit === "day" &&
+              note === undefined &&
+              weekend.includes(slot.date.dayOfWeek as IsoDayOfWeek)
                 ? ""
                 : undefined
             }
@@ -324,7 +333,7 @@ function ResourceTimelineRowBase<TEvent>({
                   key={`${cell.kind}:${cell.date.toString()}${cell.kind === "slot" ? `T${cell.time.toString()}` : ""}`}
                   cell={cell}
                   group={resource.hasChildren ? resource.id : null}
-                  label={labels.cellName(cell)}
+                  label={targetLabel(cell)}
                   style={
                     unit === "hour" && cell.kind === "slot"
                       ? {

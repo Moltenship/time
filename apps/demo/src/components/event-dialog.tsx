@@ -1,3 +1,4 @@
+import type { CalendarEventPlacement } from "@moltenship/calendar";
 import { useId, useState, type FormEvent } from "react";
 
 import { Button } from "@registry/ui/button";
@@ -21,15 +22,17 @@ import {
 } from "@registry/ui/select";
 import { Textarea } from "@registry/ui/textarea";
 
-import type { DemoEvent } from "../calendar";
+import { DemoCalendar, type DemoEvent } from "../calendar";
 import { demoCalendars, isDemoCalendarId } from "../calendars";
 import { eventFromDraft, moveDraftStart, type EventDraft } from "../event-draft";
+import type { DemoResourceId } from "../resources";
 
 export interface EventDialogProps {
   /** The event being created or edited; the dialog is open while it is set. */
   readonly draft: EventDraft | null;
   readonly onOpenChange: (open: boolean) => void;
-  readonly onSave: (event: DemoEvent) => void;
+  /** Saves an event the calendar's policies accept, with the warnings they flag it with. */
+  readonly onSave: (event: DemoEvent, warnings: readonly string[]) => void;
   /** Where focus goes when the dialog closes, such as the event it edits. */
   readonly returnFocus?: HTMLElement | null;
   readonly timeZone: string;
@@ -80,16 +83,24 @@ const parseDate = (value: string) => parseInput(value, (text) => Temporal.PlainD
 const parseTime = (value: string) => parseInput(value, (text) => Temporal.PlainTime.from(text));
 const timeValue = (time: Temporal.PlainTime) => time.toString({ smallestUnit: "minute" });
 
+function placementOf(event: DemoEvent): CalendarEventPlacement<DemoResourceId> {
+  const resourceIds = event.resourceIds ?? [];
+  return event.kind === "timed"
+    ? { end: event.end, kind: "timed", resourceIds, start: event.start }
+    : { end: event.end, kind: "all-day", resourceIds, start: event.start };
+}
+
 function EventForm({
   initial,
   onSave,
   timeZone,
 }: {
   readonly initial: EventDraft;
-  readonly onSave: (event: DemoEvent) => void;
+  readonly onSave: EventDialogProps["onSave"];
   readonly timeZone: string;
 }) {
   const id = useId();
+  const { checkEventChange } = DemoCalendar.useCalendarActions();
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState<string>();
   const update = (next: Partial<EventDraft>) => setDraft((current) => ({ ...current, ...next }));
@@ -97,8 +108,26 @@ function EventForm({
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = eventFromDraft(draft, timeZone, draft.id ?? crypto.randomUUID());
-    if ("error" in result) setError(result.error);
-    else onSave(result.event);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    // Times typed here meet the same policies as a drag, such as working hours.
+    const proposed = placementOf(result.event);
+    const check = checkEventChange(
+      initial.id === undefined
+        ? { cause: "create", proposed }
+        : { cause: "update", eventId: initial.id, proposed },
+    );
+    if (check?.status === "rejected") {
+      setError(
+        check.reason === "outside-availability"
+          ? "That's outside working hours. Pick another time, or change Working hours in Settings."
+          : "That change isn't allowed.",
+      );
+      return;
+    }
+    onSave(result.event, check?.change.warnings ?? []);
   }
 
   return (

@@ -247,3 +247,49 @@ test("a reset during an in-flight delete keeps the fresh seed intact", async () 
   );
   expect(eventButton(deletedId)).not.toBeNull();
 });
+
+test.each(["block", "warn"] as const)(
+  "the event dialog meets the working-hours policy in %s mode",
+  async (workingHours) => {
+    stored.set(
+      "moltenship-demo:settings",
+      JSON.stringify({ locale: "en-US", timeZone: "UTC", weekStartsOn: 7, workingHours }),
+    );
+    await act(async () => root.render(<App />));
+    await act(async () => eventButton("focus-time")?.click());
+    await act(async () =>
+      document.querySelector<HTMLButtonElement>('button[aria-label="Edit event"]')?.click(),
+    );
+    await settle();
+
+    // Thursday 18:00 to 20:00 is after the demo's office hours.
+    const startTime = document.querySelector<HTMLInputElement>('input[aria-label="Start time"]')!;
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(
+        startTime,
+        "18:00",
+      );
+      startTime.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    await act(async () =>
+      document.querySelector<HTMLFormElement>('[role="dialog"] form')?.requestSubmit(),
+    );
+    await settle();
+
+    const saved = parseEvents(stored.get("moltenship-demo:events") ?? null)?.find(
+      ({ id }) => id === "focus-time",
+    );
+    if (workingHours === "block") {
+      expect(document.querySelector('[role="dialog"] [role="alert"]')?.textContent).toContain(
+        "outside working hours",
+      );
+      expect(saved?.start.toString()).toBe("2026-10-08T10:00:00Z");
+    } else {
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+      expect(saved?.start.toString()).toBe("2026-10-08T18:00:00Z");
+      expect(document.querySelector('[role="status"]:not([data-calendar-part])')?.textContent).toBe(
+        "Saved outside working hours.",
+      );
+    }
+  },
+);

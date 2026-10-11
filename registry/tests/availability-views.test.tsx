@@ -223,3 +223,32 @@ test("timelines shade hour rows on each resource's clock and mute closed days", 
   expect(cell("ny", "2026-10-09").hasAttribute("data-closed")).toBe(true);
   expect(ariaLabel(cell("ny", "2026-10-09"))).toMatch(/, closed, no events$/);
 });
+
+test("a timeline's keyboard targets say when their time or day is closed", async () => {
+  vi.stubGlobal("ResizeObserver", StubResizeObserver);
+  /** The names of a row's keyboard targets: the entry, and the focused cell. */
+  const targets = (container: Element, id: string) =>
+    [
+      ...container.querySelectorAll(
+        `[role="row"][data-resource-id="${id}"] [role="button"][tabindex]`,
+      ),
+    ].map(ariaLabel);
+
+  const day = await renderView("timeline-day", {
+    defaultFocus: {
+      date: Temporal.PlainDate.from("2026-10-08"),
+      kind: "slot",
+      resourceId: "ny",
+      time: time("08:30"),
+    },
+  });
+  expect(targets(day, "ny")).toContainEqual(
+    expect.stringMatching(/^Nia, .*8:30.*, outside working hours$/),
+  );
+  await cleanup?.();
+
+  const week = await renderView("timeline-week", {
+    defaultFocus: { date: Temporal.PlainDate.from("2026-10-09"), kind: "day", resourceId: "ny" },
+  });
+  expect(targets(week, "ny")).toContainEqual(expect.stringMatching(/^Nia, .*October 9.*, closed$/));
+});

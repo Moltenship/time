@@ -308,9 +308,12 @@ export function App() {
           <EventDialog
             draft={draft}
             onOpenChange={(open) => !open && setDraft(null)}
-            onSave={(event) => {
+            onSave={(event, warnings) => {
               saveEvent(event);
               setDraft(null);
+              if (warnings.includes("outside-availability")) {
+                showNotice("Saved outside working hours.");
+              }
             }}
             returnFocus={openEvent?.anchor ?? createdFrom}
             timeZone={timeZone}
