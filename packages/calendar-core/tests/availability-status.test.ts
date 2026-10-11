@@ -129,25 +129,28 @@ function timed(id: string, start: string, end: string, resourceIds: string[] = [
   };
 }
 
-const events = createEventSnapshot<TestEvent, string, string>(
-  [
-    timed("standup", "2026-10-08T10:00", "2026-10-08T11:00", ["ana"]),
-    timed("review", "2026-10-08T10:30", "2026-10-08T12:00", ["ana"]),
-    timed("lunch", "2026-10-08T12:00", "2026-10-08T13:00", ["ana"]),
-    timed("night", "2026-10-08T22:00", "2026-10-09T02:00", ["ben"]),
-    {
-      data: null,
-      end: date("2026-10-13"),
-      id: "offsite",
-      kind: "all-day",
-      resourceIds: ["cy"],
-      start: date("2026-10-12"),
-      title: "offsite",
-    },
-    timed("fall-back", "2026-11-01T01:30-04:00", "2026-11-01T01:15-05:00", ["dee"]),
-  ],
-  createCanonicalEventAdapter<null, string, string>(),
-);
+const meetings: readonly TestEvent[] = [
+  timed("standup", "2026-10-08T10:00", "2026-10-08T11:00", ["ana"]),
+  timed("review", "2026-10-08T10:30", "2026-10-08T12:00", ["ana"]),
+  timed("lunch", "2026-10-08T12:00", "2026-10-08T13:00", ["ana"]),
+  timed("night", "2026-10-08T22:00", "2026-10-09T02:00", ["ben"]),
+  {
+    data: null,
+    end: date("2026-10-13"),
+    id: "offsite",
+    kind: "all-day",
+    resourceIds: ["cy"],
+    start: date("2026-10-12"),
+    title: "offsite",
+  },
+  timed("fall-back", "2026-11-01T01:30-04:00", "2026-11-01T01:15-05:00", ["dee"]),
+];
+const adapter = createCanonicalEventAdapter<null, string, string>();
+/** The offsite shows as busy, as an app's "show as" would mark it. */
+const events = createEventSnapshot<TestEvent, string, string>(meetings, {
+  ...adapter,
+  isBusy: (event) => event.kind !== "all-day" || event.id === "offsite",
+});
 const ids = (status: ReturnType<typeof busyAt<TestEvent, string, string>>) =>
   status.busy ? status.events.map(({ id }) => id) : [];
 
@@ -178,8 +181,12 @@ describe("busy at an instant", () => {
     expect(wall(status.busy ? status.freeAt : null)).toBe("2026-10-09T02:00:00-04:00");
   });
 
-  test("an all-day event fills its dates on the given wall clock", () => {
+  test("an all-day event is free unless it shows as busy, then fills its dates on the given wall clock", () => {
     const query = { resourceId: "cy", timeZone: newYork };
+    // By default an all-day event, such as a holiday banner, leaves its resources free.
+    expect(busyAt(createEventSnapshot(meetings, adapter), at("2026-10-12T15:00"), query).busy).toBe(
+      false,
+    );
     expect(busyAt(events, at("2026-10-11T23:59"), query).busy).toBe(false);
     const status = busyAt(events, at("2026-10-12T15:00"), query);
     expect(ids(status)).toEqual(["offsite"]);

@@ -19,6 +19,7 @@ export type EventAdapterAccessor =
   | "getResourceIds"
   | "getRevision"
   | "getTitle"
+  | "isBusy"
   | "isReadOnly";
 
 export interface EventSnapshotIssue<TEvent, TEventId extends EventId> {
@@ -53,6 +54,8 @@ interface NormalizedCalendarEventBase<
   readonly inputIndex: number;
   /** Set on events showing a change that has not been confirmed yet. */
   readonly isPending?: boolean;
+  /** The adapter's `isBusy`, when it has one; see `isBusyEvent` for the default. */
+  readonly isBusy?: boolean;
   readonly isReadOnly: boolean;
   readonly resourceIds: readonly TResourceId[];
   readonly revision?: string | number;
