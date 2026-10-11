@@ -98,10 +98,11 @@ function createStatusClock(
  * instant or now on the calendar's clock; see `resourceStatusAt`. Without `resourceId` it is the
  * calendar's hours and every event. All-day and floating events count on the display time zone,
  * as the views show them. On the clock it re-renders only when the status changes, and is `null`
- * while server rendering unless the calendar fixes `now`.
+ * while server rendering unless the calendar fixes `now`. A `null` resource turns it off, such as
+ * for the Unassigned column, with nothing computed or scheduled.
  */
 export function useResourceStatus(
-  resourceId?: ResourceId,
+  resourceId?: ResourceId | null,
   at?: Temporal.Instant,
 ): CalendarResourceStatus | null {
   const availability = useCalendarAvailability();
@@ -112,10 +113,14 @@ export function useResourceStatus(
   const { timeZone } = availability;
   const compute = useCallback(
     (instant: Temporal.Instant) =>
-      resourceStatusAt(availability, events, instant, { resourceId, timeZone }),
+      resourceStatusAt(availability, events, instant, {
+        resourceId: resourceId ?? undefined,
+        timeZone,
+      }),
     [availability, events, resourceId, timeZone],
   );
-  const onClock = fixed === undefined;
+  const off = resourceId === null;
+  const onClock = fixed === undefined && !off;
   const store = useMemo(
     () => (onClock ? createStatusClock(source, compute) : null),
     [compute, onClock, source],
@@ -126,7 +131,7 @@ export function useResourceStatus(
     serverSnapshot,
   );
   // By value, so an `at` made inline on each render computes once.
-  const pinnedAt = fixed?.epochNanoseconds;
+  const pinnedAt = off ? undefined : fixed?.epochNanoseconds;
   const pinned = useMemo(
     () =>
       pinnedAt === undefined ? null : compute(Temporal.Instant.fromEpochNanoseconds(pinnedAt)),

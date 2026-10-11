@@ -4,7 +4,7 @@ import { App } from "../../../apps/demo/src/app";
 import { seriousViolations, setTheme, themes } from "./axe";
 import { click, render } from "./render";
 
-const views = ["week", "day", "month", "agenda"] as const;
+const views = ["week", "day", "month", "agenda", "resources", "timeline-week"] as const;
 
 /** Opens the demo the way a link does: the view comes from the URL, the events from the seed. */
 async function renderDemo(view: (typeof views)[number], { scrolling = false } = {}) {
@@ -28,6 +28,17 @@ describe.each(themes)("demo, %s theme", (theme) => {
     await renderDemo(view, { scrolling: true });
 
     expect(document.querySelector('[data-slot^="scrolling-"]')).not.toBeNull();
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test.each(["resources", "timeline-week"] as const)("%s view's status badges", async (view) => {
+    setTheme(theme);
+    await renderDemo(view);
+
+    // Meetings in progress as the demo opens make someone busy.
+    expect(
+      document.querySelector('[data-slot="resource-status"][data-state="busy"]'),
+    ).not.toBeNull();
     expect(await seriousViolations()).toEqual([]);
   });
 

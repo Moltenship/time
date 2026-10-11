@@ -46,6 +46,11 @@ export interface ResourceColumnsViewOptions<
    */
   readonly ResourceHeader?: ComponentType<ResourceHeaderProps<TResource>>;
   /**
+   * Shows each resource's status now in the default header, such as "Busy until 3:00 PM"; add
+   * `ResourceHeaderStatus` to your own `ResourceHeader` instead.
+   */
+  readonly resourceStatus?: boolean;
+  /**
    * Replaces the shading of closed time: an element, or a function of its props and of the band,
    * date and resource, such as a gradient into working hours or a tint for rooms; `resource` is the column's.
    */
@@ -140,6 +145,7 @@ export function ResourceColumnsView<
           followX={followX}
           // The projection's resources are untyped; `TResource` is the type the app gave the root.
           ResourceHeader={options.ResourceHeader as ComponentType<ResourceHeaderProps> | undefined}
+          status={options.resourceStatus === true}
         />
         {columns.length > 1 && resources[0] !== undefined && (
           <ResourceColumnsDates

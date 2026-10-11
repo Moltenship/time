@@ -3,9 +3,9 @@
   "name": "calendar",
   "type": "registry:component",
   "title": "Calendar shell",
-  "description": "Toolbar, view switcher, event chip, accessible event names, English announcements for screen readers, sidebar mini month, the endless scroll axis, and the replaceable shading of closed time shared by every calendar view.",
+  "description": "Toolbar, view switcher, event chip, accessible event names, English announcements for screen readers, sidebar mini month, the endless scroll axis, and the replaceable shading of closed time and resource status badges shared by every calendar view.",
   "dependencies": ["@base-ui/react", "@moltenship/calendar", "cn", "lucide-react"],
-  "registryDependencies": ["button", "select", "tooltip", "@moltenship/calendar-theme"],
+  "registryDependencies": ["badge", "button", "select", "tooltip", "@moltenship/calendar-theme"],
   "files": [
     {
       "path": "registry/calendar/calendar-toolbar.tsx",
@@ -36,6 +36,11 @@
       "path": "registry/calendar/preview-check.ts",
       "type": "registry:lib",
       "target": "components/calendar/preview-check.ts"
+    },
+    {
+      "path": "registry/calendar/resource-status.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/resource-status.tsx"
     },
     {
       "path": "registry/calendar/resource-time.tsx",
