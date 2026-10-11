@@ -254,6 +254,32 @@ test("a free view resting between items stays there when the items resize", asyn
   expect(shownItem()).toBeCloseTo(5004.4);
 });
 
+test("a resize before an instant navigation's scroll reports keeps the view where it went", async () => {
+  const { shownItem, userScrollsTo } = await show(<Axis block snap={false} />);
+  await userScrollsTo(5004.4);
+  await act(async () => setFirst(5004));
+  // A date far away jumps there, and the window grows before the jump's scroll event.
+  await act(async () => setFirst(5100));
+
+  viewportWidth = 800;
+  await act(async () => rerender());
+
+  expect(shownItem()).toBeCloseTo(5100);
+});
+
+test("items resizing with nothing observed doesn't stop scrolls moving the range", async () => {
+  const { userScrollsTo, viewport } = await show();
+  // Wider days, as when the gutter narrows, with no render and no observer to say so.
+  const track = viewport.querySelector<HTMLElement>("[data-base]")!;
+  track.dataset.item = "120";
+
+  // The first scroll lays the new size out; scrolls from then on move the range.
+  await userScrollsTo(5007);
+  await userScrollsTo(5007);
+
+  expect(onScroll).toHaveBeenLastCalledWith(5007);
+});
+
 test("a request for the range a free view rests near lines the view up with it", async () => {
   const { finishScroll, shownItem, userScrollsTo } = await show(<Axis block snap={false} />);
   await userScrollsTo(5004.4);

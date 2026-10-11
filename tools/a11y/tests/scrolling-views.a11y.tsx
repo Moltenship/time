@@ -205,6 +205,24 @@ describe("scrolling views", () => {
     expect(Math.abs(position() - start - 7)).toBeLessThan(0.1);
   });
 
+  test("days that widen without the view resizing still swipe", async () => {
+    await render(<Screen view="scrolling-week" />);
+    // A narrower gutter widens the days; the scrolling element keeps its size.
+    await act(async () => {
+      document
+        .querySelector<HTMLElement>('[data-slot="scrolling-time-grid"]')!
+        .style.setProperty("--calendar-gutter-width", "80px");
+    });
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    const { position, scrollBy } = axis("scrolling-week");
+    const start = position();
+
+    await scrollBy(7);
+
+    await vi.waitFor(() => expect(title()).toBe("Oct 12 – 18, 2026"), settled);
+    expect(Math.abs(position() - start - 7)).toBeLessThan(0.1);
+  });
+
   test("dragging an event against the edge carries it past the days rendered at first", async () => {
     await render(<Screen view="scrolling-week" />);
     const { viewport } = axis("scrolling-week");
@@ -387,6 +405,21 @@ describe("scrolling month at rest between weeks", () => {
 
     expect(Math.abs(axis("scrolling-month").position() - start - 4.4)).toBeLessThan(0.05);
     expect(title()).toBe("November 2026");
+  });
+
+  test("a resize before a jump's scroll reports keeps the month where it jumped", async () => {
+    await render(<Screen view="scrolling-month" />);
+    const { viewport } = axis("scrolling-month");
+    const { height } = viewport.getBoundingClientRect();
+
+    await act(async () => screen.actions!.setAnchorDate(Temporal.PlainDate.from("2027-03-07")));
+    // In the same task, before the jump's scroll event: taller rows.
+    viewport.style.flex = "none";
+    viewport.style.height = `${height + 90}px`;
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(title()).toBe("March 2027");
+    expect(reported.anchors.map(String)).toEqual(["2027-03-07"]);
   });
 
   test("shrinking the month enough to clamp its old offset keeps it where it rests", async () => {

@@ -212,6 +212,7 @@ export function useScrollingAxis({
     if (Math.abs(offset(element) - target) < 1) {
       // Already there, as when Next is undone before its scroll moves: stop that scroll.
       if (replacing) scrollTo(element, target, "instant");
+      position.current = base + offset(element) / itemSize;
       return;
     }
     // Keys move focus as they scroll, so they jump; so does anything more than two pages away, and
@@ -225,6 +226,8 @@ export function useScrollingAxis({
     // A smooth scroll passes other items on its way, which must not move the calendar there.
     if (smooth) heading.current = first;
     scrollTo(element, target, smooth ? "smooth" : "instant");
+    // A resize can come before this scroll reports itself, and must start from where it went.
+    if (!smooth) position.current = base + offset(element) / itemSize;
   }, [count, drift, offset, rtl, scrollTo, size]);
 
   useLayoutEffect(() => {
@@ -282,7 +285,15 @@ export function useScrollingAxis({
     };
 
     /** The item size changed and `place` hasn't laid it out, so the offset is about to move. */
-    const unplaced = () => drift(size()) >= 0.5;
+    /**
+     * The item size changed and `place` hasn't laid it out, so the offset is about to move: lay
+     * it out now, since the size can change without anything observed resizing.
+     */
+    const unplaced = () => {
+      if (drift(size()) < 0.5) return false;
+      place();
+      return true;
+    };
 
     const settle = (stopped: boolean) => {
       timer = undefined;
@@ -324,7 +335,8 @@ export function useScrollingAxis({
     };
 
     const onScrollEvent = () => {
-      // A scroll the resize made, clamping the offset, is no position of the user's.
+      // A scroll the resize made, clamping the offset, is no position of the user's; the scroll
+      // that lays the resize out reports where the view is.
       if (unplaced()) return;
       const itemSize = size();
       if (itemSize > 0) position.current = latest.current.base + offset(element) / itemSize;
@@ -366,6 +378,8 @@ export function useScrollingAxis({
     element.addEventListener("scrollend", onScrollEnd);
     for (const type of inputs) element.addEventListener(type, onInput, { passive: true });
     resize?.observe(element);
+    // The items can resize alone, as when the time grid's gutter widens.
+    if (trackRef.current !== null) resize?.observe(trackRef.current);
     return () => {
       element.removeEventListener("scroll", onScrollEvent);
       element.removeEventListener("scrollend", onScrollEnd);
