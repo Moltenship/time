@@ -1,0 +1,273 @@
+// @vitest-environment jsdom
+
+import { act } from "react";
+import { hydrateRoot } from "react-dom/client";
+import { renderToString } from "react-dom/server";
+import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
+
+import { createScrollingAgendaView } from "../scrolling-list-view/scrolling-agenda-view";
+import { click, press as pressOn, render } from "./render";
+import {
+  anchorDate,
+  clock,
+  createTestCalendar,
+  text,
+  timed,
+  type ColoredEvent,
+} from "./view-fixtures";
+
+const Calendar = createTestCalendar(createScrollingAgendaView<ColoredEvent>({ weeks: 52 }));
+
+/** 10,000 half-hour events over the two years either side of the anchor: about fourteen a day. */
+const longRange: readonly ColoredEvent[] = Array.from({ length: 10_000 }, (_, index) => {
+  const date = anchorDate.subtract({ weeks: 52 }).add({ days: index % 728 });
+  const start = date.toZonedDateTime({
+    plainTime: Temporal.PlainTime.from({ hour: 6 + Math.floor(index / 728) }),
+    timeZone: "UTC",
+  });
+  return timed(
+    `event-${index}`,
+    start.toString({ timeZoneName: "never" }),
+    start.add({ minutes: 30 }).toString({ timeZoneName: "never" }),
+  );
+});
+
+/** The calendar's actions, to move it as an app would. */
+let actions: ReturnType<typeof Calendar.useCalendarActions> | undefined;
+
+function CaptureActions() {
+  actions = Calendar.useCalendarActions();
+  return null;
+}
+
+function Agenda({
+  events = longRange,
+  heldAnchor,
+  loading = false,
+  onAnchorDateChange,
+  weeks = 52,
+}: {
+  readonly events?: readonly ColoredEvent[];
+  /** A controlled anchor the app never moves. */
+  readonly heldAnchor?: Temporal.PlainDate;
+  readonly loading?: boolean;
+  readonly onAnchorDateChange?: (date: Temporal.PlainDate) => void;
+  readonly weeks?: number;
+}) {
+  return (
+    <Calendar.Root
+      {...(heldAnchor === undefined
+        ? { defaultAnchorDate: anchorDate }
+        : { anchorDate: heldAnchor })}
+      clock={clock}
+      defaultTimeZone="UTC"
+      defaultView="scrolling-agenda"
+      events={events}
+      locale="en-US"
+      onAnchorDateChange={onAnchorDateChange}
+      viewOptions={{ "scrolling-agenda": { loading, weeks } }}
+      weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
+    >
+      <CaptureActions />
+      <Calendar.Title />
+      <Calendar.TodayTrigger>Today</Calendar.TodayTrigger>
+      <Calendar.ActiveView />
+    </Calendar.Root>
+  );
+}
+
+/** Where the view asked to scroll, in order. jsdom lays nothing out, so the tests move it. */
+let scrolls: number[] = [];
+let cleanup: (() => Promise<void>) | undefined;
+
+beforeEach(() => {
+  scrolls = [];
+  HTMLElement.prototype.scrollTo = function (
+    this: HTMLElement,
+    options?: ScrollToOptions | number,
+  ) {
+    const { top = 0 } = options as ScrollToOptions;
+    scrolls.push(top);
+    this.scrollTop = top;
+  } as HTMLElement["scrollTo"];
+  // A 640px viewport over a list far taller, so scroll offsets aren't clamped to zero.
+  vi.spyOn(HTMLElement.prototype, "clientHeight", "get").mockReturnValue(640);
+  vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockReturnValue(1_000_000);
+});
+
+afterEach(async () => {
+  await cleanup?.();
+  cleanup = undefined;
+  actions = undefined;
+  vi.restoreAllMocks();
+  Reflect.deleteProperty(HTMLElement.prototype, "scrollTo");
+});
+
+/** Presses `key` on the focused element, as a keyboard would. */
+const press = (key: string) => pressOn(document.activeElement, key);
+
+async function show(element: React.ReactElement) {
+  const screen = await render(element);
+  cleanup = screen.unmount;
+  return screen.container;
+}
+
+const scroller = () => document.querySelector<HTMLElement>('[data-slot="agenda-view"]')!;
+const renderedDays = () =>
+  [...document.querySelectorAll<HTMLElement>('[data-slot="agenda-view"] li[data-date]')].map(
+    (day) => day.dataset.date,
+  );
+const title = () => text(document.querySelector('[data-calendar-part="title"]'));
+const rowTop = (date: string) =>
+  Number.parseFloat(document.querySelector<HTMLElement>(`li[data-date="${date}"]`)!.style.top);
+
+/** Scrolls the list as the user would: input, a scroll to `top`, then the scroll at rest. */
+async function scrollTo(top: number) {
+  await act(async () => {
+    const element = scroller();
+    element.dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+    element.scrollTop = top;
+    element.dispatchEvent(new Event("scroll"));
+    element.dispatchEvent(new Event("scrollend"));
+  });
+}
+
+test("of 10,000 events over two years, renders only the days in view, numbered among all", async () => {
+  await show(<Agenda />);
+  const days = [...document.querySelectorAll<HTMLElement>("li[data-date]")];
+
+  expect(title()).toBe("Oct 8, 2026 – Oct 6, 2027");
+  expect(days.length).toBeLessThan(12);
+  expect(document.querySelectorAll("[data-event-id]").length).toBeLessThan(160);
+  // The anchor date is on top, the 365th of 728 days.
+  const anchorDay = days.find((day) => day.dataset.date === "2026-10-08")!;
+  expect(scroller().scrollTop).toBe(Number.parseFloat(anchorDay.style.top));
+  expect(anchorDay.getAttribute("aria-posinset")).toBe("365");
+  expect(days.every((day) => day.getAttribute("aria-setsize") === "728")).toBe(true);
+});
+
+test("keeps the focused day rendered while focus is in the list and the user scrolls away", async () => {
+  await show(<Agenda />);
+  const entry = document.querySelector<HTMLElement>('[data-slot="agenda-view"] [tabindex="0"]')!;
+  expect(entry.closest("li[data-date]")?.closest("li[data-date]")?.getAttribute("data-date")).toBe(
+    "2026-10-08",
+  );
+  await act(async () => entry.focus());
+
+  await act(async () => {
+    scroller().scrollTop = 40_000;
+    scroller().dispatchEvent(new Event("scroll"));
+  });
+
+  expect(renderedDays()).toContain("2026-10-08");
+  expect(renderedDays().length).toBeLessThan(14);
+  expect(document.activeElement).toBe(entry);
+});
+
+test("moves the anchor to the day on top once a scroll comes to rest", async () => {
+  const onAnchorDateChange = vi.fn<(date: Temporal.PlainDate) => void>();
+  await show(<Agenda onAnchorDateChange={onAnchorDateChange} />);
+  const top = rowTop("2026-10-11");
+
+  await scrollTo(top + 20);
+
+  expect(onAnchorDateChange.mock.calls.map(([date]) => date.toString())).toEqual(["2026-10-11"]);
+  expect(title()).toBe("Oct 11, 2026 – Oct 9, 2027");
+  // The list stays where the user left it.
+  expect(scroller().scrollTop).toBe(rowTop("2026-10-11") + 20);
+});
+
+test("scrolls a date the app picks to the top, and Today back", async () => {
+  await show(<Agenda />);
+
+  await act(async () => actions!.setAnchorDate(Temporal.PlainDate.from("2027-03-01")));
+
+  expect(title()).toBe("Mar 1, 2027 – Feb 27, 2028");
+  expect(scroller().scrollTop).toBe(rowTop("2027-03-01"));
+
+  await click(document.querySelector('[data-calendar-part="today-trigger"]'));
+
+  expect(title()).toBe("Oct 8, 2026 – Oct 6, 2027");
+  expect(scroller().scrollTop).toBe(rowTop("2026-10-08"));
+});
+
+test("Today scrolls back to an anchor the app holds while the user scrolls", async () => {
+  await show(<Agenda heldAnchor={anchorDate} />);
+  const anchorTop = rowTop("2026-10-08");
+
+  await scrollTo(anchorTop + 5000);
+  expect(title()).toBe("Oct 8, 2026 – Oct 6, 2027");
+  expect(scroller().scrollTop).toBe(anchorTop + 5000);
+
+  await click(document.querySelector('[data-calendar-part="today-trigger"]'));
+
+  expect(scroller().scrollTop).toBe(anchorTop);
+});
+
+test("says events are loading at the end of the list, or in its place without any", async () => {
+  const container = await show(<Agenda events={[]} loading />);
+
+  expect(text(container.querySelector('[role="group"]'))).toBe(
+    "Loading eventsFetching what's scheduled for October 8, 2026 – October 6, 2027.",
+  );
+  expect(container.querySelector('[role="group"]')?.getAttribute("aria-busy")).toBe("true");
+
+  const standup = timed("standup", "2026-10-08T09:00Z", "2026-10-08T09:30Z");
+  await act(async () => cleanup?.());
+  await show(<Agenda events={[standup]} loading />);
+  expect(document.querySelector("ol")?.getAttribute("aria-busy")).toBe("true");
+  expect(text(document.querySelector("ol + div"))).toBe("Loading events…");
+
+  await act(async () => cleanup?.());
+  await show(<Agenda events={[standup]} />);
+  // The load range runs a page past the year in view.
+  expect(text(document.querySelector("ol + div"))).toBe(
+    "Nothing more is scheduled through Wednesday, October 4, 2028.",
+  );
+});
+
+test("server markup starts at the anchor date and hydrates as is", async () => {
+  const markup = renderToString(<Agenda />);
+  const container = document.createElement("div");
+  container.innerHTML = markup;
+
+  expect(container.querySelector("li[data-date]")?.getAttribute("data-date")).toBe("2026-10-08");
+
+  document.body.append(container);
+  const errors: unknown[] = [];
+  const root = await act(async () =>
+    hydrateRoot(container, <Agenda />, { onRecoverableError: (error) => errors.push(error) }),
+  );
+  cleanup = async () => {
+    await act(async () => root.unmount());
+    container.remove();
+  };
+
+  expect(errors).toEqual([]);
+  // Once hydrated, the days above join without moving the anchor's day.
+  expect(renderedDays()).toContain("2026-10-07");
+  expect(scroller().scrollTop).toBe(rowTop("2026-10-08"));
+});
+
+test("keys page past the range and move focus on, leaving the scrolling to focus", async () => {
+  await show(
+    <Agenda
+      events={[
+        timed("standup", "2026-10-08T09:00Z", "2026-10-08T09:30Z"),
+        timed("review", "2026-10-20T15:00Z", "2026-10-20T16:00Z"),
+      ]}
+      weeks={1}
+    />,
+  );
+  await act(async () => document.querySelector<HTMLElement>('[data-event-id="standup"]')!.focus());
+  const before = scrolls.length;
+
+  await press("ArrowDown");
+  expect(title()).toBe("Oct 15 – 21, 2026");
+  expect(document.activeElement?.getAttribute("data-event-id")).toBe("review");
+  await press("ArrowUp");
+  expect(title()).toBe("Oct 8 – 14, 2026");
+  expect(document.activeElement?.getAttribute("data-event-id")).toBe("standup");
+  // The list never jumped to the anchor date: focus scrolls an event into view.
+  expect(scrolls.length).toBe(before);
+});
