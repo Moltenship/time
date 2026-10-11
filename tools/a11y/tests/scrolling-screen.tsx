@@ -113,10 +113,26 @@ export function axis(view: ScrollingView) {
     return view === "scrolling-month" ? top : left;
   });
   const size = Math.abs(points.at(-1)! - points[0]!) / (points.length - 1);
+  /**
+   * Weeks from 1970 to the top of the view, by the week row there: its rounding stays within the
+   * row, where a row length rounded to layout units would add up across a thousand weeks.
+   */
+  const monthPosition = () => {
+    const { top } = viewport.getBoundingClientRect();
+    const row = [...viewport.querySelectorAll('[role="row"]')].find(
+      (candidate) => candidate.getBoundingClientRect().bottom > top + 0.5,
+    )!;
+    const bounds = row.getBoundingClientRect();
+    const date = Temporal.PlainDate.from(
+      row.querySelector("[data-date]")!.getAttribute("data-date")!,
+    );
+    const week = Math.floor(Temporal.PlainDate.from("1970-01-01").until(date).days / 7);
+    return week + (top - bounds.top) / bounds.height;
+  };
   return {
-    /** Items from the start of the canvas to the start of the view. */
+    /** Items from a fixed start to the start of the view; compare positions, not their values. */
     position: () =>
-      (view === "scrolling-month" ? viewport.scrollTop : Math.abs(viewport.scrollLeft)) / size,
+      view === "scrolling-month" ? monthPosition() : Math.abs(viewport.scrollLeft) / size,
     /** Scrolls by `items` along the axis, toward later dates. */
     scrollBy: (items: number, dir: "ltr" | "rtl" = "ltr") =>
       act(async () =>

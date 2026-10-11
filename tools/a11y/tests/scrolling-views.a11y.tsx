@@ -356,6 +356,27 @@ describe("scrolling month at rest between weeks", () => {
     expect(Math.abs(axis("scrolling-month").position() - start - 4.4)).toBeLessThan(0.05);
     expect(title()).toBe("November 2026");
   });
+
+  test("shrinking the month enough to clamp its old offset keeps it where it rests", async () => {
+    await render(<Screen view="scrolling-month" />);
+    const { viewport } = axis("scrolling-month");
+    const resize = (height: number) =>
+      act(async () => {
+        viewport.style.flex = "none";
+        viewport.style.height = `${height}px`;
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      });
+    await resize(1500);
+    const start = axis("scrolling-month").position();
+    await axis("scrolling-month").scrollBy(4.4);
+    await vi.waitFor(() => expect(title()).toBe("November 2026"), settled);
+
+    // A third the height: the old offset lies past the end of the shorter canvas.
+    await resize(500);
+
+    expect(Math.abs(axis("scrolling-month").position() - start - 4.4)).toBeLessThan(0.05);
+    expect(title()).toBe("November 2026");
+  });
 });
 
 describe.each(themes)("scrolling views, %s theme", (theme) => {

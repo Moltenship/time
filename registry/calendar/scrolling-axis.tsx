@@ -85,7 +85,7 @@ function prefersReducedMotion(element: Element): boolean {
  * through `onScroll`. When the range changes otherwise, as Today and Next do, the axis
  * scrolls there: smoothly over a page or two, at once further away, from the keyboard, or with
  * reduced motion. Scroll positions are never React state, so scrolling renders only when the
- * range moves.
+ * range moves, or, without `snap`, when the view comes to rest showing other items.
  *
  * Server markup and the first render put the range at the canvas's start, so the page shows it
  * before scripts run. Once laid out, the canvas extends before it and the scroll position follows
@@ -126,6 +126,11 @@ export function useScrollingAxis({
   const heading = useRef<number | null>(null);
   /** Set while `onScroll` runs, so the requests it makes aren't taken for navigation. */
   const proposing = useRef(false);
+  /**
+   * Where the view is, in items with their fraction, for the item size it was laid out for: a
+   * resize can clamp the scroll offset before `place` sees it.
+   */
+  const position = useRef<number | null>(null);
 
   const size = useCallback(() => {
     const rect = trackRef.current?.getBoundingClientRect();
@@ -135,6 +140,14 @@ export function useScrollingAxis({
     (element: HTMLElement) =>
       axis === "inline" ? Math.abs(element.scrollLeft) : element.scrollTop,
     [axis],
+  );
+  /** How far a new item size moves the shown item: a resize `place` has yet to lay out. */
+  const drift = useCallback(
+    (itemSize: number) =>
+      shown.current === null || laidOutSize.current === 0
+        ? 0
+        : (shown.current - latest.current.base) * Math.abs(itemSize - laidOutSize.current),
+    [],
   );
   const scrollTo = useCallback(
     (element: HTMLElement, position: number, behavior: ScrollBehavior) => {
@@ -158,19 +171,16 @@ export function useScrollingAxis({
     const { base, first, page, snap } = latest.current;
     // A new item size moves every item, as switching between a week and a day or resizing the
     // window does; a fraction of a pixel per item adds up across the canvas, so measure the move.
-    const shift =
-      shown.current === null || laidOutSize.current === 0
-        ? 0
-        : (shown.current - base) * Math.abs(itemSize - laidOutSize.current);
-    if ((shift >= 0.5 || laidOutRtl.current !== rtl) && shown.current !== null) {
+    if ((drift(itemSize) >= 0.5 || laidOutRtl.current !== rtl) && shown.current !== null) {
       // Browsers also reset `scrollLeft` when the direction flips: put the shown item back. A free
       // view keeps the part of an item it rests past, unless a scroll is on its way to an item.
       const at =
-        !snap && heading.current === null && laidOutRtl.current === rtl
-          ? laidOut.current + offset(element) / laidOutSize.current
+        !snap && heading.current === null && laidOutRtl.current === rtl && position.current !== null
+          ? position.current
           : shown.current;
       heading.current = null;
       scrollTo(element, (at - base) * itemSize, "instant");
+      position.current = at;
       laidOutSize.current = itemSize;
     } else if (laidOut.current !== base) {
       // The canvas moved by whole items; keep what is on screen where it is.
@@ -214,7 +224,7 @@ export function useScrollingAxis({
     // A smooth scroll passes other items on its way, which must not move the calendar there.
     if (smooth) heading.current = first;
     scrollTo(element, target, smooth ? "smooth" : "instant");
-  }, [count, offset, rtl, scrollTo, size]);
+  }, [count, drift, offset, rtl, scrollTo, size]);
 
   useLayoutEffect(() => {
     latest.current = { base, first, onScroll, page, snap };
@@ -265,8 +275,12 @@ export function useScrollingAxis({
       }
     };
 
+    /** The item size changed and `place` hasn't laid it out, so the offset is about to move. */
+    const unplaced = () => drift(size()) >= 0.5;
+
     const settle = (stopped: boolean) => {
       timer = undefined;
+      if (unplaced()) return;
       if (heading.current !== null) {
         const target = (heading.current - latest.current.base) * size();
         if (Math.abs(offset(element) - target) > 1) {
@@ -304,6 +318,10 @@ export function useScrollingAxis({
     };
 
     const onScrollEvent = () => {
+      // A scroll the resize made, clamping the offset, is no position of the user's.
+      if (unplaced()) return;
+      const itemSize = size();
+      if (itemSize > 0) position.current = latest.current.base + offset(element) / itemSize;
       const item = nearest();
       const { page } = latest.current;
       // During a long swipe, or a drag scrolling the view, keep the loaded pages ahead of what
@@ -350,7 +368,7 @@ export function useScrollingAxis({
       waiting?.disconnect();
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [axis, offset, place, scrollTo, size]);
+  }, [axis, drift, offset, place, scrollTo, size]);
 
   const request = useCallback(
     (item: number) => {
