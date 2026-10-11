@@ -169,4 +169,18 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
     await act(async () => reviews[1]!.focus());
     expect(eventAt(...title)).toBe(reviews[1]);
   });
+
+  test("a focused event stays over one the pointer rests on", async () => {
+    await render(<OverlapScreen dir={dir} overlapLayout="stack" />);
+    const reviews = ["Review 1", "Review 2", "Review 3"].map(eventElement);
+    const box = reviews[0]!.getBoundingClientRect();
+    const title = [box.x + box.width / 2, box.y + 8] as const;
+
+    // The pointer rests on the top review while the keyboard focuses the one under it.
+    await userEvent.hover(reviews[2]!);
+    await act(async () => reviews[0]!.focus());
+
+    expect(eventAt(...title)).toBe(reviews[0]);
+    await userEvent.unhover(reviews[2]!);
+  });
 });

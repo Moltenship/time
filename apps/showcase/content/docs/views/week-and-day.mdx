@@ -159,7 +159,8 @@ createWeekView<Meeting>({ dayView: "day", overlapLayout: "stack" });
 
 Every layout keeps the same rules:
 
-- Events that touch, one ending as the next starts, never count as overlapping.
+- Events that touch, one ending as the next starts, don't overlap. An event shorter than 15
+  minutes still takes up 15 so it stays readable, so it can overlap the next one.
 - Overlapping events form a group, laid out on its own, so a change to one group never moves
   events in another.
 - The order is fixed: by start, then longer first, then event ID. It's the order events are drawn
