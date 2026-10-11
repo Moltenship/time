@@ -142,23 +142,37 @@ function RowHeader({
         <span aria-hidden className="size-6 shrink-0" />
       )}
       {status === null ? (
-        <span className="truncate">{title}</span>
+        <>
+          <span className="truncate">{title}</span>
+          <ResourceTime
+            className="ms-auto"
+            environment={environment}
+            timeZone={resource.resource?.timeZone}
+          />
+        </>
       ) : (
         <span className="flex min-w-0 flex-col items-start gap-0.5">
           <span className="max-w-full truncate">{title}</span>
-          <ResourceStatusBadge summary={status} />
+          {/* The badge keeps its words; the local time gives way, and the name says both. */}
+          <span className="flex max-w-full min-w-0 items-center gap-1">
+            <ResourceStatusBadge className="shrink-0" summary={status} />
+            <ResourceTime
+              aria-hidden
+              className="min-w-0 shrink truncate"
+              environment={environment}
+              timeZone={resource.resource?.timeZone}
+            />
+          </span>
         </span>
       )}
-      <ResourceTime
-        className="ms-auto"
-        environment={environment}
-        timeZone={resource.resource?.timeZone}
-      />
     </div>
   );
 }
 
-/** `RowHeader` with the resource's status now, so rows without it keep no clock. */
+/**
+ * `RowHeader` with the resource's status now, so rows without it keep no clock. Groups have none:
+ * their own bookings aren't their members'.
+ */
 function RowHeaderWithStatus(props: RowHeaderProps) {
   const status = useResourceStatusSummary(props.environment, props.resource.id);
   return <RowHeader {...props} status={status} />;
@@ -310,7 +324,7 @@ function ResourceTimelineRowBase<TEvent>({
       )}
       style={{ height: virtualRow.size, top: virtualRow.start }}
     >
-      {resourceStatus ? (
+      {resourceStatus && !resource.hasChildren ? (
         <RowHeaderWithStatus environment={environment} resource={resource} title={title} />
       ) : (
         <RowHeader environment={environment} resource={resource} status={null} title={title} />

@@ -144,7 +144,8 @@ export function App() {
     () => ({ firstDay: weekStartsOn, minimalDays: weekStartsOn === 1 ? 4 : 1, weekend: [6, 7] }),
     [weekStartsOn],
   );
-  const shownEvent = events.find(({ id }) => id === openEvent?.eventId);
+  // Busy-now meetings open too, read-only; they are shown but never stored.
+  const shownEvent = visibleEvents.find(({ id }) => id === openEvent?.eventId);
   // Every view that lays out timed events in columns follows the overlap setting.
   const viewOptions = useMemo(() => {
     const layout = { overlapLayout };
