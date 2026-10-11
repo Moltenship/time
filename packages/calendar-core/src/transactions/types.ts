@@ -1,3 +1,4 @@
+import type { AvailabilitySnapshot } from "../availability/types";
 import type { CalendarEventInterval } from "../events";
 import type { EventId, ResourceId } from "../ids";
 import type { EventSnapshot } from "../snapshots/types";
@@ -44,6 +45,8 @@ export interface CalendarEventCreateChange<TResourceId extends ResourceId> {
   readonly id: string;
   readonly original: null;
   readonly proposed: CalendarEventPlacement<TResourceId>;
+  /** Reasons policies flagged the change with while letting it through; see `"warn"`. */
+  readonly warnings?: readonly string[];
 }
 
 export interface CalendarEventUpdateChange<
@@ -58,6 +61,8 @@ export interface CalendarEventUpdateChange<
   /** The placement the user saw, including any change still pending for this event. */
   readonly original: CalendarEventPlacement<TResourceId>;
   readonly proposed: CalendarEventPlacement<TResourceId>;
+  /** Reasons policies flagged the change with while letting it through; see `"warn"`. */
+  readonly warnings?: readonly string[];
 }
 
 export interface CalendarEventDeleteChange<
@@ -71,6 +76,8 @@ export interface CalendarEventDeleteChange<
   readonly id: string;
   readonly original: CalendarEventPlacement<TResourceId>;
   readonly proposed: null;
+  /** Reasons policies flagged the change with while letting it through; see `"warn"`. */
+  readonly warnings?: readonly string[];
 }
 
 export type CalendarEventChange<TEvent, TEventId extends EventId, TResourceId extends ResourceId> =
@@ -110,6 +117,8 @@ export interface CalendarTransactionContext<
   TEventId extends EventId,
   TResourceId extends ResourceId,
 > {
+  /** The root's working hours, handed to policies. */
+  readonly availability?: AvailabilitySnapshot;
   readonly onEventChange: CalendarEventChangeHandler<TEvent, TEventId, TResourceId>;
   readonly policies?: readonly CalendarPolicy<TEvent, TEventId, TResourceId>[];
   /** The application's events, without pending changes applied. */

@@ -1,5 +1,6 @@
 import type { CalendarEventInterval } from "../events";
 import type { EventId, ResourceId } from "../ids";
+import type { CalendarPolicyResult } from "../policies/types";
 import type { NormalizedCalendarEvent } from "../snapshots/types";
 import type { CalendarEventPlacement } from "../transactions/types";
 
@@ -16,16 +17,25 @@ interface CalendarInteractionUpdateBase {
   readonly proposed: CalendarEventPlacement | null;
 }
 
+/**
+ * What the root's policies say about a gesture's `proposed` placement before it is committed:
+ * rejected with a reason, or accepted, perhaps with `change.warnings`. `null` while it changes
+ * nothing yet, or when a policy can't answer at once.
+ */
+export type CalendarInteractionCheck = CalendarPolicyResult<unknown, EventId, ResourceId> | null;
+
 /** One step in a move, resize, or create, from the keyboard or the pointer. */
 export type CalendarInteractionUpdate = CalendarInteractionUpdateBase &
   (
     | { readonly phase: "cancel" }
-    | { readonly phase: "start" }
-    | { readonly phase: "step" }
+    | { readonly check?: CalendarInteractionCheck; readonly phase: "start" }
+    | { readonly check?: CalendarInteractionCheck; readonly phase: "step" }
     | {
         readonly phase: "commit";
         /** The change as saved, after policies adjusted it. */
         readonly proposed: CalendarEventPlacement;
+        /** Reasons policies flagged the saved change with, such as `"outside-availability"`. */
+        readonly warnings?: readonly string[];
       }
     | {
         readonly phase: "reject";

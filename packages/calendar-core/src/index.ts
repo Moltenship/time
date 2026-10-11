@@ -81,6 +81,25 @@ export type {
   CalendarAnnotationSource,
 } from "./annotations/types";
 
+export { createAvailabilitySnapshot } from "./availability/snapshot";
+export type { AvailabilitySnapshotInput } from "./availability/snapshot";
+export {
+  closedDates,
+  projectTimeGridAvailability,
+  projectTimelineAvailability,
+} from "./availability/projection";
+export type { ClosedDate } from "./availability/projection";
+export type {
+  AvailabilityException,
+  AvailabilityHours,
+  AvailabilityIssue,
+  AvailabilityRule,
+  AvailabilitySchedule,
+  AvailabilitySnapshot,
+  CalendarAvailability,
+  ResourceAvailability,
+} from "./availability/types";
+
 export type { CalendarResource } from "./resources";
 export { createResourceTree } from "./resources/tree";
 export type { ResourceTree, ResourceTreeInput, ResourceTreeNode } from "./resources/tree";
@@ -217,10 +236,13 @@ export type {
   CalendarAnnouncementMessages,
   CalendarAnnouncer,
   CalendarInteractionCause,
+  CalendarInteractionCheck,
   CalendarInteractionPhase,
   CalendarInteractionUpdate,
 } from "./keyboard/announcements";
 
+export { availabilityPolicy } from "./policies/availability";
+export type { AvailabilityPolicyOptions } from "./policies/availability";
 export { boundsPolicy } from "./policies/bounds";
 export { minimumDurationPolicy } from "./policies/minimum-duration";
 export { readOnlyPolicy } from "./policies/read-only";
@@ -230,4 +252,5 @@ export type {
   CalendarPolicy,
   CalendarPolicyContext,
   CalendarPolicyDecision,
+  CalendarPolicyResult,
 } from "./policies/types";

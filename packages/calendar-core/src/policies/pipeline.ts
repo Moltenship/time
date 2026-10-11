@@ -18,6 +18,12 @@ function applyDecision<TEvent, TEventId extends EventId, TResourceId extends Res
   if (decision.type === "reject") {
     return { change, reason: decision.reason, status: "rejected" };
   }
+  if (decision.type === "warn") {
+    const { warnings = [] } = change;
+    return warnings.includes(decision.reason)
+      ? change
+      : { ...change, warnings: Object.freeze([...warnings, decision.reason]) };
+  }
   if (change.proposed === null) throw new TypeError("delete-changes-cannot-be-adjusted");
   return { ...change, proposed: decision.proposed };
 }

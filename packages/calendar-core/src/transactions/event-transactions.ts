@@ -32,6 +32,14 @@ export interface EventTransactions<
     proposal: CalendarEventProposal<TEventId, TResourceId>,
     context: CalendarTransactionContext<TEvent, TEventId, TResourceId>,
   ) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  /**
+   * Runs a proposal through the policies without showing or saving it, as a gesture's preview
+   * does. `null` for an unknown event, or when a policy answers asynchronously.
+   */
+  readonly check: (
+    proposal: CalendarEventProposal<TEventId, TResourceId>,
+    context: Omit<CalendarTransactionContext<TEvent, TEventId, TResourceId>, "onEventChange">,
+  ) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
   /** Reports new application events, which confirm or supersede resolved changes. */
   readonly reconcile: (snapshot: EventSnapshot<TEvent, TEventId, TResourceId>) => void;
   readonly subscribe: (listener: () => void) => () => void;
@@ -258,6 +266,7 @@ export function createEventTransactions<
     let outcome;
     try {
       outcome = runEventPolicies(change, context.policies ?? [], {
+        availability: context.availability,
         events,
         timeZone: context.timeZone,
       });
@@ -272,7 +281,33 @@ export function createEventTransactions<
     return outcome.then((result) => commit(result, revision, context)).catch(policyError);
   }
 
+  function check(
+    proposal: CalendarEventProposal<TEventId, TResourceId>,
+    context: Omit<Context, "onEventChange">,
+  ): CalendarPolicyResult<TEvent, TEventId, TResourceId> | null {
+    const events = applyEventOverlay(context.snapshot, pending);
+    const change = createChange(proposal, "check", events);
+    if (change === undefined) return null;
+    if (change.proposed !== null && !isNonEmptyInterval(change.proposed)) {
+      return { change, reason: "invalid-placement", status: "rejected" };
+    }
+    try {
+      const outcome = runEventPolicies(change, context.policies ?? [], {
+        availability: context.availability,
+        events,
+        timeZone: context.timeZone,
+      });
+      if (!isPromiseLike(outcome)) return outcome;
+      // Previews can't wait; the commit asks again.
+      outcome.then(undefined, () => undefined);
+      return null;
+    } catch {
+      return { change, reason: "policy-error", status: "rejected" };
+    }
+  }
+
   return Object.freeze({
+    check,
     getPending: () => pending,
     propose,
     reconcile,

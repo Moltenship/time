@@ -1,3 +1,4 @@
+import type { AvailabilitySnapshot } from "../availability/types";
 import type { EventId, ResourceId } from "../ids";
 import type { EventSnapshot } from "../snapshots/types";
 import type { CalendarEventChange, CalendarEventPlacement } from "../transactions/types";
@@ -7,6 +8,8 @@ export interface CalendarPolicyContext<
   TEventId extends EventId,
   TResourceId extends ResourceId,
 > {
+  /** The root's working hours, for `availabilityPolicy`. */
+  readonly availability?: AvailabilitySnapshot;
   /** Current events with pending changes applied, as the user sees them. */
   readonly events: EventSnapshot<TEvent, TEventId, TResourceId>;
   readonly timeZone: string;
@@ -15,11 +18,13 @@ export interface CalendarPolicyContext<
 export type CalendarPolicyDecision<TResourceId extends ResourceId> =
   | { readonly type: "accept" }
   | { readonly proposed: CalendarEventPlacement<TResourceId>; readonly type: "adjust" }
-  | { readonly reason: string; readonly type: "reject" };
+  | { readonly reason: string; readonly type: "reject" }
+  /** Accepts the change, flagged with `reason` in its `warnings`. */
+  | { readonly reason: string; readonly type: "warn" };
 
 /**
- * Accepts, adjusts, or rejects a change. Policies run in order and each one sees the change as
- * adjusted by the policies before it.
+ * Accepts, adjusts, rejects, or flags a change. Policies run in order and each one sees the change
+ * as adjusted by the policies before it.
  */
 export type CalendarPolicy<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = (
   change: CalendarEventChange<TEvent, TEventId, TResourceId>,
