@@ -50,6 +50,12 @@ export interface ScrollingAxis {
   /** Items the canvas holds from `base`. */
   readonly count: number;
   /**
+   * Without `snap`, the items any part of which shows once the view rests where the range is,
+   * `end` exclusive: one more than the range's own where it rests between two. `null` with
+   * `snap`, and from a new range until the view comes to rest on it.
+   */
+  readonly inView: { readonly end: number; readonly start: number } | null;
+  /**
    * Tells the axis the calendar was asked to show `first` first, as Today and Next ask: pass it
    * each `useAnchorDateRequests` date. A request ends any scroll still waiting for the range, and
    * one for the range the calendar already has scrolls the view back to it.
@@ -97,6 +103,8 @@ export function useScrollingAxis({
   const trackRef = useRef<HTMLDivElement>(null);
   const [base, setBase] = useState(first);
   const count = 2 * REACH + page;
+  /** Where a free view last came to rest: the item it showed first, and the items in view. */
+  const [rest, setRest] = useState<{ end: number; first: number; start: number } | null>(null);
 
   // Read by event handlers, so they see the latest render without re-subscribing.
   const latest = useRef({ base, first, onScroll, page, snap });
@@ -147,7 +155,7 @@ export function useScrollingAxis({
     const element = scrollRef.current;
     const itemSize = size();
     if (element === null || itemSize <= 0) return;
-    const { base, first, page } = latest.current;
+    const { base, first, page, snap } = latest.current;
     // A new item size moves every item, as switching between a week and a day or resizing the
     // window does; a fraction of a pixel per item adds up across the canvas, so measure the move.
     const shift =
@@ -155,9 +163,14 @@ export function useScrollingAxis({
         ? 0
         : (shown.current - base) * Math.abs(itemSize - laidOutSize.current);
     if ((shift >= 0.5 || laidOutRtl.current !== rtl) && shown.current !== null) {
-      // Browsers also reset `scrollLeft` when the direction flips: put the shown item back.
+      // Browsers also reset `scrollLeft` when the direction flips: put the shown item back. A free
+      // view keeps the part of an item it rests past, unless a scroll is on its way to an item.
+      const at =
+        !snap && heading.current === null && laidOutRtl.current === rtl
+          ? laidOut.current + offset(element) / laidOutSize.current
+          : shown.current;
       heading.current = null;
-      scrollTo(element, (shown.current - base) * itemSize, "instant");
+      scrollTo(element, (at - base) * itemSize, "instant");
       laidOutSize.current = itemSize;
     } else if (laidOut.current !== base) {
       // The canvas moved by whole items; keep what is on screen where it is.
@@ -220,6 +233,25 @@ export function useScrollingAxis({
       const itemSize = size();
       return itemSize <= 0 ? null : latest.current.base + Math.round(offset(element) / itemSize);
     };
+    /** Without snapping, the view can rest between items: note which of them show. */
+    const measure = () => {
+      const itemSize = size();
+      if (latest.current.snap || itemSize <= 0 || shown.current === null) return;
+      const at = offset(element) / itemSize;
+      const length = (axis === "inline" ? element.clientWidth : element.clientHeight) / itemSize;
+      // A pixel either way is layout rounding, not a sliver of an item.
+      const pixel = 1 / itemSize;
+      const next = {
+        end: latest.current.base + Math.ceil(at + length - pixel),
+        first: shown.current,
+        start: latest.current.base + Math.floor(at + pixel),
+      };
+      setRest((current) =>
+        current?.end === next.end && current.first === next.first && current.start === next.start
+          ? current
+          : next,
+      );
+    };
     /** A pointer drag, resize, or create is in progress, which snapping must not move. */
     const interacting = () => element.closest("[data-interaction]");
     const show = (item: number) => {
@@ -268,6 +300,7 @@ export function useScrollingAxis({
         scrollTo(element, target, prefersReducedMotion(element) ? "instant" : "smooth");
       }
       if (item !== shown.current) show(item);
+      measure();
     };
 
     const onScrollEvent = () => {
@@ -301,6 +334,7 @@ export function useScrollingAxis({
         ? undefined
         : new view.ResizeObserver(() => {
             if (size() !== laidOutSize.current) place();
+            measure();
           });
 
     const inputs = ["pointerdown", "touchstart", "wheel"] as const;
@@ -316,7 +350,7 @@ export function useScrollingAxis({
       waiting?.disconnect();
       if (timer !== undefined) clearTimeout(timer);
     };
-  }, [offset, place, scrollTo, size]);
+  }, [axis, offset, place, scrollTo, size]);
 
   const request = useCallback(
     (item: number) => {
@@ -340,7 +374,9 @@ export function useScrollingAxis({
     [offset, place, size],
   );
 
-  return { base, count, request, scrollRef, trackRef };
+  const inView =
+    rest !== null && rest.first === first ? { end: rest.end, start: rest.start } : null;
+  return { base, count, inView, request, scrollRef, trackRef };
 }
 
 export interface ScrollSnapPointsProps {

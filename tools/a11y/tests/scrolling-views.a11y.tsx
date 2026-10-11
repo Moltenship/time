@@ -305,6 +305,59 @@ describe("scrolling views", () => {
   });
 });
 
+describe("scrolling month at rest between weeks", () => {
+  /** Whether each rendered week shows in the viewport, and whether it's hidden from screen readers. */
+  const weeks = () => {
+    const { viewport } = axis("scrolling-month");
+    const bounds = viewport.getBoundingClientRect();
+    return [...viewport.querySelectorAll('[role="row"]')].map((row) => {
+      const { bottom, top } = row.getBoundingClientRect();
+      return {
+        hidden: row.closest('[aria-hidden="true"]') !== null,
+        shows: bottom > bounds.top + 1 && top < bounds.bottom - 1,
+      };
+    });
+  };
+
+  test.each([
+    ["below", 4.4],
+    ["above", 4.6],
+  ])("a week it rests partly on %s still reads", async (_, weeksDown) => {
+    await render(<Screen view="scrolling-month" />);
+    const { scrollBy } = axis("scrolling-month");
+
+    await scrollBy(weeksDown);
+
+    await vi.waitFor(() => expect(title()).toBe("November 2026"), settled);
+    await vi.waitFor(() => {
+      const shown = weeks();
+      // Six weeks and the one the view rests partly on.
+      expect(shown.filter((week) => week.shows)).toHaveLength(7);
+      for (const week of shown) expect(week.hidden).toBe(!week.shows);
+    }, settled);
+  });
+
+  test("resizing keeps the month where it rests", async () => {
+    await render(<Screen view="scrolling-month" />);
+    const { scrollBy, viewport } = axis("scrolling-month");
+    const start = axis("scrolling-month").position();
+    await scrollBy(4.4);
+    await vi.waitFor(() => expect(title()).toBe("November 2026"), settled);
+
+    // Taller rows, as when the window grows; a flexible height would ignore `height`.
+    const { height } = viewport.getBoundingClientRect();
+    await act(async () => {
+      viewport.style.flex = "none";
+      viewport.style.height = `${height + 90}px`;
+    });
+    expect(viewport.getBoundingClientRect().height).toBe(height + 90);
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    expect(Math.abs(axis("scrolling-month").position() - start - 4.4)).toBeLessThan(0.05);
+    expect(title()).toBe("November 2026");
+  });
+});
+
 describe.each(themes)("scrolling views, %s theme", (theme) => {
   test.each(["scrolling-week", "scrolling-day", "scrolling-month"] as const)("%s", async (view) => {
     setTheme(theme);

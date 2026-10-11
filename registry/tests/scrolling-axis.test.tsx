@@ -223,6 +223,18 @@ test("a free view rests where the user left it, with the nearest item first", as
   expect(onScroll.mock.calls).toEqual([[5004], [5010]]);
 });
 
+test("a free view resting between items stays there when the items resize", async () => {
+  const { shownItem, userScrollsTo } = await show(<Axis block snap={false} />);
+  await userScrollsTo(5004.4);
+  await act(async () => setFirst(5004));
+
+  // Taller weeks, as when the window grows.
+  viewportWidth = 800;
+  await act(async () => rerender());
+
+  expect(shownItem()).toBeCloseTo(5004.4);
+});
+
 test("a request for the range a free view rests near lines the view up with it", async () => {
   const { finishScroll, shownItem, userScrollsTo } = await show(<Axis block snap={false} />);
   await userScrollsTo(5004.4);

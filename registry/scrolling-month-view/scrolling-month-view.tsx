@@ -77,9 +77,10 @@ function useLaneCapacity(track: RefObject<HTMLElement | null>, count: number): n
 
 /**
  * Weeks that scroll up and down without end, coming to rest wherever the user leaves them, with
- * the week nearest the top as the first row: rows share the height between the visible weeks, and the month most of the focus row falls in names the view and
- * keeps its days bright. Rows render for a page of weeks above and below, with their events, and
- * dragging and keys work as in the month view.
+ * the week nearest the top as the first row. Rows share the height between the visible weeks,
+ * and the month most of the focus row falls in names the view and keeps its days bright. Rows
+ * render for a page of weeks above and below, with their events, and dragging and keys work as
+ * in the month view.
  */
 function ScrollingMonthView<TEvent>({
   actions,
@@ -185,11 +186,16 @@ function ScrollingMonthView<TEvent>({
             {projection.weeks.map((week, index) => {
               const expanded = index === expandedWeek;
               const offscreen = !plainDateIntervalContains(range, week.range.start);
+              const number = weekNumber(week.range.start);
+              // Weeks rendered above and below the visible ones are for scrolling into. One the
+              // view rests partly on still reads, but keys keep to the range and page past it.
+              const hidden =
+                offscreen &&
+                (axis.inView === null || number < axis.inView.start || number >= axis.inView.end);
               return (
                 <div
                   key={week.range.start.toString()}
-                  // Weeks rendered above and below the visible ones are for scrolling into.
-                  aria-hidden={offscreen ? true : undefined}
+                  aria-hidden={hidden ? true : undefined}
                   className={cn(
                     "grid",
                     // A week showing every lane grows over the next ones instead of moving them.
