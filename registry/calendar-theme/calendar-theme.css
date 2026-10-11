@@ -41,6 +41,8 @@
   --color-calendar-now: var(--calendar-now);
   --color-calendar-selection: var(--calendar-selection);
   --color-calendar-weekend: var(--calendar-weekend);
+  --color-calendar-invalid: var(--calendar-invalid);
+  --color-calendar-warning: var(--calendar-warning);
   --color-calendar-event: var(--calendar-event);
   --color-calendar-event-foreground: var(--calendar-event-foreground);
   --color-calendar-event-border: var(--calendar-event-border);
@@ -76,6 +78,9 @@
     --calendar-now: oklch(0.637 0.237 25.3);
     --calendar-selection: color-mix(in oklch, var(--calendar-today) 12%, transparent);
     --calendar-weekend: color-mix(in oklch, var(--muted) 60%, transparent);
+    /* A preview the policies would reject, or let through flagged, such as outside working hours. */
+    --calendar-invalid: var(--destructive);
+    --calendar-warning: oklch(0.58 0.13 65);
     --calendar-hour-height: 3rem;
     --calendar-event: color-mix(in oklch, var(--primary) 8%, var(--background));
     --calendar-event-foreground: var(--foreground);
@@ -107,6 +112,22 @@
     --calendar-now: oklch(0.704 0.191 22.2);
     --calendar-selection: color-mix(in oklch, var(--calendar-today) 18%, transparent);
     --calendar-weekend: color-mix(in oklch, var(--muted) 35%, transparent);
+    --calendar-warning: oklch(0.8 0.14 80);
+  }
+
+  /*
+   * A drag preview's range the policies would reject or flag: dashed, so the state doesn't rest
+   * on colour alone. Event previews are clones of their chip, which marks itself.
+   */
+  [data-calendar-ghost="range"][data-invalid] {
+    --calendar-ghost-background: color-mix(in oklch, var(--calendar-invalid) 15%, transparent);
+    outline: 2px dashed var(--calendar-invalid);
+    outline-offset: -2px;
+  }
+
+  [data-calendar-ghost="range"][data-warning] {
+    outline: 2px dashed var(--calendar-warning);
+    outline-offset: -2px;
   }
 
   /*

@@ -1,6 +1,7 @@
 import type {
   CalendarEnvironmentBase,
   CalendarEventProposal,
+  CalendarPolicyResult,
   CalendarFocus,
   CalendarSelection,
   CalendarTransactionResult,
@@ -14,6 +15,13 @@ import type { ComponentType } from "react";
 
 /** The semantic commands a view renderer may issue without knowing its calendar's types. */
 export interface CalendarViewActions {
+  /**
+   * Asks the policies about a proposal without saving it, as a gesture's preview does; pass it to
+   * the pointer layer's `check`. A plain function, so it can be passed on as a callback.
+   */
+  readonly checkEventChange: (
+    proposal: CalendarEventProposal<EventId, ResourceId>,
+  ) => CalendarPolicyResult<unknown, EventId, ResourceId> | null;
   navigateNext(): void;
   navigatePrevious(): void;
   navigateToday(): void;

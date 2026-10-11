@@ -3,6 +3,12 @@
 export { useCalendarAnnotations, useTimeGridAnnotations } from "./annotations";
 export type { CalendarAnnotations } from "./annotations";
 export { useCalendarAnnouncer } from "./announcer";
+export {
+  useCalendarAvailability,
+  useClosedDates,
+  useTimeGridAvailability,
+  useTimelineAvailability,
+} from "./availability";
 export { createCalendar } from "./calendar";
 export { createCalendarStore } from "./store";
 export { useCalendarInteraction, useCalendarKeyboard } from "./keyboard";

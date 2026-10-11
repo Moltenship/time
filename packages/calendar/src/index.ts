@@ -18,14 +18,18 @@ export {
   useAnchorDateRequests,
   useCalendarAnnotations,
   useCalendarAnnouncer,
+  useCalendarAvailability,
   useCalendarFocus,
   useCalendarInteraction,
   useCalendarKeyboard,
   useCalendarSelection,
+  useClosedDates,
   useNow,
   useResourceExpansion,
   useRovingFocus,
   useTimeGridAnnotations,
+  useTimeGridAvailability,
+  useTimelineAvailability,
   useVisibleResources,
 } from "@moltenship/calendar-react";
 export type {

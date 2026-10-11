@@ -10,6 +10,7 @@ import {
   type CalendarCellFocus,
   type CalendarEventPlacement,
   type CalendarFocus,
+  type CalendarInteractionCheck,
   type CalendarInteractionUpdate,
   type CalendarKeyboardSession,
   type CalendarNavigationCommand,
@@ -75,7 +76,11 @@ const navigationKeys: Readonly<Record<string, CalendarNavigationCommand>> = {
 
 type UpdateDetail =
   | { readonly phase: "cancel" | "start" | "step" }
-  | { readonly phase: "commit"; readonly proposed: CalendarCommitPlacement }
+  | {
+      readonly phase: "commit";
+      readonly proposed: CalendarCommitPlacement;
+      readonly warnings?: readonly string[];
+    }
   | { readonly phase: "reject"; readonly reason: string };
 
 type CalendarCommitPlacement = Extract<
@@ -159,15 +164,22 @@ function createKeyboardHandlers(
   }
 
   function announce(grab: KeyboardGrab, detail: UpdateDetail) {
-    const { session } = grab;
+    const { check, session } = grab;
     announcements.announcer.announce({
       cause: session.cause,
       event: grab.event,
       input: "keyboard",
       original: session.original,
       proposed: session.proposed,
+      ...(detail.phase === "start" || detail.phase === "step" ? { check } : undefined),
       ...detail,
     } as CalendarInteractionUpdate);
+  }
+
+  /** What the root's policies would say to committing `session` now, as its preview shows. */
+  function checkOf(session: CalendarKeyboardSession): CalendarInteractionCheck {
+    const proposal = keyboardSessionProposal(session);
+    return proposal === null ? null : actions.checkEventChange(proposal);
   }
 
   /**
@@ -213,7 +225,13 @@ function createKeyboardHandlers(
     if (focus.kind !== "event") {
       if (cause !== "create") return false;
       const session = startCreate(focus);
-      const next: KeyboardGrab = { cell: focus, event: null, origin: focus, session };
+      const next: KeyboardGrab = {
+        cell: focus,
+        check: checkOf(session),
+        event: null,
+        origin: focus,
+        session,
+      };
       keyboard.set(next);
       moveFocus(focusOfSession(session));
       announce(next, { phase: "start" });
@@ -225,7 +243,7 @@ function createKeyboardHandlers(
     const cell = cellOf(navigate("exit", focus));
     if (event === undefined || cell === null) return false;
     const session = startKeyboardSession({ cause, cell, event }, interactionOptions());
-    const next: KeyboardGrab = { cell, event, origin: focus, session };
+    const next: KeyboardGrab = { cell, check: null, event, origin: focus, session };
     if (event.isReadOnly) {
       announce(next, { phase: "reject", reason: "read-only" });
       return true;
@@ -240,7 +258,7 @@ function createKeyboardHandlers(
     if (cursor === null) return;
     const session = moveKeyboardCursor(current.session, cursor, interactionOptions());
     if (session === current.session) return;
-    const next = { ...current, session };
+    const next = { ...current, check: checkOf(session), session };
     keyboard.set(next);
     moveFocus(focusOfSession(session));
     announce(next, { phase: "step" });
@@ -252,7 +270,7 @@ function createKeyboardHandlers(
     if (event === null || !session.cause.startsWith("resize")) return;
     const cause = session.cause === "resize-end" ? "resize-start" : "resize-end";
     const restarted = startKeyboardSession({ cause, cell, event }, interactionOptions());
-    const next = { ...current, session: restarted };
+    const next = { ...current, check: null, session: restarted };
     keyboard.set(next);
     moveFocus(focusOfSession(restarted));
     announce(next, { phase: "start" });
@@ -292,7 +310,11 @@ function createKeyboardHandlers(
             resourceId: resourceOn(proposed, cursor.resourceId),
           });
         }
-        announce(current, { phase: "commit", proposed: proposed! });
+        announce(current, {
+          phase: "commit",
+          proposed: proposed!,
+          warnings: result.change.warnings,
+        });
       } else {
         if (owned()) moveFocus(current.origin);
         announce(current, { phase: "reject", reason: result.reason });
@@ -455,16 +477,24 @@ const selectSession = (session: CalendarKeyboardSession | null) => session;
 
 /**
  * The keyboard gesture in progress, or `null` while idle. Pass a selector to re-render only when
- * its result changes, such as whether a cell is inside a create's range.
+ * its result changes, such as whether a cell is inside a create's range. The selector also gets
+ * what the root's policies say about committing the gesture now, to show an invalid preview.
  */
 export function useCalendarInteraction(): CalendarKeyboardSession | null;
 export function useCalendarInteraction<TSelected>(
-  selector: (session: CalendarKeyboardSession | null) => TSelected,
+  selector: (session: CalendarKeyboardSession | null, check: CalendarInteractionCheck) => TSelected,
   options?: CalendarStateSelectorOptions<TSelected>,
 ): TSelected;
 export function useCalendarInteraction<TSelected>(
-  selector: (session: CalendarKeyboardSession | null) => TSelected = selectSession as never,
+  selector: (
+    session: CalendarKeyboardSession | null,
+    check: CalendarInteractionCheck,
+  ) => TSelected = selectSession as never,
   options?: CalendarStateSelectorOptions<TSelected>,
 ): TSelected {
-  return useStateSelector(useInteractionRuntime().keyboard.sessions, selector, options);
+  return useStateSelector(
+    useInteractionRuntime().keyboard.grabs,
+    (grab) => selector(grab?.session ?? null, grab?.check ?? null),
+    options,
+  );
 }

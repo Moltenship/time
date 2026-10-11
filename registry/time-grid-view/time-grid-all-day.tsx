@@ -18,6 +18,11 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 
 import { EventChip, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
+import {
+  draftCheckClassName,
+  previewCheckAttributes,
+  useDraftCheck,
+} from "@registry/calendar/preview-check";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 import { Button } from "@registry/ui/button";
@@ -105,6 +110,7 @@ function AllDayCell({
       Temporal.PlainDate.compare(session.proposed.start, date) <= 0 &&
       Temporal.PlainDate.compare(date, session.proposed.end) < 0,
   );
+  const draftCheck = useDraftCheck();
 
   return (
     <div
@@ -133,7 +139,8 @@ function AllDayCell({
         data-all-day=""
         data-date={date.toString()}
         data-draft={inDraft ? "" : undefined}
-        className="absolute inset-0 data-draft:bg-calendar-selection"
+        {...previewCheckAttributes(inDraft ? draftCheck : undefined)}
+        className={cn("absolute inset-0 data-draft:bg-calendar-selection", draftCheckClassName)}
       />
       {children}
     </div>

@@ -70,6 +70,7 @@ export function ResourceTimelineView<TEvent>({
   const announcer = useCalendarAnnouncer();
   const pointerRef = useCalendarPointer({
     announcer,
+    check: actions.checkEventChange,
     columns: projection.unit === "hour" ? projection.columns : undefined,
     events,
     onPropose: actions.proposeEventChange,

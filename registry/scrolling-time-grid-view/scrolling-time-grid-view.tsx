@@ -193,6 +193,7 @@ export function ScrollingTimeGridView<TEvent>({
   const announcer = useCalendarAnnouncer();
   const pointerRef = useCalendarPointer({
     announcer,
+    check: actions.checkEventChange,
     columns,
     events,
     onPropose: actions.proposeEventChange,

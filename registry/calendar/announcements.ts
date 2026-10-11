@@ -3,6 +3,7 @@ import type {
   CalendarAnnouncementMessages,
   CalendarEventPlacement,
   CalendarInteractionCause,
+  CalendarInteractionCheck,
   CalendarInteractionUpdate,
   ResourceId,
 } from "@moltenship/calendar";
@@ -18,6 +19,30 @@ const keyboardHints: Readonly<Record<CalendarInteractionCause, string>> = {
   "resize-start":
     "Use the arrow keys to change its start, Shift+Space to change its end instead, then Enter to finish or Escape to cancel.",
 };
+
+/** Policy reasons a gesture can run into, as a step or a saved change mentions them. */
+const concerns: Readonly<Record<string, string>> = {
+  "outside-availability": "outside working hours",
+};
+
+/**
+ * What a placement runs into, after it: ", outside working hours" when the policies would reject
+ * it for that or flag it with it, ", can't go here" for other rejections.
+ */
+function concern(reasons: readonly string[] | undefined, rejected = false): string {
+  const known = (reasons ?? [])
+    .map((reason) => concerns[reason])
+    .filter((text) => text !== undefined);
+  if (known.length > 0) return `, ${known.join(", ")}`;
+  return rejected ? ", can't go here" : "";
+}
+
+function checkConcern(check: CalendarInteractionCheck | undefined): string {
+  if (check == null) return "";
+  return check.status === "rejected"
+    ? concern([check.reason], true)
+    : concern(check.change.warnings);
+}
 
 function subject({ event }: Pick<CalendarInteractionUpdate, "event">): string {
   return event === null ? "the new event" : eventTitle(event);
@@ -67,14 +92,17 @@ function describePlacement(
  * English announcements for moves, resizes, and creates, from the keyboard or a pointer. Render
  * them through `<Calendar.Announcer messages={calendarAnnouncements} />`, and edit or translate
  * them here. In a calendar with resources, picking up, moving and creating an event name the
- * resources it books, and a step names them when the move changes them; a resize can't.
+ * resources it books, and a step names them when the move changes them; a resize can't. Where the
+ * policies would reject or flag a placement, such as outside working hours, steps say so.
  */
 export const calendarAnnouncements: CalendarAnnouncementMessages = {
   start: (update, where) => {
     announceResources(update);
     const resources = update.cause === "create" || update.cause === "move";
     const when =
-      update.proposed === null ? "" : `, ${describePlacement(update.proposed, where, resources)}`;
+      update.proposed === null
+        ? ""
+        : `, ${describePlacement(update.proposed, where, resources)}${checkConcern(update.check)}`;
     const opening = {
       create: `New event${when}.`,
       move: `Picked up ${subject(update)}${when}.`,
@@ -86,16 +114,17 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
   step: (update, where) =>
     update.proposed === null
       ? null
-      : describePlacement(update.proposed, where, announceResources(update)),
+      : `${describePlacement(update.proposed, where, announceResources(update))}${checkConcern(update.check)}`,
   commit: (update, where) => {
+    const flagged = concern(update.warnings);
     switch (update.cause) {
       case "create":
-        return `New event for ${describePlacement(update.proposed, where, true)}.`;
+        return `New event for ${describePlacement(update.proposed, where, true)}${flagged}.`;
       case "move":
-        return `Moved ${subject(update)} to ${describePlacement(update.proposed, where, true)}.`;
+        return `Moved ${subject(update)} to ${describePlacement(update.proposed, where, true)}${flagged}.`;
       case "resize-end":
       case "resize-start":
-        return `${subject(update)} now runs ${describeWhen(update.proposed, where)}.`;
+        return `${subject(update)} now runs ${describeWhen(update.proposed, where)}${flagged}.`;
     }
   },
   reject: (update) => {
@@ -108,6 +137,10 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
       case "invalid-placement":
       case "out-of-bounds":
         return `${subject(update)} can't go there, so it's back where it was.`;
+      case "outside-availability":
+        return update.cause === "create"
+          ? "Can't create an event outside working hours."
+          : `${subject(update)} can't go outside working hours, so it's back where it was.`;
       default:
         return `Couldn't save ${subject(update)}, so it's back where it was.`;
     }

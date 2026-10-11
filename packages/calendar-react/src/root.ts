@@ -1,6 +1,7 @@
 import {
   applyEventOverlay,
   createAnnotationSnapshot,
+  createAvailabilitySnapshot,
   createEventSnapshotCache,
   createEventTransactions,
   createResourceTree,
@@ -8,6 +9,8 @@ import {
   resolveViewInstantRange,
   resolveViewLoadRange,
   type AnnotationSnapshotIssue,
+  type AvailabilityIssue,
+  type AvailabilitySnapshot,
   type CalendarEnvironment,
   type CalendarEnvironmentBase,
   type CalendarEventChangeHandler,
@@ -45,8 +48,10 @@ import type {
 } from "./calendar-types";
 import { CalendarAnnotationsContext } from "./annotations";
 import { createAnnouncerChannel } from "./announcer";
+import { CalendarAvailabilityContext } from "./availability";
 import { CalendarNowSourceContext, type CalendarContexts } from "./context";
 import {
+  sameAvailability,
   sameElements,
   sameInstant,
   samePlainDate,
@@ -79,6 +84,7 @@ type ViewOptionsOverrides = Readonly<Record<string, object | undefined>> | undef
 interface CommittedRootInputs<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
   /** The view on screen. */
   readonly activeView: CalendarActiveView<AnyCalendarView> | null;
+  readonly availability: AvailabilitySnapshot;
   readonly environment: CalendarEnvironment;
   /** The application's events, without pending changes. */
   readonly eventSnapshot: EventSnapshot<TEvent, TEventId, TResourceId>;
@@ -95,6 +101,8 @@ interface CommittedRootInputs<TEvent, TEventId extends EventId, TResourceId exte
 const noResources: readonly never[] = Object.freeze([]);
 const noAnnotations: readonly never[] = Object.freeze([]);
 const todaySampleIntervalMs = 60_000;
+/** A root without `onEventChange` is read-only, so its checks reject everything. */
+const readOnlyRoot = () => ({ reason: "read-only", type: "reject" }) as const;
 
 function sameLocale(left: Intl.Locale | string, right: Intl.Locale | string): boolean {
   return String(left) === String(right);
@@ -133,6 +141,13 @@ function sameDiagnostics(
             other.issue.code === diagnostic.issue.code &&
             other.issue.index === diagnostic.issue.index
           );
+        case "invalid-availability":
+          return (
+            other.code === "invalid-availability" &&
+            other.issue.code === diagnostic.issue.code &&
+            other.issue.resourceId === diagnostic.issue.resourceId &&
+            other.issue.value === diagnostic.issue.value
+          );
         case "unregistered-active-view":
           return (
             other.code === "unregistered-active-view" && other.viewName === diagnostic.viewName
@@ -147,6 +162,7 @@ function collectDiagnostics<TEvent, TEventId extends EventId>(
   viewIsRegistered: boolean,
   issues: readonly EventSnapshotIssue<TEvent, TEventId>[],
   annotationIssues: readonly AnnotationSnapshotIssue[],
+  availabilityIssues: readonly AvailabilityIssue[],
 ): readonly CalendarDiagnostic<TEvent, TEventId>[] {
   const diagnostics: CalendarDiagnostic<TEvent, TEventId>[] = [];
   if (!viewIsRegistered) {
@@ -159,6 +175,9 @@ function collectDiagnostics<TEvent, TEventId extends EventId>(
   }
   for (const issue of annotationIssues) {
     diagnostics.push(Object.freeze({ code: "invalid-annotation", issue, severity: "error" }));
+  }
+  for (const issue of availabilityIssues) {
+    diagnostics.push(Object.freeze({ code: "invalid-availability", issue, severity: "error" }));
   }
   return Object.freeze(diagnostics);
 }
@@ -177,6 +196,14 @@ function createSemanticActions<
   transactions: EventTransactions<TEvent, TEventId, TResourceId>,
   readOnly: CalendarPolicy<TEvent, TEventId, TResourceId>,
 ): CalendarSemanticActions<TView, TSelection, TFocus, TResourceId, TEvent, TEventId> {
+  /** The policies every change runs through; a root without `onEventChange` rejects them all. */
+  function policiesOf({
+    onEventChange,
+    policies = [],
+  }: CommittedRootInputs<TEvent, TEventId, TResourceId>) {
+    return onEventChange === undefined ? [readOnlyRoot] : [readOnly, ...policies];
+  }
+
   // Every command reads the latest requested state, so consecutive commands in one handler compose.
   function navigate(delta: number) {
     const latest = read();
@@ -188,6 +215,15 @@ function createSemanticActions<
 
   return Object.freeze({
     ...actions,
+    checkEventChange(proposal) {
+      const { availability, eventSnapshot } = committed.current;
+      return transactions.check(proposal, {
+        availability,
+        policies: policiesOf(committed.current),
+        snapshot: eventSnapshot,
+        timeZone: read().timeZone,
+      });
+    },
     navigateNext: () => navigate(1),
     navigatePrevious: () => navigate(-1),
     navigateToday() {
@@ -196,13 +232,14 @@ function createSemanticActions<
       actions.setAnchorDate(instant.toZonedDateTimeISO(read().timeZone).toPlainDate());
     },
     proposeEventChange(proposal) {
-      const { eventSnapshot, onEventChange, policies = [] } = committed.current;
+      const { availability, eventSnapshot, onEventChange } = committed.current;
       if (onEventChange === undefined) {
         return Promise.resolve({ reason: "read-only", status: "rejected" });
       }
       return transactions.propose(proposal, {
+        availability,
         onEventChange,
-        policies: [readOnly, ...policies],
+        policies: policiesOf(committed.current),
         snapshot: eventSnapshot,
         timeZone: read().timeZone,
       });
@@ -229,6 +266,7 @@ export function createCalendarRoot<
     anchorDate,
     annotationSources = noAnnotations,
     annotations = noAnnotations,
+    availability,
     children,
     clock,
     defaultAnchorDate,
@@ -372,6 +410,17 @@ export function createCalendarRoot<
       () => Object.freeze({ snapshot: annotationSnapshot, sources: stableAnnotationSources }),
       [annotationSnapshot, stableAnnotationSources],
     );
+    // Working hours resolve each date once and cache it, for every view and policy check.
+    const stableAvailability = useStableValue(availability, sameAvailability);
+    const availabilitySnapshot = useMemo(
+      () =>
+        createAvailabilitySnapshot({
+          availability: stableAvailability,
+          resources: stableResources as unknown as readonly CalendarResource[],
+          timeZone: state.timeZone,
+        }),
+      [stableAvailability, stableResources, state.timeZone],
+    );
 
     const activeDefinition = viewsByName.get(state.view);
     const viewOverrides = viewOptions as ViewOptionsOverrides;
@@ -458,12 +507,14 @@ export function createCalendarRoot<
         activeDefinition !== undefined,
         eventSnapshot.issues,
         annotationSnapshot.issues,
+        availabilitySnapshot.issues,
       ),
       sameDiagnostics,
     );
     // Callbacks and options are read from the last commit, so inline values need no memoization.
     const committedInputs: CommittedRootInputs<TEvent, TEventId, TResourceId> = {
       activeView,
+      availability: availabilitySnapshot,
       environment,
       eventSnapshot,
       onDiagnosticsChange,
@@ -580,7 +631,11 @@ export function createCalendarRoot<
                   createElement(
                     CalendarAnnotationsContext,
                     { value: annotationContext },
-                    createElement(CalendarInteractionContext, { value: interaction }, children),
+                    createElement(
+                      CalendarAvailabilityContext,
+                      { value: availabilitySnapshot },
+                      createElement(CalendarInteractionContext, { value: interaction }, children),
+                    ),
                   ),
                 ),
               ),

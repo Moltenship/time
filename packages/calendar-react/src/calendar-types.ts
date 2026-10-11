@@ -1,5 +1,7 @@
 import type {
   AnnotationSnapshotIssue,
+  AvailabilityIssue,
+  CalendarAvailability,
   CalendarAnnotation,
   CalendarAnnotationSource,
   CalendarAnnouncementMessages,
@@ -10,6 +12,7 @@ import type {
   CalendarEventProposal,
   CalendarNowSource,
   CalendarPolicy,
+  CalendarPolicyResult,
   CalendarTransactionResult,
   CalendarWeekRules,
   EventAdapter,
@@ -45,6 +48,14 @@ export type CalendarSemanticActions<
   navigatePrevious(): void;
   navigateToday(): void;
   /**
+   * Runs a change through the root's policies without showing or saving it, as a gesture's
+   * preview does: `rejected` with the reason `proposeEventChange` would give, or `accepted`, with
+   * any `change.warnings`. `null` for an unknown event, or when a policy answers asynchronously.
+   */
+  readonly checkEventChange: (
+    proposal: CalendarEventProposal<TEventId, TResourceId>,
+  ) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
+  /**
    * Validates a change against the root's policies, shows it while `onEventChange` persists it,
    * and resolves with the outcome. Read-only events and roots without `onEventChange` reject. A
    * plain function, so it can be passed on as a callback.
@@ -68,6 +79,11 @@ export type CalendarDiagnostic<TEvent, TEventId extends EventId> =
   | {
       readonly code: "invalid-annotation";
       readonly issue: AnnotationSnapshotIssue;
+      readonly severity: "error";
+    }
+  | {
+      readonly code: "invalid-availability";
+      readonly issue: AvailabilityIssue;
       readonly severity: "error";
     };
 
@@ -156,6 +172,13 @@ interface CalendarRootBaseProps<
    * `onDiagnosticsChange`.
    */
   readonly annotations?: readonly CalendarAnnotation<unknown, TResourceId>[];
+  /**
+   * The calendar's working hours. Resources follow them on their own `timeZone`, unless they have
+   * their own `availability`. Views shade the time outside them, and `availabilityPolicy` keeps
+   * changes inside. Invalid rules and time zones are left out and reported through
+   * `onDiagnosticsChange`.
+   */
+  readonly availability?: CalendarAvailability;
   readonly children?: ReactNode;
   readonly defaultExpandedResourceIds?: readonly TResourceId[];
   readonly defaultFocus?: TFocus | null;

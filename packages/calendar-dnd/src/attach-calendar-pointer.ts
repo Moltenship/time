@@ -4,7 +4,9 @@ import {
   type CalendarAnnouncer,
   type CalendarEventPlacement,
   type CalendarEventProposal,
+  type CalendarInteractionCheck,
   type CalendarInteractionUpdate,
+  type CalendarPolicyResult,
   type CalendarTransactionResult,
   type EventId,
   type EventSnapshot,
@@ -23,7 +25,7 @@ import {
   type GestureOptions,
   type PointerTarget,
 } from "./gestures";
-import { ghostLayout, GhostLayer } from "./ghost";
+import { ghostLayout, GhostLayer, type GhostValidity } from "./ghost";
 import { targetAt, type TargetSurface } from "./targets";
 
 export interface CalendarPointerOptions<
@@ -47,6 +49,14 @@ export interface CalendarPointerOptions<
    * `useCalendarAnnouncer()`. Without one, ranges are formatted in the runtime's locale.
    */
   readonly announcer?: CalendarAnnouncer;
+  /**
+   * Asks the root's policies about the proposal a drop would make, so the preview shows whether
+   * it would be saved: pass `actions.checkEventChange`. Preview segments get `data-invalid` when
+   * a policy rejects it and `data-warning` when one flags it.
+   */
+  readonly check?: (
+    proposal: CalendarEventProposal<TEventId, TResourceId>,
+  ) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
   /**
    * Day columns of the time axis, matched to `[data-date]` elements without `data-all-day`: a
    * time grid's or a timeline's `columns`. A new array mid-gesture is picked up, as a view that
@@ -83,6 +93,8 @@ type Gesture<TEvent, TEventId extends EventId, TResourceId extends ResourceId> =
 interface Session<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
   active: boolean;
   readonly announcer: CalendarAnnouncer | undefined;
+  /** What the policies say about the drop the preview shows. */
+  check: CalendarInteractionCheck;
   frame?: number;
   readonly gesture: Gesture<TEvent, TEventId, TResourceId>;
   readonly ghost: GhostLayer;
@@ -120,6 +132,13 @@ function suppressNextClick(): void {
   };
   window.addEventListener("click", swallow, { capture: true, once: true });
   setTimeout(() => window.removeEventListener("click", swallow, { capture: true }));
+}
+
+/** How a preview shows what the policies say: rejected, flagged, or fine. */
+function validity(check: CalendarInteractionCheck): GhostValidity {
+  if (check === null) return null;
+  if (check.status === "rejected") return "invalid";
+  return check.change.warnings !== undefined && check.change.warnings.length > 0 ? "warning" : null;
 }
 
 function columnsByDate(
@@ -205,10 +224,14 @@ export function attachCalendarPointer<
     current: Session<TEvent, TEventId, TResourceId>,
     detail:
       | { readonly phase: "cancel" | "start" | "step" }
-      | { readonly phase: "commit"; readonly proposed: CalendarEventPlacement }
+      | {
+          readonly phase: "commit";
+          readonly proposed: CalendarEventPlacement;
+          readonly warnings?: readonly string[];
+        }
       | { readonly phase: "reject"; readonly reason: string },
   ): void {
-    const { gesture } = current;
+    const { check, gesture } = current;
     current.announcer?.announce({
       cause:
         gesture.kind !== "resize"
@@ -220,6 +243,7 @@ export function attachCalendarPointer<
       input: "pointer",
       original: gesture.kind === "create" ? null : gesture.original,
       proposed: current.placement,
+      ...(detail.phase === "start" || detail.phase === "step" ? { check } : undefined),
       ...detail,
     } as CalendarInteractionUpdate);
   }
@@ -244,6 +268,7 @@ export function attachCalendarPointer<
       // Nothing to drop here, so show nothing rather than the last valid spot.
       const changed = current.placement !== null;
       current.placement = null;
+      current.check = null;
       current.ghost.clear();
       return changed;
     }
@@ -251,6 +276,10 @@ export function attachCalendarPointer<
     if (!scrolled && !changed) return false;
 
     current.placement = placement;
+    if (changed) {
+      const proposed = proposal(current);
+      current.check = proposed === null ? null : (getOptions().check?.(proposed) ?? null);
+    }
     const { gesture } = current;
     const layout = ghostLayout(current.surface, placement, current.options.timeZone);
     const template = layout.axis === "time" && gesture.kind !== "create" ? gesture.element : null;
@@ -259,7 +288,7 @@ export function attachCalendarPointer<
         ? null
         : (current.announcer?.formatRange(placement) ??
           formatPlacementRange(placement, { timeZone: current.options.timeZone }));
-    current.ghost.render(layout.rects, template, label);
+    current.ghost.render(layout.rects, template, label, validity(current.check));
     return changed;
   }
 
@@ -375,7 +404,11 @@ export function attachCalendarPointer<
       announce(
         current,
         result.status === "committed"
-          ? { phase: "commit", proposed: result.change.proposed! }
+          ? {
+              phase: "commit",
+              proposed: result.change.proposed!,
+              warnings: result.change.warnings,
+            }
           : { phase: "reject", reason: result.reason },
       ),
     );
@@ -427,6 +460,7 @@ export function attachCalendarPointer<
     const current: Session<TEvent, TEventId, TResourceId> = {
       active: false,
       announcer: options.announcer,
+      check: null,
       gesture,
       ghost: new GhostLayer(region, options.ghostClassName),
       options: { snap: options.snap ?? DEFAULT_SNAP, timeZone: options.timeZone },

@@ -1,6 +1,7 @@
 import type {
   CalendarCellFocus,
   CalendarFocus,
+  CalendarInteractionCheck,
   CalendarKeyboardSession,
   CalendarPendingPlacements,
   EventId,
@@ -14,6 +15,8 @@ import type { CalendarStateSource } from "./context";
 export interface KeyboardGrab {
   /** The cell the grabbed event sits in, or where a create started. */
   readonly cell: CalendarCellFocus;
+  /** What the root's policies say about the session's proposal. */
+  readonly check: CalendarInteractionCheck;
   /** The event as it was when grabbed; `null` when creating. */
   readonly event: NormalizedCalendarEvent<unknown, EventId, ResourceId> | null;
   /** Focus before the grab, restored on cancel. */
@@ -26,8 +29,9 @@ export interface KeyboardSessionStore {
   readonly get: () => KeyboardGrab | null;
   /** The grabbed event's proposed placement, for `applyEventOverlay`. */
   readonly getPreview: () => CalendarPendingPlacements<EventId, ResourceId>;
+  /** The gesture in progress, for `useCalendarInteraction`. */
+  readonly grabs: CalendarStateSource<KeyboardGrab | null>;
   readonly set: (grab: KeyboardGrab | null) => void;
-  readonly sessions: CalendarStateSource<CalendarKeyboardSession | null>;
   readonly subscribe: (listener: () => void) => () => void;
 }
 
@@ -47,6 +51,7 @@ export function createKeyboardSessionStore(): KeyboardSessionStore {
   return Object.freeze({
     get: () => grab,
     getPreview: () => preview,
+    grabs: Object.freeze({ getSnapshot: () => grab, subscribe }),
     set(next: KeyboardGrab | null) {
       if (next === grab) return;
       grab = next;
@@ -55,7 +60,6 @@ export function createKeyboardSessionStore(): KeyboardSessionStore {
         session?.eventId == null ? noPreview : new Map([[session.eventId, session.proposed]]);
       for (const listener of listeners) listener();
     },
-    sessions: Object.freeze({ getSnapshot: () => grab?.session ?? null, subscribe }),
     subscribe,
   });
 }

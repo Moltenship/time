@@ -33,6 +33,11 @@
       "target": "components/calendar/mini-month.tsx"
     },
     {
+      "path": "registry/calendar/preview-check.ts",
+      "type": "registry:lib",
+      "target": "components/calendar/preview-check.ts"
+    },
+    {
       "path": "registry/calendar/scrolling-axis.tsx",
       "type": "registry:component",
       "target": "components/calendar/scrolling-axis.tsx"

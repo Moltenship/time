@@ -126,3 +126,43 @@ test("names the resources an event books when it is picked up, moved, or created
     say({ ...booked, cause: "resize-end", phase: "commit", proposed: booked.original }, titled),
   ).toBe("standup now runs Thursday, October 8, 9:00 – 9:30 AM.");
 });
+
+test("says when the policies would reject or flag a placement for falling outside working hours", () => {
+  const change = { ...update, id: "check", warnings: ["outside-availability"] } as never;
+  const blocked = { change, reason: "outside-availability", status: "rejected" } as const;
+  const warned = { change, status: "accepted" } as const;
+  const time = "Thursday, October 8, 9:00 – 9:30 AM";
+
+  expect(say({ ...update, check: blocked, phase: "step" })).toBe(`${time}, outside working hours`);
+  expect(say({ ...update, check: warned, phase: "step" })).toBe(`${time}, outside working hours`);
+  expect(say({ ...update, check: { ...blocked, reason: "custom" }, phase: "step" })).toBe(
+    `${time}, can't go here`,
+  );
+  expect(say({ ...update, check: null, phase: "step" })).toBe(time);
+  expect(
+    say({
+      ...update,
+      cause: "create",
+      check: blocked,
+      event: null,
+      original: null,
+      phase: "start",
+    }),
+  ).toBe(`New event, ${time}, outside working hours.`);
+
+  expect(say({ ...update, phase: "commit", warnings: ["outside-availability"] })).toBe(
+    `Moved standup to ${time}, outside working hours.`,
+  );
+  expect(say({ ...update, phase: "reject", reason: "outside-availability" })).toBe(
+    "standup can't go outside working hours, so it's back where it was.",
+  );
+  expect(
+    say({
+      ...update,
+      cause: "create",
+      event: null,
+      phase: "reject",
+      reason: "outside-availability",
+    }),
+  ).toBe("Can't create an event outside working hours.");
+});

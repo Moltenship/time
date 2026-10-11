@@ -41,6 +41,12 @@ describe.each(["light", "dark"] as const)("%s theme", (theme) => {
     }
   });
 
+  test.each(surfaces)("invalid and warning marks on %s", (surface) => {
+    for (const mark of ["--calendar-invalid", "--calendar-warning"]) {
+      expect(contrast(tokens.color(mark), tokens.color(surface))).toBeGreaterThanOrEqual(GRAPHIC);
+    }
+  });
+
   test.each(surfaces)("now-line on %s", (surface) => {
     expect(contrast(tokens.color("--calendar-now"), tokens.color(surface))).toBeGreaterThanOrEqual(
       GRAPHIC,

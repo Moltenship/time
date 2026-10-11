@@ -9,6 +9,7 @@ import {
 import type { ComponentProps } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import { previewCheck, previewCheckAttributes } from "@registry/calendar/preview-check";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
@@ -37,7 +38,8 @@ export function EventChip({
       className={cn(
         // `data-dragging` marks the event a pointer drag is moving; its preview follows the pointer.
         // `data-grabbed` marks the event a keyboard gesture is moving; it moves with the keys.
-        "flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event px-2 py-1 text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-pending:opacity-60 dark:hover:brightness-110",
+        // `data-invalid` and `data-warning` mark a preview the policies would reject or flag.
+        "flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event px-2 py-1 text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110",
         className,
       )}
       {...props}
@@ -64,8 +66,8 @@ export interface EventChipFocusOptions<TEvent> {
 
 /**
  * Props that make an `EventChip` one of its view's focus targets: the event's ID attributes, its
- * roving tab stop, its accessible name, and whether a keyboard gesture has grabbed it or a change
- * is still saving.
+ * roving tab stop, its accessible name, whether a keyboard gesture has grabbed it, and whether the
+ * policies would reject or flag where it is going, or a change is still saving.
  */
 export function useEventChip<TEvent>(
   event: NormalizedCalendarEvent<TEvent, EventId, ResourceId>,
@@ -79,6 +81,9 @@ export function useEventChip<TEvent>(
   }: EventChipFocusOptions<TEvent>,
 ) {
   const grabbed = useCalendarInteraction((session) => session?.eventId === event.id);
+  const check = useCalendarInteraction((session, answer) =>
+    session?.eventId === event.id ? previewCheck(answer) : undefined,
+  );
   // A grabbed event previews as pending, but nothing is saving until the gesture commits.
   const pending = event.isPending === true && !grabbed;
   const roving = useRovingFocus({ date, eventId: event.id, kind: "event", resourceId }, { days });
@@ -88,6 +93,7 @@ export function useEventChip<TEvent>(
     ...(offscreen ? { tabIndex: -1 } : focusTarget ? roving : undefined),
     "aria-label": labelEvent({ ...event, isPending: pending }),
     "data-grabbed": grabbed ? "" : undefined,
+    ...previewCheckAttributes(check),
     pending,
   };
 }

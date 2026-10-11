@@ -12,6 +12,11 @@ import {
 import type { CSSProperties, ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import {
+  draftCheckClassName,
+  previewCheckAttributes,
+  useDraftCheck,
+} from "@registry/calendar/preview-check";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 import { Popover, PopoverContent, PopoverTrigger } from "@registry/ui/popover";
@@ -231,6 +236,7 @@ function MonthDayCell({
       Temporal.PlainDate.compare(session.proposed.start, day.date) <= 0 &&
       Temporal.PlainDate.compare(day.date, session.proposed.end) < 0,
   );
+  const draftCheck = useDraftCheck();
 
   return (
     <div
@@ -251,8 +257,10 @@ function MonthDayCell({
       <div
         data-date={day.date.toString()}
         data-draft={inDraft ? "" : undefined}
+        {...previewCheckAttributes(inDraft ? draftCheck : undefined)}
         className={cn(
           "absolute inset-0 flex justify-center data-draft:bg-calendar-selection",
+          draftCheckClassName,
           !day.inMonth && "bg-muted/50",
         )}
       >

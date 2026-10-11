@@ -13,6 +13,11 @@ import { ChevronRightIcon } from "lucide-react";
 import { memo, useCallback, useMemo, type CSSProperties } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import {
+  draftCheckClassName,
+  previewCheckAttributes,
+  useDraftCheck,
+} from "@registry/calendar/preview-check";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 import { Button } from "@registry/ui/button";
@@ -166,6 +171,7 @@ function ResourceTimelineRowBase<TEvent>({
     [labelEvent, title],
   );
   const draft = useRowDraft(resource.id, columns, slots.length);
+  const draftCheck = useDraftCheck();
   const perDay = unit === "hour" ? HOURS : 1;
   const origin = slots[0]?.date;
   const slotOf = (cell: CalendarCellFocus) =>
@@ -250,7 +256,11 @@ function ResourceTimelineRowBase<TEvent>({
               <div
                 aria-hidden
                 data-slot="resource-timeline-draft"
-                className="pointer-events-none absolute inset-y-1 rounded-sm bg-calendar-selection"
+                {...previewCheckAttributes(draftCheck)}
+                className={cn(
+                  "pointer-events-none absolute inset-y-1 rounded-sm bg-calendar-selection",
+                  draftCheckClassName,
+                )}
                 style={{
                   insetInlineStart: (draft[0] - item.index) * slotWidth,
                   width: (draft[1] - draft[0]) * slotWidth,

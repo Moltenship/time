@@ -277,11 +277,15 @@ export function ghostLayout(
   return { ...layout, rects: layout.rects.filter(isVisible) };
 }
 
+/** `invalid` when a policy would reject the drop, `warning` when one would flag it. */
+export type GhostValidity = "invalid" | "warning" | null;
+
 /**
  * Fixed-position preview segments, moved with transforms so a drag never re-renders the view, and
  * clipped to their cells' scroll viewports. Segments are translucent clones of the dragged event,
  * or range boxes for creates and day cells; style them through `[data-calendar-ghost]` or the
- * `--calendar-ghost-*` custom properties. A clone's `[data-event-time]` shows `label`.
+ * `--calendar-ghost-*` custom properties. A clone's `[data-event-time]` shows `label`, and
+ * `data-invalid` or `data-warning` marks a drop the policies would reject or flag.
  */
 export class GhostLayer {
   readonly #className: string | undefined;
@@ -295,7 +299,12 @@ export class GhostLayer {
     this.#region = region;
   }
 
-  render(rects: readonly GhostRect[], template: HTMLElement | null, label: string | null): void {
+  render(
+    rects: readonly GhostRect[],
+    template: HTMLElement | null,
+    label: string | null,
+    validity: GhostValidity = null,
+  ): void {
     if (template !== this.#template) {
       this.clear();
       this.#template = template;
@@ -306,7 +315,8 @@ export class GhostLayer {
 
     const origin = this.#containingBlockOrigin();
     rects.forEach((rect, index) => {
-      const { style } = this.#segments[index]!;
+      const segment = this.#segments[index]!;
+      const { style } = segment;
       const { height, left, top, visible, width } = rect;
       // Insets keep the segment's full geometry and hide what its cell would clip.
       const insets = [
@@ -321,8 +331,10 @@ export class GhostLayer {
       style.clipPath = insets.some((inset) => inset > 0)
         ? `inset(${insets.map((inset) => `${inset}px`).join(" ")})`
         : "";
+      segment.toggleAttribute("data-invalid", validity === "invalid");
+      segment.toggleAttribute("data-warning", validity === "warning");
       if (label === null) return;
-      for (const time of this.#segments[index]!.querySelectorAll("[data-event-time]")) {
+      for (const time of segment.querySelectorAll("[data-event-time]")) {
         time.textContent = label;
       }
     });

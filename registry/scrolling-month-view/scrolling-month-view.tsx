@@ -123,6 +123,7 @@ function ScrollingMonthView<TEvent>({
   const announcer = useCalendarAnnouncer();
   const pointerRef = useCalendarPointer({
     announcer,
+    check: actions.checkEventChange,
     events,
     onPropose: actions.proposeEventChange,
     scrollContainer: axis.scrollRef,

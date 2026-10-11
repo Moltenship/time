@@ -17,6 +17,11 @@ import {
 import { useMemo } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import {
+  draftCheckClassName,
+  previewCheckAttributes,
+  useDraftCheck,
+} from "@registry/calendar/preview-check";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
@@ -211,6 +216,7 @@ export function TimeGridColumn<TEvent>({
         : null,
     { isEqual: sameBand },
   );
+  const draftCheck = useDraftCheck();
   const Annotations = annotations?.layout.options.Annotations ?? TimeGridAnnotations;
   const labelHere = useMemo<EventLabeler<TEvent>>(
     () => (resource === undefined ? labelEvent : (event) => labelEvent(event, resource.title)),
@@ -268,7 +274,11 @@ export function TimeGridColumn<TEvent>({
           <div
             aria-hidden
             data-slot="time-grid-draft"
-            className="pointer-events-none absolute inset-x-0 rounded-md bg-calendar-selection"
+            {...previewCheckAttributes(draftCheck)}
+            className={cn(
+              "pointer-events-none absolute inset-x-0 rounded-md bg-calendar-selection",
+              draftCheckClassName,
+            )}
             style={bandStyle(draft)}
           />
         )}
