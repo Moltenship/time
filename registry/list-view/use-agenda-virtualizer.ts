@@ -6,7 +6,7 @@ import {
   type Rect,
   type Virtualizer,
 } from "@tanstack/react-virtual";
-import { useCallback, useState, type RefObject } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import { estimateRowHeight, type AgendaRow } from "./agenda-rows";
 
@@ -120,6 +120,33 @@ export function useAgendaVirtualizer({
     // date never shows an empty viewport first.
     useFlushSync: true,
   });
+
+  // TanStack keeps the row on top only when rows come or go at the ends. Days can also change in
+  // between, as when one event moves to a day above the view and another leaves a day below it:
+  // keep the row on top, and how far into it the view is, whatever changed.
+  const onTop = useRef<{ readonly into: number; readonly key: string } | null>(null);
+  const laidOut = useRef(rows);
+  useLayoutEffect(() => {
+    const element = scrollRef.current;
+    if (element === null) return;
+    const remember = () => {
+      const item = virtualizer.getVirtualItemForOffset(element.scrollTop);
+      onTop.current =
+        item === undefined ? null : { into: element.scrollTop - item.start, key: String(item.key) };
+    };
+    const top = onTop.current;
+    if (laidOut.current !== rows && top !== null) {
+      const index = rows.findIndex(({ key }) => key === top.key);
+      const start = index === -1 ? undefined : virtualizer.measurementsCache[index]?.start;
+      if (start !== undefined && Math.abs(start + top.into - element.scrollTop) >= 1) {
+        virtualizer.scrollToOffset(start + top.into);
+      }
+    }
+    laidOut.current = rows;
+    remember();
+    element.addEventListener("scroll", remember, { passive: true });
+    return () => element.removeEventListener("scroll", remember);
+  }, [rows, scrollRef, virtualizer]);
 
   return { viewportHeight, virtualizer };
 }

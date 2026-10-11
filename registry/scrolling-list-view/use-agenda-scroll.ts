@@ -15,6 +15,8 @@ import type { AgendaVirtualizer } from "@registry/list-view/use-agenda-virtualiz
 const SETTLE_MS = 150;
 /** Ways the user scrolls the list, or moves focus that scrolls it, which end a scroll it holds. */
 const INPUTS = ["keydown", "pointerdown", "touchstart", "wheel"] as const;
+/** How far a finger moves past an end of the list before the swipe moves the calendar on. */
+const SWIPE_PX = 24;
 /** Keys that move focus through the list, and page the calendar past the range's ends. */
 const NAVIGATION_KEYS = new Set(["ArrowDown", "ArrowUp", "End", "Home", "PageDown", "PageUp"]);
 
@@ -132,6 +134,51 @@ export function useAgendaScroll({
     let timer: ReturnType<typeof setTimeout> | undefined;
     /** Whether the user has scrolled since the list last came to rest. */
     let touched = false;
+    /** Set during a wheel gesture or swipe that has moved the calendar on past the end. */
+    let movedOn: ReturnType<typeof setTimeout> | undefined;
+    /** Where a finger was when it last moved the list, to tell a swipe up past the end. */
+    let fingerY: number | null = null;
+
+    const moveTo = (date: Temporal.PlainDate) => {
+      proposed.current = date;
+      proposing.current = true;
+      try {
+        latest.current.onScroll(date);
+      } finally {
+        proposing.current = false;
+      }
+    };
+
+    /**
+     * At either end of the loaded days the list can't scroll on, so scrolling on moves the calendar
+     * a page that way instead, once per gesture: the list crosses weeks without events. Days that
+     * load in above wait there; those after the last day come to the top.
+     */
+    const onPastEnd = (later: boolean) => {
+      const item = virtualizer.getVirtualItemForOffset(element.scrollTop);
+      const row = item === undefined ? undefined : latest.current.rows[item.index];
+      const atEnd = later
+        ? row?.kind === "end" &&
+          element.scrollTop >= element.scrollHeight - element.clientHeight - 1
+        : element.scrollTop <= 0;
+      if (!atEnd) return;
+      if (movedOn === undefined) {
+        // This move, not the scroll that reached the end, says where the calendar is.
+        clearTimeout(timer);
+        touched = false;
+        const { anchor, range } = latest.current;
+        const page = anchor.until(range.end);
+        if (!later) moveTo(anchor.subtract(page));
+        else if (row?.kind === "end") {
+          moveTo(Temporal.PlainDate.compare(row.from, anchor) > 0 ? row.from : range.end);
+          target.current = row.from;
+        }
+      }
+      clearTimeout(movedOn);
+      movedOn = setTimeout(() => {
+        movedOn = undefined;
+      }, SETTLE_MS);
+    };
 
     const propose = (settled: boolean) => {
       if (!touched || target.current !== null) return;
@@ -145,13 +192,7 @@ export function useAgendaScroll({
       if (away === 0 || (!settled && away < half) || proposed.current?.equals(date) === true) {
         return;
       }
-      proposed.current = date;
-      proposing.current = true;
-      try {
-        latest.current.onScroll(date);
-      } finally {
-        proposing.current = false;
-      }
+      moveTo(date);
       // Scrolled past the last day: the days after it come in above the end row, which stays put,
       // so bring the first of them to the top.
       if (row.kind === "end") target.current = date;
@@ -174,6 +215,9 @@ export function useAgendaScroll({
       target.current = null;
       heading.current = null;
       touched = true;
+      if (event instanceof WheelEvent && event.deltaY !== 0) onPastEnd(event.deltaY > 0);
+      // Desktop Safari has no `TouchEvent` to test against.
+      if (event.type === "touchstart") fingerY = (event as TouchEvent).touches[0]?.clientY ?? null;
       if (event instanceof KeyboardEvent && NAVIGATION_KEYS.has(event.key)) {
         // The calendar handles the key as it bubbles on, then the flag clears. Browsers run
         // microtasks between listeners, so only a task waits for the calendar's.
@@ -184,14 +228,25 @@ export function useAgendaScroll({
       }
     };
 
+    const onTouchMove = (event: TouchEvent) => {
+      const y = event.touches[0]?.clientY;
+      if (y === undefined || fingerY === null || Math.abs(fingerY - y) < SWIPE_PX) return;
+      // A finger moving up scrolls toward later days.
+      onPastEnd(y < fingerY);
+      fingerY = y;
+    };
+
     element.addEventListener("scroll", onScrollEvent, { passive: true });
     element.addEventListener("scrollend", onScrollEnd);
+    element.addEventListener("touchmove", onTouchMove, { passive: true });
     for (const type of INPUTS) element.addEventListener(type, onInput, { passive: true });
     return () => {
       element.removeEventListener("scroll", onScrollEvent);
       element.removeEventListener("scrollend", onScrollEnd);
+      element.removeEventListener("touchmove", onTouchMove);
       for (const type of INPUTS) element.removeEventListener(type, onInput);
-      if (timer !== undefined) clearTimeout(timer);
+      clearTimeout(timer);
+      clearTimeout(movedOn);
     };
   }, [scrollRef, virtualizer]);
 }

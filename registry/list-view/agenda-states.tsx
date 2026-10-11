@@ -1,6 +1,6 @@
 import { useRovingFocus, type PlainDateInterval } from "@moltenship/calendar";
 import { CalendarX2Icon, LoaderCircleIcon } from "lucide-react";
-import { useId, type ComponentProps } from "react";
+import { useId } from "react";
 
 import { cn } from "cn";
 
@@ -64,23 +64,22 @@ export function EmptyAgenda({
   );
 }
 
-export interface AgendaEndProps extends Omit<ComponentProps<"div">, "children"> {
-  /** The listed dates after the last day; `null` when the last day is the last date listed. */
+/**
+ * What the end of a scrolling agenda says, after the last loaded day: that events are loading, or
+ * that nothing more is scheduled through the last loaded date.
+ */
+export function AgendaEndMessage({
+  empty,
+  formats,
+  loading,
+}: {
+  /** The loaded dates after the last day; `null` when the last day is the last date loaded. */
   readonly empty: PlainDateInterval | null;
   readonly formats: AgendaFormats;
   readonly loading: boolean;
-}
-
-/**
- * The end of the list, a viewport tall so any day can scroll to the top: it says events are
- * loading, or that nothing more is scheduled through the last listed date.
- */
-export function AgendaEnd({ className, empty, formats, loading, ...props }: AgendaEndProps) {
+}) {
   return (
-    <div
-      className={cn("px-3 py-4 text-center text-sm text-muted-foreground sm:px-6", className)}
-      {...props}
-    >
+    <p className="px-3 py-4 text-center text-sm text-muted-foreground sm:px-6">
       {loading ? (
         <span className="inline-flex items-center gap-2">
           <Spinner className="size-4" />
@@ -89,6 +88,6 @@ export function AgendaEnd({ className, empty, formats, loading, ...props }: Agen
       ) : empty === null ? null : (
         `Nothing more is scheduled through ${formats.date.format(empty.end.subtract({ days: 1 }))}.`
       )}
-    </div>
+    </p>
   );
 }

@@ -9,9 +9,10 @@ import {
 } from "@moltenship/calendar";
 import { useMemo, useSyncExternalStore } from "react";
 
-import { AgendaList, useAgendaList } from "@registry/list-view/agenda-list";
+import { AgendaList, useAgendaFormats, useAgendaList } from "@registry/list-view/agenda-list";
 import { agendaRows, rowFrom } from "@registry/list-view/agenda-rows";
-import { EmptyAgendaView, type AgendaViewOptions } from "@registry/list-view/agenda-view";
+import { AgendaEndMessage, EmptyAgenda } from "@registry/list-view/agenda-states";
+import type { AgendaViewOptions } from "@registry/list-view/agenda-view";
 
 import { useAgendaScroll } from "./use-agenda-scroll";
 
@@ -36,7 +37,11 @@ function useHydrating(): boolean {
   );
 }
 
-function ScrollingAgendaList<TEvent>({
+/**
+ * The days with events in the loaded dates, then the end of the list. Without any, the end shows
+ * the empty state, and scrolling on past it moves through the weeks without events.
+ */
+function ScrollingAgendaView<TEvent>({
   actions,
   environment,
   loadRange,
@@ -60,6 +65,9 @@ function ScrollingAgendaList<TEvent>({
     scrollRef: list.scrollRef,
     virtualizer: list.virtualizer,
   });
+  const formats = useAgendaFormats(environment.locale);
+  const loading = options.loading === true;
+  const endRow = rows.at(-1);
 
   return (
     <AgendaList
@@ -69,22 +77,31 @@ function ScrollingAgendaList<TEvent>({
       describeEvent={options.describeEvent}
       environment={environment}
       getEventColor={options.getEventColor}
+      end={
+        days === 0 ? (
+          <div className="flex flex-1 items-center justify-center p-6 text-center">
+            <EmptyAgenda
+              dates={formats.range.formatRange(range.start, range.end.subtract({ days: 1 }))}
+              loading={loading}
+              start={range.start}
+            />
+          </div>
+        ) : (
+          <AgendaEndMessage
+            empty={endRow?.kind === "end" ? endRow.empty : null}
+            formats={formats}
+            loading={loading}
+          />
+        )
+      }
       list={list}
-      loading={options.loading === true}
+      loading={loading}
       onOpenDay={(date) => {
         actions.setAnchorDate(date);
         actions.setView(options.dayView ?? "day");
       }}
       rows={rows}
     />
-  );
-}
-
-function ScrollingAgendaView<TEvent>(props: ScrollingAgendaViewProps<TEvent>) {
-  return props.projection.days.length > 0 ? (
-    <ScrollingAgendaList {...props} />
-  ) : (
-    <EmptyAgendaView {...props} />
   );
 }
 

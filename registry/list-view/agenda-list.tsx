@@ -3,7 +3,15 @@ import {
   type CalendarEnvironmentBase,
   type PlainDateInterval,
 } from "@moltenship/calendar";
-import { useLayoutEffect, useMemo, useRef, useState, type FocusEvent, type RefObject } from "react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FocusEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
@@ -12,7 +20,6 @@ import { cn } from "cn";
 
 import { AgendaDay, type AgendaFormats } from "./agenda-day";
 import { rowFrom, type AgendaRow } from "./agenda-rows";
-import { AgendaEnd } from "./agenda-states";
 import { useAgendaVirtualizer } from "./use-agenda-virtualizer";
 
 export function useAgendaFormats(locale: Intl.LocalesArgument): AgendaFormats {
@@ -90,6 +97,8 @@ export interface AgendaListProps<TEvent> {
   /** Every day listed, counted for `aria-setsize`. */
   readonly days: number;
   readonly describeEvent?: EventDescriber<TEvent>;
+  /** What the end row, a viewport tall, shows; a scrolling agenda has one. */
+  readonly end?: ReactNode;
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
   readonly list: AgendaListState;
@@ -100,13 +109,15 @@ export interface AgendaListProps<TEvent> {
 
 /**
  * The days in view as an `<ol>` in one scrolling element, each placed by the virtualizer and
- * numbered among all the days listed, then the end of the list when there is one.
+ * numbered among all the days listed, then the end of the list when there is one. Without days
+ * there's no list, only the end.
  */
 export function AgendaList<TEvent>({
   "aria-label": label,
   before = 0,
   days,
   describeEvent,
+  end,
   environment,
   getEventColor,
   list,
@@ -132,53 +143,52 @@ export function AgendaList<TEvent>({
       data-slot="agenda-view"
       className="relative h-full overflow-y-auto"
     >
-      <ol
-        aria-label={label}
-        aria-busy={loading || undefined}
-        className="relative"
-        style={{ height: virtualizer.getTotalSize() }}
-      >
-        {items.map(({ index, key, start }) => {
-          const row = rows[index]!;
-          if (row.kind !== "day") return null;
-          const position = before + index;
-          return (
-            <AgendaDay
-              key={key}
-              ref={virtualizer.measureElement}
-              aria-posinset={position + 1}
-              aria-setsize={days}
-              data-index={index}
-              day={row.day}
-              formats={formats}
-              getEventColor={getEventColor}
-              labelEvent={labelEvent}
-              onOpenDay={onOpenDay}
-              className={cn(
-                "absolute inset-x-0",
-                position < days - 1 && "border-b border-calendar-grid",
-              )}
-              style={{ top: start }}
-            />
-          );
-        })}
-      </ol>
-      {items.map(({ index, key, start }) => {
-        const row = rows[index]!;
-        if (row.kind !== "end") return null;
-        return (
-          <AgendaEnd
+      {days > 0 && (
+        <ol
+          aria-label={label}
+          aria-busy={loading || undefined}
+          className="relative"
+          style={{ height: virtualizer.getTotalSize() }}
+        >
+          {items.map(({ index, key, start }) => {
+            const row = rows[index]!;
+            if (row.kind !== "day") return null;
+            const position = before + index;
+            return (
+              <AgendaDay
+                key={key}
+                ref={virtualizer.measureElement}
+                aria-posinset={position + 1}
+                aria-setsize={days}
+                data-index={index}
+                day={row.day}
+                formats={formats}
+                getEventColor={getEventColor}
+                labelEvent={labelEvent}
+                onOpenDay={onOpenDay}
+                className={cn(
+                  "absolute inset-x-0",
+                  position < days - 1 && "border-b border-calendar-grid",
+                )}
+                style={{ top: start }}
+              />
+            );
+          })}
+        </ol>
+      )}
+      {items.map(({ index, key, start }) =>
+        rows[index]!.kind === "end" ? (
+          <div
             key={key}
             ref={virtualizer.measureElement}
             data-index={index}
-            empty={row.empty}
-            formats={formats}
-            loading={loading}
-            className="absolute inset-x-0"
+            className="absolute inset-x-0 flex flex-col"
             style={{ height: viewportHeight, top: start }}
-          />
-        );
-      })}
+          >
+            {end}
+          </div>
+        ) : null,
+      )}
     </div>
   );
 }

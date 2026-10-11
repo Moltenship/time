@@ -271,3 +271,98 @@ test("keys page past the range and move focus on, leaving the scrolling to focus
   // The list never jumped to the anchor date: focus scrolls an event into view.
   expect(scrolls.length).toBe(before);
 });
+
+test("keeps the day on top in place when days change above and below it", async () => {
+  const day = (date: string, count = 3) =>
+    Array.from({ length: count }, (_, index) =>
+      timed(`${date}-${index}`, `${date}T0${index + 6}:00Z`, `${date}T0${index + 6}:30Z`),
+    );
+  const before = ["2026-10-08", "2026-10-10", "2026-10-14", "2026-10-16", "2026-10-30"];
+  const screen = await render(<Agenda events={before.flatMap((date) => day(date))} weeks={4} />);
+  cleanup = screen.unmount;
+  await act(async () => {
+    scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+    scroller().scrollTop = rowTop("2026-10-14") + 20;
+    scroller().dispatchEvent(new Event("scroll"));
+  });
+
+  // A day comes in above the view and another leaves below it: as many rows, the same at the ends.
+  const after = ["2026-10-08", "2026-10-09", "2026-10-10", "2026-10-14", "2026-10-30"];
+  await screen.rerender(<Agenda events={after.flatMap((date) => day(date))} weeks={4} />);
+
+  expect(scroller().scrollTop).toBe(rowTop("2026-10-14") + 20);
+});
+
+test("scrolling past either end of the loaded days crosses weeks without events", async () => {
+  await show(
+    <Agenda
+      events={[
+        timed("standup", "2026-10-08T09:00Z", "2026-10-08T09:30Z"),
+        timed("review", "2026-11-19T15:00Z", "2026-11-19T16:00Z"),
+      ]}
+      weeks={1}
+    />,
+  );
+  // As tall as the list, so the end of it, which fills the view, is as far as it scrolls.
+  vi.spyOn(HTMLElement.prototype, "scrollHeight", "get").mockImplementation(function (
+    this: HTMLElement,
+  ) {
+    const rows = [...this.querySelectorAll<HTMLElement>(":scope > ol, :scope > div")];
+    return Math.max(
+      0,
+      ...rows.map((row) => row.offsetTop + Number.parseFloat(row.style.height || "0")),
+      Number.parseFloat(this.querySelector<HTMLElement>(":scope > ol")?.style.height ?? "0"),
+    );
+  });
+  const scrollToEnd = () =>
+    act(async () => {
+      scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+      scroller().scrollTop = scroller().scrollHeight - 640;
+      scroller().dispatchEvent(new Event("scroll"));
+    });
+  /** A wheel gesture, which moves the calendar once; the next one moves it again. */
+  const wheel = async (deltaY: number) => {
+    await act(async () =>
+      scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY })),
+    );
+    await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
+  };
+
+  await scrollToEnd();
+  await wheel(100);
+  expect(title()).toBe("Oct 9 – 15, 2026");
+  await wheel(100);
+  // Past the loaded days with none left, the end of the list says so, and still moves on.
+  expect(title()).toBe("Oct 16 – 22, 2026");
+  expect(text(document.querySelector('[role="group"]'))).toBe(
+    "No eventsNothing is scheduled for October 16 – 22.",
+  );
+  await wheel(100);
+  await wheel(100);
+  await wheel(100);
+  expect(title()).toBe("Nov 6 – 12, 2026");
+  // The next day with events has loaded and come to the top.
+  expect(scroller().scrollTop).toBe(rowTop("2026-11-19"));
+
+  // Back up, past the first loaded day, a week at a time until the first event loads.
+  await act(async () => {
+    scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+    scroller().scrollTop = 0;
+    scroller().dispatchEvent(new Event("scroll"));
+  });
+  const titles = [title()];
+  while (!renderedDays().includes("2026-10-08") && titles.length < 10) {
+    await wheel(-100);
+    titles.push(title());
+  }
+  // Coming to rest on top moved the anchor to November 19; each gesture then moves a week.
+  expect(titles).toEqual([
+    "Nov 19 – 25, 2026",
+    "Nov 12 – 18, 2026",
+    "Nov 5 – 11, 2026",
+    "Oct 29 – Nov 4, 2026",
+    "Oct 22 – 28, 2026",
+    "Oct 15 – 21, 2026",
+  ]);
+  expect(renderedDays()).toEqual(["2026-10-08"]);
+});

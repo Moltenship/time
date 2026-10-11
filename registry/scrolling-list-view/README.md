@@ -17,9 +17,11 @@ const views = [createScrollingAgendaView<Meeting>({ dayView: "scrolling-day", ge
   Today, Previous, Next, and any other anchor scroll the list to that date, and hold it on top
   while its events load, until the user scrolls. A controlled anchor that hasn't taken the latest
   scroll keeps the list where it is, and Today still brings it back.
-- Days that load in above or below keep the day on top in place. Past the last loaded day, the
-  end of the list fills the view and says "Loading events…" while `loading` is set, or that
-  nothing more is scheduled.
+- Days that load in above or below, or change between, keep the day on top in place. Past the
+  last loaded day, the end of the list fills the view and says "Loading events…" while `loading`
+  is set, or that nothing more is scheduled; with no days loaded it shows the empty state.
+  Scrolling on past either end moves a page that way, once per gesture, so the list crosses weeks
+  without events.
 - Keys work as in the agenda over the range's events. Moving past its ends pages the calendar and
   focus moves on to the next event, scrolling it into view; the focused day stays rendered while
   focus is in the list.

@@ -34,20 +34,16 @@ export interface AgendaViewOptions<TEvent> extends ListViewOptions {
   readonly loading?: boolean;
 }
 
-export type AgendaViewProps<
-  TEvent,
-  TOptions extends AgendaViewOptions<TEvent>,
-> = CalendarViewRendererProps<ListProjection<TEvent, EventId, ResourceId>, TOptions>;
+type AgendaViewProps<TEvent> = CalendarViewRendererProps<
+  ListProjection<TEvent, EventId, ResourceId>,
+  AgendaViewOptions<TEvent>
+>;
 
 /**
  * The view's dates without events, or while they load, in place of the list. Still the agenda's
  * one tab stop, so keyboard paging can cross empty weeks.
  */
-export function EmptyAgendaView<TEvent>({
-  environment,
-  options,
-  range,
-}: AgendaViewProps<TEvent, AgendaViewOptions<TEvent>>) {
+function EmptyAgendaView<TEvent>({ environment, options, range }: AgendaViewProps<TEvent>) {
   const keyboard = useViewKeyboard();
   const formats = useAgendaFormats(environment.locale);
 
@@ -72,7 +68,7 @@ function PagedAgendaList<TEvent>({
   options,
   projection,
   range,
-}: AgendaViewProps<TEvent, AgendaViewOptions<TEvent>>) {
+}: AgendaViewProps<TEvent>) {
   const rows = useMemo(() => agendaRows(projection.days), [projection.days]);
   const list = useAgendaList({ initialRow: 0, range, rows });
   const { virtualizer } = list;
@@ -103,7 +99,7 @@ function PagedAgendaList<TEvent>({
   );
 }
 
-function AgendaView<TEvent>(props: AgendaViewProps<TEvent, AgendaViewOptions<TEvent>>) {
+function AgendaView<TEvent>(props: AgendaViewProps<TEvent>) {
   return props.projection.days.length > 0 ? (
     <PagedAgendaList {...props} />
   ) : (

@@ -63,7 +63,8 @@ views: [createScrollingAgendaView<Meeting>({ dayView: "scrolling-day", getEventC
   that load above or below the ones on screen don't move them.
 - **The end of the list** follows the last loaded day. It's as tall as the view, so any day can
   scroll to the top, and says "Loading events…" while `loading` is set, or that nothing more is
-  scheduled.
+  scheduled. Scrolling on past either end of the loaded days moves a page that way, once per
+  gesture, so the list crosses weeks without events.
 
 ### Loading events as you scroll
 
