@@ -361,6 +361,10 @@ export function ScrollingTimeGridView<TEvent>({
                   // Hour lines, and day lines past the rendered days during a long swipe.
                   backgroundImage: `linear-gradient(to bottom, var(--calendar-grid) 1px, transparent 1px), linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--calendar-grid) 1px, transparent 1px)`,
                   backgroundSize: `100% var(--calendar-hour-height), ${DAY} 100%`,
+                  // Day lines start at the first rendered day: each tile's length is rounded to
+                  // layout units, an error that tiling from the canvas's start would grow into
+                  // lines pixels off the days.
+                  backgroundPosition: `0 0, ${direction === "rtl" ? "right" : "left"} calc(${start} * ${DAY}) top 0`,
                 }}
               >
                 <div
