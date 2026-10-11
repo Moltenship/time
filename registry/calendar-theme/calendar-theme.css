@@ -120,7 +120,7 @@
     --calendar-now: oklch(0.704 0.191 22.2);
     --calendar-selection: color-mix(in oklch, var(--calendar-today) 18%, transparent);
     --calendar-weekend: color-mix(in oklch, var(--muted) 35%, transparent);
-    --calendar-unavailable: oklch(0 0 0 / 0.28);
+    --calendar-unavailable: oklch(0 0 0 / 0.4);
     --calendar-closed: oklch(0 0 0 / 0.2);
     --calendar-warning: oklch(0.8 0.14 80);
   }
