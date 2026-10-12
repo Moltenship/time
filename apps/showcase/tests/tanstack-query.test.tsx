@@ -501,6 +501,7 @@ describe("useSaveEvent", () => {
       expect(client.getQueryData(eventsQuery(server.api, december).queryKey)).toBeDefined(),
     );
   });
+
   test("after the last save, reloads windows whose first load read before it", async () => {
     const december = months("2026-11-01", "2027-02-01");
     const { save, server, starts } = await setup({ holdLoads: true, watched: december });
