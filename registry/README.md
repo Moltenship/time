@@ -11,6 +11,7 @@ registry/
   calendar-theme/   tokens + event palette          registry item "calendar-theme"
   calendar/         toolbar, view switcher, event chip, mini month   registry item "calendar"
   month-view/ …     one folder per view, each its own registry item
+  recurrence-scope-dialog/   asks which events of a recurring series a change applies to
   ui/               stock shadcn components (Base UI, base-nova style): button, dialog, popover, …
   tests/            focused tests for the source above
 ```
@@ -24,15 +25,15 @@ specifiers, `calendar-*` CSS variable names, and `meta.compatibility` ranges.
 `ui/` is not a registry item. It holds the components a stock shadcn app already has: the files
 `npx shadcn@latest init` and `shadcn add` install today (Base UI, `base-nova` style), unchanged
 apart from the `@registry/ui/button` import path. Items reference them through
-`registryDependencies` (`button`, `popover`, `select`, `tooltip`), so consumers get the upstream
-versions. There is no `shadcn build` step yet; when one lands it must map `@registry/ui/*` to the
-consumer's `components.json` `ui` alias.
+`registryDependencies` (`button`, `dialog`, `popover`, `select`, `tooltip`), so consumers get the
+upstream versions. There is no `shadcn build` step yet; when one lands it must map `@registry/ui/*`
+to the consumer's `components.json` `ui` alias.
 
 A stock shadcn app takes the source as is:
 
 ```sh
 npx shadcn@latest init                              # Base UI, base-nova
-npx shadcn@latest add button popover select tooltip
+npx shadcn@latest add button dialog popover select tooltip
 ```
 
 ## Conventions
