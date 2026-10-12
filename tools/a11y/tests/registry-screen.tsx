@@ -21,6 +21,7 @@ import { createResourceColumnsView } from "@registry/resource-columns-view/resou
 import type { TimeGridAnnotationSource } from "@registry/time-grid-view/time-grid-annotations";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
 import { TooltipProvider } from "@registry/ui/tooltip";
+import { createYearView } from "@registry/year-view/year-view";
 
 type Fixture = CalendarEvent<{ readonly color: CalendarEventColor }, string>;
 
@@ -31,6 +32,7 @@ const Calendar = createCalendar<Fixture, CalendarResource<null>>()({
     createWeekView<Fixture>({ dayView: "day", getEventColor }),
     createDayView<Fixture>({ getEventColor }),
     createMonthView<Fixture>({ getEventColor }),
+    createYearView<Fixture>({ getEventColor }),
     createAgendaView<Fixture>({ getEventColor }),
     createResourceColumnsView<Fixture>({ getEventColor }),
   ],
@@ -39,6 +41,7 @@ const Calendar = createCalendar<Fixture, CalendarResource<null>>()({
 export type RegistryView = (typeof Calendar.views)[number]["name"];
 export const registryViews: readonly RegistryView[] = [
   "month",
+  "year",
   "week",
   "day",
   "agenda",

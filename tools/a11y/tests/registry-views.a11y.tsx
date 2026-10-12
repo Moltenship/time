@@ -86,4 +86,18 @@ describe.each(themes)("registry views, %s theme", (theme) => {
     expect(document.querySelector('[data-slot="popover-content"]')).not.toBeNull();
     expect(await seriousViolations()).toEqual([]);
   });
+
+  test("year view's day popover", async () => {
+    setTheme(theme);
+    await render(<RegistryScreen view="year" />);
+    await click(
+      document.querySelector<HTMLElement>('[role="gridcell"][data-date="2026-10-08"] button'),
+    );
+
+    // Nine meetings, a call, the conference and the holiday.
+    expect(document.querySelectorAll('[data-slot="popover-content"] [data-event-id]')).toHaveLength(
+      12,
+    );
+    expect(await seriousViolations()).toEqual([]);
+  });
 });

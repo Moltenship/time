@@ -1,0 +1,31 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "year-view",
+  "type": "registry:component",
+  "title": "Year view",
+  "description": "A year at a glance: twelve month grids with today circled and a dot for each event colour on a day, a popover listing a day's events, and links into the day and month views.",
+  "dependencies": ["@base-ui/react", "@moltenship/calendar", "cn"],
+  "registryDependencies": ["popover", "@moltenship/calendar", "@moltenship/calendar-theme"],
+  "files": [
+    {
+      "path": "registry/year-view/year-view.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/year-view/year-view.tsx"
+    },
+    {
+      "path": "registry/year-view/year-month.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/year-view/year-month.tsx"
+    },
+    {
+      "path": "registry/year-view/year-day-popover.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/year-view/year-day-popover.tsx"
+    }
+  ],
+  "meta": {
+    "compatibility": {
+      "@moltenship/calendar": ">=0.0.0"
+    }
+  }
+}
