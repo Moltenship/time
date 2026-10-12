@@ -791,6 +791,9 @@ importers:
       '@moltenship/calendar':
         specifier: workspace:*
         version: link:../../packages/calendar
+      '@moltenship/calendar-recurrence':
+        specifier: workspace:*
+        version: link:../../packages/calendar-recurrence
       react:
         specifier: 'catalog:'
         version: 19.3.0

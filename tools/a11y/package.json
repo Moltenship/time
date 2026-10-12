@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@moltenship/calendar": "workspace:*",
+    "@moltenship/calendar-recurrence": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
