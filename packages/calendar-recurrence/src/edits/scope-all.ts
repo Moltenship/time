@@ -2,10 +2,11 @@ import type { EventId, ResourceId } from "@moltenship/calendar-core";
 
 import type { RecurrenceAdapters, RecurrenceDate } from "../types";
 import { datesEqual, fromWall, toWall } from "./dates";
-import { rekey } from "./keys";
+import { rekey, targetWall } from "./keys";
 import { shiftRule } from "./rule-shift";
 import {
   checkRule,
+  landing,
   isUnchanged,
   keyShift,
   measureMove,
@@ -53,50 +54,57 @@ export function resolveAll<TEvent, TEventId extends EventId, TResourceId extends
   }
 
   const { proposed } = change;
-  const move = measureMove(series, proposed, options);
+  const move = measureMove(series, change, options);
   if ("type" in move) return move;
   const unchanged = isUnchanged(series, move);
+  const toAllDay = move.to.kind === "all-day" && series.time.kind !== "all-day";
 
-  // The first occurrence moves as every occurrence does, by the same wall-clock delta. When that
-  // lands in a DST gap, `wallStart` keeps the written time, as ICS does; otherwise it goes.
+  // The rule moves first: an ordinal weekday rule places each date within its month.
+  let { rule } = series.recurrence;
+  let shift = keyShift(series, move);
+  if (rule !== undefined && !unchanged) {
+    const shifted = shiftRule(rule, {
+      days: move.days,
+      firstAfter: series.wallFirst.add(move.wall),
+      firstBefore: series.wallFirst,
+      time: move.time,
+      toAllDay,
+    });
+    if ("problem" in shifted) return reject("rule-cannot-move", shifted.problem);
+    rule = shifted.rule;
+    if (shifted.ordinals !== undefined) shift = { ...shift, ordinals: shifted.ordinals };
+  }
+  const landed = landing(shift, series.recurrenceId, move);
+  if (landed !== undefined) return landed;
+
+  // The first occurrence moves as every occurrence does. When it lands in a DST gap, `wallStart`
+  // keeps the written time, as ICS does; otherwise it goes.
   let firstStart: RecurrenceDate = series.first.start;
-  let firstWall = series.wallFirst;
   let wallStart = series.wallStart;
   if (!unchanged) {
+    const firstWall = targetWall(shift, series.first.start);
     wallStart = undefined;
-    if (datesEqual(series.recurrenceId, series.first.start)) {
+    if (datesEqual(series.recurrenceId, series.first.start) && override === undefined) {
       firstStart = proposed.start;
-      firstWall = move.wallTo;
-    } else if (move.to.kind === "all-day") {
-      firstWall = series.wallFirst.toPlainDate().add({ days: move.days }).toPlainDateTime();
-      firstStart = firstWall.toPlainDate();
     } else {
-      firstWall = series.wallFirst.add(move.wall);
       firstStart = fromWall(firstWall, move.to);
       if (move.to.kind === "timed" && !toWall(firstStart, move.to).equals(firstWall)) {
         wallStart = firstWall;
       }
     }
   }
-
-  const shift = keyShift(series, move, { from: series.first.start, to: firstStart });
-  let { rule } = series.recurrence;
-  if (rule !== undefined && !unchanged) {
-    const shifted = shiftRule(rule, {
-      days: move.days,
-      firstAfter: firstWall,
-      firstBefore: series.wallFirst,
-      time: move.time,
-      toAllDay: move.to.kind === "all-day" && series.time.kind !== "all-day",
-    });
-    if ("problem" in shifted) return reject("rule-cannot-move", shifted.problem);
-    rule =
-      rule.until === undefined
-        ? shifted.rule
-        : { ...shifted.rule, until: rekey(shift, rule.until, "until") ?? rule.until };
+  shift = { ...shift, anchor: { from: series.first.start, to: firstStart } };
+  if (rule?.until !== undefined && !unchanged) {
+    rule = { ...rule, until: rekey(shift, rule.until, "until") ?? rule.until };
   }
 
-  const { duration, placement } = seriesPlacement(firstStart, series, move, change);
+  const { duration, placement } = seriesPlacement(
+    firstStart,
+    series,
+    move,
+    change,
+    override !== undefined,
+  );
   const problem = checkRule(rule, {
     ...placement,
     ...(wallStart === undefined ? {} : { wallStart }),

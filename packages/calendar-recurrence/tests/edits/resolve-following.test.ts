@@ -222,7 +222,8 @@ describe('"following"', () => {
     ]);
   });
 
-  test("an overridden occurrence's override moves to the new series as its first", () => {
+  test("an overridden occurrence's override moves to the new series, which moves as it did", () => {
+    // 23 November was moved to 14:00; dragging it an hour earlier starts a series at 08:00.
     const occurrence = find(expand(events), "2026-11-23T08:00:00Z");
     const edit = series(
       resolveRecurrenceEdit(move(occurrence, { hours: -1 }), "following", adapters),
@@ -232,18 +233,19 @@ describe('"following"', () => {
       event: late,
       eventId: "late",
       placement: {
-        ...occurrence.interval,
         end: at("2026-11-23T14:00"),
+        kind: "timed",
         resourceIds: [],
+        sourceTimeZone: "Europe/Berlin",
         start: at("2026-11-23T13:00"),
       },
-      recurrenceId: at("2026-11-23T13:00"),
+      recurrenceId: at("2026-11-23T08:00"),
       series: "new",
     });
     // A move keeps the series' half hour, though the override is an hour long.
     expect(edit.newSeries?.placement).toMatchObject({
-      end: at("2026-11-23T13:30"),
-      start: at("2026-11-23T13:00"),
+      end: at("2026-11-23T08:30"),
+      start: at("2026-11-23T08:00"),
     });
   });
 

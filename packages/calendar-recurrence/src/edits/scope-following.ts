@@ -7,13 +7,14 @@ import type {
   RecurrencePeriod,
   RecurrenceRule,
 } from "../types";
-import { compareDates, datesEqual, justAfter } from "./dates";
+import { compareDates, datesEqual, fromWall, justAfter, toWall } from "./dates";
 import { extraStart, readKey, rekey, seriesWall } from "./keys";
 import { shiftRule } from "./rule-shift";
 import { resolveAll } from "./scope-all";
 import {
   checkRule,
   isExcluded,
+  landing,
   keyShift,
   measureMove,
   noIds,
@@ -74,19 +75,25 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
     } catch (error) {
       return ruleRejection(error);
     }
-    const last = starts.at(-1);
-    if (last === undefined || !datesEqual(last, recurrenceId)) {
-      return isExtra
-        ? reject(
-            "extra-occurrence",
-            "The occurrence is an extra date, so the rule can't continue from it.",
-          )
-        : reject("unknown-occurrence", "The series' rule doesn't produce this occurrence.");
-    }
   } else if (!isExtra) {
     return reject("unknown-occurrence", "The series doesn't have this occurrence.");
   }
-  const earlier = rule === undefined ? starts : starts.slice(0, -1);
+  // An occurrence only an RDATE adds can end the series, but the rule can't continue from it.
+  const last = starts.at(-1);
+  const produced = rule !== undefined && last !== undefined && datesEqual(last, recurrenceId);
+  if (rule !== undefined && !produced) {
+    if (!isExtra) {
+      return reject("unknown-occurrence", "The series' rule doesn't produce this occurrence.");
+    }
+    // The first occurrence always happens, so an extra date before it can't end the series.
+    if (change.cause !== "delete" || last === undefined) {
+      return reject(
+        "extra-occurrence",
+        "The occurrence is an extra date, so the rule can't continue from it.",
+      );
+    }
+  }
+  const earlier = produced ? starts.slice(0, -1) : starts;
 
   // EXDATEs and RDATEs before the occurrence stay; later ones move to the new series. A whole-day
   // EXDATE on the occurrence's day applies to both.
@@ -160,9 +167,12 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
   }
 
   const { proposed } = change;
-  const move = measureMove(series, proposed, options);
+  const move = measureMove(series, change, options);
   if ("type" in move) return move;
-  const shift = keyShift(series, move, { from: recurrenceId, to: proposed.start });
+  // The new series starts where the user's change puts the occurrence: where it was dropped, or,
+  // for an override, its original start moved by the same change.
+  const start = override === undefined ? proposed.start : fromWall(move.wallTo, move.to);
+  let shift = keyShift(series, move);
   let next: RecurrenceRule | undefined;
   if (rule !== undefined) {
     const shifted = shiftRule(rule, {
@@ -173,6 +183,10 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
       toAllDay: move.to.kind === "all-day" && series.time.kind !== "all-day",
     });
     if ("problem" in shifted) return reject("rule-cannot-move", shifted.problem);
+    if (shifted.ordinals !== undefined) shift = { ...shift, ordinals: shifted.ordinals };
+    const landed = landing(shift, recurrenceId, move);
+    if (landed !== undefined) return landed;
+    shift = { ...shift, anchor: { from: recurrenceId, to: start } };
     next = {
       ...shifted.rule,
       ...(rule.count === undefined ? {} : { count: rule.count - count }),
@@ -182,8 +196,23 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
     };
   }
 
-  const { duration, placement } = seriesPlacement(proposed.start, series, move, change);
-  const problem = checkRule(next, placement);
+  shift = { ...shift, anchor: { from: recurrenceId, to: start } };
+  const { duration, placement } = seriesPlacement(
+    start,
+    series,
+    move,
+    change,
+    override !== undefined,
+  );
+  // A start a DST gap moved forward keeps the written time, so later ones repeat at it.
+  const wallStart =
+    move.to.kind === "timed" && !toWall(start, move.to).equals(move.wallTo)
+      ? move.wallTo
+      : undefined;
+  const problem = checkRule(next, {
+    ...placement,
+    ...(wallStart === undefined ? {} : { wallStart }),
+  });
   if (problem !== undefined) return problem;
   const nonEmpty = <T>(values: readonly T[] | undefined) =>
     values === undefined || values.length === 0 ? undefined : values;
@@ -194,6 +223,7 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
       exceptionDates: nonEmpty(rekeyExceptions(exceptionsAfter, shift)),
       recurrenceDates: nonEmpty(rekeyExtras(extrasAfter, shift)),
       rule: next,
+      wallStart,
     },
   );
 
@@ -205,7 +235,7 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
           action: "update",
           ...override,
           placement: proposed,
-          recurrenceId: proposed.start,
+          recurrenceId: start,
           series: "new",
         };
   return {
@@ -219,7 +249,7 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
     occurrenceIds:
       newSeriesId === undefined
         ? noIds
-        : occurrenceIds(change.eventId, proposed.start, series.id, newSeriesId, options, (key) =>
+        : occurrenceIds(change.eventId, start, series.id, newSeriesId, options, (key) =>
             side(key, "start") === "after" ? rekey(shift, key, "start") : undefined,
           ),
     otherOverrides: { action: "rekey", after: recurrenceId, series: "new", shift },

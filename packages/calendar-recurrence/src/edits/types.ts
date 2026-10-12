@@ -7,6 +7,7 @@ import type {
 } from "@moltenship/calendar-core";
 
 import type { EventRecurrence, RecurrenceDate, RecurrenceOccurrence } from "../types";
+import type { RecurrenceOrdinalShift } from "./ordinals";
 
 /**
  * Which occurrences an edit to one occurrence applies to: `"this"` one, this and the
@@ -126,6 +127,8 @@ export interface RecurrenceKeyShift {
   readonly first: CalendarEventInterval;
   /** The new kind of the series' dates. */
   readonly kind: CalendarEventInterval["kind"];
+  /** How an ordinal weekday rule moves each date within its month or year. */
+  readonly ordinals?: RecurrenceOrdinalShift;
   /**
    * The zone the old series repeated in, for a timed one; else the zone instants are read in, as
    * the expander's `defaultTimeZone` is.

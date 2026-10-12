@@ -43,6 +43,7 @@ export type {
   RecurrenceKeyShift,
   RecurrenceNewSeries,
   RecurrenceOccurrenceChange,
+  RecurrenceOrdinalShift,
   RecurrenceOverrideRekey,
   RecurrenceOverrideWrite,
   RecurrenceOverridesRule,

@@ -1,6 +1,7 @@
 export { applyRecurrenceEdit } from "./apply";
 export type { ApplyRecurrenceEditOptions } from "./apply";
 export { recurrenceOverrideEdit } from "./overrides";
+export type { RecurrenceOrdinalShift } from "./ordinals";
 export { isRecurringChange, recurrenceEditScopes, resolveRecurrenceEdit } from "./resolve";
 export type {
   RecurrenceEdit,

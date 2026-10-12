@@ -1,6 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import type { RecurrenceRule } from "../../src";
+import { mapOrdinal } from "../../src/edits/ordinals";
 import { shiftRule, type RuleShift } from "../../src/edits/rule-shift";
 import "./harness";
 
@@ -19,7 +20,11 @@ function shift(days: number, time = "PT0S", before = nine, toAllDay = false): Ru
   };
 }
 
-const moved = (rule: RecurrenceRule, by: RuleShift) => shiftRule(rule, by);
+/** The moved rule, or the problem; `ordinals` is checked on its own. */
+function moved(rule: RecurrenceRule, by: RuleShift) {
+  const shifted = shiftRule(rule, by);
+  return "problem" in shifted ? shifted : { rule: shifted.rule };
+}
 
 describe("shiftRule", () => {
   test("moves weekdays by the day delta, wrapping the week", () => {
@@ -52,6 +57,40 @@ describe("shiftRule", () => {
     ).toEqual({ rule: { byDay: [{ ordinal: -2, weekday: "TU" }], frequency: "MONTHLY" } });
   });
 
+  test("each occurrence of an ordinal rule moves to the new weekday of its own month", () => {
+    const shifted = shiftRule(
+      { byDay: [{ ordinal: 2, weekday: "TU" }], frequency: "MONTHLY" },
+      shift(1),
+    );
+    if ("problem" in shifted || shifted.ordinals === undefined)
+      throw new Error("ordinals expected");
+    const to = (date: string) =>
+      mapOrdinal(shifted.ordinals!, Temporal.PlainDate.from(date))?.toString();
+    // October 2026 starts on a Thursday: the 2nd Tuesday is the 13th, the 2nd Wednesday the 14th.
+    expect(to("2026-10-13")).toBe("2026-10-14");
+    // July 2026 starts on a Wednesday: the 2nd Wednesday comes a week before the day after.
+    expect(to("2026-07-14")).toBe("2026-07-08");
+    // A date the rule doesn't name, such as an RDATE, moves by days instead.
+    expect(mapOrdinal(shifted.ordinals, Temporal.PlainDate.from("2026-07-15"))).toBeUndefined();
+
+    const last = shiftRule(
+      { byDay: [{ ordinal: -1, weekday: "SU" }], byMonth: [10], frequency: "YEARLY" },
+      shift(1, "PT0S", Temporal.PlainDateTime.from("2026-10-25T09:00")),
+    );
+    if ("problem" in last || last.ordinals === undefined) throw new Error("ordinals expected");
+    expect(last.ordinals.period).toBe("month");
+    expect(mapOrdinal(last.ordinals, Temporal.PlainDate.from("2027-10-31"))?.toString()).toBe(
+      "2027-10-25",
+    );
+    const fifth = shiftRule(
+      { byDay: [{ ordinal: 4, weekday: "TU" }], frequency: "MONTHLY" },
+      shift(7),
+    );
+    if ("problem" in fifth || fifth.ordinals === undefined) throw new Error("ordinals expected");
+    // October 2026 has no fifth Tuesday.
+    expect(mapOrdinal(fifth.ordinals, Temporal.PlainDate.from("2026-10-27"))).toBeNull();
+  });
+
   test("an ordinal that would leave the month can't move", () => {
     expect(
       moved({ byDay: [{ ordinal: -1, weekday: "TU" }], frequency: "MONTHLY" }, shift(7)),
@@ -65,7 +104,7 @@ describe("shiftRule", () => {
     ).toEqual({ rule: { byDay: [{ ordinal: 21, weekday: "MO" }], frequency: "YEARLY" } });
   });
 
-  test("month and year days move by the day delta, within their range", () => {
+  test("month and year days move by the day delta, within days every period has", () => {
     expect(moved({ byMonthDay: [1, 15], frequency: "MONTHLY" }, shift(1))).toEqual({
       rule: { byMonthDay: [2, 16], frequency: "MONTHLY" },
     });
@@ -73,7 +112,21 @@ describe("shiftRule", () => {
       rule: { byMonthDay: [-2], frequency: "MONTHLY" },
     });
     expect(moved({ byMonthDay: [-1], frequency: "MONTHLY" }, shift(1))).toHaveProperty("problem");
-    expect(moved({ byMonthDay: [31], frequency: "MONTHLY" }, shift(1))).toHaveProperty("problem");
+    expect(moved({ byMonthDay: [31], frequency: "MONTHLY" }, shift(-1))).toHaveProperty("problem");
+    // February has no 29th in most years, so the 28th stays where it is.
+    expect(moved({ byMonthDay: [28], frequency: "MONTHLY" }, shift(1))).toHaveProperty("problem");
+    // Every October has a 31st.
+    expect(moved({ byMonth: [10], byMonthDay: [30], frequency: "YEARLY" }, shift(1))).toEqual({
+      rule: { byMonth: [10], byMonthDay: [31], frequency: "YEARLY" },
+    });
+    // A monthly rule without BY parts repeats on its first day, which must stay in the month.
+    expect(
+      moved(
+        { frequency: "MONTHLY" },
+        shift(3, "PT0S", Temporal.PlainDateTime.from("2026-10-29T09:00")),
+      ),
+    ).toHaveProperty("problem");
+    expect(moved({ frequency: "MONTHLY" }, shift(3))).toEqual({ rule: { frequency: "MONTHLY" } });
     expect(moved({ byYearDay: [100], frequency: "YEARLY" }, shift(-3))).toEqual({
       rule: { byYearDay: [97], frequency: "YEARLY" },
     });

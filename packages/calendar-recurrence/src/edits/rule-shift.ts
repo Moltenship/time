@@ -1,6 +1,7 @@
 import type { IcsWeekday, IcsWeekdayNumber } from "@moltenship/ics";
 
 import type { RecurrenceRule } from "../types";
+import type { RecurrenceOrdinalShift } from "./ordinals";
 
 /** How an `"all"` or `"following"` edit moves the series' occurrences, in the series' own time. */
 export interface RuleShift {
@@ -16,7 +17,9 @@ export interface RuleShift {
   readonly toAllDay: boolean;
 }
 
-export type ShiftedRule = { readonly rule: RecurrenceRule } | { readonly problem: string };
+export type ShiftedRule =
+  | { readonly ordinals?: RecurrenceOrdinalShift; readonly rule: RecurrenceRule }
+  | { readonly problem: string };
 
 type MutableRule = { -readonly [Key in keyof RecurrenceRule]: RecurrenceRule[Key] };
 
@@ -85,33 +88,53 @@ function shiftTimes(rule: MutableRule, shift: RuleShift): string | undefined {
   return undefined;
 }
 
-function shiftDays(rule: MutableRule, shift: RuleShift): string | undefined {
-  const { days } = shift;
-  if (days === 0) return undefined;
+const monthLengths = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+/**
+ * The largest month day every period of the rule has, so moving one stays a fixed number of days:
+ * 28 for monthly rules, the shortest BYMONTH month's length for yearly ones.
+ */
+function monthDayLimit(rule: RecurrenceRule): number {
+  if (rule.frequency !== "YEARLY" || rule.byMonth === undefined) return 28;
+  return Math.min(...rule.byMonth.map((month) => monthLengths[month - 1] ?? 28));
+}
+
+function shiftDays(rule: MutableRule, shift: RuleShift): ShiftedRule | string {
+  const { days, firstAfter, firstBefore } = shift;
+  if (days === 0) return { rule };
   if (rule.bySetPosition !== undefined) return "A BYSETPOS rule can't move to another day.";
   if (rule.byWeekNumber !== undefined) return "A BYWEEKNO rule can't move to another day.";
 
   const periodic = rule.frequency === "MONTHLY" || rule.frequency === "YEARLY";
-  const limit = rule.frequency === "MONTHLY" || rule.byMonth !== undefined ? 5 : 53;
+  const period = rule.frequency === "MONTHLY" || rule.byMonth !== undefined ? "month" : "year";
+  const most = period === "month" ? 5 : 53;
   let problem: string | undefined;
+  const ordinals: { from: IcsWeekdayNumber; to: IcsWeekdayNumber }[] = [];
   if (rule.byDay !== undefined) {
-    rule.byDay = rule.byDay.map(({ ordinal, weekday }): IcsWeekdayNumber => {
+    rule.byDay = rule.byDay.map((entry): IcsWeekdayNumber => {
+      const { ordinal, weekday } = entry;
       const moved = shiftWeekday(weekday, days);
       if (ordinal === undefined) return { weekday: moved };
       if (!periodic) return { ordinal, weekday: moved };
       // "The 2nd Tuesday" a day later is the 2nd Wednesday; a week later, the 3rd Tuesday.
       const next = ordinal + Math.round(days / 7);
-      if (next === 0 || Math.sign(next) !== Math.sign(ordinal) || Math.abs(next) > limit) {
-        problem = `${ordinal}${weekday} moved by ${days} days leaves the period.`;
+      if (next === 0 || Math.sign(next) !== Math.sign(ordinal) || Math.abs(next) > most) {
+        problem = `${ordinal}${weekday} moved by ${days} days leaves the ${period}.`;
       }
-      return { ordinal: next, weekday: moved };
+      const to = { ordinal: next, weekday: moved };
+      ordinals.push({ from: entry, to });
+      return to;
     });
   }
+
+  // A month day moves by a fixed number of days only while every month has both days.
+  const limit = monthDayLimit(rule);
+  const fits = (day: number, most: number) => day !== 0 && Math.abs(day) <= most;
   if (rule.byMonthDay !== undefined) {
     rule.byMonthDay = rule.byMonthDay.map((day) => {
       const next = day + days;
-      if (day > 0 ? next < 1 || next > 31 : next > -1 || next < -31) {
-        problem = `BYMONTHDAY=${day} moved by ${days} days leaves the month.`;
+      if (!fits(day, limit) || !fits(next, limit) || Math.sign(next) !== Math.sign(day)) {
+        problem = `BYMONTHDAY=${day} can't move by ${days} days: not every month has both days.`;
       }
       return next;
     });
@@ -119,47 +142,68 @@ function shiftDays(rule: MutableRule, shift: RuleShift): string | undefined {
   if (rule.byYearDay !== undefined) {
     rule.byYearDay = rule.byYearDay.map((day) => {
       const next = day + days;
-      if (day > 0 ? next < 1 || next > 366 : next > -1 || next < -366) {
-        problem = `BYYEARDAY=${day} moved by ${days} days leaves the year.`;
+      if (!fits(day, 365) || !fits(next, 365) || Math.sign(next) !== Math.sign(day)) {
+        problem = `BYYEARDAY=${day} can't move by ${days} days: not every year has both days.`;
       }
       return next;
     });
   }
+  // Without BY parts that place it, a monthly rule repeats on the first occurrence's day, and a
+  // yearly one on its date, which must exist every month or year too.
+  const implied =
+    rule.byDay === undefined && rule.byMonthDay === undefined && rule.byYearDay === undefined;
+  if (implied && rule.frequency === "MONTHLY") {
+    const sameMonth =
+      firstAfter.year === firstBefore.year && firstAfter.month === firstBefore.month;
+    if (!sameMonth || firstBefore.day > 28 || firstAfter.day > 28) {
+      problem = "A monthly rule can move only to a day of the same month that every month has.";
+    }
+  }
+  if (implied && rule.frequency === "YEARLY") {
+    const leapDay = (wall: Temporal.PlainDateTime) => wall.month === 2 && wall.day === 29;
+    if (leapDay(firstBefore) || leapDay(firstAfter)) {
+      problem = "A yearly rule can't move to or from 29 February.";
+    }
+  }
+
   // In a monthly or yearly rule BYMONTH places the occurrences, so it follows the first one into
   // another month, unless ordinal weekdays count within the month. In a daily or weekly rule it
   // filters, as "every day in December" does, so it stays.
   const months =
-    shift.firstAfter.year * 12 +
-    shift.firstAfter.month -
-    (shift.firstBefore.year * 12 + shift.firstBefore.month);
-  if (
-    periodic &&
-    rule.byMonth !== undefined &&
-    months !== 0 &&
-    !rule.byDay?.some(({ ordinal }) => ordinal !== undefined)
-  ) {
+    firstAfter.year * 12 + firstAfter.month - (firstBefore.year * 12 + firstBefore.month);
+  if (periodic && rule.byMonth !== undefined && months !== 0 && ordinals.length === 0) {
     rule.byMonth = rule.byMonth.map((month) => ((((month - 1 + months) % 12) + 12) % 12) + 1);
   }
   // A week of a multi-week rule must keep its days together, so its start moves with them.
   if (rule.frequency === "WEEKLY" && (rule.interval ?? 1) > 1 && (rule.byDay?.length ?? 0) > 1) {
     rule.weekStart = shiftWeekday(rule.weekStart ?? "MO", days);
   }
-  return problem;
+  if (problem !== undefined) return problem;
+  return ordinals.length === 0 ? { rule } : { ordinals: { entries: ordinals, period }, rule };
 }
 
 /**
  * Moves a rule with its occurrences, so it produces them `shift.days` days and `shift.time` later.
- * Weekdays in BYDAY and month and year days move by the day delta; an ordinal weekday keeps its
- * ordinal for moves of up to three days and moves it by whole weeks beyond (the 2nd Tuesday a day
- * later is the 2nd Wednesday, a week later the 3rd Tuesday). In monthly and yearly rules BYMONTH
- * follows the first occurrence into another month unless BYDAY has ordinals, which count within
- * the month; in daily and weekly ones it filters and stays. BYHOUR, BYMINUTE and
- * BYSECOND move by the time delta, and go when the series becomes all-day. WKST moves with BYDAY
- * when INTERVAL groups several weekdays into weeks. A problem names what can't move: BYSETPOS or
- * BYWEEKNO with a day change, a month day past the month's end, times that cross midnight.
+ *
+ * - BYDAY weekdays move by the day delta. An ordinal weekday keeps its ordinal for moves of up to
+ *   three days and moves it by whole weeks beyond: the 2nd Tuesday a day later is the 2nd
+ *   Wednesday, a week later the 3rd Tuesday. Each occurrence stays in its month, so `ordinals`
+ *   says how to move dates, which aren't all the same number of days away.
+ * - BYMONTHDAY and BYYEARDAY move by the day delta while every month or year has both days, so the
+ *   28th can move to the 27th but not the 29th; the first occurrence's day, which places a monthly
+ *   rule without them, likewise.
+ * - BYMONTH follows the first occurrence into another month in monthly and yearly rules, unless
+ *   ordinal weekdays count within the month; in daily and weekly rules it filters and stays.
+ * - BYHOUR, BYMINUTE and BYSECOND move by the time delta, and go when the series becomes all-day.
+ * - WKST moves with BYDAY when INTERVAL groups several weekdays into weeks.
+ *
+ * A problem names what can't move: BYSETPOS or BYWEEKNO with a day change, a month day not every
+ * month has, times that cross midnight.
  */
 export function shiftRule(rule: RecurrenceRule, shift: RuleShift): ShiftedRule {
   const next: MutableRule = { ...rule };
-  const problem = shiftTimes(next, shift) ?? shiftDays(next, shift);
-  return problem === undefined ? { rule: next } : { problem };
+  const problem = shiftTimes(next, shift);
+  if (problem !== undefined) return { problem };
+  const shifted = shiftDays(next, shift);
+  return typeof shifted === "string" ? { problem: shifted } : shifted;
 }

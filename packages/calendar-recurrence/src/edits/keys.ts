@@ -1,6 +1,7 @@
 import { coerceRecurrenceDate, type RecurrenceDateRole } from "../dates";
 import type { RecurrenceDate, RecurrencePeriod } from "../types";
 import { datesEqual, fromWall, toWall } from "./dates";
+import { mapOrdinal } from "./ordinals";
 import type { RecurrenceKeyShift } from "./types";
 
 /** Reads a stored date in the old series' kind, as the expander does. */
@@ -28,10 +29,21 @@ export function seriesWall(
 }
 
 /**
- * Moves an original start, EXDATE or UNTIL with its series: on the old series' wall clock by
- * `shift.wall`, into the new kind and zone. A date-only UNTIL, and a whole-day EXDATE on a timed or
- * floating series, stay dates and move by the day delta. `undefined` for a date the old series
- * can't read; leave it as it is.
+ * Where a date of the old series goes on the new series' wall clock: by `shift.wall`, or, under an
+ * ordinal weekday rule, to the new weekday of the same month or year at the moved time of day.
+ */
+export function targetWall(shift: RecurrenceKeyShift, key: RecurrenceDate): Temporal.PlainDateTime {
+  const wall = seriesWall(key, shift);
+  const moved = wall.add(shift.wall);
+  const date =
+    shift.ordinals === undefined ? undefined : mapOrdinal(shift.ordinals, wall.toPlainDate());
+  return date === undefined || date === null ? moved : date.toPlainDateTime(moved.toPlainTime());
+}
+
+/**
+ * Moves an original start, EXDATE or UNTIL with its series, by `targetWall`, into the new kind and
+ * zone. A date-only UNTIL, and a whole-day EXDATE on a timed or floating series, stay dates and
+ * move by the day delta. `undefined` for a date the old series can't read; leave it as it is.
  */
 export function rekey(
   shift: RecurrenceKeyShift,
@@ -47,9 +59,7 @@ export function rekey(
   const key = readKey(shift, date, role);
   if (key === undefined) return undefined;
   if (shift.anchor !== undefined && datesEqual(key, shift.anchor.from)) return shift.anchor.to;
-  const wall = seriesWall(key, shift);
-  if (shift.kind === "all-day") return wall.toPlainDate().add({ days: shift.days });
-  return fromWall(wall.add(shift.wall), { kind: shift.kind, timeZone: shift.toTimeZone });
+  return fromWall(targetWall(shift, key), { kind: shift.kind, timeZone: shift.toTimeZone });
 }
 
 export function isPeriod(value: RecurrenceDate | RecurrencePeriod): value is RecurrencePeriod {

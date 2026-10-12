@@ -351,25 +351,34 @@ describe('"all"', () => {
     ).toEqual([]);
   });
 
-  test("the edited override takes the proposed placement and its occurrence's new start", () => {
+  test("an overridden occurrence changes the series by what the user did to it", () => {
+    // 16 November was moved to 14:00; dragging it a day later moves the series a day, at 09:00.
     const occurrence = find(expand(events), "2026-11-16T08:00:00Z");
     const edit = series(resolveRecurrenceEdit(move(occurrence, { days: 1 }), "all", adapters));
     expect(edit.override).toMatchObject({
       action: "update",
       eventId: "moved",
       placement: { start: at("2026-11-17T14:00") },
-      recurrenceId: at("2026-11-17T14:00"),
+      recurrenceId: at("2026-11-17T09:00"),
     });
-    // The delta runs from the occurrence's original start, so the series takes its new time too.
-    expect(edit.series).toMatchObject({ placement: { start: at("2026-10-20T14:00") } });
+    expect(edit.series).toMatchObject({ placement: { start: at("2026-10-20T09:00") } });
     expect(shown(applyRecurrenceEdit(events, edit, { createId }))).toEqual([
-      "2026-10-20T14:00:00 standup",
-      "2026-10-27T14:00:00 standup",
-      "2026-11-03T14:00:00 standup",
-      "2026-11-12T14:00:00 standup",
-      "2026-11-24T14:00:00 standup",
+      "2026-10-20T09:00:00 standup",
+      "2026-10-27T09:00:00 standup",
+      "2026-11-03T09:00:00 standup",
+      "2026-11-12T09:00:00 standup",
+      "2026-11-24T09:00:00 standup",
       "2026-11-17T14:00:00 moved",
     ]);
+
+    // Stretching it by half an hour stretches the series by half an hour, where it is.
+    const stretched = series(
+      resolveRecurrenceEdit(resize(occurrence, "end", { minutes: 30 }), "all", adapters),
+    );
+    expect(stretched.series).toMatchObject({
+      placement: { end: at("2026-10-19T10:00"), start: at("2026-10-19T09:00") },
+    });
+    expect(stretched.otherOverrides.action).toBe("keep");
   });
 });
 

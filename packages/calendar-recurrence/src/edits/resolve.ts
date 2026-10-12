@@ -42,7 +42,7 @@ function unwrap<TEvent, TEventId extends EventId, TResourceId extends ResourceId
 /**
  * Turns a change to an occurrence into what the application persists, for the scope the user
  * picked. It reads the change and the adapters only: it never mutates them or calls application
- * code. The occurrence's `recurrence` names the series, not its ID, so IDs are never parsed.
+ * code. The occurrence's `recurrence` names the series, so IDs are never parsed.
  *
  * - **Not recurring:** a create, or a change to a one-off event, passes through as `type: "event"`
  *   with the event unwrapped.
@@ -53,29 +53,38 @@ function unwrap<TEvent, TEventId extends EventId, TResourceId extends ResourceId
  *   EXDATE, which every iCalendar store understands. An override whose master isn't loaded can still
  *   change: a delete then marks it `cancelled`, since there's no EXDATE to add.
  * - **`"following"`:** the master ends right before the occurrence: UNTIL becomes the previous
- *   occurrence's start, which the engine finds, or COUNT the number of occurrences before it.
- *   A new series starts at the proposed placement with the rest of the rule, moved as `"all"`
- *   moves it, its COUNT reduced or its UNTIL moved. Later EXDATEs, RDATEs and overrides move to it.
- *   This is how Google and Outlook split a series; RANGE=THISANDFUTURE isn't written. A delete only
- *   ends the series, and drops the later dates and overrides. On the first occurrence it is `"all"`.
- *   An occurrence only an RDATE adds is rejected when the series has a rule, which can't continue
- *   from a date it doesn't produce.
- * - **`"all"`:** the master moves by the edited occurrence's delta, measured from its original start
- *   in the series' own time: the wall clock of `sourceTimeZone` for timed series, so a change made
- *   while the calendar shows another zone still keeps 09:00 at 09:00 across DST. The rule moves with
- *   it (see `shiftRule` in the docs: BYDAY weekdays by the day delta, ordinals kept, month and year
- *   days, BYMONTH, BYHOUR, BYMINUTE). EXDATEs, RDATEs, UNTIL and every override's `recurrenceId`
- *   move by the same delta, so deleted occurrences stay deleted and moved ones don't appear twice.
- *   Overrides keep their own placements; the edited one takes the proposed placement. A move keeps
- *   the series' length; a resize or an update takes the occurrence's, in DURATION when the series
- *   has one. A delete removes the master and its overrides.
+ *   occurrence's start, which the engine finds, or, for a rule that ends by COUNT alone, COUNT the
+ *   number of occurrences before it, excluded ones included. A new series starts where the change
+ *   puts the occurrence, with the rest of the rule moved as `"all"` moves it, its COUNT reduced and
+ *   its UNTIL moved. Later EXDATEs, RDATEs and overrides move to it. Google Calendar splits a series
+ *   this way, as Outlook on the web does; classic Outlook offers only one occurrence or the whole
+ *   series, and RANGE=THISANDFUTURE isn't written. A delete only ends the series, dropping later
+ *   dates and overrides. When nothing before the occurrence is left to show, as on the first one,
+ *   it is `"all"`. From an occurrence only an RDATE adds, a series with a rule can be ended but not
+ *   continued.
+ * - **`"all"`:** the series changes as the user changed the occurrence: the delta from where it
+ *   showed to where it goes, measured on the series' own wall clock (`sourceTimeZone` for a timed
+ *   series), applies to every occurrence's original start. So a moved override that is dragged a
+ *   day moves the series a day, at its own time, and one that is stretched stretches the series.
+ *   The calendar moves an occurrence on the clock it shows, so in a zone whose DST changes on other
+ *   dates than the series', a drag by days can change the series' time by an hour. The rule moves
+ *   with the delta (BYDAY, month and year days, BYMONTH, BYHOUR, BYMINUTE, BYSECOND and WKST; see
+ *   `shiftRule`), and so do EXDATEs, RDATEs, UNTIL and every override's `recurrenceId`, so deleted
+ *   occurrences stay deleted and moved ones don't appear twice. Under an ordinal weekday rule, each
+ *   date moves to the new weekday of its own month; when that isn't where the edited occurrence
+ *   goes, as the 2nd Wednesday isn't the day after the 2nd Tuesday in a month that starts on a
+ *   Wednesday, the edit is rejected. Overrides keep their placements; the edited one takes the
+ *   proposed placement. A start dropped on the second of two equal wall times, as DST's end
+ *   repeats an hour, lands on the first, as every occurrence of the series does. A move keeps the
+ *   series' length; a resize or an update changes it as it changed the occurrence, in DURATION when
+ *   the series has one. A delete removes the master and its overrides.
  * - **Kind changes:** a timed occurrence dropped on a day, or an all-day one dropped on a time, is
  *   handled in every scope. For `"this"` the override takes the new kind and keeps its original
- *   start. For `"all"` and `"following"` the series takes the new kind and its dates convert, a
- *   rule with several times a day excepted, which can't become all-day.
+ *   start. For `"all"` and `"following"` the series takes the new kind and its dates convert; a
+ *   rule with several times a day can't become all-day.
  *
- * A rejection says why a scope can't apply, such as a BYSETPOS rule moved to another day; the
- * application can offer the scopes that can with `recurrenceEditScopes`.
+ * A rejection says why a scope can't apply, such as a BYSETPOS rule moved to another day, or a rule
+ * the engine can't expand; `recurrenceEditScopes` offers only the scopes that apply.
  */
 export function resolveRecurrenceEdit<
   TEvent,
