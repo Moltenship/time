@@ -51,8 +51,8 @@ export type IcsIssueCode =
   /** A property that may occur once occurs again: a warning; the first one wins. */
   | "duplicate-property"
   /**
-   * Properties that exclude each other, such as DTEND with DURATION, or COUNT with UNTIL: a warning;
-   * the first-named property wins.
+   * Properties that exclude each other: a warning. DTEND wins over DURATION; a rule with both
+   * COUNT and UNTIL keeps both.
    */
   | "conflicting-properties"
   /** A line that isn't `name *(;param) : value`, or an invalid parameter. */
