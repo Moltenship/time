@@ -109,7 +109,8 @@ describe("published package metadata", () => {
     },
   );
 
-  // pnpm adds the workspace root LICENSE to a tarball when no packed file has LICENSE in its name.
+  // pnpm adds the workspace root LICENSE to a tarball when no packed file's path contains "license"
+  // or "licence", in any case.
   test("every published tarball contains LICENSE", async () => {
     const tarballs = await Promise.all(
       publishedPackageDirectories.map(
