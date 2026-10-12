@@ -212,7 +212,7 @@ function ScrollingMonthView<TEvent>({
                   className={cn(
                     "grid",
                     // A week showing every lane grows over the next ones instead of moving them.
-                    expanded && "relative z-10 bg-background shadow-md",
+                    expanded && "relative z-10 bg-calendar-surface shadow-md",
                   )}
                   style={
                     expanded

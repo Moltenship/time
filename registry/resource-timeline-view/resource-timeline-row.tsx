@@ -131,7 +131,7 @@ function RowHeader({
       // Cells scroll beneath it, so the pointer layer doesn't look through it to them.
       data-occludes=""
       className={cn(
-        "sticky start-0 z-30 flex w-(--calendar-resource-column) shrink-0 items-center gap-1 border-e border-calendar-grid bg-background pe-2 text-sm",
+        "sticky start-0 z-30 flex w-(--calendar-resource-column) shrink-0 items-center gap-1 border-e border-calendar-grid bg-calendar-surface pe-2 text-sm",
         resource.hasChildren && "bg-muted font-medium",
       )}
       style={{ paddingInlineStart: `${0.25 + resource.depth}rem` }}

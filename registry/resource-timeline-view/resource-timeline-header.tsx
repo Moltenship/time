@@ -39,12 +39,12 @@ export const ResourceTimelineHeader = memo(function ResourceTimelineHeader({
       // Rows scroll beneath it, so the pointer layer doesn't look through it to them.
       data-occludes=""
       data-slot="resource-timeline-header"
-      className="sticky top-0 z-40 flex h-(--calendar-timeline-header) border-b border-calendar-grid bg-background"
+      className="sticky top-0 z-40 flex h-(--calendar-timeline-header) border-b border-calendar-grid bg-calendar-surface"
     >
       <div
         role="columnheader"
         aria-colindex={1}
-        className="sticky start-0 z-10 flex w-(--calendar-resource-column) shrink-0 items-end border-e border-calendar-grid bg-background px-3 pb-2 text-xs font-medium text-muted-foreground"
+        className="sticky start-0 z-10 flex w-(--calendar-resource-column) shrink-0 items-end border-e border-calendar-grid bg-calendar-surface px-3 pb-2 text-xs font-medium text-muted-foreground"
       >
         Resources
       </div>

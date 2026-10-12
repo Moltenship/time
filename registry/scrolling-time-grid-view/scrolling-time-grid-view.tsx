@@ -261,7 +261,7 @@ export function ScrollingTimeGridView<TEvent>({
 
   const placed = { count: axis.count, start, strip: days.length };
   const firstShown = days.find(({ column }) => column.date.equals(range.start)) ?? days[0];
-  const gutter = "sticky start-0 shrink-0 w-(--calendar-gutter-width) bg-background";
+  const gutter = "sticky start-0 shrink-0 w-(--calendar-gutter-width) bg-calendar-surface";
 
   return (
     <>
@@ -292,7 +292,7 @@ export function ScrollingTimeGridView<TEvent>({
             <div
               ref={headerRef}
               data-slot="scrolling-time-grid-header"
-              className="sticky top-0 z-30 border-b border-calendar-grid bg-background"
+              className="sticky top-0 z-30 border-b border-calendar-grid bg-calendar-surface"
             >
               {/* Days scroll beneath it, so the pointer layer doesn't look through it to them. */}
               <div role="row" data-occludes="" className="flex">
