@@ -16,15 +16,14 @@ Three tasks group the gates below. `AGENTS.md` says which one a change runs.
 | Full  | `vp run ready:full`  | Every PR step, `a11y:ci-speed`, `browsers`, then `release:dry-run`, `showcase:types`, search and `registry:e2e` in `gate:serial:full` |
 
 On a 15-core Apple-silicon laptop, quick takes about 13 seconds, PR 37 seconds from a cold cache
-and 24 warm, and full 112 seconds cold and 103 warm, with about 6 seconds of that for the release
-dry run, which never replays. The warm floor is the steps that pack packages,
-build the docs site or install the registry into clean apps, which never replay: they rewrite their
-own inputs, or reach the network.
+and 24 warm, and full 112 seconds cold and 103 warm, plus about 6 seconds for the release dry run.
+The warm floor is the steps that pack packages, build the docs site or install the registry into
+clean apps, which never replay: they rewrite their own inputs, or reach the network.
 
 `gate:serial` runs `showcase:links`, `ci:check`, `ci:build`, `release:check`, `ci:test`,
 `react:gate`, `ssr:smoke` and `package:graph` in that order, because each writes or reads generated
-files: packages' `dist`, packed tarballs, the docs site's `.next` and `.source`. Steps outside it read only source, so they
-run at the same time; `a11y` and `a11y:ci-speed` keep their Vite dependency caches apart. CI's
+files: packages' `dist`, packed tarballs, the docs site's `.next` and `.source`. Steps outside it
+read only source, so they run at the same time; `a11y` and `a11y:ci-speed` keep their Vite dependency caches apart. CI's
 `quality-gates` job runs `vp run ready:checks` and its `accessibility` job runs `vp run a11y`:
 together, `vp run ready`. On demand (`gh workflow run ci.yml --ref <branch>`), a `browsers` job runs
 `vp run browsers` on Linux. When a job fails, its last step names the failed task. The contract test
@@ -32,8 +31,10 @@ together, `vp run ready`. On demand (`gh workflow run ci.yml --ref <branch>`), a
 misses a step of `ready`.
 
 The release workflow runs `vp run a11y` on its own and then `vp run release:gate`: `ready:full`
-without the a11y runs, a GitHub runner being what `a11y:ci-speed` simulates, with a strict dry run
-and the shadcn install test against the dry run's tarballs. See [releasing.md](./releasing.md).
+without the browser runs (a GitHub runner is what `a11y:ci-speed` simulates, and `browsers` runs on
+demand in CI), with a strict dry run and the shadcn install test against the dry run's tarballs.
+A check that joins only the full gate joins `gate:serial:release` too; the contract test lists
+what `release:gate` may leave out. See [releasing.md](./releasing.md).
 
 ## CI and local runs
 

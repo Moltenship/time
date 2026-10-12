@@ -64,6 +64,10 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
         run: vp run release:gate
 
+      - name: Name the step that failed
+        if: failure()
+        run: vp run --last-details
+
       - name: Keep the checked tarballs and manifest
         uses: actions/upload-artifact@v7
         with:

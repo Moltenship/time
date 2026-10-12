@@ -32,10 +32,13 @@ async function step<T>(name: string, action: () => Promise<T>): Promise<T> {
  */
 export async function dryRun({
   version: requested,
+  requestedFrom = "flag",
   manifestFile = manifestPath,
   requireClean = false,
 }: {
   readonly version?: string;
+  /** Where the version came from, for the error message. */
+  readonly requestedFrom?: "flag" | "env";
   readonly manifestFile?: string;
   /** Fail on a working tree with changes, as a release must. Without it, the manifest records them. */
   readonly requireClean?: boolean;
@@ -59,8 +62,9 @@ export async function dryRun({
   const version = await record("versions", async () => {
     const shared = sharedVersion(packages);
     if (requested !== undefined && requested !== shared) {
+      const source = requestedFrom === "env" ? " (from RELEASE_VERSION)" : "";
       throw new Error(
-        `The packages are at ${shared}, not ${requested}. Run vp run release:version ${requested} first.`,
+        `The packages are at ${shared}, not ${requested}${source}. Run vp run release:version ${requested} first.`,
       );
     }
     if (shared !== "0.0.0" && !changelogSection(await readFile(changelogPath, "utf8"), shared)) {
@@ -119,9 +123,11 @@ runMain(import.meta, async () => {
   const { flags } = parseArguments(process.argv.slice(2), ["require-clean"], ["version"]);
   // RELEASE_VERSION lets a task that runs the dry run inside a lane, such as release:gate, pass
   // the version the release workflow was started with.
-  const version = flags.get("version") ?? process.env.RELEASE_VERSION;
+  const flag = flags.get("version");
+  const environment = process.env.RELEASE_VERSION;
   await dryRun({
-    version: typeof version === "string" && version !== "" ? version : undefined,
+    version: typeof flag === "string" ? flag : environment || undefined,
+    requestedFrom: typeof flag === "string" ? "flag" : "env",
     requireClean: flags.has("require-clean"),
   });
 });

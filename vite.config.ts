@@ -46,9 +46,10 @@ export default defineConfig({
         cache: false,
         dependsOn: ["registry:smoke", "a11y", "a11y:ci-speed", "browsers", "gate:serial:full"],
       },
-      // The release workflow's gate on a GitHub runner: ready:full without the a11y runs, which the
-      // workflow runs alone first, as CI does; a11y:ci-speed only simulates a runner. Its dry run
-      // is strict, and the shadcn install test uses the dry run's tarballs.
+      // The release workflow's gate on a GitHub runner: ready:full without the browser runs. The
+      // workflow runs a11y alone first, as CI does; a11y:ci-speed only simulates a runner, and
+      // browsers runs on demand in CI (#192). Its dry run is strict, and the shadcn install test
+      // uses the dry run's tarballs. A full-only check joins gate:serial:release too.
       "release:gate": {
         command: "echo release:gate passed",
         cache: false,

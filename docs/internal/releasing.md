@@ -26,7 +26,9 @@ tier, `vp run ready:full`, also runs `vp run release:dry-run`.
 | `vp run release:registry-e2e` | #43's install test: it builds the registry from source with a local base URL and runs `shadcn add` into clean Vite and Next.js apps, with the dry run's tarballs served as the `@moltenship` packages. Needs the network for npm and shadcn's own components, so it isn't in the offline dry run | Release, online |
 
 The PR checks read the built packages, so on their own they run after `vp run ci:build`. Only the
-dry run writes `.release/`. Without `--require-clean`, it also runs on a tree with changes and
+dry run writes `.release/`. It takes the version to check from `--version`, or else from
+`RELEASE_VERSION`, which is how `release:gate` passes it; a stray `RELEASE_VERSION` in your shell
+makes a plain dry run check that version, and the error says so. Without `--require-clean`, it also runs on a tree with changes and
 records that in the manifest, which the publish step then refuses; releases pass the flag.
 
 - **The API changed on purpose.** Run `vp run release:api:update` and commit the reports with the
@@ -41,14 +43,17 @@ records that in the manifest, which the publish step then refuses; releases pass
 2. **Version PR.** On a branch, run `vp run release:version 1.0.0-rc.1` (or whichever version).
    It sets the version in all seven manifests and turns "Unreleased" into `## 1.0.0-rc.1 (date)`.
    Open a PR, review, merge. From then on, the docs site's registry asks for that version, which
-   npm doesn't have until step 3, so publish soon after merging.
-3. **Publish from `main`**, one of two ways:
+   npm doesn't have until step 4, so publish soon after merging.
+3. **Link a green `browsers` run.** Firefox and WebKit run on demand in CI:
+   `gh workflow run ci.yml --ref main`. Link the green run in the release PR or issue, as
+   `AGENTS.md` asks.
+4. **Publish from `main`**, one of two ways:
    - **GitHub Actions.** Actions → Release → Run workflow, on `main`, with the version. Leave
      "Publish to npm" off for a rehearsal, and rehearse at least once before the first real
      release: the clean-consumer and registry install tests haven't run on GitHub's runners yet.
      The `verify` job runs `vp run a11y` alone, as CI does, then `vp run release:gate` with
-     `RELEASE_VERSION` set to the input. `release:gate` is `ready:full` without the a11y runs (a
-     runner is what `a11y:ci-speed` simulates), with `release:dry-run --require-clean` for that
+     `RELEASE_VERSION` set to the input. `release:gate` is `ready:full` without the browser runs
+     (a runner is what `a11y:ci-speed` simulates, and `browsers` runs on demand), with `release:dry-run --require-clean` for that
      version and `release:registry-e2e` on the dry run's tarballs. The job keeps `.release/` as the
      `release` artifact for seven days. A rehearsal before the version PR uses version `0.0.0`.
      With publishing on, the `publish` job downloads the artifact and runs
@@ -67,7 +72,7 @@ records that in the manifest, which the publish step then refuses; releases pass
 
      ```sh
      vp install --frozen-lockfile
-     vp exec --filter a11y playwright install chromium   # once, for the a11y gate
+     vp exec --filter a11y playwright install chromium firefox webkit   # once, for the browser runs
      vp run ready:full                # the release gate; needs the network
      vp run release:dry-run --version 1.0.0-rc.1 --require-clean
      vp run release:registry-e2e      # needs the network
@@ -78,7 +83,7 @@ records that in the manifest, which the publish step then refuses; releases pass
      The publish step asks you to type the version. Local publishes have no provenance. Use a
      granular access token that can publish to `@moltenship`: with two-factor authentication on
      writes, a one-time password can expire before all seven packages are out.
-4. **After publishing.** Tag the commit (`v1.0.0-rc.1`), push the tag, and write a GitHub release
+5. **After publishing.** Tag the commit (`v1.0.0-rc.1`), push the tag, and write a GitHub release
    from the changelog section. These steps aren't automated yet. After the first publish, check
    that `vp pm view @moltenship/calendar-core@<v> dist.integrity` matches the package's
    `integrity` in `.release/manifest.json` (on the Actions path, in the run's `release` artifact).

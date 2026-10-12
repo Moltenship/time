@@ -43,7 +43,7 @@ Other decisions, from §1 and the sections behind it:
 | **An event has zero to many resources.** | `calendar-core/tests/resource-columns-projection.test.ts`: "keeps one canonical event behind every resource's fragment", "hides events without resources unless they get a bucket". `resources.test.ts` (the hierarchy), `resource-interactions.test.ts`. | `ci:test` | Proven |
 | **WCAG 2.2 AA is a release gate.** | axe with the WCAG 2.2 A and AA and best-practice tags over every registry view, light and dark, the demo, popovers, dialogs, RTL and reduced motion; hovered controls on purpose (`tools/a11y`). Token contrast: `registry/tests/theme-contrast.test.ts`. Announcements: `registry/tests/announcements.test.ts`. The suite at CI's speed. | `a11y`, `ci:test`; `a11y:ci-speed` in `ready:full` | Partial: gaps 9, 10, 11 |
 | **Modern browsers, with native Temporal or an app-installed polyfill.** | `vp run browsers`: the a11y suite and `interactions.a11y.tsx` in Firefox and WebKit, WebKit on `temporal-polyfill` installed by the test page as an app would, checked by a test. Results below. | `browsers` in `ready:full`; CI on demand | Partial: gaps 10, 12 |
-| **Curated exports; a size budget per package.** | Every package exports `.` and `./package.json`, with `dist` through `publishConfig`. Packed-tarball checks for `calendar-temporal`, `calendar-core` and `calendar-react` (`tests/dependency-boundaries.test.ts`), the LICENSE in each tarball (`tests/package-metadata.test.ts`). ESM budgets in the builds: temporal 30/7 KiB, core 180/46, react 76/20, ics 88/25 (raw/gzip). | `ci:build`, `ci:test` | Partial: gap 13 |
+| **Curated exports; a size budget per package.** | Every package exports `.` and `./package.json`, with `dist` through `publishConfig`. Packed-tarball checks for `calendar-temporal`, `calendar-core` and `calendar-react` (`tests/dependency-boundaries.test.ts`), the LICENSE in each tarball (`tests/package-metadata.test.ts`). An ESM budget for every published entry point in `tools/release/src/config.ts`, a committed API report per package, publint and are-the-types-wrong on every tarball (`release:check`, #46). | `ci:build`, `release:check`, `ci:test` | Covered (#46) |
 | **The upgrade story** (§24): semver and lockstep versions, explicit registry diffs, a generated changelog and release checks, publishing as an explicit step. | The MIT LICENSE and package links (#175). Registry compatibility ranges and `compatibility.json` (#176). | `registry:smoke` | Gap 13 |
 | **No English from core; a typed messages contract** (§18). | Core formats through `Intl` with the environment's locale. Announcements go through the typed `CalendarAnnouncementMessages`, with English defaults in registry source. | `ci:test` | Partial: gap 14 |
 
@@ -71,7 +71,7 @@ Open:
 10. **Focus out of view in WebKit's scrolling agenda** after some keys, about half the time (WCAG 2.4.11). #185, filed as a 1.0 blocker for the owner to confirm.
 11. **An empty week's scroll area has nothing to focus** (axe `scrollable-region-focusable`, serious). #180. *Owner decision:* a 1.0 blocker or not.
 12. **Other browser findings.** WebKit tests skipped there until they're fixed, or rewritten if the test is at fault: the agenda's end, the 10,000-event agenda on the polyfill in CI, a day swipe's and a month step's snap points, a drag against the edge (#181). Playwright's Firefox doesn't start on macOS 27 (#182). On a GitHub runner, Firefox and WebKit timing tests fail differently from run to run, one of them maybe a real dropped Escape (#192), so the CI job runs on demand. A green run of it is phase 2 work.
-13. **Release tooling**: packed-API and export checks and size budgets for every published package (`calendar`, `calendar-dnd` and `calendar-recurrence` have no budget; `calendar`, `calendar-dnd`, `calendar-recurrence` and `ics` no packed-API check), versions, changelog, provenance, dry run and publish. All in #46's scope.
+13. **Release tooling**: packed-API and export checks and size budgets for every published package (`calendar`, `calendar-dnd` and `calendar-recurrence` have no budget; `calendar`, `calendar-dnd`, `calendar-recurrence` and `ics` no packed-API check), versions, changelog, provenance, dry run and publish. All in #46's scope; done in #177.
 14. **Registry labels are English literals**, not a messages contract: they're source the app owns and edits. *Owner decision:* say registry source is where apps localize, or add a contract.
 
 ## Browsers
@@ -110,7 +110,7 @@ Everything else open is post-1.0 by #146, or a p2 finding from this audit: #132,
 After #46 merges:
 
 - The showcase and fixtures install the packed release artifacts instead of workspace source.
-- `ready:full` runs #46's release checks; `registry:e2e` already runs there and can take the dry run's tarballs (`REGISTRY_E2E_TARBALLS`).
+- Done in #177: `ready:full` runs the release dry run, and the release workflow runs the shadcn install test on the dry run's tarballs (`release:registry-e2e`).
 - A green run of CI's on-demand `browsers` job, the only place Firefox runs while it can't start on
   macOS 27 (#182, #192).
 - The full release dry run, the screen-reader passes (#186) and the RC report on #47.

@@ -64,6 +64,7 @@ describe("release workflow contract", () => {
       "vp exec --filter a11y playwright install --with-deps --only-shell chromium",
       "vp run a11y",
       "vp run release:gate",
+      "vp run --last-details",
     ]);
     const gate = verify?.steps.find(({ run }) => run === "vp run release:gate");
     expect(gate?.env).toEqual({ RELEASE_VERSION: "${{ inputs.version }}" });

@@ -62,6 +62,11 @@ A new check joins a tier in `vite.config.ts`: `ready:checks` or `gate:serial` fo
 writes or reads generated files. `tests/quality-gates.test.ts` fails if the full gate misses a PR
 step.
 
+The release workflow runs `vp run a11y`, then `RELEASE_VERSION=<version> vp run release:gate`:
+`ready:full` without the browser runs, with a strict release dry run (`docs/internal/releasing.md`).
+The same two commands reproduce it locally. A full-gate-only check also joins
+`gate:serial:release`, or the contract test's list of what `release:gate` leaves out.
+
 # Pull requests
 
 ## Screenshots
