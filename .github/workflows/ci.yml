@@ -31,26 +31,8 @@ jobs:
       - name: Install locked dependencies
         run: vp install --frozen-lockfile
 
-      - name: Format, lint, and type checks
-        run: vp run ci:check
-
-      - name: Recursive production builds
-        run: vp run ci:build
-
-      - name: Root and workspace tests
-        run: vp run ci:test
-
-      - name: React isolation, custom-view, and SSR contracts
-        run: vp run react:gate
-
-      - name: SSR render, hydrate, interact, and unmount
-        run: vp run ssr:smoke
-
-      - name: shadcn registry contract
-        run: vp run registry:smoke
-
-      - name: Package dependency graph
-        run: vp run package:graph
+      - name: Checks, builds, tests, React, SSR, registry and package-graph gates
+        run: vp run ready:checks
 
   accessibility:
     name: Accessibility checks

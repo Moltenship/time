@@ -41,3 +41,6 @@ dist-ssr
 
 # Built by `node --run registry` in apps/showcase (shadcn build output)
 apps/showcase/public/r/
+
+# Next.js writes it on every dev, build and typegen run
+apps/showcase/next-env.d.ts

@@ -8,7 +8,6 @@
     "check:boundaries": "vp test tests/dependency-boundaries.test.ts",
     "dev": "vp run showcase#dev",
     "prepare": "vp config",
-    "ready": "vp run ci:check && vp run ci:build && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run registry:smoke && vp run package:graph && vp run a11y",
     "test": "vp test",
     "test:contracts": "vp test packages/calendar-temporal/tests packages/calendar-core/tests"
   },

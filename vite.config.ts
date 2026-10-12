@@ -23,6 +23,33 @@ export default defineConfig({
   run: {
     cache: true,
     tasks: {
+      // The quality gate's three tiers; AGENTS.md says which one a change runs. Steps that write
+      // or read generated files (`dist`, `.next`, `.source`) run one after another in a
+      // `gate:serial` lane. The rest run beside it.
+      "ready:quick": ["vp check", "vp test"],
+      // What every PR runs. CI runs `ready:checks` and `a11y` as two jobs.
+      ready: {
+        command: "echo ready: every PR check passed",
+        cache: false,
+        dependsOn: ["ready:checks", "a11y"],
+      },
+      "ready:checks": {
+        command: "echo ready:checks passed",
+        cache: false,
+        dependsOn: ["registry:smoke", "gate:serial"],
+      },
+      // The release gate: everything `ready` runs, the a11y suite at CI's speed, and the docs
+      // site's types, links and search.
+      "ready:full": {
+        command: "echo ready:full: the release gate passed",
+        cache: false,
+        dependsOn: ["registry:smoke", "a11y", "a11y:ci-speed", "gate:serial:full"],
+      },
+      "gate:serial":
+        "vp run ci:check && vp run ci:build && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
+      // `ci:build` has built the docs site, so search checks that build.
+      "gate:serial:full":
+        "vp run gate:serial && vp run showcase:types && vp run showcase:links && vp run showcase#search:check",
       "ci:check": "vp check",
       "ci:test": "vp test",
       "ci:build": "vp run -r build",
@@ -31,6 +58,8 @@ export default defineConfig({
       "registry:build": "vp run registry#site",
       "registry:e2e": "vp run registry#e2e",
       a11y: "vp run a11y#test",
+      // The a11y suite with Chromium slowed down to a CI runner's speed.
+      "a11y:ci-speed": "vp run a11y#test:ci-speed",
       "package:graph": ["vp run check:boundaries", "vp test tests/quality-gates.test.ts"],
       "showcase:source": "vp run showcase#source:generate",
       "showcase:types": "vp run showcase#types:check",

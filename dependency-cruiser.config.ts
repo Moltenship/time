@@ -82,6 +82,8 @@ export default {
   ],
   options: {
     doNotFollow: { path: "node_modules" },
+    // Build output isn't source, and other tests rebuild it while this one reads.
+    exclude: { path: "(?:^|/)(?:dist|\\.next|\\.source)(?:/|$)" },
     tsPreCompilationDeps: true,
   },
 } satisfies IConfiguration;

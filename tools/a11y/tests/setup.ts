@@ -1,5 +1,5 @@
 import { afterEach } from "vite-plus/test";
-import { userEvent } from "vite-plus/test/browser";
+import { cdp, server, userEvent } from "vite-plus/test/browser";
 
 import "./styles.css";
 
@@ -7,9 +7,21 @@ declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
 }
 
+/**
+ * How many times slower than an Apple-silicon laptop a GitHub runner ran these tests, from the
+ * same tests' timings in both places.
+ */
+const CI_SLOWDOWN = 6;
+
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 // The demo's page declares its language; axe checks the test page the same way.
 document.documentElement.lang = "en";
+
+// `vp run a11y:ci-speed` slows Chromium down to a CI runner's speed, so a test that only fails on
+// a slow machine fails here too.
+if (import.meta.env.MODE === "ci-speed" && server.browser === "chromium") {
+  await cdp().send("Emulation.setCPUThrottlingRate", { rate: CI_SLOWDOWN });
+}
 
 // The mouse stays where a test leaves it, over whatever the next test renders there, which it
 // would hover. Each test ends with the mouse parked on a corner of its own, above the page.

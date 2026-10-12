@@ -79,7 +79,11 @@ issue's "Later" section when work starts.
   phase; the last one closes the issue.
 - The issue's "Done when" list is the acceptance check. There are no separate gate issues and no
   evidence attachments.
-- Run `vp check` and `vp test` before pushing, plus any `vp run` gate the change touches.
+- Run the quality gate tier the change needs before pushing (`AGENTS.md`, "Quality gate"):
+  `vp run ready:quick` for docs and notes, `vp run ready` for other changes that ship, and
+  `vp run ready:full` for package source, public API, dependencies, build config, registry items,
+  release tooling, SSR, a11y-relevant UI and CI, and before a release. Add any focused `vp run`
+  gate the change touches.
 - Every PR gets a code review. Fix each finding, or reply with the reason you didn't. While GitHub
   Actions is capped on this account, CI and Pullfrog don't run: run `vp run ready` locally and post
   the result on the PR, and get the review from Claude Opus 5.5 (xhigh) instead of Pullfrog.

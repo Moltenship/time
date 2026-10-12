@@ -107,10 +107,11 @@ To work on the docs, run `vp run dev` and edit the MDX in
 The repository uses the [Vite+](https://viteplus.dev/guide/) toolchain (`vp`) and Node.js 26.
 
 ```bash
-vp install       # install dependencies
-vp check         # format, lint, and type-check
-vp test          # run the tests
-vp run ready     # everything CI runs
+vp install         # install dependencies
+vp check           # format, lint, and type-check
+vp test            # run the tests
+vp run ready       # everything CI runs
+vp run ready:full  # the release gate
 ```
 
 - [`architecture.md`](./architecture.md) is the design the project is building toward.
