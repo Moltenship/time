@@ -94,7 +94,9 @@ changed its offset, are listed as shifts: runs of lines, each with how many minu
 Views get the list as `environment.secondaryTimeZones`. In your own view,
 `timeGridZoneAxis(columns, timeZone)` returns each line's time in another zone and the shifts.
 Pass `{ visible }` when the view renders days beside the ones on screen, so the gutter follows a
-day you can see. `timeGridZoneTimes(column, wallTime, timeZone)` reads one wall time.
+day you can see. `timeGridZoneTimes(column, wallTime, timeZone)` reads one wall time. The
+[week and day views](/docs/views/week-and-day#secondary-time-zones) show the zones as extra hour
+columns.
 
 ## Daylight saving time
 

@@ -18,6 +18,7 @@ import {
   useTimeGridColumnFormats,
   type TimeGridColumnFormats,
 } from "@registry/time-grid-view/time-grid-column";
+import type { TimeGridZone } from "@registry/time-grid-view/time-grid-zones";
 
 import { resourceTitle } from "./resource-columns-header";
 
@@ -38,6 +39,8 @@ export interface ResourceColumnsBodyProps<TEvent> {
   /** Length of a keyboard slot, as the keyboard's snap sets it. */
   readonly slotMinutes: number;
   readonly totalSize: number;
+  /** The root's secondary time zones, with an hour column each in the gutter. */
+  readonly zones?: readonly TimeGridZone[];
 }
 
 /**
@@ -57,6 +60,7 @@ function ResourceDays<TEvent>({
   slotMinutes,
   start,
   timeZone,
+  zones,
 }: {
   readonly column: ResourceColumn<TEvent>;
   readonly colIndex: number;
@@ -70,6 +74,7 @@ function ResourceDays<TEvent>({
   readonly slotMinutes: number;
   readonly start: number;
   readonly timeZone: string;
+  readonly zones: readonly TimeGridZone[] | undefined;
 }) {
   const title = resourceTitle(resource);
   const here = useMemo(
@@ -101,6 +106,7 @@ function ResourceDays<TEvent>({
           resource={here}
           slotMinutes={slotMinutes}
           timeZone={timeZone}
+          zones={zones}
         />
       ))}
     </div>
@@ -125,6 +131,7 @@ export function ResourceColumnsBody<TEvent>({
   scrollRef,
   slotMinutes,
   totalSize,
+  zones,
 }: ResourceColumnsBodyProps<TEvent>) {
   const { locale, timeZone } = environment;
   const days = resources[0]?.days;
@@ -151,7 +158,7 @@ export function ResourceColumnsBody<TEvent>({
       >
         <span className="sr-only">Timed events</span>
         <div ref={followY} className="h-[calc(var(--calendar-hour-height)*24)]">
-          <TimeGridHours locale={locale} />
+          <TimeGridHours locale={locale} zones={zones} />
         </div>
       </div>
       <div
@@ -179,6 +186,7 @@ export function ResourceColumnsBody<TEvent>({
               slotMinutes={slotMinutes}
               start={start}
               timeZone={timeZone}
+              zones={zones}
             />
           ))}
         </div>

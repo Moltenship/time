@@ -41,6 +41,7 @@ import {
   useColumnAvailability,
 } from "./time-grid-availability";
 import { percent, TimeGridEvent, type TimeGridEventFormats } from "./time-grid-event";
+import { describeZoneTimes, type TimeGridZone } from "./time-grid-zones";
 
 export interface TimeGridColumnFormats extends TimeGridEventFormats {
   /** A slot's date and time, for its accessible name. */
@@ -105,6 +106,8 @@ export interface TimeGridColumnProps<TEvent> {
   /** Length of a keyboard slot, as the keyboard's snap sets it. */
   readonly slotMinutes: number;
   readonly timeZone: string;
+  /** The root's secondary time zones; a focused slot names its time in each. */
+  readonly zones?: readonly TimeGridZone[];
 }
 
 /** Whether focus is in a column's or row's resource; a side without one matches any resource. */
@@ -218,6 +221,7 @@ export function TimeGridColumn<TEvent>({
   resource,
   slotMinutes,
   timeZone,
+  zones,
 }: TimeGridColumnProps<TEvent>) {
   const resourceId = resource?.id;
   const slot = useCalendarFocus(
@@ -317,6 +321,7 @@ export function TimeGridColumn<TEvent>({
           label={[
             resource?.title,
             formats.slot.format(slot.date.toPlainDateTime(slot.time)),
+            zones === undefined ? undefined : describeZoneTimes(column, slot.time, zones, formats),
             isUnavailableIn(unavailable, slotBand(slot, slotMinutes))
               ? "outside working hours"
               : undefined,

@@ -12,6 +12,12 @@ import { cn } from "cn";
 
 import { describeDayAnnotations } from "./annotation-label";
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
+import {
+  TimeGridGutterLabels,
+  TimeGridZoneNotes,
+  zoneNotesByDate,
+  type TimeGridZone,
+} from "./time-grid-zones";
 
 export interface TimeGridHeaderProps {
   readonly actions: CalendarViewActions;
@@ -21,7 +27,11 @@ export interface TimeGridHeaderProps {
   /** View a date opens in a multi-day grid; dates are static without one. */
   readonly dayView: string | undefined;
   readonly environment: CalendarEnvironmentBase;
+  /** The root's secondary time zones, named over their hours; see `useTimeGridZones`. */
+  readonly zones?: readonly TimeGridZone[];
 }
+
+const noZones: readonly TimeGridZone[] = [];
 
 /** "GMT-4" for the display zone at the start of a column, such as the first visible day. */
 export function offsetLabel(
@@ -49,6 +59,11 @@ export interface TimeGridDayHeadersProps {
   readonly shown?: PlainDateInterval;
   /** Whether the grid shows one day, which takes the larger, start-aligned date. */
   readonly single: boolean;
+  /**
+   * The root's secondary time zones. A day whose times in one differ from the gutter's, after a
+   * daylight saving change, says so under its date.
+   */
+  readonly zones?: readonly TimeGridZone[];
 }
 
 /** A column header per day: the weekday and date, which can open that day in a multi-day grid. */
@@ -60,9 +75,11 @@ export function TimeGridDayHeaders({
   environment,
   shown,
   single,
+  zones = noZones,
 }: TimeGridDayHeadersProps) {
   const { locale } = environment;
   const summaryId = useId();
+  const notes = useMemo(() => zoneNotesByDate(zones), [zones]);
   const formats = useMemo(
     () => ({
       full: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
@@ -138,6 +155,10 @@ export function TimeGridDayHeaders({
             ) : (
               number
             )}
+            <TimeGridZoneNotes
+              className={single ? "items-start" : "items-center"}
+              notes={notes.get(date.toString())}
+            />
             {summary !== undefined && (
               <span className="sr-only" id={`${summaryId}-${index}`}>
                 {summary}
@@ -151,8 +172,9 @@ export function TimeGridDayHeaders({
 }
 
 /**
- * The grid's header row: the display zone's offset over the hour gutter, then the weekday and date
- * naming each column. In a multi-day grid the date can open that day.
+ * The grid's header row: the display zone's offset over the hour gutter, after the name of each
+ * secondary zone, then the weekday and date naming each column. In a multi-day grid the date can
+ * open that day.
  */
 export function TimeGridHeader({
   actions,
@@ -160,6 +182,7 @@ export function TimeGridHeader({
   days,
   dayView,
   environment,
+  zones = noZones,
 }: TimeGridHeaderProps) {
   const { locale, timeZone } = environment;
 
@@ -167,9 +190,12 @@ export function TimeGridHeader({
     <div role="row" className="flex">
       <div
         role="columnheader"
-        className="flex w-(--calendar-gutter-width) shrink-0 items-end justify-end pe-2 pb-1 text-[0.625rem] text-calendar-axis"
+        className="flex w-(--calendar-gutter-width) shrink-0 items-end pb-1 text-[0.625rem] text-calendar-axis"
       >
-        {days[0] === undefined ? null : offsetLabel(locale, timeZone, days[0].column)}
+        <TimeGridGutterLabels
+          offset={days[0] === undefined ? undefined : offsetLabel(locale, timeZone, days[0].column)}
+          zones={zones}
+        />
       </div>
       <TimeGridDayHeaders
         actions={actions}
@@ -178,6 +204,7 @@ export function TimeGridHeader({
         dayView={dayView}
         environment={environment}
         single={days.length === 1}
+        zones={zones}
       />
     </div>
   );

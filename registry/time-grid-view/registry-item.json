@@ -3,7 +3,7 @@
   "name": "time-grid-view",
   "type": "registry:component",
   "title": "Week and day views",
-  "description": "Google Calendar-style week and day time grids: day headers with today highlighted, all-day lanes that collapse to +N, an hour gutter, overlapping events side by side, in equal lanes or stacked, daylight-saving gaps and folds, a now-line, and a rail of read-only annotations (listening sessions, sleep, workouts) beside events.",
+  "description": "Google Calendar-style week and day time grids: day headers with today highlighted, all-day lanes that collapse to +N, an hour gutter with optional secondary time zones, overlapping events side by side, in equal lanes or stacked, daylight-saving gaps and folds, a now-line, and a rail of read-only annotations (listening sessions, sleep, workouts) beside events.",
   "dependencies": [
     "@base-ui/react",
     "@moltenship/calendar",
@@ -58,6 +58,11 @@
       "path": "registry/time-grid-view/time-grid-annotations.tsx",
       "type": "registry:component",
       "target": "components/calendar/time-grid-view/time-grid-annotations.tsx"
+    },
+    {
+      "path": "registry/time-grid-view/time-grid-zones.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/time-grid-view/time-grid-zones.tsx"
     },
     {
       "path": "registry/time-grid-view/annotation-label.ts",

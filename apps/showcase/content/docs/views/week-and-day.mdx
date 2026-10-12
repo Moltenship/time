@@ -48,6 +48,7 @@ TimeGridView                     time-grid-view.tsx
 ├── TimeGridAllDay               time-grid-all-day.tsx
 └── TimeGridBody                 time-grid-body.tsx, scrolls
     ├── Time gutter              --calendar-gutter-width
+    │   └── TimeGridZoneHours    time-grid-zones.tsx, one per secondary time zone
     └── TimeGridColumn           time-grid-column.tsx, one per day, data-date
         ├── TimeGridEvent        time-grid-event.tsx
         │   ├── Title and time
@@ -55,7 +56,9 @@ TimeGridView                     time-grid-view.tsx
         └── Now line             data-slot="time-grid-now"
 ```
 
-- The gutter is `--calendar-gutter-width` wide: 3rem, or 4rem from the `sm` breakpoint.
+- The gutter is `--calendar-gutter-width` wide: 3rem for the hours, or 4rem from the `sm`
+  breakpoint, plus `--calendar-zone-width` (4rem) for each
+  [secondary time zone](#secondary-time-zones).
 - An event's `TimeGridEventLayout` sets its `top` and `height` from its times, and its `left` and
   `width` from the [overlap layout](#overlapping-events). A column renders its events in layout
   order, so a stacked event draws over the ones it overlaps.
@@ -122,7 +125,8 @@ Set options when you create the view, or per calendar with
 ## What it shows
 
 - **Header:** the weekday and date of each column, with today highlighted and marked
-  `aria-current="date"`. The corner shows the time zone's offset, such as "GMT+2".
+  `aria-current="date"`. The corner shows the time zone's offset, such as "GMT+2", after the name
+  of each [secondary time zone](#secondary-time-zones).
 - **All-day row:** all-day events, plus timed and floating events that last 24 hours or more. Busy days collapse
   to three rows with "+N more", and a chevron in the corner expands the row.
 - **Hours:** labels come from `Intl`, so they read "1 PM" or "13:00" depending on the locale. Each hour
@@ -183,6 +187,39 @@ Every layout keeps the same rules:
 
 The resource columns view takes the same options, for each resource's column. The
 [scrolling](/docs/views/scrolling) week and day views do too.
+
+## Secondary time zones
+
+Pass `secondaryTimeZones` to `Root` to label the hours in other time zones too, like Google
+Calendar's secondary time zone. Each zone gets a column of hours beside the calendar's own:
+
+<SecondaryTimeZonesPreview />
+
+```tsx
+<Calendar.Root
+  timeZone="Europe/Berlin"
+  secondaryTimeZones={["America/New_York", { timeZone: "Asia/Tokyo", label: "Tokyo" }]}
+  // …
+/>
+```
+
+- **Names:** each column is named by its `label`, or by the zone's short name from `Intl` in the
+  calendar's locale, such as "EDT" or "GMT+5:30". Hover it for the full name.
+- **Hours:** each line is read on its own date, in both zones' rules, so the labels stay right when
+  either zone changes its clocks. Zones off the hour show minutes, such as "4:30 PM" in India.
+  "+1" or "−1" marks a time on the next or previous day there.
+- **Daylight saving time:** an hour the calendar's zone skips has no label, and an hour it repeats
+  shows its first time. The gutter follows the first day shown. When a later day reads
+  differently, because a zone changes its offset, that day says so under its date, such as
+  "EST −1h".
+- **Clock:** 12 or 24 hours, as the locale says, including a `-u-hc-h23` extension.
+- **Screen readers:** the extra hours are hidden, like the calendar's own hour labels, so the grid's
+  columns stay the same. A focused slot names its time in each zone instead, as in "Monday,
+  October 12 at 9:00 PM, 3:00 PM Eastern Daylight Time".
+
+The scrolling week and day views and the resource columns view show the same columns. The parts
+live in `time-grid-zones.tsx`, and [Time and time zones](/docs/concepts/time#secondary-time-zones)
+explains how each line is read.
 
 ## Keyboard
 

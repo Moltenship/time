@@ -3,6 +3,7 @@ import PreviewIsland, {
   OverlapPreviewIsland,
   ResourcePreviewIsland,
   ShadingPreviewIsland,
+  TimeZonesPreviewIsland,
 } from "./island";
 
 export interface CalendarPreviewProps extends Partial<Omit<LiveCalendarProps, "view">> {
@@ -86,6 +87,21 @@ export function OverlapLayoutPreview() {
       </div>
       <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
         Live. Switch the layout, or drag events to see the others make room.
+      </figcaption>
+    </figure>
+  );
+}
+
+/** This week with its hours labelled in the secondary time zones a toggle picks. */
+export function SecondaryTimeZonesPreview() {
+  return (
+    <figure className="not-prose my-6">
+      <div className="h-[36rem] overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm">
+        <TimeZonesPreviewIsland />
+      </div>
+      <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
+        Live, in your time zone. Pick the zones, then go to a week when daylight saving time starts
+        or ends in one of them.
       </figcaption>
     </figure>
   );

@@ -113,7 +113,8 @@ interface OpenEvent {
 export function App() {
   const [systemTimeZone] = useState(() => Temporal.Now.timeZoneId());
   const [settings, setSettings] = useDemoSettings();
-  const { locale, overlapLayout, scrolling, timeZone, weekStartsOn, workingHours } = settings;
+  const { locale, overlapLayout, scrolling, secondaryTimeZone, timeZone, weekStartsOn } = settings;
+  const { workingHours } = settings;
   const today = (useNow() ?? Temporal.Now.instant()).toZonedDateTimeISO(timeZone).toPlainDate();
   const [location, setLocation] = useCalendarLocation(today);
   // The settings choose between paged and scrolling day, week, and month, even for a shared URL.
@@ -424,6 +425,7 @@ export function App() {
         onVisibleRangeChange={onVisibleRangeChange}
         policies={policies}
         resources={workingHours === "off" ? demoResources : demoResourcesWithHours}
+        secondaryTimeZones={secondaryTimeZone === null ? undefined : [secondaryTimeZone]}
         selection={selection}
         timeZone={timeZone}
         view={view}

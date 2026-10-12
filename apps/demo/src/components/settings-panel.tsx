@@ -32,6 +32,9 @@ export interface SettingsPanelProps {
   readonly systemTimeZone: string;
 }
 
+/** The select's value for no second time zone; no IANA zone is named this. */
+const noSecondaryTimeZone = "none";
+
 function offsetLabel(timeZone: string): string {
   return `UTC${Temporal.Now.zonedDateTimeISO(timeZone).offset}`;
 }
@@ -111,6 +114,26 @@ export function SettingsPanel({
         label="Time zone"
         onValueChange={(timeZone) => onChange({ ...settings, timeZone })}
         value={settings.timeZone}
+      />
+      <Setting
+        items={[
+          { label: "None", value: noSecondaryTimeZone },
+          ...timeZoneOptions(systemTimeZone, settings.secondaryTimeZone ?? settings.timeZone).map(
+            (timeZone) => ({
+              hint: offsetLabel(timeZone),
+              label: timeZone.replaceAll("_", " "),
+              value: timeZone,
+            }),
+          ),
+        ]}
+        label="Second time zone"
+        onValueChange={(value) =>
+          onChange({
+            ...settings,
+            secondaryTimeZone: value === noSecondaryTimeZone ? null : value,
+          })
+        }
+        value={settings.secondaryTimeZone ?? noSecondaryTimeZone}
       />
       <Setting
         items={weekStartOptions.map(({ label, value }) => ({ label, value: String(value) }))}

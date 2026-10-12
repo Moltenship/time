@@ -2,6 +2,11 @@ import type { TimeGridDay } from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type RefCallback } from "react";
 
+import {
+  TimeGridZoneNotes,
+  zoneNotesByDate,
+  type TimeGridZone,
+} from "@registry/time-grid-view/time-grid-zones";
 import { cn } from "cn";
 
 export interface ResourceColumnsDatesProps {
@@ -13,7 +18,11 @@ export interface ResourceColumnsDatesProps {
   readonly locale: Intl.LocalesArgument;
   readonly scrollbarWidth: number;
   readonly totalSize: number;
+  /** The root's secondary time zones; a day whose times in one differ from the gutter's says so. */
+  readonly zones?: readonly TimeGridZone[];
 }
+
+const noZones: readonly TimeGridZone[] = [];
 
 /** Over several days, the weekday and date of each of a resource's day columns. */
 export function ResourceColumnsDates({
@@ -23,7 +32,9 @@ export function ResourceColumnsDates({
   locale,
   scrollbarWidth,
   totalSize,
+  zones = noZones,
 }: ResourceColumnsDatesProps) {
+  const notes = useMemo(() => zoneNotesByDate(zones), [zones]);
   const formats = useMemo(
     () => ({
       full: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
@@ -74,6 +85,7 @@ export function ResourceColumnsDates({
                   >
                     {date.day}
                   </span>
+                  <TimeGridZoneNotes notes={notes.get(date.toString())} />
                 </div>
               ))}
             </div>

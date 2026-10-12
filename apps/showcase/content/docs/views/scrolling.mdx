@@ -108,7 +108,8 @@ gesture is under way, and come to rest on the nearest page when you let go.
 `useScrollingAxis` in `registry/calendar/scrolling-axis.tsx` places days, or weeks, on an axis
 thousands of items long, and the view renders only the items near its load range. The header,
 all-day row, and hour gutter are sticky in the same scrolling element, so they never lag behind the
-days. Scroll positions are never React state: the view renders again only when the anchor moves.
+days. The gutter's [secondary time zones](/docs/views/week-and-day#secondary-time-zones) follow the
+first visible day. Scroll positions are never React state: the view renders again only when the anchor moves.
 
 Server markup puts the visible dates at the start of the axis, so the page shows them before
 scripts run. Once laid out, the axis extends before them and the scroll position follows, before

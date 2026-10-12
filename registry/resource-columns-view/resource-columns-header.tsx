@@ -20,7 +20,7 @@ import {
 } from "./resource-header";
 
 export interface ResourceColumnsHeaderProps {
-  /** The corner over the gutter, such as the time zone's offset. */
+  /** The corner's contents over the gutter, such as `TimeGridGutterLabels`; a flex row. */
   readonly corner: ReactNode;
   /** Day columns per resource; each is one `aria-colindex` step after the gutter. */
   readonly days: number;
@@ -156,7 +156,7 @@ export function ResourceColumnsHeader({
       <div
         role="columnheader"
         aria-colindex={1}
-        className="flex w-(--calendar-gutter-width) shrink-0 items-end justify-end pe-2 pb-1 text-[0.625rem] text-calendar-axis"
+        className="flex w-(--calendar-gutter-width) shrink-0 items-end pb-1 text-[0.625rem] text-calendar-axis"
       >
         {corner}
       </div>

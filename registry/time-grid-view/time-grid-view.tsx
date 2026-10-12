@@ -15,6 +15,7 @@ import { useEventLabel, type EventDescriber } from "@registry/calendar/event-lab
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import { cn } from "cn";
 
 import { annotationFormats } from "./annotation-label";
 import { TimeGridAllDay } from "./time-grid-all-day";
@@ -27,6 +28,7 @@ import {
 } from "./time-grid-annotations";
 import { TimeGridBody } from "./time-grid-body";
 import { TimeGridHeader } from "./time-grid-header";
+import { gutterStyle, timeGridGutterClassName, useTimeGridZones } from "./time-grid-zones";
 
 /**
  * Overlapping events sit side by side in lanes (`overlapLayout: "columns"`, the default), in lanes
@@ -83,6 +85,7 @@ export function TimeGridView<TEvent>({
   const { days } = projection;
   const scrollRef = useRef<HTMLDivElement>(null);
   const columns = useMemo(() => days.map(({ column }) => column), [days]);
+  const zones = useTimeGridZones(environment, columns);
   // Pointer drags speak through the same messages as the keyboard, and the drag preview labels
   // the proposed range in the calendar's locale.
   const announcer = useCalendarAnnouncer();
@@ -138,7 +141,11 @@ export function TimeGridView<TEvent>({
         aria-label={timeGridTitle(range, environment.locale)}
         {...keyboard}
         data-slot="time-grid"
-        className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-gutter-width:3rem] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize sm:[--calendar-gutter-width:4rem]"
+        className={cn(
+          "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize",
+          timeGridGutterClassName,
+        )}
+        style={gutterStyle(zones)}
       >
         <div className="shrink-0 overflow-hidden border-b border-calendar-grid [scrollbar-gutter:stable]">
           <TimeGridHeader
@@ -147,6 +154,7 @@ export function TimeGridView<TEvent>({
             days={days}
             dayView={options.dayView}
             environment={environment}
+            zones={zones}
           />
           <TimeGridAllDay
             days={days}
@@ -170,6 +178,7 @@ export function TimeGridView<TEvent>({
           renderUnavailable={options.renderUnavailable}
           scrollRef={scrollRef}
           slotMinutes={snap.increment}
+          zones={zones}
         />
       </div>
       {/* Outside the grid: an open popover's Base UI internals must not become grid children. */}

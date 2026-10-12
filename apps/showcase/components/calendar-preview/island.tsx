@@ -40,6 +40,12 @@ export const OverlapPreviewIsland = dynamic(() => withTemporal(() => import("./o
   ssr: false,
 });
 
+/** This week with a toggle between sets of secondary time zones. */
+export const TimeZonesPreviewIsland = dynamic(() => withTemporal(() => import("./time-zones")), {
+  loading: PreviewSkeleton,
+  ssr: false,
+});
+
 /** This week's office hours, shaded by a recipe a toggle picks. */
 export const ShadingPreviewIsland = dynamic(() => withTemporal(() => import("./shading")), {
   loading: PreviewSkeleton,

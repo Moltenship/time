@@ -53,6 +53,13 @@ import {
 } from "@registry/time-grid-view/time-grid-column";
 import { offsetLabel, TimeGridDayHeaders } from "@registry/time-grid-view/time-grid-header";
 import type { TimeGridViewOptions } from "@registry/time-grid-view/time-grid-view";
+import {
+  gutterStyle,
+  TimeGridGutterLabels,
+  timeGridGutterClassName,
+  useTimeGridZones,
+} from "@registry/time-grid-view/time-grid-zones";
+import { cn } from "cn";
 
 import { useOpeningTime, useStickyHeaderPadding } from "./scrolling-time-grid-scroll";
 
@@ -172,6 +179,8 @@ export function ScrollingTimeGridView<TEvent>({
   const { direction, locale, timeZone } = environment;
   const visibleDays = range.start.until(range.end).days;
   const columns = useMemo(() => days.map(({ column }) => column), [days]);
+  // The gutter reads each secondary zone on the first visible day.
+  const zones = useTimeGridZones(environment, columns, range.start);
   const first = epochDay(range.start);
   const axis = useScrollingAxis({
     axis: "inline",
@@ -273,7 +282,11 @@ export function ScrollingTimeGridView<TEvent>({
         {...keyboard}
         data-slot="scrolling-time-grid"
         dir={direction}
-        className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-gutter-width:3rem] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize sm:[--calendar-gutter-width:4rem]"
+        className={cn(
+          "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize",
+          timeGridGutterClassName,
+        )}
+        style={gutterStyle(zones)}
       >
         <div
           ref={axis.scrollRef}
@@ -301,11 +314,16 @@ export function ScrollingTimeGridView<TEvent>({
                   gutter={
                     <div
                       role="columnheader"
-                      className={`${gutter} z-10 flex items-end justify-end pe-2 pb-1 text-[0.625rem] text-calendar-axis`}
+                      className={`${gutter} z-10 flex items-end pb-1 text-[0.625rem] text-calendar-axis`}
                     >
-                      {firstShown === undefined
-                        ? null
-                        : offsetLabel(locale, timeZone, firstShown.column)}
+                      <TimeGridGutterLabels
+                        offset={
+                          firstShown === undefined
+                            ? undefined
+                            : offsetLabel(locale, timeZone, firstShown.column)
+                        }
+                        zones={zones}
+                      />
                     </div>
                   }
                 >
@@ -317,6 +335,7 @@ export function ScrollingTimeGridView<TEvent>({
                     environment={environment}
                     shown={range}
                     single={visibleDays === 1}
+                    zones={zones}
                   />
                 </Track>
               </div>
@@ -351,7 +370,7 @@ export function ScrollingTimeGridView<TEvent>({
                 gutter={
                   <div role="rowheader" data-occludes="" className={`${gutter} z-20`}>
                     <span className="sr-only">Timed events</span>
-                    <TimeGridHours locale={locale} />
+                    <TimeGridHours locale={locale} zones={zones} />
                   </div>
                 }
                 overlay={
@@ -399,6 +418,7 @@ export function ScrollingTimeGridView<TEvent>({
                       renderUnavailable={options.renderUnavailable}
                       slotMinutes={snap.increment}
                       timeZone={timeZone}
+                      zones={zones}
                     />
                   ))}
                 </div>

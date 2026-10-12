@@ -8,6 +8,8 @@ export interface DemoSettings {
   readonly overlapLayout: OverlapLayout;
   /** Whether day, week, month, and agenda are the scrolling views, which scroll without end. */
   readonly scrolling: boolean;
+  /** Another zone the day, week and resource views label their hours in; `null` for none. */
+  readonly secondaryTimeZone: string | null;
   readonly timeZone: string;
   readonly weekStartsOn: IsoDayOfWeek;
   /** Whether views shade time outside working hours, and what a change into it does. */
@@ -75,13 +77,18 @@ export function parseSettings(stored: string | null, defaults: DemoSettings): De
   try {
     const value: unknown = JSON.parse(stored ?? "{}");
     if (!isRecord(value)) return defaults;
-    const { locale, overlapLayout, scrolling, timeZone, weekStartsOn, workingHours } = value;
+    const { locale, overlapLayout, scrolling, secondaryTimeZone, timeZone, weekStartsOn } = value;
+    const { workingHours } = value;
     return {
       locale: localeOptions.find((option) => option.value === locale)?.value ?? defaults.locale,
       overlapLayout:
         overlapLayoutOptions.find((option) => option.value === overlapLayout)?.value ??
         defaults.overlapLayout,
       scrolling: typeof scrolling === "boolean" ? scrolling : defaults.scrolling,
+      secondaryTimeZone:
+        secondaryTimeZone === null || isSupportedTimeZone(secondaryTimeZone)
+          ? secondaryTimeZone
+          : defaults.secondaryTimeZone,
       timeZone: isSupportedTimeZone(timeZone) ? timeZone : defaults.timeZone,
       weekStartsOn:
         weekStartOptions.find((option) => option.value === weekStartsOn)?.value ??
@@ -105,6 +112,7 @@ export function useDemoSettings() {
         locale: "en-US",
         overlapLayout: "columns",
         scrolling: false,
+        secondaryTimeZone: null,
         timeZone: Temporal.Now.timeZoneId(),
         weekStartsOn: 7,
         workingHours: "warn",
