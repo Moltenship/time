@@ -23,6 +23,7 @@
     "access": "public"
   },
   "scripts": {
+    "bench": "vp pack && vp test bench",
     "build": "vp pack",
     "check": "vp check",
     "dev": "vp pack --watch",
