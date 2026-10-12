@@ -183,11 +183,17 @@ export function compileRule(rule: RecurrenceRule, start: RuleStart): CompiledRul
   // RFC 5545 §3.3.10: what the rule doesn't say comes from the start.
   let months = byMonth;
   let monthDays = byMonthDay;
+  // Only parts that expand or limit this FREQ name a day. Those RFC 5545's table calls N/A, such as
+  // BYMONTHDAY in a WEEKLY rule, only limit the day the start gives.
   const dayParts =
-    byWeekNumber !== undefined ||
-    byYearDay !== undefined ||
-    byMonthDay !== undefined ||
-    rule.byDay !== undefined;
+    frequency === Frequency.Yearly
+      ? byWeekNumber !== undefined ||
+        byYearDay !== undefined ||
+        byMonthDay !== undefined ||
+        rule.byDay !== undefined
+      : frequency === Frequency.Monthly
+        ? byMonthDay !== undefined || rule.byDay !== undefined
+        : rule.byDay !== undefined;
   if (!dayParts) {
     if (frequency === Frequency.Yearly) {
       months ??= [start.month];
