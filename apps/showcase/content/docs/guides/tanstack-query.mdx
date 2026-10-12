@@ -154,10 +154,15 @@ And the mutation updates the cache before the save, and puts it back if the save
    windows with nothing cached yet carry on, so prefetches aren't lost.
 3. **`onError`** puts the old record back the same way. It writes only this event, rather than a
    copy of the whole cache from before the change, so another change that's still saving stays.
-4. **`onSettled`** marks every events query stale, and reloads the ones on screen, once the last
-   save has settled. A reload between two saves would show the first without the second. After a
-   save, returning the reload's promise keeps the change pending until the reload shows it. After a
+4. **`onSettled`** reloads the events once the last save has settled. A reload between two saves
+   would show the first without the second. Loads still on their way read before the save, so
+   `reloadEvents` cancels them, drops windows off screen that never loaded, to be prefetched again,
+   and then marks every events query stale, which reloads the ones on screen. After a save,
+   returning the reload's promise keeps the change pending until the reload shows it. After a
    failure, it returns nothing, so the change rolls back at once.
+
+If two changes to one event both fail, the second puts back the record the first one left, which
+the server never had. The next load that succeeds shows what the server has.
 
 `mutateAsync` rejects when the save fails, after `onError` has put the old record back, so
 `onEventChange` rejects too and the calendar rolls back the change.

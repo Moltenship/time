@@ -328,7 +328,8 @@ async function waitUntil(check: () => void, timeout = 3000) {
 
 /**
  * The pretend server with saves, and loads while `holdLoads` is on, held until the test answers
- * them, so the order of events doesn't depend on timers.
+ * them, so the order of events doesn't depend on timers. A held load reads when it's asked, as a
+ * slow server's would, and answers with what it read.
  */
 function controlledApi(seed: readonly ApiEvent[]) {
   const server = createFakeEventsApi(seed, { latency: 0 });
@@ -349,10 +350,11 @@ function controlledApi(seed: readonly ApiEvent[]) {
 
   const api: EventsApi = {
     ...server,
-    listEvents: (dates, signal) =>
-      holdLoads
-        ? hold("load", () => server.listEvents(dates, signal))
-        : server.listEvents(dates, signal),
+    listEvents: (dates, signal) => {
+      if (!holdLoads) return server.listEvents(dates, signal);
+      const read = server.listEvents(dates);
+      return hold("load", () => read);
+    },
     updateEvent: (event) => hold("save", () => server.updateEvent(event)),
   };
 
@@ -378,13 +380,20 @@ describe("useSaveEvent", () => {
   const later = { ...event, end: "2026-12-02T10:00:00Z", start: "2026-12-02T09:00:00Z" };
   const other = timedEvent("retro", "2026-10-29T09:00:00Z", "2026-10-29T10:00:00Z");
 
-  /** Caches both windows, and renders `useSaveEvent`, with the window `watched` on screen. */
-  async function setup({ watched }: { readonly watched?: EventsWindow } = {}) {
+  /**
+   * Caches October and November, and renders `useSaveEvent`, with the window `watched` on screen.
+   * With `holdLoads`, every load after that waits for the test to answer it.
+   */
+  async function setup({
+    holdLoads = false,
+    watched,
+  }: { readonly holdLoads?: boolean; readonly watched?: EventsWindow } = {}) {
     const server = controlledApi([event, other]);
     const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
     for (const dates of [october, november]) {
       await client.prefetchQuery(eventsQuery(server.api, dates));
     }
+    server.holdLoads(holdLoads);
     let save: ((write: EventWrite) => Promise<void>) | undefined;
     function Saver() {
       save = useSaveEvent(server.api).mutateAsync;
@@ -400,10 +409,10 @@ describe("useSaveEvent", () => {
         {watched === undefined ? null : <Watcher dates={watched} />}
       </QueryClientProvider>,
     );
-    const starts = (dates: EventsWindow) =>
+    const starts = (dates: EventsWindow, id = event.id) =>
       client
         .getQueryData(eventsQuery(server.api, dates).queryKey)
-        ?.filter((cached) => cached.id === event.id)
+        ?.filter((cached) => cached.id === id)
         .map((cached) => cached.start);
     const stale = (dates: EventsWindow) =>
       client.getQueryState(eventsQuery(server.api, dates).queryKey)?.isInvalidated;
@@ -443,6 +452,7 @@ describe("useSaveEvent", () => {
     });
     // Both show at once; the second waits for the first to reach the server.
     expect(starts(november)).toEqual([later.start]);
+    expect(starts(october, other.id)).toEqual([moved.start]);
     await waitUntil(() => expect(server.held("save")).toBe(1));
 
     server.answer("save");
@@ -456,9 +466,8 @@ describe("useSaveEvent", () => {
   });
 
   test("puts the event back in every window when the save fails, without waiting for a reload", async () => {
-    const { save, server, starts } = await setup({ watched: november });
     // The reload after the failure never answers; the rollback mustn't wait for it.
-    server.holdLoads(true);
+    const { save, server, starts } = await setup({ holdLoads: true, watched: november });
 
     let saved: Promise<void> | undefined;
     await act(async () => {
@@ -477,7 +486,7 @@ describe("useSaveEvent", () => {
     expect(server.held("load")).toBe(1);
   });
 
-  test("lets loads with nothing cached yet finish, so prefetches aren't lost", async () => {
+  test("lets loads with nothing cached yet finish while a save is on its way", async () => {
     const { client, save, server } = await setup();
     const december = months("2026-11-01", "2027-02-01");
     server.holdLoads(true);
@@ -491,6 +500,27 @@ describe("useSaveEvent", () => {
     await waitUntil(() =>
       expect(client.getQueryData(eventsQuery(server.api, december).queryKey)).toBeDefined(),
     );
+  });
+  test("after the last save, reloads windows whose first load read before it", async () => {
+    const december = months("2026-11-01", "2027-02-01");
+    const { save, server, starts } = await setup({ holdLoads: true, watched: december });
+    // December's first load is on its way when the save starts.
+    await waitUntil(() => expect(server.held("load")).toBe(1));
+    expect(starts(december)).toBeUndefined();
+
+    let saved: Promise<void> | undefined;
+    await act(async () => {
+      saved = save({ after: later, before: event, id: event.id });
+    });
+    await waitUntil(() => expect(server.held("save")).toBe(1));
+    server.answer("save");
+
+    // The load that read before the save is dropped, and December loads again.
+    await waitUntil(() => expect(server.held("load")).toBe(2));
+    server.answer("load");
+    server.answer("load");
+    await act(async () => saved);
+    expect(starts(december)).toEqual([later.start]);
   });
 });
 

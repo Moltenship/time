@@ -123,6 +123,20 @@ export function writeOf(change: ApiEventChange): EventWrite {
 // #endregion write
 
 // #region mutation
+/**
+ * Reloads the events after the last save. Loads still on their way read before it, so they're
+ * cancelled first, and windows off screen that never loaded go, to be prefetched again.
+ */
+async function reloadEvents(queryClient: QueryClient): Promise<void> {
+  await queryClient.cancelQueries({ queryKey: eventsKey });
+  queryClient.removeQueries({
+    queryKey: eventsKey,
+    predicate: (query) => query.state.data === undefined,
+    type: "inactive",
+  });
+  await queryClient.invalidateQueries({ queryKey: eventsKey });
+}
+
 export function useSaveEvent(api: EventsApi) {
   const queryClient = useQueryClient();
 
@@ -137,7 +151,7 @@ export function useSaveEvent(api: EventsApi) {
     },
     onMutate: async ({ after, id }) => {
       // A reload on its way could bring back what it read before the change. Loads with nothing
-      // cached yet carry on: there's nothing to change in them.
+      // cached yet carry on, and the reload after the save replaces them.
       await queryClient.cancelQueries({
         queryKey: eventsKey,
         predicate: (query) => query.state.data !== undefined,
@@ -149,7 +163,7 @@ export function useSaveEvent(api: EventsApi) {
     onSettled: (_data, error) => {
       // Reload once the last save settles, so a reload between two saves can't undo the second.
       if (queryClient.isMutating({ mutationKey: eventsKey }) !== 1) return;
-      const reload = queryClient.invalidateQueries({ queryKey: eventsKey });
+      const reload = reloadEvents(queryClient);
       // A saved change stays pending until the reload shows it; a failed one rolls back now.
       return error === null ? reload : undefined;
     },
