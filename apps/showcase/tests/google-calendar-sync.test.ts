@@ -610,12 +610,64 @@ describe("changes made in Google meanwhile", () => {
     elsewhere(google, () => exception("2026-10-16", { status: "cancelled" }));
     const friday = find(sync, "standup::2026-10-16T07:00:00Z");
     await expect(save(sync, move(friday, at("2026-10-16", "14:00")), "this")).rejects.toMatchObject(
-      { status: 410 },
+      { status: 412 },
     );
     expect(google.getEvent(instanceId("standup", at("2026-10-16", "09:00")))?.status).toBe(
       "cancelled",
     );
     expect(standups(sync)).not.toContain("2026-10-16T09:00:00 Stand-up");
+  });
+
+  test("moving an occurrence someone moved rolls back onto theirs", async () => {
+    const { google, sync } = setup();
+    await sync.load(week(monday));
+    elsewhere(google, () =>
+      exception("2026-10-16", {
+        end: time("2026-10-16", "13:30"),
+        start: time("2026-10-16", "13:00"),
+        summary: "Stand-up (Ana's)",
+      }),
+    );
+    const friday = find(sync, "standup::2026-10-16T07:00:00Z");
+    await expect(save(sync, move(friday, at("2026-10-16", "15:00")), "this")).rejects.toMatchObject(
+      { status: 412 },
+    );
+    expect(standups(sync)).toContain("2026-10-16T13:00:00 Stand-up (Ana's)");
+  });
+
+  test("moving a changed occurrence someone renamed stops before writing", async () => {
+    const { google, sync } = setup();
+    await sync.load(week(monday));
+    const lateId = instanceId("standup", at("2026-10-15", "09:00"));
+    elsewhere(google, (events) => ({ ...events.get(lateId)!, summary: "Stand-up (Ana's)" }));
+    const late = find(sync, "standup::2026-10-15T07:00:00Z");
+    await expect(
+      save(sync, move(late, at("2026-10-15", "11:00")), "following"),
+    ).rejects.toMatchObject({ status: 412 });
+    expect(google.getEvent("standup2")).toBeUndefined();
+    expect(standups(sync)).toContain("2026-10-15T10:00:00 Stand-up (Ana's)");
+  });
+
+  test("a series edit stops if a changed occurrence appeared in Google", async () => {
+    const { google, sync } = setup();
+    await sync.load(week(monday));
+    elsewhere(google, () => exception("2026-10-16", { status: "cancelled" }));
+    const master = google.getEvent("standup");
+    const tuesday = find(sync, "standup::2026-10-13T07:00:00Z");
+    await expect(save(sync, move(tuesday, at("2026-10-13", "09:30")), "all")).rejects.toMatchObject(
+      { status: 412 },
+    );
+    expect(google.getEvent("standup")).toBe(master);
+    expect(standups(sync)).not.toContain("2026-10-16T09:00:00 Stand-up");
+  });
+
+  test("a series edit right after the sync token expired goes through", async () => {
+    const { google, sync } = setup();
+    await sync.load(week(monday));
+    google.expireSyncTokens();
+    const tuesday = find(sync, "standup::2026-10-13T07:00:00Z");
+    await save(sync, move(tuesday, at("2026-10-13", "09:30")), "all");
+    expect(standups(sync)).toContain("2026-10-13T09:30:00 Stand-up");
   });
 
   test("a series edit stops before writing if one of its changed occurrences changed", async () => {

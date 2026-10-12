@@ -71,6 +71,8 @@ A Route Handler sends the browser's requests on to Google with the user's access
 - **Only what the client calls.** It forwards the calls above, on the user's primary calendar's
   events, with the query parameters the client sends. Anything else gets a 404, so the route can't
   be used to reach the rest of their Google account.
+- **Only your pages.** Browsers mark a request another site makes with
+  `Sec-Fetch-Site: cross-site`, and the route refuses it.
 - **Errors pass through.** The status, `Retry-After` and Google's error body reach the browser, so
   the client there handles 410, 412 and 429 as it would on the server.
 
@@ -258,9 +260,9 @@ the store:
   runs, and keeps it until the events change. If it throws, the calendar puts the event back and
   announces that the change wasn't saved. There's no copy of the events to restore by hand.
 - **Etags.** Every Google event has an `etag` that changes on every write. Writes send the etag of
-  the version on screen as `If-Match`. A series edit that moves or ends the series' other changed
-  occurrences syncs first, and stops with a 412 if one of them changed in Google. The instances it
-  then rewrites and clears go without an etag.
+  the version on screen as `If-Match`. A change to a recurring event syncs first, and stops with a
+  412 if the series changed in Google since it loaded: for "This event", the occurrence itself.
+  The instances it then rewrites and clears go without an etag.
 - **412 Precondition Failed.** Someone changed the event since it loaded. The write is refused,
   the sync after it brings in their version, and the drag rolls back onto it. The footer says what
   happened. To try it: turn off push notifications, move "Design review" with the button, then drag
@@ -268,8 +270,8 @@ the store:
 - **Rate limits.** The client's backoff waits it out while the change stays pending. Rate-limit two
   requests in the demo, then drag an event.
 - **Already deleted.** Deleting an event someone else deleted gets a 410, which counts as done.
-  Changing an occurrence someone cancelled throws a 410 instead, so the change rolls back rather
-  than bring the occurrence back.
+  Changing an occurrence someone cancelled stops with a 412 instead, so the change rolls back
+  rather than bring the occurrence back.
 - **New events** get an ID from `newGoogleId`. Google takes IDs you pick, so you know an event's ID
   before it's saved, as you do for "This and following events". If an insert gets a 5xx after
   Google stored it, the retry gets a 409, and the event is there.

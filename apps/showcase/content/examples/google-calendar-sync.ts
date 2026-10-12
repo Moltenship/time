@@ -103,6 +103,19 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
       for (const [id, other] of stored) if (other.recurringEventId === item.id) stored.delete(id);
     }
   }
+  /** The etags of a series' master and changed occurrences, or of one occurrence's, by ID. */
+  function versions(seriesId: string, recurrenceId?: RecurrenceDate) {
+    const found = new Map<string, string | undefined>();
+    for (const { data, override } of events) {
+      const inSeries = data.id === seriesId || override?.seriesId === seriesId;
+      const at =
+        recurrenceId === undefined ||
+        (override !== undefined &&
+          keyOf(override.seriesId, override.recurrenceId) === keyOf(seriesId, recurrenceId));
+      if (inSeries && at) found.set(data.id, data.etag);
+    }
+    return found;
+  }
   // #endregion store
 
   // #region load
@@ -222,18 +235,6 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
   ) {
     const { newSeries, override, series, seriesId } = edit;
     const zoneOf = (event: GoogleEvent) => event.start?.timeZone ?? timeZone;
-    // "This event" deletes cancel the occurrence's instance, as Google does, and leave the master.
-    if (edit.scope === "this" && edit.cause === "delete") {
-      const from = override?.action === "create" ? undefined : override?.event;
-      const write = {
-        from,
-        placement: "cancel",
-        recurrenceId: edit.recurrenceId,
-        seriesId,
-      } as const;
-      await writeOccurrences([write], [], timeZone);
-      return;
-    }
     // Google deletes a series' changed and cancelled occurrences with it.
     if (series.action === "delete") {
       await remove(series.event.data, series.event.data.etag);
@@ -245,21 +246,36 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
     if (master !== undefined && readGoogleRecurrence(master.recurrence ?? []).problems.length > 0) {
       throw new Error("This series has rules the app can't write back. Change it in Google.");
     }
-    // The series' other changed and cancelled occurrences the edit moves or ends, as on screen.
+    // The writes below replace instances the store read, some without etags. So sync first, and
+    // stop if the series changed in Google since: for "this", the occurrence's own instance.
+    const only = edit.scope === "this" ? edit.recurrenceId : undefined;
+    const before = versions(seriesId, only);
+    await syncNow();
+    const after = versions(seriesId, only);
+    if (
+      [...after].some(([id, etag]) => before.get(id) !== etag) ||
+      (before.has(seriesId) && !after.has(seriesId))
+    ) {
+      throw new GoogleApiError(412, "conditionNotMet", "The series changed in Google Calendar.");
+    }
+
+    // "This event" deletes cancel the occurrence's instance, as Google does, and leave the master.
     const edited = override?.action === "create" ? undefined : override?.event;
+    if (edit.scope === "this" && edit.cause === "delete") {
+      const write: OccurrenceWrite = {
+        from: edited,
+        placement: "cancel",
+        recurrenceId: edit.recurrenceId,
+        seriesId,
+      };
+      await writeOccurrences([write], [], timeZone);
+      return;
+    }
+    // The series' other changed and cancelled occurrences, which the edit moves or ends.
     const others = events
-      .filter((event) => event.override?.seriesId === seriesId && event !== edited)
+      .filter((event) => event.override?.seriesId === seriesId && event.data.id !== edited?.data.id)
       .map((event) => ({ event, next: recurrenceOverrideEdit(edit, event.override!.recurrenceId) }))
       .filter(({ next }) => next.action !== "keep");
-    // The writes below replace them without etags, so sync first, and stop if someone changed one
-    // in Google since.
-    if (others.length > 0) {
-      await syncNow();
-      const moved = [edited, ...others.map(({ event }) => event)];
-      if (moved.some((event) => event !== undefined && stored.get(event.data.id) !== event.data)) {
-        throw new GoogleApiError(412, "conditionNotMet", "The series changed in Google Calendar.");
-      }
-    }
 
     // "This and following events" is Google's split: a new series from the occurrence on, and the
     // old one ended before it. The new one goes first, so a failure leaves the old one whole.

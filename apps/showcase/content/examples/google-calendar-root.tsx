@@ -136,10 +136,14 @@ export function GoogleCalendar({ sync, timeZone }: GoogleCalendarProps) {
   function onVisibleRangeChange({ loadInstantRange, loadRange }: CalendarVisibleRange) {
     setRange(loadRange);
     // `timeMin` and `timeMax` for the dates on screen, and the pages a scrolling view keeps ready.
-    sync.load(loadInstantRange).then(
-      () => setStatus((current) => (current.startsWith("Couldn't load") ? "" : current)),
-      (error) => setStatus(`Couldn't load: ${reasonOf(error)}`),
-    );
+    sync
+      .load(loadInstantRange)
+      .then(loaded, (error) => setStatus(`Couldn't load: ${reasonOf(error)}`));
+  }
+
+  // A later load or sync that works clears a load error.
+  function loaded() {
+    setStatus((current) => (current.startsWith("Couldn't load") ? "" : current));
   }
   // #endregion root
 
@@ -147,7 +151,7 @@ export function GoogleCalendar({ sync, timeZone }: GoogleCalendarProps) {
   useEffect(() => {
     // Catch up when the tab comes back, and every minute: push notifications can be late, or lost.
     const catchUp = () => {
-      if (document.visibilityState === "visible") sync.sync().catch(() => undefined);
+      if (document.visibilityState === "visible") sync.sync().then(loaded, () => undefined);
     };
     document.addEventListener("visibilitychange", catchUp);
     const timer = setInterval(catchUp, 60_000);
