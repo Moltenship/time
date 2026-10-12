@@ -15,7 +15,8 @@ import { findRegistryManifests, validateRegistryWorkspace } from "./validation";
 import { readWorkspacePackages } from "./workspace";
 
 const execFileAsync = promisify(execFile);
-const runtimeScope = `${registryNamespace}/`;
+/** Our items in `registryDependencies`, and our packages in `dependencies`. */
+const ownScope = `${registryNamespace}/`;
 
 type SourceItem = ReturnType<typeof registryItemSchema.parse>;
 
@@ -28,7 +29,7 @@ export interface BuildRegistryOptions {
 }
 
 function ownItemName(dependency: string): string | null {
-  return dependency.startsWith(runtimeScope) ? dependency.slice(runtimeScope.length) : null;
+  return dependency.startsWith(ownScope) ? dependency.slice(ownScope.length) : null;
 }
 
 function withoutExtension(path: string): string {
@@ -153,7 +154,7 @@ export async function buildRegistry({
       const compatibility: Record<string, string> = {};
       for (const member of itemClosure(item.name, byName, itemsOf)) {
         for (const name of member.dependencies ?? []) {
-          if (name.startsWith(runtimeScope)) compatibility[name] = packages.ranges.get(name)!;
+          if (name.startsWith(ownScope)) compatibility[name] = packages.ranges.get(name)!;
         }
       }
       const { stylesheet, ...meta } = item.meta ?? {};
