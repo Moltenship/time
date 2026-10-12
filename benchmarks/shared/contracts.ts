@@ -8,7 +8,10 @@ export type BenchmarkStage =
   | "projection"
   | "layout"
   | "render"
-  | "pointer-frame";
+  | "pointer-frame"
+  | "expand-cold"
+  | "expand-warm"
+  | "occurrence-snapshot";
 
 export interface BenchmarkQuery {
   readonly endUnit: number;
@@ -88,16 +91,19 @@ export interface BenchmarkMemory {
   readonly rssDeltaBytes: number;
 }
 
-export interface BenchmarkReport {
+/** The fixture counts the core, React, and complete suites report. */
+export interface BenchmarkFixtureCounts {
+  readonly dstCases: number;
+  readonly events: number;
+  readonly resources: number;
+  readonly seed: number;
+  readonly visibleFragments: number;
+}
+
+export interface BenchmarkReport<TFixture = BenchmarkFixtureCounts> {
   readonly engine: string;
   readonly environment: BenchmarkEnvironment;
-  readonly fixture: {
-    readonly dstCases: number;
-    readonly events: number;
-    readonly resources: number;
-    readonly seed: number;
-    readonly visibleFragments: number;
-  };
+  readonly fixture: TFixture;
   readonly memory: BenchmarkMemory;
   readonly mode: BenchmarkMode;
   readonly notes: readonly string[];

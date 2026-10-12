@@ -11,7 +11,7 @@ export interface BenchmarkLogger {
   log(message: string): void;
 }
 
-interface BenchmarkCliOptions {
+export interface BenchmarkCliOptions {
   readonly gated: boolean;
   readonly json: boolean;
   readonly mode: BenchmarkMode;
@@ -53,10 +53,19 @@ function megabytes(bytes: number): string {
 }
 
 export function formatBenchmarkReport(report: BenchmarkReport): string {
+  const { fixture } = report;
+  return formatSuiteReport(
+    report,
+    `seed=${fixture.seed} events=${fixture.events} fragments=${fixture.visibleFragments} resources=${fixture.resources} dst=${fixture.dstCases}`,
+  );
+}
+
+/** The report as text, with `fixture` describing the suite's fixture on one line. */
+export function formatSuiteReport(report: BenchmarkReport<unknown>, fixture: string): string {
   const lines = [
     `Moltenship benchmark protocol v${report.protocolVersion}`,
     `suite=${report.suite} engine=${report.engine} mode=${report.mode}`,
-    `fixture seed=${report.fixture.seed} events=${report.fixture.events} fragments=${report.fixture.visibleFragments} resources=${report.fixture.resources} dst=${report.fixture.dstCases}`,
+    `fixture ${fixture}`,
     `environment node=${report.environment.node} platform=${report.environment.platform}/${report.environment.processArchitecture} release=${report.environment.platformRelease}`,
     `cpu=${report.environment.cpuModel} logical=${report.environment.logicalCpuCount} memory=${megabytes(report.environment.totalMemoryBytes)}`,
     "stage               warmup samples    p50 ms    p95 ms   scan p95   threshold      status",
@@ -83,16 +92,35 @@ export function runBenchmarkCli<TSnapshot = ReturnType<typeof referenceEngine.bu
   engine: BenchmarkEngine<TSnapshot> = referenceEngine as BenchmarkEngine<TSnapshot>,
   logger: BenchmarkLogger = console,
 ): number {
+  return runSuiteCli(
+    arguments_,
+    (options) =>
+      runBenchmark(engine, generateBenchmarkFixtures(), {
+        collectGarbageBetweenSamples: options.gated,
+        mode: options.mode,
+        stages,
+        suite,
+        thresholdScale: options.thresholdScale,
+      }),
+    formatBenchmarkReport,
+    logger,
+  );
+}
+
+/**
+ * Parses the shared arguments, runs a suite, and prints its report as text or `--json`. Returns
+ * the process exit code: 1 for a failed gate with `--gated`, 2 for an error.
+ */
+export function runSuiteCli<TFixture>(
+  arguments_: readonly string[],
+  run: (options: BenchmarkCliOptions) => BenchmarkReport<TFixture>,
+  format: (report: BenchmarkReport<TFixture>) => string,
+  logger: BenchmarkLogger = console,
+): number {
   try {
     const options = parseOptions(arguments_);
-    const report = runBenchmark(engine, generateBenchmarkFixtures(), {
-      collectGarbageBetweenSamples: options.gated,
-      mode: options.mode,
-      stages,
-      suite,
-      thresholdScale: options.thresholdScale,
-    });
-    logger.log(options.json ? JSON.stringify(report, null, 2) : formatBenchmarkReport(report));
+    const report = run(options);
+    logger.log(options.json ? JSON.stringify(report, null, 2) : format(report));
     return benchmarkExitCode(report, options.gated);
   } catch (error) {
     logger.error(error instanceof Error ? error.message : String(error));

@@ -4,5 +4,5 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "types": ["node"]
   },
-  "include": ["core", "react", "shared", "tests", "run.ts", "vite.config.ts"]
+  "include": ["core", "react", "recurrence", "shared", "tests", "run.ts", "vite.config.ts"]
 }
