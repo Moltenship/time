@@ -2,7 +2,16 @@
   "name": "@moltenship/calendar-temporal",
   "version": "0.0.0",
   "description": "Framework-independent Temporal utilities for Moltenship Time.",
+  "homepage": "https://moltenship-time.vercel.app/docs/api/temporal",
+  "bugs": {
+    "url": "https://github.com/Moltenship/time/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moltenship/time.git",
+    "directory": "packages/calendar-temporal"
+  },
   "files": [
     "dist"
   ],

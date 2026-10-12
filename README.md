@@ -118,3 +118,7 @@ vp run ready     # everything CI runs
 - [`docs/internal`](./docs/internal) has contributor notes: quality gates, package layout,
   benchmarks, and verification records.
 - Planned work is tracked in [GitHub issues](https://github.com/Moltenship/time/issues).
+
+## License
+
+[MIT](./LICENSE)

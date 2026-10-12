@@ -2,7 +2,16 @@
   "name": "@moltenship/calendar-recurrence",
   "version": "0.0.0",
   "description": "Range-bounded recurrence for Moltenship Time: RRULE expansion, exceptions and series edits.",
+  "homepage": "https://moltenship-time.vercel.app/docs/api/recurrence",
+  "bugs": {
+    "url": "https://github.com/Moltenship/time/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moltenship/time.git",
+    "directory": "packages/calendar-recurrence"
+  },
   "files": [
     "dist"
   ],

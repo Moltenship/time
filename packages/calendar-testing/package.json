@@ -1,8 +1,18 @@
 {
   "name": "@moltenship/calendar-testing",
   "version": "0.0.0",
+  "private": true,
   "description": "Consumer-facing fixtures, harnesses, and semantic assertions for Moltenship Time.",
+  "homepage": "https://moltenship-time.vercel.app/docs",
+  "bugs": {
+    "url": "https://github.com/Moltenship/time/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moltenship/time.git",
+    "directory": "packages/calendar-testing"
+  },
   "files": [
     "dist"
   ],

@@ -2,7 +2,16 @@
   "name": "@moltenship/calendar",
   "version": "0.0.0",
   "description": "DX-first supported facade for Moltenship Time.",
+  "homepage": "https://moltenship-time.vercel.app/docs",
+  "bugs": {
+    "url": "https://github.com/Moltenship/time/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moltenship/time.git",
+    "directory": "packages/calendar"
+  },
   "files": [
     "dist"
   ],

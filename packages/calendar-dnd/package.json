@@ -2,7 +2,16 @@
   "name": "@moltenship/calendar-dnd",
   "version": "0.0.0",
   "description": "Pointer drag, resize, and create interactions for Moltenship Time views.",
+  "homepage": "https://moltenship-time.vercel.app/docs",
+  "bugs": {
+    "url": "https://github.com/Moltenship/time/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moltenship/time.git",
+    "directory": "packages/calendar-dnd"
+  },
   "files": [
     "dist"
   ],
