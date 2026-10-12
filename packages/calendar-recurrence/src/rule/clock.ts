@@ -60,13 +60,14 @@ export class WallClock {
 
 /**
  * How far wall times near `instant` can sit from its own wall time and still resolve to the
- * other side of it: the size of an offset change in the two days before it. A time in a gap that
- * moved forward past `instant`, or a repeated time that resolved to its first instant, is that far
- * off at most.
+ * other side of it: the size of an offset change in the two days up to it, itself included. A time
+ * in a gap that moved forward past `instant`, or a repeated time that resolved to its first
+ * instant, is that far off at most.
  */
 export function offsetChangeBefore(instant: Temporal.Instant, timeZone: string): number {
   const zoned = instant.toZonedDateTimeISO(timeZone);
-  const previous = zoned.getTimeZoneTransition("previous");
+  // "previous" leaves out a change at the instant itself.
+  const previous = zoned.add({ nanoseconds: 1 }).getTimeZoneTransition("previous");
   if (previous === null || zoned.epochMilliseconds - previous.epochMilliseconds > MARGIN * 1000) {
     return 0;
   }

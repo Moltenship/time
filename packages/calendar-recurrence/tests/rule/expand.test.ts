@@ -217,6 +217,15 @@ describe("BYMONTHDAY", () => {
     ]);
   });
 
+  test("limits the start's weekday in a WEEKLY rule, where RFC 5545 doesn't define it", () => {
+    expect(expand("FREQ=WEEKLY;BYMONTHDAY=13;COUNT=4", allDay("2026-02-13"))).toEqual([
+      "2026-02-13",
+      "2026-03-13",
+      "2026-11-13",
+      "2027-08-13",
+    ]);
+  });
+
   test("skips months without the day rather than clamping", () => {
     expect(expand("FREQ=MONTHLY;COUNT=4", allDay("2026-01-31"))).toEqual([
       "2026-01-31",

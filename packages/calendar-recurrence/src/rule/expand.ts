@@ -155,20 +155,19 @@ export function expandRecurrenceRule(
   const before = beforeBound === undefined ? undefined : ceilSeconds(beforeBound);
   const last = untilBound === undefined ? undefined : floorSeconds(untilBound);
 
-  // The latest wall time that can still resolve inside UNTIL and `before`.
+  // The latest wall time that can still resolve inside UNTIL and `before`: that of the last time
+  // they allow, later by an offset change that a repeated time could resolve back across.
   let lastWall = Number.POSITIVE_INFINITY;
-  for (const [date, time] of [
-    [until, last],
-    [window.before, before === undefined ? undefined : before - 1],
-  ] as const) {
-    if (date === undefined || time === undefined) continue;
+  for (const time of [last, before === undefined ? undefined : before - 1]) {
+    if (time === undefined) continue;
+    if (timeZone === undefined) {
+      lastWall = Math.min(lastWall, time);
+      continue;
+    }
+    const instant = Temporal.Instant.fromEpochMilliseconds(time * 1000);
     lastWall = Math.min(
       lastWall,
-      timeZone === undefined
-        ? time
-        : wallSeconds((date as Temporal.Instant).toZonedDateTimeISO(timeZone)) +
-            offsetChangeBefore(date as Temporal.Instant, timeZone) +
-            1,
+      wallSeconds(instant.toZonedDateTimeISO(timeZone)) + offsetChangeBefore(instant, timeZone),
     );
   }
 
