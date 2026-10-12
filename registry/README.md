@@ -53,8 +53,8 @@ The build:
    shadcn rewrites to the consumer's aliases: `@registry/ui/button` becomes
    `@/components/ui/button`, and `@registry/calendar/event-chip` becomes the import for its target,
    `@/components/calendar/event-chip`;
-3. writes a `registry.json` with versioned dependencies, URL registry dependencies, and each
-   item's `meta.compatibility`, the `@moltenship/calendar` range its whole install needs;
+3. writes a `registry.json` with a range on our runtime dependency, URL registry dependencies,
+   and each item's `meta.compatibility`, the `@moltenship/calendar` range its whole install needs;
 4. runs `shadcn build`, then writes `compatibility.json` beside the items: each item's URL,
    runtime range, packages, items, components and targets, and the workspace versions they were
    built against. Release tooling reads it instead of parsing shadcn items.

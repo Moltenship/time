@@ -106,8 +106,8 @@ async function replaceOutput(built: string, outDir: string): Promise<void> {
 
 /**
  * Builds the registry with the official `shadcn build`: stages the source with consumer imports,
- * writes a `registry.json` with versioned dependencies and URL registry dependencies, builds the
- * item JSON into `outDir`, and writes `compatibility.json` beside it.
+ * writes a `registry.json` with a range on our runtime and URL registry dependencies, builds the
+ * item JSON and `compatibility.json` into a temporary folder, then moves them into `outDir`.
  */
 export async function buildRegistry({
   workspaceRoot,

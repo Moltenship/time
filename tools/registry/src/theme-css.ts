@@ -40,7 +40,10 @@ function declarationsOf(container: Container<ChildNode>, where: string): Declara
   for (const node of container.nodes ?? []) {
     if (node.type === "comment") continue;
     if (node.type !== "decl") throw new Error(`${where}: expected only declarations`);
-    if (node.important) throw new Error(`${where}: ${node.prop} is !important, which shadcn drops`);
+    if (node.important)
+      throw new Error(
+        `${where}: ${node.prop} is !important, which this converter doesn't carry over`,
+      );
     setOnce(declarations, node.prop, compact(node.value), where);
   }
   return declarations;

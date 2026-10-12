@@ -75,10 +75,10 @@ drag-and-drop library, and each range holds for the workspace versions. `vp run 
 must fail.
 
 `vp run registry:e2e` is the full-tier install test. It needs the network for npm and shadcn's own
-components, takes 15 to 35 seconds once the pnpm store is warm, and isn't part of `ready`. It makes clean Vite and Next.js apps
-with `shadcn init`, runs `shadcn add <url>/calendar-full.json` against the registry served from a
-local server, checks the files, aliases, package.json and installed runtime, then typechecks and
-builds both apps. The runtime packages come from the workspace, packed and served from a local npm
+components, takes 15 to 35 seconds once the pnpm store is warm, and isn't part of `ready`. It
+makes clean Vite and Next.js apps with `shadcn init`, runs `shadcn add <url>/calendar-full.json`
+against the registry served from a local server, checks the files, aliases, package.json and
+installed runtime, then typechecks and builds both apps. The runtime packages come from the workspace, packed and served from a local npm
 registry for the `@moltenship` scope, until `REGISTRY_E2E_PACKAGES=npm` switches the test to the
 published ones. `registry/README.md` lists its other switches.
 
