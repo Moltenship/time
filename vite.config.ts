@@ -46,12 +46,14 @@ export default defineConfig({
         cache: false,
         dependsOn: ["registry:smoke", "a11y", "a11y:ci-speed", "browsers", "gate:serial:full"],
       },
+      // release:check reads the packages ci:build wrote and packs them, so it runs right after.
       "gate:serial":
-        "vp run showcase:links && vp run ci:check && vp run ci:build && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
-      // `ci:build` has built the docs site, so search checks that build. The registry's install
-      // test packs the packages and installs them into clean apps; it needs the network.
+        "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
+      // `ci:build` has built the docs site, so search checks that build. The release dry run
+      // rebuilds and packs every published package and installs them offline into a clean
+      // project. The registry's install test installs into clean apps; it needs the network.
       "gate:serial:full":
-        "vp run gate:serial && vp run showcase:types && vp run showcase#search:check && vp run registry:e2e",
+        "vp run gate:serial && vp run release:dry-run && vp run showcase:types && vp run showcase#search:check && vp run registry:e2e",
       "ci:check": "vp check",
       "ci:test": "vp test",
       "ci:build": "vp run -r build",
@@ -59,8 +61,7 @@ export default defineConfig({
       "registry:smoke": "vp run registry#smoke",
       "registry:build": "vp run registry#site",
       "registry:e2e": "vp run registry#e2e",
-      // Release checks (docs/internal/releasing.md). size, api and exports read the built packages,
-      // so release:check runs after ci:build.
+      // Release checks (docs/internal/releasing.md). release:check is the PR tier's part.
       "release:check": ["vp run release:size", "vp run release:api", "vp run release:exports"],
       "release:size": "vp run release#size",
       "release:api": "vp run release#api",

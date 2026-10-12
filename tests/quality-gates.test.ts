@@ -35,6 +35,7 @@ const tasks = (config.run?.tasks ?? {}) as Record<string, Task>;
 const prGates = [
   "ci:check",
   "ci:build",
+  "release:check",
   "ci:test",
   "react:gate",
   "ssr:smoke",
@@ -150,6 +151,7 @@ describe("CI quality gate contract", () => {
         "showcase:types",
         "showcase#search:check",
         "registry:e2e",
+        "release:dry-run",
       ]),
     );
   });

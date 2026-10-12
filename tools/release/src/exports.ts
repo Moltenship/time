@@ -7,7 +7,7 @@ import { formatMessage } from "publint/utils";
 
 import { facadePackage, optionalAdapters } from "./config";
 import { withPackedPackages, type PackedTarball } from "./pack";
-import { runMain } from "./workspace";
+import { parseArguments, runMain } from "./workspace";
 
 /** The packages are ESM-only, so only the ESM resolutions count, like attw's `esm-only` profile. */
 const esmResolutionKinds = ["node16-esm", "bundler"] as const;
@@ -84,6 +84,7 @@ export async function checkTarballs(tarballs: readonly PackedTarball[]): Promise
 }
 
 runMain(import.meta, async () => {
+  parseArguments(process.argv.slice(2));
   await withPackedPackages(checkTarballs);
   console.log(
     "Export checks passed: publint, are-the-types-wrong (ESM), LICENSE, no adapter in base packages.",

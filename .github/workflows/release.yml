@@ -54,7 +54,7 @@ jobs:
         run: vp exec --filter a11y playwright install --with-deps --only-shell chromium
 
       - name: Release gate
-        run: vp run ready
+        run: vp run ready:full
 
       - name: Dry run
         env:

@@ -152,6 +152,7 @@ describe("the publish guard", () => {
     expect(() => parse(["--tag"])).toThrow("--tag needs a value");
     expect(() => parse(["--tag", "--yes"])).toThrow("--tag needs a value");
     expect(() => parse(["--dry-run", "--yes"])).toThrow("Unknown option --dry-run");
+    expect(() => parse(["1.0.0-rc.1"])).toThrow("Unexpected argument 1.0.0-rc.1");
     expect(parse(["--yes", "--tag", "next"]).flags).toEqual(
       new Map<string, string | true>([
         ["yes", true],
@@ -168,7 +169,7 @@ describe("the dry run", () => {
     try {
       await writeManifest(manifest, manifestFile);
 
-      // The packages are at 0.0.0, so the versions step fails before anything builds.
+      // The packages aren't at 9.9.9, so the versions step fails before anything builds.
       await expect(dryRun({ version: "9.9.9", manifestFile })).rejects.toThrow("not 9.9.9");
       expect(await readManifest(manifestFile)).toBeUndefined();
     } finally {

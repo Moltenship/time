@@ -6,7 +6,14 @@ import { satisfies } from "semver";
 import { facadePackage, releaseDirectory } from "./config";
 import { manifestPath, readManifest, tarballIntegrity } from "./manifest";
 import { integrityOf, tarballDirectory, type PackedTarball } from "./pack";
-import { gitState, readJson, runMain, runOrThrow, workspaceRoot } from "./workspace";
+import {
+  gitState,
+  parseArguments,
+  readJson,
+  runMain,
+  runOrThrow,
+  workspaceRoot,
+} from "./workspace";
 
 export const registryDirectory = join(workspaceRoot, releaseDirectory, "registry");
 
@@ -127,4 +134,7 @@ export async function registryInstallTest(): Promise<void> {
   });
 }
 
-runMain(import.meta, registryInstallTest);
+runMain(import.meta, async () => {
+  parseArguments(process.argv.slice(2));
+  await registryInstallTest();
+});

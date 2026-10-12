@@ -155,12 +155,14 @@ export async function isOnMain(commit: string, root = workspaceRoot): Promise<bo
 /**
  * Parses `--flag value`, `--flag=value` and boolean `--flag` arguments, with the rest as
  * positionals. Any flag that is neither a boolean nor one of `strings` is an error, and so is a
- * string flag without a value, so a typo such as `--dry-run` can't be silently ignored.
+ * string flag without a value or a positional where none is taken, so a typo such as `--dry-run`
+ * can't be silently ignored.
  */
 export function parseArguments(
   argv: readonly string[],
   booleans: readonly string[] = [],
   strings: readonly string[] = [],
+  { positionals: allowPositionals = false } = {},
 ) {
   const flags = new Map<string, string | true>();
   const positionals: string[] = [];
@@ -168,6 +170,7 @@ export function parseArguments(
     const argument = argv[index]!;
     if (argument === "--") continue;
     if (!argument.startsWith("--")) {
+      if (!allowPositionals) throw new Error(`Unexpected argument ${argument}`);
       positionals.push(argument);
       continue;
     }

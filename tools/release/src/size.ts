@@ -84,7 +84,7 @@ export async function checkSizes(packages: readonly WorkspacePackage[]): Promise
 
 runMain(import.meta, async () => {
   // Directory names narrow the check, as engine:build does for the two engine packages.
-  const { positionals } = parseArguments(process.argv.slice(2));
+  const { positionals } = parseArguments(process.argv.slice(2), [], [], { positionals: true });
   const unknown = positionals.filter(
     (name) => !publishedPackages.some(({ directory }) => directory === name),
   );

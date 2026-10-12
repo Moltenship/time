@@ -62,7 +62,7 @@ describe("release workflow contract", () => {
     expect(runs(verify)).toEqual([
       "vp install --frozen-lockfile",
       "vp exec --filter a11y playwright install --with-deps --only-shell chromium",
-      "vp run ready",
+      "vp run ready:full",
       'vp run release:dry-run --version "$VERSION" --require-clean',
       "vp run release:registry-e2e",
     ]);

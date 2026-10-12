@@ -12,8 +12,9 @@ Seven packages publish under `@moltenship`, listed in
 
 Each check is a `vp run` task. The same tasks run locally, in CI and in the release workflow. The
 tier says where a check belongs in the local gate: PR checks are cheap enough for every PR, and the
-full tier is the release gate. `vp run release:check` runs the three PR checks, about two seconds,
-and `vp run ready` and CI run it after `ci:build`. #47 owns the tiers and may move these tasks.
+full tier is the release gate. `vp run release:check` runs the three PR checks in about two seconds.
+It sits in the `gate:serial` lane right after `ci:build`, so `vp run ready` and CI run it. The full
+tier, `vp run ready:full`, also runs `vp run release:dry-run`.
 
 | Task | What it checks | Tier |
 | --- | --- | --- |
@@ -45,8 +46,10 @@ records that in the manifest, which the publish step then refuses; releases pass
    - **GitHub Actions.** Actions → Release → Run workflow, on `main`, with the version. Leave
      "Publish to npm" off for a rehearsal, and rehearse at least once before the first real
      release: the clean-consumer and registry install tests haven't run on GitHub's runners yet.
-     The `verify` job runs `vp run ready`, `vp run release:dry-run --version <v> --require-clean`
-     and `vp run release:registry-e2e`, then keeps `.release/` as an artifact. With publishing
+     The `verify` job runs `vp run ready:full`, then
+     `vp run release:dry-run --version <v> --require-clean` and `vp run release:registry-e2e`, and
+     keeps `.release/` as the `release` artifact for seven days. A rehearsal before the version PR
+     uses version `0.0.0`. With publishing
      on, the `publish` job downloads it and runs
      `vp run release:publish --version <v> --provenance --yes` on the same commit. Only that job
      can mint the OIDC token that signs npm provenance.
@@ -64,7 +67,7 @@ records that in the manifest, which the publish step then refuses; releases pass
      ```sh
      vp install --frozen-lockfile
      vp exec --filter a11y playwright install chromium   # once, for the a11y gate
-     vp run ready
+     vp run ready:full                # the release gate; needs the network
      vp run release:dry-run --version 1.0.0-rc.1 --require-clean
      vp run release:registry-e2e      # needs the network
      export NODE_AUTH_TOKEN=<token>   # or npm login
@@ -77,8 +80,9 @@ records that in the manifest, which the publish step then refuses; releases pass
 4. **After publishing.** Tag the commit (`v1.0.0-rc.1`), push the tag, and write a GitHub release
    from the changelog section. These steps aren't automated yet. After the first publish, check
    that `vp pm view @moltenship/calendar-core@<v> dist.integrity` matches the package's
-   `integrity` in `.release/manifest.json`: the skip-on-re-run check relies on npm storing the
-   tarball unchanged.
+   `integrity` in `.release/manifest.json` (on the Actions path, in the run's `release` artifact).
+   A re-run can only skip packages npm stored unchanged; if they differ, deprecate and release a
+   new version.
 
 ## What the publish step checks
 
