@@ -265,7 +265,7 @@ export function App() {
           />
           <div className="flex min-h-0 flex-1">
             <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
-            <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:overflow-hidden lg:rounded-xl lg:border lg:bg-card lg:[--calendar-surface:var(--card)]">
+            <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:overflow-clip lg:rounded-xl lg:border lg:bg-card lg:[--calendar-surface:var(--card)]">
               <DemoCalendar.Viewport
                 ref={viewportRef}
                 className="h-full"

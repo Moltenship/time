@@ -15,7 +15,7 @@ calendar.
 
 | Variable                      | Used for                                  | Tailwind class                   |
 | ----------------------------- | ----------------------------------------- | -------------------------------- |
-| `--calendar-surface`          | Behind sticky headers and gutters         | `bg-calendar-surface`            |
+| `--calendar-surface`          | Behind sticky headers, between events     | `bg-calendar-surface`            |
 | `--calendar-grid`             | Lines between days and hours              | `border-calendar-grid`           |
 | `--calendar-axis`             | Hour and weekday labels                   | `text-calendar-axis`             |
 | `--calendar-today`            | Today's date marker                       | `bg-calendar-today`              |
@@ -49,6 +49,14 @@ Every token is declared inside `@layer base`, so a plain rule in your own CSS wi
 ```
 
 If your app already defines the shadcn tokens, the calendar follows them automatically.
+
+`--calendar-surface` is unset by default and falls back to `--background`. Set it on the
+calendar's container when that container has its own background, such as a card, so sticky
+headers and gutters match it:
+
+```tsx
+<main className="bg-card [--calendar-surface:var(--card)]">
+```
 
 ## Dark mode
 

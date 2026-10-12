@@ -151,7 +151,7 @@ export function TimeGridEvent<TEvent>({
             className={cn(
               // Raised while hovered, and above that while focused, so a stacked event's title shows
               // over the ones covering it, wherever the pointer rests.
-              "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--background)] hover:z-10 focus:z-20 focus-visible:z-20",
+              "group absolute flex-col items-stretch gap-0 px-1.5 shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20",
               compact ? "flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" : "py-1",
               startsBeforeDay && "rounded-t-none",
               endsAfterDay && "rounded-b-none",

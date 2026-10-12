@@ -34,7 +34,11 @@
   --radius-3xl: calc(var(--radius) * 2.2);
   --radius-4xl: calc(var(--radius) * 2.6);
 
-  --color-calendar-surface: var(--calendar-surface);
+  /*
+   * What the calendar sits on, behind sticky headers and gutters and between overlapping events.
+   * Unset, it is `--background` wherever it is used, so it follows a nested `.dark` too.
+   */
+  --color-calendar-surface: var(--calendar-surface, var(--background));
   --color-calendar-grid: var(--calendar-grid);
   --color-calendar-axis: var(--calendar-axis);
   --color-calendar-today: var(--calendar-today);
@@ -76,11 +80,6 @@
     /* Stronger than shadcn's default in both themes, so even a `ring-ring/50` halo reaches 3:1. */
     --ring: oklch(0.25 0 0);
 
-    /*
-     * What the calendar sits on. Sticky headers and gutters paint it to hide what scrolls under
-     * them, so set it to the container's colour when that isn't `--background`, such as a card.
-     */
-    --calendar-surface: var(--background);
     --calendar-grid: var(--border);
     --calendar-axis: var(--muted-foreground);
     --calendar-today: oklch(0.52 0.215 262.9);
