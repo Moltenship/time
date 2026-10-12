@@ -4,3 +4,175 @@ description: Parse a Google, Outlook or iCloud feed on the server and show its e
 ---
 
 <IcsFeedPreview />
+
+These events come from an ICS feed, the iCalendar text that Google Calendar, Outlook and iCloud
+publish. The feed was written for this week, parsed in your browser with `@moltenship/ics`, and
+shown in your time zone. Each title says where its time came from: a New York time zone, an Outlook
+zone name, UTC, a date, or a floating time with no zone at all. Open the source to compare.
+
+This guide does the same in a Next.js app: the server fetches and parses the feed, and the browser
+shows it. The [Next.js guide](/docs/guides/nextjs) covers the rules for server rendering that apply
+here too.
+
+## Install
+
+The parser is a separate package. It reads iCalendar text into Temporal values and doesn't depend
+on the calendar, so it works on its own too.
+
+<Callout type="warn" title="Not on npm yet">
+  Like the calendar, `@moltenship/ics` hasn't been published. The commands below are what you'll run
+  after the first release.
+</Callout>
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/ics
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/ics
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/ics
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/ics
+```
+
+</Tab>
+</Tabs>
+
+It needs `Temporal`, as the calendar does: Node.js 26 has it, and the browser may need the
+[polyfill](/docs/installation#temporal).
+
+## Fetch and parse on the server
+
+A Server Component fetches the feed, parses it with `parseIcs`, and maps the events to plain JSON
+for the client:
+
+<include meta='title="page.tsx"'>../../examples/feed-page.tsx#page</include>
+
+- **Caching.** Feeds change slowly, and providers limit how often you fetch them. `"use cache"`
+  with `cacheLife("hours")` keeps the result for an hour. The time zone is an argument, so each
+  time zone gets its own entry. Without
+  [Cache Components](https://nextjs.org/docs/app/getting-started/caching), pass
+  `{ next: { revalidate: 3600 } }` to `fetch` instead.
+- **Issues.** `parseIcs` doesn't throw on bad data. It keeps what it can and lists each problem in
+  `issues`, with its line. The page logs them; see [Issues](#issues) for more.
+- **The current time.** `connection()` renders the page on each request, so `now` is today rather
+  than the day you built the app.
+
+Temporal values can't cross from a Server Component to a Client Component, so `toFeedEvents` returns
+ISO 8601 strings. The client turns them back into Temporal values:
+
+<include meta='title="feed-calendar.tsx"'>../../examples/feed-calendar.tsx#client</include>
+
+## Map ICS events to calendar events
+
+ICS writes times in five ways, and the parser keeps them apart as `start.kind`. `toFeedEvent` turns
+each into an event the calendar can show:
+
+<include meta='title="feed-events.ts"'>../../examples/feed-events.ts#map</include>
+
+| `kind`       | Written as                     | Shown as                                              |
+| ------------ | ------------------------------ | ----------------------------------------------------- |
+| `utc`        | `DTSTART:20261012T090000Z`     | A timed event at that instant                         |
+| `zoned`      | `DTSTART;TZID=Europe/Berlin:…` | A timed event at `zoned.toInstant()`                  |
+| `date`       | `DTSTART;VALUE=DATE:20261012`  | An all-day event                                      |
+| `floating`   | `DTSTART:20261012T090000`      | A timed event at that wall time, in a zone you choose |
+| `unresolved` | `DTSTART;TZID=Our Office:…`    | The same as floating                                  |
+
+- **Floating times** have a clock time and no zone. A feed's `X-WR-TIMEZONE`, which Google adds,
+  says which zone the publisher meant, and the parser gives it to you as `calendar.timeZone`.
+  `feedTimeZone` uses it, and the viewer's time zone when the feed has none. The preview's feed has
+  none, so its focus time shows at the same clock time wherever you are.
+- **The end.** `getEventEnd` returns DTEND, else DTSTART plus DURATION, else the RFC's default: the
+  next day for a date, the start itself for a time. It's always the same kind as the start.
+- **No length.** ICS lets an event end when it starts, but a calendar event's end must come after
+  its start, so those events show as half an hour long, or one day for a date.
+- **Cancelled events.** Feeds keep a cancelled event, with `STATUS:CANCELLED`, so that subscribers
+  can remove it. `toFeedEvent` skips it.
+- **Colors.** Events marked free (`TRANSP:TRANSPARENT`) or tentative are gray, the rest blue. Change
+  the rule to suit your app, or color each feed differently.
+
+## Recurring events
+
+The parser reads recurrence but doesn't expand it yet. A series is one event with its rule in
+`recurrenceRule`, the occurrences it removes in `exceptionDates`, and extra ones in
+`recurrenceDates`. A change to one occurrence is a separate event with the series' UID and a
+`recurrenceId` that names the occurrence it replaces. Expanding rules into occurrences comes with
+the recurrence package ([#48](https://github.com/Moltenship/time/issues/48)).
+
+So the mapping above shows:
+
+- **A recurring event once,** at its DTSTART, which is the first occurrence. The rest of the series
+  doesn't appear, and the first occurrence shows even if `exceptionDates` removes it.
+- **A changed occurrence as its own event,** at its new time. If it changes the first occurrence,
+  both appear.
+
+Until then, if your feeds repeat, expand each series on the server before you map it, with an RRULE
+library or your own code over `recurrenceRule`. Leave out the dates in `exceptionDates`, add those in
+`recurrenceDates`, and use a changed occurrence in place of the one its `recurrenceId` names. If
+that's more than you need, check `event.recurrenceRule !== undefined` and tell people that the
+series continues.
+
+## Time zones
+
+A TZID is a name the file chooses, and the parser maps it to a time zone Temporal knows: an IANA
+name such as `America/New_York`, a Windows or Outlook name such as `W. Europe Standard Time`, the
+file's own VTIMEZONE, and a few more. A TZID that matches none of them isn't guessed. The time
+stays `unresolved`, with its wall time and TZID, and `issues` gets an `unknown-time-zone` warning.
+The mapping above then reads it in the zone you chose, like a floating time.
+
+If you know what a feed's own names mean, say so with `resolveTimeZone`. The parser asks it first;
+`undefined` falls through to the built-in rules:
+
+```ts
+const { calendars, issues } = parseIcs(text, {
+  resolveTimeZone: (tzid) => (tzid === "Our Office" ? "Europe/Lisbon" : undefined),
+});
+```
+
+The [API reference](/docs/api/ics) lists every rule, in order.
+
+## Issues
+
+Each issue has a `severity`, a `code`, a `message` and, when it comes from one, a `line`. An error
+drops what it concerns, such as an event without DTSTART. A warning keeps a best-effort value.
+
+Feeds you subscribe to break the rules more often than you'd think, so keep showing what parsed.
+Log the issues, as the page does, and if people should know, pass a count of the errors to the
+client and show it beside the calendar, such as "2 events couldn't be read".
+
+Files that people upload are different: tell them what's wrong instead. `strict: true` throws an
+`IcsParseError` with the errors in `issues`:
+
+```ts
+import { IcsParseError, parseIcs } from "@moltenship/ics";
+
+function readUpload(text: string) {
+  try {
+    return { calendars: parseIcs(text, { strict: true }).calendars };
+  } catch (error) {
+    if (!(error instanceof IcsParseError)) throw error;
+    return { errors: error.issues.map((issue) => `Line ${issue.line ?? "?"}: ${issue.message}`) };
+  }
+}
+```
+
+A parser from `createIcsParser` is also a [Standard Schema](https://standardschema.dev), so a form
+or router library that takes one can validate the upload. The [API reference](/docs/api/ics) covers
+both.

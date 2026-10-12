@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 
 /** Static stand-in that fills the frame while Temporal and the calendar load in the browser. */
-function PreviewSkeleton() {
+export function PreviewSkeleton() {
   return (
     <div aria-busy="true" aria-label="Loading calendar" className="flex h-full flex-col">
       <div className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
@@ -15,7 +15,7 @@ function PreviewSkeleton() {
   );
 }
 
-async function withTemporal<TModule>(load: () => Promise<TModule>): Promise<TModule> {
+export async function withTemporal<TModule>(load: () => Promise<TModule>): Promise<TModule> {
   // Chrome and Firefox ship Temporal natively; only load the polyfill where it is missing.
   if (!("Temporal" in globalThis)) await import("temporal-polyfill/global");
   // Imported after the polyfill so no calendar module evaluates without Temporal.

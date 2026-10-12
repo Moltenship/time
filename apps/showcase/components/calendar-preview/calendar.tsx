@@ -180,18 +180,24 @@ function Sidebar({ today }: { readonly today: Temporal.PlainDate }) {
   );
 }
 
+/** Events from another preview, such as a parsed ICS feed, in place of the seeded ones. */
+export interface LiveCalendarEvents {
+  readonly events?: readonly PreviewEvent[];
+}
+
 /** The registry views over seeded events in the visitor's time zone; edits stay in memory. */
 export default function LiveCalendar({
   annotations = false,
   announcements = false,
   availability = false,
+  events: givenEvents,
   longRange = false,
   sidebar = false,
   switcher = false,
   view,
-}: LiveCalendarProps) {
+}: LiveCalendarProps & LiveCalendarEvents) {
   const [now] = useState(() => Temporal.Now.zonedDateTimeISO());
-  const [seeded, setSeeded] = useState(() => createPreviewEvents(now));
+  const [seeded, setSeeded] = useState(() => givenEvents ?? createPreviewEvents(now));
   const fetched = useLongRangeEvents(now);
   const [events, setEvents] = longRange ? [fetched.events, fetched.setEvents] : [seeded, setSeeded];
   const [sampleAnnotations] = useState(() => (annotations ? createPreviewAnnotations(now) : []));
