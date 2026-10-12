@@ -9,6 +9,7 @@ const config = {
     "@moltenship/calendar",
     "@moltenship/calendar-core",
     "@moltenship/calendar-react",
+    "@moltenship/calendar-recurrence",
     "@moltenship/calendar-temporal",
     "@moltenship/ics",
   ],
