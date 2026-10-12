@@ -1,4 +1,4 @@
-import type { CalendarEventInterval, CalendarEventPlacement } from "@moltenship/calendar-core";
+import type { CalendarEventInterval } from "@moltenship/calendar-core";
 
 import type { RecurrenceDate } from "../types";
 
@@ -83,30 +83,6 @@ export function fromWall(wall: Temporal.PlainDateTime, time: SeriesTime): Recurr
     case "floating":
       return wall;
   }
-}
-
-/** The placement starting at `start` that lasts as long as `like`, in `like`'s kind. */
-export function placementAt<TResourceId extends string | number>(
-  start: RecurrenceDate,
-  like: CalendarEventPlacement<TResourceId>,
-  resourceIds: readonly TResourceId[],
-): CalendarEventPlacement<TResourceId> {
-  if (like.kind === "timed" && start instanceof Temporal.Instant) {
-    return {
-      end: start.add(like.start.until(like.end)),
-      kind: "timed",
-      resourceIds,
-      ...(like.sourceTimeZone === undefined ? {} : { sourceTimeZone: like.sourceTimeZone }),
-      start,
-    };
-  }
-  if (like.kind === "all-day" && start instanceof Temporal.PlainDate) {
-    return { end: start.add(like.start.until(like.end)), kind: "all-day", resourceIds, start };
-  }
-  if (like.kind === "floating" && start instanceof Temporal.PlainDateTime) {
-    return { end: start.add(like.start.until(like.end)), kind: "floating", resourceIds, start };
-  }
-  throw new RangeError("A placement's start must match its kind.");
 }
 
 /** Same members, in any order. */

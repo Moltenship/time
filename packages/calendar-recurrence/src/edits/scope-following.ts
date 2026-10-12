@@ -61,7 +61,8 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
   });
 
   // The rule's starts up to the occurrence, excluded ones included: they count toward COUNT.
-  let starts: readonly RecurrenceDate[] = [series.first.start];
+  let starts: readonly RecurrenceDate[] =
+    compareDates(series.first.start, recurrenceId) < 0 ? [series.first.start] : [];
   if (rule !== undefined) {
     try {
       const expansion = expandRecurrenceRule(rule, ruleStart(series), {
@@ -77,6 +78,11 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
     }
   } else if (!isExtra) {
     return reject("unknown-occurrence", "The series doesn't have this occurrence.");
+  } else if (starts.length === 0) {
+    return reject(
+      "extra-occurrence",
+      "The first occurrence always happens, so an extra date before it can't end the series.",
+    );
   }
   // An occurrence only an RDATE adds can end the series, but the rule can't continue from it.
   const last = starts.at(-1);
@@ -172,7 +178,7 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
   // The new series starts where the user's change puts the occurrence: where it was dropped, or,
   // for an override, its original start moved by the same change.
   const start = override === undefined ? proposed.start : fromWall(move.wallTo, move.to);
-  let shift = keyShift(series, move);
+  let shift = keyShift(series, move, { from: recurrenceId, to: start });
   let next: RecurrenceRule | undefined;
   if (rule !== undefined) {
     const shifted = shiftRule(rule, {
@@ -186,7 +192,6 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
     if (shifted.ordinals !== undefined) shift = { ...shift, ordinals: shifted.ordinals };
     const landed = landing(shift, recurrenceId, move);
     if (landed !== undefined) return landed;
-    shift = { ...shift, anchor: { from: recurrenceId, to: start } };
     next = {
       ...shifted.rule,
       ...(rule.count === undefined ? {} : { count: rule.count - count }),
@@ -196,7 +201,6 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
     };
   }
 
-  shift = { ...shift, anchor: { from: recurrenceId, to: start } };
   const { duration, placement } = seriesPlacement(
     start,
     series,

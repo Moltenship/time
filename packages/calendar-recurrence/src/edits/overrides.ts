@@ -23,6 +23,7 @@ export function recurrenceOverrideEdit<
 ): RecurrenceOverrideRekey {
   const { action, after, series, shift } = edit.otherOverrides;
   if (action === "keep" || shift === undefined) return keep;
+  if (action === "delete" && after === undefined) return { action: "delete" };
   const key = readKey(shift, recurrenceId, "start");
   if (key === undefined || datesEqual(key, edit.recurrenceId)) return keep;
   if (after !== undefined && compareDates(key, after) <= 0) return keep;

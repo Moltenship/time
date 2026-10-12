@@ -67,6 +67,10 @@ export interface Series<TEvent, TEventId extends EventId, TResourceId extends Re
 export interface Move {
   /** Calendar days its date moves. */
   readonly days: number;
+  /** The clock the occurrence showed on before the change. */
+  readonly from: SeriesTime;
+  /** The clock it shows on after it. */
+  readonly shown: SeriesTime;
   /** How far its time of day moves. */
   readonly time: Temporal.Duration;
   /** The kind and zone of the proposed placement, which the series takes. */
@@ -166,16 +170,15 @@ export function loadSeries<TEvent, TEventId extends EventId, TResourceId extends
   }
   // A stale `wallStart`, which no longer resolves to the first start, is ignored, as the engine
   // ignores it.
+  const declared = recurrence.wallStart?.withCalendar("iso8601");
   const written =
     first.kind === "timed" &&
-    recurrence.wallStart !== undefined &&
+    declared !== undefined &&
     datesEqual(
-      recurrence.wallStart
-        .toZonedDateTime(time.timeZone, { disambiguation: "compatible" })
-        .toInstant(),
+      declared.toZonedDateTime(time.timeZone, { disambiguation: "compatible" }).toInstant(),
       first.start,
     )
-      ? recurrence.wallStart
+      ? declared
       : undefined;
   const wallFirst = written ?? toWall(first.start, time);
   return {
@@ -251,11 +254,15 @@ export function measureMove(
             (series.time.kind === "timed" ? series.time.timeZone : defaultTimeZone),
         }
       : { kind: placement.kind, timeZone: defaultTimeZone };
-  const to = timeOf(proposed);
   const from = timeOf(original);
-  for (const { timeZone } of [to, from]) {
+  const shown = timeOf(proposed);
+  for (const { timeZone } of [from, shown]) {
     if (!isTimeZone(timeZone)) return reject("invalid-time-zone", `${timeZone} isn't a time zone.`);
   }
+  // The series takes a new kind or zone only when the change gives the occurrence one; an
+  // override in another zone or kind measures the change on its own clock.
+  const converts = from.kind !== shown.kind || from.timeZone !== shown.timeZone;
+  const to = converts ? shown : series.time;
 
   // Starts on the series' own clock read back to the time it repeats at, so one a DST gap moved
   // forward measures from the written time, as the occurrence's original start does.
@@ -267,19 +274,25 @@ export function measureMove(
       : toWall(date, time);
   const wallFrom = seriesWall(series.recurrenceId, clock);
   const shownFrom = read(original.start, from);
-  const shownTo = read(proposed.start, to);
+  const shownTo = read(proposed.start, shown);
 
   // The user's change, from where the occurrence showed to where it goes, applied to its original
-  // start: a moved override changes the series by what the user did, not to where it is.
+  // start: a moved override changes the series by what the user did, not to where it is. Days
+  // are all that carries between a date and a time, unless the series takes the dropped time.
   const days = shownFrom.toPlainDate().until(shownTo.toPlainDate()).days;
+  const onDay = wallFrom.toPlainDate().add({ days });
   const wallTo =
     to.kind === "all-day"
-      ? wallFrom.toPlainDate().add({ days }).toPlainDateTime()
-      : from.kind === "all-day"
-        ? wallFrom.toPlainDate().add({ days }).toPlainDateTime(shownTo.toPlainTime())
-        : wallFrom.add(shownFrom.until(shownTo));
+      ? onDay.toPlainDateTime()
+      : converts && from.kind === "all-day"
+        ? onDay.toPlainDateTime(shownTo.toPlainTime())
+        : from.kind === "all-day" || shown.kind === "all-day"
+          ? wallFrom.add({ days })
+          : wallFrom.add(shownFrom.until(shownTo));
   return {
     days: wallFrom.toPlainDate().until(wallTo.toPlainDate()).days,
+    from,
+    shown,
     time: wallFrom.toPlainTime().until(wallTo.toPlainTime()),
     to,
     wall: wallFrom.until(wallTo),
@@ -298,16 +311,17 @@ export function landing(
   recurrenceId: RecurrenceDate,
   move: Move,
 ): RecurrenceEditRejection | undefined {
-  const landed = targetWall({ ...shift, anchor: undefined }, recurrenceId);
+  const landed = targetWall({ ...shift, anchor: undefined }, recurrenceId, true);
   const same =
-    move.to.kind === "all-day"
+    landed !== undefined &&
+    (move.to.kind === "all-day"
       ? landed.toPlainDate().equals(move.wallTo.toPlainDate())
-      : landed.equals(move.wallTo);
+      : landed.equals(move.wallTo));
   return same
     ? undefined
     : reject(
         "rule-cannot-move",
-        `The moved rule puts this occurrence on ${landed.toPlainDate().toString()}, not ${move.wallTo.toPlainDate().toString()}.`,
+        `The moved rule doesn't put this occurrence on ${move.wallTo.toPlainDate().toString()}.`,
       );
 }
 
@@ -359,18 +373,29 @@ export function seriesPlacement<TResourceId extends ResourceId>(
   const resourceIds = sameResources(original.resourceIds, proposed.resourceIds)
     ? series.placement.resourceIds
     : proposed.resourceIds;
+  // The series keeps its own zone unless the change gave the occurrence a new one.
+  const ownZone = series.first.kind === "timed" ? series.first.sourceTimeZone : undefined;
   const sourceTimeZone =
-    (proposed.kind === "timed" ? proposed.sourceTimeZone : undefined) ??
-    (series.first.kind === "timed" ? series.first.sourceTimeZone : undefined);
+    to.kind === series.time.kind && to.timeZone === series.time.timeZone
+      ? ownZone
+      : ((proposed.kind === "timed" ? proposed.sourceTimeZone : undefined) ?? ownZone);
 
   const nominal = series.recurrence.duration !== undefined;
   const kept = to.kind === series.time.kind;
   const seriesLength = series.recurrence.duration ?? lengthOf(series.first, series.time, false);
-  const proposedLength = lengthOf(proposed, to, nominal);
+  const proposedLength = lengthOf(proposed, move.shown, nominal);
   let length = proposedLength;
   if (kept && change.cause === "move") length = seriesLength;
-  else if (kept && overridden && original.kind === proposed.kind) {
-    const changed = seriesLength.add(proposedLength).subtract(lengthOf(original, to, nominal));
+  else if (kept && overridden && original.kind === to.kind && proposed.kind === to.kind) {
+    // Lengths add on a wall clock, which takes DURATION's weeks and days as they are.
+    const reference = series.wallFirst;
+    const changed = reference.until(
+      reference
+        .add(seriesLength)
+        .add(proposedLength)
+        .subtract(lengthOf(original, move.from, nominal)),
+      { largestUnit: nominal || to.kind !== "timed" ? "days" : "hours" },
+    );
     if (changed.sign > 0) length = changed;
   }
 

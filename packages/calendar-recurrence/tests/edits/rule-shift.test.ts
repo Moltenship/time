@@ -82,13 +82,13 @@ describe("shiftRule", () => {
     expect(mapOrdinal(last.ordinals, Temporal.PlainDate.from("2027-10-31"))?.toString()).toBe(
       "2027-10-25",
     );
-    const fifth = shiftRule(
-      { byDay: [{ ordinal: 4, weekday: "TU" }], frequency: "MONTHLY" },
-      shift(7),
-    );
-    if ("problem" in fifth || fifth.ordinals === undefined) throw new Error("ordinals expected");
-    // October 2026 has no fifth Tuesday.
-    expect(mapOrdinal(fifth.ordinals, Temporal.PlainDate.from("2026-10-27"))).toBeNull();
+    // Not every month has a fifth Tuesday, so the 4th can't become one.
+    expect(
+      moved({ byDay: [{ ordinal: 4, weekday: "TU" }], frequency: "MONTHLY" }, shift(7)),
+    ).toHaveProperty("problem");
+    expect(
+      moved({ byDay: [{ ordinal: 5, weekday: "TU" }], frequency: "MONTHLY" }, shift(1)),
+    ).toHaveProperty("problem");
   });
 
   test("an ordinal that would leave the month can't move", () => {

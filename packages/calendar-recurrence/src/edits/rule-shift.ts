@@ -107,7 +107,8 @@ function shiftDays(rule: MutableRule, shift: RuleShift): ShiftedRule | string {
 
   const periodic = rule.frequency === "MONTHLY" || rule.frequency === "YEARLY";
   const period = rule.frequency === "MONTHLY" || rule.byMonth !== undefined ? "month" : "year";
-  const most = period === "month" ? 5 : 53;
+  // Every month has four of each weekday and every year 52, so only those move day for day.
+  const most = period === "month" ? 4 : 52;
   let problem: string | undefined;
   const ordinals: { from: IcsWeekdayNumber; to: IcsWeekdayNumber }[] = [];
   if (rule.byDay !== undefined) {
@@ -118,8 +119,13 @@ function shiftDays(rule: MutableRule, shift: RuleShift): ShiftedRule | string {
       if (!periodic) return { ordinal, weekday: moved };
       // "The 2nd Tuesday" a day later is the 2nd Wednesday; a week later, the 3rd Tuesday.
       const next = ordinal + Math.round(days / 7);
-      if (next === 0 || Math.sign(next) !== Math.sign(ordinal) || Math.abs(next) > most) {
-        problem = `${ordinal}${weekday} moved by ${days} days leaves the ${period}.`;
+      if (
+        next === 0 ||
+        Math.sign(next) !== Math.sign(ordinal) ||
+        Math.abs(ordinal) > most ||
+        Math.abs(next) > most
+      ) {
+        problem = `${ordinal}${weekday} can't move by ${days} days: not every ${period} has it.`;
       }
       const to = { ordinal: next, weekday: moved };
       ordinals.push({ from: entry, to });
@@ -159,13 +165,24 @@ function shiftDays(rule: MutableRule, shift: RuleShift): ShiftedRule | string {
       problem = "A monthly rule can move only to a day of the same month that every month has.";
     }
   }
-  if (implied && rule.frequency === "YEARLY") {
-    const leapDay = (wall: Temporal.PlainDateTime) => wall.month === 2 && wall.day === 29;
-    if (leapDay(firstBefore) || leapDay(firstAfter)) {
-      problem = "A yearly rule can't move to or from 29 February.";
+  // A yearly date moves by the same number of days in every year only if no leap day lies between.
+  if (rule.frequency === "YEARLY" && rule.byDay === undefined && rule.byYearDay === undefined) {
+    const moved = (year: number) => {
+      try {
+        const date = Temporal.PlainDate.from(
+          { day: firstBefore.day, month: firstBefore.month, year },
+          { overflow: "reject" },
+        ).add({ days });
+        return `${date.month}-${date.day}`;
+      } catch {
+        return undefined;
+      }
+    };
+    const common = moved(2027);
+    if (common === undefined || common !== moved(2028)) {
+      problem = "A yearly date can't move across 29 February, which only leap years have.";
     }
   }
-
   // In a monthly or yearly rule BYMONTH places the occurrences, so it follows the first one into
   // another month, unless ordinal weekdays count within the month. In a daily or weekly rule it
   // filters, as "every day in December" does, so it stays.

@@ -32,11 +32,26 @@ export function seriesWall(
  * Where a date of the old series goes on the new series' wall clock: by `shift.wall`, or, under an
  * ordinal weekday rule, to the new weekday of the same month or year at the moved time of day.
  */
-export function targetWall(shift: RecurrenceKeyShift, key: RecurrenceDate): Temporal.PlainDateTime {
+export function targetWall(shift: RecurrenceKeyShift, key: RecurrenceDate): Temporal.PlainDateTime;
+export function targetWall(
+  shift: RecurrenceKeyShift,
+  key: RecurrenceDate,
+  strict: true,
+): Temporal.PlainDateTime | undefined;
+/**
+ * `strict` gives `undefined` when an ordinal rule has no counterpart for the date, as a month
+ * without a fifth Tuesday has none; otherwise such a date moves by `shift.wall`.
+ */
+export function targetWall(
+  shift: RecurrenceKeyShift,
+  key: RecurrenceDate,
+  strict = false,
+): Temporal.PlainDateTime | undefined {
   const wall = seriesWall(key, shift);
   const moved = wall.add(shift.wall);
   const date =
     shift.ordinals === undefined ? undefined : mapOrdinal(shift.ordinals, wall.toPlainDate());
+  if (date === null && strict) return undefined;
   return date === undefined || date === null ? moved : date.toPlainDateTime(moved.toPlainTime());
 }
 

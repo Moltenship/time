@@ -13,6 +13,7 @@ import {
 import { shiftRule } from "../../src/edits/rule-shift";
 import {
   adapters,
+  allDay,
   at,
   berlin,
   change,
@@ -509,5 +510,122 @@ describe(`round trips`, () => {
       index < 4 ? start : Temporal.PlainDateTime.from(start).add({ days: 1 }).toString(),
     );
     expect(walls(expand(apply([base], edit))).sort()).toEqual(expected.sort());
+  });
+});
+
+describe(`code review`, () => {
+  const standup = timed("standup", "2026-10-19T09:00", "2026-10-19T09:30", {
+    recurrence: { rule: { count: 6, frequency: "WEEKLY" } },
+  });
+
+  test(`a DURATION in weeks takes an override's resize without throwing`, () => {
+    const holiday = allDay("holiday", "2026-10-19", "2026-10-26", {
+      recurrence: {
+        duration: Temporal.Duration.from("P1W"),
+        rule: { count: 4, frequency: "WEEKLY", interval: 2 },
+      },
+    });
+    const longer = overrideOf(holiday, "longer", Temporal.PlainDate.from("2026-11-02"), {
+      end: Temporal.PlainDate.from("2026-11-10"),
+      kind: "all-day",
+      start: Temporal.PlainDate.from("2026-11-02"),
+    });
+    const occurrence = find(expand([holiday, longer]), "2026-11-02");
+    const edit = series(
+      resolveRecurrenceEdit(resize(occurrence, "end", { days: 1 }), "all", adapters),
+    );
+    expect(master(edit).recurrence.duration?.toString()).toBe("P8D");
+  });
+
+  test(`a change to an override in another zone leaves the series' zone alone`, () => {
+    const elsewhere = overrideOf(standup, "elsewhere", at("2026-11-02T09:00"), {
+      end: at("2026-11-02T10:00", "America/New_York"),
+      kind: "timed",
+      sourceTimeZone: "America/New_York",
+      start: at("2026-11-02T09:00", "America/New_York"),
+    });
+    const occurrence = find(expand([standup, elsewhere]), "2026-11-02T08:00:00Z");
+    const retitled = change(occurrence, "update", occurrence.interval);
+    const edit = series(resolveRecurrenceEdit(retitled, "all", adapters));
+    expect(master(edit).placement).toMatchObject({ sourceTimeZone: berlin, start: standup.start });
+    expect(edit.otherOverrides.action).toBe("keep");
+    // An hour later in New York is an hour later in Berlin too.
+    const later = series(
+      resolveRecurrenceEdit(move(occurrence, { hours: 1 }, "America/New_York"), "all", adapters),
+    );
+    expect(wall(master(later).placement.start)).toBe("2026-10-19T10:00:00");
+  });
+
+  test(`moving a timed override of an all-day series within its day leaves the series all-day`, () => {
+    const daily = allDay("daily", "2026-10-19", "2026-10-20", {
+      recurrence: { rule: { count: 5, frequency: "DAILY" } },
+    });
+    const meeting = overrideOf(daily, "meeting", Temporal.PlainDate.from("2026-10-21"), {
+      end: at("2026-10-21T11:00"),
+      kind: "timed",
+      sourceTimeZone: berlin,
+      start: at("2026-10-21T10:00"),
+    });
+    const occurrence = find(expand([daily, meeting]), "2026-10-21");
+    const edit = series(resolveRecurrenceEdit(move(occurrence, { hours: 1 }), "all", adapters));
+    expect(master(edit).placement).toMatchObject({
+      kind: "all-day",
+      start: Temporal.PlainDate.from("2026-10-19"),
+    });
+    expect(edit.override).toMatchObject({
+      action: "update",
+      placement: { start: at("2026-10-21T11:00") },
+    });
+    const nextDay = series(resolveRecurrenceEdit(move(occurrence, { days: 1 }), "all", adapters));
+    expect(master(nextDay).placement).toMatchObject({
+      start: Temporal.PlainDate.from("2026-10-20"),
+    });
+  });
+
+  test(`a first occurrence dropped onto a DST gap keeps the written time for the rest`, () => {
+    const early = timed("early", "2026-03-27T02:30", "2026-03-27T03:00", {
+      recurrence: { rule: { count: 4, frequency: "DAILY" } },
+    });
+    const first = find(expand([early]), "2026-03-27T01:30:00Z");
+    const edit = series(resolveRecurrenceEdit(move(first, { days: 2 }), "all", adapters));
+    expect(master(edit).recurrence.wallStart?.toString()).toBe("2026-03-29T02:30:00");
+    expect(walls(expand(apply([early], edit)))).toEqual([
+      "2026-03-29T03:30:00",
+      "2026-03-30T02:30:00",
+      "2026-03-31T02:30:00",
+      "2026-04-01T02:30:00",
+    ]);
+  });
+
+  test(`an extra date before the first occurrence can't end a series without a rule`, () => {
+    const visits = timed("visits", "2026-10-20T09:00", "2026-10-20T10:00", {
+      recurrence: { recurrenceDates: [at("2026-10-19T09:00"), at("2026-10-22T09:00")] },
+    });
+    const early = find(expand([visits]), "2026-10-19T07:00:00Z");
+    expect(resolveRecurrenceEdit(change(early, "delete"), "following", adapters)).toMatchObject({
+      reason: "extra-occurrence",
+      type: "rejected",
+    });
+    expect(recurrenceEditScopes(change(early, "delete"), adapters)).toEqual(["this", "all"]);
+  });
+
+  test(`a yearly date can't move across 29 February, but can elsewhere`, () => {
+    expect(shiftRule({ frequency: "YEARLY" }, shiftBy(20, "2027-02-15T09:00"))).toHaveProperty(
+      "problem",
+    );
+    expect(shiftRule({ frequency: "YEARLY" }, shiftBy(1, "2026-10-31T09:00"))).toEqual({
+      rule: { frequency: "YEARLY" },
+    });
+  });
+
+  test(`deleting the series deletes overrides whose original start can't be read`, () => {
+    const odd = overrideOf(standup, "odd", Temporal.PlainDate.from("2026-11-02"), {
+      end: at("2026-11-02T12:00"),
+      kind: "timed",
+      start: at("2026-11-02T11:00"),
+    });
+    const occurrence = find(expand([standup]), "2026-10-26T08:00:00Z");
+    const edit = series(resolveRecurrenceEdit(change(occurrence, "delete"), "all", adapters));
+    expect(apply([standup, odd], edit)).toEqual([]);
   });
 });

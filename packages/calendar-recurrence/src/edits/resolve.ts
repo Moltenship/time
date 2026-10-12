@@ -36,6 +36,7 @@ function unwrap<TEvent, TEventId extends EventId, TResourceId extends ResourceId
   if (change.cause === "create") return change;
   const { event } = change.event;
   const eventId = adapters.event.getId(event);
+  // The same spread on both sides, so each keeps its own member of the change union.
   return change.cause === "delete" ? { ...change, event, eventId } : { ...change, event, eventId };
 }
 
@@ -120,8 +121,10 @@ export function recurrenceEditScopes<
   options: ResolveRecurrenceEditOptions<TEvent, TEventId> = {},
 ): readonly RecurrenceEditScope[] {
   if (!isRecurringChange(change)) return [];
+  // The ID map isn't needed to know whether a scope applies.
+  const { occurrences: _occurrences, ...checking } = options;
   return scopes.filter((scope) => {
-    const edit = resolveRecurrenceEdit(change, scope, adapters, options);
+    const edit = resolveRecurrenceEdit(change, scope, adapters, checking);
     return edit.type === "series" && edit.scope === scope;
   });
 }

@@ -83,15 +83,15 @@ export function resolveAll<TEvent, TEventId extends EventId, TResourceId extends
   let wallStart = series.wallStart;
   if (!unchanged) {
     const firstWall = targetWall(shift, series.first.start);
-    wallStart = undefined;
-    if (datesEqual(series.recurrenceId, series.first.start) && override === undefined) {
-      firstStart = proposed.start;
-    } else {
-      firstStart = fromWall(firstWall, move.to);
-      if (move.to.kind === "timed" && !toWall(firstStart, move.to).equals(firstWall)) {
-        wallStart = firstWall;
-      }
-    }
+    // The first occurrence dropped as it is keeps its exact start, as a second 02:30 of DST's end.
+    firstStart =
+      datesEqual(series.recurrenceId, series.first.start) && override === undefined
+        ? proposed.start
+        : fromWall(firstWall, move.to);
+    wallStart =
+      move.to.kind === "timed" && !toWall(firstStart, move.to).equals(firstWall)
+        ? firstWall
+        : undefined;
   }
   shift = { ...shift, anchor: { from: series.first.start, to: firstStart } };
   if (rule?.until !== undefined && !unchanged) {
