@@ -25,7 +25,17 @@ describe("occurrence identity", () => {
     });
   });
 
+  test("keys dates in any calendar the same way", () => {
+    const gregory = Temporal.PlainDate.from("2026-10-28").withCalendar("gregory");
+    expect(recurrenceKey(gregory)).toBe("2026-10-28");
+    expect(
+      recurrenceKey(Temporal.PlainDateTime.from("2026-10-28T10:00").withCalendar("japanese")),
+    ).toBe("2026-10-28T10:00:00");
+  });
+
   test("finds no recurrence key in one-off IDs", () => {
+    expect(parseOccurrenceId("google::abc123")).toBeUndefined();
+    expect(parseOccurrenceId("team::2026-10-28T09:00")).toBeUndefined();
     expect(parseOccurrenceId("review")).toBeUndefined();
     expect(parseOccurrenceId(42)).toBeUndefined();
     expect(parseOccurrenceId("::2026-10-28")).toBeUndefined();

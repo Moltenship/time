@@ -72,3 +72,74 @@ describe("expandRecurrenceRule contract", () => {
     expect(expansion.truncated).toBe(true);
   });
 });
+
+describe("expandRecurrenceRule limits", () => {
+  const allDay: CalendarEventInterval = {
+    end: Temporal.PlainDate.from("2026-01-02"),
+    kind: "all-day",
+    start: Temporal.PlainDate.from("2026-01-01"),
+  };
+
+  test("reports truncation only when occurrences were left", () => {
+    const rule = { frequency: "DAILY", until: Temporal.PlainDate.from("2026-01-05") } as const;
+    expect(expandRecurrenceRule(rule, allDay, { maxIterations: 5 }).truncated).toBe(false);
+    expect(
+      expandRecurrenceRule({ frequency: "DAILY" }, allDay, {
+        before: Temporal.PlainDate.from("2026-01-06"),
+        maxIterations: 5,
+      }).truncated,
+    ).toBe(false);
+    expect(expandRecurrenceRule(rule, allDay, { maxIterations: 4 }).truncated).toBe(true);
+  });
+
+  test("rejects rules built in code that can't be expanded", () => {
+    expect(() => expandRecurrenceRule({ frequency: "DAILY", interval: 0 }, allDay)).toThrow(
+      RangeError,
+    );
+    expect(() => expandRecurrenceRule({ byDay: [], frequency: "WEEKLY" }, allDay)).toThrow(
+      RangeError,
+    );
+    expect(() => expandRecurrenceRule({ count: 0, frequency: "DAILY" }, allDay)).toThrow(
+      RangeError,
+    );
+  });
+
+  test("always gives the first occurrence, even after UNTIL", () => {
+    const { dates } = expandRecurrenceRule(
+      { frequency: "DAILY", until: Temporal.PlainDate.from("2025-12-01") },
+      allDay,
+    );
+    expect(strings(dates)).toEqual(["2026-01-01"]);
+  });
+
+  test("brings UNTIL of another kind into the series' kind", () => {
+    const { dates } = expandRecurrenceRule(
+      { frequency: "DAILY", until: Temporal.Instant.from("2026-01-03T23:59:59Z") },
+      allDay,
+    );
+    expect(strings(dates)).toEqual(["2026-01-01", "2026-01-02", "2026-01-03"]);
+  });
+
+  test("repeats a first start written in a DST gap at its written time", () => {
+    const written = Temporal.PlainDateTime.from("2027-03-28T02:30");
+    const start = written.toZonedDateTime("Europe/Berlin").toInstant();
+    const { dates } = expandRecurrenceRule(
+      { count: 2, frequency: "DAILY" },
+      {
+        end: start.add({ hours: 1 }),
+        kind: "timed",
+        sourceTimeZone: "Europe/Berlin",
+        start,
+        wallStart: written,
+      },
+    );
+    expect(
+      dates.map((date) =>
+        (date as Temporal.Instant).toZonedDateTimeISO("Europe/Berlin").toString(),
+      ),
+    ).toEqual([
+      "2027-03-28T03:30:00+02:00[Europe/Berlin]",
+      "2027-03-29T02:30:00+02:00[Europe/Berlin]",
+    ]);
+  });
+});

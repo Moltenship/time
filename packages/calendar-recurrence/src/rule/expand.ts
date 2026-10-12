@@ -1,26 +1,16 @@
-import type { CalendarEventInterval } from "@moltenship/calendar-core";
 import type { IcsWeekday } from "@moltenship/ics";
 
-import type { RecurrenceDate, RecurrenceRule } from "../types";
+import { coerceRecurrenceDate } from "../dates";
+import type {
+  RecurrenceDate,
+  RecurrenceRule,
+  RecurrenceRuleExpansion,
+  RecurrenceRuleStart,
+  RecurrenceRuleWindow,
+} from "../types";
 
 // Baseline: DAILY, and WEEKLY with or without BYDAY, with INTERVAL, COUNT, UNTIL and WKST. The
 // full RFC 5545 engine (#48) replaces this file and keeps `expandRecurrenceRule`'s contract.
-
-export interface RecurrenceRuleWindow {
-  /** Stops before occurrences starting at or after this. */
-  readonly before?: RecurrenceDate;
-  /** Leaves out occurrences starting before this. COUNT still counts them. */
-  readonly from?: RecurrenceDate;
-  /** Most candidate starts to look at. Defaults to `DEFAULT_MAX_ITERATIONS`. */
-  readonly maxIterations?: number;
-}
-
-export interface RecurrenceRuleExpansion {
-  /** Occurrence starts in order, in the kind of the first occurrence. */
-  readonly dates: readonly RecurrenceDate[];
-  /** `maxIterations` ran out before the rule or the window ended. */
-  readonly truncated: boolean;
-}
 
 export const DEFAULT_MAX_ITERATIONS = 100_000;
 
@@ -47,6 +37,34 @@ function compareDates(left: RecurrenceDate, right: RecurrenceDate): number {
     return Temporal.PlainDateTime.compare(left, right);
   }
   throw new RangeError("Recurrence dates must match the kind of the series' first occurrence.");
+}
+
+const isPositiveInteger = (value: number) => Number.isInteger(value) && value >= 1;
+
+/** Why the rule can't be expanded, for rules built in code rather than parsed. */
+function invalid(rule: RecurrenceRule): string | undefined {
+  if (rule.interval !== undefined && !isPositiveInteger(rule.interval)) {
+    return "INTERVAL must be a positive integer.";
+  }
+  if (rule.count !== undefined && !isPositiveInteger(rule.count)) {
+    return "COUNT must be a positive integer.";
+  }
+  if (rule.count !== undefined && rule.until !== undefined) {
+    return "COUNT and UNTIL can't both be set.";
+  }
+  const lists = [
+    rule.byDay,
+    rule.byHour,
+    rule.byMinute,
+    rule.byMonth,
+    rule.byMonthDay,
+    rule.bySecond,
+    rule.bySetPosition,
+    rule.byWeekNumber,
+    rule.byYearDay,
+  ];
+  if (lists.some((list) => list?.length === 0)) return "BY parts must not be empty.";
+  return undefined;
 }
 
 function unsupported(rule: RecurrenceRule): string | undefined {
@@ -96,22 +114,30 @@ function* candidates(rule: RecurrenceRule, start: WallTime): Generator<WallTime>
 
 /**
  * The starts of a rule's occurrences inside `window`, beginning with the first occurrence, which
- * RFC 5545 always counts. Timed series repeat on the wall clock of `first.sourceTimeZone`, or UTC,
- * and a start in a DST gap moves forward as RFC 5545 §3.3.10 says. Throws a `RangeError` for a
- * rule it can't expand, or dates whose kind doesn't match `first`.
+ * is always one, even before UNTIL. Timed series repeat on the wall clock of
+ * `first.sourceTimeZone`, or UTC, from `first.wallStart` when the first start was written in a DST
+ * gap; a later start in a gap moves forward and counts, a repeated time takes its first instant.
+ * Throws a `RangeError` for a rule it can't expand, or an UNTIL that can't take the series' kind.
  */
 export function expandRecurrenceRule(
   rule: RecurrenceRule,
-  first: CalendarEventInterval,
+  first: RecurrenceRuleStart,
   window: RecurrenceRuleWindow = {},
 ): RecurrenceRuleExpansion {
-  const part = unsupported(rule);
-  if (part !== undefined) throw new RangeError(`${part} isn't supported yet.`);
+  const problem = invalid(rule) ?? unsupported(rule);
+  if (problem !== undefined) {
+    throw new RangeError(problem.endsWith(".") ? problem : `${problem} isn't supported yet.`);
+  }
+  const until =
+    rule.until === undefined ? undefined : coerceRecurrenceDate(rule.until, first, "until");
+  if (rule.until !== undefined && until === undefined) {
+    throw new RangeError("UNTIL can't take the kind of the series' first occurrence.");
+  }
 
   const timeZone = first.kind === "timed" ? (first.sourceTimeZone ?? "UTC") : "UTC";
   const wallStart: WallTime =
     first.kind === "timed"
-      ? first.start.toZonedDateTimeISO(timeZone).toPlainDateTime()
+      ? (first.wallStart ?? first.start.toZonedDateTimeISO(timeZone).toPlainDateTime())
       : first.start;
   // The first occurrence keeps its exact start, which a repeated wall time can't round-trip to.
   const toDate = (wall: WallTime, index: number): RecurrenceDate =>
@@ -125,14 +151,17 @@ export function expandRecurrenceRule(
 
   const maxIterations = window.maxIterations ?? DEFAULT_MAX_ITERATIONS;
   const dates: RecurrenceDate[] = [];
+  let previous: RecurrenceDate | undefined;
   let produced = 0;
-  let iterations = 0;
+  let steps = 0;
   for (const wall of candidates(rule, wallStart)) {
-    if (iterations >= maxIterations) return { dates, truncated: true };
-    const date = toDate(wall, iterations);
-    iterations += 1;
-    if (rule.until !== undefined && compareDates(date, rule.until) > 0) break;
+    const date = toDate(wall, steps);
+    if (steps > 0 && until !== undefined && compareDates(date, until) > 0) break;
     if (window.before !== undefined && compareDates(date, window.before) >= 0) break;
+    if (steps >= maxIterations) return { dates, truncated: true };
+    steps += 1;
+    if (previous !== undefined && compareDates(date, previous) <= 0) continue;
+    previous = date;
     produced += 1;
     if (window.from === undefined || compareDates(date, window.from) >= 0) dates.push(date);
     if (rule.count !== undefined && produced >= rule.count) break;

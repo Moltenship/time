@@ -26,7 +26,7 @@ packing, replacing that development entry with `dist/index.mjs` and `dist/index.
 | `@moltenship/calendar-dnd` | Optional interaction adapter | `calendar-core`, `calendar-react` |
 | `@moltenship/calendar` | Supported public facade | `calendar-core`, `calendar-react` |
 | `@moltenship/calendar-testing` | Published consumer test helpers | Public facade, dnd adapter, and Temporal utilities |
-| `@moltenship/calendar-recurrence` | Reserved post-1.0 engine | `calendar-core`, `calendar-temporal` |
+| `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `calendar-temporal`, `ics` |
 | `@moltenship/ics` | Standalone iCalendar parsing (ADR 0151) | None |
 | `showcase` | Consumer-equivalent documentation and labs | Public facade and `@moltenship/ics` |
 | `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade only |
@@ -57,7 +57,7 @@ calendar-react ─────────────────────�
                               ↓
                       calendar-testing ← calendar-dnd / calendar-temporal
 
-calendar-core + calendar-temporal ─────→ calendar-recurrence (reserved)
+calendar-core + calendar-temporal + ics ─────→ calendar-recurrence
 
 ics (standalone: no workspace imports, no runtime dependencies) ─────→ showcase
 ```
