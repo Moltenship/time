@@ -228,7 +228,10 @@ test("a reset during an in-flight delete keeps the fresh seed intact", async () 
   stored.set(eventsStorageKey, serializeEvents(createSeedEvents(today, "UTC")));
   history.replaceState(null, "", `/?view=day&date=${today.toString()}`);
   await act(async () => root.render(<App />));
-  const deletedId = container.querySelector<HTMLElement>("[data-event-id]")?.dataset.eventId;
+  // A stored event: the meetings in progress as the demo opens are read-only and never stored.
+  const deletedId = container.querySelector<HTMLElement>(
+    '[data-event-id]:not([data-event-id^="busy-now-"])',
+  )?.dataset.eventId;
   if (deletedId === undefined) throw new Error("the seed has events today");
 
   await deleteFromPopover(deletedId);
