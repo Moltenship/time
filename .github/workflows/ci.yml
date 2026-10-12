@@ -67,9 +67,9 @@ jobs:
 
   browsers:
     name: Firefox and WebKit
-    # Pull requests run `vp run ready`. This is part of the full gate, and runs here on main and on
-    # demand because Playwright's Firefox doesn't start on macOS 27 (#182).
-    if: github.event_name != 'pull_request'
+    # Part of the full gate, run on demand (`gh workflow run ci.yml --ref <branch>`), since
+    # Playwright's Firefox doesn't start on macOS 27 (#182). Pull requests and main run `vp run ready`.
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:

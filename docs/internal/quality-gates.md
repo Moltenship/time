@@ -25,8 +25,8 @@ and `package:graph` in that order, because each writes or reads generated files:
 packed tarballs, the docs site's `.next` and `.source`. Steps outside it read only source, so they
 run at the same time; `a11y` and `a11y:ci-speed` keep their Vite dependency caches apart. CI's
 `quality-gates` job runs `vp run ready:checks` and its `accessibility` job runs `vp run a11y`:
-together, `vp run ready`. On `main` and on demand, a `browsers` job also runs `vp run browsers`. When
-a job fails, its last step names the failed task. The contract test
+together, `vp run ready`. On demand (`gh workflow run ci.yml --ref <branch>`), a `browsers` job runs
+`vp run browsers` on Linux. When a job fails, its last step names the failed task. The contract test
 `tests/quality-gates.test.ts` holds the workflow to those task names and fails if `ready:full`
 misses a step of `ready`.
 
@@ -69,8 +69,9 @@ installs the polyfill before any test imports, as an app would, and a test check
 - Reduced motion stays in its own Chromium context.
 - Base UI's focus guards are unnamed buttons in WebKit, on purpose, for VoiceOver; `axe.ts` exempts
   them as it already does for `aria-hidden-focus`.
-- Four groups of tests skip in WebKit until #181: focus kept in view in the scrolling agenda, the
-  agenda's end, a day swipe's snap stop, and a drag against the edge with synthetic pointer events.
+- Five groups of tests skip in WebKit until #181: focus kept in view in the scrolling agenda, the
+  agenda's end, the 10,000-event agenda scroll (too slow on the polyfill in CI), a day swipe's snap
+  stop, and a drag against the edge with synthetic pointer events.
 - Playwright's Firefox doesn't start on macOS 27 (#182). There the run leaves it out and says so;
   CI's `browsers` job runs it on Linux.
 

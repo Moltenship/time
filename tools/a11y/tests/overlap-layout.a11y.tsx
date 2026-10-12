@@ -127,7 +127,8 @@ describe.each(policies)("%s layout", (overlapLayout) => {
           dir === "ltr"
             ? [box.left - area.left, area.right - box.right]
             : [area.right - box.right, box.left - area.left];
-        return [title, [Math.round(start), Math.round(end)]];
+        // Firefox lays out in fractions of a pixel: `+ 0` turns a rounded -0 into 0.
+        return [title, [Math.round(start) + 0, Math.round(end) + 0]];
       }),
     );
   }

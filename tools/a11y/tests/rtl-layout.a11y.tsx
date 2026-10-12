@@ -9,15 +9,21 @@ function box(selector: string, within: ParentNode = document): DOMRect {
   return element.getBoundingClientRect();
 }
 
+/**
+ * A distance to the nearest pixel. Firefox lays out in fractions of a pixel, so a distance a hair
+ * under zero rounds to -0, which `toBe(0)` tells apart from 0.
+ */
+const px = (value: number) => Math.round(value) + 0;
+
 describe.each(["ltr", "rtl"] as const)("%s layout", (dir) => {
   /** Inline distance from the end of `first` to the start of `second`, in reading order. */
   const gap = (first: DOMRect, second: DOMRect) =>
-    Math.round(dir === "ltr" ? second.left - first.right : first.left - second.right);
+    px(dir === "ltr" ? second.left - first.right : first.left - second.right);
   /** How far `inner` sits from the inline-start and inline-end edges of `outer`. */
   const insets = ({ left, right }: DOMRect, outer: DOMRect) =>
     dir === "ltr"
-      ? { end: Math.round(outer.right - right), start: Math.round(left - outer.left) }
-      : { end: Math.round(left - outer.left), start: Math.round(outer.right - right) };
+      ? { end: px(outer.right - right), start: px(left - outer.left) }
+      : { end: px(left - outer.left), start: px(outer.right - right) };
 
   test("month view: days, bars and their continuations follow the reading order", async () => {
     await render(<RegistryScreen dir={dir} view="month" />);
@@ -90,8 +96,8 @@ describe.each(["ltr", "rtl"] as const)("%s layout", (dir) => {
     expect(gap(box('[data-slot="resource-columns"] [role="rowheader"]'), column("team"))).toBe(0);
     expect(gap(column("team"), column("ada"))).toBe(0);
     expect(gap(column("ada"), column("grace"))).toBe(0);
-    expect(Math.round(header("Ada").left)).toBe(Math.round(column("ada").left));
-    expect(Math.round(header("Ada").right)).toBe(Math.round(column("ada").right));
+    expect(px(header("Ada").left)).toBe(px(column("ada").left));
+    expect(px(header("Ada").right)).toBe(px(column("ada").right));
     // Mirrored in RTL, the open group's chevron turns the other way to point down.
     const toggle = getComputedStyle(document.querySelector('[aria-label="Collapse Team"] svg')!);
     expect([toggle.rotate, toggle.scale]).toEqual(

@@ -120,12 +120,12 @@ describe("CI quality gate contract", () => {
     ]);
   });
 
-  test("main runs Firefox and WebKit, part of the full gate, in a job of its own", async () => {
+  test("Firefox and WebKit, part of the full gate, run on demand in a job of their own", async () => {
     const job = (await readWorkflow()).jobs?.browsers as
       | { readonly if?: string; readonly steps?: readonly WorkflowStep[] }
       | undefined;
 
-    expect(job?.if).toBe("github.event_name != 'pull_request'");
+    expect(job?.if).toBe("github.event_name == 'workflow_dispatch'");
     expect(job?.steps?.map(({ run }) => run).filter(Boolean)).toEqual([
       "vp install --frozen-lockfile",
       "vp exec --filter a11y playwright install --with-deps firefox webkit",
