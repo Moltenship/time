@@ -115,7 +115,8 @@ function inView(element: Element) {
 describe.each(["ltr", "rtl"] as const)(
   "a scrolling agenda of 10,000 events over two years, %s",
   (dir) => {
-    // On temporal-polyfill a CI runner takes over 15 s to project 10,000 events this often: #181.
+    // On temporal-polyfill, a CI runner takes over 15 s for this test's eight projections of
+    // 10,000 events: #181.
     test.skipIf(inWebKit)(
       "renders only the days in view as the list scrolls months on and back",
       async () => {
@@ -242,7 +243,7 @@ test("the paged agenda renders only the days in view of two years of weeks", asy
 });
 
 describe.each(themes)("long agenda, %s theme", (theme) => {
-  test("has no serious violations, paged, scrolling, and loading more", async () => {
+  test("has no serious violations, paged, scrolling, and loading more", async ({ skip }) => {
     setTheme(theme);
     await render(<LongAgenda view="agenda" weeks={104} />);
     expect(await seriousViolations()).toEqual([]);
@@ -250,8 +251,7 @@ describe.each(themes)("long agenda, %s theme", (theme) => {
     await render(<LongAgenda />);
     expect(await seriousViolations()).toEqual([]);
 
-    // In WebKit one scroll to the end doesn't reach it: #181.
-    if (inWebKit) return;
+    skip(inWebKit, "In WebKit one scroll to the end doesn't reach it: #181");
     await render(<LongAgenda loading />);
     // The end of the list, where it says events are loading.
     await act(async () => {
