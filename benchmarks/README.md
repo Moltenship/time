@@ -16,12 +16,15 @@ vp run benchmark#gated
 ```
 
 Every task first builds the benchmark and its workspace dependencies, then executes files from
-`benchmarks/dist`. Benchmark tasks disable Vite Task caching so timings always describe the current
-process and machine. Gated tasks run Node with `--expose-gc`; protocol v2 collects between measured
-samples, outside the timed region, so garbage left by one sample does not randomly contaminate the
-next. `smoke` uses the full 10k/1k/500 fixture with two warmups and eight samples per stage; full
-tasks use ten warmups and fifty samples. Each query sample averages 200 operations, so a full one-day
-or seven-day workload performs 2,000 warm-up and 10,000 measured queries.
+`benchmarks/dist`. Workspace packages export their TypeScript source, which Node can't run, so tasks
+that load them start Node with `--import ./dist/shared/published-packages.mjs`: it resolves each
+`@moltenship/*` package to the bundle its build wrote, the entry `publishConfig.exports` publishes.
+Benchmark tasks disable Vite Task caching so timings always describe the current process and
+machine. Gated tasks run Node with `--expose-gc`; protocol v2 collects between measured samples,
+outside the timed region, so garbage left by one sample does not randomly contaminate the next.
+`smoke` uses the full 10k/1k/500 fixture with two warmups and eight samples per stage; full tasks use
+ten warmups and fifty samples. Each query sample averages 200 operations, so a full one-day or
+seven-day workload performs 2,000 warm-up and 10,000 measured queries.
 
 ## Separately reported stages
 

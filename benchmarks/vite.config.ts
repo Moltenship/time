@@ -3,7 +3,7 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   pack: {
     dts: false,
-    entry: ["core/index.ts", "react/index.ts", "run.ts"],
+    entry: ["core/index.ts", "react/index.ts", "run.ts", "shared/published-packages.ts"],
     tsconfig: "tsconfig.build.json",
   },
   lint: { options: { typeAware: true, typeCheck: true } },
@@ -12,7 +12,8 @@ export default defineConfig({
     tasks: {
       core: {
         cache: false,
-        command: "node --expose-gc dist/core/index.mjs --mode=full --gated",
+        command:
+          "node --expose-gc --import ./dist/shared/published-packages.mjs dist/core/index.mjs --mode=full --gated",
         dependsOn: ["build", { task: "build", from: "dependencies" }],
       },
       gated: {
