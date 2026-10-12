@@ -70,6 +70,7 @@ describe("recurringEventsFromIcs: intervals", () => {
           end: "2026-01-12T10:00:00Z",
           id: "utc",
           kind: "timed",
+          sourceTimeZone: "UTC",
           start: "2026-01-12T09:00:00Z",
           title: "UTC",
         },
@@ -248,11 +249,18 @@ describe("recurringEventsFromIcs: series and overrides", () => {
     ]);
   });
 
-  test("keeps a lone override's RECURRENCE-ID in its own kind, and skips one that didn't resolve", () => {
+  test("keeps a lone override's RECURRENCE-ID in its series' kind, and skips one that didn't resolve", () => {
     const events = parse(
       ["UID:utc", "RECURRENCE-ID:20260112T090000Z", "DTSTART:20260112T120000Z"],
       ["UID:date", "RECURRENCE-ID;VALUE=DATE:20260112", "DTSTART;VALUE=DATE:20260113"],
       ["UID:floating", "RECURRENCE-ID:20260112T100000", "DTSTART:20260112T120000"],
+      [
+        "UID:resolved",
+        "RECURRENCE-ID:20260112T100000",
+        "DTSTART;TZID=Europe/Berlin:20260112T120000",
+      ],
+      ["UID:to-timed", "RECURRENCE-ID;VALUE=DATE:20260112", "DTSTART:20260112T120000Z"],
+      ["UID:to-all-day", "RECURRENCE-ID:20260112T090000Z", "DTSTART;VALUE=DATE:20260112"],
       ["UID:office", "RECURRENCE-ID;TZID=Our Office:20260112T100000", "DTSTART:20260112T120000Z"],
     );
     const { events: bridged, issues } = bridge(events);
@@ -260,6 +268,9 @@ describe("recurringEventsFromIcs: series and overrides", () => {
       "utc::2026-01-12T09:00:00Z",
       "date::2026-01-12",
       "floating::2026-01-12T10:00:00",
+      "resolved::2026-01-12T09:00:00Z",
+      "to-timed::2026-01-12",
+      "to-all-day::2026-01-12T09:00:00Z",
     ]);
     expect(issues).toEqual([
       { code: "unresolved-time-zone", property: "RECURRENCE-ID", uid: "office" },
@@ -485,28 +496,71 @@ describe("recurringEventsFromIcs: dates in the series' kind", () => {
     ]);
   });
 
-  test("keeps only the start of an RDATE PERIOD and reports one that lasts differently", () => {
+  test("keeps an RDATE PERIOD as a period, or its start when it ends no later in the series' kind", () => {
     const events = parse(
       [
-        "UID:same",
+        "UID:meeting",
         "DTSTART:20260112T090000Z",
         "DTEND:20260112T100000Z",
-        "RDATE;VALUE=PERIOD:20260114T090000Z/20260114T100000Z,20260116T090000Z/PT1H",
+        "RDATE;VALUE=PERIOD:20260114T090000Z/20260114T110000Z,20260116T090000Z/PT3H",
+        "RDATE:20260117T090000Z",
       ],
-      [
-        "UID:longer",
-        "DTSTART:20260112T090000Z",
-        "DTEND:20260112T100000Z",
-        "RDATE;VALUE=PERIOD:20260114T090000Z/PT2H,20260116T090000Z/PT3H",
-      ],
+      ["UID:trip", "DTSTART;VALUE=DATE:20260112", "RDATE;VALUE=PERIOD:20260121T090000Z/P2D"],
+      ["UID:workshop", "DTSTART;VALUE=DATE:20260112", "RDATE;VALUE=PERIOD:20260120T090000Z/PT8H"],
     );
-    expect(bridge(events)).toMatchObject({
-      events: [
-        { recurrence: { recurrenceDates: ["2026-01-14T09:00:00Z", "2026-01-16T09:00:00Z"] } },
-        { recurrence: { recurrenceDates: ["2026-01-14T09:00:00Z", "2026-01-16T09:00:00Z"] } },
+    const result = recurringEventsFromIcs(events);
+    expect(result.events.map((event) => plain(event.recurrence?.recurrenceDates))).toStrictEqual([
+      [
+        { end: "2026-01-14T11:00:00Z", start: "2026-01-14T09:00:00Z" },
+        { end: "2026-01-16T12:00:00Z", start: "2026-01-16T09:00:00Z" },
+        "2026-01-17T09:00:00Z",
       ],
-      issues: [{ code: "period-duration", property: "RDATE", uid: "longer" }],
+      [{ end: "2026-01-23", start: "2026-01-21" }],
+      ["2026-01-20"],
+    ]);
+    expect(result.issues.map(({ event, message }) => [event.uid, message])).toEqual([
+      ["trip", "RDATE is a date-time, but the series is all-day; it was read as its date."],
+      [
+        "workshop",
+        "RDATE PERIOD doesn't end after it starts in the series' kind; only its start was kept.",
+      ],
+    ]);
+  });
+
+  test("keeps both COUNT and UNTIL", () => {
+    const events = parse([
+      "UID:both",
+      "DTSTART:20260112T090000Z",
+      "RRULE:FREQ=DAILY;COUNT=5;UNTIL=20260114T090000Z",
+    ]);
+    expect(plain(recurringEventsFromIcs(events).events[0]!.recurrence)).toStrictEqual({
+      rule: { count: 5, frequency: "DAILY", until: "2026-01-14T09:00:00Z" },
     });
+  });
+
+  test("reads UTC times on all-day and floating series in the feed's time zone", () => {
+    const events = parse(
+      [
+        "UID:leave",
+        "DTSTART;VALUE=DATE:20260112",
+        "RRULE:FREQ=DAILY;UNTIL=20260330T130000Z",
+        "EXDATE:20260114T130000Z",
+        "EXDATE;TZID=Europe/Berlin:20260116T230000",
+      ],
+      ["UID:focus", "DTSTART:20260112T100000", "RRULE:FREQ=DAILY", "EXDATE:20260113T230000Z"],
+    );
+    const read = (options?: IcsRecurringEventsOptions) =>
+      recurringEventsFromIcs(events, options).events.map(({ kind, recurrence }) =>
+        plain({ exceptionDates: recurrence?.exceptionDates, kind, until: recurrence?.rule?.until }),
+      );
+    expect(read({ timeZone: "Australia/Sydney" })).toEqual([
+      { exceptionDates: ["2026-01-15", "2026-01-16"], kind: "all-day", until: "2026-03-31" },
+      { exceptionDates: ["2026-01-14T10:00:00"], kind: "floating" },
+    ]);
+    expect(read()).toEqual([
+      { exceptionDates: ["2026-01-14", "2026-01-16"], kind: "all-day", until: "2026-03-30" },
+      { exceptionDates: ["2026-01-13T23:00:00"], kind: "floating" },
+    ]);
   });
 
   test("converts an override's RECURRENCE-ID into the series' kind, and drops a date-only one", () => {

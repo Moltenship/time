@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 
 import { createCanonicalEventAdapter, createEventSnapshot } from "@moltenship/calendar-core";
-import { parseIcs, type IcsEvent } from "@moltenship/ics";
+import { parseIcs, type IcsCalendar, type IcsEvent } from "@moltenship/ics";
 import { describe, expect, test } from "vite-plus/test";
 
 import {
@@ -14,14 +14,15 @@ import {
   type RecurrenceOccurrence,
 } from "../../src";
 
-function readFixture(name: string): readonly IcsEvent[] {
+function readFixture(name: string): IcsCalendar {
   const url = new URL(`../../../ics/tests/fixtures/${name}`, import.meta.url);
-  return parseIcs(readFileSync(url, "utf8")).calendars[0]!.events;
+  return parseIcs(readFileSync(url, "utf8")).calendars[0]!;
 }
 
 /** Parses a fixture, bridges it, expands it over `start` to `end` in Berlin and snapshots it. */
 function expandFixture(name: string, start: string, end: string) {
-  const bridged = recurringEventsFromIcs(readFixture(name));
+  const calendar = readFixture(name);
+  const bridged = recurringEventsFromIcs(calendar.events, { timeZone: calendar.timeZone });
   const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEvent>());
   const expansion = expander.expand(bridged.events, {
     range: { end: Temporal.PlainDate.from(end), start: Temporal.PlainDate.from(start) },
@@ -83,10 +84,20 @@ describe("ICS fixtures, bridged and expanded", () => {
     expect(
       expansion.occurrences
         .filter((occurrence) => occurrence.recurrence === undefined)
-        .map(({ id, interval }) => [id, String(interval.start), String(interval.end)]),
+        .map(({ id, interval }) => [
+          id,
+          String(interval.start),
+          String(interval.end),
+          interval.kind === "timed" ? interval.sourceTimeZone : interval.kind,
+        ]),
     ).toEqual([
-      ["3h2k9f8s7d6a5g4j3k2l1m0n9b@google.com", "2026-01-20T11:30:00Z", "2026-01-20T12:30:00Z"],
-      ["0p9o8i7u6y5t4r3e2w1q0a9s8d@google.com", "2026-04-15", "2026-04-18"],
+      [
+        "3h2k9f8s7d6a5g4j3k2l1m0n9b@google.com",
+        "2026-01-20T11:30:00Z",
+        "2026-01-20T12:30:00Z",
+        "UTC",
+      ],
+      ["0p9o8i7u6y5t4r3e2w1q0a9s8d@google.com", "2026-04-15", "2026-04-18", "all-day"],
     ]);
 
     const cancelled = bridged.events.filter((event) => event.override?.cancelled === true);

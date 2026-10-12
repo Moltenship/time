@@ -6,23 +6,31 @@ import {
   type IcsExtensionsConfig,
 } from "@moltenship/ics";
 
-import type { RecurrenceDateRole } from "../dates";
 import { occurrenceId, recurrenceKey } from "../occurrence-id";
 import type {
   EventRecurrence,
   RecurrenceDate,
   RecurrenceOverride,
+  RecurrencePeriod,
   RecurrenceRule,
   RecurringCalendarEvent,
 } from "../types";
-import { instantOf, lastsAsFirst, naturalDate, toSeriesDate } from "./dates";
+import {
+  instantOf,
+  ownRecurrenceId,
+  toSeriesDate,
+  toSeriesPeriod,
+  type SeriesDate,
+  type SeriesTime,
+} from "./dates";
 
 export type IcsRecurrenceIssueCode =
   /**
    * EXDATE, RDATE, UNTIL or RECURRENCE-ID is a DATE where the series is DATE-TIME or the other way
    * round, or has a TZID that resolved to no time zone. It was converted into the series' kind, or
    * dropped when it can't stand for its role, such as a date-only RDATE on a timed series. A
-   * date-only EXDATE is no mismatch: it excludes the whole day.
+   * date-only EXDATE is no mismatch: it excludes the whole day. An RDATE PERIOD that doesn't end
+   * after it starts in the series' kind keeps only its start.
    */
   | "date-kind-mismatch"
   /**
@@ -30,8 +38,6 @@ export type IcsRecurrenceIssueCode =
    * then the later one in the input.
    */
   | "duplicate-event"
-  /** An RDATE PERIOD lasts other than the first occurrence. Only its start is kept. */
-  | "period-duration"
   /**
    * DTSTART, or the RECURRENCE-ID of an override without its series, has a TZID that resolved to
    * no time zone. The event is skipped.
@@ -56,6 +62,12 @@ export interface IcsRecurringEventsOptions {
    * negative. Defaults to 30 minutes. Such all-day events last one day.
    */
   readonly minimumDuration?: Temporal.DurationLike;
+  /**
+   * The feed's time zone: its X-WR-TIMEZONE (`IcsCalendar.timeZone`), or one the application
+   * chose. UTC times on all-day and floating series, such as an UNTIL, are read in it, so they keep
+   * the feed's dates. Defaults to UTC. Floating DTSTARTs stay floating.
+   */
+  readonly timeZone?: string;
 }
 
 export interface IcsRecurringEvents<TExtensions extends IcsExtensionsConfig = {}> {
@@ -102,29 +114,35 @@ function intervalOf(
     case "unresolved":
       return undefined;
     default: {
-      const zone = start.kind === "zoned" ? start.zoned.timeZoneId : undefined;
+      // A UTC DTSTART repeats in UTC, whatever the expander's `defaultTimeZone`.
+      const zone = start.kind === "zoned" ? start.zoned.timeZoneId : "UTC";
       const startInstant = instantOf(start)!;
       const endInstant = instantOf(end) ?? startInstant;
       return {
         end:
           Temporal.Instant.compare(endInstant, startInstant) > 0
             ? endInstant
-            : startInstant
-                .toZonedDateTimeISO(zone ?? "UTC")
-                .add(minimumDuration)
-                .toInstant(),
+            : startInstant.toZonedDateTimeISO(zone).add(minimumDuration).toInstant(),
         kind: "timed",
-        ...(zone === undefined ? {} : { sourceTimeZone: zone }),
+        sourceTimeZone: zone,
         start: startInstant,
       };
     }
   }
 }
 
-function unique(dates: readonly RecurrenceDate[]): readonly RecurrenceDate[] {
+function keyOf(date: RecurrenceDate | RecurrencePeriod): string {
+  return "end" in date
+    ? `${recurrenceKey(date.start)}/${recurrenceKey(date.end)}`
+    : recurrenceKey(date);
+}
+
+function unique<TDate extends RecurrenceDate | RecurrencePeriod>(
+  dates: readonly TDate[],
+): readonly TDate[] {
   const keys = new Set<string>();
   return dates.filter((date) => {
-    const key = recurrenceKey(date);
+    const key = keyOf(date);
     if (keys.has(key)) return false;
     keys.add(key);
     return true;
@@ -136,14 +154,18 @@ function unique(dates: readonly RecurrenceDate[]): readonly RecurrenceDate[] {
  * takes with `createCanonicalRecurrenceAdapter`. Each event's `data` is its `IcsEvent`.
  *
  * - IDs: masters and one-off events keep their UID; an override gets the ID of the occurrence it
- *   replaces, `occurrenceId(uid, recurrenceId)`, with or without its master.
+ *   replaces, `occurrenceId(uid, recurrenceId)`, with or without its master. Without one, its
+ *   RECURRENCE-ID keeps its own kind, except that a floating one on a timed override resolves in
+ *   the override's zone, so the ID doesn't change when the master loads.
+ * - Intervals: a UTC DTSTART repeats in UTC (`sourceTimeZone: "UTC"`), a zoned one in its zone.
  * - Masters: an event with RRULE, RDATE or EXDATE, or one an override names by UID. DURATION
  *   without DTEND on a timed or floating master becomes `recurrence.duration`, and a DTSTART in a
  *   DST gap keeps its written time as `recurrence.wallStart`.
  * - Dates: EXDATE, RDATE, UNTIL and RECURRENCE-ID take the kind of the series' first occurrence
  *   through `coerceRecurrenceDate`. A date-only EXDATE excludes the whole day, a date-only UNTIL
  *   lasts through that day, and a date-only RDATE or RECURRENCE-ID on a timed or floating series
- *   is dropped with an issue.
+ *   is dropped with an issue. On all-day and floating series, UTC times are read in `timeZone` and
+ *   zoned ones in their own zone. An RDATE PERIOD stays a period, with both ends converted.
  * - Lengths: an event that DTEND or DURATION make zero-length or negative lasts `minimumDuration`,
  *   30 minutes by default, or one day when all-day.
  * - STATUS:CANCELLED: a cancelled one-off event or master is left out, with the master's
@@ -208,8 +230,8 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
     );
   });
 
-  const intervals = new Map<number, CalendarEventInterval>();
-  const firstOccurrences = new Map<string, CalendarEventInterval>();
+  const intervals = new Map<number, CalendarEventInterval | undefined>();
+  const series = new Map<string, SeriesTime>();
   const cancelledUids = new Set<string>();
   for (const [uid, index] of masterIndexes) {
     const event = events[index]!;
@@ -223,7 +245,7 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
       continue;
     }
     intervals.set(index, interval);
-    firstOccurrences.set(uid, interval);
+    series.set(uid, { first: interval, timeZone: options.timeZone });
   }
 
   const overrideIndexes = new Map<string, number>();
@@ -231,16 +253,18 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
   events.forEach((event, index) => {
     const value = event.recurrenceId;
     if (value === undefined || cancelledUids.has(event.uid)) return;
-    const first = firstOccurrences.get(event.uid);
+    const interval = intervalOf(event, minimumDuration);
+    intervals.set(index, interval);
+    const time = series.get(event.uid);
     let recurrenceId: RecurrenceDate | undefined;
-    if (first === undefined) {
+    if (time === undefined) {
       if (value.kind === "unresolved") {
         unresolved(index, "RECURRENCE-ID", value, "the override, which has no series, is skipped");
         return;
       }
-      recurrenceId = naturalDate(value);
+      recurrenceId = ownRecurrenceId(value, interval);
     } else {
-      const { date, mismatch } = toSeriesDate(value, first, "start", "RECURRENCE-ID");
+      const { date, mismatch } = toSeriesDate(value, time, "start", "RECURRENCE-ID");
       if (mismatch !== undefined) report(index, "date-kind-mismatch", mismatch, "RECURRENCE-ID");
       if (date === undefined) return;
       recurrenceId = date;
@@ -253,40 +277,44 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
   });
   const keptOverrides = new Set(overrideIndexes.values());
 
-  const recurrenceOf = (index: number, first: CalendarEventInterval): EventRecurrence => {
+  const recurrenceOf = (index: number, time: SeriesTime): EventRecurrence => {
     const event = events[index]!;
-    const convert = (
-      values: readonly IcsDateValue[],
-      role: RecurrenceDateRole,
-      property: string,
-      label = property,
-    ): RecurrenceDate[] => {
-      const converted = values.map((value) => toSeriesDate(value, first, role, label));
+    // One issue per property, for the first value that needs one.
+    const keep = <TDate>(property: string, converted: readonly SeriesDate<TDate>[]): TDate[] => {
       const mismatch = converted.find((date) => date.mismatch !== undefined)?.mismatch;
       if (mismatch !== undefined) report(index, "date-kind-mismatch", mismatch, property);
       return converted.flatMap(({ date }) => (date === undefined ? [] : [date]));
     };
 
-    const starts = event.recurrenceDates.map((value) => ("kind" in value ? value : value.start));
-    const recurrenceDates = unique(convert(starts, "start", "RDATE"));
-    if (event.recurrenceDates.some((value) => !("kind" in value) && !lastsAsFirst(value, first))) {
-      report(
-        index,
-        "period-duration",
-        "An RDATE PERIOD lasts other than the first occurrence; only its start is kept.",
+    const recurrenceDates = unique(
+      keep(
         "RDATE",
-      );
-    }
-    const exceptionDates = unique(convert(event.exceptionDates, "exception", "EXDATE"));
+        event.recurrenceDates.map((value) =>
+          "kind" in value
+            ? toSeriesDate(value, time, "start", "RDATE")
+            : toSeriesPeriod(value, time),
+        ),
+      ),
+    );
+    const exceptionDates = unique(
+      keep(
+        "EXDATE",
+        event.exceptionDates.map((value) => toSeriesDate(value, time, "exception", "EXDATE")),
+      ),
+    );
     let rule: RecurrenceRule | undefined;
     if (event.recurrenceRule !== undefined) {
       const { until, ...parts } = event.recurrenceRule;
-      const [date] = until === undefined ? [] : convert([until], "until", "RRULE", "UNTIL");
+      const [date] =
+        until === undefined ? [] : keep("RRULE", [toSeriesDate(until, time, "until", "UNTIL")]);
       rule = date === undefined ? parts : { ...parts, until: date };
     }
     const { duration, end, start } = event;
     const nominal =
-      end === undefined && duration !== undefined && duration.sign > 0 && first.kind !== "all-day";
+      end === undefined &&
+      duration !== undefined &&
+      duration.sign > 0 &&
+      time.first.kind !== "all-day";
     const inGap = start.kind === "zoned" && !start.wallTime.equals(start.zoned.toPlainDateTime());
     return {
       ...(nominal ? { duration } : {}),
@@ -302,7 +330,7 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
     const title = event.summary ?? "";
     if (event.recurrenceId !== undefined) {
       if (!keptOverrides.has(index)) return;
-      const interval = intervalOf(event, minimumDuration);
+      const interval = intervals.get(index);
       if (interval === undefined) {
         unresolved(index, "DTSTART", event.start, "the override is skipped");
         return;
@@ -332,7 +360,7 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
       event.recurrenceDates.length > 0 ||
       event.exceptionDates.length > 0 ||
       overriddenUids.has(event.uid);
-    const recurrence = isMaster ? recurrenceOf(index, interval) : undefined;
+    const recurrence = isMaster ? recurrenceOf(index, series.get(event.uid)!) : undefined;
     output.push({
       ...interval,
       data: event,
