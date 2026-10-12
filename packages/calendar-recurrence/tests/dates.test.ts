@@ -52,4 +52,18 @@ describe("coerceRecurrenceDate", () => {
     const gregory = Temporal.PlainDate.from("2026-10-28").withCalendar("gregory");
     expect(coerceRecurrenceDate(gregory, allDay, "start")?.toString()).toBe("2026-10-28");
   });
+
+  test("falls back to defaultTimeZone only where the series has no zone", () => {
+    const wall = Temporal.PlainDateTime.from("2026-10-28T09:00");
+    const options = { defaultTimeZone: "America/New_York" };
+    expect(String(coerceRecurrenceDate(wall, timed, "start", options))).toBe(
+      "2026-10-28T08:00:00Z",
+    );
+    const utc = { ...timed, sourceTimeZone: undefined };
+    expect(String(coerceRecurrenceDate(wall, utc, "start", options))).toBe("2026-10-28T13:00:00Z");
+    const instant = Temporal.Instant.from("2026-10-28T13:00:00Z");
+    expect(String(coerceRecurrenceDate(instant, floating, "start", options))).toBe(
+      "2026-10-28T09:00:00",
+    );
+  });
 });

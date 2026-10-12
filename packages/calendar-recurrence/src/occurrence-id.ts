@@ -4,12 +4,6 @@ import type { RecurrenceDate } from "./types";
 
 const separator = "::";
 
-// The three key forms `recurrenceKey` writes, with extended years and fractional seconds.
-const year = String.raw`(?:\d{4}|[+-]\d{6})`;
-const date = String.raw`${year}-\d{2}-\d{2}`;
-const time = String.raw`T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?`;
-const keyPattern = new RegExp(String.raw`^${date}(?:${time}Z?)?$`);
-
 /**
  * The ISO form of an occurrence's original start: `2026-10-28T09:00:00Z` for timed series,
  * `2026-10-28` for all-day ones and `2026-10-28T10:00:00` for floating ones, always in the ISO
@@ -43,5 +37,19 @@ export function parseOccurrenceId(
   const index = id.lastIndexOf(separator);
   if (index <= 0) return undefined;
   const key = id.slice(index + separator.length);
-  return keyPattern.test(key) ? { recurrenceKey: key, seriesId: id.slice(0, index) } : undefined;
+  return isRecurrenceKey(key) ? { recurrenceKey: key, seriesId: id.slice(0, index) } : undefined;
+}
+
+/** Whether `recurrenceKey` writes exactly this text for some date. */
+function isRecurrenceKey(key: string): boolean {
+  try {
+    const date = key.endsWith("Z")
+      ? Temporal.Instant.from(key)
+      : key.includes("T")
+        ? Temporal.PlainDateTime.from(key)
+        : Temporal.PlainDate.from(key);
+    return recurrenceKey(date) === key;
+  } catch {
+    return false;
+  }
 }
