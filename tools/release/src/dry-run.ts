@@ -6,6 +6,7 @@ import { checkConsumer } from "./consumer";
 import { checkTarballs } from "./exports";
 import { manifestPath, removeManifest, writeManifest } from "./manifest";
 import { packPublishedPackages, type PackedTarball } from "./pack";
+import { buildRegistry } from "./registry";
 import { checkSizes } from "./size";
 import { changelogPath, changelogSection, sharedVersion } from "./version";
 import {
@@ -70,13 +71,13 @@ export async function dryRun({
   const tarballs: PackedTarball[] = await record("pack", () => packPublishedPackages(packages));
   await record("exports", () => checkTarballs(tarballs));
   await record("consumer", () => checkConsumer(tarballs));
-  // Hook for #43 (PR #176), which adds `registry:build` (the registry JSON the docs site serves) and
-  // `registry:e2e` (`shadcn add` into clean apps against packed packages). Once they are on main,
-  // run both here, so the dry run builds the registry for the packed version. Until then, the
-  // schema smoke covers the registry items.
-  await record("registry", () =>
-    runOrThrow("vp", ["run", "--no-cache", "registry:smoke"], { inherit: true }),
-  );
+  // The registry (#43): its schema smoke, then a build for the packed version into
+  // .release/registry. Its install test needs the network, so it runs on its own afterwards:
+  // vp run release:registry-e2e.
+  const registry = await record("registry", async () => {
+    await runOrThrow("vp", ["run", "--no-cache", "registry:smoke"], { inherit: true });
+    return buildRegistry(tarballs);
+  });
 
   const end = await gitState();
   if (end.head !== start.head)
@@ -93,6 +94,7 @@ export async function dryRun({
       createdAt: new Date().toISOString(),
       checks,
       packages: tarballs.map(({ name, file, integrity }) => ({ name, file, integrity })),
+      registry,
     },
     manifestFile,
   );

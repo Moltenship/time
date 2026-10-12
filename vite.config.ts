@@ -70,6 +70,8 @@ export default defineConfig({
       "release:dry-run": { command: "vp run release#dry-run", cache: false },
       "release:version": { command: "vp run release#version", cache: false },
       "release:publish": { command: "vp run release#publish", cache: false },
+      // Needs the network: #43's shadcn install test against the dry run's tarballs.
+      "release:registry-e2e": { command: "vp run release#registry-e2e", cache: false },
       a11y: "vp run a11y#test",
       // The a11y suite with Chromium slowed down to a CI runner's speed. Never replayed: it's what
       // to run when CI and local disagree, and a timing race can pass once by luck.

@@ -24,6 +24,8 @@ export interface ReleaseManifest {
     readonly file: string;
     readonly integrity: string;
   }[];
+  /** The registry JSON built for this version (#43), in `.release/registry`. Not published to npm. */
+  readonly registry?: readonly { readonly file: string; readonly integrity: string }[];
 }
 
 export async function writeManifest(manifest: ReleaseManifest, path = manifestPath): Promise<void> {
