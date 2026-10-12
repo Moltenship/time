@@ -15,6 +15,7 @@ import {
   seriesTimeOf,
   toWall,
   type SeriesKind,
+  type SeriesTime,
 } from "../internal/dates";
 import { occurrenceId, recurrenceKey } from "../occurrence-id";
 import { DEFAULT_MAX_ITERATIONS, expandRecurrenceRule } from "../rule/expand";
@@ -63,8 +64,8 @@ interface SeriesPlan<TEvent, TEventId extends EventId> {
   readonly nominal: boolean;
   readonly rule: RecurrenceRule | undefined;
   readonly start: RecurrenceRuleStart;
-  /** Where a timed series repeats, and where instants on other series are read. */
-  readonly timeZone: string;
+  /** The series' kind, and where a timed series repeats or instants on others are read. */
+  readonly time: SeriesTime;
 }
 
 interface Extra {
@@ -170,7 +171,7 @@ function endOf<TEvent, TEventId extends EventId>(
   const { length } = plan;
   if (start instanceof Temporal.Instant) {
     return plan.nominal
-      ? start.toZonedDateTimeISO(plan.timeZone).add(length).toInstant()
+      ? start.toZonedDateTimeISO(plan.time.timeZone).add(length).toInstant()
       : start.add(length);
   }
   if (start instanceof Temporal.PlainDate && plan.nominal) {
@@ -214,7 +215,7 @@ function reachOf<TEvent, TEventId extends EventId>(
   const { length } = plan;
   if (rangeStart instanceof Temporal.Instant) {
     if (!plan.nominal) return rangeStart.subtract(length);
-    const zoned = rangeStart.toZonedDateTimeISO(plan.timeZone);
+    const zoned = rangeStart.toZonedDateTimeISO(plan.time.timeZone);
     return zoned.subtract(length).subtract(nominalMargin).toInstant();
   }
   const reach = rangeStart.subtract(length);
@@ -368,7 +369,8 @@ export function createOccurrenceExpander<
 
   function plan(master: Master): Plan | Draft {
     const { event, id, interval: first, recurrence } = master;
-    const { timeZone } = seriesTimeOf(first, defaultTimeZone);
+    const time = seriesTimeOf(first, defaultTimeZone);
+    const { timeZone } = time;
     if (first.kind === "timed" && !isTimeZone(timeZone)) {
       return draft("invalid-time-zone", event, id, `${timeZone} isn't a time zone.`);
     }
@@ -434,14 +436,14 @@ export function createOccurrenceExpander<
       nominal: recurrence.duration !== undefined,
       rule,
       start,
-      timeZone,
+      time,
     };
   }
 
   function excluded(plan: Plan, start: RecurrenceDate, key: string): boolean {
     if (plan.exceptions.has(key)) return true;
     if (plan.exceptionDays.size === 0) return false;
-    const day = toWall(start, { kind: plan.first.kind, timeZone: plan.timeZone }).toPlainDate();
+    const day = toWall(start, plan.time).toPlainDate();
     return plan.exceptionDays.has(recurrenceKey(day));
   }
 

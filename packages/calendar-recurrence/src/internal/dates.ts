@@ -1,6 +1,6 @@
 // Date, time zone and interval helpers that the engine, the expander, the ICS bridge and edits
-// share. `rule/calendar.ts` and `rule/clock.ts` stay with the engine: they are its fast path on
-// integer epoch days and wall seconds, which nothing else uses.
+// share, on Temporal values. The engine's fast path on integer epoch days and wall seconds stays in
+// `rule/calendar.ts` and `rule/clock.ts`.
 
 import type { CalendarEventInterval } from "@moltenship/calendar-core";
 import type { IcsDateValue, IcsWeekday } from "@moltenship/ics";
