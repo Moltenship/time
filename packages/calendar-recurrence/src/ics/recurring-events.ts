@@ -29,8 +29,8 @@ export type IcsRecurrenceIssueCode =
    * EXDATE, RDATE, UNTIL or RECURRENCE-ID is a DATE where the series is DATE-TIME or the other way
    * round, or has a TZID that resolved to no time zone. It was converted into the series' kind, or
    * dropped when it can't stand for its role, such as a date-only RDATE on a timed series. A
-   * date-only EXDATE is no mismatch: it excludes the whole day. An RDATE PERIOD that doesn't end
-   * after it starts in the series' kind keeps only its start.
+   * date-only EXDATE is no mismatch: it excludes the whole day. An RDATE PERIOD that ends no later
+   * than it starts once in the series' kind, as hours on an all-day series can, keeps only its start.
    */
   | "date-kind-mismatch"
   /**
@@ -38,6 +38,11 @@ export type IcsRecurrenceIssueCode =
    * then the later one in the input.
    */
   | "duplicate-event"
+  /**
+   * An RDATE PERIOD that doesn't end after it starts as written, which RFC 5545 §3.3.9 doesn't
+   * allow. Only its start is kept.
+   */
+  | "invalid-period"
   /**
    * DTSTART, or the RECURRENCE-ID of an override without its series, has a TZID that resolved to
    * no time zone. The event is skipped.
@@ -78,6 +83,30 @@ export interface IcsRecurringEvents<TExtensions extends IcsExtensionsConfig = {}
 }
 
 const defaultMinimumDuration: Temporal.DurationLike = { minutes: 30 };
+
+function minimumDurationOf(input: Temporal.DurationLike | undefined): Temporal.Duration {
+  let duration: Temporal.Duration | undefined;
+  try {
+    duration = Temporal.Duration.from(input ?? defaultMinimumDuration);
+  } catch {
+    duration = undefined;
+  }
+  if (duration === undefined || duration.sign <= 0) {
+    throw new RangeError("minimumDuration must be a positive duration, such as { minutes: 30 }.");
+  }
+  return duration;
+}
+
+function timeZoneOf(timeZone: string | undefined): string | undefined {
+  if (timeZone === undefined) return undefined;
+  try {
+    return new Temporal.ZonedDateTime(0n, timeZone).timeZoneId;
+  } catch (error) {
+    throw new RangeError(`timeZone "${timeZone}" isn't a time zone Temporal knows.`, {
+      cause: error,
+    });
+  }
+}
 
 type IcsEventTimes = Pick<IcsEvent, "duration" | "end" | "start">;
 
@@ -156,7 +185,8 @@ function unique<TDate extends RecurrenceDate | RecurrencePeriod>(
  * - IDs: masters and one-off events keep their UID; an override gets the ID of the occurrence it
  *   replaces, `occurrenceId(uid, recurrenceId)`, with or without its master. Without one, its
  *   RECURRENCE-ID keeps its own kind, except that a floating one on a timed override resolves in
- *   the override's zone, so the ID doesn't change when the master loads.
+ *   the override's zone. For feeds that follow RFC 5545, where RECURRENCE-ID has the type of the
+ *   master's DTSTART, the ID stays the same when the master loads.
  * - Intervals: a UTC DTSTART repeats in UTC (`sourceTimeZone: "UTC"`), a zoned one in its zone.
  * - Masters: an event with RRULE, RDATE or EXDATE, or one an override names by UID. DURATION
  *   without DTEND on a timed or floating master becomes `recurrence.duration`, and a DTSTART in a
@@ -165,23 +195,26 @@ function unique<TDate extends RecurrenceDate | RecurrencePeriod>(
  *   through `coerceRecurrenceDate`. A date-only EXDATE excludes the whole day, a date-only UNTIL
  *   lasts through that day, and a date-only RDATE or RECURRENCE-ID on a timed or floating series
  *   is dropped with an issue. On all-day and floating series, UTC times are read in `timeZone` and
- *   zoned ones in their own zone. An RDATE PERIOD stays a period, with both ends converted.
+ *   zoned ones keep their written wall time. An RDATE PERIOD stays a period, with both ends
+ *   converted.
  * - Lengths: an event that DTEND or DURATION make zero-length or negative lasts `minimumDuration`,
  *   30 minutes by default, or one day when all-day.
  * - STATUS:CANCELLED: a cancelled one-off event or master is left out, with the master's
  *   overrides; a cancelled override comes out with `override.cancelled`, which hides its
  *   occurrence.
- * - Duplicates: of VEVENTs with the same UID, or UID and RECURRENCE-ID, the highest SEQUENCE wins,
- *   then the later one.
+ * - Duplicates: of usable VEVENTs with the same UID, or UID and RECURRENCE-ID, the highest
+ *   SEQUENCE wins, then the later one. An event whose DTSTART or RECURRENCE-ID can't be read is
+ *   left out with its issue first, so it can't replace a usable one.
  * - RANGE=THISANDFUTURE isn't supported: the override replaces only the occurrence it names.
  *
- * Bad data becomes `issues`; it never throws.
+ * Bad data becomes `issues`; only invalid options throw, as a `RangeError`.
  */
 export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig = {}>(
   events: readonly IcsEvent<TExtensions>[],
   options: IcsRecurringEventsOptions = {},
 ): IcsRecurringEvents<TExtensions> {
-  const minimumDuration = options.minimumDuration ?? defaultMinimumDuration;
+  const minimumDuration = minimumDurationOf(options.minimumDuration);
+  const timeZone = timeZoneOf(options.timeZone);
   const issues: IcsRecurrenceIssue<TExtensions>[] = [];
   const report = (
     index: number,
@@ -216,13 +249,17 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
     return winner;
   };
 
-  const overriddenUids = new Set<string>();
+  // Masters and one-off events: only those with a usable DTSTART compete, one per UID.
+  const intervals = new Map<number, CalendarEventInterval>();
   const masterIndexes = new Map<string, number>();
   events.forEach((event, index) => {
-    if (event.recurrenceId !== undefined) {
-      overriddenUids.add(event.uid);
+    if (event.recurrenceId !== undefined) return;
+    const interval = intervalOf(event, minimumDuration);
+    if (interval === undefined) {
+      unresolved(index, "DTSTART", event.start, "the event is skipped");
       return;
     }
+    intervals.set(index, interval);
     const kept = masterIndexes.get(event.uid);
     masterIndexes.set(
       event.uid,
@@ -230,30 +267,24 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
     );
   });
 
-  const intervals = new Map<number, CalendarEventInterval | undefined>();
   const series = new Map<string, SeriesTime>();
   const cancelledUids = new Set<string>();
   for (const [uid, index] of masterIndexes) {
-    const event = events[index]!;
-    if (event.status === "CANCELLED") {
-      cancelledUids.add(uid);
-      continue;
-    }
-    const interval = intervalOf(event, minimumDuration);
-    if (interval === undefined) {
-      unresolved(index, "DTSTART", event.start, "the event is skipped");
-      continue;
-    }
-    intervals.set(index, interval);
-    series.set(uid, { first: interval, timeZone: options.timeZone });
+    if (events[index]!.status === "CANCELLED") cancelledUids.add(uid);
+    else series.set(uid, { first: intervals.get(index)!, timeZone });
   }
 
+  // Overrides: only those with a usable DTSTART and RECURRENCE-ID compete, one per occurrence.
   const overrideIndexes = new Map<string, number>();
   const recurrenceIds = new Map<number, RecurrenceDate>();
   events.forEach((event, index) => {
     const value = event.recurrenceId;
     if (value === undefined || cancelledUids.has(event.uid)) return;
     const interval = intervalOf(event, minimumDuration);
+    if (interval === undefined) {
+      unresolved(index, "DTSTART", event.start, "the override is skipped");
+      return;
+    }
     intervals.set(index, interval);
     const time = series.get(event.uid);
     let recurrenceId: RecurrenceDate | undefined;
@@ -276,11 +307,14 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
     overrideIndexes.set(id, kept === undefined ? index : pick(kept, index, name));
   });
   const keptOverrides = new Set(overrideIndexes.values());
+  const overriddenUids = new Set([...keptOverrides].map((index) => events[index]!.uid));
 
   const recurrenceOf = (index: number, time: SeriesTime): EventRecurrence => {
     const event = events[index]!;
     // One issue per property, for the first value that needs one.
     const keep = <TDate>(property: string, converted: readonly SeriesDate<TDate>[]): TDate[] => {
+      const invalid = converted.find((date) => date.invalid !== undefined)?.invalid;
+      if (invalid !== undefined) report(index, "invalid-period", invalid, property);
       const mismatch = converted.find((date) => date.mismatch !== undefined)?.mismatch;
       if (mismatch !== undefined) report(index, "date-kind-mismatch", mismatch, property);
       return converted.flatMap(({ date }) => (date === undefined ? [] : [date]));
@@ -330,11 +364,7 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
     const title = event.summary ?? "";
     if (event.recurrenceId !== undefined) {
       if (!keptOverrides.has(index)) return;
-      const interval = intervals.get(index);
-      if (interval === undefined) {
-        unresolved(index, "DTSTART", event.start, "the override is skipped");
-        return;
-      }
+      const interval = intervals.get(index)!;
       if (event.recurrenceRange === "THISANDFUTURE") {
         report(
           index,
@@ -353,16 +383,16 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
       output.push({ ...interval, data: event, id, override, title });
       return;
     }
-    const interval = intervals.get(index);
-    if (interval === undefined) return;
+    const time = series.get(event.uid);
+    if (time === undefined || masterIndexes.get(event.uid) !== index) return;
     const isMaster =
       event.recurrenceRule !== undefined ||
       event.recurrenceDates.length > 0 ||
       event.exceptionDates.length > 0 ||
       overriddenUids.has(event.uid);
-    const recurrence = isMaster ? recurrenceOf(index, series.get(event.uid)!) : undefined;
+    const recurrence = isMaster ? recurrenceOf(index, time) : undefined;
     output.push({
-      ...interval,
+      ...time.first,
       data: event,
       id: event.uid,
       ...(recurrence === undefined ? {} : { recurrence }),

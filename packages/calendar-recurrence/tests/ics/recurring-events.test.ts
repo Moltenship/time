@@ -527,6 +527,44 @@ describe("recurringEventsFromIcs: dates in the series' kind", () => {
     ]);
   });
 
+  test("keeps only the start of an RDATE PERIOD that doesn't end after it starts as written", () => {
+    const events = parse([
+      "UID:meeting",
+      "DTSTART:20260112T090000Z",
+      "DTEND:20260112T100000Z",
+      "RDATE;VALUE=PERIOD:20260118T090000Z/PT0S,20260119T090000Z/20260119T080000Z",
+      "RDATE;VALUE=PERIOD:20260120T090000Z/-PT1H",
+    ]);
+    const result = recurringEventsFromIcs(events);
+    expect(plain(result.events[0]!.recurrence?.recurrenceDates)).toEqual([
+      "2026-01-18T09:00:00Z",
+      "2026-01-19T09:00:00Z",
+      "2026-01-20T09:00:00Z",
+    ]);
+    expect(result.issues).toEqual([
+      {
+        code: "invalid-period",
+        event: events[0],
+        index: 0,
+        message: "RDATE PERIOD doesn't end after it starts; only its start was kept.",
+        property: "RDATE",
+      },
+    ]);
+  });
+
+  test("reads a zoned date-time in a DST gap on a floating series at the wall time written", () => {
+    const events = parse([
+      "UID:night",
+      "DTSTART:20270321T023000",
+      "RRULE:FREQ=WEEKLY",
+      "EXDATE;TZID=Europe/Berlin:20270328T023000",
+    ]);
+    expect(bridge(events)).toMatchObject({
+      events: [{ recurrence: { exceptionDates: ["2027-03-28T02:30:00"] } }],
+      issues: [],
+    });
+  });
+
   test("keeps both COUNT and UNTIL", () => {
     const events = parse([
       "UID:both",
@@ -667,6 +705,59 @@ describe("recurringEventsFromIcs: cancelled and duplicate events", () => {
     ]);
   });
 
+  test("leaves out events it can't read before it picks among duplicates", () => {
+    const events = parse(
+      ["UID:sync", "SEQUENCE:2", "DTSTART;TZID=Our Office:20260112T100000", "RRULE:FREQ=WEEKLY"],
+      [...weeklySync, "SEQUENCE:1"],
+      [
+        "UID:sync",
+        "SEQUENCE:3",
+        "RECURRENCE-ID;TZID=Europe/Berlin:20260119T100000",
+        "DTSTART;TZID=Our Office:20260119T140000",
+      ],
+      [
+        "UID:sync",
+        "SEQUENCE:1",
+        "SUMMARY:Sync (moved)",
+        "RECURRENCE-ID;TZID=Europe/Berlin:20260119T100000",
+        "DTSTART;TZID=Europe/Berlin:20260119T140000",
+      ],
+    );
+    const result = recurringEventsFromIcs(events);
+    expect(result.events.map(({ id, title }) => [id, title])).toEqual([
+      ["sync", "Sync"],
+      ["sync::2026-01-19T09:00:00Z", "Sync (moved)"],
+    ]);
+    expect(result.issues.map(({ code, index, property }) => [code, index, property])).toEqual([
+      ["unresolved-time-zone", 0, "DTSTART"],
+      ["unresolved-time-zone", 2, "DTSTART"],
+    ]);
+  });
+
+  test("makes an event a master only for overrides that come out, cancelled ones included", () => {
+    const events = parse(
+      ["UID:lunch", "DTSTART:20260120T113000Z"],
+      ["UID:lunch", "RECURRENCE-ID;VALUE=DATE:20260120", "DTSTART:20260120T123000Z"],
+      ["UID:call", "DTSTART:20260121T090000Z"],
+      ["UID:call", "RECURRENCE-ID:20260121T090000Z", "DTSTART;TZID=Our Office:20260121T100000"],
+      ["UID:demo", "DTSTART:20260122T090000Z"],
+      [
+        "UID:demo",
+        "RECURRENCE-ID:20260122T090000Z",
+        "DTSTART:20260122T090000Z",
+        "STATUS:CANCELLED",
+      ],
+    );
+    const result = recurringEventsFromIcs(events);
+    expect(result.events.map((event) => [event.id, event.recurrence])).toStrictEqual([
+      ["lunch", undefined],
+      ["call", undefined],
+      ["demo", {}],
+      ["demo::2026-01-22T09:00:00Z", undefined],
+    ]);
+    expect(result.events.filter((event) => "recurrence" in event)).toHaveLength(1);
+  });
+
   test("picks a duplicate override by SEQUENCE before it decides whether it's cancelled", () => {
     const events = parse(
       weeklySync,
@@ -724,5 +815,35 @@ describe("recurringEventsFromIcs: cancelled and duplicate events", () => {
         'Another VEVENT with UID "sync" and RECURRENCE-ID 2026-01-26T09:00:00Z has the same SEQUENCE and comes later, and replaces this one.',
       ],
     ]);
+  });
+});
+
+describe("recurringEventsFromIcs: options", () => {
+  const events = parse(["UID:lunch", "DTSTART:20260120T113000Z"]);
+
+  test("throws a RangeError for a time zone Temporal doesn't know", () => {
+    const bridgeIn = (timeZone: string) => () => recurringEventsFromIcs(events, { timeZone });
+    expect(bridgeIn("Mars/Olympus_Mons")).toThrow(RangeError);
+    expect(bridgeIn("Mars/Olympus_Mons")).toThrow(
+      'timeZone "Mars/Olympus_Mons" isn\'t a time zone Temporal knows.',
+    );
+    expect(bridgeIn("Australia/Sydney")).not.toThrow();
+  });
+
+  test("throws a RangeError for a minimum duration that doesn't parse or isn't positive", () => {
+    const invalid: readonly Temporal.DurationLike[] = [
+      {},
+      { minutes: 0 },
+      { minutes: -5 },
+      { minutes: 1.5 },
+    ];
+    for (const minimumDuration of invalid) {
+      expect(() => recurringEventsFromIcs(events, { minimumDuration })).toThrow(
+        "minimumDuration must be a positive duration, such as { minutes: 30 }.",
+      );
+    }
+    expect(() =>
+      recurringEventsFromIcs(events, { minimumDuration: Temporal.Duration.from("PT1H") }),
+    ).not.toThrow();
   });
 });

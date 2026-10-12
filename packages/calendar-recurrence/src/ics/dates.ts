@@ -2,6 +2,7 @@ import type { CalendarEventInterval } from "@moltenship/calendar-core";
 import { getEventEnd, type IcsDateValue, type IcsPeriod } from "@moltenship/ics";
 
 import { coerceRecurrenceDate, type RecurrenceDateRole } from "../dates";
+import { compareDates } from "../series/clock";
 import type { RecurrenceDate, RecurrencePeriod } from "../types";
 
 /** Where a series' dates are read. */
@@ -32,7 +33,9 @@ export function naturalDate(value: IcsDateValue): RecurrenceDate {
 
 /**
  * An override's RECURRENCE-ID when its master isn't among the events: in its own kind, except that
- * a floating one on a timed override resolves in the override's zone, as its series would.
+ * a floating one on a timed override resolves in the override's zone. For feeds that follow RFC
+ * 5545, where RECURRENCE-ID has the type of the master's DTSTART, that is the series' kind, so the
+ * ID stays the same when the master loads.
  */
 export function ownRecurrenceId(
   value: IcsDateValue,
@@ -43,20 +46,24 @@ export function ownRecurrenceId(
   return coerceRecurrenceDate(date, own, "start") ?? date;
 }
 
-// A zoned value's date or wall time is the one written; a UTC one's is the feed's.
+// On all-day and floating series, a zoned value's wall time is the one written, even in a DST gap,
+// and a UTC one's is the feed's. Timed series keep the instant.
 function coerce(
   value: IcsDateValue,
   series: SeriesTime,
   role: RecurrenceDateRole,
 ): RecurrenceDate | undefined {
-  const zone = value.kind === "zoned" ? value.zoned.timeZoneId : series.timeZone;
-  const options = zone === undefined ? {} : { defaultTimeZone: zone };
-  return coerceRecurrenceDate(naturalDate(value), series.first, role, options);
+  const date =
+    value.kind === "zoned" && series.first.kind !== "timed" ? value.wallTime : naturalDate(value);
+  const options = series.timeZone === undefined ? {} : { defaultTimeZone: series.timeZone };
+  return coerceRecurrenceDate(date, series.first, role, options);
 }
 
 export interface SeriesDate<TDate = RecurrenceDate> {
   /** `undefined` when the value can't stand for its role in the series. */
   readonly date: TDate | undefined;
+  /** Why it is an `invalid-period`, when it is one. */
+  readonly invalid?: string;
   /** Why it is a `date-kind-mismatch`, when it is one. */
   readonly mismatch?: string;
 }
@@ -94,29 +101,26 @@ export function toSeriesDate(
   return { date, mismatch: `${label} ${problem}; ${outcome}.` };
 }
 
-// Nanoseconds since the epoch, wall times as if in UTC, to order dates of any kind.
-function epochOf(date: RecurrenceDate): bigint {
-  return date instanceof Temporal.Instant
-    ? date.epochNanoseconds
-    : Temporal.PlainDateTime.from(date).toZonedDateTime("UTC").epochNanoseconds;
-}
-
 /**
- * An RDATE PERIOD with both ends in the series' kind. When it doesn't end after it starts there,
- * as a few hours become one date on an all-day series, only its start is kept.
+ * An RDATE PERIOD with both ends in the series' kind. One that doesn't end after it starts, as
+ * written or once a few hours become one date on an all-day series, keeps only its start.
  */
 export function toSeriesPeriod(
   period: IcsPeriod,
   series: SeriesTime,
 ): SeriesDate<RecurrenceDate | RecurrencePeriod> {
   const start = toSeriesDate(period.start, series, "start", "RDATE");
-  const end = "end" in period ? period.end : getEventEnd(period);
-  const { date: endDate, mismatch } = toSeriesDate(end, series, "start", "RDATE");
-  if (start.date === undefined || endDate === undefined) {
-    return { date: undefined, mismatch: start.mismatch ?? mismatch };
+  // In the start's kind, so the two compare.
+  const sourceEnd = getEventEnd(period);
+  if (compareDates(naturalDate(sourceEnd), naturalDate(period.start)) <= 0) {
+    const invalid = "RDATE PERIOD doesn't end after it starts; only its start was kept.";
+    return { ...start, invalid };
   }
-  if (epochOf(endDate) > epochOf(start.date)) {
-    return { date: { end: endDate, start: start.date }, mismatch: start.mismatch ?? mismatch };
+  const end = toSeriesDate("end" in period ? period.end : sourceEnd, series, "start", "RDATE");
+  const mismatch = start.mismatch ?? end.mismatch;
+  if (start.date === undefined || end.date === undefined) return { date: undefined, mismatch };
+  if (compareDates(end.date, start.date) > 0) {
+    return { date: { end: end.date, start: start.date }, mismatch };
   }
   return {
     date: start.date,
