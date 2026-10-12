@@ -34,7 +34,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | shadcn registry | #43             | Every view, the shared parts, the theme, the recurrence scope dialog and `calendar-full`, built with `shadcn build` and served by the docs site at `/r/<item>.json`; `npx shadcn add <url>` tested in clean Vite and Next.js apps against packed packages (`vp run registry:e2e`); `compatibility.json` lists each item's runtime range for release tooling |
 | Next.js recipe | #164             | A live App Router example at `/examples/nextjs` and a guide through its source: the view and date in the URL, a Server Component fetching that range, Server Actions saving changes with `useOptimistic`, a time zone cookie; `withAsciiSpaces`, so ranges formatted in Node hydrate in browsers |
 | Quality gate   | #47              | The local gate in three tiers, the same tasks CI runs: `vp run ready:quick`, `ready` and `ready:full` (#179); the a11y suite fixed at the causes of CI's flakes, and run at CI's speed in the full gate (#178); the a11y suite and real mouse and keyboard interactions in Firefox and WebKit, WebKit on `temporal-polyfill` (`vp run browsers`, #183) |
-| Release audit  | #47 (phase 1)    | `docs/internal/release-audit.md`: each invariant in `architecture.md` linked to its proof, the gaps filed (#180–#192), the open p0 and p1 issues triaged |
+| Release audit  | #47 (phase 1)    | `docs/internal/release-audit.md`: each invariant in `architecture.md` linked to its proof, the gaps filed (#180–#182, #184–#192), the open p0 and p1 issues triaged |
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
 0.4 — Availability, layout & scale are closed. Epic #2, recurrence, closes with #155.
@@ -51,7 +51,8 @@ latest releases.
 The shadcn registry shipped (#43) and `calendar-testing` stays private until after 1.0 (#45). Release
 tooling (#46) is next. Then the second phase of the release audit (#47): the showcase and fixtures on
 the packed release artifacts, the full release dry run, the screen-reader passes (#186) and the
-release candidate report. The audit's 1.0 blockers: #185, #186.
+release candidate report, with a green CI `browsers` run (#192). The audit's proposed 1.0 blockers:
+#185, #186.
 
 ## Later
 
@@ -60,8 +61,7 @@ issue's "Later" section when work starts.
 
 - Annotations in month, agenda and resource views (#132)
 - Cross-browser test matrix: Chromium, Firefox, WebKit (#133); the first Firefox and WebKit run's
-  follow-ups: WebKit failures (#181), Playwright's Firefox on macOS 27 (#182), timing failures on a
-  CI runner (#192)
+  follow-ups: WebKit failures (#181), Playwright's Firefox on macOS 27 (#182)
 - Release audit findings for after 1.0 unless the owner says otherwise: an empty week's focus
   target (#180), the store's records (#184), DST shifts (#187), performance benchmarks (#188),
   resource-view parity (#189), the registry's client boundary (#190), transaction docs (#191)

@@ -109,7 +109,7 @@ remains an explicit local task while its deterministic correctness and build che
 `vp run react:store` is the focused issue #25 gate. It checks and builds `calendar-react`, runs the
 controlled/uncontrolled state matrix, two-root isolation, selector invalidation, injected-store and
 cleanup checks, and verifies deterministic SSR/hydration. The production build check
-(`scripts/verify-public-api.mjs`) fails if the React client boundary is dropped or the runtime
+(`packages/calendar-react/scripts/verify-public-api.mjs`) fails if the React client boundary is dropped or the runtime
 outgrows its budget.
 
 `vp run react:factory` is the focused issue #26 gate. It adds the typed factory, compound controls,

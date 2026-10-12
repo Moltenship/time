@@ -50,7 +50,8 @@ published set, the `repository`, `homepage` and `bugs` fields, and that each tar
 | `registry` | Internal shadcn build, validation and install test (`tools/registry`) | None |
 
 External dependencies are added by the issue that validates their contract. React 19 is a
-`calendar-react` peer and Jotai 2 is its private runtime dependency after issue #25. The dnd-kit,
+`calendar-react` peer. `calendar-react` has no runtime dependency outside the workspace; it dropped
+Jotai in #70, which ADR 0025 doesn't say yet (#184). The dnd-kit,
 interval-tree, virtualization, and browser-test dependencies remain owned by their corresponding
 implementation or harness issues.
 
@@ -64,15 +65,18 @@ boundary.
 ```text
 calendar-temporal
        ↓
-calendar-core ───────→ fixtures ───────→ benchmark
-       ↓                                ↑
-calendar-react ─────────────────────────┘
-       ├────────────→ calendar-dnd
-       └────────────→ calendar (facade) ─────→ showcase / ssr-fixture
-                              ↓
-                      calendar-testing ← calendar-dnd / calendar-temporal
+calendar-core ───────────────→ fixtures ───────→ benchmark
+       ↓                                           ↑
+calendar-core + calendar-temporal → calendar-react ┤
+calendar-core + calendar-temporal → calendar-dnd   │
+                                                   │
+calendar-core + calendar-dnd + calendar-react + calendar-temporal
+       ↓
+calendar (facade) ─────→ showcase / ssr-fixture / demo / registry-source
+       ↓
+calendar-testing ← calendar-dnd / calendar-temporal
 
-calendar-core + calendar-temporal + ics ─────→ calendar-recurrence
+calendar-core + calendar-temporal + ics ─────→ calendar-recurrence ─────→ showcase / demo / benchmark
 
 ics (standalone: no workspace imports, no runtime dependencies) ─────→ showcase
 ```
