@@ -71,6 +71,30 @@ To use the visitor's own zone, read `Temporal.Now.timeZoneId()` in the browser. 
 server, store the zone with the user or pass it from the client after hydration, so the server and
 the browser render the same thing. See [Next.js and server rendering](/docs/guides/nextjs).
 
+## Secondary time zones
+
+`secondaryTimeZones` on `Root` adds other zones that time grids label their hours in. Events still
+show in the calendar's own zone. Pass IANA names, or `{ timeZone, label }` to name a zone yourself:
+
+```tsx
+<Calendar.Root timeZone="Europe/Berlin" secondaryTimeZones={["Asia/Tokyo"]} />
+```
+
+Time reads each hour line on its own date: it resolves the wall time in the calendar's zone, then
+converts that moment to the other zone. It never adds a fixed offset, so the labels are right on
+the days either zone changes its clocks, and for zones such as Australia/Lord_Howe, whose clocks
+move by 30 minutes. Like `timeZone`, the list is an explicit input, so the server and the browser
+render the same labels. Invalid zones are left out and reported as
+[diagnostics](/docs/api/react#diagnostics).
+
+A grid has one hour gutter for all its days, so the gutter follows one of them: the first day shown
+on which neither zone changes its clocks. The days whose lines read differently, because a zone
+changed its offset, are listed as shifts: runs of lines, each with how many minutes it differs by.
+
+Views get the list as `environment.secondaryTimeZones`. In your own view,
+`timeGridZoneAxis(columns, timeZone)` returns each line's time in another zone and the shifts, and
+`timeGridZoneTimes(column, wallTime, timeZone)` reads one wall time.
+
 ## Daylight saving time
 
 Not every day has 24 hours. In Berlin, March 29, 2026 has 23 hours and October 25, 2026 has 25:

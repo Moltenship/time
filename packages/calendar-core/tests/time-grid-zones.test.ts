@@ -1,7 +1,7 @@
 import fc from "fast-check";
 import { describe, expect, test } from "vite-plus/test";
 
-import { plainDateInterval } from "@moltenship/calendar-temporal";
+import { plainDateInterval, resolveZonedWallTime } from "@moltenship/calendar-temporal";
 
 import {
   resolveSecondaryTimeZones,
@@ -11,7 +11,20 @@ import {
   timeGridZoneTimes,
   type TimeGridColumn,
   type TimeGridZoneRow,
+  type TimeGridZoneShift,
 } from "../src/index";
+
+const zone = fc.constantFrom(
+  "America/New_York",
+  "America/Santiago",
+  "Asia/Kathmandu",
+  "Asia/Kolkata",
+  "Australia/Lord_Howe",
+  "Europe/Berlin",
+  "Pacific/Apia",
+  "Pacific/Chatham",
+  "UTC",
+);
 
 function columns(start: string, days: number, timeZone: string): readonly TimeGridColumn[] {
   const first = Temporal.PlainDate.from(start);
@@ -203,19 +216,18 @@ describe("time-grid zone rows", () => {
     }
   });
 
-  test("round-trips every line through both zones on any date", () => {
-    const zones = [
-      "America/New_York",
-      "America/Santiago",
-      "Asia/Kathmandu",
-      "Asia/Kolkata",
-      "Australia/Lord_Howe",
-      "Europe/Berlin",
-      "Pacific/Apia",
-      "Pacific/Chatham",
-      "UTC",
-    ];
-    const zone = fc.constantFrom(...zones);
+  test("rejects unknown zones the same way in every reader", () => {
+    const berlin = column("2026-10-12", "Europe/Berlin");
+    const noon = Temporal.PlainTime.from("12:00");
+
+    expect(() => timeGridZoneRows(berlin, "Mars/Base")).toThrow("invalid-time-zone");
+    expect(() => timeGridZoneTimes(berlin, noon, "Mars/Base")).toThrow("invalid-time-zone");
+    expect(() => timeGridZoneAxis([berlin], "Mars/Base")).toThrow("invalid-time-zone");
+    // A date-time string that names a zone isn't a zone.
+    expect(() => timeGridZoneRows(berlin, "2026-01-01T00:00[Asia/Tokyo]")).toThrow(RangeError);
+  });
+
+  test("finds the moments of every line as resolveZonedWallTime does, on any date", () => {
     const date = fc
       .integer({ max: 4 * 365, min: 0 })
       .map((days) => Temporal.PlainDate.from("2024-01-01").add({ days }));
@@ -223,12 +235,19 @@ describe("time-grid zone rows", () => {
     fc.assert(
       fc.property(date, zone, zone, (day, display, other) => {
         const target = column(day.toString(), display);
-        for (const row of timeGridZoneRows(target, other, 30)) {
+        const rows = timeGridZoneRows(target, other, 30);
+        expect(rows).toHaveLength(48);
+        for (const row of rows) {
+          const wall = day.toPlainDateTime(row.wallTime);
+          const { occurrences } = resolveZonedWallTime(wall, {
+            disambiguation: "compatible",
+            timeZone: display,
+          });
+          expect(row.times.map(({ instant }) => instant.toString())).toEqual(
+            occurrences.map(({ instant }) => instant.toString()),
+          );
           for (const time of row.times) {
             const there = time.instant.toZonedDateTimeISO(other);
-            expect(time.instant.toZonedDateTimeISO(display).toPlainDateTime()).toEqual(
-              day.toPlainDateTime(row.wallTime),
-            );
             expect(time.dateTime).toEqual(there.toPlainDateTime());
             expect(time.offset).toBe(there.offset);
             expect(time.dayOffset).toBe(day.until(there.toPlainDate()).days);
@@ -240,6 +259,17 @@ describe("time-grid zone rows", () => {
   });
 });
 
+/** Shifts as `[date, from, until, minutes]`, with times as "HH:MM". */
+function runs(shifts: readonly TimeGridZoneShift[]) {
+  const hhmm = (time: Temporal.PlainTime) => time.toString({ smallestUnit: "minute" });
+  return shifts.map(({ date, from, minutes, until }) => [
+    date.toString(),
+    hhmm(from),
+    until === null ? null : hhmm(until),
+    minutes,
+  ]);
+}
+
 describe("time-grid zone axis", () => {
   test("reads the first column and lists no shifts in an ordinary week", () => {
     const axis = timeGridZoneAxis(columns("2026-10-05", 7, "Europe/Berlin"), "asia/tokyo");
@@ -250,80 +280,156 @@ describe("time-grid zone axis", () => {
     expect(axis!.shifts).toEqual([]);
     expect(rowsAt(axis!.rows, 9, 17)).toEqual(["09:00 → 16:00", "17:00 → 00:00+1"]);
     expect(Object.isFrozen(axis)).toBe(true);
+    expect(Object.isFrozen(axis!.shifts)).toBe(true);
   });
 
   test("lists the day the other zone changes offset in the middle of a week", () => {
     // Berlin is already on CET; New York leaves EDT on Sunday, November 1, at 07:00 in Berlin.
-    const week = columns("2026-10-26", 7, "Europe/Berlin");
-    const axis = timeGridZoneAxis(week, "America/New_York")!;
+    const axis = timeGridZoneAxis(columns("2026-10-26", 7, "Europe/Berlin"), "America/New_York")!;
 
     expect(rowsAt(axis.rows, 7, 12)).toEqual(["07:00 → 02:00", "12:00 → 07:00"]);
-    expect(axis.shifts).toHaveLength(1);
-    expect(axis.shifts[0]!.date.toString()).toBe("2026-11-01");
-    expect(axis.shifts[0]!.from.toString()).toBe("07:00:00");
-    expect(axis.shifts[0]!.minutes).toBe(-60);
+    expect(runs(axis.shifts)).toEqual([["2026-11-01", "07:00", null, -60]]);
+    expect(Object.isFrozen(axis.shifts[0])).toBe(true);
   });
 
   test("lists the day the display zone changes offset, past its skipped hour", () => {
-    const week = columns("2026-03-23", 7, "Europe/Berlin");
-    const axis = timeGridZoneAxis(week, "America/New_York")!;
+    const axis = timeGridZoneAxis(columns("2026-03-23", 7, "Europe/Berlin"), "America/New_York")!;
 
-    expect(
-      axis.shifts.map(({ date, from, minutes }) => [date.toString(), from.hour, minutes]),
-    ).toEqual([["2026-03-29", 3, -60]]);
+    expect(runs(axis.shifts)).toEqual([["2026-03-29", "03:00", null, -60]]);
   });
 
-  test("lists the days around a 25-hour day by the line after the repeated hour", () => {
-    const week = columns("2026-10-19", 7, "Europe/Berlin");
-    const axis = timeGridZoneAxis(week, "America/New_York")!;
-
+  test("lists a 25-hour day from the line after its repeated hour", () => {
     // The repeated 02:00 reads the same as the axis on its earlier moment; 03:00 is CET.
-    expect(
-      axis.shifts.map(({ date, from, minutes }) => [date.toString(), from.hour, minutes]),
-    ).toEqual([["2026-10-25", 3, 60]]);
+    const axis = timeGridZoneAxis(columns("2026-10-19", 7, "Europe/Berlin"), "America/New_York")!;
+
+    expect(runs(axis.shifts)).toEqual([["2026-10-25", "03:00", null, 60]]);
   });
 
-  test("reads the rows on a chosen column and lists the others against it", () => {
-    const week = columns("2026-03-23", 7, "Europe/Berlin");
-    const sunday = Temporal.PlainDate.from("2026-03-29");
-    const axis = timeGridZoneAxis(week, "America/New_York", { date: sunday })!;
+  test("ends a run where the lines read like the axis again", () => {
+    // New York and Chicago both change at 02:00 local, an hour apart: only New York's 03:00 differs.
+    const chicago = timeGridZoneAxis(
+      columns("2026-03-02", 7, "America/New_York"),
+      "America/Chicago",
+    )!;
+    const losAngeles = timeGridZoneAxis(
+      columns("2026-03-02", 7, "America/New_York"),
+      "America/Los_Angeles",
+    )!;
 
-    expect(axis.date.toString()).toBe("2026-03-29");
-    expect(rowsAt(axis.rows, 2, 3)).toEqual(["02:00 → –", "03:00 → 21:00-1"]);
-    expect(axis.shifts.map(({ date, from, minutes }) => [date.day, from.hour, minutes])).toEqual(
-      [23, 24, 25, 26, 27, 28].map((day) => [day, 3, 60]),
-    );
-    // A date outside the columns falls back to the first column.
-    expect(
-      timeGridZoneAxis(week, "America/New_York", { date: Temporal.PlainDate.from("2026-01-01") })!
-        .date.day,
-    ).toBe(23);
+    expect(runs(chicago.shifts)).toEqual([["2026-03-08", "03:00", "04:00", -60]]);
+    expect(runs(losAngeles.shifts)).toEqual([["2026-03-08", "03:00", "06:00", -60]]);
   });
 
-  test("lists a Lord Howe half-hour change as a 30-minute shift", () => {
-    const week = columns("2026-09-28", 7, "UTC");
-    const axis = timeGridZoneAxis(week, "Australia/Lord_Howe")!;
+  test("reads a Sunday-first week on its first day without a clock change", () => {
+    // New York springs forward on Sunday, March 8; London waits until March 29.
+    const axis = timeGridZoneAxis(columns("2026-03-08", 7, "America/New_York"), "Europe/London")!;
 
-    expect(axis.shifts.map(({ date, from, minutes }) => [date.day, from.hour, minutes])).toEqual([
-      [3, 16, 30],
-      [4, 0, 30],
+    expect(axis.date.toString()).toBe("2026-03-09");
+    expect(rowsAt(axis.rows, 2)).toEqual(["02:00 → 06:00"]);
+    expect(runs(axis.shifts)).toEqual([["2026-03-08", "00:00", "03:00", 60]]);
+  });
+
+  test("reads the axis on a visible date and lists the columns beside it", () => {
+    // Fourteen columns around Berlin's change on March 29, with the week after it on screen.
+    const axis = timeGridZoneAxis(columns("2026-03-23", 14, "Europe/Berlin"), "America/New_York", {
+      visible: plainDateInterval(
+        Temporal.PlainDate.from("2026-03-30"),
+        Temporal.PlainDate.from("2026-04-06"),
+      ),
+    })!;
+
+    expect(axis.date.toString()).toBe("2026-03-30");
+    expect(runs(axis.shifts)).toEqual([
+      ...[23, 24, 25, 26, 27, 28].map((day) => [`2026-03-${day}`, "00:00", null, 60]),
+      ["2026-03-29", "00:00", "03:00", 60],
     ]);
+    // Visible dates the columns don't have fall back to all the columns.
+    const elsewhere = timeGridZoneAxis(columns("2026-03-23", 7, "Europe/Berlin"), "UTC", {
+      visible: plainDateInterval(
+        Temporal.PlainDate.from("2027-01-01"),
+        Temporal.PlainDate.from("2027-01-02"),
+      ),
+    })!;
+    expect(elsewhere.date.toString()).toBe("2026-03-23");
   });
 
-  test("is null without columns and rejects unknown zones", () => {
+  test("lists Lord Howe's half-hour changes the same way at any step", () => {
+    // Lord Howe moves to +11 at 15:30 UTC on October 3, Sydney at 16:00 UTC.
+    const fromUtc = timeGridZoneAxis(columns("2026-09-28", 7, "UTC"), "Australia/Lord_Howe")!;
+    const week = columns("2026-09-28", 7, "Australia/Sydney");
+    const hourly = timeGridZoneAxis(week, "Australia/Lord_Howe")!;
+    const halfHourly = timeGridZoneAxis(week, "Australia/Lord_Howe", { step: 30 })!;
+
+    expect(runs(fromUtc.shifts)).toEqual([
+      ["2026-10-03", "16:00", null, 30],
+      ["2026-10-04", "00:00", null, 30],
+    ]);
+    expect(runs(hourly.shifts)).toEqual([["2026-10-04", "03:00", null, -30]]);
+    expect(runs(halfHourly.shifts)).toEqual([
+      ["2026-10-04", "01:30", "03:00", 30],
+      ["2026-10-04", "03:00", null, -30],
+    ]);
+    expect(halfHourly.rows).toHaveLength(48);
+  });
+
+  test("reads the axis past a date the display zone skips", () => {
+    // Samoa skipped December 30, 2011.
+    const axis = timeGridZoneAxis(columns("2011-12-30", 3, "Pacific/Apia"), "UTC")!;
+
+    expect(axis.date.toString()).toBe("2011-12-31");
+    expect(axis.rows.every(({ times }) => times.length === 1)).toBe(true);
+  });
+
+  test("is null without columns", () => {
     expect(timeGridZoneAxis([], "UTC")).toBeNull();
-    expect(() => timeGridZoneAxis(columns("2026-10-05", 1, "UTC"), "Mars/Base")).toThrow(
-      RangeError,
+  });
+
+  test("its shifts account for every line that reads differently, in any week", () => {
+    const week = fc
+      .integer({ max: 4 * 52, min: 0 })
+      .map((weeks) => Temporal.PlainDate.from("2024-01-01").add({ weeks }));
+    /** Minutes from a line's wall time to its first time there, from the times themselves. */
+    const lead = (date: Temporal.PlainDate, row: TimeGridZoneRow) =>
+      date.toPlainDateTime(row.wallTime).until(row.times[0]!.dateTime).total({ unit: "minute" });
+
+    fc.assert(
+      fc.property(week, zone, zone, fc.constantFrom(30, 60), (first, display, other, step) => {
+        const grid = timeGridColumns(plainDateInterval(first, first.add({ days: 7 })), display);
+        const axis = timeGridZoneAxis(grid, other, { step })!;
+        for (const { date } of grid) {
+          if (date.equals(axis.date)) continue;
+          const rows = timeGridZoneRows(
+            grid.find((target) => target.date.equals(date))!,
+            other,
+            step,
+          );
+          const shifts = axis.shifts.filter((shift) => shift.date.equals(date));
+          for (const [index, row] of rows.entries()) {
+            const axisRow = axis.rows[index]!;
+            if (row.times.length === 0 || axisRow.times.length === 0) continue;
+            const covering = shifts.find(
+              ({ from, until }) =>
+                Temporal.PlainTime.compare(from, row.wallTime) <= 0 &&
+                (until === null || Temporal.PlainTime.compare(row.wallTime, until) < 0),
+            );
+            expect(lead(date, row) - lead(axis.date, axisRow)).toBe(covering?.minutes ?? 0);
+          }
+          expect(shifts.every(({ minutes }) => minutes !== 0)).toBe(true);
+        }
+      }),
+      { numRuns: 80, seed: 165 },
     );
   });
 });
 
 describe("resolveSecondaryTimeZones", () => {
-  test("reads names and labelled entries in order, as Temporal names the zones", () => {
+  test("reads names and labelled entries in order, as Temporal spells the zones", () => {
     const { issues, zones } = resolveSecondaryTimeZones([
       "asia/tokyo",
       { label: "Office", timeZone: "America/New_York" },
       { timeZone: "UTC" },
+      "Asia/Calcutta",
+      "Asia/Tokyo",
     ]);
 
     expect(issues).toEqual([]);
@@ -331,6 +437,9 @@ describe("resolveSecondaryTimeZones", () => {
       { timeZone: "Asia/Tokyo" },
       { label: "Office", timeZone: "America/New_York" },
       { timeZone: "UTC" },
+      // Aliases stay as they are, and duplicates are kept.
+      { timeZone: "Asia/Calcutta" },
+      { timeZone: "Asia/Tokyo" },
     ]);
     expect(Object.isFrozen(zones)).toBe(true);
     expect(Object.isFrozen(zones[0])).toBe(true);
@@ -344,13 +453,29 @@ describe("resolveSecondaryTimeZones", () => {
       { label: 3, timeZone: "UTC" },
       { label: "No zone" },
       "",
-    ] as unknown as readonly string[];
+      "2026-01-01T00:00[Asia/Tokyo]",
+    ];
     const { issues, zones } = resolveSecondaryTimeZones(["Asia/Kolkata", ...malformed]);
 
     expect(zones).toEqual([{ timeZone: "Asia/Kolkata" }]);
     expect(issues.map(({ code, index }) => [code, index])).toEqual(
-      [1, 2, 3, 4, 5, 6].map((index) => ["invalid-secondary-time-zone", index]),
+      malformed.map((_, index) => ["invalid-secondary-time-zone", index + 1]),
     );
     expect(issues[0]!.value).toBe("Mars/Base");
+  });
+
+  test("reports a value that isn't a list, and holes in one", () => {
+    // eslint-disable-next-line no-sparse-arrays
+    const holes = [, "UTC"];
+
+    expect(resolveSecondaryTimeZones("Asia/Tokyo")).toEqual({
+      issues: [{ code: "invalid-secondary-time-zone", value: "Asia/Tokyo" }],
+      zones: [],
+    });
+    expect(resolveSecondaryTimeZones(null).issues).toHaveLength(1);
+    expect(resolveSecondaryTimeZones(holes)).toEqual({
+      issues: [{ code: "invalid-secondary-time-zone", index: 0, value: undefined }],
+      zones: [{ timeZone: "UTC" }],
+    });
   });
 });

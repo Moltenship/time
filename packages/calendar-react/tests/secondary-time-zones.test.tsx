@@ -115,3 +115,17 @@ test("invalid zones are left out and reported as diagnostics", async () => {
   await harness.render(root({ onDiagnosticsChange, secondaryTimeZones: ["UTC"] }));
   expect(onDiagnosticsChange).toHaveBeenLastCalledWith([]);
 });
+
+test("a value that isn't a list is reported, not thrown", async () => {
+  const onDiagnosticsChange = vi.fn();
+  await render({ onDiagnosticsChange, secondaryTimeZones: "Asia/Tokyo" as never });
+
+  expect(environments.at(-1)?.secondaryTimeZones).toEqual([]);
+  expect(onDiagnosticsChange).toHaveBeenLastCalledWith([
+    {
+      code: "invalid-secondary-time-zone",
+      issue: { code: "invalid-secondary-time-zone", value: "Asia/Tokyo" },
+      severity: "error",
+    },
+  ]);
+});

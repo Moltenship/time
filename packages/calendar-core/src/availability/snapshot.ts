@@ -1,5 +1,6 @@
 import type { IsoDayOfWeek } from "../environment";
 import type { ResourceId } from "../ids";
+import { timeZoneIdOf } from "../internal/time-zone-id";
 import type { CalendarResource } from "../resources";
 import { createAvailabilitySchedule, isoDateKey, type ScheduleHours } from "./schedule";
 import type {
@@ -45,13 +46,7 @@ function isRule(value: unknown): value is AvailabilityRule {
 }
 
 function isTimeZone(value: unknown): value is string {
-  if (typeof value !== "string") return false;
-  try {
-    Temporal.Instant.fromEpochNanoseconds(0n).toZonedDateTimeISO(value);
-    return true;
-  } catch {
-    return false;
-  }
+  return timeZoneIdOf(value) !== null;
 }
 
 /** Hours by ISO day of the week, leaving out invalid rules; `fallback` without a list of rules. */

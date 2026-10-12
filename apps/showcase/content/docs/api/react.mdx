@@ -114,6 +114,18 @@ own.
       ),
     },
     timeZone: { type: "string", description: "Controlled time zone." },
+    secondaryTimeZones: {
+      type: "readonly (string | { timeZone: string; label?: string })[]",
+      description: (
+        <>
+          Other IANA time zones that time grids label their hours in, beside the calendar's. A{" "}
+          <code>label</code> names a zone in the header. Invalid entries are left out and reported
+          as diagnostics. See{" "}
+          <a href="/docs/concepts/time#secondary-time-zones">secondary time zones</a>.
+        </>
+      ),
+      default: "[]",
+    },
     defaultView: {
       type: "view name",
       description: "Initial view, uncontrolled.",
@@ -187,17 +199,6 @@ own.
       description:
         "A source of the current time. Without now or clock, Time uses the system clock.",
     },
-    secondaryTimeZones: {
-      type: "readonly (string | { timeZone: string; label?: string })[]",
-      description: (
-        <>
-          Other IANA time zones time grids label their hours in, beside the calendar's. A{" "}
-          <code>label</code> names a zone in the header. Invalid entries are left out and reported
-          as diagnostics.
-        </>
-      ),
-      default: "[]",
-    },
     direction: { type: '"ltr" | "rtl"', description: "Text direction.", default: '"ltr"' },
     disambiguation: {
       type: '"compatible" | "earlier" | "later" | "reject"',
@@ -248,9 +249,9 @@ own.
 />
 
 You can write most props inline. `locale`, `weekRules`, `secondaryTimeZones`, `now`, and controlled
-values are compared by value; `events` and `resources` are compared item by item; `viewOptions`, `onDiagnosticsChange`, and
-the change handlers are read from the latest render. Keep a `clock` object stable, for example at
-module scope.
+values are compared by value; `events` and `resources` are compared item by item; `viewOptions`,
+`onDiagnosticsChange`, and the change handlers are read from the latest render. Keep a `clock`
+object stable, for example at module scope.
 
 `Root` throws on its first render if it has no date (`calendar-root-requires-anchor-date`), no
 time zone (`calendar-root-requires-time-zone`), or no view (`calendar-root-requires-view`).
@@ -391,4 +392,4 @@ Problems that don't stop rendering are collected in `meta.diagnostics` and passe
 | ----------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
 | `unregistered-active-view`    | error      | The `view` state names a view that isn't registered.                                             |
 | `invalid-event`               | error      | A record was skipped. `issue` has the details ([issue codes](/docs/api/events#invalid-records)). |
-| `invalid-secondary-time-zone` | error      | An entry of `secondaryTimeZones` was left out. `issue` has its `index` and `value`.              |
+| `invalid-secondary-time-zone` | error      | An entry of `secondaryTimeZones` was left out. `issue` has the `value` and its `index`.          |

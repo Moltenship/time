@@ -282,7 +282,7 @@ Day and week views use wall-clock axes. DST behavior is explicit:
 - The default is `"compatible"`, and any automatic shift is included in the transaction and announced to assistive technology.
 - Policies may reject the proposal instead.
 
-`Calendar.Root` can also take `secondaryTimeZones`, other zones time grids label their hours in (ADR 0165). They're an environment input beside `timeZone`, not a display zone: events still project into one zone. Each hour line is read on its own date, in both zones' rules, never through a fixed offset; a skipped wall time has no time in the other zone and a repeated one has both. One gutter serves all columns, so it follows the first visible day, and the days whose lines read differently are listed as shifts.
+`Calendar.Root` can also take `secondaryTimeZones`, other zones time grids label their hours in (ADR 0165). They're an environment input beside `timeZone`, not a display zone: events still project into one zone. Each hour line is read on its own date, in both zones' rules, never through a fixed offset; a skipped wall time has no time in the other zone and a repeated one has both. One gutter serves all columns, so it follows the first visible day on which neither zone changes its clocks; the runs of lines on other days that read differently are listed as shifts.
 
 No helper reads the host machine timezone implicitly. `Temporal.Now` is accessed only through an injected clock/environment boundary.
 
