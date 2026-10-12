@@ -35,7 +35,9 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
 0.4 — Availability, layout & scale are closed. Epic #2, recurrence, closes with #155.
-`main` deploys automatically through Vercel's GitHub integration:
+`main` deploys automatically through Vercel's GitHub integration. Other branches and PRs don't
+deploy (`git.deploymentEnabled` in each app's `vercel.json`), so the Hobby limit of 100 deployments
+a day goes to production:
 
 - Demo: https://moltenship-time-demo.vercel.app
 - Docs: https://moltenship-time.vercel.app
