@@ -61,6 +61,9 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: vp run release:dry-run --version "$VERSION"
 
+      - name: shadcn add from the registry, against the checked tarballs
+        run: vp run release:registry-e2e
+
       - name: Keep the checked tarballs and manifest
         uses: actions/upload-artifact@v7
         with:

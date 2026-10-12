@@ -64,6 +64,7 @@ describe("release workflow contract", () => {
       "vp exec --filter a11y playwright install --with-deps --only-shell chromium",
       "vp run ready",
       'vp run release:dry-run --version "$VERSION"',
+      "vp run release:registry-e2e",
     ]);
   });
 

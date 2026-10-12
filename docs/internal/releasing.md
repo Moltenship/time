@@ -21,7 +21,8 @@ and `vp run ready` and CI run it after `ci:build`. #47 owns the tiers and may mo
 | `vp run release:api` | Each package's built declarations against its committed `api-report.md` | PR |
 | `vp run release:exports` | Packs every package into a temporary folder, then runs publint and are-the-types-wrong (ESM-only), checks for `LICENSE`, and checks that base packages don't import the dnd adapter | PR |
 | `vp run release:consumer` | Installs the tarballs into a new project outside the workspace, offline from the pnpm store; imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away | Full |
-| `vp run release:dry-run` | A fresh build of every published package, then all of the above and the registry smoke. Writes `.release/manifest.json` | Full |
+| `vp run release:dry-run` | A fresh build of every published package, then all of the above, the registry smoke, and a registry build into `.release/registry` that must ask for the packed version. Writes `.release/manifest.json` | Full |
+| `vp run release:registry-e2e` | #43's install test: `shadcn add` from the registry into clean Vite and Next.js apps, with the dry run's tarballs served as the `@moltenship` packages. Needs the network for npm and shadcn's own components, so it isn't in the offline dry run | Release, online |
 
 The PR checks read the built packages, so on their own they run after `vp run ci:build`. Only the
 dry run writes `.release/`.
@@ -37,11 +38,13 @@ dry run writes `.release/`.
    [`CHANGELOG.md`](../../CHANGELOG.md).
 2. **Version PR.** On a branch, run `vp run release:version 1.0.0-rc.1` (or whichever version).
    It sets the version in all seven manifests and turns "Unreleased" into `## 1.0.0-rc.1 (date)`.
-   Open a PR, review, merge.
+   Open a PR, review, merge. From then on, the docs site's registry asks for that version, which
+   npm doesn't have until step 3, so publish soon after merging.
 3. **Publish from `main`**, one of two ways:
    - **GitHub Actions.** Actions → Release → Run workflow, on `main`, with the version. Leave
-     "Publish to npm" off for a rehearsal. The `verify` job runs `vp run ready` and
-     `vp run release:dry-run --version <v>`, then keeps `.release/` as an artifact. With publishing
+     "Publish to npm" off for a rehearsal. The `verify` job runs `vp run ready`,
+     `vp run release:dry-run --version <v>` and `vp run release:registry-e2e`, then keeps
+     `.release/` as an artifact. With publishing
      on, the `publish` job downloads it and runs
      `vp run release:publish --version <v> --provenance --yes` on the same commit. Only that job
      can mint the OIDC token that signs npm provenance.
@@ -61,6 +64,7 @@ dry run writes `.release/`.
      vp exec --filter a11y playwright install chromium   # once, for the a11y gate
      vp run ready
      vp run release:dry-run --version 1.0.0-rc.1
+     vp run release:registry-e2e      # needs the network
      export NODE_AUTH_TOKEN=<token>   # or npm login
      vp run release:publish --version 1.0.0-rc.1
      ```
@@ -129,11 +133,11 @@ Unpublish only for something that must disappear, such as a leaked secret. npm a
 
 ## Registry
 
-The dry run runs `vp run registry:smoke`, which validates the registry items. #43 adds
-`registry:build`, which writes the registry JSON the docs site serves, and `registry:e2e`, which runs
-`shadcn add` in clean apps against packed packages. Once they're on `main`, add both to the
-`registry` step in [`tools/release/src/dry-run.ts`](../../tools/release/src/dry-run.ts), so the
-dry run builds the registry for the version it packs.
+The registry (#43) isn't published to npm: the docs site serves it at `/r/<item>.json`, built from
+`main`. The dry run builds it into `.release/registry` and checks that `compatibility.json` and every
+item's `@moltenship/calendar` range ask for the version it packed, so after `release:version` the
+registry and the packages agree. `vp run release:registry-e2e` then installs it into clean apps
+against the exact tarballs the dry run checked. The release workflow runs both.
 
 ## Open owner decisions
 
