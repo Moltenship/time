@@ -45,16 +45,18 @@ describe("SSR fixture", () => {
     console.log(`SSR_SMOKE ${JSON.stringify(report)}`);
   });
 
+  // Each known-bad case starts a Vitest run of its own: a few seconds alone, and longer beside the
+  // full gate's browser runs.
   test("known-bad server/client divergence fails for React's hydration reason", async () => {
     const output = await runExpectedFailure("hydration");
 
     expect(output).toContain("KNOWN_BAD_HYDRATION");
     expect(output).toContain("Hydration failed");
-  });
+  }, 30_000);
 
   test("known-bad module-scope browser access fails during a server import", async () => {
     const output = await runExpectedFailure("browser-global");
 
     expect(output).toContain("window is not defined");
-  });
+  }, 30_000);
 });

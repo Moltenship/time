@@ -82,11 +82,12 @@ issue's "Later" section when work starts.
 - Run the quality gate tier the change needs before pushing (`AGENTS.md`, "Quality gate"):
   `vp run ready:quick` for docs and notes, `vp run ready` for other changes that ship, and
   `vp run ready:full` for package source, public API, dependencies, build config, registry items,
-  release tooling, SSR, a11y-relevant UI and CI, and before a release. Add any focused `vp run`
-  gate the change touches.
+  release tooling, SSR, a11y-relevant UI and CI, before a release candidate or a release, and
+  whenever CI and local disagree. Add any focused `vp run` gate the change touches.
 - Every PR gets a code review. Fix each finding, or reply with the reason you didn't. While GitHub
-  Actions is capped on this account, CI and Pullfrog don't run: run `vp run ready` locally and post
-  the result on the PR, and get the review from Claude Opus 5.5 (xhigh) instead of Pullfrog.
+  Actions is capped on this account, CI and Pullfrog don't run: run the tier the change needs
+  locally and post the result on the PR, and get the review from Claude Opus 5.5 (xhigh) instead of
+  Pullfrog.
 - Merge with squash once the review has no open blocker or should-fix findings and the checks pass
   (locally while Actions is capped). The Vercel checks don't gate merges. When Vercel's daily deploy
   limit is hit, production catches up with the next deploy after it resets. Rebase on `main` first

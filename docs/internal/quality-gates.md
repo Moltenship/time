@@ -9,22 +9,24 @@ a V8 feature flag or bundled polyfill.
 
 Three tasks group the gates below. `AGENTS.md` says which one a change runs.
 
-| Tier  | Task                 | Steps                                                                                                    |
-| ----- | -------------------- | -------------------------------------------------------------------------------------------------------- |
-| Quick | `vp run ready:quick` | `vp check`, `vp test`                                                                                    |
-| PR    | `vp run ready`       | `ready:checks` (`registry:smoke` beside the `gate:serial` lane) and `a11y`                               |
-| Full  | `vp run ready:full`  | Every PR step and `a11y:ci-speed`, then `showcase:types`, `showcase:links` and `showcase#search:check` in `gate:serial:full` |
+| Tier  | Task                 | Steps                                                                                        |
+| ----- | -------------------- | -------------------------------------------------------------------------------------------- |
+| Quick | `vp run ready:quick` | `showcase:links`, `vp check`, `vp test`                                                      |
+| PR    | `vp run ready`       | `ready:checks` (`registry:smoke` beside the `gate:serial` lane) and `a11y`                   |
+| Full  | `vp run ready:full`  | Every PR step, `a11y:ci-speed`, then `showcase:types` and search in `gate:serial:full`       |
 
 On a 15-core Apple-silicon laptop, quick takes about 10 seconds, PR 38 seconds from a cold cache
 and 28 warm, and full 72 seconds cold and 30 warm. The warm floor is the steps that pack packages or
 build the docs site, which Vite Task can't replay because they rewrite their own inputs.
 
-`gate:serial` runs `ci:check`, `ci:build`, `ci:test`, `react:gate`, `ssr:smoke` and
-`package:graph` in that order, because each writes or reads generated files: packages' `dist`,
+`gate:serial` runs `showcase:links`, `ci:check`, `ci:build`, `ci:test`, `react:gate`, `ssr:smoke`
+and `package:graph` in that order, because each writes or reads generated files: packages' `dist`,
 packed tarballs, the docs site's `.next` and `.source`. Steps outside it read only source, so they
-run at the same time. CI's `quality-gates` job runs `vp run ready:checks` and its `accessibility`
-job runs `vp run a11y`: together, `vp run ready`. `tests/quality-gates.test.ts` holds the workflow
-to those task names and fails if `ready:full` misses a step of `ready`.
+run at the same time; `a11y` and `a11y:ci-speed` keep their Vite dependency caches apart. CI's
+`quality-gates` job runs `vp run ready:checks` and its `accessibility` job runs `vp run a11y`:
+together, `vp run ready`. When a job fails, its last step names the failed task. The contract test
+`tests/quality-gates.test.ts` holds the workflow to those task names and fails if `ready:full`
+misses a step of `ready`.
 
 ## CI and local runs
 
@@ -35,14 +37,18 @@ covers it:
   and that is what made its flakes: focus, scroll and save races that a fast machine always wins.
   `vp run a11y:ci-speed` runs the suite with Chromium's CPU throttled 6 times
   (`Emulation.setCPUThrottlingRate`, set in `tools/a11y/tests/setup.ts` for `--mode ci-speed`), and
-  the full gate runs it. Running steps in parallel loads the machine further, which only makes it
-  stricter.
+  the full gate runs it, never from cache. Running beside the other steps loads the machine
+  further: stricter, and a little less repeatable, so rerun it alone before calling a failure a
+  flake.
 - **Fonts.** CI's Ubuntu image has other system fonts, so text wraps and positions differ. Tests
   compare layouts with each other and with ratios, not with fixed pixels, and a test that hovers
   does so on purpose instead of trusting where the mouse was left.
 - **Browser and viewport.** Both run Playwright's headless Chromium shell at 1280 × 800, from
   `tools/a11y/vite.config.ts`.
 - **Node.** CI runs the latest Node.js 26; `engines` asks for 26 or later locally.
+- **Generated types.** `ci:check` runs before the docs site is built. In CI it type-checks without
+  the types Next.js generates (`next-env.d.ts`, `.next/types`); a laptop has whatever its last
+  Next.js run left. Code outside the docs app mustn't rely on them.
 - **Time zone and locale.** CI runs in UTC; laptops run in their own zone. Tests pass explicit
   `timeZone`, `locale` and `now`, so passing in both is also a check that nothing reads the host's.
 
@@ -59,6 +65,7 @@ vp run react:gate
 vp run ssr:smoke
 vp run registry:smoke
 vp run package:graph
+vp run a11y
 ```
 
 `vp run ready` runs the same gates, in parallel where they don't share generated files. The SSR report includes its deterministic environment, server-markup hash, recoverable hydration errors, interaction result, and unmount result. The registry report validates any `registry-item.json` files under `registry/` plus a committed contract fixture so an empty source registry cannot make the schema smoke vacuous, then builds the registry and checks the output (see [Registry](#registry)).

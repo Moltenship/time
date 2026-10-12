@@ -33,12 +33,12 @@ smallest one that covers the change.
 
 | Tier  | Command              | What it runs                                                                                                                                                         |
 | ----- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Quick | `vp run ready:quick` | `vp check` and `vp test`                                                                                                                                             |
+| Quick | `vp run ready:quick` | The docs site's link check, which compiles every page, then `vp check` and `vp test`                                                                                |
 | PR    | `vp run ready`       | Quick, plus production builds, the React, SSR, registry and package-graph gates, and the a11y suite in Chromium. CI runs the same tasks: `ready:checks` and `a11y`. |
-| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and the docs site's types, links and search. It's the release gate.                         |
+| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and the docs site's types and search. It's the release gate.                                |
 
-- **Quick:** docs-only content (MDX, README, ADRs), `docs/internal` notes, comments. Don't run the
-  full gate for a typo.
+- **Quick:** docs content (MDX), README, ADRs and `docs/internal` notes. Don't run the full gate
+  for a typo.
 - **PR:** every other change that ships, before you ask for review and again before merge.
 - **Full:** changes to published package source or public API; `package.json`, dependencies or the
   lockfile; build, bundler or tsconfig config; registry items; release tooling; SSR or hydration;
@@ -48,8 +48,9 @@ smallest one that covers the change.
 On a recent laptop, quick takes about 10 seconds, PR about 40 and full about 75 from a cold cache.
 Steps run in parallel where they're independent. Steps that write or read generated files
 (`dist`, `.next`, `.source`, packed tarballs) run one after another in a `gate:serial` lane. Vite Task
-caches each step, so a rerun only redoes what changed. When a tier fails, `vp run --last-details`
-names the step; rerun it alone with `vp run <step>`.
+caches each step, so a rerun only redoes what changed; `a11y:ci-speed` never replays, since a timing
+race can pass once by luck. When a tier fails, `vp run --last-details` names the step; rerun it
+alone with `vp run <step>`.
 
 A new check joins a tier in `vite.config.ts`: `ready:checks` or `gate:serial` for the PR tier,
 `ready:full` or `gate:serial:full` for the full gate only. Put it in a `gate:serial` lane if it

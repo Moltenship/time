@@ -5,8 +5,7 @@
   "description": "axe-core checks of the registry views and the demo in Chromium, in light and dark themes.",
   "type": "module",
   "scripts": {
-    "test": "vp test",
-    "test:ci-speed": "vp test --mode ci-speed"
+    "test": "vp test"
   },
   "dependencies": {
     "@moltenship/calendar": "workspace:*",

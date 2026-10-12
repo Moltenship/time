@@ -26,7 +26,8 @@ export default defineConfig({
       // The quality gate's three tiers; AGENTS.md says which one a change runs. Steps that write
       // or read generated files (`dist`, `.next`, `.source`) run one after another in a
       // `gate:serial` lane. The rest run beside it.
-      "ready:quick": ["vp check", "vp test"],
+      // The link check compiles every docs page, so MDX that wouldn't build fails here too.
+      "ready:quick": ["vp run showcase:links", "vp check", "vp test"],
       // What every PR runs. CI runs `ready:checks` and `a11y` as two jobs.
       ready: {
         command: "echo ready: every PR check passed",
@@ -46,10 +47,10 @@ export default defineConfig({
         dependsOn: ["registry:smoke", "a11y", "a11y:ci-speed", "gate:serial:full"],
       },
       "gate:serial":
-        "vp run ci:check && vp run ci:build && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
+        "vp run showcase:links && vp run ci:check && vp run ci:build && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
       // `ci:build` has built the docs site, so search checks that build.
       "gate:serial:full":
-        "vp run gate:serial && vp run showcase:types && vp run showcase:links && vp run showcase#search:check",
+        "vp run gate:serial && vp run showcase:types && vp run showcase#search:check",
       "ci:check": "vp check",
       "ci:test": "vp test",
       "ci:build": "vp run -r build",
@@ -58,8 +59,9 @@ export default defineConfig({
       "registry:build": "vp run registry#site",
       "registry:e2e": "vp run registry#e2e",
       a11y: "vp run a11y#test",
-      // The a11y suite with Chromium slowed down to a CI runner's speed.
-      "a11y:ci-speed": "vp run a11y#test:ci-speed",
+      // The a11y suite with Chromium slowed down to a CI runner's speed. Never replayed: it's what
+      // to run when CI and local disagree, and a timing race can pass once by luck.
+      "a11y:ci-speed": { command: "vp test --mode ci-speed", cwd: "tools/a11y", cache: false },
       "package:graph": ["vp run check:boundaries", "vp test tests/quality-gates.test.ts"],
       "showcase:source": "vp run showcase#source:generate",
       "showcase:types": "vp run showcase#types:check",

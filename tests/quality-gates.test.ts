@@ -24,7 +24,10 @@ interface Workflow {
 type Task =
   | string
   | readonly string[]
-  | { readonly command: string; readonly dependsOn?: string[] };
+  | {
+      readonly command: string | readonly string[];
+      readonly dependsOn?: readonly string[];
+    };
 
 const tasks = (config.run?.tasks ?? {}) as Record<string, Task>;
 
@@ -40,24 +43,37 @@ const prGates = [
   "a11y",
 ] as const;
 
+const commandsOf = (task: Task): readonly string[] =>
+  typeof task === "string" ? [task] : "command" in task ? [task.command].flat() : task;
+const dependenciesOf = (task: Task): readonly string[] =>
+  typeof task === "object" && "dependsOn" in task ? (task.dependsOn ?? []) : [];
+
+/** A tier or a group of steps: it only depends on its steps, and says so when they pass. */
+const isGroup = (task: Task) =>
+  dependenciesOf(task).length > 0 &&
+  commandsOf(task).every((command) => command.startsWith("echo "));
+
 /**
- * Every root task a task runs: those it depends on and those its command runs with `vp run`,
- * all the way down.
+ * Every step a task runs, all the way down: the tasks it depends on, the tasks and package tasks
+ * (`pkg#task`) its commands run with `vp run`, and the commands themselves.
  */
 function stepsOf(name: string): Set<string> {
   const task = tasks[name];
   if (task === undefined) throw new Error(`no root task named ${name}`);
-  const commands =
-    typeof task === "string" ? [task] : "command" in task ? [task.command] : [...task];
   const direct = [
-    ...(typeof task === "object" && "dependsOn" in task ? (task.dependsOn ?? []) : []),
-    ...commands
+    ...dependenciesOf(task),
+    ...commandsOf(task)
       .flatMap((command) => command.split("&&"))
-      .map((command) => /^vp run ([\w:-]+)$/u.exec(command.trim())?.[1])
-      .filter((step): step is string => step !== undefined && step in tasks),
+      .map((command) => command.trim())
+      .filter((command) => !isGroup(task) || !command.startsWith("echo "))
+      .map((command) => /^vp run(?: -\S+)* ([\w:#@./-]+)/u.exec(command)?.[1] ?? command),
   ];
-  return new Set(direct.flatMap((step) => [step, ...stepsOf(step)]));
+  return new Set(direct.flatMap((step) => (step in tasks ? [step, ...stepsOf(step)] : [step])));
 }
+
+/** The steps that do work, without the groups around them. */
+const work = (name: string) =>
+  [...stepsOf(name)].filter((step) => !(step in tasks) || !isGroup(tasks[step]!));
 
 async function readWorkflow(): Promise<Workflow> {
   return parse(await readFile(".github/workflows/ci.yml", "utf8")) as Workflow;
@@ -79,7 +95,9 @@ describe("CI quality gate contract", () => {
     expect(steps.map(({ run }) => run).filter(Boolean)).toEqual([
       "vp install --frozen-lockfile",
       "vp run ready:checks",
+      "vp run --last-details",
     ]);
+    expect(Object.keys(workflow.jobs ?? {})).toEqual(["quality-gates", "accessibility"]);
     expect(workflow.permissions).toEqual({ contents: "read" });
     expect(workflow.concurrency).toMatchObject({
       group: "${{ github.workflow }}-${{ github.ref }}",
@@ -94,6 +112,7 @@ describe("CI quality gate contract", () => {
       "vp install --frozen-lockfile",
       "vp exec --filter a11y playwright install --with-deps --only-shell chromium",
       "vp run a11y",
+      "vp run --last-details",
     ]);
   });
 
@@ -103,17 +122,17 @@ describe("CI quality gate contract", () => {
   });
 
   test("the full gate runs every step the PR tier runs", () => {
-    // Tiers group steps differently, so only the steps that do the work are compared.
-    const work = (name: string) =>
-      [...stepsOf(name)].filter((step) => {
-        const task = tasks[step];
-        return typeof task !== "object" || !("dependsOn" in task);
-      });
     const full = new Set(work("ready:full"));
 
     expect(work("ready").filter((step) => !full.has(step))).toEqual([]);
     expect([...full]).toEqual(
-      expect.arrayContaining(["a11y:ci-speed", "showcase:types", "showcase:links"]),
+      expect.arrayContaining(["a11y:ci-speed", "showcase:types", "showcase#search:check"]),
     );
+  });
+
+  test("groups only gather steps, so the comparison sees every one", () => {
+    for (const name of ["ready", "ready:checks", "ready:full"]) {
+      expect(isGroup(tasks[name]!)).toBe(true);
+    }
   });
 });

@@ -82,8 +82,11 @@ export default {
   ],
   options: {
     doNotFollow: { path: "node_modules" },
-    // Build output isn't source, and other tests rebuild it while this one reads.
-    exclude: { path: "(?:^|/)(?:dist|\\.next|\\.source)(?:/|$)" },
+    // The workspaces' build output isn't source, and other tests rebuild it while this one reads.
+    // Links into other packages' `dist` in node_modules still count.
+    exclude: {
+      path: "^(?:apps|benchmarks|packages|registry|tools)/[^/]+/(?:dist|\\.next|\\.source)/",
+    },
     tsPreCompilationDeps: true,
   },
 } satisfies IConfiguration;

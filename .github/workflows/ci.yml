@@ -34,6 +34,10 @@ jobs:
       - name: Checks, builds, tests, React, SSR, registry and package-graph gates
         run: vp run ready:checks
 
+      - name: Name the step that failed
+        if: failure()
+        run: vp run --last-details
+
   accessibility:
     name: Accessibility checks
     runs-on: ubuntu-latest
@@ -56,3 +60,7 @@ jobs:
 
       - name: axe-core checks of the registry views and the demo, light and dark
         run: vp run a11y
+
+      - name: Name the step that failed
+        if: failure()
+        run: vp run --last-details

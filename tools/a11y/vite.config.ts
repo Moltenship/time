@@ -2,7 +2,10 @@ import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
+  // Each mode optimizes dependencies in a cache of its own, so two runs at once don't rewrite
+  // each other's. Vitest's mode is `test`.
+  cacheDir: mode === "test" ? undefined : `node_modules/.vite-${mode}`,
   plugins: [tailwindcss()],
   resolve: {
     tsconfigPaths: true,
@@ -29,4 +32,4 @@ export default defineConfig({
       viewport: { height: 800, width: 1280 },
     },
   },
-});
+}));
