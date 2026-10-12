@@ -641,6 +641,20 @@ describe("changes made in Google meanwhile", () => {
     expect(standups(sync)).not.toContain("2026-10-16T09:00:00 Stand-up");
   });
 
+  test("deleting an occurrence the series no longer has rolls back", async () => {
+    const { google, sync } = setup();
+    await sync.load(week(monday));
+    const friday = find(sync, "standup::2026-10-16T07:00:00Z");
+    // Someone moves the whole series an hour later in Google.
+    elsewhere(google, (events) => ({
+      ...events.get("standup")!,
+      end: time("2026-10-05", "10:30"),
+      start: time("2026-10-05", "10:00"),
+    }));
+    await expect(save(sync, remove(friday), "this")).rejects.toMatchObject({ status: 404 });
+    expect(standups(sync)).toContain("2026-10-16T10:00:00 Stand-up");
+  });
+
   test("a change the store learned of while the user decided still stops the edit", async () => {
     const { google, sync } = setup();
     await sync.load(week(monday));

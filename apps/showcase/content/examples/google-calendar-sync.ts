@@ -381,7 +381,7 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
         instance = stays ? from.data : await api.instance(seriesId, recurrenceId.toString());
       } catch (error) {
         // An occurrence to cancel whose series is gone is gone too.
-        if (placement === "cancel" && isStatus(error, 404, 410)) continue;
+        if (placement === "cancel" && !stored.has(seriesId) && isStatus(error, 404, 410)) continue;
         throw error;
       }
       // Cancelled in Google since it loaded: a change to it would bring it back.
