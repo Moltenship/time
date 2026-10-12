@@ -76,7 +76,7 @@ Scope / Done when / Later before starting it.
 - Run `vp check` and `vp test` before pushing, plus any `vp run` gate the change touches.
 - Every PR gets a code review. Fix each finding, or reply with the reason you didn't. While GitHub
   Actions is capped on this account, CI and Pullfrog don't run: run `vp run ready` locally and post
-  the result on the PR.
+  the result on the PR, and get the review from Claude Opus 5.5 (xhigh) instead of Pullfrog.
 - Merge with squash once the review has no open blocker or should-fix findings and the checks pass
   (locally while Actions is capped). The Vercel checks don't gate merges. When Vercel's daily deploy
   limit is hit, production catches up with the next deploy after it resets. Rebase on `main` first
