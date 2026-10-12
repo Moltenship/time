@@ -10,6 +10,7 @@ const config = {
     "@moltenship/calendar-core",
     "@moltenship/calendar-react",
     "@moltenship/calendar-temporal",
+    "@moltenship/ics",
   ],
 };
 

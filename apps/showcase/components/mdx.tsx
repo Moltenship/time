@@ -13,6 +13,8 @@ import {
   OverlapLayoutPreview,
   ShadingRecipesPreview,
 } from "@/components/calendar-preview";
+import { IcsFeedPreview } from "@/components/ics-feed-preview";
+import { IcsPlayground } from "@/components/ics-playground";
 import defaultMdxComponents from "fumadocs-ui/mdx";
 import { Step, Steps } from "fumadocs-ui/components/steps";
 import { Tab, Tabs } from "fumadocs-ui/components/tabs";
@@ -26,6 +28,8 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     AnnotationsAnatomy,
     CalendarAnatomy,
     CalendarPreview,
+    IcsFeedPreview,
+    IcsPlayground,
     MonthAnatomy,
     OverlapLayoutPreview,
     ShadingRecipesPreview,

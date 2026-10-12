@@ -46,7 +46,7 @@ const expectedWorkspaceDependencies = {
   fixtures: ["@moltenship/calendar-core"],
   registry: [],
   "registry-source": ["@moltenship/calendar"],
-  showcase: ["@moltenship/calendar"],
+  showcase: ["@moltenship/calendar", "@moltenship/ics"],
   "ssr-fixture": ["@moltenship/calendar"],
 } as const;
 

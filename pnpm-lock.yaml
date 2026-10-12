@@ -397,6 +397,9 @@ importers:
       '@moltenship/calendar':
         specifier: workspace:*
         version: link:../../packages/calendar
+      '@moltenship/ics':
+        specifier: workspace:*
+        version: link:../../packages/ics
       '@tanstack/react-virtual':
         specifier: 'catalog:'
         version: 3.14.13(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
