@@ -159,7 +159,9 @@ and `otherComponents`.
 ## Not included yet
 
 - Expanding recurrence rules into occurrences: rules are parsed into `IcsRecurrenceRule`, not
-  expanded.
+  expanded. `@moltenship/calendar-recurrence` expands them: its `recurringEventsFromIcs` groups
+  parsed events into series, overrides and one-off events, ready for its expander. This package
+  stays standalone and doesn't depend on it.
 - Writing ICS from typed objects.
 - Byte input. Decode the text as UTF-8 first; a fold that splits a multi-byte character can't be
   repaired after decoding.

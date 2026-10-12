@@ -1,0 +1,119 @@
+---
+title: Recurring events
+description: Series, exceptions and overrides, how each series keeps its own time, occurrence IDs, and what "this", "following" and "all" change.
+---
+
+The calendar shows events, and knows nothing about series. `@moltenship/calendar-recurrence` sits
+beside it: it expands each series into its occurrences for the dates on screen, and the calendar
+shows those as ordinary events. Views, drag and drop, and the event engine work the same with or
+without it, and apps that don't import it pay nothing for it.
+
+This page explains the model. [Show and edit recurring events](/docs/guides/recurring-events) wires
+it into a calendar, and the [API reference](/docs/api/recurrence) lists every export.
+
+## Series
+
+Apps store repeating events the way iCalendar, Google Calendar and Outlook do:
+
+- **A master event**, placed at the series' first occurrence, with its recurrence: a **rule**, such
+  as "every weekday" (RRULE), **exception dates**, occurrences that don't happen (EXDATE), and
+  **extra dates**, occurrences the rule doesn't give (RDATE).
+- **Overrides**: separate events that each replace one occurrence, such as a meeting moved to
+  another time. An override names its series and the occurrence's original start
+  (RECURRENCE-ID). A **cancelled** override removes the occurrence, as Google's API and ICS feeds
+  record a deleted one.
+- **One-off events**: everything else.
+
+```text
+Stand-up (master)    Mon 19 Oct, 09:00–09:15      every weekday
+  exception date     Wed 21 Oct, 09:00            no stand-up that day
+Stand-up (override)  replaces Thu 22 Oct, 09:00   at 10:00–10:15
+
+Occurrences, 19–23 Oct: Mon 09:00, Tue 09:00, Thu 10:00, Fri 09:00
+```
+
+Your events keep their own shape. A recurrence adapter, beside your event adapter, reads the
+recurrence of a master and what an override replaces, as an
+[event adapter](/docs/concepts/events) reads titles and times. Series can be endless, so occurrences
+exist only for the dates you expand, usually the dates the calendar shows.
+
+## Each series keeps its own time
+
+Every date of a series has the kind of its first occurrence: an instant for a timed series, a date
+for an all-day one, and a wall time for a floating one. That includes exception dates, extra dates,
+the rule's end, and the original starts overrides name. A date of another kind converts, as real
+feeds need: a date-only exception on a timed series excludes every occurrence that day, and a
+date-only end lasts through that day.
+
+A timed series repeats on the wall clock of its own time zone, the `sourceTimeZone` of its first
+occurrence. So a 09:00 meeting stays at 09:00 across daylight saving time, and its instant moves by
+an hour instead. A stand-up at 09:00 in Berlin is at 03:00 in New York most weeks, and at 04:00 in
+the weeks between the two cities' clock changes. A floating series repeats at the same wall time in
+every zone, and an all-day series on the same dates.
+
+Some times and dates don't exist on a series' calendar:
+
+- A start in a daylight saving gap, such as 02:30 on the night clocks go forward, moves forward by
+  the gap and still counts. A start the clock repeats takes its first instant.
+- Dates no month has, such as 30 February or the fifth Friday of a month with four, are skipped and
+  don't count.
+- The first occurrence is always one and counts toward the rule's COUNT, even when the rule
+  wouldn't give it. Occurrences an exception date removes still count.
+
+## Occurrence IDs
+
+An occurrence's ID is its series' ID and its original start: `standup::2026-10-22T07:00:00Z`.
+Instants are written in UTC, and dates and wall times as they are. The ID stays the same across
+views, time zones and reloads, so you can store it, select it, and link to it.
+
+An override keeps the original start of the occurrence it replaces, so an occurrence moved on its
+own keeps its ID, and with it its selection and focus. An override shows under the same ID before
+its master loads. One-off events keep their own IDs.
+
+Changing the following occurrences, or all of them, changes their original starts, and so their
+IDs. The edit maps old IDs to new ones, so your selection can follow; see
+[Keep the selection](/docs/guides/recurring-events#keep-the-selection).
+
+## Editing a series
+
+When someone moves, resizes or deletes an occurrence, the app asks which events the change applies
+to, then saves what that means for the series:
+
+| Scope                     | A move or resize                                                         | A delete                        |
+| ------------------------- | ------------------------------------------------------------------------ | ------------------------------- |
+| This event                | An override for that occurrence, or a change to its override             | An exception date on the master |
+| This and following events | The series ends before it, and a new series starts where it was dropped  | The series ends before it       |
+| All events                | The whole series moves or stretches by the same change, on its own clock | The master and its overrides go |
+
+- **All events** moves the rule with the change, such as Monday to Tuesday in a weekly rule, and
+  moves exception dates, extra dates and the original starts overrides name, so deleted occurrences
+  stay deleted and moved ones don't appear twice. Overrides keep their own times.
+- **This and following events** splits the series, as Google Calendar and Outlook on the web do:
+  later exception dates, extra dates and overrides move to the new series.
+- Only scopes that can apply are offered. The first occurrence has no "This and following events",
+  since that's all of them, and a rule that can't follow the change, such as "the 28th of each
+  month" dragged to a 29th, offers only "This event".
+
+## While the change saves
+
+The change stays pending, and visible, while the app asks for the scope and saves it. Cancelling
+the question rolls it back.
+
+Only the occurrence that was dragged shows the change while it's pending. The calendar keeps
+pending changes per event and knows nothing about series, so the rest of a series moves once your
+events change and the series is expanded again.
+
+## Limits
+
+- **RANGE=THISANDFUTURE** isn't supported. Google Calendar and Outlook split series instead. The ICS
+  bridge reports it and treats the override as one that replaces only its own occurrence.
+- **Drags use the calendar's clock.** In a time zone whose daylight saving time changes on other
+  dates than the series' zone, dragging an occurrence by days with "All events" can move the series'
+  time by an hour.
+- **A repeated hour.** With "All events", a start dropped on the second of two equal wall times, as
+  the hour repeated when clocks go back, lands on the first, as every occurrence of the series does.
+- **Cancelled first occurrences.** Edits read one occurrence and its series, not the other
+  overrides. When a cancelled override hides the first occurrence, "This and following events" from
+  the second still splits the series rather than changing all of it.
+- **The ISO calendar.** Rules repeat in the ISO calendar, iCalendar's Gregorian one: a monthly series
+  steps by Gregorian months even when its dates use another calendar.

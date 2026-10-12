@@ -1,0 +1,138 @@
+---
+title: Google Calendar events
+description: Read recurring events from the Google Calendar API, with their RRULE, EXDATE and RDATE lines, and show and edit them.
+---
+
+The Google Calendar API stores a repeating event the way iCalendar does. `events.list`, without
+`singleEvents=true`, returns each series once:
+
+- **The master**, at the series' first occurrence, with its rule and exceptions as iCalendar lines
+  in `recurrence`, and the zone it repeats in as `start.timeZone`.
+- **Changed occurrences**: events with the master's ID in `recurringEventId`, and the start the
+  series gave them in `originalStartTime`.
+- **Deleted occurrences**: the same, with `status: "cancelled"` and no times of their own.
+
+```json
+[
+  {
+    "id": "standup",
+    "summary": "Stand-up",
+    "start": { "dateTime": "2026-10-19T09:00:00+02:00", "timeZone": "Europe/Berlin" },
+    "end": { "dateTime": "2026-10-19T09:30:00+02:00", "timeZone": "Europe/Berlin" },
+    "recurrence": ["RRULE:FREQ=DAILY;COUNT=5", "EXDATE;TZID=Europe/Berlin:20261021T090000"]
+  },
+  {
+    "id": "standup_20261020T070000Z",
+    "recurringEventId": "standup",
+    "originalStartTime": { "dateTime": "2026-10-20T09:00:00+02:00", "timeZone": "Europe/Berlin" },
+    "summary": "Stand-up (late)",
+    "start": { "dateTime": "2026-10-20T11:00:00", "timeZone": "Europe/Berlin" },
+    "end": { "dateTime": "2026-10-20T11:30:00", "timeZone": "Europe/Berlin" }
+  },
+  {
+    "id": "standup_20261022T070000Z",
+    "recurringEventId": "standup",
+    "originalStartTime": { "dateTime": "2026-10-22T09:00:00+02:00", "timeZone": "Europe/Berlin" },
+    "status": "cancelled"
+  }
+]
+```
+
+That's a master, overrides and cancelled overrides, as in
+[Recurring events](/docs/concepts/recurrence). This page maps them to `RecurringCalendarEvent`s,
+which the calendar from [Show and edit recurring events](/docs/guides/recurring-events) expands and
+edits. Here, the stand-up shows on Monday at 09:00, Tuesday at 11:00 and Friday at 09:00.
+
+With `singleEvents=true`, Google expands series itself, between `timeMin` and `timeMax`. Each
+occurrence is then an event of its own, with nothing to tell the calendar which events share a
+series, so you can't offer "This and following events" or "All events".
+
+## The event type
+
+The mapping reads a few fields of Google's
+[Event resource](https://developers.google.com/workspace/calendar/api/v3/reference/events), and
+keeps the whole Google event as each calendar event's `data`:
+
+<include meta='title="google-calendar.ts"'>../../examples/google-calendar.ts#types</include>
+
+## Read the recurrence lines
+
+`parseRecurrenceRule` reads an `RRULE:` line as Google writes it. EXDATE and RDATE lines need their
+parameters: `TZID` names the zone of their wall times, and `VALUE=DATE` makes them dates. The
+syntax layer of `@moltenship/ics` reads those lines, and its value decoders read each date:
+
+<include meta='title="google-calendar.ts"'>../../examples/google-calendar.ts#recurrence</include>
+
+- **`parseIcsComponents`** splits each line into its name, parameters and raw value. It reads
+  content lines inside a component, so the lines are wrapped in a `VEVENT`.
+- **`icsValueTypeOf`** gives the line's value type: its `VALUE` parameter, else DATE-TIME for
+  EXDATE and RDATE. **`splitIcsValues`** splits a line that lists several dates, and
+  **`decodeIcsDateValue`** reads each one, in the zone `TZID` names.
+- **Dates of another kind** are fine. A UTC EXDATE on a series in Berlin, or a date-only one that
+  excludes a whole day, converts when the series is expanded.
+- **What it leaves out** goes to `problems`: EXRULE, which RFC 5545 deprecated, RDATE periods, and
+  dates it can't read. The rest of the series still shows.
+
+## Map the events
+
+Masters get their recurrence, changed and cancelled occurrences become overrides, and everything
+else is a one-off event:
+
+<include meta='title="google-calendar.ts"'>../../examples/google-calendar.ts#events</include>
+
+- **Times.** `start.dateTime` is RFC 3339, and may leave out its offset when `timeZone` is set, so
+  `instantOf` reads it in that zone. `start.date` makes an all-day event, whose `end.date` is
+  exclusive, as the calendar's is.
+- **The zone a series repeats in** is `start.timeZone`, which Google requires on recurring events.
+  It becomes `sourceTimeZone`, so a 09:00 meeting stays at 09:00 across daylight saving time.
+- **Overrides** keep Google's instance IDs as their own. The calendar shows them under the ID of
+  the occurrence they replace, such as `standup::2026-10-20T07:00:00Z`, before and after their
+  master loads.
+- **Cancelled occurrences** have no times, so they're placed at their original start. A cancelled
+  override only hides its occurrence and never shows, so its length doesn't matter.
+
+Give the events to the calendar with the canonical adapters, as the
+[guide](/docs/guides/recurring-events#wire-the-adapters) does:
+
+```ts
+import {
+  createCanonicalRecurrenceAdapter,
+  createOccurrenceExpander,
+} from "@moltenship/calendar-recurrence";
+
+const adapters = createCanonicalRecurrenceAdapter<GoogleEvent>();
+const expander = createOccurrenceExpander(adapters);
+
+const { events, problems } = fromGoogleEvents(response.items);
+```
+
+Google returns an event list a page at a time, with `nextPageToken`. Read every page before you
+expand: a master on one page and its overrides on another are one series.
+
+## Write changes back
+
+An edit from `resolveRecurrenceEdit` writes the master's whole recurrence. Google stores it as the
+master's `recurrence` lines, so write them back in Google's format:
+
+<include meta='title="google-calendar.ts"'>../../examples/google-calendar.ts#write</include>
+
+`formatRecurrenceRule` writes the rule's value without the `RRULE:` prefix, so the line adds it.
+Exception dates are written on the series' wall clock, with its `TZID`, as Google writes them.
+
+Apply the edit to your copy of the events with `applyRecurrenceEdit`, as the guide does, and send
+its writes to Google:
+
+| The edit says                         | In the Calendar API                                                                           |
+| ------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `series.action: "update"`             | Patch the master: `start` and `end` from `placement`, `recurrence` from `toGoogleRecurrence`. |
+| `series.action: "delete"`             | Delete the master, which deletes the whole series.                                            |
+| `newSeries`                           | Insert a new event, copied from the master, with its own `recurrence`.                        |
+| `override` (`"create"` or `"update"`) | Patch the occurrence: the instance whose `originalStartTime` is the edit's `recurrenceId`.    |
+| `override` (`"delete"`)               | Delete that instance.                                                                         |
+
+After a write that changes the master, list the series again, so your copy matches what Google
+stored for its other occurrences.
+
+A "This event" delete adds an EXDATE line to the master, which Google reads like any other
+`recurrence` line. Google records a deleted occurrence as a cancelled instance instead;
+`fromGoogleEvents` reads both.
