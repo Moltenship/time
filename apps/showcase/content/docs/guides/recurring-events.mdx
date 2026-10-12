@@ -136,7 +136,8 @@ dialog and resolves with the scope picked, and `dialog`, to render once:
 2. **`ask`** opens the dialog. `action` picks its wording for an edit or a delete, and `scopes`
    comes from **`recurrenceEditScopes`**, which offers only the scopes that apply: no "This and
    following events" on a series' first occurrence, and only "This event" when the rule can't
-   follow the change, such as the 28th of each month dragged to a 29th.
+   follow the change, such as the 28th of each month dragged to a 29th. When none applies, the list
+   is empty and there's nothing to ask: tell the user why, and roll the change back.
 3. **Cancel** resolves `null`. Throwing rolls the change back, as any error in `onEventChange`
    does.
 4. **`resolveRecurrenceEdit`** turns the change into an edit: what to save for that scope. A
@@ -199,9 +200,17 @@ select an occurrence in the preview, drag it with "All events", and it stays sel
 - Read an occurrence's series from `occurrence.recurrence`, which keeps the series ID's type. Use
   `parseOccurrenceId` only for IDs you stored.
 
-The calendar's keyboard focus names an occurrence ID too, and doesn't follow it yet. After "This
-and following events" or "All events", focus leaves the moved occurrence, and the next Tab into the
-view starts from its first cell.
+Keyboard focus names an occurrence too, and the calendar doesn't move it to the new ID by itself.
+After "This and following events" or "All events", the focused element unmounts with its old ID,
+so focus falls to the page and the next Tab enters the view at its first cell. To keep it:
+
+- Control `focus` with `onFocusChange`, and map it through `edit.occurrenceIds` as the selection
+  is, so the view's tab stop is the renamed occurrence.
+- Note the ID of the focused `[data-event-id]` element when the change begins, before the dialog
+  takes focus. Once your events have rendered, in a layout effect, focus the element whose
+  `eventIdOf` is the mapped ID.
+
+The [demo](https://github.com/Moltenship/time/blob/main/apps/demo/src/app.tsx) does both.
 
 ## Put it together
 

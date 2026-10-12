@@ -596,7 +596,12 @@ if (scope === null) throw new Error("Cancelled"); // rolls the change back
 
 const edit = resolveRecurrenceEdit(change, scope, adapters, { newSeriesId, occurrences });
 if (edit.type === "rejected") throw new Error(edit.message);
-if (edit.type === "series") setEvents((events) => applyRecurrenceEdit(events, edit, { createId }));
+setEvents(
+  (events) =>
+    edit.type === "series"
+      ? applyRecurrenceEdit(events, edit, { createId })
+      : saveOneOff(events, edit.change), // a one-off event, unwrapped: save it as without recurrence
+);
 ```
 
 - `isRecurringChange(change)` is `true` for a change to an occurrence of a series, which needs a

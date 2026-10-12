@@ -12,6 +12,7 @@ import {
   isRecurringChange,
   recurrenceEditScopes,
   resolveRecurrenceEdit,
+  type RecurrenceEditScope,
 } from "@moltenship/calendar-recurrence";
 import { useState, type MouseEvent } from "react";
 
@@ -46,15 +47,20 @@ export function TeamCalendar({ initialEvents, timeZone }: TeamCalendarProps) {
   // #region change
   async function onEventChange(change: OccurrenceChange) {
     // A new event, or a change to a one-off event, needs no question.
-    const scope = isRecurringChange(change)
-      ? await ask({
-          action: change.cause === "delete" ? "delete" : "edit",
-          eventTitle: change.event.event.title,
-          scopes: recurrenceEditScopes(change, adapters),
-        })
-      : "this";
-    // Throwing rolls the change back.
-    if (scope === null) throw new Error("Cancelled");
+    let scope: RecurrenceEditScope = "this";
+    if (isRecurringChange(change)) {
+      const scopes = recurrenceEditScopes(change, adapters);
+      // None applies, so there's nothing to ask: tell the user why instead. Throwing rolls the
+      // change back.
+      if (scopes.length === 0) throw new Error("This repeating event can't change that way.");
+      const picked = await ask({
+        action: change.cause === "delete" ? "delete" : "edit",
+        eventTitle: change.event.event.title,
+        scopes,
+      });
+      if (picked === null) throw new Error("Cancelled");
+      scope = picked;
+    }
 
     const edit = resolveRecurrenceEdit(change, scope, adapters, {
       // Picked now, so the IDs of a "following" edit's new series are known.
