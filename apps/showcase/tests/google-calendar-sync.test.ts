@@ -667,6 +667,29 @@ describe("changes made in Google meanwhile", () => {
     expect(standups(sync)).toContain("2026-10-15T10:00:00 Stand-up (Ana's late)");
   });
 
+  test.each(["following", "all"] as const)(
+    "an occurrence changed while the user decided stops %s edits of it",
+    async (scope) => {
+      const { google, sync } = setup();
+      await sync.load(week(monday));
+      const friday = find(sync, "standup::2026-10-16T07:00:00Z");
+      elsewhere(google, () =>
+        exception("2026-10-16", {
+          end: time("2026-10-16", "13:30"),
+          start: time("2026-10-16", "13:00"),
+          summary: "Stand-up (Ana's)",
+        }),
+      );
+      await sync.sync();
+      const master = google.getEvent("standup");
+      await expect(
+        save(sync, move(friday, at("2026-10-16", "10:00")), scope),
+      ).rejects.toMatchObject({ status: 412 });
+      expect(google.getEvent("standup")).toBe(master);
+      expect(google.getEvent("standup2")).toBeUndefined();
+    },
+  );
+
   test("moving an occurrence someone moved rolls back onto theirs", async () => {
     const { google, sync } = setup();
     await sync.load(week(monday));

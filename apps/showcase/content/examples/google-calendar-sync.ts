@@ -249,6 +249,8 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
     const edited = override?.action === "create" ? undefined : override?.event;
     const before = versions(seriesId, only);
     if (only !== undefined) before.clear();
+    // The edited occurrence as the user saw it: its exception, or none.
+    else for (const id of versions(seriesId, edit.recurrenceId).keys()) before.delete(id);
     if (series.action === "update" && only === undefined) {
       before.set(seriesId, series.event.data.etag);
     }
@@ -374,7 +376,14 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
         from?.override !== undefined &&
         keyOf(from.override.seriesId, from.override.recurrenceId) === keyOf(seriesId, recurrenceId);
       // The etag of the version on screen, or of the instance just read.
-      const instance = stays ? from.data : await api.instance(seriesId, recurrenceId.toString());
+      let instance: GoogleEvent;
+      try {
+        instance = stays ? from.data : await api.instance(seriesId, recurrenceId.toString());
+      } catch (error) {
+        // An occurrence to cancel whose series is gone is gone too.
+        if (placement === "cancel" && isStatus(error, 404, 410)) continue;
+        throw error;
+      }
       // Cancelled in Google since it loaded: a change to it would bring it back.
       if (from === undefined && instance.status === "cancelled" && placement !== "cancel") {
         throw new GoogleApiError(410, "deleted", "The occurrence was deleted in Google Calendar.");

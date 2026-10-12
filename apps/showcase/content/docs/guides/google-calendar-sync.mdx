@@ -271,8 +271,9 @@ the store:
 - **Rate limits.** The client's backoff waits it out while the change stays pending. Rate-limit two
   requests in the demo, then drag an event.
 - **Already deleted.** Deleting an event someone else deleted gets a 410, which counts as done.
-  So is deleting an occurrence someone cancelled. Moving one throws a 410 instead, so the change
-  rolls back rather than bring the occurrence back.
+  So is deleting an occurrence someone cancelled. Moving one throws a 410 instead, or a 412 for
+  "This and following events" and "All events", so the change rolls back rather than bring the
+  occurrence back.
 - **New events** get an ID from `newGoogleId`. Google takes IDs you pick, so you know an event's ID
   before it's saved, as you do for "This and following events". If an insert gets a 5xx after
   Google stored it, the retry gets a 409, and the event is there.
