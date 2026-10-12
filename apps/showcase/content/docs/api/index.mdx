@@ -41,21 +41,30 @@ import { createCalendar, defineCalendarView, plainDateInterval } from "@moltensh
     href="/docs/api/ics"
     description="Parse ICS feeds and files into typed Temporal values. A separate package."
   />
+  <Card
+    title="Recurrence"
+    href="/docs/api/recurrence"
+    description="Expand recurring series for the dates on screen, and edit them. A separate package."
+  />
 </Cards>
 
 The iCalendar parser, `@moltenship/ics`, stands alone. `@moltenship/calendar` doesn't re-export it,
 so install it and import it by its own name. It doesn't need the calendar either.
 
+Recurring events come from `@moltenship/calendar-recurrence`, which `@moltenship/calendar` doesn't
+re-export either. It turns series into occurrences that the calendar shows as ordinary events.
+
 ## Packages
 
-| Package                         | Contents                                                         | Dependencies                                          |
-| ------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| `@moltenship/calendar`          | Re-exports the four `calendar-` packages below                   | Those four; React 19 (peer)                           |
-| `@moltenship/calendar-react`    | `createCalendar`, `defineCalendarView`, components, hooks, store | `calendar-core`, `calendar-temporal`; React 19 (peer) |
-| `@moltenship/calendar-core`     | Adapters, validation, snapshots, queries. No React.              | `calendar-temporal`, `@flatten-js/interval-tree`      |
-| `@moltenship/calendar-temporal` | Ranges, grids, rounding, zoned days, DST                         | None                                                  |
-| `@moltenship/calendar-dnd`      | Pointer drag, resize, and create for views                       | `calendar-core`, `calendar-temporal`; React 19 (peer) |
-| `@moltenship/ics`               | iCalendar parsing into Temporal values. Not re-exported.         | None                                                  |
+| Package                           | Contents                                                         | Dependencies                                          |
+| --------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
+| `@moltenship/calendar`            | Re-exports `calendar-react`, `-core`, `-temporal` and `-dnd`     | Those four; React 19 (peer)                           |
+| `@moltenship/calendar-react`      | `createCalendar`, `defineCalendarView`, components, hooks, store | `calendar-core`, `calendar-temporal`; React 19 (peer) |
+| `@moltenship/calendar-core`       | Adapters, validation, snapshots, queries. No React.              | `calendar-temporal`, `@flatten-js/interval-tree`      |
+| `@moltenship/calendar-temporal`   | Ranges, grids, rounding, zoned days, DST                         | None                                                  |
+| `@moltenship/calendar-dnd`        | Pointer drag, resize, and create for views                       | `calendar-core`, `calendar-temporal`; React 19 (peer) |
+| `@moltenship/ics`                 | iCalendar parsing into Temporal values. Not re-exported.         | None                                                  |
+| `@moltenship/calendar-recurrence` | Series expansion, occurrence IDs, series edits. Not re-exported. | `calendar-core`, `calendar-temporal`, `ics`           |
 
 Every package is ESM only. Import from the package name: paths inside a package aren't part of the
 API.

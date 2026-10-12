@@ -1,0 +1,820 @@
+---
+title: Recurrence
+description: Expand recurring series for the dates on screen, and edit one occurrence, the following ones or all of them, with @moltenship/calendar-recurrence.
+---
+
+`@moltenship/calendar-recurrence` turns your recurring events into the occurrences the calendar
+shows. A series is stored the way iCalendar, Google Calendar and Outlook store it: one master event
+with a rule, plus events that replace single occurrences. The package expands masters for a range
+of dates, and turns a change to one occurrence into what to save for "this event", "this and
+following events" or "all events".
+
+It's a separate package. `@moltenship/calendar` doesn't re-export it, and the calendar doesn't need
+it: occurrences reach the calendar as ordinary events, through an adapter. It depends on
+`@moltenship/calendar-core`, `@moltenship/calendar-temporal` and `@moltenship/ics`, and not on
+React.
+
+[Recurring events](/docs/concepts/recurrence) explains the model, and
+[Show and edit recurring events](/docs/guides/recurring-events) wires it into a calendar.
+
+## Install
+
+<Callout type="warn" title="Not on npm yet">
+  The package hasn't been published. The commands below are what you'll run after the first release.
+  To try it now, [run Time from source](/docs/installation#run-from-source).
+</Callout>
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/calendar-recurrence
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/calendar-recurrence
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/calendar-recurrence
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar-recurrence
+```
+
+</Tab>
+</Tabs>
+
+It needs the same setup as the calendar: a runtime with `Temporal`, or a polyfill loaded first,
+and TypeScript's `ESNext` library. See [Installation](/docs/installation#temporal).
+
+## Series
+
+A series is a master event, which sits at the series' first occurrence, and any number of override
+events. The package reads both through a [`RecurrenceAdapter`](#adapters). Events with neither are
+one-off events, and pass through.
+
+Every date of a series has the kind of its first occurrence. That's a `RecurrenceDate`:
+
+| The series is | Its dates are            | Its occurrence IDs end in |
+| ------------- | ------------------------ | ------------------------- |
+| Timed         | `Temporal.Instant`       | `2026-10-28T08:00:00Z`    |
+| All-day       | `Temporal.PlainDate`     | `2026-10-28`              |
+| Floating      | `Temporal.PlainDateTime` | `2026-10-28T09:00:00`     |
+
+A date of another kind is converted with [`coerceRecurrenceDate`](#dates-of-another-kind), or
+dropped with an issue when it can't be.
+
+### EventRecurrence
+
+An `EventRecurrence` is what makes an event a series' master: its RRULE, EXDATE, RDATE and
+DURATION.
+
+<TypeTable
+  type={{
+    rule: {
+      type: "RecurrenceRule",
+      description: (
+        <>
+          RRULE. A series without one has only its first occurrence and its{" "}
+          <code>recurrenceDates</code>.
+        </>
+      ),
+    },
+    exceptionDates: {
+      type: "readonly RecurrenceDate[]",
+      description: (
+        <>
+          EXDATE: original starts of occurrences that don't happen, the first one included. A{" "}
+          <code>PlainDate</code> on a timed or floating series excludes every occurrence that starts
+          that day. Excluded occurrences still count toward COUNT.
+        </>
+      ),
+    },
+    recurrenceDates: {
+      type: "readonly (RecurrenceDate | RecurrencePeriod)[]",
+      description: (
+        <>
+          RDATE: extra occurrences. A date starts one that lasts as long as the first occurrence. A{" "}
+          <code>RecurrencePeriod</code>, with a <code>start</code> and an <code>end</code>, keeps
+          its own length.
+        </>
+      ),
+    },
+    duration: {
+      type: "Temporal.Duration",
+      description: (
+        <>
+          DURATION, such as <code>P1D</code>, which keeps each occurrence's wall-clock length across
+          DST. Without it, occurrences last exactly as long as the first.
+        </>
+      ),
+    },
+    wallStart: {
+      type: "Temporal.PlainDateTime",
+      description: (
+        <>
+          A timed series' first start as written, when it fell in a DST gap and so resolved later.
+          Later occurrences repeat at this wall time. Ignored unless it resolves to the first start.
+          ICS gives it as <code>wallTime</code>.
+        </>
+      ),
+    },
+  }}
+/>
+
+A `RecurrencePeriod` is an extra occurrence with its own `start` and `end`, both in the series'
+kind.
+
+`RecurrenceRule` is `@moltenship/ics`'s [`IcsRecurrenceRule`](/docs/api/ics#recurrence), with
+`until` as a `RecurrenceDate`: `frequency`, `interval`, `count`, `until`, `byDay`, `byMonth`,
+`byMonthDay`, `bySetPosition`, `weekStart` and the rest. UNTIL is inclusive. With COUNT too, the
+series ends at whichever comes first.
+
+### RecurrenceOverride
+
+A `RecurrenceOverride` is what makes an event replace one occurrence of a series, as RECURRENCE-ID
+does.
+
+<TypeTable
+  type={{
+    seriesId: { type: "TEventId", description: "The master's ID.", required: true },
+    recurrenceId: {
+      type: "RecurrenceDate",
+      description: (
+        <>
+          The original start of the occurrence it replaces, in the series' kind. The override keeps
+          it when it moves, and so keeps the occurrence's ID.
+        </>
+      ),
+      required: true,
+    },
+    cancelled: {
+      type: "boolean",
+      description:
+        "The occurrence doesn't happen, as Google's cancelled instances and ICS overrides with STATUS:CANCELLED say. It hides the occurrence and doesn't show itself.",
+      default: "false",
+    },
+  }}
+/>
+
+An event that is both a master and an override is read as the override, with a
+`conflicting-recurrence` issue.
+
+### RecurringCalendarEvent
+
+`RecurringCalendarEvent<TData, TEventId, TResourceId>` is core's
+[`CalendarEvent`](/docs/concepts/events#records-in-times-own-shape) with an optional
+`recurrence: EventRecurrence` and `override: RecurrenceOverride`. Use it when your app has no event
+type of its own, with [`createCanonicalRecurrenceAdapter`](#adapters). It's also what
+[`recurringEventsFromIcs`](#ics-bridge) returns and [`applyRecurrenceEdit`](#applyrecurrenceedit)
+changes.
+
+## Adapters
+
+A `RecurrenceAdapter` reads recurrence from your events, beside the `EventAdapter` that reads their
+IDs, titles and intervals. A master's `getInterval` is its first occurrence, as DTSTART and DTEND
+are. Timed series repeat on the wall clock of the interval's `sourceTimeZone`.
+
+<TypeTable
+  type={{
+    getRecurrence: {
+      type: "(event) => EventRecurrence | undefined",
+      description: "The recurrence of a series' master; undefined for any other event.",
+      required: true,
+    },
+    getOverride: {
+      type: "(event) => RecurrenceOverride | undefined",
+      description: "Which occurrence an override replaces; undefined for any other event.",
+    },
+  }}
+/>
+
+`RecurrenceAdapters<TEvent, TEventId, TResourceId>` holds both: `{ event, recurrence }`. The
+expander and the edit functions take it.
+
+- `createCanonicalRecurrenceAdapter<TData, TEventId, TResourceId>()` returns the adapters for
+  `RecurringCalendarEvent`: core's `createCanonicalEventAdapter`, and a recurrence adapter that reads
+  `recurrence` and `override`.
+- `createOccurrenceAdapter(eventAdapter)` returns the `EventAdapter` you give the calendar, whose
+  events are occurrences. IDs and intervals come from the occurrence. Titles, resources, read-only
+  and busy state come from the event it shows, through `eventAdapter`. `isBusy` and `isReadOnly`
+  exist only when `eventAdapter` has them, so core's defaults still apply.
+
+```ts
+import { createCalendar } from "@moltenship/calendar";
+import {
+  createCanonicalRecurrenceAdapter,
+  createOccurrenceAdapter,
+  type RecurrenceOccurrence,
+  type RecurringCalendarEvent,
+} from "@moltenship/calendar-recurrence";
+
+type Event = RecurringCalendarEvent<{ color: string }>;
+const adapters = createCanonicalRecurrenceAdapter<{ color: string }>();
+
+const Calendar = createCalendar<RecurrenceOccurrence<Event, string>>()({
+  eventAdapter: createOccurrenceAdapter(adapters.event),
+});
+```
+
+An occurrence's revision combines the revisions of its event and its series' master with its
+interval. Without `getRevision` on your adapter, an event's revision is its object identity, so
+replace events rather than changing them.
+
+## Expansion
+
+`createOccurrenceExpander(adapters, options)` returns an `OccurrenceExpander`.
+`expander.expand(events, range)` returns the occurrences of `events` that overlap `range`:
+
+```ts
+import { createOccurrenceExpander } from "@moltenship/calendar-recurrence";
+
+const expander = createOccurrenceExpander(adapters, { defaultTimeZone: "Europe/Berlin" });
+
+const { occurrences, issues } = expander.expand(events, {
+  range: visibleRange.loadRange,
+  timeZone: "Europe/Berlin",
+});
+```
+
+Create one expander and keep it, in `useState` or at module scope. It reuses its work for events
+that are the same objects as last time: each series keeps its last four ranges and eight rule
+windows, and an occurrence that comes out the same keeps its object, so memoized views don't
+render again. Treat events as immutable.
+
+`options` is an `OccurrenceExpanderOptions`:
+
+<TypeTable
+  type={{
+    defaultTimeZone: {
+      type: "string",
+      description: (
+        <>
+          Where timed series without <code>sourceTimeZone</code> repeat, and the zone instants are
+          read in for all-day and floating series. Weekdays and DST follow it. A zone that isn't one
+          reports <code>invalid-time-zone</code> for each date that needs it.
+        </>
+      ),
+      default: '"UTC"',
+    },
+    maxIterations: {
+      type: "number",
+      description: (
+        <>
+          Most loop steps one series may take per expansion. A series that runs out reports{" "}
+          <code>iteration-limit</code>. Must be a positive integer, or{" "}
+          <code>createOccurrenceExpander</code> throws a <code>RangeError</code>.
+        </>
+      ),
+      default: "DEFAULT_MAX_ITERATIONS (100,000)",
+    },
+  }}
+/>
+
+### OccurrenceRange
+
+`expand` takes the dates as an `OccurrenceRange`:
+
+<TypeTable
+  type={{
+    range: {
+      type: "{ start: Temporal.PlainDate; end: Temporal.PlainDate }",
+      description: (
+        <>
+          Half-open. Pass the <code>loadRange</code> that <code>onVisibleRangeChange</code> reports,
+          not its <code>range</code>, so the pages a scrolling view keeps ready have their
+          occurrences.
+        </>
+      ),
+      required: true,
+    },
+    timeZone: {
+      type: "string",
+      description:
+        "The calendar's time zone. It places the range's dates for timed series; all-day series compare dates and floating ones wall times.",
+      required: true,
+    },
+  }}
+/>
+
+An occurrence overlapping the range is included, even one that starts before it. Overrides and
+one-off events pass through whatever the range, since your app chose to load them.
+
+### OccurrenceExpansion
+
+`expand` returns an `OccurrenceExpansion`: `{ occurrences, issues }`. `occurrences` holds a `RecurrenceOccurrence` for each
+occurrence in the range, each override that isn't cancelled, and each one-off event. They come in
+the input order of their events, and each series' in time order. IDs are unique. Each one has:
+
+<TypeTable
+  type={{
+    id: {
+      type: "TEventId | string",
+      description: (
+        <>
+          <code>occurrenceId(seriesId, recurrenceId)</code> for an occurrence or an override, and
+          the event's own ID for a one-off event. See <a href="#occurrence-ids">Occurrence IDs</a>.
+        </>
+      ),
+      required: true,
+    },
+    interval: {
+      type: "CalendarEventInterval",
+      description:
+        "Where it is: the generated start and the series' length, or the override's own interval.",
+      required: true,
+    },
+    event: {
+      type: "TEvent",
+      description: "The event it shows: the override, the series' master, or the one-off event.",
+      required: true,
+    },
+    recurrence: {
+      type: "OccurrenceRecurrence",
+      description: "Its place in its series. Absent on one-off events.",
+    },
+  }}
+/>
+
+`OccurrenceRecurrence` has the `seriesId`, the `recurrenceId` (the original start, which names the
+occurrence and stays put when it moves), the `series` master and the `override` that replaces the
+occurrence, when there is one. `series` is absent for an override whose master isn't among the
+events, such as an invitation to one occurrence. It keeps its ID, so it matches once the master
+loads.
+
+### Issues
+
+Bad data becomes an issue, with the event and its position in the input, rather than an
+exception. A problem with one date drops only that date; the series stays.
+
+| `code`                   | Meaning                                                                                                            |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| `adapter-error`          | An adapter function threw. The event is left out, and `message` names the function.                                |
+| `date-kind-mismatch`     | A date that `coerceRecurrenceDate` can't bring into the series' kind, such as a date-only RDATE on a timed series. |
+| `conflicting-recurrence` | An event is both a master and an override. It's read as the override.                                              |
+| `duplicate-event-id`     | Two items have the same ID, such as series `42` and `"42"`. The later one is left out.                             |
+| `duplicate-override`     | Two overrides replace the same occurrence. The later one in the input wins.                                        |
+| `invalid-rule`           | The rule can't be expanded. The series still shows its first occurrence and its RDATEs.                            |
+| `invalid-time-zone`      | `sourceTimeZone` or `defaultTimeZone` isn't a time zone. Dates that need it are dropped.                           |
+| `iteration-limit`        | A series ran out of `maxIterations` before it finished the range.                                                  |
+| `missing-series`         | An override's master isn't among the events. It shows on its own, under its occurrence ID.                         |
+| `unsupported-rule`       | A valid RFC 5545 construct the engine doesn't handle, such as a sub-daily FREQ on an all-day series.               |
+
+Each `RecurrenceIssue` has its `code`, the `event`, its `eventId` when the adapter could read it, its
+`index` in the input, and a `message`.
+
+## Occurrence IDs
+
+```ts
+import { occurrenceId, parseOccurrenceId, recurrenceKey } from "@moltenship/calendar-recurrence";
+
+occurrenceId("standup", Temporal.Instant.from("2026-10-28T08:00:00Z"));
+// "standup::2026-10-28T08:00:00Z"
+occurrenceId(42, Temporal.PlainDate.from("2026-10-28")); // "42::2026-10-28"
+
+recurrenceKey(Temporal.Instant.from("2026-10-28T09:00:00+01:00")); // "2026-10-28T08:00:00Z"
+
+parseOccurrenceId("standup::2026-10-28T08:00:00Z");
+// { seriesId: "standup", recurrenceKey: "2026-10-28T08:00:00Z" }
+parseOccurrenceId("standup"); // undefined
+```
+
+- `occurrenceId(seriesId, recurrenceId)` is `<seriesId>::<recurrenceKey>`: the series and the
+  occurrence's original start. It stays the same across views, time zones and reloads, and when
+  an override moves the occurrence. Edits to the following occurrences or to all of them change
+  starts, and so IDs.
+- `recurrenceKey(recurrenceId)` is the original start in ISO form: instants in UTC, dates and wall
+  times in the ISO calendar, without a calendar annotation. The format is stable, since apps store
+  IDs.
+- `parseOccurrenceId(id)` splits an ID into the series ID, as a string, and the key, or returns
+  `undefined` for an ID that doesn't end in a key. Use it only for IDs you stored; an occurrence's
+  `recurrence` has the series ID with its type.
+
+## Rules
+
+### RRULE text
+
+`parseRecurrenceRule(text)` reads an RRULE as a RECUR value (`FREQ=WEEKLY;BYDAY=MO`) or a content
+line (`RRULE:FREQ=WEEKLY;BYDAY=MO`), as the Google Calendar API stores it. It never throws:
+
+```ts
+import { formatRecurrenceRule, parseRecurrenceRule } from "@moltenship/calendar-recurrence";
+
+parseRecurrenceRule("RRULE:FREQ=WEEKLY;BYDAY=MO,WE;UNTIL=20261231T225959Z");
+// { rule: { frequency: "WEEKLY", byDay: [{ weekday: "MO" }, { weekday: "WE" }],
+//           until: Temporal.Instant 2026-12-31T22:59:59Z }, issues: [] }
+
+parseRecurrenceRule("INTERVAL=2");
+// { issues: [{ severity: "error", code: "invalid-value",
+//              message: "\"INTERVAL=2\" has no FREQ, which a recurrence rule requires" }] }
+
+formatRecurrenceRule({ frequency: "MONTHLY", byDay: [{ weekday: "TU", ordinal: 2 }], count: 6 });
+// "FREQ=MONTHLY;COUNT=6;BYDAY=2TU"
+```
+
+- `parseRecurrenceRule` returns a `RecurrenceRuleTextResult`: `rule`, absent when the text holds
+  no usable rule, and `issues`. Each `RecurrenceRuleTextIssue` has a `severity`, the `code`
+  `@moltenship/ics` reports it under, and a `message`. Errors leave no rule. Warnings keep a
+  best-effort one, as when an invalid BYDAY is dropped.
+- UNTIL becomes a `PlainDate` for a DATE, an `Instant` for a UTC or zoned DATE-TIME, and a
+  `PlainDateTime` for a floating one.
+- `formatRecurrenceRule(rule)` writes the RECUR value, without `RRULE:`, its parts in RFC 5545's
+  order. An `Instant` UNTIL is written in UTC and rounded down to the second. It throws a
+  `RangeError` for an UNTIL outside the years 0 to 9999.
+- `recurrenceRuleFromIcs(icsRule)` converts `IcsEvent.recurrenceRule` from `@moltenship/ics`, and
+  returns a `RecurrenceRuleTextResult`. An UNTIL whose TZID resolved to no time zone is an error,
+  since the series' end would be unknown. `recurrenceRuleToIcs(rule)` converts back.
+
+### The engine
+
+`expandRecurrenceRule(rule, first, window)` lists a rule's starts. The expander calls it for each
+series; call it yourself to list starts without events:
+
+```ts
+import { expandRecurrenceRule } from "@moltenship/calendar-recurrence";
+
+const start = Temporal.ZonedDateTime.from("2026-10-19T09:00[Europe/Berlin]");
+const { dates, truncated } = expandRecurrenceRule(
+  { frequency: "WEEKLY", byDay: [{ weekday: "MO" }] },
+  {
+    kind: "timed",
+    start: start.toInstant(),
+    end: start.add({ minutes: 30 }).toInstant(),
+    sourceTimeZone: "Europe/Berlin",
+  },
+  {
+    from: Temporal.Instant.from("2026-10-20T00:00Z"),
+    before: Temporal.Instant.from("2026-11-10T00:00Z"),
+  },
+);
+// dates: 2026-10-26T08:00:00Z, 2026-11-02T08:00:00Z, 2026-11-09T08:00:00Z
+// (09:00 in Berlin each Monday, after the switch to winter time); truncated: false
+```
+
+It covers RFC 5545: every FREQ, every BY part, BYSETPOS, WKST, COUNT and UNTIL. `first` is a
+`RecurrenceRuleStart`: the first occurrence's interval, with an optional `wallStart`. The first
+occurrence is always one and counts toward COUNT. Dates that don't exist, such as 30 February,
+are skipped and don't count. `window` is a `RecurrenceRuleWindow`:
+
+<TypeTable
+  type={{
+    from: {
+      type: "RecurrenceDate",
+      description:
+        "Leaves out starts before this. COUNT still counts them; without COUNT, the engine skips ahead instead of stepping through every earlier period.",
+    },
+    before: { type: "RecurrenceDate", description: "Stops before starts at or after this." },
+    maxIterations: {
+      type: "number",
+      description:
+        "Most steps to take. A step is one period the engine visits, whether or not it gives a start; periods skipped to reach from don't count.",
+      default: "DEFAULT_MAX_ITERATIONS",
+    },
+  }}
+/>
+
+It returns a `RecurrenceRuleExpansion`: `dates`, strictly increasing in the kind of the first
+occurrence and the ISO calendar, and `truncated`, which is `true` when `maxIterations` ran out while
+the rule still had starts to give. `DEFAULT_MAX_ITERATIONS` is 100,000.
+
+For a rule it can't expand, or a `sourceTimeZone` that isn't a time zone, it throws a
+`RecurrenceRuleError`, a `RangeError` whose `code` is a `RecurrenceRuleErrorCode`:
+`invalid-rule`, `invalid-time-zone` or `unsupported-rule`. The expander reports the same code as an
+issue. Window dates of another kind than `first`, and a `maxIterations` that isn't a positive
+integer, throw a plain `RangeError`.
+
+### Dates of another kind
+
+Real feeds mix kinds: a UTC UNTIL on an all-day series, a date-only EXDATE on a timed one.
+`coerceRecurrenceDate(date, first, role, options)` brings a date into the kind of the series' first
+occurrence. It's the one place dates convert, and the expander and the ICS bridge use it.
+
+| On a series that is | A `PlainDate`                                                                               | A `PlainDateTime`               | An `Instant`                       |
+| ------------------- | ------------------------------------------------------------------------------------------- | ------------------------------- | ---------------------------------- |
+| Timed               | `"exception"`: stays, the whole day. `"until"`: the end of that day. `"start"`: `undefined` | its instant in the series' zone | itself                             |
+| All-day             | itself                                                                                      | its date                        | its date in `defaultTimeZone`      |
+| Floating            | `"exception"`: stays. `"until"`: the end of that day. `"start"`: `undefined`                | itself                          | its wall time in `defaultTimeZone` |
+
+`role` is a `RecurrenceDateRole`: `"exception"` for EXDATE, `"start"` for RDATE and
+RECURRENCE-ID, `"until"` for UNTIL. Wall times resolve with `compatible`, as RFC 5545 §3.3.5 says.
+`options` is a `CoerceRecurrenceDateOptions` with a `defaultTimeZone`, UTC by default, for timed
+series without `sourceTimeZone` and for instants on the other kinds. `undefined` means the date
+can't stand for its role; report it and drop only that date.
+
+## ICS bridge
+
+`recurringEventsFromIcs(events, options)` groups the VEVENTs that `@moltenship/ics` parsed into
+masters, overrides and one-off events, as `RecurringCalendarEvent`s whose `data` is the `IcsEvent`:
+
+```ts
+import {
+  createCanonicalRecurrenceAdapter,
+  createOccurrenceExpander,
+  recurringEventsFromIcs,
+} from "@moltenship/calendar-recurrence";
+import { parseIcs, type IcsEvent } from "@moltenship/ics";
+
+const calendar = parseIcs(text).calendars[0]!;
+const { events, issues } = recurringEventsFromIcs(calendar.events, {
+  timeZone: calendar.timeZone,
+});
+const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEvent>());
+```
+
+- Masters and one-off events keep their UID as their ID. An override gets the ID of the occurrence
+  it replaces, `occurrenceId(uid, recurrenceId)`, with or without its master.
+- A UTC DTSTART repeats in UTC, and a zoned one in its zone. A DTSTART in a DST gap keeps its
+  written time as `recurrence.wallStart`, and DURATION without DTEND becomes `recurrence.duration`.
+- EXDATE, RDATE, UNTIL and RECURRENCE-ID take the series' kind through `coerceRecurrenceDate`.
+- A cancelled master or one-off event is left out, with the master's overrides. A cancelled
+  override comes out with `override.cancelled`, which hides its occurrence.
+- Of events with the same UID, or UID and RECURRENCE-ID, the highest SEQUENCE wins, then the later
+  one.
+- RANGE=THISANDFUTURE isn't supported: the override replaces only the occurrence it names.
+
+`options` is an `IcsRecurringEventsOptions`:
+
+<TypeTable
+  type={{
+    timeZone: {
+      type: "string",
+      description: (
+        <>
+          The feed's time zone: <code>calendar.timeZone</code> (X-WR-TIMEZONE), or one you choose.
+          UTC times on all-day and floating series, such as an UNTIL, are read in it, so they keep
+          the feed's dates. Floating DTSTARTs stay floating.
+        </>
+      ),
+      default: '"UTC"',
+    },
+    minimumDuration: {
+      type: "Temporal.DurationLike",
+      description:
+        "How long a timed or floating event lasts when DTEND or DURATION make it zero-length or negative. Such all-day events last a day.",
+      default: "{ minutes: 30 }",
+    },
+  }}
+/>
+
+It returns an `IcsRecurringEvents`: `events`, in input order, and `issues`. Bad data becomes an
+issue; only invalid options throw, as a `RangeError`. Each `IcsRecurrenceIssue` has its `code`, the
+`event`, its `index`, a `message` and the `property` it concerns, such as `EXDATE`:
+
+| `code` (`IcsRecurrenceIssueCode`) | Meaning                                                                                                                          |
+| --------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `date-kind-mismatch`              | EXDATE, RDATE, UNTIL or RECURRENCE-ID has another kind than the series, or an unresolved TZID. It was converted, or dropped.     |
+| `duplicate-event`                 | Another VEVENT has the same UID, or the same UID and RECURRENCE-ID. The higher SEQUENCE wins, then the later one.                |
+| `invalid-period`                  | An RDATE PERIOD that doesn't end after it starts. Only its start is kept.                                                        |
+| `unresolved-time-zone`            | DTSTART, or the RECURRENCE-ID of an override without its master, has a TZID that resolved to no time zone. The event is skipped. |
+| `unsupported-rule`                | RANGE=THISANDFUTURE. The override replaces only the occurrence it names.                                                         |
+
+The expander reports its own issues on top, such as a rule it can't expand.
+
+## Edits
+
+When someone moves, resizes or deletes an occurrence, `onEventChange` receives a change whose
+`event` is the occurrence: a `RecurrenceOccurrenceChange<TEvent, TEventId, TResourceId>`. The edit
+functions turn it into what to save.
+
+```ts
+// `ask` comes from the registry's useRecurrenceScopePrompt.
+const scope = isRecurringChange(change)
+  ? await ask({ scopes: recurrenceEditScopes(change, adapters) })
+  : "this";
+if (scope === null) throw new Error("Cancelled"); // rolls the change back
+
+const edit = resolveRecurrenceEdit(change, scope, adapters, { newSeriesId, occurrences });
+if (edit.type === "rejected") throw new Error(edit.message);
+if (edit.type === "series") setEvents((events) => applyRecurrenceEdit(events, edit, { createId }));
+```
+
+- `isRecurringChange(change)` is `true` for a change to an occurrence of a series, which needs a
+  scope. It narrows `change` to a `RecurringOccurrenceChange`. A create, or a change to a one-off
+  event, needs none.
+- `recurrenceEditScopes(change, adapters, options)` lists the `RecurrenceEditScope`s worth
+  offering, in order: `"this"`, `"following"`, `"all"`. It leaves out those
+  `resolveRecurrenceEdit` would reject, and `"following"` where it means `"all"`, as on the first
+  occurrence. It's empty for a change that isn't recurring. Hand it to the
+  [scope dialog](/docs/guides/recurring-events#ask-which-events-a-change-applies-to).
+- `resolveRecurrenceEdit(change, scope, adapters, options)` returns a `RecurrenceEdit`. It reads its
+  arguments only: it never changes them or calls your code.
+
+Both take a `ResolveRecurrenceEditOptions`:
+
+<TypeTable
+  type={{
+    defaultTimeZone: {
+      type: "string",
+      description: (
+        <>
+          Where timed series without <code>sourceTimeZone</code> repeat. Pass the expander's{" "}
+          <code>defaultTimeZone</code>.
+        </>
+      ),
+      default: '"UTC"',
+    },
+    newSeriesId: {
+      type: "TEventId",
+      description: (
+        <>
+          The ID the series a <code>"following"</code> edit starts will have, when you pick IDs
+          yourself. With it, <code>newSeries.id</code> is set and <code>occurrenceIds</code> maps
+          into the new series; without it, those occurrences are left out of the map.
+        </>
+      ),
+    },
+    occurrences: {
+      type: "readonly RecurrenceOccurrence[]",
+      description: (
+        <>
+          The occurrences you show, such as the expansion you give the calendar, so{" "}
+          <code>occurrenceIds</code> maps their IDs too.
+        </>
+      ),
+    },
+    maxIterations: {
+      type: "number",
+      description: (
+        <>
+          Most loop steps a <code>"following"</code> edit's search for the previous occurrence may
+          take.
+        </>
+      ),
+    },
+  }}
+/>
+
+### What each scope does
+
+- **`"this"`.** A move, resize or update creates the occurrence's override, or updates it. Its
+  `recurrenceId` stays, so the occurrence keeps its ID. A delete adds the original start to the
+  master's `exceptionDates` and deletes an existing override. An override whose master isn't
+  loaded is marked `cancelled` instead. Google's API records a deleted instance as a cancelled one;
+  this package reads those, but writes EXDATE, which every iCalendar store understands.
+- **`"following"`.** The master ends before the occurrence: UNTIL becomes the previous
+  occurrence's start, or COUNT the number of occurrences before it. A new series starts where the
+  change puts the occurrence, with the rest of the rule moved as `"all"` moves it, and later
+  EXDATEs, RDATEs and overrides move to it. A delete only ends the series. Google Calendar and
+  Outlook on the web split a series the same way.
+- **`"all"`.** The change from where the occurrence showed to where it goes, measured on the
+  series' wall clock, applies to every occurrence. The rule moves with it, such as BYDAY when the
+  day changes, and so do EXDATEs, RDATEs, UNTIL and every override's `recurrenceId`, so deleted
+  occurrences stay deleted and moved ones don't appear twice. Overrides keep their own placements.
+  A move keeps the series' length; a resize changes it. A delete removes the master and its
+  overrides.
+
+A timed occurrence dropped on a day, or an all-day one dropped on a time, works in every scope.
+`"following"` and `"all"` change the series' kind and convert its dates; a rule with several times
+a day can't become all-day.
+
+### RecurrenceEdit
+
+A `RecurrenceEdit` is one of three types:
+
+- `{ type: "event", change }`, a `RecurrenceEventEdit`: a create, or a change to a one-off event,
+  with the event unwrapped. Apply `change` as you would without recurrence.
+- `{ type: "series", … }`, a `RecurrenceSeriesEdit`, below.
+- `{ type: "rejected", reason, message }`, a `RecurrenceEditRejection`: the scope can't apply.
+
+A `RecurrenceSeriesEdit` describes the writes as plain data. Only placement and recurrence are
+described; copy anything else an `"update"` changed, such as the title, yourself.
+
+<TypeTable
+  type={{
+    scope: {
+      type: "RecurrenceEditScope",
+      description: (
+        <>
+          The scope applied. <code>"following"</code> on the first occurrence is <code>"all"</code>.
+        </>
+      ),
+      required: true,
+    },
+    cause: {
+      type: '"move" | "resize-start" | "resize-end" | "update" | "delete"',
+      description: "The change's cause.",
+      required: true,
+    },
+    seriesId: { type: "TEventId", description: "The master's ID.", required: true },
+    recurrenceId: {
+      type: "RecurrenceDate",
+      description: "The edited occurrence's original start.",
+      required: true,
+    },
+    series: {
+      type: "RecurrenceSeriesWrite",
+      description: (
+        <>
+          The master: <code>keep</code>, <code>update</code> with its new <code>placement</code>{" "}
+          (its first occurrence) and whole <code>recurrence</code>, or <code>delete</code>.
+        </>
+      ),
+      required: true,
+    },
+    newSeries: {
+      type: "RecurrenceNewSeries",
+      description: (
+        <>
+          The series a <code>"following"</code> edit starts: copy <code>from</code>, the old master,
+          except its ID, placement and recurrence; give it <code>placement</code>,{" "}
+          <code>recurrence</code>, and <code>id</code> when you passed <code>newSeriesId</code>.
+        </>
+      ),
+    },
+    override: {
+      type: "RecurrenceOverrideWrite",
+      description: (
+        <>
+          The edited occurrence's override: <code>create</code> one from the master at{" "}
+          <code>placement</code>, <code>update</code> the existing one (its placement,{" "}
+          <code>recurrenceId</code>, <code>cancelled</code>, and its series when <code>series</code>{" "}
+          is <code>"new"</code>), or <code>delete</code> it.
+        </>
+      ),
+    },
+    otherOverrides: {
+      type: "RecurrenceOverridesRule",
+      description: (
+        <>
+          What happens to the series' other overrides, as a rule, since you may not have them all
+          loaded. Apply <code>recurrenceOverrideEdit</code> to each one you store.
+        </>
+      ),
+      required: true,
+    },
+    occurrenceIds: {
+      type: "ReadonlyMap<EventId, string>",
+      description: (
+        <>
+          Old occurrence IDs to new ones, for your selection: the edited occurrence's and those in{" "}
+          <code>options.occurrences</code> whose IDs change. Empty for <code>"this"</code>.
+        </>
+      ),
+      required: true,
+    },
+  }}
+/>
+
+`RecurrenceSeriesWrite`, `RecurrenceNewSeries` and `RecurrenceOverrideWrite` are the types of
+`series`, `newSeries` and `override`. A placement is a `CalendarEventPlacement`: an interval and its
+`resourceIds`.
+
+### recurrenceOverrideEdit
+
+`recurrenceOverrideEdit(edit, recurrenceId)` says what an edit does to one stored override of
+`edit.seriesId`, by its `recurrenceId`. It returns a `RecurrenceOverrideRekey`:
+
+- `{ action: "keep" }`, as for the edited occurrence's own override, which `edit.override`
+  covers;
+- `{ action: "delete" }`;
+- `{ action: "update", recurrenceId, series }`: its new original start, and `"new"` when it moves
+  to the series a `"following"` edit starts. Its own placement stays.
+
+`otherOverrides` is a `RecurrenceOverridesRule`: an `action` (`"keep"`, `"rekey"` or `"delete"`),
+`after`, the original start after which it applies, `series`, and `shift`, a `RecurrenceKeyShift`
+that says how original starts move. Read them through `recurrenceOverrideEdit`; the fields of
+`RecurrenceKeyShift` and of its `RecurrenceOrdinalShift`, which moves ordinal weekdays such as the
+2nd Tuesday within their month or year, may change.
+
+### Rejections
+
+`RecurrenceEditRejection.reason` is a `RecurrenceEditRejectionReason`:
+
+| `reason`             | Meaning                                                                                                  |
+| -------------------- | -------------------------------------------------------------------------------------------------------- |
+| `date-kind-mismatch` | The change's dates don't fit the series' kind.                                                           |
+| `extra-occurrence`   | `"following"` from an occurrence only an RDATE adds, which no rule can continue from.                    |
+| `invalid-rule`       | The engine can't expand the rule, or the one the edit would write.                                       |
+| `invalid-time-zone`  | The series' or the placement's zone isn't one Temporal knows.                                            |
+| `iteration-limit`    | The search for the previous occurrence ran past `maxIterations`.                                         |
+| `missing-series`     | `"following"` or `"all"` on an override whose master isn't loaded.                                       |
+| `rule-cannot-move`   | The rule can't follow the change, such as a BYSETPOS rule moved to another day, or the 28th to the 29th. |
+| `unknown-occurrence` | The rule doesn't produce the occurrence any more.                                                        |
+| `unsupported-rule`   | The engine doesn't handle the rule, or the one the edit would write.                                     |
+
+`recurrenceEditScopes` leaves out the scopes that would be rejected, so the dialog offers only
+scopes that apply.
+
+### applyRecurrenceEdit
+
+`applyRecurrenceEdit(events, edit, { createId })` applies a series edit to an array of
+`RecurringCalendarEvent`s and returns a new array. It updates or deletes the master, adds the
+series a `"following"` edit starts, writes the edited occurrence's override, and applies
+`recurrenceOverrideEdit` to every other override of the series. Events it doesn't touch stay the
+same objects.
+
+`createId(event)`, the one field of `ApplyRecurrenceEditOptions`, returns the ID of an event the
+edit creates: an override, or the new series when `newSeries.id` isn't set. It gets the event
+without its ID. Apps with their own event type or store write the same steps themselves; see
+[Save the edit](/docs/guides/recurring-events#save-the-edit).
