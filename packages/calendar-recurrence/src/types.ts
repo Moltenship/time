@@ -34,7 +34,9 @@ export interface RecurrencePeriod {
 export interface EventRecurrence {
   /**
    * DURATION's nominal length, such as `P1D`, which keeps each occurrence's wall-clock length
-   * across DST. Without it, occurrences last exactly as long as the first (RFC 5545 §3.8.5.3).
+   * across DST. Without it, occurrences last exactly as long as the first (RFC 5545 §3.8.5.3). On
+   * an all-day series it counts whole days: a time part, which a DATE start's DURATION shouldn't
+   * have, rounds up to the next whole day, as `getEventEnd` from `@moltenship/ics` does.
    */
   readonly duration?: Temporal.Duration;
   /**
@@ -167,7 +169,10 @@ export interface OccurrenceExpansion<TEvent, TEventId extends EventId = EventId>
   /**
    * Occurrences overlapping the range, plus every override that isn't cancelled and every one-off
    * event, in the input order of their events and in time order within a series. IDs are unique.
-   * Unchanged events over the same range give the same occurrence objects, so memoization holds.
+   * Unchanged events over the same range give the same occurrence objects while that range is one
+   * of the last four each series was expanded over, so memoization holds across re-renders and
+   * scrolling back and forth; an occurrence that comes out the same in an overlapping range keeps
+   * its object too. A range older than that gives equal occurrences, but new objects.
    */
   readonly occurrences: readonly RecurrenceOccurrence<TEvent, TEventId>[];
 }
@@ -183,7 +188,10 @@ export interface OccurrenceExpanderOptions {
 }
 
 export interface OccurrenceExpander<TEvent, TEventId extends EventId = EventId> {
-  /** Reuses earlier work for events that are the same objects as last time. */
+  /**
+   * Reuses earlier work for events that are the same objects as before, over each series' recent
+   * ranges; see `OccurrenceExpansion.occurrences`.
+   */
   expand(events: readonly TEvent[], range: OccurrenceRange): OccurrenceExpansion<TEvent, TEventId>;
 }
 
@@ -230,6 +238,11 @@ export interface RecurrenceRuleExpansion {
    * once.
    */
   readonly dates: readonly RecurrenceDate[];
-  /** `maxIterations` ran out while the rule and the window still had occurrences to give. */
+  /**
+   * `maxIterations` ran out before the end of the window, while the rule may still have had
+   * occurrences to give. Some rules turn out impossible only after the cap, such as
+   * `FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1` from an even minute, so a truncated rule may have had
+   * none left.
+   */
   readonly truncated: boolean;
 }
