@@ -68,6 +68,12 @@ export interface Series<TEvent, TEventId extends EventId, TResourceId extends Re
 export interface Move {
   /** Calendar days its date moves. */
   readonly days: number;
+  /**
+   * `wallTo` is where the occurrence was dropped, so a start there can be the proposed one, as a
+   * second 02:30 of DST's end needs. Not for a day move on a calendar in another zone, which keeps
+   * the series' time of day instead.
+   */
+  readonly dropped: boolean;
   /** The clock the occurrence showed on before the change. */
   readonly from: SeriesTime;
   /** The clock it shows on after it. */
@@ -221,9 +227,41 @@ export function keyShift(
   };
 }
 
+/**
+ * How many days a move goes on the calendar's clock, when it keeps the time of day there and the
+ * calendar shows a timed series in another zone than the series'. `undefined` for anything else.
+ */
+function calendarDays(
+  series: Series<unknown, EventId, ResourceId>,
+  change: {
+    readonly cause: CalendarChangeCause;
+    readonly original: CalendarEventPlacement<ResourceId>;
+    readonly proposed: CalendarEventPlacement<ResourceId>;
+  },
+  timeZone: string | undefined,
+): number | undefined {
+  const { original, proposed } = change;
+  if (
+    timeZone === undefined ||
+    timeZone === series.time.timeZone ||
+    change.cause !== "move" ||
+    original.kind !== "timed" ||
+    proposed.kind !== "timed"
+  ) {
+    return undefined;
+  }
+  const shown = original.start.toZonedDateTimeISO(timeZone);
+  const days = shown
+    .toPlainDate()
+    .until(proposed.start.toZonedDateTimeISO(timeZone).toPlainDate()).days;
+  // As the calendar moves by days, so a time its zone skips moves forward here too.
+  return shown.add({ days }).toInstant().equals(proposed.start) ? days : undefined;
+}
+
 export function measureMove(
   series: Series<unknown, EventId, ResourceId>,
   change: {
+    readonly cause: CalendarChangeCause;
     readonly original: CalendarEventPlacement<ResourceId>;
     readonly proposed: CalendarEventPlacement<ResourceId>;
   },
@@ -242,13 +280,19 @@ export function measureMove(
       : { kind: placement.kind, timeZone: defaultTimeZone };
   const from = timeOf(original);
   const shown = timeOf(proposed);
-  for (const { timeZone } of [from, shown]) {
-    if (!isTimeZone(timeZone)) return reject("invalid-time-zone", `${timeZone} isn't a time zone.`);
+  for (const timeZone of [from.timeZone, shown.timeZone, options.timeZone]) {
+    if (timeZone !== undefined && !isTimeZone(timeZone)) {
+      return reject("invalid-time-zone", `${timeZone} isn't a time zone.`);
+    }
   }
   // The series takes a new kind or zone only when the change gives the occurrence one; an
   // override in another zone or kind measures the change on its own clock.
   const converts = from.kind !== shown.kind || from.timeZone !== shown.timeZone;
   const to = converts ? shown : series.time;
+  // A drag by days keeps the series' time of day, even on a calendar whose zone changes DST on
+  // other dates than the series': the instants the calendar proposes would move it by an hour.
+  const calendarMove =
+    converts || to.kind !== "timed" ? undefined : calendarDays(series, change, options.timeZone);
 
   // Starts on the series' own clock read back to the time it repeats at, so one a DST gap moved
   // forward measures from the written time, as the occurrence's original start does.
@@ -268,15 +312,18 @@ export function measureMove(
   const days = shownFrom.toPlainDate().until(shownTo.toPlainDate()).days;
   const onDay = wallFrom.toPlainDate().add({ days });
   const wallTo =
-    to.kind === "all-day"
-      ? onDay.toPlainDateTime()
-      : converts && from.kind === "all-day"
-        ? onDay.toPlainDateTime(shownTo.toPlainTime())
-        : from.kind === "all-day" || shown.kind === "all-day"
-          ? wallFrom.add({ days })
-          : wallFrom.add(shownFrom.until(shownTo));
+    calendarMove !== undefined
+      ? wallFrom.add({ days: calendarMove })
+      : to.kind === "all-day"
+        ? onDay.toPlainDateTime()
+        : converts && from.kind === "all-day"
+          ? onDay.toPlainDateTime(shownTo.toPlainTime())
+          : from.kind === "all-day" || shown.kind === "all-day"
+            ? wallFrom.add({ days })
+            : wallFrom.add(shownFrom.until(shownTo));
   return {
     days: wallFrom.toPlainDate().until(wallTo.toPlainDate()).days,
+    dropped: calendarMove === undefined,
     from,
     shown,
     time: wallFrom.toPlainTime().until(wallTo.toPlainTime()),
