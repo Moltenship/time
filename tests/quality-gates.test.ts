@@ -135,6 +135,15 @@ describe("CI quality gate contract", () => {
     );
   });
 
+  test("the PR tier runs every step the quick tier runs", () => {
+    const pr = new Set(work("ready"));
+    const quick = commandsOf(tasks["ready:quick"]!).map(
+      (command) => /^vp run ([\w:#@./-]+)$/u.exec(command)?.[1] ?? command,
+    );
+
+    expect(quick.filter((step) => !pr.has(step))).toEqual([]);
+  });
+
   test("groups only gather steps, so the comparison sees every one", () => {
     for (const name of ["ready", "ready:checks", "ready:full"]) {
       expect(isGroup(tasks[name]!)).toBe(true);

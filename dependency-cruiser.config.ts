@@ -85,7 +85,7 @@ export default {
     // The workspaces' build output isn't source, and other tests rebuild it while this one reads.
     // Links into other packages' `dist` in node_modules still count.
     exclude: {
-      path: "^(?:apps|benchmarks|packages|registry|tools)/[^/]+/(?:dist|\\.next|\\.source)/",
+      path: "^(?:(?:apps|packages|tools)/[^/]+|benchmarks|registry)/(?:dist|\\.next|\\.source)/",
     },
     tsPreCompilationDeps: true,
   },

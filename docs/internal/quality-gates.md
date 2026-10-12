@@ -47,9 +47,13 @@ covers it:
 - **Browser and viewport.** Both run Playwright's headless Chromium shell at 1280 × 800, from
   `tools/a11y/vite.config.ts`.
 - **Node.** CI runs the latest Node.js 26; `engines` asks for 26 or later locally.
-- **Generated types.** `ci:check` runs before the docs site is built. In CI it type-checks without
-  the types Next.js generates (`next-env.d.ts`, `.next/types`); a laptop has whatever its last
-  Next.js run left. Code outside the docs app mustn't rely on them.
+- **Generated types.** `ci:check` runs before the docs site is built. In CI it type-checks the docs
+  app without the types Next.js generates (`next-env.d.ts`, `.next/types`); a laptop has whatever
+  its last Next.js run left. So the docs app's own code mustn't rely on them, such as the global
+  `PageProps<…>`.
+- **Environment.** Vite Task runs steps with a small set of environment variables. Behind a proxy,
+  or to use `registry:e2e`'s `REGISTRY_E2E_*` switches, run it directly:
+  `node --import tsx tools/registry/src/e2e.ts`.
 - **Time zone and locale.** CI runs in UTC; laptops run in their own zone. Tests pass explicit
   `timeZone`, `locale` and `now`, so passing in both is also a check that nothing reads the host's.
 
@@ -59,6 +63,7 @@ From the workspace root:
 
 ```sh
 vp install
+vp run showcase:links
 vp run ci:check
 vp run ci:build
 vp run ci:test
