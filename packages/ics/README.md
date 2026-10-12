@@ -44,6 +44,8 @@ said:
 | `floating`   | `DTSTART:20261012T090000`           | `wallTime: Temporal.PlainDateTime`        |
 
 ```ts
+import type { IcsDateValue } from "@moltenship/ics";
+
 function startInstant(start: IcsDateValue, timeZone: string): Temporal.Instant {
   switch (start.kind) {
     case "utc":
@@ -91,7 +93,7 @@ const parser = createIcsParser({
   extensions: {
     event: {
       busyStatus: icsExtension("X-MICROSOFT-CDO-BUSYSTATUS", {
-        schema: z.enum(["FREE", "TENTATIVE", "BUSY", "OOF"]),
+        schema: z.enum(["FREE", "TENTATIVE", "BUSY", "OOF", "WORKINGELSEWHERE"]),
       }),
       resourceIds: icsExtension("X-RESOURCE-ID", { multiple: true }),
       guests: icsExtension("X-EXAMPLE-GUESTS", { type: "INTEGER" }),
@@ -101,7 +103,7 @@ const parser = createIcsParser({
 
 const { calendars } = parser.parse(text);
 const event = calendars[0]!.events[0]!;
-event.extensions.busyStatus; // "FREE" | "TENTATIVE" | "BUSY" | "OOF" | undefined
+event.extensions.busyStatus; // "FREE" | "TENTATIVE" | … | undefined
 event.extensions.resourceIds; // readonly string[]
 event.extensions.guests; // number | undefined
 ```
