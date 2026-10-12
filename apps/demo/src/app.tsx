@@ -85,6 +85,12 @@ function warningNotice(warnings: readonly string[] | undefined): string | null {
   return conflict ? "Saved, double-booking someone who's busy then." : null;
 }
 
+/** The ID of the event element that has focus, if one has. */
+function focusedEventId(): string | null {
+  const active = document.activeElement;
+  return active instanceof HTMLElement ? (eventIdOf(active) as string | null) : null;
+}
+
 interface OpenEvent {
   readonly anchor: HTMLElement;
   /** Cleared on close while the anchor stays, so focus can return to it. */
@@ -228,17 +234,21 @@ export function App() {
     });
   }, [occurrences]);
 
-  /** Saves a series edit and moves focus, selection and the open popover to renamed occurrences. */
+  /**
+   * Saves a series edit and moves focus, selection and the open popover to renamed occurrences.
+   * `focused` is the occurrence that had focus when the change began, before the scope dialog
+   * took it.
+   */
   const saveSeriesEdit = useCallback(
-    (edit: DemoSeriesEdit, extras?: Parameters<typeof applySeriesEdit>[3]) => {
+    (
+      edit: DemoSeriesEdit,
+      focused: string | null,
+      extras?: Parameters<typeof applySeriesEdit>[3],
+    ) => {
       setEvents((current) => applySeriesEdit(current, edit, createId, extras));
       const ids = edit.occurrenceIds;
       if (ids.size === 0) return;
-      const active = document.activeElement;
-      renaming.current = {
-        focused: active instanceof HTMLElement ? (eventIdOf(active) as string | null) : null,
-        ids,
-      };
+      renaming.current = { focused, ids };
       const rename = (eventId: EventId) => ids.get(eventId) ?? eventId;
       setFocus((current) =>
         current?.kind === "event" ? { ...current, eventId: rename(current.eventId) } : current,
@@ -273,6 +283,7 @@ export function App() {
         return;
       }
       const resetsAtStart = resets.current;
+      const focused = focusedEventId();
       let edit: DemoSeriesEdit | undefined;
       if (isRecurringChange(change)) {
         const options = { defaultTimeZone: timeZone };
@@ -307,7 +318,7 @@ export function App() {
         throw new Error("simulated-save-failure");
       }
       if (edit === undefined) applyChange(change);
-      else saveSeriesEdit(edit);
+      else saveSeriesEdit(edit, focused);
       const notice = warningNotice(change.warnings);
       if (notice !== null) showNotice(notice);
     },
@@ -337,7 +348,7 @@ export function App() {
         });
         if (edit.type === "rejected") return edit.message;
         if (edit.type === "series") {
-          saveSeriesEdit(edit, { fields, placement: change.proposed, rule });
+          saveSeriesEdit(edit, null, { fields, placement: change.proposed, rule });
         }
       }
       setDraft(null);
