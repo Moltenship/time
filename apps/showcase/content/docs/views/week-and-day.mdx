@@ -215,8 +215,8 @@ Calendar's secondary time zone. Each zone gets a column of hours beside the cale
   clocks. A day that reads differently, because a zone changes its offset, says so under its date,
   such as "EST -1h". Hover the note to see from when, and until when if it ends that day.
 - **Width:** each zone's column is `--calendar-zone-width` wide, 4rem by default, which fits
-  "12:30 AM+1". Some locales write longer times; set the variable on an element around the
-  calendar, such as `[--calendar-zone-width:4.5rem]`.
+  "12:30 AM+1". Some locales write longer times; set the variable to a rem or px length on an
+  element around the calendar, such as `[--calendar-zone-width:4.5rem]`.
 - **Clock:** 12 or 24 hours, as the locale says, including a `-u-hc-h23` extension.
 - **Screen readers:** the extra hours are hidden, like the calendar's own hour labels, so the grid's
   columns stay the same. A focused slot names its time in each zone instead, as in "Monday,

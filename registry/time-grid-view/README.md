@@ -31,8 +31,8 @@ const views = [
   gutter follows the first visible day on which neither zone changes its clocks; a day whose times
   differ after a daylight saving change says so under its date. The labels are hidden from
   assistive technology, and a focused slot names its time in each zone. Each zone's column is
-  `--calendar-zone-width` wide (4rem); set it on an element around the calendar for locales with
-  longer times. The parts are in `time-grid-zones.tsx`.
+  `--calendar-zone-width` wide (4rem); set it to a rem or px length on an element around the
+  calendar for locales with longer times. The parts are in `time-grid-zones.tsx`.
 - The now-line follows `useNow()` in today's column. The body opens on the current time, or on
   08:00 when today is not visible.
 - The grid is one tab stop, entered on today's all-day cell. Arrow keys move between all-day

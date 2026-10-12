@@ -302,6 +302,18 @@ test("the scrolling views read the gutter on a visible day, not a page beside it
   expect(corner?.lastElementChild?.textContent).toBe("GMT+1");
 });
 
+test("the corner reads the display zone's offset on the day the zone hours follow", async () => {
+  // A Sunday-first week from Berlin's fall back: the zone hours follow Monday, on CET.
+  const container = await renderCalendar(["America/New_York"], {
+    defaultAnchorDate: Temporal.PlainDate.from("2026-10-25"),
+    weekRules: { firstDay: 7, minimalDays: 1, weekend: [6, 7] },
+  });
+  const corner = container.querySelector('[role="row"] > [role="columnheader"]');
+
+  expect(zoneHours(container)[0]!.slice(0, 1)).toEqual(["8 PM-1"]);
+  expect(corner?.lastElementChild?.textContent).toBe("GMT+1");
+});
+
 test("the scrolling day view follows its day", async () => {
   const container = await renderCalendar(["Asia/Kolkata"], {
     defaultAnchorDate: Temporal.PlainDate.from("2026-10-14"),

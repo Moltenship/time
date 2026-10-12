@@ -18,8 +18,8 @@ const noGridZones: readonly TimeGridZone[] = Object.freeze([]);
 /**
  * The gutter holds the display zone's hours, `--calendar-hours-width` wide (3rem, 4rem from `sm`),
  * and a column for each secondary zone, which `gutterStyle` counts. A zone's column is
- * `--calendar-zone-width` wide, 4rem by default: room for "12:30 AM+1". Set it on an element
- * around the calendar for locales with longer times.
+ * `--calendar-zone-width` wide, 4rem by default: room for "12:30 AM+1". Set it, as a rem or px
+ * length, on an element around the calendar for locales with longer times.
  */
 export const timeGridGutterClassName =
   "[--calendar-hours-width:3rem] sm:[--calendar-hours-width:4rem] [--calendar-gutter-width:calc(var(--calendar-hours-width)+var(--calendar-zones,0)*var(--calendar-zone-width,4rem))]";
@@ -173,7 +173,9 @@ export function useTimeGridZones(
 
 /**
  * The column whose offset names the display zone over the gutter: the day the first secondary
- * zone's hours are read on, so the two agree, or `fallback` without zones.
+ * zone's hours are read on, so the two agree, or `fallback` without zones. Each zone reads its own
+ * day, so in the rare grid where those days fall either side of the display zone's clock change,
+ * a later zone's hours follow the other offset; its notes say so.
  */
 export function gutterColumn(
   columns: readonly TimeGridColumn[],

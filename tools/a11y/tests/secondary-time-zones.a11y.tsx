@@ -50,7 +50,16 @@ const events: readonly Fixture[] = [
  * The week New York leaves daylight saving time, a week after Berlin: Sunday's times shift. India
  * is off the hour, and its labels are the widest: "12:30 AM+1".
  */
-function Screen({ dir, view }: { readonly dir?: "ltr" | "rtl"; readonly view: View }) {
+function Screen({
+  dir,
+  view,
+  width,
+}: {
+  readonly dir?: "ltr" | "rtl";
+  readonly view: View;
+  /** The calendar's width in px; the page's by default. */
+  readonly width?: number;
+}) {
   return (
     <TooltipProvider>
       <Calendar.Root
@@ -65,7 +74,7 @@ function Screen({ dir, view }: { readonly dir?: "ltr" | "rtl"; readonly view: Vi
         secondaryTimeZones={["America/New_York", { label: "Kolkata", timeZone: "Asia/Kolkata" }]}
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >
-        <Calendar.Frame className="flex h-dvh flex-col" dir={dir}>
+        <Calendar.Frame className="flex h-dvh flex-col" dir={dir} style={{ width }}>
           <Calendar.Viewport className="min-h-0 flex-1">
             <Calendar.ActiveView />
           </Calendar.Viewport>
@@ -104,15 +113,22 @@ describe.each(["ltr", "rtl"] as const)("secondary time zone layout, %s", (dir) =
         expect(right).toBeLessThanOrEqual(box.right + 0.5);
       }
     }
-    // Day notes stay inside their day's header, however narrow it is.
-    for (const note of document.querySelectorAll('[data-slot="time-grid-zone-note"] > span')) {
-      const header = note.closest('[role="columnheader"]')!.getBoundingClientRect();
-      const { left, right } = note.getBoundingClientRect();
-      expect(left).toBeGreaterThanOrEqual(header.left - 0.5);
-      expect(right).toBeLessThanOrEqual(header.right + 0.5);
-    }
     // The secondary zones come first along the inline axis, the display zone's hours last.
     const [first, second] = columns.map((column) => column.getBoundingClientRect());
     expect(dir === "ltr" ? first!.left < second!.left : first!.left > second!.left).toBe(true);
   });
+});
+
+test("day notes stay inside their day's header in a narrow week", async () => {
+  // Seven days beside the 12rem gutter in 400px leave each day about 30px, less than "EST -1h".
+  await render(<Screen view="week" width={400} />);
+  const notes = [...document.querySelectorAll('[data-slot="time-grid-zone-note"] > span')];
+
+  expect(notes.length).toBeGreaterThan(0);
+  for (const note of notes) {
+    const header = note.closest('[role="columnheader"]')!.getBoundingClientRect();
+    const { left, right } = note.getBoundingClientRect();
+    expect(left).toBeGreaterThanOrEqual(header.left - 0.5);
+    expect(right).toBeLessThanOrEqual(header.right + 0.5);
+  }
 });
