@@ -112,25 +112,35 @@ export async function publish(options: {
   }
 
   try {
-    const configured = (await runOrThrow("vp", ["pm", "config", "get", "registry"], { env }))
-      .stdout;
-    if (configured.trim().replace(/\/?$/, "/") !== registry) {
-      throw new Error(
-        `pnpm would publish to ${configured.trim()}, not ${registry}. Nothing was published.`,
-      );
+    // A scoped line such as `@moltenship:registry=…` in an npmrc beats the default registry, so
+    // check both.
+    for (const key of ["registry", "@moltenship:registry"]) {
+      const configured = (
+        await runOrThrow("vp", ["pm", "config", "get", key], { env })
+      ).stdout.trim();
+      if (key !== "registry" && (configured === "" || configured === "undefined")) continue;
+      if (configured.replace(/\/?$/, "/") !== registry) {
+        throw new Error(`pnpm's ${key} is ${configured}, not ${registry}. Nothing was published.`);
+      }
     }
-    for (const { name, file, integrity } of manifest.packages) {
-      const published = await publishedIntegrity(name, options.version, env);
-      // A re-run after a partial publish skips what is out, but only if it is the tarball this dry
-      // run checked; otherwise the set on npm would mix two builds.
-      if (published === integrity) {
+
+    // Look at all seven before publishing any. A re-run after a partial publish skips what is out,
+    // but only if it is the tarball this dry run checked; otherwise npm would mix two builds.
+    const published = new Map<string, string | undefined>();
+    for (const { name, integrity } of manifest.packages) {
+      const current = await publishedIntegrity(name, options.version, env);
+      if (current !== undefined && current !== integrity) {
+        throw new Error(
+          `${name}@${options.version} is already on npm with different contents (${current}). Release a new version instead. Nothing was published.`,
+        );
+      }
+      published.set(name, current);
+    }
+
+    for (const { name, file } of manifest.packages) {
+      if (published.get(name) !== undefined) {
         console.log(`${name}@${options.version} is already on npm; skipping.`);
         continue;
-      }
-      if (published !== undefined) {
-        throw new Error(
-          `${name}@${options.version} is already on npm with different contents (${published}). Release a new version instead.`,
-        );
       }
       const args = [
         "pm",
@@ -153,7 +163,11 @@ export async function publish(options: {
 }
 
 runMain(import.meta, async () => {
-  const { flags } = parseArguments(process.argv.slice(2), ["provenance", "yes"]);
+  const { flags } = parseArguments(
+    process.argv.slice(2),
+    ["provenance", "yes"],
+    ["version", "tag", "manifest"],
+  );
   const value = (key: string) =>
     typeof flags.get(key) === "string" ? (flags.get(key) as string) : undefined;
   const version = value("version");

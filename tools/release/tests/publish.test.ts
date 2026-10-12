@@ -145,9 +145,14 @@ describe("the publish guard", () => {
     expect(result.stdout).not.toContain("Ready to publish");
   }, 30_000);
 
-  test("boolean flags take no value, so --yes=false can't mean yes", () => {
-    expect(() => parseArguments(["--yes=false"], ["yes"])).toThrow("--yes takes no value");
-    expect(parseArguments(["--yes", "--tag", "next"], ["yes"]).flags).toEqual(
+  test("flags are strict: no value on booleans, a value on strings, nothing unknown", () => {
+    const parse = (argv: string[]) => parseArguments(argv, ["yes"], ["tag"]);
+
+    expect(() => parse(["--yes=false"])).toThrow("--yes takes no value");
+    expect(() => parse(["--tag"])).toThrow("--tag needs a value");
+    expect(() => parse(["--tag", "--yes"])).toThrow("--tag needs a value");
+    expect(() => parse(["--dry-run", "--yes"])).toThrow("Unknown option --dry-run");
+    expect(parse(["--yes", "--tag", "next"]).flags).toEqual(
       new Map<string, string | true>([
         ["yes", true],
         ["tag", "next"],

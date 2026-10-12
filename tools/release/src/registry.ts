@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 import { satisfies } from "semver";
 
-import { releaseDirectory } from "./config";
+import { facadePackage, releaseDirectory } from "./config";
 import { manifestPath, readManifest, tarballIntegrity } from "./manifest";
 import { integrityOf, tarballDirectory, type PackedTarball } from "./pack";
 import { gitState, readJson, runMain, runOrThrow, workspaceRoot } from "./workspace";
@@ -30,6 +30,11 @@ export function registryProblems(
   versions: ReadonlyMap<string, string>,
 ): string[] {
   const problems: string[] = [];
+  if (!(facadePackage in registry.runtime)) {
+    problems.push(
+      `the registry names no ${facadePackage} version, so nothing ties it to the release`,
+    );
+  }
   for (const [name, version] of Object.entries(registry.runtime)) {
     const packed = versions.get(name);
     if (packed === undefined) problems.push(`the registry needs ${name}, which doesn't publish`);

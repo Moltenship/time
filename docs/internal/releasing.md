@@ -22,10 +22,11 @@ and `vp run ready` and CI run it after `ci:build`. #47 owns the tiers and may mo
 | `vp run release:exports` | Packs every package into a temporary folder, then runs publint and are-the-types-wrong (ESM-only), checks for `LICENSE`, and checks that base packages don't import the dnd adapter | PR |
 | `vp run release:consumer` | Installs the tarballs into a new project outside the workspace, offline from the pnpm store; imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away | Full |
 | `vp run release:dry-run` | A fresh build of every published package, then all of the above, the registry smoke, and a registry build into `.release/registry` that must ask for the packed version. Writes `.release/manifest.json` | Full |
-| `vp run release:registry-e2e` | #43's install test: `shadcn add` from the registry into clean Vite and Next.js apps, with the dry run's tarballs served as the `@moltenship` packages. Needs the network for npm and shadcn's own components, so it isn't in the offline dry run | Release, online |
+| `vp run release:registry-e2e` | #43's install test: it builds the registry from source with a local base URL and runs `shadcn add` into clean Vite and Next.js apps, with the dry run's tarballs served as the `@moltenship` packages. Needs the network for npm and shadcn's own components, so it isn't in the offline dry run | Release, online |
 
 The PR checks read the built packages, so on their own they run after `vp run ci:build`. Only the
-dry run writes `.release/`.
+dry run writes `.release/`. Without `--require-clean`, it also runs on a tree with changes and
+records that in the manifest, which the publish step then refuses; releases pass the flag.
 
 - **The API changed on purpose.** Run `vp run release:api:update` and commit the reports with the
   change. The diff in `packages/*/api-report.md` is what reviewers look at.
@@ -42,9 +43,10 @@ dry run writes `.release/`.
    npm doesn't have until step 3, so publish soon after merging.
 3. **Publish from `main`**, one of two ways:
    - **GitHub Actions.** Actions → Release → Run workflow, on `main`, with the version. Leave
-     "Publish to npm" off for a rehearsal. The `verify` job runs `vp run ready`,
-     `vp run release:dry-run --version <v>` and `vp run release:registry-e2e`, then keeps
-     `.release/` as an artifact. With publishing
+     "Publish to npm" off for a rehearsal, and rehearse at least once before the first real
+     release: the clean-consumer and registry install tests haven't run on GitHub's runners yet.
+     The `verify` job runs `vp run ready`, `vp run release:dry-run --version <v> --require-clean`
+     and `vp run release:registry-e2e`, then keeps `.release/` as an artifact. With publishing
      on, the `publish` job downloads it and runs
      `vp run release:publish --version <v> --provenance --yes` on the same commit. Only that job
      can mint the OIDC token that signs npm provenance.
@@ -63,7 +65,7 @@ dry run writes `.release/`.
      vp install --frozen-lockfile
      vp exec --filter a11y playwright install chromium   # once, for the a11y gate
      vp run ready
-     vp run release:dry-run --version 1.0.0-rc.1
+     vp run release:dry-run --version 1.0.0-rc.1 --require-clean
      vp run release:registry-e2e      # needs the network
      export NODE_AUTH_TOKEN=<token>   # or npm login
      vp run release:publish --version 1.0.0-rc.1
@@ -85,13 +87,16 @@ dry run writes `.release/`.
 - the dry run checked the version you asked for, and it isn't `0.0.0`;
 - every published package was packed, and each tarball's sha512 still matches.
 
-Then it publishes those exact tarballs, dependencies first. A version npm already has is skipped
-only when npm's integrity matches the tarball the dry run checked; otherwise the step stops, so the
-seven packages on npm never mix two builds. Running it again after a partial failure is safe.
+Before publishing anything, it asks npm about all seven. A version npm already has is skipped only
+when npm's integrity matches the tarball the dry run checked; otherwise the step stops, so the seven
+packages on npm never mix two builds. Running it again after a partial failure is safe. Skipped
+packages keep the tag they went out with, so re-run with the same `--tag`.
 
 Prereleases get the `next` dist-tag and stable versions `latest`; `--tag` picks another, but a
 prerelease can't take `latest`. `--provenance` only works in GitHub Actions. The registry is always
-`https://registry.npmjs.org/`, whatever a local `.npmrc` says.
+`https://registry.npmjs.org/`: the step sets it, and refuses when an `.npmrc` points `registry` or
+`@moltenship:registry` anywhere else. Unknown options are errors, so a typo such as `--dry-run`
+can't slip through.
 
 Each package's `prepublishOnly` script fails, so `pnpm publish` in a package folder, or
 `pnpm publish -r`, can't skip the dry run. Publishing a tarball doesn't run that script.
@@ -136,8 +141,9 @@ Unpublish only for something that must disappear, such as a leaked secret. npm a
 The registry (#43) isn't published to npm: the docs site serves it at `/r/<item>.json`, built from
 `main`. The dry run builds it into `.release/registry` and checks that `compatibility.json` and every
 item's `@moltenship/calendar` range ask for the version it packed, so after `release:version` the
-registry and the packages agree. `vp run release:registry-e2e` then installs it into clean apps
-against the exact tarballs the dry run checked. The release workflow runs both.
+registry and the packages agree. `vp run release:registry-e2e` then builds it again from source with
+a local base URL, and installs it into clean apps against the exact tarballs the dry run checked.
+The release workflow runs both.
 
 ## Open owner decisions
 

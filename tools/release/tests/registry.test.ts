@@ -31,6 +31,12 @@ describe("registry against the release", () => {
     ]);
   });
 
+  test("a registry that names no calendar version fails, rather than passing vacuously", () => {
+    expect(registryProblems({ runtime: {}, items: [] }, packed("1.0.0"))).toEqual([
+      "the registry names no @moltenship/calendar version, so nothing ties it to the release",
+    ]);
+  });
+
   test("a runtime package that doesn't publish fails", () => {
     expect(registryProblems(registry("1.0.0"), new Map())).toEqual([
       "the registry needs @moltenship/calendar, which doesn't publish",

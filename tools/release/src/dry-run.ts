@@ -33,10 +33,21 @@ async function step<T>(name: string, action: () => Promise<T>): Promise<T> {
 export async function dryRun({
   version: requested,
   manifestFile = manifestPath,
-}: { readonly version?: string; readonly manifestFile?: string } = {}): Promise<void> {
+  requireClean = false,
+}: {
+  readonly version?: string;
+  readonly manifestFile?: string;
+  /** Fail on a working tree with changes, as a release must. Without it, the manifest records them. */
+  readonly requireClean?: boolean;
+} = {}): Promise<void> {
   // A failed run must not leave an older passing manifest behind.
   await removeManifest(manifestFile);
   const start = await gitState();
+  if (requireClean && !start.clean) {
+    throw new Error(
+      `The working tree has changes, and a release needs a clean one:\n${start.status}`,
+    );
+  }
   const packages = await readPublishedPackages();
   const checks: string[] = [];
   const record = async <T>(name: string, action: () => Promise<T>) => {
@@ -105,6 +116,10 @@ export async function dryRun({
 }
 
 runMain(import.meta, async () => {
-  const version = parseArguments(process.argv.slice(2)).flags.get("version");
-  await dryRun({ version: typeof version === "string" ? version : undefined });
+  const { flags } = parseArguments(process.argv.slice(2), ["require-clean"], ["version"]);
+  const version = flags.get("version");
+  await dryRun({
+    version: typeof version === "string" ? version : undefined,
+    requireClean: flags.has("require-clean"),
+  });
 });

@@ -152,8 +152,16 @@ export async function isOnMain(commit: string, root = workspaceRoot): Promise<bo
   return result.code === 0;
 }
 
-/** Parses `--flag value`, `--flag=value` and boolean `--flag` arguments, with the rest as positionals. */
-export function parseArguments(argv: readonly string[], booleans: readonly string[] = []) {
+/**
+ * Parses `--flag value`, `--flag=value` and boolean `--flag` arguments, with the rest as
+ * positionals. Any flag that is neither a boolean nor one of `strings` is an error, and so is a
+ * string flag without a value, so a typo such as `--dry-run` can't be silently ignored.
+ */
+export function parseArguments(
+  argv: readonly string[],
+  booleans: readonly string[] = [],
+  strings: readonly string[] = [],
+) {
   const flags = new Map<string, string | true>();
   const positionals: string[] = [];
   for (let index = 0; index < argv.length; index += 1) {
@@ -164,6 +172,8 @@ export function parseArguments(argv: readonly string[], booleans: readonly strin
       continue;
     }
     const [key, inline] = argument.slice(2).split("=", 2) as [string, string | undefined];
+    if (!booleans.includes(key) && !strings.includes(key))
+      throw new Error(`Unknown option --${key}`);
     const next = argv[index + 1];
     if (inline !== undefined && booleans.includes(key)) {
       throw new Error(`--${key} takes no value`);
@@ -172,6 +182,8 @@ export function parseArguments(argv: readonly string[], booleans: readonly strin
     else if (!booleans.includes(key) && next !== undefined && !next.startsWith("--")) {
       flags.set(key, next);
       index += 1;
+    } else if (strings.includes(key)) {
+      throw new Error(`--${key} needs a value`);
     } else flags.set(key, true);
   }
   return { flags, positionals };

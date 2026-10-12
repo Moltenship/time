@@ -63,7 +63,7 @@ describe("release workflow contract", () => {
       "vp install --frozen-lockfile",
       "vp exec --filter a11y playwright install --with-deps --only-shell chromium",
       "vp run ready",
-      'vp run release:dry-run --version "$VERSION"',
+      'vp run release:dry-run --version "$VERSION" --require-clean',
       "vp run release:registry-e2e",
     ]);
   });
@@ -78,7 +78,7 @@ describe("release workflow contract", () => {
     expect(publish?.environment).toBe("npm");
     expect(publish?.permissions).toEqual({ contents: "read", "id-token": "write" });
     expect(runs(publish)).toEqual([
-      "vp install --frozen-lockfile",
+      "vp install --frozen-lockfile --ignore-scripts",
       'vp run release:publish --version "$VERSION" ${TAG:+--tag "$TAG"} --provenance --yes',
     ]);
     const upload = jobs.verify?.steps.find(({ uses }) =>

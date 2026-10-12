@@ -7,7 +7,6 @@ import { releaseDirectory } from "./config";
 import {
   publishedEntryPoints,
   readPublishedPackages,
-  runMain,
   runOrThrow,
   tarballName,
   workspaceRoot,
@@ -84,9 +83,3 @@ export async function withPackedPackages<T>(
     await rm(destination, { force: true, recursive: true });
   }
 }
-
-runMain(import.meta, async () => {
-  const tarballs = await packPublishedPackages(await readPublishedPackages());
-  for (const tarball of tarballs) console.log(`${tarball.file}  ${tarball.integrity}`);
-  console.log(`Packed ${tarballs.length} packages into ${releaseDirectory}/tarballs.`);
-});

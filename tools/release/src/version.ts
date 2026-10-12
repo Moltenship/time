@@ -79,7 +79,7 @@ export async function setVersion(version: string, date: string): Promise<void> {
 }
 
 runMain(import.meta, async () => {
-  const { flags, positionals } = parseArguments(process.argv.slice(2));
+  const { flags, positionals } = parseArguments(process.argv.slice(2), [], ["date"]);
   const [version] = positionals;
   if (!version) throw new Error("Usage: vp run release:version <version> [--date YYYY-MM-DD]");
   const date =

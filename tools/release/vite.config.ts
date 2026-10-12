@@ -10,7 +10,6 @@ export default defineConfig({
       size: script("size.ts"),
       api: script("api.ts"),
       "api:update": { command: script("api.ts --update"), cache: false },
-      pack: { command: script("pack.ts"), cache: false },
       exports: { command: script("exports.ts"), cache: false },
       consumer: { command: script("consumer.ts"), cache: false },
       "dry-run": { command: script("dry-run.ts"), cache: false },
