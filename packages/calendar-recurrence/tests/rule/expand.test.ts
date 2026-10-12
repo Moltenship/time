@@ -408,6 +408,15 @@ describe("UNTIL", () => {
     ]);
   });
 
+  test("with COUNT too, ends at whichever comes first", () => {
+    const until = Temporal.PlainDate.from("2026-01-15");
+    const { dates } = expandRecurrenceRule(
+      { count: 10, frequency: "WEEKLY", until },
+      allDay("2026-01-01"),
+    );
+    expect(dates.map(String)).toEqual(["2026-01-01", "2026-01-08", "2026-01-15"]);
+  });
+
   test("a date-only UNTIL on a timed series ends with that day in its zone", () => {
     expect(expand("FREQ=DAILY;UNTIL=20260103", timed("2026-01-01T23:30", "Europe/Berlin"))).toEqual(
       ["2026-01-01T23:30:00+01:00", "2026-01-02T23:30:00+01:00", "2026-01-03T23:30:00+01:00"],
@@ -599,23 +608,36 @@ describe("floating series", () => {
 
 describe("rules it can't expand", () => {
   test.each([
-    [{ frequency: "FORTNIGHTLY" }, /FREQ/],
-    [{ byMonthDay: [0], frequency: "MONTHLY" }, /BYMONTHDAY/],
-    [{ byHour: [24], frequency: "DAILY" }, /BYHOUR/],
-    [{ byDay: [{ ordinal: 0, weekday: "MO" }], frequency: "MONTHLY" }, /ordinal/],
-    [{ frequency: "WEEKLY", weekStart: "XX" }, /WKST/],
-    [{ count: 2, frequency: "DAILY", until: Temporal.PlainDate.from("2026-02-01") }, /COUNT/],
-    [{ frequency: "HOURLY" }, /all-day/],
-  ])("%o", (bad, message) => {
-    expect(() =>
-      expandRecurrenceRule(bad as Parameters<typeof expandRecurrenceRule>[0], allDay("2026-01-01")),
-    ).toThrow(message);
+    [{ frequency: "FORTNIGHTLY" }, "invalid-rule", /FREQ/],
+    [{ byMonthDay: [0], frequency: "MONTHLY" }, "invalid-rule", /BYMONTHDAY/],
+    [{ byHour: [24], frequency: "DAILY" }, "invalid-rule", /BYHOUR/],
+    [{ byDay: [{ ordinal: 0, weekday: "MO" }], frequency: "MONTHLY" }, "invalid-rule", /ordinal/],
+    [{ frequency: "WEEKLY", weekStart: "XX" }, "invalid-rule", /WKST/],
+    [{ bySetPosition: [], frequency: "MONTHLY" }, "invalid-rule", /BYSETPOS/],
+    [{ frequency: "HOURLY" }, "unsupported-rule", /all-day/],
+  ])("%o", (bad, code, message) => {
+    const expand = () =>
+      expandRecurrenceRule(bad as Parameters<typeof expandRecurrenceRule>[0], allDay("2026-01-01"));
+    expect(expand).toThrow(message);
+    expect(expand).toThrow(expect.objectContaining({ code }));
   });
 
-  test("a negative maxIterations", () => {
+  test("a time zone that isn't one", () => {
+    const start = Temporal.Instant.from("2026-01-01T09:00:00Z");
     expect(() =>
-      expandRecurrenceRule(rule("FREQ=DAILY"), allDay("2026-01-01"), { maxIterations: -1 }),
-    ).toThrow(/maxIterations/);
+      expandRecurrenceRule(rule("FREQ=DAILY"), {
+        end: start,
+        kind: "timed",
+        sourceTimeZone: "Mars/Olympus",
+        start,
+      }),
+    ).toThrow(expect.objectContaining({ code: "invalid-time-zone" }));
+  });
+
+  test("a maxIterations that isn't a positive integer", () => {
+    expect(() =>
+      expandRecurrenceRule(rule("FREQ=DAILY"), allDay("2026-01-01"), { maxIterations: 0 }),
+    ).toThrow(RangeError);
   });
 
   test("window dates of another kind", () => {

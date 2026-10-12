@@ -151,28 +151,19 @@ describe("parseRecurrenceRule", () => {
     ]);
   });
 
-  test("gives no rule for COUNT with UNTIL, which RFC 5545 forbids", () => {
-    for (const text of [
-      "FREQ=DAILY;COUNT=5;UNTIL=20261231",
-      "RRULE:FREQ=WEEKLY;UNTIL=20261231T230000Z;COUNT=5",
-    ]) {
-      const result = parseRecurrenceRule(text);
-      expect(rejected(result)).toEqual({
+  test("keeps COUNT with UNTIL, warning as the ics decoder does", () => {
+    const { issues, rule } = parseRecurrenceRule("FREQ=DAILY;COUNT=5;UNTIL=20261231");
+    expect(plain(rule)).toEqual({
+      count: 5,
+      frequency: "DAILY",
+      until: "Temporal.PlainDate 2026-12-31",
+    });
+    expect(issues).toEqual([
+      {
         code: "conflicting-properties",
-        message: expect.stringMatching(/COUNT with UNTIL.*3\.3\.10/),
-        severity: "error",
-      });
-      // The decoder's "kept both" warning would contradict the error.
-      expect(result.issues).toHaveLength(1);
-    }
-  });
-
-  test("keeps other warnings beside the COUNT with UNTIL error", () => {
-    const result = parseRecurrenceRule("FREQ=DAILY;COUNT=5;UNTIL=20261231;BYDAY=XX");
-    expect(result).not.toHaveProperty("rule");
-    expect(result.issues.map(({ code, severity }) => [code, severity])).toEqual([
-      ["invalid-value", "warning"],
-      ["conflicting-properties", "error"],
+        message: expect.stringMatching(/COUNT with UNTIL/),
+        severity: "warning",
+      },
     ]);
   });
 });
@@ -212,16 +203,18 @@ describe("recurrenceRuleFromIcs", () => {
     });
   });
 
-  test("gives no rule for COUNT with UNTIL", () => {
-    expect(
-      rejected(
-        recurrenceRuleFromIcs({
-          count: 3,
-          frequency: "DAILY",
-          until: { date: date("2026-12-31"), kind: "date" },
-        }),
-      ).code,
-    ).toBe("conflicting-properties");
+  test("keeps COUNT with UNTIL", () => {
+    const { issues, rule } = recurrenceRuleFromIcs({
+      count: 3,
+      frequency: "DAILY",
+      until: { date: date("2026-12-31"), kind: "date" },
+    });
+    expect(issues).toEqual([]);
+    expect(plain(rule)).toEqual({
+      count: 3,
+      frequency: "DAILY",
+      until: "Temporal.PlainDate 2026-12-31",
+    });
   });
 
   test("reads the RRULE of a parsed event", () => {

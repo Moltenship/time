@@ -1,6 +1,7 @@
 import type { CalendarEventInterval } from "@moltenship/calendar-core";
 
 import { coerceRecurrenceDate } from "../dates";
+import { RecurrenceRuleError } from "../errors";
 import type {
   RecurrenceDate,
   RecurrenceRule,
@@ -71,35 +72,52 @@ function nanosecondsOf(date: RecurrenceDate, first: CalendarEventInterval, name:
  *   skipped and don't count.
  * - Without COUNT, the loop skips ahead to `window.from` instead of stepping from the first start.
  *
- * Throws a `RangeError` for a rule it can't expand, window dates of another kind than `first`, or
- * a negative `maxIterations`. UNTIL of another kind is brought in by `coerceRecurrenceDate`.
+ * - COUNT with UNTIL, which some feeds write, ends at whichever comes first. BYHOUR, BYMINUTE and
+ *   BYSECOND are ignored on all-day series, as RFC 5545 §3.3.10 says. UNTIL of another kind is
+ *   brought in by `coerceRecurrenceDate`.
+ * - Dates come out in the ISO calendar, and months and years step in it whatever the start's.
+ * - `maxIterations` counts steps: each candidate start looked at, and each period that gives none.
+ *   A sub-daily rule's jump to the next hour, minute or second its BY parts list is one step.
+ *
+ * Throws a `RecurrenceRuleError` for a rule it can't expand or a `sourceTimeZone` that isn't a
+ * time zone, and a `RangeError` for window dates of another kind than `first` or a
+ * `maxIterations` that isn't a positive integer.
  */
 export function expandRecurrenceRule(
   rule: RecurrenceRule,
   first: RecurrenceRuleStart,
   window: RecurrenceRuleWindow = {},
 ): RecurrenceRuleExpansion {
-  const until =
-    rule.until === undefined ? undefined : coerceRecurrenceDate(rule.until, first, "until");
-  if (rule.until !== undefined && until === undefined) {
-    throw new RangeError(`UNTIL ${String(rule.until)} can't end a ${first.kind} series.`);
-  }
-
   const maxIterations = window.maxIterations ?? DEFAULT_MAX_ITERATIONS;
-  if (!(maxIterations >= 0)) {
-    throw new RangeError(`maxIterations must be 0 or more; got ${maxIterations}.`);
+  if (!Number.isInteger(maxIterations) || maxIterations < 1) {
+    throw new RangeError(`maxIterations must be a positive integer; got ${maxIterations}.`);
   }
 
-  // Times are whole seconds, since the epoch for timed series and of wall time otherwise. Every
-  // occurrence shares the first start's fraction of a second.
-  const timeZone = first.kind === "timed" ? (first.sourceTimeZone ?? "UTC") : undefined;
+  // Times are whole seconds, since the epoch for timed series and of wall time otherwise, in the
+  // ISO calendar. Every occurrence shares the first start's fraction of a second.
   let fields: Temporal.PlainDate | Temporal.PlainDateTime;
   let fraction = 0;
   let start: number;
   let wallStart: number;
+  let timeZone: string | undefined;
   if (first.kind === "timed") {
-    const zoned = first.start.toZonedDateTimeISO(timeZone!);
-    fields = first.wallStart ?? zoned.toPlainDateTime();
+    timeZone = first.sourceTimeZone ?? "UTC";
+    let zoned: Temporal.ZonedDateTime;
+    try {
+      zoned = first.start.toZonedDateTimeISO(timeZone);
+    } catch {
+      throw new RecurrenceRuleError("invalid-time-zone", `${timeZone} isn't a time zone.`);
+    }
+    // A written start left behind after the start moved no longer resolves to it.
+    const written = first.wallStart?.withCalendar("iso8601");
+    fields =
+      written !== undefined &&
+      written
+        .toZonedDateTime(timeZone, { disambiguation: "compatible" })
+        .toInstant()
+        .equals(first.start)
+        ? written
+        : zoned.toPlainDateTime();
     fraction = subsecond(zoned);
     start = Number((first.start.epochNanoseconds - BigInt(fraction)) / NANOSECONDS_PER_SECOND);
     wallStart = wallSeconds(fields);
@@ -107,6 +125,15 @@ export function expandRecurrenceRule(
     fields = first.start;
     fraction = first.kind === "floating" ? subsecond(first.start) : 0;
     start = wallStart = wallSeconds(fields);
+  }
+
+  const until =
+    rule.until === undefined ? undefined : coerceRecurrenceDate(rule.until, first, "until");
+  if (rule.until !== undefined && until === undefined) {
+    throw new RecurrenceRuleError(
+      "invalid-rule",
+      `UNTIL ${String(rule.until)} can't end a ${first.kind} series.`,
+    );
   }
   const iso = fields.withCalendar("iso8601");
   const compiled = compileRule(rule, {

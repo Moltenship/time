@@ -17,9 +17,18 @@ export type RecurrenceDate = Temporal.Instant | Temporal.PlainDate | Temporal.Pl
 
 /** An RRULE, as `@moltenship/ics` parses it, with UNTIL in the series' own time. */
 export type RecurrenceRule = Omit<IcsRecurrenceRule, "until"> & {
-  /** Inclusive, as RFC 5545 says. Its kind matches the series' first occurrence. */
+  /**
+   * Inclusive, as RFC 5545 says. Its kind matches the series' first occurrence. With COUNT too, as
+   * some feeds write, the series ends at whichever comes first.
+   */
   readonly until?: RecurrenceDate;
 };
+
+/** An RDATE PERIOD: an extra occurrence with its own length. Both ends take the series' kind. */
+export interface RecurrencePeriod {
+  readonly end: RecurrenceDate;
+  readonly start: RecurrenceDate;
+}
 
 /** What makes an event the master of a series. */
 export interface EventRecurrence {
@@ -29,18 +38,23 @@ export interface EventRecurrence {
    */
   readonly duration?: Temporal.Duration;
   /**
-   * EXDATE: original starts of occurrences that don't happen. A `PlainDate` on a timed or floating
-   * series excludes every occurrence starting that day, in the series' time zone.
+   * EXDATE: original starts of occurrences that don't happen, the first one included. A `PlainDate`
+   * on a timed or floating series excludes every occurrence starting that day, in the series' time
+   * zone. Excluded occurrences still count toward COUNT (RFC 5545 §3.8.5.1).
    */
   readonly exceptionDates?: readonly RecurrenceDate[];
-  /** RDATE: starts of extra occurrences, which last as long as the first one. */
-  readonly recurrenceDates?: readonly RecurrenceDate[];
+  /**
+   * RDATE: extra occurrences. A date starts one that lasts as long as the first occurrence; a
+   * period keeps its own length.
+   */
+  readonly recurrenceDates?: readonly (RecurrenceDate | RecurrencePeriod)[];
   /** RRULE. A series without one has only its first occurrence and `recurrenceDates`. */
   readonly rule?: RecurrenceRule;
   /**
    * A timed series' first start as written, when it fell in a DST gap and so resolved later. Later
    * occurrences repeat at this wall time, which each day resolves on its own. ICS gives it as
-   * `IcsZonedDateTime.wallTime`.
+   * `IcsZonedDateTime.wallTime`. Ignored unless it resolves to the first start, so a stale one left
+   * after the start moves does no harm; edits that move the start drop it.
    */
   readonly wallStart?: Temporal.PlainDateTime;
 }
@@ -52,7 +66,10 @@ export interface RecurrenceOverride<TEventId extends EventId = EventId> {
    * `STATUS:CANCELLED` say. It hides the occurrence and isn't shown itself.
    */
   readonly cancelled?: boolean;
-  /** The original start of the occurrence it replaces. */
+  /**
+   * The original start of the occurrence it replaces, in the series' kind: an `Instant` for a timed
+   * series. That keeps the override's ID the same before and after its master loads.
+   */
   readonly recurrenceId: RecurrenceDate;
   readonly seriesId: TEventId;
 }
@@ -126,6 +143,10 @@ export interface RecurrenceIssue<TEvent, TEventId extends EventId = EventId> {
     | "adapter-error"
     /** A date that `coerceRecurrenceDate` couldn't bring into the series' kind; only it is dropped. */
     | "date-kind-mismatch"
+    /** An event that is both a series' master and an override; it is treated as the override. */
+    | "conflicting-recurrence"
+    /** Two items with the same ID, such as series `42` and `"42"`; the later one is left out. */
+    | "duplicate-event-id"
     /** Two overrides for the same occurrence; the later one in the input wins. */
     | "duplicate-override"
     | "invalid-rule"
@@ -144,8 +165,9 @@ export interface RecurrenceIssue<TEvent, TEventId extends EventId = EventId> {
 export interface OccurrenceExpansion<TEvent, TEventId extends EventId = EventId> {
   readonly issues: readonly RecurrenceIssue<TEvent, TEventId>[];
   /**
-   * Occurrences overlapping the range, plus every override and one-off event, in the input order
-   * of their events and in time order within a series. IDs are unique.
+   * Occurrences overlapping the range, plus every override that isn't cancelled and every one-off
+   * event, in the input order of their events and in time order within a series. IDs are unique.
+   * Unchanged events over the same range give the same occurrence objects, so memoization holds.
    */
   readonly occurrences: readonly RecurrenceOccurrence<TEvent, TEventId>[];
 }
@@ -177,7 +199,8 @@ export type RecurringCalendarEvent<
 
 /**
  * Where a rule starts: the series' first occurrence, with the wall time it was written at when that
- * fell in a DST gap (`EventRecurrence.wallStart`).
+ * fell in a DST gap (`EventRecurrence.wallStart`). Timed series without `sourceTimeZone` repeat in
+ * UTC; the expander fills in its `defaultTimeZone` first.
  */
 export type RecurrenceRuleStart = CalendarEventInterval & {
   readonly wallStart?: Temporal.PlainDateTime;
@@ -192,16 +215,19 @@ export interface RecurrenceRuleWindow {
    */
   readonly from?: RecurrenceDate;
   /**
-   * Most loop steps to take, counting periods and candidates that produce nothing, so a rule that
-   * never matches stops too. Defaults to `DEFAULT_MAX_ITERATIONS`.
+   * Most steps to take, a positive integer. A step is one period the engine visits, whether or not
+   * it produces anything, so a rule that never matches stops too; periods skipped to reach `from`
+   * don't count. Engines may take more than one step per occurrence, never less. Defaults to
+   * `DEFAULT_MAX_ITERATIONS`.
    */
   readonly maxIterations?: number;
 }
 
 export interface RecurrenceRuleExpansion {
   /**
-   * Occurrence starts in the kind of the first occurrence, strictly increasing: starts that
-   * resolve to the same instant, as two wall times in a DST gap can, appear once.
+   * Occurrence starts in the kind of the first occurrence and the ISO calendar, strictly
+   * increasing: starts that resolve to the same instant, as two wall times in a DST gap can, appear
+   * once.
    */
   readonly dates: readonly RecurrenceDate[];
   /** `maxIterations` ran out while the rule and the window still had occurrences to give. */

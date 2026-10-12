@@ -1,5 +1,6 @@
 import type { IcsFrequency, IcsWeekday } from "@moltenship/ics";
 
+import { RecurrenceRuleError } from "../errors";
 import type { RecurrenceRule } from "../types";
 
 /** FREQ, from the longest period to the shortest. */
@@ -87,6 +88,8 @@ export interface CompiledRule {
 
 const isPositiveInteger = (value: number) => Number.isSafeInteger(value) && value >= 1;
 
+const invalid = (message: string) => new RecurrenceRuleError("invalid-rule", message);
+
 function checkList(
   name: string,
   values: readonly number[] | undefined,
@@ -94,11 +97,11 @@ function checkList(
   max: number,
 ): readonly number[] | undefined {
   if (values === undefined) return undefined;
-  if (values.length === 0) throw new RangeError(`${name} must not be empty.`);
+  if (values.length === 0) throw invalid(`${name} must not be empty.`);
   for (const value of values) {
     if (!Number.isInteger(value) || value < min || value > max || (min < 0 && value === 0)) {
       const range = min < 0 ? `${min} to ${max}, other than 0` : `${min} to ${max}`;
-      throw new RangeError(`${name} takes integers from ${range}; got ${value}.`);
+      throw invalid(`${name} takes integers from ${range}; got ${value}.`);
     }
   }
   return values;
@@ -113,7 +116,7 @@ function flags(values: readonly number[], size: number): boolean[] {
 function weekdayNumber(name: string, value: unknown): number {
   const number = WEEKDAYS[value as IcsWeekday];
   if (number === undefined) {
-    throw new RangeError(`${name} takes weekdays MO to SU; got ${JSON.stringify(value)}.`);
+    throw invalid(`${name} takes weekdays MO to SU; got ${JSON.stringify(value)}.`);
   }
   return number;
 }
@@ -126,24 +129,22 @@ function ascending(values: Iterable<number>): number[] {
 /**
  * Checks a rule, which may come from code rather than from parsed text, and fills in what it leaves
  * out from the start, as RFC 5545 §3.3.10 says: "FREQ=YEARLY;BYMONTH=1" repeats on the start's day
- * of the month at the start's time. Throws a `RangeError` naming the part it can't expand.
+ * of the month at the start's time. Throws a `RecurrenceRuleError` naming the part at fault.
  */
 export function compileRule(rule: RecurrenceRule, start: RuleStart): CompiledRule {
   const frequency = FREQUENCIES[rule.frequency];
   if (frequency === undefined) {
-    throw new RangeError(`FREQ must be SECONDLY to YEARLY; got ${JSON.stringify(rule.frequency)}.`);
+    throw invalid(`FREQ must be SECONDLY to YEARLY; got ${JSON.stringify(rule.frequency)}.`);
   }
   if (rule.interval !== undefined && !isPositiveInteger(rule.interval)) {
-    throw new RangeError(`INTERVAL must be a positive integer; got ${rule.interval}.`);
+    throw invalid(`INTERVAL must be a positive integer; got ${rule.interval}.`);
   }
   if (rule.count !== undefined && !isPositiveInteger(rule.count)) {
-    throw new RangeError(`COUNT must be a positive integer; got ${rule.count}.`);
-  }
-  if (rule.count !== undefined && rule.until !== undefined) {
-    throw new RangeError("COUNT and UNTIL can't both be set (RFC 5545 §3.3.10).");
+    throw invalid(`COUNT must be a positive integer; got ${rule.count}.`);
   }
   if (start.allDay && frequency > Frequency.Daily) {
-    throw new RangeError(
+    throw new RecurrenceRuleError(
+      "unsupported-rule",
       `FREQ=${rule.frequency} can't repeat an all-day series, whose occurrences are whole days.`,
     );
   }
@@ -156,7 +157,7 @@ export function compileRule(rule: RecurrenceRule, start: RuleStart): CompiledRul
   const byWeekNumber = checkList("BYWEEKNO", rule.byWeekNumber, -53, 53);
   const byMonth = checkList("BYMONTH", rule.byMonth, 1, 12);
   const bySetPosition = checkList("BYSETPOS", rule.bySetPosition, -366, 366);
-  if (rule.byDay?.length === 0) throw new RangeError("BYDAY must not be empty.");
+  if (rule.byDay?.length === 0) throw invalid("BYDAY must not be empty.");
   const weekStart = rule.weekStart === undefined ? 1 : weekdayNumber("WKST", rule.weekStart);
 
   // BYDAY ordinals count within the month or year (RFC 5545 §3.3.10); other frequencies ignore
@@ -170,9 +171,7 @@ export function compileRule(rule: RecurrenceRule, start: RuleStart): CompiledRul
       ordinal !== undefined &&
       (!Number.isInteger(ordinal) || ordinal === 0 || Math.abs(ordinal) > 53)
     ) {
-      throw new RangeError(
-        `BYDAY ordinals take integers from -53 to 53, other than 0; got ${ordinal}.`,
-      );
+      throw invalid(`BYDAY ordinals take integers from -53 to 53, other than 0; got ${ordinal}.`);
     }
     if (ordinal !== undefined && ordinals) {
       (ordinalWeekdays ??= []).push({ ordinal, weekday: number });

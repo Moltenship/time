@@ -57,11 +57,7 @@ export function parseRecurrenceRule(text: string): RecurrenceRuleTextResult {
   const decoded = decodeIcsValue("RECUR", value);
   if (!decoded.ok) return failed("invalid-value", decoded.message);
   const result = recurrenceRuleFromIcs(decoded.value);
-  // The decoder keeps COUNT with UNTIL with a warning; `recurrenceRuleFromIcs` makes it an error.
-  const warnings = (decoded.warnings ?? []).filter(
-    ({ code }) => result.rule !== undefined || code !== "conflicting-properties",
-  );
-  return { ...result, issues: [...warnings.map(warning), ...result.issues] };
+  return { ...result, issues: [...(decoded.warnings ?? []).map(warning), ...result.issues] };
 }
 
 /**
@@ -103,18 +99,13 @@ function recurrenceDateToIcs(date: RecurrenceDate): IcsDateValue {
 /**
  * A rule from `@moltenship/ics`, such as `IcsEvent.recurrenceRule`, with UNTIL as a Temporal value:
  * a DATE as a `PlainDate`, a UTC or zoned DATE-TIME as an `Instant` and a floating one as a
- * `PlainDateTime`. COUNT with UNTIL is an error, as RFC 5545 §3.3.10 forbids it, and so is an
- * UNTIL whose TZID resolved to no time zone, since dropping it would make the series endless.
+ * `PlainDateTime`. An UNTIL whose TZID resolved to no time zone is an error, since dropping it
+ * would make the series endless. COUNT with UNTIL, which some feeds write, is kept; the series ends
+ * at whichever comes first.
  */
 export function recurrenceRuleFromIcs(rule: IcsRecurrenceRule): RecurrenceRuleTextResult {
   const { until, ...rest } = rule;
   if (until === undefined) return { issues: [], rule: rest };
-  if (rest.count !== undefined) {
-    return failed(
-      "conflicting-properties",
-      "COUNT with UNTIL, which RFC 5545 §3.3.10 forbids; a rule ends by one or the other",
-    );
-  }
   if (until.kind === "unresolved") {
     return failed(
       "unknown-time-zone",
