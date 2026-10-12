@@ -78,6 +78,27 @@ describe.each(themes)("registry views, %s theme", (theme) => {
     }
   });
 
+  // Rows that fill with the accent colour on hover, over muted text: an all-day event's "Day k of
+  // n" in the agenda, a timed event's time in the month and the year's day popover.
+  test.each([
+    ["agenda", '[data-event-id="Conference"]'],
+    ["month", '[data-event-id$=" call"]'],
+    ["year", '[data-event-id$=" meeting"]'],
+  ] as const)("%s view's rows keep their contrast while hovered", async (view, selector) => {
+    setTheme(theme);
+    await render(<RegistryScreen view={view} />);
+    if (view === "year") {
+      await click(
+        document.querySelector<HTMLElement>('[role="gridcell"][data-date="2026-10-08"] button'),
+      );
+    }
+    const event = document.querySelector<HTMLElement>(selector)!;
+    await userEvent.hover(event);
+
+    expect(await seriousViolations()).toEqual([]);
+    await userEvent.unhover(event);
+  });
+
   test("month view's +N more popover", async () => {
     setTheme(theme);
     await render(<RegistryScreen view="month" />);

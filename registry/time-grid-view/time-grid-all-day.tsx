@@ -390,7 +390,7 @@ export function TimeGridAllDayCells<TEvent>({
             ))}
           {overflow !== null && overflow.hiddenCounts[column]! > 0 && (
             <button
-              className="absolute start-0 z-1 mx-1 truncate rounded-md px-2 text-start text-xs font-medium text-muted-foreground hover:bg-accent focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+              className="absolute start-0 z-1 mx-1 truncate rounded-md px-2 text-start text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
               onClick={onExpand}
               style={laneStyle(COLLAPSED_LANES - 1)}
               tabIndex={-1}

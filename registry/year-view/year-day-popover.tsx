@@ -41,14 +41,20 @@ function YearEvent<TEvent>({ color, formats, fragment, icon, labelEvent }: YearE
       className={cn(
         "h-6 shrink-0 gap-1 rounded-sm px-1.5 py-0",
         !bar &&
-          "border-s-0 bg-transparent font-normal text-foreground hover:bg-accent hover:brightness-100",
+          "group/event border-s-0 bg-transparent font-normal text-foreground hover:bg-accent hover:brightness-100",
       )}
     >
       {!bar && (
         <span aria-hidden className="size-2 shrink-0 rounded-full bg-calendar-event-border" />
       )}
       {time !== undefined && (
-        <span className={cn("shrink-0", bar ? "font-normal" : "text-muted-foreground")}>
+        <span
+          className={cn(
+            "shrink-0",
+            // Muted on the hover fill falls short of 4.5:1.
+            bar ? "font-normal" : "text-muted-foreground group-hover/event:text-accent-foreground",
+          )}
+        >
           {time}
         </span>
       )}

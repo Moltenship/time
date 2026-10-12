@@ -1,4 +1,4 @@
-import type { ComponentProps, ReactNode } from "react";
+import { memo, type ComponentProps, type ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
@@ -25,6 +25,11 @@ export interface AgendaDayProps<TEvent> extends Omit<ComponentProps<"li">, "chil
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
 }
 
+type AgendaDayContentProps<TEvent> = Pick<
+  AgendaDayProps<TEvent>,
+  "day" | "formats" | "getEventColor" | "getEventIcon" | "labelEvent" | "onOpenDay"
+>;
+
 /** One day of the agenda: its date, which stays in view while its events scroll past, then them. */
 export function AgendaDay<TEvent>({
   className,
@@ -42,6 +47,28 @@ export function AgendaDay<TEvent>({
       className={cn("flex gap-3 px-3 py-2 sm:gap-6 sm:px-6", className)}
       {...props}
     >
+      <AgendaDayContent
+        day={day}
+        formats={formats}
+        getEventColor={getEventColor}
+        getEventIcon={getEventIcon}
+        labelEvent={labelEvent}
+        onOpenDay={onOpenDay}
+      />
+    </li>
+  );
+}
+
+function AgendaDayContentBase<TEvent>({
+  day,
+  formats,
+  getEventColor,
+  getEventIcon,
+  labelEvent,
+  onOpenDay,
+}: AgendaDayContentProps<TEvent>) {
+  return (
+    <>
       {/* Sticks to the top while the day's events scroll past. */}
       <div className="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
         <span
@@ -83,6 +110,13 @@ export function AgendaDay<TEvent>({
           </li>
         ))}
       </ul>
-    </li>
+    </>
   );
 }
+
+/**
+ * A day's date and events. The virtualizer renders the list again whenever it scrolls or measures
+ * a row, which only moves the day: its events, and the dates and times they format, render again
+ * only when the day changes.
+ */
+const AgendaDayContent = memo(AgendaDayContentBase) as typeof AgendaDayContentBase;

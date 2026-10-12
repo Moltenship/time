@@ -46,6 +46,11 @@ const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
 const event = () => document.querySelector<HTMLElement>('[data-event-id="standup"]')!;
 const answer = () => document.querySelector('[data-testid="answer"]')!.textContent;
 const focusedText = () => document.activeElement?.textContent;
+/**
+ * Tab past either end lands on the dialog's focus guard, which moves focus on to the other end in
+ * the next animation frame, so wait for it.
+ */
+const focusReaches = (text: string) => vi.waitFor(() => expect(focusedText()).toBe(text));
 const textOf = (ids: string | null) =>
   (ids ?? "")
     .split(" ")
@@ -85,17 +90,15 @@ test("Tab and Shift+Tab stay in the dialog, and Enter picks a scope", async () =
   await render(<Page />);
   await openFromKeyboard();
 
-  expect(focusedText()).toBe("This event");
-  const order: (string | undefined)[] = [];
-  for (let step = 0; step < 4; step += 1) {
+  await focusReaches("This event");
+  for (const text of ["This and following events", "All events", "Cancel", "This event"]) {
     await userEvent.keyboard("{Tab}");
-    order.push(focusedText());
+    await focusReaches(text);
   }
-  expect(order).toEqual(["This and following events", "All events", "Cancel", "This event"]);
   await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
-  expect(focusedText()).toBe("Cancel");
+  await focusReaches("Cancel");
   await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
-  expect(focusedText()).toBe("All events");
+  await focusReaches("All events");
 
   await userEvent.keyboard("{Enter}");
 
@@ -109,7 +112,7 @@ test("Escape cancels and focus goes back to the event", async () => {
   await render(<Page scopes={["following", "all"]} />);
   await openFromKeyboard();
 
-  expect(focusedText()).toBe("This and following events");
+  await focusReaches("This and following events");
   await userEvent.keyboard("{Escape}");
 
   await vi.waitFor(() => expect(answer()).toBe("cancelled"));
@@ -121,8 +124,9 @@ test("Space on Cancel cancels", async () => {
   setTheme("light");
   await render(<Page />);
   await openFromKeyboard();
+  await focusReaches("This event");
   await userEvent.keyboard("{Shift>}{Tab}{/Shift}");
-  expect(focusedText()).toBe("Cancel");
+  await focusReaches("Cancel");
 
   await userEvent.keyboard(" ");
 

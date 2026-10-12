@@ -4,6 +4,8 @@ import {
   type PlainDateInterval,
 } from "@moltenship/calendar";
 import {
+  useCallback,
+  useInsertionEffect,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -135,6 +137,12 @@ export function AgendaList<TEvent>({
   const labelEvent = useEventLabel(environment, describeEvent);
   const keyboard = useViewKeyboard();
   const { focusWithin, scrollRef, viewportHeight, virtualizer } = list;
+  // One function for every render, so days render again only when they change.
+  const latestOpenDay = useRef(onOpenDay);
+  useInsertionEffect(() => {
+    latestOpenDay.current = onOpenDay;
+  });
+  const openDay = useCallback((date: Temporal.PlainDate) => latestOpenDay.current(date), []);
   const items = virtualizer.getVirtualItems();
   // Each item's place in the list, for `aria-posinset`: the days, and the empty row among them.
   const ordinals = useMemo(() => {
@@ -190,7 +198,7 @@ export function AgendaList<TEvent>({
                 getEventColor={getEventColor}
                 getEventIcon={getEventIcon}
                 labelEvent={labelEvent}
-                onOpenDay={onOpenDay}
+                onOpenDay={openDay}
               />
             );
           })}

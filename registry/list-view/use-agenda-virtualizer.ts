@@ -156,8 +156,22 @@ export function useAgendaVirtualizer({
     }
     laidOut.current = rows;
     remember();
+    // A script's `focus()` scrolls the focused row into view at once, but the `scroll` event comes
+    // a frame later: rows that change before then, as when keys page past the range, would put
+    // back what was on top before focus moved. The focus events come before that scroll, so look
+    // again once the script is done.
+    let live = true;
+    const rememberFocus = () =>
+      queueMicrotask(() => {
+        if (live) remember();
+      });
     element.addEventListener("scroll", remember, { passive: true });
-    return () => element.removeEventListener("scroll", remember);
+    element.addEventListener("focusin", rememberFocus);
+    return () => {
+      live = false;
+      element.removeEventListener("scroll", remember);
+      element.removeEventListener("focusin", rememberFocus);
+    };
   }, [rows, scrollRef, virtualizer]);
 
   return { viewportHeight, virtualizer };

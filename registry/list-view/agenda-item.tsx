@@ -54,7 +54,8 @@ export function AgendaItem<TEvent>({
           onOpenDay(item.date);
         }
       }}
-      className="w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start"
+      // Muted text turns accent-foreground on the hover fill: muted on accent falls short of 4.5:1.
+      className="group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start"
     >
       <span className="flex shrink-0 items-center gap-2 sm:w-44">
         <span aria-hidden className="size-2.5 shrink-0 rounded-full bg-calendar-event-border" />
@@ -63,7 +64,9 @@ export function AgendaItem<TEvent>({
             All day
           </span>
         ) : (
-          <span className="text-muted-foreground tabular-nums max-sm:text-xs">{time}</span>
+          <span className="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+            {time}
+          </span>
         )}
       </span>
       <span className="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
@@ -73,7 +76,7 @@ export function AgendaItem<TEvent>({
           {item.event.title}
         </span>
         {item.dayCount > 1 && (
-          <span className="shrink-0 text-xs text-muted-foreground">
+          <span className="shrink-0 text-xs text-muted-foreground group-hover/event:text-accent-foreground">
             Day {item.dayIndex} of {item.dayCount}
           </span>
         )}

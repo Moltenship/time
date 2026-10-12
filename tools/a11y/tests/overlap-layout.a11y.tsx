@@ -221,7 +221,8 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
     const onEventChange = vi.fn();
     await render(<OverlapScreen dir={dir} onEventChange={onEventChange} overlapLayout="stack" />);
     const title = "Quarterly planning with the infrastructure and platform teams";
-    const tooltip = () => document.querySelector('[data-slot="tooltip-content"]');
+    // Open, not on its way out: a closing tooltip stays in the page while it fades.
+    const tooltip = () => document.querySelector('[data-slot="tooltip-content"][data-open]');
 
     // Picked up and moved, Escape cancels the move.
     await act(async () => eventElement(title).focus());
@@ -233,7 +234,9 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
     expect(document.querySelector("[data-grabbed]")).toBeNull();
     expect(onEventChange).not.toHaveBeenCalled();
 
-    // Focused, Escape leaves the event for the slot it starts in.
+    // Focused, Escape leaves the event for the slot it starts in. The gesture closed the tooltip
+    // and the event kept focus, so focus comes back to it to open the tooltip again.
+    await act(async () => eventElement(title).blur());
     await act(async () => eventElement(title).focus());
     await vi.waitFor(() => expect(tooltip()).not.toBeNull());
     await userEvent.keyboard("{Escape}");

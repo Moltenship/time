@@ -157,6 +157,8 @@ async function moveFromKeyboard(eventId: string, keys: string) {
 
 /** Tabs to a choice in the dialog and presses Enter on it. */
 async function choose(text: string) {
+  // From the first choice, which the dialog focuses in the next animation frame.
+  await vi.waitFor(() => expect(dialog()!.querySelector("button")).toBe(document.activeElement));
   for (let tabs = 0; tabs < 4 && document.activeElement?.textContent !== text; tabs += 1) {
     await userEvent.keyboard("{Tab}");
   }
@@ -180,7 +182,8 @@ test("a keyboard drop asks which events it applies to while the change waits", a
     "“Standup” repeats. Which events should this change apply to?",
   );
   expect(choices()).toEqual(["This event", "This and following events", "All events", "Cancel"]);
-  expect(document.activeElement?.textContent).toBe("This event");
+  // The dialog moves focus to its first choice in the next animation frame.
+  await vi.waitFor(() => expect(document.activeElement?.textContent).toBe("This event"));
 });
 
 test.each([
@@ -196,7 +199,10 @@ test.each([
 
   // "This event" keeps the occurrence's ID; the others give it a new one, which focus follows.
   await vi.waitFor(() => expect(document.activeElement).toBe(occurrence(id)));
-  expect(label(document.activeElement)).toBe("Standup, Thursday, October 8, 9:15 – 9:45 AM");
+  // Focus can come back before the change is saved, while the occurrence still says "saving".
+  await vi.waitFor(() =>
+    expect(label(document.activeElement)).toBe("Standup, Thursday, October 8, 9:15 – 9:45 AM"),
+  );
   await vi.waitFor(() =>
     expect(said).toEqual(["Moved Standup to Thursday, October 8, 9:15 – 9:45 AM."]),
   );
@@ -235,7 +241,7 @@ test("a delete asks the delete question, without This and following on the first
   await choose("This event");
 
   await vi.waitFor(() => expect(occurrence(monday)).toBeNull());
-  expect(document.activeElement).toBe(button);
+  await vi.waitFor(() => expect(document.activeElement).toBe(button));
   // The calendar announces its own gestures; a change from the page's own controls is the page's
   // to announce.
   expect(said).toEqual([]);

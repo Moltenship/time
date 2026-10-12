@@ -66,7 +66,7 @@ export function MonthEvent<TEvent>({
         bar
           ? [startsBefore && "rounded-s-none border-s-0 ps-0.5", endsAfter && "rounded-e-none"]
           : // Small screens show compact tinted blocks instead of dot, time, and title.
-            "border-s-0 bg-transparent font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:bg-calendar-event max-sm:text-calendar-event-foreground",
+            "group/event border-s-0 bg-transparent font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:bg-calendar-event max-sm:text-calendar-event-foreground",
         className,
       )}
     >
@@ -82,7 +82,11 @@ export function MonthEvent<TEvent>({
       )}
       {time !== undefined && (
         <span
-          className={cn("shrink-0 max-sm:hidden", bar ? "font-normal" : "text-muted-foreground")}
+          className={cn(
+            "shrink-0 max-sm:hidden",
+            // Muted on the hover fill falls short of 4.5:1.
+            bar ? "font-normal" : "text-muted-foreground group-hover/event:text-accent-foreground",
+          )}
         >
           {time}
         </span>
