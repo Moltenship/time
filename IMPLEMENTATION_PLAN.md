@@ -62,7 +62,7 @@ Later milestones:
 
 | Milestone                      | Issues          | Scope                                                                         |
 | ------------------------------ | --------------- | ----------------------------------------------------------------------------- |
-| Post-1.0 — Recurrence          | #48, #49        | Range-bounded recurrence, exceptions, detached occurrences                    |
+| Recurrence (ADR 0048)          | #48, #49, #155  | RFC 5545 engine, range-bounded occurrences, series edits, demo and docs       |
 
 Issues in these milestones still carry their original, heavier scope. Rescope each one to
 Scope / Done when / Later before starting it.

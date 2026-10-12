@@ -1,7 +1,7 @@
 {
   "name": "@moltenship/calendar-recurrence",
   "version": "0.0.0",
-  "description": "Reserved post-1.0 recurrence boundary for Moltenship Time.",
+  "description": "Range-bounded recurrence for Moltenship Time: RRULE expansion, exceptions and series edits.",
   "license": "MIT",
   "files": [
     "dist"
@@ -27,11 +27,12 @@
     "check": "vp check",
     "dev": "vp pack --watch",
     "prepublishOnly": "vp run build",
-    "test": "vp test --passWithNoTests"
+    "test": "vp test"
   },
   "dependencies": {
     "@moltenship/calendar-core": "workspace:*",
-    "@moltenship/calendar-temporal": "workspace:*"
+    "@moltenship/calendar-temporal": "workspace:*",
+    "@moltenship/ics": "workspace:*"
   },
   "devDependencies": {
     "typescript": "catalog:",

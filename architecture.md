@@ -27,7 +27,7 @@ This document is the normative architecture contract.
 | Views              | Day, week, month, year, list/agenda, resource columns, and resource timeline ship as explicit view definitions. Custom views use a stable plugin contract. |
 | Resources          | An event can have zero-to-many resources. Both day-by-resource columns and horizontal resource timelines are first-class.                            |
 | Interaction        | Native Pointer Events live behind a semantic adapter (ADR 0037). Pointer, touch, keyboard, and explicit edit actions produce the same typed transaction. |
-| Recurrence         | Separate post-foundation package; the base contracts reserve occurrence identity without implementing RRULE expansion in v1.                         |
+| Recurrence         | Separate package layered over the base contracts (ADR 0048): occurrences are ordinary events with stable IDs, and base packages stay recurrence-agnostic. |
 | iCalendar          | Standalone `@moltenship/ics`: ICS text to typed Temporal values, a Standard Schema parser, no dependencies (ADR 0151).                                |
 | Styling            | Tailwind CSS 4 and shadcn tokens in registry source; no Tailwind dependency in headless packages.                                                    |
 | SSR                | Full deterministic server markup when environment inputs are provided; no browser globals at module scope.                                           |
@@ -86,7 +86,7 @@ time/
 │   ├── calendar-dnd/             # pointer interaction adapter (native Pointer Events)
 │   ├── calendar/                 # DX-first public facade
 │   ├── calendar-testing/         # fixtures, harnesses and semantic test helpers
-│   ├── calendar-recurrence/      # reserved; implemented after the foundation
+│   ├── calendar-recurrence/      # range-bounded recurrence (RRULE, exceptions, series edits)
 │   └── ics/                      # standalone iCalendar parsing (RFC 5545)
 ├── registry/
 │   ├── calendar/                 # root, toolbar, shared renderers
@@ -124,7 +124,7 @@ no second docs content tree.
 | `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements.                                          | `calendar-core`, `calendar-temporal`                                                      | Stable adapter; no DOM event types in callbacks   |
 | `@moltenship/calendar`            | The ergonomic entry point used by most consumers. Re-exports supported React and core contracts.                              | `calendar-react`, `calendar-core`                                                         | Stable facade                                     |
 | `@moltenship/calendar-testing`    | Deterministic clocks, event builders, keyboard drivers, view harnesses, assertions.                                           | Public calendar packages                                                                  | Stable after v1                                   |
-| `@moltenship/calendar-recurrence` | Series/occurrence expansion, exceptions, detached instances, RRULE boundary.                                                  | `calendar-core`, `calendar-temporal`                                                      | Post-foundation                                   |
+| `@moltenship/calendar-recurrence` | Range-bounded RRULE expansion, occurrence identity, exceptions and overrides, explicit series edits (ADR 0048).            | `calendar-core`, `calendar-temporal`, `ics`                                               | Post-foundation                                   |
 | `@moltenship/ics`                 | iCalendar syntax tree, typed values and components, TZID resolution, Standard Schema parser. Parses RRULEs; doesn't expand them. | None                                                                                      | Pre-1.0                                           |
 
 Package versions move in lockstep until after `1.0`. The repository lockfile pins exact implementation dependencies; published packages expose narrow peer ranges for React and optional adapters.

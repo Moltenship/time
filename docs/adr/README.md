@@ -15,4 +15,5 @@ number of the GitHub issue that made the decision.
 - [ADR 0020: Compose row and time virtualizers around one native viewport](./0020-resource-timeline-virtualization-spike.md)
 - [ADR 0025: Native Jotai bindings for the production React store](./0025-native-jotai-react-bindings.md)
 - [ADR 0037: Native Pointer Events for calendar interaction](./0037-native-pointer-events.md)
+- [ADR 0048: Recurrence as a layer over ordinary events](./0048-recurrence.md)
 - [ADR 0151: A standalone, Temporal-native iCalendar package](./0151-standalone-ics-package.md)

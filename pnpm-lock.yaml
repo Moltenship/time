@@ -674,6 +674,9 @@ importers:
       '@moltenship/calendar-temporal':
         specifier: workspace:*
         version: link:../calendar-temporal
+      '@moltenship/ics':
+        specifier: workspace:*
+        version: link:../ics
     devDependencies:
       typescript:
         specifier: 'catalog:'
