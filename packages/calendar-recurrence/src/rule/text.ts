@@ -7,6 +7,7 @@ import {
   type IcsValueWarning,
 } from "@moltenship/ics";
 
+import { recurrenceDateOf } from "../internal/dates";
 import type { RecurrenceDate, RecurrenceRule } from "../types";
 
 /** A problem `parseRecurrenceRule` found. Errors leave no rule; warnings keep a best-effort one. */
@@ -71,21 +72,6 @@ export function formatRecurrenceRule(rule: RecurrenceRule): string {
   return encodeIcsValue("RECUR", recurrenceRuleToIcs(rule));
 }
 
-function recurrenceDateFromIcs(
-  value: Exclude<IcsDateValue, { kind: "unresolved" }>,
-): RecurrenceDate {
-  switch (value.kind) {
-    case "date":
-      return value.date;
-    case "utc":
-      return value.instant;
-    case "zoned":
-      return value.zoned.toInstant();
-    case "floating":
-      return value.wallTime;
-  }
-}
-
 // iCalendar dates are Gregorian, and the encoder writes the fields of the date's own calendar.
 function recurrenceDateToIcs(date: RecurrenceDate): IcsDateValue {
   if (date instanceof Temporal.PlainDate) {
@@ -113,7 +99,7 @@ export function recurrenceRuleFromIcs(rule: IcsRecurrenceRule): RecurrenceRuleTe
       `UNTIL's TZID ${quote(until.tzid)} resolves to no time zone, so the rule's end is unknown`,
     );
   }
-  return { issues: [], rule: { ...rest, until: recurrenceDateFromIcs(until) } };
+  return { issues: [], rule: { ...rest, until: recurrenceDateOf(until) } };
 }
 
 /** A rule as `@moltenship/ics` writes it: UNTIL as a DATE, a UTC DATE-TIME or a floating one. */

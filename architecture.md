@@ -904,6 +904,8 @@ WCAG 2.2 AA is a release gate, not an example-app enhancement.
 ### Announcements
 
 The announcer describes event title, proposed start/end, timezone, resource, validation result, DST adjustment, commit, and rollback. Applications may localize or replace message builders.
+A rollback carries what `onEventChange` threw: the registry's English messages read an `AbortError`
+as the user cancelling, as when they dismiss the recurrence scope question, not as a failed save.
 
 Automated axe checks, keyboard integration tests, reduced-motion tests, and manual VoiceOver/NVDA scenarios are required before release.
 
@@ -1147,6 +1149,26 @@ Deliver only after the base transaction, timezone, and occurrence identity contr
 - drag/edit choice between occurrence and series.
 
 Gate: timezone/DST recurrence matrix and interop fixtures pass without changing base event semantics.
+
+Shipped: #48 and #49 through #156 (contracts and ADR 0048), #159 (the RFC 5545 rule engine and
+RRULE text, checked against 318 python-dateutil and ical.js fixtures), #157 (`createOccurrenceExpander`
+over `loadRange`, `createOccurrenceAdapter` and the `recurringEventsFromIcs` bridge) and #158 (`"this"`,
+`"following"` and `"all"` edits through `resolveRecurrenceEdit`, and the registry's
+`recurrence-scope-dialog`). #155 closes epic #2 with the demo and docs, in a PR of their own, and
+the gate:
+
+- a DST matrix through core's view projections: series in Berlin, New York, Lord Howe, Santiago and
+  Sydney, shown in each of those zones and in Kolkata, with positions, counts and occurrence IDs
+  pinned across every change week, and IDs stable across ranges and display zones;
+- Google Calendar, Outlook/Exchange and iCloud interop fixtures, parsed, bridged and expanded;
+- a year-view expansion benchmark: 200 series, about 10,000 occurrences, gated at 50 ms p95
+  (`vp run recurrence:gate`);
+- the scope dialog's focus and announcements in the a11y suite.
+
+Base event and transaction semantics are unchanged: occurrences reach the calendar through an
+ordinary `EventAdapter`. The one change to a base package is additive: reject announcements carry
+what `onEventChange` threw, so a cancelled scope question isn't announced as a failed save. Limits
+left open are in #160.
 
 ## 23. Prototype risks to retire early
 

@@ -43,6 +43,7 @@ const expectedWorkspaceDependencies = {
   benchmark: [
     "@moltenship/calendar-core",
     "@moltenship/calendar-react",
+    "@moltenship/calendar-recurrence",
     "@moltenship/calendar-temporal",
     "fixtures",
   ],

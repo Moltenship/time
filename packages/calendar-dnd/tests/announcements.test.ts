@@ -173,6 +173,24 @@ describe("pointer announcements", () => {
     expect(updates.map(describeUpdate).at(-1)).toBe("reject move 9:00 – 10:00 AM (overlap)");
   });
 
+  test("pass on what the change handler rejected with", async () => {
+    const grid = mountTimeGrid([meeting]);
+    const error = new DOMException("Cancelled", "AbortError");
+    const updates = setup(grid, {
+      columns: grid.columns,
+      onPropose: () =>
+        Promise.resolve({ error, reason: "handler-error", status: "rejected" } as Result),
+    });
+    const element = grid.elements.get("a")!;
+
+    pointer("pointerdown", element, xAt("2026-08-17"), yAt("09:00"));
+    pointer("pointermove", element, xAt("2026-08-18"), yAt("09:00"));
+    pointer("pointerup", element, xAt("2026-08-18"), yAt("09:00"));
+    await Promise.resolve();
+
+    expect(updates.at(-1)).toMatchObject({ error, phase: "reject", reason: "handler-error" });
+  });
+
   test("announce a cancel for Escape, a drop that changes nothing, and a pointercancel", () => {
     const month = mountMonth([meeting]);
     const updates = setup(month);

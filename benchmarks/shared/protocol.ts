@@ -39,8 +39,16 @@ export const REACT_BENCHMARK_STAGES: readonly BenchmarkStage[] = Object.freeze([
   "pointer-frame",
 ]);
 
+export const RECURRENCE_BENCHMARK_STAGES: readonly BenchmarkStage[] = Object.freeze([
+  "expand-cold",
+  "expand-warm",
+  "occurrence-snapshot",
+]);
+
 const initialP95ThresholdsMs: Readonly<Partial<Record<BenchmarkStage, number>>> = Object.freeze({
   build: 25,
+  "expand-cold": 50,
+  "expand-warm": 50,
   layout: 8,
   "pointer-frame": 4,
   query: 1,
@@ -120,14 +128,23 @@ function hashCollection(values: readonly { readonly key?: string }[]): number {
   return values.length ^ hashString(first) ^ hashString(last);
 }
 
-function measure(
+export interface MeasureOptions {
+  readonly collectGarbageBetweenSamples?: boolean;
+  readonly mode: BenchmarkMode;
+  /** Operations averaged into one sample. */
+  readonly operationsPerSample?: number;
+  /** Runs before each warmup and sample, outside the timed region and before collection. */
+  readonly prepare?: () => void;
+}
+
+/** Warms up, then times samples of `operation`, whose results feed the observable sink. */
+export function measure(
   operation: (iteration: number) => number,
-  mode: BenchmarkMode,
-  operationsPerSample = 1,
-  collectGarbageBetweenSamples = false,
+  { collectGarbageBetweenSamples = false, mode, operationsPerSample = 1, prepare }: MeasureOptions,
 ): BenchmarkStatistics {
   const { iterations, warmupIterations } = iterationCounts(mode);
   for (let iteration = 0; iteration < warmupIterations; iteration += 1) {
+    prepare?.();
     for (let operationIndex = 0; operationIndex < operationsPerSample; operationIndex += 1) {
       benchmarkSink ^= operation(iteration * operationsPerSample + operationIndex);
     }
@@ -135,6 +152,7 @@ function measure(
 
   const samples: number[] = [];
   for (let iteration = 0; iteration < iterations; iteration += 1) {
+    prepare?.();
     if (collectGarbageBetweenSamples) {
       const collectGarbage = (globalThis as typeof globalThis & { gc?: () => void }).gc;
       if (collectGarbage === undefined) {
@@ -164,7 +182,12 @@ function environment(): BenchmarkEnvironment {
   };
 }
 
-function stageResult(
+/** Every measured result XORed together; reports print it so no operation is discarded. */
+export function observableSink(): number {
+  return benchmarkSink;
+}
+
+export function stageResult(
   stage: BenchmarkStage,
   statistics: BenchmarkStatistics,
   thresholdScale: number,
@@ -235,16 +258,57 @@ export function compareCandidateToReference<TSnapshot>(
   };
 }
 
+export function thresholdScaleOf(options: BenchmarkRunOptions): number {
+  const thresholdScale = options.thresholdScale ?? 1;
+  if (!Number.isFinite(thresholdScale)) {
+    throw new RangeError("threshold-scale-must-be-finite");
+  }
+  return thresholdScale;
+}
+
+export function unsupportedStage(stage: BenchmarkStage, suite: string): never {
+  throw new RangeError(`unsupported-benchmark-stage:${suite}:${stage}`);
+}
+
+/**
+ * Completes a suite's report with the environment, memory sampled now against `before`, and
+ * whether every gated stage passed.
+ */
+export function finishReport<TFixture>(
+  report: Pick<
+    BenchmarkReport<TFixture>,
+    "engine" | "fixture" | "mode" | "notes" | "stages" | "suite"
+  >,
+  before: NodeJS.MemoryUsage,
+): BenchmarkReport<TFixture> {
+  const after = memoryUsage();
+  return {
+    engine: report.engine,
+    environment: environment(),
+    fixture: report.fixture,
+    memory: {
+      afterHeapUsedBytes: after.heapUsed,
+      afterRssBytes: after.rss,
+      beforeHeapUsedBytes: before.heapUsed,
+      beforeRssBytes: before.rss,
+      heapUsedDeltaBytes: after.heapUsed - before.heapUsed,
+      rssDeltaBytes: after.rss - before.rss,
+    },
+    mode: report.mode,
+    notes: report.notes,
+    passed: report.stages.every(({ status }) => status !== "fail"),
+    protocolVersion: 2,
+    stages: report.stages,
+    suite: report.suite,
+  };
+}
+
 export function runBenchmark<TSnapshot>(
   engine: BenchmarkEngine<TSnapshot>,
   fixtures: BenchmarkFixtureSet,
   options: BenchmarkRunOptions,
 ): BenchmarkReport {
-  const thresholdScale = options.thresholdScale ?? 1;
-  if (!Number.isFinite(thresholdScale)) {
-    throw new RangeError("threshold-scale-must-be-finite");
-  }
-
+  const thresholdScale = thresholdScaleOf(options);
   const before = memoryUsage();
   const snapshot = engine.build(fixtures);
   const queried = engine.query(snapshot, queries.default);
@@ -272,10 +336,14 @@ export function runBenchmark<TSnapshot>(
               ? () => hashCollection(engine.layout(projection))
               : stage === "render"
                 ? () => hashCollection(engine.render(layout))
-                : (iteration) => hashString(engine.pointerFrame(layout, iteration)),
-      options.mode,
-      operationsPerSample,
-      options.collectGarbageBetweenSamples,
+                : stage === "pointer-frame"
+                  ? (iteration) => hashString(engine.pointerFrame(layout, iteration))
+                  : unsupportedStage(stage, options.suite),
+      {
+        collectGarbageBetweenSamples: options.collectGarbageBetweenSamples,
+        mode: options.mode,
+        operationsPerSample,
+      },
     );
     let referenceP95Ms: number | undefined;
     if (isRetentionQuery(stage) && engine !== referenceEngine) {
@@ -285,50 +353,47 @@ export function runBenchmark<TSnapshot>(
           const result = referenceEngine.query(referenceSnapshot!, query);
           return hashString(result[0] ?? null) ^ result.length;
         },
-        options.mode,
-        operationsPerSample,
-        options.collectGarbageBetweenSamples,
+        {
+          collectGarbageBetweenSamples: options.collectGarbageBetweenSamples,
+          mode: options.mode,
+          operationsPerSample,
+        },
       ).p95Ms;
     }
     results.push(stageResult(stage, statistics, thresholdScale, referenceP95Ms));
   }
 
-  const after = memoryUsage();
-  return {
-    engine: engine.name,
-    environment: environment(),
-    fixture: {
-      dstCases: fixtures.dstCases.length,
-      events: fixtures.events.length,
-      resources: fixtures.resources.length,
-      seed: fixtures.seed,
-      visibleFragments: fixtures.visibleFragments.length,
+  return finishReport(
+    {
+      engine: engine.name,
+      fixture: {
+        dstCases: fixtures.dstCases.length,
+        events: fixtures.events.length,
+        resources: fixtures.resources.length,
+        seed: fixtures.seed,
+        visibleFragments: fixtures.visibleFragments.length,
+      },
+      mode: options.mode,
+      notes: [
+        "Reference algorithms are the correctness oracle; timings describe the selected engine.",
+        "Render measures render-model materialization, not browser paint or React commits.",
+        "Pointer-frame measures library hit-test scripting, not end-to-end input latency.",
+        "Core one-day and seven-day query gates require indexed p95 below both 1 ms and scan p95.",
+        "Query samples average 200 operations to reduce sub-millisecond timer and scheduler noise.",
+        garbageCollectionNote(options),
+        `Observable sink: ${benchmarkSink ^ queried.length ^ render.length}`,
+      ],
+      stages: results,
+      suite: options.suite,
     },
-    memory: {
-      afterHeapUsedBytes: after.heapUsed,
-      afterRssBytes: after.rss,
-      beforeHeapUsedBytes: before.heapUsed,
-      beforeRssBytes: before.rss,
-      heapUsedDeltaBytes: after.heapUsed - before.heapUsed,
-      rssDeltaBytes: after.rss - before.rss,
-    },
-    mode: options.mode,
-    notes: [
-      "Reference algorithms are the correctness oracle; timings describe the selected engine.",
-      "Render measures render-model materialization, not browser paint or React commits.",
-      "Pointer-frame measures library hit-test scripting, not end-to-end input latency.",
-      "Core one-day and seven-day query gates require indexed p95 below both 1 ms and scan p95.",
-      "Query samples average 200 operations to reduce sub-millisecond timer and scheduler noise.",
-      `Explicit garbage collection between samples: ${options.collectGarbageBetweenSamples === true ? "enabled" : "disabled"}.`,
-      `Observable sink: ${benchmarkSink ^ queried.length ^ render.length}`,
-    ],
-    passed: results.every(({ status }) => status !== "fail"),
-    protocolVersion: 2,
-    stages: results,
-    suite: options.suite,
-  };
+    before,
+  );
 }
 
-export function benchmarkExitCode(report: BenchmarkReport, gated: boolean): number {
+export function garbageCollectionNote(options: BenchmarkRunOptions): string {
+  return `Explicit garbage collection between samples: ${options.collectGarbageBetweenSamples === true ? "enabled" : "disabled"}.`;
+}
+
+export function benchmarkExitCode(report: BenchmarkReport<unknown>, gated: boolean): number {
   return gated && !report.passed ? 1 : 0;
 }

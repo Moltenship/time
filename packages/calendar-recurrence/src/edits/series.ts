@@ -8,6 +8,15 @@ import type {
 
 import { coerceRecurrenceDate } from "../dates";
 import { RecurrenceRuleError } from "../errors";
+import {
+  datesEqual,
+  intervalOf,
+  isTimeZone,
+  seriesTimeOf,
+  toWall,
+  writtenStart,
+  type SeriesTime,
+} from "../internal/dates";
 import { occurrenceId } from "../occurrence-id";
 import { expandRecurrenceRule } from "../rule/expand";
 import type {
@@ -18,14 +27,6 @@ import type {
   RecurrenceRule,
   RecurrenceRuleStart,
 } from "../types";
-import {
-  datesEqual,
-  isTimeZone,
-  sameResources,
-  seriesTimeOf,
-  toWall,
-  type SeriesTime,
-} from "./dates";
 import { readKey, rekey, rekeyExtra, seriesWall, targetWall } from "./keys";
 import type {
   RecurrenceEditRejection,
@@ -67,6 +68,12 @@ export interface Series<TEvent, TEventId extends EventId, TResourceId extends Re
 export interface Move {
   /** Calendar days its date moves. */
   readonly days: number;
+  /**
+   * `wallTo` is where the occurrence was dropped, so a start there can be the proposed one, as a
+   * second 02:30 of DST's end needs. Not for a day move on a calendar in another zone, which keeps
+   * the series' time of day instead.
+   */
+  readonly dropped: boolean;
   /** The clock the occurrence showed on before the change. */
   readonly from: SeriesTime;
   /** The clock it shows on after it. */
@@ -97,23 +104,12 @@ export function ruleRejection(error: unknown): RecurrenceEditRejection {
   throw error;
 }
 
-/** Only the interval's fields, since adapters may hand back the event itself. */
-export function intervalOf(interval: CalendarEventInterval): CalendarEventInterval {
-  switch (interval.kind) {
-    case "timed":
-      return {
-        end: interval.end,
-        kind: "timed",
-        ...(interval.sourceTimeZone === undefined
-          ? {}
-          : { sourceTimeZone: interval.sourceTimeZone }),
-        start: interval.start,
-      };
-    case "all-day":
-      return { end: interval.end, kind: "all-day", start: interval.start };
-    case "floating":
-      return { end: interval.end, kind: "floating", start: interval.start };
-  }
+/** Same members, in any order. */
+function sameResources(
+  left: readonly (string | number)[],
+  right: readonly (string | number)[],
+): boolean {
+  return left.length === right.length && left.every((resourceId) => right.includes(resourceId));
 }
 
 /** A start and an end of the same kind, with resources, as a placement. */
@@ -157,7 +153,9 @@ export function loadSeries<TEvent, TEventId extends EventId, TResourceId extends
   if (recurrence === undefined) {
     return reject("missing-series", "The occurrence's series has no recurrence.");
   }
-  const first = intervalOf(adapters.event.getInterval(link.series));
+  // Only the interval's fields, since adapters may hand back the event itself.
+  const interval = adapters.event.getInterval(link.series);
+  const first = intervalOf(interval.start, interval.end, interval);
   const time = seriesTimeOf(first, options.defaultTimeZone);
   if (!isTimeZone(time.timeZone)) {
     return reject("invalid-time-zone", `${time.timeZone} isn't a time zone.`);
@@ -170,15 +168,9 @@ export function loadSeries<TEvent, TEventId extends EventId, TResourceId extends
   }
   // A stale `wallStart`, which no longer resolves to the first start, is ignored, as the engine
   // ignores it.
-  const declared = recurrence.wallStart?.withCalendar("iso8601");
   const written =
-    first.kind === "timed" &&
-    declared !== undefined &&
-    datesEqual(
-      declared.toZonedDateTime(time.timeZone, { disambiguation: "compatible" }).toInstant(),
-      first.start,
-    )
-      ? declared
+    first.kind === "timed"
+      ? writtenStart(recurrence.wallStart, first.start, time.timeZone)
       : undefined;
   const wallFirst = written ?? toWall(first.start, time);
   return {
@@ -235,9 +227,42 @@ export function keyShift(
   };
 }
 
+/**
+ * How many days a timed move goes on the calendar's clock, when it keeps the time of day there and
+ * the calendar is in another zone than `measuredOn`, the clock the move is otherwise measured on.
+ * `undefined` for anything else.
+ */
+function calendarDays(
+  change: {
+    readonly cause: CalendarChangeCause;
+    readonly original: CalendarEventPlacement<ResourceId>;
+    readonly proposed: CalendarEventPlacement<ResourceId>;
+  },
+  timeZone: string | undefined,
+  measuredOn: string,
+): number | undefined {
+  const { original, proposed } = change;
+  if (
+    timeZone === undefined ||
+    timeZone === measuredOn ||
+    change.cause !== "move" ||
+    original.kind !== "timed" ||
+    proposed.kind !== "timed"
+  ) {
+    return undefined;
+  }
+  const shown = original.start.toZonedDateTimeISO(timeZone);
+  const days = shown
+    .toPlainDate()
+    .until(proposed.start.toZonedDateTimeISO(timeZone).toPlainDate()).days;
+  // As the calendar moves by days, so a time its zone skips moves forward here too.
+  return shown.add({ days }).toInstant().equals(proposed.start) ? days : undefined;
+}
+
 export function measureMove(
   series: Series<unknown, EventId, ResourceId>,
   change: {
+    readonly cause: CalendarChangeCause;
     readonly original: CalendarEventPlacement<ResourceId>;
     readonly proposed: CalendarEventPlacement<ResourceId>;
   },
@@ -256,13 +281,21 @@ export function measureMove(
       : { kind: placement.kind, timeZone: defaultTimeZone };
   const from = timeOf(original);
   const shown = timeOf(proposed);
-  for (const { timeZone } of [from, shown]) {
-    if (!isTimeZone(timeZone)) return reject("invalid-time-zone", `${timeZone} isn't a time zone.`);
+  for (const timeZone of [from.timeZone, shown.timeZone, options.timeZone]) {
+    if (timeZone !== undefined && !isTimeZone(timeZone)) {
+      return reject("invalid-time-zone", `${timeZone} isn't a time zone.`);
+    }
   }
   // The series takes a new kind or zone only when the change gives the occurrence one; an
   // override in another zone or kind measures the change on its own clock.
   const converts = from.kind !== shown.kind || from.timeZone !== shown.timeZone;
   const to = converts ? shown : series.time;
+  // A drag by days keeps the series' time of day, even on a calendar whose zone changes DST on
+  // other dates than the series': the instants the calendar proposes would move it by an hour.
+  const calendarMove =
+    converts || to.kind !== "timed"
+      ? undefined
+      : calendarDays(change, options.timeZone, from.timeZone);
 
   // Starts on the series' own clock read back to the time it repeats at, so one a DST gap moved
   // forward measures from the written time, as the occurrence's original start does.
@@ -282,15 +315,19 @@ export function measureMove(
   const days = shownFrom.toPlainDate().until(shownTo.toPlainDate()).days;
   const onDay = wallFrom.toPlainDate().add({ days });
   const wallTo =
-    to.kind === "all-day"
-      ? onDay.toPlainDateTime()
-      : converts && from.kind === "all-day"
-        ? onDay.toPlainDateTime(shownTo.toPlainTime())
-        : from.kind === "all-day" || shown.kind === "all-day"
-          ? wallFrom.add({ days })
-          : wallFrom.add(shownFrom.until(shownTo));
+    calendarMove !== undefined
+      ? wallFrom.add({ days: calendarMove })
+      : to.kind === "all-day"
+        ? onDay.toPlainDateTime()
+        : converts && from.kind === "all-day"
+          ? onDay.toPlainDateTime(shownTo.toPlainTime())
+          : from.kind === "all-day" || shown.kind === "all-day"
+            ? wallFrom.add({ days })
+            : wallFrom.add(shownFrom.until(shownTo));
   return {
     days: wallFrom.toPlainDate().until(wallTo.toPlainDate()).days,
+    // A day move that lands at the series' time keeps its exact start, as the second 02:30 does.
+    dropped: calendarMove === undefined || toWall(proposed.start, to).equals(wallTo),
     from,
     shown,
     time: wallFrom.toPlainTime().until(wallTo.toPlainTime()),

@@ -2,7 +2,7 @@
   "name": "benchmark",
   "version": "0.0.0",
   "private": true,
-  "description": "Internal core and React benchmark runners for Moltenship Time.",
+  "description": "Internal core, React and recurrence benchmark runners for Moltenship Time.",
   "type": "module",
   "scripts": {
     "build": "vp pack",
@@ -12,6 +12,7 @@
   "dependencies": {
     "@moltenship/calendar-core": "workspace:*",
     "@moltenship/calendar-react": "workspace:*",
+    "@moltenship/calendar-recurrence": "workspace:*",
     "@moltenship/calendar-temporal": "workspace:*",
     "fixtures": "workspace:*"
   },

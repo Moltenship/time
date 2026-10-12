@@ -52,6 +52,14 @@ export interface ResolveRecurrenceEditOptions<TEvent, TEventId extends EventId =
    * `occurrenceIds` maps their IDs too and selection and focus can follow them.
    */
   readonly occurrences?: readonly RecurrenceOccurrence<TEvent, TEventId>[];
+  /**
+   * The calendar's time zone, which the user moves occurrences on. With it, a timed series dragged
+   * by whole days there moves by whole days on its own clock and keeps its time of day, as
+   * `"all"` and `"following"` should, even in a week when the calendar's zone has changed DST and
+   * the series' hasn't. Without it, the series takes the time the occurrence was dropped at, which
+   * is an hour off then.
+   */
+  readonly timeZone?: string;
 }
 
 /** The series' master after the edit. Write `placement` and `recurrence` over the stored ones. */

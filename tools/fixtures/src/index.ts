@@ -140,7 +140,8 @@ function isoDateTime(minute: number, suffix: "" | "Z"): string {
   return `${isoDate(dayIndex)}T${padded(hour, 2)}:${padded(minuteOfHour, 2)}:00${suffix}`;
 }
 
-function createRandom(seed: number) {
+/** A seeded generator of integers below `upperBound`, so every fixture is the same each run. */
+export function createRandom(seed: number): (upperBound: number) => number {
   let state = seed >>> 0;
 
   return (upperBound: number): number => {

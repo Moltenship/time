@@ -1,5 +1,7 @@
 import type { IcsWeekday, IcsWeekdayNumber } from "@moltenship/ics";
 
+import { weekdays } from "../internal/dates";
+import { SECONDS_PER_DAY } from "../rule/calendar";
 import type { RecurrenceRule } from "../types";
 import type { RecurrenceOrdinalShift } from "./ordinals";
 
@@ -22,9 +24,6 @@ export type ShiftedRule =
   | { readonly problem: string };
 
 type MutableRule = { -readonly [Key in keyof RecurrenceRule]: RecurrenceRule[Key] };
-
-const weekdays: readonly IcsWeekday[] = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
-const secondsPerDay = 86_400;
 
 function shiftWeekday(weekday: IcsWeekday, days: number): IcsWeekday {
   return weekdays[(((weekdays.indexOf(weekday) + days) % 7) + 7) % 7]!;
@@ -61,7 +60,7 @@ function shiftTimes(rule: MutableRule, shift: RuleShift): string | undefined {
   if (nanoseconds === 0) return undefined;
   if (nanoseconds % 1e9 !== 0) return "BYHOUR, BYMINUTE and BYSECOND move by whole seconds only.";
   const shifted = times.map((time) => time + nanoseconds / 1e9);
-  if (shifted.some((time) => time < 0 || time >= secondsPerDay)) {
+  if (shifted.some((time) => time < 0 || time >= SECONDS_PER_DAY)) {
     return "The rule's times of day would cross midnight.";
   }
 

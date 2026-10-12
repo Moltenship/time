@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 
-import { act, useEffect } from "react";
+import { act, StrictMode, useEffect } from "react";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import type { RecurrenceEditScope } from "../recurrence-scope-dialog/recurrence-scope-dialog";
+import {
+  RecurrenceScopeDialog,
+  type RecurrenceEditScope,
+} from "../recurrence-scope-dialog/recurrence-scope-dialog";
 import {
   useRecurrenceScopePrompt,
   type RecurrenceScopePrompt,
@@ -142,6 +145,22 @@ test("asking again resolves the open question with null and shows the new one", 
   await expect(second).resolves.toBe("following");
 });
 
+test("asking again hands over an answer whose dialog is still closing", async () => {
+  await renderHost();
+  const { answer: first } = await ask();
+  let second!: Promise<RecurrenceEditScope | null>;
+
+  await act(async () => {
+    choice("all")!.click();
+    second = asks.at(-1)!({ action: "delete" });
+  });
+
+  await expect(first).resolves.toBe("all");
+  expect(textOf(dialog()!.getAttribute("aria-labelledby"))).toBe("Delete recurring event");
+  await click(choice("this"));
+  await expect(second).resolves.toBe("this");
+});
+
 test("unmounting resolves an open question with null", async () => {
   const view = await renderHost();
   const { answer } = await ask();
@@ -200,6 +219,45 @@ test("focus starts on the narrowest scope offered and returns where it was", asy
 
   await ask({ scopes: ["all", "following"] });
   await vi.waitFor(() => expect(document.activeElement).toBe(choice("following")));
+});
+
+test.each(["this", null] as const)(
+  "answers %s once the dialog has closed and focus is back where it was",
+  async (scope) => {
+    await renderHost();
+    const event = document.querySelector<HTMLElement>('[data-event-id="standup"]')!;
+    await act(async () => event.focus());
+    const { answer } = await ask();
+    await vi.waitFor(() => expect(document.activeElement).toBe(choice("this")));
+    // The application applies the answer next, which can replace the event's element. Focus has
+    // to be back on it by then, so the page can move focus on from it.
+    const answered = answer.then((picked) => [picked, dialog(), document.activeElement]);
+
+    await click(scope === null ? cancel() : choice(scope));
+
+    await expect(answered).resolves.toEqual([scope, null, event]);
+  },
+);
+
+test("StrictMode's second mount doesn't count as the dialog closing", async () => {
+  const closed = vi.fn();
+  const view = await render(
+    <StrictMode>
+      <RecurrenceScopeDialog open onClosed={closed} onResolve={() => {}} />
+    </StrictMode>,
+  );
+  cleanup = view.unmount;
+  await act(async () => {});
+  expect(dialog()).not.toBeNull();
+  expect(closed).not.toHaveBeenCalled();
+
+  await view.rerender(
+    <StrictMode>
+      <RecurrenceScopeDialog open={false} onClosed={closed} onResolve={() => {}} />
+    </StrictMode>,
+  );
+  await vi.waitFor(() => expect(dialog()).toBeNull());
+  await vi.waitFor(() => expect(closed).toHaveBeenCalledTimes(1));
 });
 
 test("Tab past either end of the dialog wraps around inside it", async () => {

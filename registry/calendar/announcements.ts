@@ -49,6 +49,24 @@ function subject({ event }: Pick<CalendarInteractionUpdate, "event">): string {
   return event === null ? "the new event" : eventTitle(event);
 }
 
+/**
+ * Whether the application cancelled the change itself: `onEventChange` rejected with an
+ * `AbortError`, as when the user dismisses a question it asked, such as the recurrence scope.
+ */
+function isAbort(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: unknown }).name === "AbortError"
+  );
+}
+
+function cancelled(update: Pick<CalendarInteractionUpdate, "cause" | "event">): string {
+  return update.cause === "create"
+    ? "Cancelled the new event."
+    : `Cancelled. ${subject(update)} is back where it was.`;
+}
+
 function sameResources(left: readonly ResourceId[], right: readonly ResourceId[]): boolean {
   return left.length === right.length && left.every((id) => right.includes(id));
 }
@@ -129,6 +147,7 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
     }
   },
   reject: (update) => {
+    if (update.reason === "handler-error" && isAbort(update.error)) return cancelled(update);
     switch (update.reason) {
       // A newer change to the same event replaced this one.
       case "superseded":
@@ -150,8 +169,5 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
         return `Couldn't save ${subject(update)}, so it's back where it was.`;
     }
   },
-  cancel: (update) =>
-    update.cause === "create"
-      ? "Cancelled the new event."
-      : `Cancelled. ${subject(update)} is back where it was.`,
+  cancel: cancelled,
 };

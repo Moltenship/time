@@ -1,4 +1,6 @@
-import type { IcsWeekday, IcsWeekdayNumber } from "@moltenship/ics";
+import type { IcsWeekdayNumber } from "@moltenship/ics";
+
+import { weekdayNumbers } from "../internal/dates";
 
 /**
  * How a move rewrites a rule's ordinal weekdays, such as the 2nd Tuesday to the 2nd Wednesday. Each
@@ -10,16 +12,6 @@ export interface RecurrenceOrdinalShift {
   /** What the ordinals count within. */
   readonly period: "month" | "year";
 }
-
-const weekdayNumbers: Readonly<Record<IcsWeekday, number>> = {
-  FR: 5,
-  MO: 1,
-  SA: 6,
-  SU: 7,
-  TH: 4,
-  TU: 2,
-  WE: 3,
-};
 
 function position(date: Temporal.PlainDate, period: RecurrenceOrdinalShift["period"]) {
   return period === "month"

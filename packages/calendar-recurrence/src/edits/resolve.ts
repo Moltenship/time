@@ -1,7 +1,7 @@
 import type { CalendarEventChange, EventId, ResourceId } from "@moltenship/calendar-core";
 
+import { datesEqual } from "../internal/dates";
 import type { RecurrenceAdapters } from "../types";
-import { datesEqual } from "./dates";
 import { resolveAll } from "./scope-all";
 import { resolveFollowing } from "./scope-following";
 import { resolveThis } from "./scope-this";
@@ -61,14 +61,17 @@ function unwrap<TEvent, TEventId extends EventId, TResourceId extends ResourceId
  *   this way, as Outlook on the web does; classic Outlook offers only one occurrence or the whole
  *   series, and RANGE=THISANDFUTURE isn't written. A delete only ends the series, dropping later
  *   dates and overrides. When nothing before the occurrence is left to show, as on the first one,
- *   it is `"all"`. From an occurrence only an RDATE adds, a series with a rule can be ended but not
- *   continued.
+ *   it is `"all"`. Only EXDATEs count for that, since the resolver doesn't see the series' other
+ *   overrides: when cancelled overrides hide every earlier occurrence, the series still splits,
+ *   and the old one shows nothing. From an occurrence only an RDATE adds, a series with a rule can
+ *   be ended but not continued.
  * - **`"all"`:** the series changes as the user changed the occurrence: the delta from where it
  *   showed to where it goes, measured on the series' own wall clock (`sourceTimeZone` for a timed
  *   series), applies to every occurrence's original start. So a moved override that is dragged a
  *   day moves the series a day, at its own time, and one that is stretched stretches the series.
- *   The calendar moves an occurrence on the clock it shows, so in a zone whose DST changes on other
- *   dates than the series', a drag by days can change the series' time by an hour. The rule moves
+ *   The calendar moves an occurrence on the clock it shows; pass its zone as `options.timeZone`, so
+ *   a drag by days there keeps the series' time of day even in a week when the two zones' DST
+ *   differs. Without it, the series takes the time the occurrence was dropped at. The rule moves
  *   with the delta (BYDAY, month and year days, BYMONTH, BYHOUR, BYMINUTE, BYSECOND and WKST; see
  *   `shiftRule`), and so do EXDATEs, RDATEs, UNTIL and every override's `recurrenceId`, so deleted
  *   occurrences stay deleted and moved ones don't appear twice. Under an ordinal weekday rule, each

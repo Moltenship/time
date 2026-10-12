@@ -81,7 +81,7 @@ type UpdateDetail =
       readonly proposed: CalendarCommitPlacement;
       readonly warnings?: readonly string[];
     }
-  | { readonly phase: "reject"; readonly reason: string };
+  | { readonly error?: unknown; readonly phase: "reject"; readonly reason: string };
 
 type CalendarCommitPlacement = Extract<
   CalendarInteractionUpdate,
@@ -317,7 +317,11 @@ function createKeyboardHandlers(
         });
       } else {
         if (owned()) moveFocus(current.origin);
-        announce(current, { phase: "reject", reason: result.reason });
+        announce(current, {
+          phase: "reject",
+          reason: result.reason,
+          ...(result.error === undefined ? {} : { error: result.error }),
+        });
       }
     });
   }

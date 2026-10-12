@@ -383,7 +383,7 @@ describe("focus through edge cases", () => {
       await new Promise((resolve) => setTimeout(resolve));
     });
 
-    expect(spoken(container)).toBe("reject move a handler-error");
+    expect(spoken(container)).toBe("reject move a handler-error (offline)");
     expect(segment(container, "a").dataset.start).toBe("2026-10-07");
     expect(focused()).toBe("b@2026-10-15");
     await press("Escape");
@@ -420,7 +420,7 @@ describe("late results with controlled focus", () => {
       save.settle.reject!(new Error("offline"));
       await new Promise((resolve) => setTimeout(resolve));
     });
-    expect(spoken(container)).toBe("reject move a handler-error");
+    expect(spoken(container)).toBe("reject move a handler-error (offline)");
     expect(focused()).toBe("b@2026-10-14");
     expect(tabStops(container)).toEqual(["b@2026-10-14"]);
   });

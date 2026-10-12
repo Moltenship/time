@@ -522,6 +522,9 @@ importers:
       '@moltenship/calendar-react':
         specifier: workspace:*
         version: link:../packages/calendar-react
+      '@moltenship/calendar-recurrence':
+        specifier: workspace:*
+        version: link:../packages/calendar-recurrence
       '@moltenship/calendar-temporal':
         specifier: workspace:*
         version: link:../packages/calendar-temporal
@@ -797,6 +800,9 @@ importers:
       '@moltenship/calendar':
         specifier: workspace:*
         version: link:../../packages/calendar
+      '@moltenship/calendar-recurrence':
+        specifier: workspace:*
+        version: link:../../packages/calendar-recurrence
       react:
         specifier: 'catalog:'
         version: 19.3.0

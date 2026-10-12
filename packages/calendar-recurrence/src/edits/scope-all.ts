@@ -1,7 +1,7 @@
 import type { EventId, ResourceId } from "@moltenship/calendar-core";
 
+import { datesEqual, fromWall, toWall } from "../internal/dates";
 import type { RecurrenceAdapters, RecurrenceDate } from "../types";
-import { datesEqual, fromWall, toWall } from "./dates";
 import { rekey, targetWall } from "./keys";
 import { shiftRule } from "./rule-shift";
 import {
@@ -85,7 +85,7 @@ export function resolveAll<TEvent, TEventId extends EventId, TResourceId extends
     const firstWall = targetWall(shift, series.first.start);
     // The first occurrence dropped as it is keeps its exact start, as a second 02:30 of DST's end.
     firstStart =
-      datesEqual(series.recurrenceId, series.first.start) && override === undefined
+      datesEqual(series.recurrenceId, series.first.start) && override === undefined && move.dropped
         ? proposed.start
         : fromWall(firstWall, move.to);
     wallStart =

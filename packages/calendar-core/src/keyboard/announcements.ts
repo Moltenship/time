@@ -39,6 +39,12 @@ export type CalendarInteractionUpdate = CalendarInteractionUpdateBase &
       }
     | {
         readonly phase: "reject";
+        /**
+         * What `onEventChange` or a policy threw or rejected with, when one did. An `AbortError`
+         * from `onEventChange` means the application cancelled the change itself, as when the user
+         * dismisses a question it asked, rather than failing to save it.
+         */
+        readonly error?: unknown;
         /** The policy or transaction reason, such as `"read-only"` or `"handler-error"`. */
         readonly reason: string;
       }

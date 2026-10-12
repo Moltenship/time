@@ -2,11 +2,11 @@ import type { CalendarEventInterval } from "@moltenship/calendar-core";
 import { getEventEnd, type IcsDateValue, type IcsPeriod } from "@moltenship/ics";
 
 import { coerceRecurrenceDate, type RecurrenceDateRole } from "../dates";
-import { compareDates } from "../series/clock";
+import { compareDates, recurrenceDateOf } from "../internal/dates";
 import type { RecurrenceDate, RecurrencePeriod } from "../types";
 
-/** Where a series' dates are read. */
-export interface SeriesTime {
+/** A series in a feed: its first occurrence, and where the feed's dates for it are read. */
+export interface FeedSeries {
   readonly first: CalendarEventInterval;
   /** The feed's zone, which instants on all-day and floating series are read in; else UTC. */
   readonly timeZone?: string;
@@ -15,20 +15,6 @@ export interface SeriesTime {
 export function instantOf(value: IcsDateValue): Temporal.Instant | undefined {
   if (value.kind === "utc") return value.instant;
   return value.kind === "zoned" ? value.zoned.toInstant() : undefined;
-}
-
-/** The `RecurrenceDate` a value names in its own kind; an unresolved time keeps its wall time. */
-export function naturalDate(value: IcsDateValue): RecurrenceDate {
-  switch (value.kind) {
-    case "date":
-      return value.date;
-    case "utc":
-      return value.instant;
-    case "zoned":
-      return value.zoned.toInstant();
-    default:
-      return value.wallTime;
-  }
 }
 
 /**
@@ -41,7 +27,7 @@ export function ownRecurrenceId(
   value: IcsDateValue,
   own: CalendarEventInterval | undefined,
 ): RecurrenceDate {
-  const date = naturalDate(value);
+  const date = recurrenceDateOf(value);
   if (value.kind !== "floating" || own?.kind !== "timed") return date;
   return coerceRecurrenceDate(date, own, "start") ?? date;
 }
@@ -50,11 +36,13 @@ export function ownRecurrenceId(
 // and a UTC one's is the feed's. Timed series keep the instant.
 function coerce(
   value: IcsDateValue,
-  series: SeriesTime,
+  series: FeedSeries,
   role: RecurrenceDateRole,
 ): RecurrenceDate | undefined {
   const date =
-    value.kind === "zoned" && series.first.kind !== "timed" ? value.wallTime : naturalDate(value);
+    value.kind === "zoned" && series.first.kind !== "timed"
+      ? value.wallTime
+      : recurrenceDateOf(value);
   const options = series.timeZone === undefined ? {} : { defaultTimeZone: series.timeZone };
   return coerceRecurrenceDate(date, series.first, role, options);
 }
@@ -75,7 +63,7 @@ export interface SeriesDate<TDate = RecurrenceDate> {
  */
 export function toSeriesDate(
   value: IcsDateValue,
-  series: SeriesTime,
+  series: FeedSeries,
   role: RecurrenceDateRole,
   label: string,
 ): SeriesDate {
@@ -107,12 +95,12 @@ export function toSeriesDate(
  */
 export function toSeriesPeriod(
   period: IcsPeriod,
-  series: SeriesTime,
+  series: FeedSeries,
 ): SeriesDate<RecurrenceDate | RecurrencePeriod> {
   const start = toSeriesDate(period.start, series, "start", "RDATE");
   // In the start's kind, so the two compare.
   const sourceEnd = getEventEnd(period);
-  if (compareDates(naturalDate(sourceEnd), naturalDate(period.start)) <= 0) {
+  if (compareDates(recurrenceDateOf(sourceEnd), recurrenceDateOf(period.start)) <= 0) {
     const invalid = "RDATE PERIOD doesn't end after it starts; only its start was kept.";
     return { ...start, invalid };
   }

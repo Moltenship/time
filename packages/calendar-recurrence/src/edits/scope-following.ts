@@ -1,5 +1,6 @@
 import type { EventId, ResourceId } from "@moltenship/calendar-core";
 
+import { compareDates, datesEqual, fromWall, justAfter, toWall } from "../internal/dates";
 import { expandRecurrenceRule } from "../rule/expand";
 import type {
   RecurrenceAdapters,
@@ -7,7 +8,6 @@ import type {
   RecurrencePeriod,
   RecurrenceRule,
 } from "../types";
-import { compareDates, datesEqual, fromWall, justAfter, toWall } from "./dates";
 import { extraStart, readKey, rekey, seriesWall } from "./keys";
 import { shiftRule } from "./rule-shift";
 import { resolveAll } from "./scope-all";
@@ -176,8 +176,10 @@ export function resolveFollowing<TEvent, TEventId extends EventId, TResourceId e
   const move = measureMove(series, change, options);
   if ("type" in move) return move;
   // The new series starts where the user's change puts the occurrence: where it was dropped, or,
-  // for an override, its original start moved by the same change.
-  const start = override === undefined ? proposed.start : fromWall(move.wallTo, move.to);
+  // for an override or a day move on a calendar in another zone, its original start moved by the
+  // same change.
+  const start =
+    override === undefined && move.dropped ? proposed.start : fromWall(move.wallTo, move.to);
   let shift = keyShift(series, move, { from: recurrenceId, to: start });
   let next: RecurrenceRule | undefined;
   if (rule !== undefined) {
