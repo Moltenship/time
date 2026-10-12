@@ -100,7 +100,7 @@ raw and 7 KiB gzip. Because the check reads the emitted artifact, the recursive 
 the same gate that runs before publication.
 
 `vp run calendar-core#build` applies the same emitted-artifact check to the core surface: at
-most 96 KiB raw and 24 KiB gzip. `vp run engine:gate` is the reproducible phase-1 audit. It runs the
+most 180 KiB raw and 46 KiB gzip. `vp run engine:gate` is the reproducible phase-1 audit. It runs the
 repository check, the interval/DST/index/revision/cache/invalid-data matrices, dependency and packed
 API checks, both production engine builds and size budgets, and the uncached protocol-v2 core
 benchmark. The benchmark is a reference-hardware gate rather than a portable CI timing claim, so it
@@ -108,14 +108,15 @@ remains an explicit local task while its deterministic correctness and build che
 
 `vp run react:store` is the focused issue #25 gate. It checks and builds `calendar-react`, runs the
 controlled/uncontrolled state matrix, two-root isolation, selector invalidation, injected-store and
-cleanup checks, and verifies deterministic SSR/hydration. The production declaration audit fails if
-Jotai enters the public API or if the React client boundary is dropped.
+cleanup checks, and verifies deterministic SSR/hydration. The production build check
+(`scripts/verify-public-api.mjs`) fails if the React client boundary is dropped or the runtime
+outgrows its budget.
 
 `vp run react:factory` is the focused issue #26 gate. It adds the typed factory, compound controls,
 custom-view registry, diagnostics/capabilities, facade consumer, direct React 19 refs, deterministic
 IDs, and public declaration checks. The facade test imports only supported package roots and fails
 if its third-party view needs a cast or a private source path. The React package build also enforces
-its 50 KiB raw / 13.5 KiB gzip production ESM budget.
+its 76 KiB raw / 20 KiB gzip production ESM budget.
 
 `vp run react:gate` is the phase-2 regression gate from issue #27. It runs the repository check, the
 complete React/facade package tests and production builds, the focused render/hydrate harness, the

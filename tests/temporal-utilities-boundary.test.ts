@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { glob, readFile } from "node:fs/promises";
 
 import { describe, expect, test } from "vite-plus/test";
 
@@ -49,5 +49,21 @@ describe("calendar-temporal runtime boundary", () => {
     };
 
     expect(manifest.dependencies ?? {}).toEqual({});
+  });
+});
+
+describe("the clock boundary", () => {
+  test("only the system clock reads the time, and no package or view uses Date", async () => {
+    const clock = "packages/calendar-temporal/src/clock/calendar-clock.ts";
+    const offenders: string[] = [];
+    for await (const path of glob(["packages/*/src/**/*.{ts,tsx}", "registry/**/*.{ts,tsx}"])) {
+      if (/(?:^|\/)(?:node_modules|tests)\/|\.test\.tsx?$/u.test(path)) continue;
+      const source = await readFile(path, "utf8");
+      if (path !== clock && /\bTemporal\.Now\b/u.test(source))
+        offenders.push(`${path}: Temporal.Now`);
+      if (/\bnew Date\b|\bDate\.(?:now|parse|UTC)\b/u.test(source)) offenders.push(`${path}: Date`);
+    }
+
+    expect(offenders).toEqual([]);
   });
 });

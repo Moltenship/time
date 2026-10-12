@@ -28,6 +28,7 @@ import {
   type ResourceId,
   type SecondaryTimeZoneIssue,
 } from "@moltenship/calendar-core";
+import { createSystemClock } from "@moltenship/calendar-temporal";
 import {
   createElement,
   createRef,
@@ -107,6 +108,8 @@ const noResources: readonly never[] = Object.freeze([]);
 const noAnnotations: readonly never[] = Object.freeze([]);
 const noSecondaryTimeZones: readonly never[] = Object.freeze([]);
 const todaySampleIntervalMs = 60_000;
+/** Today, when `Root` has neither `now` nor a clock. */
+const systemClock = createSystemClock();
 /** A root without `onEventChange` is read-only, so its checks reject everything. */
 const readOnlyRoot = () => ({ reason: "read-only", type: "reject" }) as const;
 
@@ -246,7 +249,7 @@ function createSemanticActions<
     navigatePrevious: () => navigate(-1),
     navigateToday() {
       const { environment } = committed.current;
-      const instant = environment.now ?? environment.clock?.instant() ?? Temporal.Now.instant();
+      const instant = environment.now ?? (environment.clock ?? systemClock).instant();
       actions.setAnchorDate(instant.toZonedDateTimeISO(read().timeZone).toPlainDate());
     },
     proposeEventChange(proposal) {
