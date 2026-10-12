@@ -45,7 +45,7 @@ smallest one that covers the change.
   UI that affects accessibility; CI config. Also before a release candidate or a release, and
   whenever CI and local disagree.
 
-On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 100 from a cold cache.
+On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 110 from a cold cache.
 Steps run in parallel where they're independent. Steps that write or read generated files
 (`dist`, `.next`, `.source`, packed tarballs) run one after another in a `gate:serial` lane. Vite Task
 caches each step, so a rerun only redoes what changed; `a11y:ci-speed` never replays, since a timing

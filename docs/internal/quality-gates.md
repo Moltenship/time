@@ -16,7 +16,7 @@ Three tasks group the gates below. `AGENTS.md` says which one a change runs.
 | Full  | `vp run ready:full`  | Every PR step, `a11y:ci-speed`, `browsers`, then `showcase:types`, search and `registry:e2e` in `gate:serial:full` |
 
 On a 15-core Apple-silicon laptop, quick takes about 13 seconds, PR 37 seconds from a cold cache
-and 24 warm, and full 102 seconds cold and 97 warm. The warm floor is the steps that pack packages,
+and 24 warm, and full 112 seconds cold and 103 warm. The warm floor is the steps that pack packages,
 build the docs site or install the registry into clean apps, which never replay: they rewrite their
 own inputs, or reach the network.
 
@@ -73,7 +73,8 @@ installs the polyfill before any test imports, as an app would, and a test check
   until #181 the agenda's end, the 10,000-event agenda scroll (too slow on the polyfill in CI), a
   day swipe's and a month step's snap points, and a drag against the edge.
 - Playwright's Firefox doesn't start on macOS 27 (#182). There the run leaves it out and says so;
-  CI's `browsers` job runs it on Linux.
+  CI's `browsers` job runs it on Linux, on demand, where its timing tests still vary from run to
+  run (#192).
 
 ## Passing gates
 
