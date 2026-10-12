@@ -110,10 +110,11 @@ Unpublish only for something that must disappear, such as a leaked secret. npm a
 
 ## Registry
 
-The dry run runs `vp run registry:smoke`, which validates the registry items. When the registry
-build from #43 lands, add it to the `registry` step in
-[`tools/release/src/dry-run.ts`](../../tools/release/src/dry-run.ts), so the dry run builds the
-registry and checks it against the packed versions.
+The dry run runs `vp run registry:smoke`, which validates the registry items. #43 adds
+`registry:build`, which writes the registry JSON the docs site serves, and `registry:e2e`, which runs
+`shadcn add` in clean apps against packed packages. Once they're on `main`, add both to the
+`registry` step in [`tools/release/src/dry-run.ts`](../../tools/release/src/dry-run.ts), so the
+dry run builds the registry for the version it packs.
 
 ## Open owner decisions
 
