@@ -2,18 +2,17 @@ import { readFile, readdir, stat } from "node:fs/promises";
 import { isAbsolute, relative, resolve, sep } from "node:path";
 
 import parsePackageArgument from "npm-package-arg";
-import { validRange } from "semver";
 import { registryItemSchema } from "shadcn/schema";
 
-const publicRuntimePackages = new Set([
-  "@moltenship/calendar",
-  "@moltenship/calendar-core",
-  "@moltenship/calendar-dnd",
-  "@moltenship/calendar-react",
-  "@moltenship/calendar-temporal",
-]);
+import {
+  dragAndDropPackages,
+  registryNamespace,
+  registrySourceDirectory,
+  registrySourcePackage,
+} from "./config";
 
-const standardCssVariables = new Set([
+/** Tokens a stock shadcn theme defines. Items may set these or `calendar-*` tokens, nothing else. */
+export const standardCssVariables: ReadonlySet<string> = new Set([
   "accent",
   "accent-foreground",
   "background",
@@ -35,8 +34,13 @@ const standardCssVariables = new Set([
   "secondary-foreground",
 ]);
 
-const acceptedDependencyTypes = new Set(["alias", "range", "tag", "version"]);
-const acceptedRegistryDependency = /^(?:[a-z0-9]+(?:-[a-z0-9]+)*|@[a-z0-9-]+\/[a-z0-9-]+)$/;
+/**
+ * Targets start with one of shadcn's alias placeholders, so files land under the consumer's own
+ * `components.json` aliases, or with `~/` for a path from the project root.
+ */
+const aliasTargetPrefixes = ["@components/", "@ui/", "@lib/", "@hooks/", "~/"] as const;
+const shadcnItemName = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
+const namespacedItem = new RegExp(`^${registryNamespace}/([a-z0-9]+(?:-[a-z0-9]+)*)$`, "u");
 
 export interface RegistryValidationIssue {
   readonly code: string;
@@ -59,6 +63,8 @@ export interface RegistryItemValidation {
   readonly issues: RegistryValidationIssue[];
   readonly name: string | null;
   readonly targets: string[];
+  /** Our items this one installs, by name. */
+  readonly itemDependencies: string[];
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -71,47 +77,95 @@ function issue(code: string, path: string, message: string): RegistryValidationI
 
 function isWithinWorkspace(workspaceRoot: string, path: string): boolean {
   const resolvedRoot = resolve(workspaceRoot);
-  const resolvedPath = resolve(resolvedRoot, path);
-  const pathFromRoot = relative(resolvedRoot, resolvedPath);
+  const pathFromRoot = relative(resolvedRoot, resolve(resolvedRoot, path));
   return pathFromRoot !== ".." && !pathFromRoot.startsWith(`..${sep}`) && !isAbsolute(pathFromRoot);
 }
 
 function isSafeTarget(target: string): boolean {
-  const normalized = target.startsWith("~/") ? target.slice(2) : target;
+  const prefix = aliasTargetPrefixes.find((candidate) => target.startsWith(candidate));
+  if (!prefix) return false;
+  const rest = target.slice(prefix.length);
   return (
-    normalized.length > 0 &&
-    !isAbsolute(normalized) &&
-    !normalized.includes("\\") &&
-    !normalized.split("/").some((part) => part === "" || part === "." || part === "..")
+    rest.length > 0 &&
+    !rest.includes("\\") &&
+    !rest.split("/").some((part) => part === "" || part === "." || part === "..")
   );
+}
+
+async function isFile(workspaceRoot: string, path: string): Promise<boolean> {
+  if (!isWithinWorkspace(workspaceRoot, path)) return false;
+  try {
+    return (await stat(resolve(workspaceRoot, path))).isFile();
+  } catch {
+    return false;
+  }
+}
+
+async function readDeclaredPackages(workspaceRoot: string): Promise<ReadonlySet<string>> {
+  const manifest = JSON.parse(
+    await readFile(resolve(workspaceRoot, registrySourcePackage), "utf8"),
+  ) as { readonly dependencies?: Record<string, string> };
+  return new Set(Object.keys(manifest.dependencies ?? {}));
 }
 
 function validateDependencies(
   dependencies: readonly string[] | undefined,
   manifestPath: string,
   field: "dependencies" | "devDependencies",
+  declaredPackages: ReadonlySet<string>,
 ): RegistryValidationIssue[] {
   const issues: RegistryValidationIssue[] = [];
   const seen = new Set<string>();
 
   for (const [index, dependency] of (dependencies ?? []).entries()) {
     const path = `${manifestPath}.${field}[${index}]`;
+    let parsed: ReturnType<typeof parsePackageArgument>;
     try {
-      const parsed = parsePackageArgument(dependency);
-      if (!parsed.name || !acceptedDependencyTypes.has(parsed.type)) {
-        issues.push(
-          issue("invalid-dependency", path, `Dependency must resolve from npm: ${dependency}`),
-        );
-      } else if (seen.has(parsed.name)) {
-        issues.push(
-          issue("duplicate-dependency", path, `Dependency is declared twice: ${parsed.name}`),
-        );
-      } else {
-        seen.add(parsed.name);
-      }
+      parsed = parsePackageArgument(dependency);
     } catch {
       issues.push(
         issue("invalid-dependency", path, `Dependency is not a valid npm argument: ${dependency}`),
+      );
+      continue;
+    }
+    if (!parsed.name || !["range", "tag", "version"].includes(parsed.type)) {
+      issues.push(
+        issue("invalid-dependency", path, `Dependency must resolve from npm: ${dependency}`),
+      );
+      continue;
+    }
+    if (seen.has(parsed.name)) {
+      issues.push(
+        issue("duplicate-dependency", path, `Dependency is declared twice: ${parsed.name}`),
+      );
+      continue;
+    }
+    seen.add(parsed.name);
+    if (dependency !== parsed.name) {
+      issues.push(
+        issue(
+          "versioned-dependency",
+          path,
+          `List ${parsed.name} without a version; the build takes its range from the workspace`,
+        ),
+      );
+    }
+    if (dragAndDropPackages.some((pattern) => pattern.test(parsed.name!))) {
+      issues.push(
+        issue(
+          "drag-and-drop-dependency",
+          path,
+          `Drag and drop stays optional, so no item may depend on ${parsed.name}`,
+        ),
+      );
+    }
+    if (field === "dependencies" && !declaredPackages.has(parsed.name)) {
+      issues.push(
+        issue(
+          "undeclared-dependency",
+          path,
+          `${parsed.name} is not a dependency of ${registrySourcePackage}, so registry source can't import it`,
+        ),
       );
     }
   }
@@ -122,23 +176,24 @@ function validateDependencies(
 function validateRegistryDependencies(
   dependencies: readonly string[] | undefined,
   manifestPath: string,
-): RegistryValidationIssue[] {
-  return (dependencies ?? []).flatMap((dependency, index) => {
-    if (
-      acceptedRegistryDependency.test(dependency) ||
-      dependency.startsWith("https://") ||
-      dependency.startsWith("http://")
-    ) {
-      return [];
+): { issues: RegistryValidationIssue[]; itemDependencies: string[] } {
+  const issues: RegistryValidationIssue[] = [];
+  const itemDependencies: string[] = [];
+  for (const [index, dependency] of (dependencies ?? []).entries()) {
+    const ownItem = namespacedItem.exec(dependency);
+    if (ownItem) {
+      itemDependencies.push(ownItem[1]!);
+    } else if (!shadcnItemName.test(dependency)) {
+      issues.push(
+        issue(
+          "invalid-registry-dependency",
+          `${manifestPath}.registryDependencies[${index}]`,
+          `Use a stock shadcn component name or ${registryNamespace}/<item>; the build turns our items into URLs: ${dependency}`,
+        ),
+      );
     }
-    return [
-      issue(
-        "invalid-registry-dependency",
-        `${manifestPath}.registryDependencies[${index}]`,
-        `Registry dependency must be a shadcn item name, namespaced item, or URL: ${dependency}`,
-      ),
-    ];
-  });
+  }
+  return { issues, itemDependencies };
 }
 
 function validateCssVariables(cssVars: unknown, manifestPath: string): RegistryValidationIssue[] {
@@ -152,7 +207,8 @@ function validateCssVariables(cssVars: unknown, manifestPath: string): RegistryV
     if (!isRecord(variables)) continue;
     for (const [name, value] of Object.entries(variables)) {
       const path = `${manifestPath}.cssVars.${mode}.${name}`;
-      if (!standardCssVariables.has(name) && !name.startsWith("calendar-")) {
+      const tokenName = mode === "theme" ? name.replace(/^color-/u, "") : name;
+      if (!standardCssVariables.has(tokenName) && !tokenName.startsWith("calendar-")) {
         issues.push(
           issue(
             "invalid-css-variable",
@@ -171,53 +227,34 @@ function validateCssVariables(cssVars: unknown, manifestPath: string): RegistryV
   return issues;
 }
 
-function validateCompatibility(
+async function validateMeta(
   meta: unknown,
   manifestPath: string,
-  runtimeDependencyNames: ReadonlySet<string>,
-): RegistryValidationIssue[] {
-  const metadata = isRecord(meta) ? meta : null;
-  const compatibility =
-    metadata && isRecord(metadata.compatibility) ? metadata.compatibility : null;
-  if (!compatibility || Object.keys(compatibility).length === 0) {
-    return [
-      issue(
-        "missing-compatibility",
-        `${manifestPath}.meta.compatibility`,
-        "Compatibility metadata must declare at least one runtime package and minimum range",
-      ),
-    ];
-  }
-
+  workspaceRoot: string,
+): Promise<RegistryValidationIssue[]> {
+  if (!isRecord(meta)) return [];
   const issues: RegistryValidationIssue[] = [];
-  for (const [runtimePackage, range] of Object.entries(compatibility)) {
-    const path = `${manifestPath}.meta.compatibility.${runtimePackage}`;
-    if (!publicRuntimePackages.has(runtimePackage)) {
+  if ("compatibility" in meta) {
+    issues.push(
+      issue(
+        "generated-compatibility",
+        `${manifestPath}.meta.compatibility`,
+        "The build writes meta.compatibility from the workspace versions; remove it here",
+      ),
+    );
+  }
+  if ("stylesheet" in meta) {
+    const stylesheet = meta.stylesheet;
+    if (
+      typeof stylesheet !== "string" ||
+      !stylesheet.endsWith(".css") ||
+      !(await isFile(workspaceRoot, stylesheet))
+    ) {
       issues.push(
         issue(
-          "invalid-compatibility-package",
-          path,
-          `Unsupported runtime package: ${runtimePackage}`,
-        ),
-      );
-    }
-    if (!runtimeDependencyNames.has(runtimePackage)) {
-      issues.push(
-        issue(
-          "missing-compatible-dependency",
-          path,
-          `Compatibility package must also appear in dependencies: ${runtimePackage}`,
-        ),
-      );
-    }
-    const trimmedRange = typeof range === "string" ? range.trim() : null;
-    const normalizedRange = trimmedRange ? validRange(trimmedRange) : null;
-    if (!normalizedRange || trimmedRange === "*") {
-      issues.push(
-        issue(
-          "invalid-compatibility-range",
-          path,
-          `Compatibility must be a non-floating semver range: ${String(range)}`,
+          "missing-stylesheet",
+          `${manifestPath}.meta.stylesheet`,
+          `meta.stylesheet must name a CSS file in the workspace: ${String(stylesheet)}`,
         ),
       );
     }
@@ -229,14 +266,31 @@ async function validateParsedItem(
   item: ReturnType<typeof registryItemSchema.parse>,
   manifestPath: string,
   workspaceRoot: string,
+  declaredPackages: ReadonlySet<string>,
 ): Promise<RegistryItemValidation> {
   const issues: RegistryValidationIssue[] = [];
   const files = item.files ?? [];
   const targets: string[] = [];
+  const registryDependencies = validateRegistryDependencies(
+    item.registryDependencies,
+    manifestPath,
+  );
 
-  if (files.length === 0) {
+  // A composition such as calendar-full owns no files and installs other items instead.
+  const isComposition =
+    item.type === "registry:item" && registryDependencies.itemDependencies.length > 0;
+  if (files.length === 0 && !isComposition) {
     issues.push(
       issue("missing-files", `${manifestPath}.files`, "Registry items must declare source files"),
+    );
+  }
+  if (files.length > 0 && isComposition) {
+    issues.push(
+      issue(
+        "composition-files",
+        `${manifestPath}.files`,
+        "A registry:item that composes other items must not own files",
+      ),
     );
   }
 
@@ -250,15 +304,10 @@ async function validateParsedItem(
           `Source path escapes the workspace: ${file.path}`,
         ),
       );
-    } else {
-      try {
-        const source = await stat(resolve(workspaceRoot, file.path));
-        if (!source.isFile()) throw new Error("not a file");
-      } catch {
-        issues.push(
-          issue("missing-source-file", `${path}.path`, `Source file does not exist: ${file.path}`),
-        );
-      }
+    } else if (!(await isFile(workspaceRoot, file.path))) {
+      issues.push(
+        issue("missing-source-file", `${path}.path`, `Source file does not exist: ${file.path}`),
+      );
     }
 
     if (!file.target) {
@@ -274,7 +323,7 @@ async function validateParsedItem(
         issue(
           "invalid-target",
           `${path}.target`,
-          `Target must stay inside the consumer project: ${file.target}`,
+          `Target must start with ${aliasTargetPrefixes.join(", ")} and stay inside it: ${file.target}`,
         ),
       );
     } else {
@@ -282,30 +331,31 @@ async function validateParsedItem(
     }
   }
 
-  const runtimeDependencyNames = new Set<string>();
-  for (const dependency of item.dependencies ?? []) {
-    try {
-      const name = parsePackageArgument(dependency).name;
-      if (name) runtimeDependencyNames.add(name);
-    } catch {
-      // The dependency validator reports the actionable error.
-    }
-  }
-
   issues.push(
-    ...validateDependencies(item.dependencies, manifestPath, "dependencies"),
-    ...validateDependencies(item.devDependencies, manifestPath, "devDependencies"),
-    ...validateRegistryDependencies(item.registryDependencies, manifestPath),
+    ...validateDependencies(item.dependencies, manifestPath, "dependencies", declaredPackages),
+    ...validateDependencies(
+      item.devDependencies,
+      manifestPath,
+      "devDependencies",
+      declaredPackages,
+    ),
+    ...registryDependencies.issues,
     ...validateCssVariables(item.cssVars, manifestPath),
-    ...validateCompatibility(item.meta, manifestPath, runtimeDependencyNames),
+    ...(await validateMeta(item.meta, manifestPath, workspaceRoot)),
   );
 
-  return { issues, name: item.name, targets };
+  return {
+    issues,
+    name: item.name,
+    targets,
+    itemDependencies: registryDependencies.itemDependencies,
+  };
 }
 
 export async function validateRegistryItemFile(
   manifestPath: string,
   { workspaceRoot }: RegistryValidationOptions,
+  declaredPackages?: ReadonlySet<string>,
 ): Promise<RegistryItemValidation> {
   let input: unknown;
   try {
@@ -317,6 +367,7 @@ export async function validateRegistryItemFile(
       ],
       name: null,
       targets: [],
+      itemDependencies: [],
     };
   }
 
@@ -332,41 +383,46 @@ export async function validateRegistryItemFile(
       ),
       name: isRecord(input) && typeof input.name === "string" ? input.name : null,
       targets: [],
+      itemDependencies: [],
     };
   }
 
-  return validateParsedItem(parsed.data, manifestPath, workspaceRoot);
+  return validateParsedItem(
+    parsed.data,
+    manifestPath,
+    workspaceRoot,
+    declaredPackages ?? (await readDeclaredPackages(workspaceRoot)),
+  );
 }
 
-async function findRegistryManifests(directory: string, workspaceRoot: string): Promise<string[]> {
-  const absoluteDirectory = resolve(workspaceRoot, directory);
-  const entries = await readdir(absoluteDirectory, { withFileTypes: true });
+/** Every `registry-item.json` one folder below `registry/`, in a stable order. */
+export async function findRegistryManifests(workspaceRoot: string): Promise<string[]> {
+  const entries = await readdir(resolve(workspaceRoot, registrySourceDirectory), {
+    withFileTypes: true,
+  });
   const manifests: string[] = [];
-  for (const entry of entries) {
-    const relativePath = `${directory}/${entry.name}`;
-    if (entry.name === "node_modules") continue;
-    if (entry.isDirectory()) {
-      manifests.push(...(await findRegistryManifests(relativePath, workspaceRoot)));
-    } else if (entry.name === "registry-item.json") {
-      manifests.push(relativePath);
-    }
+  for (const entry of entries.filter((candidate) => candidate.isDirectory())) {
+    const manifestPath = `${registrySourceDirectory}/${entry.name}/registry-item.json`;
+    if (await isFile(workspaceRoot, manifestPath)) manifests.push(manifestPath);
   }
-  return manifests;
+  return manifests.sort();
 }
 
 export async function validateRegistryWorkspace(
   workspaceRoot: string,
   manifestPaths?: readonly string[],
 ): Promise<RegistryValidationReport> {
-  const paths = manifestPaths ?? (await findRegistryManifests("registry", workspaceRoot));
+  const paths = manifestPaths ?? (await findRegistryManifests(workspaceRoot));
+  const declaredPackages = await readDeclaredPackages(workspaceRoot);
   const results = await Promise.all(
     paths.map(async (manifestPath) => ({
       manifestPath,
-      validation: await validateRegistryItemFile(manifestPath, { workspaceRoot }),
+      validation: await validateRegistryItemFile(manifestPath, { workspaceRoot }, declaredPackages),
     })),
   );
   const issues = results.flatMap(({ validation }) => validation.issues);
   const targetOwners = new Map<string, string>();
+  const names = new Set(results.map(({ validation }) => validation.name));
 
   for (const { manifestPath, validation } of results) {
     for (const target of validation.targets) {
@@ -377,6 +433,17 @@ export async function validateRegistryWorkspace(
         );
       } else {
         targetOwners.set(target, manifestPath);
+      }
+    }
+    for (const dependency of validation.itemDependencies) {
+      if (!names.has(dependency)) {
+        issues.push(
+          issue(
+            "unknown-registry-item",
+            `${manifestPath}.registryDependencies`,
+            `${registryNamespace}/${dependency} is not an item in this registry`,
+          ),
+        );
       }
     }
   }

@@ -14,6 +14,8 @@ export default defineConfig({
     tasks: {
       test: "vp test",
       smoke: "node --import tsx src/smoke.ts",
+      site: "node --import tsx src/build-cli.ts --out ../../apps/showcase/public/r",
+      e2e: { command: "node --import tsx src/e2e.ts", cache: false },
       "fixture:known-bad": {
         command: "node --import tsx src/known-bad.ts",
         cache: false,

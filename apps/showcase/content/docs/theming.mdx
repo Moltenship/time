@@ -4,14 +4,16 @@ description: Calendar color tokens, dark mode, and the event color palette.
 ---
 
 The packages don't ship any CSS. The styled parts in the registry read their colors and sizes from
-CSS variables defined in `calendar-theme.css`. Copy that file into your app as described in
-[UI source](/docs/installation#ui-source-optional), then change the variables to restyle the
-calendar. To try changes live and copy the CSS, use the [Theme builder](/docs/theme-builder).
+CSS variables defined in `calendar-theme.css`. The `calendar-theme` item, which every view brings,
+adds its tokens and rules to your global CSS, as described in
+[UI source](/docs/installation#ui-source-optional). Change the variables to restyle the calendar.
+To try changes live and copy the CSS, use the [Theme builder](/docs/theme-builder).
 
 ## Tokens
 
 `calendar-theme.css` defines the standard shadcn/ui tokens (`--background`, `--primary`,
-`--border`, and so on) plus these calendar tokens:
+`--border`, and so on) plus these calendar tokens. `shadcn add` adds only the calendar tokens, since
+your app has its own shadcn theme:
 
 | Variable                      | Used for                                              | Tailwind class                    |
 | ----------------------------- | ----------------------------------------------------- | --------------------------------- |

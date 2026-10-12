@@ -10,17 +10,12 @@
     {
       "path": "registry/recurrence-scope-dialog/recurrence-scope-dialog.tsx",
       "type": "registry:component",
-      "target": "components/calendar/recurrence-scope-dialog/recurrence-scope-dialog.tsx"
+      "target": "@components/calendar/recurrence-scope-dialog/recurrence-scope-dialog.tsx"
     },
     {
       "path": "registry/recurrence-scope-dialog/use-recurrence-scope-prompt.tsx",
       "type": "registry:hook",
-      "target": "components/calendar/recurrence-scope-dialog/use-recurrence-scope-prompt.tsx"
+      "target": "@components/calendar/recurrence-scope-dialog/use-recurrence-scope-prompt.tsx"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

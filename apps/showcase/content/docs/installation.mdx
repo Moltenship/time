@@ -83,18 +83,14 @@ Make sure your `tsconfig.json` includes the `ESNext` library so `Temporal` is ty
 
 ## UI source (optional)
 
-The packages render plain, unstyled elements. Styled parts built on them live in the repository's
-[`registry`](https://github.com/Moltenship/time/tree/main/registry) folder, as source you copy into
-your app and then own, the same way shadcn/ui works:
+The packages render plain, unstyled elements. The styled views, toolbar and theme are source files
+that you add to your app and then own, the way shadcn/ui works. They install with the shadcn CLI
+from this site's registry. There's no other installer.
 
-- `registry/calendar-theme`: `calendar-theme.css` (calendar tokens and event colors) and
-  `event-colors.ts` (the color names). See [Theming](/docs/theming).
-- `registry/calendar`: `CalendarToolbar`, `ViewSwitcher`, `EventChip`, and `MiniMonth`.
-- `registry/time-grid-view`, `registry/month-view`, and `registry/list-view`: the
-  [week and day](/docs/views/week-and-day), [month](/docs/views/month), and
-  [agenda](/docs/views/agenda) views.
-
-There's no `shadcn add` command for these files yet, so copy them by hand:
+<Callout title="After the first release">
+  `shadcn add` installs `@moltenship/calendar` from npm, so these commands work once the packages
+  are published. Until then, [run Time from source](#run-from-source).
+</Callout>
 
 <Steps>
 <Step>
@@ -108,58 +104,73 @@ npx shadcn@latest init
 ```
 
 If your app already uses shadcn/ui, check that `style` in `components.json` starts with `base-`,
-such as `base-nova`. `shadcn add` installs components in your app's existing style, and the copied
-files don't compile against primitives from other styles.
+such as `base-nova`. `shadcn add` installs components in your app's existing style, and the
+calendar's files don't compile against primitives from other styles.
 
-Then add the primitives the files import:
+</Step>
+<Step>
+
+Add the calendar. `calendar-full` installs every view, the theme and the parts they share:
 
 ```bash
-npx shadcn@latest add button popover select tooltip
+npx shadcn@latest add https://moltenship-time.vercel.app/r/calendar-full.json
 ```
 
-The files also import `cn` and `lucide-react`. `shadcn init` installs both with its default preset;
-if your app doesn't have them, add them with `pnpm add cn lucide-react`.
+Or add only the views you use. Each one brings what it builds on: the theme, the shared
+`calendar` parts, the shadcn components it uses, and npm packages such as `@moltenship/calendar`.
+
+| Item                       | What it adds                                                                 |
+| -------------------------- | ---------------------------------------------------------------------------- |
+| `calendar-full`            | Every item below                                                             |
+| `calendar-theme`           | The calendar's tokens and event colors, added to your global CSS             |
+| `calendar`                 | `CalendarToolbar`, `ViewSwitcher`, `EventChip`, `MiniMonth` and shared parts |
+| `time-grid-view`           | The [week and day](/docs/views/week-and-day) views                           |
+| `month-view`               | The [month](/docs/views/month) view                                          |
+| `list-view`                | The [agenda](/docs/views/agenda) view                                        |
+| `year-view`                | The [year](/docs/views/year) view                                            |
+| `scrolling-time-grid-view` | The [scrolling](/docs/views/scrolling) week and day views                    |
+| `scrolling-month-view`     | The scrolling month view                                                     |
+| `scrolling-list-view`      | The scrolling agenda                                                         |
+| `resource-columns-view`    | The [resource columns](/docs/views/resource-columns) view                    |
+| `resource-timeline-view`   | The [resource timeline](/docs/views/resource-timeline) views                 |
+| `recurrence-scope-dialog`  | The [recurrence scope dialog](/docs/guides/recurring-events)                 |
+
+Each item's address is `https://moltenship-time.vercel.app/r/<item>.json`:
+
+```bash
+npx shadcn@latest add https://moltenship-time.vercel.app/r/month-view.json
+```
+
+The files land in `calendar/` under the `components` alias in your `components.json`, such as
+`components/calendar/month-view/month-view.tsx`, and their imports follow your aliases. Each item
+asks for the `@moltenship/calendar` versions it was built for, and `shadcn add` installs a
+matching one.
+
+To add items by name, add the registry to `components.json` once:
+
+```json title="components.json"
+{
+  "registries": {
+    "@moltenship": "https://moltenship-time.vercel.app/r/{name}.json"
+  }
+}
+```
+
+Then `npx shadcn@latest add @moltenship/month-view` works too.
+
+</Step>
+<Step>
 
 The toolbar's buttons use shadcn's tooltip, so wrap your app in `TooltipProvider` from
-`@/components/ui/tooltip` once, as shadcn's
+`@/components/ui/tooltip` once, as `shadcn add` reminds you and shadcn's
 [tooltip instructions](https://ui.shadcn.com/docs/components/tooltip) describe.
 
 </Step>
-<Step>
-
-Copy the files into your app. Each folder's `registry-item.json` lists a suggested `target` path,
-such as `components/calendar/calendar-toolbar.tsx` and `styles/calendar-theme.css`.
-
-</Step>
-<Step>
-
-The copied files import each other through `@registry/…`. Change those imports to your own paths.
-In a default shadcn setup they map like this:
-
-| Import in the copied file               | Change it to                         |
-| --------------------------------------- | ------------------------------------ |
-| `@registry/ui/button` (and other `ui/`) | `@/components/ui/button`             |
-| `@registry/calendar/…`                  | `@/components/calendar/…`            |
-| `@registry/calendar-theme/event-colors` | `@/components/calendar/event-colors` |
-
-</Step>
-<Step>
-
-Import the theme in your global CSS, after the Tailwind and shadcn imports that `shadcn init`
-added. The path is relative to the CSS file:
-
-```css title="index.css"
-@import "tailwindcss";
-@import "tw-animate-css";
-@import "shadcn/tailwind.css";
-@import "./styles/calendar-theme.css";
-```
-
-A shadcn app already defines the `dark` variant. If yours doesn't, add
-`@custom-variant dark (&:is(.dark *));` below the imports.
-
-</Step>
 </Steps>
+
+The theme's tokens and rules go into your global CSS inside `@layer base`, so your own rules win
+over them; see [Theming](/docs/theming). Run `shadcn add` again to update: it asks before it
+replaces a file you already have, and `--overwrite` replaces them all, with any changes you made.
 
 ## Run from source
 

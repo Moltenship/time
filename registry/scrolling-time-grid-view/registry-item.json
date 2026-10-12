@@ -14,17 +14,12 @@
     {
       "path": "registry/scrolling-time-grid-view/scrolling-time-grid-view.tsx",
       "type": "registry:component",
-      "target": "components/calendar/scrolling-time-grid-view/scrolling-time-grid-view.tsx"
+      "target": "@components/calendar/scrolling-time-grid-view/scrolling-time-grid-view.tsx"
     },
     {
       "path": "registry/scrolling-time-grid-view/scrolling-time-grid-scroll.ts",
       "type": "registry:lib",
-      "target": "components/calendar/scrolling-time-grid-view/scrolling-time-grid-scroll.ts"
+      "target": "@components/calendar/scrolling-time-grid-view/scrolling-time-grid-scroll.ts"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

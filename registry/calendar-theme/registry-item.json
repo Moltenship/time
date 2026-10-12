@@ -1,25 +1,18 @@
 {
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "calendar-theme",
-  "type": "registry:theme",
+  "type": "registry:item",
   "title": "Calendar theme",
-  "description": "shadcn semantic tokens, calendar tokens for grid lines, today, the now line, weekends, hour height and event padding, and the data-color event palette for light and dark themes.",
+  "description": "Calendar tokens for grid lines, today, the now line, weekends, closed time, hour height and event padding, merged into your stylesheet for light and dark themes, and the data-color event palette.",
   "dependencies": ["@moltenship/calendar"],
   "files": [
     {
-      "path": "registry/calendar-theme/calendar-theme.css",
-      "type": "registry:file",
-      "target": "styles/calendar-theme.css"
-    },
-    {
       "path": "registry/calendar-theme/event-colors.ts",
       "type": "registry:lib",
-      "target": "components/calendar/event-colors.ts"
+      "target": "@components/calendar/event-colors.ts"
     }
   ],
   "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
+    "stylesheet": "registry/calendar-theme/calendar-theme.css"
   }
 }

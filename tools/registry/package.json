@@ -10,13 +10,18 @@
   },
   "dependencies": {
     "npm-package-arg": "catalog:",
+    "postcss": "catalog:",
     "semver": "catalog:",
-    "shadcn": "catalog:"
+    "shadcn": "catalog:",
+    "yaml": "catalog:"
   },
   "devDependencies": {
+    "@moltenship/calendar": "workspace:*",
     "@types/node": "catalog:",
     "@types/npm-package-arg": "catalog:",
+    "@types/react": "catalog:",
     "@types/semver": "catalog:",
+    "react": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

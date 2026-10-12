@@ -10,42 +10,37 @@
     {
       "path": "registry/list-view/agenda-view.tsx",
       "type": "registry:component",
-      "target": "components/calendar/list-view/agenda-view.tsx"
+      "target": "@components/calendar/list-view/agenda-view.tsx"
     },
     {
       "path": "registry/list-view/agenda-list.tsx",
       "type": "registry:component",
-      "target": "components/calendar/list-view/agenda-list.tsx"
+      "target": "@components/calendar/list-view/agenda-list.tsx"
     },
     {
       "path": "registry/list-view/agenda-day.tsx",
       "type": "registry:component",
-      "target": "components/calendar/list-view/agenda-day.tsx"
+      "target": "@components/calendar/list-view/agenda-day.tsx"
     },
     {
       "path": "registry/list-view/agenda-item.tsx",
       "type": "registry:component",
-      "target": "components/calendar/list-view/agenda-item.tsx"
+      "target": "@components/calendar/list-view/agenda-item.tsx"
     },
     {
       "path": "registry/list-view/agenda-states.tsx",
       "type": "registry:component",
-      "target": "components/calendar/list-view/agenda-states.tsx"
+      "target": "@components/calendar/list-view/agenda-states.tsx"
     },
     {
       "path": "registry/list-view/agenda-rows.ts",
       "type": "registry:lib",
-      "target": "components/calendar/list-view/agenda-rows.ts"
+      "target": "@components/calendar/list-view/agenda-rows.ts"
     },
     {
       "path": "registry/list-view/use-agenda-virtualizer.ts",
       "type": "registry:hook",
-      "target": "components/calendar/list-view/use-agenda-virtualizer.ts"
+      "target": "@components/calendar/list-view/use-agenda-virtualizer.ts"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

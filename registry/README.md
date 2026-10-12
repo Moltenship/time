@@ -1,7 +1,7 @@
 # Registry source
 
-Consumer-owned, shadcn-style source for calendar UI. Users copy these files into their app and
-edit them; nothing here is published to npm. The same files power the in-repo demo, so what we
+Consumer-owned, shadcn-style source for calendar UI. Users add these files to their app with
+`npx shadcn add <url>` and edit them; nothing here is published to npm. The same files power the in-repo demo, so what we
 ship is what we run.
 
 ## Layout
@@ -12,29 +12,69 @@ registry/
   calendar/         toolbar, view switcher, event chip, mini month   registry item "calendar"
   month-view/ …     one folder per view, each its own registry item
   recurrence-scope-dialog/   asks which events of a recurring series a change applies to
+  calendar-full/    installs every item above, owns no files         registry item "calendar-full"
   ui/               stock shadcn components (Base UI, base-nova style): button, dialog, popover, …
   tests/            focused tests for the source above
 ```
 
 A folder with a `registry-item.json` is a registry item. The manifest follows the
-[shadcn registry-item schema](https://ui.shadcn.com/schema/registry-item.json) and lists every
-file with an explicit consumer `target`. `vp run registry:smoke` validates all manifests with
-`tools/registry`: schema, existing source files, safe and unique targets, npm dependency
-specifiers, `calendar-*` CSS variable names, and `meta.compatibility` ranges.
+[shadcn registry-item schema](https://ui.shadcn.com/schema/registry-item.json), with a few rules
+that `tools/registry` checks:
 
-`ui/` is not a registry item. It holds the components a stock shadcn app already has: the files
-`npx shadcn@latest init` and `shadcn add` install today (Base UI, `base-nova` style), unchanged
-apart from the `@registry/ui/button` import path. Items reference them through
-`registryDependencies` (`button`, `dialog`, `popover`, `select`, `tooltip`), so consumers get the
-upstream versions. There is no `shadcn build` step yet; when one lands it must map `@registry/ui/*`
-to the consumer's `components.json` `ui` alias.
+- Every file has a `target` under one of shadcn's alias placeholders, such as
+  `@components/calendar/month-view/month-view.tsx`, so it lands under the consumer's own
+  `components` alias. No two items write the same file.
+- `dependencies` lists bare package names. The build adds the ranges from what the workspace
+  builds and tests with: the catalog for third-party packages and the package version for ours, as
+  `registry/package.json` declares them. A package must be there before an item can list it.
+- `registryDependencies` lists stock shadcn components by name (`button`, `popover`) and our own
+  items as `@moltenship/<item>`. The build turns ours into URLs.
+- No item depends on a drag-and-drop library. Views edit through the pointer layer in
+  `@moltenship/calendar`, which stays off until the app passes `onEventChange`.
+- `calendar-theme` points `meta.stylesheet` at `calendar-theme.css`. The build turns the file into
+  the item's `cssVars` and `css`, so `shadcn add` merges its tokens and rules into the app's global
+  CSS, inside `@layer base` as in the file. The stock shadcn tokens the file also sets stay out: a
+  shadcn app has its own.
+- `calendar-full` is a `registry:item` that owns no files and installs every other item.
 
-A stock shadcn app takes the source as is:
+`ui/` is not a registry item. It holds the components a stock shadcn app already has (Base UI,
+`base-nova` style), unchanged apart from the `@registry/ui/button` import path, so the source
+compiles here. Items list them in `registryDependencies`, and consumers get the upstream versions.
 
-```sh
-npx shadcn@latest init                              # Base UI, base-nova
-npx shadcn@latest add button dialog popover select tooltip
-```
+## Building and serving
+
+`vp run registry:build` builds the registry with the official `shadcn build` into
+`apps/showcase/public/r`, which the docs site serves as `/r/<item>.json`, with `/r/registry.json`
+as the index. The docs site's `dev` and `build` scripts run it first; the output isn't committed.
+The build:
+
+1. checks the manifests;
+2. copies the source to a temporary folder with each `@registry/…` import rewritten to the path
+   shadcn rewrites to the consumer's aliases: `@registry/ui/button` becomes
+   `@/components/ui/button`, and `@registry/calendar/event-chip` becomes the import for its target,
+   `@/components/calendar/event-chip`;
+3. writes a `registry.json` with versioned dependencies, URL registry dependencies, and each
+   item's `meta.compatibility`, the `@moltenship/calendar` range its whole install needs;
+4. runs `shadcn build`, then writes `compatibility.json` beside the items: each item's URL,
+   runtime range, packages, items, components and targets, and the workspace versions they were
+   built against. Release tooling reads it instead of parsing shadcn items.
+
+Items reach each other through URLs under `https://moltenship-time.vercel.app/r`. Set
+`REGISTRY_BASE_URL`, or pass `--base-url`, to build for another host.
+
+## Checks
+
+- `vp run registry:smoke`, part of `vp run ready`: checks the manifests and a contract fixture,
+  builds the registry offline into a temporary folder, and checks what it built. Every import must
+  resolve to a file, component or package the item's install provides; `calendar-full` must
+  install every item and own no file; ranges must hold for the workspace versions.
+- `vp run registry:e2e`, slow and online: makes clean Vite and Next.js apps with `shadcn init`, runs
+  `shadcn add <url>/calendar-full.json` against the registry served locally, checks where the
+  files landed and what the app installed, then typechecks and builds both apps. The Vite app uses
+  a non-default `components` alias. The runtime packages aren't on npm yet, so the test packs them
+  from the workspace and serves them from a local npm registry for the `@moltenship` scope;
+  `REGISTRY_E2E_PACKAGES=npm` uses the published ones instead, `REGISTRY_E2E_TARBALLS=<dir>` serves
+  tarballs made elsewhere, and `REGISTRY_E2E_KEEP=1` keeps the apps.
 
 ## Conventions
 

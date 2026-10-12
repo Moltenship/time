@@ -22,57 +22,52 @@
     {
       "path": "registry/time-grid-view/time-grid-view.tsx",
       "type": "registry:component",
-      "target": "components/calendar/time-grid-view/time-grid-view.tsx"
+      "target": "@components/calendar/time-grid-view/time-grid-view.tsx"
     },
     {
       "path": "registry/time-grid-view/time-grid-header.tsx",
       "type": "registry:component",
-      "target": "components/calendar/time-grid-view/time-grid-header.tsx"
+      "target": "@components/calendar/time-grid-view/time-grid-header.tsx"
     },
     {
       "path": "registry/time-grid-view/time-grid-all-day.tsx",
       "type": "registry:component",
-      "target": "components/calendar/time-grid-view/time-grid-all-day.tsx"
+      "target": "@components/calendar/time-grid-view/time-grid-all-day.tsx"
     },
     {
       "path": "registry/time-grid-view/time-grid-body.tsx",
       "type": "registry:component",
-      "target": "components/calendar/time-grid-view/time-grid-body.tsx"
+      "target": "@components/calendar/time-grid-view/time-grid-body.tsx"
     },
     {
       "path": "registry/time-grid-view/time-grid-column.tsx",
       "type": "registry:component",
-      "target": "components/calendar/time-grid-view/time-grid-column.tsx"
+      "target": "@components/calendar/time-grid-view/time-grid-column.tsx"
     },
     {
       "path": "registry/time-grid-view/time-grid-availability.tsx",
       "type": "registry:component",
-      "target": "components/calendar/time-grid-view/time-grid-availability.tsx"
+      "target": "@components/calendar/time-grid-view/time-grid-availability.tsx"
     },
     {
       "path": "registry/time-grid-view/time-grid-event.tsx",
       "type": "registry:component",
-      "target": "components/calendar/time-grid-view/time-grid-event.tsx"
+      "target": "@components/calendar/time-grid-view/time-grid-event.tsx"
     },
     {
       "path": "registry/time-grid-view/time-grid-annotations.tsx",
       "type": "registry:component",
-      "target": "components/calendar/time-grid-view/time-grid-annotations.tsx"
+      "target": "@components/calendar/time-grid-view/time-grid-annotations.tsx"
     },
     {
       "path": "registry/time-grid-view/time-grid-zones.tsx",
       "type": "registry:component",
-      "target": "components/calendar/time-grid-view/time-grid-zones.tsx"
+      "target": "@components/calendar/time-grid-view/time-grid-zones.tsx"
     },
     {
       "path": "registry/time-grid-view/annotation-label.ts",
       "type": "registry:lib",
-      "target": "components/calendar/time-grid-view/annotation-label.ts"
+      "target": "@components/calendar/time-grid-view/annotation-label.ts"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

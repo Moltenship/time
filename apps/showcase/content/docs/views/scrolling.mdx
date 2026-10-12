@@ -28,10 +28,17 @@ to rest on any day, and jumps to a date at once.
 
 ## Add them
 
-Copy `registry/scrolling-time-grid-view` and `registry/scrolling-month-view` into your app, along
-with the items they build on (`registry/time-grid-view` and `registry/month-view`), the theme, and
-`registry/calendar`, as described in [UI source](/docs/installation#ui-source-optional). Then
-register the views:
+Add the views to your app with the shadcn CLI, as described in
+[UI source](/docs/installation#ui-source-optional). The items bring what they build on:
+`time-grid-view` and `month-view`, the theme, and the shared `calendar` parts.
+
+```bash
+npx shadcn@latest add \
+  https://moltenship-time.vercel.app/r/scrolling-time-grid-view.json \
+  https://moltenship-time.vercel.app/r/scrolling-month-view.json
+```
+
+Then register the views:
 
 <include meta='title="calendar.tsx"'>../../examples/scrolling-views.tsx#views</include>
 

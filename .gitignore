@@ -38,3 +38,6 @@ dist-ssr
 !.vscode/settings.json
 !.vscode/extensions.json
 .vitest/
+
+# Built by `node --run registry` in apps/showcase (shadcn build output)
+apps/showcase/public/r/

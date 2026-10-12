@@ -21,28 +21,21 @@ Install `@moltenship/calendar` as described in [Installation](/docs/installation
 </Step>
 <Step>
 
-### Copy the UI source
+### Add the UI source
 
-The views are source files that you copy into your app. They're built on shadcn/ui and its default
-Base UI primitives, so your app needs a Base UI style (see
-[UI source](/docs/installation#ui-source-optional)). Add the primitives they use:
+The views are source files that you add to your app with the shadcn CLI. They're built on
+shadcn/ui and its default Base UI primitives, so your app needs a Base UI style (see
+[UI source](/docs/installation#ui-source-optional)). Add the week and day, month, and agenda views:
 
 ```bash
-npx shadcn@latest add button popover select tooltip
+npx shadcn@latest add \
+  https://moltenship-time.vercel.app/r/time-grid-view.json \
+  https://moltenship-time.vercel.app/r/month-view.json \
+  https://moltenship-time.vercel.app/r/list-view.json
 ```
 
-Then copy these folders from the repository's `registry`, and change their `@registry/…` imports
-to your own paths, as [UI source](/docs/installation#ui-source-optional) describes:
-
-| Folder           | Copy to                               | Contains                            |
-| ---------------- | ------------------------------------- | ----------------------------------- |
-| `calendar-theme` | `styles/`, `components/calendar/`     | The theme CSS and event color names |
-| `calendar`       | `components/calendar/`                | Toolbar, view switcher, event chip  |
-| `time-grid-view` | `components/calendar/time-grid-view/` | Week and day views                  |
-| `month-view`     | `components/calendar/month-view/`     | Month view                          |
-| `list-view`      | `components/calendar/list-view/`      | Agenda view                         |
-
-Import `calendar-theme.css` in your global CSS, after the Tailwind and shadcn imports.
+They bring the theme, the toolbar, view switcher and event chip from the shared `calendar` item,
+and the shadcn components they use. The files land in `components/calendar/`.
 
 </Step>
 <Step>

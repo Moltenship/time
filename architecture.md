@@ -94,12 +94,12 @@ time/
 │   ├── year-view/                # twelve month grids and a day popover
 │   ├── time-grid-view/           # day + week
 │   ├── list-view/
+│   ├── scrolling-*-view/         # week, day, month and agenda that scroll without end
 │   ├── resource-columns-view/
 │   ├── resource-timeline-view/
 │   ├── recurrence-scope-dialog/  # "which events?" for edits to a recurring event
-│   ├── calendar-dnd/
 │   ├── calendar-theme/
-│   └── calendar-full/            # compositional registry block
+│   └── calendar-full/            # installs every item; owns no files
 ├── benchmarks/
 │   ├── core/                     # indexes, projection, overlap layout
 │   └── react/                    # commits, DOM bounds, pointer and scroll frames
@@ -107,7 +107,7 @@ time/
 │   ├── adr/                      # one consequential decision per record
 │   └── internal/                 # contributor notes: quality gates, topology, benchmarks, evidence
 ├── tools/
-│   ├── registry/                 # registry schema/build verification
+│   ├── registry/                 # shadcn build, registry checks, clean-app install test
 │   └── fixtures/                 # deterministic event/resource generators
 └── architecture.md
 ```
@@ -151,11 +151,17 @@ Exact patch versions are chosen and pinned when implementation begins. The archi
 
 The registry is not a second package manager. It distributes the source users are expected to change.
 
-- `@moltenship/calendar` installs the practical default set.
-- Individual view items support smaller installations.
-- `calendar-full` depends on the other registry items instead of duplicating their files.
-- Registry items declare npm dependencies, registry dependencies, CSS variables, and explicit target paths.
-- A registry compatibility field records the minimum compatible runtime package version.
+- `calendar-full` installs every item: the theme, the shared `calendar` parts, each view, and the
+  recurrence scope dialog. It depends on the other registry items instead of duplicating their files.
+- Individual view items support smaller installations; each brings the items it builds on.
+- Registry items declare npm dependencies with version ranges, registry dependencies (stock shadcn
+  components by name, our items by URL), the theme's CSS variables and rules, and explicit targets
+  under the consumer's `components` alias.
+- `meta.compatibility` records the `@moltenship/calendar` range an item's install needs. The build
+  takes it, and every dependency range, from the versions the workspace builds and tests with.
+- No item depends on a drag-and-drop library. Views edit through the native pointer layer in
+  `@moltenship/calendar`, which stays off until the app passes `onEventChange`.
+- `shadcn build` builds it, and the docs site serves it at `/r/<item>.json`.
 - No custom CLI is introduced in v1; the maintained shadcn CLI is the installer.
 
 ## 4. Time and interval model

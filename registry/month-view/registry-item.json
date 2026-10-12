@@ -10,22 +10,17 @@
     {
       "path": "registry/month-view/month-view.tsx",
       "type": "registry:component",
-      "target": "components/calendar/month-view/month-view.tsx"
+      "target": "@components/calendar/month-view/month-view.tsx"
     },
     {
       "path": "registry/month-view/month-week.tsx",
       "type": "registry:component",
-      "target": "components/calendar/month-view/month-week.tsx"
+      "target": "@components/calendar/month-view/month-week.tsx"
     },
     {
       "path": "registry/month-view/month-event.tsx",
       "type": "registry:component",
-      "target": "components/calendar/month-view/month-event.tsx"
+      "target": "@components/calendar/month-view/month-event.tsx"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

@@ -14,8 +14,15 @@ list that scrolls without end and loads events as you go, use the
 
 ## Add it
 
-Copy `registry/list-view` into your app, along with the theme and `registry/calendar`, as described
-in [UI source](/docs/installation#ui-source-optional). Then register the view:
+Add the view to your app with the shadcn CLI, as described in
+[UI source](/docs/installation#ui-source-optional). The item brings the theme and the shared
+`calendar` parts:
+
+```bash
+npx shadcn@latest add https://moltenship-time.vercel.app/r/list-view.json
+```
+
+Then register the view:
 
 ```tsx
 import { createAgendaView } from "@/components/calendar/list-view/agenda-view";
@@ -33,11 +40,15 @@ installs.
 
 <CalendarPreview view="scrolling-agenda" longRange />
 
-`createScrollingAgendaView` from `registry/scrolling-list-view` is the agenda as a
+`createScrollingAgendaView` from the `scrolling-list-view` item is the agenda as a
 [scrolling view](/docs/views/scrolling): one list that scrolls through months or years, with the
 anchor date on top. This preview holds a year of events either way of today, a few thousand of
 them, and fetches them from a pretend server as you scroll. Try it in the demo with "Scroll day,
 week, month and agenda" on in the settings.
+
+```bash
+npx shadcn@latest add https://moltenship-time.vercel.app/r/scrolling-list-view.json
+```
 
 ```tsx
 import { createScrollingAgendaView } from "@/components/calendar/scrolling-list-view/scrolling-agenda-view";

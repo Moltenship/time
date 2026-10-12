@@ -10,62 +10,57 @@
     {
       "path": "registry/resource-timeline-view/resource-timeline-view.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-timeline-view/resource-timeline-view.tsx"
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-view.tsx"
     },
     {
       "path": "registry/resource-timeline-view/resource-timeline-grid.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-timeline-view/resource-timeline-grid.tsx"
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-grid.tsx"
     },
     {
       "path": "registry/resource-timeline-view/resource-timeline-header.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-timeline-view/resource-timeline-header.tsx"
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-header.tsx"
     },
     {
       "path": "registry/resource-timeline-view/resource-timeline-row.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-timeline-view/resource-timeline-row.tsx"
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-row.tsx"
     },
     {
       "path": "registry/resource-timeline-view/resource-timeline-availability.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-timeline-view/resource-timeline-availability.tsx"
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-availability.tsx"
     },
     {
       "path": "registry/resource-timeline-view/resource-timeline-event.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-timeline-view/resource-timeline-event.tsx"
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-event.tsx"
     },
     {
       "path": "registry/resource-timeline-view/resource-timeline-focus.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-timeline-view/resource-timeline-focus.tsx"
+      "target": "@components/calendar/resource-timeline-view/resource-timeline-focus.tsx"
     },
     {
       "path": "registry/resource-timeline-view/timeline-labels.ts",
       "type": "registry:lib",
-      "target": "components/calendar/resource-timeline-view/timeline-labels.ts"
+      "target": "@components/calendar/resource-timeline-view/timeline-labels.ts"
     },
     {
       "path": "registry/resource-timeline-view/timeline-placement.ts",
       "type": "registry:lib",
-      "target": "components/calendar/resource-timeline-view/timeline-placement.ts"
+      "target": "@components/calendar/resource-timeline-view/timeline-placement.ts"
     },
     {
       "path": "registry/resource-timeline-view/timeline-scale.ts",
       "type": "registry:lib",
-      "target": "components/calendar/resource-timeline-view/timeline-scale.ts"
+      "target": "@components/calendar/resource-timeline-view/timeline-scale.ts"
     },
     {
       "path": "registry/resource-timeline-view/use-timeline-virtualizer.ts",
       "type": "registry:hook",
-      "target": "components/calendar/resource-timeline-view/use-timeline-virtualizer.ts"
+      "target": "@components/calendar/resource-timeline-view/use-timeline-virtualizer.ts"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

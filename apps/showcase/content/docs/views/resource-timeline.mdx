@@ -16,9 +16,13 @@ fast with hundreds of resources over a whole month.
 
 ## Add it
 
-Copy `registry/resource-timeline-view` into your app (it uses shadcn's `button`), along with the
-theme and `registry/calendar`, as described in [UI source](/docs/installation#ui-source-optional).
-The view depends on `@tanstack/react-virtual`.
+Add the view to your app with the shadcn CLI, as described in
+[UI source](/docs/installation#ui-source-optional). The item brings the theme, the shared
+`calendar` parts, shadcn's `button`, and `@tanstack/react-virtual`:
+
+```bash
+npx shadcn@latest add https://moltenship-time.vercel.app/r/resource-timeline-view.json
+```
 
 ```tsx
 import {

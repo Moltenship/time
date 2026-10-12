@@ -1,0 +1,35 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"],
+    // The page imports the registry source where `shadcn add` puts it in an app; these paths point
+    // those imports at the source in this repository, as apps/showcase does for its examples.
+    "paths": {
+      "@/components/ui/*": ["../../../registry/ui/*"],
+      "@/components/calendar/event-colors": ["../../../registry/calendar-theme/event-colors"],
+      "@/components/calendar/list-view/*": ["../../../registry/list-view/*"],
+      "@/components/calendar/month-view/*": ["../../../registry/month-view/*"],
+      "@/components/calendar/recurrence-scope-dialog/*": [
+        "../../../registry/recurrence-scope-dialog/*"
+      ],
+      "@/components/calendar/resource-columns-view/*": [
+        "../../../registry/resource-columns-view/*"
+      ],
+      "@/components/calendar/resource-timeline-view/*": [
+        "../../../registry/resource-timeline-view/*"
+      ],
+      "@/components/calendar/scrolling-list-view/*": ["../../../registry/scrolling-list-view/*"],
+      "@/components/calendar/scrolling-month-view/*": ["../../../registry/scrolling-month-view/*"],
+      "@/components/calendar/scrolling-time-grid-view/*": [
+        "../../../registry/scrolling-time-grid-view/*"
+      ],
+      "@/components/calendar/time-grid-view/*": ["../../../registry/time-grid-view/*"],
+      "@/components/calendar/year-view/*": ["../../../registry/year-view/*"],
+      "@/components/calendar/*": ["../../../registry/calendar/*"],
+      "@registry/*": ["../../../registry/*"]
+    },
+    "types": []
+  },
+  "include": ["*.tsx"]
+}

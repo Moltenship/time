@@ -2,13 +2,18 @@
   "$schema": "https://ui.shadcn.com/schema/registry-item.json",
   "name": "known-bad-calendar",
   "type": "registry:item",
-  "dependencies": ["workspace:*"],
-  "registryDependencies": ["../button"],
+  "dependencies": ["workspace:*", "@moltenship/calendar@0.0.0", "left-pad", "@dnd-kit/react"],
+  "registryDependencies": ["../button", "@moltenship/missing-item"],
   "files": [
     {
       "path": "tools/registry/fixtures/known-bad/source.ts",
       "type": "registry:file",
       "target": "../outside-consumer.ts"
+    },
+    {
+      "path": "tools/registry/fixtures/known-bad/source.ts",
+      "type": "registry:lib",
+      "target": "src/lib/ignores-the-alias.ts"
     },
     {
       "path": "tools/registry/fixtures/known-bad/missing.ts",
@@ -23,7 +28,8 @@
   },
   "meta": {
     "compatibility": {
-      "react": "latest"
-    }
+      "@moltenship/calendar": ">=0.0.0"
+    },
+    "stylesheet": "tools/registry/fixtures/known-bad/missing.css"
   }
 }

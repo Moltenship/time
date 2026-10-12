@@ -10,7 +10,14 @@ const execFileAsync = promisify(execFile);
 const workspaceRoot = resolve(import.meta.dirname, "../../..");
 
 describe("shadcn registry validation", () => {
-  test("accepts the target, dependency, CSS variable, and compatibility contract", async () => {
+  test("accepts the repository's registry source", async () => {
+    const report = await validateRegistryWorkspace(workspaceRoot);
+
+    expect(report.issues).toEqual([]);
+    expect(report.manifests).toBe(13);
+  });
+
+  test("accepts the target, dependency, CSS variable, and stylesheet contract", async () => {
     const report = await validateRegistryWorkspace(workspaceRoot, [
       "tools/registry/fixtures/valid/registry-item.json",
     ]);
@@ -27,37 +34,22 @@ describe("shadcn registry validation", () => {
     expect(report.valid).toBe(false);
     expect(codes).toEqual(
       new Set([
-        "invalid-compatibility-package",
-        "invalid-compatibility-range",
+        "composition-files",
+        "drag-and-drop-dependency",
+        "generated-compatibility",
         "invalid-css-value",
         "invalid-css-variable",
         "invalid-dependency",
         "invalid-registry-dependency",
         "invalid-target",
-        "missing-compatible-dependency",
         "missing-source-file",
+        "missing-stylesheet",
         "missing-target",
+        "undeclared-dependency",
+        "unknown-registry-item",
+        "versioned-dependency",
       ]),
     );
-  });
-
-  test("rejects compatibility packages declared only as dev dependencies", async () => {
-    const manifestPath =
-      "tools/registry/fixtures/known-bad-dev-only-compatibility/registry-item.json";
-    const report = await validateRegistryWorkspace(workspaceRoot, [manifestPath]);
-
-    expect(report).toEqual({
-      valid: false,
-      manifests: 1,
-      targets: 1,
-      issues: [
-        {
-          code: "missing-compatible-dependency",
-          path: `${manifestPath}.meta.compatibility.@moltenship/calendar`,
-          message: "Compatibility package must also appear in dependencies: @moltenship/calendar",
-        },
-      ],
-    });
   });
 
   test("the named known-bad task exits non-zero with the registry reason", async () => {

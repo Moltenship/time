@@ -14,17 +14,12 @@
     {
       "path": "registry/scrolling-list-view/scrolling-agenda-view.tsx",
       "type": "registry:component",
-      "target": "components/calendar/scrolling-list-view/scrolling-agenda-view.tsx"
+      "target": "@components/calendar/scrolling-list-view/scrolling-agenda-view.tsx"
     },
     {
       "path": "registry/scrolling-list-view/use-agenda-scroll.ts",
       "type": "registry:hook",
-      "target": "components/calendar/scrolling-list-view/use-agenda-scroll.ts"
+      "target": "@components/calendar/scrolling-list-view/use-agenda-scroll.ts"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

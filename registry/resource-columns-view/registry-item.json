@@ -14,52 +14,47 @@
     {
       "path": "registry/resource-columns-view/resource-columns-view.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-columns-view/resource-columns-view.tsx"
+      "target": "@components/calendar/resource-columns-view/resource-columns-view.tsx"
     },
     {
       "path": "registry/resource-columns-view/resource-columns-header.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-columns-view/resource-columns-header.tsx"
+      "target": "@components/calendar/resource-columns-view/resource-columns-header.tsx"
     },
     {
       "path": "registry/resource-columns-view/resource-header.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-columns-view/resource-header.tsx"
+      "target": "@components/calendar/resource-columns-view/resource-header.tsx"
     },
     {
       "path": "registry/resource-columns-view/resource-columns-dates.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-columns-view/resource-columns-dates.tsx"
+      "target": "@components/calendar/resource-columns-view/resource-columns-dates.tsx"
     },
     {
       "path": "registry/resource-columns-view/resource-columns-all-day.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-columns-view/resource-columns-all-day.tsx"
+      "target": "@components/calendar/resource-columns-view/resource-columns-all-day.tsx"
     },
     {
       "path": "registry/resource-columns-view/resource-columns-body.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-columns-view/resource-columns-body.tsx"
+      "target": "@components/calendar/resource-columns-view/resource-columns-body.tsx"
     },
     {
       "path": "registry/resource-columns-view/column-virtualizer.ts",
       "type": "registry:lib",
-      "target": "components/calendar/resource-columns-view/column-virtualizer.ts"
+      "target": "@components/calendar/resource-columns-view/column-virtualizer.ts"
     },
     {
       "path": "registry/resource-columns-view/axis-sync.ts",
       "type": "registry:lib",
-      "target": "components/calendar/resource-columns-view/axis-sync.ts"
+      "target": "@components/calendar/resource-columns-view/axis-sync.ts"
     },
     {
       "path": "registry/resource-columns-view/focused-column.ts",
       "type": "registry:lib",
-      "target": "components/calendar/resource-columns-view/focused-column.ts"
+      "target": "@components/calendar/resource-columns-view/focused-column.ts"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

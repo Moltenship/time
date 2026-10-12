@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "calendar-full",
+  "type": "registry:item",
+  "title": "Calendar, every part",
+  "description": "Every calendar item at once: the theme, the shared parts, the month, week and day, agenda and year views, their scrolling versions, the resource columns and timeline views, and the recurrence scope dialog. It owns no files; it installs the other items.",
+  "registryDependencies": [
+    "@moltenship/calendar-theme",
+    "@moltenship/calendar",
+    "@moltenship/month-view",
+    "@moltenship/time-grid-view",
+    "@moltenship/list-view",
+    "@moltenship/year-view",
+    "@moltenship/scrolling-month-view",
+    "@moltenship/scrolling-time-grid-view",
+    "@moltenship/scrolling-list-view",
+    "@moltenship/resource-columns-view",
+    "@moltenship/resource-timeline-view",
+    "@moltenship/recurrence-scope-dialog"
+  ]
+}

@@ -13,9 +13,15 @@ the anchor date.
 
 ## Add them
 
-Copy `registry/time-grid-view` into your app (it uses shadcn's `button`), along with the theme and
-`registry/calendar`, as described in [UI source](/docs/installation#ui-source-optional). Then
-register the views:
+Add the views to your app with the shadcn CLI, as described in
+[UI source](/docs/installation#ui-source-optional). The item brings the theme, the shared
+`calendar` parts, and the shadcn components it uses:
+
+```bash
+npx shadcn@latest add https://moltenship-time.vercel.app/r/time-grid-view.json
+```
+
+Then register the views:
 
 ```tsx
 import { createDayView, createWeekView } from "@/components/calendar/time-grid-view/time-grid-view";

@@ -14,12 +14,7 @@
     {
       "path": "registry/scrolling-month-view/scrolling-month-view.tsx",
       "type": "registry:component",
-      "target": "components/calendar/scrolling-month-view/scrolling-month-view.tsx"
+      "target": "@components/calendar/scrolling-month-view/scrolling-month-view.tsx"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

@@ -10,67 +10,62 @@
     {
       "path": "registry/calendar/calendar-toolbar.tsx",
       "type": "registry:component",
-      "target": "components/calendar/calendar-toolbar.tsx"
+      "target": "@components/calendar/calendar-toolbar.tsx"
     },
     {
       "path": "registry/calendar/announcements.ts",
       "type": "registry:lib",
-      "target": "components/calendar/announcements.ts"
+      "target": "@components/calendar/announcements.ts"
     },
     {
       "path": "registry/calendar/event-chip.tsx",
       "type": "registry:component",
-      "target": "components/calendar/event-chip.tsx"
+      "target": "@components/calendar/event-chip.tsx"
     },
     {
       "path": "registry/calendar/event-label.ts",
       "type": "registry:lib",
-      "target": "components/calendar/event-label.ts"
+      "target": "@components/calendar/event-label.ts"
     },
     {
       "path": "registry/calendar/mini-month.tsx",
       "type": "registry:component",
-      "target": "components/calendar/mini-month.tsx"
+      "target": "@components/calendar/mini-month.tsx"
     },
     {
       "path": "registry/calendar/preview-check.ts",
       "type": "registry:lib",
-      "target": "components/calendar/preview-check.ts"
+      "target": "@components/calendar/preview-check.ts"
     },
     {
       "path": "registry/calendar/resource-status.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-status.tsx"
+      "target": "@components/calendar/resource-status.tsx"
     },
     {
       "path": "registry/calendar/resource-time.tsx",
       "type": "registry:component",
-      "target": "components/calendar/resource-time.tsx"
+      "target": "@components/calendar/resource-time.tsx"
     },
     {
       "path": "registry/calendar/scrolling-axis.tsx",
       "type": "registry:component",
-      "target": "components/calendar/scrolling-axis.tsx"
+      "target": "@components/calendar/scrolling-axis.tsx"
     },
     {
       "path": "registry/calendar/unavailable-time.tsx",
       "type": "registry:component",
-      "target": "components/calendar/unavailable-time.tsx"
+      "target": "@components/calendar/unavailable-time.tsx"
     },
     {
       "path": "registry/calendar/view-keyboard.ts",
       "type": "registry:lib",
-      "target": "components/calendar/view-keyboard.ts"
+      "target": "@components/calendar/view-keyboard.ts"
     },
     {
       "path": "registry/calendar/view-switcher.tsx",
       "type": "registry:component",
-      "target": "components/calendar/view-switcher.tsx"
+      "target": "@components/calendar/view-switcher.tsx"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

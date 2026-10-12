@@ -55,12 +55,12 @@ bun add @moltenship/calendar-recurrence
 </Tab>
 </Tabs>
 
-The dialog that asks for the scope is UI source, like the views. Copy
-`registry/recurrence-scope-dialog` into your app, as described in
-[UI source](/docs/installation#ui-source-optional). It uses shadcn's `button` and `dialog`:
+The dialog that asks for the scope is UI source, like the views. Add it with the shadcn CLI, as
+described in [UI source](/docs/installation#ui-source-optional). It brings shadcn's `button` and
+`dialog`:
 
 ```bash
-npx shadcn@latest add button dialog
+npx shadcn@latest add https://moltenship-time.vercel.app/r/recurrence-scope-dialog.json
 ```
 
 ## Wire the adapters

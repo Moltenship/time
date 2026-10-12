@@ -10,22 +10,17 @@
     {
       "path": "registry/year-view/year-view.tsx",
       "type": "registry:component",
-      "target": "components/calendar/year-view/year-view.tsx"
+      "target": "@components/calendar/year-view/year-view.tsx"
     },
     {
       "path": "registry/year-view/year-month.tsx",
       "type": "registry:component",
-      "target": "components/calendar/year-view/year-month.tsx"
+      "target": "@components/calendar/year-view/year-month.tsx"
     },
     {
       "path": "registry/year-view/year-day-popover.tsx",
       "type": "registry:component",
-      "target": "components/calendar/year-view/year-day-popover.tsx"
+      "target": "@components/calendar/year-view/year-day-popover.tsx"
     }
-  ],
-  "meta": {
-    "compatibility": {
-      "@moltenship/calendar": ">=0.0.0"
-    }
-  }
+  ]
 }

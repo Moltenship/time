@@ -28,6 +28,8 @@ export default defineConfig({
       "ci:build": "vp run -r build",
       "ssr:smoke": "vp run ssr-fixture#smoke",
       "registry:smoke": "vp run registry#smoke",
+      "registry:build": "vp run registry#site",
+      "registry:e2e": "vp run registry#e2e",
       a11y: "vp run a11y#test",
       "package:graph": ["vp run check:boundaries", "vp test tests/quality-gates.test.ts"],
       "showcase:source": "vp run showcase#source:generate",
