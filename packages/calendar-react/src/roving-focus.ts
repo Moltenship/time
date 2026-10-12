@@ -133,6 +133,21 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
     for (const listener of listeners) listener();
   }
 
+  let notifying = false;
+  /**
+   * `changed` for elements coming and going: a commit registers them one by one, hundreds in a
+   * year of days, so their elements hear once, after it, rather than once per element.
+   */
+  function changedLater() {
+    resolved = null;
+    if (notifying) return;
+    notifying = true;
+    queueMicrotask(() => {
+      notifying = false;
+      changed();
+    });
+  }
+
   function itemAt(node: Node | null): RovingItem | undefined {
     for (let current = node; current !== null; current = current.parentNode) {
       const item = items.get(current as HTMLElement);
@@ -188,7 +203,7 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
     },
     register(element: HTMLElement, target: CalendarFocus, days: number) {
       items.set(element, { days, target });
-      changed();
+      changedLater();
       // The focused target can come back without a calendar update, as when a view re-renders it.
       if (owed === "focus") retryOwedFocus();
       return () => {
@@ -200,7 +215,7 @@ export function createRovingFocusStore(initialEntry: RovingEntry): RovingFocusSt
           released = element;
         }
         items.delete(element);
-        changed();
+        changedLater();
       };
     },
     subscribe(listener: () => void) {
