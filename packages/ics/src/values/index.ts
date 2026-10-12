@@ -1,49 +1,107 @@
-// Value layer: raw property values ⇄ typed values. Owned by the values work package.
+// Value layer: raw property values ⇄ typed values. Decoders never throw; encoders throw only for
+// values iCalendar can't write, such as a DURATION in months.
 
-import type { IcsDateValue, IcsDecodedValueMap, IcsProperty, IcsValueType } from "../types";
+import type { IcsDateValue, IcsDecodedValueMap, IcsValueType } from "../types";
+import {
+  decodeDate,
+  decodeDateTime,
+  decodeDateValue,
+  decodeTime,
+  encodeDateValue,
+  encodeTime,
+} from "./date-time";
+import { decodeDuration, encodeDuration } from "./duration";
+import { decodePeriod, encodePeriod } from "./period";
+import { decodeRecur, encodeRecur } from "./recur";
+import { failure, success, type IcsDecodeResult, type IcsValueContext } from "./result";
+import {
+  decodeBinary,
+  decodeBoolean,
+  decodeFloat,
+  decodeInteger,
+  encodeFloat,
+  encodeInteger,
+} from "./scalars";
+import { decodeText, encodeText, splitList } from "./text";
+import { decodeUtcOffset, encodeUtcOffset } from "./utc-offset";
 
-export interface IcsValueContext {
-  /**
-   * Resolves a TZID to an IANA time zone id, or `undefined`. Without it, a TZID resolves only when
-   * it is itself a time zone id Temporal knows.
-   */
-  readonly resolveTimeZone?: (tzid: string) => string | undefined;
-  /** The property's TZID parameter. */
-  readonly tzid?: string;
-}
+export { icsValueTypeOf } from "./registry";
+export type { IcsDecodeResult, IcsValueContext } from "./result";
 
-export type IcsDecodeResult<T> =
-  | { readonly ok: false; readonly message: string }
-  | { readonly ok: true; readonly value: T; readonly warning?: string };
+type Decoders = {
+  readonly [TType in IcsValueType]: (
+    raw: string,
+    context: IcsValueContext,
+  ) => IcsDecodeResult<IcsDecodedValueMap[TType]>;
+};
 
-/** The property's value type: its VALUE parameter, else its registered default, else TEXT. */
-export function icsValueTypeOf(property: IcsProperty): IcsValueType {
-  void property;
-  throw new Error("not implemented: icsValueTypeOf");
-}
+type Encoders = {
+  readonly [TType in IcsValueType]: (value: IcsDecodedValueMap[TType]) => string;
+};
+
+const asWritten = (raw: string) => success(raw);
+const identity = (value: string) => value;
+
+const DECODERS: Decoders = {
+  BINARY: decodeBinary,
+  BOOLEAN: decodeBoolean,
+  "CAL-ADDRESS": asWritten,
+  DATE: decodeDate,
+  "DATE-TIME": decodeDateTime,
+  DURATION: decodeDuration,
+  FLOAT: decodeFloat,
+  INTEGER: decodeInteger,
+  PERIOD: decodePeriod,
+  RECUR: decodeRecur,
+  TEXT: decodeText,
+  TIME: decodeTime,
+  URI: asWritten,
+  "UTC-OFFSET": decodeUtcOffset,
+};
+
+const ENCODERS: Encoders = {
+  BINARY: identity,
+  BOOLEAN: (value) => (value ? "TRUE" : "FALSE"),
+  "CAL-ADDRESS": identity,
+  DATE: encodeDateValue,
+  "DATE-TIME": encodeDateValue,
+  DURATION: encodeDuration,
+  FLOAT: encodeFloat,
+  INTEGER: encodeInteger,
+  PERIOD: encodePeriod,
+  RECUR: encodeRecur,
+  TEXT: encodeText,
+  TIME: ({ time, utc }) => `${encodeTime(time)}${utc ? "Z" : ""}`,
+  URI: identity,
+  "UTC-OFFSET": encodeUtcOffset,
+};
 
 /** Decodes one raw value (no list splitting) as `type`. */
 export function decodeIcsValue<TType extends IcsValueType>(
   type: TType,
   raw: string,
-  context?: IcsValueContext,
+  context: IcsValueContext = {},
 ): IcsDecodeResult<IcsDecodedValueMap[TType]> {
-  void type;
-  void raw;
-  void context;
-  throw new Error("not implemented: decodeIcsValue");
+  return Object.hasOwn(DECODERS, type)
+    ? DECODERS[type](raw, context)
+    : failure(`Unknown value type ${JSON.stringify(type)}`);
+}
+
+/**
+ * The items of a list value: split on separating commas, TEXT escapes left in place. RECUR, whose
+ * parts hold commas, is never split.
+ */
+export function splitIcsValues(type: IcsValueType, raw: string): string[] {
+  return splitList(type, raw);
 }
 
 /** Splits a list value on its separating commas and decodes each item as `type`. */
 export function decodeIcsValues<TType extends IcsValueType>(
   type: TType,
   raw: string,
-  context?: IcsValueContext,
+  context: IcsValueContext = {},
 ): IcsDecodeResult<IcsDecodedValueMap[TType]>[] {
-  void type;
-  void raw;
-  void context;
-  throw new Error("not implemented: decodeIcsValues");
+  return splitList(type, raw).map((item) => decodeIcsValue(type, item, context));
 }
 
 /**
@@ -53,12 +111,9 @@ export function decodeIcsValues<TType extends IcsValueType>(
 export function decodeIcsDateValue(
   raw: string,
   declared: "DATE" | "DATE-TIME",
-  context?: IcsValueContext,
+  context: IcsValueContext = {},
 ): IcsDecodeResult<IcsDateValue> {
-  void raw;
-  void declared;
-  void context;
-  throw new Error("not implemented: decodeIcsDateValue");
+  return decodeDateValue(raw, declared, context);
 }
 
 /**
@@ -69,7 +124,8 @@ export function encodeIcsValue<TType extends IcsValueType>(
   type: TType,
   value: IcsDecodedValueMap[TType],
 ): string {
-  void type;
-  void value;
-  throw new Error("not implemented: encodeIcsValue");
+  if (!Object.hasOwn(ENCODERS, type)) {
+    throw new TypeError(`Unknown value type ${JSON.stringify(type)}`);
+  }
+  return ENCODERS[type](value);
 }
