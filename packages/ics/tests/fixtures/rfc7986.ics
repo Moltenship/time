@@ -1,0 +1,52 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Example Corp//Holiday Publisher 2.1//EN
+UID:5FC53010-1267-4F8E-BC28-1D7AE55A7C99
+NAME:Company Vacation Days
+X-WR-CALNAME:Vacation (legacy name)
+DESCRIPTION:Days the office is closed\, and nobody answers the phone.
+X-WR-CALDESC:Legacy description
+LAST-MODIFIED:20260102T030405Z
+URL:https://example.com/calendars/vacation
+REFRESH-INTERVAL;VALUE=DURATION:P1W
+X-PUBLISHED-TTL:PT12H
+SOURCE;VALUE=URI:https://example.com/holidays.ics
+COLOR:turquoise
+IMAGE;VALUE=URI;DISPLAY=BADGE;FMTTYPE=image/png:h
+ ttp://example.com/images/party.png
+CATEGORIES:Holidays,Company
+BEGIN:VEVENT
+UID:winter-break-2026@example.com
+DTSTAMP:20260102T030405Z
+DTSTART;VALUE=DATE:20261224
+DTEND;VALUE=DATE:20261227
+SUMMARY:Winter break
+COLOR:darkred
+IMAGE;VALUE=URI;DISPLAY=BADGE,THUMBNAIL;FMTTYPE=image/png:https://exa
+ mple.com/images/weather-cloudy.png
+END:VEVENT
+BEGIN:VEVENT
+UID:all-hands-2026-11@example.com
+DTSTAMP:20260102T030405Z
+DTSTART:20261105T160000Z
+DURATION:PT1H
+SUMMARY:All-hands call
+CONFERENCE;VALUE=URI;FEATURE=PHONE,MODERATOR;
+ LABEL=Moderator dial-in:tel:+1-412-555-0123,,,654321
+CONFERENCE;VALUE=URI;FEATURE=PHONE;
+ LABEL=Attendee dial-in:tel:+1-412-555-0123,,,555123
+CONFERENCE;VALUE=URI;FEATURE=PHONE;
+ LABEL=Attendee dial-in:tel:+1-888-555-0456,,,555123
+CONFERENCE;VALUE=URI;FEATURE=CHAT;
+ LABEL=Chat room:xmpp:chat-123@conference.example.com
+CONFERENCE;VALUE=URI;FEATURE=AUDIO,VIDEO;
+ LABEL=Attendee dial-in:https://chat.example.com/audio?id=123456
+CONFERENCE;VALUE=URI;FEATURE=VIDEO;
+ LABEL="Web video chat, access code=76543"
+ :https://video-chat.example.com/;group-id=1234
+ATTENDEE;CN=Pat Example;EMAIL=pat@example.com:mailto:opaque-toke
+ n-1234@example.com
+X-EXAMPLE-ROOM:Room 1,Room 2
+X-EXAMPLE-ROOM:Room 3\, east wing
+END:VEVENT
+END:VCALENDAR

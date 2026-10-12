@@ -1,0 +1,83 @@
+BEGIN:VCALENDAR
+version:2.0
+prodid:-//Example Corp//Quirky Exporter 0.9//EN
+x-wr-calname:Quirks
+begin:vevent
+uid:lowercase@example.com
+dtstamp:20260301T120000Z
+dtstart;tzid=Europe/Berlin:20260302T090000
+dtend;tzid=Europe/Berlin:20260302T100000
+summary:Lowercase names
+x-custom-flag;x-param=yes:on
+begin:x-example-note
+x-body:hello
+end:x-example-note
+end:vevent
+BEGIN:VEVENT
+UID:date-without-value@example.com
+DTSTAMP:20260301T120000Z
+DTSTART:20260305
+DTEND:20260306
+SUMMARY:Date without VALUE=DATE
+END:VEVENT
+BEGIN:VEVENT
+UID:missing-dtstamp@example.com
+DTSTART:20260306T080000Z
+DTEND:20260306T083000Z
+SUMMARY:Missing DTSTAMP
+END:VEVENT
+BEGIN:VEVENT
+DTSTAMP:20260301T120000Z
+DTSTART:20260307T080000Z
+SUMMARY:Missing UID
+END:VEVENT
+BEGIN:VEVENT
+UID:missing-dtstart@example.com
+DTSTAMP:20260301T120000Z
+SUMMARY:Missing DTSTART
+END:VEVENT
+BEGIN:VEVENT
+UID:broken-folding@example.com
+DTSTAMP:20260301T120000Z
+DTSTART:20260310T090000Z
+SUMMARY:Broken folding
+DESCRIPTION:This description was folded by a careless exporter and the
+next line lost its leading space
+LOCATION:Room 2
+END:VEVENT
+BEGIN:VEVENT
+UID:unknown-tzid@example.com
+DTSTAMP:20260301T120000Z
+DTSTART;TZID=Mars/Olympus_Mons:20260312T090000
+DTEND;TZID=Mars/Olympus_Mons:20260312T100000
+SUMMARY:Unknown time zone
+END:VEVENT
+BEGIN:VEVENT
+UID:duplicate-summary@example.com
+DTSTAMP:20260301T120000Z
+DTSTART:20260313T090000Z
+SUMMARY:First summary
+SUMMARY:Second summary
+END:VEVENT
+BEGIN:VEVENT
+UID:dtend-and-duration@example.com
+DTSTAMP:20260301T120000Z
+DTSTART:20260314T090000Z
+DTEND:20260314T100000Z
+DURATION:PT2H
+SUMMARY:Both DTEND and DURATION
+END:VEVENT
+BEGIN:VEVENT
+UID:multi-byte@example.com
+DTSTAMP:20260301T120000Z
+DTSTART;VALUE=DATE:20260315
+SUMMARY:Еженедельная встреча команды 👩
+ ‍💻 и планирование спринта 🚀
+DESCRIPTION:Повестка: итоги релиза\, ретроспек
+ тива и планы 🗓
+ ️\nНе забудьте ноутбуки 💻 и хорошее
+  настроение 😄 До встречи! 👋
+ 🏽
+LOCATION:Москва\, Красная площадь\, 1
+END:VEVENT
+END:VCALENDAR

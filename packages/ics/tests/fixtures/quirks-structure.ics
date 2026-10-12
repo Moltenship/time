@@ -1,0 +1,17 @@
+BEGIN:VCALENDAR
+VERSION:2.0
+PRODID:-//Example Corp//Broken Structure 0.1//EN
+BEGIN:VEVENT
+UID:well-formed@example.com
+DTSTAMP:20260301T120000Z
+DTSTART:20260320T090000Z
+SUMMARY:Well-formed event
+END:VEVENT
+BEGIN:VTODO
+UID:mismatched-end@example.com
+DTSTAMP:20260301T120000Z
+SUMMARY:Todo closed by the wrong END
+END:VEVENT
+END:VCALENDAR
+X-TRAILING-GARBAGE:this line follows END:VCALENDAR
+Sent from my phone
