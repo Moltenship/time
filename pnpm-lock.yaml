@@ -843,6 +843,9 @@ importers:
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
+      temporal-polyfill:
+        specifier: 'catalog:'
+        version: 1.0.5
       tw-animate-css:
         specifier: 'catalog:'
         version: 1.4.0

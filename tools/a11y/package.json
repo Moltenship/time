@@ -2,7 +2,7 @@
   "name": "a11y",
   "version": "0.0.0",
   "private": true,
-  "description": "axe-core checks of the registry views and the demo in Chromium, in light and dark themes.",
+  "description": "axe-core checks and interactions of the registry views and the demo, light and dark, in Chromium, and in Firefox and WebKit with --mode browsers.",
   "type": "module",
   "scripts": {
     "test": "vp test"
@@ -22,6 +22,7 @@
     "playwright": "catalog:",
     "shadcn": "catalog:",
     "tailwindcss": "catalog:",
+    "temporal-polyfill": "catalog:",
     "tw-animate-css": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",

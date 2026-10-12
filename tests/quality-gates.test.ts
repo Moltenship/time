@@ -97,7 +97,11 @@ describe("CI quality gate contract", () => {
       "vp run ready:checks",
       "vp run --last-details",
     ]);
-    expect(Object.keys(workflow.jobs ?? {})).toEqual(["quality-gates", "accessibility"]);
+    expect(Object.keys(workflow.jobs ?? {})).toEqual([
+      "quality-gates",
+      "accessibility",
+      "browsers",
+    ]);
     expect(workflow.permissions).toEqual({ contents: "read" });
     expect(workflow.concurrency).toMatchObject({
       group: "${{ github.workflow }}-${{ github.ref }}",
@@ -116,7 +120,22 @@ describe("CI quality gate contract", () => {
     ]);
   });
 
-  test("CI's two jobs are `vp run ready`, which runs every named gate", () => {
+  test("main runs Firefox and WebKit, part of the full gate, in a job of its own", async () => {
+    const job = (await readWorkflow()).jobs?.browsers as
+      | { readonly if?: string; readonly steps?: readonly WorkflowStep[] }
+      | undefined;
+
+    expect(job?.if).toBe("github.event_name != 'pull_request'");
+    expect(job?.steps?.map(({ run }) => run).filter(Boolean)).toEqual([
+      "vp install --frozen-lockfile",
+      "vp exec --filter a11y playwright install --with-deps firefox webkit",
+      "vp run browsers",
+      "vp run --last-details",
+    ]);
+    expect(work("ready:full")).toContain("browsers");
+  });
+
+  test("a pull request's two jobs are `vp run ready`, which runs every named gate", () => {
     expect(tasks["ready"]).toMatchObject({ dependsOn: ["ready:checks", "a11y"] });
     expect([...stepsOf("ready")]).toEqual(expect.arrayContaining([...prGates]));
   });

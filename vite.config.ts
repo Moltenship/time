@@ -39,12 +39,12 @@ export default defineConfig({
         cache: false,
         dependsOn: ["registry:smoke", "gate:serial"],
       },
-      // The release gate: everything `ready` runs, the a11y suite at CI's speed, the docs site's
-      // types and search, and the registry installed into clean apps.
+      // The release gate: everything `ready` runs, the a11y suite at CI's speed and in Firefox and
+      // WebKit, the docs site's types and search, and the registry installed into clean apps.
       "ready:full": {
         command: "echo ready:full: the release gate passed",
         cache: false,
-        dependsOn: ["registry:smoke", "a11y", "a11y:ci-speed", "gate:serial:full"],
+        dependsOn: ["registry:smoke", "a11y", "a11y:ci-speed", "browsers", "gate:serial:full"],
       },
       "gate:serial":
         "vp run showcase:links && vp run ci:check && vp run ci:build && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
@@ -63,6 +63,9 @@ export default defineConfig({
       // The a11y suite with Chromium slowed down to a CI runner's speed. Never replayed: it's what
       // to run when CI and local disagree, and a timing race can pass once by luck.
       "a11y:ci-speed": { command: "vp test --mode ci-speed", cwd: "tools/a11y", cache: false },
+      // The a11y suite and real mouse and keyboard interactions in Firefox and WebKit, WebKit on
+      // temporal-polyfill. Needs `vp exec --filter a11y playwright install firefox webkit` once.
+      browsers: { command: "vp test --mode browsers", cwd: "tools/a11y" },
       "package:graph": ["vp run check:boundaries", "vp test tests/quality-gates.test.ts"],
       "showcase:source": "vp run showcase#source:generate",
       "showcase:types": "vp run showcase#types:check",

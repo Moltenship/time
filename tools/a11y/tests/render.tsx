@@ -1,6 +1,10 @@
 import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach } from "vite-plus/test";
+import { server } from "vite-plus/test/browser";
+
+/** Whether the run is in WebKit, which skips the tests #181 tracks. */
+export const inWebKit = server.browser === "webkit";
 
 let mounted: { readonly container: HTMLElement; readonly unmount: () => void } | undefined;
 

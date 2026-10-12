@@ -23,6 +23,13 @@ if (import.meta.env.MODE === "ci-speed" && server.browser === "chromium") {
   await cdp().send("Emulation.setCPUThrottlingRate", { rate: CI_SLOWDOWN });
 }
 
+// `vp run browsers` runs WebKit on temporal-polyfill, as an app would for a browser without
+// Temporal: the native one goes, and the polyfill takes its place before any test imports.
+if (import.meta.env.MODE === "browsers" && server.browser === "webkit") {
+  delete (globalThis as { Temporal?: unknown }).Temporal;
+  await import("temporal-polyfill/global");
+}
+
 // The mouse stays where a test leaves it, over whatever the next test renders there, which it
 // would hover. Each test ends with the mouse parked on a corner of its own, above the page.
 const corner = document.createElement("div");

@@ -2,7 +2,7 @@ import { act, useState } from "react";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
 import { seriousViolations, setTheme, themes } from "./axe";
-import { press, render } from "./render";
+import { inWebKit, press, render } from "./render";
 import { axis, reported, screen, ScrollingScreen as Screen, title } from "./scrolling-screen";
 
 afterEach(() => {
@@ -242,54 +242,58 @@ describe("scrolling views", () => {
     expect(Math.abs(position() - start - 7)).toBeLessThan(0.1);
   });
 
-  test("dragging an event against the edge carries it past the days rendered at first", async () => {
-    await render(<Screen view="scrolling-week" />);
-    const { viewport } = axis("scrolling-week");
-    viewport.scrollTop = 400;
-    const event = viewport.querySelector<HTMLElement>('[data-event-id="planning"]')!;
-    const box = event.getBoundingClientRect();
-    // Deep in the auto-scroll band, clear of the scrollbar.
-    const edge = viewport.getBoundingClientRect().right - 20;
-    const at = (x: number) => ({
-      bubbles: true,
-      button: 0,
-      clientX: x,
-      clientY: box.top + 10,
-      isPrimary: true,
-      pointerId: 1,
-      pointerType: "mouse",
-    });
+  // WebKit won't capture the synthetic pointer events this test sends: #181.
+  test.skipIf(inWebKit)(
+    "dragging an event against the edge carries it past the days rendered at first",
+    async () => {
+      await render(<Screen view="scrolling-week" />);
+      const { viewport } = axis("scrolling-week");
+      viewport.scrollTop = 400;
+      const event = viewport.querySelector<HTMLElement>('[data-event-id="planning"]')!;
+      const box = event.getBoundingClientRect();
+      // Deep in the auto-scroll band, clear of the scrollbar.
+      const edge = viewport.getBoundingClientRect().right - 20;
+      const at = (x: number) => ({
+        bubbles: true,
+        button: 0,
+        clientX: x,
+        clientY: box.top + 10,
+        isPrimary: true,
+        pointerId: 1,
+        pointerType: "mouse",
+      });
 
-    await act(async () => {
-      event.dispatchEvent(new PointerEvent("pointerdown", at(box.left + 10)));
-      event.dispatchEvent(new PointerEvent("pointermove", at(box.left + 30)));
-      event.dispatchEvent(new PointerEvent("pointermove", at(edge)));
-    });
-    // Held at the edge, the drag scrolls on until the days at the edge were never rendered when
-    // it began: the week of October 5 rendered September 28 to October 18.
-    await vi.waitFor(
-      () => {
-        const last = reported.anchors.at(-1);
-        expect(last !== undefined && last.since("2026-10-19").sign >= 0).toBe(true);
-      },
-      { interval: 50, timeout: 10_000 },
-    );
-    // The event's own element has scrolled out of the rendered days by now: the pointer is over
-    // whatever is at the edge, as a real one would be.
-    await act(async () =>
-      document
-        .elementFromPoint(edge, box.top + 10)!
-        .dispatchEvent(new PointerEvent("pointerup", at(edge))),
-    );
+      await act(async () => {
+        event.dispatchEvent(new PointerEvent("pointerdown", at(box.left + 10)));
+        event.dispatchEvent(new PointerEvent("pointermove", at(box.left + 30)));
+        event.dispatchEvent(new PointerEvent("pointermove", at(edge)));
+      });
+      // Held at the edge, the drag scrolls on until the days at the edge were never rendered when
+      // it began: the week of October 5 rendered September 28 to October 18.
+      await vi.waitFor(
+        () => {
+          const last = reported.anchors.at(-1);
+          expect(last !== undefined && last.since("2026-10-19").sign >= 0).toBe(true);
+        },
+        { interval: 50, timeout: 10_000 },
+      );
+      // The event's own element has scrolled out of the rendered days by now: the pointer is over
+      // whatever is at the edge, as a real one would be.
+      await act(async () =>
+        document
+          .elementFromPoint(edge, box.top + 10)!
+          .dispatchEvent(new PointerEvent("pointerup", at(edge))),
+      );
 
-    const [change] = reported.changes;
-    expect(change?.cause).toBe("move");
-    const start = change?.proposed?.start;
-    expect(start instanceof Temporal.Instant).toBe(true);
-    // A timed move, landing past October 18, the last day rendered when the drag began.
-    const day = (start as Temporal.Instant).toZonedDateTimeISO("UTC").toPlainDate();
-    expect(Temporal.PlainDate.compare(day, Temporal.PlainDate.from("2026-10-18"))).toBe(1);
-  });
+      const [change] = reported.changes;
+      expect(change?.cause).toBe("move");
+      const start = change?.proposed?.start;
+      expect(start instanceof Temporal.Instant).toBe(true);
+      // A timed move, landing past October 18, the last day rendered when the drag began.
+      const day = (start as Temporal.Instant).toZonedDateTimeISO("UTC").toPlainDate();
+      expect(Temporal.PlainDate.compare(day, Temporal.PlainDate.from("2026-10-18"))).toBe(1);
+    },
+  );
 
   test("asking for the anchor mid-drag doesn't stall the drag's scroll", async () => {
     await render(<Screen view="scrolling-week" />);
@@ -342,21 +346,25 @@ describe("scrolling views", () => {
     await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.02), settled);
   });
 
-  test("a day view scrolled down to the evening still stops a swipe at the next day", async () => {
-    await render(<Screen view="scrolling-day" />);
-    const { position, viewport } = axis("scrolling-day");
-    const start = position();
-    const day = viewport.getBoundingClientRect().width;
-    await act(async () => {
-      viewport.scrollTop = viewport.scrollHeight;
-    });
+  // WebKit doesn't stop a programmatic scroll at the next snap point: #181.
+  test.skipIf(inWebKit)(
+    "a day view scrolled down to the evening still stops a swipe at the next day",
+    async () => {
+      await render(<Screen view="scrolling-day" />);
+      const { position, viewport } = axis("scrolling-day");
+      const start = position();
+      const day = viewport.getBoundingClientRect().width;
+      await act(async () => {
+        viewport.scrollTop = viewport.scrollHeight;
+      });
 
-    // A swipe worth more than two days, which snapping stops at the next one.
-    await act(async () => viewport.scrollBy({ behavior: "instant", left: day * 2.6 }));
+      // A swipe worth more than two days, which snapping stops at the next one.
+      await act(async () => viewport.scrollBy({ behavior: "instant", left: day * 2.6 }));
 
-    await vi.waitFor(() => expect(title()).toBe("October 8, 2026"), settled);
-    await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.02), settled);
-  });
+      await vi.waitFor(() => expect(title()).toBe("October 8, 2026"), settled);
+      await vi.waitFor(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.02), settled);
+    },
+  );
 
   test("the month swipes a month at a time", async () => {
     await render(<Screen view="scrolling-month" />);

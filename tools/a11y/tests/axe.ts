@@ -15,6 +15,9 @@ type ElementFilter = Readonly<Record<string, (element: Element) => boolean>>;
 const exemptions: ElementFilter = {
   // Base UI's focus guards are hidden, tabbable spans that pass focus straight on.
   "aria-hidden-focus": (element) => element.matches("[data-base-ui-focus-guard]"),
+  // In WebKit on macOS, Base UI makes them unnamed buttons instead, so VoiceOver's cursor, which
+  // only focuses buttons there, can't leave a popup past them.
+  "aria-command-name": (element) => element.matches("[data-base-ui-focus-guard]"),
   // Event names carry the title, the full date and time, the calendar and the saving state
   // (#97), while each view's chip shows a shorter subset in its own order ("9:30 AM Standup").
   // Names lead with the title, so speech input still matches it. A day cell's visible text
