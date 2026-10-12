@@ -69,7 +69,7 @@ export function ResourcePicker({ eventId, interval, onChange, value }: ResourceP
                 return (
                   <Label
                     key={resource.id}
-                    className="flex items-center gap-2 rounded-md px-1 py-1 font-normal hover:bg-muted"
+                    className="group/resource flex items-center gap-2 rounded-md px-1 py-1 font-normal hover:bg-muted"
                   >
                     <Checkbox
                       checked={value.includes(resource.id)}
@@ -84,7 +84,8 @@ export function ResourcePicker({ eventId, interval, onChange, value }: ResourceP
                     <span className="min-w-0 flex-1 truncate">
                       {resource.title}
                       {resource.data.kind === "room" && (
-                        <span className="text-muted-foreground">
+                        // Muted on the hover fill falls short of 4.5:1.
+                        <span className="text-muted-foreground group-hover/resource:text-foreground">
                           {" "}
                           · {resource.data.capacity} seats
                         </span>

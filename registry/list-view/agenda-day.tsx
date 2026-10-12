@@ -117,6 +117,6 @@ function AgendaDayContentBase<TEvent>({
 /**
  * A day's date and events. The virtualizer renders the list again whenever it scrolls or measures
  * a row, which only moves the day: its events, and the dates and times they format, render again
- * only when the day changes.
+ * only when their props change.
  */
 const AgendaDayContent = memo(AgendaDayContentBase) as typeof AgendaDayContentBase;

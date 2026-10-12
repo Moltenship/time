@@ -120,10 +120,10 @@ describe.each(["ltr", "rtl"] as const)(
       expect(title()).toBe("Oct 8, 2026 – Oct 6, 2027");
       expect(days()[0]?.getAttribute("aria-setsize")).toBe("728");
 
-      // Each step moves the anchor, which projects the year of loaded dates again: six steps of
-      // about 24 days each cross the months without paying for more of them.
-      for (let step = 0; step < 6; step += 1) {
-        await scrollList(12_000);
+      // Each step moves the anchor, which projects the year of loaded dates again: four steps of
+      // about five weeks each cross the months without paying for more of them.
+      for (let step = 0; step < 4; step += 1) {
+        await scrollList(18_000);
         expect(days().length).toBeLessThan(16);
         expect(list().querySelectorAll("[data-event-id]").length).toBeLessThan(200);
       }
@@ -136,7 +136,7 @@ describe.each(["ltr", "rtl"] as const)(
       )!;
       expect(top.dataset.date).toBe(anchors.at(-1)!.toString());
 
-      for (let step = 0; step < 6; step += 1) await scrollList(-12_000);
+      for (let step = 0; step < 4; step += 1) await scrollList(-18_000);
       expect(days().length).toBeLessThan(16);
     });
 

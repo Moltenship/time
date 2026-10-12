@@ -78,13 +78,16 @@ describe.each(themes)("registry views, %s theme", (theme) => {
     }
   });
 
-  // Rows that fill with the accent colour on hover, over muted text: an all-day event's "Day k of
-  // n" in the agenda, a timed event's time in the month and the year's day popover.
+  // Controls that fill with the accent colour on hover, over muted text: an all-day event's "Day k
+  // of n" in the agenda, a timed event's time in the month and the year's day popover, and days
+  // outside the month in the month and the mini month.
   test.each([
-    ["agenda", '[data-event-id="Conference"]'],
-    ["month", '[data-event-id$=" call"]'],
-    ["year", '[data-event-id$=" meeting"]'],
-  ] as const)("%s view's rows keep their contrast while hovered", async (view, selector) => {
+    ["agenda", "an event", '[data-event-id="Conference"]'],
+    ["month", "an event", '[data-event-id$=" call"]'],
+    ["year", "an event", '[data-event-id$=" meeting"]'],
+    ["month", "a day outside the month", 'div[data-date="2026-09-28"] > button'],
+    ["week", "the mini month's day outside the month", "button[data-outside-month]"],
+  ] as const)("%s view: %s keeps its contrast while hovered", async (view, _, selector) => {
     setTheme(theme);
     await render(<RegistryScreen view={view} />);
     if (view === "year") {
@@ -92,11 +95,9 @@ describe.each(themes)("registry views, %s theme", (theme) => {
         document.querySelector<HTMLElement>('[role="gridcell"][data-date="2026-10-08"] button'),
       );
     }
-    const event = document.querySelector<HTMLElement>(selector)!;
-    await userEvent.hover(event);
+    await userEvent.hover(document.querySelector<HTMLElement>(selector)!);
 
     expect(await seriousViolations()).toEqual([]);
-    await userEvent.unhover(event);
   });
 
   test("month view's +N more popover", async () => {
