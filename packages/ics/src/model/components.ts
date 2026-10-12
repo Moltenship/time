@@ -18,7 +18,7 @@ import type {
   IcsTodo,
 } from "../types";
 import { decodeIcsValue, splitIcsValues } from "../values";
-import { readExtensions, type ExtensionEntries } from "./extensions";
+import { readExtensions, type AnyExtensions, type ExtensionEntries } from "./extensions";
 import {
   attachments,
   attendees,
@@ -32,8 +32,6 @@ import {
   texts,
 } from "./fields";
 import { defined, parameter, upper, type ComponentReader } from "./reader";
-
-type Extensions = Record<string, unknown>;
 
 const DATE_TIME_SHAPE = /^\d{8}T/i;
 
@@ -163,6 +161,11 @@ function endAndDuration(
     decodeIcsValue("DURATION", durationProperty.value),
     "duration",
   );
+  // RFC 5545 §3.8.2.5: a component's DURATION is positive. A negative one ends before it starts.
+  if (duration !== undefined && duration.sign < 0) {
+    const message = "DURATION is negative, which RFC 5545 doesn't allow";
+    read.report("warning", "invalid-value", message, durationProperty, "duration");
+  }
   return { duration, end };
 }
 
@@ -186,7 +189,7 @@ function alarmsAndOthers(read: ComponentReader): {
 export function readEvent(
   read: ComponentReader,
   extensions: ExtensionEntries,
-): IcsEvent<Extensions> | undefined {
+): IcsEvent<AnyExtensions> | undefined {
   if (!read.require("UID", "DTSTART")) return undefined;
   const startProperty = read.one("DTSTART", "start")!;
   const start = read.required(
@@ -216,7 +219,7 @@ export function readEvent(
 export function readTodo(
   read: ComponentReader,
   extensions: ExtensionEntries,
-): IcsTodo<Extensions> | undefined {
+): IcsTodo<AnyExtensions> | undefined {
   if (!read.require("UID")) return undefined;
   const start = read.date("DTSTART", "start");
   const { duration, end: due } = endAndDuration(read, start, "DUE", "due");
@@ -242,7 +245,7 @@ export function readTodo(
 export function readJournal(
   read: ComponentReader,
   extensions: ExtensionEntries,
-): IcsJournal<Extensions> | undefined {
+): IcsJournal<AnyExtensions> | undefined {
   if (!read.require("UID")) return undefined;
   const fields = {
     ...schedulingFields(read, read.text("UID", "uid")!),

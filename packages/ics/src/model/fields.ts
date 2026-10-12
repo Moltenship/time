@@ -29,8 +29,9 @@ const ATTENDEE_PARAMETERS = [
 ];
 const MAILTO = /^mailto:/i;
 
+// Parameter names come from the text: without a prototype, `constructor` reads as undefined.
 function otherParameters(property: IcsProperty, mapped: readonly string[]): IcsParameters {
-  const others: Record<string, readonly string[] | undefined> = {};
+  const others: Record<string, readonly string[] | undefined> = Object.create(null);
   for (const [name, values] of Object.entries(property.parameters)) {
     if (!mapped.includes(name)) others[name] = values;
   }

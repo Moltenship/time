@@ -1,18 +1,34 @@
 import { expect } from "vite-plus/test";
 
+import type { IcsIssueCode } from "../../src/index";
 import type { IcsDecodeResult } from "../../src/values";
 
-/** The value of a clean success: ok and without a warning. */
+/** The value of a clean success: ok and without warnings. */
 export function decoded<T>(result: IcsDecodeResult<T>): T {
   expect(result).toMatchObject({ ok: true });
-  expect(result).not.toHaveProperty("warning");
+  expect(result).not.toHaveProperty("warnings");
   return (result as { readonly value: T }).value;
 }
 
-/** The value of a lenient success, whose warning must match `warning`. */
-export function lenient<T>(result: IcsDecodeResult<T>, warning: RegExp): T {
-  expect(result).toMatchObject({ ok: true, warning: expect.stringMatching(warning) });
+/** The value of a lenient success, one of whose warnings must match `warning` and have `code`. */
+export function lenient<T>(
+  result: IcsDecodeResult<T>,
+  warning: RegExp,
+  code: IcsIssueCode = "invalid-value",
+): T {
+  expect(result).toMatchObject({
+    ok: true,
+    warnings: expect.arrayContaining([{ code, message: expect.stringMatching(warning) }]),
+  });
   return (result as { readonly value: T }).value;
+}
+
+/** The warnings' messages, in order. */
+export function warningsOf(result: IcsDecodeResult<unknown>): readonly string[] {
+  expect(result).toMatchObject({ ok: true });
+  return ((result as { readonly warnings?: readonly { message: string }[] }).warnings ?? []).map(
+    ({ message }) => message,
+  );
 }
 
 export function rejected(result: IcsDecodeResult<unknown>): string {

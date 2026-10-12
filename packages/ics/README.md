@@ -27,8 +27,12 @@ for (const event of calendars[0]?.events ?? []) {
 ```
 
 `parseIcs` is lenient: it keeps what it can, skips components it can't type (an event without UID
-or DTSTART), and lists every problem in `issues`. Pass `{ strict: true }` to throw an
-`IcsParseError` on error-severity issues instead.
+or DTSTART), and lists every problem in `issues`. Text without a VCALENDAR, empty text included,
+is an error. Pass `{ strict: true }` to throw an `IcsParseError` on error-severity issues instead.
+
+Bad data never throws on its own. An exception thrown by a callback you pass, `resolveTimeZone` or
+an extension schema's `validate`, propagates out of `parse` unchanged: it's a bug in your code, not
+a problem with the text.
 
 ## Dates and times
 
@@ -70,7 +74,8 @@ to floating times.
 
 Temporal has no custom time zones, so each TZID is mapped to a time zone Temporal knows:
 
-1. your `resolveTimeZone(tzid, vtimezone)` option, if it returns an id;
+1. your `resolveTimeZone(tzid, vtimezone)` option, if it returns an id Temporal knows (any other
+   answer falls through, like `undefined`);
 2. IANA ids, such as `Europe/Berlin`;
 3. vendor paths, such as `/mozilla.org/20050126_1/Europe/Berlin`;
 4. Windows ids and Outlook display names, such as `W. Europe Standard Time` or
@@ -112,6 +117,9 @@ event.extensions.guests; // number | undefined
 collects every occurrence and every comma-separated value. A value the schema rejects is dropped
 with a `schema` issue. Schemas must validate synchronously.
 
+To name the result's types in your own code, keep the `extensions` object in a constant: every
+type takes it the same way, as in `IcsCalendar<typeof extensions>` or `IcsEvent<typeof extensions>`.
+
 ## As a Standard Schema
 
 A parser validates ICS text: it fails with the error-severity issues, or succeeds with the parse
@@ -133,6 +141,14 @@ When the typed model doesn't cover your data, drop down a layer:
   values, and `stringifyIcsComponents(tree)` writes it back (CRLF, folded at 75 octets).
 - `decodeIcsValue(type, raw, context)` and `encodeIcsValue(type, value)` convert single values of
   any RFC 5545 value type, and `icsValueTypeOf(property)` says which type a property has.
+- `splitIcsValues(type, raw)` splits a list value, such as CATEGORIES or EXDATE, on its separating
+  commas; `decodeIcsValues(type, raw, context)` splits and decodes each item.
+- `decodeIcsDateValue(raw, declared, context)` reads a DATE or DATE-TIME by its shape, as the
+  typed model does for DTSTART, DTEND and EXDATE.
+
+Decoders never throw. They return `{ ok: false, message }`, or `{ ok: true, value }` with
+`warnings` when they read a value leniently; each warning has the `code` the typed model would
+report it under.
 
 Typed components also keep every property and subcomponent they don't map in `otherProperties`
 and `otherComponents`.

@@ -176,6 +176,64 @@ describe("VEVENT fields", () => {
     ]);
     expect(issues[0]?.message).toMatch(/^DTEND: .*no seconds/);
   });
+
+  test("reports each warning of a lenient decode as its own issue", () => {
+    const { issues } = parseEvent("DTEND:20260301t1000z");
+    expect(issues.map(({ code, message }) => [code, message])).toEqual([
+      ["invalid-value", "DTEND: lowercase T or Z; read as uppercase"],
+      ["invalid-value", "DTEND: no seconds; read as :00"],
+    ]);
+  });
+
+  test("codes a warning by the decoder's code, not by the words in its message", () => {
+    const result = parse(
+      calendarText(
+        "BEGIN:VEVENT",
+        "UID:a@example.com",
+        "DTSTART;TZID=unsupported:20260101T000000Z",
+        "END:VEVENT",
+      ),
+    );
+    expect(issuesOf(result.issues)).toEqual([
+      {
+        code: "invalid-value",
+        component: "VEVENT",
+        line: 4,
+        path: [...EVENT_PATH, "start"],
+        property: "DTSTART",
+        severity: "warning",
+      },
+    ]);
+    expect(result.issues[0]?.message).toMatch(/Z wins/);
+  });
+
+  test("reads an empty TZID as no TZID: floating, with an invalid-value warning", () => {
+    const result = parse(
+      calendarText(
+        "BEGIN:VEVENT",
+        "UID:a@example.com",
+        "DTSTART;TZID=:20260101T090000",
+        "EXDATE;TZID=:20260102T090000",
+        "END:VEVENT",
+      ),
+    );
+    const event = onlyCalendar(result).events[0]!;
+    expect(plain(event.start)).toEqual({ kind: "floating", wallTime: "2026-01-01T09:00:00" });
+    expect(plain(event.exceptionDates)).toEqual([
+      { kind: "floating", wallTime: "2026-01-02T09:00:00" },
+    ]);
+    expect(issuesOf(result.issues)).toEqual([
+      expect.objectContaining({ code: "invalid-value", path: [...EVENT_PATH, "start"] }),
+      expect.objectContaining({
+        code: "invalid-value",
+        path: [...EVENT_PATH, "exceptionDates", 0],
+      }),
+    ]);
+    expect(result.issues.map(({ message }) => message)).toEqual([
+      "DTSTART: an empty TZID; ignored",
+      "EXDATE: an empty TZID; ignored",
+    ]);
+  });
 });
 
 describe("single-valued properties", () => {
@@ -287,6 +345,18 @@ describe("calendar users", () => {
       "SCHEDULE-STATUS": ["1.2", "2.0"],
       "X-NUM-GUESTS": ["2"],
     });
+  });
+
+  test("have no prototype keys in otherParameters", () => {
+    const { event } = parseEvent(
+      "ORGANIZER;X-ORG=1:mailto:ann@example.com",
+      "ATTENDEE:mailto:ben@example.com",
+    );
+    for (const { otherParameters } of [event.organizer!, event.attendees[0]!]) {
+      expect(otherParameters["constructor"]).toBeUndefined();
+      expect(otherParameters["toString"]).toBeUndefined();
+      expect("hasOwnProperty" in otherParameters).toBe(false);
+    }
   });
 
   test("map delegation, membership and the attendee defaults", () => {
@@ -646,6 +716,23 @@ describe("DTEND and DURATION", () => {
         severity: "warning",
       },
     ]);
+  });
+
+  test("a negative DURATION is kept with a warning", () => {
+    const { event, issues } = parseEvent("DURATION:-PT1H");
+    expect(event.duration?.toString()).toBe("-PT1H");
+    expect(issuesOf(issues)).toEqual([
+      {
+        code: "invalid-value",
+        component: "VEVENT",
+        line: 5,
+        path: [...EVENT_PATH, "duration"],
+        property: "DURATION",
+        severity: "warning",
+      },
+    ]);
+    expect(issues[0]?.message).toBe("DURATION is negative, which RFC 5545 doesn't allow");
+    expect(parseEvent("DURATION:PT0S").issues).toEqual([]);
   });
 
   test("DURATION stays when DTEND doesn't decode", () => {

@@ -1,5 +1,5 @@
 import type { IcsValueType } from "../types";
-import { success, type IcsDecodeResult } from "./result";
+import { invalid, success, type IcsDecodeResult } from "./result";
 
 const ESCAPES: ReadonlyMap<string, string> = new Map([
   [",", ","],
@@ -34,7 +34,7 @@ export function decodeText(raw: string): IcsDecodeResult<string> {
       `TEXT has escapes RFC 5545 doesn't define (${[...unknown].join(" ")}); dropped their backslashes`,
     );
   }
-  return success(text, warnings);
+  return success(text, warnings.map(invalid));
 }
 
 export function encodeText(text: string): string {

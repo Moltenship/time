@@ -1,7 +1,7 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import { decodeIcsValue, encodeIcsValue } from "../../src/values";
-import { decoded, lenient, plain, rejected } from "./helpers";
+import { decoded, lenient, plain, rejected, warningsOf } from "./helpers";
 
 describe("PERIOD", () => {
   test("reads RFC 5545 §3.3.9's explicit form", () => {
@@ -26,10 +26,10 @@ describe("PERIOD", () => {
   });
 
   test("passes the ends' warnings on", () => {
-    lenient(
-      decodeIcsValue("PERIOD", "20260105T0900Z/20260105t100000Z"),
-      /start.*seconds.*end.*lowercase/,
-    );
+    expect(warningsOf(decodeIcsValue("PERIOD", "20260105T0900Z/20260105t100000Z"))).toEqual([
+      expect.stringMatching(/^PERIOD start: .*seconds/),
+      expect.stringMatching(/^PERIOD end: .*lowercase/),
+    ]);
     lenient(decodeIcsValue("PERIOD", "20260105T090000Z/P1W1D"), /duration.*weeks/);
   });
 

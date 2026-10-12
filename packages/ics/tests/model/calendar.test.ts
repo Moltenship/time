@@ -165,6 +165,19 @@ describe("VCALENDAR", () => {
     ]);
   });
 
+  test.each([
+    ["empty text", ""],
+    ["blank lines", "\r\n\r\n"],
+    ["components but no VCALENDAR", ics("BEGIN:VTODO", "UID:loose@example.com", "END:VTODO")],
+  ])("gives %s no calendars and an error", (_, text) => {
+    const result = parse(text);
+    expect(result.calendars).toEqual([]);
+    const errors = result.issues.filter(({ severity }) => severity === "error");
+    expect(errors).toEqual([
+      { code: "invalid-structure", message: "No VCALENDAR found", path: [], severity: "error" },
+    ]);
+  });
+
   test("gives text that isn't iCalendar no calendars and an error", () => {
     const result = parse("<html>Not found</html>");
     expect(result.calendars).toEqual([]);

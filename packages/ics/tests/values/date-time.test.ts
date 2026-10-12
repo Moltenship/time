@@ -2,7 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 
 import type { IcsDateTime } from "../../src/types";
 import { decodeIcsDateValue, decodeIcsValue, encodeIcsValue } from "../../src/values";
-import { decoded, lenient, plain, rejected } from "./helpers";
+import { decoded, lenient, plain, rejected, warningsOf } from "./helpers";
 
 const NEW_YORK = { tzid: "America/New_York" };
 
@@ -168,8 +168,43 @@ describe("DATE-TIME", () => {
     });
   });
 
-  test("joins several warnings into one", () => {
-    lenient(decodeIcsValue("DATE-TIME", "19970630t2359z", NEW_YORK), /lowercase.*seconds.*Z wins/);
+  test("lists several warnings one by one, each an invalid-value", () => {
+    const result = decodeIcsValue("DATE-TIME", "19970630t2359z", NEW_YORK);
+    expect(warningsOf(result)).toEqual([
+      expect.stringMatching(/lowercase/),
+      expect.stringMatching(/seconds/),
+      expect.stringMatching(/Z wins/),
+    ]);
+    expect(result).toMatchObject({
+      warnings: Array.from({ length: 3 }, () => ({ code: "invalid-value" })),
+    });
+  });
+
+  test("codes a warning by what it is, not by the words in it", () => {
+    lenient(
+      decodeIcsValue("DATE-TIME", "20260101T000000Z", { tzid: "unsupported" }),
+      /Z wins/,
+      "invalid-value",
+    );
+  });
+
+  test("reads an empty TZID as no TZID, with a warning", () => {
+    const floating = lenient(
+      decodeIcsValue("DATE-TIME", "20260101T090000", { tzid: "" }),
+      /empty TZID/,
+    );
+    expect(plain(floating)).toEqual({
+      kind: "floating",
+      wallTime: "Temporal.PlainDateTime 2026-01-01T09:00:00",
+    });
+
+    // The Z doesn't win over a TZID that isn't there.
+    const utc = decodeIcsValue("DATE-TIME", "20260101T090000Z", { tzid: "" });
+    expect(warningsOf(utc)).toEqual([expect.stringMatching(/empty TZID/)]);
+    expect(plain(lenient(utc, /empty TZID/))).toEqual({
+      instant: "Temporal.Instant 2026-01-01T09:00:00Z",
+      kind: "utc",
+    });
   });
 
   test("writes every kind, zoned and unresolved ones as their wall time", () => {
@@ -218,10 +253,11 @@ describe("decodeIcsDateValue", () => {
   });
 
   test("keeps the date-time's own warnings", () => {
-    lenient(
-      decodeIcsDateValue("20260105t0900", "DATE"),
-      /DATE-TIME where DATE.*lowercase.*seconds/,
-    );
+    expect(warningsOf(decodeIcsDateValue("20260105t0900", "DATE"))).toEqual([
+      expect.stringMatching(/DATE-TIME where DATE/),
+      expect.stringMatching(/lowercase/),
+      expect.stringMatching(/seconds/),
+    ]);
   });
 
   test("fails on neither shape", () => {

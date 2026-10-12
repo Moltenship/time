@@ -2,7 +2,7 @@ import { describe, expect, test } from "vite-plus/test";
 
 import type { IcsRecurrenceRule } from "../../src/types";
 import { decodeIcsValue, encodeIcsValue } from "../../src/values";
-import { decoded, lenient, plain, rejected } from "./helpers";
+import { decoded, lenient, plain, rejected, warningsOf } from "./helpers";
 
 function utc(instant: string) {
   return { instant: Temporal.Instant.from(instant), kind: "utc" } as const;
@@ -364,6 +364,7 @@ describe("RECUR", () => {
     const value = lenient(
       decodeIcsValue("RECUR", "FREQ=DAILY;COUNT=5;UNTIL=19971224T000000Z"),
       /COUNT with UNTIL/,
+      "conflicting-properties",
     );
     expect(value.count).toBe(5);
     expect(value.until?.kind).toBe("utc");
@@ -421,8 +422,21 @@ describe("RECUR", () => {
     const value = lenient(
       decodeIcsValue("RECUR", "RSCALE=HEBREW;FREQ=YEARLY;SKIP=FORWARD;X-NAME=1;BYMONTH=5L"),
       /unsupported.*RSCALE, SKIP, X-NAME/,
+      "unsupported",
     );
     expect(value.frequency).toBe("YEARLY");
+  });
+
+  test("keeps the code of an UNTIL's warnings, prefixed", () => {
+    const result = decodeIcsValue("RECUR", "FREQ=DAILY;UNTIL=19971224T0000Z;COUNT=5;RSCALE=X");
+    expect(result).toMatchObject({
+      warnings: [
+        { code: "invalid-value", message: expect.stringMatching(/^UNTIL: no seconds/) },
+        { code: "conflicting-properties" },
+        { code: "unsupported" },
+      ],
+    });
+    expect(warningsOf(result)).toHaveLength(3);
   });
 
   test("rejects a rule without a valid FREQ", () => {

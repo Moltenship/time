@@ -1,5 +1,13 @@
 import type { IcsDate, IcsDateTime, IcsDateValue, IcsTime } from "../types";
-import { failure, quote, success, type IcsDecodeResult, type IcsValueContext } from "./result";
+import {
+  failure,
+  invalid,
+  quote,
+  success,
+  type IcsDecodeResult,
+  type IcsValueContext,
+  type IcsValueWarning,
+} from "./result";
 
 const DATE = /^(\d{4})(\d{2})(\d{2})$/;
 const DATE_TIME = /^(\d{4})(\d{2})(\d{2})([Tt])(\d{2})(\d{2})(\d{2})?([Zz])?$/;
@@ -36,15 +44,15 @@ function resolveTimeZone(tzid: string, context: IcsValueContext): string | undef
 function lenientSecond(
   second: string | undefined,
   lowercase: boolean,
-): { readonly second: number; readonly warnings: string[] } {
-  const warnings: string[] = [];
+): { readonly second: number; readonly warnings: IcsValueWarning[] } {
+  const warnings: IcsValueWarning[] = [];
   if (lowercase) {
-    warnings.push("lowercase T or Z; read as uppercase");
+    warnings.push(invalid("lowercase T or Z; read as uppercase"));
   }
   if (second === undefined) {
-    warnings.push("no seconds; read as :00");
+    warnings.push(invalid("no seconds; read as :00"));
   } else if (second === "60") {
-    warnings.push("second 60 (a leap second); read as 59");
+    warnings.push(invalid("second 60 (a leap second); read as 59"));
   }
   return { second: second === undefined ? 0 : Math.min(Number(second), 59), warnings };
 }
@@ -97,10 +105,14 @@ export function decodeDateTime(
     return failure(`${quote(raw)} isn't a real date and time`);
   }
 
-  const { tzid } = context;
+  let { tzid } = context;
+  if (tzid === "") {
+    warnings.push(invalid("an empty TZID; ignored"));
+    tzid = undefined;
+  }
   if (z !== undefined) {
     if (tzid !== undefined) {
-      warnings.push(`UTC time with TZID ${quote(tzid)}; the Z wins`);
+      warnings.push(invalid(`UTC time with TZID ${quote(tzid)}; the Z wins`));
     }
     return success({ instant: wallTime.toZonedDateTime("UTC").toInstant(), kind: "utc" }, warnings);
   }
@@ -136,8 +148,8 @@ export function decodeDateValue(
   }
 
   return success(result.value, [
-    `a ${actual} where ${declared} is declared; read as ${actual}`,
-    ...(result.warning === undefined ? [] : [result.warning]),
+    invalid(`a ${actual} where ${declared} is declared; read as ${actual}`),
+    ...(result.warnings ?? []),
   ]);
 }
 

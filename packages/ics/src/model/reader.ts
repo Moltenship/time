@@ -39,10 +39,6 @@ type Mutable<T> = { -readonly [K in keyof T]: T[K] };
 
 const NO_PROPERTIES: readonly IcsProperty[] = [];
 
-// A decoder joins its warnings with "; ". RECUR's COUNT-with-UNTIL and unsupported-part warnings
-// get codes of their own, so they're split off; other warnings may hold "; " and stay whole.
-const CODED_WARNING = /; (?=COUNT with UNTIL|unsupported )/;
-
 // The fields that have a value, so absent properties stay absent keys.
 export function defined<T extends object>(fields: T): T {
   const result = {} as Mutable<T>;
@@ -59,11 +55,6 @@ export function upper(value: string | undefined): string | undefined {
 // A single-valued parameter. Unquoted commas split it into values; they're joined back.
 export function parameter(property: IcsProperty, name: string): string | undefined {
   return property.parameters[name]?.join(",");
-}
-
-function warningCode(warning: string): IcsIssueCode {
-  if (warning.startsWith("COUNT with UNTIL")) return "conflicting-properties";
-  return warning.includes("unsupported") ? "unsupported" : "invalid-value";
 }
 
 // Whether a decoded value holds a wall time whose TZID resolved to nothing: a date-time, or the
@@ -219,10 +210,8 @@ export class ComponentReader {
       );
       return undefined;
     }
-    if (result.warning !== undefined) {
-      for (const warning of result.warning.split(CODED_WARNING)) {
-        this.report("warning", warningCode(warning), `${property.name}: ${warning}`, property, at);
-      }
+    for (const { code, message } of result.warnings ?? []) {
+      this.report("warning", code, `${property.name}: ${message}`, property, at);
     }
     const tzid = parameter(property, "TZID");
     if (tzid !== undefined && isUnresolved(result.value)) this.unknownTimeZone(tzid, property, at);

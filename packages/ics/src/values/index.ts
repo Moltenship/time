@@ -26,7 +26,7 @@ import { decodeText, encodeText, splitList } from "./text";
 import { decodeUtcOffset, encodeUtcOffset } from "./utc-offset";
 
 export { icsValueTypeOf } from "./registry";
-export type { IcsDecodeResult, IcsValueContext } from "./result";
+export type { IcsDecodeResult, IcsValueContext, IcsValueWarning } from "./result";
 
 type Decoders = {
   readonly [TType in IcsValueType]: (
@@ -76,7 +76,11 @@ const ENCODERS: Encoders = {
   "UTC-OFFSET": encodeUtcOffset,
 };
 
-/** Decodes one raw value (no list splitting) as `type`. */
+/**
+ * Decodes one raw value as `type`. It doesn't split lists: use `decodeIcsValues` for a property
+ * such as CATEGORIES or EXDATE. Never throws: a value that doesn't parse is `{ ok: false }`, and
+ * one read leniently carries `warnings`.
+ */
 export function decodeIcsValue<TType extends IcsValueType>(
   type: TType,
   raw: string,
@@ -88,14 +92,18 @@ export function decodeIcsValue<TType extends IcsValueType>(
 }
 
 /**
- * The items of a list value: split on separating commas, TEXT escapes left in place. RECUR, whose
- * parts hold commas, is never split.
+ * The items of a list value, such as CATEGORIES or EXDATE, as raw text: split on separating
+ * commas, TEXT escapes left in place, so `a\,b,c` gives `a\,b` and `c`. RECUR, whose parts hold
+ * commas, is never split.
  */
 export function splitIcsValues(type: IcsValueType, raw: string): string[] {
   return splitList(type, raw);
 }
 
-/** Splits a list value on its separating commas and decodes each item as `type`. */
+/**
+ * Splits a list value on its separating commas and decodes each item as `type`: one result per
+ * item, in order, so one bad item doesn't lose the others.
+ */
 export function decodeIcsValues<TType extends IcsValueType>(
   type: TType,
   raw: string,
@@ -106,7 +114,8 @@ export function decodeIcsValues<TType extends IcsValueType>(
 
 /**
  * Decodes a DATE or DATE-TIME by its shape, so a date written without `VALUE=DATE` still decodes
- * (with a warning). `declared` is the property's value type.
+ * (with a warning). `declared` is the property's value type, as `icsValueTypeOf` gives it. Use it
+ * for DTSTART, DTEND, DUE, RECURRENCE-ID and each item of EXDATE or RDATE.
  */
 export function decodeIcsDateValue(
   raw: string,

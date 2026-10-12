@@ -6,7 +6,15 @@ import type {
   IcsWeekdayNumber,
 } from "../types";
 import { decodeDateValue, encodeDateValue, encodeInstant } from "./date-time";
-import { failure, quote, success, type IcsDecodeResult } from "./result";
+import {
+  failure,
+  invalid,
+  nested,
+  quote,
+  success,
+  type IcsDecodeResult,
+  type IcsValueWarning,
+} from "./result";
 
 type NumberListField =
   | "byHour"
@@ -100,9 +108,10 @@ function weekdayList(text: string): IcsWeekdayNumber[] | undefined {
 export function decodeRecur(raw: string): IcsDecodeResult<IcsRecurrenceRule> {
   const rule: Partial<MutableRule> = {};
   const seen = new Set<string>();
-  const warnings: string[] = [];
+  const warnings: IcsValueWarning[] = [];
   const unsupported: string[] = [];
-  const drop = (part: string, why: string) => warnings.push(`dropped ${quote(part)}: ${why}`);
+  const drop = (part: string, why: string) =>
+    warnings.push(invalid(`dropped ${quote(part)}: ${why}`));
 
   for (const part of raw.split(";")) {
     if (part === "") {
@@ -144,9 +153,7 @@ export function decodeRecur(raw: string): IcsDecodeResult<IcsRecurrenceRule> {
         const until = decodeDateValue(value, undefined, {});
         if (until.ok) {
           rule.until = until.value;
-          if (until.warning !== undefined) {
-            warnings.push(`UNTIL: ${until.warning}`);
-          }
+          warnings.push(...nested("UNTIL", until));
         } else {
           drop(part, until.message);
         }
@@ -188,10 +195,16 @@ export function decodeRecur(raw: string): IcsDecodeResult<IcsRecurrenceRule> {
     return failure(`${quote(raw)} has no FREQ, which a recurrence rule requires`);
   }
   if (rule.count !== undefined && rule.until !== undefined) {
-    warnings.push("COUNT with UNTIL, which RFC 5545 doesn't allow; kept both");
+    warnings.push({
+      code: "conflicting-properties",
+      message: "COUNT with UNTIL, which RFC 5545 doesn't allow; kept both",
+    });
   }
   if (unsupported.length > 0) {
-    warnings.push(`unsupported rule parts ignored: ${unsupported.join(", ")}`);
+    warnings.push({
+      code: "unsupported",
+      message: `unsupported rule parts ignored: ${unsupported.join(", ")}`,
+    });
   }
   return success({ ...rule, frequency }, warnings);
 }

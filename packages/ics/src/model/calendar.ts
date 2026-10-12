@@ -14,7 +14,7 @@ import type {
 } from "../types";
 import { decodeIcsValue } from "../values";
 import { readEvent, readFreeBusy, readJournal, readTimeZone, readTodo } from "./components";
-import { readExtensions, type ExtensionEntries } from "./extensions";
+import { readExtensions, type AnyExtensions, type ExtensionEntries } from "./extensions";
 import { ComponentReader, defined, type CalendarScope } from "./reader";
 
 /** A parser's options, prepared once. */
@@ -27,8 +27,6 @@ export interface ParseConfig {
   };
   readonly resolveTimeZone: IcsTimeZoneResolver | undefined;
 }
-
-type Extensions = Record<string, unknown>;
 
 function push<T>(items: T[], item: T | undefined): void {
   if (item !== undefined) items.push(item);
@@ -50,7 +48,7 @@ function readCalendar(
   index: number,
   issues: IcsIssue[],
   config: ParseConfig,
-): IcsCalendar<{}> {
+): IcsCalendar<AnyExtensions> {
   const definitions = new Map<string, IcsComponent>();
   for (const child of component.components) {
     if (child.name !== "VTIMEZONE") continue;
@@ -90,9 +88,9 @@ function readCalendar(
     version: read.text("VERSION", "version"),
   };
 
-  const events: IcsEvent<Extensions>[] = [];
-  const todos: IcsTodo<Extensions>[] = [];
-  const journals: IcsJournal<Extensions>[] = [];
+  const events: IcsEvent<AnyExtensions>[] = [];
+  const todos: IcsTodo<AnyExtensions>[] = [];
+  const journals: IcsJournal<AnyExtensions>[] = [];
   const freeBusy: IcsFreeBusy[] = [];
   const timeZones: IcsTimeZone[] = [];
   const otherComponents: IcsComponent[] = [];
@@ -136,7 +134,7 @@ function readCalendar(
 export function parseCalendars(text: string, config: ParseConfig): IcsParseResult {
   const parsed = parseIcsComponents(text);
   const issues = [...parsed.issues];
-  const calendars: IcsCalendar<{}>[] = [];
+  const calendars: IcsCalendar<AnyExtensions>[] = [];
   for (const component of parsed.components) {
     if (component.name === "VCALENDAR") {
       calendars.push(readCalendar(component, calendars.length, issues, config));
@@ -152,6 +150,16 @@ export function parseCalendars(text: string, config: ParseConfig): IcsParseResul
         severity: "warning",
       }),
     );
+  }
+  // Text without a calendar, empty text included, is never a valid result. Text that isn't
+  // iCalendar at all already has an error from the syntax layer that says so.
+  if (calendars.length === 0 && !issues.some(({ severity }) => severity === "error")) {
+    issues.push({
+      code: "invalid-structure",
+      message: "No VCALENDAR found",
+      path: [],
+      severity: "error",
+    });
   }
   issues.sort((left, right) => (left.line ?? 0) - (right.line ?? 0));
   return { calendars, issues };

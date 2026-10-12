@@ -74,8 +74,14 @@ describe("the parser as a Standard Schema", () => {
     expect(parser.parse(google).calendars[0]?.name).toBe("Platform Team");
   });
 
-  test("empty text gives no calendars", () => {
-    expect(parseIcs("").calendars).toEqual([]);
+  test.each([
+    ["empty text", ""],
+    ["whitespace", "\r\n  \r\n"],
+    ["a loose event", ics("BEGIN:VEVENT", "UID:loose@example.com", "END:VEVENT")],
+  ])("fails for %s, which holds no calendar", async (_label, text) => {
+    expect(parseIcs(text).calendars).toEqual([]);
+    const result = await createIcsParser()["~standard"].validate(text);
+    expect(result.issues).toEqual([{ message: "No VCALENDAR found", path: [] }]);
   });
 });
 
@@ -104,6 +110,10 @@ describe("strict parsing", () => {
 
   test("parseIcs takes strict too", () => {
     expect(() => parseIcs(quirks, { strict: true })).toThrow(IcsParseError);
+  });
+
+  test("throws for text without a calendar", () => {
+    expect(() => parseIcs("", { strict: true })).toThrow("No VCALENDAR found");
   });
 
   test("doesn't throw for warnings", () => {

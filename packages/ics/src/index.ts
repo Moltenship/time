@@ -6,8 +6,15 @@ export { IcsParseError } from "./issues";
 export { parseIcsComponents, stringifyIcsComponents } from "./syntax";
 export type { IcsComponentsResult } from "./syntax";
 
-export { decodeIcsValue, encodeIcsValue, icsValueTypeOf } from "./values";
-export type { IcsDecodeResult, IcsValueContext } from "./values";
+export {
+  decodeIcsDateValue,
+  decodeIcsValue,
+  decodeIcsValues,
+  encodeIcsValue,
+  icsValueTypeOf,
+  splitIcsValues,
+} from "./values";
+export type { IcsDecodeResult, IcsValueContext, IcsValueWarning } from "./values";
 
 export type { StandardSchemaV1, StandardTypedV1 } from "./standard-schema";
 

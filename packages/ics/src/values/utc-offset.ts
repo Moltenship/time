@@ -1,5 +1,5 @@
 import type { IcsUtcOffset } from "../types";
-import { failure, quote, success, type IcsDecodeResult } from "./result";
+import { failure, invalid, quote, success, type IcsDecodeResult } from "./result";
 
 const UTC_OFFSET = /^([+-])?(\d{2}):?(\d{2})(?::?(\d{2}))?$/;
 const OFFSET_STRING = /^([+-])(\d{2}):(\d{2})(?::(\d{2}))?$/;
@@ -29,7 +29,7 @@ export function decodeUtcOffset(raw: string): IcsDecodeResult<IcsUtcOffset> {
   const positive = sign !== "-" || zero;
   return success(
     `${positive ? "+" : "-"}${hours}:${minutes}${seconds === undefined ? "" : `:${seconds}`}`,
-    warnings,
+    warnings.map(invalid),
   );
 }
 

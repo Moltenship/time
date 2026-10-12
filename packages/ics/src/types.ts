@@ -382,15 +382,20 @@ export interface IcsSchedulingFields {
   readonly url?: string;
 }
 
-/** VEVENT. */
-export interface IcsEvent<TExtensions = {}> extends IcsSchedulingFields {
+/** VEVENT. `TExtensions` is the parser's `extensions` option, as for `IcsCalendar`. */
+export interface IcsEvent<
+  TExtensions extends IcsExtensionsConfig = {},
+> extends IcsSchedulingFields {
   readonly alarms: readonly IcsAlarm[];
   readonly conferences: readonly IcsConference[];
-  /** DURATION as written. Use `getEventEnd` for the effective end. */
+  /**
+   * DURATION as written; a negative one, which RFC 5545 doesn't allow, is kept and reported. Use
+   * `getEventEnd` for the effective end.
+   */
   readonly duration?: Temporal.Duration;
   /** DTEND as written. Use `getEventEnd` for the effective end. */
   readonly end?: IcsDateValue;
-  readonly extensions: TExtensions;
+  readonly extensions: IcsExtensionValues<TExtensions["event"]>;
   readonly geo?: IcsGeo;
   readonly location?: string;
   readonly otherComponents: readonly IcsComponent[];
@@ -404,8 +409,8 @@ export interface IcsEvent<TExtensions = {}> extends IcsSchedulingFields {
   readonly transparency?: IcsTransparency;
 }
 
-/** VTODO. */
-export interface IcsTodo<TExtensions = {}> extends IcsSchedulingFields {
+/** VTODO. `TExtensions` is the parser's `extensions` option, as for `IcsCalendar`. */
+export interface IcsTodo<TExtensions extends IcsExtensionsConfig = {}> extends IcsSchedulingFields {
   readonly alarms: readonly IcsAlarm[];
   /** COMPLETED, in UTC. */
   readonly completed?: Temporal.Instant;
@@ -413,7 +418,7 @@ export interface IcsTodo<TExtensions = {}> extends IcsSchedulingFields {
   /** DUE. */
   readonly due?: IcsDateValue;
   readonly duration?: Temporal.Duration;
-  readonly extensions: TExtensions;
+  readonly extensions: IcsExtensionValues<TExtensions["todo"]>;
   readonly geo?: IcsGeo;
   readonly location?: string;
   readonly otherComponents: readonly IcsComponent[];
@@ -426,9 +431,11 @@ export interface IcsTodo<TExtensions = {}> extends IcsSchedulingFields {
   readonly status?: IcsTodoStatus;
 }
 
-/** VJOURNAL. */
-export interface IcsJournal<TExtensions = {}> extends IcsSchedulingFields {
-  readonly extensions: TExtensions;
+/** VJOURNAL. `TExtensions` is the parser's `extensions` option, as for `IcsCalendar`. */
+export interface IcsJournal<
+  TExtensions extends IcsExtensionsConfig = {},
+> extends IcsSchedulingFields {
+  readonly extensions: IcsExtensionValues<TExtensions["journal"]>;
   readonly otherComponents: readonly IcsComponent[];
   /** DTSTART. */
   readonly start?: IcsDateValue;
@@ -493,7 +500,10 @@ export interface IcsTimeZone {
   readonly url?: string;
 }
 
-/** VCALENDAR. */
+/**
+ * VCALENDAR. `TExtensions` is the parser's `extensions` option, the same argument every component
+ * type takes: `IcsCalendar<typeof config>`, `IcsEvent<typeof config>`.
+ */
 export interface IcsCalendar<TExtensions extends IcsExtensionsConfig = {}> {
   /** CALSCALE; RFC 5545 defaults it to `GREGORIAN`. */
   readonly calendarScale?: string;
@@ -501,10 +511,10 @@ export interface IcsCalendar<TExtensions extends IcsExtensionsConfig = {}> {
   readonly color?: string;
   /** DESCRIPTION (RFC 7986), else `X-WR-CALDESC`. */
   readonly description?: string;
-  readonly events: readonly IcsEvent<IcsExtensionValues<TExtensions["event"]>>[];
+  readonly events: readonly IcsEvent<TExtensions>[];
   readonly extensions: IcsExtensionValues<TExtensions["calendar"]>;
   readonly freeBusy: readonly IcsFreeBusy[];
-  readonly journals: readonly IcsJournal<IcsExtensionValues<TExtensions["journal"]>>[];
+  readonly journals: readonly IcsJournal<TExtensions>[];
   readonly lastModified?: Temporal.Instant;
   /** METHOD, such as `PUBLISH`, `REQUEST` or `CANCEL` (iTIP). */
   readonly method?: string;
@@ -524,7 +534,7 @@ export interface IcsCalendar<TExtensions extends IcsExtensionsConfig = {}> {
    */
   readonly timeZone?: string;
   readonly timeZones: readonly IcsTimeZone[];
-  readonly todos: readonly IcsTodo<IcsExtensionValues<TExtensions["todo"]>>[];
+  readonly todos: readonly IcsTodo<TExtensions>[];
   /** UID (RFC 7986). */
   readonly uid?: string;
   /** URL (RFC 7986). */
@@ -572,7 +582,7 @@ export type IcsExtensionValues<TMap> = TMap extends IcsExtensionMap
 
 /**
  * A TZID resolver: a time zone id Temporal knows (an IANA id or a `±HH:MM` offset), or `undefined`
- * to fall through to the built-in rules.
+ * to fall through to the built-in rules. An id Temporal doesn't know is treated like `undefined`.
  */
 export type IcsTimeZoneResolver = (
   tzid: string,
@@ -580,6 +590,11 @@ export type IcsTimeZoneResolver = (
   definition: IcsComponent | undefined,
 ) => string | undefined;
 
+/**
+ * Bad data becomes issues; only `strict` turns them into an `IcsParseError`. An exception thrown by
+ * a callback you pass, `resolveTimeZone` or an extension schema's `validate`, propagates out of
+ * `parse` as it is: it is a bug in your code, not in the text.
+ */
 export interface IcsParseOptions<TExtensions extends IcsExtensionsConfig = {}> {
   readonly extensions?: TExtensions;
   /** Consulted before the built-in TZID rules. */

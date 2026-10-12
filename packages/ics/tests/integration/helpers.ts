@@ -112,7 +112,7 @@ export function onlyCalendar<T extends IcsExtensionsConfig>(result: {
 }
 
 /** The event with this UID (and RECURRENCE-ID wall time or date, when given). */
-export function eventByUid<T extends IcsEvent<unknown>>(
+export function eventByUid<T extends IcsEvent<IcsExtensionsConfig>>(
   events: readonly T[],
   uid: string,
   recurrenceId?: string,

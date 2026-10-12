@@ -104,6 +104,23 @@ describe("VTODO", () => {
     ]);
   });
 
+  test("keeps a negative DURATION with a warning", () => {
+    const result = parse(
+      calendarText("BEGIN:VTODO", "UID:todo@example.com", "DURATION:-P1D", "END:VTODO"),
+    );
+    expect(onlyCalendar(result).todos[0]?.duration?.toString()).toBe("-P1D");
+    expect(issuesOf(result.issues)).toEqual([
+      {
+        code: "invalid-value",
+        component: "VTODO",
+        line: 4,
+        path: ["calendars", 0, "todos", 0, "duration"],
+        property: "DURATION",
+        severity: "warning",
+      },
+    ]);
+  });
+
   test("is skipped without UID", () => {
     const result = parse(calendarText("BEGIN:VTODO", "SUMMARY:Nameless", "END:VTODO"));
     expect(onlyCalendar(result).todos).toEqual([]);

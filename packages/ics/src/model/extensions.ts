@@ -6,6 +6,7 @@ import type {
   IcsExtension,
   IcsExtensionInput,
   IcsExtensionMap,
+  IcsExtensionsConfig,
   IcsProperty,
   IcsValueType,
 } from "../types";
@@ -86,6 +87,9 @@ export function icsExtension<
     type: options?.type ?? "TEXT",
   };
 }
+
+/** The configuration the model reads with: whatever was declared, typed as unknown values. */
+export type AnyExtensions = Required<IcsExtensionsConfig>;
 
 /** One component kind's extensions: field name and declaration. */
 export type ExtensionEntries = readonly (readonly [string, IcsExtension])[];

@@ -4,10 +4,17 @@
 import { describe, expectTypeOf, test } from "vite-plus/test";
 
 import type {
+  IcsCalendar,
   IcsDateValue,
+  IcsDecodeResult,
+  IcsEvent,
   IcsExtension,
+  IcsIssueCode,
+  IcsJournal,
   IcsParser,
   IcsParseResult,
+  IcsTodo,
+  IcsValueWarning,
   StandardSchemaV1,
 } from "../../src/index";
 import { createIcsParser, icsExtension, parseIcs } from "../../src/index";
@@ -36,16 +43,19 @@ function declarations() {
 type Declarations = ReturnType<typeof declarations>;
 type OutputOf<T> = T extends IcsExtension<infer TOutput> ? TOutput : never;
 
-function parsed() {
+function extensions() {
   const { busy, count, dateTime, id, tags, text } = declarations();
-  return parseIcs("", {
-    extensions: {
-      calendar: { orgId: count },
-      event: { busy, id, when: dateTime },
-      journal: { tags },
-      todo: { text },
-    },
-  });
+  return {
+    calendar: { orgId: count },
+    event: { busy, id, when: dateTime },
+    journal: { tags },
+    todo: { text },
+  };
+}
+type Extensions = ReturnType<typeof extensions>;
+
+function parsed() {
+  return parseIcs("", { extensions: extensions() });
 }
 type Parsed = ReturnType<typeof parsed>;
 type Calendar = Parsed["calendars"][number];
@@ -104,6 +114,21 @@ describe("inferred extensions", () => {
     }>();
   });
 
+  test("every component type takes the same config argument as IcsCalendar", () => {
+    expectTypeOf<Calendar>().toEqualTypeOf<IcsCalendar<Extensions>>();
+    expectTypeOf<Calendar["events"][number]>().toEqualTypeOf<IcsEvent<Extensions>>();
+    expectTypeOf<Calendar["todos"][number]>().toEqualTypeOf<IcsTodo<Extensions>>();
+    expectTypeOf<Calendar["journals"][number]>().toEqualTypeOf<IcsJournal<Extensions>>();
+    expectTypeOf<IcsEvent<Extensions>["extensions"]["busy"]>().toEqualTypeOf<
+      "BUSY" | "FREE" | undefined
+    >();
+    expectTypeOf<IcsTodo<Extensions>["extensions"]>().toEqualTypeOf<{
+      readonly text: string | undefined;
+    }>();
+    expectTypeOf<IcsEvent["extensions"]>().toEqualTypeOf<{}>();
+    expectTypeOf<IcsEvent<{ todo: Extensions["todo"] }>["extensions"]>().toEqualTypeOf<{}>();
+  });
+
   test("without extensions, every extensions object is empty", () => {
     type Plain = ReturnType<typeof parseIcs<{}>>["calendars"][number];
     expectTypeOf<Plain["extensions"]>().toEqualTypeOf<{}>();
@@ -127,5 +152,16 @@ describe("the parser's types", () => {
     expectTypeOf<
       ReturnType<Parser["parse"]>["calendars"][number]["events"][number]["extensions"]["busy"]
     >().toEqualTypeOf<"BUSY" | "FREE" | undefined>();
+  });
+});
+
+describe("the value layer's types", () => {
+  test("a decode result carries structured warnings", () => {
+    type Success = Extract<IcsDecodeResult<string>, { ok: true }>;
+    expectTypeOf<Success["warnings"]>().toEqualTypeOf<readonly IcsValueWarning[] | undefined>();
+    expectTypeOf<IcsValueWarning>().toEqualTypeOf<{
+      readonly code: IcsIssueCode;
+      readonly message: string;
+    }>();
   });
 });

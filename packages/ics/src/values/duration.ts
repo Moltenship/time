@@ -1,4 +1,4 @@
-import { failure, quote, success, type IcsDecodeResult } from "./result";
+import { failure, invalid, quote, success, type IcsDecodeResult } from "./result";
 
 const DURATION = /^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:(T)(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/;
 
@@ -33,7 +33,7 @@ export function decodeDuration(raw: string): IcsDecodeResult<Temporal.Duration> 
       seconds: Number(seconds ?? 0),
       weeks: Number(weeks ?? 0),
     });
-    return success(sign === "-" ? duration.negated() : duration, warnings);
+    return success(sign === "-" ? duration.negated() : duration, warnings.map(invalid));
   } catch {
     return failure(`${quote(raw)} is longer than a Temporal.Duration can hold`);
   }
