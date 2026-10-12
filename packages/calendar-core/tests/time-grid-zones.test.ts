@@ -15,11 +15,13 @@ import {
 } from "../src/index";
 
 const zone = fc.constantFrom(
+  "America/Chicago",
   "America/New_York",
   "America/Santiago",
   "Asia/Kathmandu",
   "Asia/Kolkata",
   "Australia/Lord_Howe",
+  "Australia/Sydney",
   "Europe/Berlin",
   "Pacific/Apia",
   "Pacific/Chatham",
@@ -385,17 +387,44 @@ describe("time-grid zone axis", () => {
   });
 
   test("its shifts account for every line that reads differently, in any week", () => {
-    const week = fc
-      .integer({ max: 4 * 52, min: 0 })
-      .map((weeks) => Temporal.PlainDate.from("2024-01-01").add({ weeks }));
+    // Any week, or one in the months most zones change their clocks in.
+    const week = fc.oneof(
+      fc
+        .integer({ max: 4 * 52, min: 0 })
+        .map((weeks) => Temporal.PlainDate.from("2024-01-01").add({ weeks })),
+      fc
+        .record({
+          day: fc.integer({ max: 28, min: 1 }),
+          month: fc.constantFrom(3, 4, 9, 10, 11),
+          year: fc.integer({ max: 2027, min: 2024 }),
+        })
+        .map((date) => Temporal.PlainDate.from(date)),
+    );
+    // Some of the week on screen, as a scrolling view renders days beside it, or all of it.
+    const visible = fc.option(
+      fc
+        .tuple(fc.integer({ max: 6, min: 0 }), fc.integer({ max: 7, min: 1 }))
+        .map(([start, length]) => [start, Math.min(7, start + length)] as const),
+    );
     /** Minutes from a line's wall time to its first time there, from the times themselves. */
     const lead = (date: Temporal.PlainDate, row: TimeGridZoneRow) =>
       date.toPlainDateTime(row.wallTime).until(row.times[0]!.dateTime).total({ unit: "minute" });
 
     fc.assert(
-      fc.property(week, zone, zone, fc.constantFrom(30, 60), (first, display, other, step) => {
+      fc.property(week, zone, zone, fc.constantFrom(30, 60), visible, (...input) => {
+        const [first, display, other, step, shown] = input;
         const grid = timeGridColumns(plainDateInterval(first, first.add({ days: 7 })), display);
-        const axis = timeGridZoneAxis(grid, other, { step })!;
+        const axis = timeGridZoneAxis(grid, other, {
+          step,
+          visible:
+            shown === null
+              ? undefined
+              : plainDateInterval(first.add({ days: shown[0] }), first.add({ days: shown[1] })),
+        })!;
+        if (shown !== null) {
+          expect(first.until(axis.date).days).toBeGreaterThanOrEqual(shown[0]);
+          expect(first.until(axis.date).days).toBeLessThan(shown[1]);
+        }
         for (const { date } of grid) {
           if (date.equals(axis.date)) continue;
           const rows = timeGridZoneRows(
@@ -417,7 +446,7 @@ describe("time-grid zone axis", () => {
           expect(shifts.every(({ minutes }) => minutes !== 0)).toBe(true);
         }
       }),
-      { numRuns: 80, seed: 165 },
+      { numRuns: 200, seed: 165 },
     );
   });
 });

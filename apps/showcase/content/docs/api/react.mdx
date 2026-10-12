@@ -388,8 +388,8 @@ first, so `navigateNext(); navigateNext()` moves two steps, even for controlled 
 Problems that don't stop rendering are collected in `meta.diagnostics` and passed to
 `onDiagnosticsChange`. Time doesn't log them.
 
-| `code`                        | `severity` | Cause                                                                                            |
-| ----------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
-| `unregistered-active-view`    | error      | The `view` state names a view that isn't registered.                                             |
-| `invalid-event`               | error      | A record was skipped. `issue` has the details ([issue codes](/docs/api/events#invalid-records)). |
-| `invalid-secondary-time-zone` | error      | An entry of `secondaryTimeZones` was left out. `issue` has the `value` and its `index`.          |
+| `code`                        | `severity` | Cause                                                                                              |
+| ----------------------------- | ---------- | -------------------------------------------------------------------------------------------------- |
+| `unregistered-active-view`    | error      | The `view` state names a view that isn't registered.                                               |
+| `invalid-event`               | error      | A record was skipped. `issue` has the details ([issue codes](/docs/api/events#invalid-records)).   |
+| `invalid-secondary-time-zone` | error      | An entry of `secondaryTimeZones` was left out. `issue` has the `value`, and its `index` in a list. |

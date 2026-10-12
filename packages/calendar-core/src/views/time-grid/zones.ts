@@ -71,8 +71,8 @@ export interface TimeGridZoneAxisOptions {
   readonly step?: number;
   /**
    * The dates on screen, when the grid renders columns beside them, as the scrolling views do;
-   * all the columns by default. The axis is read on the first of them where neither zone changes
-   * its clocks, or on the first one when every one of them does.
+   * all the columns by default, or when no column is on them. The axis is read on the first of
+   * them where neither zone changes its clocks, or else on the first that isn't a skipped date.
    */
   readonly visible?: PlainDateInterval;
 }

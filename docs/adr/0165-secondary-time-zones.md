@@ -30,8 +30,8 @@ offset and the other hasn't, the same line reads differently on different days.
    cardinality. Each time carries the other zone's date as a day offset from the column's date, so
    views can mark "+1" and "−1".
 3. **One gutter, honest about the days it doesn't fit.** `timeGridZoneAxis` reads the gutter's
-   rows on one column: the first visible day on which neither zone changes its clocks, or the
-   first visible day when each of them does. A US week starts on the Sunday the US changes its
+   rows on one column: the first visible day on which neither zone changes its clocks, or else
+   the first visible day that isn't a skipped date. A US week starts on the Sunday the US changes its
    clocks, so the first day would be the worst choice. The runs of lines on other columns that read
    differently are its shifts, each with its first line, the line after it (or none, to the end of
    the day) and how many minutes it differs by. Two US zones change at 02:00 local, an hour apart,
@@ -52,7 +52,8 @@ offset and the other hasn't, the same line reads differently on different days.
   views say which days differ; exact times on those days are in the slot names and the day view.
 - Days on which neither zone changes its clocks read alike line by line, or all differ by the same
   amount, so only the days with a change are read line by line. A scrolling grid's three weeks take
-  a fraction of a millisecond per zone.
+  a fraction of a millisecond per zone, and about a millisecond when every visible day changes
+  clocks, as a scrolling day view does on a DST day.
 - The resource timeline, whose time axis is horizontal, doesn't show secondary zones yet.
 
 ## Reversal trigger

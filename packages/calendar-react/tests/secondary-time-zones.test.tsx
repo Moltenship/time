@@ -129,3 +129,16 @@ test("a value that isn't a list is reported, not thrown", async () => {
     },
   ]);
 });
+
+test("a single zone recreated inline where a list belongs keeps the environment", async () => {
+  const onDiagnosticsChange = vi.fn();
+  const zone = () => ({ timeZone: "Asia/Tokyo" }) as never;
+  const harness = await render({ onDiagnosticsChange, secondaryTimeZones: zone() });
+  const before = environments.at(-1);
+  onDiagnosticsChange.mockClear();
+
+  await harness.render(root({ onDiagnosticsChange, secondaryTimeZones: zone() }));
+
+  expect(environments.at(-1)).toBe(before);
+  expect(onDiagnosticsChange).not.toHaveBeenCalled();
+});

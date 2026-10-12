@@ -91,7 +91,7 @@ The title reads "Oct 5 – 9", and the list has five days.
 | `range`        | The visible dates, from `getRange`                                                  |
 | `instantRange` | The same dates as instants in the calendar's time zone, ready for `queryTimed`      |
 | `loadRange`    | The dates to project: `getLoadRange`'s, or `range` without it. Always set by `Root` |
-| `environment`  | Locale, time zone, week rules, direction, disambiguation                            |
+| `environment`  | Locale, time zone, secondary time zones, week rules, direction, disambiguation      |
 | `resources`    | The `resources` prop                                                                |
 | `options`      | The view's options after `viewOptions` overrides                                    |
 | `today`        | Today's date in the calendar's time zone, or `null` before a clock is known         |
@@ -121,7 +121,7 @@ The Renderer is a regular component, so it can use hooks. It receives:
 | `range`       | The visible dates                                                                                     |
 | `loadRange`   | The dates `project` covered: `range`, or the strategy's wider `getLoadRange`                          |
 | `options`     | The view's options                                                                                    |
-| `environment` | Locale, time zone, week rules, direction, disambiguation                                              |
+| `environment` | Locale, time zone, secondary time zones, week rules, direction, disambiguation                        |
 | `events`      | The snapshot `project` received, with [pending changes](/docs/interactions#pending-changes) applied   |
 | `actions`     | `setAnchorDate`, `setView`, `navigateNext`, `navigatePrevious`, `navigateToday`, `proposeEventChange` |
 

@@ -92,8 +92,9 @@ on which neither zone changes its clocks. The days whose lines read differently,
 changed its offset, are listed as shifts: runs of lines, each with how many minutes it differs by.
 
 Views get the list as `environment.secondaryTimeZones`. In your own view,
-`timeGridZoneAxis(columns, timeZone)` returns each line's time in another zone and the shifts, and
-`timeGridZoneTimes(column, wallTime, timeZone)` reads one wall time.
+`timeGridZoneAxis(columns, timeZone)` returns each line's time in another zone and the shifts.
+Pass `{ visible }` when the view renders days beside the ones on screen, so the gutter follows a
+day you can see. `timeGridZoneTimes(column, wallTime, timeZone)` reads one wall time.
 
 ## Daylight saving time
 
