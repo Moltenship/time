@@ -11,6 +11,23 @@ export {
   recurrenceRuleToIcs,
 } from "./rule/text";
 export type { RecurrenceRuleTextIssue, RecurrenceRuleTextResult } from "./rule/text";
+
+// Series: expansion and adapters.
+export {
+  createCanonicalRecurrenceAdapter,
+  createOccurrenceAdapter,
+  createOccurrenceExpander,
+} from "./series";
+
+// ICS bridge: parsed VEVENTs as masters, overrides and one-off events.
+export { recurringEventsFromIcs } from "./ics";
+export type {
+  IcsRecurrenceIssue,
+  IcsRecurrenceIssueCode,
+  IcsRecurringEvents,
+  IcsRecurringEventsOptions,
+} from "./ics";
+
 export type {
   EventRecurrence,
   OccurrenceExpander,
