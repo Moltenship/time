@@ -1,4 +1,4 @@
 {
   "title": "Guides",
-  "pages": ["nextjs", "ics", "recurring-events", "performance"]
+  "pages": ["nextjs", "ics", "recurring-events", "google-calendar", "performance"]
 }
