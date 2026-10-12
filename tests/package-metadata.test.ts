@@ -5,18 +5,12 @@ import { promisify } from "node:util";
 
 import { describe, expect, test } from "vite-plus/test";
 
+import { publishedPackages } from "../tools/release/src/config";
+
 const execFileAsync = promisify(execFile);
 
 // Directories under packages/ that publish to npm. calendar-testing stays private until after 1.0 (#45).
-const publishedPackageDirectories = [
-  "calendar",
-  "calendar-core",
-  "calendar-dnd",
-  "calendar-react",
-  "calendar-recurrence",
-  "calendar-temporal",
-  "ics",
-] as const;
+const publishedPackageDirectories = publishedPackages.map(({ directory }) => directory);
 
 interface PackageManifest {
   readonly bugs?: { readonly url?: string };
@@ -24,6 +18,7 @@ interface PackageManifest {
   readonly license?: string;
   readonly name: string;
   readonly private?: boolean;
+  readonly scripts?: Readonly<Record<string, string>>;
   readonly repository?: {
     readonly directory?: string;
     readonly type?: string;
@@ -77,7 +72,7 @@ describe("published package metadata", () => {
 
     for (const directory of directories) {
       const manifest = await readManifest(directory);
-      const published = (publishedPackageDirectories as readonly string[]).includes(directory);
+      const published = publishedPackageDirectories.includes(directory);
 
       expect(manifest.private === true, manifest.name).toBe(!published);
     }
@@ -95,6 +90,8 @@ describe("published package metadata", () => {
         directory: `packages/${directory}`,
       });
       expect(manifest.bugs).toEqual({ url: "https://github.com/Moltenship/time/issues" });
+      // `pnpm publish` in the package folder fails, so nothing skips the release dry run.
+      expect(manifest.scripts?.prepublishOnly).toMatch(/release:publish.*&& exit 1$/);
 
       // The homepage is a docs page that exists in the showcase.
       const page = /^https:\/\/moltenship-time\.vercel\.app\/docs(?:\/(.+))?$/.exec(

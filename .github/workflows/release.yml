@@ -1,0 +1,62 @@
+name: Release
+
+# Manual only: the owner starts it from the Actions tab on main. It runs the release gate and the
+# dry run on this commit, then publishes the tarballs the dry run checked, with npm provenance.
+# Every step is a `vp run` task that also runs locally; see docs/internal/releasing.md.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to publish, such as 1.0.0-rc.1. The package manifests must already have it.
+        required: true
+        type: string
+      tag:
+        description: npm dist-tag. Leave empty for next (prereleases) or latest (stable versions).
+        required: false
+        type: string
+
+permissions:
+  contents: read
+  # npm provenance signs the packages with the workflow's OIDC token.
+  id-token: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Release gate, dry run and publish
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: "26"
+          cache: true
+
+      - name: Install locked dependencies
+        run: vp install --frozen-lockfile
+
+      - name: Install Chromium
+        run: vp exec --filter a11y playwright install --with-deps --only-shell chromium
+
+      - name: Release gate
+        run: vp run ready
+
+      - name: Dry run
+        env:
+          VERSION: ${{ inputs.version }}
+        run: vp run release:dry-run --version "$VERSION"
+
+      - name: Publish
+        env:
+          VERSION: ${{ inputs.version }}
+          TAG: ${{ inputs.tag }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: vp run release:publish --version "$VERSION" ${TAG:+--tag "$TAG"} --provenance --yes

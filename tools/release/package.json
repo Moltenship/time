@@ -1,0 +1,24 @@
+{
+  "name": "release",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Release tooling: versions, size budgets, API reports, export checks, a clean-consumer install, the dry run and the publish step.",
+  "type": "module",
+  "scripts": {
+    "check": "vp check"
+  },
+  "dependencies": {
+    "@arethetypeswrong/core": "catalog:",
+    "publint": "catalog:",
+    "semver": "catalog:",
+    "yaml": "catalog:"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/semver": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

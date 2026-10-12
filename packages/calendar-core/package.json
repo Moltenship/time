@@ -32,11 +32,10 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vp pack && node scripts/check-size.mjs",
+    "build": "vp pack",
     "check": "vp check",
     "dev": "vp pack --watch",
-    "prepublishOnly": "vp run build",
-    "size": "node scripts/check-size.mjs",
+    "prepublishOnly": "echo \"Publish with vp run release:publish, after vp run release:dry-run. See docs/internal/releasing.md.\" && exit 1",
     "test": "vp test --passWithNoTests"
   },
   "dependencies": {

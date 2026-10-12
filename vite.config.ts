@@ -59,6 +59,15 @@ export default defineConfig({
       "registry:smoke": "vp run registry#smoke",
       "registry:build": "vp run registry#site",
       "registry:e2e": "vp run registry#e2e",
+      // Release checks (docs/internal/releasing.md). size, api and exports read the built packages.
+      "release:size": "vp run release#size",
+      "release:api": "vp run release#api",
+      "release:api:update": { command: "vp run release#api:update", cache: false },
+      "release:exports": { command: "vp run release#exports", cache: false },
+      "release:consumer": { command: "vp run release#consumer", cache: false },
+      "release:dry-run": { command: "vp run release#dry-run", cache: false },
+      "release:version": { command: "vp run release#version", cache: false },
+      "release:publish": { command: "vp run release#publish", cache: false },
       a11y: "vp run a11y#test",
       // The a11y suite with Chromium slowed down to a CI runner's speed. Never replayed: it's what
       // to run when CI and local disagree, and a timing race can pass once by luck.
@@ -79,7 +88,11 @@ export default defineConfig({
         "vp test packages/calendar-temporal/tests packages/calendar-core/tests benchmarks/tests/harness.test.ts tools/fixtures/tests",
       "engine:contracts":
         "vp test tests/temporal-utilities-boundary.test.ts tests/dependency-boundaries.test.ts",
-      "engine:build": ["vp run calendar-temporal#build", "vp run calendar-core#build"],
+      "engine:build": [
+        "vp run calendar-temporal#build",
+        "vp run calendar-core#build",
+        "vp run release#size calendar-temporal calendar-core",
+      ],
       "engine:gate": [
         "vp check",
         "vp run engine:correctness",

@@ -1,8 +1,4 @@
 import { readFile } from "node:fs/promises";
-import { gzipSync } from "node:zlib";
-
-const maximumRuntimeBytes = 76 * 1024;
-const maximumGzipBytes = 20 * 1024;
 
 const runtime = await readFile(new URL("../dist/index.mjs", import.meta.url), "utf8");
 
@@ -11,12 +7,5 @@ if (!runtime.startsWith('"use client";')) {
   throw new Error('calendar-react runtime must preserve its "use client" boundary');
 }
 
-const runtimeBytes = Buffer.byteLength(runtime);
-const gzipBytes = gzipSync(runtime).byteLength;
-if (runtimeBytes > maximumRuntimeBytes || gzipBytes > maximumGzipBytes) {
-  throw new Error(
-    `calendar-react runtime exceeds its size budget: ${runtimeBytes} raw / ${gzipBytes} gzip bytes`,
-  );
-}
-
-console.log(`calendar-react public API verified (${runtimeBytes} raw / ${gzipBytes} gzip bytes)`);
+// The size budget lives with the others in tools/release/src/config.ts (`vp run release:size`).
+console.log('calendar-react public API verified: the "use client" boundary is in place');

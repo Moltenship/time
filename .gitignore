@@ -44,3 +44,6 @@ apps/showcase/public/r/
 
 # Next.js writes it on every dev, build and typegen run
 apps/showcase/next-env.d.ts
+
+# Release dry-run tarballs and manifest
+.release/

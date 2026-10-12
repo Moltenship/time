@@ -20,7 +20,9 @@ packing, replacing that development entry with `dist/index.mjs` and `dist/index.
 
 Seven packages will publish to npm under `@moltenship`: `calendar`, `calendar-core`,
 `calendar-dnd`, `calendar-react`, `calendar-recurrence`, `calendar-temporal` and `ics`.
-`calendar-testing` is an empty stub and stays `private` until after 1.0 (#45).
+`calendar-testing` is an empty stub and stays `private` until after 1.0 (#45). The list, with each
+entry point's size budget, is in [`tools/release/src/config.ts`](../../tools/release/src/config.ts);
+[releasing.md](./releasing.md) covers versions, release checks and publishing.
 
 Every published package ships the root MIT `LICENSE`. pnpm adds it to a package's tarball when no
 packed file's path contains `license` or `licence`, in any case (`THIRD-PARTY-LICENSES.md` or
@@ -48,6 +50,7 @@ published set, the `repository`, `homepage` and `bugs` fields, and that each tar
 | `demo` | The Google Calendar-style demo app | Public facade and `calendar-recurrence` |
 | `registry-source` | Registry source, type-checked and tested in place | Public facade only |
 | `registry` | Internal shadcn build, validation and install test (`tools/registry`) | None |
+| `release` | Internal release tooling: size budgets, API reports, export checks, clean-consumer install, dry run, publish | None; it reads built and packed packages from disk |
 
 External dependencies are added by the issue that validates their contract. React 19 is a
 `calendar-react` peer. `calendar-react` has no runtime dependency outside the workspace; it dropped

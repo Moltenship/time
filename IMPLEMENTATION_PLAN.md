@@ -35,6 +35,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | Next.js recipe | #164             | A live App Router example at `/examples/nextjs` and a guide through its source: the view and date in the URL, a Server Component fetching that range, Server Actions saving changes with `useOptimistic`, a time zone cookie; `withAsciiSpaces`, so ranges formatted in Node hydrate in browsers |
 | Quality gate   | #47              | The local gate in three tiers, the same tasks CI runs: `vp run ready:quick`, `ready` and `ready:full` (#179); the a11y suite fixed at the causes of CI's flakes, and run at CI's speed in the full gate (#178); the a11y suite and real mouse and keyboard interactions in Firefox and WebKit, WebKit on `temporal-polyfill` (`vp run browsers`, #183) |
 | Release audit  | #47 (phase 1)    | `docs/internal/release-audit.md`: each invariant in `architecture.md` linked to its proof, the gaps filed (#180–#182, #184–#192), the open p0 and p1 issues triaged |
+| Release tooling | #46             | One version for the seven published packages, `CHANGELOG.md` and `release:version`; size budgets, API reports, publint and are-the-types-wrong checks, an offline clean-consumer install and a dry run that writes a manifest; a manual publish step, local or from a `workflow_dispatch` workflow with provenance, that refuses without a passing dry run. Runbook in `docs/internal/releasing.md`. MIT `LICENSE` in every tarball (#175) |
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
 0.4 — Availability, layout & scale are closed. Epic #2, recurrence, closes with #155.
@@ -81,6 +82,9 @@ issue's "Later" section when work starts.
   delete and rename, cached reads with `"use cache"`, revisions to refuse stale writes
 - Registry follow-ups from #43: a registry per release (`/r/<version>/…`) so `main` never asks for
   an unpublished runtime, `@moltenship` in shadcn's registry directory, installing from GitHub
+- Release follow-ups from #46: changesets or per-package changelogs if versions stop moving
+  together, git tags and GitHub releases from the publish step, npm staged publishing, budgets for
+  minified bundles with dependencies
 - Recurrence follow-ups from the #155 gate: DST folds and cancelled first occurrences in edits, ICS
   bridge quirks, expansion speed-ups (#160)
 
