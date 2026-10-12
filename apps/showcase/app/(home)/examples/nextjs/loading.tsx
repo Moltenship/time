@@ -2,7 +2,7 @@
 // The first visit's fallback. Later navigations keep the calendar on screen instead.
 export default function Loading() {
   return (
-    <div aria-busy="true" className="flex h-full flex-col" role="status">
+    <div className="flex h-full flex-col" role="status">
       <span className="sr-only">Loading calendar</span>
       <div className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
         <span className="h-8 w-20 rounded-full bg-fd-muted" />

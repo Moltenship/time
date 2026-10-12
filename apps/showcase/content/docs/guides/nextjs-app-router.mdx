@@ -97,7 +97,7 @@ When someone moves to another week or view, the calendar calls `onAnchorDateChan
 - **One click, one URL.** Opening a day from the month view changes the view and the date. The
   changes queue for one microtask, so they land in a single URL and a single history entry.
 - **Back and Forward** restore that URL's render from the Next.js router's cache, or fetch it again
-  when a save has refreshed the page since. The controlled props follow.
+  when it isn't cached, as after a save or a zone change. The controlled props follow.
 
 The calendar stays mounted through all of this. Next.js keeps the page on screen while it fetches
 the next render, and the props change in place, so the scroll position and the focus survive.

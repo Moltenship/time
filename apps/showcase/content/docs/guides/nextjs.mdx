@@ -39,7 +39,9 @@ same markup as long as they get the same props. In practice:
 - **Compute "now" once on the server** and pass it down, as `now` above. Calling
   `Temporal.Now.instant()` in a Client Component gives the server and the browser different values.
   Without `now`, anything that depends on the current time (a view's `today`, `useNow()`) is empty
-  on the server and fills in after hydration.
+  on the server and fills in after hydration. A fixed `now` also stops the clock, so the
+  [App Router example](/docs/guides/nextjs-app-router#the-calendar) passes it only while the page
+  hydrates.
 - **Choose the time zone on the server**, for example from the user's profile or a cookie. The
   server's own zone is rarely the user's.
 - **Pass the same `locale`** to both. Dates and times are formatted with `Intl`, which depends on it.
