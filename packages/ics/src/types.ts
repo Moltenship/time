@@ -43,11 +43,17 @@ export interface IcsComponent {
 export type IcsIssueSeverity = "error" | "warning";
 
 export type IcsIssueCode =
-  /** A required property is absent, such as UID or DTSTART. Errors skip the component. */
+  /**
+   * A required property is absent, such as UID or DTSTART: an error that skips the component. The
+   * issue's line is the component's BEGIN line.
+   */
   | "missing-property"
-  /** A property that may occur once occurs again; the first one wins. */
+  /** A property that may occur once occurs again: a warning; the first one wins. */
   | "duplicate-property"
-  /** Properties that exclude each other, such as DTEND with DURATION, or COUNT with UNTIL. */
+  /**
+   * Properties that exclude each other, such as DTEND with DURATION, or COUNT with UNTIL: a warning;
+   * the first-named property wins.
+   */
   | "conflicting-properties"
   /** A line that isn't `name *(;param) : value`, or an invalid parameter. */
   | "invalid-content-line"
@@ -71,7 +77,8 @@ export interface IcsIssue {
   readonly message: string;
   /**
    * Where the issue lands in the typed result, such as `["calendars", 0, "events", 3, "start"]`.
-   * Empty for syntax issues.
+   * Indexes count the components that were kept; a skipped component's path ends at its
+   * collection, such as `["calendars", 0, "events"]`. Empty for syntax issues.
    */
   readonly path: readonly (number | string)[];
   /** Upper-cased name of the property the issue belongs to, such as `DTSTART`. */
@@ -248,6 +255,8 @@ export interface IcsCalendarUser {
   readonly language?: string;
   /** CN. */
   readonly name?: string;
+  /** Parameters no field maps, such as `X-NUM-GUESTS` or `SCHEDULE-STATUS`. */
+  readonly otherParameters: IcsParameters;
   /** SENT-BY. */
   readonly sentBy?: string;
 }
@@ -273,7 +282,7 @@ export interface IcsAttendee extends IcsCalendarUser {
   >;
   /** ROLE. */
   readonly role?: IcsOpen<"CHAIR" | "NON-PARTICIPANT" | "OPT-PARTICIPANT" | "REQ-PARTICIPANT">;
-  /** RSVP. */
+  /** RSVP; absent when the parameter is. */
   readonly rsvp?: boolean;
 }
 
@@ -580,7 +589,7 @@ export interface IcsParseOptions<TExtensions extends IcsExtensionsConfig = {}> {
 }
 
 export interface IcsParseResult<TExtensions extends IcsExtensionsConfig = {}> {
-  /** Every VCALENDAR in the text; usually one. */
+  /** Every VCALENDAR in the text, usually one. Their components keep source order. */
   readonly calendars: readonly IcsCalendar<TExtensions>[];
   readonly issues: readonly IcsIssue[];
 }
