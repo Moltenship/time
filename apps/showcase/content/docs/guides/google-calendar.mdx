@@ -43,9 +43,11 @@ That's a master, overrides and cancelled overrides, as in
 which the calendar from [Show and edit recurring events](/docs/guides/recurring-events) expands and
 edits. Here, the stand-up shows on Monday at 09:00, Tuesday at 11:00 and Friday at 09:00.
 
-With `singleEvents=true`, Google expands series itself, between `timeMin` and `timeMax`. Each
-occurrence is then an event of its own, with nothing to tell the calendar which events share a
-series, so you can't offer "This and following events" or "All events".
+With `singleEvents=true`, Google expands series itself, between `timeMin` and `timeMax`, and
+leaves the masters out. Each occurrence is then an event of its own. It names its series in
+`recurringEventId`, but not the series' rule, which "This and following events" and "All events"
+change. [Sync with Google Calendar](/docs/guides/google-calendar-sync#series-masters-not-instances)
+compares the two.
 
 ## The event type
 
@@ -131,7 +133,8 @@ its writes to Google:
 | `override` (`"delete"`)               | Delete that instance.                                                                         |
 
 After a write that changes the master, list the series again, so your copy matches what Google
-stored for its other occurrences.
+stored for its other occurrences. [Sync with Google Calendar](/docs/guides/google-calendar-sync)
+does this with sync tokens, and writes with etags.
 
 A "This event" delete adds an EXDATE line to the master, which Google reads like any other
 `recurrence` line. Google records a deleted occurrence as a cancelled instance instead;

@@ -1,4 +1,12 @@
 {
   "title": "Guides",
-  "pages": ["nextjs", "ics", "recurring-events", "google-calendar", "tanstack-query", "performance"]
+  "pages": [
+    "nextjs",
+    "ics",
+    "recurring-events",
+    "google-calendar",
+    "google-calendar-sync",
+    "tanstack-query",
+    "performance"
+  ]
 }

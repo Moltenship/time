@@ -1,0 +1,287 @@
+---
+title: Sync with Google Calendar
+description: Load a Google calendar by the dates on screen, keep it current with sync tokens, and write changes back with etags.
+---
+
+<GoogleCalendarPreview />
+
+This calendar syncs with a Google calendar. There are no Google credentials on this page, so it
+talks to a fake Calendar API that runs in your browser and answers as API v3 does: the same JSON,
+pages, sync tokens, etags and errors. Drag an event, or delete one, and it's written back. The
+buttons change events as someone else would in Google, expire the sync token and rate-limit
+requests. The log shows each request.
+
+This guide builds it. The code is what a real app runs. Only `fetch` differs: the demo hands the
+client the fake one.
+
+| File                                         | What it does                                                                                       |
+| -------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `lib/google-calendar-api.ts`                 | A small client for the API's events, over `fetch`                                                  |
+| `app/api/google-calendar/[...path]/route.ts` | Sends the browser's requests to Google with the user's token                                       |
+| `lib/google-calendar.ts`                     | Maps Google events to calendar events, from [Google Calendar events](/docs/guides/google-calendar) |
+| `lib/google-calendar-sync.ts`                | The events loaded so far: loads, syncs and writes                                                  |
+| `google-calendar.tsx`                        | The calendar                                                                                       |
+
+None of it is in the calendar's packages. They don't depend on Google, and this guide doesn't add
+a Google SDK either.
+
+## Sign-in is up to you
+
+The Calendar API needs an OAuth 2.0 access token for the user. Ask for the
+`https://www.googleapis.com/auth/calendar.events` scope to read and write events, or
+`calendar.events.readonly` to only read them. Your auth library, such as Auth.js or Better Auth,
+runs the sign-in on your server, keeps the refresh token there and gives you a fresh access token
+when the old one expires. This guide starts once you have one.
+
+Keep the tokens on the server. The browser calls your own route, and the route adds the token.
+
+## Call the API
+
+The client covers the calls the calendar needs: list events, read one occurrence of a series, and
+insert, patch and delete:
+
+<include meta='title="lib/google-calendar-api.ts"'>
+  ../../examples/google-calendar-api.ts#client
+</include>
+
+- **Where it runs.** On your server, `baseUrl` is Google's and `headers` adds the access token. In
+  the browser, `baseUrl` is your route, below, and the cookie your auth library set signs the
+  request. The rest of the guide runs in the browser.
+- **Pages.** `list` follows `nextPageToken` until the last page, which has `nextSyncToken`
+  instead. Google may send fewer events than `maxResults`, or none, and still have more.
+- **Rate limits.** A 429, a 403 with `rateLimitExceeded` or `userRateLimitExceeded`, and a 5xx
+  are retried after 1, 2, 4… seconds, up to 32, plus a random part so that clients don't retry
+  together. A `Retry-After` header wins. Other errors throw a `GoogleApiError` at once: a 410 or a
+  412 means something, and retrying won't change it.
+- **`googleapis`.** On a Node.js server you can use Google's SDK instead.
+  `calendar.events.list({ calendarId, timeMin, timeMax, pageToken, syncToken })` takes the same
+  parameters, and nothing else in this guide changes. Plain `fetch` also runs in the browser and on
+  edge runtimes, and adds no dependency.
+
+### The route
+
+A Route Handler sends the browser's requests on to Google with the user's access token:
+
+<include meta='title="app/api/google-calendar/[...path]/route.ts"'>
+  ../../examples/google-calendar-route.ts#route
+</include>
+
+- **Only events.** It forwards the user's primary calendar's events and nothing else, so the
+  route can't be used to reach the rest of their Google account.
+- **Errors pass through.** The status, `Retry-After` and Google's error body reach the browser, so
+  the client there handles 410, 412 and 429 as it would on the server.
+- In the browser, create the client with `createGoogleCalendarApi({ baseUrl: "/api/google-calendar" })`.
+
+## Map the events
+
+`fromGoogleEvents`, from [Google Calendar events](/docs/guides/google-calendar), maps the
+[Event resource](https://developers.google.com/workspace/calendar/api/v3/reference/events) to the
+calendar's events, and keeps the Google event as each one's `data`:
+
+| Google                                                | Calendar                                                                                                                                                                               |
+| ----------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `start.dateTime`, `end.dateTime`                      | A timed event. RFC 3339; without an offset, the time is read in `timeZone`. `start.timeZone` becomes `sourceTimeZone`, the clock a series repeats on.                                  |
+| `start.date`, `end.date`                              | An all-day event. Google's `end.date` is the day after the last, which is what the calendar's [exclusive end](/docs/concepts/time#end-times-are-exclusive) means, so it maps as it is. |
+| `status: "cancelled"`                                 | Deleted. A cancelled occurrence of a series hides that occurrence.                                                                                                                     |
+| `recurrence`, `recurringEventId`, `originalStartTime` | A series' master, and its changed and cancelled occurrences. See [Series](#series-masters-not-instances).                                                                              |
+| `colorId`                                             | One of Google's 11 event colors. Read by `getEventColor`.                                                                                                                              |
+| `transparency`                                        | `"transparent"` is "Show as: Free". Read by `isBusy`.                                                                                                                                  |
+
+The calendar's adapters read color and busy from `data`:
+
+<include meta='title="google-calendar.tsx"'>
+  ../../examples/google-calendar-root.tsx#calendar
+</include>
+
+- **Busy or free.** `isBusy` is the one place the calendar asks whether an event takes up time:
+  `busyAt`, `useBusyResources` and `conflictPolicy` all follow it, as
+  [Busy or available](/docs/availability#busy-or-available) describes. Google treats an event
+  without `transparency` as busy, all-day ones too, so the adapter says so rather than leaving the
+  calendar's default, which treats all-day events as free.
+- **Colors.** Google's `colorId` is a key into `colors.get`, "1" (Lavender) to "11" (Tomato).
+  The map picks the theme's nearest named color. An event without `colorId` has its calendar's
+  color, which `calendarList.get` returns.
+
+Changes go back the other way. `toGoogleTimes` writes an interval as Google's `start` and `end`:
+
+<include meta='title="lib/google-calendar-sync.ts"'>
+  ../../examples/google-calendar-sync.ts#times
+</include>
+
+`events.patch` merges `start` and `end` field by field, so a write sets the field it uses and
+clears the other with `null`. Without that, an event dragged from the all-day row into the time
+grid would keep its `date` beside the new `dateTime`.
+
+## Series: masters, not instances
+
+`events.list` can return a series two ways:
+
+- **`singleEvents=true`.** Google expands each series between `timeMin` and `timeMax` and leaves
+  the master out. Each occurrence is an event of its own, with its series in `recurringEventId`,
+  but not the series' rule.
+- **Masters**, the default. Each series comes once, with its rule in `recurrence`, plus the
+  occurrences that changed or were cancelled. `@moltenship/calendar-recurrence` expands them for the
+  dates on screen, as [Show and edit recurring events](/docs/guides/recurring-events) does.
+
+This guide loads masters:
+
+- **Edits need the rule.** "This and following events" ends the series before the occurrence and
+  starts a new one, and "All events" moves the rule. Both rewrite the master's `recurrence`, and
+  `resolveRecurrenceEdit` works them out from it. With `singleEvents=true` you would fetch each
+  master as well.
+- **Smaller syncs.** A change to a series is one item in a sync, the master, rather than every
+  occurrence Google expanded. A series that never ends is one event.
+- **Any dates, no request.** Once a master has loaded, the calendar expands it for whatever dates
+  it shows.
+
+The cost is expanding series yourself, which the recurrence package does, with Google's DST and
+interop cases in its tests. A read-only calendar that never edits series can take
+`singleEvents=true` and skip the recurrence package.
+
+## Load the dates on screen
+
+The calendar reports the dates it shows through `onVisibleRangeChange`. `loadInstantRange` is
+those dates, and the pages a scrolling view keeps ready, as instants: `timeMin` and `timeMax`.
+
+<include meta='title="google-calendar.tsx"'>../../examples/google-calendar-root.tsx#root</include>
+
+The sync store keeps Google's events by ID, maps each once, and lists the dates it doesn't have
+yet:
+
+<include meta='title="lib/google-calendar-sync.ts"'>
+  ../../examples/google-calendar-sync.ts#store
+</include>
+
+<include meta='title="lib/google-calendar-sync.ts"'>
+  ../../examples/google-calendar-sync.ts#load
+</include>
+
+- **Half-open on both sides.** `timeMin` bounds an event's end and `timeMax` its start, both
+  exclusive, so Google returns the events that overlap `[timeMin, timeMax)`: the same rule as the
+  calendar's. An event that ends at midnight doesn't show on the next day.
+- **All-day events** are dates on the Google calendar's clock, which may not be the viewer's, so
+  each request reaches a day further either way.
+- **Only what's missing.** Back on a week it has loaded, the store sends nothing. Changes there come
+  from syncing, below.
+- **Every page first.** A master on one page and its changed occurrences on the next are one
+  series, so the events show once the last page is in.
+- **One request at a time.** Loads, syncs and writes wait for each other, so a slow answer never
+  overwrites a newer one.
+- **One expander, one map per event.** `getEvents` returns the same array until something
+  changes, and the same calendar event for a Google event that didn't change, so the expander only
+  redoes the series that did.
+
+## Sync changes
+
+The first list returns a sync token on its last page. A list with `syncToken` returns every event
+that changed since, and a new token:
+
+<include meta='title="lib/google-calendar-sync.ts"'>
+  ../../examples/google-calendar-sync.ts#sync
+</include>
+
+| A sync returns                              | The store                                                            |
+| ------------------------------------------- | -------------------------------------------------------------------- |
+| An event                                    | Replaces the one with its ID, or adds it                             |
+| A cancelled event or master                 | Removes it, and a master's changed and cancelled occurrences with it |
+| A cancelled occurrence (`recurringEventId`) | Keeps it: it hides that occurrence                                   |
+
+- **Every change, any date.** A sync isn't limited to the dates loaded, so apply it all. An event
+  on a date the calendar hasn't loaded yet is ready when it does.
+- **The same request.** With `syncToken`, Google refuses filters such as `timeMin`, `timeMax`,
+  `q`, `orderBy` and `updatedMin` with a 400. Keep any other parameter the same as on the first
+  list.
+- **The first token.** Each list returns a token, but the store keeps the one from its first list.
+  A token from a later list would skip what changed on the earlier dates in between.
+- **410 Gone.** Tokens expire, and then Google answers 410. Drop everything and load the dates on
+  screen again, which also starts a new token. Try it in the demo: expire the sync token, then sync.
+
+### Stay live
+
+A sync needs a reason to run. The calendar syncs after every write, when the tab comes back, and
+once a minute:
+
+<include meta='title="google-calendar.tsx"'>../../examples/google-calendar-root.tsx#live</include>
+
+To show changes as they happen, subscribe to
+[push notifications](https://developers.google.com/workspace/calendar/api/guides/push). Your
+server opens a watch channel for the user's calendar, with an HTTPS address of its own:
+
+```http
+POST https://www.googleapis.com/calendar/v3/calendars/primary/events/watch
+Authorization: Bearer <access token>
+Content-Type: application/json
+
+{ "id": "<a new UUID>", "type": "web_hook", "address": "https://example.com/api/google-calendar/notifications" }
+```
+
+- **Notifications carry no events.** Each one says that something changed, in
+  `X-Goog-Resource-State: exists`, and which channel it's for, in `X-Goog-Channel-ID`. Tell the
+  user's open tabs, over server-sent events or a WebSocket, and they sync. The demo's "Push
+  notifications" box does that part.
+- **Channels expire.** Open a new one before `expiration`, and close old ones with
+  `channels.stop`. The first message on a channel says `sync`, and needs no action.
+- **Some are lost.** Google drops notifications now and then, so keep the timer above.
+
+## Write changes back
+
+When someone drags or deletes an event, `onEventChange` works out what to save and hands it to
+the store:
+
+<include meta='title="google-calendar.tsx"'>../../examples/google-calendar-root.tsx#change</include>
+
+<include meta='title="lib/google-calendar-sync.ts"'>
+  ../../examples/google-calendar-sync.ts#save
+</include>
+
+- **Optimistic, with rollback.** The calendar shows the change as pending while `onEventChange`
+  runs, and keeps it until the events change. If it throws, the calendar puts the event back and
+  announces that the change wasn't saved. There's no copy of the events to restore by hand.
+- **Etags.** Every Google event has an `etag` that changes on every write. `patch` and `remove` send
+  the etag of the version on screen as `If-Match`.
+- **412 Precondition Failed.** Someone changed the event since it loaded. The write is refused,
+  the sync after it brings in their version, and the drag rolls back onto it. The footer says what
+  happened. To try it: turn off push notifications, move "Design review" with the button, then drag
+  it. You could also retry with the new etag when their change didn't touch the times, but never
+  write over it unseen.
+- **Rate limits.** The client's backoff waits it out while the change stays pending. Rate-limit two
+  requests in the demo, then drag an event.
+- **New events** get an ID from `newGoogleId`. Google takes IDs you pick, so you know an event's ID
+  before it's saved, as you do for "This and following events".
+
+### This, following and all events
+
+A series edit from `resolveRecurrenceEdit` says what to write: the master, a new series, the edited
+occurrence and the series' other changed occurrences. In Google, those are these calls:
+
+| Scope                     | The edit                                       | The Calendar API                                                                                                                                                                |
+| ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| This event                | `override`                                     | `events.instances` with `originalStart` returns the occurrence's instance, with its ID and etag. Patch it, and Google keeps it with `recurringEventId` and `originalStartTime`. |
+| This event, deleted       | `series` with a new exception date             | Delete the instance. Google keeps it as cancelled, and the master stays as it was.                                                                                              |
+| This and following events | `series`, which ends the rule, and `newSeries` | Patch the master's `recurrence` with UNTIL or a smaller COUNT, and insert the new series. That's Google's own split: two events, with no link between them.                     |
+| All events                | `series`                                       | Patch the master's `start`, `end` and `recurrence`.                                                                                                                             |
+| All events, deleted       | `series: "delete"`                             | Delete the master. Google deletes its changed and cancelled occurrences with it.                                                                                                |
+
+<include meta='title="lib/google-calendar-sync.ts"'>
+  ../../examples/google-calendar-sync.ts#series
+</include>
+
+- **Changed occurrences can't move.** Google names an occurrence by its series and original start,
+  and neither can change. When "All events" moves a series, a changed occurrence keeps its own
+  time, but its original start moves with the series. So it's written to the instance at the new
+  original start, and the old one is cancelled. Every write comes before the cancels, since one
+  occurrence may land where another leaves.
+- **"This event" deletes** cancel the instance instead of adding an EXDATE line. That's what
+  Google does, and it leaves the master as it was.
+- **Lines it can't write.** `fromGoogleEvents` doesn't read EXRULE or RDATE periods, so writing a
+  master back would drop them. The store refuses series changes to such a master, and the change
+  rolls back.
+- **What a copy keeps.** A new series copies the master's title, color and "Show as". Copy
+  whatever else your app shows, such as the description, guests and reminders.
+
+## Sync on the server
+
+This guide syncs in the browser, which suits a calendar the user looks at. When your server needs
+the events too, for reminders, booking pages or other people's availability, run the same sync
+there into your database, with a token per calendar, and let push notifications start it. The
+browser then loads the dates on screen from your own API, with the same `onVisibleRangeChange`.

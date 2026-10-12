@@ -14,6 +14,7 @@ import {
   SecondaryTimeZonesPreview,
   ShadingRecipesPreview,
 } from "@/components/calendar-preview";
+import { GoogleCalendarPreview } from "@/components/google-calendar-preview";
 import { IcsFeedPreview } from "@/components/ics-feed-preview";
 import { IcsPlayground } from "@/components/ics-playground";
 import { QueryPreview } from "@/components/query-preview";
@@ -32,6 +33,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     AnnotationsAnatomy,
     CalendarAnatomy,
     CalendarPreview,
+    GoogleCalendarPreview,
     IcsFeedPreview,
     IcsPlayground,
     MonthAnatomy,

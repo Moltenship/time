@@ -18,11 +18,17 @@ import {
   type IcsDateValue,
 } from "@moltenship/ics";
 
-/** The fields of a Google Calendar API event that this mapping reads. */
+/** The fields of a Google Calendar API event that this mapping and the sync guide read. */
 export interface GoogleEvent {
   readonly id: string;
+  /** Changes on every write. Send it as `If-Match`, so a write never overwrites a newer one. */
+  readonly etag?: string;
   readonly status?: "confirmed" | "tentative" | "cancelled";
   readonly summary?: string;
+  /** An event color from `colors.get`, "1" to "11". Without it, the calendar's color. */
+  readonly colorId?: string;
+  /** "transparent" shows the time as free. "opaque", the default, as busy. */
+  readonly transparency?: "opaque" | "transparent";
   readonly start?: GoogleEventTime;
   readonly end?: GoogleEventTime;
   /** On a series' master: RRULE, EXRULE, RDATE and EXDATE lines. */
