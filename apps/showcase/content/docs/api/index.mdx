@@ -4,7 +4,7 @@ description: What each package exports, and where to import it from.
 ---
 
 Import from `@moltenship/calendar`. It includes the React components and hooks, the event engine,
-the Temporal helpers, and the pointer interactions, so one import line covers everything:
+the Temporal helpers, and the pointer interactions, so one import line covers the calendar:
 
 ```ts
 import { createCalendar, defineCalendarView, plainDateInterval } from "@moltenship/calendar";
@@ -36,17 +36,26 @@ import { createCalendar, defineCalendarView, plainDateInterval } from "@moltensh
     href="/docs/api/temporal"
     description="Ranges, grids, rounding, day boundaries, and DST from calendar-temporal."
   />
+  <Card
+    title="iCalendar (ICS)"
+    href="/docs/api/ics"
+    description="Parse ICS feeds and files into typed Temporal values. A separate package."
+  />
 </Cards>
+
+The iCalendar parser, `@moltenship/ics`, stands alone. `@moltenship/calendar` doesn't re-export it,
+so install it and import it by its own name. It doesn't need the calendar either.
 
 ## Packages
 
 | Package                         | Contents                                                         | Dependencies                                          |
 | ------------------------------- | ---------------------------------------------------------------- | ----------------------------------------------------- |
-| `@moltenship/calendar`          | Re-exports the four packages below                               | Those four; React 19 (peer)                           |
+| `@moltenship/calendar`          | Re-exports the four `calendar-` packages below                   | Those four; React 19 (peer)                           |
 | `@moltenship/calendar-react`    | `createCalendar`, `defineCalendarView`, components, hooks, store | `calendar-core`, `calendar-temporal`; React 19 (peer) |
 | `@moltenship/calendar-core`     | Adapters, validation, snapshots, queries. No React.              | `calendar-temporal`, `@flatten-js/interval-tree`      |
 | `@moltenship/calendar-temporal` | Ranges, grids, rounding, zoned days, DST                         | None                                                  |
 | `@moltenship/calendar-dnd`      | Pointer drag, resize, and create for views                       | `calendar-core`, `calendar-temporal`; React 19 (peer) |
+| `@moltenship/ics`               | iCalendar parsing into Temporal values. Not re-exported.         | None                                                  |
 
 Every package is ESM only. Import from the package name: paths inside a package aren't part of the
 API.

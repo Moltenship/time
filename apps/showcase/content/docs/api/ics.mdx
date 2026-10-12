@@ -3,4 +3,645 @@ title: iCalendar (ICS)
 description: Parse ICS feeds and files into typed Temporal values with @moltenship/ics.
 ---
 
+`@moltenship/ics` reads iCalendar (RFC 5545), the text format of calendar feeds, invitations and
+exports from Google Calendar, Outlook, iCloud and most other calendar apps. ICS text goes in.
+Calendars, events, to-dos, journals, free/busy and time zones come out, with dates and times as
+Temporal values and every problem in the text listed with its line.
+
+It's a separate package. `@moltenship/calendar` doesn't re-export it, and it imports no other
+Moltenship package, so you can use it without the calendar: on a server, in a worker, or in a
+script. It has no dependencies.
+
+To show a feed's events in the calendar, follow [Show an ICS feed](/docs/guides/ics).
+
+## Install
+
+<Callout type="warn" title="Not on npm yet">
+  The package hasn't been published. The commands below are what you'll run after the first release.
+  To try it now, [run Time from source](/docs/installation#run-from-source).
+</Callout>
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/ics
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/ics
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/ics
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/ics
+```
+
+</Tab>
+</Tabs>
+
+It needs the same setup as the calendar: a runtime with `Temporal`, or a polyfill loaded first,
+and TypeScript's `ESNext` library. See [Installation](/docs/installation#temporal).
+
+## Parse
+
+```ts
+import { parseIcs } from "@moltenship/ics";
+
+const response = await fetch("https://example.com/team.ics");
+const { calendars, issues } = parseIcs(await response.text());
+
+for (const event of calendars[0]?.events ?? []) {
+  console.log(event.summary, event.start);
+}
+```
+
+Edit the text below to see what `parseIcs` returns. The sample is a Google Calendar feed with a
+recurring meeting, an all-day event, an event imported from Outlook, and one date written the way
+a careless exporter writes it.
+
 <IcsPlayground />
+
+`parseIcs(text, options)` returns two lists:
+
+- `calendars`: every VCALENDAR in the text, usually one. Their components keep the order of the
+  text.
+- `issues`: every deviation from RFC 5545 the parser found, with its line. See
+  [Issues and strict mode](#issues-and-strict-mode).
+
+Parsing is lenient. The parser keeps what it can read, skips components it can't type, such as an
+event without `UID` or `DTSTART`, and reports each problem as an issue. Bad data never throws.
+Text without a VCALENDAR, empty text included, gives no calendars and an error.
+
+To parse many texts with the same options, create a parser once:
+
+```ts
+import { createIcsParser } from "@moltenship/ics";
+
+const parser = createIcsParser({ strict: true });
+const { calendars } = parser.parse(text);
+```
+
+`parseIcs(text, options)` is the same as `createIcsParser(options).parse(text)`.
+
+### Calendars
+
+Each calendar is an `IcsCalendar`. Optional fields are absent when the file doesn't set them, and
+lists are empty.
+
+<TypeTable
+  type={{
+    events: {
+      type: "readonly IcsEvent[]",
+      description: "VEVENTs, in the order of the text.",
+      required: true,
+    },
+    todos: { type: "readonly IcsTodo[]", description: "VTODOs.", required: true },
+    journals: { type: "readonly IcsJournal[]", description: "VJOURNALs.", required: true },
+    freeBusy: { type: "readonly IcsFreeBusy[]", description: "VFREEBUSYs.", required: true },
+    timeZones: {
+      type: "readonly IcsTimeZone[]",
+      description: (
+        <>
+          VTIMEZONEs, each with its <code>tzid</code> as written and the <code>timeZone</code> it
+          resolved to.
+        </>
+      ),
+      required: true,
+    },
+    name: { type: "string", description: "NAME (RFC 7986), else X-WR-CALNAME." },
+    description: { type: "string", description: "DESCRIPTION (RFC 7986), else X-WR-CALDESC." },
+    timeZone: {
+      type: "string",
+      description: (
+        <>
+          X-WR-TIMEZONE, resolved to a time zone id. See{" "}
+          <a href="#dates-and-times">Dates and times</a>.
+        </>
+      ),
+    },
+    refreshInterval: {
+      type: "Temporal.Duration",
+      description: "REFRESH-INTERVAL (RFC 7986), else X-PUBLISHED-TTL.",
+    },
+    method: { type: "string", description: "METHOD, such as PUBLISH, REQUEST or CANCEL." },
+    productId: { type: "string", description: "PRODID: the app that wrote the file." },
+    color: { type: "string", description: "COLOR (RFC 7986)." },
+    extensions: {
+      type: "object",
+      description: (
+        <>
+          The <code>X-</code> properties you declared. See{" "}
+          <a href="#extensions-with-standard-schema">Extensions</a>.
+        </>
+      ),
+      required: true,
+    },
+    otherProperties: {
+      type: "readonly IcsProperty[]",
+      description: "Properties no field maps, such as other X- properties.",
+      required: true,
+    },
+  }}
+/>
+
+It also has `calendarScale`, `lastModified`, `source`, `uid`, `url`, `version` and
+`otherComponents`.
+
+### Events
+
+Each event is an `IcsEvent`:
+
+<TypeTable
+  type={{
+    uid: {
+      type: "string",
+      description: "UID. An event without one is reported and skipped.",
+      required: true,
+    },
+    start: {
+      type: "IcsDateValue",
+      description: (
+        <>
+          DTSTART: a date or a date-time. See <a href="#dates-and-times">Dates and times</a>. An
+          event without one is reported and skipped.
+        </>
+      ),
+      required: true,
+    },
+    end: {
+      type: "IcsDateValue",
+      description: (
+        <>
+          DTEND as written. Use <a href="#ends-of-events">getEventEnd</a> for the effective end.
+        </>
+      ),
+    },
+    duration: { type: "Temporal.Duration", description: "DURATION as written." },
+    summary: { type: "string", description: "SUMMARY, with escapes such as \\, and \\n decoded." },
+    description: { type: "string", description: "DESCRIPTION." },
+    location: { type: "string", description: "LOCATION." },
+    status: { type: "string", description: "STATUS: CONFIRMED, TENTATIVE or CANCELLED." },
+    transparency: {
+      type: "string",
+      description: "TRANSP: OPAQUE (busy) or TRANSPARENT (free).",
+    },
+    organizer: { type: "IcsCalendarUser", description: "ORGANIZER." },
+    attendees: {
+      type: "readonly IcsAttendee[]",
+      description: "ATTENDEE, every occurrence.",
+      required: true,
+    },
+    recurrenceRule: {
+      type: "IcsRecurrenceRule",
+      description: (
+        <>
+          RRULE, parsed but not expanded. See <a href="#recurrence">Recurrence</a>.
+        </>
+      ),
+    },
+    exceptionDates: { type: "readonly IcsDateValue[]", description: "EXDATE.", required: true },
+    recurrenceDates: {
+      type: "readonly (IcsDateValue | IcsPeriod)[]",
+      description: "RDATE.",
+      required: true,
+    },
+    recurrenceId: {
+      type: "IcsDateValue",
+      description: "RECURRENCE-ID: the occurrence of a series this event replaces.",
+    },
+    alarms: { type: "readonly IcsAlarm[]", description: "VALARMs.", required: true },
+    categories: {
+      type: "readonly string[]",
+      description: "CATEGORIES, every value.",
+      required: true,
+    },
+    stamp: {
+      type: "Temporal.Instant",
+      description: "DTSTAMP. Required by RFC 5545, but often missing from exports.",
+    },
+    extensions: {
+      type: "object",
+      description: (
+        <>
+          The <code>X-</code> properties you declared. See{" "}
+          <a href="#extensions-with-standard-schema">Extensions</a>.
+        </>
+      ),
+      required: true,
+    },
+    otherProperties: {
+      type: "readonly IcsProperty[]",
+      description: "Properties no field maps, such as X-MICROSOFT-CDO-BUSYSTATUS.",
+      required: true,
+    },
+  }}
+/>
+
+Events also have `attachments`, `classification`, `color`, `comments`, `conferences`, `contacts`,
+`created`, `geo`, `lastModified`, `priority`, `recurrenceRange`, `relatedTo`, `resources`,
+`sequence`, `url` and `otherComponents`.
+
+The organizer and attendees are calendar users. `address` is the value as written, such as
+`mailto:ann@example.com`, `email` comes from the `EMAIL` parameter or the address without
+`mailto:`, and `name` comes from the `CN` parameter. Attendees add `participationStatus`, `role`, `rsvp` and the other `ATTENDEE`
+parameters.
+
+To-dos (`IcsTodo`) and journals (`IcsJournal`) share most of these fields. Every type is
+exported, and each field has a doc comment that your editor shows.
+
+## Dates and times
+
+A `DATE` value is a `Temporal.PlainDate`. A `DATE-TIME` value can mean several things, so it's a
+union, and `kind` says what the file wrote:
+
+| `kind`       | Written as                              | Fields                                                                |
+| ------------ | --------------------------------------- | --------------------------------------------------------------------- |
+| `date`       | `DTSTART;VALUE=DATE:20261016`           | `date: Temporal.PlainDate`                                            |
+| `utc`        | `DTSTART:20261014T080000Z`              | `instant: Temporal.Instant`                                           |
+| `zoned`      | `DTSTART;TZID=Europe/Berlin:20261014T…` | `zoned: Temporal.ZonedDateTime`, `wallTime`, `tzid`                   |
+| `unresolved` | `DTSTART;TZID=Head office:20261014T…`   | `wallTime: Temporal.PlainDateTime`, `tzid`                            |
+| `floating`   | `DTSTART:20261014T100000`               | `wallTime: Temporal.PlainDateTime`: the same clock time in every zone |
+
+`zoned` is a TZID that resolved to a time zone, and `unresolved` one that didn't. See
+[Time zones](#time-zones). Switch on `kind` to get what you need, such as an instant:
+
+```ts
+import type { IcsDateValue } from "@moltenship/ics";
+
+function startInstant(start: IcsDateValue, timeZone: string): Temporal.Instant {
+  switch (start.kind) {
+    case "utc":
+      return start.instant;
+    case "zoned":
+      return start.zoned.toInstant();
+    case "date":
+      return start.date.toZonedDateTime(timeZone).toInstant();
+    case "floating":
+    case "unresolved":
+      return start.wallTime.toZonedDateTime(timeZone).toInstant();
+  }
+}
+```
+
+The same union holds `DTEND`, `DUE`, `RECURRENCE-ID`, `EXDATE`, `RDATE` and a rule's `UNTIL`.
+
+A wall time that falls in a daylight saving gap or fold resolves the way RFC 5545 §3.3.5 says,
+which is Temporal's `compatible` disambiguation: a time in a gap moves forward by the gap's length,
+and a time in a fold takes the earlier of the two. `wallTime` keeps what the file wrote:
+
+```ts
+// DTSTART;TZID=Europe/Berlin:20260329T023000, in the hour Berlin skips
+const { start } = parseIcs(text).calendars[0]!.events[0]!;
+
+if (start.kind === "zoned") {
+  start.wallTime.toString(); // "2026-03-29T02:30:00"
+  start.zoned.toString(); // "2026-03-29T03:30:00+02:00[Europe/Berlin]"
+}
+```
+
+Nothing falls back to the host's time zone, so the result is the same on every machine. A floating
+time stays floating. If the calendar has an `X-WR-TIMEZONE`, as Google's feeds do, its resolved id
+is `calendar.timeZone`: the zone the publisher meant for floating times. Apply it yourself if you
+want it.
+
+## Time zones
+
+Temporal has no custom time zones, so it can't use the definitions inside a file. Instead, the
+parser maps each TZID to a time zone Temporal knows. It tries, in order:
+
+1. your `resolveTimeZone(tzid, vtimezone)` option, if it returns an id Temporal knows;
+2. IANA ids, such as `Europe/Berlin`;
+3. vendor paths, such as `/mozilla.org/20050126_1/Europe/Berlin`;
+4. Windows ids and Outlook display names, such as `W. Europe Standard Time` or
+   `(UTC+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna`, through the Unicode CLDR
+   mapping;
+5. the file's VTIMEZONE: its `X-LIC-LOCATION`, or a fixed offset when it has no daylight saving
+   time;
+6. offset names, such as `GMT+0100` or `UTC`.
+
+A TZID can name a zone that never changes offset while the file's VTIMEZONE has daylight saving
+rules. `TZID=EST` on its own is Temporal's fixed −05:00 zone, but a VTIMEZONE called `EST` with
+summer rules usually means New York. When the VTIMEZONE observes daylight saving time, steps 2–4
+and 6 skip zones that don't, so the wrong fixed zone is never picked.
+
+A TZID that matches none of these stays `unresolved`, with an `unknown-time-zone` warning. The
+parser doesn't guess:
+
+```ts
+// DTSTART;TZID=Head office:20261014T100000
+const { calendars, issues } = parseIcs(text);
+
+calendars[0]!.events[0]!.start;
+// { kind: "unresolved", tzid: "Head office", wallTime: 2026-10-14T10:00:00 }
+issues[0]!.code; // "unknown-time-zone"
+```
+
+If you know what your feeds mean, say so with `resolveTimeZone`. The parser asks it before its own
+rules:
+
+```ts
+const { calendars } = parseIcs(text, {
+  resolveTimeZone: (tzid) => (tzid === "Head office" ? "Europe/Lisbon" : undefined),
+});
+```
+
+The second argument is the file's VTIMEZONE with that TZID, as a raw component, if there is one.
+Return an IANA id or a `±HH:MM` offset, or `undefined` to fall through to the rules above. An id
+Temporal doesn't know falls through too.
+
+## Ends of events
+
+An event's end can be written as `DTEND`, as `DURATION`, or not at all. `event.end` and
+`event.duration` keep what the file says, and `getEventEnd` works out the end:
+
+```ts
+import { getEventEnd } from "@moltenship/ics";
+
+const end = getEventEnd(event); // an IcsDateValue of the same kind as event.start
+```
+
+- With `DTEND`, it's `DTEND`, converted to the start's kind if it differs. A `DTEND` in another
+  zone keeps its instant; one without an instant keeps its wall time.
+- With `DURATION`, it's the start plus the duration. On a zoned start, days are calendar days and
+  hours are exact hours, as RFC 5545 §3.3.6 says, so `P1D` across a daylight saving change keeps
+  the wall time. On a date start, it adds whole days, and a time part rounds up to a day.
+- With neither, an all-day event ends the next day and a timed event ends when it starts.
+
+An event with both `DTEND` and `DURATION` keeps `DTEND`, and the parser drops `DURATION` with a
+`conflicting-properties` warning.
+
+## Recurrence
+
+A recurring event is one `IcsEvent` with a rule, such as the design review in the playground:
+
+```ts
+// RRULE:FREQ=WEEKLY;BYDAY=WE;COUNT=6
+// EXDATE;TZID=Europe/Berlin:20261028T100000
+event.recurrenceRule;
+// { frequency: "WEEKLY", byDay: [{ weekday: "WE" }], count: 6 }
+event.exceptionDates;
+// [{ kind: "zoned", zoned: 2026-10-28T10:00:00+01:00[Europe/Berlin], … }]
+```
+
+- `recurrenceRule` is the `RRULE` as an `IcsRecurrenceRule`, with named parts: `frequency`,
+  `interval`, `count`, `until`, `byDay`, `byMonth`, `byMonthDay`, `weekStart` and the rest. Parts
+  the rule doesn't state are absent, and defaults such as an `interval` of 1 aren't filled in.
+- `exceptionDates` lists the `EXDATE` values: occurrences that don't happen.
+- `recurrenceDates` lists the `RDATE` values: extra occurrences, as dates, date-times or periods.
+- `recurrenceId` is set on an override: a separate event with the series' `UID` that replaces one
+  occurrence, such as a meeting moved to another time. `recurrenceRange` is `"THISANDFUTURE"` when
+  the override also applies to the occurrences after it.
+
+Rules are parsed, not expanded: the package doesn't list a series' occurrences. Expansion comes
+with the recurrence package, tracked in
+[issue #48](https://github.com/Moltenship/time/issues/48).
+
+## Issues and strict mode
+
+Each issue says what's wrong and where:
+
+```ts
+{
+  severity: "warning",
+  code: "invalid-value",
+  message: "DTSTART: a DATE where DATE-TIME is declared; read as DATE",
+  line: 62,
+  path: ["calendars", 0, "events", 3, "start"],
+  component: "VEVENT",
+  property: "DTSTART",
+}
+```
+
+- `severity` is `"error"` or `"warning"`. An error drops the value or component it concerns. A
+  warning keeps a best-effort value, such as the date above.
+- `line` is the 1-based line in the text, when the issue comes from one. For a skipped component,
+  it's the `BEGIN` line.
+- `path` is where the issue lands in the result. Indexes count the components that were kept, so
+  a skipped event's path ends at `events`. It's empty for problems with the text's structure.
+- `component` and `property` name the component and property, when there is one.
+
+`code` says what kind of problem it is:
+
+| Code                     | Severity         | Meaning                                                                                                  |
+| ------------------------ | ---------------- | -------------------------------------------------------------------------------------------------------- |
+| `missing-property`       | error            | A required property, such as `UID` or `DTSTART`, is missing. The component is skipped.                   |
+| `invalid-value`          | error or warning | A value doesn't parse as its type, or parses only leniently.                                             |
+| `invalid-content-line`   | warning          | A line isn't `NAME;PARAM=…:value`, or has an invalid parameter.                                          |
+| `invalid-structure`      | error or warning | An error when there's no VCALENDAR; a warning for an `END` without its `BEGIN` or a component left open. |
+| `duplicate-property`     | warning          | A property that may occur once occurs again. The first one wins.                                         |
+| `conflicting-properties` | warning          | Properties that exclude each other, such as `DTEND` and `DURATION`.                                      |
+| `unknown-time-zone`      | warning          | A TZID that resolves to no time zone. The value stays `unresolved`.                                      |
+| `unsupported`            | warning          | Something the parser recognizes but doesn't interpret, such as `RSCALE`.                                 |
+| `schema`                 | error            | An extension's schema rejected a value. See [Extensions](#extensions-with-standard-schema).              |
+
+Pass `strict: true` to throw instead when there's an error. The parser throws an `IcsParseError`
+whose `issues` lists the error-severity issues. Warnings never throw.
+
+```ts
+import { IcsParseError, parseIcs } from "@moltenship/ics";
+
+function readFeed(text: string) {
+  try {
+    return parseIcs(text, { strict: true }).calendars;
+  } catch (error) {
+    if (error instanceof IcsParseError) {
+      console.error(error.message); // "VEVENT has no DTSTART; skipped (and 2 more)"
+      console.error(error.issues); // every error-severity issue
+    }
+    throw error;
+  }
+}
+```
+
+The error's `message` is the first issue's message, with a count of the others.
+
+An exception thrown by a function you pass in, `resolveTimeZone` or an extension schema, comes out
+of `parse` unchanged, strict or not. That's a bug in your code, not a problem with the text.
+
+## Extensions with Standard Schema
+
+Calendar apps add their own `X-` properties, such as Outlook's busy status. Undeclared, they land
+in `otherProperties` as raw text. Declare the ones you rely on with `icsExtension`, and they're
+decoded, validated and typed in `extensions`:
+
+```ts
+import { createIcsParser, icsExtension } from "@moltenship/ics";
+import { z } from "zod";
+
+const extensions = {
+  event: {
+    busyStatus: icsExtension("X-MICROSOFT-CDO-BUSYSTATUS", {
+      schema: z.enum(["FREE", "TENTATIVE", "BUSY", "OOF", "WORKINGELSEWHERE"]),
+    }),
+    resourceIds: icsExtension("X-RESOURCE-ID", { multiple: true }),
+    guests: icsExtension("X-EXAMPLE-GUESTS", { type: "INTEGER" }),
+  },
+};
+
+const parser = createIcsParser({ extensions });
+const { calendars } = parser.parse(text);
+const event = calendars[0]!.events[0]!;
+
+event.extensions.busyStatus; // "FREE" | "TENTATIVE" | … | undefined
+event.extensions.resourceIds; // readonly string[]
+event.extensions.guests; // number | undefined
+```
+
+`extensions` has a map for each component kind: `calendar`, `event`, `todo` and `journal`. Each
+key is the field name in `extensions`, and `icsExtension(name, options)` takes the property's name
+and these options:
+
+<TypeTable
+  type={{
+    type: {
+      type: "IcsValueType",
+      description:
+        "The RFC 5545 value type to decode the raw value as, such as INTEGER, DATE-TIME or DURATION, whatever the property's VALUE parameter says.",
+      default: '"TEXT"',
+    },
+    multiple: {
+      type: "boolean",
+      description:
+        "Collect every occurrence and every comma-separated value into an array, which is empty when there's none.",
+      default: "false",
+    },
+    schema: {
+      type: "StandardSchemaV1",
+      description:
+        "Validates or transforms each decoded value: Zod, Valibot, ArkType or any other Standard Schema. Its input type must accept the decoded value.",
+    },
+  }}
+/>
+
+The types are inferred: a schema's output type if it has one, else the value type's decoded type,
+such as `number` for `INTEGER` or `IcsDateValue` for `DATE-TIME`. Without `multiple`, a property
+that's missing gives `undefined`.
+
+A value the schema rejects is dropped with a `schema` issue. That's an error, so strict parsing
+throws and [validation](#as-a-standard-schema) fails. Schemas must validate synchronously: a schema
+that returns a promise, such as one with an async refinement, drops the value with a `schema` error
+too.
+
+To name the result's types in your own code, keep the `extensions` object in a constant, as above.
+Every type takes it the same way: `IcsCalendar<typeof extensions>`, `IcsEvent<typeof extensions>`.
+
+## As a Standard Schema
+
+A parser is itself a [Standard Schema](https://standardschema.dev) that validates ICS text, so it
+plugs into anything that takes one, such as a form library or a router's body validation. It fails
+with the error-severity issues, each with its `message` and `path`, or succeeds with the parse
+result. Warnings don't fail it.
+
+```ts
+import { createIcsParser } from "@moltenship/ics";
+
+const parser = createIcsParser();
+
+async function readUpload(body: unknown) {
+  const result = await parser["~standard"].validate(body);
+  if (result.issues) {
+    return { status: 400, errors: result.issues.map((issue) => issue.message) };
+  }
+  return { status: 200, calendars: result.value.calendars };
+}
+```
+
+A value that isn't a string fails too.
+
+## Lower layers
+
+`parseIcs` is the top of three layers, and each is exported. When the typed model doesn't cover
+your data, drop down a layer.
+
+### Syntax
+
+`parseIcsComponents(text)` splits the text into a lossless tree of components and properties, with
+values exactly as written, and reports only syntax issues:
+
+```ts
+import { parseIcsComponents, stringifyIcsComponents } from "@moltenship/ics";
+
+const { components, issues } = parseIcsComponents(text);
+const event = components[0]!.components[0]!;
+const start = event.properties.find((property) => property.name === "DTSTART")!;
+start.parameters.TZID; // ["Europe/Berlin"]
+start.value; // "20261014T100000", as written
+
+const ics = stringifyIcsComponents(components);
+```
+
+A component has its `name`, `properties`, nested `components` and `line`. A property has its
+`name`, `parameters` (each a list of values), its raw `value` and its `line`. Names are
+upper-cased.
+
+`stringifyIcsComponents(tree)` writes a tree back as text, with CRLF line ends and lines folded at
+75 octets. It throws a `RangeError` for a name or value that contains a line break, which iCalendar
+can't hold; escape line breaks in TEXT values as `\n` first.
+
+### Values
+
+These turn a raw value into a typed one and back, for any RFC 5545 value type:
+
+```ts
+import { decodeIcsDateValue, decodeIcsValue, encodeIcsValue } from "@moltenship/ics";
+
+decodeIcsValue("DURATION", "PT1H30M");
+// { ok: true, value: Temporal.Duration PT1H30M }
+decodeIcsValue("INTEGER", "ten");
+// { ok: false, message: "\"ten\" isn't an INTEGER" }
+decodeIcsValue("DATE-TIME", "20261014T100000", { tzid: "Europe/Berlin" });
+// { ok: true, value: { kind: "zoned", … } }
+decodeIcsDateValue("20261019", "DATE-TIME");
+// { ok: true, value: { kind: "date", … }, warnings: [{ code: "invalid-value" }] }
+
+encodeIcsValue("TEXT", "Room 4.01, Berlin office"); // "Room 4.01\, Berlin office"
+```
+
+- `decodeIcsValue(type, raw, context)` decodes one value. It never throws: it returns
+  `{ ok: false, message }`, or `{ ok: true, value }` with `warnings` when it read the value
+  leniently. Each warning has the `code` that `parseIcs` would report it under.
+- `context` gives a DATE-TIME its `tzid`, and a `resolveTimeZone(tzid)` function for TZIDs that
+  aren't IANA ids. Without one, only ids Temporal knows resolve; Windows names stay `unresolved`.
+- `decodeIcsDateValue(raw, declared, context)` reads a DATE or DATE-TIME by its shape, as the
+  typed model does for `DTSTART`, `DTEND` and `EXDATE`, so a date written without `VALUE=DATE`
+  still reads as a date.
+- `splitIcsValues(type, raw)` splits a list value, such as `CATEGORIES` or `EXDATE`, on its
+  separating commas, leaving escaped commas alone. `decodeIcsValues(type, raw, context)` splits and
+  decodes each item, so one bad item doesn't lose the others.
+- `icsValueTypeOf(property)` says which type a property's value is: its `VALUE` parameter, else
+  the property's default type in RFC 5545, else TEXT.
+- `encodeIcsValue(type, value)` writes a value as raw text. It throws a `RangeError` for values
+  iCalendar can't write, such as a duration in months. A zoned date-time is written as its wall
+  time; adding the `TZID` parameter is up to you.
+
+### What the typed model doesn't map
+
+Typed components keep what they don't understand. `otherProperties` holds every property no field
+or extension claims, in the order of the text, and `otherComponents` holds unknown subcomponents.
+On attendees and the organizer, `otherParameters` holds parameters such as Google's
+`X-NUM-GUESTS`. All three are in the raw syntax layer's shapes, so the value functions above decode
+them.
+
+## Not included yet
+
+- **Writing ICS from typed objects.** `stringifyIcsComponents` writes a syntax tree, which you
+  build yourself.
+- **Recurrence expansion.** Rules are parsed into `IcsRecurrenceRule`, not expanded into
+  occurrences. It comes with the recurrence package
+  ([#48](https://github.com/Moltenship/time/issues/48)).
+- **Byte input.** `parseIcs` takes a string. Decode bytes as UTF-8 first, for example with
+  `response.text()` or `new TextDecoder().decode(bytes)`. A line fold that splits a multi-byte
+  character can't be repaired after decoding.
