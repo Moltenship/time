@@ -75,7 +75,10 @@ records that in the manifest, which the publish step then refuses; releases pass
      granular access token that can publish to `@moltenship`: with two-factor authentication on
      writes, a one-time password can expire before all seven packages are out.
 4. **After publishing.** Tag the commit (`v1.0.0-rc.1`), push the tag, and write a GitHub release
-   from the changelog section. These steps aren't automated yet.
+   from the changelog section. These steps aren't automated yet. After the first publish, check
+   that `vp pm view @moltenship/calendar-core@<v> dist.integrity` matches the package's
+   `integrity` in `.release/manifest.json`: the skip-on-re-run check relies on npm storing the
+   tarball unchanged.
 
 ## What the publish step checks
 
