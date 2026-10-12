@@ -2,8 +2,7 @@ import type { CalendarEventInterval } from "@moltenship/calendar";
 
 import type { DemoEvent, DemoOccurrence } from "./calendar";
 import type { DemoCalendarId } from "./calendars";
-import { dateOf } from "./event-recurrence";
-import { noRepeat, repeatFromRule, ruleFromRepeat, type RepeatDraft } from "./repeat";
+import { noRepeat, repeatFromRule, ruleFromRepeat, seriesDate, type RepeatDraft } from "./repeat";
 import type { DemoResourceId } from "./resources";
 
 /**
@@ -21,6 +20,8 @@ export interface EventDraft {
   readonly endTime: Temporal.PlainTime;
   /** Set when editing an existing event: its ID in the calendar, an occurrence's for a series. */
   readonly id?: string;
+  /** The first day of the series an occurrence belongs to: the earliest it can stop repeating. */
+  readonly firstDate?: Temporal.PlainDate;
   /** Set when editing an occurrence of a series, which saves through the scope dialog. */
   readonly occurrence?: DemoOccurrence;
   /** How the event repeats: the Repeat field. */
@@ -90,25 +91,22 @@ export function draftFromOccurrence(occurrence: DemoOccurrence, timeZone: string
     calendarId: event.calendarId,
     description: event.description ?? "",
     id: occurrence.id,
+    ...(series === undefined ? {} : { firstDate: seriesDate(series, seriesTimeZone) }),
     ...(recurrence === undefined ? {} : { occurrence }),
-    // Presets are named after the occurrence's original date, which its rule produced.
+    // Presets are named after the day the occurrence shows on, in the series' zone, as the Repeat
+    // field names them; an override moved off its rule's days reads as a custom rule.
     repeat:
       recurrence === undefined
         ? noRepeat
         : repeatFromRule(
             series?.recurrence?.rule,
-            dateOf(recurrence.recurrenceId, seriesTimeZone),
+            seriesDate(interval, seriesTimeZone),
             seriesTimeZone,
           ),
     resourceIds: event.resourceIds,
     seriesTimeZone,
     title: event.title,
   };
-}
-
-/** The editable form of a one-off event. */
-export function draftFromEvent(event: DemoEvent, timeZone: string): EventDraft {
-  return draftFromOccurrence({ event, id: event.id, interval: event }, timeZone);
 }
 
 /** A new event for a range dragged out in a view, in the resource it was dragged out in. */
@@ -211,6 +209,16 @@ export function intervalFromDraft(
   return { end, kind: "timed", start };
 }
 
+/**
+ * The earliest day a draft's series can stop repeating: its first day, or for a new series the
+ * day it starts, in the zone it repeats in.
+ */
+export function repeatsFrom(draft: EventDraft, timeZone: string): Temporal.PlainDate {
+  if (draft.firstDate !== undefined) return draft.firstDate;
+  const interval = intervalFromDraft(draft, timeZone);
+  return "error" in interval ? draft.startDate : seriesDate(interval, draft.seriesTimeZone);
+}
+
 export function eventFromDraft(draft: EventDraft, timeZone: string, id: string): EventDraftResult {
   const title = draft.title.trim();
   if (title === "") return { error: "Add a title." };
@@ -221,7 +229,7 @@ export function eventFromDraft(draft: EventDraft, timeZone: string, id: string):
   if (
     draft.repeat.frequency !== "none" &&
     end.type === "until" &&
-    Temporal.PlainDate.compare(end.date, draft.startDate) < 0
+    Temporal.PlainDate.compare(end.date, repeatsFrom(draft, timeZone)) < 0
   ) {
     return { error: "The event stops repeating before it starts." };
   }

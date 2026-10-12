@@ -3,6 +3,7 @@ import {
   coerceRecurrenceDate,
   formatRecurrenceRule,
   parseRecurrenceRule,
+  type RecurrenceDate,
   type RecurrenceRule,
 } from "@moltenship/calendar-recurrence";
 
@@ -64,25 +65,25 @@ function presetRule(
         byDay: [{ ordinal: weekdayOrdinal(start), weekday: weekdayOf(start) }],
         frequency: "MONTHLY",
       };
+    // The day is spelled out, so the rule keeps it when a series' first start is elsewhere.
     case "monthly-day":
-      return { frequency: "MONTHLY" };
+      return { byMonthDay: [start.day], frequency: "MONTHLY" };
     case "yearly":
-      return { frequency: "YEARLY" };
+      return { byMonth: [start.month], byMonthDay: [start.day], frequency: "YEARLY" };
   }
 }
 
-/** The same rule written another way: what the start already says, spelled out. */
+/** The same rule written another way, leaving to the start what it would spell out. */
 function presetAlternatives(
   frequency: Exclude<RepeatFrequency, "none" | "custom">,
-  start: Temporal.PlainDate,
 ): readonly RecurrenceRule[] {
   switch (frequency) {
     case "weekly":
       return [{ frequency: "WEEKLY" }];
     case "monthly-day":
-      return [{ byMonthDay: [start.day], frequency: "MONTHLY" }];
+      return [{ frequency: "MONTHLY" }];
     case "yearly":
-      return [{ byMonth: [start.month], byMonthDay: [start.day], frequency: "YEARLY" }];
+      return [{ frequency: "YEARLY" }];
     default:
       return [];
   }
@@ -107,18 +108,23 @@ function shapeOf(rule: RecurrenceRule): string {
   });
 }
 
+/** A series date's day in `timeZone`, where the series repeats. */
+export function dateOf(date: RecurrenceDate, timeZone: string): Temporal.PlainDate {
+  if (date instanceof Temporal.Instant) return date.toZonedDateTimeISO(timeZone).toPlainDate();
+  return date instanceof Temporal.PlainDateTime ? date.toPlainDate() : date;
+}
+
+/** The day an interval starts on in `timeZone`, where its series repeats. */
+export function seriesDate(interval: CalendarEventInterval, timeZone: string): Temporal.PlainDate {
+  return dateOf(interval.start, timeZone);
+}
+
 /** Where a series' rule ends, as the editor shows it, on the series' own dates. */
 function endOf(rule: RecurrenceRule, timeZone: string): RepeatEnd {
   if (rule.count !== undefined) return { count: rule.count, type: "count" };
-  const { until } = rule;
-  if (until === undefined) return { type: "never" };
-  const date =
-    until instanceof Temporal.Instant
-      ? until.toZonedDateTimeISO(timeZone).toPlainDate()
-      : until instanceof Temporal.PlainDateTime
-        ? until.toPlainDate()
-        : until;
-  return { date, type: "until" };
+  return rule.until === undefined
+    ? { type: "never" }
+    : { date: dateOf(rule.until, timeZone), type: "until" };
 }
 
 /**
@@ -134,7 +140,7 @@ export function repeatFromRule(
   const shape = shapeOf(rule);
   const frequency =
     presets.find((preset) =>
-      [presetRule(preset, start), ...presetAlternatives(preset, start)].some(
+      [presetRule(preset, start), ...presetAlternatives(preset)].some(
         (candidate) => shapeOf(candidate) === shape,
       ),
     ) ?? "custom";
@@ -153,7 +159,7 @@ export function ruleFromRepeat(
 ): RecurrenceRule | undefined {
   const { frequency } = repeat;
   if (frequency === "none") return undefined;
-  const start = startDate(first, timeZone);
+  const start = seriesDate(first, timeZone);
   const base =
     frequency === "custom"
       ? withoutEnd(repeat.rule ?? { frequency: "DAILY" })
@@ -171,27 +177,41 @@ export function withoutEnd(rule: RecurrenceRule): RecurrenceRule {
   return rest;
 }
 
-function startDate(interval: CalendarEventInterval, timeZone: string): Temporal.PlainDate {
-  switch (interval.kind) {
-    case "all-day":
-      return interval.start;
-    case "floating":
-      return interval.start.toPlainDate();
-    case "timed":
-      return interval.start.toZonedDateTimeISO(timeZone).toPlainDate();
-  }
+function sameEnd(left: RepeatEnd, right: RepeatEnd): boolean {
+  if (left.type === "count") return right.type === "count" && left.count === right.count;
+  if (left.type === "until") return right.type === "until" && left.date.equals(right.date);
+  return right.type === "never";
 }
 
-/** Whether two drafts ask for the same rule, so saving the second changes nothing. */
-export function sameRepeat(left: RepeatDraft, right: RepeatDraft): boolean {
-  if (left.frequency !== right.frequency) return false;
-  if (left.frequency === "none") return true;
-  const { end } = left;
-  const other = right.end;
-  if (end.type !== other.type) return false;
-  if (end.type === "count") return other.type === "count" && end.count === other.count;
-  if (end.type === "until") return other.type === "until" && end.date.equals(other.date);
-  return true;
+/** COUNT or UNTIL, or neither for a series without an end. */
+export type RuleEnd = Pick<RecurrenceRule, "count" | "until">;
+
+/**
+ * What the Repeat field changed about a series whose occurrence starts at `first`: a new way to
+ * repeat (`rule`, without its end; `null` to stop repeating), a new end, or neither. Moving the
+ * occurrence isn't a change here: its series' rule moves with it.
+ */
+export function repeatChange(
+  initial: RepeatDraft,
+  next: RepeatDraft,
+  first: CalendarEventInterval,
+  timeZone: string,
+): { readonly end?: RuleEnd; readonly rule?: RecurrenceRule | null } {
+  if (next.frequency === "none") return initial.frequency === "none" ? {} : { rule: null };
+  const written = ruleFromRepeat(next, first, timeZone);
+  if (written === undefined) return {};
+  const { count, until } = written;
+  return {
+    ...(next.frequency === initial.frequency ? {} : { rule: withoutEnd(written) }),
+    ...(sameEnd(initial.end, next.end)
+      ? {}
+      : {
+          end: {
+            ...(count === undefined ? {} : { count }),
+            ...(until === undefined ? {} : { until }),
+          },
+        }),
+  };
 }
 
 // Descriptions, in English like the rest of the demo, with dates in the calendar's locale.

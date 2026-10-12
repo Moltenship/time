@@ -64,6 +64,7 @@ function edit(
   });
   if (resolved.type !== "series") throw new Error(`expected a series edit, got ${resolved.type}`);
   const next = applySeriesEdit(events, resolved, createId, {
+    timeZone,
     ...extras,
     ...(calendarChange.proposed === null ? {} : { placement: calendarChange.proposed }),
   });
@@ -195,5 +196,47 @@ describe("series edits on the demo's events", () => {
       "2026-10-12T09:30",
       "2026-10-13T09:30",
     ]);
+  });
+
+  test("a new end keeps the series' exceptions and overrides", () => {
+    const until = Temporal.Instant.from("2026-12-31T22:59:59Z");
+    const all = edit(seeded, tuesday, "all", {}, { end: { until } });
+    const master = all.events.find(({ id }) => id === "standup");
+
+    expect(ruleOf(all.events, "standup")).toBe(
+      "FREQ=WEEKLY;UNTIL=20261231T225959Z;BYDAY=MO,TU,WE,TH,FR",
+    );
+    expect(master?.recurrence?.exceptionDates).toHaveLength(3);
+    expect(all.events.some(({ id }) => id === "standup-moved")).toBe(true);
+  });
+
+  test("a count is the whole series', so a split leaves the new series what remains", () => {
+    // Daily for 21 days from Monday the 12th; the 19th is the eighth.
+    const walk = "dog-walk::2026-10-19T06:00:00Z";
+    const weekdays: RecurrenceRule = {
+      byDay: (["MO", "TU", "WE", "TH", "FR"] as const).map((weekday) => ({ weekday })),
+      frequency: "WEEKLY",
+    };
+
+    const kept = edit(seeded, walk, "following", {}, { rule: weekdays });
+    expect(ruleOf(kept.events, "dog-walk")).toBe("FREQ=DAILY;COUNT=7");
+    expect(ruleOf(kept.events, "split")).toBe("FREQ=WEEKLY;COUNT=14;BYDAY=MO,TU,WE,TH,FR");
+
+    const changed = edit(seeded, walk, "following", {}, { end: { count: 10 } });
+    expect(ruleOf(changed.events, "split")).toBe("FREQ=DAILY;COUNT=3");
+  });
+
+  test("a series repeating another way starts on the first day its new rule has", () => {
+    // The review started on Tuesday 14 April, the second Tuesday; it moves to the 13th of each month.
+    const review = "monthly-review::2026-10-13T12:00:00Z";
+    const thirteenth: RecurrenceRule = { byMonthDay: [13], frequency: "MONTHLY" };
+    const result = edit(seeded, review, "all", {}, { rule: thirteenth });
+    const master = result.events.find(({ id }) => id === "monthly-review");
+
+    expect(master?.start.toString()).toBe("2026-05-13T12:00:00Z");
+    expect(master?.end.toString()).toBe("2026-05-13T13:00:00Z");
+    expect(result.occurrences.find(({ event }) => event.title === "Monthly review")?.id).toBe(
+      review,
+    );
   });
 });

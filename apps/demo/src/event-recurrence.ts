@@ -1,13 +1,5 @@
-import type { RecurrenceDate } from "@moltenship/calendar-recurrence";
-
 import type { DemoOccurrence } from "./calendar";
-import { describeRule } from "./repeat";
-
-/** A series date's day in `timeZone`, where the series repeats. */
-export function dateOf(date: RecurrenceDate, timeZone: string): Temporal.PlainDate {
-  if (date instanceof Temporal.Instant) return date.toZonedDateTimeISO(timeZone).toPlainDate();
-  return date instanceof Temporal.PlainDateTime ? date.toPlainDate() : date;
-}
+import { dateOf, describeRule } from "./repeat";
 
 /**
  * How an occurrence repeats, in words: its series' rule, such as "Weekly on Monday", and whether

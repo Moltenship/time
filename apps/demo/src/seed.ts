@@ -21,7 +21,6 @@ const resourceAssignments: Readonly<Record<string, readonly DemoResourceId[]>> =
   "Release retro": ["room-cedar", "team-engineering"],
   "Roadmap review": ["room-orchid"],
   "Sprint planning": ["room-cedar", "team-engineering"],
-  Standup: ["room-orchid"],
   "Team offsite": ["team-design", "team-engineering"],
   "Weekly planning": ["room-cedar", "person-sam", "person-lee"],
   // The larger team's week, below.

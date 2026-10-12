@@ -9,7 +9,7 @@ import {
   repeatFromRule,
   repeatPresets,
   ruleFromRepeat,
-  sameRepeat,
+  repeatChange,
   type RepeatDraft,
 } from "../src/repeat";
 
@@ -58,8 +58,9 @@ describe("the Repeat field's presets", () => {
     expect(text({ end: never, frequency: "weekdays" })).toBe("FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR");
     expect(text({ end: never, frequency: "weekly" })).toBe("FREQ=WEEKLY;BYDAY=TU");
     expect(text({ end: never, frequency: "monthly-weekday" })).toBe("FREQ=MONTHLY;BYDAY=2TU");
-    expect(text({ end: never, frequency: "monthly-day" })).toBe("FREQ=MONTHLY");
-    expect(text({ end: never, frequency: "yearly" })).toBe("FREQ=YEARLY");
+    // Days spelled out, so a series whose first start is on another day keeps them.
+    expect(text({ end: never, frequency: "monthly-day" })).toBe("FREQ=MONTHLY;BYMONTHDAY=13");
+    expect(text({ end: never, frequency: "yearly" })).toBe("FREQ=YEARLY;BYMONTHDAY=13;BYMONTH=10");
   });
 
   test("end after a number of times, or with a day in the series' own zone", () => {
@@ -69,7 +70,9 @@ describe("the Repeat field's presets", () => {
     const until = { date: Temporal.PlainDate.from("2026-12-31"), type: "until" } as const;
     // The last moment of 31 December in Berlin, rounded down to the second.
     expect(text({ end: until, frequency: "daily" })).toBe("FREQ=DAILY;UNTIL=20261231T225959Z");
-    expect(text({ end: until, frequency: "yearly" }, allDay)).toBe("FREQ=YEARLY;UNTIL=20261231");
+    expect(text({ end: until, frequency: "yearly" }, allDay)).toBe(
+      "FREQ=YEARLY;UNTIL=20261231;BYMONTHDAY=13;BYMONTH=10",
+    );
   });
 
   test("read a stored rule back as its preset, whichever way it's written", () => {
@@ -80,7 +83,7 @@ describe("the Repeat field's presets", () => {
     expect(read("FREQ=WEEKLY;BYDAY=TU;INTERVAL=1").frequency).toBe("weekly");
     expect(read("FREQ=MONTHLY;BYMONTHDAY=13").frequency).toBe("monthly-day");
     expect(read("FREQ=MONTHLY;BYDAY=2TU").frequency).toBe("monthly-weekday");
-    expect(read("FREQ=YEARLY;BYMONTH=10;BYMONTHDAY=13").frequency).toBe("yearly");
+    expect(read("FREQ=YEARLY;BYMONTHDAY=13;BYMONTH=10").frequency).toBe("yearly");
     expect(read("FREQ=DAILY;COUNT=21")).toMatchObject({
       end: { count: 21, type: "count" },
       frequency: "daily",
@@ -102,15 +105,22 @@ describe("the Repeat field's presets", () => {
     );
   });
 
-  test("tell drafts that ask for the same rule apart from changed ones", () => {
+  test("tell a new way to repeat from a new end, and moving from neither", () => {
     const weekly: RepeatDraft = { end: never, frequency: "weekly" };
+    const change = (next: RepeatDraft, first = timed) => repeatChange(weekly, next, first, berlin);
 
-    expect(sameRepeat(weekly, { ...weekly })).toBe(true);
-    expect(sameRepeat(weekly, { ...weekly, frequency: "daily" })).toBe(false);
-    expect(sameRepeat(weekly, { ...weekly, end: { count: 2, type: "count" } })).toBe(false);
-    expect(sameRepeat({ end: never, frequency: "none" }, { end: never, frequency: "none" })).toBe(
-      true,
-    );
+    expect(change(weekly)).toEqual({});
+    // Moved to Wednesday: the rule moves with the series, so nothing changed here.
+    expect(change(weekly, { ...timed, start: timed.start.add({ hours: 24 }) })).toEqual({});
+    expect(change({ ...weekly, frequency: "daily" })).toEqual({ rule: { frequency: "DAILY" } });
+    expect(change({ ...weekly, end: { count: 4, type: "count" } })).toEqual({ end: { count: 4 } });
+    expect(
+      change({ ...weekly, end: { date: tuesday, type: "until" } }).end?.until?.toString(),
+    ).toBe("2026-10-13T21:59:59.999999999Z");
+    expect(change({ end: never, frequency: "none" })).toEqual({ rule: null });
+    expect(
+      repeatChange(weekly, { ...weekly, end: { count: 4, type: "count" } }, timed, berlin),
+    ).not.toHaveProperty("rule");
   });
 });
 

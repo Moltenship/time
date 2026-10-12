@@ -1,4 +1,4 @@
-import { useId } from "react";
+import { useId, useState } from "react";
 
 import { Input } from "@registry/ui/input";
 import { Label } from "@registry/ui/label";
@@ -23,6 +23,8 @@ import {
 
 export interface RepeatFieldProps {
   readonly locale: Intl.LocalesArgument;
+  /** The earliest the series can stop repeating: its first day. */
+  readonly minimumEnd: Temporal.PlainDate;
   readonly onChange: (repeat: RepeatDraft) => void;
   /** The event's start, which names the presets: "Weekly on Tuesday". */
   readonly startDate: Temporal.PlainDate;
@@ -50,7 +52,14 @@ function parseDate(value: string): Temporal.PlainDate | undefined {
  * ends. A rule no preset matches, such as one a series edit moved, shows as a custom option and
  * is kept until another is picked.
  */
-export function RepeatField({ locale, onChange, startDate, timeZone, value }: RepeatFieldProps) {
+export function RepeatField({
+  locale,
+  minimumEnd,
+  onChange,
+  startDate,
+  timeZone,
+  value,
+}: RepeatFieldProps) {
   const id = useId();
   const { end, frequency, rule } = value;
   const label = (option: RepeatFrequency) =>
@@ -128,7 +137,7 @@ export function RepeatField({ locale, onChange, startDate, timeZone, value }: Re
             <Input
               aria-label="Last date"
               className="px-2.5"
-              min={startDate.toString()}
+              min={minimumEnd.toString()}
               onChange={(event) => {
                 const date = parseDate(event.target.value);
                 if (date !== undefined) onChange({ ...value, end: { date, type: "until" } });
@@ -138,26 +147,46 @@ export function RepeatField({ locale, onChange, startDate, timeZone, value }: Re
             />
           )}
           {end.type === "count" && (
-            <div className="flex items-center gap-2">
-              <Input
-                aria-label="Number of times"
-                className="w-20 px-2.5"
-                inputMode="numeric"
-                min={1}
-                onChange={(event) => {
-                  const count = Number.parseInt(event.target.value, 10);
-                  if (Number.isInteger(count) && count >= 1) {
-                    onChange({ ...value, end: { count, type: "count" } });
-                  }
-                }}
-                type="number"
-                value={end.count}
-              />
-              <span className="text-sm text-muted-foreground">times</span>
-            </div>
+            <CountInput
+              count={end.count}
+              onChange={(count) => onChange({ ...value, end: { count, type: "count" } })}
+            />
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * How many times the series happens. The text is the field's own while it's typed, so it can be
+ * cleared on the way to another number; only a whole number from 1 reaches the draft.
+ */
+function CountInput({
+  count,
+  onChange,
+}: {
+  readonly count: number;
+  readonly onChange: (count: number) => void;
+}) {
+  const [text, setText] = useState(String(count));
+  return (
+    <div className="flex items-center gap-2">
+      <Input
+        aria-label="Number of times"
+        className="w-20 px-2.5"
+        inputMode="numeric"
+        min={1}
+        onBlur={() => setText(String(count))}
+        onChange={(event) => {
+          setText(event.target.value);
+          const next = Number(event.target.value);
+          if (Number.isInteger(next) && next >= 1) onChange(next);
+        }}
+        type="number"
+        value={text}
+      />
+      <span className="text-sm text-muted-foreground">times</span>
     </div>
   );
 }

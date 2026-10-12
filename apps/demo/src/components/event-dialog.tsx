@@ -29,8 +29,14 @@ import { Textarea } from "@registry/ui/textarea";
 
 import { DemoCalendar, type DemoEvent, type DemoOccurrence } from "../calendar";
 import { demoCalendars, isDemoCalendarId } from "../calendars";
-import { eventFromDraft, intervalFromDraft, moveDraftStart, type EventDraft } from "../event-draft";
-import { sameRepeat } from "../repeat";
+import {
+  eventFromDraft,
+  intervalFromDraft,
+  moveDraftStart,
+  repeatsFrom,
+  type EventDraft,
+} from "../event-draft";
+import { repeatChange, seriesDate, type RuleEnd } from "../repeat";
 import type { DemoResourceId } from "../resources";
 import type { EventFields } from "../series-edits";
 import { RepeatField } from "./repeat-field";
@@ -47,8 +53,10 @@ export type EventDialogSave =
   | {
       /** The occurrence's new time, as the calendar hands `onEventChange` a change. */
       readonly change: CalendarEventUpdateChange<DemoOccurrence, string, DemoResourceId>;
+      /** The Repeat field's new end, when only that changed. */
+      readonly end?: RuleEnd;
       readonly fields: EventFields;
-      /** The Repeat field's rule when it changed: `null` for "Does not repeat". */
+      /** The Repeat field's new way to repeat, without its end: `null` for "Does not repeat". */
       readonly rule?: RecurrenceRule | null;
       readonly type: "occurrence";
       readonly warnings: readonly string[];
@@ -202,9 +210,10 @@ function EventForm({
     const { calendarId, description, title } = result.event;
     const fields = { calendarId, title, ...(description === undefined ? {} : { description }) };
     const original = placementOf(occurrence.interval, occurrence.event.resourceIds);
-    const repeatChanged = !sameRepeat(initial.repeat, draft.repeat);
+    const repeat = repeatChange(initial.repeat, draft.repeat, proposed, draft.seriesTimeZone);
     const unchanged =
-      !repeatChanged &&
+      repeat.rule === undefined &&
+      repeat.end === undefined &&
       samePlacement(original, proposed) &&
       title === occurrence.event.title &&
       calendarId === occurrence.event.calendarId &&
@@ -227,7 +236,7 @@ function EventForm({
             proposed,
           },
           fields,
-          ...(repeatChanged ? { rule: result.event.recurrence?.rule ?? null } : {}),
+          ...repeat,
           type: "occurrence",
           warnings,
         }),
@@ -331,8 +340,12 @@ function EventForm({
       </div>
       <RepeatField
         locale={locale}
+        minimumEnd={repeatsFrom(draft, timeZone)}
         onChange={(repeat) => update({ repeat })}
-        startDate={draft.startDate}
+        // Presets are named after the day the series repeats on, in its own zone.
+        startDate={
+          "error" in interval ? draft.startDate : seriesDate(interval, draft.seriesTimeZone)
+        }
         timeZone={draft.seriesTimeZone}
         value={draft.repeat}
       />

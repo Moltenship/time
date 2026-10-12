@@ -3,11 +3,15 @@ import { describe, expect, test } from "vite-plus/test";
 import type { DemoEvent } from "../src/calendar";
 import {
   draftForNewEvent,
-  draftFromEvent,
+  draftFromOccurrence,
   draftFromPlacement,
   eventFromDraft,
   moveDraftStart,
 } from "../src/event-draft";
+
+/** A one-off event, as the calendar shows it: its own ID and interval. */
+const draftFromEvent = (event: DemoEvent, timeZone: string) =>
+  draftFromOccurrence({ event, id: event.id, interval: event }, timeZone);
 
 const timeZone = "America/New_York";
 const date = (value: string) => Temporal.PlainDate.from(value);

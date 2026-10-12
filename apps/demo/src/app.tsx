@@ -3,6 +3,7 @@ import {
   conflictPolicy,
   eventIdOf,
   useNow,
+  type CalendarEventUpdateChange,
   type CalendarFocus,
   type CalendarSelection,
   type CalendarWeekRules,
@@ -10,8 +11,10 @@ import {
 } from "@moltenship/calendar";
 import {
   isRecurringChange,
+  occurrenceId,
   recurrenceEditScopes,
   resolveRecurrenceEdit,
+  type RecurrenceRule,
 } from "@moltenship/calendar-recurrence";
 import { PlusIcon } from "lucide-react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
@@ -56,7 +59,7 @@ import { useOccurrences } from "./occurrences";
 import { demoResourceGroups, demoResources, type DemoResourceId } from "./resources";
 import { useDemoSettings } from "./settings";
 import { viewFor } from "./scrolling";
-import { applySeriesEdit, type DemoSeriesEdit } from "./series-edits";
+import { applySeriesEdit, type DemoSeriesEdit, type SeriesEditExtras } from "./series-edits";
 import { useCalendarLocation } from "./url-state";
 
 /** How long a simulated save takes, so the pending state is visible. */
@@ -83,6 +86,22 @@ function warningNotice(warnings: readonly string[] | undefined): string | null {
   if (outside && conflict) return "Saved outside working hours, double-booking someone.";
   if (outside) return "Saved outside working hours.";
   return conflict ? "Saved, double-booking someone who's busy then." : null;
+}
+
+/**
+ * Where an editor change sends the edited occurrence's ID. A rule change starts the series over,
+ * so the edit's map, which follows the old rule, gives way: a series that stops repeating is one
+ * event under its own ID, and one that repeats another way has the occurrence where it went.
+ */
+function renamedIds(
+  edit: DemoSeriesEdit,
+  change: CalendarEventUpdateChange<DemoOccurrence, string, DemoResourceId>,
+  rule: RecurrenceRule | null | undefined,
+): ReadonlyMap<EventId, string> {
+  if (rule === undefined) return edit.occurrenceIds;
+  const seriesId = edit.scope === "all" ? edit.seriesId : (edit.newSeries?.id ?? edit.seriesId);
+  const id = rule === null ? seriesId : occurrenceId(seriesId, change.proposed.start);
+  return new Map([[change.eventId, id]]);
 }
 
 /** The ID of the event element that has focus, if one has. */
@@ -235,18 +254,18 @@ export function App() {
   }, [occurrences]);
 
   /**
-   * Saves a series edit and moves focus, selection and the open popover to renamed occurrences.
-   * `focused` is the occurrence that had focus when the change began, before the scope dialog
-   * took it.
+   * Saves a series edit and moves focus, selection and the open popover to renamed occurrences,
+   * by `ids`. `focused` is the occurrence that had focus when the change began, before the scope
+   * dialog took it.
    */
   const saveSeriesEdit = useCallback(
     (
       edit: DemoSeriesEdit,
+      ids: ReadonlyMap<EventId, string>,
       focused: string | null,
-      extras?: Parameters<typeof applySeriesEdit>[3],
+      extras?: SeriesEditExtras,
     ) => {
       setEvents((current) => applySeriesEdit(current, edit, createId, extras));
-      const ids = edit.occurrenceIds;
       if (ids.size === 0) return;
       renaming.current = { focused, ids };
       const rename = (eventId: EventId) => ids.get(eventId) ?? eventId;
@@ -263,6 +282,36 @@ export function App() {
       );
     },
     [setEvents],
+  );
+
+  /**
+   * Asks which occurrences a change to a series applies to, offering only the scopes that can
+   * apply, and resolves it: the edit to save, why it can't be saved, or `null` when cancelled.
+   */
+  const askAndResolve = useCallback(
+    async (
+      change: DemoEventChange,
+      action: "delete" | "edit",
+      eventTitle: string,
+      wholeSeries = false,
+    ): Promise<DemoSeriesEdit | string | null> => {
+      const options = { defaultTimeZone: timeZone };
+      const scopes = recurrenceEditScopes(change, demoAdapters, options).filter(
+        (scope) => !wholeSeries || scope !== "this",
+      );
+      if (scopes.length === 0) return "That change can't apply to this repeating event.";
+      const scope = await askScope({ action, eventTitle, scopes });
+      if (scope === null) return null;
+      const edit = resolveRecurrenceEdit(change, scope, demoAdapters, {
+        ...options,
+        // Picked up front, so the edit maps the occurrences it renames into the new series.
+        newSeriesId: createId(),
+        occurrences,
+      });
+      if (edit.type === "series") return edit;
+      return edit.type === "rejected" ? edit.message : "That change can't apply to this event.";
+    },
+    [askScope, occurrences, timeZone],
   );
 
   // Moves, resizes and deletes arrive here after the calendar has shown them optimistically.
@@ -286,30 +335,15 @@ export function App() {
       const focused = focusedEventId();
       let edit: DemoSeriesEdit | undefined;
       if (isRecurringChange(change)) {
-        const options = { defaultTimeZone: timeZone };
-        const scopes = recurrenceEditScopes(change, demoAdapters, options);
-        if (scopes.length === 0) {
-          showNotice("That change can't apply to this repeating event, so it was undone.");
+        const action = change.cause === "delete" ? "delete" : "edit";
+        const resolved = await askAndResolve(change, action, change.event.event.title);
+        // Rejecting rolls the change back.
+        if (resolved === null) throw new Error("cancelled");
+        if (typeof resolved === "string") {
+          showNotice(`${resolved} The change was undone.`);
           throw new Error("no-scope");
         }
-        const scope = await askScope({
-          action: change.cause === "delete" ? "delete" : "edit",
-          eventTitle: change.event.event.title,
-          scopes,
-        });
-        // Rejecting rolls the change back.
-        if (scope === null) throw new Error("cancelled");
-        const resolved = resolveRecurrenceEdit(change, scope, demoAdapters, {
-          ...options,
-          // Picked up front, so the edit maps the occurrences it renames into the new series.
-          newSeriesId: createId(),
-          occurrences,
-        });
-        if (resolved.type === "rejected") {
-          showNotice(`${resolved.message} The change was undone.`);
-          throw new Error(resolved.reason);
-        }
-        if (resolved.type === "series") edit = resolved;
+        edit = resolved;
       }
       await new Promise((resolve) => setTimeout(resolve, saveDelayMs));
       if (resets.current !== resetsAtStart) throw new Error("superseded-by-reset");
@@ -318,11 +352,11 @@ export function App() {
         throw new Error("simulated-save-failure");
       }
       if (edit === undefined) applyChange(change);
-      else saveSeriesEdit(edit, focused);
+      else saveSeriesEdit(edit, edit.occurrenceIds, focused);
       const notice = warningNotice(change.warnings);
       if (notice !== null) showNotice(notice);
     },
-    [applyChange, askScope, failSaves, occurrences, saveSeriesEdit, showNotice, timeZone],
+    [applyChange, askAndResolve, failSaves, saveSeriesEdit, showNotice, timeZone],
   );
 
   // The editor saves an event as it is, or a change to an occurrence of a series, which asks for
@@ -332,31 +366,21 @@ export function App() {
       if (save.type === "event") {
         saveEvent(save.event);
       } else {
-        const { change, fields, rule } = save;
-        const options = { defaultTimeZone: timeZone };
-        // A new rule makes other occurrences, so it can't apply to this one alone.
-        const scopes = recurrenceEditScopes(change, demoAdapters, options).filter(
-          (scope) => rule === undefined || scope !== "this",
-        );
-        if (scopes.length === 0) return "That change can't apply to this repeating event.";
-        const scope = await askScope({ action: "edit", eventTitle: fields.title, scopes });
-        if (scope === null) return undefined;
-        const edit = resolveRecurrenceEdit(change, scope, demoAdapters, {
-          ...options,
-          newSeriesId: createId(),
-          occurrences,
-        });
-        if (edit.type === "rejected") return edit.message;
-        if (edit.type === "series") {
-          saveSeriesEdit(edit, null, { fields, placement: change.proposed, rule });
-        }
+        const { change, end, fields, rule } = save;
+        // A new rule or end is the series', so it can't apply to this occurrence alone.
+        const series = rule !== undefined || end !== undefined;
+        const edit = await askAndResolve(change, "edit", fields.title, series);
+        if (edit === null) return undefined;
+        if (typeof edit === "string") return edit;
+        const extras = { end, fields, placement: change.proposed, rule, timeZone };
+        saveSeriesEdit(edit, renamedIds(edit, change, rule), null, extras);
       }
       setDraft(null);
       const notice = warningNotice(save.warnings);
       if (notice !== null) showNotice(notice);
       return undefined;
     },
-    [askScope, occurrences, saveEvent, saveSeriesEdit, showNotice, timeZone],
+    [askAndResolve, saveEvent, saveSeriesEdit, showNotice, timeZone],
   );
 
   const openCreate = useCallback(() => {
