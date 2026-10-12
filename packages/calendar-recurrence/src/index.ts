@@ -10,6 +10,15 @@ export {
   createOccurrenceExpander,
 } from "./series";
 
+// ICS bridge: parsed VEVENTs as masters, overrides and one-off events.
+export { recurringEventsFromIcs } from "./ics";
+export type {
+  IcsRecurrenceIssue,
+  IcsRecurrenceIssueCode,
+  IcsRecurringEvents,
+  IcsRecurringEventsOptions,
+} from "./ics";
+
 export type {
   EventRecurrence,
   OccurrenceExpander,
