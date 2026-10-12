@@ -31,7 +31,7 @@ const Calendar = createCalendar<Fixture>()({
 type RootProps = Partial<
   Pick<
     ComponentProps<typeof Calendar.Root>,
-    "defaultAnchorDate" | "defaultFocus" | "defaultView" | "locale"
+    "defaultAnchorDate" | "defaultFocus" | "defaultView" | "locale" | "timeZone" | "weekRules"
   >
 >;
 
@@ -169,6 +169,40 @@ test("says under a day's date when its times in a zone differ from the gutter's"
   expect(notes[0]!.firstElementChild?.getAttribute("title")).toBe(
     "From 7:00 AM, times in Eastern Standard Time are 1 hour earlier than the hours beside the grid",
   );
+});
+
+test("a note's title says when a difference ends within the day", async () => {
+  // New York and Chicago both change at 02:00 local, an hour apart: only New York's 03:00 differs.
+  const container = await renderCalendar(["America/Chicago"], {
+    defaultAnchorDate: Temporal.PlainDate.from("2026-03-04"),
+    timeZone: "America/New_York",
+  });
+  const note = container.querySelector('[data-slot="time-grid-zone-note"]');
+
+  expect(note?.closest('[role="columnheader"]')?.getAttribute("aria-label")).toBe(
+    "Sunday, March 8, 2026",
+  );
+  expect(text(note)).toBe("CST -1h");
+  expect(note?.firstElementChild?.getAttribute("title")).toBe(
+    "From 3:00 AM to 4:00 AM, times in Central Standard Time are 1 hour earlier than the hours beside the grid",
+  );
+});
+
+test("a week that starts on a clock change reads its gutter on the next day", async () => {
+  // New York springs forward on Sunday, March 8; London waits until March 29.
+  const container = await renderCalendar(["Europe/London"], {
+    defaultAnchorDate: Temporal.PlainDate.from("2026-03-10"),
+    timeZone: "America/New_York",
+    weekRules: { firstDay: 7, minimalDays: 1, weekend: [6, 7] },
+  });
+  const notes = [...container.querySelectorAll('[data-slot="time-grid-zone-note"]')];
+
+  // Monday's lines: 02:00 in New York is 06:00 in London, with no skipped hour.
+  expect(zoneHours(container)[0]!.slice(0, 2)).toEqual(["5 AM", "6 AM"]);
+  expect(
+    notes.map((note) => note.closest('[role="columnheader"]')?.getAttribute("aria-label")),
+  ).toEqual(["Sunday, March 8, 2026"]);
+  expect(text(notes[0])).toBe("GMT +1h");
 });
 
 test("a focused slot names its time in each zone, with the weekday on another date", async () => {

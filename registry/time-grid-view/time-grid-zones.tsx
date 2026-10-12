@@ -4,7 +4,9 @@ import {
   type CalendarEnvironmentBase,
   type CalendarSecondaryTimeZone,
   type TimeGridColumn,
+  type PlainDateInterval,
   type TimeGridZoneAxis,
+  type TimeGridZoneShift,
 } from "@moltenship/calendar";
 import { useMemo, type CSSProperties } from "react";
 
@@ -37,7 +39,7 @@ export interface TimeGridZoneNote {
 
 /** A root's secondary time zone as the time grid draws it. */
 export interface TimeGridZone {
-  /** Its hour lines, read on the grid's first visible day. */
+  /** Its hour lines, read on the grid's first visible day without a clock change. */
   readonly axis: TimeGridZoneAxis;
   /** Over its hours: the zone's `label`, or its short name, such as "EDT" or "GMT+5:30". */
   readonly label: string;
@@ -72,6 +74,7 @@ export function zoneTimeFormat(locale: Intl.LocalesArgument) {
     (twelveHour && time.minute === 0 ? hour : minute).format(time);
 }
 
+/** "+1h" and "1 hour", or "+30m" and "30 minutes" for a shift that isn't whole hours. */
 function shiftFormats(locale: Intl.LocalesArgument) {
   const amount = (unit: "hour" | "minute", unitDisplay: "long" | "narrow") =>
     new Intl.NumberFormat(locale, {
@@ -80,21 +83,27 @@ function shiftFormats(locale: Intl.LocalesArgument) {
       unit,
       unitDisplay,
     });
+  const units = {
+    hour: { long: amount("hour", "long"), narrow: amount("hour", "narrow") },
+    minute: { long: amount("minute", "long"), narrow: amount("minute", "narrow") },
+  };
   return {
-    hours: { long: amount("hour", "long"), short: amount("hour", "narrow") },
-    minutes: { long: amount("minute", "long"), short: amount("minute", "narrow") },
+    amount: (minutes: number, display: "long" | "narrow") =>
+      minutes % 60 === 0
+        ? units.hour[display].format(minutes / 60)
+        : units.minute[display].format(minutes),
     time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }),
   };
 }
 
 /**
- * The root's secondary time zones over a grid's columns, each axis read on `date`, the first
- * visible day (the first column when absent).
+ * The root's secondary time zones over a grid's columns. Each zone's axis is read on the first of
+ * the `visible` dates (all the columns by default) on which neither zone changes its clocks.
  */
 export function useTimeGridZones(
   environment: CalendarEnvironmentBase,
   columns: readonly TimeGridColumn[],
-  date?: Temporal.PlainDate,
+  visible?: PlainDateInterval,
 ): readonly TimeGridZone[] {
   const { locale, secondaryTimeZones = noZones } = environment;
   return useMemo(() => {
@@ -104,34 +113,44 @@ export function useTimeGridZones(
       columns.find((column) => column.date.equals(day)) ?? columns[0]!;
 
     return secondaryTimeZones.map(({ label, timeZone }) => {
-      const axis = timeGridZoneAxis(columns, timeZone, { date })!;
+      const axis = timeGridZoneAxis(columns, timeZone, { visible })!;
       const at = columnOn(axis.date).day.start;
-      const name = label ?? zoneName(locale, axis.timeZone, at, "long");
-      const notes = axis.shifts.map(({ date: day, from, minutes }) => {
-        // Named as the zone is from the first line that differs, such as EST after EDT.
-        const column = columnOn(day);
-        const then = timeGridZoneTimes(column, from, axis.timeZone)[0]?.instant ?? column.day.start;
-        const short = label ?? zoneName(locale, axis.timeZone, then, "short");
+      const runsByDate = new Map<string, TimeGridZoneShift[]>();
+      for (const shift of axis.shifts) {
+        const key = shift.date.toString();
+        runsByDate.set(key, [...(runsByDate.get(key) ?? []), shift]);
+      }
+      const notes = [...runsByDate.values()].map((runs) => {
+        // The day's last run is how it reads from then on, named as the zone is by then, such as
+        // EST after EDT; the title has every run.
+        const last = runs.at(-1)!;
+        const column = columnOn(last.date);
+        const then =
+          timeGridZoneTimes(column, last.from, axis.timeZone)[0]?.instant ?? column.day.start;
         const long = label ?? zoneName(locale, axis.timeZone, then, "long");
-        const hours = minutes % 60 === 0;
-        const unit = hours ? formats.hours : formats.minutes;
-        const value = hours ? minutes / 60 : minutes;
-        const direction = minutes > 0 ? "later" : "earlier";
+        const titles = runs.map(({ from, minutes, until }) => {
+          const span =
+            until === null
+              ? `From ${formats.time.format(from)}`
+              : `From ${formats.time.format(from)} to ${formats.time.format(until)}`;
+          const direction = minutes > 0 ? "later" : "earlier";
+          return `${span}, times in ${long} are ${formats.amount(minutes, "long")} ${direction} than the hours beside the grid`;
+        });
         return {
-          date: day,
-          text: `${short} ${unit.short.format(value)}`,
-          title: `From ${formats.time.format(from)}, times in ${long} are ${unit.long.format(value)} ${direction} than the hours beside the grid`,
+          date: last.date,
+          text: `${label ?? zoneName(locale, axis.timeZone, then, "short")} ${formats.amount(last.minutes, "narrow")}`,
+          title: titles.join(". "),
         };
       });
       return {
         axis,
         label: label ?? zoneName(locale, axis.timeZone, at, "short"),
-        name,
+        name: label ?? zoneName(locale, axis.timeZone, at, "long"),
         notes,
         timeZone: axis.timeZone,
       };
     });
-  }, [columns, date, locale, secondaryTimeZones]);
+  }, [columns, locale, secondaryTimeZones, visible]);
 }
 
 /** Rows label lines from 1:00 to 23:00, like the display zone's hours; midnight sits under the header. */

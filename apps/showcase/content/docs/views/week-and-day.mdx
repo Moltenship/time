@@ -209,9 +209,9 @@ Calendar's secondary time zone. Each zone gets a column of hours beside the cale
   either zone changes its clocks. Zones off the hour show minutes, such as "4:30 PM" in India.
   "+1" or "−1" marks a time on the next or previous day there.
 - **Daylight saving time:** an hour the calendar's zone skips has no label, and an hour it repeats
-  shows its first time. The gutter follows the first day shown. When a later day reads
-  differently, because a zone changes its offset, that day says so under its date, such as
-  "EST −1h".
+  shows its first time. The gutter follows the first day shown on which neither zone changes its
+  clocks. A day that reads differently, because a zone changes its offset, says so under its date,
+  such as "EST −1h". Hover the note to see from when, and until when if it ends that day.
 - **Clock:** 12 or 24 hours, as the locale says, including a `-u-hc-h23` extension.
 - **Screen readers:** the extra hours are hidden, like the calendar's own hour labels, so the grid's
   columns stay the same. A focused slot names its time in each zone instead, as in "Monday,

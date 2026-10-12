@@ -28,6 +28,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | Annotations    | #119             | Timeline annotations: core model and snapshot, `annotations` / `annotationSources` on `Root`, a rail in the time grid |
 | Year view      | #148             | Twelve month grids with a dot per event colour and a shared popover of a day's events; one tab stop across the year; read-only |
 | iCalendar      | #151, #153       | Standalone `@moltenship/ics`: ICS text to typed Temporal values, TZID resolution, a Standard Schema parser with typed extensions; a docs reference with a playground and a guide to showing a feed |
+| Time zones     | #165             | Secondary time zones (ADR 0165): `secondaryTimeZones` on `Root`, each hour line read in another zone on its own date (`timeGridZoneAxis`), an hour column per zone in the day, week, scrolling and resource columns views, notes on days a zone shifts, slot names with the time in each zone |
 | Recurrence     | #48, #49, #155   | `@moltenship/calendar-recurrence` (ADR 0048), shipped through #156–#159: an RFC 5545 rule engine and RRULE text; range-bounded expansion with stable occurrence IDs, EXDATE, RDATE, overrides and an ICS bridge; "this / following / all" edits and the registry scope dialog. #155 closes epic #2 with the demo and docs, in a PR of their own, and a gate: a DST matrix, Google/Outlook/iCloud interop fixtures and a year-view expansion benchmark (`vp run recurrence:gate`) |
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
@@ -58,6 +59,8 @@ issue's "Later" section when work starts.
 - Agenda grouping by calendar or resource, search and filter (#131)
 - Optional dnd-kit adapter (#37)
 - Layout and frame budgets
+- Secondary time zone follow-ups from #165: a "swap zones" action, the now-line's time in each zone,
+  the resource timeline's time header, and a label for the display zone
 - Recurrence follow-ups from the #155 gate: DST folds and cancelled first occurrences in edits, ICS
   bridge quirks, expansion speed-ups (#160)
 

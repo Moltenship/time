@@ -179,8 +179,8 @@ export function ScrollingTimeGridView<TEvent>({
   const { direction, locale, timeZone } = environment;
   const visibleDays = range.start.until(range.end).days;
   const columns = useMemo(() => days.map(({ column }) => column), [days]);
-  // The gutter reads each secondary zone on the first visible day.
-  const zones = useTimeGridZones(environment, columns, range.start);
+  // The gutter reads each secondary zone on a visible day, not on the pages rendered beside them.
+  const zones = useTimeGridZones(environment, columns, range);
   const first = epochDay(range.start);
   const axis = useScrollingAxis({
     axis: "inline",
