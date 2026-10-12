@@ -584,16 +584,31 @@ describe("the window", () => {
     expect(expansion).toEqual({ dates: [], truncated: true });
   });
 
-  test("a rule that never matches stops at maxIterations, or at the window's end", () => {
-    const never = rule("FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=30");
-    expect(expandRecurrenceRule(never, allDay("2026-01-01"), { maxIterations: 50 }).truncated).toBe(
-      true,
+  test("one step visits one period, so a sub-daily rule that never matches stops soon", () => {
+    // Every other second from an even one never reaches second 1: 100,000 one-period steps.
+    const { dates, truncated } = expandRecurrenceRule(
+      rule("FREQ=SECONDLY;INTERVAL=2;BYSECOND=1"),
+      timed("2026-01-01T09:00"),
     );
+    expect(dates).toHaveLength(1);
+    expect(truncated).toBe(true);
+  });
+
+  test("a rule whose days meet on no date ends after its first occurrence", () => {
     expect(
-      expandRecurrenceRule(never, allDay("2026-01-01"), {
-        before: Temporal.PlainDate.from("2100-01-01"),
-      }),
+      expandRecurrenceRule(rule("FREQ=YEARLY;BYMONTH=2;BYMONTHDAY=30"), allDay("2026-01-01")),
     ).toEqual({ dates: [Temporal.PlainDate.from("2026-01-01")], truncated: false });
+    expect(expand("FREQ=MONTHLY;BYDAY=6MO", allDay("2026-01-01"))).toEqual(["2026-01-01"]);
+  });
+
+  test("a rule that never matches stops at maxIterations, or at the window's end", () => {
+    // Every other minute from an even one never reaches minute 1.
+    const never = rule("FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1");
+    const first = timed("2026-01-01T09:00");
+    expect(expandRecurrenceRule(never, first, { maxIterations: 50 }).truncated).toBe(true);
+    expect(
+      expandRecurrenceRule(never, first, { before: Temporal.Instant.from("2026-01-03T00:00:00Z") }),
+    ).toEqual({ dates: [first.start], truncated: false });
   });
 
   test("ends quietly where Temporal's calendar does", () => {
@@ -622,6 +637,8 @@ describe("rules it can't expand", () => {
     [{ byHour: [24], frequency: "DAILY" }, "invalid-rule", /BYHOUR/],
     [{ byDay: [{ ordinal: 0, weekday: "MO" }], frequency: "MONTHLY" }, "invalid-rule", /ordinal/],
     [{ frequency: "WEEKLY", weekStart: "XX" }, "invalid-rule", /WKST/],
+    [{ frequency: "WEEKLY", weekStart: "constructor" }, "invalid-rule", /WKST/],
+    [{ frequency: "toString" }, "invalid-rule", /FREQ/],
     [{ bySetPosition: [], frequency: "MONTHLY" }, "invalid-rule", /BYSETPOS/],
     [{ frequency: "HOURLY" }, "unsupported-rule", /all-day/],
   ])("%o", (bad, code, message) => {
@@ -629,6 +646,12 @@ describe("rules it can't expand", () => {
       expandRecurrenceRule(bad as Parameters<typeof expandRecurrenceRule>[0], allDay("2026-01-01"));
     expect(expand).toThrow(message);
     expect(expand).toThrow(expect.objectContaining({ code }));
+  });
+
+  test("only leap seconds, which Temporal's clocks don't have", () => {
+    expect(() =>
+      expandRecurrenceRule(rule("FREQ=DAILY;BYSECOND=60"), timed("2026-01-01T09:00")),
+    ).toThrow(expect.objectContaining({ code: "unsupported-rule" }));
   });
 
   test("a time zone that isn't one", () => {

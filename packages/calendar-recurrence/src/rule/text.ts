@@ -23,7 +23,8 @@ export interface RecurrenceRuleTextResult {
   readonly rule?: RecurrenceRule;
 }
 
-const RRULE_PREFIX = /^RRULE:/i;
+/** `RRULE:`, with any parameters, and the space some writers leave after the colon. */
+const RRULE_PREFIX = /^RRULE(?:;[^:]*)?:\s*/i;
 
 function quote(text: string): string {
   return JSON.stringify(text.length > 48 ? `${text.slice(0, 45)}...` : text);
@@ -39,7 +40,7 @@ function warning({ code, message }: IcsValueWarning): RecurrenceRuleTextIssue {
 
 /**
  * Reads an RRULE, as a RECUR value (`FREQ=WEEKLY;BYDAY=MO`) or a content line
- * (`RRULE:FREQ=WEEKLY;BYDAY=MO`, as the Google Calendar API gives it). Never throws: text without a
+ * (`RRULE:FREQ=WEEKLY;BYDAY=MO`, as the Google Calendar API gives it, parameters allowed). Never throws: text without a
  * usable rule gives an error and no rule, and parts read leniently, such as an invalid BYDAY that
  * is dropped, give warnings.
  */

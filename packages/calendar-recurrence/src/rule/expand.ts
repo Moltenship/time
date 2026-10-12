@@ -74,10 +74,13 @@ function nanosecondsOf(date: RecurrenceDate, first: CalendarEventInterval, name:
  *
  * - COUNT with UNTIL, which some feeds write, ends at whichever comes first. BYHOUR, BYMINUTE and
  *   BYSECOND are ignored on all-day series, as RFC 5545 §3.3.10 says. UNTIL of another kind is
- *   brought in by `coerceRecurrenceDate`.
+ *   brought in by `coerceRecurrenceDate`, which reads an instant on an all-day or floating series
+ *   in UTC; coerce it first to read it in another zone.
  * - Dates come out in the ISO calendar, and months and years step in it whatever the start's.
- * - `maxIterations` counts steps: each candidate start looked at, and each period that gives none.
- *   A sub-daily rule's jump to the next hour, minute or second its BY parts list is one step.
+ * - `maxIterations` counts steps: each candidate start looked at, and each period visited that
+ *   gives none. Periods skipped, to reach `from` or the next day, hour, minute or second the BY
+ *   parts allow, aren't visited. A rule whose day parts meet on no date, such as 30 February, ends
+ *   after its first occurrence.
  *
  * Throws a `RecurrenceRuleError` for a rule it can't expand or a `sourceTimeZone` that isn't a
  * time zone, and a `RangeError` for window dates of another kind than `first` or a
@@ -127,14 +130,9 @@ export function expandRecurrenceRule(
     start = wallStart = wallSeconds(fields);
   }
 
-  const until =
-    rule.until === undefined ? undefined : coerceRecurrenceDate(rule.until, first, "until");
-  if (rule.until !== undefined && until === undefined) {
-    throw new RecurrenceRuleError(
-      "invalid-rule",
-      `UNTIL ${String(rule.until)} can't end a ${first.kind} series.`,
-    );
-  }
+  // Every kind converts for UNTIL; a date `coerceRecurrenceDate` left alone fails below.
+  const until = rule.until && (coerceRecurrenceDate(rule.until, first, "until") ?? rule.until);
+
   const iso = fields.withCalendar("iso8601");
   const compiled = compileRule(rule, {
     allDay: first.kind === "all-day",

@@ -59,6 +59,8 @@ export interface OrdinalWeekday {
  */
 export interface CompiledRule {
   readonly count?: number;
+  /** The day parts meet on no date of any year, such as BYMONTH=2;BYMONTHDAY=30. */
+  readonly impossible: boolean;
   readonly frequency: Frequency;
   /** Indexed by hour; limits sub-daily periods. */
   readonly hours?: readonly boolean[];
@@ -114,7 +116,10 @@ function flags(values: readonly number[], size: number): boolean[] {
 }
 
 function weekdayNumber(name: string, value: unknown): number {
-  const number = WEEKDAYS[value as IcsWeekday];
+  const number =
+    typeof value === "string" && Object.hasOwn(WEEKDAYS, value)
+      ? WEEKDAYS[value as IcsWeekday]
+      : undefined;
   if (number === undefined) {
     throw invalid(`${name} takes weekdays MO to SU; got ${JSON.stringify(value)}.`);
   }
@@ -126,13 +131,45 @@ function ascending(values: Iterable<number>): number[] {
   return [...new Set(values)].sort((left, right) => left - right);
 }
 
+const LONGEST_MONTHS = [0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+
+/**
+ * Whether the day parts can't meet on any date: BYMONTHDAY days that none of the months have, or
+ * only BYDAY ordinals past the fifth, which no month has, counted within months.
+ */
+function impossible(
+  months: readonly number[] | undefined,
+  monthDays: readonly number[] | undefined,
+  ordinalWeekdays: readonly OrdinalWeekday[] | undefined,
+  weekdays: readonly number[] | undefined,
+  frequency: Frequency,
+): boolean {
+  const monthsListed = months ?? [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  if (
+    monthDays !== undefined &&
+    !monthsListed.some((month) => monthDays.some((day) => Math.abs(day) <= LONGEST_MONTHS[month]!))
+  ) {
+    return true;
+  }
+  const withinMonths =
+    frequency === Frequency.Monthly || (frequency === Frequency.Yearly && months !== undefined);
+  return (
+    withinMonths &&
+    weekdays === undefined &&
+    ordinalWeekdays !== undefined &&
+    ordinalWeekdays.every(({ ordinal }) => Math.abs(ordinal) > 5)
+  );
+}
+
 /**
  * Checks a rule, which may come from code rather than from parsed text, and fills in what it leaves
  * out from the start, as RFC 5545 §3.3.10 says: "FREQ=YEARLY;BYMONTH=1" repeats on the start's day
  * of the month at the start's time. Throws a `RecurrenceRuleError` naming the part at fault.
  */
 export function compileRule(rule: RecurrenceRule, start: RuleStart): CompiledRule {
-  const frequency = FREQUENCIES[rule.frequency];
+  const frequency = Object.hasOwn(FREQUENCIES, rule.frequency)
+    ? FREQUENCIES[rule.frequency]
+    : undefined;
   if (frequency === undefined) {
     throw invalid(`FREQ must be SECONDLY to YEARLY; got ${JSON.stringify(rule.frequency)}.`);
   }
@@ -221,6 +258,12 @@ export function compileRule(rule: RecurrenceRule, start: RuleStart): CompiledRul
   const seconds = (start.allDay ? [0] : (bySecond ?? [start.second])).filter(
     (second) => second < 60,
   );
+  if (seconds.length === 0) {
+    throw new RecurrenceRuleError(
+      "unsupported-rule",
+      "BYSECOND=60 is a leap second, which Temporal's clocks don't have.",
+    );
+  }
   const times: number[] = [];
   if (frequency <= Frequency.Daily) {
     for (const hour of hours) {
@@ -238,6 +281,7 @@ export function compileRule(rule: RecurrenceRule, start: RuleStart): CompiledRul
 
   return {
     count: rule.count,
+    impossible: impossible(months, monthDays, ordinalWeekdays, weekdays, frequency),
     frequency,
     hours: frequency >= Frequency.Hourly && byHour !== undefined ? flags(byHour, 24) : undefined,
     interval: rule.interval ?? 1,

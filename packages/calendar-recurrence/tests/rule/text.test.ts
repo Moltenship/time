@@ -51,6 +51,8 @@ describe("parseRecurrenceRule", () => {
     "rrule:freq=weekly;byday=mo",
     "Rrule:FREQ=WEEKLY;BYDAY=MO",
     "  RRULE:FREQ=WEEKLY;BYDAY=MO \r\n",
+    "RRULE;X-NAME=1:FREQ=WEEKLY;BYDAY=MO",
+    "RRULE: FREQ=WEEKLY;BYDAY=MO",
     "\tFREQ=WEEKLY;BYDAY=MO;",
   ])("reads %j", (text) => {
     expect(parsed(text)).toEqual({ byDay: [{ weekday: "MO" }], frequency: "WEEKLY" });
@@ -91,7 +93,6 @@ describe("parseRecurrenceRule", () => {
     "EXDATE;VALUE=DATE:20260101",
     "RDATE;TZID=Europe/Berlin:20260101T090000",
     "EXRULE:FREQ=DAILY",
-    "RRULE;X-NAME=1:FREQ=DAILY",
     "RRULE:RRULE:FREQ=DAILY",
     "DTSTART:20260101T090000Z",
   ])("gives no rule for %j, which isn't an RRULE", (text) => {

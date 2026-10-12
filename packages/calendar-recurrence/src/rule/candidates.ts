@@ -84,6 +84,7 @@ export class Candidates {
 
   /** The next start in wall seconds, `NOTHING` for a step that found none, or `END`. */
   next(): number {
+    if (this.#rule.impossible) return END;
     if (this.#picked !== undefined) {
       if (this.#base < this.#picked.length) return this.#picked[this.#base++]!;
     } else if (this.#base < this.#bases.length) {
@@ -172,60 +173,43 @@ export class Candidates {
   }
 
   /**
-   * HOURLY, MINUTELY and SECONDLY: periods are kept or dropped whole by the day, BYHOUR, BYMINUTE
-   * and BYSECOND. A period that fails jumps to the next hour, minute or second listed, so one step
-   * either finds a period or reaches the next day.
+   * HOURLY, MINUTELY and SECONDLY: a period is kept or dropped whole by the day, BYHOUR, BYMINUTE
+   * and BYSECOND. One that fails skips to the next day, hour, minute or second that could pass, so
+   * the periods in between are never visited.
    */
-  #fillSubDaily(first: number): boolean {
+  #fillSubDaily(period: number): boolean {
     const rule = this.#rule;
     const unit = SECONDS_PER_UNIT[rule.frequency];
-    const day = floorDiv(first * unit, SECONDS_PER_DAY);
+    const start = period * unit;
+    const day = floorDiv(start, SECONDS_PER_DAY);
     if (day > LAST_DAY) return false;
-    this.periodStart = first * unit;
-    if (!this.#matchesDay(day, undefined)) {
-      this.#period = this.#reached(floorDiv((day + 1) * SECONDS_PER_DAY, unit));
-      return true;
-    }
-
+    this.periodStart = start;
     const dayStart = day * SECONDS_PER_DAY;
-    for (let period = first; ;) {
-      const start = period * unit;
-      if (start >= dayStart + SECONDS_PER_DAY) {
-        this.#period = period;
-        return true;
-      }
-      const ofDay = start - dayStart;
-      const hour = floorDiv(ofDay, 3600);
-      const minute = floorDiv(ofDay % 3600, 60);
-      const second = ofDay % 60;
-      // Where the next time that could pass starts, in wall seconds.
-      let next: number | undefined;
-      if (rule.hours && !rule.hours[hour]) {
-        next = dayStart + listedFrom(rule.hours, hour + 1, 24) * 3600;
-      } else if (rule.minutes && !rule.minutes[minute]) {
-        next = start - minute * 60 - second + listedFrom(rule.minutes, minute + 1, 60) * 60;
-      } else if (rule.seconds && !rule.seconds[second]) {
-        next = start - second + listedFrom(rule.seconds, second + 1, 60);
-      }
-      if (next === undefined) {
-        this.periodStart = start;
-        this.#bases.push(start);
-        this.#period = period + rule.interval;
-        return true;
-      }
-      period = this.#reached(floorDiv(next, unit));
+    const ofDay = start - dayStart;
+    const hour = floorDiv(ofDay, 3600);
+    const minute = floorDiv(ofDay % 3600, 60);
+    const second = ofDay % 60;
+    // Where the next time that could pass starts, in wall seconds.
+    let next: number | undefined;
+    if (!this.#matchesDay(day, undefined)) {
+      next = dayStart + SECONDS_PER_DAY;
+    } else if (rule.hours && !rule.hours[hour]) {
+      next = dayStart + listedFrom(rule.hours, hour + 1, 24) * 3600;
+    } else if (rule.minutes && !rule.minutes[minute]) {
+      next = start - minute * 60 - second + listedFrom(rule.minutes, minute + 1, 60) * 60;
+    } else if (rule.seconds && !rule.seconds[second]) {
+      next = start - second + listedFrom(rule.seconds, second + 1, 60);
     }
-  }
-
-  /** The first period at or after `period` that INTERVAL reaches from the origin. */
-  #reached(period: number): number {
-    const { interval } = this.#rule;
-    return this.#origin + Math.ceil((period - this.#origin) / interval) * interval;
+    if (next === undefined) this.#bases.push(start);
+    else this.#skipTo(floorDiv(next, unit));
+    return true;
   }
 
   /** Moves the next period to the first one at or after `period` that INTERVAL reaches. */
   #skipTo(period: number): void {
-    this.#period = Math.max(this.#period, this.#reached(period));
+    const { interval } = this.#rule;
+    const reached = this.#origin + Math.ceil((period - this.#origin) / interval) * interval;
+    this.#period = Math.max(this.#period, reached);
   }
 
   #collectDays(first: number, length: number, ordinals: ReadonlySet<number> | undefined): void {
