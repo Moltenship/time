@@ -1,5 +1,6 @@
 import type { EventId, ResourceId } from "@moltenship/calendar-core";
 
+import { compareDates, datesEqual, fromWall, justAfter, toWall } from "../internal/dates";
 import { expandRecurrenceRule } from "../rule/expand";
 import type {
   RecurrenceAdapters,
@@ -7,7 +8,6 @@ import type {
   RecurrencePeriod,
   RecurrenceRule,
 } from "../types";
-import { compareDates, datesEqual, fromWall, justAfter, toWall } from "./dates";
 import { extraStart, readKey, rekey, seriesWall } from "./keys";
 import { shiftRule } from "./rule-shift";
 import { resolveAll } from "./scope-all";

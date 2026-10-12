@@ -1,6 +1,7 @@
 import type { IcsFrequency, IcsWeekday } from "@moltenship/ics";
 
 import { RecurrenceRuleError } from "../errors";
+import { weekdayNumbers } from "../internal/dates";
 import type { RecurrenceRule } from "../types";
 
 /** FREQ, from the longest period to the shortest. */
@@ -24,16 +25,6 @@ const FREQUENCIES: Readonly<Record<IcsFrequency, Frequency>> = {
   HOURLY: Frequency.Hourly,
   MINUTELY: Frequency.Minutely,
   SECONDLY: Frequency.Secondly,
-};
-
-const WEEKDAYS: Readonly<Record<IcsWeekday, number>> = {
-  MO: 1,
-  TU: 2,
-  WE: 3,
-  TH: 4,
-  FR: 5,
-  SA: 6,
-  SU: 7,
 };
 
 /** The first occurrence's wall-clock fields, which fill in what the rule leaves out. */
@@ -117,8 +108,8 @@ function flags(values: readonly number[], size: number): boolean[] {
 
 function weekdayNumber(name: string, value: unknown): number {
   const number =
-    typeof value === "string" && Object.hasOwn(WEEKDAYS, value)
-      ? WEEKDAYS[value as IcsWeekday]
+    typeof value === "string" && Object.hasOwn(weekdayNumbers, value)
+      ? weekdayNumbers[value as IcsWeekday]
       : undefined;
   if (number === undefined) {
     throw invalid(`${name} takes weekdays MO to SU; got ${JSON.stringify(value)}.`);

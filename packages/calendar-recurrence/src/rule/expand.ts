@@ -2,6 +2,7 @@ import type { CalendarEventInterval } from "@moltenship/calendar-core";
 
 import { coerceRecurrenceDate } from "../dates";
 import { RecurrenceRuleError } from "../errors";
+import { writtenStart } from "../internal/dates";
 import type {
   RecurrenceDate,
   RecurrenceRule,
@@ -112,15 +113,7 @@ export function expandRecurrenceRule(
       throw new RecurrenceRuleError("invalid-time-zone", `${timeZone} isn't a time zone.`);
     }
     // A written start left behind after the start moved no longer resolves to it.
-    const written = first.wallStart?.withCalendar("iso8601");
-    fields =
-      written !== undefined &&
-      written
-        .toZonedDateTime(timeZone, { disambiguation: "compatible" })
-        .toInstant()
-        .equals(first.start)
-        ? written
-        : zoned.toPlainDateTime();
+    fields = writtenStart(first.wallStart, first.start, timeZone) ?? zoned.toPlainDateTime();
     fraction = subsecond(zoned);
     start = Number((first.start.epochNanoseconds - BigInt(fraction)) / NANOSECONDS_PER_SECOND);
     wallStart = wallSeconds(fields);

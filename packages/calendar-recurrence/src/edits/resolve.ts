@@ -1,7 +1,7 @@
 import type { CalendarEventChange, EventId, ResourceId } from "@moltenship/calendar-core";
 
+import { datesEqual } from "../internal/dates";
 import type { RecurrenceAdapters } from "../types";
-import { datesEqual } from "./dates";
 import { resolveAll } from "./scope-all";
 import { resolveFollowing } from "./scope-following";
 import { resolveThis } from "./scope-this";

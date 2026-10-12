@@ -1,6 +1,6 @@
 import { coerceRecurrenceDate, type RecurrenceDateRole } from "../dates";
+import { datesEqual, fromWall, isPeriod, toWall } from "../internal/dates";
 import type { RecurrenceDate, RecurrencePeriod } from "../types";
-import { datesEqual, fromWall, toWall } from "./dates";
 import { mapOrdinal } from "./ordinals";
 import type { RecurrenceKeyShift } from "./types";
 
@@ -75,14 +75,6 @@ export function rekey(
   if (key === undefined) return undefined;
   if (shift.anchor !== undefined && datesEqual(key, shift.anchor.from)) return shift.anchor.to;
   return fromWall(targetWall(shift, key), { kind: shift.kind, timeZone: shift.toTimeZone });
-}
-
-export function isPeriod(value: RecurrenceDate | RecurrencePeriod): value is RecurrencePeriod {
-  return !(
-    value instanceof Temporal.Instant ||
-    value instanceof Temporal.PlainDate ||
-    value instanceof Temporal.PlainDateTime
-  );
 }
 
 /** An RDATE's start in the old series' kind; `undefined` when it can't be read. */

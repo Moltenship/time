@@ -8,6 +8,15 @@ import type {
 
 import { coerceRecurrenceDate } from "../dates";
 import { RecurrenceRuleError } from "../errors";
+import {
+  datesEqual,
+  intervalOf,
+  isTimeZone,
+  seriesTimeOf,
+  toWall,
+  writtenStart,
+  type SeriesTime,
+} from "../internal/dates";
 import { occurrenceId } from "../occurrence-id";
 import { expandRecurrenceRule } from "../rule/expand";
 import type {
@@ -18,14 +27,6 @@ import type {
   RecurrenceRule,
   RecurrenceRuleStart,
 } from "../types";
-import {
-  datesEqual,
-  isTimeZone,
-  sameResources,
-  seriesTimeOf,
-  toWall,
-  type SeriesTime,
-} from "./dates";
 import { readKey, rekey, rekeyExtra, seriesWall, targetWall } from "./keys";
 import type {
   RecurrenceEditRejection,
@@ -97,23 +98,12 @@ export function ruleRejection(error: unknown): RecurrenceEditRejection {
   throw error;
 }
 
-/** Only the interval's fields, since adapters may hand back the event itself. */
-export function intervalOf(interval: CalendarEventInterval): CalendarEventInterval {
-  switch (interval.kind) {
-    case "timed":
-      return {
-        end: interval.end,
-        kind: "timed",
-        ...(interval.sourceTimeZone === undefined
-          ? {}
-          : { sourceTimeZone: interval.sourceTimeZone }),
-        start: interval.start,
-      };
-    case "all-day":
-      return { end: interval.end, kind: "all-day", start: interval.start };
-    case "floating":
-      return { end: interval.end, kind: "floating", start: interval.start };
-  }
+/** Same members, in any order. */
+function sameResources(
+  left: readonly (string | number)[],
+  right: readonly (string | number)[],
+): boolean {
+  return left.length === right.length && left.every((resourceId) => right.includes(resourceId));
 }
 
 /** A start and an end of the same kind, with resources, as a placement. */
@@ -157,7 +147,9 @@ export function loadSeries<TEvent, TEventId extends EventId, TResourceId extends
   if (recurrence === undefined) {
     return reject("missing-series", "The occurrence's series has no recurrence.");
   }
-  const first = intervalOf(adapters.event.getInterval(link.series));
+  // Only the interval's fields, since adapters may hand back the event itself.
+  const interval = adapters.event.getInterval(link.series);
+  const first = intervalOf(interval.start, interval.end, interval);
   const time = seriesTimeOf(first, options.defaultTimeZone);
   if (!isTimeZone(time.timeZone)) {
     return reject("invalid-time-zone", `${time.timeZone} isn't a time zone.`);
@@ -170,15 +162,9 @@ export function loadSeries<TEvent, TEventId extends EventId, TResourceId extends
   }
   // A stale `wallStart`, which no longer resolves to the first start, is ignored, as the engine
   // ignores it.
-  const declared = recurrence.wallStart?.withCalendar("iso8601");
   const written =
-    first.kind === "timed" &&
-    declared !== undefined &&
-    datesEqual(
-      declared.toZonedDateTime(time.timeZone, { disambiguation: "compatible" }).toInstant(),
-      first.start,
-    )
-      ? declared
+    first.kind === "timed"
+      ? writtenStart(recurrence.wallStart, first.start, time.timeZone)
       : undefined;
   const wallFirst = written ?? toWall(first.start, time);
   return {

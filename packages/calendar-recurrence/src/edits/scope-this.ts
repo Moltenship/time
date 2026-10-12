@@ -1,8 +1,8 @@
 import type { EventId, ResourceId } from "@moltenship/calendar-core";
 
 import { coerceRecurrenceDate } from "../dates";
+import { seriesTimeOf } from "../internal/dates";
 import type { RecurrenceAdapters } from "../types";
-import { seriesTimeOf } from "./dates";
 import {
   isExcluded,
   loadSeries,

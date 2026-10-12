@@ -1,7 +1,7 @@
 import type { EventId, ResourceId } from "@moltenship/calendar-core";
 
+import { datesEqual, fromWall, toWall } from "../internal/dates";
 import type { RecurrenceAdapters, RecurrenceDate } from "../types";
-import { datesEqual, fromWall, toWall } from "./dates";
 import { rekey, targetWall } from "./keys";
 import { shiftRule } from "./rule-shift";
 import {

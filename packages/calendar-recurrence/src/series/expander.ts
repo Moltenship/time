@@ -2,6 +2,20 @@ import type { CalendarEventInterval, EventId, ResourceId } from "@moltenship/cal
 
 import { coerceRecurrenceDate, type RecurrenceDateRole } from "../dates";
 import { RecurrenceRuleError } from "../errors";
+import {
+  compareDates,
+  dateTypes,
+  durationBetween,
+  intervalOf,
+  isInterval,
+  isPeriod,
+  isTimeZone,
+  kindOf,
+  sameInterval,
+  seriesTimeOf,
+  toWall,
+  type SeriesKind,
+} from "../internal/dates";
 import { occurrenceId, recurrenceKey } from "../occurrence-id";
 import { DEFAULT_MAX_ITERATIONS, expandRecurrenceRule } from "../rule/expand";
 import type {
@@ -15,22 +29,10 @@ import type {
   RecurrenceIssue,
   RecurrenceOccurrence,
   RecurrenceOverride,
-  RecurrencePeriod,
   RecurrenceRule,
   RecurrenceRuleExpansion,
   RecurrenceRuleStart,
 } from "../types";
-import {
-  compareDates,
-  dateTypes,
-  durationBetween,
-  intervalOf,
-  isInterval,
-  isTimeZone,
-  kindOf,
-  rangeBounds,
-  sameInterval,
-} from "./clock";
 
 // How many ranges each series remembers, and how many rule windows.
 const rangesPerSeries = 4;
@@ -183,6 +185,25 @@ function endOf<TEvent, TEventId extends EventId>(
     );
   }
   return start.add(length);
+}
+
+/** The half-open range's bounds in a series' kind: instants at the start of day in `timeZone`. */
+function rangeBounds(
+  range: Readonly<{ end: Temporal.PlainDate; start: Temporal.PlainDate }>,
+  kind: SeriesKind,
+  timeZone: string,
+): { readonly end: RecurrenceDate; readonly start: RecurrenceDate } {
+  switch (kind) {
+    case "timed":
+      return {
+        end: range.end.toZonedDateTime(timeZone).toInstant(),
+        start: range.start.toZonedDateTime(timeZone).toInstant(),
+      };
+    case "all-day":
+      return { end: range.end, start: range.start };
+    case "floating":
+      return { end: range.end.toPlainDateTime(), start: range.start.toPlainDateTime() };
+  }
 }
 
 /** The earliest original start whose occurrence can still reach `rangeStart`. */
@@ -347,8 +368,7 @@ export function createOccurrenceExpander<
 
   function plan(master: Master): Plan | Draft {
     const { event, id, interval: first, recurrence } = master;
-    const timeZone =
-      first.kind === "timed" ? (first.sourceTimeZone ?? defaultTimeZone) : defaultTimeZone;
+    const { timeZone } = seriesTimeOf(first, defaultTimeZone);
     if (first.kind === "timed" && !isTimeZone(timeZone)) {
       return draft("invalid-time-zone", event, id, `${timeZone} isn't a time zone.`);
     }
@@ -375,7 +395,7 @@ export function createOccurrenceExpander<
     }
     const extras = new Map<string, Extra>();
     for (const value of recurrence.recurrenceDates ?? []) {
-      const period = kindOf(value) === undefined ? (value as RecurrencePeriod) : undefined;
+      const period = isPeriod(value) ? value : undefined;
       const start = coerce(period?.start ?? value, "recurrenceDates", "start");
       const end = period === undefined ? undefined : coerce(period.end, "recurrenceDates", "start");
       if (start === undefined || (period !== undefined && end === undefined)) continue;
@@ -421,12 +441,7 @@ export function createOccurrenceExpander<
   function excluded(plan: Plan, start: RecurrenceDate, key: string): boolean {
     if (plan.exceptions.has(key)) return true;
     if (plan.exceptionDays.size === 0) return false;
-    const day =
-      start instanceof Temporal.Instant
-        ? start.toZonedDateTimeISO(plan.timeZone).toPlainDate()
-        : start instanceof Temporal.PlainDateTime
-          ? start.toPlainDate()
-          : start;
+    const day = toWall(start, { kind: plan.first.kind, timeZone: plan.timeZone }).toPlainDate();
     return plan.exceptionDays.has(recurrenceKey(day));
   }
 

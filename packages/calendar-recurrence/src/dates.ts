@@ -1,5 +1,6 @@
 import type { CalendarEventInterval } from "@moltenship/calendar-core";
 
+import { resolveWall, seriesTimeOf } from "./internal/dates";
 import type { RecurrenceDate } from "./types";
 
 /** What a date means to a series, which decides how a date of another kind converts. */
@@ -40,14 +41,11 @@ export function coerceRecurrenceDate(
   role: RecurrenceDateRole,
   options: CoerceRecurrenceDateOptions = {},
 ): RecurrenceDate | undefined {
-  const timeZone =
-    (first.kind === "timed" ? first.sourceTimeZone : undefined) ?? options.defaultTimeZone ?? "UTC";
+  const { timeZone } = seriesTimeOf(first, options.defaultTimeZone);
 
   if (first.kind === "timed") {
     if (date instanceof Temporal.Instant) return date;
-    if (date instanceof Temporal.PlainDateTime) {
-      return date.toZonedDateTime(timeZone, { disambiguation: "compatible" }).toInstant();
-    }
+    if (date instanceof Temporal.PlainDateTime) return resolveWall(date, timeZone);
     if (role === "exception") return isoDate(date);
     if (role === "until") {
       return isoDate(date)

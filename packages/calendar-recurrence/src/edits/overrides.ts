@@ -1,7 +1,7 @@
 import type { EventId, ResourceId } from "@moltenship/calendar-core";
 
+import { compareDates, datesEqual } from "../internal/dates";
 import type { RecurrenceDate } from "../types";
-import { compareDates, datesEqual } from "./dates";
 import { readKey, rekey } from "./keys";
 import type { RecurrenceOverrideRekey, RecurrenceSeriesEdit } from "./types";
 

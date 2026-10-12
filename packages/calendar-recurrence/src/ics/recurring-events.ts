@@ -6,6 +6,7 @@ import {
   type IcsExtensionsConfig,
 } from "@moltenship/ics";
 
+import { isPeriod } from "../internal/dates";
 import { occurrenceId, recurrenceKey } from "../occurrence-id";
 import type {
   EventRecurrence,
@@ -20,8 +21,8 @@ import {
   ownRecurrenceId,
   toSeriesDate,
   toSeriesPeriod,
+  type FeedSeries,
   type SeriesDate,
-  type SeriesTime,
 } from "./dates";
 
 export type IcsRecurrenceIssueCode =
@@ -161,7 +162,7 @@ function intervalOf(
 }
 
 function keyOf(date: RecurrenceDate | RecurrencePeriod): string {
-  return "end" in date
+  return isPeriod(date)
     ? `${recurrenceKey(date.start)}/${recurrenceKey(date.end)}`
     : recurrenceKey(date);
 }
@@ -267,7 +268,7 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
     );
   });
 
-  const series = new Map<string, SeriesTime>();
+  const series = new Map<string, FeedSeries>();
   const cancelledUids = new Set<string>();
   for (const [uid, index] of masterIndexes) {
     if (events[index]!.status === "CANCELLED") cancelledUids.add(uid);
@@ -309,7 +310,7 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
   const keptOverrides = new Set(overrideIndexes.values());
   const overriddenUids = new Set([...keptOverrides].map((index) => events[index]!.uid));
 
-  const recurrenceOf = (index: number, time: SeriesTime): EventRecurrence => {
+  const recurrenceOf = (index: number, time: FeedSeries): EventRecurrence => {
     const event = events[index]!;
     // One issue per property, for the first value that needs one.
     const keep = <TDate>(property: string, converted: readonly SeriesDate<TDate>[]): TDate[] => {
