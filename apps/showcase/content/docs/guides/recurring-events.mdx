@@ -1,0 +1,227 @@
+---
+title: Show and edit recurring events
+description: Expand series for the dates on screen, and ask which events a change applies to.
+---
+
+<RecurrencePreview />
+
+These events repeat: a stand-up every weekday, with Wednesday's skipped and Thursday's moved an
+hour later, a 1:1 every other week, planning on eight Mondays, and a release day every Friday. Drag
+an occurrence, or select one and delete it, and the calendar asks whether the change applies to
+this event, this and following events, or all events. The change waits on screen while it asks.
+
+This guide builds that calendar with `@moltenship/calendar-recurrence`. It expands each series into
+its occurrences for the dates on screen, and turns a change to one occurrence into what to save.
+[Recurring events](/docs/concepts/recurrence) explains the model behind it.
+
+## Install
+
+The recurrence package is separate from the calendar. It doesn't use React, so you can also expand
+series on a server.
+
+<Callout type="warn" title="Not on npm yet">
+  Like the calendar, `@moltenship/calendar-recurrence` hasn't been published. The commands below are
+  what you'll run after the first release.
+</Callout>
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/calendar-recurrence
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/calendar-recurrence
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/calendar-recurrence
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar-recurrence
+```
+
+</Tab>
+</Tabs>
+
+The dialog that asks for the scope is UI source, like the views. Copy
+`registry/recurrence-scope-dialog` into your app, as described in
+[UI source](/docs/installation#ui-source-optional). It uses shadcn's `button` and `dialog`:
+
+```bash
+npx shadcn@latest add button dialog
+```
+
+## Wire the adapters
+
+The calendar shows occurrences, not your events. A `RecurrenceOccurrence` is one occurrence of a
+series, or a one-off event passed through, and `createOccurrenceAdapter` turns your event adapter
+into the calendar's adapter for them. A recurrence adapter beside it reads what makes an event a
+series' master, or an override of one occurrence. Together, they're your `RecurrenceAdapters`.
+
+An app without an event type of its own can store `RecurringCalendarEvent`s: core's
+[`CalendarEvent`](/docs/concepts/events#records-in-times-own-shape) with an optional `recurrence`
+and `override`. `createCanonicalRecurrenceAdapter` returns both adapters for them:
+
+<include meta='title="recurrence-calendar.tsx"'>
+  ../../examples/recurrence-calendar.tsx#calendar
+</include>
+
+Views receive occurrences, so `getEventColor` reads the color from `occurrence.event`, the event
+the occurrence shows: the master, the override, or the one-off event.
+
+### Your own event type
+
+With your own event type, write the recurrence adapter yourself. `getRecurrence` returns a master's
+rule, exception dates and extra dates, and `getOverride` returns the series and original start an
+override replaces:
+
+<include meta='title="meetings.ts"'>../../examples/recurring-meetings.ts#adapters</include>
+
+- A master's `getInterval` is its first occurrence. A timed series repeats on the wall clock of
+  `sourceTimeZone`, so a 09:00 meeting stays at 09:00 across daylight saving time.
+- `parseRecurrenceRule` reads RRULE text, with or without the `RRULE:` prefix. It never throws:
+  check its `issues` when you save the text, and show an error then.
+- The expander reads each event once while it's the same object, so parsing in the adapter is
+  cheap. Replace events rather than changing them.
+
+## Expand the dates on screen
+
+A series can be endless, so expand it only for the dates the calendar needs. The calendar reports
+them through `onVisibleRangeChange`:
+
+<include meta='title="use-occurrences.ts"'>../../examples/use-occurrences.ts#expand</include>
+
+- **One expander.** Create it once, in `useState` as here or at module scope. It keeps its work for
+  each series between calls, and gives back the same occurrence objects for events that didn't
+  change, so the calendar and its views skip them.
+- **`useMemo` over events and range.** Expansion runs again only when your events or the dates
+  change. A new array holding the same event objects is cheap: unchanged series reuse their work.
+- **`loadRange`, not `range`.** Scrolling views render a page of days on either side of the ones
+  they show, so a swipe never reveals empty days. `loadRange` includes those pages; `range` is only
+  what's visible. In paged views the two are the same.
+- **The first render.** The calendar reports its range after it first renders, so the hook starts
+  from the week it opens on, from `weekRange`. Without a first guess, the first frame has no
+  events.
+- **Time zones.** `timeZone` is the calendar's zone, which places the range's dates for timed
+  series. Series don't repeat in it. They repeat in their own `sourceTimeZone`, or, for events
+  without one, in the expander's `defaultTimeZone`, which is UTC unless you set it.
+
+`expansion.issues` lists what the expander couldn't read, such as an invalid rule or an override
+whose series isn't loaded, with each event and its position. Bad data never throws: the rest of
+the series and the other events still show. Log the issues, as you would
+[diagnostics](/docs/concepts/events#invalid-records).
+
+## Ask which events a change applies to
+
+When someone drags an occurrence, the calendar calls `onEventChange` with a change whose `event` is
+the occurrence. `useRecurrenceScopePrompt` from the dialog you copied returns `ask`, which opens the
+dialog and resolves with the scope picked, and `dialog`, to render once:
+
+<include meta='title="team-calendar.tsx"'>../../examples/recurrence-root.tsx#change</include>
+
+1. **`isRecurringChange`** says whether the change is to an occurrence of a series. A new event, or
+   a change to a one-off event, needs no question.
+2. **`ask`** opens the dialog. `action` picks its wording for an edit or a delete, and `scopes`
+   comes from **`recurrenceEditScopes`**, which offers only the scopes that apply: no "This and
+   following events" on a series' first occurrence, and only "This event" when the rule can't
+   follow the change, such as the 28th of each month dragged to a 29th.
+3. **Cancel** resolves `null`. Throwing rolls the change back, as any error in `onEventChange`
+   does.
+4. **`resolveRecurrenceEdit`** turns the change into an edit: what to save for that scope. A
+   change that needs no scope comes back as `type: "event"`, with your event unwrapped from the
+   occurrence, to apply as you would without recurrence. A scope that can't apply comes back as
+   `type: "rejected"`, with a `reason` and a `message`.
+5. **Save** the edit, below. The change stays pending until `onEventChange` returns.
+
+While the dialog is open, the change waits on screen as pending: the dragged occurrence shows where
+it was dropped. Only that occurrence shows the change. The calendar keeps pending changes per event
+and knows nothing about series, so for "This and following events" or "All events" the rest of the
+series moves when your events change, and the calendar keeps showing the change until then.
+
+### Deleting
+
+The views don't delete events; your own UI does, with `proposeEventChange`. The change goes through
+the same `onEventChange`, and `ask` uses the dialog's wording for a delete:
+
+<include meta='title="team-calendar.tsx"'>../../examples/recurrence-root.tsx#delete</include>
+
+## Save the edit
+
+A series edit lists its writes as plain data, so you can send it to a server as it is or apply it
+to your own store. If your events are `RecurringCalendarEvent`s, `applyRecurrenceEdit` applies it
+and returns the new array, as `onEventChange` above does. `createId` names the events it creates:
+overrides, and the series a "This and following events" edit starts when you didn't pick its ID.
+
+With your own event type or a database, write the same steps yourself:
+
+| Field            | What to write                                                                                                                                     |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `series`         | `"update"`: the master at `placement`, its first occurrence, with `recurrence` in place of the stored one. `"delete"`: remove the master.         |
+| `newSeries`      | For "This and following events": a new master, copied from `from` apart from its ID, at `placement`, with `recurrence`, and `id` if you gave one. |
+| `override`       | The edited occurrence's override: `"create"` one from the master `from`, `"update"` the stored one, or `"delete"` it.                             |
+| `otherOverrides` | Call `recurrenceOverrideEdit(edit, recurrenceId)` for each override of `seriesId` you store, loaded or not, and keep, delete or rekey it.         |
+
+The edit describes placement and recurrence only. If the change also edited the event's title or
+other fields, copy them yourself. [The reference](/docs/api/recurrence#recurrenceedit) describes
+each write.
+
+A "This event" delete adds the occurrence's start to the master's exception dates, which every
+iCalendar store understands. Google's API records a deleted occurrence as a cancelled instance
+instead; this package reads both.
+
+## Keep the selection
+
+An occurrence's ID is its series' ID and its original start, such as
+`standup::2026-10-14T07:30:00Z`. It's stable across views, time zones and reloads, and when "This
+event" moves the occurrence, since its override keeps the original start.
+
+"This and following events" and "All events" change the original starts, and so the IDs.
+`edit.occurrenceIds` maps old IDs to new ones, and the handler above moves the selection with it:
+select an occurrence in the preview, drag it with "All events", and it stays selected.
+
+- Pass `occurrences`, the expansion you give the calendar, so the map covers every occurrence on
+  screen, not only the dragged one.
+- Pass `newSeriesId` for "This and following events", so the map can name the new series'
+  occurrences. Pick it before you save, as you would for an optimistic create.
+- Map anything else that holds occurrence IDs the same way, such as an open details panel or a URL.
+- Read an occurrence's series from `occurrence.recurrence`, which keeps the series ID's type. Use
+  `parseOccurrenceId` only for IDs you stored.
+
+The calendar's keyboard focus names an occurrence ID too, and doesn't follow it yet. After "This
+and following events" or "All events", focus leaves the moved occurrence, and the next Tab into the
+view starts from its first cell.
+
+## Put it together
+
+The whole calendar: the occurrences go to `events`, the handlers to `Root`, and the dialog renders
+beside it. Clicks on events select them, through the `data-event-id` every view puts on its
+events, and `SelectedEvent` is the component from [Deleting](#deleting).
+
+<include meta='title="team-calendar.tsx"'>../../examples/recurrence-root.tsx#root</include>
+
+## Recipes
+
+<Cards>
+  <Card
+    title="Google Calendar events"
+    href="/docs/guides/google-calendar"
+    description="Read masters, changed and cancelled occurrences, and RRULE, EXDATE and RDATE lines from the Calendar API."
+  />
+  <Card
+    title="An ICS feed"
+    href="/docs/guides/ics#recurring-events"
+    description="Group a parsed feed into series with recurringEventsFromIcs, and expand it."
+  />
+</Cards>

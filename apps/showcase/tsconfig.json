@@ -23,8 +23,12 @@
       "@/components/calendar/scrolling-time-grid-view/*": [
         "../../registry/scrolling-time-grid-view/*"
       ],
+      "@/components/calendar/recurrence-scope-dialog/*": [
+        "../../registry/recurrence-scope-dialog/*"
+      ],
       "@/components/calendar/event-colors": ["../../registry/calendar-theme/event-colors"],
       "@/components/calendar/*": ["../../registry/calendar/*"],
+      "@/components/ui/*": ["../../registry/ui/*"],
       "@/*": ["./*"],
       "@registry/*": ["../../registry/*"]
     },
