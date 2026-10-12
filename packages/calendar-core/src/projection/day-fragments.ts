@@ -202,3 +202,18 @@ export function compareDayFragments(
     compareEventIds(left.event.id, right.event.id)
   );
 }
+
+/** Fragments by ISO date, each date's in display order (see `compareDayFragments`). */
+export function fragmentsByDate<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
+  fragments: readonly EventDayFragment<TEvent, TEventId, TResourceId>[],
+): Map<string, EventDayFragment<TEvent, TEventId, TResourceId>[]> {
+  const byDate = new Map<string, EventDayFragment<TEvent, TEventId, TResourceId>[]>();
+  for (const fragment of fragments) {
+    const key = fragment.date.toString();
+    const day = byDate.get(key);
+    if (day === undefined) byDate.set(key, [fragment]);
+    else day.push(fragment);
+  }
+  for (const day of byDate.values()) day.sort(compareDayFragments);
+  return byDate;
+}

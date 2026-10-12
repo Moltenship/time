@@ -66,6 +66,9 @@ export {
 } from "./views/month/scrolling";
 export type { MonthDay, MonthProjection, MonthWeek } from "./views/month/month";
 
+export { getYearRange, getYearTitle, navigateYear, projectYear } from "./views/year/year";
+export type { YearDay, YearMonth, YearProjection, YearWeek } from "./views/year/year";
+
 export { getListRange, getListTitle, navigateList, projectList } from "./views/list/list";
 export { scrollingListStrategy } from "./views/list/scrolling";
 export type { ListDay, ListItem, ListProjection, ListViewOptions } from "./views/list/list";
@@ -224,6 +227,7 @@ export type {
 } from "./navigation/focus";
 export { listSpatialNavigation } from "./navigation/list";
 export { monthSpatialNavigation } from "./navigation/month";
+export { yearSpatialNavigation } from "./navigation/year";
 export { timeGridSpatialNavigation } from "./navigation/time-grid";
 export { resourceColumnsSpatialNavigation } from "./navigation/resource-columns";
 export { resourceTimelineSpatialNavigation } from "./navigation/resource-timeline";

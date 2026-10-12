@@ -8,8 +8,8 @@ import {
 import type { CalendarEnvironmentBase } from "../../environment";
 import type { EventId, ResourceId } from "../../ids";
 import {
-  compareDayFragments,
   eventDateRanges,
+  fragmentsByDate,
   splitEventsByDay,
   type EventDayFragment,
 } from "../../projection/day-fragments";
@@ -113,26 +113,14 @@ export function projectList<TEvent>(
 ): ListProjection<TEvent, EventId, ResourceId> {
   const { environment, range, snapshot, today } = input;
   const { timeZone } = environment;
-  const fragments = splitEventsByDay(
-    queryVisibleEvents(snapshot, range, timeZone),
-    range,
-    timeZone,
+  const byDate = fragmentsByDate(
+    splitEventsByDay(queryVisibleEvents(snapshot, range, timeZone), range, timeZone),
   );
-
-  const byDate = new Map<string, EventDayFragment<TEvent, EventId, ResourceId>[]>();
-  for (const fragment of fragments) {
-    const key = fragment.date.toString();
-    const dayFragments = byDate.get(key);
-    if (dayFragments === undefined) byDate.set(key, [fragment]);
-    else dayFragments.push(fragment);
-  }
 
   const days = [...byDate.values()]
     .map((dayFragments) => {
       const date = dayFragments[0]!.date;
-      const items = dayFragments
-        .sort(compareDayFragments)
-        .map((fragment) => toListItem(fragment, timeZone));
+      const items = dayFragments.map((fragment) => toListItem(fragment, timeZone));
       return Object.freeze({
         date,
         isToday: today?.equals(date) === true,
