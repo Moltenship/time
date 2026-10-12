@@ -141,8 +141,11 @@ dialog and resolves with the scope picked, and `dialog`, to render once:
    follow the change, such as the 28th of each month dragged to a 29th. When none applies, the list
    is empty and there's nothing to ask: tell the user why, and roll the change back.
 3. **Cancel** resolves `null`. Throwing rolls the change back, as any error in `onEventChange`
-   does.
-4. **`resolveRecurrenceEdit`** turns the change into an edit: what to save for that scope. A
+   does. Throw an `AbortError`, as the handler does, and the calendar's announcements say the
+   change was cancelled rather than that it couldn't be saved.
+4. **`resolveRecurrenceEdit`** turns the change into an edit: what to save for that scope. Pass
+   the calendar's `timeZone` to it and to `recurrenceEditScopes`, so a series dragged by days
+   keeps its time of day when the calendar's zone and the series' change DST on different dates. A
    change that needs no scope comes back as `type: "event"`, with your event unwrapped from the
    occurrence, to apply as you would without recurrence. A scope that can't apply comes back as
    `type: "rejected"`, with a `reason` and a `message`.
@@ -191,8 +194,14 @@ An occurrence's ID is its series' ID and its original start, such as
 event" moves the occurrence, since its override keeps the original start.
 
 "This and following events" and "All events" change the original starts, and so the IDs.
-`edit.occurrenceIds` maps old IDs to new ones, and the handler above moves the selection with it:
-select an occurrence in the preview, drag it with "All events", and it stays selected.
+`edit.occurrenceIds` maps old IDs to new ones, and the handler above moves the selection and the
+keyboard focus with it: select an occurrence in the preview, drag it with "All events", and it
+stays selected.
+
+- Control `focus` with `onFocusChange`, and map it before `onEventChange` returns. `ask` resolves
+  once the dialog has closed and focus is back on the occurrence, and the calendar then moves focus
+  to the occurrence under its new ID. Left alone, focus would name the old ID, which no longer
+  shows.
 
 - Pass `occurrences`, the expansion you give the calendar, so the map covers every occurrence on
   screen, not only the dragged one.
@@ -201,18 +210,6 @@ select an occurrence in the preview, drag it with "All events", and it stays sel
 - Map anything else that holds occurrence IDs the same way, such as an open details panel or a URL.
 - Read an occurrence's series from `occurrence.recurrence`, which keeps the series ID's type. Use
   `parseOccurrenceId` only for IDs you stored.
-
-Keyboard focus names an occurrence too, and the calendar doesn't move it to the new ID by itself.
-After "This and following events" or "All events", the focused element unmounts with its old ID,
-so focus falls to the page and the next Tab enters the view at its first cell. To keep it:
-
-- Control `focus` with `onFocusChange`, and map it through `edit.occurrenceIds` as the selection
-  is, so the view's tab stop is the renamed occurrence.
-- Note the ID of the focused `[data-event-id]` element when the change begins, before the dialog
-  takes focus. Once your events have rendered, in a layout effect, focus the element whose
-  `eventIdOf` is the mapped ID.
-
-The [demo](https://github.com/Moltenship/time/blob/main/apps/demo/src/app.tsx) does both.
 
 ## Put it together
 

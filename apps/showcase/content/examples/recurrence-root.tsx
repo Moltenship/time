@@ -5,7 +5,9 @@ import {
   eventIdOf,
   weekRange,
   type CalendarEventChange,
+  type CalendarFocus,
   type CalendarSelection,
+  type EventId,
 } from "@moltenship/calendar";
 import {
   applyRecurrenceEdit,
@@ -26,6 +28,16 @@ import { useOccurrences } from "./use-occurrences";
 
 type OccurrenceChange = CalendarEventChange<TeamOccurrence, string, string>;
 
+/** A selection or focus on an occurrence, moved to the occurrence's new ID after an edit. */
+function renamed<T extends CalendarSelection | CalendarFocus>(
+  current: T | null,
+  ids: ReadonlyMap<EventId, string>,
+): T | null {
+  return current?.kind === "event"
+    ? { ...current, eventId: ids.get(current.eventId) ?? current.eventId }
+    : current;
+}
+
 const weekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] } as const;
 
 interface TeamCalendarProps {
@@ -37,6 +49,7 @@ export function TeamCalendar({ initialEvents, timeZone }: TeamCalendarProps) {
   const [today] = useState(() => Temporal.Now.plainDateISO(timeZone));
   const [events, setEvents] = useState(initialEvents);
   const [selection, setSelection] = useState<CalendarSelection | null>(null);
+  const [focus, setFocus] = useState<CalendarFocus | null>(null);
   const { occurrences, onVisibleRangeChange } = useOccurrences(
     events,
     timeZone,
@@ -49,7 +62,7 @@ export function TeamCalendar({ initialEvents, timeZone }: TeamCalendarProps) {
     // A new event, or a change to a one-off event, needs no question.
     let scope: RecurrenceEditScope = "this";
     if (isRecurringChange(change)) {
-      const scopes = recurrenceEditScopes(change, adapters);
+      const scopes = recurrenceEditScopes(change, adapters, { timeZone });
       // None applies, so there's nothing to ask: tell the user why instead. Throwing rolls the
       // change back.
       if (scopes.length === 0) throw new Error("This repeating event can't change that way.");
@@ -58,7 +71,8 @@ export function TeamCalendar({ initialEvents, timeZone }: TeamCalendarProps) {
         eventTitle: change.event.event.title,
         scopes,
       });
-      if (picked === null) throw new Error("Cancelled");
+      // An `AbortError` is announced as a cancel, not as a change that couldn't be saved.
+      if (picked === null) throw new DOMException("Cancelled", "AbortError");
       scope = picked;
     }
 
@@ -66,6 +80,8 @@ export function TeamCalendar({ initialEvents, timeZone }: TeamCalendarProps) {
       // Picked now, so the IDs of a "following" edit's new series are known.
       newSeriesId: crypto.randomUUID(),
       occurrences,
+      // The zone the calendar moves occurrences on, so a series dragged by days keeps its time.
+      timeZone,
     });
     if (edit.type === "rejected") throw new Error(edit.message);
 
@@ -77,12 +93,10 @@ export function TeamCalendar({ initialEvents, timeZone }: TeamCalendarProps) {
     setEvents((current) =>
       applyRecurrenceEdit(current, edit, { createId: () => crypto.randomUUID() }),
     );
-    // "following" and "all" give the occurrences new IDs, so the selection follows them.
-    setSelection((current) =>
-      current?.kind === "event"
-        ? { ...current, eventId: edit.occurrenceIds.get(current.eventId) ?? current.eventId }
-        : current,
-    );
+    // "following" and "all" give the occurrences new IDs. The selection and keyboard focus
+    // follow them, and the calendar moves focus to the occurrence under its new ID.
+    setSelection((current) => renamed(current, edit.occurrenceIds));
+    setFocus((current) => renamed(current, edit.occurrenceIds));
   }
   // #endregion change
 
@@ -102,6 +116,8 @@ export function TeamCalendar({ initialEvents, timeZone }: TeamCalendarProps) {
     <>
       <Calendar.Root
         events={occurrences}
+        focus={focus}
+        onFocusChange={setFocus}
         onEventChange={onEventChange}
         onVisibleRangeChange={onVisibleRangeChange}
         selection={selection}

@@ -590,11 +590,12 @@ functions turn it into what to save.
 ```ts
 // `ask` comes from the registry's useRecurrenceScopePrompt.
 const scope = isRecurringChange(change)
-  ? await ask({ scopes: recurrenceEditScopes(change, adapters) })
+  ? await ask({ scopes: recurrenceEditScopes(change, adapters, { timeZone }) })
   : "this";
-if (scope === null) throw new Error("Cancelled"); // rolls the change back
+// Rolls the change back, and is announced as a cancel.
+if (scope === null) throw new DOMException("Cancelled", "AbortError");
 
-const edit = resolveRecurrenceEdit(change, scope, adapters, { newSeriesId, occurrences });
+const edit = resolveRecurrenceEdit(change, scope, adapters, { newSeriesId, occurrences, timeZone });
 if (edit.type === "rejected") throw new Error(edit.message);
 setEvents(
   (events) =>
@@ -654,6 +655,17 @@ Both take a `ResolveRecurrenceEditOptions`:
         <>
           Most loop steps a <code>"following"</code> edit's search for the previous occurrence may
           take.
+        </>
+      ),
+    },
+    timeZone: {
+      type: "string",
+      description: (
+        <>
+          The calendar's time zone, which occurrences are moved on. With it, a timed series dragged
+          by whole days moves by whole days on its own clock and keeps its time of day, even in a
+          week when the calendar's zone has changed DST and the series' hasn't. Without it, the
+          series takes the time the occurrence was dropped at, which is an hour off then.
         </>
       ),
     },

@@ -104,12 +104,6 @@ function renamedIds(
   return new Map([[change.eventId, id]]);
 }
 
-/** The ID of the event element that has focus, if one has. */
-function focusedEventId(): string | null {
-  const active = document.activeElement;
-  return active instanceof HTMLElement ? (eventIdOf(active) as string | null) : null;
-}
-
 interface OpenEvent {
   readonly anchor: HTMLElement;
   /** Cleared on close while the anchor stays, so focus can return to it. */
@@ -229,25 +223,18 @@ export function App() {
     resetEvents();
   }, [resetEvents]);
 
-  // After a series edit renames occurrences: the element that had focus, and the popover's
-  // anchor, are replaced by the renamed occurrence's, once it renders.
-  const renaming = useRef<{
-    readonly focused: string | null;
-    readonly ids: ReadonlyMap<EventId, string>;
-  } | null>(null);
+  // After a series edit renames occurrences, the open popover's anchor is replaced by the renamed
+  // occurrence's element once it renders. The calendar moves keyboard focus itself.
+  const renaming = useRef<ReadonlyMap<EventId, string> | null>(null);
   useLayoutEffect(() => {
-    const pending = renaming.current;
+    const ids = renaming.current;
     const viewport = viewportRef.current;
-    if (pending === null || viewport === null) return;
+    if (ids === null || viewport === null) return;
     renaming.current = null;
-    const focusedId = pending.focused === null ? undefined : pending.ids.get(pending.focused);
-    if (focusedId !== undefined && !document.activeElement?.closest("[data-event-id]")) {
-      findEventElement(viewport, focusedId)?.focus();
-    }
     setOpenEvent((current) => {
       if (current === null || current.anchor.isConnected) return current;
       const anchorId = eventIdOf(current.anchor);
-      const nextId = anchorId === null ? undefined : pending.ids.get(anchorId);
+      const nextId = anchorId === null ? undefined : ids.get(anchorId);
       const anchor = nextId === undefined ? null : findEventElement(viewport, nextId);
       return anchor === null ? current : { ...current, anchor };
     });
@@ -255,19 +242,14 @@ export function App() {
 
   /**
    * Saves a series edit and moves focus, selection and the open popover to renamed occurrences,
-   * by `ids`. `focused` is the occurrence that had focus when the change began, before the scope
-   * dialog took it.
+   * by `ids`. Called before `onEventChange` returns, so the calendar moves keyboard focus to the
+   * occurrence under its new ID.
    */
   const saveSeriesEdit = useCallback(
-    (
-      edit: DemoSeriesEdit,
-      ids: ReadonlyMap<EventId, string>,
-      focused: string | null,
-      extras?: SeriesEditExtras,
-    ) => {
+    (edit: DemoSeriesEdit, ids: ReadonlyMap<EventId, string>, extras?: SeriesEditExtras) => {
       setEvents((current) => applySeriesEdit(current, edit, createId, extras));
       if (ids.size === 0) return;
-      renaming.current = { focused, ids };
+      renaming.current = ids;
       const rename = (eventId: EventId) => ids.get(eventId) ?? eventId;
       setFocus((current) =>
         current?.kind === "event" ? { ...current, eventId: rename(current.eventId) } : current,
@@ -295,7 +277,9 @@ export function App() {
       eventTitle: string,
       wholeSeries = false,
     ): Promise<DemoSeriesEdit | string | null> => {
-      const options = { defaultTimeZone: timeZone };
+      // `timeZone` is the calendar's, which occurrences move on: a series dragged by days keeps
+      // its time of day when the two zones change DST on different dates.
+      const options = { defaultTimeZone: timeZone, timeZone };
       const scopes = recurrenceEditScopes(change, demoAdapters, options).filter(
         (scope) => !wholeSeries || scope !== "this",
       );
@@ -332,13 +316,12 @@ export function App() {
         return;
       }
       const resetsAtStart = resets.current;
-      const focused = focusedEventId();
       let edit: DemoSeriesEdit | undefined;
       if (isRecurringChange(change)) {
         const action = change.cause === "delete" ? "delete" : "edit";
         const resolved = await askAndResolve(change, action, change.event.event.title);
-        // Rejecting rolls the change back.
-        if (resolved === null) throw new Error("cancelled");
+        // Rejecting rolls the change back; an `AbortError` is announced as a cancel.
+        if (resolved === null) throw new DOMException("Cancelled", "AbortError");
         if (typeof resolved === "string") {
           showNotice(`${resolved} The change was undone.`);
           throw new Error("no-scope");
@@ -352,7 +335,7 @@ export function App() {
         throw new Error("simulated-save-failure");
       }
       if (edit === undefined) applyChange(change);
-      else saveSeriesEdit(edit, edit.occurrenceIds, focused);
+      else saveSeriesEdit(edit, edit.occurrenceIds);
       const notice = warningNotice(change.warnings);
       if (notice !== null) showNotice(notice);
     },
@@ -373,7 +356,7 @@ export function App() {
         if (edit === null) return undefined;
         if (typeof edit === "string") return edit;
         const extras = { end, fields, placement: change.proposed, rule, timeZone };
-        saveSeriesEdit(edit, renamedIds(edit, change, rule), null, extras);
+        saveSeriesEdit(edit, renamedIds(edit, change, rule), extras);
       }
       setDraft(null);
       const notice = warningNotice(save.warnings);
