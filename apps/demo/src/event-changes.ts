@@ -4,10 +4,11 @@ import type {
   CalendarPolicyDecision,
 } from "@moltenship/calendar";
 
-import type { DemoEvent } from "./calendar";
+import type { DemoEvent, DemoOccurrence } from "./calendar";
 import type { DemoResourceId } from "./resources";
 
-export type DemoEventChange = CalendarEventChange<DemoEvent, string, DemoResourceId>;
+/** A change from the calendar, which shows occurrences: one-off events keep their own IDs. */
+export type DemoEventChange = CalendarEventChange<DemoOccurrence, string, DemoResourceId>;
 
 /** A calendar policy: demo events are timed or all-day. */
 export function demoEventPolicy(change: DemoEventChange): CalendarPolicyDecision<DemoResourceId> {
@@ -17,20 +18,28 @@ export function demoEventPolicy(change: DemoEventChange): CalendarPolicyDecision
   return { type: "accept" };
 }
 
-function withPlacement(
+/**
+ * The event at `placement`: its interval and resources, and everything else it had. A timed
+ * event keeps the zone it repeats in unless the placement names another.
+ */
+export function withPlacement(
   event: DemoEvent,
   placement: CalendarEventPlacement<DemoResourceId>,
 ): DemoEvent {
+  const { end: _end, kind: _kind, resourceIds: _resourceIds, start: _start, ...rest } = event;
+  const { sourceTimeZone: _zone, ...details } = rest as typeof rest & { sourceTimeZone?: string };
   const { resourceIds } = placement;
-  const base = {
-    calendarId: event.calendarId,
-    id: event.id,
-    title: event.title,
-    ...(event.description === undefined ? {} : { description: event.description }),
-    ...(resourceIds.length === 0 ? {} : { resourceIds }),
-  };
+  const base = { ...details, ...(resourceIds.length === 0 ? {} : { resourceIds }) };
   if (placement.kind === "timed") {
-    return { ...base, end: placement.end, kind: "timed", start: placement.start };
+    const zone =
+      placement.sourceTimeZone ?? (event.kind === "timed" ? event.sourceTimeZone : undefined);
+    return {
+      ...base,
+      end: placement.end,
+      kind: "timed",
+      ...(zone === undefined ? {} : { sourceTimeZone: zone }),
+      start: placement.start,
+    };
   }
   if (placement.kind === "all-day") {
     return { ...base, end: placement.end, kind: "all-day", start: placement.start };
@@ -38,7 +47,10 @@ function withPlacement(
   return event;
 }
 
-/** The events after a move, resize or delete that passed `demoEventPolicy`. */
+/**
+ * The events after a move, resize or delete of a one-off event that passed `demoEventPolicy`.
+ * Changes to occurrences of a series go through `applySeriesEdit` instead.
+ */
 export function applyEventChange(
   events: readonly DemoEvent[],
   change: DemoEventChange,

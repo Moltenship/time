@@ -5,10 +5,13 @@ import { createResourceTree, visibleResources } from "@moltenship/calendar";
 import type { DemoEvent } from "../src/calendar";
 import { demoResourceGroups, demoResources } from "../src/resources";
 import { createSeedEvents } from "../src/seed";
+import { createSeriesEvents } from "../src/seed-series";
 
 const today = Temporal.PlainDate.from("2026-10-08");
 const timeZone = "America/New_York";
 const events = createSeedEvents(today, timeZone);
+// The repeating standup, review, birthday and walk; their first occurrences reach back.
+const series = createSeriesEvents(today, timeZone);
 const timed = events.filter(
   (event): event is Extract<DemoEvent, { kind: "timed" }> => event.kind === "timed",
 );
@@ -38,7 +41,7 @@ describe("seed events", () => {
     const crossesMidnight = timed.some(
       ({ end, start }) => !wallDate(start).equals(wallDate(end.subtract({ nanoseconds: 1 }))),
     );
-    const allDayLengths = events.flatMap((event) =>
+    const allDayLengths = [...events, ...series].flatMap((event) =>
       event.kind === "all-day" ? [event.start.until(event.end).days] : [],
     );
 
@@ -50,14 +53,14 @@ describe("seed events", () => {
   });
 
   test("sit at local wall-clock times from last Monday through next Sunday", () => {
-    const standup = timed.find(
-      ({ start, title }) => title === "Standup" && wallDate(start).equals(today),
+    const yoga = timed.find(
+      ({ start, title }) => title === "Yoga" && wallDate(start).equals(today),
     );
     const dates = events
       .map((event) => (event.kind === "timed" ? wallDate(event.start) : event.start))
       .toSorted((left, right) => Temporal.PlainDate.compare(left, right));
 
-    expect(standup?.start.toZonedDateTimeISO(timeZone).toPlainTime().toString()).toBe("09:30:00");
+    expect(yoga?.start.toZonedDateTimeISO(timeZone).toPlainTime().toString()).toBe("18:30:00");
     expect(dates[0]?.toString()).toBe("2026-09-28");
     expect(dates.at(-1)?.toString()).toBe("2026-10-18");
   });

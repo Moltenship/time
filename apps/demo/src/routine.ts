@@ -19,13 +19,6 @@ const fortnightly = (week: number) => week % 2 === 0;
 
 const habits: readonly Habit[] = [
   {
-    calendarId: "work",
-    duration: { minutes: 15 },
-    time: "09:30",
-    title: "Standup",
-    weekdays: [1, 2, 3, 4, 5],
-  },
-  {
     calendarId: "fitness",
     duration: { minutes: 45 },
     time: "07:00",
@@ -107,10 +100,10 @@ const plans: readonly Omit<Habit, "every" | "weekdays">[] = [
 ];
 
 /**
- * A year either way of the three weeks `createSeedEvents` details: weekday standups, runs and yoga,
- * fortnightly one-on-ones, a few one-off plans each week, and an all-day "Hack week" each quarter,
- * at local wall-clock times in `timeZone`. Enough for the agenda to scroll through thousands of
- * events.
+ * A year either way of the three weeks `createSeedEvents` details: runs and yoga, fortnightly
+ * one-on-ones, a few one-off plans each week, and an all-day "Hack week" each quarter, at local
+ * wall-clock times in `timeZone`. Enough for the agenda to scroll through thousands of events.
+ * They're one-off events, as an imported calendar's often are; the standup is a series.
  */
 export function createRoutineEvents(today: Temporal.PlainDate, timeZone: string): DemoEvent[] {
   const monday = today.subtract({ days: today.dayOfWeek - 1 });

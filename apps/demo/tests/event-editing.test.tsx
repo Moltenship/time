@@ -10,6 +10,7 @@ import { eventsStorageKey } from "../src/demo-events";
 import { parseEvents, serializeEvents } from "../src/event-storage";
 import { createRoutineEvents } from "../src/routine";
 import { createSeedEvents } from "../src/seed";
+import { createSeriesEvents } from "../src/seed-series";
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -244,9 +245,11 @@ test("a reset during an in-flight delete keeps the fresh seed intact", async () 
 
   const ids = parseEvents(stored.get(eventsStorageKey) ?? null)?.map(({ id }) => id);
   expect(ids).toContain(deletedId);
-  // The fresh seed adds a year of routine either way of the three detailed weeks.
+  // The fresh seed adds its series and a year of routine either way of the three detailed weeks.
   expect(ids).toHaveLength(
-    createSeedEvents(today, "UTC").length + createRoutineEvents(today, "UTC").length,
+    createSeedEvents(today, "UTC").length +
+      createSeriesEvents(today, "UTC").length +
+      createRoutineEvents(today, "UTC").length,
   );
   expect(eventButton(deletedId)).not.toBeNull();
 });

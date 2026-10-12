@@ -1,4 +1,9 @@
-import type { CalendarEventPlacement } from "@moltenship/calendar";
+import type {
+  CalendarEventInterval,
+  CalendarEventPlacement,
+  CalendarEventUpdateChange,
+} from "@moltenship/calendar";
+import type { RecurrenceRule } from "@moltenship/calendar-recurrence";
 import { useId, useState, type FormEvent } from "react";
 
 import { Button } from "@registry/ui/button";
@@ -22,18 +27,43 @@ import {
 } from "@registry/ui/select";
 import { Textarea } from "@registry/ui/textarea";
 
-import { DemoCalendar, type DemoEvent } from "../calendar";
+import { DemoCalendar, type DemoEvent, type DemoOccurrence } from "../calendar";
 import { demoCalendars, isDemoCalendarId } from "../calendars";
 import { eventFromDraft, intervalFromDraft, moveDraftStart, type EventDraft } from "../event-draft";
-import { ResourcePicker } from "./resource-picker";
+import { sameRepeat } from "../repeat";
 import type { DemoResourceId } from "../resources";
+import type { EventFields } from "../series-edits";
+import { RepeatField } from "./repeat-field";
+import { ResourcePicker } from "./resource-picker";
+
+/** What the editor saves: an event as it is, or a change to an occurrence of a series. */
+export type EventDialogSave =
+  | {
+      readonly event: DemoEvent;
+      readonly type: "event";
+      /** What the calendar's policies flagged the event with. */
+      readonly warnings: readonly string[];
+    }
+  | {
+      /** The occurrence's new time, as the calendar hands `onEventChange` a change. */
+      readonly change: CalendarEventUpdateChange<DemoOccurrence, string, DemoResourceId>;
+      readonly fields: EventFields;
+      /** The Repeat field's rule when it changed: `null` for "Does not repeat". */
+      readonly rule?: RecurrenceRule | null;
+      readonly type: "occurrence";
+      readonly warnings: readonly string[];
+    };
 
 export interface EventDialogProps {
   /** The event being created or edited; the dialog is open while it is set. */
   readonly draft: EventDraft | null;
+  readonly locale: Intl.LocalesArgument;
   readonly onOpenChange: (open: boolean) => void;
-  /** Saves an event the calendar's policies accept, with the warnings they flag it with. */
-  readonly onSave: (event: DemoEvent, warnings: readonly string[]) => void;
+  /**
+   * Saves what the calendar's policies accept. Resolves with an error to show, or nothing once
+   * it's handled: saved, or left for the user to try again.
+   */
+  readonly onSave: (save: EventDialogSave) => Promise<string | undefined>;
   /** Where focus goes when the dialog closes, such as the event it edits. */
   readonly returnFocus?: HTMLElement | null;
   readonly timeZone: string;
@@ -41,6 +71,7 @@ export interface EventDialogProps {
 
 export function EventDialog({
   draft,
+  locale,
   onOpenChange,
   onSave,
   returnFocus,
@@ -53,7 +84,9 @@ export function EventDialog({
         className="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-md"
         finalFocus={() => (returnFocus?.isConnected === true ? returnFocus : true)}
       >
-        {draft !== null && <EventForm initial={draft} onSave={onSave} timeZone={timeZone} />}
+        {draft !== null && (
+          <EventForm initial={draft} locale={locale} onSave={onSave} timeZone={timeZone} />
+        )}
       </DialogContent>
     </Dialog>
   );
@@ -84,19 +117,48 @@ const parseDate = (value: string) => parseInput(value, (text) => Temporal.PlainD
 const parseTime = (value: string) => parseInput(value, (text) => Temporal.PlainTime.from(text));
 const timeValue = (time: Temporal.PlainTime) => time.toString({ smallestUnit: "minute" });
 
-function placementOf(event: DemoEvent): CalendarEventPlacement<DemoResourceId> {
-  const resourceIds = event.resourceIds ?? [];
-  return event.kind === "timed"
-    ? { end: event.end, kind: "timed", resourceIds, start: event.start }
-    : { end: event.end, kind: "all-day", resourceIds, start: event.start };
+function placementOf(
+  interval: CalendarEventInterval,
+  resourceIds: readonly DemoResourceId[] = [],
+): CalendarEventPlacement<DemoResourceId> {
+  switch (interval.kind) {
+    case "timed": {
+      const { end, sourceTimeZone, start } = interval;
+      return {
+        end,
+        kind: "timed",
+        resourceIds,
+        ...(sourceTimeZone === undefined ? {} : { sourceTimeZone }),
+        start,
+      };
+    }
+    case "all-day":
+      return { end: interval.end, kind: "all-day", resourceIds, start: interval.start };
+    case "floating":
+      return { end: interval.end, kind: "floating", resourceIds, start: interval.start };
+  }
+}
+
+function samePlacement(
+  left: CalendarEventPlacement<DemoResourceId>,
+  right: CalendarEventPlacement<DemoResourceId>,
+): boolean {
+  return (
+    left.kind === right.kind &&
+    String(left.start) === String(right.start) &&
+    String(left.end) === String(right.end) &&
+    left.resourceIds.join() === right.resourceIds.join()
+  );
 }
 
 function EventForm({
   initial,
+  locale,
   onSave,
   timeZone,
 }: {
   readonly initial: EventDraft;
+  readonly locale: Intl.LocalesArgument;
   readonly onSave: EventDialogProps["onSave"];
   readonly timeZone: string;
 }) {
@@ -104,10 +166,11 @@ function EventForm({
   const { checkEventChange } = DemoCalendar.useCalendarActions();
   const [draft, setDraft] = useState(initial);
   const [error, setError] = useState<string>();
+  const [saving, setSaving] = useState(false);
   const update = (next: Partial<EventDraft>) => setDraft((current) => ({ ...current, ...next }));
   const interval = intervalFromDraft(draft, timeZone);
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const result = eventFromDraft(draft, timeZone, draft.id ?? crypto.randomUUID());
     if ("error" in result) {
@@ -115,7 +178,7 @@ function EventForm({
       return;
     }
     // Times typed here meet the same policies as a drag, such as working hours.
-    const proposed = placementOf(result.event);
+    const proposed = placementOf(result.event, result.event.resourceIds);
     const check = checkEventChange(
       initial.id === undefined
         ? { cause: "create", proposed }
@@ -129,7 +192,49 @@ function EventForm({
       );
       return;
     }
-    onSave(result.event, check?.change.warnings ?? []);
+    const warnings = check?.change.warnings ?? [];
+    const { occurrence } = initial;
+    if (occurrence === undefined) {
+      setError(await onSave({ event: result.event, type: "event", warnings }));
+      return;
+    }
+
+    const { calendarId, description, title } = result.event;
+    const fields = { calendarId, title, ...(description === undefined ? {} : { description }) };
+    const original = placementOf(occurrence.interval, occurrence.event.resourceIds);
+    const repeatChanged = !sameRepeat(initial.repeat, draft.repeat);
+    const unchanged =
+      !repeatChanged &&
+      samePlacement(original, proposed) &&
+      title === occurrence.event.title &&
+      calendarId === occurrence.event.calendarId &&
+      description === occurrence.event.description;
+    // Nothing to ask about: close as Save does for an unchanged event.
+    if (unchanged) {
+      setError(await onSave({ event: occurrence.event, type: "event", warnings }));
+      return;
+    }
+    setSaving(true);
+    try {
+      setError(
+        await onSave({
+          change: {
+            cause: "update",
+            event: occurrence,
+            eventId: occurrence.id,
+            id: `editor-${occurrence.id}`,
+            original,
+            proposed,
+          },
+          fields,
+          ...(repeatChanged ? { rule: result.event.recurrence?.rule ?? null } : {}),
+          type: "occurrence",
+          warnings,
+        }),
+      );
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -157,7 +262,7 @@ function EventForm({
         <legend className="sr-only">When</legend>
         <Label htmlFor={`${id}-start`}>Starts</Label>
         <Input
-          className="px-2.5"
+          className={draft.allDay ? "col-span-2 px-2.5" : "px-2.5"}
           id={`${id}-start`}
           onChange={(event) => {
             const date = parseDate(event.target.value);
@@ -180,7 +285,7 @@ function EventForm({
         />
         <Label htmlFor={`${id}-end`}>Ends</Label>
         <Input
-          className="px-2.5"
+          className={draft.allDay ? "col-span-2 px-2.5" : "px-2.5"}
           id={`${id}-end`}
           onChange={(event) => {
             const endDate = parseDate(event.target.value);
@@ -224,6 +329,13 @@ function EventForm({
           </SelectContent>
         </Select>
       </div>
+      <RepeatField
+        locale={locale}
+        onChange={(repeat) => update({ repeat })}
+        startDate={draft.startDate}
+        timeZone={draft.seriesTimeZone}
+        value={draft.repeat}
+      />
       {draft.calendarId === "work" && (
         <ResourcePicker
           eventId={initial.id}
@@ -247,7 +359,9 @@ function EventForm({
         </p>
       )}
       <DialogFooter>
-        <Button type="submit">Save</Button>
+        <Button disabled={saving} type="submit">
+          Save
+        </Button>
       </DialogFooter>
     </form>
   );

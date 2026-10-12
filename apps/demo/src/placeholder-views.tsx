@@ -1,3 +1,5 @@
+import { RepeatIcon } from "lucide-react";
+
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
@@ -12,27 +14,37 @@ import {
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
 import { createYearView } from "@registry/year-view/year-view";
 
-import type { DemoEvent } from "./calendar";
+import type { DemoOccurrence } from "./calendar";
 import { demoCalendars, getCalendarColor } from "./calendars";
 
+/** One element for every repeating event's chip; the views hide it from assistive technology. */
+const repeatIcon = <RepeatIcon />;
+
 const options = {
-  // Read after each event's title and time: "Standup, Thursday, October 8, 9:00 – 9:15 AM, Work calendar".
-  describeEvent: (event: DemoEvent) =>
-    `${demoCalendars.find(({ id }) => id === event.calendarId)?.name ?? "Unknown"} calendar`,
-  getEventColor: (event: DemoEvent): CalendarEventColor => getCalendarColor(event.calendarId),
+  // Read after each event's title and time:
+  // "Standup, Thursday, October 8, 9:30 – 9:45 AM, Work calendar, repeating event".
+  describeEvent: ({ event, recurrence }: DemoOccurrence) =>
+    [
+      `${demoCalendars.find(({ id }) => id === event.calendarId)?.name ?? "Unknown"} calendar`,
+      ...(recurrence === undefined ? [] : ["repeating event"]),
+    ].join(", "),
+  getEventColor: ({ event }: DemoOccurrence): CalendarEventColor =>
+    getCalendarColor(event.calendarId),
+  // The mark the description above puts in words.
+  getEventIcon: ({ recurrence }: DemoOccurrence) => (recurrence === undefined ? null : repeatIcon),
 };
 
 export const demoViews = [
-  createWeekView<DemoEvent>({ ...options, dayView: "day" }),
-  createDayView<DemoEvent>(options),
-  createMonthView<DemoEvent>(options),
-  createYearView<DemoEvent>(options),
-  createAgendaView<DemoEvent>(options),
-  createResourceColumnsView<DemoEvent>({ ...options, resourceStatus: true }),
-  createTimelineWeekView<DemoEvent>({ ...options, resourceStatus: true }),
+  createWeekView<DemoOccurrence>({ ...options, dayView: "day" }),
+  createDayView<DemoOccurrence>(options),
+  createMonthView<DemoOccurrence>(options),
+  createYearView<DemoOccurrence>(options),
+  createAgendaView<DemoOccurrence>(options),
+  createResourceColumnsView<DemoOccurrence>({ ...options, resourceStatus: true }),
+  createTimelineWeekView<DemoOccurrence>({ ...options, resourceStatus: true }),
   // The same day, week, month, and agenda, scrolling continuously; settings switch between the sets.
-  createScrollingWeekView<DemoEvent>({ ...options, dayView: "scrolling-day" }),
-  createScrollingDayView<DemoEvent>(options),
-  createScrollingMonthView<DemoEvent>({ ...options, dayView: "scrolling-day" }),
-  createScrollingAgendaView<DemoEvent>({ ...options, dayView: "scrolling-day" }),
+  createScrollingWeekView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
+  createScrollingDayView<DemoOccurrence>(options),
+  createScrollingMonthView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
+  createScrollingAgendaView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
 ] as const;

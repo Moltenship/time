@@ -1,8 +1,8 @@
-import type { DemoEvent } from "./calendar";
+import type { CalendarEventInterval } from "@moltenship/calendar";
 
 /** "Thursday, October 8 · 9:30 – 9:45 AM", or a date range for multi-day and all-day events. */
 export function formatEventWhen(
-  event: DemoEvent,
+  event: CalendarEventInterval,
   timeZone: string,
   locale: Intl.LocalesArgument,
 ): string {
@@ -15,8 +15,13 @@ export function formatEventWhen(
       : format.formatRange(event.start, last);
   }
 
-  const start = event.start.toZonedDateTimeISO(timeZone).toPlainDateTime();
-  const end = event.end.toZonedDateTimeISO(timeZone).toPlainDateTime();
+  const [start, end] =
+    event.kind === "floating"
+      ? [event.start, event.end]
+      : [
+          event.start.toZonedDateTimeISO(timeZone).toPlainDateTime(),
+          event.end.toZonedDateTimeISO(timeZone).toPlainDateTime(),
+        ];
   const time = { hour: "numeric", minute: "2-digit" } as const;
   if (start.toPlainDate().equals(end.toPlainDate())) {
     const date = new Intl.DateTimeFormat(locale, day).format(start.toPlainDate());

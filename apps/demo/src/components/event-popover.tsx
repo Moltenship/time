@@ -1,28 +1,36 @@
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
-import { AlignLeftIcon, CalendarIcon, PencilIcon, Trash2Icon, XIcon } from "lucide-react";
+import {
+  AlignLeftIcon,
+  CalendarIcon,
+  PencilIcon,
+  RepeatIcon,
+  Trash2Icon,
+  XIcon,
+} from "lucide-react";
 import { useId, useRef } from "react";
 
 import { Button } from "@registry/ui/button";
 
-import { DemoCalendar, type DemoEvent } from "../calendar";
+import { DemoCalendar, type DemoOccurrence } from "../calendar";
 import { demoCalendars } from "../calendars";
 import { formatEventWhen } from "../event-format";
+import { describeOccurrenceRecurrence } from "../event-recurrence";
 
 export interface EventPopoverProps {
   /** The clicked event element the popover points at; kept after closing to restore focus. */
   readonly anchor: HTMLElement | null;
-  /** The event shown; the popover is open while it is set. */
-  readonly event: DemoEvent | undefined;
   readonly locale: Intl.LocalesArgument;
+  /** The event or occurrence shown; the popover is open while it is set. */
+  readonly occurrence: DemoOccurrence | undefined;
   readonly onClose: () => void;
-  readonly onEdit: (event: DemoEvent) => void;
+  readonly onEdit: (occurrence: DemoOccurrence) => void;
   readonly timeZone: string;
 }
 
 export function EventPopover({
   anchor,
-  event,
   locale,
+  occurrence,
   onClose,
   onEdit,
   timeZone,
@@ -30,7 +38,12 @@ export function EventPopover({
   const titleId = useId();
   const actions = DemoCalendar.useCalendarActions();
   const handingOffToEditor = useRef(false);
+  const event = occurrence?.event;
   const calendar = demoCalendars.find(({ id }) => id === event?.calendarId);
+  const repeats =
+    occurrence === undefined
+      ? undefined
+      : describeOccurrenceRecurrence(occurrence, timeZone, locale);
 
   return (
     // Built from Base UI parts rather than the registry PopoverContent, because it points at the
@@ -39,10 +52,10 @@ export function EventPopover({
       // Tab cycles through the popover's actions instead of leaving focus on the page body, since
       // it has no trigger to continue from; Escape or Close returns to the event.
       modal="trap-focus"
-      open={event !== undefined && anchor !== null}
+      open={occurrence !== undefined && anchor !== null}
       onOpenChange={(open) => !open && onClose()}
     >
-      {event !== undefined && (
+      {occurrence !== undefined && event !== undefined && (
         <PopoverPrimitive.Portal>
           <PopoverPrimitive.Positioner
             align="start"
@@ -70,7 +83,7 @@ export function EventPopover({
                     aria-label="Edit event"
                     onClick={() => {
                       handingOffToEditor.current = true;
-                      onEdit(event);
+                      onEdit(occurrence);
                     }}
                     size="icon-sm"
                     variant="ghost"
@@ -83,8 +96,9 @@ export function EventPopover({
                     aria-label="Delete event"
                     onClick={() => {
                       onClose();
-                      // Goes through onEventChange, so a failed save brings the event back.
-                      void actions.proposeEventChange({ cause: "delete", eventId: event.id });
+                      // Goes through onEventChange, so a failed save brings the event back, and
+                      // an occurrence of a series asks which occurrences to delete.
+                      void actions.proposeEventChange({ cause: "delete", eventId: occurrence.id });
                     }}
                     size="icon-sm"
                     variant="ghost"
@@ -108,9 +122,22 @@ export function EventPopover({
                     {event.title}
                   </h2>
                   <p className="text-muted-foreground">
-                    {formatEventWhen(event, timeZone, locale)}
+                    {formatEventWhen(occurrence.interval, timeZone, locale)}
                   </p>
                 </div>
+                {repeats !== undefined && (
+                  <>
+                    <RepeatIcon aria-hidden className="mt-0.5 size-4 text-muted-foreground" />
+                    <p>
+                      {repeats.rule}
+                      {repeats.changed && (
+                        <span className="block text-muted-foreground">
+                          Changed for this date only
+                        </span>
+                      )}
+                    </p>
+                  </>
+                )}
                 <CalendarIcon className="mt-0.5 size-4 text-muted-foreground" />
                 <span>{calendar?.name}</span>
                 {event.description !== undefined && (

@@ -42,7 +42,8 @@ function resourcesOf(title: string): Pick<DemoEvent, "resourceIds"> {
 /**
  * Seeds roughly two weeks of events around `today` (last week, this week, next week) at local
  * wall-clock times in `timeZone`. It covers overlaps, all-day and multi-day events, events that
- * cross midnight, 15-minute items, and work events booking rooms and people.
+ * cross midnight, 15-minute items, and work events booking rooms and people. Events that repeat
+ * are series, in `createSeriesEvents`.
  */
 export function createSeedEvents(today: Temporal.PlainDate, timeZone: string): DemoEvent[] {
   const monday = today.subtract({ days: today.dayOfWeek - 1 });
@@ -92,9 +93,6 @@ export function createSeedEvents(today: Temporal.PlainDate, timeZone: string): D
   }
 
   for (const week of [-1, 0, 1]) {
-    for (const weekday of [1, 2, 3, 4, 5] as const) {
-      timed("work", "Standup", [week, weekday], "09:30", { minutes: 15 });
-    }
     for (const weekday of [1, 3, 5] as const) {
       timed("fitness", "Morning run", [week, weekday], "07:00", { minutes: 45 });
     }
@@ -140,7 +138,6 @@ export function createSeedEvents(today: Temporal.PlainDate, timeZone: string): D
   timed("family", "Brunch with parents", [0, 7], "11:00", { hours: 2 });
   timed("personal", "Meal prep", [0, 7], "16:00", { hours: 1, minutes: 30 });
   allDay("work", "Release freeze", [0, 3], 3);
-  allDay("family", "Mom's birthday", [0, 6]);
 
   // Next week.
   timed("work", "Quarterly planning", [1, 1], "10:00", { hours: 2 });

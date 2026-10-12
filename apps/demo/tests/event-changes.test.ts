@@ -13,11 +13,20 @@ function timedSeedEvent(title: string) {
 }
 
 const event = timedSeedEvent("Design review");
+// The calendar hands over occurrences; a one-off event's has its own ID and interval.
+const occurrence = { event, id: event.id, interval: event };
 const original = { end: event.end, kind: "timed", resourceIds: [], start: event.start } as const;
 const others = events.filter(({ id }) => id !== event.id);
 
 function update(proposed: CalendarEventPlacement<DemoResourceId>) {
-  return { cause: "move", event, eventId: event.id, id: "move", original, proposed } as const;
+  return {
+    cause: "move",
+    event: occurrence,
+    eventId: event.id,
+    id: "move",
+    original,
+    proposed,
+  } as const;
 }
 
 describe("event changes", () => {
@@ -64,7 +73,7 @@ describe("event changes", () => {
   test("delete an event", () => {
     const next = applyEventChange(events, {
       cause: "delete",
-      event,
+      event: occurrence,
       eventId: event.id,
       id: "delete",
       original,
