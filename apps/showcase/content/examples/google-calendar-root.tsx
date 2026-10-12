@@ -100,14 +100,17 @@ function renamed<T extends CalendarSelection | CalendarFocus>(
     : current;
 }
 
+// #region reason
 /** Why Google refused a request, for the user. */
 function reasonOf(error: unknown): string {
   if (!(error instanceof GoogleApiError)) return error instanceof Error ? error.message : "";
   if (error.status === 412) return "it changed in Google Calendar. This is the latest.";
+  if (error.status === 410) return "it was deleted in Google Calendar.";
   const rateLimited = ["rateLimitExceeded", "userRateLimitExceeded"].includes(error.reason ?? "");
   if (error.status === 429 || rateLimited) return "Google is busy. Try again in a minute.";
   return error.message;
 }
+// #endregion reason
 
 interface GoogleCalendarProps {
   readonly sync: GoogleCalendarSync;
@@ -133,7 +136,10 @@ export function GoogleCalendar({ sync, timeZone }: GoogleCalendarProps) {
   function onVisibleRangeChange({ loadInstantRange, loadRange }: CalendarVisibleRange) {
     setRange(loadRange);
     // `timeMin` and `timeMax` for the dates on screen, and the pages a scrolling view keeps ready.
-    sync.load(loadInstantRange).catch((error) => setStatus(`Couldn't load: ${reasonOf(error)}`));
+    sync.load(loadInstantRange).then(
+      () => setStatus((current) => (current.startsWith("Couldn't load") ? "" : current)),
+      (error) => setStatus(`Couldn't load: ${reasonOf(error)}`),
+    );
   }
   // #endregion root
 

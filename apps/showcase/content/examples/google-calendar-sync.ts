@@ -90,13 +90,16 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
 
   /** Google's answer, by ID. A cancelled occurrence stays, since it hides that occurrence. */
   function apply(items: readonly GoogleEvent[]) {
+    const deleted = new Set<string>();
     for (const item of items) {
+      if (item.recurringEventId !== undefined && deleted.has(item.recurringEventId)) continue;
       if (item.status !== "cancelled" || item.recurringEventId !== undefined) {
         stored.set(item.id, item);
         continue;
       }
       stored.delete(item.id);
-      // A deleted series takes its changed and cancelled occurrences with it.
+      // A deleted series takes its changed and cancelled occurrences with it, in this answer too.
+      deleted.add(item.id);
       for (const [id, other] of stored) if (other.recurringEventId === item.id) stored.delete(id);
     }
   }
@@ -139,7 +142,11 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
 
   // #region sync
   async function syncNow() {
-    if (syncToken === undefined) return;
+    if (syncToken === undefined) {
+      // The first load failed: try it again.
+      if (syncedFrom === undefined && lastRange !== undefined) await fullSync(lastRange);
+      return;
+    }
     try {
       // Every change since the last sync, whatever its dates.
       const { items, nextSyncToken } = await api.list({ syncToken });
@@ -218,9 +225,13 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
     // "This event" deletes cancel the occurrence's instance, as Google does, and leave the master.
     if (edit.scope === "this" && edit.cause === "delete") {
       const from = override?.action === "create" ? undefined : override?.event;
-      await writeOccurrences([
-        { from, placement: "cancel", recurrenceId: edit.recurrenceId, seriesId },
-      ]);
+      const write = {
+        from,
+        placement: "cancel",
+        recurrenceId: edit.recurrenceId,
+        seriesId,
+      } as const;
+      await writeOccurrences([write], [], timeZone);
       return;
     }
     // Google deletes a series' changed and cancelled occurrences with it.
@@ -234,11 +245,21 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
     if (master !== undefined && readGoogleRecurrence(master.recurrence ?? []).problems.length > 0) {
       throw new Error("This series has rules the app can't write back. Change it in Google.");
     }
-    // Read before the writes: the series' other changed and cancelled occurrences.
+    // The series' other changed and cancelled occurrences the edit moves or ends, as on screen.
     const edited = override?.action === "create" ? undefined : override?.event;
-    const others = events.filter(
-      (event) => event.override?.seriesId === seriesId && event !== edited,
-    );
+    const others = events
+      .filter((event) => event.override?.seriesId === seriesId && event !== edited)
+      .map((event) => ({ event, next: recurrenceOverrideEdit(edit, event.override!.recurrenceId) }))
+      .filter(({ next }) => next.action !== "keep");
+    // The writes below replace them without etags, so sync first, and stop if someone changed one
+    // in Google since.
+    if (others.length > 0) {
+      await syncNow();
+      const moved = [edited, ...others.map(({ event }) => event)];
+      if (moved.some((event) => event !== undefined && stored.get(event.data.id) !== event.data)) {
+        throw new GoogleApiError(412, "conditionNotMet", "The series changed in Google Calendar.");
+      }
+    }
 
     // "This and following events" is Google's split: a new series from the occurrence on, and the
     // old one ended before it. The new one goes first, so a failure leaves the old one whole.
@@ -262,7 +283,9 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
         apply([await api.patch(seriesId, fields, series.event.data.etag)]);
       } catch (error) {
         // With the old series still whole, the new one would repeat it: take it back.
-        if (newSeries !== undefined) await remove({ id: newSeriesId }, undefined);
+        if (newSeries !== undefined) {
+          await remove({ id: newSeriesId }, undefined).catch(() => undefined);
+        }
         throw error;
       }
     }
@@ -282,18 +305,17 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
     } else if (override?.action === "delete") {
       left.push(override.event);
     }
-    for (const other of others) {
-      const next = recurrenceOverrideEdit(edit, other.override!.recurrenceId);
-      if (next.action === "delete") left.push(other);
+    for (const { event, next } of others) {
+      if (next.action === "delete") left.push(event);
       if (next.action !== "update") continue;
       writes.push({
-        from: other,
-        placement: other.override!.cancelled ? "cancel" : other,
+        from: event,
+        placement: event.override!.cancelled ? "cancel" : event,
         recurrenceId: next.recurrenceId,
         seriesId: next.series === "new" ? newSeriesId : seriesId,
       });
     }
-    await writeOccurrences(writes, left);
+    await writeOccurrences(writes, left, timeZone);
   }
 
   /**
@@ -304,7 +326,8 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
    */
   async function writeOccurrences(
     writes: readonly OccurrenceWrite[],
-    left: readonly GoogleCalendarEvent[] = [],
+    left: readonly GoogleCalendarEvent[],
+    timeZone: string,
   ) {
     const written = new Set<string>();
     const vacated = [...left];
@@ -315,9 +338,13 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
         keyOf(from.override.seriesId, from.override.recurrenceId) === keyOf(seriesId, recurrenceId);
       // The etag of the version on screen, or of the instance just read.
       const instance = stays ? from.data : await api.instance(seriesId, recurrenceId.toString());
+      // Cancelled in Google since it loaded: a change to it would bring it back.
+      if (from === undefined && instance.status === "cancelled" && placement !== "cancel") {
+        throw new GoogleApiError(410, "deleted", "The occurrence was deleted in Google Calendar.");
+      }
       if (placement === "cancel") await remove(instance, instance.etag);
       // The moved occurrence's own title, color and the rest, not the instance's.
-      else await replace(instance, from?.data ?? instance, placement, instance.etag);
+      else await replace(instance, from?.data ?? instance, placement, instance.etag, timeZone);
       if (from !== undefined && !stays) vacated.push(from);
     }
     for (const { data, override } of vacated) {
@@ -329,7 +356,7 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
       const occurrence = master && occurrenceAt(master, override.recurrenceId);
       // The series' rule still has an occurrence there, so it shows as the series has it.
       if (master !== undefined && occurrence !== undefined) {
-        await replace(data, master, occurrence, undefined);
+        await replace(data, master, occurrence, undefined, timeZone);
       } else {
         await remove(data, undefined);
       }
@@ -345,10 +372,11 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
     content: GoogleEvent,
     interval: CalendarEventInterval,
     etag: string | undefined,
+    timeZone: string,
   ) {
     const fields: GoogleEventWrite = {
       ...contentOf(content),
-      ...toGoogleTimes(interval, content.start?.timeZone ?? instance.start?.timeZone ?? "UTC"),
+      ...toGoogleTimes(interval, content.start?.timeZone ?? timeZone),
       originalStartTime: instance.originalStartTime,
       recurringEventId: instance.recurringEventId,
       // A cancelled instance comes back.

@@ -593,3 +593,52 @@ describe("saving changes", () => {
     expect(titles(sync)).toContain("2026-10-14T16:00:00 New event");
   });
 });
+
+describe("changes made in Google meanwhile", () => {
+  test("a failed first load is tried again by the next sync", async () => {
+    const { google, sync } = setup({ retries: 0 });
+    google.rateLimitNext(1);
+    await expect(sync.load(week(monday))).rejects.toMatchObject({ status: 429 });
+    expect(sync.getEvents()).toEqual([]);
+    await sync.sync();
+    expect(titles(sync)).toEqual(thisWeek);
+  });
+
+  test("moving an occurrence someone cancelled rolls back, and doesn't bring it back", async () => {
+    const { google, sync } = setup();
+    await sync.load(week(monday));
+    elsewhere(google, () => exception("2026-10-16", { status: "cancelled" }));
+    const friday = find(sync, "standup::2026-10-16T07:00:00Z");
+    await expect(save(sync, move(friday, at("2026-10-16", "14:00")), "this")).rejects.toMatchObject(
+      { status: 410 },
+    );
+    expect(google.getEvent(instanceId("standup", at("2026-10-16", "09:00")))?.status).toBe(
+      "cancelled",
+    );
+    expect(standups(sync)).not.toContain("2026-10-16T09:00:00 Stand-up");
+  });
+
+  test("a series edit stops before writing if one of its changed occurrences changed", async () => {
+    const { google, sync } = setup();
+    await sync.load(week(monday));
+    const lateId = instanceId("standup", at("2026-10-15", "09:00"));
+    elsewhere(google, (events) => ({ ...events.get(lateId)!, summary: "Stand-up (Ana's)" }));
+    const master = google.getEvent("standup");
+    const tuesday = find(sync, "standup::2026-10-13T07:00:00Z");
+    await expect(save(sync, move(tuesday, at("2026-10-13", "09:30")), "all")).rejects.toMatchObject(
+      { status: 412 },
+    );
+    expect(google.getEvent("standup")).toBe(master);
+    expect(standups(sync)).toContain("2026-10-15T10:00:00 Stand-up (Ana's)");
+  });
+
+  test("a change to one occurrence doesn't wait on the series' other changed ones", async () => {
+    const { google, sync } = setup();
+    await sync.load(week(monday));
+    const lateId = instanceId("standup", at("2026-10-15", "09:00"));
+    elsewhere(google, (events) => ({ ...events.get(lateId)!, summary: "Stand-up (Ana's)" }));
+    const tuesday = find(sync, "standup::2026-10-13T07:00:00Z");
+    await save(sync, move(tuesday, at("2026-10-13", "14:00")), "this");
+    expect(standups(sync)).toContain("2026-10-13T14:00:00 Stand-up");
+  });
+});

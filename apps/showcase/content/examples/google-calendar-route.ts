@@ -34,6 +34,10 @@ function allowed(method: string, event: readonly string[]): boolean {
  * reaches the browser. Only the calls the client makes, on the user's own events.
  */
 async function forward(request: NextRequest, { params }: { params: Promise<{ path: string[] }> }) {
+  // Only your own pages: browsers mark a request from another site.
+  if (request.headers.get("Sec-Fetch-Site") === "cross-site") {
+    return Response.json({ error: { code: 403, message: "Forbidden" } }, { status: 403 });
+  }
   const { path } = await params;
   const [calendars, calendarId, events, ...event] = path;
   const { searchParams } = request.nextUrl;

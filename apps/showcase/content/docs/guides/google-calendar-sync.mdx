@@ -11,8 +11,8 @@ tokens, etags and errors. Drag an event, or delete one, and it's written back. T
 events as someone else would in Google, expire the sync token and rate-limit requests. The log
 shows each request.
 
-This guide builds it. The code is what a real app runs. Only `fetch` differs: the demo hands the
-client the fake one.
+This guide builds it. The code is what a real app runs. The demo hands it a fake `fetch` instead
+of your route, and a shorter retry delay.
 
 | File                                         | What it does                                                                                       |
 | -------------------------------------------- | -------------------------------------------------------------------------------------------------- |
@@ -205,6 +205,8 @@ A list with `syncToken` returns every event that changed since the token, and a 
 - **One token.** Lists of earlier dates return tokens too, and the store ignores them. A newer
   token would skip what changed between the two lists. Google's guide doesn't say whether the sync
   token reports changes to events before its `timeMin`; the store applies whatever a sync returns.
+- **A failed first load** is tried again by the next sync, so the calendar fills in once the
+  network is back.
 - **410 Gone.** Tokens expire, and then Google answers 410. The store syncs again from scratch,
   from the dates on screen. It swaps the new events in once they've loaded, so a failure keeps
   what's on screen, and the next sync tries again. Try it in the demo: expire the sync token, then
@@ -256,7 +258,9 @@ the store:
   runs, and keeps it until the events change. If it throws, the calendar puts the event back and
   announces that the change wasn't saved. There's no copy of the events to restore by hand.
 - **Etags.** Every Google event has an `etag` that changes on every write. Writes send the etag of
-  the version on screen as `If-Match`.
+  the version on screen as `If-Match`. A series edit that moves or ends the series' other changed
+  occurrences syncs first, and stops with a 412 if one of them changed in Google. The instances it
+  then rewrites and clears go without an etag.
 - **412 Precondition Failed.** Someone changed the event since it loaded. The write is refused,
   the sync after it brings in their version, and the drag rolls back onto it. The footer says what
   happened. To try it: turn off push notifications, move "Design review" with the button, then drag
@@ -264,22 +268,30 @@ the store:
 - **Rate limits.** The client's backoff waits it out while the change stays pending. Rate-limit two
   requests in the demo, then drag an event.
 - **Already deleted.** Deleting an event someone else deleted gets a 410, which counts as done.
+  Changing an occurrence someone cancelled throws a 410 instead, so the change rolls back rather
+  than bring the occurrence back.
 - **New events** get an ID from `newGoogleId`. Google takes IDs you pick, so you know an event's ID
-  before it's saved, as you do for "This and following events". If an insert's answer is lost and
-  the retry gets a 409, the event is there.
+  before it's saved, as you do for "This and following events". If an insert gets a 5xx after
+  Google stored it, the retry gets a 409, and the event is there.
+
+The footer under the calendar says what happened to the last change, in words:
+
+<include meta='title="components/google-calendar-view.tsx"'>
+  ../../examples/google-calendar-root.tsx#reason
+</include>
 
 ### This, following and all events
 
 A series edit from `resolveRecurrenceEdit` says what to write: the master, a new series, the edited
 occurrence and the series' other changed occurrences. In Google, those are these calls:
 
-| Scope                     | The edit                                       | The Calendar API                                                                                                                                                                                      |
-| ------------------------- | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| This event                | `override`                                     | `events.instances` with `originalStart` returns the occurrence's instance, with its ID and etag. Write it with `events.update`, and Google keeps it as a changed occurrence of the series.            |
-| This event, deleted       | `series` with a new exception date             | Delete the instance. Google keeps it as cancelled, and the master stays as it was.                                                                                                                    |
-| This and following events | `newSeries`, and `series`, which ends the rule | Insert the new series, then patch the master's `recurrence` with UNTIL or a smaller COUNT. That's Google's own split: two events, with no link between them. If the patch fails, the new series goes. |
-| All events                | `series`                                       | Patch the master's `start`, `end` and `recurrence`.                                                                                                                                                   |
-| All events, deleted       | `series: "delete"`                             | Delete the master. Google deletes its changed and cancelled occurrences with it.                                                                                                                      |
+| Scope                     | The edit                                       | The Calendar API                                                                                                                                                                                                         |
+| ------------------------- | ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| This event                | `override`                                     | `events.instances` with `originalStart` returns the occurrence's instance, with its ID and etag. Write it with `events.update`, and Google keeps it as a changed occurrence of the series.                               |
+| This event, deleted       | `series` with a new exception date             | Delete the instance. Google keeps it as cancelled, and the master stays as it was.                                                                                                                                       |
+| This and following events | `newSeries`, and `series`, which ends the rule | Insert the new series, then patch the master's `recurrence` with UNTIL or a smaller COUNT. That's Google's own split: two events, with no link between them. If the patch fails, the store deletes the new series again. |
+| All events                | `series`                                       | Patch the master's `start`, `end` and `recurrence`.                                                                                                                                                                      |
+| All events, deleted       | `series: "delete"`                             | Delete the master. Google deletes its changed and cancelled occurrences with it.                                                                                                                                         |
 
 <include meta='title="lib/google-calendar-sync.ts"'>
   ../../examples/google-calendar-sync.ts#series
