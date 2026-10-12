@@ -28,7 +28,8 @@ const meetDescription =
   "More phone numbers: https://tel.meet/abc-defg-hij?pin=123456789\n\n" +
   "Learn more about Meet at: https://support.google.com/a/users/answer/9282720\n\n" +
   "Please do not edit this section.\n" +
-  "-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-";
+  // The separator as the fixture writes it, which has one more ":~" than the first draft here.
+  "-::~:~::~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~:~::~:~::-";
 
 const berlin = (wallTime: string, offset: "+01:00" | "+02:00") => ({
   kind: "zoned",
@@ -142,6 +143,7 @@ describe("google.ics", () => {
         address: "mailto:alice@example.com",
         email: "alice@example.com",
         name: "Alice Example",
+        otherParameters: {},
       });
       const common = {
         calendarUserType: "INDIVIDUAL",
@@ -156,6 +158,7 @@ describe("google.ics", () => {
           address: "mailto:alice@example.com",
           email: "alice@example.com",
           name: "Alice Example",
+          otherParameters: { "X-NUM-GUESTS": ["0"] },
           participationStatus: "ACCEPTED",
           role: "REQ-PARTICIPANT",
         },
@@ -164,6 +167,7 @@ describe("google.ics", () => {
           address: "mailto:bob@example.com",
           email: "bob@example.com",
           name: "bob@example.com",
+          otherParameters: { "X-NUM-GUESTS": ["0"] },
           participationStatus: "NEEDS-ACTION",
           role: "REQ-PARTICIPANT",
         },
@@ -172,14 +176,19 @@ describe("google.ics", () => {
           address: "mailto:carol@example.org",
           email: "carol@example.org",
           name: "Carol Example",
+          otherParameters: { "X-NUM-GUESTS": ["2"] },
           participationStatus: "TENTATIVE",
           role: "OPT-PARTICIPANT",
         },
       ]);
     });
 
-    test("keeps X-NUM-GUESTS in the syntax tree", () => {
-      // IcsAttendee has no field for unknown parameters, so only the syntax layer has them.
+    test("keeps X-NUM-GUESTS in otherParameters and in the syntax tree", () => {
+      expect(series().attendees.map(({ otherParameters }) => otherParameters)).toEqual([
+        { "X-NUM-GUESTS": ["0"] },
+        { "X-NUM-GUESTS": ["0"] },
+        { "X-NUM-GUESTS": ["2"] },
+      ]);
       const [vcalendar] = parseIcsComponents(text).components;
       const vevent = vcalendar?.components.find(
         (component: IcsComponent) => component.name === "VEVENT",

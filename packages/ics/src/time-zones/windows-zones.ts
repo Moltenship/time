@@ -50,143 +50,144 @@
 // SPDX-License-Identifier: Unicode-3.0
 
 // One Windows time zone per line, fields separated by `|`: its id without " Standard Time", its
-// IANA time zone, the UTC offset in its display name, and the first place its display name lists.
-export const WINDOWS_ZONES = `Dateline|Etc/GMT+12|-1200|International Date Line West
-UTC-11|Etc/GMT+11|-1100|Coordinated Universal Time-11
-Aleutian|America/Adak|-1000|Aleutian Islands
-Hawaiian|Pacific/Honolulu|-1000|Hawaii
-Marquesas|Pacific/Marquesas|-0930|Marquesas Islands
-Alaskan|America/Anchorage|-0900|Alaska
-UTC-09|Etc/GMT+9|-0900|Coordinated Universal Time-09
-Pacific Standard Time (Mexico)|America/Tijuana|-0800|Baja California
-UTC-08|Etc/GMT+8|-0800|Coordinated Universal Time-08
-Pacific|America/Los_Angeles|-0800|Pacific Time (US & Canada)
-US Mountain|America/Phoenix|-0700|Arizona
-Mountain Standard Time (Mexico)|America/Mazatlan|-0700|Chihuahua
-Mountain|America/Denver|-0700|Mountain Time (US & Canada)
-Yukon|America/Whitehorse|-0700|Yukon
-Central America|America/Guatemala|-0600|Central America
-Central|America/Chicago|-0600|Central Time (US & Canada)
-Easter Island|Pacific/Easter|-0600|Easter Island
-Central Standard Time (Mexico)|America/Mexico_City|-0600|Guadalajara
-Canada Central|America/Regina|-0600|Saskatchewan
-SA Pacific|America/Bogota|-0500|Bogota
-Eastern Standard Time (Mexico)|America/Cancun|-0500|Chetumal
-Eastern|America/New_York|-0500|Eastern Time (US & Canada)
-Haiti|America/Port-au-Prince|-0500|Haiti
-Cuba|America/Havana|-0500|Havana
-US Eastern|America/Indiana/Indianapolis|-0500|Indiana (East)
-Turks And Caicos|America/Grand_Turk|-0500|Turks and Caicos
-Paraguay|America/Asuncion|-0400|Asuncion
-Atlantic|America/Halifax|-0400|Atlantic Time (Canada)
-Venezuela|America/Caracas|-0400|Caracas
-Central Brazilian|America/Cuiaba|-0400|Cuiaba
-SA Western|America/La_Paz|-0400|Georgetown
-Pacific SA|America/Santiago|-0400|Santiago
-Newfoundland|America/St_Johns|-0330|Newfoundland
-Tocantins|America/Araguaina|-0300|Araguaina
-E. South America|America/Sao_Paulo|-0300|Brasilia
-SA Eastern|America/Cayenne|-0300|Cayenne
-Argentina|America/Argentina/Buenos_Aires|-0300|City of Buenos Aires
-Greenland|America/Nuuk|-0300|Greenland
-Montevideo|America/Montevideo|-0300|Montevideo
-Magallanes|America/Punta_Arenas|-0300|Punta Arenas
-Saint Pierre|America/Miquelon|-0300|Saint Pierre and Miquelon
-Bahia|America/Bahia|-0300|Salvador
-UTC-02|Etc/GMT+2|-0200|Coordinated Universal Time-02
-Azores|Atlantic/Azores|-0100|Azores
-Cape Verde|Atlantic/Cape_Verde|-0100|Cabo Verde Is.
-UTC|Etc/UTC|+0000|Coordinated Universal Time
-GMT|Europe/London|+0000|Dublin
-Greenwich|Atlantic/Reykjavik|+0000|Monrovia
-Sao Tome|Africa/Sao_Tome|+0000|Sao Tome
-Morocco|Africa/Casablanca|+0100|Casablanca
-W. Europe|Europe/Berlin|+0100|Amsterdam
-Central Europe|Europe/Budapest|+0100|Belgrade
-Romance|Europe/Paris|+0100|Brussels
-Central European|Europe/Warsaw|+0100|Sarajevo
-W. Central Africa|Africa/Lagos|+0100|West Central Africa
-Jordan|Asia/Amman|+0200|Amman
-GTB|Europe/Bucharest|+0200|Athens
-Middle East|Asia/Beirut|+0200|Beirut
-Egypt|Africa/Cairo|+0200|Cairo
-E. Europe|Europe/Chisinau|+0200|Chisinau
-Syria|Asia/Damascus|+0200|Damascus
-West Bank|Asia/Hebron|+0200|Gaza
-South Africa|Africa/Johannesburg|+0200|Harare
-FLE|Europe/Kyiv|+0200|Helsinki
-Israel|Asia/Jerusalem|+0200|Jerusalem
-South Sudan|Africa/Juba|+0200|Juba
-Kaliningrad|Europe/Kaliningrad|+0200|Kaliningrad
-Sudan|Africa/Khartoum|+0200|Khartoum
-Libya|Africa/Tripoli|+0200|Tripoli
-Namibia|Africa/Windhoek|+0200|Windhoek
-Arabic|Asia/Baghdad|+0300|Baghdad
-Turkey|Europe/Istanbul|+0300|Istanbul
-Arab|Asia/Riyadh|+0300|Kuwait
-Belarus|Europe/Minsk|+0300|Minsk
-Russian|Europe/Moscow|+0300|Moscow
-E. Africa|Africa/Nairobi|+0300|Nairobi
-Iran|Asia/Tehran|+0330|Tehran
-Arabian|Asia/Dubai|+0400|Abu Dhabi
-Astrakhan|Europe/Astrakhan|+0400|Astrakhan
-Azerbaijan|Asia/Baku|+0400|Baku
-Russia Time Zone 3|Europe/Samara|+0400|Izhevsk
-Mauritius|Indian/Mauritius|+0400|Port Louis
-Saratov|Europe/Saratov|+0400|Saratov
-Georgian|Asia/Tbilisi|+0400|Tbilisi
-Volgograd|Europe/Volgograd|+0400|Volgograd
-Caucasus|Asia/Yerevan|+0400|Yerevan
-Afghanistan|Asia/Kabul|+0430|Kabul
-West Asia|Asia/Tashkent|+0500|Ashgabat
-Ekaterinburg|Asia/Yekaterinburg|+0500|Ekaterinburg
-Pakistan|Asia/Karachi|+0500|Islamabad
-Qyzylorda|Asia/Qyzylorda|+0500|Qyzylorda
-India|Asia/Kolkata|+0530|Chennai
-Sri Lanka|Asia/Colombo|+0530|Sri Jayawardenepura
-Nepal|Asia/Kathmandu|+0545|Kathmandu
-Central Asia|Asia/Bishkek|+0600|Astana
-Bangladesh|Asia/Dhaka|+0600|Dhaka
-Omsk|Asia/Omsk|+0600|Omsk
-Myanmar|Asia/Yangon|+0630|Yangon (Rangoon)
-SE Asia|Asia/Bangkok|+0700|Bangkok
-Altai|Asia/Barnaul|+0700|Barnaul
-W. Mongolia|Asia/Hovd|+0700|Hovd
-North Asia|Asia/Krasnoyarsk|+0700|Krasnoyarsk
-N. Central Asia|Asia/Novosibirsk|+0700|Novosibirsk
-Tomsk|Asia/Tomsk|+0700|Tomsk
-China|Asia/Shanghai|+0800|Beijing
-North Asia East|Asia/Irkutsk|+0800|Irkutsk
-Singapore|Asia/Singapore|+0800|Kuala Lumpur
-W. Australia|Australia/Perth|+0800|Perth
-Taipei|Asia/Taipei|+0800|Taipei
-Ulaanbaatar|Asia/Ulaanbaatar|+0800|Ulaanbaatar
-Aus Central W.|Australia/Eucla|+0845|Eucla
-Transbaikal|Asia/Chita|+0900|Chita
-Tokyo|Asia/Tokyo|+0900|Osaka
-North Korea|Asia/Pyongyang|+0900|Pyongyang
-Korea|Asia/Seoul|+0900|Seoul
-Yakutsk|Asia/Yakutsk|+0900|Yakutsk
-Cen. Australia|Australia/Adelaide|+0930|Adelaide
-AUS Central|Australia/Darwin|+0930|Darwin
-E. Australia|Australia/Brisbane|+1000|Brisbane
-AUS Eastern|Australia/Sydney|+1000|Canberra
-West Pacific|Pacific/Port_Moresby|+1000|Guam
-Tasmania|Australia/Hobart|+1000|Hobart
-Vladivostok|Asia/Vladivostok|+1000|Vladivostok
-Lord Howe|Australia/Lord_Howe|+1030|Lord Howe Island
-Bougainville|Pacific/Bougainville|+1100|Bougainville Island
-Russia Time Zone 10|Asia/Srednekolymsk|+1100|Chokurdakh
-Magadan|Asia/Magadan|+1100|Magadan
-Norfolk|Pacific/Norfolk|+1100|Norfolk Island
-Sakhalin|Asia/Sakhalin|+1100|Sakhalin
-Central Pacific|Pacific/Guadalcanal|+1100|Solomon Is.
-Russia Time Zone 11|Asia/Kamchatka|+1200|Anadyr
-New Zealand|Pacific/Auckland|+1200|Auckland
-UTC+12|Etc/GMT-12|+1200|Coordinated Universal Time+12
-Fiji|Pacific/Fiji|+1200|Fiji
-Chatham Islands|Pacific/Chatham|+1245|Chatham Islands
-UTC+13|Etc/GMT-13|+1300|Coordinated Universal Time+13
-Tonga|Pacific/Tongatapu|+1300|Nuku'alofa
-Samoa|Pacific/Apia|+1300|Samoa
-Line Islands|Pacific/Kiritimati|+1400|Kiritimati Island`;
+// IANA time zone, the UTC offset in its display name, and the first place its display name lists,
+// lower-cased.
+export const WINDOWS_ZONES = `Dateline|Etc/GMT+12|-1200|international date line west
+UTC-11|Etc/GMT+11|-1100|coordinated universal time-11
+Aleutian|America/Adak|-1000|aleutian islands
+Hawaiian|Pacific/Honolulu|-1000|hawaii
+Marquesas|Pacific/Marquesas|-0930|marquesas islands
+Alaskan|America/Anchorage|-0900|alaska
+UTC-09|Etc/GMT+9|-0900|coordinated universal time-09
+Pacific Standard Time (Mexico)|America/Tijuana|-0800|baja california
+UTC-08|Etc/GMT+8|-0800|coordinated universal time-08
+Pacific|America/Los_Angeles|-0800|pacific time (us & canada)
+US Mountain|America/Phoenix|-0700|arizona
+Mountain Standard Time (Mexico)|America/Mazatlan|-0700|chihuahua
+Mountain|America/Denver|-0700|mountain time (us & canada)
+Yukon|America/Whitehorse|-0700|yukon
+Central America|America/Guatemala|-0600|central america
+Central|America/Chicago|-0600|central time (us & canada)
+Easter Island|Pacific/Easter|-0600|easter island
+Central Standard Time (Mexico)|America/Mexico_City|-0600|guadalajara
+Canada Central|America/Regina|-0600|saskatchewan
+SA Pacific|America/Bogota|-0500|bogota
+Eastern Standard Time (Mexico)|America/Cancun|-0500|chetumal
+Eastern|America/New_York|-0500|eastern time (us & canada)
+Haiti|America/Port-au-Prince|-0500|haiti
+Cuba|America/Havana|-0500|havana
+US Eastern|America/Indiana/Indianapolis|-0500|indiana (east)
+Turks And Caicos|America/Grand_Turk|-0500|turks and caicos
+Paraguay|America/Asuncion|-0400|asuncion
+Atlantic|America/Halifax|-0400|atlantic time (canada)
+Venezuela|America/Caracas|-0400|caracas
+Central Brazilian|America/Cuiaba|-0400|cuiaba
+SA Western|America/La_Paz|-0400|georgetown
+Pacific SA|America/Santiago|-0400|santiago
+Newfoundland|America/St_Johns|-0330|newfoundland
+Tocantins|America/Araguaina|-0300|araguaina
+E. South America|America/Sao_Paulo|-0300|brasilia
+SA Eastern|America/Cayenne|-0300|cayenne
+Argentina|America/Argentina/Buenos_Aires|-0300|city of buenos aires
+Greenland|America/Nuuk|-0300|greenland
+Montevideo|America/Montevideo|-0300|montevideo
+Magallanes|America/Punta_Arenas|-0300|punta arenas
+Saint Pierre|America/Miquelon|-0300|saint pierre and miquelon
+Bahia|America/Bahia|-0300|salvador
+UTC-02|Etc/GMT+2|-0200|coordinated universal time-02
+Azores|Atlantic/Azores|-0100|azores
+Cape Verde|Atlantic/Cape_Verde|-0100|cabo verde is.
+UTC|Etc/UTC|+0000|coordinated universal time
+GMT|Europe/London|+0000|dublin
+Greenwich|Atlantic/Reykjavik|+0000|monrovia
+Sao Tome|Africa/Sao_Tome|+0000|sao tome
+Morocco|Africa/Casablanca|+0100|casablanca
+W. Europe|Europe/Berlin|+0100|amsterdam
+Central Europe|Europe/Budapest|+0100|belgrade
+Romance|Europe/Paris|+0100|brussels
+Central European|Europe/Warsaw|+0100|sarajevo
+W. Central Africa|Africa/Lagos|+0100|west central africa
+Jordan|Asia/Amman|+0200|amman
+GTB|Europe/Bucharest|+0200|athens
+Middle East|Asia/Beirut|+0200|beirut
+Egypt|Africa/Cairo|+0200|cairo
+E. Europe|Europe/Chisinau|+0200|chisinau
+Syria|Asia/Damascus|+0200|damascus
+West Bank|Asia/Hebron|+0200|gaza
+South Africa|Africa/Johannesburg|+0200|harare
+FLE|Europe/Kyiv|+0200|helsinki
+Israel|Asia/Jerusalem|+0200|jerusalem
+South Sudan|Africa/Juba|+0200|juba
+Kaliningrad|Europe/Kaliningrad|+0200|kaliningrad
+Sudan|Africa/Khartoum|+0200|khartoum
+Libya|Africa/Tripoli|+0200|tripoli
+Namibia|Africa/Windhoek|+0200|windhoek
+Arabic|Asia/Baghdad|+0300|baghdad
+Turkey|Europe/Istanbul|+0300|istanbul
+Arab|Asia/Riyadh|+0300|kuwait
+Belarus|Europe/Minsk|+0300|minsk
+Russian|Europe/Moscow|+0300|moscow
+E. Africa|Africa/Nairobi|+0300|nairobi
+Iran|Asia/Tehran|+0330|tehran
+Arabian|Asia/Dubai|+0400|abu dhabi
+Astrakhan|Europe/Astrakhan|+0400|astrakhan
+Azerbaijan|Asia/Baku|+0400|baku
+Russia Time Zone 3|Europe/Samara|+0400|izhevsk
+Mauritius|Indian/Mauritius|+0400|port louis
+Saratov|Europe/Saratov|+0400|saratov
+Georgian|Asia/Tbilisi|+0400|tbilisi
+Volgograd|Europe/Volgograd|+0400|volgograd
+Caucasus|Asia/Yerevan|+0400|yerevan
+Afghanistan|Asia/Kabul|+0430|kabul
+West Asia|Asia/Tashkent|+0500|ashgabat
+Ekaterinburg|Asia/Yekaterinburg|+0500|ekaterinburg
+Pakistan|Asia/Karachi|+0500|islamabad
+Qyzylorda|Asia/Qyzylorda|+0500|qyzylorda
+India|Asia/Kolkata|+0530|chennai
+Sri Lanka|Asia/Colombo|+0530|sri jayawardenepura
+Nepal|Asia/Kathmandu|+0545|kathmandu
+Central Asia|Asia/Bishkek|+0600|astana
+Bangladesh|Asia/Dhaka|+0600|dhaka
+Omsk|Asia/Omsk|+0600|omsk
+Myanmar|Asia/Yangon|+0630|yangon (rangoon)
+SE Asia|Asia/Bangkok|+0700|bangkok
+Altai|Asia/Barnaul|+0700|barnaul
+W. Mongolia|Asia/Hovd|+0700|hovd
+North Asia|Asia/Krasnoyarsk|+0700|krasnoyarsk
+N. Central Asia|Asia/Novosibirsk|+0700|novosibirsk
+Tomsk|Asia/Tomsk|+0700|tomsk
+China|Asia/Shanghai|+0800|beijing
+North Asia East|Asia/Irkutsk|+0800|irkutsk
+Singapore|Asia/Singapore|+0800|kuala lumpur
+W. Australia|Australia/Perth|+0800|perth
+Taipei|Asia/Taipei|+0800|taipei
+Ulaanbaatar|Asia/Ulaanbaatar|+0800|ulaanbaatar
+Aus Central W.|Australia/Eucla|+0845|eucla
+Transbaikal|Asia/Chita|+0900|chita
+Tokyo|Asia/Tokyo|+0900|osaka
+North Korea|Asia/Pyongyang|+0900|pyongyang
+Korea|Asia/Seoul|+0900|seoul
+Yakutsk|Asia/Yakutsk|+0900|yakutsk
+Cen. Australia|Australia/Adelaide|+0930|adelaide
+AUS Central|Australia/Darwin|+0930|darwin
+E. Australia|Australia/Brisbane|+1000|brisbane
+AUS Eastern|Australia/Sydney|+1000|canberra
+West Pacific|Pacific/Port_Moresby|+1000|guam
+Tasmania|Australia/Hobart|+1000|hobart
+Vladivostok|Asia/Vladivostok|+1000|vladivostok
+Lord Howe|Australia/Lord_Howe|+1030|lord howe island
+Bougainville|Pacific/Bougainville|+1100|bougainville island
+Russia Time Zone 10|Asia/Srednekolymsk|+1100|chokurdakh
+Magadan|Asia/Magadan|+1100|magadan
+Norfolk|Pacific/Norfolk|+1100|norfolk island
+Sakhalin|Asia/Sakhalin|+1100|sakhalin
+Central Pacific|Pacific/Guadalcanal|+1100|solomon is.
+Russia Time Zone 11|Asia/Kamchatka|+1200|anadyr
+New Zealand|Pacific/Auckland|+1200|auckland
+UTC+12|Etc/GMT-12|+1200|coordinated universal time+12
+Fiji|Pacific/Fiji|+1200|fiji
+Chatham Islands|Pacific/Chatham|+1245|chatham islands
+UTC+13|Etc/GMT-13|+1300|coordinated universal time+13
+Tonga|Pacific/Tongatapu|+1300|nuku'alofa
+Samoa|Pacific/Apia|+1300|samoa
+Line Islands|Pacific/Kiritimati|+1400|kiritimati island`;

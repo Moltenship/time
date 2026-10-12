@@ -161,6 +161,7 @@ describe("outlook.ics", () => {
         address: "mailto:frank@example.com",
         email: "frank@example.com",
         name: "Frank Example",
+        otherParameters: {},
       });
       expect(teams().attendees.map(({ name, role, rsvp }) => ({ name, role, rsvp }))).toEqual([
         { name: "Grace Example", role: "REQ-PARTICIPANT", rsvp: true },

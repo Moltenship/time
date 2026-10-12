@@ -82,6 +82,7 @@ describe("invitation.ics", () => {
       address: "mailto:ivan@example.com",
       email: "ivan@example.com",
       name: "Ivan Example",
+      otherParameters: {},
       sentBy: "mailto:assistant@example.com",
     });
   });
@@ -95,6 +96,7 @@ describe("invitation.ics", () => {
       email: address,
       memberOf: [],
       name,
+      otherParameters: {},
       participationStatus: "NEEDS-ACTION",
       role: "REQ-PARTICIPANT",
     });

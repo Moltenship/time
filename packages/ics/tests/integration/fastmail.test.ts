@@ -77,6 +77,7 @@ describe("fastmail.ics", () => {
       address: "mailto:mary@example.org",
       email: "mary@example.org",
       name: 'Mary "Mo" Example',
+      otherParameters: {},
     });
     expect(
       bookClub().attendees.map(({ email, name, participationStatus, rsvp }) => ({

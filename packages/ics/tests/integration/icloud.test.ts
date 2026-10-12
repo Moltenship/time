@@ -75,6 +75,7 @@ describe("icloud.ics", () => {
         address: "urn:uuid:9a8b7c6d-5e4f-4a3b-8c2d-1e0f9a8b7c6d",
         email: "hana@example.com",
         name: "Hana Example",
+        otherParameters: {},
       });
       expect(withoutRsvp(dinner().attendees)).toEqual([
         {
@@ -85,6 +86,7 @@ describe("icloud.ics", () => {
           email: "hana@example.com",
           memberOf: [],
           name: "Hana Example",
+          otherParameters: {},
           participationStatus: "ACCEPTED",
           role: "CHAIR",
         },
@@ -96,6 +98,7 @@ describe("icloud.ics", () => {
           email: "omar@example.com",
           memberOf: [],
           name: "Omar Example",
+          otherParameters: { "SCHEDULE-STATUS": ["1.2"] },
           participationStatus: "NEEDS-ACTION",
           role: "REQ-PARTICIPANT",
         },

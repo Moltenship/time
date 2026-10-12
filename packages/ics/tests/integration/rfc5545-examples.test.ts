@@ -104,7 +104,8 @@ describe("rfc5545-examples.ics", () => {
   });
 
   test("3: a meeting with an attachment and METHOD:xyz", () => {
-    expect(calendar(2).method).toBe("xyz");
+    // METHOD values are case-insensitive (RFC 5545 §2), so the parser upper-cases them.
+    expect(calendar(2).method).toBe("XYZ");
     const [event] = calendar(2).events;
     expect(event).toMatchObject({
       categories: ["MEETING", "PROJECT"],

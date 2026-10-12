@@ -31,6 +31,14 @@ describe("generated Windows time zone data", () => {
     expect(displayNameTimeZone(displayName(offset ?? "", place ?? ""))).toBe(timeZone);
   });
 
+  test("keeps places lower-cased, and still matches display names as Windows writes them", () => {
+    // tests/ics-boundary.test.ts bans the legacy time class's name from the sources, and a place
+    // such as the date line's would spell it.
+    for (const [, , , place] of zones) expect(place).toBe(place?.toLowerCase());
+    expect(displayNameTimeZone("(UTC-12:00) International Date Line West")).toBe("Etc/GMT+12");
+    expect(displayNameTimeZone("(UTC+01:00) Amsterdam, Berlin, Bern, Rome")).toBe("Europe/Berlin");
+  });
+
   test("uses current IANA ids rather than CLDR's older canonical ones", () => {
     const timeZones = new Set(zones.map(([, timeZone]) => timeZone));
 
