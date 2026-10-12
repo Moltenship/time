@@ -79,7 +79,9 @@ and `override`. `createCanonicalRecurrenceAdapter` returns both adapters for the
 </include>
 
 Views receive occurrences, so `getEventColor` reads the color from `occurrence.event`, the event
-the occurrence shows: the master, the override, or the one-off event.
+the occurrence shows: the master, the override, or the one-off event. `occurrence.recurrence` is set
+on occurrences of a series, so `getEventIcon` marks their chips with a repeat icon, and
+`describeEvent` adds "repeating event" to their accessible names, since the icon is decorative.
 
 ### Your own event type
 

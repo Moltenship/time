@@ -107,7 +107,7 @@ export function RepeatField({
       </Select>
       {frequency !== "none" && (
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-2">
-          <Label htmlFor={`${id}-ends`}>Ends</Label>
+          <Label htmlFor={`${id}-ends`}>End repeat</Label>
           <Select
             onValueChange={(next) => {
               const type = endTypes.find((option) => option.value === next)?.value;
