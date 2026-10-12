@@ -476,7 +476,7 @@ export interface IcsTimeZone {
   readonly observances: readonly IcsTimeZoneObservance[];
   readonly otherComponents: readonly IcsComponent[];
   readonly otherProperties: readonly IcsProperty[];
-  /** The IANA time zone the TZID resolved to, if any. */
+  /** The time zone the TZID resolved to, if any: an IANA id or a `±HH:MM` offset. */
   readonly timeZone?: string;
   /** TZID as written. */
   readonly tzid: string;
@@ -510,7 +510,7 @@ export interface IcsCalendar<TExtensions extends IcsExtensionsConfig = {}> {
   /** SOURCE (RFC 7986). */
   readonly source?: string;
   /**
-   * `X-WR-TIMEZONE`, resolved to an IANA time zone: the zone the publisher meant for floating
+   * `X-WR-TIMEZONE`, resolved to a time zone id: the zone the publisher meant for floating
    * times. Floating values stay floating; apply it yourself if you want it.
    */
   readonly timeZone?: string;
@@ -561,7 +561,10 @@ export type IcsExtensionValues<TMap> = TMap extends IcsExtensionMap
 
 // ── Parsing ─────────────────────────────────────────────────────────────────────────────────────
 
-/** A TZID resolver: an IANA time zone id, or `undefined` to fall through to the built-in rules. */
+/**
+ * A TZID resolver: a time zone id Temporal knows (an IANA id or a `±HH:MM` offset), or `undefined`
+ * to fall through to the built-in rules.
+ */
 export type IcsTimeZoneResolver = (
   tzid: string,
   /** The calendar's VTIMEZONE with this TZID, if it has one. */

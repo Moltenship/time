@@ -4,7 +4,8 @@
   "description": "Typed, Temporal-native iCalendar (RFC 5545) parsing with Standard Schema support.",
   "license": "MIT",
   "files": [
-    "dist"
+    "dist",
+    "THIRD-PARTY-NOTICES.md"
   ],
   "type": "module",
   "sideEffects": false,
@@ -26,6 +27,7 @@
     "build": "vp pack && node scripts/check-size.mjs",
     "check": "vp check",
     "dev": "vp pack --watch",
+    "generate:windows-zones": "node scripts/generate-windows-zones.mjs",
     "prepublishOnly": "vp run build",
     "size": "node scripts/check-size.mjs",
     "test": "vp test --passWithNoTests"
