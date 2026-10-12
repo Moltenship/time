@@ -73,7 +73,7 @@ async function drag(from: HTMLElement, hours: number) {
   const column = event().parentElement!;
   const area = column.getBoundingClientRect();
   const box = from.getBoundingClientRect();
-  const hour = event().getBoundingClientRect().height;
+  const hour = area.height / 24;
   const x = box.left - area.left + box.width / 2;
   const y = box.top - area.top + box.height / 2;
   await userEvent.dragAndDrop(column, column, {
@@ -105,6 +105,7 @@ describe(`interactions in ${server.browser}`, () => {
     await vi.waitFor(() =>
       expect(placed(onEventChange)).toBe("move 2026-10-08T11:00:00Z/2026-10-08T12:00:00Z"),
     );
+    expect(onEventChange).toHaveBeenCalledTimes(1);
   });
 
   test("a mouse drag on the end handle makes an event half an hour longer", async () => {

@@ -144,7 +144,7 @@ describe.each(["ltr", "rtl"] as const)(
       },
     );
 
-    // WebKit leaves the focused event out of view about half the time: #181.
+    // WebKit leaves the focused event out of view about half the time: #185.
     test.skipIf(inWebKit)(
       "keys move through events and days, keeping the focused event in view",
       async () => {
@@ -176,6 +176,7 @@ describe.each(["ltr", "rtl"] as const)(
       },
     );
 
+    // The same in WebKit: #185.
     test.skipIf(inWebKit)(
       "keys paging past the range move focus on without jumping the list",
       async () => {
@@ -241,27 +242,25 @@ test("the paged agenda renders only the days in view of two years of weeks", asy
 });
 
 describe.each(themes)("long agenda, %s theme", (theme) => {
-  // In WebKit one scroll to the end doesn't reach it: #181.
-  test.skipIf(inWebKit)(
-    "has no serious violations, paged, scrolling, and loading more",
-    async () => {
-      setTheme(theme);
-      await render(<LongAgenda view="agenda" weeks={104} />);
-      expect(await seriousViolations()).toEqual([]);
+  test("has no serious violations, paged, scrolling, and loading more", async () => {
+    setTheme(theme);
+    await render(<LongAgenda view="agenda" weeks={104} />);
+    expect(await seriousViolations()).toEqual([]);
 
-      await render(<LongAgenda />);
-      expect(await seriousViolations()).toEqual([]);
+    await render(<LongAgenda />);
+    expect(await seriousViolations()).toEqual([]);
 
-      await render(<LongAgenda loading />);
-      // The end of the list, where it says events are loading.
-      await act(async () => {
-        list().dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
-        list().scrollTo({ behavior: "instant", top: list().scrollHeight });
-      });
-      await vi.waitFor(() => expect(list().textContent).toContain("Loading events…"));
-      // The spinner turns until events arrive; the check waits for animations to finish.
-      for (const animation of document.getAnimations()) animation.cancel();
-      expect(await seriousViolations()).toEqual([]);
-    },
-  );
+    // In WebKit one scroll to the end doesn't reach it: #181.
+    if (inWebKit) return;
+    await render(<LongAgenda loading />);
+    // The end of the list, where it says events are loading.
+    await act(async () => {
+      list().dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
+      list().scrollTo({ behavior: "instant", top: list().scrollHeight });
+    });
+    await vi.waitFor(() => expect(list().textContent).toContain("Loading events…"));
+    // The spinner turns until events arrive; the check waits for animations to finish.
+    for (const animation of document.getAnimations()) animation.cancel();
+    expect(await seriousViolations()).toEqual([]);
+  });
 });

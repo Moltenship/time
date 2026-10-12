@@ -242,7 +242,7 @@ describe("scrolling views", () => {
     expect(Math.abs(position() - start - 7)).toBeLessThan(0.1);
   });
 
-  // WebKit won't capture the synthetic pointer events this test sends: #181.
+  // In WebKit the drag doesn't carry the view on; why isn't known yet: #181.
   test.skipIf(inWebKit)(
     "dragging an event against the edge carries it past the days rendered at first",
     async () => {

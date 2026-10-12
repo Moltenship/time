@@ -53,7 +53,7 @@ race can pass once by luck. When a tier fails, `vp run --last-details` names the
 alone with `vp run <step>`.
 
 The browser runs need Playwright's browsers once: `vp exec --filter a11y playwright install chromium
-firefox webkit`. Playwright's Firefox doesn't start on macOS 27 (#182); there `browsers` runs WebKit
+firefox webkit` (add `--with-deps` on Linux). Playwright's Firefox doesn't start on macOS 27 (#182); there `browsers` runs WebKit
 alone, and CI runs both on demand: `gh workflow run ci.yml --ref <branch>`.
 
 A new check joins a tier in `vite.config.ts`: `ready:checks` or `gate:serial` for the PR tier,

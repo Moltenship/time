@@ -62,16 +62,16 @@ covers it:
 
 `vp run browsers` runs the a11y suite and `tools/a11y/tests/interactions.a11y.tsx` (real mouse and
 keyboard moves and resizes) in Firefox and WebKit (`--mode browsers`); `vp run a11y` runs both in
-Chromium. Chromium, Firefox and Playwright's WebKit all have Temporal, but Safari before it doesn't,
-so WebKit runs on `temporal-polyfill`: `tools/a11y/tests/setup.ts` removes the native Temporal and
+Chromium. Chromium, Firefox and Playwright's WebKit all have Temporal, but Safari versions without it
+are still in use, so WebKit runs on `temporal-polyfill`: `tools/a11y/tests/setup.ts` removes the native Temporal and
 installs the polyfill before any test imports, as an app would, and a test checks it did.
 
 - Reduced motion stays in its own Chromium context.
 - Base UI's focus guards are unnamed buttons in WebKit, on purpose, for VoiceOver; `axe.ts` exempts
   them as it already does for `aria-hidden-focus`.
-- Five groups of tests skip in WebKit until #181: focus kept in view in the scrolling agenda, the
-  agenda's end, the 10,000-event agenda scroll (too slow on the polyfill in CI), a day swipe's snap
-  stop, and a drag against the edge with synthetic pointer events.
+- Some tests skip in WebKit: focus kept in view in the scrolling agenda (#185, a 1.0 blocker), and
+  until #181 the agenda's end, the 10,000-event agenda scroll (too slow on the polyfill in CI), a
+  day swipe's snap stop, and a drag against the edge.
 - Playwright's Firefox doesn't start on macOS 27 (#182). There the run leaves it out and says so;
   CI's `browsers` job runs it on Linux.
 
