@@ -131,4 +131,52 @@ describe("ICS fixtures, bridged and expanded", () => {
     expect(expansion.issues).toEqual([]);
     expect(snapshot.issues.map((issue) => issue.code)).not.toContain("duplicate-event-id");
   });
+
+  test("repeats Google's all-day birthday every year from 1990", () => {
+    const uid = "5f4e3d2c1b0a9z8y7x6w5v4u3t@google.com";
+    const { expansion } = expandFixture("google.ics", "2026-05-01", "2028-01-01");
+    expect(
+      expansion.occurrences
+        .filter((occurrence) => occurrence.recurrence?.seriesId === uid)
+        .map(({ id, interval }) => [
+          id,
+          interval.kind,
+          String(interval.start),
+          String(interval.end),
+        ]),
+    ).toEqual([
+      [`${uid}::2026-05-21`, "all-day", "2026-05-21", "2026-05-22"],
+      [`${uid}::2027-05-21`, "all-day", "2027-05-21", "2027-05-22"],
+    ]);
+  });
+
+  test("expands iCloud's every-other-day floating series at the same wall time across DST", () => {
+    const uid = "2D3E4F5A-6B7C-4D8E-9F0A-1B2C3D4E5F6A";
+    const { bridged, expansion, snapshot } = expandFixture(
+      "icloud.ics",
+      "2026-03-01",
+      "2026-04-01",
+    );
+    // DAILY;INTERVAL=2;COUNT=10 from 2 March, floating: 7:00 wherever the calendar is, before and
+    // after New York's DST change on 8 March.
+    const stretching = expansion.occurrences
+      .filter((occurrence) => occurrence.recurrence?.seriesId === uid)
+      .map(({ id, interval }) => [id, interval.kind, String(interval.start), String(interval.end)]);
+    expect(stretching).toEqual(
+      [2, 4, 6, 8, 10, 12, 14, 16, 18, 20].map((day) => {
+        const date = `2026-03-${String(day).padStart(2, "0")}`;
+        return [`${uid}::${date}T07:00:00`, "floating", `${date}T07:00:00`, `${date}T07:45:00`];
+      }),
+    );
+    // The one-off events pass through: the floating run, and the zoned dinner and all-day
+    // vacation outside the range.
+    expect(
+      expansion.occurrences
+        .filter((occurrence) => occurrence.recurrence === undefined)
+        .map(({ event }) => event.title),
+    ).toEqual(["Dinner", "Morning run", "Vacation"]);
+    expect(bridged.issues).toEqual([]);
+    expect(expansion.issues).toEqual([]);
+    expect(snapshot.issues).toEqual([]);
+  });
 });
