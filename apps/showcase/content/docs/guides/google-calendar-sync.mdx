@@ -261,7 +261,8 @@ the store:
   announces that the change wasn't saved. There's no copy of the events to restore by hand.
 - **Etags.** Every Google event has an `etag` that changes on every write. Writes send the etag of
   the version on screen as `If-Match`. A change to a recurring event syncs first, and stops with a
-  412 if the series changed in Google since it loaded: for "This event", the occurrence itself.
+  412 if the series changed in Google since the user saw it: for "This event", the occurrence
+  itself.
   The instances it then rewrites and clears go without an etag.
 - **412 Precondition Failed.** Someone changed the event since it loaded. The write is refused,
   the sync after it brings in their version, and the drag rolls back onto it. The footer says what
@@ -270,8 +271,8 @@ the store:
 - **Rate limits.** The client's backoff waits it out while the change stays pending. Rate-limit two
   requests in the demo, then drag an event.
 - **Already deleted.** Deleting an event someone else deleted gets a 410, which counts as done.
-  Changing an occurrence someone cancelled stops with a 412 instead, so the change rolls back
-  rather than bring the occurrence back.
+  So is deleting an occurrence someone cancelled. Moving one throws a 410 instead, so the change
+  rolls back rather than bring the occurrence back.
 - **New events** get an ID from `newGoogleId`. Google takes IDs you pick, so you know an event's ID
   before it's saved, as you do for "This and following events". If an insert gets a 5xx after
   Google stored it, the retry gets a 409, and the event is there.

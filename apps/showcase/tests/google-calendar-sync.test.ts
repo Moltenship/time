@@ -569,7 +569,16 @@ describe("saving changes", () => {
     await expect(save(sync, move(tuesday, at("2026-10-13", "09:30")), "all")).rejects.toThrow(
       "can't write back",
     );
-    expect(requests(google).slice(before)).toEqual(["GET events 200"]);
+    // Syncs, but writes nothing.
+    expect(
+      requests(google)
+        .slice(before)
+        .every((line) => line.startsWith("GET")),
+    ).toBe(true);
+
+    // Deleting one occurrence doesn't touch the master, so it works.
+    await save(sync, remove(find(sync, "standup::2026-10-13T07:00:00Z")), "this");
+    expect(standups(sync)).not.toContain("2026-10-13T09:00:00 Stand-up");
   });
 
   test("creates events with an ID Google accepts", async () => {
@@ -610,12 +619,52 @@ describe("changes made in Google meanwhile", () => {
     elsewhere(google, () => exception("2026-10-16", { status: "cancelled" }));
     const friday = find(sync, "standup::2026-10-16T07:00:00Z");
     await expect(save(sync, move(friday, at("2026-10-16", "14:00")), "this")).rejects.toMatchObject(
-      { status: 412 },
+      { status: 410 },
     );
     expect(google.getEvent(instanceId("standup", at("2026-10-16", "09:00")))?.status).toBe(
       "cancelled",
     );
     expect(standups(sync)).not.toContain("2026-10-16T09:00:00 Stand-up");
+  });
+
+  test("deleting an occurrence someone cancelled is done", async () => {
+    const { google, sync } = setup();
+    await sync.load(week(monday));
+    elsewhere(google, () => exception("2026-10-16", { status: "cancelled" }));
+    const before = requests(google).length;
+    await save(sync, remove(find(sync, "standup::2026-10-16T07:00:00Z")), "this");
+    expect(
+      requests(google)
+        .slice(before)
+        .every((line) => line.startsWith("GET")),
+    ).toBe(true);
+    expect(standups(sync)).not.toContain("2026-10-16T09:00:00 Stand-up");
+  });
+
+  test("a change the store learned of while the user decided still stops the edit", async () => {
+    const { google, sync } = setup();
+    await sync.load(week(monday));
+    // The user drags these as they are now; then a sync brings in Ana's changes.
+    const friday = find(sync, "standup::2026-10-16T07:00:00Z");
+    const late = find(sync, "standup::2026-10-15T07:00:00Z");
+    const lateId = instanceId("standup", at("2026-10-15", "09:00"));
+    elsewhere(google, () =>
+      exception("2026-10-16", {
+        end: time("2026-10-16", "13:30"),
+        start: time("2026-10-16", "13:00"),
+        summary: "Stand-up (Ana's)",
+      }),
+    );
+    elsewhere(google, (events) => ({ ...events.get(lateId)!, summary: "Stand-up (Ana's late)" }));
+    await sync.sync();
+    await expect(save(sync, move(friday, at("2026-10-16", "15:00")), "this")).rejects.toMatchObject(
+      { status: 412 },
+    );
+    await expect(
+      save(sync, move(late, at("2026-10-15", "11:00")), "following"),
+    ).rejects.toMatchObject({ status: 412 });
+    expect(standups(sync)).toContain("2026-10-16T13:00:00 Stand-up (Ana's)");
+    expect(standups(sync)).toContain("2026-10-15T10:00:00 Stand-up (Ana's late)");
   });
 
   test("moving an occurrence someone moved rolls back onto theirs", async () => {

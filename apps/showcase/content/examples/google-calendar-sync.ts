@@ -224,7 +224,8 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
     } catch (error) {
       if (!isStatus(error, 404, 410)) throw error;
     }
-    apply([{ ...event, status: "cancelled" }]);
+    // Google's answer to a delete has no body, so the cancelled one's etag isn't known.
+    apply([{ ...event, etag: undefined, status: "cancelled" }]);
   }
   // #endregion save
 
@@ -240,27 +241,41 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
       await remove(series.event.data, series.event.data.etag);
       return;
     }
-    // The new `recurrence` is written from what `fromGoogleEvents` read, which would drop the
-    // lines it couldn't, such as EXRULE.
-    const master = series.action === "update" ? series.event.data : undefined;
-    if (master !== undefined && readGoogleRecurrence(master.recurrence ?? []).problems.length > 0) {
-      throw new Error("This series has rules the app can't write back. Change it in Google.");
-    }
     // The writes below replace instances the store read, some without etags. So sync first, and
-    // stop if the series changed in Google since: for "this", the occurrence's own instance.
+    // stop if the series changed in Google since the user saw it: the master and the changed
+    // occurrences, or for "this", the occurrence's own instance. The edit holds what they saw of
+    // the master and the edited occurrence; the store may have newer versions already.
     const only = edit.scope === "this" ? edit.recurrenceId : undefined;
+    const edited = override?.action === "create" ? undefined : override?.event;
     const before = versions(seriesId, only);
+    if (only !== undefined) before.clear();
+    if (series.action === "update" && only === undefined) {
+      before.set(seriesId, series.event.data.etag);
+    }
+    if (edited !== undefined) before.set(edited.data.id, edited.data.etag);
     await syncNow();
     const after = versions(seriesId, only);
-    if (
-      [...after].some(([id, etag]) => before.get(id) !== etag) ||
-      (before.has(seriesId) && !after.has(seriesId))
-    ) {
+    if (only !== undefined) {
+      // Cancelled in Google meanwhile: a delete is done, and a move would bring it back.
+      const now = events.find(
+        (event) => event.override?.seriesId === seriesId && after.has(event.data.id),
+      );
+      if (now?.override?.cancelled === true && before.get(now.data.id) !== now.data.etag) {
+        if (edit.cause === "delete") return;
+        throw new GoogleApiError(410, "deleted", "The occurrence was deleted in Google Calendar.");
+      }
+    }
+    const changedInGoogle = [...after].some(([id, etag]) => {
+      if (!before.has(id)) return true;
+      // Undefined: cancelled here, and Google's answer to a delete has no etag.
+      const seen = before.get(id);
+      return seen !== undefined && seen !== etag;
+    });
+    if (changedInGoogle || (before.has(seriesId) && !after.has(seriesId))) {
       throw new GoogleApiError(412, "conditionNotMet", "The series changed in Google Calendar.");
     }
 
     // "This event" deletes cancel the occurrence's instance, as Google does, and leave the master.
-    const edited = override?.action === "create" ? undefined : override?.event;
     if (edit.scope === "this" && edit.cause === "delete") {
       const write: OccurrenceWrite = {
         from: edited,
@@ -270,6 +285,12 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
       };
       await writeOccurrences([write], [], timeZone);
       return;
+    }
+    // The new `recurrence` is written from what `fromGoogleEvents` read, which would drop the
+    // lines it couldn't, such as EXRULE.
+    const master = series.action === "update" ? series.event.data : undefined;
+    if (master !== undefined && readGoogleRecurrence(master.recurrence ?? []).problems.length > 0) {
+      throw new Error("This series has rules the app can't write back. Change it in Google.");
     }
     // The series' other changed and cancelled occurrences, which the edit moves or ends.
     const others = events
