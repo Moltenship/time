@@ -26,9 +26,11 @@ RDATE and RECURRENCE-ID into Temporal values (ADR 0151).
    a DST-gap DTSTART) and an override's `RecurrenceOverride` (series ID, `recurrenceId`,
    `cancelled`). The master's interval is the first occurrence, as DTSTART and DTEND are.
    Occurrences last exactly as long as the first, or the DURATION's nominal length (RFC 5545
-   §3.8.5.3). RDATEs are starts; a PERIOD's own length is dropped with an issue. Cancelled overrides,
-   which Google's API and ICS feeds use for deleted occurrences, hide the occurrence. An event that is
-   both master and override is an override. RANGE=THISANDFUTURE isn't supported: Google and Outlook
+   §3.8.5.3). An RDATE is a start, or a PERIOD that keeps its own length. An override's
+   `recurrenceId` takes the series' kind, so its ID is the same before and after its master loads.
+   Cancelled overrides, which Google's API and ICS feeds use for deleted occurrences, hide the
+   occurrence. An event that is both master and override is an override, with a
+   `conflicting-recurrence` issue. RANGE=THISANDFUTURE isn't supported: Google and Outlook
    split the series instead, and the ICS bridge reports it and treats the override as a single one.
    `RecurringCalendarEvent` and `createCanonicalRecurrenceAdapter` cover applications without their
    own event type, as `createCanonicalEventAdapter` does in core.
@@ -40,7 +42,10 @@ RDATE and RECURRENCE-ID into Temporal values (ADR 0151).
    occurrence: `Instant` for timed series, `PlainDate` for all-day, `PlainDateTime` for floating.
    `coerceRecurrenceDate` is the one place dates of another kind convert, as real feeds need: a UTC
    UNTIL on an all-day series, a date-only UNTIL on a timed one (the end of that day), a date-only
-   EXDATE (the whole day). A date it can't convert is dropped with an issue; the series stays.
+   EXDATE (the whole day). Instants on all-day and floating series read in the expander's
+   `defaultTimeZone`, so the ICS bridge passes the feed's zone. A date it can't convert is dropped
+   with an issue; the series stays. A DTSTART written inside a DST gap keeps repeating at its written
+   wall time (`wallStart`), which is ignored once it no longer resolves to the start.
    Timed series repeat on the wall clock of `sourceTimeZone`, or the expander's `defaultTimeZone`
    (UTC unless set), so a 09:00 weekly meeting stays at 09:00 across DST. RFC 5545 §3.3.10 both
    ignores starts that don't exist and resolves them as §3.3.5 does; we choose the latter, Temporal's
@@ -48,14 +53,19 @@ RDATE and RECURRENCE-ID into Temporal values (ADR 0151).
    Dates that don't exist on any clock, such as 30 February, are skipped and don't count. The first
    occurrence is always one, and counts toward COUNT as §3.3.10 says, even when the rule wouldn't
    produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and rrule.js and python-dateutil
-   leave DTSTART out; we keep it because the application's event exists at that time. The engine
-   covers all of RFC 5545: every FREQ, every BY part, BYSETPOS, WKST, COUNT and UNTIL.
+   leave DTSTART out; we keep it because the application's event exists at that time. A rule with
+   both COUNT and UNTIL, which some feeds write, ends at whichever comes first. BYHOUR, BYMINUTE and
+   BYSECOND on an all-day series are ignored, as RFC 5545 says. The engine covers all of RFC 5545:
+   every FREQ, every BY part, BYSETPOS, WKST, COUNT and UNTIL. It works and answers in the ISO
+   calendar, and throws a `RecurrenceRuleError` whose `code` names the issue the series layer
+   reports.
 5. **Work is bounded by the queried range.** `OccurrenceRange` is a half-open date range and the
    calendar's time zone, as `onVisibleRangeChange` reports `loadRange`. An occurrence is included
    when its interval overlaps the range, so one starting before it still shows. Without COUNT the
-   engine skips ahead to the range; COUNT counts from the first occurrence. `maxIterations` caps the
-   loop steps per series, including steps that produce nothing, and reports an `iteration-limit`
-   issue rather than hanging. Starts come out strictly increasing; duplicates, such as two wall times
+   engine skips ahead to the range; COUNT counts from the first occurrence, and occurrences an EXDATE
+   removes still count (RFC 5545 §3.8.5.1), the first one included. `maxIterations` caps the periods
+   an engine visits per series, including ones that produce nothing but not ones it skips, and
+   reports an `iteration-limit` issue rather than hanging. Starts come out strictly increasing; duplicates, such as two wall times
    resolving out of the same gap or an RDATE on a rule date, appear once. Overrides and one-off
    events pass through whatever the range, since the application already chose to load them. The
    expander reuses work for events that are the same objects as last time.
@@ -71,8 +81,8 @@ RDATE and RECURRENCE-ID into Temporal values (ADR 0151).
    `"this"` (create or update an override, or add an exception date), `"following"` (end the series
    before the occurrence and start a new one there, moving later exception dates, RDATEs and
    overrides to it and recomputing COUNT) or `"all"` (change the master, moving the rule with it, such
-   as BYDAY when the day changes, and rekeying exception dates and overrides so deleted occurrences
-   stay deleted and moved ones don't appear twice). `"following"` and `"all"` change occurrence IDs,
+   as BYDAY when the day changes and a date-time UNTIL, dropping `wallStart`, and rekeying exception
+   dates and overrides so deleted occurrences stay deleted and moved ones don't appear twice). `"following"` and `"all"` change occurrence IDs,
    so the edit maps old IDs to new ones for the application's selection. The application asks which
    scope it means while its `onEventChange` promise is pending, so the change stays visible and a
    cancel rolls it back. The registry's scope dialog takes no recurrence types, so registry source

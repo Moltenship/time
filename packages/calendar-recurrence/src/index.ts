@@ -1,5 +1,7 @@
 export { coerceRecurrenceDate } from "./dates";
 export type { CoerceRecurrenceDateOptions, RecurrenceDateRole } from "./dates";
+export { RecurrenceRuleError } from "./errors";
+export type { RecurrenceRuleErrorCode } from "./errors";
 export { occurrenceId, parseOccurrenceId, recurrenceKey } from "./occurrence-id";
 export { DEFAULT_MAX_ITERATIONS, expandRecurrenceRule } from "./rule/expand";
 export type {
@@ -15,6 +17,7 @@ export type {
   RecurrenceIssue,
   RecurrenceOccurrence,
   RecurrenceOverride,
+  RecurrencePeriod,
   RecurrenceRule,
   RecurrenceRuleExpansion,
   RecurrenceRuleStart,

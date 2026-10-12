@@ -13,10 +13,10 @@ export type RecurrenceDateRole =
 
 export interface CoerceRecurrenceDateOptions {
   /**
-   * The zone wall times and dates resolve in for a timed series, and instants read in for all-day
-   * and floating ones. Defaults to the series' `sourceTimeZone`, or UTC.
+   * The zone for a timed series without `sourceTimeZone`, and the one instants are read in for
+   * all-day and floating series, such as a feed's X-WR-TIMEZONE. Defaults to UTC.
    */
-  readonly timeZone?: string;
+  readonly defaultTimeZone?: string;
 }
 
 function isoDate(date: Temporal.PlainDate): Temporal.PlainDate {
@@ -41,7 +41,7 @@ export function coerceRecurrenceDate(
   options: CoerceRecurrenceDateOptions = {},
 ): RecurrenceDate | undefined {
   const timeZone =
-    options.timeZone ?? (first.kind === "timed" ? first.sourceTimeZone : undefined) ?? "UTC";
+    (first.kind === "timed" ? first.sourceTimeZone : undefined) ?? options.defaultTimeZone ?? "UTC";
 
   if (first.kind === "timed") {
     if (date instanceof Temporal.Instant) return date;
