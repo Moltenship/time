@@ -1154,7 +1154,8 @@ Shipped: #48 and #49 through #156 (contracts and ADR 0048), #159 (the RFC 5545 r
 RRULE text, checked against 318 python-dateutil and ical.js fixtures), #157 (`createOccurrenceExpander`
 over `loadRange`, `createOccurrenceAdapter` and the `recurringEventsFromIcs` bridge) and #158 (`"this"`,
 `"following"` and `"all"` edits through `resolveRecurrenceEdit`, and the registry's
-`recurrence-scope-dialog`). #155 adds the demo and docs and closes epic #2 with the gate:
+`recurrence-scope-dialog`). #155 closes epic #2 with the demo and docs, in a PR of their own, and
+the gate:
 
 - a DST matrix through core's view projections: series in Berlin, New York, Lord Howe, Santiago and
   Sydney, shown in each of those zones and in Kolkata, with positions, counts and occurrence IDs

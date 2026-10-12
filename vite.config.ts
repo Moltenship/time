@@ -52,7 +52,8 @@ export default defineConfig({
       ],
       "recurrence:gate": [
         "vp check",
-        "vp test packages/calendar-recurrence benchmarks/tests/recurrence.test.ts",
+        "vp test packages/calendar-recurrence benchmarks/tests/recurrence.test.ts registry/tests/recurrence-scope-dialog.test.tsx registry/tests/announcements.test.ts tests/dependency-boundaries.test.ts",
+        "vp run a11y#test tests/recurrence-scope-dialog.a11y.tsx tests/recurrence-scope-dialog-week.a11y.tsx",
         "vp run --no-cache benchmark#recurrence",
       ],
       "react:store": [
