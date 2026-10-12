@@ -2,6 +2,8 @@
 
 import dynamic from "next/dynamic";
 
+import { withTemporal } from "@/components/calendar-preview/island";
+
 /** Static stand-in that fills the frame while Temporal and the parser load in the browser. */
 function PlaygroundSkeleton() {
   return (
@@ -24,13 +26,6 @@ function PlaygroundSkeleton() {
       </div>
     </div>
   );
-}
-
-async function withTemporal<TModule>(load: () => Promise<TModule>): Promise<TModule> {
-  // Chrome and Firefox ship Temporal natively; only load the polyfill where it is missing.
-  if (!("Temporal" in globalThis)) await import("temporal-polyfill/global");
-  // Imported after the polyfill so the parser never evaluates without Temporal.
-  return load();
 }
 
 // Client-only: the parser builds Temporal values, which the server would have to serialize.

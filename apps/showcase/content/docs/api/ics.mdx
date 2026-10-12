@@ -427,8 +427,9 @@ Each issue says what's wrong and where:
 
 - `severity` is `"error"` or `"warning"`. An error drops the value or component it concerns. A
   warning keeps a best-effort value, such as the date above.
-- `line` is the 1-based line in the text, when the issue comes from one. For a skipped component,
-  it's the `BEGIN` line.
+- `line` is the 1-based line in the text, when the issue comes from one. A component skipped for a
+  missing property reports its `BEGIN` line; one skipped for an invalid value reports that
+  property's line.
 - `path` is where the issue lands in the result. Indexes count the components that were kept, so
   a skipped event's path ends at `events`. It's empty for problems with the text's structure.
 - `component` and `property` name the component and property, when there is one.

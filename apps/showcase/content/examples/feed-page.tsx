@@ -3,6 +3,7 @@
 import { parseIcs } from "@moltenship/ics";
 import { cacheLife } from "next/cache";
 import { connection } from "next/server";
+import { Suspense } from "react";
 
 import { FeedCalendar } from "./feed-calendar";
 import { toFeedEvents, type FeedEventJson } from "./feed-events";
@@ -23,7 +24,15 @@ async function getFeedEvents(timeZone: string): Promise<readonly FeedEventJson[]
   return calendars.flatMap((calendar) => toFeedEvents(calendar, timeZone));
 }
 
-export default async function TeamPage() {
+export default function TeamPage() {
+  return (
+    <Suspense fallback={<p>Loading the team calendar…</p>}>
+      <TeamFeed />
+    </Suspense>
+  );
+}
+
+async function TeamFeed() {
   await connection(); // render on each request, for a fresh `now`
 
   // The viewer's time zone, for example from their profile or a cookie.

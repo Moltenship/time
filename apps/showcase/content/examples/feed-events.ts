@@ -54,7 +54,9 @@ export function toFeedEvent(event: IcsEvent, timeZone: string): FeedEventJson | 
     };
   } else {
     const start = toInstant(event.start, timeZone);
-    const endInstant = toInstant(end, timeZone);
+    // A DTEND in UTC or a time zone keeps its instant, even after a floating start.
+    const absoluteEnd = event.end?.kind === "utc" || event.end?.kind === "zoned";
+    const endInstant = toInstant(absoluteEnd ? event.end! : end, timeZone);
     const isAfter = Temporal.Instant.compare(endInstant, start) > 0;
     times = {
       kind: "timed",

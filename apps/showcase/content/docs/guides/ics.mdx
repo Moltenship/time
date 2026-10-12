@@ -72,8 +72,9 @@ for the client:
   `{ next: { revalidate: 3600 } }` to `fetch` instead.
 - **Issues.** `parseIcs` doesn't throw on bad data. It keeps what it can and lists each problem in
   `issues`, with its line. The page logs them; see [Issues](#issues) for more.
-- **The current time.** `connection()` renders the page on each request, so `now` is today rather
-  than the day you built the app.
+- **The current time.** `connection()` renders the calendar on each request, so `now` is today
+  rather than the day you built the app. That makes it request-time data, so it sits in a
+  `<Suspense>` boundary: the rest of the page still prerenders, and the build doesn't stop on it.
 
 Temporal values can't cross from a Server Component to a Client Component, so `toFeedEvents` returns
 ISO 8601 strings. The client turns them back into Temporal values:

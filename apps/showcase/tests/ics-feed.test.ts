@@ -78,6 +78,14 @@ describe("toFeedEvent", () => {
     });
   });
 
+  test("a DTEND in UTC keeps its instant after a floating start", () => {
+    const event = eventOf(["DTSTART:20261012T090000", "DTEND:20261012T100000Z"], "Asia/Tokyo");
+    expect(event).toMatchObject({
+      start: "2026-10-12T00:00:00Z",
+      end: "2026-10-12T10:00:00Z",
+    });
+  });
+
   test("an unresolved TZID is its wall time in the chosen time zone", () => {
     const event = eventOf(
       ["DTSTART;TZID=Our Office:20261012T090000", "DTEND;TZID=Our Office:20261012T100000"],
@@ -185,17 +193,26 @@ describe("the preview's feed", () => {
     ]);
   });
 
-  test("keeps every event in the visitor's week, even on a Sunday", () => {
-    const sunday = Temporal.ZonedDateTime.from("2026-10-18T09:00[America/Los_Angeles]");
-    const { calendars, issues } = parseIcs(createPreviewFeed(sunday));
+  test.each([
+    ["on a Sunday morning", "2026-10-18T09:00[America/Los_Angeles]"],
+    ["just after midnight on Monday", "2026-10-12T00:30[Europe/Berlin]"],
+    ["late on Sunday", "2026-10-18T23:00[Asia/Tokyo]"],
+  ])("keeps every event in the visitor's week, %s", (_, at) => {
+    const now = Temporal.ZonedDateTime.from(at);
+    const { calendars, issues } = parseIcs(createPreviewFeed(now));
     expect(issues.filter((issue) => issue.severity === "error")).toEqual([]);
-    const dates = toFeedEvents(calendars[0]!, sunday.timeZoneId).map((event) =>
-      event.kind === "timed"
-        ? Temporal.Instant.from(event.start).toZonedDateTimeISO(sunday.timeZoneId).toPlainDate()
-        : Temporal.PlainDate.from(event.start),
-    );
-    for (const date of dates) {
-      expect(date.toString() >= "2026-10-12" && date.toString() <= "2026-10-18").toBe(true);
+    const local = (instant: string) =>
+      Temporal.Instant.from(instant).toZonedDateTimeISO(now.timeZoneId).toPlainDate().toString();
+    for (const event of toFeedEvents(calendars[0]!, now.timeZoneId)) {
+      const [first, last] =
+        event.kind === "timed"
+          ? [
+              local(event.start),
+              local(Temporal.Instant.from(event.end).subtract({ nanoseconds: 1 }).toString()),
+            ]
+          : [event.start, Temporal.PlainDate.from(event.end).subtract({ days: 1 }).toString()];
+      expect(first >= "2026-10-12" && last <= "2026-10-18").toBe(true);
+      expect(first).toBe(last);
     }
   });
 });

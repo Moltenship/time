@@ -44,7 +44,9 @@ const outlookBerlin = [
  * which opens on the current time, opens on them.
  */
 export function createPreviewFeed(now: Temporal.ZonedDateTime): string {
-  const hour = now.round({ roundingMode: "floor", smallestUnit: "hour" });
+  const current = now.round({ roundingMode: "floor", smallestUnit: "hour" });
+  // Kept between 02:00 and 19:00, so no event crosses midnight into another day or week.
+  const hour = current.with({ hour: Math.min(Math.max(current.hour, 2), 19) });
   const today = now.toPlainDate();
   // Tomorrow and the day after, stepping back instead at the end of the week.
   const next = today.dayOfWeek < 7 ? 1 : -1;
@@ -107,10 +109,12 @@ export function createPreviewFeed(now: Temporal.ZonedDateTime): string {
   ].join("\r\n");
 }
 
-let current: string | undefined;
+let today: { readonly date: string; readonly feed: string } | undefined;
 
-/** This page's feed, built once from the visitor's clock and shared by the calendar and source. */
+/** Today's feed, built from the visitor's clock and shared by the calendar and the source. */
 export function currentPreviewFeed(): string {
-  current ??= createPreviewFeed(Temporal.Now.zonedDateTimeISO());
-  return current;
+  const now = Temporal.Now.zonedDateTimeISO();
+  const date = now.toPlainDate().toString();
+  if (today?.date !== date) today = { date, feed: createPreviewFeed(now) };
+  return today.feed;
 }
