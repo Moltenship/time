@@ -1,8 +1,8 @@
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import type { EventDayFragment, EventId, ResourceId, YearDay } from "@moltenship/calendar";
-import { useRef, type RefObject } from "react";
+import { useRef, type ReactNode, type RefObject } from "react";
 
-import { EventChip, useEventChip } from "@registry/calendar/event-chip";
+import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
@@ -14,6 +14,8 @@ interface YearEventProps<TEvent> {
   readonly color?: CalendarEventColor;
   readonly formats: YearFormats;
   readonly fragment: EventDayFragment<TEvent, EventId, ResourceId>;
+  /** Shown before the title, from the view's `getEventIcon`. */
+  readonly icon?: ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
 }
 
@@ -22,7 +24,7 @@ interface YearEventProps<TEvent> {
  * dot, start time, and title. A `[data-event-id]` button, so the app's event details open from it
  * as from any view.
  */
-function YearEvent<TEvent>({ color, formats, fragment, labelEvent }: YearEventProps<TEvent>) {
+function YearEvent<TEvent>({ color, formats, fragment, icon, labelEvent }: YearEventProps<TEvent>) {
   const { event } = fragment;
   const chip = useEventChip(event, { date: fragment.date, focusTarget: false, labelEvent });
   const bar = event.kind === "all-day" || fragment.startsBeforeDay || fragment.endsAfterDay;
@@ -50,7 +52,10 @@ function YearEvent<TEvent>({ color, formats, fragment, labelEvent }: YearEventPr
           {time}
         </span>
       )}
-      <span className="min-w-0 flex-1 truncate font-medium">{event.title}</span>
+      <span className="min-w-0 flex-1 truncate font-medium">
+        <EventIcon>{icon}</EventIcon>
+        {event.title}
+      </span>
     </EventChip>
   );
 }
@@ -60,6 +65,8 @@ export interface YearDayPopoverProps<TEvent> {
   readonly days: ReadonlyMap<string, YearDay<TEvent, EventId, ResourceId>>;
   readonly formats: YearFormats;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  /** An icon before an event's title, or nothing. */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly handle: YearDayPopoverHandle;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
@@ -76,6 +83,7 @@ export function YearDayPopover<TEvent>({
   days,
   formats,
   getEventColor,
+  getEventIcon,
   handle,
   labelEvent,
   onOpenDay,
@@ -131,6 +139,7 @@ export function YearDayPopover<TEvent>({
                     // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
                     key={`${typeof fragment.event.id}:${fragment.event.id}`}
                     color={getEventColor?.(fragment.event.event)}
+                    icon={getEventIcon?.(fragment.event.event)}
                     formats={formats}
                     fragment={fragment}
                     labelEvent={labelEvent}

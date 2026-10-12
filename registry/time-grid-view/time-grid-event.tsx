@@ -5,9 +5,9 @@ import type {
   ResourceId,
   TimeGridEventLayout,
 } from "@moltenship/calendar";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
-import { EventChip, useEventChip } from "@registry/calendar/event-chip";
+import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { TooltipContent } from "@registry/ui/tooltip";
@@ -25,6 +25,8 @@ export interface TimeGridEventFormats {
 export interface TimeGridEventProps<TEvent> {
   readonly color?: CalendarEventColor;
   readonly formats: TimeGridEventFormats;
+  /** Shown before the title, from the view's `getEventIcon`. */
+  readonly icon?: ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly layout: TimeGridEventLayout<EventDayFragment<TEvent, EventId, ResourceId>>;
   /** Rendered beside the visible dates of a scrolling grid: not a focus target. */
@@ -111,6 +113,7 @@ export function eventTimeRange(
 export function TimeGridEvent<TEvent>({
   color,
   formats,
+  icon,
   labelEvent,
   layout,
   offscreen,
@@ -167,6 +170,8 @@ export function TimeGridEvent<TEvent>({
       >
         {compact ? (
           <span ref={titleRef} className="truncate">
+            {/* Smaller, to fit the compact line without making it taller. */}
+            <EventIcon className="size-2.5 [&_svg]:size-2.5">{icon}</EventIcon>
             {event.title}
             <span className="font-normal opacity-80">
               , <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
@@ -175,6 +180,7 @@ export function TimeGridEvent<TEvent>({
         ) : (
           <>
             <span ref={titleRef} className="line-clamp-2">
+              <EventIcon>{icon}</EventIcon>
               {event.title}
             </span>
             <span data-event-time className="truncate font-normal tabular-nums opacity-80">

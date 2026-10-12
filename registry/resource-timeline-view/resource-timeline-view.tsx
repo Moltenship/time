@@ -14,7 +14,7 @@ import {
   type ResourceTimelineProjection,
   type ResourceTimelineSpan,
 } from "@moltenship/calendar";
-import { useLayoutEffect, useMemo } from "react";
+import { useLayoutEffect, useMemo, type ReactNode } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import {
@@ -32,6 +32,12 @@ export interface ResourceTimelineViewOptions<TEvent> extends ResourceTimelineOpt
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Colour for an event; sets `data-color` on every element that renders it. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /**
+   * A small icon before an event's title, such as a repeat mark on recurring events, or nothing.
+   * It's decorative and hidden from assistive technology: say the same in `describeEvent`, which
+   * adds to each event's accessible name.
+   */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   /**
    * Replaces the shading of closed time and closed days: an element, or a function of its props
    * and of the band, date and resource, such as a gradient into working hours or a tint for rooms.
@@ -137,6 +143,7 @@ export function ResourceTimelineView<TEvent>({
       entry={entry}
       environment={environment}
       getEventColor={options.getEventColor}
+      getEventIcon={options.getEventIcon}
       keyboard={keyboard}
       label={gridLabel(range, environment.locale)}
       labelEvent={labelEvent}

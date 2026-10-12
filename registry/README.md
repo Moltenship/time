@@ -53,6 +53,10 @@ npx shadcn@latest add button dialog popover select tooltip
   and sets `data-color` on each event element (`EventChip` does this through its `color` prop).
   The theme maps `data-color` to the `--calendar-event`, `--calendar-event-foreground`, and
   `--calendar-event-border` tokens for light and dark themes.
+- Event icons: a view accepts an optional `getEventIcon?: (event) => ReactNode` option and renders
+  the result with `EventIcon` from `@registry/calendar/event-chip`, inline at the start of the
+  event's title, in the chip's text colour. It is `aria-hidden`, so what it means belongs in the
+  view's `describeEvent`. Without an icon nothing renders, and the chip's layout is unchanged.
 - Render each event as a `<button data-event-id={id}>` (the pointer layer's contract). Apps open
   event details by delegating clicks on `[data-event-id]`, so views need no click callback.
 - Name each event with `useEventLabel` from `@registry/calendar/event-label`: title, when, the

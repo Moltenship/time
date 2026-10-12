@@ -16,7 +16,7 @@ import {
   type YearDay,
   type YearProjection,
 } from "@moltenship/calendar";
-import { useEffect, useId, useMemo, useRef, useState, type RefObject } from "react";
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
@@ -44,6 +44,12 @@ export interface YearViewOptions<TEvent> {
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Picks each event's `data-color`, for its dot and in the day's list. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  /**
+   * A small icon before an event's title in a day's list, such as a repeat mark on recurring
+   * events, or nothing; the dots don't show it. It's decorative and hidden from assistive
+   * technology: say the same in `describeEvent`, which adds to each event's accessible name.
+   */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   /** The registered view a month's name opens, `"month"` by default. */
   readonly monthView?: string;
   /**
@@ -209,6 +215,7 @@ function YearView<TEvent>({
         days={days}
         formats={formats}
         getEventColor={options.getEventColor}
+        getEventIcon={options.getEventIcon}
         handle={handle}
         labelEvent={labelEvent}
         onOpenDay={openDay}

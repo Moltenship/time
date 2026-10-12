@@ -1,11 +1,14 @@
 import type { EventId, ListItem, ResourceId } from "@moltenship/calendar";
+import type { ReactNode } from "react";
 
-import { EventChip, useEventChip } from "@registry/calendar/event-chip";
+import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 export interface AgendaItemProps<TEvent> {
   readonly color?: CalendarEventColor;
+  /** Shown before the title, from the view's `getEventIcon`. */
+  readonly icon?: ReactNode;
   readonly item: ListItem<TEvent, EventId, ResourceId>;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Opens the item's day; Shift+Enter on the item does so. */
@@ -26,6 +29,7 @@ function timeLabel(
 /** One agenda row: time range or an "All day" badge, the title, and "Day k of n" for long events. */
 export function AgendaItem<TEvent>({
   color,
+  icon,
   item,
   labelEvent,
   onOpenDay,
@@ -58,7 +62,11 @@ export function AgendaItem<TEvent>({
         )}
       </span>
       <span className="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
-        <span className="truncate font-medium">{item.event.title}</span>
+        <span className="truncate font-medium">
+          {/* Sized for the row's larger text. */}
+          <EventIcon className="size-3.5 [&_svg]:size-3.5">{icon}</EventIcon>
+          {item.event.title}
+        </span>
         {item.dayCount > 1 && (
           <span className="shrink-0 text-xs text-muted-foreground">
             Day {item.dayIndex} of {item.dayCount}

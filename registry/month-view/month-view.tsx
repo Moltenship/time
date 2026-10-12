@@ -18,7 +18,7 @@ import {
   useCalendarFocus,
   useCalendarPointer,
 } from "@moltenship/calendar";
-import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
@@ -32,6 +32,12 @@ export interface MonthViewOptions<TEvent> {
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Picks each event's `data-color`; events without one use the theme's default colour. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  /**
+   * A small icon before an event's title, such as a repeat mark on recurring events, or nothing.
+   * It's decorative and hidden from assistive technology: say the same in `describeEvent`, which
+   * adds to each event's accessible name.
+   */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   /**
    * Replaces the shading of closed days: an element, or a function of its props and of the band,
    * date and resource, such as hatching for holidays.
@@ -197,6 +203,7 @@ function MonthView<TEvent>({
             expanded={index === expandedWeek}
             formats={formats}
             getEventColor={options.getEventColor}
+            getEventIcon={options.getEventIcon}
             labelEvent={labelEvent}
             maxLanes={maxLanes}
             onOpenDay={openDay}

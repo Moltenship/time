@@ -16,7 +16,7 @@ import {
 import { ChevronDownIcon } from "lucide-react";
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 
-import { EventChip, useEventChip } from "@registry/calendar/event-chip";
+import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import {
   draftCheckClassName,
@@ -34,6 +34,8 @@ export interface TimeGridAllDayProps<TEvent> {
   /** Full dates, for the cells' accessible names. */
   readonly formatDate: (date: Temporal.PlainDate) => string;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /** An icon before an event's title, or nothing. */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Opens a date in the day view; Shift+Enter on its cell does so. */
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
@@ -150,6 +152,7 @@ function AllDayCell({
 function AllDayEvent<TEvent>({
   date,
   getEventColor,
+  getEventIcon,
   labelEvent,
   offset,
   offscreen,
@@ -163,6 +166,7 @@ function AllDayEvent<TEvent>({
    */
   readonly date: Temporal.PlainDate;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Cells between the segment's first day and the cell it renders in. */
   readonly offset: number;
@@ -200,6 +204,7 @@ function AllDayEvent<TEvent>({
           stickyLabel && "sticky start-[calc(var(--calendar-gutter-width)+0.5rem)]",
         )}
       >
+        <EventIcon>{getEventIcon?.(event.event)}</EventIcon>
         {event.title}
       </span>
     </EventChip>
@@ -327,6 +332,7 @@ export function TimeGridAllDayCells<TEvent>({
   days,
   formatDate,
   getEventColor,
+  getEventIcon,
   labelEvent,
   onExpand,
   onOpenDay,
@@ -373,6 +379,7 @@ export function TimeGridAllDayCells<TEvent>({
                 key={`${typeof segment.event.id}:${segment.event.id}`}
                 date={date}
                 getEventColor={getEventColor}
+                getEventIcon={getEventIcon}
                 labelEvent={labelEvent}
                 offset={column - segment.column}
                 offscreen={!isShown(column)}

@@ -6,7 +6,7 @@ import {
   type NormalizedCalendarEvent,
   type ResourceId,
 } from "@moltenship/calendar";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import { previewCheck, previewCheckAttributes } from "@registry/calendar/preview-check";
@@ -44,6 +44,33 @@ export function EventChip({
       )}
       {...props}
     />
+  );
+}
+
+export interface EventIconProps {
+  /** What a view's `getEventIcon` returned for the event; nothing renders without an icon. */
+  readonly children?: ReactNode;
+  readonly className?: string;
+}
+
+/**
+ * The icon a view's `getEventIcon` gives an event, inline before its title, in the chip's text
+ * colour; size it for the chip's text through `className`. It's decorative and hidden from
+ * assistive technology, as the event's accessible name says what it means.
+ */
+export function EventIcon({ children, className }: EventIconProps) {
+  if (children == null || typeof children === "boolean" || children === "") return null;
+  return (
+    <span
+      aria-hidden="true"
+      data-slot="calendar-event-icon"
+      className={cn(
+        "me-1 inline-flex size-3 shrink-0 items-center justify-center align-[-0.125em] [&_svg]:size-3 [&_svg]:shrink-0",
+        className,
+      )}
+    >
+      {children}
+    </span>
   );
 }
 

@@ -1,4 +1,4 @@
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
@@ -18,6 +18,8 @@ export interface AgendaDayProps<TEvent> extends Omit<ComponentProps<"li">, "chil
   readonly day: AgendaDayData<TEvent>;
   readonly formats: AgendaFormats;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  /** An icon before an event's title, or nothing. */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Opens a day: its date's button does, and Shift+Enter on one of its events. */
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
@@ -29,6 +31,7 @@ export function AgendaDay<TEvent>({
   day,
   formats,
   getEventColor,
+  getEventIcon,
   labelEvent,
   onOpenDay,
   ...props
@@ -71,6 +74,7 @@ export function AgendaDay<TEvent>({
           <li key={`${typeof item.event.id}:${item.event.id}`}>
             <AgendaItem
               color={getEventColor?.(item.event.event)}
+              icon={getEventIcon?.(item.event.event)}
               item={item}
               labelEvent={labelEvent}
               onOpenDay={onOpenDay}

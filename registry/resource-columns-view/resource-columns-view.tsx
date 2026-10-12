@@ -14,7 +14,7 @@ import {
   type ResourceId,
   type ResourceVisibilityOptions,
 } from "@moltenship/calendar";
-import { useMemo, type ComponentType } from "react";
+import { useMemo, type ComponentType, type ReactNode } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import {
@@ -45,6 +45,12 @@ export interface ResourceColumnsViewOptions<
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Colour for an event; sets `data-color` on every element that renders it. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /**
+   * A small icon before an event's title, such as a repeat mark on recurring events, or nothing.
+   * It's decorative and hidden from assistive technology: say the same in `describeEvent`, which
+   * adds to each event's accessible name.
+   */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   /**
    * Your composition of the `resource-header.tsx` parts, in place of `DefaultResourceHeader`, such
    * as an avatar before each person's name and an icon before each room's.
@@ -169,6 +175,7 @@ export function ResourceColumnsView<
           {...placed}
           followX={followX}
           getEventColor={options.getEventColor}
+          getEventIcon={options.getEventIcon}
           labelEvent={labelEvent}
           locale={environment.locale}
         />
@@ -178,6 +185,7 @@ export function ResourceColumnsView<
         environment={environment}
         followY={followY}
         getEventColor={options.getEventColor}
+        getEventIcon={options.getEventIcon}
         labelEvent={labelEvent}
         onScroll={sync}
         renderUnavailable={options.renderUnavailable}

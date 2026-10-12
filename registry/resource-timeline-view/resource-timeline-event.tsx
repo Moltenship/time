@@ -1,6 +1,7 @@
 import type { ResourceId } from "@moltenship/calendar";
+import type { ReactNode } from "react";
 
-import { EventChip, useEventChip } from "@registry/calendar/event-chip";
+import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
@@ -15,6 +16,8 @@ export const ROW_PADDING = 6;
 export interface ResourceTimelineEventProps<TEvent> {
   readonly bar: PlacedBar<TEvent>;
   readonly color?: CalendarEventColor;
+  /** Shown before the title, from the view's `getEventIcon`. */
+  readonly icon?: ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   /** The row's resource; an event with several resources shows once in each of their rows. */
   readonly resourceId: ResourceId | null;
@@ -27,6 +30,7 @@ export interface ResourceTimelineEventProps<TEvent> {
 export function ResourceTimelineEvent<TEvent>({
   bar: { date, days, endsAfter, event, lane, offset, startsBefore, time, width },
   color,
+  icon,
   labelEvent,
   resourceId,
 }: ResourceTimelineEventProps<TEvent>) {
@@ -51,7 +55,10 @@ export function ResourceTimelineEvent<TEvent>({
       }}
     >
       {/* The title keeps the room it needs; the time takes what's left, or none. */}
-      <span className="max-w-full shrink-0 truncate">{event.title}</span>
+      <span className="max-w-full shrink-0 truncate">
+        <EventIcon>{icon}</EventIcon>
+        {event.title}
+      </span>
       {time !== undefined && (
         <span className="min-w-0 truncate font-normal opacity-80">{time}</span>
       )}

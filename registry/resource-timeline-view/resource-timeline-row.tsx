@@ -15,7 +15,7 @@ import {
 } from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { ChevronRightIcon } from "lucide-react";
-import { memo, useCallback, useMemo, type CSSProperties } from "react";
+import { memo, useCallback, useMemo, type CSSProperties, type ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import {
@@ -57,6 +57,8 @@ export interface ResourceTimelineRowProps<TEvent> {
   /** A timed event's start time, shown on bars of a single day. */
   readonly formatTime: (instant: Temporal.Instant) => string;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /** An icon before an event's title, or nothing. */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly labels: TimelineLabels;
   /** The visible dates, for closed days in a day row. */
@@ -255,6 +257,7 @@ function ResourceTimelineRowBase<TEvent>({
   environment,
   formatTime,
   getEventColor,
+  getEventIcon,
   labelEvent,
   labels,
   range,
@@ -414,6 +417,7 @@ function ResourceTimelineRowBase<TEvent>({
                 key={`${typeof bar.event.id}:${bar.event.id}`}
                 bar={bar}
                 color={getEventColor?.(bar.event.event)}
+                icon={getEventIcon?.(bar.event.event)}
                 labelEvent={labelInRow}
                 resourceId={resource.id}
               />
