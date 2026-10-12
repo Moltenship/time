@@ -53,16 +53,16 @@ jobs:
       - name: Install Chromium
         run: vp exec --filter a11y playwright install --with-deps --only-shell chromium
 
-      - name: Release gate
-        run: vp run ready:full
+      # Alone, as CI runs it: beside the other steps, a runner's four cores make it flaky.
+      - name: Accessibility checks
+        run: vp run a11y
 
-      - name: Dry run
+      # Everything else in ready:full, with a strict dry run for this version and the shadcn
+      # install test against the dry run's tarballs.
+      - name: Release gate and dry run
         env:
-          VERSION: ${{ inputs.version }}
-        run: vp run release:dry-run --version "$VERSION" --require-clean
-
-      - name: shadcn add from the registry, against the checked tarballs
-        run: vp run release:registry-e2e
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: vp run release:gate
 
       - name: Keep the checked tarballs and manifest
         uses: actions/upload-artifact@v7

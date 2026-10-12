@@ -62,10 +62,11 @@ describe("release workflow contract", () => {
     expect(runs(verify)).toEqual([
       "vp install --frozen-lockfile",
       "vp exec --filter a11y playwright install --with-deps --only-shell chromium",
-      "vp run ready:full",
-      'vp run release:dry-run --version "$VERSION" --require-clean',
-      "vp run release:registry-e2e",
+      "vp run a11y",
+      "vp run release:gate",
     ]);
+    const gate = verify?.steps.find(({ run }) => run === "vp run release:gate");
+    expect(gate?.env).toEqual({ RELEASE_VERSION: "${{ inputs.version }}" });
   });
 
   test("publishes the dry run's tarballs from a separate job that alone can sign provenance", async () => {

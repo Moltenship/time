@@ -156,6 +156,33 @@ describe("CI quality gate contract", () => {
     );
   });
 
+  test("the release checks run right after the build, in the lane CI runs", () => {
+    const lane = commandsOf(tasks["gate:serial"]!)[0]!
+      .split("&&")
+      .map((step) => step.trim());
+
+    expect(lane[lane.indexOf("vp run ci:build") + 1]).toBe("vp run release:check");
+    expect(stepsOf("ready:checks").has("release:check")).toBe(true);
+  });
+
+  test("the release workflow's gate is the full gate without the a11y runs", () => {
+    const release = new Set(work("release:gate"));
+    const full = work("ready:full");
+
+    // Its own lane stands in for gate:serial:full; the workflow runs a11y in a step before it.
+    expect(full.filter((step) => !release.has(step)).sort()).toEqual([
+      "a11y",
+      "a11y#test",
+      "a11y:ci-speed",
+      "gate:serial:full",
+      "registry#e2e",
+      "registry:e2e",
+      "vp test --mode ci-speed",
+    ]);
+    // The install test it drops runs on the dry run's tarballs instead.
+    expect(release.has("release:registry-e2e")).toBe(true);
+  });
+
   test("the PR tier runs every step the quick tier runs", () => {
     const pr = new Set(work("ready"));
     const quick = commandsOf(tasks["ready:quick"]!).map(

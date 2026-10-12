@@ -117,9 +117,11 @@ export async function dryRun({
 
 runMain(import.meta, async () => {
   const { flags } = parseArguments(process.argv.slice(2), ["require-clean"], ["version"]);
-  const version = flags.get("version");
+  // RELEASE_VERSION lets a task that runs the dry run inside a lane, such as release:gate, pass
+  // the version the release workflow was started with.
+  const version = flags.get("version") ?? process.env.RELEASE_VERSION;
   await dryRun({
-    version: typeof version === "string" ? version : undefined,
+    version: typeof version === "string" && version !== "" ? version : undefined,
     requireClean: flags.has("require-clean"),
   });
 });

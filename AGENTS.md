@@ -34,8 +34,8 @@ smallest one that covers the change.
 | Tier  | Command              | What it runs                                                                                                                                                         |
 | ----- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Quick | `vp run ready:quick` | The docs site's link check, which compiles every page, then `vp check` and `vp test`                                                                                |
-| PR    | `vp run ready`       | Quick, plus production builds, the React, SSR, registry and package-graph gates, and the a11y suite in Chromium. CI runs the same tasks: `ready:checks` and `a11y`. |
-| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and in Firefox and WebKit (`browsers`), the docs site's types and search, and `shadcn add` into clean Vite and Next.js apps (`registry:e2e`, which needs the network). It's the release gate. |
+| PR    | `vp run ready`       | Quick, plus production builds, the release checks (size budgets, API reports, package exports), the React, SSR, registry and package-graph gates, and the a11y suite in Chromium. CI runs the same tasks: `ready:checks` and `a11y`. |
+| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and in Firefox and WebKit (`browsers`), the release dry run (a fresh build, the packed tarballs installed offline into a clean project, the registry built for that version), the docs site's types and search, and `shadcn add` into clean Vite and Next.js apps (`registry:e2e`, which needs the network). It's the release gate. |
 
 - **Quick:** docs content (MDX), README, ADRs and `docs/internal` notes. Don't run the full gate
   for a typo.

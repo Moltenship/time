@@ -83,7 +83,9 @@ runMain(import.meta, async () => {
     positionals: true,
   });
   const [version] = positionals;
-  if (!version) throw new Error("Usage: vp run release:version <version> [--date YYYY-MM-DD]");
+  if (!version || positionals.length > 1) {
+    throw new Error("Usage: vp run release:version <version> [--date YYYY-MM-DD]");
+  }
   const date =
     typeof flags.get("date") === "string"
       ? (flags.get("date") as string)

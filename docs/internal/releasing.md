@@ -46,11 +46,12 @@ records that in the manifest, which the publish step then refuses; releases pass
    - **GitHub Actions.** Actions → Release → Run workflow, on `main`, with the version. Leave
      "Publish to npm" off for a rehearsal, and rehearse at least once before the first real
      release: the clean-consumer and registry install tests haven't run on GitHub's runners yet.
-     The `verify` job runs `vp run ready:full`, then
-     `vp run release:dry-run --version <v> --require-clean` and `vp run release:registry-e2e`, and
-     keeps `.release/` as the `release` artifact for seven days. A rehearsal before the version PR
-     uses version `0.0.0`. With publishing
-     on, the `publish` job downloads it and runs
+     The `verify` job runs `vp run a11y` alone, as CI does, then `vp run release:gate` with
+     `RELEASE_VERSION` set to the input. `release:gate` is `ready:full` without the a11y runs (a
+     runner is what `a11y:ci-speed` simulates), with `release:dry-run --require-clean` for that
+     version and `release:registry-e2e` on the dry run's tarballs. The job keeps `.release/` as the
+     `release` artifact for seven days. A rehearsal before the version PR uses version `0.0.0`.
+     With publishing on, the `publish` job downloads the artifact and runs
      `vp run release:publish --version <v> --provenance --yes` on the same commit. Only that job
      can mint the OIDC token that signs npm provenance.
 

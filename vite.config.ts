@@ -46,6 +46,14 @@ export default defineConfig({
         cache: false,
         dependsOn: ["registry:smoke", "a11y", "a11y:ci-speed", "browsers", "gate:serial:full"],
       },
+      // The release workflow's gate on a GitHub runner: ready:full without the a11y runs, which the
+      // workflow runs alone first, as CI does; a11y:ci-speed only simulates a runner. Its dry run
+      // is strict, and the shadcn install test uses the dry run's tarballs.
+      "release:gate": {
+        command: "echo release:gate passed",
+        cache: false,
+        dependsOn: ["registry:smoke", "gate:serial:release"],
+      },
       // release:check reads the packages ci:build wrote and packs them, so it runs right after.
       "gate:serial":
         "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
@@ -54,6 +62,8 @@ export default defineConfig({
       // project. The registry's install test installs into clean apps; it needs the network.
       "gate:serial:full":
         "vp run gate:serial && vp run release:dry-run && vp run showcase:types && vp run showcase#search:check && vp run registry:e2e",
+      "gate:serial:release":
+        "vp run gate:serial && vp run release:dry-run --require-clean && vp run showcase:types && vp run showcase#search:check && vp run release:registry-e2e",
       "ci:check": "vp check",
       "ci:test": "vp test",
       "ci:build": "vp run -r build",
