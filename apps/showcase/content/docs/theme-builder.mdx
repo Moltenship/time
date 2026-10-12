@@ -1,0 +1,42 @@
+---
+title: Theme builder
+description: Change the calendar's tokens in light and dark, see them live, and copy the CSS.
+full: true
+---
+
+Pick a preset or change a token, and the calendar follows. Light and dark have their own values:
+the preview starts in the docs' theme, and **Light** and **Dark** above it switch the theme you see
+and edit. Your changes stay in the preview, and nothing is saved.
+
+<ThemeBuilder />
+
+## Paste the CSS into your app
+
+The CSS has the shape of `calendar-theme.css`: tokens inside `@layer base`, light values on
+`:root` and dark ones on `.dark`. Paste it into your global CSS after the line that imports
+`calendar-theme.css`, so it comes later in the same layer and wins. A shading recipe comes after the
+tokens, outside the layer, as on [Availability](/docs/availability#customize-the-shading).
+
+- **Changed tokens** copies what differs from the theme as it ships. A token you changed only in
+  light mode is restated in `.dark` too, so the dark theme keeps its own value.
+- **All tokens** copies the whole theme, to replace the variables in your copy of the file.
+
+If your app defines the shadcn tokens itself, outside a layer, its rules win over the pasted ones.
+Change the base colors there instead.
+
+## What you can change
+
+- **Colors.** The tokens in [Theming](/docs/theming#tokens), and the shadcn tokens under **Base
+  colors**. Many calendar tokens derive from those: grid lines are `var(--border)`, and the default
+  event fill mixes `--primary` into `--background`. A derived token follows its source until you
+  set it.
+- **Density.** The hour height and the event padding in time grids, and `--radius`, which rounds
+  events, buttons and badges.
+- **Availability.** The tints for closed time and closed days, a shading recipe for closed time in
+  time grids, the busy and free dots, and the outlines of changes the policies reject or flag.
+- **Event palette.** Each color's hue and chroma, and how every color derives its fill, text and
+  edge from them, per theme. To add a color, see [Adding a color](/docs/theming#adding-a-color).
+
+**Contrast** checks the pairs the theme's own test holds to WCAG AA, as the preview paints them:
+4.5:1 for text and 3:1 for the now line. For event text it reports the palette color with the
+lowest contrast. Menus, tooltips and popovers open outside the preview, in the docs' own theme.

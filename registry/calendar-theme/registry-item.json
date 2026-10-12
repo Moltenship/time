@@ -3,7 +3,7 @@
   "name": "calendar-theme",
   "type": "registry:theme",
   "title": "Calendar theme",
-  "description": "shadcn semantic tokens, calendar tokens for grid lines, today, the now line, weekends and hour height, and the data-color event palette for light and dark themes.",
+  "description": "shadcn semantic tokens, calendar tokens for grid lines, today, the now line, weekends, hour height and event padding, and the data-color event palette for light and dark themes.",
   "dependencies": ["@moltenship/calendar"],
   "files": [
     {

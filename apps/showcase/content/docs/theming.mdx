@@ -6,31 +6,37 @@ description: Calendar color tokens, dark mode, and the event color palette.
 The packages don't ship any CSS. The styled parts in the registry read their colors and sizes from
 CSS variables defined in `calendar-theme.css`. Copy that file into your app as described in
 [UI source](/docs/installation#ui-source-optional), then change the variables to restyle the
-calendar.
+calendar. To try changes live and copy the CSS, use the [Theme builder](/docs/theme-builder).
 
 ## Tokens
 
 `calendar-theme.css` defines the standard shadcn/ui tokens (`--background`, `--primary`,
 `--border`, and so on) plus these calendar tokens:
 
-| Variable                      | Used for                                  | Tailwind class                   |
-| ----------------------------- | ----------------------------------------- | -------------------------------- |
-| `--calendar-surface`          | Behind sticky headers, between events     | `bg-calendar-surface`            |
-| `--calendar-grid`             | Lines between days and hours              | `border-calendar-grid`           |
-| `--calendar-axis`             | Hour and weekday labels                   | `text-calendar-axis`             |
-| `--calendar-today`            | Today's date marker                       | `bg-calendar-today`              |
-| `--calendar-today-foreground` | Text on today's marker                    | `text-calendar-today-foreground` |
-| `--calendar-now`              | The current-time line                     | `bg-calendar-now`                |
-| `--calendar-selection`        | Selected days and time ranges             | `bg-calendar-selection`          |
-| `--calendar-weekend`          | Weekend background                        | `bg-calendar-weekend`            |
-| `--calendar-event`            | Event background                          | `bg-calendar-event`              |
-| `--calendar-event-foreground` | Event text                                | `text-calendar-event-foreground` |
-| `--calendar-event-border`     | Event accent edge                         | `border-calendar-event-border`   |
-| `--calendar-hour-height`      | Height of one hour in time grids (`3rem`) | `h-(--calendar-hour-height)`     |
+| Variable                      | Used for                                              | Tailwind class                    |
+| ----------------------------- | ----------------------------------------------------- | --------------------------------- |
+| `--calendar-surface`          | Behind sticky headers, between events                 | `bg-calendar-surface`             |
+| `--calendar-grid`             | Lines between days and hours                          | `border-calendar-grid`            |
+| `--calendar-axis`             | Hour and weekday labels                               | `text-calendar-axis`              |
+| `--calendar-today`            | Today's date marker                                   | `bg-calendar-today`               |
+| `--calendar-today-foreground` | Text on today's marker                                | `text-calendar-today-foreground`  |
+| `--calendar-now`              | The current-time line                                 | `bg-calendar-now`                 |
+| `--calendar-selection`        | Selected days and time ranges                         | `bg-calendar-selection`           |
+| `--calendar-weekend`          | Weekend background                                    | `bg-calendar-weekend`             |
+| `--calendar-event`            | Event background                                      | `bg-calendar-event`               |
+| `--calendar-event-foreground` | Event text                                            | `text-calendar-event-foreground`  |
+| `--calendar-event-border`     | Event accent edge                                     | `border-calendar-event-border`    |
+| `--calendar-hour-height`      | Height of one hour in time grids (`3rem`)             | `h-(--calendar-hour-height)`      |
+| `--calendar-event-padding-x`  | Padding at the sides of time-grid events (`0.375rem`) | `px-(--calendar-event-padding-x)` |
+| `--calendar-event-padding-y`  | Padding above and below time-grid events (`0.25rem`)  | `py-(--calendar-event-padding-y)` |
 
 The color tokens work with any Tailwind color utility, so `text-calendar-today` and
 `ring-calendar-now` work too. Most calendar tokens derive from the shadcn tokens: `--calendar-grid`
 is your `--border`, and the default event colors mix your `--primary` into `--background`.
+
+The event padding tokens set how roomy events are in the week, day and resource columns views,
+along with `--calendar-hour-height`. The views fall back to the default padding where they read
+them, so a copy of `calendar-theme.css` from before these tokens keeps working.
 
 ## Changing tokens
 
