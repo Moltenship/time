@@ -160,6 +160,46 @@ describe("stringifyIcsComponents", () => {
     expect(lines).toHaveLength(3);
   });
 
+  test("writes nesting as deep as the parser accepts", () => {
+    const depth = 100_000;
+    const text = "BEGIN:X\r\n".repeat(depth) + "END:X\r\n".repeat(depth);
+    const { components, issues } = parseIcsComponents(text);
+
+    expect(issues).toEqual([]);
+    expect(stringifyIcsComponents(components)).toBe(text);
+  });
+
+  test.each([
+    [
+      "a property value",
+      event({ name: "DESCRIPTION", parameters: {}, value: "a\nb" }),
+      "Value of DESCRIPTION contains a line break",
+    ],
+    [
+      "a property value, as a lone CR",
+      event({ name: "SUMMARY", parameters: {}, value: "a\rb" }),
+      "Value of SUMMARY contains a line break",
+    ],
+    [
+      "a property name",
+      event({ name: "X-A\r\nB", parameters: {}, value: "v" }),
+      'Property name "X-A\\r\\nB" contains a line break',
+    ],
+    [
+      "a parameter name",
+      event({ name: "ATTENDEE", parameters: { "C\nN": ["Ann"] }, value: "mailto:a@x" }),
+      'Parameter name "C\\nN" of ATTENDEE contains a line break',
+    ],
+    [
+      "a component name",
+      { components: [], name: "V\nEVENT", properties: [] },
+      'Component name "V\\nEVENT" contains a line break',
+    ],
+  ])("throws a RangeError for a line break in %s", (_, component, message) => {
+    expect(() => stringifyIcsComponents(component)).toThrow(RangeError);
+    expect(() => stringifyIcsComponents(component)).toThrow(message);
+  });
+
   test.each([
     ["Cyrillic", "Встреча с командой по планированию квартала"],
     ["CJK", "会議の議題について話し合いましょう"],

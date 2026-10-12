@@ -5,27 +5,49 @@ const MAX_OCTETS = 75;
 
 export function stringifyComponents(components: readonly IcsComponent[]): string {
   const lines: string[] = [];
-  for (const component of components) writeComponent(component, lines);
+  // A stack rather than recursion: parsed trees can nest deeper than the call stack. A string is
+  // the name of a component whose END is due.
+  const pending: (IcsComponent | string)[] = [...components].reverse();
+  while (pending.length > 0) {
+    const item = pending.pop()!;
+    if (typeof item === "string") {
+      lines.push(foldLine(`END:${item}`));
+      continue;
+    }
+    assertNoLineBreak(item.name, () => `Component name ${JSON.stringify(item.name)}`);
+    lines.push(foldLine(`BEGIN:${item.name}`));
+    for (const property of item.properties) lines.push(foldLine(formatProperty(property)));
+    pending.push(item.name);
+    for (let index = item.components.length - 1; index >= 0; index -= 1) {
+      pending.push(item.components[index]!);
+    }
+  }
   return lines.join("");
 }
 
-function writeComponent(component: IcsComponent, lines: string[]): void {
-  lines.push(foldLine(`BEGIN:${component.name}`));
-  for (const property of component.properties) lines.push(foldLine(formatProperty(property)));
-  for (const child of component.components) writeComponent(child, lines);
-  lines.push(foldLine(`END:${component.name}`));
-}
-
 function formatProperty(property: IcsProperty): string {
-  let line = property.name;
-  for (const name in property.parameters) {
-    const values = property.parameters[name];
+  const { name } = property;
+  assertNoLineBreak(name, () => `Property name ${JSON.stringify(name)}`);
+  let line = name;
+  for (const parameter in property.parameters) {
+    const values = property.parameters[parameter];
     if (values === undefined) continue;
+    assertNoLineBreak(parameter, () => `Parameter name ${JSON.stringify(parameter)} of ${name}`);
     // An empty list is written as a bare name, which parses back to an empty list.
     line +=
-      values.length === 0 ? `;${name}` : `;${name}=${values.map(encodeParameterValue).join(",")}`;
+      values.length === 0
+        ? `;${parameter}`
+        : `;${parameter}=${values.map(encodeParameterValue).join(",")}`;
   }
+  assertNoLineBreak(property.value, () => `Value of ${name}`);
   return `${line}:${property.value}`;
+}
+
+// A raw CR or LF would end the content line and leave the rest as a broken line of its own.
+function assertNoLineBreak(text: string, subject: () => string): void {
+  if (text.includes("\n") || text.includes("\r")) {
+    throw new RangeError(`${subject()} contains a line break, which iCalendar text can't hold`);
+  }
 }
 
 /**

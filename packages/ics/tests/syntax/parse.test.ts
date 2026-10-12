@@ -138,6 +138,16 @@ describe("content lines", () => {
     expect(property.parameters).toEqual({ "X-TAG": ["a", "b", "c"] });
   });
 
+  test("reads names an object inherits, such as constructor, as absent parameters", () => {
+    const { parameters } = firstProperty(ics("BEGIN:X", "X-P;A=1:v", "END:X"));
+
+    expect(parameters).toEqual({ A: ["1"] });
+    for (const name of ["constructor", "toString", "hasOwnProperty", "__proto__"]) {
+      expect(parameters[name]).toBeUndefined();
+      expect(name in parameters).toBe(false);
+    }
+  });
+
   test("decodes the RFC 6868 examples", () => {
     const component = only(
       ics(

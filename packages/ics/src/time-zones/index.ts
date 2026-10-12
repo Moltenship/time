@@ -4,7 +4,8 @@
 
 import type { IcsComponent, IcsTimeZoneResolver } from "../types";
 import { canonicalTimeZoneId, offsetTimeZoneId } from "./canonical";
-import { definitionTimeZone } from "./definition";
+import { definitionOffsets, definitionTimeZone } from "./definition";
+import { fitsDefinitionOffsets } from "./history";
 import { displayNameTimeZone, windowsTimeZone } from "./windows";
 
 export { canonicalTimeZoneId } from "./canonical";
@@ -16,7 +17,10 @@ export interface TimeZoneResolverOptions {
   readonly definitions?: ReadonlyMap<string, IcsComponent>;
 }
 
-// `UTC`, `GMT`, `Z`, `GMT+0100`, `UTC+01:00`, `GMT-5`, `UTC+5:30`.
+const MAX_NAME_LENGTH = 256;
+
+// `UTC`, `GMT`, `Z`, `GMT+0100`, `UTC+01:00`, `GMT-5`, `UTC+5:30`. The sign keeps the two runs of
+// whitespace apart, so a long one can't make the pattern backtrack quadratically.
 const OFFSET_NAME = /^(?:UTC|GMT|Z)$|^(?:UTC|GMT)?\s*([+\-−])\s*(\d{1,2})(?:[:.]?(\d{2}))?$/i;
 
 function unquote(tzid: string): string {
@@ -73,19 +77,32 @@ export function createTimeZoneResolver(
     const name = unquote(tzid);
     const definition = definitions.get(tzid) ?? definitions.get(name);
     const fromCustom = custom?.(tzid, definition);
+    const chosen = fromCustom === undefined ? undefined : canonicalTimeZoneId(fromCustom);
+    // No real TZID is this long, and the name rules needn't scale to one that is.
+    if (chosen !== undefined || name.length > MAX_NAME_LENGTH) return chosen;
+
+    // A name rule's zone must change offset when the calendar says it does: Temporal knows `EST`
+    // as fixed at −05:00, and a VTIMEZONE with that TZID may well observe DST.
+    const offsets = definition === undefined ? undefined : definitionOffsets(definition);
+    const fits = (timeZone: string | undefined) =>
+      timeZone === undefined ||
+      offsets === undefined ||
+      offsets.size < 2 ||
+      fitsDefinitionOffsets(timeZone, offsets)
+        ? timeZone
+        : undefined;
 
     return (
-      (fromCustom === undefined ? undefined : canonicalTimeZoneId(fromCustom)) ??
       // `Europe/Berlin`, `"Europe/Berlin"`, `+05:30`.
-      canonicalTimeZoneId(name) ??
-      pathTimeZone(name) ??
+      fits(canonicalTimeZoneId(name)) ??
+      fits(pathTimeZone(name)) ??
       // `W. Europe Standard Time`, from CLDR.
-      windowsTimeZone(name) ??
+      fits(windowsTimeZone(name)) ??
       // `(UTC+01:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna`.
-      displayNameTimeZone(name) ??
+      fits(displayNameTimeZone(name)) ??
       // X-LIC-LOCATION, or the offset of a VTIMEZONE that never changes it.
       (definition === undefined ? undefined : definitionTimeZone(definition)) ??
-      offsetNameTimeZone(name)
+      fits(offsetNameTimeZone(name))
     );
   }
 

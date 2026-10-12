@@ -1,6 +1,8 @@
 import { describe, expect, test, vi } from "vite-plus/test";
 
+import { parseIcs } from "../../src/index";
 import { createTimeZoneResolver } from "../../src/time-zones";
+import { displayNameTimeZone } from "../../src/time-zones/windows";
 import type { IcsTimeZoneResolver } from "../../src/types";
 import { definitionsOf, vtimezone } from "./vtimezone";
 
@@ -186,6 +188,27 @@ describe("rule 5: Outlook display names", () => {
     expect(resolve("(UTC+04:00) Moscow, St. Petersburg, Volgograd")).toBe("Europe/Moscow");
   });
 
+  test("accepts an offset other than the table's that the first place's zone had", () => {
+    // Moscow was at +04:00 from 2011 to 2014, and has been at +03:00 before and since.
+    expect(resolve("(UTC+03:00) Moscow, St. Petersburg")).toBe("Europe/Moscow");
+    expect(resolve("(GMT+03:00) Moscow, St. Petersburg, Volgograd")).toBe("Europe/Moscow");
+    // Turkey kept +02:00 in winter until 2016; the table has today's +03:00.
+    expect(resolve("(UTC+02:00) Istanbul")).toBe("Europe/Istanbul");
+    expect(resolve("(UTC+03:00) Istanbul")).toBe("Europe/Istanbul");
+  });
+
+  test("leaves a first place whose zone never had the name's offset unresolved", () => {
+    expect(resolve("(UTC+09:00) Amsterdam, Berlin, Bern, Rome, Stockholm, Vienna")).toBeUndefined();
+  });
+
+  test("leaves Astana at +05:00 unresolved, not on CLDR's Asia/Bishkek at +06:00", () => {
+    // Kazakhstan moved to +05:00 in 2024; Bishkek last had +05:00 in 2005, before Windows wrote
+    // `(UTC…)` names.
+    expect(resolve("(UTC+05:00) Astana")).toBeUndefined();
+    expect(resolve("(UTC+06:00) Astana")).toBe("Asia/Bishkek");
+    expect(resolve("(GMT+06:00) Astana, Dhaka")).toBe("Asia/Bishkek");
+  });
+
   test("tries later places only for a zone with the same offset", () => {
     expect(resolve("(GMT) Greenwich Mean Time : Dublin, Edinburgh, Lisbon, London")).toBe(
       "Europe/London",
@@ -339,6 +362,141 @@ describe("rule 8: unresolved", () => {
     expect(resolve("Mars Standard Time")).toBeUndefined();
     expect(resolve("")).toBeUndefined();
     expect(resolve('""')).toBeUndefined();
+  });
+});
+
+describe("a VTIMEZONE that changes offset", () => {
+  const dst = [
+    ["STANDARD", "-0500"],
+    ["DAYLIGHT", "-0400"],
+  ] as const;
+
+  test.each([
+    ["EST", "an id Temporal knows as a fixed offset"],
+    ["-05:00", "an offset id"],
+    ["/vendor.example/EST", "a vendor path"],
+    ["UTC-11", "a Windows id of a fixed zone"],
+    ["(UTC-11:00) Coordinated Universal Time-11", "a display name of a fixed zone"],
+    ["GMT-0500", "an offset name"],
+  ])("rejects %s, %s that never changes offset", (tzid) => {
+    const resolve = createTimeZoneResolver({ definitions: definitionsOf(vtimezone(tzid, dst)) });
+
+    expect(resolve(tzid)).toBeUndefined();
+  });
+
+  test("falls through to X-LIC-LOCATION", () => {
+    const definition = vtimezone("EST", dst, "America/New_York");
+    const resolve = createTimeZoneResolver({ definitions: definitionsOf(definition) });
+
+    expect(resolve("EST")).toBe("America/New_York");
+  });
+
+  test("keeps a fixed zone for a VTIMEZONE with a single offset", () => {
+    const definition = vtimezone("EST", [["STANDARD", "-0500"]]);
+    const resolve = createTimeZoneResolver({ definitions: definitionsOf(definition) });
+
+    expect(resolve("EST")).toBe("EST");
+  });
+
+  test("keeps zones that change offset", () => {
+    const resolve = createTimeZoneResolver({
+      definitions: definitionsOf(
+        vtimezone("Eastern Standard Time", dst),
+        vtimezone("America/New_York", dst),
+      ),
+    });
+
+    expect(resolve("Eastern Standard Time")).toBe("America/New_York");
+    expect(resolve("America/New_York")).toBe("America/New_York");
+  });
+
+  test("keeps a zone fixed since 1970 when the VTIMEZONE lists its earlier offsets", () => {
+    // Written with the zone's whole history: LMT, IST, and the wartime +06:30.
+    const definition = vtimezone("Asia/Kolkata", [
+      ["STANDARD", "+055328"],
+      ["STANDARD", "+0530"],
+      ["DAYLIGHT", "+0630"],
+      ["STANDARD", "+0530"],
+    ]);
+    const resolve = createTimeZoneResolver({ definitions: definitionsOf(definition) });
+
+    expect(resolve("Asia/Kolkata")).toBe("Asia/Kolkata");
+  });
+
+  test("doesn't second-guess the custom resolver", () => {
+    const resolve = createTimeZoneResolver({
+      custom: () => "EST",
+      definitions: definitionsOf(vtimezone("Eastern", dst)),
+    });
+
+    expect(resolve("Eastern")).toBe("EST");
+  });
+
+  test("leaves events in such a TZID unresolved rather than an hour off", () => {
+    const text = [
+      "BEGIN:VCALENDAR",
+      "VERSION:2.0",
+      "PRODID:-//Test//EN",
+      "BEGIN:VTIMEZONE",
+      "TZID:EST",
+      "BEGIN:STANDARD",
+      "DTSTART:19701101T020000",
+      "RRULE:FREQ=YEARLY;BYMONTH=11;BYDAY=1SU",
+      "TZOFFSETFROM:-0400",
+      "TZOFFSETTO:-0500",
+      "END:STANDARD",
+      "BEGIN:DAYLIGHT",
+      "DTSTART:19700308T020000",
+      "RRULE:FREQ=YEARLY;BYMONTH=3;BYDAY=2SU",
+      "TZOFFSETFROM:-0500",
+      "TZOFFSETTO:-0400",
+      "END:DAYLIGHT",
+      "END:VTIMEZONE",
+      "BEGIN:VEVENT",
+      "UID:1",
+      "DTSTAMP:20260101T000000Z",
+      "DTSTART;TZID=EST:20260715T090000",
+      "END:VEVENT",
+      "END:VCALENDAR",
+      "",
+    ].join("\r\n");
+
+    expect(parseIcs(text).calendars[0]?.events[0]?.start).toMatchObject({
+      kind: "unresolved",
+      tzid: "EST",
+    });
+  });
+});
+
+describe("long TZIDs", () => {
+  // Each of these took quadratic time before: at this length, long enough to time the test out.
+  const spaces = " ".repeat(100_000);
+
+  test.each([
+    ["an unclosed display name", `(UTC${spaces}x`],
+    ["a display name with a line break after spaces", `(UTC)${spaces}\n`],
+    ["a display name with spaces before a separator", `(UTC+01:00) Atlantis${spaces}x`],
+    ["an offset name", `UTC${spaces}+${spaces}x`],
+  ])("leaves %s unresolved, quickly", (_, tzid) => {
+    expect(createTimeZoneResolver()(tzid)).toBeUndefined();
+    expect(displayNameTimeZone(tzid)).toBeUndefined();
+  });
+
+  test("match display names with whitespace collapsed, in linear time", () => {
+    expect(displayNameTimeZone(`(${spaces}UTC${spaces}+01:00${spaces})${spaces}Amsterdam`)).toBe(
+      "Europe/Berlin",
+    );
+    expect(displayNameTimeZone(`(GMT)\t\r\n Greenwich Mean Time${spaces}:${spaces}Dublin`)).toBe(
+      "Europe/London",
+    );
+  });
+
+  test("over 256 characters are left to the custom resolver", () => {
+    const tzid = `(UTC+01:00) Amsterdam,${" ".repeat(300)}Berlin`;
+
+    expect(displayNameTimeZone(tzid)).toBe("Europe/Berlin");
+    expect(createTimeZoneResolver()(tzid)).toBeUndefined();
+    expect(createTimeZoneResolver({ custom: () => "Europe/Berlin" })(tzid)).toBe("Europe/Berlin");
   });
 });
 

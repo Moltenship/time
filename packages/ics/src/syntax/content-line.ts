@@ -26,7 +26,8 @@ export function parseContentLine(text: string): ContentLine | undefined {
   if (position === 0) return undefined;
 
   const name = text.slice(0, position).toUpperCase();
-  const parameters: Record<string, string[]> = {};
+  // Without a prototype, `parameters.constructor` is `undefined` like any other absent name.
+  const parameters: Record<string, string[]> = Object.create(null);
   let problems: string[] | undefined;
 
   while (position < length) {

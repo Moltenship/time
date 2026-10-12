@@ -15,7 +15,14 @@ export function parseIcsComponents(text: string): IcsComponentsResult {
   return parseComponents(text);
 }
 
-/** Writes components back as iCalendar text: CRLF line ends, folded at 75 octets. */
+/**
+ * Writes components back as iCalendar text: CRLF line ends, folded at 75 octets. Parameter values
+ * are RFC 6868-encoded, so they may hold line breaks; values are written as they are.
+ *
+ * @throws {RangeError} When a component name, property name, parameter name or property value
+ *   contains CR or LF, which would end the content line. The message names the property. Escape
+ *   line breaks in TEXT values as `\n` first.
+ */
 export function stringifyIcsComponents(components: IcsComponent | readonly IcsComponent[]): string {
   return stringifyComponents(isComponentList(components) ? components : [components]);
 }

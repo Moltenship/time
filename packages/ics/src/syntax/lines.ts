@@ -6,6 +6,8 @@ const BOM = 0xfeff;
  * Calls `onLine` with each unfolded line and the 1-based physical line it starts on. Accepts CRLF,
  * LF and lone CR. Blank physical lines are skipped without ending a folded line, so files whose
  * line ends got doubled (`\r\r\n`) still unfold; whitespace-only logical lines are skipped too.
+ * Each doubled end counts as two physical lines, a lone CR and then a CRLF, so line numbers in
+ * such files come out about twice what the producer meant.
  */
 export function forEachUnfoldedLine(
   text: string,
