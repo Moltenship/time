@@ -4,9 +4,9 @@ import { join, posix } from "node:path";
 import { satisfies, validRange } from "semver";
 import { registryItemSchema, registrySchema } from "shadcn/schema";
 
-import { itemClosure } from "./build";
 import type { RegistryManifest, RegistryManifestItem } from "./compatibility";
-import { consumerPackages, dragAndDropPackages } from "./config";
+import { consumerPackages, dragAndDropPackages, registryNamespace } from "./config";
+import { dependencyName, itemClosure } from "./items";
 import { consumerImportForTarget } from "./rewrite-imports";
 
 /** The composition that installs every other item. */
@@ -65,7 +65,10 @@ function importIssue(
   }
   if (specifier.startsWith("@registry/")) return `${where}, an alias consumers don't have`;
   const name = packageName(specifier);
-  return consumerPackages.has(name) || closure.some(({ dependencies }) => name in dependencies)
+  return consumerPackages.has(name) ||
+    closure.some(({ dependencies }) =>
+      dependencies.some((dependency) => dependencyName(dependency) === name),
+    )
     ? null
     : `${where}, but no item in its install depends on ${name}`;
 }
@@ -104,16 +107,20 @@ export async function checkBuiltRegistry({
     const built = parsed.data;
     const closure = itemClosure(item.name, byName, ({ items }) => items);
 
-    for (const [name, range] of Object.entries(item.dependencies)) {
-      if (!range || !validRange(range)) issues.push(`${item.name}: ${name} has no version range`);
+    for (const dependency of item.dependencies) {
+      const name = dependencyName(dependency);
+      const range = dependency.slice(name.length + 1);
+      if (name.startsWith(`${registryNamespace}/`) && (range === "" || !validRange(range))) {
+        issues.push(`${item.name}: ${name} has no version range`);
+      } else if (!name.startsWith(`${registryNamespace}/`) && dependency !== name) {
+        issues.push(`${item.name}: ${dependency} pins a third-party package; list it bare`);
+      }
       if (dragAndDropPackages.some((pattern) => pattern.test(name))) {
         issues.push(`${item.name}: depends on ${name}, but drag and drop stays optional`);
       }
     }
-    const declared = (built.dependencies ?? []).sort();
-    const expected = Object.entries(item.dependencies)
-      .map(([name, range]) => `${name}@${range}`)
-      .sort();
+    const declared = [...(built.dependencies ?? [])].sort();
+    const expected = [...item.dependencies].sort();
     if (declared.join() !== expected.join()) {
       issues.push(
         `${item.name}: dependencies ${declared.join(", ")} should be ${expected.join(", ")}`,

@@ -43,6 +43,7 @@
     "jsdom": "catalog:",
     "next-validate-link": "catalog:",
     "postcss": "catalog:",
+    "registry": "workspace:*",
     "tailwindcss": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",

@@ -49,10 +49,10 @@ function caretRange(name: string, version: string): string {
 }
 
 /**
- * Items list bare package names. Their ranges come from what the workspace builds and tests the
- * registry source with: the catalog for third-party packages and the package version for our own,
- * as declared in `registry/package.json`. A package missing there can't be imported by registry
- * source, so it can't be an item's dependency either.
+ * The range of each package `registry/package.json` declares, from what the workspace builds and
+ * tests the registry source with: the catalog for third-party packages and the package version for
+ * our own. Items list bare names, and the build adds the range to ours. A package missing there
+ * can't be imported by registry source, so it can't be an item's dependency either.
  */
 export async function readWorkspacePackages(workspaceRoot: string): Promise<WorkspacePackages> {
   const workspace = parse(await readFile(join(workspaceRoot, "pnpm-workspace.yaml"), "utf8")) as {

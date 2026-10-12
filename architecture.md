@@ -154,11 +154,12 @@ The registry is not a second package manager. It distributes the source users ar
 - `calendar-full` installs every item: the theme, the shared `calendar` parts, each view, and the
   recurrence scope dialog. It depends on the other registry items instead of duplicating their files.
 - Individual view items support smaller installations; each brings the items it builds on.
-- Registry items declare npm dependencies with version ranges, registry dependencies (stock shadcn
-  components by name, our items by URL), the theme's CSS variables and rules, and explicit targets
-  under the consumer's `components` alias.
+- Registry items declare npm dependencies, registry dependencies (stock shadcn components by name,
+  our items by URL), the theme's CSS variables and rules, and explicit targets under the consumer's
+  `components` alias. Our runtime carries a version range; third-party packages stay bare, as in
+  stock shadcn items.
 - `meta.compatibility` records the `@moltenship/calendar` range an item's install needs. The build
-  takes it, and every dependency range, from the versions the workspace builds and tests with.
+  takes it from the version the workspace builds and tests with.
 - No item depends on a drag-and-drop library. Views edit through the native pointer layer in
   `@moltenship/calendar`, which stays off until the app passes `onEventChange`.
 - `shadcn build` builds it, and the docs site serves it at `/r/<item>.json`.

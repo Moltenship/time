@@ -169,8 +169,10 @@ The toolbar's buttons use shadcn's tooltip, so wrap your app in `TooltipProvider
 </Steps>
 
 The theme's tokens and rules go into your global CSS inside `@layer base`, so your own rules win
-over them; see [Theming](/docs/theming). Run `shadcn add` again to update: it asks before it
-replaces a file you already have, and `--overwrite` replaces them all, with any changes you made.
+over them. Each `shadcn add` writes that block again, so change tokens in your own rules instead,
+as [Theming](/docs/theming#changing-tokens) shows. Run `shadcn add` again to update the files: it
+asks before it replaces a file you already have, and `--overwrite` replaces them all, with any
+changes you made.
 
 ## Run from source
 

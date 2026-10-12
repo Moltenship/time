@@ -24,9 +24,9 @@ that `tools/registry` checks:
 - Every file has a `target` under one of shadcn's alias placeholders, such as
   `@components/calendar/month-view/month-view.tsx`, so it lands under the consumer's own
   `components` alias. No two items write the same file.
-- `dependencies` lists bare package names. The build adds the ranges from what the workspace
-  builds and tests with: the catalog for third-party packages and the package version for ours, as
-  `registry/package.json` declares them. A package must be there before an item can list it.
+- `dependencies` lists bare package names, each declared in `registry/package.json`. The build
+  adds a range to ours, `@moltenship/calendar@^<workspace version>`. Third-party packages stay bare,
+  as in stock shadcn items, so `shadcn add` keeps the version an app already has.
 - `registryDependencies` lists stock shadcn components by name (`button`, `popover`) and our own
   items as `@moltenship/<item>`. The build turns ours into URLs.
 - No item depends on a drag-and-drop library. Views edit through the pointer layer in

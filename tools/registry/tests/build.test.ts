@@ -10,6 +10,7 @@ import {
   describeIncompatibility,
   findIncompatibleItems,
   type RegistryManifest,
+  type RegistryManifestItem,
 } from "../src/compatibility";
 import { defaultRegistryBaseUrl } from "../src/config";
 import { consumerImportForTarget, rewriteRegistryImports } from "../src/rewrite-imports";
@@ -97,8 +98,13 @@ describe("registry build", () => {
     const version = await workspaceVersion("@moltenship/calendar");
     const monthView = await readItem("month-view");
 
-    expect(monthView.dependencies).toContain(`@moltenship/calendar@^${version}`);
-    expect(monthView.dependencies).toContain("cn@^0.4.0");
+    // Our runtime carries a range; third-party packages stay bare, as in stock shadcn items, so
+    // `shadcn add` keeps the version an app already has.
+    expect(monthView.dependencies).toEqual([
+      `@moltenship/calendar@^${version}`,
+      "cn",
+      "lucide-react",
+    ]);
     expect(monthView.registryDependencies).toEqual([
       "popover",
       `${baseUrl}/calendar.json`,
@@ -156,6 +162,26 @@ describe("registry build", () => {
     }
   });
 
+  test("a rebuild replaces only what an earlier build wrote", async () => {
+    const folder = await mkdtemp(join(tmpdir(), "time-registry-test-"));
+    try {
+      await writeFile(join(folder, "package.json"), "{}\n");
+      await writeFile(join(folder, "removed-item.json"), "{}\n");
+      await writeFile(
+        join(folder, "registry.json"),
+        JSON.stringify({ items: [{ name: "removed-item" }] }),
+      );
+      await buildRegistry({ workspaceRoot, outDir: folder, baseUrl });
+
+      const files = await readdir(folder);
+      expect(files).toContain("package.json");
+      expect(files).not.toContain("removed-item.json");
+      expect(files).toContain(`${fullItemName}.json`);
+    } finally {
+      await rm(folder, { force: true, recursive: true });
+    }
+  });
+
   test("the docs install from the URL the registry is built for, and only real items", async () => {
     const docs = join(workspaceRoot, "apps/showcase/content/docs");
     const installation = await readFile(join(docs, "installation.mdx"), "utf8");
@@ -184,15 +210,30 @@ describe("registry build", () => {
 });
 
 describe("built registry checks", () => {
-  async function tamper(name: string, change: (item: BuiltItem) => BuiltItem): Promise<string[]> {
+  /** Checks the build with one item's JSON changed, and the manifest changed to match. */
+  async function tamper(
+    name: string,
+    change: (item: BuiltItem) => BuiltItem,
+    changeManifest: (manifest: RegistryManifest) => RegistryManifest = (same) => same,
+  ): Promise<string[]> {
     const copy = await mkdtemp(join(tmpdir(), "time-registry-test-"));
     try {
       await cp(outDir, copy, { recursive: true });
       await writeFile(join(copy, `${name}.json`), JSON.stringify(change(await readItem(name))));
-      return await checkBuiltRegistry({ outDir: copy, manifest });
+      return await checkBuiltRegistry({ outDir: copy, manifest: changeManifest(manifest) });
     } finally {
       await rm(copy, { force: true, recursive: true });
     }
+  }
+
+  function changeItem(
+    name: string,
+    change: (item: RegistryManifestItem) => RegistryManifestItem,
+  ): (manifest: RegistryManifest) => RegistryManifest {
+    return (current) => ({
+      ...current,
+      items: current.items.map((item) => (item.name === name ? change(item) : item)),
+    });
   }
 
   function withSource(item: BuiltItem, extra: string): BuiltItem {
@@ -252,13 +293,47 @@ describe("built registry checks", () => {
   });
 
   test("a composition that misses an item", async () => {
-    const issues = await tamper(fullItemName, (item) => ({
-      ...item,
-      registryDependencies: item.registryDependencies!.filter(
-        (url) => !url.endsWith("/year-view.json"),
-      ),
-    }));
-    expect(issues.length).toBeGreaterThan(0);
+    const withoutYear = (urls: readonly string[]) =>
+      urls.filter((url) => !url.endsWith("/year-view.json"));
+    const issues = await tamper(
+      fullItemName,
+      (item) => ({ ...item, registryDependencies: withoutYear(item.registryDependencies!) }),
+      changeItem(fullItemName, (item) => ({
+        ...item,
+        items: item.items.filter((name) => name !== "year-view"),
+      })),
+    );
+    expect(issues).toEqual([`${fullItemName} doesn't install year-view`]);
+  });
+
+  test("a composition that owns a file", async () => {
+    const file = {
+      content: "export {};\n",
+      path: "registry/calendar-full/extra.ts",
+      target: "@components/calendar/extra.ts",
+      type: "registry:lib",
+    };
+    const issues = await tamper(
+      fullItemName,
+      (item) => ({ ...item, files: [file] }),
+      changeItem(fullItemName, (item) => ({ ...item, targets: [file.target] })),
+    );
+    expect(issues).toEqual([`${fullItemName} owns files instead of composing items`]);
+  });
+
+  test("a pinned third-party package or a runtime without a range", async () => {
+    const issues = await tamper(
+      "month-view",
+      (item) => ({ ...item, dependencies: ["@moltenship/calendar", "cn@^0.4.0", "lucide-react"] }),
+      changeItem("month-view", (item) => ({
+        ...item,
+        dependencies: ["@moltenship/calendar", "cn@^0.4.0", "lucide-react"],
+      })),
+    );
+    expect(issues).toEqual([
+      "month-view: @moltenship/calendar has no version range",
+      "month-view: cn@^0.4.0 pins a third-party package; list it bare",
+    ]);
   });
 });
 

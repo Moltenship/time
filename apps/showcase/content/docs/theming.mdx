@@ -6,8 +6,10 @@ description: Calendar color tokens, dark mode, and the event color palette.
 The packages don't ship any CSS. The styled parts in the registry read their colors and sizes from
 CSS variables defined in `calendar-theme.css`. The `calendar-theme` item, which every view brings,
 adds its tokens and rules to your global CSS, as described in
-[UI source](/docs/installation#ui-source-optional). Change the variables to restyle the calendar.
-To try changes live and copy the CSS, use the [Theme builder](/docs/theme-builder).
+[UI source](/docs/installation#ui-source-optional). Override the variables in your own CSS to
+restyle the calendar, as [Changing tokens](#changing-tokens) shows: each `shadcn add` writes the
+theme's own block again. To try changes live and copy the CSS, use the
+[Theme builder](/docs/theme-builder).
 
 ## Tokens
 
@@ -69,8 +71,8 @@ headers and gutters match it:
 ## Dark mode
 
 The theme switches when an ancestor of the calendar has the `dark` class, which is how shadcn/ui
-and `next-themes` work. shadcn apps already define the matching Tailwind `dark` variant; the CSS step
-in [UI source](/docs/installation#ui-source-optional) shows the line to add if yours doesn't.
+and `next-themes` work. shadcn apps already define the matching Tailwind `dark` variant. If yours
+doesn't, add `@custom-variant dark (&:is(.dark *));` below the imports in your global CSS.
 
 ## Event colors
 

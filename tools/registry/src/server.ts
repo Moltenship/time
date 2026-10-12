@@ -22,8 +22,6 @@ export interface LocalRegistryServer {
   readonly origin: string;
   /** Where `.npmrc` points the `@moltenship` scope, when tarballs are served. */
   readonly npmRegistry: string;
-  /** Every npm request the server answered, for the test's report. */
-  readonly npmRequests: readonly string[];
   readonly close: () => Promise<void>;
 }
 
@@ -60,14 +58,17 @@ export async function startLocalRegistryServer({
   tarballDir,
 }: LocalRegistryServerOptions): Promise<LocalRegistryServer> {
   const tarballs = tarballDir ? await readTarballs(tarballDir) : new Map<string, Tarball>();
-  const npmRequests: string[] = [];
   let origin = "";
 
   const server = createServer((request, response) => {
     void (async () => {
-      const path = decodeURIComponent(new URL(request.url ?? "/", "http://localhost").pathname);
+      let path: string;
+      try {
+        path = decodeURIComponent(new URL(request.url ?? "/", "http://localhost").pathname);
+      } catch {
+        return send(response, 400, "text/plain", "bad request");
+      }
       if (path.startsWith("/npm/")) {
-        npmRequests.push(path);
         const rest = path.slice("/npm/".length);
         if (rest.startsWith("-/")) {
           const tarball = [...tarballs.values()].find(({ file }) => rest === `-/${file}`);
@@ -113,7 +114,6 @@ export async function startLocalRegistryServer({
   return {
     origin,
     npmRegistry: `${origin}/npm/`,
-    npmRequests,
     close: () => new Promise((resolve) => server.close(() => resolve())),
   };
 }

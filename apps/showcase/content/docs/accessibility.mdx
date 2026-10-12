@@ -129,7 +129,7 @@ While moving, a step names them only when they change.
 
 ### Customize and localize them
 
-The packages ship no text. `calendarAnnouncements` lives in `registry/calendar/announcements.ts`,
+The packages ship no text. `calendarAnnouncements` lives in `components/calendar/announcements.ts`
 in your app once you add the UI source, so you can edit it in place. To translate it, write a
 `CalendarAnnouncementMessages` object of your own, with one builder per phase:
 
@@ -244,8 +244,8 @@ When the system asks for reduced motion (`prefers-reduced-motion: reduce`), the 
 - keeps transitions off the drag preview;
 - crossfades view transitions in place instead of moving them.
 
-The rules live in `calendar-theme.css`, because the registry views use shadcn's own popover,
-select, and tooltip, which you install from shadcn.
+The rules come with the `calendar-theme` item, which adds them to your global CSS, because the
+registry views use shadcn's own popover, select, and tooltip, which you install from shadcn.
 
 ## Right-to-left
 

@@ -19,8 +19,11 @@ export interface RegistryManifestItem {
   readonly url: string;
   /** The runtime range a full install of this item needs, its registry dependencies included. */
   readonly compatibility: Readonly<Record<string, string>>;
-  /** The npm packages the item itself installs, with ranges. */
-  readonly dependencies: Readonly<Record<string, string>>;
+  /**
+   * The npm packages the item itself installs, as `shadcn add` gets them: ours with a range
+   * (`@moltenship/calendar@^1.0.0`), third-party ones bare, so an app keeps the version it has.
+   */
+  readonly dependencies: readonly string[];
   /** Our items it installs, by name. */
   readonly items: readonly string[];
   /** Stock shadcn components it installs, by name. */

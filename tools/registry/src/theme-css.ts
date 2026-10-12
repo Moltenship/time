@@ -29,12 +29,19 @@ function selectorOf(rule: Rule): string {
   return rule.selectors.join(", ");
 }
 
+/** Sets `key` once; a second one would silently replace the first in the item's JSON. */
+function setOnce<T>(into: Record<string, T>, key: string, value: NoInfer<T>, where: string): void {
+  if (key in into) throw new Error(`${where}: ${key} appears twice; merge them`);
+  into[key] = value;
+}
+
 function declarationsOf(container: Container<ChildNode>, where: string): Declarations {
   const declarations: Declarations = {};
   for (const node of container.nodes ?? []) {
     if (node.type === "comment") continue;
     if (node.type !== "decl") throw new Error(`${where}: expected only declarations`);
-    declarations[node.prop] = compact(node.value);
+    if (node.important) throw new Error(`${where}: ${node.prop} is !important, which shadcn drops`);
+    setOnce(declarations, node.prop, compact(node.value), where);
   }
   return declarations;
 }
@@ -59,7 +66,7 @@ function readRules(container: AtRule, where: string): Record<string, Declaration
   for (const node of container.nodes ?? []) {
     if (node.type === "comment") continue;
     if (node.type !== "rule") throw new Error(`${where}: expected only rules`);
-    rules[selectorOf(node)] = declarationsOf(node, `${where} ${selectorOf(node)}`);
+    setOnce(rules, selectorOf(node), declarationsOf(node, `${where} ${selectorOf(node)}`), where);
   }
   return rules;
 }
@@ -85,7 +92,7 @@ export function themeCssToRegistry(source: string, from: string): ThemeRegistryC
     if (node.type === "atrule" && node.name === "theme") {
       for (const [property, value] of Object.entries(declarationsOf(node, "@theme"))) {
         if (property.startsWith("--color-calendar-")) {
-          theme[property.slice(2)] = value;
+          setOnce(theme, property.slice(2), value, "@theme");
         } else if (!isStandardThemeMapping(property)) {
           throw new Error(
             `@theme sets ${property}, which is neither a calendar mapping nor a stock one`,
@@ -99,17 +106,18 @@ export function themeCssToRegistry(source: string, from: string): ThemeRegistryC
         if (child.type === "comment") continue;
         if (child.type !== "rule") throw new Error(`${key}: expected only rules`);
         const selector = selectorOf(child);
-        rules[selector] =
+        const declarations =
           selector === ":root" || selector === ".dark"
             ? calendarTokens(child)
             : declarationsOf(child, `${key} ${selector}`);
+        setOnce(rules, selector, declarations, key);
       }
-      if (Object.keys(rules).length > 0) css[key] = rules;
+      if (Object.keys(rules).length > 0) setOnce(css, key, rules, from);
     } else if (node.type === "atrule") {
       const key = `@${node.name} ${node.params}`;
-      css[key] = readRules(node, key);
+      setOnce(css, key, readRules(node, key), from);
     } else if (node.type === "rule") {
-      css[selectorOf(node)] = declarationsOf(node, selectorOf(node));
+      setOnce(css, selectorOf(node), declarationsOf(node, selectorOf(node)), from);
     } else {
       throw new Error(`${from}: unexpected ${node.type} at the top level`);
     }

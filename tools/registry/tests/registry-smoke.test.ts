@@ -46,6 +46,7 @@ describe("shadcn registry validation", () => {
         "missing-stylesheet",
         "missing-target",
         "undeclared-dependency",
+        "unsupported-dev-dependencies",
         "unknown-registry-item",
         "versioned-dependency",
       ]),

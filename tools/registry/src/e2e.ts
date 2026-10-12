@@ -5,7 +5,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
-import { buildRegistry, itemClosure } from "./build";
+import { buildRegistry } from "./build";
 import { checkBuiltRegistry, fullItemName, importsOf } from "./check";
 import {
   describeIncompatibility,
@@ -13,6 +13,7 @@ import {
   type RegistryManifest,
 } from "./compatibility";
 import { dragAndDropPackages } from "./config";
+import { itemClosure } from "./items";
 import { packRuntimePackages } from "./packages";
 import { startLocalRegistryServer } from "./server";
 
@@ -84,6 +85,8 @@ const apps: readonly App[] = [
     css: "app/globals.css",
     page: "app/calendar-page.tsx",
     setUp: async (root) => {
+      // The Next.js template ships TypeScript 5, whose ESNext library has no Temporal types. The
+      // Installation docs ask for TypeScript 6 or later.
       await run("pnpm", ["add", "--save-dev", "typescript@^6"], root);
       await writeFile(
         join(root, "app/page.tsx"),
@@ -231,7 +234,11 @@ async function testApp(
   npmRegistry: string | null,
 ): Promise<{ readonly app: string; readonly files: number; readonly seconds: number }> {
   const started = performance.now();
-  const env = { npm_config_user_agent: pnpmUserAgent };
+  // Each app gets its own temporary folder: `shadcn init` clones its template into one named by the
+  // current millisecond, which two apps starting together would share.
+  const temporary = join(directory, `${app.name}-tmp`);
+  await mkdir(temporary, { recursive: true });
+  const env = { npm_config_user_agent: pnpmUserAgent, TMPDIR: temporary };
   const root = join(directory, app.name);
 
   log(app.name, "shadcn init");
@@ -331,7 +338,8 @@ try {
       throw new Error(`The built registry failed its checks:\n${issues.join("\n")}`);
     console.log(`Serving ${manifest.items.length} items at ${registryUrl}`);
 
-    const results = await Promise.all(
+    // Both apps finish before the server stops and the folder goes, even when one fails.
+    const settled = await Promise.allSettled(
       apps
         .filter(({ name }) => wantedApps.includes(name))
         .map((app) =>
@@ -343,6 +351,15 @@ try {
             packageSource === "local" ? server.npmRegistry : null,
           ),
         ),
+    );
+    const failures = settled.flatMap((result) =>
+      result.status === "rejected"
+        ? [result.reason instanceof Error ? result.reason.message : String(result.reason)]
+        : [],
+    );
+    if (failures.length > 0) throw new Error(failures.join("\n\n"));
+    const results = settled.flatMap((result) =>
+      result.status === "fulfilled" ? [result.value] : [],
     );
     console.log(`REGISTRY_E2E ${JSON.stringify({ packages: packageSource, apps: results })}`);
   } finally {

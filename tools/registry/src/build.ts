@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
@@ -9,6 +9,7 @@ import { registryItemSchema } from "shadcn/schema";
 
 import type { RegistryManifest, RegistryManifestItem } from "./compatibility";
 import { defaultRegistryBaseUrl, registryName, registryNamespace } from "./config";
+import { itemClosure } from "./items";
 import { consumerImportForTarget, rewriteRegistryImports } from "./rewrite-imports";
 import { themeCssToRegistry } from "./theme-css";
 import { findRegistryManifests, validateRegistryWorkspace } from "./validation";
@@ -75,33 +76,32 @@ function sortByDependencies(items: readonly SourceItem[]): SourceItem[] {
   return sorted;
 }
 
-/** The item and every item it installs, transitively. */
-export function itemClosure<T extends { readonly name: string }>(
-  name: string,
-  byName: ReadonlyMap<string, T>,
-  itemsOf: (item: T) => readonly string[],
-): T[] {
-  const closure: T[] = [];
-  const queue = [name];
-  while (queue.length > 0) {
-    const item = byName.get(queue.shift()!);
-    if (!item || closure.includes(item)) continue;
-    closure.push(item);
-    queue.push(...itemsOf(item));
-  }
-  return closure;
-}
-
 function shadcnCli(): string {
   return createRequire(import.meta.url).resolve("shadcn");
 }
 
-/** Clears the JSON a previous build left, so a removed item doesn't linger. Nothing else. */
-async function clearOutput(outDir: string): Promise<void> {
+/**
+ * Moves a finished build into `outDir`. It removes only what an earlier build wrote there, the
+ * items its `registry.json` lists and the two index files, so a removed item doesn't linger and
+ * nothing else in the folder is touched.
+ */
+async function replaceOutput(built: string, outDir: string): Promise<void> {
   await mkdir(outDir, { recursive: true });
-  for (const entry of await readdir(outDir, { withFileTypes: true })) {
-    if (entry.isFile() && entry.name.endsWith(".json")) await rm(join(outDir, entry.name));
+  let previous: string[] = [];
+  try {
+    const index = JSON.parse(await readFile(join(outDir, "registry.json"), "utf8")) as {
+      readonly items?: readonly { readonly name?: unknown }[];
+    };
+    previous = (index.items ?? []).flatMap(({ name }) =>
+      typeof name === "string" && /^[a-z0-9-]+$/u.test(name) ? [`${name}.json`] : [],
+    );
+  } catch {
+    // No earlier build here.
   }
+  for (const file of [...previous, "registry.json", "compatibility.json"]) {
+    await rm(join(outDir, file), { force: true });
+  }
+  for (const file of await readdir(built)) await copyFile(join(built, file), join(outDir, file));
 }
 
 /**
@@ -148,8 +148,10 @@ export async function buildRegistry({
         await writeFile(staged, rewriteRegistryImports(source, resolveImport(file.path)));
       }
 
-      const dependencies = Object.fromEntries(
-        (item.dependencies ?? []).map((name) => [name, packages.ranges.get(name)!]),
+      // Our packages carry the range the source was built against. Third-party ones stay bare, as
+      // in stock shadcn items, so `shadcn add` keeps the version an app already has.
+      const dependencies = (item.dependencies ?? []).map((name) =>
+        name.startsWith(ownScope) ? `${name}@${packages.ranges.get(name)!}` : name,
       );
       const compatibility: Record<string, string> = {};
       for (const member of itemClosure(item.name, byName, itemsOf)) {
@@ -169,11 +171,7 @@ export async function buildRegistry({
         title: item.title,
         description: item.description,
         ...(item.docs ? { docs: item.docs } : {}),
-        ...(item.dependencies?.length
-          ? {
-              dependencies: Object.entries(dependencies).map(([name, range]) => `${name}@${range}`),
-            }
-          : {}),
+        ...(dependencies.length ? { dependencies } : {}),
         ...(item.registryDependencies?.length
           ? {
               registryDependencies: item.registryDependencies.map((dependency) => {
@@ -220,11 +218,11 @@ export async function buildRegistry({
       )}\n`,
     );
 
-    await clearOutput(output);
+    const built = join(stage, "out");
     try {
       await execFileAsync(
         process.execPath,
-        [shadcnCli(), "build", "registry.json", "--output", output, "--cwd", stage],
+        [shadcnCli(), "build", "registry.json", "--output", built, "--cwd", stage],
         { cwd: stage, env: { ...process.env, NO_COLOR: "1" } },
       );
     } catch (error) {
@@ -242,7 +240,8 @@ export async function buildRegistry({
       ),
       items: manifestItems,
     };
-    await writeFile(join(output, "compatibility.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+    await writeFile(join(built, "compatibility.json"), `${JSON.stringify(manifest, null, 2)}\n`);
+    await replaceOutput(built, output);
     return manifest;
   } finally {
     await rm(stage, { force: true, recursive: true });

@@ -111,14 +111,13 @@ async function readDeclaredPackages(workspaceRoot: string): Promise<ReadonlySet<
 function validateDependencies(
   dependencies: readonly string[] | undefined,
   manifestPath: string,
-  field: "dependencies" | "devDependencies",
   declaredPackages: ReadonlySet<string>,
 ): RegistryValidationIssue[] {
   const issues: RegistryValidationIssue[] = [];
   const seen = new Set<string>();
 
   for (const [index, dependency] of (dependencies ?? []).entries()) {
-    const path = `${manifestPath}.${field}[${index}]`;
+    const path = `${manifestPath}.dependencies[${index}]`;
     let parsed: ReturnType<typeof parsePackageArgument>;
     try {
       parsed = parsePackageArgument(dependency);
@@ -146,7 +145,7 @@ function validateDependencies(
         issue(
           "versioned-dependency",
           path,
-          `List ${parsed.name} without a version; the build takes its range from the workspace`,
+          `List ${parsed.name} without a version; the build adds ours from the workspace`,
         ),
       );
     }
@@ -159,7 +158,7 @@ function validateDependencies(
         ),
       );
     }
-    if (field === "dependencies" && !declaredPackages.has(parsed.name)) {
+    if (!declaredPackages.has(parsed.name)) {
       issues.push(
         issue(
           "undeclared-dependency",
@@ -332,13 +331,16 @@ async function validateParsedItem(
   }
 
   issues.push(
-    ...validateDependencies(item.dependencies, manifestPath, "dependencies", declaredPackages),
-    ...validateDependencies(
-      item.devDependencies,
-      manifestPath,
-      "devDependencies",
-      declaredPackages,
-    ),
+    ...validateDependencies(item.dependencies, manifestPath, declaredPackages),
+    ...(item.devDependencies?.length
+      ? [
+          issue(
+            "unsupported-dev-dependencies",
+            `${manifestPath}.devDependencies`,
+            "Registry source needs no dev dependencies, and the build doesn't ship them",
+          ),
+        ]
+      : []),
     ...registryDependencies.issues,
     ...validateCssVariables(item.cssVars, manifestPath),
     ...(await validateMeta(item.meta, manifestPath, workspaceRoot)),
