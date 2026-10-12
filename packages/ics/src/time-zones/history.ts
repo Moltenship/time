@@ -9,7 +9,8 @@ const LAST_SAMPLED_YEAR = 2040;
 const samples = new Map<string, ReadonlySet<string>>();
 
 // Whether `timeZone` can be the zone of a VTIMEZONE whose observances move to `offsets`, in
-// seconds: it changed its offset since 1970, or else had each of them before.
+// seconds: it changed its offset since 1970, or else had each of them before. This rejects zones
+// that never change offset; a zone that does passes without its offsets being compared.
 export function fitsDefinitionOffsets(timeZone: string, offsets: ReadonlySet<number>): boolean {
   if (new Temporal.ZonedDateTime(0n, timeZone).getTimeZoneTransition("next") !== null) return true;
   // `EST` is fixed at −05:00 and mustn't stand in for a zone with DST, but a VTIMEZONE written

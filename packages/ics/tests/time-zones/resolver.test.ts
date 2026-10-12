@@ -498,6 +498,22 @@ describe("long TZIDs", () => {
     expect(createTimeZoneResolver()(tzid)).toBeUndefined();
     expect(createTimeZoneResolver({ custom: () => "Europe/Berlin" })(tzid)).toBe("Europe/Berlin");
   });
+
+  test("over 256 characters still resolve through their VTIMEZONE", () => {
+    const tzid = `Office${" ".repeat(300)}Berlin`;
+    const definitions = definitionsOf(
+      vtimezone(
+        tzid,
+        [
+          ["STANDARD", "+0100"],
+          ["DAYLIGHT", "+0200"],
+        ],
+        "Europe/Berlin",
+      ),
+    );
+
+    expect(createTimeZoneResolver({ definitions })(tzid)).toBe("Europe/Berlin");
+  });
 });
 
 describe("precedence", () => {

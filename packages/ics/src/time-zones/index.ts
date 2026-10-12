@@ -78,8 +78,11 @@ export function createTimeZoneResolver(
     const definition = definitions.get(tzid) ?? definitions.get(name);
     const fromCustom = custom?.(tzid, definition);
     const chosen = fromCustom === undefined ? undefined : canonicalTimeZoneId(fromCustom);
+    if (chosen !== undefined) return chosen;
     // No real TZID is this long, and the name rules needn't scale to one that is.
-    if (chosen !== undefined || name.length > MAX_NAME_LENGTH) return chosen;
+    if (name.length > MAX_NAME_LENGTH) {
+      return definition === undefined ? undefined : definitionTimeZone(definition);
+    }
 
     // A name rule's zone must change offset when the calendar says it does: Temporal knows `EST`
     // as fixed at −05:00, and a VTIMEZONE with that TZID may well observe DST.

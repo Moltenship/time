@@ -83,7 +83,9 @@ Temporal has no custom time zones, so each TZID is mapped to a time zone Tempora
 5. the file's VTIMEZONE: its `X-LIC-LOCATION`, or a fixed offset when it observes no DST;
 6. offset names, such as `GMT+0100` or `UTC`.
 
-A TZID that matches none of these stays `unresolved`, with an `unknown-time-zone` warning. It isn't
+When the file's VTIMEZONE observes DST, rules 2–4 and 6 skip zones that never change offset:
+`TZID=EST` is Temporal's fixed −05:00 zone, but a VTIMEZONE named `EST` usually means New York. A
+TZID that matches none of these stays `unresolved`, with an `unknown-time-zone` warning. It isn't
 guessed.
 
 ## Extension properties
