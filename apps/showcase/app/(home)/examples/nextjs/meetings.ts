@@ -26,7 +26,7 @@ interface StoredMeeting {
   readonly title: string;
 }
 
-/** Who is asking: their session, once they have saved something, and their time zone. */
+/** Who is asking: their session, once they have one, and their time zone. */
 export interface Visitor {
   readonly session: string | undefined;
   readonly timeZone: string | undefined;
@@ -43,8 +43,18 @@ const cookieOptions = {
 
 const maxSessions = 1000;
 export const maxMeetings = 200;
-/** Saved meetings by session, oldest session first. */
+/** Saved meetings by session, least recently used first. */
 const sessions = new Map<string, StoredMeeting[]>();
+
+/** A session's meetings, which moves it to the end of the queue to evict. */
+function meetingsOf(session: string | undefined): StoredMeeting[] | undefined {
+  const meetings = session === undefined ? undefined : sessions.get(session);
+  if (session !== undefined && meetings !== undefined) {
+    sessions.delete(session);
+    sessions.set(session, meetings);
+  }
+  return meetings;
+}
 
 /** The canonical ID of a time zone, or `undefined` for a value that isn't one. */
 export function timeZoneOf(value: unknown): string | undefined {
@@ -68,9 +78,14 @@ export async function setTimeZoneCookie(timeZone: string): Promise<void> {
   (await cookies()).set(timeZoneCookie, timeZone, cookieOptions);
 }
 
-/** The visitor's session, started on their first save with the sample meetings they were seeing. */
+/**
+ * The visitor's session. A new one starts with the sample meetings the visitor was seeing, at
+ * wall-clock times in their zone.
+ */
 export async function startSession(visitor: Visitor): Promise<string> {
-  if (visitor.session !== undefined && sessions.has(visitor.session)) return visitor.session;
+  if (visitor.session !== undefined && meetingsOf(visitor.session) !== undefined) {
+    return visitor.session;
+  }
   const session = randomUUID();
   sessions.set(session, sampleMeetings(visitor.timeZone ?? "UTC"));
   for (const oldest of sessions.keys()) {
@@ -86,9 +101,7 @@ export async function findMeetings(
   visitor: Visitor,
   range: InstantInterval,
 ): Promise<readonly MeetingJson[]> {
-  const meetings =
-    (visitor.session === undefined ? undefined : sessions.get(visitor.session)) ??
-    sampleMeetings(visitor.timeZone ?? "UTC");
+  const meetings = meetingsOf(visitor.session) ?? sampleMeetings(visitor.timeZone ?? "UTC");
   return meetings
     .filter(
       ({ end, start }) =>
@@ -108,7 +121,7 @@ export function insertMeeting(
   session: string,
   times: Pick<StoredMeeting, "end" | "start">,
 ): string | undefined {
-  const meetings = sessions.get(session);
+  const meetings = meetingsOf(session);
   if (meetings === undefined || meetings.length >= maxMeetings) return undefined;
   const id = randomUUID();
   meetings.push({ ...times, color: "blue", id, title: "New meeting" });
@@ -121,7 +134,7 @@ export function updateMeeting(
   id: string,
   times: Pick<StoredMeeting, "end" | "start">,
 ): boolean {
-  const meetings = sessions.get(session);
+  const meetings = meetingsOf(session);
   const index = meetings?.findIndex((meeting) => meeting.id === id) ?? -1;
   if (meetings === undefined || index === -1) return false;
   meetings[index] = { ...meetings[index]!, ...times };

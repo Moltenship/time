@@ -13,24 +13,25 @@ here.
 - **A Server Component fetches the meetings** for the range the URL shows.
 - **Server Actions save** created, moved and resized meetings. The calendar proposes each change, the
   server decides, and the page renders again with the result.
-- **The time zone comes from a cookie**, and the current time from the server.
+- **The time zone comes from a cookie**, and the first render's clock from the server.
 
-The route has seven files:
+The route has eight files:
 
-| File                | Kind             | What it does                                            |
-| ------------------- | ---------------- | ------------------------------------------------------- |
-| `page.tsx`          | Server Component | Reads the URL and the cookies, and fetches the meetings |
-| `loading.tsx`       | Server Component | The first load's skeleton                               |
-| `location.ts`       | Shared           | The URL's view and date, and the dates they show        |
-| `meetings.ts`       | Server only      | An in-memory store that stands in for your database     |
-| `actions.ts`        | Server Actions   | Save meetings and the time zone                         |
-| `calendar.ts`       | Client           | The calendar, its views and its policies                |
-| `team-calendar.tsx` | Client Component | The calendar's state, wired to the URL and the actions  |
+| File                | Kind             | What it does                                              |
+| ------------------- | ---------------- | --------------------------------------------------------- |
+| `layout.tsx`        | Server Component | The heading and the frame, which stay put as pages change |
+| `page.tsx`          | Server Component | Reads the URL and the cookies, and fetches the meetings   |
+| `loading.tsx`       | Server Component | The first load's skeleton                                 |
+| `location.ts`       | Shared           | The URL's view and date, and the dates they show          |
+| `meetings.ts`       | Server only      | An in-memory store that stands in for your database       |
+| `actions.ts`        | Server Actions   | Save meetings and the time zone                           |
+| `calendar.ts`       | Client           | The calendar, its views and its policies                  |
+| `team-calendar.tsx` | Client Component | The calendar's state, wired to the URL and the actions    |
 
 ## The URL
 
-The view and the date are search params. Anything missing or broken falls back to this week, so
-every link opens something:
+The view and the date are search params. A missing or broken view falls back to the week, and a
+missing or broken date to today, so every link opens something:
 
 <include meta='title="location.ts"'>
   ../../../app/(home)/examples/nextjs/location.ts#location
@@ -44,8 +45,9 @@ meetings for the range the calendar will show:
 <include meta='title="page.tsx"'>../../../app/(home)/examples/nextjs/page.tsx#page</include>
 
 - **It renders on every request.** Reading `searchParams` and cookies makes the page dynamic.
-- **`now` is read once**, here, and passed down as a string. Each render on the server moves it on,
-  so it stays current as the visitor navigates and saves.
+- **`now` is read once**, here, and passed down as a string, so the server and the browser render
+  the same today. Once the page has hydrated, the calendar follows the browser's clock instead, so
+  the now line keeps moving between server renders.
 - **Meetings arrive as strings.** `meetings.ts` sends them as `MeetingJson`, with ISO 8601 times:
 
 <include meta='title="meetings.ts"'>../../../app/(home)/examples/nextjs/meetings.ts#types</include>
@@ -74,7 +76,8 @@ The Client Component wires it to the URL, the Server Actions and the time zone c
 </include>
 
 `view` and `anchorDate` are controlled, so the URL decides what the calendar shows. `timeZone` is
-controlled too, and comes from the cookie.
+controlled too, and comes from the cookie. `useHydrated` is `false` only while the page hydrates, so
+`now` is the server's for that first render and the calendar's own clock after it.
 
 ## Navigation
 
@@ -86,14 +89,15 @@ When someone moves to another week or view, the calendar calls `onAnchorDateChan
 </include>
 
 - **The grid moves on the click.** `router.push` runs inside a transition, and `useOptimistic` shows
-  the new view and date until the server's render for them arrives. In the meantime the meetings
-  from the last range stay on screen.
+  the new view and date at once. Their meetings arrive with the server's render. Until then the grid
+  shows the meetings it already has that fall in the new range: all of them when zooming from a
+  month into a week, none when stepping to the next week.
 - **The page says it's loading.** The transition's `loading` flag sets `aria-busy` on the viewport
-  and shows a thin bar under the toolbar. Nothing blanks.
+  and shows a thin bar under the toolbar. The grid itself never blanks.
 - **One click, one URL.** Opening a day from the month view changes the view and the date. The
   changes queue for one microtask, so they land in a single URL and a single history entry.
-- **Back and Forward** change the URL, the page renders on the server again, and the controlled
-  props follow.
+- **Back and Forward** restore that URL's render from the Next.js router's cache, or fetch it again
+  when a save has refreshed the page since. The controlled props follow.
 
 The calendar stays mounted through all of this. Next.js keeps the page on screen while it fetches
 the next render, and the props change in place, so the scroll position and the focus survive.
@@ -143,9 +147,13 @@ server renders in UTC, and the browser sends its own zone once it has hydrated:
   ../../../app/(home)/examples/nextjs/team-calendar.tsx#time-zone
 </include>
 
-Setting a cookie in a Server Action re-renders the page in the same response, so the calendar
-switches zones as soon as the action returns. Every later request renders in the right zone from the
-start, and hydration matches. The picker under the calendar calls the same action.
+`useOptimistic` switches the calendar to the new zone at once. Setting a cookie in a Server Action
+re-renders the page in the same response, so the meetings for the new zone's range arrive with the
+action's result. Every later request renders in the right zone from the start, and hydration
+matches. The picker under the calendar calls the same action.
+
+Switching zones keeps each meeting at its instant, so a 09:30 standup in Tokyo shows in the small
+hours in Berlin. A first visit has no zone to keep, so its sample meetings simply follow the browser's.
 
 <include meta='title="actions.ts"'>
   ../../../app/(home)/examples/nextjs/actions.ts#time-zone
@@ -156,7 +164,9 @@ start, and hydration matches. The picker under the calendar calls the same actio
 The server runs on Node.js 26, which has `Temporal`. The calendar also renders while the page
 hydrates, so `Temporal` has to exist in the browser before then. `team-calendar.tsx` imports
 `temporal-polyfill/global` before anything else. The polyfill installs itself only in browsers
-without `Temporal`. See [Installation](/docs/installation#temporal).
+without `Temporal`, but as a static import every browser downloads it. The dynamic import that
+[Installation](/docs/installation#temporal) shows saves that, but only suits a calendar that renders
+after hydration.
 
 ## Make it yours
 

@@ -180,8 +180,24 @@ describe("the store and its Server Actions", () => {
     await saveTimeZone("Not/AZone");
     expect(cookieJar.has("time-zone")).toBe(false);
 
+    // A first visit only stores the zone: the sample meetings follow it.
     await saveTimeZone("asia/tokyo");
     expect(cookieJar.get("time-zone")).toBe("Asia/Tokyo");
-    expect(cookieJar.has("meetings-session")).toBe(true);
+    expect(cookieJar.has("meetings-session")).toBe(false);
+  });
+
+  test("keeps meetings at their instants when the visitor switches zones", async () => {
+    cookieJar.set("time-zone", "Asia/Tokyo");
+    await saveTimeZone("Europe/Berlin");
+    expect(cookieJar.get("time-zone")).toBe("Europe/Berlin");
+
+    const now = Temporal.Now.instant();
+    const meetings = await findMeetings(
+      await getVisitor(),
+      instantInterval(now.subtract({ hours: 24 * 14 }), now.add({ hours: 24 * 14 })),
+    );
+    const standup = meetings.find(({ title }) => title === "Standup")!;
+    const start = Temporal.Instant.from(standup.start);
+    expect(start.toZonedDateTimeISO("Asia/Tokyo").toPlainTime().toString()).toBe("09:30:00");
   });
 });

@@ -70,8 +70,9 @@ export async function saveTimeZone(input: string): Promise<void> {
   const timeZone = timeZoneOf(input);
   if (timeZone === undefined) return;
   const visitor = await getVisitor();
-  // Sample meetings keep the times the visitor first saw them at, in whichever zone that was.
-  await startSession({ ...visitor, timeZone: visitor.timeZone ?? timeZone });
+  // Switching zones keeps the meetings at the instants the visitor saw, so they move on the clock.
+  // A first visit has no zone to keep, and its sample meetings simply follow the new one.
+  if (visitor.timeZone !== undefined && visitor.timeZone !== timeZone) await startSession(visitor);
   // Setting a cookie re-renders the page in this response, in the new zone.
   await setTimeZoneCookie(timeZone);
 }

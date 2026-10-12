@@ -75,6 +75,8 @@ test.each(["week", "day", "month"] as const)(
   async (view) => {
     const { errors, serverHtml } = await hydrate(view);
     expect(serverHtml).toContain("Weekly planning");
+    // Both sides run in Node here, so they'd agree on these anyway. Chrome writes plain spaces.
+    expect(serverHtml).not.toMatch(/[\u2009\u202F]/u);
     expect(errors).toEqual([]);
   },
 );

@@ -68,6 +68,10 @@ passes to `project` as `instantRange`, and `resolveViewLoadRange(strategy, ancho
 options, range)` gives the `loadRange` it passes. Use them to run a strategy outside React, for
 example in a test.
 
+`withAsciiSpaces(text)` writes the thin and narrow no-break spaces in `Intl` output as plain spaces.
+Node.js and browsers disagree on them in date ranges, so wrap `formatRange` output that renders on
+the server, as the built-in titles and views do, and hydration matches.
+
 ## Root
 
 `<Calendar.Root>` holds the state and provides it to everything inside. It renders no element of its

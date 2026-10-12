@@ -4,12 +4,12 @@ import { withAsciiSpaces } from "../src/index";
 
 describe("withAsciiSpaces", () => {
   test("turns thin and narrow no-break spaces into plain ones", () => {
-    expect(withAsciiSpaces("Oct 12 – 18, 2026")).toBe("Oct 12 – 18, 2026");
-    expect(withAsciiSpaces("9:30 AM")).toBe("9:30 AM");
+    expect(withAsciiSpaces("Oct 12\u2009–\u200918, 2026")).toBe("Oct 12 – 18, 2026");
+    expect(withAsciiSpaces("9:30\u202FAM")).toBe("9:30 AM");
   });
 
   test("keeps other spaces, which runtimes agree on", () => {
-    expect(withAsciiSpaces("12 oct.")).toBe("12 oct.");
+    expect(withAsciiSpaces("12\u00A0oct.")).toBe("12\u00A0oct.");
   });
 
   test("makes a range read the same in every runtime", () => {

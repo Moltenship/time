@@ -4,5 +4,5 @@
  * rendered on the server would not match the browser's when it hydrates.
  */
 export function withAsciiSpaces(text: string): string {
-  return text.replace(/[  ]/gu, " ");
+  return text.replace(/[\u2009\u202F]/gu, " ");
 }

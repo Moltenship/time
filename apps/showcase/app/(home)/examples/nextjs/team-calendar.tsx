@@ -13,6 +13,7 @@ import {
   useOptimistic,
   useRef,
   useState,
+  useSyncExternalStore,
   useTransition,
 } from "react";
 
@@ -103,6 +104,8 @@ function useMeetings(json: readonly MeetingJson[]) {
   // The calendar keeps a change pending until this promise settles, and undoes it on a rejection.
   function save(change: MeetingChange): Promise<void> {
     const { promise, reject, resolve } = Promise.withResolvers<void>();
+    // Cleared first, so the same refusal twice is announced twice.
+    setMessage("");
     startTransition(async () => {
       if (change.cause === "create" && change.proposed.kind === "timed") {
         const { end, start } = change.proposed;
@@ -117,7 +120,6 @@ function useMeetings(json: readonly MeetingJson[]) {
       }
       const result = await send(change).catch(() => null);
       if (result?.ok === true) {
-        setMessage("");
         resolve();
       } else {
         setMessage(
@@ -162,7 +164,7 @@ function useTimeZone(timeZone: string, fromCookie: boolean) {
   );
 
   useEffect(() => {
-    if (!fromCookie) change(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    if (!fromCookie) change(Temporal.Now.timeZoneId());
   }, [change, fromCookie]);
 
   return [shown, change] as const;
@@ -215,17 +217,31 @@ export interface TeamCalendarProps {
   readonly timeZoneFromCookie: boolean;
 }
 
+const subscribeToNothing = () => () => undefined;
+
+/** `false` while the page hydrates, `true` from then on. */
+function useHydrated() {
+  return useSyncExternalStore(
+    subscribeToNothing,
+    () => true,
+    () => false,
+  );
+}
+
 export function TeamCalendar(props: TeamCalendarProps) {
   const { loading, location, navigate } = useCalendarLocation(props.location);
   const { meetings, message, save } = useMeetings(props.meetings);
   const [timeZone, setTimeZone] = useTimeZone(props.timeZone, props.timeZoneFromCookie);
+  // The server's clock while hydrating, so both sides render the same today. The browser's clock
+  // after that, so the now line keeps moving between server renders.
+  const serverNow = useHydrated() ? {} : { now: Temporal.Instant.from(props.now) };
 
   return (
     <Calendar.Root
+      {...serverNow}
       anchorDate={Temporal.PlainDate.from(location.date)}
       events={meetings}
       locale={locale}
-      now={Temporal.Instant.from(props.now)}
       onAnchorDateChange={(date) => navigate({ date: date.toString() })}
       onEventChange={save}
       onViewChange={(view) => navigate({ view })}
@@ -245,7 +261,7 @@ export function TeamCalendar(props: TeamCalendarProps) {
         {/* Stays on screen while the next range loads; only this bar says so. */}
         <div
           aria-hidden="true"
-          className={`h-0.5 shrink-0 bg-brand transition-opacity ${loading ? "animate-pulse opacity-100" : "opacity-0"}`}
+          className={`h-0.5 shrink-0 bg-brand transition-opacity ${loading ? "opacity-100 motion-safe:animate-pulse" : "opacity-0"}`}
         />
         <Calendar.Viewport aria-busy={loading} className="min-h-0 flex-1">
           <Calendar.ActiveView />

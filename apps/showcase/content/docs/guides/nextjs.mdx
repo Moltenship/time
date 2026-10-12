@@ -44,8 +44,8 @@ same markup as long as they get the same props. In practice:
   server's own zone is rarely the user's.
 - **Pass the same `locale`** to both. Dates and times are formatted with `Intl`, which depends on it.
   Runtimes also disagree on some spaces: Node.js puts thin spaces around the dash in "Oct 12 – 18"
-  where Chrome puts plain ones. Time writes them all as plain spaces, and so can your own formatting,
-  with `withAsciiSpaces(format.formatRange(start, end))`.
+  where Chrome puts plain ones. The views' titles, times and labels use plain spaces, and so can your
+  own formatting, with `withAsciiSpaces(format.formatRange(start, end))`.
 
 If you only learn the user's time zone in the browser, render the calendar after hydration, or pass
 the zone as a controlled `timeZone` and update it once you know it.
