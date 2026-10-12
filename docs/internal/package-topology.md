@@ -65,11 +65,11 @@ boundary.
 ```text
 calendar-temporal
        ↓
-calendar-core ───────────────→ fixtures ───────→ benchmark
+calendar-core ───────────────→ fixtures ───────→ benchmark (also imports core and temporal)
        ↓                                           ↑
-calendar-core + calendar-temporal → calendar-react ┤
-calendar-core + calendar-temporal → calendar-dnd   │
-                                                   │
+calendar-core + calendar-temporal → calendar-react ┘
+calendar-core + calendar-temporal → calendar-dnd
+
 calendar-core + calendar-dnd + calendar-react + calendar-temporal
        ↓
 calendar (facade) ─────→ showcase / ssr-fixture / demo / registry-source
