@@ -111,24 +111,39 @@ each into an event the calendar can show:
 
 ## Recurring events
 
-The parser reads recurrence but doesn't expand it yet. A series is one event with its rule in
+`@moltenship/ics` reads recurrence but doesn't expand it. A series is one event with its rule in
 `recurrenceRule`, the occurrences it removes in `exceptionDates`, and extra ones in
 `recurrenceDates`. A change to one occurrence is a separate event with the series' UID and a
-`recurrenceId` that names the occurrence it replaces. Expanding rules into occurrences comes with
-the recurrence package ([#48](https://github.com/Moltenship/time/issues/48)).
+`recurrenceId` that names the occurrence it replaces. So the mapping above shows:
 
-So the mapping above shows:
+- **A recurring event once,** at its DTSTART, which is the first occurrence.
+- **A changed occurrence as its own event,** at its new time.
 
-- **A recurring event once,** at its DTSTART, which is the first occurrence. The rest of the series
-  doesn't appear, and the first occurrence shows even if `exceptionDates` removes it.
-- **A changed occurrence as its own event,** at its new time. If it changes the first occurrence,
-  both appear.
+[`@moltenship/calendar-recurrence`](/docs/api/recurrence) expands them. `recurringEventsFromIcs`
+groups a calendar's events into series masters, overrides and one-off events, and an expander turns
+them into the occurrences for the dates on screen. Those dates are known in the browser, so the
+server sends the feed's text, a string, instead of mapped events. In the page above, have the
+cached function return `await response.text()`, and pass it as `text`:
 
-Until then, if your feeds repeat, expand each series on the server before you map it, with an RRULE
-library or your own code over `recurrenceRule`. Leave out the dates in `exceptionDates`, add those in
-`recurrenceDates`, and use a changed occurrence in place of the one its `recurrenceId` names. If
-that's more than you need, check `event.recurrenceRule !== undefined` and tell people that the
-series continues.
+<include meta='title="recurring-feed-calendar.tsx"'>../../examples/recurring-feed.tsx#feed</include>
+
+- **IDs.** Masters and one-off events keep their UID. An override gets the ID of the occurrence it
+  replaces, such as `standup@example.com::2026-10-20T07:00:00Z`, so it never collides with its
+  series.
+- **Time zones.** A zoned series repeats on its zone's wall clock, so a 09:00 meeting stays at 09:00
+  across daylight saving time. Floating and all-day series stay floating and all-day, and the
+  calendar shows them that way. Pass the feed's `X-WR-TIMEZONE` as `timeZone`, so UTC dates on them,
+  such as an UNTIL, keep the feed's dates.
+- **Cancelled events.** A cancelled override, with `STATUS:CANCELLED`, hides its occurrence. A
+  cancelled master is left out with its overrides.
+- **Issues.** `recurringEventsFromIcs` reports what it changed or left out, such as an RDATE with a
+  date where the series has times, or `RANGE=THISANDFUTURE`, which it reads as a change to one
+  occurrence. The expander reports its own issues, such as a rule it can't expand.
+
+To expand on the server instead, call the expander there for a range you choose, and map each
+occurrence's `interval` to JSON as `toFeedEvent` maps an event's times. The calendar then shows only
+that range. [Show and edit recurring events](/docs/guides/recurring-events) covers expansion in
+more detail.
 
 ## Time zones
 

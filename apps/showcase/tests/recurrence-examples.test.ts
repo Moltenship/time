@@ -3,14 +3,17 @@ import { fileURLToPath } from "node:url";
 
 import { weekRange } from "@moltenship/calendar";
 import {
+  createCanonicalRecurrenceAdapter,
   createOccurrenceExpander,
   type RecurrenceOccurrence,
 } from "@moltenship/calendar-recurrence";
+import type { IcsEvent } from "@moltenship/ics";
 import { describe, expect, test } from "vite-plus/test";
 
 import { createRecurringPreviewEvents } from "../components/recurrence-preview/events";
 import { adapters as teamAdapters } from "../content/examples/recurrence-calendar";
 import { adapters as meetingAdapters, type Meeting } from "../content/examples/recurring-meetings";
+import { readRecurringFeed } from "../content/examples/recurring-feed";
 
 /** Each occurrence as its ID, and its start on the wall clock of `timeZone`. */
 function shown(occurrences: readonly RecurrenceOccurrence<unknown, string>[], timeZone: string) {
@@ -103,6 +106,59 @@ describe("an application's own event type", () => {
       ["sync::2026-10-19T07:00:00Z", "2026-10-19T09:00:00"],
       ["sync::2026-10-28T08:00:00Z", "2026-10-28T09:00:00"],
       ["sync::2026-10-26T08:00:00Z", "2026-10-26T11:00:00"],
+    ]);
+  });
+});
+
+describe("readRecurringFeed", () => {
+  const feed = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//Moltenship//Tests//EN",
+    "X-WR-TIMEZONE:Europe/Berlin",
+    "BEGIN:VEVENT",
+    "UID:standup@example.com",
+    "DTSTAMP:20261001T080000Z",
+    "DTSTART;TZID=Europe/Berlin:20261019T090000",
+    "DTEND;TZID=Europe/Berlin:20261019T091500",
+    "RRULE:FREQ=DAILY;COUNT=5",
+    "EXDATE;TZID=Europe/Berlin:20261021T090000",
+    "SUMMARY:Stand-up",
+    "END:VEVENT",
+    "BEGIN:VEVENT",
+    "UID:standup@example.com",
+    "DTSTAMP:20261001T080000Z",
+    "RECURRENCE-ID;TZID=Europe/Berlin:20261020T090000",
+    "DTSTART;TZID=Europe/Berlin:20261020T100000",
+    "DTEND;TZID=Europe/Berlin:20261020T101500",
+    "SUMMARY:Stand-up (moved)",
+    "END:VEVENT",
+    "BEGIN:VEVENT",
+    "UID:standup@example.com",
+    "DTSTAMP:20261001T080000Z",
+    "RECURRENCE-ID;TZID=Europe/Berlin:20261022T090000",
+    "DTSTART;TZID=Europe/Berlin:20261022T090000",
+    "STATUS:CANCELLED",
+    "SUMMARY:Stand-up",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+
+  test("groups a feed into series the expander shows", () => {
+    const events = readRecurringFeed(feed);
+    const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEvent>());
+    const { issues, occurrences } = expander.expand(events, {
+      range: {
+        end: Temporal.PlainDate.from("2026-10-26"),
+        start: Temporal.PlainDate.from("2026-10-19"),
+      },
+      timeZone: "Europe/Berlin",
+    });
+    expect(issues).toEqual([]);
+    expect(shown(occurrences, "Europe/Berlin")).toEqual([
+      ["standup@example.com::2026-10-19T07:00:00Z", "2026-10-19T09:00:00"],
+      ["standup@example.com::2026-10-23T07:00:00Z", "2026-10-23T09:00:00"],
+      ["standup@example.com::2026-10-20T07:00:00Z", "2026-10-20T10:00:00"],
     ]);
   });
 });

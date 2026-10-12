@@ -208,7 +208,7 @@ Each event is an `IcsEvent`:
       type: "IcsRecurrenceRule",
       description: (
         <>
-          RRULE, parsed but not expanded. See <a href="#recurrence">Recurrence</a>.
+          RRULE. See <a href="#recurrence">Recurrence</a>.
         </>
       ),
     },
@@ -405,9 +405,12 @@ event.exceptionDates;
   occurrence, such as a meeting moved to another time. `recurrenceRange` is `"THISANDFUTURE"` when
   the override also applies to the occurrences after it.
 
-Rules are parsed, not expanded: the package doesn't list a series' occurrences. Expansion comes
-with the recurrence package, tracked in
-[issue #48](https://github.com/Moltenship/time/issues/48).
+This package parses rules but doesn't list a series' occurrences.
+[`@moltenship/calendar-recurrence`](/docs/api/recurrence) does: `recurringEventsFromIcs` groups
+parsed events into series masters, overrides and one-off events, and its expander lists the
+occurrences for a range of dates. It reads an override with `RANGE=THISANDFUTURE` as a change to
+its own occurrence only, and reports it. See [Recurring events](/docs/guides/ics#recurring-events)
+in the ICS guide.
 
 ## Issues and strict mode
 
@@ -641,8 +644,8 @@ them.
 - **Writing ICS from typed objects.** `stringifyIcsComponents` writes a syntax tree, which you
   build yourself.
 - **Recurrence expansion.** Rules are parsed into `IcsRecurrenceRule`, not expanded into
-  occurrences. It comes with the recurrence package
-  ([#48](https://github.com/Moltenship/time/issues/48)).
+  occurrences. [`@moltenship/calendar-recurrence`](/docs/api/recurrence) expands them, so this
+  package stays free of dependencies.
 - **Byte input.** `parseIcs` takes a string. Decode bytes as UTF-8 first, for example with
   `response.text()` or `new TextDecoder().decode(bytes)`. A line fold that splits a multi-byte
   character can't be repaired after decoding.
