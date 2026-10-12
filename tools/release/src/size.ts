@@ -26,7 +26,11 @@ export async function measureSizes(
 ): Promise<SizeMeasurement[]> {
   const measurements: SizeMeasurement[] = [];
   for (const entry of packages) {
-    for (const [subpath, file] of publishedEntryPoints(entry.manifest)) {
+    const entryPoints = publishedEntryPoints(entry.manifest);
+    if (entryPoints.size === 0) {
+      throw new Error(`${entry.manifest.name} has no entry point in publishConfig.exports`);
+    }
+    for (const [subpath, file] of entryPoints) {
       let bytes: Buffer;
       try {
         bytes = await readFile(join(entry.path, file));

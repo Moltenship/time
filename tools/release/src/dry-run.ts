@@ -31,9 +31,10 @@ async function step<T>(name: string, action: () => Promise<T>): Promise<T> {
  */
 export async function dryRun({
   version: requested,
-}: { readonly version?: string } = {}): Promise<void> {
+  manifestFile = manifestPath,
+}: { readonly version?: string; readonly manifestFile?: string } = {}): Promise<void> {
   // A failed run must not leave an older passing manifest behind.
-  await removeManifest();
+  await removeManifest(manifestFile);
   const start = await gitState();
   const packages = await readPublishedPackages();
   const checks: string[] = [];
@@ -73,7 +74,9 @@ export async function dryRun({
   // `registry:e2e` (`shadcn add` into clean apps against packed packages). Once they are on main,
   // run both here, so the dry run builds the registry for the packed version. Until then, the
   // schema smoke covers the registry items.
-  await record("registry", () => runOrThrow("vp", ["run", "registry:smoke"], { inherit: true }));
+  await record("registry", () =>
+    runOrThrow("vp", ["run", "--no-cache", "registry:smoke"], { inherit: true }),
+  );
 
   const end = await gitState();
   if (end.head !== start.head)
@@ -81,17 +84,20 @@ export async function dryRun({
   if (start.clean && !end.clean)
     throw new Error(`The dry run changed tracked files:\n${end.status}`);
 
-  await writeManifest({
-    status: "passed",
-    version,
-    commit: start.head,
-    clean: start.clean && end.clean,
-    createdAt: new Date().toISOString(),
-    checks,
-    packages: tarballs.map(({ name, file, integrity }) => ({ name, file, integrity })),
-  });
+  await writeManifest(
+    {
+      status: "passed",
+      version,
+      commit: start.head,
+      clean: start.clean && end.clean,
+      createdAt: new Date().toISOString(),
+      checks,
+      packages: tarballs.map(({ name, file, integrity }) => ({ name, file, integrity })),
+    },
+    manifestFile,
+  );
   console.log(`\nDry run passed for ${version} at ${start.head.slice(0, 12)}.`);
-  console.log(`Wrote ${relative(workspaceRoot, manifestPath)}.`);
+  console.log(`Wrote ${relative(workspaceRoot, manifestFile)}.`);
   if (!start.clean)
     console.log("The working tree had changes, so the publish step won't accept this run.");
 }

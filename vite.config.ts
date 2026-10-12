@@ -59,7 +59,9 @@ export default defineConfig({
       "registry:smoke": "vp run registry#smoke",
       "registry:build": "vp run registry#site",
       "registry:e2e": "vp run registry#e2e",
-      // Release checks (docs/internal/releasing.md). size, api and exports read the built packages.
+      // Release checks (docs/internal/releasing.md). size, api and exports read the built packages,
+      // so release:check runs after ci:build.
+      "release:check": ["vp run release:size", "vp run release:api", "vp run release:exports"],
       "release:size": "vp run release#size",
       "release:api": "vp run release#api",
       "release:api:update": { command: "vp run release#api:update", cache: false },

@@ -10,20 +10,21 @@ Seven packages publish under `@moltenship`, listed in
 
 ## Checks
 
-Each check is a `vp run` task. The same tasks run locally and in the release workflow. The tier
-says where a check belongs in the local gate: PR checks are cheap enough for `vp run ready`, and the
-full tier is the release gate. #47 owns the tiers and wires these tasks into them.
+Each check is a `vp run` task. The same tasks run locally, in CI and in the release workflow. The
+tier says where a check belongs in the local gate: PR checks are cheap enough for every PR, and the
+full tier is the release gate. `vp run release:check` runs the three PR checks, about two seconds,
+and `vp run ready` and CI run it after `ci:build`. #47 owns the tiers and may move these tasks.
 
 | Task | What it checks | Tier |
 | --- | --- | --- |
 | `vp run release:size` | Each published entry point's emitted ESM, raw and gzip, against its budget in `tools/release/src/config.ts` | PR |
 | `vp run release:api` | Each package's built declarations against its committed `api-report.md` | PR |
-| `vp run release:exports` | Packs every package into `.release/tarballs`, then runs publint and are-the-types-wrong (ESM-only), checks for `LICENSE`, and checks that base packages don't import the dnd adapter | PR |
-| `vp run release:consumer` | Installs the tarballs into a new project outside the workspace, offline from the pnpm store; imports every package in Node, type-checks them under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away | Full |
+| `vp run release:exports` | Packs every package into a temporary folder, then runs publint and are-the-types-wrong (ESM-only), checks for `LICENSE`, and checks that base packages don't import the dnd adapter | PR |
+| `vp run release:consumer` | Installs the tarballs into a new project outside the workspace, offline from the pnpm store; imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away | Full |
 | `vp run release:dry-run` | A fresh build of every published package, then all of the above and the registry smoke. Writes `.release/manifest.json` | Full |
 
-`release:size` and `release:api` read the built packages. Run them after `vp run ci:build`, as
-`vp run ready` does.
+The PR checks read the built packages, so on their own they run after `vp run ci:build`. Only the
+dry run writes `.release/`.
 
 - **The API changed on purpose.** Run `vp run release:api:update` and commit the reports with the
   change. The diff in `packages/*/api-report.md` is what reviewers look at.
@@ -38,22 +39,35 @@ full tier is the release gate. #47 owns the tiers and wires these tasks into the
    It sets the version in all seven manifests and turns "Unreleased" into `## 1.0.0-rc.1 (date)`.
    Open a PR, review, merge.
 3. **Publish from `main`**, one of two ways:
-   - **GitHub Actions.** Actions → Release → Run workflow, on `main`, with the version. The
-     workflow runs `vp run ready`, `vp run release:dry-run --version <v>` and
-     `vp run release:publish --version <v> --provenance --yes` on that commit. It needs either an
-     `NPM_TOKEN` secret that can publish to `@moltenship`, or npm trusted publishing set up for
-     `release.yml`. Packages get npm provenance.
-   - **Locally.** From a clean checkout of that commit:
+   - **GitHub Actions.** Actions → Release → Run workflow, on `main`, with the version. Leave
+     "Publish to npm" off for a rehearsal. The `verify` job runs `vp run ready` and
+     `vp run release:dry-run --version <v>`, then keeps `.release/` as an artifact. With publishing
+     on, the `publish` job downloads it and runs
+     `vp run release:publish --version <v> --provenance --yes` on the same commit. Only that job
+     can mint the OIDC token that signs npm provenance.
+
+     Before the first run, set up the `npm` environment in the repository settings:
+     - deployment branches: `main` only;
+     - a required reviewer;
+     - either an `NPM_TOKEN` secret that can publish to `@moltenship`, or an npm trusted publisher
+       for `release.yml` and the `npm` environment.
+
+     The workflow's `main` check is only an accident guard: anyone with write access can dispatch
+     a branch whose copy of the file drops it. The environment's branch rule is the real limit.
+   - **Locally.** From a clean checkout of that commit, after `git fetch`:
 
      ```sh
-     vp install
+     vp install --frozen-lockfile
+     vp exec --filter a11y playwright install chromium   # once, for the a11y gate
      vp run ready
      vp run release:dry-run --version 1.0.0-rc.1
-     npm login   # or export NODE_AUTH_TOKEN=<token>
+     export NODE_AUTH_TOKEN=<token>   # or npm login
      vp run release:publish --version 1.0.0-rc.1
      ```
 
-     The publish step asks you to type the version. Local publishes have no provenance.
+     The publish step asks you to type the version. Local publishes have no provenance. Use a
+     granular access token that can publish to `@moltenship`: with two-factor authentication on
+     writes, a one-time password can expire before all seven packages are out.
 4. **After publishing.** Tag the commit (`v1.0.0-rc.1`), push the tag, and write a GitHub release
    from the changelog section. These steps aren't automated yet.
 
@@ -63,13 +77,17 @@ full tier is the release gate. #47 owns the tiers and wires these tasks into the
 
 - `.release/manifest.json` exists from a passing dry run;
 - the dry run ran on `HEAD`, on a clean tree, and the tree is still clean;
+- `HEAD` is on `origin/main`;
 - the dry run checked the version you asked for, and it isn't `0.0.0`;
 - every published package was packed, and each tarball's sha512 still matches.
 
-Then it publishes those exact tarballs, dependencies first, and skips any version npm already has,
-so running it again after a partial failure is safe. Prereleases get the `next` dist-tag and stable
-versions `latest`; `--tag` picks another, but a prerelease can't take `latest`. `--provenance` only
-works in GitHub Actions. The registry is always `https://registry.npmjs.org/`.
+Then it publishes those exact tarballs, dependencies first. A version npm already has is skipped
+only when npm's integrity matches the tarball the dry run checked; otherwise the step stops, so the
+seven packages on npm never mix two builds. Running it again after a partial failure is safe.
+
+Prereleases get the `next` dist-tag and stable versions `latest`; `--tag` picks another, but a
+prerelease can't take `latest`. `--provenance` only works in GitHub Actions. The registry is always
+`https://registry.npmjs.org/`, whatever a local `.npmrc` says.
 
 Each package's `prepublishOnly` script fails, so `pnpm publish` in a package folder, or
 `pnpm publish -r`, can't skip the dry run. Publishing a tarball doesn't run that script.
@@ -92,8 +110,9 @@ A published version can't be changed or reused, even after an unpublish. Fix for
    With no previous version, skip the dist-tag and only deprecate.
 2. **Fix and release again** with a new version (`1.0.1`, or `1.0.0-rc.2`) through the steps above.
 3. **Partial publish.** If some packages published and the rest failed, run the publish step again
-   on the same commit. If the fix needs a code change, deprecate what went out and release a new
-   version of all seven.
+   on the same commit. npm can take a minute to list a version it just took; until then, a re-run
+   fails on that package with "cannot publish over", which is safe. If the fix needs a code change,
+   deprecate what went out and release a new version of all seven.
 
 Unpublish only for something that must disappear, such as a leaked secret. npm allows it within
 72 hours, and it breaks lockfiles that already reference the version.
@@ -121,5 +140,6 @@ dry run builds the registry for the version it packs.
 From #146. The tooling supports either choice for each.
 
 - The `@moltenship` npm scope: it must exist, and the publisher needs rights to it.
-- Publish from GitHub Actions with provenance, or locally with a token.
+- Publish from GitHub Actions with provenance, or locally with a token. The Actions path also needs
+  the `npm` environment described above.
 - `1.0.0-rc.1` first, or straight to `1.0.0`.

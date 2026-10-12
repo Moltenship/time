@@ -19,6 +19,11 @@ interface Span {
   readonly end: number;
 }
 
+interface Comment extends Span {
+  readonly type: string;
+  readonly value: string;
+}
+
 interface Node extends Span {
   readonly type: string;
   readonly id?: { readonly name?: string; readonly value?: string } | null;
@@ -30,22 +35,48 @@ interface Node extends Span {
   readonly importKind?: string;
 }
 
+const deprecatedMarker = "/** @deprecated */";
+
+function isDeprecation(comment: Comment): boolean {
+  return comment.type === "Block" && /@deprecated\b/.test(comment.value);
+}
+
 /**
  * The public API of one declaration file, as text that only changes when the API does. Comments
- * and region markers are dropped, declarations are sorted by name (overloads keep their order),
- * and exports are listed one per line.
+ * and region markers are dropped, except `/// <reference>` directives and a `@deprecated` marker
+ * where docs deprecate something. Declarations are sorted by name (overloads keep their order),
+ * and imports and exports are listed one per line.
  */
 export function apiDeclarations(source: string, fileName = "index.d.mts"): string {
-  const { program, comments, errors } = parseSync(fileName, source, { lang: "dts" });
+  const { program, comments, errors } = parseSync(fileName, source, { lang: "dts" }) as unknown as {
+    readonly program: { readonly body: readonly Node[] };
+    readonly comments: readonly Comment[];
+    readonly errors: readonly { readonly message: string }[];
+  };
   if (errors.length > 0) throw new Error(`Cannot parse ${fileName}: ${errors[0]!.message}`);
 
   const text = (span: Span) => normalize(withoutComments(source, span, comments));
+  const references = comments
+    .filter(({ type, value }) => type === "Line" && /^\/\s*<reference\b/.test(value))
+    .map(({ value }) => `//${value.trim()}`);
   const imports: string[] = [];
   const declarations: { readonly name: string; readonly text: string }[] = [];
   const exported: string[] = [];
   const reexports: string[] = [];
 
-  for (const statement of program.body as unknown as readonly Node[]) {
+  let previousEnd = 0;
+  for (const statement of program.body) {
+    const leading = comments.filter(
+      ({ start, end }) => start >= previousEnd && end <= statement.start,
+    );
+    previousEnd = statement.end;
+    const from = statement.source?.raw;
+    // One declaration file per entry point is all the report reads. A chunk would hide its API.
+    if (from && /^["']\./.test(from)) {
+      throw new Error(
+        `${fileName} imports ${from}. API reports read one declaration file per entry point; teach tools/release/src/api.ts to follow chunks.`,
+      );
+    }
     const specifiers = statement.specifiers ?? [];
     if (
       statement.type === "ImportDeclaration" &&
@@ -53,7 +84,7 @@ export function apiDeclarations(source: string, fileName = "index.d.mts"): strin
       specifiers.every(({ type }) => type === "ImportSpecifier")
     ) {
       const keyword = statement.importKind === "type" ? "import type" : "import";
-      imports.push(`${keyword} ${list(specifiers.map(text))} from ${statement.source!.raw};`);
+      imports.push(`${keyword} ${list(specifiers.map(text))} from ${from};`);
     } else if (
       statement.type === "ImportDeclaration" ||
       statement.type === "ExportAllDeclaration"
@@ -62,15 +93,16 @@ export function apiDeclarations(source: string, fileName = "index.d.mts"): strin
     } else if (statement.type === "ExportNamedDeclaration" && !statement.declaration) {
       const prefix = statement.exportKind === "type" ? "type " : "";
       const names = specifiers.map((specifier) => prefix + text(specifier));
-      if (statement.source?.raw)
-        reexports.push(`export ${list(names)} from ${statement.source.raw};`);
+      if (from) reexports.push(`export ${list(names)} from ${from};`);
       else exported.push(...names);
     } else {
-      declarations.push({ name: declarationName(statement), text: text(statement) });
+      const marker = leading.some(isDeprecation) ? `${deprecatedMarker}\n` : "";
+      declarations.push({ name: declarationName(statement), text: marker + text(statement) });
     }
   }
 
   const sections = [
+    references.join("\n"),
     imports.sort(compare).join("\n"),
     // Array#sort is stable, so overloads and merged declarations keep their source order.
     declarations
@@ -99,12 +131,12 @@ function declarationName(node: Node): string {
   return target.type === "ExportDefaultDeclaration" ? "default" : target.type;
 }
 
-function withoutComments(source: string, span: Span, comments: readonly Span[]): string {
+function withoutComments(source: string, span: Span, comments: readonly Comment[]): string {
   let text = "";
   let cursor = span.start;
   for (const comment of comments) {
     if (comment.end <= span.start || comment.start >= span.end) continue;
-    text += source.slice(cursor, comment.start);
+    text += source.slice(cursor, comment.start) + (isDeprecation(comment) ? deprecatedMarker : "");
     cursor = comment.end;
   }
   return text + source.slice(cursor, span.end);
@@ -121,7 +153,11 @@ function normalize(text: string): string {
 /** The committed report for a package: one section per entry point. */
 export async function apiReport(entry: WorkspacePackage): Promise<string> {
   const sections: string[] = [];
-  for (const [subpath, file] of typeEntryPoints(entry.manifest)) {
+  const entryPoints = typeEntryPoints(entry.manifest);
+  if (entryPoints.size === 0) {
+    throw new Error(`${entry.manifest.name} has no typed entry point in publishConfig.exports`);
+  }
+  for (const [subpath, file] of entryPoints) {
     let source: string;
     try {
       source = await readFile(join(entry.path, file), "utf8");
@@ -167,7 +203,7 @@ export function lineDiff(before: string, after: string, limit = 60): string[] {
   const lines: string[] = [];
   let i = 0;
   let j = 0;
-  while ((i < a.length || j < b.length) && lines.length < limit) {
+  while (i < a.length || j < b.length) {
     if (i < a.length && j < b.length && a[i] === b[j]) {
       i += 1;
       j += 1;
@@ -183,7 +219,9 @@ export function lineDiff(before: string, after: string, limit = 60): string[] {
       j += 1;
     }
   }
-  return lines;
+  return lines.length > limit
+    ? [...lines.slice(0, limit), `… and ${lines.length - limit} more changed lines`]
+    : lines;
 }
 
 /** Packages whose built API differs from their committed report. With `update`, rewrites the reports. */

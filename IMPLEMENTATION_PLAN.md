@@ -52,7 +52,7 @@ latest releases.
 ## Next: 1.0 — Public release
 
 The shadcn registry shipped (#43) and `calendar-testing` stays private until after 1.0 (#45). Release
-tooling (#46) is next. Then the second phase of the release audit (#47): the showcase and fixtures on
+tooling (#46) is done. Then the second phase of the release audit (#47): the showcase and fixtures on
 the packed release artifacts, the full release dry run, the screen-reader passes (#186) and the
 release candidate report, with a green CI `browsers` run (#192). The audit's proposed 1.0 blockers:
 #185, #186.
@@ -84,7 +84,7 @@ issue's "Later" section when work starts.
   an unpublished runtime, `@moltenship` in shadcn's registry directory, installing from GitHub
 - Release follow-ups from #46: changesets or per-package changelogs if versions stop moving
   together, git tags and GitHub releases from the publish step, npm staged publishing, budgets for
-  minified bundles with dependencies
+  minified bundles with dependencies, the benchmark gate in the release run
 - Recurrence follow-ups from the #155 gate: DST folds and cancelled first occurrences in edits, ICS
   bridge quirks, expansion speed-ups (#160)
 

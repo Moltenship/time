@@ -7,6 +7,7 @@ import { distTag, manifestPath, publishProblems, readManifest, tarballIntegrity 
 import { tarballDirectory } from "./pack";
 import {
   gitState,
+  isOnMain,
   parseArguments,
   readPublishedPackages,
   run,
@@ -16,18 +17,24 @@ import {
 
 const registry = "https://registry.npmjs.org/";
 
-/** Whether npm already has this version. Throws when the registry can't say. */
-async function isPublished(
+/**
+ * The integrity npm records for this version, or undefined when npm doesn't have it. Throws when
+ * the registry can't say.
+ */
+async function publishedIntegrity(
   name: string,
   version: string,
   env: NodeJS.ProcessEnv,
-): Promise<boolean> {
-  const result = await run("vp", ["pm", "view", `${name}@${version}`, "version", "--json"], {
+): Promise<string | undefined> {
+  const result = await run("vp", ["pm", "view", `${name}@${version}`, "dist.integrity", "--json"], {
     env,
   });
-  if (result.code === 0) return result.stdout.includes(`"${version}"`);
+  if (result.code === 0) {
+    const integrity = result.stdout.trim() ? (JSON.parse(result.stdout) as unknown) : undefined;
+    return typeof integrity === "string" ? integrity : undefined;
+  }
   const output = `${result.stdout}\n${result.stderr}`;
-  if (/ERR_PNPM_PACKAGE_NOT_FOUND|ERR_PNPM_FETCH_404|E404/.test(output)) return false;
+  if (/ERR_PNPM_PACKAGE_NOT_FOUND|ERR_PNPM_FETCH_404|E404/.test(output)) return undefined;
   throw new Error(`Can't tell whether ${name}@${version} is on npm:\n${output.trim()}`);
 }
 
@@ -61,6 +68,7 @@ export async function publish(options: {
     version: options.version,
     head: git.head,
     clean: git.clean,
+    onMain: await isOnMain(git.head),
     expectedPackages: packages.map(({ manifest: { name } }) => name),
     tarballIntegrity: await tarballIntegrity(manifest),
   });
@@ -83,9 +91,14 @@ export async function publish(options: {
     );
   }
 
-  // Always the public registry, whatever a local .npmrc says. With NODE_AUTH_TOKEN set, a
-  // throwaway npmrc reads the token from the environment, so it is never written to disk.
-  const env: NodeJS.ProcessEnv = { ...process.env, npm_config_registry: registry };
+  // Always the public registry, whatever a local .npmrc says. pnpm reads pnpm_config_*; npm_config_*
+  // covers anything that shells out to npm. With NODE_AUTH_TOKEN set, a throwaway npmrc reads the
+  // token from the environment, so it is never written to disk.
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    npm_config_registry: registry,
+    pnpm_config_registry: registry,
+  };
   const configDirectory = process.env.NODE_AUTH_TOKEN
     ? await mkdtemp(join(tmpdir(), "moltenship-npmrc-"))
     : undefined;
@@ -99,10 +112,25 @@ export async function publish(options: {
   }
 
   try {
-    for (const { name, file } of manifest.packages) {
-      if (await isPublished(name, options.version, env)) {
+    const configured = (await runOrThrow("vp", ["pm", "config", "get", "registry"], { env }))
+      .stdout;
+    if (configured.trim().replace(/\/?$/, "/") !== registry) {
+      throw new Error(
+        `pnpm would publish to ${configured.trim()}, not ${registry}. Nothing was published.`,
+      );
+    }
+    for (const { name, file, integrity } of manifest.packages) {
+      const published = await publishedIntegrity(name, options.version, env);
+      // A re-run after a partial publish skips what is out, but only if it is the tarball this dry
+      // run checked; otherwise the set on npm would mix two builds.
+      if (published === integrity) {
         console.log(`${name}@${options.version} is already on npm; skipping.`);
         continue;
+      }
+      if (published !== undefined) {
+        throw new Error(
+          `${name}@${options.version} is already on npm with different contents (${published}). Release a new version instead.`,
+        );
       }
       const args = [
         "pm",
@@ -139,6 +167,7 @@ runMain(import.meta, async () => {
     tag: value("tag"),
     provenance: flags.has("provenance"),
     yes: flags.has("yes"),
+    // Tests only: point at a manifest that doesn't exist to exercise the refusal.
     manifestFile: value("manifest"),
   });
 });

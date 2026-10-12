@@ -85,6 +85,7 @@ vp install
 vp run showcase:links
 vp run ci:check
 vp run ci:build
+vp run release:check
 vp run ci:test
 vp run react:gate
 vp run ssr:smoke

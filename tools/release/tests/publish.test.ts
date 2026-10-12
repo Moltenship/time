@@ -1,9 +1,19 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { distTag, publishProblems, type PublishState, type ReleaseManifest } from "../src/manifest";
-import { run } from "../src/workspace";
+import { dryRun } from "../src/dry-run";
+import {
+  distTag,
+  publishProblems,
+  readManifest,
+  writeManifest,
+  type PublishState,
+  type ReleaseManifest,
+} from "../src/manifest";
+import { parseArguments, run } from "../src/workspace";
 
 const manifest: ReleaseManifest = {
   status: "passed",
@@ -23,6 +33,7 @@ const ready: PublishState = {
   version: "1.0.0-rc.1",
   head: "abc123",
   clean: true,
+  onMain: true,
   expectedPackages: ["@x/a", "@x/b"],
   tarballIntegrity: { "x-a-1.0.0-rc.1.tgz": "sha512-a", "x-b-1.0.0-rc.1.tgz": "sha512-b" },
 };
@@ -36,6 +47,20 @@ describe("the publish guard", () => {
     ["no dry run", { manifest: undefined }, "No dry-run manifest"],
     ["another commit", { head: "def456" }, "but HEAD is def456"],
     ["a dirty tree", { clean: false }, "The working tree has changes"],
+    ["a commit that isn't on main", { onMain: false }, "HEAD isn't on origin/main"],
+    [
+      "a tarball named for another package",
+      {
+        manifest: {
+          ...manifest,
+          packages: [
+            manifest.packages[0]!,
+            { ...manifest.packages[1]!, file: "x-a-1.0.0-rc.1.tgz" },
+          ],
+        },
+      },
+      "x-a-1.0.0-rc.1.tgz isn't the tarball of @x/b",
+    ],
     [
       "a dry run on a dirty tree",
       { manifest: { ...manifest, clean: false } },
@@ -82,7 +107,11 @@ describe("the publish guard", () => {
     expect(distTag("1.0.0")).toBe("latest");
     expect(distTag("1.0.0-rc.1", "rc")).toBe("rc");
     expect(() => distTag("1.0.0-rc.1", "latest")).toThrow("can't take the latest tag");
-    expect(() => distTag("1.0.0", "1.0.0")).toThrow("looks like a version");
+    expect(() => distTag("1.0.0", "1.0.0")).toThrow("isn't a dist-tag");
+    // npm refuses tags that parse as a semver range, such as "x".
+    expect(() => distTag("1.0.0", "x")).toThrow("looks like a version range");
+    expect(() => distTag("1.0.0", "")).toThrow("isn't a dist-tag");
+    expect(() => distTag("1.0.0", "next tag")).toThrow("isn't a dist-tag");
   });
 
   test("the command refuses without a manifest and never reaches the registry", async () => {
@@ -100,7 +129,14 @@ describe("the publish guard", () => {
         join(releaseRoot, "tests/no-such-manifest.json"),
       ],
       // A registry nothing listens on, in case a regression ever got past the guard.
-      { cwd: releaseRoot, env: { ...process.env, npm_config_registry: "http://127.0.0.1:9/" } },
+      {
+        cwd: releaseRoot,
+        env: {
+          ...process.env,
+          npm_config_registry: "http://127.0.0.1:9/",
+          pnpm_config_registry: "http://127.0.0.1:9/",
+        },
+      },
     );
 
     expect(result.code).toBe(1);
@@ -108,4 +144,30 @@ describe("the publish guard", () => {
     expect(result.stderr).toContain("No dry-run manifest");
     expect(result.stdout).not.toContain("Ready to publish");
   }, 30_000);
+
+  test("boolean flags take no value, so --yes=false can't mean yes", () => {
+    expect(() => parseArguments(["--yes=false"], ["yes"])).toThrow("--yes takes no value");
+    expect(parseArguments(["--yes", "--tag", "next"], ["yes"]).flags).toEqual(
+      new Map<string, string | true>([
+        ["yes", true],
+        ["tag", "next"],
+      ]),
+    );
+  });
+});
+
+describe("the dry run", () => {
+  test("a failed run removes the manifest an earlier run left", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "release-dry-run-"));
+    const manifestFile = join(directory, "manifest.json");
+    try {
+      await writeManifest(manifest, manifestFile);
+
+      // The packages are at 0.0.0, so the versions step fails before anything builds.
+      await expect(dryRun({ version: "9.9.9", manifestFile })).rejects.toThrow("not 9.9.9");
+      expect(await readManifest(manifestFile)).toBeUndefined();
+    } finally {
+      await rm(directory, { force: true, recursive: true });
+    }
+  });
 });

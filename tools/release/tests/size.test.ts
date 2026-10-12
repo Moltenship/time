@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { describe, expect, test } from "vite-plus/test";
 
 import { measureSizes, sizeFailures } from "../src/size";
-import { publishedEntryPoints, readPublishedPackages } from "../src/workspace";
+import { dependencyOrder, publishedEntryPoints, readPublishedPackages } from "../src/workspace";
 
 const exportsMap = {
   ".": { types: "./dist/index.d.mts", import: "./dist/index.mjs" },
@@ -80,6 +80,26 @@ describe("size budgets", () => {
     } finally {
       await rm(root, { force: true, recursive: true });
     }
+  });
+
+  test("packages come after the published packages they depend on", () => {
+    const at = (name: string, dependencies: string[] = [], peers: string[] = []) => ({
+      manifest: {
+        name,
+        version: "1.0.0",
+        dependencies: Object.fromEntries(dependencies.map((dependency) => [dependency, "1.0.0"])),
+        peerDependencies: Object.fromEntries(peers.map((peer) => [peer, "1.0.0"])),
+      },
+    });
+    const order = dependencyOrder([
+      at("@x/facade", ["@x/react", "@x/core", "react"]),
+      at("@x/react", ["@x/core"], ["react"]),
+      at("@x/core", ["@x/temporal"]),
+      at("@x/temporal"),
+    ]).map(({ manifest }) => manifest.name);
+
+    expect(order).toEqual(["@x/temporal", "@x/core", "@x/react", "@x/facade"]);
+    expect(() => dependencyOrder([at("@x/a", ["@x/b"]), at("@x/b", ["@x/a"])])).toThrow("cycle");
   });
 
   test("every published entry point has a budget", async () => {

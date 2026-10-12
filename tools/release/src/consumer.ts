@@ -1,35 +1,19 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { createRequire } from "node:module";
+import { dirname, join } from "node:path";
 
 import { build } from "vite-plus";
 import { parse, stringify } from "yaml";
 
 import { facadePackage, pointerAdapterPackage } from "./config";
-import { packPublishedPackages, type PackedTarball } from "./pack";
-import {
-  parseArguments,
-  readJson,
-  readPublishedPackages,
-  run,
-  runMain,
-  runOrThrow,
-  workspaceRoot,
-} from "./workspace";
+import { withPackedPackages, type PackedTarball } from "./pack";
+import { parseArguments, readJson, run, runMain, runOrThrow, workspaceRoot } from "./workspace";
+
+const require = createRequire(import.meta.url);
 
 /** React and its types come from the workspace catalog, so they are already in the pnpm store. */
 const consumerPeers = ["react", "react-dom", "@types/react", "@types/react-dom"] as const;
-
-/**
- * The environment without what a parent `vp run` or pnpm sets for its children. Inside a task,
- * those variables make the consumer's pnpm try to fetch the workspace's pnpm version, which an
- * offline install can't do.
- */
-function outsideEnvironment(): NodeJS.ProcessEnv {
-  return Object.fromEntries(
-    Object.entries(process.env).filter(([key]) => !/^(npm_|VP_|PNPM_)/i.test(key)),
-  );
-}
 
 /**
  * Installs the tarballs into a new project outside the workspace, offline, from the pnpm store
@@ -66,14 +50,21 @@ export async function installConsumer(tarballs: readonly PackedTarball[]): Promi
     )}\n`,
   );
   await writeFile(join(directory, "pnpm-workspace.yaml"), stringify({ overrides: files }));
-  await runOrThrow(
-    process.env.VP_CLI_BIN ?? "vp",
+  // Inside a `vp run` task, `vp` on PATH is the workspace's local CLI, whose pnpm tries to fetch
+  // the pinned pnpm version from the registry. VP_CLI_BIN is the global vp that started the task.
+  const vp = process.env.VP_CLI_BIN ?? "vp";
+  const install = await run(
+    vp,
     ["install", "--offline", "--ignore-scripts", "--no-frozen-lockfile"],
     {
       cwd: directory,
-      env: outsideEnvironment(),
     },
   );
+  if (install.code !== 0) {
+    throw new Error(
+      `The offline install failed in ${directory}. Run vp install in the workspace first, so the pnpm store has every dependency.\n${install.stdout}${install.stderr}`.trim(),
+    );
+  }
   return directory;
 }
 
@@ -124,44 +115,58 @@ console.log(JSON.stringify(report));
   });
 }
 
-/** Type-checks an import of every package under `NodeNext` and `Bundler`, library files included. */
+/** TypeScript 7, which the workspace uses, and TypeScript 6, the oldest the README supports. */
+const compilers = [
+  ["TypeScript 7", "typescript"],
+  ["TypeScript 6", "typescript-6"],
+].map(([label, name]) => ({
+  label: label!,
+  tsc: join(dirname(require.resolve(`${name}/package.json`)), "bin/tsc"),
+}));
+
+/**
+ * Type-checks an import of every package with each compiler, under `NodeNext` and `Bundler`,
+ * library files included.
+ */
 export async function typeProblems(directory: string, names: readonly string[]): Promise<string[]> {
   const source = [
     ...names.map((name, index) => `import * as package${index} from ${JSON.stringify(name)};`),
     `export const packages = [${names.map((_, index) => `package${index}`).join(", ")}];`,
   ].join("\n");
   await writeFile(join(directory, "types-check.ts"), `${source}\n`);
-  const typescript = join(workspaceRoot, "node_modules/typescript/bin/tsc");
   const problems: string[] = [];
-  for (const [resolution, module] of [
+  const settings = [
     ["NodeNext", "NodeNext"],
     ["Bundler", "ESNext"],
-  ] as const) {
-    const result = await run(
-      process.execPath,
-      [
-        typescript,
-        "--ignoreConfig",
-        "--noEmit",
-        "--strict",
-        "--skipLibCheck",
-        "false",
-        "--target",
-        "ES2023",
-        "--lib",
-        "ESNext,DOM,DOM.Iterable",
-        "--jsx",
-        "react-jsx",
-        "--module",
-        module,
-        "--moduleResolution",
-        resolution,
-        "types-check.ts",
-      ],
-      { cwd: directory },
-    );
-    if (result.code !== 0)
-      problems.push(`TypeScript (${resolution}):\n${result.stdout}${result.stderr}`.trim());
+  ] as const;
+  for (const { label, tsc } of compilers) {
+    for (const [resolution, module] of settings) {
+      const result = await run(
+        process.execPath,
+        [
+          tsc,
+          "--ignoreConfig",
+          "--noEmit",
+          "--strict",
+          "--skipLibCheck",
+          "false",
+          "--target",
+          "ES2023",
+          "--lib",
+          "ESNext,DOM,DOM.Iterable",
+          "--jsx",
+          "react-jsx",
+          "--module",
+          module,
+          "--moduleResolution",
+          resolution,
+          "types-check.ts",
+        ],
+        { cwd: directory },
+      );
+      if (result.code !== 0)
+        problems.push(`${label} (${resolution}):\n${result.stdout}${result.stderr}`.trim());
+    }
   }
   return problems;
 }
@@ -272,5 +277,5 @@ export async function checkConsumer(
 
 runMain(import.meta, async () => {
   const keep = parseArguments(process.argv.slice(2), ["keep"]).flags.has("keep");
-  await checkConsumer(await packPublishedPackages(await readPublishedPackages()), { keep });
+  await withPackedPackages((tarballs) => checkConsumer(tarballs, { keep }));
 });

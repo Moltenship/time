@@ -1,11 +1,11 @@
 import { access, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { prerelease, valid } from "semver";
+import { prerelease, valid, validRange } from "semver";
 
 import { releaseDirectory } from "./config";
 import { integrityOf, tarballDirectory } from "./pack";
-import { workspaceRoot } from "./workspace";
+import { tarballName, workspaceRoot } from "./workspace";
 
 export const manifestPath = join(workspaceRoot, releaseDirectory, "manifest.json");
 
@@ -48,6 +48,8 @@ export interface PublishState {
   readonly version: string;
   readonly head: string;
   readonly clean: boolean;
+  /** Whether HEAD is on `origin/main`. */
+  readonly onMain: boolean;
   /** The packages that should publish, by name. */
   readonly expectedPackages: readonly string[];
   /** Current integrity of each tarball file in the manifest; undefined when the file is missing. */
@@ -75,13 +77,17 @@ export function publishProblems(state: PublishState): string[] {
   }
   if (!manifest.clean) problems.push("The dry run ran on a working tree with changes");
   if (!state.clean) problems.push("The working tree has changes");
+  if (!state.onMain)
+    problems.push("HEAD isn't on origin/main. Publish from main, after git fetch.");
   const names = manifest.packages.map(({ name }) => name);
   const missing = state.expectedPackages.filter((name) => !names.includes(name));
   const extra = names.filter((name) => !state.expectedPackages.includes(name));
   if (missing.length > 0) problems.push(`The dry run didn't pack ${missing.join(", ")}`);
   if (extra.length > 0)
     problems.push(`The dry run packed unexpected packages: ${extra.join(", ")}`);
-  for (const { file, integrity } of manifest.packages) {
+  for (const { name, file, integrity } of manifest.packages) {
+    if (file !== tarballName(name, manifest.version))
+      problems.push(`${file} isn't the tarball of ${name}`);
     const current = state.tarballIntegrity[file];
     if (current === undefined) problems.push(`${file} is missing`);
     else if (current !== integrity) problems.push(`${file} changed after the dry run`);
@@ -111,8 +117,11 @@ export async function tarballIntegrity(
 export function distTag(version: string, requested?: string): string {
   const isPrerelease = prerelease(version) !== null;
   const tag = requested ?? (isPrerelease ? "next" : "latest");
-  if (isPrerelease && tag === "latest")
+  if (!/^[a-z][a-z0-9._-]*$/i.test(tag))
+    throw new Error(`"${tag}" isn't a dist-tag such as next or beta`);
+  if (validRange(tag)) throw new Error(`The dist-tag "${tag}" looks like a version range`);
+  if (isPrerelease && tag === "latest") {
     throw new Error(`A prerelease (${version}) can't take the latest tag`);
-  if (valid(tag)) throw new Error(`The dist-tag "${tag}" looks like a version`);
+  }
   return tag;
 }

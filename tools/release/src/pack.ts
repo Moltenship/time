@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { access, mkdir, readFile, rm } from "node:fs/promises";
+import { access, mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { releaseDirectory } from "./config";
@@ -67,6 +68,21 @@ export async function packPublishedPackages(
     });
   }
   return tarballs;
+}
+
+/**
+ * Packs the published packages into a temporary folder for one check, then removes it. Checks run
+ * on their own use this, so `.release/tarballs` only ever holds what the dry run packed.
+ */
+export async function withPackedPackages<T>(
+  action: (tarballs: PackedTarball[]) => Promise<T>,
+): Promise<T> {
+  const destination = await mkdtemp(join(tmpdir(), "moltenship-tarballs-"));
+  try {
+    return await action(await packPublishedPackages(await readPublishedPackages(), destination));
+  } finally {
+    await rm(destination, { force: true, recursive: true });
+  }
 }
 
 runMain(import.meta, async () => {

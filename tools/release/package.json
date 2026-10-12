@@ -18,6 +18,7 @@
     "@types/semver": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",
+    "typescript-6": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
   }

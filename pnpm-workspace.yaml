@@ -28,6 +28,8 @@ catalog:
   fast-check: ^4.10.2
   happy-dom: 20.14.5
   typescript: ^7.0.2
+  # The oldest TypeScript the README supports, for the clean-consumer type check.
+  typescript-6: npm:typescript@6.0.3
   vite: npm:@voidzero-dev/vite-plus-core@1.1.0
   vite-plus: 1.1.0
   yaml: 2.9.1

@@ -1,7 +1,7 @@
 name: Release
 
-# Manual only: the owner starts it from the Actions tab on main. It runs the release gate and the
-# dry run on this commit, then publishes the tarballs the dry run checked, with npm provenance.
+# Manual only: the owner starts it from the Actions tab on main. The first job runs the release
+# gate and the dry run; the second publishes the tarballs the dry run checked, with npm provenance.
 # Every step is a `vp run` task that also runs locally; see docs/internal/releasing.md.
 on:
   workflow_dispatch:
@@ -14,25 +14,32 @@ on:
         description: npm dist-tag. Leave empty for next (prereleases) or latest (stable versions).
         required: false
         type: string
+      publish:
+        description: Publish to npm. Leave it off to rehearse, which runs only the gate and the dry run.
+        required: true
+        type: boolean
+        default: false
 
 permissions:
   contents: read
-  # npm provenance signs the packages with the workflow's OIDC token.
-  id-token: write
 
 concurrency:
   group: release
   cancel-in-progress: false
 
 jobs:
-  publish:
-    name: Release gate, dry run and publish
+  verify:
+    name: Release gate and dry run
+    # An accident guard: a branch's copy of this file can drop it. The npm environment's branch
+    # rule is the real limit (docs/internal/releasing.md).
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - name: Set up Vite+
         uses: voidzero-dev/setup-vp@v1.21.1
@@ -53,6 +60,49 @@ jobs:
         env:
           VERSION: ${{ inputs.version }}
         run: vp run release:dry-run --version "$VERSION"
+
+      - name: Keep the checked tarballs and manifest
+        uses: actions/upload-artifact@v7
+        with:
+          name: release
+          path: .release/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish to npm
+    needs: verify
+    if: inputs.publish && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The owner sets this environment's rules: main only, a required reviewer, and the NPM_TOKEN
+    # secret or the npm trusted publisher.
+    environment: npm
+    permissions:
+      contents: read
+      # npm provenance signs the packages with this job's OIDC token.
+      id-token: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: "26"
+          cache: true
+
+      - name: Install locked dependencies
+        run: vp install --frozen-lockfile
+
+      - name: Get the checked tarballs and manifest
+        uses: actions/download-artifact@v8
+        with:
+          name: release
+          path: .release
 
       - name: Publish
         env:

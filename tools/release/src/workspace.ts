@@ -144,6 +144,14 @@ export async function gitState(root = workspaceRoot) {
   return { head, clean: status === "", status };
 }
 
+/** Whether `commit` is on `origin/main` as last fetched. Works offline. */
+export async function isOnMain(commit: string, root = workspaceRoot): Promise<boolean> {
+  const result = await run("git", ["merge-base", "--is-ancestor", commit, "origin/main"], {
+    cwd: root,
+  });
+  return result.code === 0;
+}
+
 /** Parses `--flag value`, `--flag=value` and boolean `--flag` arguments, with the rest as positionals. */
 export function parseArguments(argv: readonly string[], booleans: readonly string[] = []) {
   const flags = new Map<string, string | true>();
@@ -157,6 +165,9 @@ export function parseArguments(argv: readonly string[], booleans: readonly strin
     }
     const [key, inline] = argument.slice(2).split("=", 2) as [string, string | undefined];
     const next = argv[index + 1];
+    if (inline !== undefined && booleans.includes(key)) {
+      throw new Error(`--${key} takes no value`);
+    }
     if (inline !== undefined) flags.set(key, inline);
     else if (!booleans.includes(key) && next !== undefined && !next.startsWith("--")) {
       flags.set(key, next);
