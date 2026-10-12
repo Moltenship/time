@@ -29,6 +29,21 @@ export interface YearFormats {
 /** Opens the day popover; the popover reads the day's events from the current projection. */
 export type YearDayPopoverHandle = PopoverPrimitive.Handle<Temporal.PlainDate>;
 
+/**
+ * Which closed days the year shades: the dates an exception closes, such as holidays, those and
+ * the weekly ones too, such as weekends, or none. A closed day's name says "closed" either way.
+ */
+export type YearClosedDays = "all" | "exceptions" | "none";
+
+/** Where a shaded day sits in its row's run of shaded days, which the shading rounds the ends of. */
+interface YearShade {
+  readonly band: ClosedDate & ClosedTime;
+  /** The run starts on this day: the day before it in the row isn't shaded. */
+  readonly first: boolean;
+  /** The run ends on this day. */
+  readonly last: boolean;
+}
+
 /** The most event colours a day shows as dots. */
 const MAX_DOTS = 3;
 
@@ -51,22 +66,24 @@ function dotColors<TEvent>(
 }
 
 interface YearDayCellProps<TEvent> {
-  /** Set when the day has no working hours, with whether the days beside it in its row do. */
-  readonly closed: (ClosedDate & ClosedTime) | undefined;
+  /** Set when the day has no working hours. */
+  readonly closed: ClosedDate | undefined;
   readonly day: YearDay<TEvent, EventId, ResourceId>;
   readonly formats: YearFormats;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
   readonly handle: YearDayPopoverHandle;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
   readonly renderUnavailable?: UnavailableTimeRender;
+  /** Set when the view shades this closed day. */
+  readonly shade: YearShade | undefined;
   readonly triggerId: string;
 }
 
 /**
  * A day of the year and its keyboard focus target: the date, today in a filled circle, and a
  * dot for each event colour on it. Clicking it, Enter or Space opens the day's events in a
- * popover; Shift+Enter opens the day. A day outside the calendar's working hours is muted, and
- * its name says why.
+ * popover; Shift+Enter opens the day. A closed day's name says why, and a shaded one joins the
+ * shaded days beside it in a band.
  */
 function YearDayCell<TEvent>({
   closed,
@@ -76,6 +93,7 @@ function YearDayCell<TEvent>({
   handle,
   onOpenDay,
   renderUnavailable,
+  shade,
   triggerId,
 }: YearDayCellProps<TEvent>) {
   const roving = useRovingFocus({ date: day.date, kind: "day" });
@@ -106,10 +124,15 @@ function YearDayCell<TEvent>({
       }}
       className="relative min-w-0 rounded-md focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
     >
-      {closed !== undefined && (
+      {shade !== undefined && (
         <UnavailableTime
-          band={closed}
-          className="inset-0 rounded-md bg-calendar-closed"
+          band={shade.band}
+          // A band along the row, rounded where its run starts and ends; rows stay apart.
+          className={cn(
+            "inset-y-0.5 start-0 end-0 bg-calendar-closed",
+            shade.first && "start-0.5 rounded-s-md",
+            shade.last && "end-0.5 rounded-e-md",
+          )}
           date={day.date}
           end={1}
           render={renderUnavailable}
@@ -161,6 +184,8 @@ export interface YearMonthGridProps<TEvent> {
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
   readonly onOpenMonth: (date: Temporal.PlainDate) => void;
   readonly renderUnavailable?: UnavailableTimeRender;
+  /** Which closed days to shade. */
+  readonly shadeClosedDays: YearClosedDays;
   /** The ID of the popover trigger for a date. */
   readonly triggerId: (date: Temporal.PlainDate) => string;
 }
@@ -177,25 +202,38 @@ export function YearMonthGrid<TEvent>({
   onOpenDay,
   onOpenMonth,
   renderUnavailable,
+  shadeClosedDays,
   triggerId,
 }: YearMonthGridProps<TEvent>) {
   const first = month.range.start;
   const label = formats.monthYear.format(first);
   const closed = useClosedDates(month.range);
-  const isOpen = (week: YearWeek<TEvent, EventId, ResourceId>, column: number) => {
+  type Week = YearWeek<TEvent, EventId, ResourceId>;
+  const closedOn = (week: Week, column: number) => {
     const day = week.days[column];
-    return day != null && !closed.has(day.date.toString());
+    return day == null ? undefined : closed.get(day.date.toString());
   };
-  /** A closed day, opening on a side where its row has an open day beside it. */
-  const closedDay = (week: YearWeek<TEvent, EventId, ResourceId>, column: number) => {
-    const day = closed.get(week.days[column]!.date.toString());
+  const isShaded = (week: Week, column: number) => {
+    const day = closedOn(week, column);
     return (
-      day && {
-        ...day,
-        opensAfter: column < week.days.length - 1 && isOpen(week, column + 1),
-        opensBefore: column > 0 && isOpen(week, column - 1),
-      }
+      day !== undefined &&
+      (shadeClosedDays === "all" ||
+        (shadeClosedDays === "exceptions" && day.reason === "exception"))
     );
+  };
+  /** A shaded day: its band opens where its row has an open day beside it. */
+  const shadeOf = (week: Week, column: number): YearShade | undefined => {
+    if (!isShaded(week, column)) return undefined;
+    const isOpen = (side: number) => week.days[side] != null && closedOn(week, side) === undefined;
+    return {
+      band: {
+        ...closedOn(week, column)!,
+        opensAfter: column < week.days.length - 1 && isOpen(column + 1),
+        opensBefore: column > 0 && isOpen(column - 1),
+      },
+      first: column === 0 || !isShaded(week, column - 1),
+      last: column === week.days.length - 1 || !isShaded(week, column + 1),
+    };
   };
   const weekdays = Array.from({ length: 7 }, (_, index) =>
     month.weeks[0]!.range.start.add({ days: index }),
@@ -240,13 +278,14 @@ export function YearMonthGrid<TEvent>({
                 ) : (
                   <YearDayCell
                     key={day.date.toString()}
-                    closed={closedDay(week, column)}
+                    closed={closedOn(week, column)}
                     day={day}
                     formats={formats}
                     getEventColor={getEventColor}
                     handle={handle}
                     onOpenDay={onOpenDay}
                     renderUnavailable={renderUnavailable}
+                    shade={shadeOf(week, column)}
                     triggerId={triggerId(day.date)}
                   />
                 ),

@@ -2,8 +2,9 @@
 
 import type { CalendarAvailability, CalendarEventChange } from "@moltenship/calendar";
 import { act } from "react";
-import { afterEach, expect, test, vi } from "vite-plus/test";
+import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
+import type { YearClosedDays } from "../year-view/year-month";
 import { createYearView } from "../year-view/year-view";
 import { click, render } from "./render";
 import {
@@ -45,9 +46,11 @@ afterEach(async () => {
 
 async function renderYear({
   availability,
+  closedDays,
   onEventChange,
 }: {
   readonly availability?: CalendarAvailability;
+  readonly closedDays?: YearClosedDays;
   readonly onEventChange?: (change: Change) => void;
 } = {}) {
   const view = await render(
@@ -60,6 +63,7 @@ async function renderYear({
       events={events}
       locale="en-US"
       onEventChange={onEventChange}
+      viewOptions={closedDays === undefined ? undefined : { year: { closedDays } }}
       weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
     >
       <Calendar.Title />
@@ -236,25 +240,63 @@ test("Space opens a day's events rather than creating an event", async () => {
   expect(onEventChange).not.toHaveBeenCalled();
 });
 
-test("mutes closed days and names them", async () => {
+describe("closed days", () => {
   const time = (value: string) => Temporal.PlainTime.from(value);
-  const container = await renderYear({
-    availability: {
-      exceptions: [{ date: Temporal.PlainDate.from("2026-10-09"), label: "Offsite" }],
-      weekly: [{ days: [1, 2, 3, 4, 5], end: time("17:00"), start: time("09:00") }],
-    },
+  // Weekdays 9 to 5, and an offsite that closes Friday, October 9.
+  const officeHours: CalendarAvailability = {
+    exceptions: [{ date: Temporal.PlainDate.from("2026-10-09"), label: "Offsite" }],
+    weekly: [{ days: [1, 2, 3, 4, 5], end: time("17:00"), start: time("09:00") }],
+  };
+  // Sunday, October 4 to Saturday, October 10: one row of the grid.
+  const week = Array.from(
+    { length: 7 },
+    (_, index) => `2026-10-${String(index + 4).padStart(2, "0")}`,
+  );
+
+  /** The row's shading: a day's number where it's shaded, bracketed where its band is rounded. */
+  function shading(container: HTMLElement): string {
+    return week
+      .map((date) => {
+        const band = cell(container, date).querySelector('[data-slot="year-closed"]');
+        if (band === null) return "·";
+        const { classList } = band;
+        return `${classList.contains("rounded-s-md") ? "[" : ""}${date.slice(8)}${classList.contains("rounded-e-md") ? "]" : ""}`;
+      })
+      .join(" ");
+  }
+
+  test("are named closed, and only the exceptions are shaded by default", async () => {
+    const container = await renderYear({ availability: officeHours });
+
+    expect(shading(container)).toBe("· · · · · [09] ·");
+    expect(ariaLabel(cell(container, "2026-10-09"))).toBe(
+      "Friday, October 9, 2026, Offsite, closed, no events",
+    );
+    // The weekend isn't shaded, but its name still says so.
+    expect(ariaLabel(cell(container, "2026-10-10"))).toBe(
+      "Saturday, October 10, 2026, closed, no events",
+    );
+    expect(cell(container, "2026-10-10").hasAttribute("data-closed")).toBe(true);
+    expect(cell(container, "2026-10-08").hasAttribute("data-closed")).toBe(false);
   });
 
-  expect(ariaLabel(cell(container, "2026-10-09"))).toBe(
-    "Friday, October 9, 2026, Offsite, closed, no events",
-  );
-  expect(ariaLabel(cell(container, "2026-10-10"))).toBe(
-    "Saturday, October 10, 2026, closed, no events",
-  );
-  expect(cell(container, "2026-10-08").hasAttribute("data-closed")).toBe(false);
-  expect(
-    cell(container, "2026-10-09")
-      .querySelector('[data-slot="year-closed"]')
-      ?.getAttribute("data-reason"),
-  ).toBe("exception");
+  test('"all" shades weekends too, one band along each row\'s run of closed days', async () => {
+    const container = await renderYear({ availability: officeHours, closedDays: "all" });
+
+    expect(shading(container)).toBe("[04] · · · · [09 10]");
+    const offsite = cell(container, "2026-10-09").querySelector('[data-slot="year-closed"]')!;
+    expect(offsite.getAttribute("data-reason")).toBe("exception");
+    // Open time meets the band on Thursday's side only.
+    expect(offsite.hasAttribute("data-opens-before")).toBe(true);
+    expect(offsite.hasAttribute("data-opens-after")).toBe(false);
+  });
+
+  test('"none" shades nothing', async () => {
+    const container = await renderYear({ availability: officeHours, closedDays: "none" });
+
+    expect(shading(container)).toBe("· · · · · · ·");
+    expect(ariaLabel(cell(container, "2026-10-09"))).toBe(
+      "Friday, October 9, 2026, Offsite, closed, no events",
+    );
+  });
 });

@@ -85,11 +85,22 @@ hundreds of popovers.
       default: '"month"',
       description: "The registered view a month's name opens.",
     },
+    closedDays: {
+      type: '"exceptions" | "all" | "none"',
+      default: '"exceptions"',
+      description: (
+        <>
+          Which closed days are shaded: the dates an exception closes, such as holidays; those and
+          the weekly closed days, such as weekends; or none. A closed day is named "closed" either
+          way. See <a href="#closed-days">Closed days</a>.
+        </>
+      ),
+    },
     renderUnavailable: {
       type: "UnavailableTimeRender",
       description: (
         <>
-          Replaces the shading of closed days. See{" "}
+          Replaces the shading of the closed days <code>closedDays</code> picks. See{" "}
           <a href="/docs/availability#customize-the-shading">Availability</a>.
         </>
       ),
@@ -108,13 +119,31 @@ hundreds of popovers.
   time. Each event is a `<button data-event-id>`, so the app's own event details open from it as from
   any other view. The date at the top opens the day in the view named `day`.
 - **Month names** open that month in the view named `month`.
-- **Closed days:** with [availability](/docs/availability), days without working hours are muted
-  and named "closed", as in the month view.
+- **Closed days:** with [availability](/docs/availability), see [below](#closed-days).
 - **Scrolling:** where the months don't fit, the view opens with today's month, or the day you last
   focused, in view. Today, Previous, Next and a picked date scroll their month into view. Only the
   view scrolls, never the page around it.
 - **Editing:** none. The year shows events without moving or creating them; open a day or a month
   to edit.
+
+## Closed days
+
+With [availability](/docs/availability), a day without working hours is named "closed" for screen
+readers, as in the month view. What's shaded depends on `closedDays`:
+
+- `"exceptions"` (the default) shades the dates an exception closes, such as a public holiday or an
+  offsite. Weekly closed days, such as weekends, stay plain: the weekday columns already show them,
+  and a third of the year in gray would bury the holidays.
+- `"all"` shades the weekly closed days too.
+- `"none"` shades nothing.
+
+Shaded days next to each other in a week join into one band with rounded ends, so a weekend or a
+long holiday reads as one stretch, and the rows stay apart. To draw it differently, such as hatching,
+pass `renderUnavailable`; its `band` carries the reason, the exception's label and whether open time
+meets each end.
+
+Set `closedDays` when you create the view, or per calendar with
+`viewOptions={{ year: { closedDays: "all" } }}` on `Root`.
 
 ## Keyboard
 

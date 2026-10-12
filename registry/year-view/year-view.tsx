@@ -24,9 +24,20 @@ import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import { YearDayPopover } from "./year-day-popover";
-import { YearMonthGrid, type YearDayPopoverHandle, type YearFormats } from "./year-month";
+import {
+  YearMonthGrid,
+  type YearClosedDays,
+  type YearDayPopoverHandle,
+  type YearFormats,
+} from "./year-month";
 
 export interface YearViewOptions<TEvent> {
+  /**
+   * Which closed days are shaded: `"exceptions"` (the default) the dates an exception closes,
+   * such as holidays; `"all"` the weekly closed days too, such as weekends, which the weekday
+   * columns already show; `"none"` neither. A closed day's name says "closed" either way.
+   */
+  readonly closedDays?: YearClosedDays;
   /** The registered view a date opens, `"day"` by default. */
   readonly dayView?: string;
   /** Extra words for each event's accessible name, such as its calendar. */
@@ -36,8 +47,8 @@ export interface YearViewOptions<TEvent> {
   /** The registered view a month's name opens, `"month"` by default. */
   readonly monthView?: string;
   /**
-   * Replaces the shading of closed days: an element, or a function of its props and of the band,
-   * date and resource, such as hatching for holidays.
+   * Replaces the shading of the closed days `closedDays` picks: an element, or a function of its
+   * props and of the band, date and resource, such as hatching for holidays.
    */
   readonly renderUnavailable?: UnavailableTimeRender;
 }
@@ -189,6 +200,7 @@ function YearView<TEvent>({
             onOpenDay={openDay}
             onOpenMonth={openMonth}
             renderUnavailable={options.renderUnavailable}
+            shadeClosedDays={options.closedDays ?? "exceptions"}
             triggerId={triggerId}
           />
         ))}
