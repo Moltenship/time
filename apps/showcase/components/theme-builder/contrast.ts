@@ -55,12 +55,25 @@ export const contrastChecks: readonly ContrastCheck[] = [
   },
   {
     back: "var(--calendar-closed)",
+    front: "var(--foreground)",
+    label: "Dates on closed days",
+    minimum: 4.5,
+  },
+  {
+    back: "var(--calendar-closed)",
     front: "var(--muted-foreground)",
     label: "Muted dates on closed days",
     minimum: 4.5,
   },
   { back: "var(--background)", front: "var(--calendar-now)", label: "Now line", minimum: 3 },
   { back: "var(--background)", front: "var(--ring)", label: "Focus ring", minimum: 3 },
+  {
+    // The `ring-ring/50` halo of shadcn controls, such as the toolbar's buttons.
+    back: "var(--background)",
+    front: "color-mix(in srgb, var(--ring) 50%, transparent)",
+    label: "Focus ring halo",
+    minimum: 3,
+  },
   { back: "var(--background)", front: "var(--calendar-busy)", label: "Busy dot", minimum: 3 },
   { back: "var(--background)", front: "var(--calendar-free)", label: "Free dot", minimum: 3 },
   {

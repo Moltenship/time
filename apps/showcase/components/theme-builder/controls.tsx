@@ -80,10 +80,13 @@ export function Segmented<TValue extends string>({
 
 export function ResetButton({
   changed,
+  focusAfter,
   label,
   onReset,
 }: {
   readonly changed: boolean;
+  /** The field to focus after a reset, since the button hides once there's nothing to reset. */
+  readonly focusAfter?: string;
   readonly label: string;
   readonly onReset: () => void;
 }) {
@@ -92,7 +95,10 @@ export function ResetButton({
       aria-label={`Reset ${label}`}
       className={`grid size-7 shrink-0 place-items-center rounded-md text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground disabled:invisible ${focusRing}`}
       disabled={!changed}
-      onClick={onReset}
+      onClick={() => {
+        onReset();
+        if (focusAfter !== undefined) document.getElementById(focusAfter)?.focus();
+      }}
       title={`Reset ${label}`}
       type="button"
     >
@@ -215,7 +221,7 @@ export function ColorControl({
         <span className="block truncate text-sm text-fd-foreground">{label}</span>
         <code className="block truncate text-xs text-fd-muted-foreground">{name}</code>
       </label>
-      <ResetButton changed={changed} label={label} onReset={onReset} />
+      <ResetButton changed={changed} focusAfter={id} label={label} onReset={onReset} />
       <div className="col-span-3">
         <ValueInput id={id} onChange={onChange} value={value} />
       </div>
@@ -246,7 +252,7 @@ export function FormulaControl({
         <span className="text-sm text-fd-foreground">{label}</span>{" "}
         <code className="text-xs text-fd-muted-foreground">{name}</code>
       </label>
-      <ResetButton changed={changed} label={label} onReset={onReset} />
+      <ResetButton changed={changed} focusAfter={id} label={label} onReset={onReset} />
       <div className="col-span-2">
         <ValueInput id={id} onChange={onChange} value={value} />
       </div>
@@ -292,7 +298,7 @@ export function SliderControl({
       <output className="font-mono text-xs text-fd-muted-foreground tabular-nums" htmlFor={id}>
         {shown}
       </output>
-      <ResetButton changed={changed} label={label} onReset={onReset} />
+      <ResetButton changed={changed} focusAfter={id} label={label} onReset={onReset} />
       <input
         aria-valuetext={shown}
         className={`col-span-3 w-full accent-fd-primary ${focusRing}`}

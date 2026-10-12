@@ -18,8 +18,7 @@ The CSS has the shape of `calendar-theme.css`: tokens inside `@layer base`, ligh
 tokens, outside the layer, as on [Availability](/docs/availability#customize-the-shading).
 
 - **Changed tokens** copies what differs from the theme as it ships. A token you changed only in
-  light mode is restated in `.dark` too, so the dark theme keeps its own value, whether `.dark` is
-  on `<html>` or on an element around the calendar.
+  light mode is restated in `.dark` too, so the dark theme keeps its own value.
 - **All tokens** copies the whole theme, to replace the variables in your copy of the file.
 
 Rules your app writes outside a layer win over the pasted ones: its own shadcn theme, or overrides

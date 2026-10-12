@@ -162,7 +162,9 @@ function Contrast({
               <span
                 className={`shrink-0 font-mono text-xs tabular-nums ${passes ? "text-fd-foreground" : "font-medium text-fd-error"}`}
               >
-                {ratio.toFixed(1)}:1 {passes ? "passes" : `needs ${minimum}:1`}
+                {/* Rounded down, so a ratio just short of the minimum never reads as it. */}
+                {(Math.floor(ratio * 10) / 10).toFixed(1)}:1{" "}
+                {passes ? "passes" : `needs ${minimum}:1`}
               </span>
             </li>
           );

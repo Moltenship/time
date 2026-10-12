@@ -83,9 +83,9 @@ describe("one source of truth", () => {
       }
     }
     for (const { back, front } of contrastChecks) {
-      for (const expression of [back, front]) {
-        expect(names).toContain(/^var\((--[\w-]+)\)$/.exec(expression)?.[1]);
-      }
+      const tokens = [...`${back} ${front}`.matchAll(/var\((--[\w-]+)\)/g)];
+      expect(tokens.length).toBeGreaterThan(1);
+      for (const [, name] of tokens) expect(names).toContain(name);
     }
     expect(Object.keys(eventColorLabels).toSorted()).toEqual(
       Object.keys(source.eventColor.light).toSorted(),
@@ -332,6 +332,10 @@ describe("preview CSS", () => {
       'url("x")',
       "\\72 ed",
       "</style>",
+      "oklch(0.6 0.2 30",
+      "var(--primary",
+      "var(--x) [",
+      "var(--x))",
     ]) {
       expect(isSafeValue(value), value).toBe(false);
     }

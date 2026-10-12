@@ -136,10 +136,19 @@ const same = (left: string | undefined, right: string | undefined) =>
 
 /**
  * Whether a typed value can go into a declaration as it is: no character that could end the
- * declaration or the rule, open a comment, or escape. Colour syntax is the browser's to check.
+ * declaration or the rule, open a comment, or escape, and every bracket closed, since an open
+ * `oklch(` would swallow the rules after it. Colour syntax is the browser's to check.
  */
 export function isSafeValue(value: string): boolean {
-  return value.trim() !== "" && !/[;{}<>\\"'!]|\/\*|\*\//.test(value);
+  if (value.trim() === "" || /[;{}<>\\"'!]|\/\*|\*\//.test(value)) return false;
+  const open: string[] = [];
+  for (const character of value) {
+    if (character === "(" || character === "[") open.push(character);
+    else if (character === ")" || character === "]") {
+      if (open.pop() !== (character === ")" ? "(" : "[")) return false;
+    }
+  }
+  return open.length === 0;
 }
 
 /** Sets a token for one mode; a length is the same in both. */

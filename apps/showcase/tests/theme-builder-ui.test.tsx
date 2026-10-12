@@ -126,6 +126,8 @@ test("a token edit restyles the preview and the CSS, and its reset undoes it", a
   await act(async () => reset.click());
   expect(today.value).toBe("oklch(0.52 0.215 262.9)");
   expect(css(container)).toContain("No changes");
+  // The reset button hides once there's nothing to reset; focus goes back to the field.
+  expect(document.activeElement).toBe(today);
 });
 
 test("a value that could break the CSS is flagged, explained and never applied", async () => {
