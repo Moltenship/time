@@ -1,4 +1,4 @@
-import type { IcsWeekday } from "@moltenship/ics";
+import type { CalendarEventInterval } from "@moltenship/calendar-core";
 
 import { coerceRecurrenceDate } from "../dates";
 import { RecurrenceRuleError } from "../errors";
@@ -9,225 +9,252 @@ import type {
   RecurrenceRuleStart,
   RecurrenceRuleWindow,
 } from "../types";
-
-// Baseline: DAILY, and WEEKLY with or without BYDAY, with INTERVAL, COUNT, UNTIL and WKST. The
-// full RFC 5545 engine (#48) replaces this file and keeps `expandRecurrenceRule`'s contract.
+import {
+  floorDiv,
+  SECONDS_PER_DAY,
+  subsecond,
+  toPlainDate,
+  toPlainDateTime,
+  wallSeconds,
+  weekday,
+} from "./calendar";
+import { Candidates, END, NOTHING, periodOf } from "./candidates";
+import { offsetChangeBefore, WallClock } from "./clock";
+import { compileRule } from "./compile";
 
 export const DEFAULT_MAX_ITERATIONS = 100_000;
 
-type WallTime = Temporal.PlainDate | Temporal.PlainDateTime;
+const NANOSECONDS_PER_SECOND = 1_000_000_000n;
 
-const weekdayNumbers: Readonly<Record<IcsWeekday, number>> = {
-  MO: 1,
-  TU: 2,
-  WE: 3,
-  TH: 4,
-  FR: 5,
-  SA: 6,
-  SU: 7,
-};
+const KINDS = {
+  "all-day": "Temporal.PlainDate",
+  floating: "Temporal.PlainDateTime",
+  timed: "Temporal.Instant",
+} as const;
 
-const frequencies: ReadonlySet<string> = new Set([
-  "DAILY",
-  "HOURLY",
-  "MINUTELY",
-  "MONTHLY",
-  "SECONDLY",
-  "WEEKLY",
-  "YEARLY",
-]);
-
-function compareDates(left: RecurrenceDate, right: RecurrenceDate): number {
-  if (left instanceof Temporal.Instant && right instanceof Temporal.Instant) {
-    return Temporal.Instant.compare(left, right);
-  }
-  if (left instanceof Temporal.PlainDate && right instanceof Temporal.PlainDate) {
-    return Temporal.PlainDate.compare(left, right);
-  }
-  if (left instanceof Temporal.PlainDateTime && right instanceof Temporal.PlainDateTime) {
-    return Temporal.PlainDateTime.compare(left, right);
-  }
-  throw new RangeError("Window dates must match the kind of the series' first occurrence.");
+function floorSeconds(nanoseconds: bigint): number {
+  const seconds = nanoseconds / NANOSECONDS_PER_SECOND;
+  return Number(
+    nanoseconds < 0n && seconds * NANOSECONDS_PER_SECOND !== nanoseconds ? seconds - 1n : seconds,
+  );
 }
 
-const isPositiveInteger = (value: number) => Number.isInteger(value) && value >= 1;
+const ceilSeconds = (nanoseconds: bigint) => -floorSeconds(-nanoseconds);
 
-/** Why the rule can't be expanded, for rules built in code rather than parsed. */
-function invalid(rule: RecurrenceRule): string | undefined {
-  if (!frequencies.has(rule.frequency)) return `FREQ=${String(rule.frequency)} isn't a frequency.`;
-  if (rule.interval !== undefined && !isPositiveInteger(rule.interval)) {
-    return "INTERVAL must be a positive integer.";
+/** A date as nanoseconds in the series' time: since the epoch for timed series, wall time otherwise. */
+function nanosecondsOf(date: RecurrenceDate, first: CalendarEventInterval, name: string): bigint {
+  if (first.kind === "timed" && date instanceof Temporal.Instant) return date.epochNanoseconds;
+  if (first.kind === "all-day" && date instanceof Temporal.PlainDate) {
+    return BigInt(wallSeconds(date)) * NANOSECONDS_PER_SECOND;
   }
-  if (rule.count !== undefined && !isPositiveInteger(rule.count)) {
-    return "COUNT must be a positive integer.";
+  if (first.kind === "floating" && date instanceof Temporal.PlainDateTime) {
+    return BigInt(wallSeconds(date)) * NANOSECONDS_PER_SECOND + BigInt(subsecond(date));
   }
-  if (rule.weekStart !== undefined && !(rule.weekStart in weekdayNumbers)) {
-    return `WKST=${String(rule.weekStart)} isn't a weekday.`;
-  }
-  if (rule.byDay?.some(({ weekday }) => !(weekday in weekdayNumbers))) {
-    return "BYDAY holds a value that isn't a weekday.";
-  }
-  const lists = [
-    rule.byDay,
-    rule.byHour,
-    rule.byMinute,
-    rule.byMonth,
-    rule.byMonthDay,
-    rule.bySecond,
-    rule.bySetPosition,
-    rule.byWeekNumber,
-    rule.byYearDay,
-  ];
-  if (lists.some((list) => list?.length === 0)) return "BY parts must not be empty.";
-  return undefined;
-}
-
-function unsupported(rule: RecurrenceRule): string | undefined {
-  if (rule.frequency !== "DAILY" && rule.frequency !== "WEEKLY") return `FREQ=${rule.frequency}`;
-  const parts = [
-    ["BYSECOND", rule.bySecond],
-    ["BYMINUTE", rule.byMinute],
-    ["BYHOUR", rule.byHour],
-    ["BYMONTHDAY", rule.byMonthDay],
-    ["BYYEARDAY", rule.byYearDay],
-    ["BYWEEKNO", rule.byWeekNumber],
-    ["BYMONTH", rule.byMonth],
-    ["BYSETPOS", rule.bySetPosition],
-  ] as const;
-  const part = parts.find(([, values]) => values !== undefined);
-  if (part !== undefined) return part[0];
-  if (rule.byDay !== undefined && rule.frequency === "DAILY") return "BYDAY with FREQ=DAILY";
-  if (rule.byDay?.some((day) => day.ordinal !== undefined)) return "BYDAY ordinals";
-  return undefined;
+  throw new RangeError(
+    `${name} must be a ${KINDS[first.kind]}, like the first start of this ${first.kind} series; got ${String(date)}.`,
+  );
 }
 
 /**
- * Candidate wall-time starts, in order: the first occurrence, then one per period. Without COUNT,
- * periods that end before `skipTo` are skipped rather than visited.
- */
-function* candidates(
-  rule: RecurrenceRule,
-  start: WallTime,
-  skipTo: Temporal.PlainDate | undefined,
-): Generator<WallTime> {
-  const interval = rule.interval ?? 1;
-  const date = start instanceof Temporal.PlainDateTime ? start.toPlainDate() : start;
-  const at = (day: Temporal.PlainDate): WallTime =>
-    start instanceof Temporal.PlainDateTime ? day.toPlainDateTime(start.toPlainTime()) : day;
-  const periodDays = rule.frequency === "DAILY" ? interval : interval * 7;
-  const periodsBefore = (from: Temporal.PlainDate) =>
-    skipTo === undefined ? 0 : Math.max(0, Math.floor(from.until(skipTo).days / periodDays) - 1);
-
-  yield start;
-  if (rule.frequency === "DAILY" || rule.byDay === undefined) {
-    for (let period = Math.max(1, periodsBefore(date)); ; period += 1) {
-      yield at(date.add({ days: period * periodDays }));
-    }
-  }
-
-  const weekStart = weekdayNumbers[rule.weekStart ?? "MO"];
-  const offsets = [
-    ...new Set(rule.byDay.map(({ weekday }) => (weekdayNumbers[weekday] - weekStart + 7) % 7)),
-  ].sort((left, right) => left - right);
-  const firstWeek = date.subtract({ days: (date.dayOfWeek - weekStart + 7) % 7 });
-  for (let period = periodsBefore(firstWeek); ; period += 1) {
-    const week = firstWeek.add({ days: period * periodDays });
-    for (const offset of offsets) {
-      const day = week.add({ days: offset });
-      if (Temporal.PlainDate.compare(day, date) > 0) yield at(day);
-    }
-  }
-}
-
-function validTimeZone(start: Temporal.Instant, timeZone: string): boolean {
-  try {
-    start.toZonedDateTimeISO(timeZone);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/**
- * The starts of a rule's occurrences inside `window`, beginning with the first occurrence, which
- * is always one, even before UNTIL. Timed series repeat on the wall clock of
- * `first.sourceTimeZone`, or UTC, from `first.wallStart` when the first start was written in a DST
- * gap; a later start in a gap moves forward and counts, a repeated time takes its first instant.
- * Throws a `RecurrenceRuleError` for a rule it can't expand, and a `RangeError` for a window whose
- * dates don't match the series' kind or an invalid `maxIterations`.
+ * The starts of a rule's occurrences inside `window`, strictly increasing, for every part of
+ * RFC 5545: each FREQ, every BY part with §3.3.10's expand and limit table, BYSETPOS, WKST, COUNT
+ * and UNTIL.
+ *
+ * - The first occurrence is always the first start and counts toward COUNT, even when the rule
+ *   wouldn't produce it or UNTIL is earlier. Rule dates at or before it are left out.
+ * - Timed series repeat on the wall clock of `first.sourceTimeZone`, or UTC, every FREQ included:
+ *   an HOURLY rule keeps to the clock's hours. Each wall time resolves as RFC 5545 §3.3.5 says
+ *   (Temporal's `compatible`): one in a DST gap moves forward by the gap and counts, and a repeated
+ *   one takes its first instant, so a repeated hour happens once. Starts that resolve to the same
+ *   instant, as gap times moving onto later ones do, appear once (§3.8.5.3). `first.wallStart` is
+ *   where the series repeats from when its first start was written in a gap.
+ * - Dates no calendar has, such as 30 February or the 5th Friday of a month with four, are
+ *   skipped and don't count.
+ * - Without COUNT, the loop skips ahead to `window.from` instead of stepping from the first start.
+ *
+ * - COUNT with UNTIL, which some feeds write, ends at whichever comes first. BYHOUR, BYMINUTE and
+ *   BYSECOND are ignored on all-day series, as RFC 5545 §3.3.10 says. UNTIL of another kind is
+ *   brought in by `coerceRecurrenceDate`, which reads an instant on an all-day or floating series
+ *   in UTC; coerce it first to read it in another zone.
+ * - Dates come out in the ISO calendar, and months and years step in it whatever the start's.
+ * - `maxIterations` counts steps: each candidate start looked at, and each period visited that
+ *   gives none. Periods skipped, to reach `from` or the next day, hour, minute or second the BY
+ *   parts allow, aren't visited. A rule whose day parts meet on no date, such as 30 February, ends
+ *   after its first occurrence.
+ *
+ * Throws a `RecurrenceRuleError` for a rule it can't expand or a `sourceTimeZone` that isn't a
+ * time zone, and a `RangeError` for window dates of another kind than `first` or a
+ * `maxIterations` that isn't a positive integer.
  */
 export function expandRecurrenceRule(
   rule: RecurrenceRule,
   first: RecurrenceRuleStart,
   window: RecurrenceRuleWindow = {},
 ): RecurrenceRuleExpansion {
-  const problem = invalid(rule);
-  if (problem !== undefined) throw new RecurrenceRuleError("invalid-rule", problem);
-  const missing = unsupported(rule);
-  if (missing !== undefined) {
-    throw new RecurrenceRuleError("unsupported-rule", `${missing} isn't supported yet.`);
-  }
   const maxIterations = window.maxIterations ?? DEFAULT_MAX_ITERATIONS;
-  if (!isPositiveInteger(maxIterations)) {
-    throw new RangeError("maxIterations must be a positive integer.");
+  if (!Number.isInteger(maxIterations) || maxIterations < 1) {
+    throw new RangeError(`maxIterations must be a positive integer; got ${maxIterations}.`);
   }
 
-  const timeZone = first.kind === "timed" ? (first.sourceTimeZone ?? "UTC") : "UTC";
-  if (first.kind === "timed" && !validTimeZone(first.start, timeZone)) {
-    throw new RecurrenceRuleError("invalid-time-zone", `${timeZone} isn't a time zone.`);
-  }
-  const until =
-    rule.until === undefined ? undefined : coerceRecurrenceDate(rule.until, first, "until");
-
-  let wallStart: WallTime;
+  // Times are whole seconds, since the epoch for timed series and of wall time otherwise, in the
+  // ISO calendar. Every occurrence shares the first start's fraction of a second.
+  let fields: Temporal.PlainDate | Temporal.PlainDateTime;
+  let fraction = 0;
+  let start: number;
+  let wallStart: number;
+  let timeZone: string | undefined;
   if (first.kind === "timed") {
-    // A stale wall time, left after the start moved, no longer resolves to it and is ignored.
+    timeZone = first.sourceTimeZone ?? "UTC";
+    let zoned: Temporal.ZonedDateTime;
+    try {
+      zoned = first.start.toZonedDateTimeISO(timeZone);
+    } catch {
+      throw new RecurrenceRuleError("invalid-time-zone", `${timeZone} isn't a time zone.`);
+    }
+    // A written start left behind after the start moved no longer resolves to it.
     const written = first.wallStart?.withCalendar("iso8601");
-    const usable =
+    fields =
       written !== undefined &&
       written
         .toZonedDateTime(timeZone, { disambiguation: "compatible" })
         .toInstant()
-        .equals(first.start);
-    wallStart = usable ? written : first.start.toZonedDateTimeISO(timeZone).toPlainDateTime();
+        .equals(first.start)
+        ? written
+        : zoned.toPlainDateTime();
+    fraction = subsecond(zoned);
+    start = Number((first.start.epochNanoseconds - BigInt(fraction)) / NANOSECONDS_PER_SECOND);
+    wallStart = wallSeconds(fields);
   } else {
-    wallStart = first.start.withCalendar("iso8601");
+    fields = first.start;
+    fraction = first.kind === "floating" ? subsecond(first.start) : 0;
+    start = wallStart = wallSeconds(fields);
   }
-  // The first occurrence keeps its exact start, which a repeated wall time can't round-trip to.
-  const toDate = (wall: WallTime, index: number): RecurrenceDate =>
-    first.kind !== "timed"
-      ? wall
-      : index === 0
-        ? first.start
-        : (wall as Temporal.PlainDateTime)
-            .toZonedDateTime(timeZone, { disambiguation: "compatible" })
-            .toInstant();
 
-  const from = window.from;
-  const skipTo =
-    rule.count !== undefined || from === undefined
-      ? undefined
-      : from instanceof Temporal.Instant
-        ? from.toZonedDateTimeISO(timeZone).toPlainDate()
-        : from instanceof Temporal.PlainDateTime
-          ? from.toPlainDate()
-          : from;
+  // Every kind converts for UNTIL; a date `coerceRecurrenceDate` left alone fails below.
+  const until = rule.until && (coerceRecurrenceDate(rule.until, first, "until") ?? rule.until);
 
+  const iso = fields.withCalendar("iso8601");
+  const compiled = compileRule(rule, {
+    allDay: first.kind === "all-day",
+    day: iso.day,
+    hour: iso instanceof Temporal.PlainDateTime ? iso.hour : 0,
+    minute: iso instanceof Temporal.PlainDateTime ? iso.minute : 0,
+    month: iso.month,
+    second: iso instanceof Temporal.PlainDateTime ? iso.second : 0,
+    weekday: weekday(floorDiv(wallStart, SECONDS_PER_DAY)),
+  });
+
+  const bound = (date: RecurrenceDate | undefined, name: string) =>
+    date === undefined ? undefined : nanosecondsOf(date, first, name) - BigInt(fraction);
+  const fromBound = bound(window.from, "window.from");
+  const beforeBound = bound(window.before, "window.before");
+  const untilBound = bound(until, "UNTIL");
+  const from = fromBound === undefined ? undefined : ceilSeconds(fromBound);
+  const before = beforeBound === undefined ? undefined : ceilSeconds(beforeBound);
+  const last = untilBound === undefined ? undefined : floorSeconds(untilBound);
+
+  // The latest wall time that can still resolve inside UNTIL and `before`: that of the last time
+  // they allow, later by an offset change that a repeated time could resolve back across.
+  let lastWall = Number.POSITIVE_INFINITY;
+  for (const time of [last, before === undefined ? undefined : before - 1]) {
+    if (time === undefined) continue;
+    if (timeZone === undefined) {
+      lastWall = Math.min(lastWall, time);
+      continue;
+    }
+    const instant = Temporal.Instant.fromEpochMilliseconds(time * 1000);
+    lastWall = Math.min(
+      lastWall,
+      wallSeconds(instant.toZonedDateTimeISO(timeZone)) + offsetChangeBefore(instant, timeZone),
+    );
+  }
+
+  const toDate = (time: number): RecurrenceDate => {
+    if (first.kind === "all-day") return toPlainDate(time);
+    if (first.kind === "floating") return toPlainDateTime(time, fraction);
+    return fraction === 0
+      ? Temporal.Instant.fromEpochMilliseconds(time * 1000)
+      : Temporal.Instant.fromEpochNanoseconds(
+          BigInt(time) * NANOSECONDS_PER_SECOND + BigInt(fraction),
+        );
+  };
+
+  if (before !== undefined && start >= before) return { dates: [], truncated: false };
   const dates: RecurrenceDate[] = [];
-  let previous: RecurrenceDate | undefined;
-  let produced = 0;
+  if (from === undefined || start >= from) {
+    dates.push(first.kind === "timed" ? first.start : toDate(start));
+  }
+  let latest = start;
+  let produced = 1;
+  if (compiled.count === 1) return { dates, truncated: false };
+
+  /** Takes the next start in time order; false once UNTIL, `before` or COUNT ends the series. */
+  const take = (time: number): boolean => {
+    if (time <= latest) return true;
+    if ((last !== undefined && time > last) || (before !== undefined && time >= before)) {
+      return false;
+    }
+    latest = time;
+    produced += 1;
+    if (from === undefined || time >= from) dates.push(toDate(time));
+    return compiled.count === undefined || produced < compiled.count;
+  };
+
+  // Without COUNT nothing before `from` matters, so start at the period that holds it. A gap time
+  // up to one offset change earlier can move forward into the window.
+  const origin = periodOf(compiled, wallStart);
+  let period = origin;
+  if (compiled.count === undefined && window.from !== undefined && from !== undefined) {
+    const fromWall =
+      timeZone === undefined
+        ? from
+        : wallSeconds((window.from as Temporal.Instant).toZonedDateTimeISO(timeZone)) -
+          offsetChangeBefore(window.from as Temporal.Instant, timeZone);
+    const target = periodOf(compiled, fromWall);
+    if (target > origin) {
+      period = origin + floorDiv(target - origin, compiled.interval) * compiled.interval;
+    }
+  }
+
+  const candidates = new Candidates(compiled, origin, period);
+  const clock = timeZone === undefined ? undefined : new WallClock(timeZone);
+  // Gap times that moved forward, waiting until no later wall time can resolve before them.
+  const waiting: { readonly time: number; readonly wall: number }[] = [];
   let steps = 0;
-  for (const wall of candidates(rule, wallStart, skipTo?.withCalendar("iso8601"))) {
-    const date = toDate(wall, steps);
-    if (steps > 0 && until !== undefined && compareDates(date, until) > 0) break;
-    if (window.before !== undefined && compareDates(date, window.before) >= 0) break;
+
+  for (;;) {
+    const wall = candidates.next();
+    if (wall === END) break;
+    const nothing = wall === NOTHING;
+    if ((nothing ? candidates.periodStart : wall) > lastWall) break;
+
+    let time = wall;
+    let moved = false;
+    if (clock !== undefined && !nothing) {
+      time = clock.resolve(wall);
+      moved = clock.moved;
+      while (
+        waiting.length > 0 &&
+        (waiting[0]!.wall <= wall || (!moved && waiting[0]!.time <= time))
+      ) {
+        if (!take(waiting.shift()!.time)) return { dates, truncated: false };
+      }
+    }
+    if (
+      !nothing &&
+      !moved &&
+      ((last !== undefined && time > last) || (before !== undefined && time >= before))
+    ) {
+      break;
+    }
+
     if (steps >= maxIterations) return { dates, truncated: true };
     steps += 1;
-    if (previous !== undefined && compareDates(date, previous) <= 0) continue;
-    previous = date;
-    produced += 1;
-    if (from === undefined || compareDates(date, from) >= 0) dates.push(date);
-    if (rule.count !== undefined && produced >= rule.count) break;
+    if (nothing) continue;
+    if (moved) waiting.push({ time, wall: clock!.resolvedWall });
+    else if (!take(time)) return { dates, truncated: false };
   }
+
+  for (const { time } of waiting) if (!take(time)) break;
   return { dates, truncated: false };
 }
