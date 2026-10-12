@@ -21,6 +21,7 @@
     "@moltenship/calendar": "workspace:*",
     "@moltenship/calendar-recurrence": "workspace:*",
     "@moltenship/ics": "workspace:*",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "fumadocs-core": "catalog:",
     "fumadocs-mdx": "catalog:",

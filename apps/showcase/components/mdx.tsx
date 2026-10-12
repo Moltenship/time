@@ -16,6 +16,7 @@ import {
 } from "@/components/calendar-preview";
 import { IcsFeedPreview } from "@/components/ics-feed-preview";
 import { IcsPlayground } from "@/components/ics-playground";
+import { QueryPreview } from "@/components/query-preview";
 import { RecurrencePreview } from "@/components/recurrence-preview";
 import { ThemeBuilder } from "@/components/theme-builder";
 import defaultMdxComponents from "fumadocs-ui/mdx";
@@ -35,6 +36,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     IcsPlayground,
     MonthAnatomy,
     OverlapLayoutPreview,
+    QueryPreview,
     RecurrencePreview,
     SecondaryTimeZonesPreview,
     ShadingRecipesPreview,

@@ -7,7 +7,7 @@ import {
   type ResourceId,
 } from "@moltenship/calendar-core";
 import { plainDateInterval, type PlainDateInterval } from "@moltenship/calendar-temporal";
-import { act, useState } from "react";
+import { Activity, act, useState } from "react";
 import { afterEach, expect, expectTypeOf, test, vi } from "vite-plus/test";
 
 import {
@@ -140,8 +140,11 @@ afterEach(async () => {
   vi.restoreAllMocks();
 });
 
-async function render(element: React.ReactNode): Promise<ReactRootHarness> {
-  const harness = await renderWithHarness(element);
+async function render(
+  element: React.ReactNode,
+  options?: { readonly strictMode?: boolean },
+): Promise<ReactRootHarness> {
+  const harness = await renderWithHarness(element, options);
   harnesses.push(harness);
   return harness;
 }
@@ -365,4 +368,39 @@ test("a view without a load range projects only its visible dates", async () => 
   expect(harness.container.querySelector("[data-summary]")).not.toBeNull();
   const [{ loadRange, range }] = ranges.mock.calls[0]!;
   expect(loadRange).toBe(range);
+});
+
+test("each range is reported once, under Strict Mode and across a hidden Activity", async () => {
+  const ranges = vi.fn<(range: CalendarVisibleRange) => void>();
+  function Application({ mode }: { readonly mode: "hidden" | "visible" }) {
+    return (
+      <Activity mode={mode}>
+        <ShiftCalendar.Root
+          defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
+          defaultView="days"
+          defaultTimeZone="UTC"
+          events={shifts}
+          locale="en-GB"
+          onVisibleRangeChange={ranges}
+          weekRules={gateWeekRules}
+        >
+          <ShiftCalendar.NextTrigger>Next</ShiftCalendar.NextTrigger>
+          <ShiftCalendar.ActiveView />
+        </ShiftCalendar.Root>
+      </Activity>
+    );
+  }
+
+  // Strict Mode runs effects twice when they mount; the range only showed once.
+  const harness = await render(<Application mode="visible" />, { strictMode: true });
+  expect(ranges).toHaveBeenCalledOnce();
+
+  // Hiding and revealing the calendar shows the same dates again, so nothing new is reported.
+  await harness.render(<Application mode="hidden" />);
+  await harness.render(<Application mode="visible" />);
+  expect(ranges).toHaveBeenCalledOnce();
+
+  await click(harness.container, '[data-calendar-part="next-trigger"]');
+  expect(ranges).toHaveBeenCalledTimes(2);
+  expect(ranges.mock.calls[1]![0].range.start.toString()).toBe("2026-08-17");
 });

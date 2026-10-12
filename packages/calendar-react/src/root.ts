@@ -557,9 +557,13 @@ export function createCalendarRoot<
     });
     useEffect(() => committed.current.onDiagnosticsChange?.(diagnostics), [diagnostics]);
     // After the commit that shows a range, so loading its events never delays it; new events and
-    // other updates don't repeat it.
+    // other updates don't repeat it. Effects that run again for the same range, as under Strict
+    // Mode or when a hidden Activity is revealed, don't report it twice.
+    const reportedRange = useRef<CalendarVisibleRange<View> | null>(null);
     useEffect(() => {
-      if (visibleRange !== null) committed.current.onVisibleRangeChange?.(visibleRange);
+      if (visibleRange === null || visibleRange === reportedRange.current) return;
+      reportedRange.current = visibleRange;
+      committed.current.onVisibleRangeChange?.(visibleRange);
     }, [visibleRange]);
     const actions = useMemo(
       () => createSemanticActions(binding, viewsByName, committed, transactions, readOnly),

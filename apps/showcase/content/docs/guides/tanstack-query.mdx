@@ -1,0 +1,162 @@
+---
+title: Load events with TanStack Query
+description: Fetch the dates the calendar shows with useQuery, and save its changes with useMutation and optimistic updates.
+---
+
+<QueryPreview />
+
+These events come from a pretend server that takes 0.7 seconds to answer. Go to another week or
+month and the calendar keeps its events on screen while the next ones load. Drag an event and it
+moves at once, then saves. Tick "Make requests fail" to see the error and the rollback.
+
+Time never fetches or saves events. It tells you which dates it shows through
+`onVisibleRangeChange`, and proposes changes through `onEventChange`. This guide connects both to
+[TanStack Query](https://tanstack.com/query): one query per window of months, and a mutation that
+shows a change before it's saved and undoes it if the save fails.
+
+## Install
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @tanstack/react-query
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @tanstack/react-query
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @tanstack/react-query
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @tanstack/react-query
+```
+
+</Tab>
+</Tabs>
+
+Put a `QueryClientProvider` above the calendar, as TanStack Query's
+[quick start](https://tanstack.com/query/latest/docs/framework/react/quick-start) does.
+
+## The API
+
+The example talks to an API with four requests. Its events are JSON, with ISO strings for times:
+
+<include meta='title="query-api.ts"'>../../examples/query-api.ts#types</include>
+
+`listEvents` returns the events that overlap the dates, not only those that start in them, so a
+trip that started on Friday still shows on Monday. A timed event overlaps when it starts before the
+window's last midnight and ends after its first, in the window's time zone. An all-day event is
+compared by its dates:
+
+<include meta='title="query-api.ts"'>../../examples/query-api.ts#overlaps</include>
+
+The preview's server is `createFakeEventsApi`, in the same file. It keeps events in memory and
+answers after a delay. In your app, these four functions call your server.
+
+## Read the records as they are
+
+The cache keeps events as the API sends them, and the event adapter reads their times:
+
+<include meta='title="query-calendar.tsx"'>../../examples/query-calendar.tsx#calendar</include>
+
+- **Plain JSON in the cache.** After a reload, TanStack Query's structural sharing keeps the
+  records that didn't change as the same objects, so the calendar re-reads only the others. JSON
+  also survives dehydration, for [server rendering](#server-rendering).
+- **No `getRevision`.** A change shown before it's saved keeps the record's old `version`. The
+  calendar skips a record whose revision it has seen, so it would keep the old times.
+
+## Key the query by the dates
+
+`onVisibleRangeChange` reports the dates the view shows, `range`, and the dates to have events
+for, `loadRange`. Keep `loadRange` in state, and turn it into the window a query loads:
+
+<include meta='title="query-events.ts"'>../../examples/query-events.ts#window</include>
+
+<include meta='title="query-events.ts"'>../../examples/query-events.ts#query</include>
+
+- **Whole months.** The calendar's dates change with each step. A key made of them would load
+  again on every step, and cache each week apart. The window is the month that holds the middle of
+  the load range, with a month on either side, so the weeks of a month share one query, and so do
+  a month view's six weeks.
+- **One month on.** The next week or month moves the middle into the next month, and the window
+  by exactly one month, so `shiftWindow` names the windows to [prefetch](#prefetch-the-next-window).
+- **Long load ranges.** A [scrolling view](/docs/views/scrolling) loads a page on either side of
+  what it shows. The window grows to hold its load range, such as a scrolling month's eighteen weeks.
+- **ISO strings and the time zone.** The key is JSON, which TanStack Query hashes. The same dates
+  are other instants in another time zone, so the zone is part of the key.
+
+## Show what's loading
+
+<include meta='title="query-calendar.tsx"'>../../examples/query-calendar.tsx#root</include>
+
+- **The first render.** The calendar reports its dates after it renders, and never on the server,
+  so the state starts from the week it opens on, from `weekRange`. The window rounds both to the
+  same months, so the first load is the one the calendar asks for. If it opens on a month view,
+  start from its grid instead.
+- **`placeholderData: keepPreviousData`.** While the next window loads, `data` keeps the last
+  window's events, and the dates that both windows hold keep theirs. Without it, the grid would
+  empty for every load.
+- **Loading.** `isFetching` turns on the spinner in the toolbar, and `aria-busy` on the viewport,
+  for every load of the window on screen, also a reload after a save.
+- **Errors.** TanStack Query retries a failed load three times before `isError` shows the message.
+  "Try again" calls `refetch`. A failed save shows its own message, first, since it answers what
+  the user just did, and the calendar announces it.
+- **Strict Mode.** `onVisibleRangeChange` reports each range once, also when Strict Mode runs
+  effects twice. Setting the same range again would do nothing anyway.
+
+### Prefetch the next window
+
+`usePrefetchQuery` starts loading the windows a month before and after the one on screen, while
+the calendar renders. It skips windows the cache already has, so it doesn't load them on every
+render. Stepping into the next month then shows its events at once.
+
+## Save changes
+
+The calendar proposes changes and your app commits them. `onEventChange` above hands each change
+to a mutation and waits for it. Until the save settles, the change shows as pending; if it fails,
+the change rolls back. A change becomes a write: the event's record before and after it:
+
+<include meta='title="query-events.ts"'>../../examples/query-events.ts#write</include>
+
+A new event gets its ID here, so the event shown while it saves and the saved one are the same
+event, with no temporary ID to swap. The record goes into every cached window it overlaps:
+
+<include meta='title="query-events.ts"'>../../examples/query-events.ts#cache</include>
+
+And the mutation updates the cache before the save, and puts it back if the save fails:
+
+<include meta='title="query-events.ts"'>../../examples/query-events.ts#mutation</include>
+
+1. **`onMutate`** cancels loads on their way, which could bring back what they read before the
+   change, and puts the new record in the cache. A move from October to December leaves the
+   windows that held October and shows in those that hold December, before it's saved.
+2. **`onError`** puts the old record back the same way. It writes only this event, rather than a
+   copy of the whole cache from before the change, so another change that's still saving stays.
+3. **`onSettled`** marks every events query stale, and reloads the ones on screen, once the last
+   save has settled. A reload between two saves would show the first without the second. Returning
+   its promise keeps the change pending until the reload is done.
+
+`mutateAsync` rejects when the save fails, after `onError` has put the old record back, so
+`onEventChange` rejects too and the calendar rolls back the change.
+
+## Server rendering
+
+The [Next.js guide](/docs/guides/nextjs) explains how to render the calendar on the server. With
+TanStack Query, prefetch the first window on the server under the same key, and pass the cache to
+the browser with TanStack Query's
+[`HydrationBoundary`](https://tanstack.com/query/latest/docs/framework/react/guides/advanced-ssr).
+The cache holds JSON, not Temporal objects, so it serializes as it is. Start from the same dates on
+both sides, so the keys match.
