@@ -1,6 +1,8 @@
-// Syntax layer: text ⇄ `IcsComponent` tree. Owned by the syntax work package.
+// Syntax layer: text ⇄ `IcsComponent` tree. Values stay raw; decoding them is the values layer's job.
 
 import type { IcsComponent, IcsIssue } from "../types";
+import { parseComponents } from "./parse";
+import { stringifyComponents } from "./stringify";
 
 export interface IcsComponentsResult {
   /** Top-level components, normally VCALENDARs. */
@@ -10,12 +12,16 @@ export interface IcsComponentsResult {
 
 /** Splits iCalendar text into a lossless component tree, collecting syntax issues. */
 export function parseIcsComponents(text: string): IcsComponentsResult {
-  void text;
-  throw new Error("not implemented: parseIcsComponents");
+  return parseComponents(text);
 }
 
 /** Writes components back as iCalendar text: CRLF line ends, folded at 75 octets. */
 export function stringifyIcsComponents(components: IcsComponent | readonly IcsComponent[]): string {
-  void components;
-  throw new Error("not implemented: stringifyIcsComponents");
+  return stringifyComponents(isComponentList(components) ? components : [components]);
+}
+
+function isComponentList(
+  components: IcsComponent | readonly IcsComponent[],
+): components is readonly IcsComponent[] {
+  return Array.isArray(components);
 }
