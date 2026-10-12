@@ -185,6 +185,7 @@ export function MiniMonth({
                         // Muted text is under 4.5:1 on the range band and the hover fill.
                         !isSameMonth(day, month) &&
                           !isVisible &&
+                          !isToday &&
                           "text-muted-foreground hover:text-accent-foreground",
                         isSelected && "font-semibold text-calendar-today",
                         isToday &&

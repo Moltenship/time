@@ -122,8 +122,8 @@ function DateButton({
       tabIndex={tabIndex}
       className={cn(
         "flex items-center justify-center rounded-full font-medium tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
-        // Muted on the hover fill falls short of 4.5:1.
-        !day.inMonth && "text-muted-foreground hover:text-accent-foreground",
+        // Muted on the hover fill falls short of 4.5:1. Today keeps its own colours.
+        !day.inMonth && !day.isToday && "text-muted-foreground hover:text-accent-foreground",
         day.isToday &&
           "bg-calendar-today text-calendar-today-foreground hover:bg-calendar-today/90",
         className,
