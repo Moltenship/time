@@ -12,7 +12,7 @@ import {
   type RecurrenceRule,
   type RecurringCalendarEvent,
 } from "@moltenship/calendar-recurrence";
-import { BENCHMARK_FIXTURE_SEED } from "fixtures";
+import { BENCHMARK_FIXTURE_SEED, createRandom } from "fixtures";
 
 export const RECURRENCE_SERIES_COUNT = 200;
 /** Where the calendar shows the year. */
@@ -115,19 +115,6 @@ export function yearViewLoadRange(anchor: Temporal.PlainDate, timeZone: string):
   };
   const range = yearView.getRange(anchor, environment, undefined);
   return { range: resolveViewLoadRange(yearView, anchor, environment, undefined, range), timeZone };
-}
-
-function createRandom(seed: number) {
-  let state = seed >>> 0;
-
-  return (upperBound: number): number => {
-    state = (state + 0x6d_2b_79_f5) >>> 0;
-    let value = state;
-    value = Math.imul(value ^ (value >>> 15), value | 1);
-    value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
-    const normalized = (value ^ (value >>> 14)) >>> 0;
-    return normalized % upperBound;
-  };
 }
 
 type Random = ReturnType<typeof createRandom>;
