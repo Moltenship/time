@@ -33,6 +33,8 @@ unexplained.
 ## What `expected` encodes
 
 dateutil expands the rule as written, without COUNT and UNTIL, on the wall clock of `timeZone`.
+It starts at the beginning of the period that holds DTSTART, with DTSTART's defaults written into
+the rule, so the generator itself decides which dates of that first period come before the start.
 Each wall time resolves like Temporal's `compatible`: a time in a gap moves forward, and a repeated
 time takes its first instant. The generator then applies ADR 0048. Each rule below is a switch in
 `Semantics`, so turning one off gives dateutil's answer again:
@@ -41,7 +43,9 @@ time takes its first instant. The generator then applies ADR 0048. Each rule bel
 | ----------------------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `first_always_counts`               | The first occurrence is always one and counts toward COUNT, even when unsynchronized or after UNTIL.       |
 | `nothing_before_start`              | Rule dates at or before the start instant are dropped (a later fold start, or a start written in a gap). |
+| `start_compared_by_instant`         | A gap time before DTSTART's wall time that moves past the start instant is an occurrence.                 |
 | `ascending_distinct`                | Starts sorted by instant with duplicates removed; COUNT takes the earliest distinct starts.                |
+| `weekly_full_first_week`            | The first WEEKLY period is the whole WKST week, so BYSETPOS counts over it; dateutil's starts at DTSTART.  |
 | `all_day_ignores_time_parts`        | BYHOUR, BYMINUTE and BYSECOND are ignored on all-day series.                                                |
 | `byday_entries_are_alternatives`    | `BYDAY=MO,1TU` is a union; dateutil intersects plain and numbered entries.                                 |
 | `yearly_weekno_takes_start_weekday` | YEARLY with BYWEEKNO and no BYDAY, BYMONTHDAY or BYYEARDAY repeats on DTSTART's weekday.                    |

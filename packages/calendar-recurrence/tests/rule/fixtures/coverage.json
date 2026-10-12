@@ -1043,6 +1043,76 @@
       "secondOracleNote": "ical.js 2.2.1 ignores BYSETPOS in HOURLY, DAILY and WEEKLY rules."
     },
     {
+      "id": "coverage/weekly-bysetpos-full-first-week",
+      "title": "WEEKLY;BYSETPOS=2 from a Wednesday: BYSETPOS counts over the whole first week",
+      "source": "Coverage",
+      "kind": "all-day",
+      "start": "2011-03-09",
+      "rule": "FREQ=WEEKLY;BYDAY=MO,SA,SU;BYSETPOS=2;COUNT=4",
+      "expected": ["2011-03-09", "2011-03-12", "2011-03-19", "2011-03-26"],
+      "oracle": ["2011-03-13", "2011-03-19", "2011-03-26", "2011-04-02"],
+      "divergence": "DTSTART isn't a date the rule produces. The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). A WEEKLY period is the whole week starting on WKST, the first one included: RFC 5545 §3.3.10 has BYSETPOS pick within the set of recurrence instances of each interval, and dates before DTSTART are left out afterwards. python-dateutil starts the first week at DTSTART, so its BYSETPOS counts from there: in the first week it gives 2011-03-13, not 2011-03-12.",
+      "secondOracle": ["2011-03-12", "2011-03-13", "2011-03-14", "2011-03-19"],
+      "secondOracleNote": "ical.js 2.2.1 ignores BYSETPOS in HOURLY, DAILY and WEEKLY rules, and leaves out DTSTART, which the rule doesn't produce."
+    },
+    {
+      "id": "coverage/weekly-bysetpos-full-first-week-times",
+      "title": "WEEKLY with times and BYSETPOS=3: the start is the third time of its whole week",
+      "source": "Coverage",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-01-07T09:00:00",
+      "rule": "FREQ=WEEKLY;BYDAY=MO,WE,FR;BYHOUR=9;BYMINUTE=0,30;BYSETPOS=3;COUNT=4",
+      "expected": [
+        "2026-01-07T09:00:00+01:00",
+        "2026-01-14T09:00:00+01:00",
+        "2026-01-21T09:00:00+01:00",
+        "2026-01-28T09:00:00+01:00"
+      ],
+      "oracle": [
+        "2026-01-09T09:00:00+01:00",
+        "2026-01-14T09:00:00+01:00",
+        "2026-01-21T09:00:00+01:00",
+        "2026-01-28T09:00:00+01:00"
+      ],
+      "divergence": "A WEEKLY period is the whole week starting on WKST, the first one included: RFC 5545 §3.3.10 has BYSETPOS pick within the set of recurrence instances of each interval, and dates before DTSTART are left out afterwards. python-dateutil starts the first week at DTSTART, so its BYSETPOS counts from there: in the first week it gives 2026-01-09T09:00:00+01:00.",
+      "secondOracle": [
+        "2026-01-07T09:00:00",
+        "2026-01-07T09:30:00",
+        "2026-01-09T09:00:00",
+        "2026-01-09T09:30:00"
+      ],
+      "secondOracleNote": "ical.js 2.2.1 ignores BYSETPOS in HOURLY, DAILY and WEEKLY rules."
+    },
+    {
+      "id": "coverage/weekly-bysetpos-full-first-week-wkst-su",
+      "title": "WEEKLY;WKST=SU;BYSETPOS=3 from a Wednesday: the week from Sunday counts",
+      "source": "Coverage",
+      "kind": "floating",
+      "start": "2026-01-07T10:00:00",
+      "rule": "FREQ=WEEKLY;BYDAY=SU,MO,FR,SA;BYSETPOS=3;WKST=SU;COUNT=4",
+      "expected": [
+        "2026-01-07T10:00:00",
+        "2026-01-09T10:00:00",
+        "2026-01-16T10:00:00",
+        "2026-01-23T10:00:00"
+      ],
+      "oracle": [
+        "2026-01-16T10:00:00",
+        "2026-01-23T10:00:00",
+        "2026-01-30T10:00:00",
+        "2026-02-06T10:00:00"
+      ],
+      "divergence": "DTSTART isn't a date the rule produces. The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). A WEEKLY period is the whole week starting on WKST, the first one included: RFC 5545 §3.3.10 has BYSETPOS pick within the set of recurrence instances of each interval, and dates before DTSTART are left out afterwards. python-dateutil starts the first week at DTSTART, so its BYSETPOS counts from there: in the first week it gives nothing, not 2026-01-09T10:00:00.",
+      "secondOracle": [
+        "2026-01-09T10:00:00",
+        "2026-01-10T10:00:00",
+        "2026-01-11T10:00:00",
+        "2026-01-12T10:00:00"
+      ],
+      "secondOracleNote": "ical.js 2.2.1 ignores BYSETPOS in HOURLY, DAILY and WEEKLY rules, and leaves out DTSTART, which the rule doesn't produce."
+    },
+    {
       "id": "coverage/weekly-byday-ordinals-ignored",
       "title": "WEEKLY with BYDAY ordinals, which WEEKLY ignores",
       "source": "Coverage",

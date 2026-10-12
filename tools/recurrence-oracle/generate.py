@@ -874,8 +874,6 @@ def dst_cases_for(zone: DstZone) -> list[Case]:
 
 
 def dst_cases() -> list[Case]:
-    cases = [c for zone in DST_ZONES for c in dst_cases_for(zone)]
-
     def plain(zone: str, slug: str, title: str, start: str, rule: str, before: str | None = None):
         return Case(
             id=f"dst/{slug}",
@@ -887,6 +885,42 @@ def dst_cases() -> list[Case]:
             rule=rule,
             window_before=before,
         )
+
+    # Gap times whose wall time is before DTSTART's but whose instant is after it.
+    after_start = {
+        "europe-berlin": [
+            plain(
+                "Europe/Berlin",
+                "europe-berlin/start-after-gap-daily-byhour",
+                "DAILY;BYHOUR=2;BYMINUTE=30 from 03:00 on the gap day (2026-03-29, 02:00→03:00): "
+                "02:30 moves to 03:30, after the start",
+                "2026-03-29T03:00:00",
+                "FREQ=DAILY;BYHOUR=2;BYMINUTE=30;COUNT=3",
+            ),
+        ],
+        "australia-lord-howe": [
+            plain(
+                "Australia/Lord_Howe",
+                "australia-lord-howe/start-at-gap-end-hourly-byminute",
+                "HOURLY;BYMINUTE=15,18 from 02:30, the end of the gap (2001-10-28, 02:00→02:30): "
+                "02:15 and 02:18 move past the start",
+                "2001-10-28T02:30:00",
+                "FREQ=HOURLY;BYMINUTE=15,18",
+                "2001-10-28T05:00:00",
+            ),
+            plain(
+                "Australia/Lord_Howe",
+                "australia-lord-howe/start-at-gap-end-daily-byminute",
+                "DAILY;BYHOUR=2;BYMINUTE=15,30 from 02:30, the end of the gap (2026-10-04, "
+                "02:00→02:30): the start is a rule date and 02:15 moves past it",
+                "2026-10-04T02:30:00",
+                "FREQ=DAILY;BYHOUR=2;BYMINUTE=15,30;COUNT=5",
+            ),
+        ],
+    }
+    cases = [
+        case for zone in DST_ZONES for case in dst_cases_for(zone) + after_start.get(zone.slug, [])
+    ]
 
     return cases + [
         plain(
@@ -1007,6 +1041,9 @@ def coverage_cases() -> list[Case]:
         ("weekly/bymonth-limit", "WEEKLY limited by BYMONTH", "utc", "2026-01-26T09:00:00", "FREQ=WEEKLY;BYMONTH=1,3;COUNT=6", None),
         ("weekly/bysetpos", "WEEKLY on weekdays with BYSETPOS=-1", "all-day", "2026-01-09", "FREQ=WEEKLY;BYDAY=MO,TU,WE,TH,FR;BYSETPOS=-1;COUNT=4", None),
         ("weekly/bysetpos-times", "WEEKLY with times and BYSETPOS=1,-1", "utc", "2026-01-05T09:00:00", "FREQ=WEEKLY;BYDAY=MO,FR;BYHOUR=9,17;BYSETPOS=1,-1;COUNT=6", None),
+        ("weekly/bysetpos-full-first-week", "WEEKLY;BYSETPOS=2 from a Wednesday: BYSETPOS counts over the whole first week", "all-day", "2011-03-09", "FREQ=WEEKLY;BYDAY=MO,SA,SU;BYSETPOS=2;COUNT=4", None),
+        ("weekly/bysetpos-full-first-week-times", "WEEKLY with times and BYSETPOS=3: the start is the third time of its whole week", "zone", "2026-01-07T09:00:00", "FREQ=WEEKLY;BYDAY=MO,WE,FR;BYHOUR=9;BYMINUTE=0,30;BYSETPOS=3;COUNT=4", None),
+        ("weekly/bysetpos-full-first-week-wkst-su", "WEEKLY;WKST=SU;BYSETPOS=3 from a Wednesday: the week from Sunday counts", "floating", "2026-01-07T10:00:00", "FREQ=WEEKLY;BYDAY=SU,MO,FR,SA;BYSETPOS=3;WKST=SU;COUNT=4", None),
         ("weekly/byday-ordinals-ignored", "WEEKLY with BYDAY ordinals, which WEEKLY ignores", "floating", "2026-01-05T09:00:00", "FREQ=WEEKLY;BYDAY=1MO,-1FR;COUNT=4", None),
         ("weekly/bymonthday-na", "WEEKLY with BYMONTHDAY (N/A for WEEKLY) and no BYDAY", "all-day", "2026-02-13", "FREQ=WEEKLY;BYMONTHDAY=13", "2028-01-01"),
         ("weekly/bymonthday-na-with-byday", "WEEKLY;BYDAY=FR with BYMONTHDAY (N/A for WEEKLY) as a limit", "all-day", "2026-02-13", "FREQ=WEEKLY;BYDAY=FR;BYMONTHDAY=13", "2028-01-01"),
@@ -1122,7 +1159,9 @@ class Semantics:
 
     first_always_counts: bool = True
     nothing_before_start: bool = True
+    start_compared_by_instant: bool = True
     ascending_distinct: bool = True
+    weekly_full_first_week: bool = True
     all_day_ignores_time_parts: bool = True
     byday_entries_are_alternatives: bool = True
     yearly_weekno_takes_start_weekday: bool = YEARLY_WEEKNO_TAKES_DTSTART_WEEKDAY
@@ -1281,13 +1320,61 @@ def fill_start_day(rule: dict[str, str], wall: dt.datetime, semantics: Semantics
             rule["BYDAY"] = EVERY_WEEKDAY
 
 
+FREQUENCIES = ["YEARLY", "MONTHLY", "WEEKLY", "DAILY", "HOURLY", "MINUTELY", "SECONDLY"]
+
+
+def fill_start_time(rule: dict[str, str], wall: dt.datetime) -> None:
+    """Writes out the time parts dateutil takes from DTSTART, as `fill_start_day` does the day."""
+    level = FREQUENCIES.index(rule["FREQ"])
+    for part, coarser_than, value in (
+        ("BYHOUR", "HOURLY", wall.hour),
+        ("BYMINUTE", "MINUTELY", wall.minute),
+        ("BYSECOND", "SECONDLY", wall.second),
+    ):
+        if level < FREQUENCIES.index(coarser_than):
+            rule.setdefault(part, str(value))
+
+
+def period_start(series: Series, rule: dict[str, str], semantics: Semantics) -> dt.datetime:
+    """Where the period holding DTSTART begins, on DTSTART's interval grid.
+
+    dateutil leaves out dates before DTSTART inside its iterator, comparing wall times. Starting
+    it here, with every DTSTART default written out, gives the first period's dates whole, so
+    `expand` can drop the early ones by instant or by wall time. dateutil's first WEEKLY period
+    starts on DTSTART's day; the engine's is the whole week starting on WKST.
+    """
+    wall = series.wall
+    midnight = wall.replace(hour=0, minute=0, second=0)
+    frequency = rule["FREQ"]
+    if frequency == "YEARLY":
+        return midnight.replace(month=1, day=1)
+    if frequency == "MONTHLY":
+        return midnight.replace(day=1)
+    if frequency == "WEEKLY":
+        if not semantics.weekly_full_first_week:
+            return midnight
+        wkst = WEEKDAYS.index(rule.get("WKST", "MO"))
+        return midnight - dt.timedelta(days=(midnight.weekday() - wkst) % 7)
+    if frequency == "DAILY":
+        return midnight
+    if frequency == "HOURLY":
+        return wall.replace(minute=0, second=0)
+    if frequency == "MINUTELY":
+        return wall.replace(second=0)
+    return wall
+
+
 def generated(series: Series, rule: dict[str, str], semantics: Semantics) -> Iterator[dt.datetime]:
-    """dateutil's dates for the rule without COUNT and UNTIL, in wall-time order."""
+    """dateutil's dates for the rule without COUNT and UNTIL, in wall-time order, from the start
+    of the period holding DTSTART."""
     rule = {key: value for key, value in rule.items() if key not in ("COUNT", "UNTIL")}
     if series.kind == "all-day" and semantics.all_day_ignores_time_parts:
         for part in TIME_PARTS:
             rule.pop(part, None)
     fill_start_day(rule, series.wall, semantics)
+    fill_start_time(rule, series.wall)
+    first = period_start(series, rule, semantics)
+    dtstart = first.replace(tzinfo=series.zone) if series.zone else first
 
     weeks: tuple[set[int], int] | None = None
     if semantics.rfc_week_numbers and "BYWEEKNO" in rule:
@@ -1310,7 +1397,7 @@ def generated(series: Series, rule: dict[str, str], semantics: Semantics) -> Ite
             raise ValueError(f"{series.case.id}: mixed BYDAY with BYSETPOS needs expected_override")
         rules = [{**rule, "BYDAY": ",".join(plain)}, {**rule, "BYDAY": ",".join(numbered)}]
 
-    streams = [iter(du.rrulestr(rule_text(r), dtstart=series.dtstart())) for r in rules]
+    streams = [iter(du.rrulestr(rule_text(r), dtstart=dtstart)) for r in rules]
     stream = streams[0] if len(streams) == 1 else heapq.merge(*streams, key=naive)
     previous = None
     for date in stream:
@@ -1353,11 +1440,17 @@ def expand(series: Series, rule_text_: str, semantics: Semantics) -> list[Value]
         value = series.value(date)
         if not semantics.ascending_distinct and until is not None and value > until:
             break  # dateutil stops at the first date past UNTIL, in wall-time order
-        if semantics.nothing_before_start:
-            # The first occurrence is the start instant, so the rule's own copy of it goes too.
-            keep = value > series.start if semantics.first_always_counts else value >= series.start
+        # The first occurrence is the start instant, so the rule's own copy of it goes too.
+        after = value > series.start if semantics.first_always_counts else value >= series.start
+        by_wall = wall >= series.wall  # dateutil compares wall times
+        if semantics.nothing_before_start and semantics.start_compared_by_instant:
+            keep = after
+        elif semantics.nothing_before_start:
+            keep = by_wall and after
+        elif semantics.start_compared_by_instant:
+            keep = by_wall or after
         else:
-            keep = wall >= series.wall  # dateutil compares wall times
+            keep = by_wall
         if not keep:
             continue
         rule_dates.append(value)
@@ -1452,6 +1545,26 @@ def explain(series: Series, switch: str, ours: list[str], theirs: list[str]) -> 
             "python-dateutil compares wall times, so it also gives "
             f"{listed(extra)}, at or before the start instant."
         )
+    if switch == "start_compared_by_instant":
+        return (
+            "Rule dates are compared with the start by instant, not wall time, as for a fold: a "
+            "wall time before DTSTART's that a gap moves past the start instant is an occurrence. "
+            f"python-dateutil compares wall times, so it leaves out {listed(missing)}."
+        )
+    if switch == "weekly_full_first_week":
+        # Later differences are COUNT moving along; the first week is where they part.
+        week_end = period_start(series, rule, OURS) + dt.timedelta(days=7)
+        in_first_week = lambda text: wall_from_text(text) < week_end  # noqa: E731
+        theirs_first = [d for d in extra if in_first_week(d)]
+        ours_first = [d for d in missing if in_first_week(d)]
+        not_ours = f", not {listed(ours_first)}" if ours_first else ""
+        return (
+            "A WEEKLY period is the whole week starting on WKST, the first one included: RFC 5545 "
+            "§3.3.10 has BYSETPOS pick within the set of recurrence instances of each interval, "
+            "and dates before DTSTART are left out afterwards. python-dateutil starts the first "
+            "week at DTSTART, so its BYSETPOS counts from there: in the first week it gives "
+            f"{listed(theirs_first) if theirs_first else 'nothing'}{not_ours}."
+        )
     if switch == "ascending_distinct":
         parts = []
         if len(set(theirs)) < len(theirs):
@@ -1537,6 +1650,13 @@ def explain(series: Series, switch: str, ours: list[str], theirs: list[str]) -> 
     raise AssertionError(switch)
 
 
+def wall_from_text(text: str) -> dt.datetime:
+    """The wall time a fixture date shows, whatever its kind."""
+    if len(text) == 10:
+        return dt.datetime.combine(dt.date.fromisoformat(text), dt.time())
+    return dt.datetime.fromisoformat(text).replace(tzinfo=None)
+
+
 def series_sort(series: Series) -> Callable[[str], dt.datetime]:
     if series.zone:
         return lambda text: dt.datetime.fromisoformat(text).astimezone(UTC)
@@ -1555,6 +1675,8 @@ ICALJS_SWITCH_NOTES = {
     "date_until_is_end_of_day": "ical.js reads a date-only UNTIL as that day's midnight, as "
     "python-dateutil does.",
     "rfc_week_numbers": "ical.js gives python-dateutil's week numbering here.",
+    "weekly_full_first_week": "ical.js starts the first WEEKLY period at DTSTART for BYSETPOS, as "
+    "python-dateutil does.",
     "byday_entries_are_alternatives": "ical.js intersects plain and numbered BYDAY entries, as "
     "python-dateutil does.",
     "yearly_weekno_takes_start_weekday": "ical.js gives every day of the listed weeks, as "
@@ -1566,6 +1688,10 @@ ICALJS_SWITCH_NOTES = {
 
 _V = f"ical.js {ICALJS_VERSION}"
 _BYSETPOS_IGNORED = f"{_V} ignores BYSETPOS in HOURLY, DAILY and WEEKLY rules."
+_BYSETPOS_IGNORED_NO_START = (
+    f"{_V} ignores BYSETPOS in HOURLY, DAILY and WEEKLY rules, and leaves out DTSTART, which the "
+    "rule doesn't produce."
+)
 _BYWEEKNO_IGNORED = (
     f"{_V} doesn't limit dates to the BYWEEKNO weeks: it gives BYDAY's weekdays across the year "
     "(or BYMONTH), and its first date isn't always DTSTART."
@@ -1588,6 +1714,9 @@ ICALJS_NOTES = {
     "coverage/daily-bysetpos-plus-minus": _BYSETPOS_IGNORED,
     "coverage/weekly-bysetpos": _BYSETPOS_IGNORED,
     "coverage/weekly-bysetpos-times": _BYSETPOS_IGNORED,
+    "coverage/weekly-bysetpos-full-first-week": _BYSETPOS_IGNORED_NO_START,
+    "coverage/weekly-bysetpos-full-first-week-times": _BYSETPOS_IGNORED,
+    "coverage/weekly-bysetpos-full-first-week-wkst-su": _BYSETPOS_IGNORED_NO_START,
     "coverage/daily-bymonthday-limit": f"{_V} ignores a negative BYMONTHDAY in DAILY (and throws "
     "a RangeError for FREQ=DAILY;BYMONTHDAY=-1 alone).",
     "coverage/daily-byhour-ignored-all-day": _ALL_DAY_COUNT,

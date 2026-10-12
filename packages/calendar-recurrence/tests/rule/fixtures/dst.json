@@ -479,6 +479,28 @@
       ]
     },
     {
+      "id": "dst/europe-berlin/start-after-gap-daily-byhour",
+      "title": "DAILY;BYHOUR=2;BYMINUTE=30 from 03:00 on the gap day (2026-03-29, 02:00→03:00): 02:30 moves to 03:30, after the start",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-29T03:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=2;BYMINUTE=30;COUNT=3",
+      "expected": [
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-30T02:30:00+02:00"
+      ],
+      "oracle": [
+        "2026-03-30T02:30:00+02:00",
+        "2026-03-31T02:30:00+02:00",
+        "2026-04-01T02:30:00+02:00"
+      ],
+      "divergence": "DTSTART isn't a date the rule produces. The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). Rule dates are compared with the start by instant, not wall time, as for a fold: a wall time before DTSTART's that a gap moves past the start instant is an occurrence. python-dateutil compares wall times, so it leaves out 2026-03-29T03:30:00+02:00.",
+      "secondOracle": ["2026-03-30T02:30:00", "2026-03-31T02:30:00", "2026-04-01T02:30:00"],
+      "secondOracleNote": "ical.js leaves out DTSTART when the rule doesn't produce it or UNTIL is earlier, as python-dateutil does."
+    },
+    {
       "id": "dst/america-new-york/daily-in-gap",
       "title": "DAILY at 02:30, which the gap (2025-03-09, 02:00→03:00) moves forward",
       "source": "DST matrix",
@@ -1425,6 +1447,65 @@
         "2026-04-05T00:30:00+11:00",
         "2026-04-05T01:30:00+11:00"
       ]
+    },
+    {
+      "id": "dst/australia-lord-howe/start-at-gap-end-hourly-byminute",
+      "title": "HOURLY;BYMINUTE=15,18 from 02:30, the end of the gap (2001-10-28, 02:00→02:30): 02:15 and 02:18 move past the start",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2001-10-28T02:30:00",
+      "rule": "FREQ=HOURLY;BYMINUTE=15,18",
+      "window": {
+        "before": "2001-10-28T05:00:00"
+      },
+      "expected": [
+        "2001-10-28T02:30:00+11:00",
+        "2001-10-28T02:45:00+11:00",
+        "2001-10-28T02:48:00+11:00",
+        "2001-10-28T03:15:00+11:00",
+        "2001-10-28T03:18:00+11:00",
+        "2001-10-28T04:15:00+11:00",
+        "2001-10-28T04:18:00+11:00"
+      ],
+      "oracle": [
+        "2001-10-28T03:15:00+11:00",
+        "2001-10-28T03:18:00+11:00",
+        "2001-10-28T04:15:00+11:00",
+        "2001-10-28T04:18:00+11:00"
+      ],
+      "divergence": "DTSTART isn't a date the rule produces. The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). Rule dates are compared with the start by instant, not wall time, as for a fold: a wall time before DTSTART's that a gap moves past the start instant is an occurrence. python-dateutil compares wall times, so it leaves out 2001-10-28T02:45:00+11:00, 2001-10-28T02:48:00+11:00.",
+      "secondOracle": [
+        "2001-10-28T03:15:00",
+        "2001-10-28T03:18:00",
+        "2001-10-28T04:15:00",
+        "2001-10-28T04:18:00"
+      ],
+      "secondOracleNote": "ical.js leaves out DTSTART when the rule doesn't produce it or UNTIL is earlier, as python-dateutil does."
+    },
+    {
+      "id": "dst/australia-lord-howe/start-at-gap-end-daily-byminute",
+      "title": "DAILY;BYHOUR=2;BYMINUTE=15,30 from 02:30, the end of the gap (2026-10-04, 02:00→02:30): the start is a rule date and 02:15 moves past it",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-04T02:30:00",
+      "rule": "FREQ=DAILY;BYHOUR=2;BYMINUTE=15,30;COUNT=5",
+      "expected": [
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-05T02:15:00+11:00",
+        "2026-10-05T02:30:00+11:00",
+        "2026-10-06T02:15:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-05T02:15:00+11:00",
+        "2026-10-05T02:30:00+11:00",
+        "2026-10-06T02:15:00+11:00",
+        "2026-10-06T02:30:00+11:00"
+      ],
+      "divergence": "Rule dates are compared with the start by instant, not wall time, as for a fold: a wall time before DTSTART's that a gap moves past the start instant is an occurrence. python-dateutil compares wall times, so it leaves out 2026-10-04T02:45:00+11:00."
     },
     {
       "id": "dst/america-santiago/daily-in-gap",
