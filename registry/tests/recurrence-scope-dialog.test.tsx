@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 
-import { act, useEffect } from "react";
+import { act, StrictMode, useEffect } from "react";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import type { RecurrenceEditScope } from "../recurrence-scope-dialog/recurrence-scope-dialog";
+import {
+  RecurrenceScopeDialog,
+  type RecurrenceEditScope,
+} from "../recurrence-scope-dialog/recurrence-scope-dialog";
 import {
   useRecurrenceScopePrompt,
   type RecurrenceScopePrompt,
@@ -235,6 +238,27 @@ test.each(["this", null] as const)(
     await expect(answered).resolves.toEqual([scope, null, event]);
   },
 );
+
+test("StrictMode's second mount doesn't count as the dialog closing", async () => {
+  const closed = vi.fn();
+  const view = await render(
+    <StrictMode>
+      <RecurrenceScopeDialog open onClosed={closed} onResolve={() => {}} />
+    </StrictMode>,
+  );
+  cleanup = view.unmount;
+  await act(async () => {});
+  expect(dialog()).not.toBeNull();
+  expect(closed).not.toHaveBeenCalled();
+
+  await view.rerender(
+    <StrictMode>
+      <RecurrenceScopeDialog open={false} onClosed={closed} onResolve={() => {}} />
+    </StrictMode>,
+  );
+  await vi.waitFor(() => expect(dialog()).toBeNull());
+  await vi.waitFor(() => expect(closed).toHaveBeenCalledTimes(1));
+});
 
 test("Tab past either end of the dialog wraps around inside it", async () => {
   await renderHost();

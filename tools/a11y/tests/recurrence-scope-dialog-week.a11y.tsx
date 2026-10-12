@@ -80,13 +80,14 @@ function Planner() {
     const scope = await ask({
       action: change.cause === "delete" ? "delete" : "edit",
       eventTitle: change.event.event.title,
-      scopes: recurrenceEditScopes(change, adapters),
+      scopes: recurrenceEditScopes(change, adapters, { timeZone: week.timeZone }),
     });
     // Rejecting rolls the change back; an `AbortError` is announced as a cancel.
     if (scope === null) throw new DOMException("Cancelled", "AbortError");
     const edit = resolveRecurrenceEdit(change, scope, adapters, {
       newSeriesId: "standup-2",
       occurrences,
+      timeZone: week.timeZone,
     });
     if (edit.type !== "series") throw new Error(edit.type);
     setEvents((current) => applyRecurrenceEdit(current, edit, { createId: () => "standup-2" }));

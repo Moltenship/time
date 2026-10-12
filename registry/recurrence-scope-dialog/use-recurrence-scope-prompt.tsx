@@ -71,12 +71,17 @@ const closed: PromptState = { open: false, question: {} };
  *     if (!isRecurringChange(change)) return persist(change);
  *     const scope = await ask({
  *       action: change.cause === "delete" ? "delete" : "edit",
- *       scopes: recurrenceEditScopes(change, adapters),
+ *       scopes: recurrenceEditScopes(change, adapters, { timeZone }),
  *     });
  *     // Rejecting rolls the change back; an `AbortError` is announced as a cancel.
  *     if (scope === null) throw new DOMException("Cancelled", "AbortError");
  *     // `newSeriesId` names the series "following" starts, so its IDs map too.
- *     const edit = resolveRecurrenceEdit(change, scope, adapters, { newSeriesId: createId() });
+ *     // `timeZone` keeps a series' time of day when it is dragged by days on a calendar in another
+ *     // zone than its own.
+ *     const edit = resolveRecurrenceEdit(change, scope, adapters, {
+ *       newSeriesId: createId(),
+ *       timeZone,
+ *     });
  *     if (edit.type === "rejected") throw new Error(edit.message);
  *     await persist(edit);
  *     setFocus((current) =>
@@ -93,6 +98,7 @@ const closed: PromptState = { open: false, question: {} };
  *         focus={focus}
  *         onEventChange={onEventChange}
  *         onFocusChange={setFocus}
+ *         timeZone={timeZone}
  *       >
  *         …
  *       </Calendar.Root>
@@ -117,13 +123,18 @@ export function useRecurrenceScopePrompt(): RecurrenceScopePrompt {
     answer?.();
   }, []);
 
+  /** Takes the open question's resolver, so only one answer reaches it. */
+  const takePending = useCallback(() => {
+    const resolve = pending.current;
+    pending.current = null;
+    return resolve;
+  }, []);
+
   /** Hands over an answer, and cancels a question that has none. */
   const settle = useCallback(() => {
     handOver();
-    const resolve = pending.current;
-    pending.current = null;
-    resolve?.(null);
-  }, [handOver]);
+    takePending()?.(null);
+  }, [handOver, takePending]);
 
   const ask = useCallback(
     (question: RecurrenceScopeQuestion = {}) => {
@@ -143,13 +154,15 @@ export function useRecurrenceScopePrompt(): RecurrenceScopePrompt {
     [settle],
   );
 
-  const onResolve = useCallback((scope: RecurrenceEditScope | null) => {
-    const resolve = pending.current;
-    pending.current = null;
-    // The answer waits for focus to be back on the event: applying it can replace the event.
-    if (resolve !== null) answered.current = () => resolve(scope);
-    setPrompt((current) => ({ ...current, open: false }));
-  }, []);
+  const onResolve = useCallback(
+    (scope: RecurrenceEditScope | null) => {
+      const resolve = takePending();
+      // The answer waits for focus to be back on the event: applying it can replace the event.
+      if (resolve !== null) answered.current = () => resolve(scope);
+      setPrompt((current) => ({ ...current, open: false }));
+    },
+    [takePending],
+  );
 
   useEffect(() => {
     unmounted.current = false;

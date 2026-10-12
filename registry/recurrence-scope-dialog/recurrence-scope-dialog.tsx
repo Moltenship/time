@@ -83,14 +83,24 @@ export interface RecurrenceScopeDialogProps {
 /**
  * Calls `onClosed` once the dialog it is in has unmounted and focus is back. Base UI queues that
  * focus as the popup unmounts, and the popup's cleanups run before those of its children, so the
- * call this one queues comes after it.
+ * call this one queues comes after it. The browser a11y suite checks that order.
  */
 function ClosedSignal({ onClosed }: { readonly onClosed: (() => void) | undefined }) {
   const latest = useRef(onClosed);
+  const mounted = useRef(false);
   useInsertionEffect(() => {
     latest.current = onClosed;
   });
-  useLayoutEffect(() => () => queueMicrotask(() => latest.current?.()), []);
+  useLayoutEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      // StrictMode runs this cleanup and mounts again at once; only a real unmount stays down.
+      queueMicrotask(() => {
+        if (!mounted.current) latest.current?.();
+      });
+    };
+  }, []);
   return null;
 }
 
