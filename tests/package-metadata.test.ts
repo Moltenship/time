@@ -1,5 +1,5 @@
 import { execFile } from "node:child_process";
-import { readFile, readdir } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { promisify } from "node:util";
 
@@ -35,6 +35,29 @@ async function readManifest(directory: string): Promise<PackageManifest> {
   return JSON.parse(await readFile(join("packages", directory, "package.json"), "utf8"));
 }
 
+async function exists(path: string): Promise<boolean> {
+  return access(path).then(
+    () => true,
+    () => false,
+  );
+}
+
+// Other test files rebuild some packages with `vp pack`, which empties `dist` while it runs. pnpm
+// checks every listed file even in a dry run, so a pack that lands in that window fails; try again.
+async function packedFiles(directory: string, attempts = 3): Promise<string[]> {
+  try {
+    const { stdout } = await execFileAsync("vp", ["pm", "pack", "--", "--dry-run", "--json"], {
+      cwd: join(process.cwd(), "packages", directory),
+    });
+    const { files } = JSON.parse(stdout) as { readonly files: readonly { path: string }[] };
+    return files.map(({ path }) => path);
+  } catch (error) {
+    if (attempts <= 1) throw error;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    return packedFiles(directory, attempts - 1);
+  }
+}
+
 describe("published package metadata", () => {
   test("the root LICENSE is MIT", async () => {
     const license = await readFile("LICENSE", "utf8");
@@ -44,9 +67,13 @@ describe("published package metadata", () => {
   });
 
   test("only the published packages are public", async () => {
-    const directories = (await readdir("packages", { withFileTypes: true }))
-      .filter((entry) => entry.isDirectory())
-      .map((entry) => entry.name);
+    // A folder left behind by another branch has only ignored files, such as dist or node_modules.
+    const directories = [];
+    for (const entry of await readdir("packages", { withFileTypes: true })) {
+      if (entry.isDirectory() && (await exists(join("packages", entry.name, "package.json")))) {
+        directories.push(entry.name);
+      }
+    }
 
     for (const directory of directories) {
       const manifest = await readManifest(directory);
@@ -67,22 +94,27 @@ describe("published package metadata", () => {
         url: "git+https://github.com/Moltenship/time.git",
         directory: `packages/${directory}`,
       });
-      expect(manifest.homepage).toMatch(/^https:\/\/moltenship-time\.vercel\.app\/docs(\/|$)/);
       expect(manifest.bugs).toEqual({ url: "https://github.com/Moltenship/time/issues" });
+
+      // The homepage is a docs page that exists in the showcase.
+      const page = /^https:\/\/moltenship-time\.vercel\.app\/docs(?:\/(.+))?$/.exec(
+        manifest.homepage ?? "",
+      );
+      expect(page, manifest.homepage).not.toBeNull();
+      const content = join("apps/showcase/content/docs", page![1] ?? "index");
+      expect(
+        (await exists(`${content}.mdx`)) || (await exists(join(content, "index.mdx"))),
+        manifest.homepage,
+      ).toBe(true);
     },
   );
 
-  // pnpm adds the workspace root LICENSE to a tarball when the package has none of its own.
+  // pnpm adds the workspace root LICENSE to a tarball when no packed file has LICENSE in its name.
   test("every published tarball contains LICENSE", async () => {
     const tarballs = await Promise.all(
-      publishedPackageDirectories.map(async (directory) => {
-        const { stdout } = await execFileAsync("vp", ["pm", "pack", "--", "--dry-run", "--json"], {
-          cwd: join(process.cwd(), "packages", directory),
-        });
-        const { files } = JSON.parse(stdout) as { readonly files: readonly { path: string }[] };
-
-        return [directory, files.map(({ path }) => path)] as const;
-      }),
+      publishedPackageDirectories.map(
+        async (directory) => [directory, await packedFiles(directory)] as const,
+      ),
     );
 
     for (const [directory, files] of tarballs) {

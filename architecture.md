@@ -128,7 +128,7 @@ no second docs content tree.
 | `@moltenship/calendar-recurrence` | Range-bounded RRULE expansion, occurrence identity, exceptions and overrides, explicit series edits (ADR 0048).            | `calendar-core`, `calendar-temporal`, `ics`                                               | Post-foundation                                   |
 | `@moltenship/ics`                 | iCalendar syntax tree, typed values and components, TZID resolution, Standard Schema parser. Parses RRULEs; doesn't expand them. | None                                                                                      | Pre-1.0                                           |
 
-Package versions move in lockstep until after `1.0`. The repository lockfile pins exact implementation dependencies; published packages expose narrow peer ranges for React and optional adapters.
+All of these publish except `calendar-testing`, which stays private until after 1.0 (#45). Package versions move in lockstep until after `1.0`. The repository lockfile pins exact implementation dependencies; published packages expose narrow peer ranges for React and optional adapters.
 
 ### External dependency ledger
 
@@ -1135,7 +1135,7 @@ Deliver:
 
 - complete Fumadocs content and showcase labs on the phase 3 platform;
 - granular/full registry items;
-- migration/diff and ownership workflows, testing package;
+- migration/diff and ownership workflows (the testing package follows after 1.0, #45);
 - browser compatibility and package-size reports.
 
 Gate: every public claim links to a passing automated or recorded manual check; navigation, search,

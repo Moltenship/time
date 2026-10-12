@@ -18,13 +18,15 @@ packing, replacing that development entry with `dist/index.mjs` and `dist/index.
 
 ## Published packages
 
-Seven packages publish to npm under `@moltenship`: `calendar`, `calendar-core`, `calendar-dnd`,
-`calendar-react`, `calendar-recurrence`, `calendar-temporal` and `ics`. `calendar-testing` is an
-empty stub and stays `private` until after 1.0 (#45).
+Seven packages will publish to npm under `@moltenship`: `calendar`, `calendar-core`,
+`calendar-dnd`, `calendar-react`, `calendar-recurrence`, `calendar-temporal` and `ics`.
+`calendar-testing` is an empty stub and stays `private` until after 1.0 (#45).
 
-Every published package ships the root MIT `LICENSE`. pnpm adds it to a package's tarball when the
-package has no license file of its own. `tests/package-metadata.test.ts` checks the published set,
-the `repository`, `homepage` and `bugs` fields, and that each tarball lists `LICENSE`.
+Every published package ships the root MIT `LICENSE`. pnpm adds it to a package's tarball when no
+packed file has `LICENSE` or `LICENCE` in its name, so don't give a package file such a name. `npm
+pack` doesn't do this: pack and publish with pnpm. `tests/package-metadata.test.ts` checks the
+published set, the `repository`, `homepage` and `bugs` fields, and that each tarball lists
+`LICENSE`.
 
 ## Workspace ownership
 
