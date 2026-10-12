@@ -32,9 +32,12 @@ export class GoogleApiError extends Error {
   }
 }
 
-/** The dates to list, or the changes since a sync token. Google doesn't take both at once. */
+/**
+ * The events that end after `timeMin` and start before `timeMax`, if given, or the changes since a
+ * sync token. Google doesn't take both at once.
+ */
 export type GoogleEventsQuery =
-  | { readonly timeMax: Temporal.Instant; readonly timeMin: Temporal.Instant }
+  | { readonly timeMax?: Temporal.Instant; readonly timeMin: Temporal.Instant }
   | { readonly syncToken: string };
 
 export interface GoogleEventTimeWrite {
@@ -43,16 +46,20 @@ export interface GoogleEventTimeWrite {
   readonly timeZone?: string | null;
 }
 
-/** What a write sends. `null` clears a field, as a move between all-day and timed needs. */
+/**
+ * What a write sends: these fields, and any other of the Event resource. In a patch, `null` clears a
+ * field, as a move between all-day and timed needs.
+ */
 export interface GoogleEventWrite {
   readonly colorId?: string;
   readonly end?: GoogleEventTimeWrite;
   /** Insert only: lowercase a–v and digits, 5 to 1024 of them, so you can pick it up front. */
   readonly id?: string;
+  readonly originalStartTime?: GoogleEventTimeWrite;
   readonly recurrence?: readonly string[];
+  readonly recurringEventId?: string;
   readonly start?: GoogleEventTimeWrite;
-  /** Brings back a cancelled occurrence. */
-  readonly status?: "confirmed";
+  readonly status?: "confirmed" | "tentative";
   readonly summary?: string;
   readonly transparency?: "opaque" | "transparent";
 }
@@ -80,7 +87,7 @@ export function createGoogleCalendarApi({
   const events = `${baseUrl}/calendars/${encodeURIComponent(calendarId)}/events`;
 
   async function request<T>(
-    method: "DELETE" | "GET" | "PATCH" | "POST",
+    method: "DELETE" | "GET" | "PATCH" | "POST" | "PUT",
     url: string,
     { body, etag }: { readonly body?: GoogleEventWrite; readonly etag?: string | undefined } = {},
   ): Promise<T> {
@@ -118,8 +125,11 @@ export function createGoogleCalendarApi({
         const params = new URLSearchParams(
           "syncToken" in query
             ? { syncToken: query.syncToken }
-            : { timeMax: query.timeMax.toString(), timeMin: query.timeMin.toString() },
+            : { timeMin: query.timeMin.toString() },
         );
+        if ("timeMax" in query && query.timeMax !== undefined) {
+          params.set("timeMax", query.timeMax.toString());
+        }
         if (pageToken !== undefined) params.set("pageToken", pageToken);
         const page = await request<GoogleEventsPage>("GET", `${events}?${params}`);
         items.push(...(page.items ?? []));
@@ -133,20 +143,23 @@ export function createGoogleCalendarApi({
      * or not.
      */
     async instance(seriesId: string, originalStart: string) {
-      const params = new URLSearchParams({ maxResults: "1", originalStart, showDeleted: "true" });
-      const page = await request<GoogleEventsPage>(
-        "GET",
-        `${events}/${encodeURIComponent(seriesId)}/instances?${params}`,
-      );
-      const instance = page.items?.[0];
-      if (instance === undefined) {
-        throw new GoogleApiError(
-          404,
-          "notFound",
-          `${seriesId} has no occurrence at ${originalStart}`,
+      const params = new URLSearchParams({ originalStart, showDeleted: "true" });
+      for (;;) {
+        const page = await request<GoogleEventsPage>(
+          "GET",
+          `${events}/${encodeURIComponent(seriesId)}/instances?${params}`,
         );
+        const [instance] = page.items ?? [];
+        if (instance !== undefined) return instance;
+        // A page may be empty and still have more.
+        if (page.nextPageToken === undefined) break;
+        params.set("pageToken", page.nextPageToken);
       }
-      return instance;
+      throw new GoogleApiError(
+        404,
+        "notFound",
+        `${seriesId} has no occurrence at ${originalStart}`,
+      );
     },
 
     insert: (event: GoogleEventWrite) => request<GoogleEvent>("POST", events, { body: event }),
@@ -156,6 +169,10 @@ export function createGoogleCalendarApi({
 
     remove: (id: string, etag: string | undefined) =>
       request<void>("DELETE", `${events}/${encodeURIComponent(id)}`, { etag }),
+
+    /** Replaces the whole event: a field the write leaves out is cleared. */
+    update: (id: string, event: GoogleEventWrite, etag: string | undefined) =>
+      request<GoogleEvent>("PUT", `${events}/${encodeURIComponent(id)}`, { body: event, etag }),
   };
 }
 

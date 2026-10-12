@@ -31,9 +31,13 @@ import { useRecurrenceScopePrompt } from "@/components/calendar/recurrence-scope
 import { createWeekView } from "@/components/calendar/time-grid-view/time-grid-view";
 import { Button } from "@/components/ui/button";
 
-import type { GoogleCalendarEvent, GoogleEvent } from "./google-calendar";
-import { GoogleApiError } from "./google-calendar-api";
-import { newGoogleId, type GoogleCalendarSync } from "./google-calendar-sync";
+import type { GoogleCalendarEvent, GoogleEvent } from "@/lib/google-calendar";
+import { createGoogleCalendarApi, GoogleApiError } from "@/lib/google-calendar-api";
+import {
+  createGoogleCalendarSync,
+  newGoogleId,
+  type GoogleCalendarSync,
+} from "@/lib/google-calendar-sync";
 
 /** What the calendar shows: an occurrence of a series, or a one-off event. */
 export type GoogleOccurrence = RecurrenceOccurrence<GoogleCalendarEvent, string>;
@@ -45,7 +49,8 @@ export const adapters: RecurrenceAdapters<GoogleCalendarEvent, string, string> =
   event: {
     ...canonical.event,
     // Google's "Show as": a free event doesn't make you busy, for `busyAt`, `useBusyResources`
-    // and `conflictPolicy` alike. Google treats an event without `transparency` as busy.
+    // and `conflictPolicy` alike. Without `transparency`, Google counts an event as busy, all-day
+    // ones too; its own app saves new all-day events as free.
     isBusy: (event) => event.data.transparency !== "transparent",
   },
 };
@@ -95,17 +100,13 @@ function renamed<T extends CalendarSelection | CalendarFocus>(
     : current;
 }
 
-/** What to tell the user when Google refuses a change. */
-function messageOf(error: unknown): string {
-  if (error instanceof DOMException && error.name === "AbortError") return "Cancelled.";
-  if (!(error instanceof GoogleApiError))
-    return error instanceof Error ? error.message : "Not saved.";
-  if (error.status === 412) return "Not saved: it changed in Google Calendar. This is the latest.";
+/** Why Google refused a request, for the user. */
+function reasonOf(error: unknown): string {
+  if (!(error instanceof GoogleApiError)) return error instanceof Error ? error.message : "";
+  if (error.status === 412) return "it changed in Google Calendar. This is the latest.";
   const rateLimited = ["rateLimitExceeded", "userRateLimitExceeded"].includes(error.reason ?? "");
-  if (error.status === 429 || rateLimited) {
-    return "Not saved: Google is busy. Try again in a minute.";
-  }
-  return `Not saved: ${error.message}`;
+  if (error.status === 429 || rateLimited) return "Google is busy. Try again in a minute.";
+  return error.message;
 }
 
 interface GoogleCalendarProps {
@@ -132,7 +133,7 @@ export function GoogleCalendar({ sync, timeZone }: GoogleCalendarProps) {
   function onVisibleRangeChange({ loadInstantRange, loadRange }: CalendarVisibleRange) {
     setRange(loadRange);
     // `timeMin` and `timeMax` for the dates on screen, and the pages a scrolling view keeps ready.
-    sync.load(loadInstantRange).catch((error: unknown) => setStatus(messageOf(error)));
+    sync.load(loadInstantRange).catch((error) => setStatus(`Couldn't load: ${reasonOf(error)}`));
   }
   // #endregion root
 
@@ -156,7 +157,10 @@ export function GoogleCalendar({ sync, timeZone }: GoogleCalendarProps) {
     let scope: RecurrenceEditScope = "this";
     if (isRecurringChange(change)) {
       const scopes = recurrenceEditScopes(change, adapters, { timeZone });
-      if (scopes.length === 0) throw new Error("This repeating event can't change that way.");
+      if (scopes.length === 0) {
+        setStatus("This repeating event can't change that way.");
+        throw new Error("No scope applies");
+      }
       const picked = await ask({
         action: change.cause === "delete" ? "delete" : "edit",
         eventTitle: change.event.event.title,
@@ -171,14 +175,17 @@ export function GoogleCalendar({ sync, timeZone }: GoogleCalendarProps) {
       occurrences,
       timeZone,
     });
-    if (edit.type === "rejected") throw new Error(edit.message);
+    if (edit.type === "rejected") {
+      setStatus(edit.message);
+      throw new Error(edit.message);
+    }
 
     setStatus("Saving…");
     try {
       // The change shows, pending, until Google answers. Throwing rolls it back.
       await sync.save(edit, timeZone);
     } catch (error) {
-      setStatus(messageOf(error));
+      setStatus(`Not saved: ${reasonOf(error)}`);
       throw error;
     }
     setStatus("Saved.");
@@ -262,3 +269,14 @@ function Footer({
     </div>
   );
 }
+
+// #region page
+/** The calendar a page renders, with one sync store for as long as it's mounted. */
+export function SyncedCalendar({ timeZone }: { readonly timeZone: string }) {
+  // The browser calls your route, which adds the user's access token.
+  const [sync] = useState(() =>
+    createGoogleCalendarSync(createGoogleCalendarApi({ baseUrl: "/api/google-calendar" })),
+  );
+  return <GoogleCalendar sync={sync} timeZone={timeZone} />;
+}
+// #endregion page

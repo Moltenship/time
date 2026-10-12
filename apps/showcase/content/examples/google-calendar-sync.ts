@@ -2,6 +2,8 @@
 // lib/google-calendar-sync.ts
 import type { CalendarEventChange, CalendarEventInterval } from "@moltenship/calendar";
 import {
+  createCanonicalRecurrenceAdapter,
+  createOccurrenceExpander,
   recurrenceOverrideEdit,
   type RecurrenceDate,
   type RecurrenceEdit,
@@ -38,13 +40,15 @@ export interface GoogleCalendarSync {
   readonly getEvents: () => readonly GoogleCalendarEvent[];
   /** Calls `listener` whenever the events change, and returns a function that stops it. */
   readonly subscribe: (listener: () => void) => () => void;
-  /** Lists the parts of `range` that aren't loaded yet. */
+  /** Loads the events `range` needs that aren't loaded yet. */
   readonly load: (range: TimeRange) => Promise<void>;
-  /** Applies every change since the last sync, or starts again after a 410. */
+  /** Applies every change since the last sync, or syncs again from scratch after a 410. */
   readonly sync: () => Promise<void>;
   /** Writes an edit to Google, then syncs. Throws, after the sync, if Google refused a write. */
   readonly save: (edit: GoogleEdit, timeZone: string) => Promise<void>;
 }
+
+const day = { hours: 24 };
 
 export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendarSync {
   /** Google's events by ID: masters, changed and cancelled occurrences, one-off events. */
@@ -52,7 +56,10 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
   const mapped = new WeakMap<GoogleEvent, GoogleCalendarEvent | null>();
   const listeners = new Set<() => void>();
   let events: readonly GoogleCalendarEvent[] = [];
-  let loaded: TimeRange[] = [];
+  /** The sync covers every event from here on. */
+  let syncedFrom: Temporal.Instant | undefined;
+  /** Dates before `syncedFrom` loaded since, sorted and apart. */
+  let earlier: TimeRange[] = [];
   let lastRange: TimeRange | undefined;
   let syncToken: string | undefined;
 
@@ -66,17 +73,18 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
 
   function changed() {
     // Each Google event maps once, so the expander reuses its work for the ones that didn't change.
-    events = [...stored.values()].flatMap((item) => {
+    const next = [...stored.values()].flatMap((item) => {
       if (!mapped.has(item)) {
-        const {
-          events: [event],
-          problems,
-        } = fromGoogleEvents([item]);
+        const { events: mappedEvents, problems } = fromGoogleEvents([item]);
         for (const problem of problems) console.warn(`Google Calendar: ${problem}`);
-        mapped.set(item, event ?? null);
+        mapped.set(item, mappedEvents[0] ?? null);
       }
       return mapped.get(item) ?? [];
     });
+    if (next.length === events.length && next.every((event, index) => event === events[index])) {
+      return;
+    }
+    events = next;
     for (const listener of listeners) listener();
   }
 
@@ -95,19 +103,35 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
   // #endregion store
 
   // #region load
+  /**
+   * The full sync, as Google's sync guide does it: every event that ends after the first date on
+   * screen, with no `timeMax`, and the token that syncs them from then on.
+   */
+  async function fullSync(range: TimeRange) {
+    // All-day events are dates on the Google calendar's own clock, which may not be the one on
+    // screen, so lists reach a day further.
+    const { items, nextSyncToken } = await api.list({ timeMin: range.start.subtract(day) });
+    // Swapped in once the list has worked, so a failure leaves the store as it was.
+    stored.clear();
+    apply(items);
+    syncedFrom = range.start;
+    earlier = [];
+    syncToken = nextSyncToken;
+    changed();
+  }
+
   async function loadNow(range: TimeRange) {
     lastRange = range;
-    for (const gap of missing(loaded, range)) {
-      // All-day events are dates on the Google calendar's own clock, which may not be the one on
-      // screen, so the request reaches a day further each way.
-      const { items, nextSyncToken } = await api.list({
-        timeMax: gap.end.add({ hours: 24 }),
-        timeMin: gap.start.subtract({ hours: 24 }),
+    if (syncedFrom === undefined) return fullSync(range);
+    // Later dates are in the store already. Earlier ones load once, between two bounds.
+    const end = Temporal.Instant.compare(range.end, syncedFrom) < 0 ? range.end : syncedFrom;
+    for (const gap of missing(earlier, { end, start: range.start })) {
+      const { items } = await api.list({
+        timeMax: gap.end.add(day),
+        timeMin: gap.start.subtract(day),
       });
       apply(items);
-      loaded = merged(loaded, gap);
-      // The first list starts the sync. A later token would skip what changed between the two.
-      syncToken ??= nextSyncToken;
+      earlier = merged(earlier, gap);
       changed();
     }
   }
@@ -117,20 +141,17 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
   async function syncNow() {
     if (syncToken === undefined) return;
     try {
-      // Changes to any event, on any date: apply them all.
+      // Every change since the last sync, whatever its dates.
       const { items, nextSyncToken } = await api.list({ syncToken });
       apply(items);
       syncToken = nextSyncToken ?? syncToken;
+      changed();
     } catch (error) {
-      // 410 Gone: the token expired. Drop everything and load the dates on screen again. The old
-      // events stay on screen until the new ones arrive.
-      if (!(error instanceof GoogleApiError && error.status === 410)) throw error;
-      stored.clear();
-      loaded = [];
-      syncToken = undefined;
-      if (lastRange !== undefined) await loadNow(lastRange);
+      // 410 Gone: the token expired. Sync again from scratch, from the dates on screen. Until that
+      // works, the old events stay, and the next sync tries again.
+      if (!isStatus(error, 410) || lastRange === undefined) throw error;
+      await fullSync(lastRange);
     }
-    changed();
   }
   // #endregion sync
 
@@ -152,21 +173,38 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
     timeZone: string,
   ) {
     if (change.cause === "create") {
-      const id = newGoogleId();
-      apply([
-        await api.insert({ id, summary: "New event", ...toGoogleTimes(change.proposed, timeZone) }),
-      ]);
+      const times = toGoogleTimes(change.proposed, timeZone);
+      await insert({ id: newGoogleId(), summary: "New event", ...times });
       return;
     }
+    // The etag of the version on screen: if someone changed it since, Google answers 412.
     const { data } = change.event;
     if (change.cause === "delete") {
-      await api.remove(data.id, data.etag);
-      apply([{ id: data.id, status: "cancelled" }]);
+      await remove(data, data.etag);
       return;
     }
-    const zone = data.start?.timeZone ?? timeZone;
-    // The etag of the version on screen: if someone changed it since, Google answers 412.
-    apply([await api.patch(data.id, toGoogleTimes(change.proposed, zone), data.etag)]);
+    const times = toGoogleTimes(change.proposed, data.start?.timeZone ?? timeZone);
+    apply([await api.patch(data.id, times, data.etag)]);
+  }
+
+  /** Inserts an event with the ID it names. A 409 means a try whose answer was lost got there. */
+  async function insert(event: GoogleEventWrite) {
+    try {
+      apply([await api.insert(event)]);
+    } catch (error) {
+      if (!isStatus(error, 409)) throw error;
+    }
+  }
+
+  /** Deletes an event, which Google keeps as cancelled. One already gone is done. */
+  async function remove(event: GoogleEvent, etag: string | undefined) {
+    if (event.status === "cancelled") return;
+    try {
+      await api.remove(event.id, etag);
+    } catch (error) {
+      if (!isStatus(error, 404, 410)) throw error;
+    }
+    apply([{ ...event, status: "cancelled" }]);
   }
   // #endregion save
 
@@ -176,137 +214,152 @@ export function createGoogleCalendarSync(api: GoogleCalendarApi): GoogleCalendar
     timeZone: string,
   ) {
     const { newSeries, override, series, seriesId } = edit;
-    const zoneOf = (event: GoogleCalendarEvent) => event.data.start?.timeZone ?? timeZone;
+    const zoneOf = (event: GoogleEvent) => event.start?.timeZone ?? timeZone;
     // "This event" deletes cancel the occurrence's instance, as Google does, and leave the master.
     if (edit.scope === "this" && edit.cause === "delete") {
       const from = override?.action === "create" ? undefined : override?.event;
       await writeOccurrences([
-        { fields: "cancel", from, recurrenceId: edit.recurrenceId, seriesId },
+        { from, placement: "cancel", recurrenceId: edit.recurrenceId, seriesId },
       ]);
       return;
     }
+    // Google deletes a series' changed and cancelled occurrences with it.
+    if (series.action === "delete") {
+      await remove(series.event.data, series.event.data.etag);
+      return;
+    }
+    // The new `recurrence` is written from what `fromGoogleEvents` read, which would drop the
+    // lines it couldn't, such as EXRULE.
+    const master = series.action === "update" ? series.event.data : undefined;
+    if (master !== undefined && readGoogleRecurrence(master.recurrence ?? []).problems.length > 0) {
+      throw new Error("This series has rules the app can't write back. Change it in Google.");
+    }
     // Read before the writes: the series' other changed and cancelled occurrences.
-    const edited =
-      override === undefined || override.action === "create" ? undefined : override.event;
+    const edited = override?.action === "create" ? undefined : override?.event;
     const others = events.filter(
       (event) => event.override?.seriesId === seriesId && event !== edited,
     );
 
-    if (series.action === "delete") {
-      // Google deletes the series' changed and cancelled occurrences with it.
-      await api.remove(seriesId, series.event.data.etag);
-      apply([{ id: seriesId, status: "cancelled" }]);
-      return;
-    }
-    if (series.action === "update") {
-      // The new `recurrence` is written from what `fromGoogleEvents` read, which would drop the
-      // lines it couldn't, such as EXRULE.
-      if (readGoogleRecurrence(series.event.data.recurrence ?? []).problems.length > 0) {
-        throw new Error("This series has rules the app can't write back. Change it in Google.");
-      }
-      const zone = zoneOf(series.event);
-      const fields = {
-        ...toGoogleTimes(series.placement, zone),
-        recurrence: toGoogleRecurrence(series.recurrence, zone),
-      };
-      apply([await api.patch(seriesId, fields, series.event.data.etag)]);
-    }
-    // "This and following events": Google's split is a new event, with no link to the old one.
+    // "This and following events" is Google's split: a new series from the occurrence on, and the
+    // old one ended before it. The new one goes first, so a failure leaves the old one whole.
     const newSeriesId = newSeries?.id ?? newGoogleId();
     if (newSeries !== undefined) {
-      const zone = zoneOf(newSeries.from);
-      const fields = {
+      const zone = zoneOf(newSeries.from.data);
+      await insert({
         ...contentOf(newSeries.from.data),
         id: newSeriesId,
         ...toGoogleTimes(newSeries.placement, zone),
         recurrence: toGoogleRecurrence(newSeries.recurrence, zone),
+      });
+    }
+    if (series.action === "update") {
+      const zone = zoneOf(series.event.data);
+      const fields = {
+        ...toGoogleTimes(series.placement, zone),
+        recurrence: toGoogleRecurrence(series.recurrence, zone),
       };
-      apply([await api.insert(fields)]);
+      try {
+        apply([await api.patch(seriesId, fields, series.event.data.etag)]);
+      } catch (error) {
+        // With the old series still whole, the new one would repeat it: take it back.
+        if (newSeries !== undefined) await remove({ id: newSeriesId }, undefined);
+        throw error;
+      }
     }
 
-    // The edited occurrence, and the series' other changed occurrences, which follow the new times
-    // or end with the old series.
+    // The edited occurrence, and the others, which follow the series' new times or end with it.
     const writes: OccurrenceWrite[] = [];
-    const cancels: GoogleCalendarEvent[] = [];
+    const left: GoogleCalendarEvent[] = [];
     if (override?.action === "create") {
-      const fields = toGoogleTimes(override.placement, zoneOf(override.from));
-      writes.push({ fields, recurrenceId: override.recurrenceId, seriesId });
+      writes.push({ placement: override.placement, recurrenceId: override.recurrenceId, seriesId });
     } else if (override?.action === "update") {
       writes.push({
-        fields: override.cancelled
-          ? "cancel"
-          : toGoogleTimes(override.placement, zoneOf(override.event)),
         from: override.event,
+        placement: override.cancelled ? "cancel" : override.placement,
         recurrenceId: override.recurrenceId,
         seriesId: override.series === "new" ? newSeriesId : seriesId,
       });
     } else if (override?.action === "delete") {
-      cancels.push(override.event);
+      left.push(override.event);
     }
     for (const other of others) {
       const next = recurrenceOverrideEdit(edit, other.override!.recurrenceId);
-      if (next.action === "delete") cancels.push(other);
+      if (next.action === "delete") left.push(other);
       if (next.action !== "update") continue;
       writes.push({
-        fields: other.override!.cancelled
-          ? "cancel"
-          : { ...contentOf(other.data), ...toGoogleTimes(other, zoneOf(other)) },
         from: other,
+        placement: other.override!.cancelled ? "cancel" : other,
         recurrenceId: next.recurrenceId,
         seriesId: next.series === "new" ? newSeriesId : seriesId,
       });
     }
-    await writeOccurrences(writes, cancels);
+    await writeOccurrences(writes, left);
   }
 
   /**
-   * Changes or cancels the instances `writes` name, then cancels the exceptions they leave and
-   * `cancels`. Google names an exception by its series and original start, and neither can
-   * change, so an occurrence that moves to another original start is written to the instance
-   * there. One may land where another leaves, so every write comes before the cancels.
+   * Writes each occurrence to the instance at its series and original start, then clears the
+   * instances the moved ones leave. Google names an exception by its series and original start,
+   * and neither can change, so an occurrence that moves to another original start is written to
+   * the instance there. One may land where another leaves, so every write comes first.
    */
   async function writeOccurrences(
     writes: readonly OccurrenceWrite[],
-    cancels: readonly GoogleCalendarEvent[] = [],
+    left: readonly GoogleCalendarEvent[] = [],
   ) {
     const written = new Set<string>();
-    const left = [...cancels];
-    for (const { fields, from, recurrenceId, seriesId } of writes) {
+    const vacated = [...left];
+    for (const { from, placement, recurrenceId, seriesId } of writes) {
       written.add(keyOf(seriesId, recurrenceId));
       const stays =
-        from !== undefined &&
-        keyOf(from.override!.seriesId, from.override!.recurrenceId) ===
-          keyOf(seriesId, recurrenceId);
-      // With the etag of the version on screen, or of the instance just read.
+        from?.override !== undefined &&
+        keyOf(from.override.seriesId, from.override.recurrenceId) === keyOf(seriesId, recurrenceId);
+      // The etag of the version on screen, or of the instance just read.
       const instance = stays ? from.data : await api.instance(seriesId, recurrenceId.toString());
-      if (fields === "cancel") {
-        await cancel(instance, instance.etag);
-      } else {
-        // An instance that was cancelled comes back.
-        const status = instance.status === "cancelled" ? { status: "confirmed" as const } : {};
-        apply([await api.patch(instance.id, { ...fields, ...status }, instance.etag)]);
-      }
-      if (from !== undefined && !stays) left.push(from);
+      if (placement === "cancel") await remove(instance, instance.etag);
+      // The moved occurrence's own title, color and the rest, not the instance's.
+      else await replace(instance, from?.data ?? instance, placement, instance.etag);
+      if (from !== undefined && !stays) vacated.push(from);
     }
-    for (const event of left) {
-      const { recurrenceId, seriesId } = event.override!;
-      // No etag: the edit replaces these, whatever changed on them since.
-      if (!written.has(keyOf(seriesId, recurrenceId))) await cancel(event.data, undefined);
+    for (const { data, override } of vacated) {
+      if (override === undefined || written.has(keyOf(override.seriesId, override.recurrenceId))) {
+        continue;
+      }
+      // No etags: the edit replaces these, whatever changed on them since.
+      const master = stored.get(override.seriesId);
+      const occurrence = master && occurrenceAt(master, override.recurrenceId);
+      // The series' rule still has an occurrence there, so it shows as the series has it.
+      if (master !== undefined && occurrence !== undefined) {
+        await replace(data, master, occurrence, undefined);
+      } else {
+        await remove(data, undefined);
+      }
     }
   }
 
-  /** Deletes an occurrence's instance, which Google keeps as a cancelled one. */
-  async function cancel(instance: GoogleEvent, etag: string | undefined) {
-    if (instance.status === "cancelled") return;
+  /**
+   * Replaces `instance` with `content` at `interval`: all of it, with `events.update`, so nothing
+   * of what was there before stays.
+   */
+  async function replace(
+    instance: GoogleEvent,
+    content: GoogleEvent,
+    interval: CalendarEventInterval,
+    etag: string | undefined,
+  ) {
+    const fields: GoogleEventWrite = {
+      ...contentOf(content),
+      ...toGoogleTimes(interval, content.start?.timeZone ?? instance.start?.timeZone ?? "UTC"),
+      originalStartTime: instance.originalStartTime,
+      recurringEventId: instance.recurringEventId,
+      // A cancelled instance comes back.
+      status: content.status === "tentative" ? "tentative" : "confirmed",
+    };
     try {
-      await api.remove(instance.id, etag);
+      apply([await api.update(instance.id, fields, etag)]);
     } catch (error) {
-      // 404 or 410: already gone, as an instance outside a shortened series may be.
-      if (!(error instanceof GoogleApiError && (error.status === 404 || error.status === 410))) {
-        throw error;
-      }
+      // An instance the edit clears may be gone already.
+      if (etag !== undefined || !isStatus(error, 404, 410)) throw error;
     }
-    apply([{ ...instance, status: "cancelled" }]);
   }
   // #endregion series
 
@@ -353,11 +406,11 @@ export function toGoogleTimes(
 export const newGoogleId = () => crypto.randomUUID().replaceAll("-", "");
 // #endregion times
 
-/** The instance of `seriesId` at `recurrenceId`, changed to `fields`, or cancelled. */
+/** The instance of `seriesId` at `recurrenceId`, written with a placement, or cancelled. */
 interface OccurrenceWrite {
-  readonly fields: GoogleEventWrite | "cancel";
   /** The exception that showed the occurrence until now, if it had one. */
   readonly from?: GoogleCalendarEvent | undefined;
+  readonly placement: CalendarEventInterval | "cancel";
   readonly recurrenceId: RecurrenceDate;
   readonly seriesId: string;
 }
@@ -365,10 +418,49 @@ interface OccurrenceWrite {
 const keyOf = (seriesId: string, recurrenceId: RecurrenceDate) =>
   `${seriesId} ${recurrenceId.toString()}`;
 
-/** What a copy of an event keeps. A real app copies its description, guests and reminders too. */
+const isStatus = (error: unknown, ...statuses: number[]) =>
+  error instanceof GoogleApiError && statuses.includes(error.status);
+
+/** Fields Google sets, and those that name an event or its place in a series. */
+const identity = [
+  "created",
+  "creator",
+  "etag",
+  "hangoutLink",
+  "htmlLink",
+  "iCalUID",
+  "id",
+  "kind",
+  "organizer",
+  "originalStartTime",
+  "recurrence",
+  "recurringEventId",
+  "sequence",
+  "updated",
+];
+
+/** An event's content, to copy onto another: its title, color, guests and the rest. */
 function contentOf(event: GoogleEvent): GoogleEventWrite {
-  const { colorId, summary, transparency } = event;
-  return { colorId, summary, transparency };
+  const content: Record<string, unknown> = { ...event };
+  for (const field of identity) delete content[field];
+  return content as GoogleEventWrite;
+}
+
+const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<GoogleEvent>());
+
+/** The occurrence a master's rule puts at `recurrenceId`, if it puts one there. */
+function occurrenceAt(master: GoogleEvent, recurrenceId: RecurrenceDate) {
+  const date =
+    recurrenceId instanceof Temporal.Instant
+      ? recurrenceId.toZonedDateTimeISO("UTC").toPlainDate()
+      : Temporal.PlainDate.from(recurrenceId);
+  const { occurrences } = expander.expand(fromGoogleEvents([master]).events, {
+    range: { end: date.add({ days: 2 }), start: date.subtract({ days: 1 }) },
+    timeZone: "UTC",
+  });
+  return occurrences.find(
+    (occurrence) => occurrence.recurrence?.recurrenceId.toString() === recurrenceId.toString(),
+  )?.interval;
 }
 
 const compare = (a: Temporal.Instant, b: Temporal.Instant) => Temporal.Instant.compare(a, b);
@@ -394,10 +486,8 @@ function merged(loaded: readonly TimeRange[], range: TimeRange): TimeRange[] {
   for (const next of sorted) {
     const last = joined.at(-1);
     if (last !== undefined && compare(next.start, last.end) <= 0) {
-      joined[joined.length - 1] = {
-        end: compare(next.end, last.end) > 0 ? next.end : last.end,
-        start: last.start,
-      };
+      const end = compare(next.end, last.end) > 0 ? next.end : last.end;
+      joined[joined.length - 1] = { end, start: last.start };
     } else {
       joined.push(next);
     }

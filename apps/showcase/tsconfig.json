@@ -29,6 +29,9 @@
       "@/components/calendar/event-colors": ["../../registry/calendar-theme/event-colors"],
       "@/components/calendar/*": ["../../registry/calendar/*"],
       "@/components/ui/*": ["../../registry/ui/*"],
+      "@/lib/google-calendar": ["./content/examples/google-calendar"],
+      "@/lib/google-calendar-api": ["./content/examples/google-calendar-api"],
+      "@/lib/google-calendar-sync": ["./content/examples/google-calendar-sync"],
       "@/*": ["./*"],
       "@registry/*": ["../../registry/*"]
     },

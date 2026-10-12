@@ -3,7 +3,11 @@ import {
   createOccurrenceExpander,
 } from "@moltenship/calendar-recurrence";
 
-import { fromGoogleEvents, type GoogleEvent } from "@/content/examples/google-calendar";
+import {
+  fromGoogleEvents,
+  readGoogleRecurrence,
+  type GoogleEvent,
+} from "@/content/examples/google-calendar";
 import type { GoogleEventWrite } from "@/content/examples/google-calendar-api";
 
 /** Where the fake answers, as the real API does. */
@@ -294,18 +298,39 @@ export function createFakeGoogleCalendar({
       return failure(409, "duplicate", "The requested identifier already exists.");
     const event = withTimes({ id, status: "confirmed" }, body);
     if (event === undefined) return failure(400, "invalid", "The event needs a start and an end.");
+    if (!validRecurrence(event)) return failure(400, "invalid", "Invalid recurrence rule.");
     return Response.json(store(event));
   }
 
-  function patch(id: string, body: GoogleEventWrite, ifMatch: string | null): Response {
+  /** `events.patch` merges the write into the event; `events.update` replaces all of it. */
+  function write(
+    id: string,
+    body: GoogleEventWrite,
+    ifMatch: string | null,
+    mode: "patch" | "update",
+  ): Response {
     const current = stored.get(id) ?? instanceById(id);
     if (current === undefined) return failure(404, "notFound", "Not Found");
+    const master =
+      current.recurringEventId === undefined ? undefined : stored.get(current.recurringEventId);
+    if (master?.status === "cancelled") {
+      return failure(410, "deleted", "Resource has been deleted");
+    }
     if (ifMatch !== null && ifMatch !== current.etag) {
       return failure(412, "conditionNotMet", "Precondition Failed");
     }
-    const event = withTimes(current, body);
+    // What names the event, and its place in a series, can't change.
+    const { originalStartTime, recurringEventId } = current;
+    const base: GoogleEvent =
+      mode === "patch" ? current : { id, originalStartTime, recurringEventId, status: "confirmed" };
+    const event = withTimes(base, body);
     if (event === undefined) return failure(400, "invalid", "The event needs a start and an end.");
-    return Response.json(store(event));
+    if (!validRecurrence(event)) return failure(400, "invalid", "Invalid recurrence rule.");
+    return Response.json(store({ ...event, id, originalStartTime, recurringEventId }));
+  }
+
+  function validRecurrence(event: GoogleEvent) {
+    return readGoogleRecurrence(event.recurrence ?? []).problems.length === 0;
   }
 
   function remove(id: string, ifMatch: string | null): Response {
@@ -395,7 +420,10 @@ export function createFakeGoogleCalendar({
     } else if (sub === "instances" && request.method === "GET") {
       return instances(eventId, url.searchParams);
     } else if (sub === undefined) {
-      if (request.method === "PATCH") return patch(eventId, body as GoogleEventWrite, ifMatch);
+      if (request.method === "PATCH")
+        return write(eventId, body as GoogleEventWrite, ifMatch, "patch");
+      if (request.method === "PUT")
+        return write(eventId, body as GoogleEventWrite, ifMatch, "update");
       if (request.method === "DELETE") return remove(eventId, ifMatch);
     }
     return failure(405, "methodNotAllowed", "Method Not Allowed");
