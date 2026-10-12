@@ -119,6 +119,7 @@ export type {
   CalendarEnvironment,
   CalendarEnvironmentBase,
   CalendarNowSource,
+  CalendarSecondaryTimeZone,
   CalendarWeekRules,
   IsoDayOfWeek,
 } from "./environment";
@@ -132,6 +133,21 @@ export { timeGridColumns } from "./views/time-grid/columns";
 export type { TimeGridBand, TimeGridColumn } from "./views/time-grid/columns";
 export { timedFragmentBox, timeGridDateTimeAt, timeGridPosition } from "./views/time-grid/geometry";
 export type { TimeGridPointOptions, TimeGridPosition } from "./views/time-grid/geometry";
+export {
+  resolveSecondaryTimeZones,
+  timeGridZoneAxis,
+  timeGridZoneRows,
+  timeGridZoneTimes,
+} from "./views/time-grid/zones";
+export type {
+  ResolvedSecondaryTimeZones,
+  SecondaryTimeZoneIssue,
+  TimeGridZoneAxis,
+  TimeGridZoneAxisOptions,
+  TimeGridZoneRow,
+  TimeGridZoneShift,
+  TimeGridZoneTime,
+} from "./views/time-grid/zones";
 export { layoutTimeGrid } from "./views/time-grid/layout";
 export type { TimeGridEventLayout } from "./views/time-grid/layout";
 export {

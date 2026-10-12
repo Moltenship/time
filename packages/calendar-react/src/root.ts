@@ -6,6 +6,7 @@ import {
   createEventTransactions,
   createResourceTree,
   readOnlyPolicy,
+  resolveSecondaryTimeZones,
   resolveViewInstantRange,
   resolveViewLoadRange,
   type AnnotationSnapshotIssue,
@@ -25,6 +26,7 @@ import {
   type InvalidCalendarEventPolicy,
   type CalendarPendingPlacements,
   type ResourceId,
+  type SecondaryTimeZoneIssue,
 } from "@moltenship/calendar-core";
 import {
   createElement,
@@ -56,6 +58,7 @@ import {
   sameInstant,
   samePlainDate,
   sameRange,
+  sameSecondaryTimeZones,
   sameWeekRules,
   shallowEqual,
 } from "./equality";
@@ -102,6 +105,7 @@ interface CommittedRootInputs<TEvent, TEventId extends EventId, TResourceId exte
 
 const noResources: readonly never[] = Object.freeze([]);
 const noAnnotations: readonly never[] = Object.freeze([]);
+const noSecondaryTimeZones: readonly never[] = Object.freeze([]);
 const todaySampleIntervalMs = 60_000;
 /** A root without `onEventChange` is read-only, so its checks reject everything. */
 const readOnlyRoot = () => ({ reason: "read-only", type: "reject" }) as const;
@@ -150,6 +154,12 @@ function sameDiagnostics(
             other.issue.resourceId === diagnostic.issue.resourceId &&
             other.issue.value === diagnostic.issue.value
           );
+        case "invalid-secondary-time-zone":
+          return (
+            other.code === "invalid-secondary-time-zone" &&
+            other.issue.index === diagnostic.issue.index &&
+            other.issue.value === diagnostic.issue.value
+          );
         case "unregistered-active-view":
           return (
             other.code === "unregistered-active-view" && other.viewName === diagnostic.viewName
@@ -165,6 +175,7 @@ function collectDiagnostics<TEvent, TEventId extends EventId>(
   issues: readonly EventSnapshotIssue<TEvent, TEventId>[],
   annotationIssues: readonly AnnotationSnapshotIssue[],
   availabilityIssues: readonly AvailabilityIssue[],
+  secondaryTimeZoneIssues: readonly SecondaryTimeZoneIssue[],
 ): readonly CalendarDiagnostic<TEvent, TEventId>[] {
   const diagnostics: CalendarDiagnostic<TEvent, TEventId>[] = [];
   if (!viewIsRegistered) {
@@ -180,6 +191,11 @@ function collectDiagnostics<TEvent, TEventId extends EventId>(
   }
   for (const issue of availabilityIssues) {
     diagnostics.push(Object.freeze({ code: "invalid-availability", issue, severity: "error" }));
+  }
+  for (const issue of secondaryTimeZoneIssues) {
+    diagnostics.push(
+      Object.freeze({ code: "invalid-secondary-time-zone", issue, severity: "error" }),
+    );
   }
   return Object.freeze(diagnostics);
 }
@@ -296,6 +312,7 @@ export function createCalendarRoot<
     onVisibleRangeChange,
     policies,
     resources = noResources,
+    secondaryTimeZones = noSecondaryTimeZones,
     selection,
     store: injectedStore,
     timeZone,
@@ -346,16 +363,22 @@ export function createCalendarRoot<
     const stableLocale = useStableValue(locale, sameLocale);
     const stableWeekRules = useStableValue(weekRules, sameWeekRules);
     const stableNow = useStableValue(now, sameInstant);
+    const stableSecondaryTimeZones = useStableValue(secondaryTimeZones, sameSecondaryTimeZones);
+    const secondary = useMemo(
+      () => resolveSecondaryTimeZones(stableSecondaryTimeZones),
+      [stableSecondaryTimeZones],
+    );
     const viewEnvironment = useMemo<CalendarEnvironmentBase>(
       () =>
         Object.freeze({
           direction,
           disambiguation,
           locale: stableLocale,
+          secondaryTimeZones: secondary.zones,
           timeZone: state.timeZone,
           weekRules: stableWeekRules,
         }),
-      [direction, disambiguation, stableLocale, stableWeekRules, state.timeZone],
+      [direction, disambiguation, secondary.zones, stableLocale, stableWeekRules, state.timeZone],
     );
     const environment = useMemo<CalendarEnvironment>(() => {
       if (stableNow !== undefined) return Object.freeze({ ...viewEnvironment, now: stableNow });
@@ -511,6 +534,7 @@ export function createCalendarRoot<
         eventSnapshot.issues,
         annotationSnapshot.issues,
         availabilitySnapshot.issues,
+        secondary.issues,
       ),
       sameDiagnostics,
     );

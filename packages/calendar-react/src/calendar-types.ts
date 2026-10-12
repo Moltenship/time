@@ -13,6 +13,7 @@ import type {
   CalendarNowSource,
   CalendarPolicy,
   CalendarPolicyResult,
+  CalendarSecondaryTimeZone,
   CalendarTransactionResult,
   CalendarWeekRules,
   EventAdapter,
@@ -22,6 +23,7 @@ import type {
   InvalidCalendarEventPolicy,
   NormalizedCalendarEvent,
   ResourceId,
+  SecondaryTimeZoneIssue,
 } from "@moltenship/calendar-core";
 import type { InstantInterval, PlainDateInterval } from "@moltenship/calendar-temporal";
 import type { ComponentPropsWithRef, ComponentType, ReactNode, RefObject } from "react";
@@ -84,6 +86,11 @@ export type CalendarDiagnostic<TEvent, TEventId extends EventId> =
   | {
       readonly code: "invalid-availability";
       readonly issue: AvailabilityIssue;
+      readonly severity: "error";
+    }
+  | {
+      readonly code: "invalid-secondary-time-zone";
+      readonly issue: SecondaryTimeZoneIssue;
       readonly severity: "error";
     };
 
@@ -218,6 +225,13 @@ interface CalendarRootBaseProps<
   /** Run in order on every proposed change, after the built-in read-only check. */
   readonly policies?: readonly CalendarPolicy<TEvent, TEventId, TResourceId>[];
   readonly resources?: readonly TResource[];
+  /**
+   * Other time zones time grids label their hours in, beside the display time zone: IANA names,
+   * or `{ timeZone, label }` to name one in the header. Views get them as
+   * `environment.secondaryTimeZones`. Invalid entries are left out and reported through
+   * `onDiagnosticsChange`.
+   */
+  readonly secondaryTimeZones?: readonly (CalendarSecondaryTimeZone | string)[];
   readonly selection?: TSelection | null;
   readonly store?: CalendarStore<TViewDef["name"], TSelection, TFocus, TResourceId>;
   readonly view?: TViewDef["name"];

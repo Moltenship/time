@@ -282,6 +282,8 @@ Day and week views use wall-clock axes. DST behavior is explicit:
 - The default is `"compatible"`, and any automatic shift is included in the transaction and announced to assistive technology.
 - Policies may reject the proposal instead.
 
+`Calendar.Root` can also take `secondaryTimeZones`, other zones time grids label their hours in (ADR 0165). They're an environment input beside `timeZone`, not a display zone: events still project into one zone. Each hour line is read on its own date, in both zones' rules, never through a fixed offset; a skipped wall time has no time in the other zone and a repeated one has both. One gutter serves all columns, so it follows the first visible day, and the days whose lines read differently are listed as shifts.
+
 No helper reads the host machine timezone implicitly. `Temporal.Now` is accessed only through an injected clock/environment boundary.
 
 ### 4.6 Calendar scope
@@ -827,7 +829,7 @@ SSR-compatible means the calendar can produce useful, deterministic server marku
 
 1. No `window`, `document`, `ResizeObserver`, or element measurement at module scope.
 2. `getServerSnapshot` is stable and serializable enough to reproduce the first client tree.
-3. `timeZone`, `locale`, and week rules are explicit environment inputs.
+3. `timeZone`, `secondaryTimeZones`, `locale`, and week rules are explicit environment inputs.
 4. `now` is injectable as `Temporal.Instant` or a `CalendarClock`.
 5. If `now` is omitted, transient today/current-time decoration appears after hydration rather than risking mismatch.
 6. IDs use React `useId` or deterministic entity keys, never random values.
@@ -888,6 +890,7 @@ WCAG 2.2 AA is a release gate, not an example-app enhancement.
 - Month uses a labeled grid with deterministic row/column meaning. Year is one labeled grid per
   month, with a single tab stop across the twelve.
 - Time grids expose day/resource headers and event relationships without announcing every decorative slot.
+- Hour labels, including secondary time zones' (ADR 0165), are decoration; a focused slot names its time in every zone.
 - List view is the dense-data and virtualization-friendly semantic equivalent.
 - Roving focus keeps one meaningful tab stop per active region.
 - Virtualized views retain logical position metadata (`aria-rowindex`, counts, labels).

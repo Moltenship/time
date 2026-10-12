@@ -187,6 +187,17 @@ own.
       description:
         "A source of the current time. Without now or clock, Time uses the system clock.",
     },
+    secondaryTimeZones: {
+      type: "readonly (string | { timeZone: string; label?: string })[]",
+      description: (
+        <>
+          Other IANA time zones time grids label their hours in, beside the calendar's. A{" "}
+          <code>label</code> names a zone in the header. Invalid entries are left out and reported
+          as diagnostics.
+        </>
+      ),
+      default: "[]",
+    },
     direction: { type: '"ltr" | "rtl"', description: "Text direction.", default: '"ltr"' },
     disambiguation: {
       type: '"compatible" | "earlier" | "later" | "reject"',
@@ -236,8 +247,8 @@ own.
   }}
 />
 
-You can write most props inline. `locale`, `weekRules`, `now`, and controlled values are compared by
-value; `events` and `resources` are compared item by item; `viewOptions`, `onDiagnosticsChange`, and
+You can write most props inline. `locale`, `weekRules`, `secondaryTimeZones`, `now`, and controlled
+values are compared by value; `events` and `resources` are compared item by item; `viewOptions`, `onDiagnosticsChange`, and
 the change handlers are read from the latest render. Keep a `clock` object stable, for example at
 module scope.
 
@@ -350,8 +361,9 @@ first, so `navigateNext(); navigateNext()` moves two steps, even for controlled 
       type: "CalendarEnvironment",
       description: (
         <>
-          <code>locale</code>, <code>timeZone</code>, <code>weekRules</code>, <code>direction</code>
-          , <code>disambiguation</code>, and <code>now</code> or <code>clock</code> when set.
+          <code>locale</code>, <code>timeZone</code>, <code>secondaryTimeZones</code>,{" "}
+          <code>weekRules</code>, <code>direction</code>, <code>disambiguation</code>, and{" "}
+          <code>now</code> or <code>clock</code> when set.
         </>
       ),
     },
@@ -375,7 +387,8 @@ first, so `navigateNext(); navigateNext()` moves two steps, even for controlled 
 Problems that don't stop rendering are collected in `meta.diagnostics` and passed to
 `onDiagnosticsChange`. Time doesn't log them.
 
-| `code`                     | `severity` | Cause                                                                                            |
-| -------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
-| `unregistered-active-view` | error      | The `view` state names a view that isn't registered.                                             |
-| `invalid-event`            | error      | A record was skipped. `issue` has the details ([issue codes](/docs/api/events#invalid-records)). |
+| `code`                        | `severity` | Cause                                                                                            |
+| ----------------------------- | ---------- | ------------------------------------------------------------------------------------------------ |
+| `unregistered-active-view`    | error      | The `view` state names a view that isn't registered.                                             |
+| `invalid-event`               | error      | A record was skipped. `issue` has the details ([issue codes](/docs/api/events#invalid-records)). |
+| `invalid-secondary-time-zone` | error      | An entry of `secondaryTimeZones` was left out. `issue` has its `index` and `value`.              |

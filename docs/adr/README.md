@@ -17,3 +17,4 @@ number of the GitHub issue that made the decision.
 - [ADR 0037: Native Pointer Events for calendar interaction](./0037-native-pointer-events.md)
 - [ADR 0048: Recurrence as a layer over ordinary events](./0048-recurrence.md)
 - [ADR 0151: A standalone, Temporal-native iCalendar package](./0151-standalone-ics-package.md)
+- [ADR 0165: Secondary time zones on the time grid's axis](./0165-secondary-time-zones.md)
