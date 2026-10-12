@@ -12,7 +12,7 @@ import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
 import { TimeGridColumn, useTimeGridColumnFormats } from "./time-grid-column";
-import { TimeGridZoneHours, type TimeGridZone } from "./time-grid-zones";
+import { TimeGridZoneHours, zoneTimeFormat, type TimeGridZone } from "./time-grid-zones";
 
 export interface TimeGridBodyProps<TEvent> {
   readonly annotations?: TimeGridAnnotationWiring;
@@ -41,15 +41,6 @@ const labelledHours = Array.from({ length: 23 }, (_, index) => index + 1);
 /** Without a current time in view, open the day at 08:00. */
 const DEFAULT_SCROLL_FRACTION = 8 / 24;
 
-/** "1 PM" where the locale uses a 12-hour clock, "13:00" where it uses 24 hours. */
-function hourFormat(locale: Intl.LocalesArgument): Intl.DateTimeFormat {
-  const hours = new Intl.DateTimeFormat(locale, { hour: "numeric" });
-  const { hourCycle } = hours.resolvedOptions();
-  return hourCycle === "h11" || hourCycle === "h12"
-    ? hours
-    : new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });
-}
-
 /**
  * The gutter's hour labels, from 1:00 to 23:00, over the full height of the element around it.
  * Each secondary zone's hours come first, in a `--calendar-zone-width` column of their own.
@@ -61,7 +52,8 @@ export function TimeGridHours({
   readonly locale: Intl.LocalesArgument;
   readonly zones?: readonly TimeGridZone[];
 }) {
-  const format = useMemo(() => hourFormat(locale), [locale]);
+  // "1 PM" where the locale uses a 12-hour clock, "13:00" where it uses 24 hours.
+  const format = useMemo(() => zoneTimeFormat(locale), [locale]);
   const hours = (
     <div aria-hidden className="relative h-full">
       {labelledHours.map((hour) => (
@@ -70,7 +62,7 @@ export function TimeGridHours({
           className="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums"
           style={{ top: `${(hour / 24) * 100}%` }}
         >
-          {format.format(new Temporal.PlainTime(hour))}
+          {format(new Temporal.PlainTime(hour))}
         </span>
       ))}
     </div>
@@ -80,12 +72,7 @@ export function TimeGridHours({
   return (
     <div className="flex h-full">
       {zones.map((zone, index) => (
-        <TimeGridZoneHours
-          key={index}
-          className="w-(--calendar-zone-width) shrink-0"
-          locale={locale}
-          zone={zone}
-        />
+        <TimeGridZoneHours key={index} locale={locale} zone={zone} />
       ))}
       <div className="min-w-0 flex-1">{hours}</div>
     </div>

@@ -26,6 +26,7 @@ import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { offsetLabel } from "@registry/time-grid-view/time-grid-header";
 import {
+  gutterColumn,
   gutterStyle,
   TimeGridGutterLabels,
   timeGridGutterClassName,
@@ -143,6 +144,7 @@ export function ResourceColumnsView<
   const labelEvent = useEventLabel(environment, options.describeEvent);
   const placed = { items, resources, scrollbarWidth, totalSize };
   const zones = useTimeGridZones(environment, columns);
+  const corner = gutterColumn(columns, zones);
 
   return (
     // Rows: resource headers, dates over several days, all-day events, and the timed columns; each
@@ -166,9 +168,9 @@ export function ResourceColumnsView<
           corner={
             <TimeGridGutterLabels
               offset={
-                columns[0] === undefined
+                corner === undefined
                   ? undefined
-                  : offsetLabel(environment.locale, environment.timeZone, columns[0])
+                  : offsetLabel(environment.locale, environment.timeZone, corner)
               }
               zones={zones}
             />

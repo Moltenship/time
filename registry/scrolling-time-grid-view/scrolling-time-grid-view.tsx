@@ -54,6 +54,7 @@ import {
 import { offsetLabel, TimeGridDayHeaders } from "@registry/time-grid-view/time-grid-header";
 import type { TimeGridViewOptions } from "@registry/time-grid-view/time-grid-view";
 import {
+  gutterColumn,
   gutterStyle,
   TimeGridGutterLabels,
   timeGridGutterClassName,
@@ -270,6 +271,7 @@ export function ScrollingTimeGridView<TEvent>({
 
   const placed = { count: axis.count, start, strip: days.length };
   const firstShown = days.find(({ column }) => column.date.equals(range.start)) ?? days[0];
+  const corner = gutterColumn(columns, zones, firstShown?.column);
   const gutter = "sticky start-0 shrink-0 w-(--calendar-gutter-width) bg-calendar-surface";
 
   return (
@@ -318,9 +320,7 @@ export function ScrollingTimeGridView<TEvent>({
                     >
                       <TimeGridGutterLabels
                         offset={
-                          firstShown === undefined
-                            ? undefined
-                            : offsetLabel(locale, timeZone, firstShown.column)
+                          corner === undefined ? undefined : offsetLabel(locale, timeZone, corner)
                         }
                         zones={zones}
                       />

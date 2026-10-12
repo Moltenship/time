@@ -104,6 +104,13 @@ describe.each(["ltr", "rtl"] as const)("secondary time zone layout, %s", (dir) =
         expect(right).toBeLessThanOrEqual(box.right + 0.5);
       }
     }
+    // Day notes stay inside their day's header, however narrow it is.
+    for (const note of document.querySelectorAll('[data-slot="time-grid-zone-note"] > span')) {
+      const header = note.closest('[role="columnheader"]')!.getBoundingClientRect();
+      const { left, right } = note.getBoundingClientRect();
+      expect(left).toBeGreaterThanOrEqual(header.left - 0.5);
+      expect(right).toBeLessThanOrEqual(header.right + 0.5);
+    }
     // The secondary zones come first along the inline axis, the display zone's hours last.
     const [first, second] = columns.map((column) => column.getBoundingClientRect());
     expect(dir === "ltr" ? first!.left < second!.left : first!.left > second!.left).toBe(true);

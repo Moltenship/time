@@ -13,6 +13,7 @@ import { cn } from "cn";
 import { describeDayAnnotations } from "./annotation-label";
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
 import {
+  gutterColumn,
   TimeGridGutterLabels,
   TimeGridZoneNotes,
   zoneNotesByDate,
@@ -185,6 +186,11 @@ export function TimeGridHeader({
   zones = noZones,
 }: TimeGridHeaderProps) {
   const { locale, timeZone } = environment;
+  const corner = gutterColumn(
+    days.map(({ column }) => column),
+    zones,
+  );
+  const cornerOffset = corner === undefined ? undefined : offsetLabel(locale, timeZone, corner);
 
   return (
     <div role="row" className="flex">
@@ -192,10 +198,7 @@ export function TimeGridHeader({
         role="columnheader"
         className="flex w-(--calendar-gutter-width) shrink-0 items-end pb-1 text-[0.625rem] text-calendar-axis"
       >
-        <TimeGridGutterLabels
-          offset={days[0] === undefined ? undefined : offsetLabel(locale, timeZone, days[0].column)}
-          zones={zones}
-        />
+        <TimeGridGutterLabels offset={cornerOffset} zones={zones} />
       </div>
       <TimeGridDayHeaders
         actions={actions}

@@ -3,8 +3,8 @@ import {
   timeGridZoneTimes,
   type CalendarEnvironmentBase,
   type CalendarSecondaryTimeZone,
-  type TimeGridColumn,
   type PlainDateInterval,
+  type TimeGridColumn,
   type TimeGridZoneAxis,
   type TimeGridZoneShift,
 } from "@moltenship/calendar";
@@ -17,21 +17,25 @@ const noGridZones: readonly TimeGridZone[] = Object.freeze([]);
 
 /**
  * The gutter holds the display zone's hours, `--calendar-hours-width` wide (3rem, 4rem from `sm`),
- * and a `--calendar-zone-width` column (4rem, room for "12:30 AM+1") for each secondary zone,
- * which `gutterStyle` counts.
+ * and a column for each secondary zone, which `gutterStyle` counts. A zone's column is
+ * `--calendar-zone-width` wide, 4rem by default: room for "12:30 AM+1". Set it on an element
+ * around the calendar for locales with longer times.
  */
 export const timeGridGutterClassName =
-  "[--calendar-hours-width:3rem] [--calendar-zone-width:4rem] sm:[--calendar-hours-width:4rem] [--calendar-gutter-width:calc(var(--calendar-hours-width)+var(--calendar-zones,0)*var(--calendar-zone-width))]";
+  "[--calendar-hours-width:3rem] sm:[--calendar-hours-width:4rem] [--calendar-gutter-width:calc(var(--calendar-hours-width)+var(--calendar-zones,0)*var(--calendar-zone-width,4rem))]";
+
+/** A secondary zone's column in the gutter; see `timeGridGutterClassName`. */
+const zoneColumn = "w-[var(--calendar-zone-width,4rem)] shrink-0";
 
 /** Widens the gutter by a column per secondary zone; see `timeGridGutterClassName`. */
 export function gutterStyle(zones: readonly TimeGridZone[]): CSSProperties | undefined {
   return zones.length === 0 ? undefined : ({ "--calendar-zones": zones.length } as CSSProperties);
 }
 
-/** A day whose times in a secondary zone differ from its hours beside the grid. */
+/** A day whose times in a secondary zone differ from the zone's hours beside the grid. */
 export interface TimeGridZoneNote {
   readonly date: Temporal.PlainDate;
-  /** Short, such as "EST −1h". */
+  /** Short, such as "EST -1h". */
   readonly text: string;
   /** The long form, for a tooltip. */
   readonly title: string;
@@ -43,25 +47,26 @@ export interface TimeGridZone {
   readonly axis: TimeGridZoneAxis;
   /** Over its hours: the zone's `label`, or its short name, such as "EDT" or "GMT+5:30". */
   readonly label: string;
-  /** In tooltips and slot names: the zone's `label`, or its long name, such as "Eastern Daylight Time". */
+  /** Its `label`, or its long name on the axis day, for the header's tooltip. */
   readonly name: string;
+  /** Its `label`, or its long name at an instant, such as "Eastern Daylight Time". */
+  readonly nameAt: (instant: Temporal.Instant) => string;
   /** The days whose times differ from its hours beside the grid. */
   readonly notes: readonly TimeGridZoneNote[];
+  /** Its UTC offset at an instant, such as "GMT-4". */
+  readonly offsetAt: (instant: Temporal.Instant) => string;
   readonly timeZone: string;
 }
 
-/** `Intl`'s name for a time zone at an instant, in the calendar's locale. */
-function zoneName(
+/** Reads a zone's name at an instant, in one of `Intl`'s styles. */
+function zoneNamer(
   locale: Intl.LocalesArgument,
   timeZone: string,
-  instant: Temporal.Instant,
-  timeZoneName: "long" | "short",
-): string {
-  return (
-    new Intl.DateTimeFormat(locale, { timeZone, timeZoneName })
-      .formatToParts(instant)
-      .find(({ type }) => type === "timeZoneName")?.value ?? timeZone
-  );
+  timeZoneName: "long" | "short" | "shortOffset",
+) {
+  const format = new Intl.DateTimeFormat(locale, { timeZone, timeZoneName });
+  return (instant: Temporal.Instant) =>
+    format.formatToParts(instant).find(({ type }) => type === "timeZoneName")?.value ?? timeZone;
 }
 
 /** "1 PM" on the hour where the locale uses 12 hours, "1:30 PM" off it, and "13:00" otherwise. */
@@ -74,26 +79,36 @@ export function zoneTimeFormat(locale: Intl.LocalesArgument) {
     (twelveHour && time.minute === 0 ? hour : minute).format(time);
 }
 
-/** "+1h" and "1 hour", or "+30m" and "30 minutes" for a shift that isn't whole hours. */
+/** "+1h" or "+30m" in the calendar's locale, and "1 hour" or "30 minutes" for English titles. */
 function shiftFormats(locale: Intl.LocalesArgument) {
-  const amount = (unit: "hour" | "minute", unitDisplay: "long" | "narrow") =>
-    new Intl.NumberFormat(locale, {
-      signDisplay: unitDisplay === "narrow" ? "always" : "never",
+  const amount = (locales: Intl.LocalesArgument, unit: "hour" | "minute", narrow: boolean) =>
+    new Intl.NumberFormat(locales, {
+      signDisplay: narrow ? "always" : "never",
       style: "unit",
       unit,
-      unitDisplay,
+      unitDisplay: narrow ? "narrow" : "long",
     });
-  const units = {
-    hour: { long: amount("hour", "long"), narrow: amount("hour", "narrow") },
-    minute: { long: amount("minute", "long"), narrow: amount("minute", "narrow") },
+  const formats = {
+    long: { hour: amount("en", "hour", false), minute: amount("en", "minute", false) },
+    narrow: { hour: amount(locale, "hour", true), minute: amount(locale, "minute", true) },
   };
   return {
     amount: (minutes: number, display: "long" | "narrow") =>
       minutes % 60 === 0
-        ? units.hour[display].format(minutes / 60)
-        : units.minute[display].format(minutes),
+        ? formats[display].hour.format(minutes / 60)
+        : formats[display].minute.format(minutes),
     time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }),
   };
+}
+
+/** Each date's runs, in column order. */
+function runsByDate(shifts: readonly TimeGridZoneShift[]): readonly TimeGridZoneShift[][] {
+  const byDate = new Map<string, TimeGridZoneShift[]>();
+  for (const shift of shifts) {
+    const key = shift.date.toString();
+    byDate.set(key, [...(byDate.get(key) ?? []), shift]);
+  }
+  return [...byDate.values()];
 }
 
 /**
@@ -112,45 +127,61 @@ export function useTimeGridZones(
     const columnOn = (day: Temporal.PlainDate) =>
       columns.find((column) => column.date.equals(day)) ?? columns[0]!;
 
-    return secondaryTimeZones.map(({ label, timeZone }) => {
+    return secondaryTimeZones.map(({ label: given, timeZone }) => {
       const axis = timeGridZoneAxis(columns, timeZone, { visible })!;
-      const at = columnOn(axis.date).day.start;
-      const runsByDate = new Map<string, TimeGridZoneShift[]>();
-      for (const shift of axis.shifts) {
-        const key = shift.date.toString();
-        runsByDate.set(key, [...(runsByDate.get(key) ?? []), shift]);
-      }
-      const notes = [...runsByDate.values()].map((runs) => {
-        // The day's last run is how it reads from then on, named as the zone is by then, such as
-        // EST after EDT; the title has every run.
+      // An empty label names nothing, so the zone keeps its own name.
+      const label = given === "" ? undefined : given;
+      const longName = zoneNamer(locale, axis.timeZone, "long");
+      const shortName = zoneNamer(locale, axis.timeZone, "short");
+      const nameAt = (instant: Temporal.Instant) => label ?? longName(instant);
+      /** The moment a run starts, so it's named as the zone is by then, such as EST after EDT. */
+      const startOf = ({ date, from }: TimeGridZoneShift) =>
+        timeGridZoneTimes(columnOn(date), from, axis.timeZone)[0]?.instant ??
+        columnOn(date).day.start;
+
+      const notes = runsByDate(axis.shifts).map((runs) => {
+        // The day's last run is how it reads from then on; the title has every run.
         const last = runs.at(-1)!;
-        const column = columnOn(last.date);
-        const then =
-          timeGridZoneTimes(column, last.from, axis.timeZone)[0]?.instant ?? column.day.start;
-        const long = label ?? zoneName(locale, axis.timeZone, then, "long");
-        const titles = runs.map(({ from, minutes, until }) => {
+        const titles = runs.map((run) => {
+          const { from, minutes, until } = run;
           const span =
             until === null
               ? `From ${formats.time.format(from)}`
               : `From ${formats.time.format(from)} to ${formats.time.format(until)}`;
           const direction = minutes > 0 ? "later" : "earlier";
-          return `${span}, times in ${long} are ${formats.amount(minutes, "long")} ${direction} than the hours beside the grid`;
+          return `${span}, times in ${nameAt(startOf(run))} are ${formats.amount(minutes, "long")} ${direction} than its hours beside the grid`;
         });
         return {
           date: last.date,
-          text: `${label ?? zoneName(locale, axis.timeZone, then, "short")} ${formats.amount(last.minutes, "narrow")}`,
+          text: `${label ?? shortName(startOf(last))} ${formats.amount(last.minutes, "narrow")}`,
           title: titles.join(". "),
         };
       });
+      const axisStart = columnOn(axis.date).day.start;
       return {
         axis,
-        label: label ?? zoneName(locale, axis.timeZone, at, "short"),
-        name: label ?? zoneName(locale, axis.timeZone, at, "long"),
+        label: label ?? shortName(axisStart),
+        name: nameAt(axisStart),
+        nameAt,
         notes,
+        offsetAt: zoneNamer(locale, axis.timeZone, "shortOffset"),
         timeZone: axis.timeZone,
       };
     });
   }, [columns, locale, secondaryTimeZones, visible]);
+}
+
+/**
+ * The column whose offset names the display zone over the gutter: the day the first secondary
+ * zone's hours are read on, so the two agree, or `fallback` without zones.
+ */
+export function gutterColumn(
+  columns: readonly TimeGridColumn[],
+  zones: readonly TimeGridZone[],
+  fallback: TimeGridColumn | undefined = columns[0],
+): TimeGridColumn | undefined {
+  const date = zones[0]?.axis.date;
+  return (date && columns.find((column) => column.date.equals(date))) || fallback;
 }
 
 /** Rows label lines from 1:00 to 23:00, like the display zone's hours; midnight sits under the header. */
@@ -160,7 +191,7 @@ function labelledRows(axis: TimeGridZoneAxis) {
 
 /**
  * A secondary zone's hour labels on the display zone's lines, over the full height of the element
- * around them: its time at each line, with "+1" or "−1" where it's on another date. A skipped hour
+ * around them: its time at each line, with "+1" or "-1" where it's on another date. A skipped hour
  * has no label, and a repeated one shows its earlier time. Hidden from assistive technology like
  * the display zone's hours; focused slots name their time in each zone instead.
  */
@@ -186,7 +217,7 @@ export function TimeGridZoneHours({
       aria-hidden
       data-slot="time-grid-zone-hours"
       data-time-zone={zone.timeZone}
-      className={cn("relative h-full", className)}
+      className={cn("relative h-full", zoneColumn, className)}
     >
       {labelledRows(zone.axis).map(({ times, top }) => {
         const [time, repeat] = times;
@@ -205,7 +236,8 @@ export function TimeGridZoneHours({
           >
             {label}
             {time.dayOffset !== 0 && (
-              <span data-day-offset="" className="ms-px align-super text-[0.5rem]">
+              // Raised without `vertical-align`, so the label keeps its height and its line.
+              <span data-day-offset="" className="relative -top-1 ms-px text-[0.5rem] leading-none">
                 {formats.day.format(time.dayOffset)}
               </span>
             )}
@@ -217,8 +249,10 @@ export function TimeGridZoneHours({
 }
 
 /**
- * What a slot reads in each secondary zone, for its accessible name: "3:00 AM Eastern Daylight
- * Time", with the weekday when it's another date there; `undefined` without zones.
+ * What a slot reads in each secondary zone, for its accessible name: "3:00 AM Eastern Standard
+ * Time", with the weekday when it's another date there. Each time is named as its zone is at that
+ * moment, so a repeated hour reads "1:30 AM British Summer Time or 1:30 AM Greenwich Mean Time";
+ * `undefined` without zones.
  */
 export function describeZoneTimes(
   column: TimeGridColumn,
@@ -227,14 +261,30 @@ export function describeZoneTimes(
   formats: { readonly dayTime: Intl.DateTimeFormat; readonly time: Intl.DateTimeFormat },
 ): string | undefined {
   const parts = zones.flatMap((zone) => {
-    const times = timeGridZoneTimes(column, time, zone.timeZone);
-    if (times.length === 0) return [];
-    const read = times.map(({ dateTime, dayOffset }) =>
-      dayOffset === 0
-        ? formats.time.format(dateTime.toPlainTime())
-        : formats.dayTime.format(dateTime),
+    const read = timeGridZoneTimes(column, time, zone.timeZone).map(
+      ({ dateTime, dayOffset, instant }) => ({
+        name: zone.nameAt(instant),
+        offset: zone.offsetAt(instant),
+        time:
+          dayOffset === 0
+            ? formats.time.format(dateTime.toPlainTime())
+            : formats.dayTime.format(dateTime),
+      }),
     );
-    return [`${read.join(" or ")} ${zone.name}`];
+    const [first] = read;
+    if (first === undefined) return [];
+    const oneName = read.every(({ name }) => name === first.name);
+    const oneTime = read.length > 1 && read.every(({ time: other }) => other === first.time);
+    if (oneName && !oneTime)
+      return [`${read.map(({ time: at }) => at).join(" or ")} ${first.name}`];
+    // Different names tell the times apart; under one label, so does the offset.
+    return [
+      read
+        .map(({ name, offset, time: at }) =>
+          oneName ? `${at} ${name} ${offset}` : `${at} ${name}`,
+        )
+        .join(" or "),
+    ];
   });
   return parts.length === 0 ? undefined : parts.join(", ");
 }
@@ -258,13 +308,14 @@ export function TimeGridGutterLabels({
           key={index}
           aria-hidden
           data-slot="time-grid-zone-label"
-          className="w-(--calendar-zone-width) shrink-0 truncate pe-1 text-end"
+          className={cn("truncate pe-1 text-end", zoneColumn)}
           title={zone.name}
         >
           {zone.label}
         </span>
       ))}
-      <span className="min-w-0 flex-1 pe-2 text-end whitespace-nowrap">{offset}</span>
+      {/* A flex container, so an offset too long for the hours overflows outward, not into the days. */}
+      <span className="flex min-w-0 flex-1 justify-end pe-2 whitespace-nowrap">{offset}</span>
     </>
   );
 }
@@ -297,12 +348,12 @@ export function TimeGridZoneNotes({
       aria-hidden
       data-slot="time-grid-zone-note"
       className={cn(
-        "flex max-w-full flex-col text-[0.5625rem] leading-tight whitespace-nowrap text-muted-foreground",
+        "flex max-w-full min-w-0 flex-col text-[0.5625rem] leading-tight whitespace-nowrap text-muted-foreground",
         className,
       )}
     >
       {notes.map((note, index) => (
-        <span key={index} className="truncate" title={note.title}>
+        <span key={index} className="max-w-full truncate" title={note.title}>
           {note.text}
         </span>
       ))}

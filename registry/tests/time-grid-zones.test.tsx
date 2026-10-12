@@ -111,9 +111,11 @@ test("adds an hour column per secondary zone, named over its hours", async () =>
     "Asia/Kolkata",
     "Asia/Tokyo",
   ]);
-  // The grid's corner still names only the display zone, and its columns are unchanged.
+  // The grid's corner still names only the display zone to assistive technology, and its columns
+  // are unchanged.
   const corner = container.querySelector('[role="row"] > [role="columnheader"]');
-  expect(corner?.textContent).toBe("GMT+5:30TokyoGMT+2");
+  const spoken = [...(corner?.children ?? [])].filter((part) => !part.hasAttribute("aria-hidden"));
+  expect(spoken.map((part) => part.textContent)).toEqual(["GMT+2"]);
   const header = container.querySelector('[role="row"]');
   expect(header?.querySelectorAll('[role="columnheader"]')).toHaveLength(8);
   const grid = container.querySelector<HTMLElement>('[data-slot="time-grid"]');
@@ -167,7 +169,7 @@ test("says under a day's date when its times in a zone differ from the gutter's"
   );
   expect(text(notes[0])).toBe("EST -1h");
   expect(notes[0]!.firstElementChild?.getAttribute("title")).toBe(
-    "From 7:00 AM, times in Eastern Standard Time are 1 hour earlier than the hours beside the grid",
+    "From 7:00 AM, times in Eastern Standard Time are 1 hour earlier than its hours beside the grid",
   );
 });
 
@@ -184,7 +186,7 @@ test("a note's title says when a difference ends within the day", async () => {
   );
   expect(text(note)).toBe("CST -1h");
   expect(note?.firstElementChild?.getAttribute("title")).toBe(
-    "From 3:00 AM to 4:00 AM, times in Central Standard Time are 1 hour earlier than the hours beside the grid",
+    "From 3:00 AM to 4:00 AM, times in Central Standard Time are 1 hour earlier than its hours beside the grid",
   );
 });
 
@@ -222,6 +224,53 @@ test("a focused slot names its time in each zone, with the weekday on another da
   );
 });
 
+test("a slot on a shifted day names the zone as it is then", async () => {
+  const focus: CalendarFocus = {
+    date: Temporal.PlainDate.from("2026-11-01"),
+    kind: "slot",
+    time: Temporal.PlainTime.from("09:00"),
+  };
+  const container = await renderCalendar(["America/New_York"], {
+    defaultAnchorDate: Temporal.PlainDate.from("2026-10-29"),
+    defaultFocus: focus,
+  });
+  const slot = container.querySelector('[role="grid"] [role="button"][aria-label^="Sunday"]');
+
+  expect(ariaLabel(slot)).toBe("Sunday, November 1 at 9:00 AM, 3:00 AM Eastern Standard Time");
+});
+
+test("a repeated hour names each moment, by offset under a label", async () => {
+  // Berlin and London fall back at the same instant, so 02:30 in Berlin is 1:30 AM in London twice.
+  const focus: CalendarFocus = {
+    date: Temporal.PlainDate.from("2026-10-25"),
+    kind: "slot",
+    time: Temporal.PlainTime.from("02:30"),
+  };
+  const props = {
+    defaultAnchorDate: Temporal.PlainDate.from("2026-10-25"),
+    defaultFocus: focus,
+    defaultView: "day",
+  } as const;
+  const slot = (container: HTMLElement) =>
+    ariaLabel(container.querySelector('[role="grid"] [role="button"][aria-label^="Sunday"]'));
+
+  expect(slot(await renderCalendar(["Europe/London"], props))).toBe(
+    "Sunday, October 25 at 2:30 AM, 1:30 AM British Summer Time or 1:30 AM Greenwich Mean Time",
+  );
+  await cleanup?.();
+  expect(slot(await renderCalendar([{ label: "London", timeZone: "Europe/London" }], props))).toBe(
+    "Sunday, October 25 at 2:30 AM, 1:30 AM London GMT+1 or 1:30 AM London GMT+0",
+  );
+});
+
+test("an empty label leaves the zone its own name", async () => {
+  const container = await renderCalendar([{ label: "", timeZone: "Asia/Tokyo" }]);
+
+  expect(zoneLabels(container)).toEqual([
+    { hidden: "true", text: "GMT+9", title: "Japan Standard Time" },
+  ]);
+});
+
 test("names both moments of a repeated hour in a slot's name", async () => {
   const focus: CalendarFocus = {
     date: Temporal.PlainDate.from("2026-10-25"),
@@ -240,7 +289,20 @@ test("names both moments of a repeated hour in a slot's name", async () => {
   );
 });
 
-test("the scrolling views follow the first visible day", async () => {
+test("the scrolling views read the gutter on a visible day, not a page beside it", async () => {
+  // The page before October 26 is on CEST, the visible week on CET: 01:00 is 8 PM in New York.
+  const container = await renderCalendar(["America/New_York"], {
+    defaultAnchorDate: Temporal.PlainDate.from("2026-10-26"),
+    defaultView: "scrolling-week",
+  });
+
+  expect(zoneHours(container)[0]!.slice(0, 2)).toEqual(["8 PM-1", "9 PM-1"]);
+  // The corner reads the display zone's offset on the same day.
+  const corner = container.querySelector('[role="row"] > [role="columnheader"]');
+  expect(corner?.lastElementChild?.textContent).toBe("GMT+1");
+});
+
+test("the scrolling day view follows its day", async () => {
   const container = await renderCalendar(["Asia/Kolkata"], {
     defaultAnchorDate: Temporal.PlainDate.from("2026-10-14"),
     defaultView: "scrolling-day",

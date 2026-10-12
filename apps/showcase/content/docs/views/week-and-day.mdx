@@ -56,9 +56,10 @@ TimeGridView                     time-grid-view.tsx
         └── Now line             data-slot="time-grid-now"
 ```
 
-- The gutter is `--calendar-gutter-width` wide: 3rem for the hours, or 4rem from the `sm`
-  breakpoint, plus `--calendar-zone-width` (4rem) for each
-  [secondary time zone](#secondary-time-zones).
+- The gutter is `--calendar-gutter-width` wide: `--calendar-hours-width` for the hours (3rem, or
+  4rem from the `sm` breakpoint), plus `--calendar-zone-width` (4rem) for each
+  [secondary time zone](#secondary-time-zones). To change the hours' width, edit
+  `--calendar-hours-width` in `time-grid-zones.tsx`.
 - An event's `TimeGridEventLayout` sets its `top` and `height` from its times, and its `left` and
   `width` from the [overlap layout](#overlapping-events). A column renders its events in layout
   order, so a stacked event draws over the ones it overlaps.
@@ -204,18 +205,24 @@ Calendar's secondary time zone. Each zone gets a column of hours beside the cale
 ```
 
 - **Names:** each column is named by its `label`, or by the zone's short name from `Intl` in the
-  calendar's locale, such as "EDT" or "GMT+5:30". Hover it for the full name.
+  calendar's locale, such as "EDT" or "GMT+5:30". Without a `label`, hover it for the zone's full
+  name.
 - **Hours:** each line is read on its own date, in both zones' rules, so the labels stay right when
   either zone changes its clocks. Zones off the hour show minutes, such as "4:30 PM" in India.
-  "+1" or "−1" marks a time on the next or previous day there.
+  "+1" or "-1" marks a time on the next or previous day there.
 - **Daylight saving time:** an hour the calendar's zone skips has no label, and an hour it repeats
   shows its first time. The gutter follows the first day shown on which neither zone changes its
   clocks. A day that reads differently, because a zone changes its offset, says so under its date,
-  such as "EST −1h". Hover the note to see from when, and until when if it ends that day.
+  such as "EST -1h". Hover the note to see from when, and until when if it ends that day.
+- **Width:** each zone's column is `--calendar-zone-width` wide, 4rem by default, which fits
+  "12:30 AM+1". Some locales write longer times; set the variable on an element around the
+  calendar, such as `[--calendar-zone-width:4.5rem]`.
 - **Clock:** 12 or 24 hours, as the locale says, including a `-u-hc-h23` extension.
 - **Screen readers:** the extra hours are hidden, like the calendar's own hour labels, so the grid's
   columns stay the same. A focused slot names its time in each zone instead, as in "Monday,
-  October 12 at 9:00 PM, 3:00 PM Eastern Daylight Time".
+  October 12 at 9:00 PM, 3:00 PM Eastern Daylight Time". Each time is named as its zone is at that
+  moment, so the hour repeated in London reads "1:30 AM British Summer Time or 1:30 AM Greenwich
+  Mean Time".
 
 The scrolling week and day views and the resource columns view show the same columns. The parts
 live in `time-grid-zones.tsx`, and [Time and time zones](/docs/concepts/time#secondary-time-zones)

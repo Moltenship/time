@@ -27,10 +27,12 @@ const views = [
   `data-pending`.
 - With `secondaryTimeZones` on the root, the gutter adds an hour column per zone, named in the
   header (`label`, or the zone's short name from `Intl`). Each line is read on its own date, with
-  minutes where the offset isn't whole hours and "+1" or "−1" where it's another date there. The
-  gutter follows the first day; a day whose times differ after a daylight saving change says so
-  under its date. The labels are hidden from assistive technology, and a focused slot names its
-  time in each zone. The parts are in `time-grid-zones.tsx`.
+  minutes where the offset isn't whole hours and "+1" or "-1" where it's another date there. The
+  gutter follows the first visible day on which neither zone changes its clocks; a day whose times
+  differ after a daylight saving change says so under its date. The labels are hidden from
+  assistive technology, and a focused slot names its time in each zone. Each zone's column is
+  `--calendar-zone-width` wide (4rem); set it on an element around the calendar for locales with
+  longer times. The parts are in `time-grid-zones.tsx`.
 - The now-line follows `useNow()` in today's column. The body opens on the current time, or on
   08:00 when today is not visible.
 - The grid is one tab stop, entered on today's all-day cell. Arrow keys move between all-day
