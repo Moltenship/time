@@ -1,0 +1,2561 @@
+{
+  "generator": "tools/recurrence-oracle/generate.py",
+  "oracle": "python-dateutil 2.9.0.post0",
+  "secondOracle": "ical.js 2.2.1",
+  "timeZoneData": "IANA 2026e (tzdata 2026.5)",
+  "cases": [
+    {
+      "id": "dst/europe-berlin/daily-in-gap",
+      "title": "DAILY at 02:30, which the gap (2026-03-29, 02:00→03:00) moves forward",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-27T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2026-03-27T02:30:00+01:00",
+        "2026-03-28T02:30:00+01:00",
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-30T02:30:00+02:00",
+        "2026-03-31T02:30:00+02:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/daily-in-fold",
+      "title": "DAILY at 02:30, which the fold (2026-10-25, 03:00→02:00) repeats; the first instant counts",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-23T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2026-10-23T02:30:00+02:00",
+        "2026-10-24T02:30:00+02:00",
+        "2026-10-25T02:30:00+02:00",
+        "2026-10-26T02:30:00+01:00",
+        "2026-10-27T02:30:00+01:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/weekly-across-gap",
+      "title": "WEEKLY at 02:30 across the gap (2026-03-29, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-15T02:30:00",
+      "rule": "FREQ=WEEKLY;COUNT=4",
+      "expected": [
+        "2026-03-15T02:30:00+01:00",
+        "2026-03-22T02:30:00+01:00",
+        "2026-03-29T03:30:00+02:00",
+        "2026-04-05T02:30:00+02:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/weekly-across-fold",
+      "title": "WEEKLY on two days at 02:30 across the fold (2026-10-25, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-17T02:30:00",
+      "rule": "FREQ=WEEKLY;BYDAY=SA,SU;COUNT=6",
+      "expected": [
+        "2026-10-17T02:30:00+02:00",
+        "2026-10-18T02:30:00+02:00",
+        "2026-10-24T02:30:00+02:00",
+        "2026-10-25T02:30:00+02:00",
+        "2026-10-31T02:30:00+01:00",
+        "2026-11-01T02:30:00+01:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/monthly-across-gap",
+      "title": "MONTHLY on the gap's day (-1SU) at 02:30, across the gap (2026-03-29, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-01-25T02:30:00",
+      "rule": "FREQ=MONTHLY;BYDAY=-1SU;COUNT=4",
+      "expected": [
+        "2026-01-25T02:30:00+01:00",
+        "2026-02-22T02:30:00+01:00",
+        "2026-03-29T03:30:00+02:00",
+        "2026-04-26T02:30:00+02:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/monthly-across-fold",
+      "title": "MONTHLY on the fold's day (-1SU) at 02:30, across the fold (2026-10-25, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-08-30T02:30:00",
+      "rule": "FREQ=MONTHLY;BYDAY=-1SU;COUNT=4",
+      "expected": [
+        "2026-08-30T02:30:00+02:00",
+        "2026-09-27T02:30:00+02:00",
+        "2026-10-25T02:30:00+02:00",
+        "2026-11-29T02:30:00+01:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/hourly-across-gap",
+      "title": "HOURLY across the gap (2026-03-29, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-29T00:00:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2026-03-29T05:00:00"
+      },
+      "expected": [
+        "2026-03-29T00:00:00+01:00",
+        "2026-03-29T01:00:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T04:00:00+02:00"
+      ],
+      "oracle": [
+        "2026-03-29T00:00:00+01:00",
+        "2026-03-29T01:00:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T04:00:00+02:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-03-29T03:00:00+02:00 twice."
+    },
+    {
+      "id": "dst/europe-berlin/hourly-across-fold",
+      "title": "HOURLY across the fold (2026-10-25, 03:00→02:00); the wall clock skips the repeated hour's second instants",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-25T00:00:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2026-10-25T05:00:00"
+      },
+      "expected": [
+        "2026-10-25T00:00:00+02:00",
+        "2026-10-25T01:00:00+02:00",
+        "2026-10-25T02:00:00+02:00",
+        "2026-10-25T03:00:00+01:00",
+        "2026-10-25T04:00:00+01:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/minutely-15-across-gap",
+      "title": "Every 15 minutes across the gap (2026-03-29, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-29T01:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2026-03-29T03:45:00"
+      },
+      "expected": [
+        "2026-03-29T01:30:00+01:00",
+        "2026-03-29T01:45:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:15:00+02:00",
+        "2026-03-29T03:30:00+02:00"
+      ],
+      "oracle": [
+        "2026-03-29T01:30:00+01:00",
+        "2026-03-29T01:45:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:15:00+02:00",
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:15:00+02:00",
+        "2026-03-29T03:30:00+02:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-03-29T03:00:00+02:00, 2026-03-29T03:15:00+02:00, 2026-03-29T03:30:00+02:00 twice."
+    },
+    {
+      "id": "dst/europe-berlin/minutely-45-across-gap",
+      "title": "Every 45 minutes across the gap (2026-03-29, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-29T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2026-03-29T04:30:00"
+      },
+      "expected": [
+        "2026-03-29T01:15:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-29T03:45:00+02:00",
+        "2026-03-29T04:15:00+02:00"
+      ],
+      "oracle": [
+        "2026-03-29T01:15:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:45:00+02:00",
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-29T04:15:00+02:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives them in wall-time order, not by instant."
+    },
+    {
+      "id": "dst/europe-berlin/minutely-15-across-fold",
+      "title": "Every 15 minutes across the fold (2026-10-25, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-25T01:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2026-10-25T03:30:00"
+      },
+      "expected": [
+        "2026-10-25T01:30:00+02:00",
+        "2026-10-25T01:45:00+02:00",
+        "2026-10-25T02:00:00+02:00",
+        "2026-10-25T02:15:00+02:00",
+        "2026-10-25T02:30:00+02:00",
+        "2026-10-25T02:45:00+02:00",
+        "2026-10-25T03:00:00+01:00",
+        "2026-10-25T03:15:00+01:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/minutely-45-across-fold",
+      "title": "Every 45 minutes across the fold (2026-10-25, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-25T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2026-10-25T04:30:00"
+      },
+      "expected": [
+        "2026-10-25T01:15:00+02:00",
+        "2026-10-25T02:00:00+02:00",
+        "2026-10-25T02:45:00+02:00",
+        "2026-10-25T03:30:00+01:00",
+        "2026-10-25T04:15:00+01:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/byhour-byminute-on-gap-day",
+      "title": "DAILY;BYHOUR=1,2,3;BYMINUTE=0,30 on the day before and the day of the gap (2026-03-29, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-28T01:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=1,2,3;BYMINUTE=0,30",
+      "window": {
+        "before": "2026-03-30T00:00:00"
+      },
+      "expected": [
+        "2026-03-28T01:00:00+01:00",
+        "2026-03-28T01:30:00+01:00",
+        "2026-03-28T02:00:00+01:00",
+        "2026-03-28T02:30:00+01:00",
+        "2026-03-28T03:00:00+01:00",
+        "2026-03-28T03:30:00+01:00",
+        "2026-03-29T01:00:00+01:00",
+        "2026-03-29T01:30:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:30:00+02:00"
+      ],
+      "oracle": [
+        "2026-03-28T01:00:00+01:00",
+        "2026-03-28T01:30:00+01:00",
+        "2026-03-28T02:00:00+01:00",
+        "2026-03-28T02:30:00+01:00",
+        "2026-03-28T03:00:00+01:00",
+        "2026-03-28T03:30:00+01:00",
+        "2026-03-29T01:00:00+01:00",
+        "2026-03-29T01:30:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:30:00+02:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-03-29T03:00:00+02:00, 2026-03-29T03:30:00+02:00 twice."
+    },
+    {
+      "id": "dst/europe-berlin/byhour-byminute-on-fold-day",
+      "title": "DAILY;BYHOUR=1,2,3;BYMINUTE=0,30 on the day before and the day of the fold (2026-10-25, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-24T01:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=1,2,3;BYMINUTE=0,30",
+      "window": {
+        "before": "2026-10-26T00:00:00"
+      },
+      "expected": [
+        "2026-10-24T01:00:00+02:00",
+        "2026-10-24T01:30:00+02:00",
+        "2026-10-24T02:00:00+02:00",
+        "2026-10-24T02:30:00+02:00",
+        "2026-10-24T03:00:00+02:00",
+        "2026-10-24T03:30:00+02:00",
+        "2026-10-25T01:00:00+02:00",
+        "2026-10-25T01:30:00+02:00",
+        "2026-10-25T02:00:00+02:00",
+        "2026-10-25T02:30:00+02:00",
+        "2026-10-25T03:00:00+01:00",
+        "2026-10-25T03:30:00+01:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/start-in-gap-daily",
+      "title": "DAILY from 02:30 written inside the gap (2026-03-29, 02:00→03:00): the first occurrence moves forward, later ones keep the written time",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-29T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=4",
+      "expected": [
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-30T02:30:00+02:00",
+        "2026-03-31T02:30:00+02:00",
+        "2026-04-01T02:30:00+02:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/start-in-gap-minutely-15",
+      "title": "Every 15 minutes from 02:30 written inside the gap (2026-03-29, 02:00→03:00): nothing comes before the moved first occurrence",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-29T02:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2026-03-29T04:15:00"
+      },
+      "expected": [
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-29T03:45:00+02:00",
+        "2026-03-29T04:00:00+02:00"
+      ],
+      "oracle": [
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-29T03:45:00+02:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:15:00+02:00",
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-29T03:45:00+02:00",
+        "2026-03-29T04:00:00+02:00"
+      ],
+      "divergence": "The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2026-03-29T03:00:00+02:00, 2026-03-29T03:15:00+02:00, at or before the start instant. Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-03-29T03:45:00+02:00 twice."
+    },
+    {
+      "id": "dst/europe-berlin/start-in-fold-earlier-daily",
+      "title": "DAILY from 02:30 inside the fold (2026-10-25, 03:00→02:00), the earlier instant",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-25T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=3",
+      "expected": [
+        "2026-10-25T02:30:00+02:00",
+        "2026-10-26T02:30:00+01:00",
+        "2026-10-27T02:30:00+01:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/start-in-fold-later-daily",
+      "title": "DAILY from 02:30 inside the fold (2026-10-25, 03:00→02:00), the later instant",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-25T02:30:00+01:00",
+      "rule": "FREQ=DAILY;COUNT=3",
+      "expected": [
+        "2026-10-25T02:30:00+01:00",
+        "2026-10-26T02:30:00+01:00",
+        "2026-10-27T02:30:00+01:00"
+      ],
+      "oracle": [
+        "2026-10-25T02:30:00+02:00",
+        "2026-10-26T02:30:00+01:00",
+        "2026-10-27T02:30:00+01:00"
+      ],
+      "divergence": "DTSTART is the second of the two 02:30s, which the rule's wall clock never gives (it takes the first). The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2026-10-25T02:30:00+02:00, at or before the start instant."
+    },
+    {
+      "id": "dst/europe-berlin/start-in-fold-later-hourly",
+      "title": "HOURLY from the later 02:30 of the fold (2026-10-25, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-25T02:30:00+01:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2026-10-25T05:00:00"
+      },
+      "expected": [
+        "2026-10-25T02:30:00+01:00",
+        "2026-10-25T03:30:00+01:00",
+        "2026-10-25T04:30:00+01:00"
+      ],
+      "oracle": [
+        "2026-10-25T02:30:00+02:00",
+        "2026-10-25T03:30:00+01:00",
+        "2026-10-25T04:30:00+01:00"
+      ],
+      "divergence": "DTSTART is the second of the two 02:30s, which the rule's wall clock never gives (it takes the first). The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2026-10-25T02:30:00+02:00, at or before the start instant."
+    },
+    {
+      "id": "dst/europe-berlin/count-gap-duplicate",
+      "title": "COUNT=5 every 60 minutes across the gap (2026-03-29, 02:00→03:00): a moved time lands on a real one and counts once",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-29T00:00:00",
+      "rule": "FREQ=HOURLY;COUNT=5",
+      "expected": [
+        "2026-03-29T00:00:00+01:00",
+        "2026-03-29T01:00:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T04:00:00+02:00",
+        "2026-03-29T05:00:00+02:00"
+      ],
+      "oracle": [
+        "2026-03-29T00:00:00+01:00",
+        "2026-03-29T01:00:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T04:00:00+02:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-03-29T03:00:00+02:00 twice."
+    },
+    {
+      "id": "dst/europe-berlin/count-reordered-gap",
+      "title": "COUNT=3 every 45 minutes across the gap (2026-03-29, 02:00→03:00): COUNT takes the earliest starts, not the first wall times",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-29T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45;COUNT=3",
+      "expected": [
+        "2026-03-29T01:15:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:30:00+02:00"
+      ],
+      "oracle": [
+        "2026-03-29T01:15:00+01:00",
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:45:00+02:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil counts them in wall-time order, so it gives 2026-03-29T03:45:00+02:00 where the earliest are 2026-03-29T03:30:00+02:00."
+    },
+    {
+      "id": "dst/europe-berlin/until-at-fold",
+      "title": "DAILY at 02:30 until exactly the fold's first 02:30 (2026-10-25, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-22T02:30:00",
+      "rule": "FREQ=DAILY;UNTIL=20261025T003000Z",
+      "expected": [
+        "2026-10-22T02:30:00+02:00",
+        "2026-10-23T02:30:00+02:00",
+        "2026-10-24T02:30:00+02:00",
+        "2026-10-25T02:30:00+02:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/until-inside-fold",
+      "title": "HOURLY until the second 02:00 of the fold (2026-10-25, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-10-25T00:00:00",
+      "rule": "FREQ=HOURLY;UNTIL=20261025T010000Z",
+      "expected": [
+        "2026-10-25T00:00:00+02:00",
+        "2026-10-25T01:00:00+02:00",
+        "2026-10-25T02:00:00+02:00"
+      ]
+    },
+    {
+      "id": "dst/europe-berlin/start-after-gap-daily-byhour",
+      "title": "DAILY;BYHOUR=2;BYMINUTE=30 from 03:00 on the gap day (2026-03-29, 02:00→03:00): 02:30 moves to 03:30, after the start",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Europe/Berlin",
+      "start": "2026-03-29T03:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=2;BYMINUTE=30;COUNT=3",
+      "expected": [
+        "2026-03-29T03:00:00+02:00",
+        "2026-03-29T03:30:00+02:00",
+        "2026-03-30T02:30:00+02:00"
+      ],
+      "oracle": [
+        "2026-03-30T02:30:00+02:00",
+        "2026-03-31T02:30:00+02:00",
+        "2026-04-01T02:30:00+02:00"
+      ],
+      "divergence": "DTSTART isn't a date the rule produces. The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). Rule dates are compared with the start by instant, not wall time, as for a fold: a wall time before DTSTART's that a gap moves past the start instant is an occurrence. python-dateutil compares wall times, so it leaves out 2026-03-29T03:30:00+02:00.",
+      "secondOracle": ["2026-03-30T02:30:00", "2026-03-31T02:30:00", "2026-04-01T02:30:00"],
+      "secondOracleNote": "ical.js leaves out DTSTART when the rule doesn't produce it or UNTIL is earlier, as python-dateutil does."
+    },
+    {
+      "id": "dst/america-new-york/daily-in-gap",
+      "title": "DAILY at 02:30, which the gap (2025-03-09, 02:00→03:00) moves forward",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-03-07T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2025-03-07T02:30:00-05:00",
+        "2025-03-08T02:30:00-05:00",
+        "2025-03-09T03:30:00-04:00",
+        "2025-03-10T02:30:00-04:00",
+        "2025-03-11T02:30:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/daily-in-fold",
+      "title": "DAILY at 01:30, which the fold (2025-11-02, 02:00→01:00) repeats; the first instant counts",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-10-31T01:30:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2025-10-31T01:30:00-04:00",
+        "2025-11-01T01:30:00-04:00",
+        "2025-11-02T01:30:00-04:00",
+        "2025-11-03T01:30:00-05:00",
+        "2025-11-04T01:30:00-05:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/weekly-across-gap",
+      "title": "WEEKLY at 02:30 across the gap (2025-03-09, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-02-23T02:30:00",
+      "rule": "FREQ=WEEKLY;COUNT=4",
+      "expected": [
+        "2025-02-23T02:30:00-05:00",
+        "2025-03-02T02:30:00-05:00",
+        "2025-03-09T03:30:00-04:00",
+        "2025-03-16T02:30:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/weekly-across-fold",
+      "title": "WEEKLY on two days at 01:30 across the fold (2025-11-02, 02:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-10-25T01:30:00",
+      "rule": "FREQ=WEEKLY;BYDAY=SA,SU;COUNT=6",
+      "expected": [
+        "2025-10-25T01:30:00-04:00",
+        "2025-10-26T01:30:00-04:00",
+        "2025-11-01T01:30:00-04:00",
+        "2025-11-02T01:30:00-04:00",
+        "2025-11-08T01:30:00-05:00",
+        "2025-11-09T01:30:00-05:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/monthly-across-gap",
+      "title": "MONTHLY on the gap's day (2SU) at 02:30, across the gap (2025-03-09, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-01-12T02:30:00",
+      "rule": "FREQ=MONTHLY;BYDAY=2SU;COUNT=4",
+      "expected": [
+        "2025-01-12T02:30:00-05:00",
+        "2025-02-09T02:30:00-05:00",
+        "2025-03-09T03:30:00-04:00",
+        "2025-04-13T02:30:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/monthly-across-fold",
+      "title": "MONTHLY on the fold's day (1SU) at 01:30, across the fold (2025-11-02, 02:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-09-07T01:30:00",
+      "rule": "FREQ=MONTHLY;BYDAY=1SU;COUNT=4",
+      "expected": [
+        "2025-09-07T01:30:00-04:00",
+        "2025-10-05T01:30:00-04:00",
+        "2025-11-02T01:30:00-04:00",
+        "2025-12-07T01:30:00-05:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/hourly-across-gap",
+      "title": "HOURLY across the gap (2025-03-09, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-03-09T00:00:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2025-03-09T05:00:00"
+      },
+      "expected": [
+        "2025-03-09T00:00:00-05:00",
+        "2025-03-09T01:00:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T04:00:00-04:00"
+      ],
+      "oracle": [
+        "2025-03-09T00:00:00-05:00",
+        "2025-03-09T01:00:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T04:00:00-04:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2025-03-09T03:00:00-04:00 twice."
+    },
+    {
+      "id": "dst/america-new-york/hourly-across-fold",
+      "title": "HOURLY across the fold (2025-11-02, 02:00→01:00); the wall clock skips the repeated hour's second instants",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-11-01T23:00:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2025-11-02T04:00:00"
+      },
+      "expected": [
+        "2025-11-01T23:00:00-04:00",
+        "2025-11-02T00:00:00-04:00",
+        "2025-11-02T01:00:00-04:00",
+        "2025-11-02T02:00:00-05:00",
+        "2025-11-02T03:00:00-05:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/minutely-15-across-gap",
+      "title": "Every 15 minutes across the gap (2025-03-09, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-03-09T01:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2025-03-09T03:45:00"
+      },
+      "expected": [
+        "2025-03-09T01:30:00-05:00",
+        "2025-03-09T01:45:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:15:00-04:00",
+        "2025-03-09T03:30:00-04:00"
+      ],
+      "oracle": [
+        "2025-03-09T01:30:00-05:00",
+        "2025-03-09T01:45:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:15:00-04:00",
+        "2025-03-09T03:30:00-04:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:15:00-04:00",
+        "2025-03-09T03:30:00-04:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2025-03-09T03:00:00-04:00, 2025-03-09T03:15:00-04:00, 2025-03-09T03:30:00-04:00 twice."
+    },
+    {
+      "id": "dst/america-new-york/minutely-45-across-gap",
+      "title": "Every 45 minutes across the gap (2025-03-09, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-03-09T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2025-03-09T04:30:00"
+      },
+      "expected": [
+        "2025-03-09T01:15:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:30:00-04:00",
+        "2025-03-09T03:45:00-04:00",
+        "2025-03-09T04:15:00-04:00"
+      ],
+      "oracle": [
+        "2025-03-09T01:15:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:45:00-04:00",
+        "2025-03-09T03:30:00-04:00",
+        "2025-03-09T04:15:00-04:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives them in wall-time order, not by instant."
+    },
+    {
+      "id": "dst/america-new-york/minutely-15-across-fold",
+      "title": "Every 15 minutes across the fold (2025-11-02, 02:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-11-02T00:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2025-11-02T02:30:00"
+      },
+      "expected": [
+        "2025-11-02T00:30:00-04:00",
+        "2025-11-02T00:45:00-04:00",
+        "2025-11-02T01:00:00-04:00",
+        "2025-11-02T01:15:00-04:00",
+        "2025-11-02T01:30:00-04:00",
+        "2025-11-02T01:45:00-04:00",
+        "2025-11-02T02:00:00-05:00",
+        "2025-11-02T02:15:00-05:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/minutely-45-across-fold",
+      "title": "Every 45 minutes across the fold (2025-11-02, 02:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-11-02T00:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2025-11-02T03:30:00"
+      },
+      "expected": [
+        "2025-11-02T00:15:00-04:00",
+        "2025-11-02T01:00:00-04:00",
+        "2025-11-02T01:45:00-04:00",
+        "2025-11-02T02:30:00-05:00",
+        "2025-11-02T03:15:00-05:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/byhour-byminute-on-gap-day",
+      "title": "DAILY;BYHOUR=1,2,3;BYMINUTE=0,30 on the day before and the day of the gap (2025-03-09, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-03-08T01:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=1,2,3;BYMINUTE=0,30",
+      "window": {
+        "before": "2025-03-10T00:00:00"
+      },
+      "expected": [
+        "2025-03-08T01:00:00-05:00",
+        "2025-03-08T01:30:00-05:00",
+        "2025-03-08T02:00:00-05:00",
+        "2025-03-08T02:30:00-05:00",
+        "2025-03-08T03:00:00-05:00",
+        "2025-03-08T03:30:00-05:00",
+        "2025-03-09T01:00:00-05:00",
+        "2025-03-09T01:30:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:30:00-04:00"
+      ],
+      "oracle": [
+        "2025-03-08T01:00:00-05:00",
+        "2025-03-08T01:30:00-05:00",
+        "2025-03-08T02:00:00-05:00",
+        "2025-03-08T02:30:00-05:00",
+        "2025-03-08T03:00:00-05:00",
+        "2025-03-08T03:30:00-05:00",
+        "2025-03-09T01:00:00-05:00",
+        "2025-03-09T01:30:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:30:00-04:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:30:00-04:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2025-03-09T03:00:00-04:00, 2025-03-09T03:30:00-04:00 twice."
+    },
+    {
+      "id": "dst/america-new-york/byhour-byminute-on-fold-day",
+      "title": "DAILY;BYHOUR=0,1,2;BYMINUTE=0,30 on the day before and the day of the fold (2025-11-02, 02:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-11-01T00:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=0,1,2;BYMINUTE=0,30",
+      "window": {
+        "before": "2025-11-03T00:00:00"
+      },
+      "expected": [
+        "2025-11-01T00:00:00-04:00",
+        "2025-11-01T00:30:00-04:00",
+        "2025-11-01T01:00:00-04:00",
+        "2025-11-01T01:30:00-04:00",
+        "2025-11-01T02:00:00-04:00",
+        "2025-11-01T02:30:00-04:00",
+        "2025-11-02T00:00:00-04:00",
+        "2025-11-02T00:30:00-04:00",
+        "2025-11-02T01:00:00-04:00",
+        "2025-11-02T01:30:00-04:00",
+        "2025-11-02T02:00:00-05:00",
+        "2025-11-02T02:30:00-05:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/start-in-gap-daily",
+      "title": "DAILY from 02:30 written inside the gap (2025-03-09, 02:00→03:00): the first occurrence moves forward, later ones keep the written time",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-03-09T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=4",
+      "expected": [
+        "2025-03-09T03:30:00-04:00",
+        "2025-03-10T02:30:00-04:00",
+        "2025-03-11T02:30:00-04:00",
+        "2025-03-12T02:30:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/start-in-gap-minutely-15",
+      "title": "Every 15 minutes from 02:30 written inside the gap (2025-03-09, 02:00→03:00): nothing comes before the moved first occurrence",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-03-09T02:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2025-03-09T04:15:00"
+      },
+      "expected": [
+        "2025-03-09T03:30:00-04:00",
+        "2025-03-09T03:45:00-04:00",
+        "2025-03-09T04:00:00-04:00"
+      ],
+      "oracle": [
+        "2025-03-09T03:30:00-04:00",
+        "2025-03-09T03:45:00-04:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:15:00-04:00",
+        "2025-03-09T03:30:00-04:00",
+        "2025-03-09T03:45:00-04:00",
+        "2025-03-09T04:00:00-04:00"
+      ],
+      "divergence": "The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2025-03-09T03:00:00-04:00, 2025-03-09T03:15:00-04:00, at or before the start instant. Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2025-03-09T03:45:00-04:00 twice."
+    },
+    {
+      "id": "dst/america-new-york/start-in-fold-earlier-daily",
+      "title": "DAILY from 01:30 inside the fold (2025-11-02, 02:00→01:00), the earlier instant",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-11-02T01:30:00",
+      "rule": "FREQ=DAILY;COUNT=3",
+      "expected": [
+        "2025-11-02T01:30:00-04:00",
+        "2025-11-03T01:30:00-05:00",
+        "2025-11-04T01:30:00-05:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/start-in-fold-later-daily",
+      "title": "DAILY from 01:30 inside the fold (2025-11-02, 02:00→01:00), the later instant",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-11-02T01:30:00-05:00",
+      "rule": "FREQ=DAILY;COUNT=3",
+      "expected": [
+        "2025-11-02T01:30:00-05:00",
+        "2025-11-03T01:30:00-05:00",
+        "2025-11-04T01:30:00-05:00"
+      ],
+      "oracle": [
+        "2025-11-02T01:30:00-04:00",
+        "2025-11-03T01:30:00-05:00",
+        "2025-11-04T01:30:00-05:00"
+      ],
+      "divergence": "DTSTART is the second of the two 01:30s, which the rule's wall clock never gives (it takes the first). The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2025-11-02T01:30:00-04:00, at or before the start instant."
+    },
+    {
+      "id": "dst/america-new-york/start-in-fold-later-hourly",
+      "title": "HOURLY from the later 01:30 of the fold (2025-11-02, 02:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-11-02T01:30:00-05:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2025-11-02T04:00:00"
+      },
+      "expected": [
+        "2025-11-02T01:30:00-05:00",
+        "2025-11-02T02:30:00-05:00",
+        "2025-11-02T03:30:00-05:00"
+      ],
+      "oracle": [
+        "2025-11-02T01:30:00-04:00",
+        "2025-11-02T02:30:00-05:00",
+        "2025-11-02T03:30:00-05:00"
+      ],
+      "divergence": "DTSTART is the second of the two 01:30s, which the rule's wall clock never gives (it takes the first). The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2025-11-02T01:30:00-04:00, at or before the start instant."
+    },
+    {
+      "id": "dst/america-new-york/count-gap-duplicate",
+      "title": "COUNT=5 every 60 minutes across the gap (2025-03-09, 02:00→03:00): a moved time lands on a real one and counts once",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-03-09T00:00:00",
+      "rule": "FREQ=HOURLY;COUNT=5",
+      "expected": [
+        "2025-03-09T00:00:00-05:00",
+        "2025-03-09T01:00:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T04:00:00-04:00",
+        "2025-03-09T05:00:00-04:00"
+      ],
+      "oracle": [
+        "2025-03-09T00:00:00-05:00",
+        "2025-03-09T01:00:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T04:00:00-04:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2025-03-09T03:00:00-04:00 twice."
+    },
+    {
+      "id": "dst/america-new-york/count-reordered-gap",
+      "title": "COUNT=3 every 45 minutes across the gap (2025-03-09, 02:00→03:00): COUNT takes the earliest starts, not the first wall times",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-03-09T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45;COUNT=3",
+      "expected": [
+        "2025-03-09T01:15:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:30:00-04:00"
+      ],
+      "oracle": [
+        "2025-03-09T01:15:00-05:00",
+        "2025-03-09T03:00:00-04:00",
+        "2025-03-09T03:45:00-04:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil counts them in wall-time order, so it gives 2025-03-09T03:45:00-04:00 where the earliest are 2025-03-09T03:30:00-04:00."
+    },
+    {
+      "id": "dst/america-new-york/until-at-fold",
+      "title": "DAILY at 01:30 until exactly the fold's first 01:30 (2025-11-02, 02:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-10-30T01:30:00",
+      "rule": "FREQ=DAILY;UNTIL=20251102T053000Z",
+      "expected": [
+        "2025-10-30T01:30:00-04:00",
+        "2025-10-31T01:30:00-04:00",
+        "2025-11-01T01:30:00-04:00",
+        "2025-11-02T01:30:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-new-york/until-inside-fold",
+      "title": "HOURLY until the second 01:00 of the fold (2025-11-02, 02:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/New_York",
+      "start": "2025-11-01T23:00:00",
+      "rule": "FREQ=HOURLY;UNTIL=20251102T060000Z",
+      "expected": [
+        "2025-11-01T23:00:00-04:00",
+        "2025-11-02T00:00:00-04:00",
+        "2025-11-02T01:00:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/daily-in-gap",
+      "title": "DAILY at 02:15, which the gap (2026-10-04, 02:00→02:30) moves forward",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-02T02:15:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2026-10-02T02:15:00+10:30",
+        "2026-10-03T02:15:00+10:30",
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-05T02:15:00+11:00",
+        "2026-10-06T02:15:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/daily-in-fold",
+      "title": "DAILY at 01:45, which the fold (2026-04-05, 02:00→01:30) repeats; the first instant counts",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-04-03T01:45:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2026-04-03T01:45:00+11:00",
+        "2026-04-04T01:45:00+11:00",
+        "2026-04-05T01:45:00+11:00",
+        "2026-04-06T01:45:00+10:30",
+        "2026-04-07T01:45:00+10:30"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/weekly-across-gap",
+      "title": "WEEKLY at 02:15 across the gap (2026-10-04, 02:00→02:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-09-20T02:15:00",
+      "rule": "FREQ=WEEKLY;COUNT=4",
+      "expected": [
+        "2026-09-20T02:15:00+10:30",
+        "2026-09-27T02:15:00+10:30",
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-11T02:15:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/weekly-across-fold",
+      "title": "WEEKLY on two days at 01:45 across the fold (2026-04-05, 02:00→01:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-03-28T01:45:00",
+      "rule": "FREQ=WEEKLY;BYDAY=SA,SU;COUNT=6",
+      "expected": [
+        "2026-03-28T01:45:00+11:00",
+        "2026-03-29T01:45:00+11:00",
+        "2026-04-04T01:45:00+11:00",
+        "2026-04-05T01:45:00+11:00",
+        "2026-04-11T01:45:00+10:30",
+        "2026-04-12T01:45:00+10:30"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/monthly-across-gap",
+      "title": "MONTHLY on the gap's day (1SU) at 02:15, across the gap (2026-10-04, 02:00→02:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-08-02T02:15:00",
+      "rule": "FREQ=MONTHLY;BYDAY=1SU;COUNT=4",
+      "expected": [
+        "2026-08-02T02:15:00+10:30",
+        "2026-09-06T02:15:00+10:30",
+        "2026-10-04T02:45:00+11:00",
+        "2026-11-01T02:15:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/monthly-across-fold",
+      "title": "MONTHLY on the fold's day (1SU) at 01:45, across the fold (2026-04-05, 02:00→01:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-02-01T01:45:00",
+      "rule": "FREQ=MONTHLY;BYDAY=1SU;COUNT=4",
+      "expected": [
+        "2026-02-01T01:45:00+11:00",
+        "2026-03-01T01:45:00+11:00",
+        "2026-04-05T01:45:00+11:00",
+        "2026-05-03T01:45:00+10:30"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/hourly-across-gap",
+      "title": "HOURLY across the gap (2026-10-04, 02:00→02:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-04T00:00:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2026-10-04T04:30:00"
+      },
+      "expected": [
+        "2026-10-04T00:00:00+10:30",
+        "2026-10-04T01:00:00+10:30",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T04:00:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/hourly-across-fold",
+      "title": "HOURLY across the fold (2026-04-05, 02:00→01:30); the wall clock skips the repeated hour's second instants",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-04-04T23:30:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2026-04-05T04:00:00"
+      },
+      "expected": [
+        "2026-04-04T23:30:00+11:00",
+        "2026-04-05T00:30:00+11:00",
+        "2026-04-05T01:30:00+11:00",
+        "2026-04-05T02:30:00+10:30",
+        "2026-04-05T03:30:00+10:30"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/minutely-15-across-gap",
+      "title": "Every 15 minutes across the gap (2026-10-04, 02:00→02:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-04T01:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2026-10-04T03:15:00"
+      },
+      "expected": [
+        "2026-10-04T01:30:00+10:30",
+        "2026-10-04T01:45:00+10:30",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-04T03:00:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T01:30:00+10:30",
+        "2026-10-04T01:45:00+10:30",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-04T03:00:00+11:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-10-04T02:30:00+11:00, 2026-10-04T02:45:00+11:00 twice."
+    },
+    {
+      "id": "dst/australia-lord-howe/minutely-45-across-gap",
+      "title": "Every 45 minutes across the gap (2026-10-04, 02:00→02:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-04T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2026-10-04T04:00:00"
+      },
+      "expected": [
+        "2026-10-04T01:15:00+10:30",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/minutely-20-across-gap",
+      "title": "Every 20 minutes across the gap (2026-10-04, 02:00→02:30): a moved time lands after a real later one",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-04T01:50:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=20",
+      "window": {
+        "before": "2026-10-04T03:20:00"
+      },
+      "expected": [
+        "2026-10-04T01:50:00+10:30",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:40:00+11:00",
+        "2026-10-04T02:50:00+11:00",
+        "2026-10-04T03:10:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T01:50:00+10:30",
+        "2026-10-04T02:40:00+11:00",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:50:00+11:00",
+        "2026-10-04T03:10:00+11:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives them in wall-time order, not by instant."
+    },
+    {
+      "id": "dst/australia-lord-howe/minutely-15-across-fold",
+      "title": "Every 15 minutes across the fold (2026-04-05, 02:00→01:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-04-05T01:00:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2026-04-05T02:30:00"
+      },
+      "expected": [
+        "2026-04-05T01:00:00+11:00",
+        "2026-04-05T01:15:00+11:00",
+        "2026-04-05T01:30:00+11:00",
+        "2026-04-05T01:45:00+11:00",
+        "2026-04-05T02:00:00+10:30",
+        "2026-04-05T02:15:00+10:30"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/minutely-45-across-fold",
+      "title": "Every 45 minutes across the fold (2026-04-05, 02:00→01:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-04-05T00:45:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2026-04-05T03:30:00"
+      },
+      "expected": [
+        "2026-04-05T00:45:00+11:00",
+        "2026-04-05T01:30:00+11:00",
+        "2026-04-05T02:15:00+10:30",
+        "2026-04-05T03:00:00+10:30"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/byhour-byminute-on-gap-day",
+      "title": "DAILY;BYHOUR=1,2,3;BYMINUTE=0,30 on the day before and the day of the gap (2026-10-04, 02:00→02:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-03T01:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=1,2,3;BYMINUTE=0,30",
+      "window": {
+        "before": "2026-10-05T00:00:00"
+      },
+      "expected": [
+        "2026-10-03T01:00:00+10:30",
+        "2026-10-03T01:30:00+10:30",
+        "2026-10-03T02:00:00+10:30",
+        "2026-10-03T02:30:00+10:30",
+        "2026-10-03T03:00:00+10:30",
+        "2026-10-03T03:30:00+10:30",
+        "2026-10-04T01:00:00+10:30",
+        "2026-10-04T01:30:00+10:30",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-03T01:00:00+10:30",
+        "2026-10-03T01:30:00+10:30",
+        "2026-10-03T02:00:00+10:30",
+        "2026-10-03T02:30:00+10:30",
+        "2026-10-03T03:00:00+10:30",
+        "2026-10-03T03:30:00+10:30",
+        "2026-10-04T01:00:00+10:30",
+        "2026-10-04T01:30:00+10:30",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-10-04T02:30:00+11:00 twice."
+    },
+    {
+      "id": "dst/australia-lord-howe/byhour-byminute-on-fold-day",
+      "title": "DAILY;BYHOUR=0,1,2;BYMINUTE=0,30 on the day before and the day of the fold (2026-04-05, 02:00→01:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-04-04T00:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=0,1,2;BYMINUTE=0,30",
+      "window": {
+        "before": "2026-04-06T00:00:00"
+      },
+      "expected": [
+        "2026-04-04T00:00:00+11:00",
+        "2026-04-04T00:30:00+11:00",
+        "2026-04-04T01:00:00+11:00",
+        "2026-04-04T01:30:00+11:00",
+        "2026-04-04T02:00:00+11:00",
+        "2026-04-04T02:30:00+11:00",
+        "2026-04-05T00:00:00+11:00",
+        "2026-04-05T00:30:00+11:00",
+        "2026-04-05T01:00:00+11:00",
+        "2026-04-05T01:30:00+11:00",
+        "2026-04-05T02:00:00+10:30",
+        "2026-04-05T02:30:00+10:30"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/start-in-gap-daily",
+      "title": "DAILY from 02:15 written inside the gap (2026-10-04, 02:00→02:30): the first occurrence moves forward, later ones keep the written time",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-04T02:15:00",
+      "rule": "FREQ=DAILY;COUNT=4",
+      "expected": [
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-05T02:15:00+11:00",
+        "2026-10-06T02:15:00+11:00",
+        "2026-10-07T02:15:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/start-in-gap-minutely-15",
+      "title": "Every 15 minutes from 02:15 written inside the gap (2026-10-04, 02:00→02:30): nothing comes before the moved first occurrence",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-04T02:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2026-10-04T03:45:00"
+      },
+      "expected": [
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:15:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:15:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ],
+      "divergence": "The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2026-10-04T02:30:00+11:00, at or before the start instant."
+    },
+    {
+      "id": "dst/australia-lord-howe/start-in-fold-earlier-daily",
+      "title": "DAILY from 01:45 inside the fold (2026-04-05, 02:00→01:30), the earlier instant",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-04-05T01:45:00",
+      "rule": "FREQ=DAILY;COUNT=3",
+      "expected": [
+        "2026-04-05T01:45:00+11:00",
+        "2026-04-06T01:45:00+10:30",
+        "2026-04-07T01:45:00+10:30"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/start-in-fold-later-daily",
+      "title": "DAILY from 01:45 inside the fold (2026-04-05, 02:00→01:30), the later instant",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-04-05T01:45:00+10:30",
+      "rule": "FREQ=DAILY;COUNT=3",
+      "expected": [
+        "2026-04-05T01:45:00+10:30",
+        "2026-04-06T01:45:00+10:30",
+        "2026-04-07T01:45:00+10:30"
+      ],
+      "oracle": [
+        "2026-04-05T01:45:00+11:00",
+        "2026-04-06T01:45:00+10:30",
+        "2026-04-07T01:45:00+10:30"
+      ],
+      "divergence": "DTSTART is the second of the two 01:45s, which the rule's wall clock never gives (it takes the first). The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2026-04-05T01:45:00+11:00, at or before the start instant."
+    },
+    {
+      "id": "dst/australia-lord-howe/start-in-fold-later-hourly",
+      "title": "HOURLY from the later 01:45 of the fold (2026-04-05, 02:00→01:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-04-05T01:45:00+10:30",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2026-04-05T04:00:00"
+      },
+      "expected": [
+        "2026-04-05T01:45:00+10:30",
+        "2026-04-05T02:45:00+10:30",
+        "2026-04-05T03:45:00+10:30"
+      ],
+      "oracle": [
+        "2026-04-05T01:45:00+11:00",
+        "2026-04-05T02:45:00+10:30",
+        "2026-04-05T03:45:00+10:30"
+      ],
+      "divergence": "DTSTART is the second of the two 01:45s, which the rule's wall clock never gives (it takes the first). The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2026-04-05T01:45:00+11:00, at or before the start instant."
+    },
+    {
+      "id": "dst/australia-lord-howe/count-gap-duplicate",
+      "title": "COUNT=5 every 30 minutes across the gap (2026-10-04, 02:00→02:30): a moved time lands on a real one and counts once",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-04T01:00:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=30;COUNT=5",
+      "expected": [
+        "2026-10-04T01:00:00+10:30",
+        "2026-10-04T01:30:00+10:30",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T01:00:00+10:30",
+        "2026-10-04T01:30:00+10:30",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T03:00:00+11:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-10-04T02:30:00+11:00 twice."
+    },
+    {
+      "id": "dst/australia-lord-howe/count-reordered-gap",
+      "title": "COUNT=2 every 20 minutes across the gap (2026-10-04, 02:00→02:30): COUNT takes the earliest starts, not the first wall times",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-04T01:50:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=20;COUNT=2",
+      "expected": ["2026-10-04T01:50:00+10:30", "2026-10-04T02:30:00+11:00"],
+      "oracle": ["2026-10-04T01:50:00+10:30", "2026-10-04T02:40:00+11:00"],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil counts them in wall-time order, so it gives 2026-10-04T02:40:00+11:00 where the earliest are 2026-10-04T02:30:00+11:00."
+    },
+    {
+      "id": "dst/australia-lord-howe/until-at-fold",
+      "title": "DAILY at 01:45 until exactly the fold's first 01:45 (2026-04-05, 02:00→01:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-04-02T01:45:00",
+      "rule": "FREQ=DAILY;UNTIL=20260404T144500Z",
+      "expected": [
+        "2026-04-02T01:45:00+11:00",
+        "2026-04-03T01:45:00+11:00",
+        "2026-04-04T01:45:00+11:00",
+        "2026-04-05T01:45:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/until-inside-fold",
+      "title": "HOURLY until the second 01:30 of the fold (2026-04-05, 02:00→01:30)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-04-04T23:30:00",
+      "rule": "FREQ=HOURLY;UNTIL=20260404T150000Z",
+      "expected": [
+        "2026-04-04T23:30:00+11:00",
+        "2026-04-05T00:30:00+11:00",
+        "2026-04-05T01:30:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-lord-howe/start-at-gap-end-hourly-byminute",
+      "title": "HOURLY;BYMINUTE=15,18 from 02:30, the end of the gap (2001-10-28, 02:00→02:30): 02:15 and 02:18 move past the start",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2001-10-28T02:30:00",
+      "rule": "FREQ=HOURLY;BYMINUTE=15,18",
+      "window": {
+        "before": "2001-10-28T05:00:00"
+      },
+      "expected": [
+        "2001-10-28T02:30:00+11:00",
+        "2001-10-28T02:45:00+11:00",
+        "2001-10-28T02:48:00+11:00",
+        "2001-10-28T03:15:00+11:00",
+        "2001-10-28T03:18:00+11:00",
+        "2001-10-28T04:15:00+11:00",
+        "2001-10-28T04:18:00+11:00"
+      ],
+      "oracle": [
+        "2001-10-28T03:15:00+11:00",
+        "2001-10-28T03:18:00+11:00",
+        "2001-10-28T04:15:00+11:00",
+        "2001-10-28T04:18:00+11:00"
+      ],
+      "divergence": "DTSTART isn't a date the rule produces. The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). Rule dates are compared with the start by instant, not wall time, as for a fold: a wall time before DTSTART's that a gap moves past the start instant is an occurrence. python-dateutil compares wall times, so it leaves out 2001-10-28T02:45:00+11:00, 2001-10-28T02:48:00+11:00.",
+      "secondOracle": [
+        "2001-10-28T03:15:00",
+        "2001-10-28T03:18:00",
+        "2001-10-28T04:15:00",
+        "2001-10-28T04:18:00"
+      ],
+      "secondOracleNote": "ical.js leaves out DTSTART when the rule doesn't produce it or UNTIL is earlier, as python-dateutil does."
+    },
+    {
+      "id": "dst/australia-lord-howe/start-at-gap-end-daily-byminute",
+      "title": "DAILY;BYHOUR=2;BYMINUTE=15,30 from 02:30, the end of the gap (2026-10-04, 02:00→02:30): the start is a rule date and 02:15 moves past it",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Lord_Howe",
+      "start": "2026-10-04T02:30:00",
+      "rule": "FREQ=DAILY;BYHOUR=2;BYMINUTE=15,30;COUNT=5",
+      "expected": [
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-04T02:45:00+11:00",
+        "2026-10-05T02:15:00+11:00",
+        "2026-10-05T02:30:00+11:00",
+        "2026-10-06T02:15:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T02:30:00+11:00",
+        "2026-10-05T02:15:00+11:00",
+        "2026-10-05T02:30:00+11:00",
+        "2026-10-06T02:15:00+11:00",
+        "2026-10-06T02:30:00+11:00"
+      ],
+      "divergence": "Rule dates are compared with the start by instant, not wall time, as for a fold: a wall time before DTSTART's that a gap moves past the start instant is an occurrence. python-dateutil compares wall times, so it leaves out 2026-10-04T02:45:00+11:00."
+    },
+    {
+      "id": "dst/america-santiago/daily-in-gap",
+      "title": "DAILY at 00:30, which the gap (2027-09-05, 00:00→01:00) moves forward",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-09-03T00:30:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2027-09-03T00:30:00-04:00",
+        "2027-09-04T00:30:00-04:00",
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-06T00:30:00-03:00",
+        "2027-09-07T00:30:00-03:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/daily-in-fold",
+      "title": "DAILY at 23:30, which the fold (2027-04-03, 00:00→23:00) repeats; the first instant counts",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-04-01T23:30:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2027-04-01T23:30:00-03:00",
+        "2027-04-02T23:30:00-03:00",
+        "2027-04-03T23:30:00-03:00",
+        "2027-04-04T23:30:00-04:00",
+        "2027-04-05T23:30:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/weekly-across-gap",
+      "title": "WEEKLY at 00:30 across the gap (2027-09-05, 00:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-08-22T00:30:00",
+      "rule": "FREQ=WEEKLY;COUNT=4",
+      "expected": [
+        "2027-08-22T00:30:00-04:00",
+        "2027-08-29T00:30:00-04:00",
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-12T00:30:00-03:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/weekly-across-fold",
+      "title": "WEEKLY on two days at 23:30 across the fold (2027-04-03, 00:00→23:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-03-26T23:30:00",
+      "rule": "FREQ=WEEKLY;BYDAY=FR,SA;COUNT=6",
+      "expected": [
+        "2027-03-26T23:30:00-03:00",
+        "2027-03-27T23:30:00-03:00",
+        "2027-04-02T23:30:00-03:00",
+        "2027-04-03T23:30:00-03:00",
+        "2027-04-09T23:30:00-04:00",
+        "2027-04-10T23:30:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/monthly-across-gap",
+      "title": "MONTHLY on the gap's day (1SU) at 00:30, across the gap (2027-09-05, 00:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-07-04T00:30:00",
+      "rule": "FREQ=MONTHLY;BYDAY=1SU;COUNT=4",
+      "expected": [
+        "2027-07-04T00:30:00-04:00",
+        "2027-08-01T00:30:00-04:00",
+        "2027-09-05T01:30:00-03:00",
+        "2027-10-03T00:30:00-03:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/monthly-across-fold",
+      "title": "MONTHLY on the fold's day (1SA) at 23:30, across the fold (2027-04-03, 00:00→23:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-02-06T23:30:00",
+      "rule": "FREQ=MONTHLY;BYDAY=1SA;COUNT=4",
+      "expected": [
+        "2027-02-06T23:30:00-03:00",
+        "2027-03-06T23:30:00-03:00",
+        "2027-04-03T23:30:00-03:00",
+        "2027-05-01T23:30:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/hourly-across-gap",
+      "title": "HOURLY across the gap (2027-09-05, 00:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-09-04T22:00:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2027-09-05T03:00:00"
+      },
+      "expected": [
+        "2027-09-04T22:00:00-04:00",
+        "2027-09-04T23:00:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T02:00:00-03:00"
+      ],
+      "oracle": [
+        "2027-09-04T22:00:00-04:00",
+        "2027-09-04T23:00:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T02:00:00-03:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2027-09-05T01:00:00-03:00 twice."
+    },
+    {
+      "id": "dst/america-santiago/hourly-across-fold",
+      "title": "HOURLY across the fold (2027-04-03, 00:00→23:00); the wall clock skips the repeated hour's second instants",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-04-03T21:00:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2027-04-04T02:00:00"
+      },
+      "expected": [
+        "2027-04-03T21:00:00-03:00",
+        "2027-04-03T22:00:00-03:00",
+        "2027-04-03T23:00:00-03:00",
+        "2027-04-04T00:00:00-04:00",
+        "2027-04-04T01:00:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/minutely-15-across-gap",
+      "title": "Every 15 minutes across the gap (2027-09-05, 00:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-09-04T23:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2027-09-05T01:45:00"
+      },
+      "expected": [
+        "2027-09-04T23:30:00-04:00",
+        "2027-09-04T23:45:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:15:00-03:00",
+        "2027-09-05T01:30:00-03:00"
+      ],
+      "oracle": [
+        "2027-09-04T23:30:00-04:00",
+        "2027-09-04T23:45:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:15:00-03:00",
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:15:00-03:00",
+        "2027-09-05T01:30:00-03:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2027-09-05T01:00:00-03:00, 2027-09-05T01:15:00-03:00, 2027-09-05T01:30:00-03:00 twice."
+    },
+    {
+      "id": "dst/america-santiago/minutely-45-across-gap",
+      "title": "Every 45 minutes across the gap (2027-09-05, 00:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-09-04T23:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2027-09-05T02:30:00"
+      },
+      "expected": [
+        "2027-09-04T23:15:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-05T01:45:00-03:00",
+        "2027-09-05T02:15:00-03:00"
+      ],
+      "oracle": [
+        "2027-09-04T23:15:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:45:00-03:00",
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-05T02:15:00-03:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives them in wall-time order, not by instant."
+    },
+    {
+      "id": "dst/america-santiago/minutely-15-across-fold",
+      "title": "Every 15 minutes across the fold (2027-04-03, 00:00→23:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-04-03T22:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2027-04-04T00:30:00"
+      },
+      "expected": [
+        "2027-04-03T22:30:00-03:00",
+        "2027-04-03T22:45:00-03:00",
+        "2027-04-03T23:00:00-03:00",
+        "2027-04-03T23:15:00-03:00",
+        "2027-04-03T23:30:00-03:00",
+        "2027-04-03T23:45:00-03:00",
+        "2027-04-04T00:00:00-04:00",
+        "2027-04-04T00:15:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/minutely-45-across-fold",
+      "title": "Every 45 minutes across the fold (2027-04-03, 00:00→23:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-04-03T22:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2027-04-04T01:30:00"
+      },
+      "expected": [
+        "2027-04-03T22:15:00-03:00",
+        "2027-04-03T23:00:00-03:00",
+        "2027-04-03T23:45:00-03:00",
+        "2027-04-04T00:30:00-04:00",
+        "2027-04-04T01:15:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/byhour-byminute-on-gap-day",
+      "title": "DAILY;BYHOUR=0,1,23;BYMINUTE=0,30 on the day before and the day of the gap (2027-09-05, 00:00→01:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-09-04T00:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=0,1,23;BYMINUTE=0,30",
+      "window": {
+        "before": "2027-09-06T00:00:00"
+      },
+      "expected": [
+        "2027-09-04T00:00:00-04:00",
+        "2027-09-04T00:30:00-04:00",
+        "2027-09-04T01:00:00-04:00",
+        "2027-09-04T01:30:00-04:00",
+        "2027-09-04T23:00:00-04:00",
+        "2027-09-04T23:30:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-05T23:00:00-03:00",
+        "2027-09-05T23:30:00-03:00"
+      ],
+      "oracle": [
+        "2027-09-04T00:00:00-04:00",
+        "2027-09-04T00:30:00-04:00",
+        "2027-09-04T01:00:00-04:00",
+        "2027-09-04T01:30:00-04:00",
+        "2027-09-04T23:00:00-04:00",
+        "2027-09-04T23:30:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-05T23:00:00-03:00",
+        "2027-09-05T23:30:00-03:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2027-09-05T01:00:00-03:00, 2027-09-05T01:30:00-03:00 twice."
+    },
+    {
+      "id": "dst/america-santiago/byhour-byminute-on-fold-day",
+      "title": "DAILY;BYHOUR=0,22,23;BYMINUTE=0,30 on the day before and the day of the fold (2027-04-03, 00:00→23:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-04-02T00:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=0,22,23;BYMINUTE=0,30",
+      "window": {
+        "before": "2027-04-04T00:00:00"
+      },
+      "expected": [
+        "2027-04-02T00:00:00-03:00",
+        "2027-04-02T00:30:00-03:00",
+        "2027-04-02T22:00:00-03:00",
+        "2027-04-02T22:30:00-03:00",
+        "2027-04-02T23:00:00-03:00",
+        "2027-04-02T23:30:00-03:00",
+        "2027-04-03T00:00:00-03:00",
+        "2027-04-03T00:30:00-03:00",
+        "2027-04-03T22:00:00-03:00",
+        "2027-04-03T22:30:00-03:00",
+        "2027-04-03T23:00:00-03:00",
+        "2027-04-03T23:30:00-03:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/start-in-gap-daily",
+      "title": "DAILY from 00:30 written inside the gap (2027-09-05, 00:00→01:00): the first occurrence moves forward, later ones keep the written time",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-09-05T00:30:00",
+      "rule": "FREQ=DAILY;COUNT=4",
+      "expected": [
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-06T00:30:00-03:00",
+        "2027-09-07T00:30:00-03:00",
+        "2027-09-08T00:30:00-03:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/start-in-gap-minutely-15",
+      "title": "Every 15 minutes from 00:30 written inside the gap (2027-09-05, 00:00→01:00): nothing comes before the moved first occurrence",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-09-05T00:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2027-09-05T02:15:00"
+      },
+      "expected": [
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-05T01:45:00-03:00",
+        "2027-09-05T02:00:00-03:00"
+      ],
+      "oracle": [
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-05T01:45:00-03:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:15:00-03:00",
+        "2027-09-05T01:30:00-03:00",
+        "2027-09-05T01:45:00-03:00",
+        "2027-09-05T02:00:00-03:00"
+      ],
+      "divergence": "The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2027-09-05T01:00:00-03:00, 2027-09-05T01:15:00-03:00, at or before the start instant. Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2027-09-05T01:45:00-03:00 twice."
+    },
+    {
+      "id": "dst/america-santiago/start-in-fold-earlier-daily",
+      "title": "DAILY from 23:30 inside the fold (2027-04-03, 00:00→23:00), the earlier instant",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-04-03T23:30:00",
+      "rule": "FREQ=DAILY;COUNT=3",
+      "expected": [
+        "2027-04-03T23:30:00-03:00",
+        "2027-04-04T23:30:00-04:00",
+        "2027-04-05T23:30:00-04:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/start-in-fold-later-daily",
+      "title": "DAILY from 23:30 inside the fold (2027-04-03, 00:00→23:00), the later instant",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-04-03T23:30:00-04:00",
+      "rule": "FREQ=DAILY;COUNT=3",
+      "expected": [
+        "2027-04-03T23:30:00-04:00",
+        "2027-04-04T23:30:00-04:00",
+        "2027-04-05T23:30:00-04:00"
+      ],
+      "oracle": [
+        "2027-04-03T23:30:00-03:00",
+        "2027-04-04T23:30:00-04:00",
+        "2027-04-05T23:30:00-04:00"
+      ],
+      "divergence": "DTSTART is the second of the two 23:30s, which the rule's wall clock never gives (it takes the first). The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2027-04-03T23:30:00-03:00, at or before the start instant."
+    },
+    {
+      "id": "dst/america-santiago/start-in-fold-later-hourly",
+      "title": "HOURLY from the later 23:30 of the fold (2027-04-03, 00:00→23:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-04-03T23:30:00-04:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2027-04-04T02:00:00"
+      },
+      "expected": [
+        "2027-04-03T23:30:00-04:00",
+        "2027-04-04T00:30:00-04:00",
+        "2027-04-04T01:30:00-04:00"
+      ],
+      "oracle": [
+        "2027-04-03T23:30:00-03:00",
+        "2027-04-04T00:30:00-04:00",
+        "2027-04-04T01:30:00-04:00"
+      ],
+      "divergence": "DTSTART is the second of the two 23:30s, which the rule's wall clock never gives (it takes the first). The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2027-04-03T23:30:00-03:00, at or before the start instant."
+    },
+    {
+      "id": "dst/america-santiago/count-gap-duplicate",
+      "title": "COUNT=5 every 60 minutes across the gap (2027-09-05, 00:00→01:00): a moved time lands on a real one and counts once",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-09-04T22:00:00",
+      "rule": "FREQ=HOURLY;COUNT=5",
+      "expected": [
+        "2027-09-04T22:00:00-04:00",
+        "2027-09-04T23:00:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T02:00:00-03:00",
+        "2027-09-05T03:00:00-03:00"
+      ],
+      "oracle": [
+        "2027-09-04T22:00:00-04:00",
+        "2027-09-04T23:00:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T02:00:00-03:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2027-09-05T01:00:00-03:00 twice."
+    },
+    {
+      "id": "dst/america-santiago/count-reordered-gap",
+      "title": "COUNT=3 every 45 minutes across the gap (2027-09-05, 00:00→01:00): COUNT takes the earliest starts, not the first wall times",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-09-04T23:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45;COUNT=3",
+      "expected": [
+        "2027-09-04T23:15:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:30:00-03:00"
+      ],
+      "oracle": [
+        "2027-09-04T23:15:00-04:00",
+        "2027-09-05T01:00:00-03:00",
+        "2027-09-05T01:45:00-03:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil counts them in wall-time order, so it gives 2027-09-05T01:45:00-03:00 where the earliest are 2027-09-05T01:30:00-03:00."
+    },
+    {
+      "id": "dst/america-santiago/until-at-fold",
+      "title": "DAILY at 23:30 until exactly the fold's first 23:30 (2027-04-03, 00:00→23:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-03-31T23:30:00",
+      "rule": "FREQ=DAILY;UNTIL=20270404T023000Z",
+      "expected": [
+        "2027-03-31T23:30:00-03:00",
+        "2027-04-01T23:30:00-03:00",
+        "2027-04-02T23:30:00-03:00",
+        "2027-04-03T23:30:00-03:00"
+      ]
+    },
+    {
+      "id": "dst/america-santiago/until-inside-fold",
+      "title": "HOURLY until the second 23:00 of the fold (2027-04-03, 00:00→23:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "America/Santiago",
+      "start": "2027-04-03T21:00:00",
+      "rule": "FREQ=HOURLY;UNTIL=20270404T030000Z",
+      "expected": [
+        "2027-04-03T21:00:00-03:00",
+        "2027-04-03T22:00:00-03:00",
+        "2027-04-03T23:00:00-03:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/daily-in-gap",
+      "title": "DAILY at 02:30, which the gap (2026-10-04, 02:00→03:00) moves forward",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-10-02T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2026-10-02T02:30:00+10:00",
+        "2026-10-03T02:30:00+10:00",
+        "2026-10-04T03:30:00+11:00",
+        "2026-10-05T02:30:00+11:00",
+        "2026-10-06T02:30:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/daily-in-fold",
+      "title": "DAILY at 02:30, which the fold (2026-04-05, 03:00→02:00) repeats; the first instant counts",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-04-03T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2026-04-03T02:30:00+11:00",
+        "2026-04-04T02:30:00+11:00",
+        "2026-04-05T02:30:00+11:00",
+        "2026-04-06T02:30:00+10:00",
+        "2026-04-07T02:30:00+10:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/weekly-across-gap",
+      "title": "WEEKLY at 02:30 across the gap (2026-10-04, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-09-20T02:30:00",
+      "rule": "FREQ=WEEKLY;COUNT=4",
+      "expected": [
+        "2026-09-20T02:30:00+10:00",
+        "2026-09-27T02:30:00+10:00",
+        "2026-10-04T03:30:00+11:00",
+        "2026-10-11T02:30:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/weekly-across-fold",
+      "title": "WEEKLY on two days at 02:30 across the fold (2026-04-05, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-03-28T02:30:00",
+      "rule": "FREQ=WEEKLY;BYDAY=SA,SU;COUNT=6",
+      "expected": [
+        "2026-03-28T02:30:00+11:00",
+        "2026-03-29T02:30:00+11:00",
+        "2026-04-04T02:30:00+11:00",
+        "2026-04-05T02:30:00+11:00",
+        "2026-04-11T02:30:00+10:00",
+        "2026-04-12T02:30:00+10:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/monthly-across-gap",
+      "title": "MONTHLY on the gap's day (1SU) at 02:30, across the gap (2026-10-04, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-08-02T02:30:00",
+      "rule": "FREQ=MONTHLY;BYDAY=1SU;COUNT=4",
+      "expected": [
+        "2026-08-02T02:30:00+10:00",
+        "2026-09-06T02:30:00+10:00",
+        "2026-10-04T03:30:00+11:00",
+        "2026-11-01T02:30:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/monthly-across-fold",
+      "title": "MONTHLY on the fold's day (1SU) at 02:30, across the fold (2026-04-05, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-02-01T02:30:00",
+      "rule": "FREQ=MONTHLY;BYDAY=1SU;COUNT=4",
+      "expected": [
+        "2026-02-01T02:30:00+11:00",
+        "2026-03-01T02:30:00+11:00",
+        "2026-04-05T02:30:00+11:00",
+        "2026-05-03T02:30:00+10:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/hourly-across-gap",
+      "title": "HOURLY across the gap (2026-10-04, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-10-04T00:00:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2026-10-04T05:00:00"
+      },
+      "expected": [
+        "2026-10-04T00:00:00+10:00",
+        "2026-10-04T01:00:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T04:00:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T00:00:00+10:00",
+        "2026-10-04T01:00:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T04:00:00+11:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-10-04T03:00:00+11:00 twice."
+    },
+    {
+      "id": "dst/australia-sydney/hourly-across-fold",
+      "title": "HOURLY across the fold (2026-04-05, 03:00→02:00); the wall clock skips the repeated hour's second instants",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-04-05T00:00:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2026-04-05T05:00:00"
+      },
+      "expected": [
+        "2026-04-05T00:00:00+11:00",
+        "2026-04-05T01:00:00+11:00",
+        "2026-04-05T02:00:00+11:00",
+        "2026-04-05T03:00:00+10:00",
+        "2026-04-05T04:00:00+10:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/minutely-15-across-gap",
+      "title": "Every 15 minutes across the gap (2026-10-04, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-10-04T01:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2026-10-04T03:45:00"
+      },
+      "expected": [
+        "2026-10-04T01:30:00+10:00",
+        "2026-10-04T01:45:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:15:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T01:30:00+10:00",
+        "2026-10-04T01:45:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:15:00+11:00",
+        "2026-10-04T03:30:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:15:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-10-04T03:00:00+11:00, 2026-10-04T03:15:00+11:00, 2026-10-04T03:30:00+11:00 twice."
+    },
+    {
+      "id": "dst/australia-sydney/minutely-45-across-gap",
+      "title": "Every 45 minutes across the gap (2026-10-04, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-10-04T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2026-10-04T04:30:00"
+      },
+      "expected": [
+        "2026-10-04T01:15:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:30:00+11:00",
+        "2026-10-04T03:45:00+11:00",
+        "2026-10-04T04:15:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T01:15:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:45:00+11:00",
+        "2026-10-04T03:30:00+11:00",
+        "2026-10-04T04:15:00+11:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives them in wall-time order, not by instant."
+    },
+    {
+      "id": "dst/australia-sydney/minutely-15-across-fold",
+      "title": "Every 15 minutes across the fold (2026-04-05, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-04-05T01:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2026-04-05T03:30:00"
+      },
+      "expected": [
+        "2026-04-05T01:30:00+11:00",
+        "2026-04-05T01:45:00+11:00",
+        "2026-04-05T02:00:00+11:00",
+        "2026-04-05T02:15:00+11:00",
+        "2026-04-05T02:30:00+11:00",
+        "2026-04-05T02:45:00+11:00",
+        "2026-04-05T03:00:00+10:00",
+        "2026-04-05T03:15:00+10:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/minutely-45-across-fold",
+      "title": "Every 45 minutes across the fold (2026-04-05, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-04-05T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2026-04-05T04:30:00"
+      },
+      "expected": [
+        "2026-04-05T01:15:00+11:00",
+        "2026-04-05T02:00:00+11:00",
+        "2026-04-05T02:45:00+11:00",
+        "2026-04-05T03:30:00+10:00",
+        "2026-04-05T04:15:00+10:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/byhour-byminute-on-gap-day",
+      "title": "DAILY;BYHOUR=1,2,3;BYMINUTE=0,30 on the day before and the day of the gap (2026-10-04, 02:00→03:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-10-03T01:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=1,2,3;BYMINUTE=0,30",
+      "window": {
+        "before": "2026-10-05T00:00:00"
+      },
+      "expected": [
+        "2026-10-03T01:00:00+10:00",
+        "2026-10-03T01:30:00+10:00",
+        "2026-10-03T02:00:00+10:00",
+        "2026-10-03T02:30:00+10:00",
+        "2026-10-03T03:00:00+10:00",
+        "2026-10-03T03:30:00+10:00",
+        "2026-10-04T01:00:00+10:00",
+        "2026-10-04T01:30:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-03T01:00:00+10:00",
+        "2026-10-03T01:30:00+10:00",
+        "2026-10-03T02:00:00+10:00",
+        "2026-10-03T02:30:00+10:00",
+        "2026-10-03T03:00:00+10:00",
+        "2026-10-03T03:30:00+10:00",
+        "2026-10-04T01:00:00+10:00",
+        "2026-10-04T01:30:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:30:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-10-04T03:00:00+11:00, 2026-10-04T03:30:00+11:00 twice."
+    },
+    {
+      "id": "dst/australia-sydney/byhour-byminute-on-fold-day",
+      "title": "DAILY;BYHOUR=1,2,3;BYMINUTE=0,30 on the day before and the day of the fold (2026-04-05, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-04-04T01:00:00",
+      "rule": "FREQ=DAILY;BYHOUR=1,2,3;BYMINUTE=0,30",
+      "window": {
+        "before": "2026-04-06T00:00:00"
+      },
+      "expected": [
+        "2026-04-04T01:00:00+11:00",
+        "2026-04-04T01:30:00+11:00",
+        "2026-04-04T02:00:00+11:00",
+        "2026-04-04T02:30:00+11:00",
+        "2026-04-04T03:00:00+11:00",
+        "2026-04-04T03:30:00+11:00",
+        "2026-04-05T01:00:00+11:00",
+        "2026-04-05T01:30:00+11:00",
+        "2026-04-05T02:00:00+11:00",
+        "2026-04-05T02:30:00+11:00",
+        "2026-04-05T03:00:00+10:00",
+        "2026-04-05T03:30:00+10:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/start-in-gap-daily",
+      "title": "DAILY from 02:30 written inside the gap (2026-10-04, 02:00→03:00): the first occurrence moves forward, later ones keep the written time",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-10-04T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=4",
+      "expected": [
+        "2026-10-04T03:30:00+11:00",
+        "2026-10-05T02:30:00+11:00",
+        "2026-10-06T02:30:00+11:00",
+        "2026-10-07T02:30:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/start-in-gap-minutely-15",
+      "title": "Every 15 minutes from 02:30 written inside the gap (2026-10-04, 02:00→03:00): nothing comes before the moved first occurrence",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-10-04T02:30:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=15",
+      "window": {
+        "before": "2026-10-04T04:15:00"
+      },
+      "expected": [
+        "2026-10-04T03:30:00+11:00",
+        "2026-10-04T03:45:00+11:00",
+        "2026-10-04T04:00:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T03:30:00+11:00",
+        "2026-10-04T03:45:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:15:00+11:00",
+        "2026-10-04T03:30:00+11:00",
+        "2026-10-04T03:45:00+11:00",
+        "2026-10-04T04:00:00+11:00"
+      ],
+      "divergence": "The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2026-10-04T03:00:00+11:00, 2026-10-04T03:15:00+11:00, at or before the start instant. Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-10-04T03:45:00+11:00 twice."
+    },
+    {
+      "id": "dst/australia-sydney/start-in-fold-earlier-daily",
+      "title": "DAILY from 02:30 inside the fold (2026-04-05, 03:00→02:00), the earlier instant",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-04-05T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=3",
+      "expected": [
+        "2026-04-05T02:30:00+11:00",
+        "2026-04-06T02:30:00+10:00",
+        "2026-04-07T02:30:00+10:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/start-in-fold-later-daily",
+      "title": "DAILY from 02:30 inside the fold (2026-04-05, 03:00→02:00), the later instant",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-04-05T02:30:00+10:00",
+      "rule": "FREQ=DAILY;COUNT=3",
+      "expected": [
+        "2026-04-05T02:30:00+10:00",
+        "2026-04-06T02:30:00+10:00",
+        "2026-04-07T02:30:00+10:00"
+      ],
+      "oracle": [
+        "2026-04-05T02:30:00+11:00",
+        "2026-04-06T02:30:00+10:00",
+        "2026-04-07T02:30:00+10:00"
+      ],
+      "divergence": "DTSTART is the second of the two 02:30s, which the rule's wall clock never gives (it takes the first). The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2026-04-05T02:30:00+11:00, at or before the start instant."
+    },
+    {
+      "id": "dst/australia-sydney/start-in-fold-later-hourly",
+      "title": "HOURLY from the later 02:30 of the fold (2026-04-05, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-04-05T02:30:00+10:00",
+      "rule": "FREQ=HOURLY",
+      "window": {
+        "before": "2026-04-05T05:00:00"
+      },
+      "expected": [
+        "2026-04-05T02:30:00+10:00",
+        "2026-04-05T03:30:00+10:00",
+        "2026-04-05T04:30:00+10:00"
+      ],
+      "oracle": [
+        "2026-04-05T02:30:00+11:00",
+        "2026-04-05T03:30:00+10:00",
+        "2026-04-05T04:30:00+10:00"
+      ],
+      "divergence": "DTSTART is the second of the two 02:30s, which the rule's wall clock never gives (it takes the first). The first occurrence is always one, and counts toward COUNT as RFC 5545 §3.3.10 says, even when the rule wouldn't produce it or UNTIL is earlier. RFC 5545 leaves that set undefined and python-dateutil leaves DTSTART out; we keep it because the application's event exists at that time (ADR 0048 point 4). The first occurrence is the start instant, and every other one comes after it. python-dateutil compares wall times, so it also gives 2026-04-05T02:30:00+11:00, at or before the start instant."
+    },
+    {
+      "id": "dst/australia-sydney/count-gap-duplicate",
+      "title": "COUNT=5 every 60 minutes across the gap (2026-10-04, 02:00→03:00): a moved time lands on a real one and counts once",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-10-04T00:00:00",
+      "rule": "FREQ=HOURLY;COUNT=5",
+      "expected": [
+        "2026-10-04T00:00:00+10:00",
+        "2026-10-04T01:00:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T04:00:00+11:00",
+        "2026-10-04T05:00:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T00:00:00+10:00",
+        "2026-10-04T01:00:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T04:00:00+11:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil gives 2026-10-04T03:00:00+11:00 twice."
+    },
+    {
+      "id": "dst/australia-sydney/count-reordered-gap",
+      "title": "COUNT=3 every 45 minutes across the gap (2026-10-04, 02:00→03:00): COUNT takes the earliest starts, not the first wall times",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-10-04T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45;COUNT=3",
+      "expected": [
+        "2026-10-04T01:15:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:30:00+11:00"
+      ],
+      "oracle": [
+        "2026-10-04T01:15:00+10:00",
+        "2026-10-04T03:00:00+11:00",
+        "2026-10-04T03:45:00+11:00"
+      ],
+      "divergence": "Starts come out strictly increasing, and duplicates, such as two wall times resolving out of the same gap, appear once (RFC 5545 §3.8.5.3: duplicate instances are ignored; ADR 0048 points 4 and 5); COUNT counts the earliest distinct starts. python-dateutil counts them in wall-time order, so it gives 2026-10-04T03:45:00+11:00 where the earliest are 2026-10-04T03:30:00+11:00."
+    },
+    {
+      "id": "dst/australia-sydney/until-at-fold",
+      "title": "DAILY at 02:30 until exactly the fold's first 02:30 (2026-04-05, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-04-02T02:30:00",
+      "rule": "FREQ=DAILY;UNTIL=20260404T153000Z",
+      "expected": [
+        "2026-04-02T02:30:00+11:00",
+        "2026-04-03T02:30:00+11:00",
+        "2026-04-04T02:30:00+11:00",
+        "2026-04-05T02:30:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/australia-sydney/until-inside-fold",
+      "title": "HOURLY until the second 02:00 of the fold (2026-04-05, 03:00→02:00)",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Australia/Sydney",
+      "start": "2026-04-05T00:00:00",
+      "rule": "FREQ=HOURLY;UNTIL=20260404T160000Z",
+      "expected": [
+        "2026-04-05T00:00:00+11:00",
+        "2026-04-05T01:00:00+11:00",
+        "2026-04-05T02:00:00+11:00"
+      ]
+    },
+    {
+      "id": "dst/asia-kolkata/daily",
+      "title": "DAILY in a zone without DST",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Asia/Kolkata",
+      "start": "2026-03-27T09:00:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2026-03-27T09:00:00+05:30",
+        "2026-03-28T09:00:00+05:30",
+        "2026-03-29T09:00:00+05:30",
+        "2026-03-30T09:00:00+05:30",
+        "2026-03-31T09:00:00+05:30"
+      ]
+    },
+    {
+      "id": "dst/asia-kolkata/hourly",
+      "title": "HOURLY across midnight in a zone without DST",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Asia/Kolkata",
+      "start": "2026-10-24T22:00:00",
+      "rule": "FREQ=HOURLY;COUNT=5",
+      "expected": [
+        "2026-10-24T22:00:00+05:30",
+        "2026-10-24T23:00:00+05:30",
+        "2026-10-25T00:00:00+05:30",
+        "2026-10-25T01:00:00+05:30",
+        "2026-10-25T02:00:00+05:30"
+      ]
+    },
+    {
+      "id": "dst/asia-kolkata/minutely-45",
+      "title": "Every 45 minutes in a zone without DST",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "Asia/Kolkata",
+      "start": "2026-03-29T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2026-03-29T04:30:00"
+      },
+      "expected": [
+        "2026-03-29T01:15:00+05:30",
+        "2026-03-29T02:00:00+05:30",
+        "2026-03-29T02:45:00+05:30",
+        "2026-03-29T03:30:00+05:30",
+        "2026-03-29T04:15:00+05:30"
+      ]
+    },
+    {
+      "id": "dst/utc/daily",
+      "title": "DAILY in UTC",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "UTC",
+      "start": "2026-03-27T02:30:00",
+      "rule": "FREQ=DAILY;COUNT=5",
+      "expected": [
+        "2026-03-27T02:30:00+00:00",
+        "2026-03-28T02:30:00+00:00",
+        "2026-03-29T02:30:00+00:00",
+        "2026-03-30T02:30:00+00:00",
+        "2026-03-31T02:30:00+00:00"
+      ]
+    },
+    {
+      "id": "dst/utc/hourly",
+      "title": "HOURLY across midnight in UTC",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "UTC",
+      "start": "2026-10-24T22:00:00",
+      "rule": "FREQ=HOURLY;COUNT=5",
+      "expected": [
+        "2026-10-24T22:00:00+00:00",
+        "2026-10-24T23:00:00+00:00",
+        "2026-10-25T00:00:00+00:00",
+        "2026-10-25T01:00:00+00:00",
+        "2026-10-25T02:00:00+00:00"
+      ]
+    },
+    {
+      "id": "dst/utc/minutely-45",
+      "title": "Every 45 minutes in UTC",
+      "source": "DST matrix",
+      "kind": "timed",
+      "timeZone": "UTC",
+      "start": "2026-03-29T01:15:00",
+      "rule": "FREQ=MINUTELY;INTERVAL=45",
+      "window": {
+        "before": "2026-03-29T04:30:00"
+      },
+      "expected": [
+        "2026-03-29T01:15:00+00:00",
+        "2026-03-29T02:00:00+00:00",
+        "2026-03-29T02:45:00+00:00",
+        "2026-03-29T03:30:00+00:00",
+        "2026-03-29T04:15:00+00:00"
+      ]
+    }
+  ]
+}
