@@ -228,22 +228,23 @@ export function keyShift(
 }
 
 /**
- * How many days a move goes on the calendar's clock, when it keeps the time of day there and the
- * calendar shows a timed series in another zone than the series'. `undefined` for anything else.
+ * How many days a timed move goes on the calendar's clock, when it keeps the time of day there and
+ * the calendar is in another zone than `measuredOn`, the clock the move is otherwise measured on.
+ * `undefined` for anything else.
  */
 function calendarDays(
-  series: Series<unknown, EventId, ResourceId>,
   change: {
     readonly cause: CalendarChangeCause;
     readonly original: CalendarEventPlacement<ResourceId>;
     readonly proposed: CalendarEventPlacement<ResourceId>;
   },
   timeZone: string | undefined,
+  measuredOn: string,
 ): number | undefined {
   const { original, proposed } = change;
   if (
     timeZone === undefined ||
-    timeZone === series.time.timeZone ||
+    timeZone === measuredOn ||
     change.cause !== "move" ||
     original.kind !== "timed" ||
     proposed.kind !== "timed"
@@ -292,7 +293,9 @@ export function measureMove(
   // A drag by days keeps the series' time of day, even on a calendar whose zone changes DST on
   // other dates than the series': the instants the calendar proposes would move it by an hour.
   const calendarMove =
-    converts || to.kind !== "timed" ? undefined : calendarDays(series, change, options.timeZone);
+    converts || to.kind !== "timed"
+      ? undefined
+      : calendarDays(change, options.timeZone, from.timeZone);
 
   // Starts on the series' own clock read back to the time it repeats at, so one a DST gap moved
   // forward measures from the written time, as the occurrence's original start does.
@@ -323,7 +326,8 @@ export function measureMove(
             : wallFrom.add(shownFrom.until(shownTo));
   return {
     days: wallFrom.toPlainDate().until(wallTo.toPlainDate()).days,
-    dropped: calendarMove === undefined,
+    // A day move that lands at the series' time keeps its exact start, as the second 02:30 does.
+    dropped: calendarMove === undefined || toWall(proposed.start, to).equals(wallTo),
     from,
     shown,
     time: wallFrom.toPlainTime().until(wallTo.toPlainTime()),

@@ -11,9 +11,21 @@ import {
   type RecurrenceSeriesEdit,
   type ResolveRecurrenceEditOptions,
 } from "../../src";
-import { adapters, expand, find, move, timed, wall, type Event, type Occurrence } from "./harness";
+import {
+  adapters,
+  at,
+  expand,
+  find,
+  move,
+  overrideOf,
+  timed,
+  wall,
+  type Event,
+  type Occurrence,
+} from "./harness";
 
 const newYork = "America/New_York";
+const kolkata = "Asia/Kolkata";
 const inNewYork: ResolveRecurrenceEditOptions<Event, string> = { timeZone: newYork };
 
 // Thursdays at 10:00 Berlin: 5, 12, 19 and 26 March, 2 and 9 April.
@@ -132,6 +144,37 @@ describe(`a drag by days on a calendar in another zone`, () => {
     const dragged = move(occurrence, { days: 7 });
     expect(resolveRecurrenceEdit(dragged, "all", adapters, { timeZone: "Europe/Berlin" })).toEqual(
       resolveRecurrenceEdit(dragged, "all", adapters),
+    );
+  });
+
+  test(`an override in another zone, dragged by days on a calendar in the series' zone`, () => {
+    // 5 March's occurrence moved to 09:00 in New York, 15:00 in Berlin. A week later on the Berlin
+    // clock is 10:00 in New York, which switched to summer time on 8 March.
+    const moved = overrideOf(standup, "moved", at("2026-03-05T10:00"), {
+      end: at("2026-03-05T09:30", newYork),
+      kind: "timed",
+      sourceTimeZone: newYork,
+      start: at("2026-03-05T09:00", newYork),
+    });
+    const dragged = move(find(expand([standup, moved]), "2026-03-05T09:00:00Z"), { days: 7 });
+    const edit = series(
+      resolveRecurrenceEdit(dragged, "all", adapters, { timeZone: "Europe/Berlin" }),
+    );
+    expect(edit.series.action === "update" && wall(edit.series.placement.start)).toBe(
+      "2026-03-12T10:00:00",
+    );
+  });
+
+  test(`a day move onto the second 02:30 of DST's end keeps that instant`, () => {
+    // 02:30 in Berlin is 07:00 in Kolkata. A day back from 26 October is 25 October, 07:00 there,
+    // which is 01:30 UTC: the second 02:30 in Berlin, as the clocks go back.
+    const nightly = timed("nightly", "2026-10-26T02:30", "2026-10-26T03:00", {
+      recurrence: { rule: { count: 5, frequency: "DAILY" } },
+    });
+    const dragged = move(find(expand([nightly]), "2026-10-26T01:30:00Z"), { days: -1 }, kolkata);
+    const edit = series(resolveRecurrenceEdit(dragged, "all", adapters, { timeZone: kolkata }));
+    expect(edit.series.action === "update" && String(edit.series.placement.start)).toBe(
+      "2026-10-25T01:30:00Z",
     );
   });
 
