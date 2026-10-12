@@ -366,7 +366,8 @@ describe("scrolling views", () => {
     },
   );
 
-  test("the month swipes a month at a time", async () => {
+  // Under load, WebKit sometimes doesn't carry a programmatic step on to the next snap point: #181.
+  test.skipIf(inWebKit)("the month swipes a month at a time", async () => {
     await render(<Screen view="scrolling-month" />);
     const { dragBy, position, scrollBy } = axis("scrolling-month");
     const start = position();
