@@ -71,7 +71,7 @@ export const tokenInfo: Readonly<Record<string, TokenInfo>> = {
 
 /** The derived event tokens of `[data-color]`, by what they paint. */
 export const eventColorLabels: Readonly<Record<string, string>> = {
-  "--calendar-event": "Fill",
-  "--calendar-event-foreground": "Text",
-  "--calendar-event-border": "Edge",
+  "--calendar-event": "Palette fill",
+  "--calendar-event-foreground": "Palette text",
+  "--calendar-event-border": "Palette edge",
 };

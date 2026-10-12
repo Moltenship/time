@@ -1,23 +1,24 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { ResourcePreviewIsland } from "@/components/calendar-preview/island";
 
 import type { ThemeCalendarView } from "./calendar";
-import { ColorReader } from "./color";
+import { ColorReader, type Swatch } from "./color";
 import { readContrast, type ContrastResult } from "./contrast";
 import {
   ColorControl,
   focusRing,
+  formatNumber,
   FormulaControl,
   PREVIEW_SCOPE,
   ResetButton,
   Scoped,
+  scopeProps,
   Section,
   Segmented,
   SliderControl,
-  type Swatch,
 } from "./controls";
 import { CssOutput } from "./css-output";
 import { ThemeCalendarIsland } from "./island";
@@ -77,10 +78,12 @@ function rem(value: string): number | undefined {
   return value.endsWith("px") ? number / 16 : undefined;
 }
 
-const trim = (value: number) => String(Number(value.toFixed(4)));
 const capitalize = (name: string) => name.charAt(0).toUpperCase() + name.slice(1);
 
-/** Colour presets and density presets, each a row of toggle buttons, and a reset for all. */
+/**
+ * Colour presets and density presets, each a row of buttons, and a reset for all. The preset the
+ * theme matches is marked current, until an edit leaves it.
+ */
 function Presets({
   onApply,
   onReset,
@@ -104,8 +107,8 @@ function Presets({
           .map((preset) => (
             <button
               key={preset.name}
-              aria-pressed={isPresetApplied(source, theme, preset)}
-              className={`rounded-full border px-3 py-1 text-sm text-fd-foreground transition-colors hover:bg-fd-accent aria-pressed:border-fd-primary aria-pressed:bg-fd-primary aria-pressed:text-fd-primary-foreground ${focusRing}`}
+              aria-current={isPresetApplied(source, theme, preset) || undefined}
+              className={`rounded-full border px-3 py-1 text-sm text-fd-foreground transition-colors hover:bg-fd-accent aria-[current=true]:border-fd-primary aria-[current=true]:bg-fd-primary aria-[current=true]:text-fd-primary-foreground ${focusRing}`}
               onClick={() => onApply(preset)}
               type="button"
             >
@@ -118,7 +121,7 @@ function Presets({
 
   return (
     <div className="flex flex-col gap-4 rounded-xl border bg-fd-card p-4">
-      {row("colors", "Colour presets")}
+      {row("colors", "Color presets")}
       {row("density", "Density presets")}
       <button
         className={`self-start rounded-md border px-3 py-1.5 text-sm text-fd-foreground transition-colors hover:bg-fd-accent disabled:opacity-50 disabled:hover:bg-transparent ${focusRing}`}
@@ -132,7 +135,7 @@ function Presets({
   );
 }
 
-/** The contrast of the pairs the theme's own test checks, as the preview paints them. */
+/** The contrast checks of `contrast.ts`, as the preview paints them. */
 function Contrast({
   mode,
   results,
@@ -176,11 +179,25 @@ function Contrast({
 export default function ThemeBuilder({ source }: { readonly source: ThemeSource }) {
   const [theme, setTheme] = useState(() => defaultTheme(source));
   const docs = useSyncExternalStore(subscribeToDocsTheme, docsMode, serverMode);
-  // The mode picked here holds until the docs switch theme; then the preview follows the docs.
-  const [picked, setPicked] = useState<{ readonly docs: Mode; readonly mode: Mode } | null>(null);
-  const mode = picked?.docs === docs ? picked.mode : docs;
-  const dark = mode === "dark";
+  // A mode picked here holds until the docs switch theme; then the preview follows the docs.
+  const [picked, setPicked] = useState<Mode | null>(null);
+  const [pickedUnder, setPickedUnder] = useState(docs);
+  if (pickedUnder !== docs) {
+    setPickedUnder(docs);
+    setPicked(null);
+  }
+  const mode = picked ?? docs;
   const [view, setView] = useState<PreviewView>("week");
+  // The calendar keeps its element while tokens change, so only the style sheet restyles it.
+  const calendar = useMemo(
+    () =>
+      view === "resources" ? (
+        <ResourcePreviewIsland availability status view="timeline-week" />
+      ) : (
+        <ThemeCalendarIsland onViewChange={setView} view={view} />
+      ),
+    [view],
+  );
   const probe = useRef<HTMLSpanElement>(null);
   const [swatches, setSwatches] = useState<Readonly<Record<string, Swatch>>>({});
   const [contrast, setContrast] = useState<readonly ContrastResult[]>([]);
@@ -212,7 +229,6 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
     <ColorControl
       key={token.name}
       changed={isTokenChanged(source, theme, mode, token.name)}
-      dark={dark}
       label={label(token.name)}
       name={token.name}
       onChange={(value) =>
@@ -221,6 +237,7 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
       onReset={() =>
         setTheme((current) => setToken(source, current, mode, token.name, token[mode]))
       }
+      picked={picked}
       swatch={swatches[token.name]}
       value={theme[mode][token.name]!}
     />
@@ -237,7 +254,9 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
         min={range.min}
         name={token.name}
         onChange={(value) =>
-          setTheme((current) => setToken(source, current, "light", token.name, `${trim(value)}rem`))
+          setTheme((current) =>
+            setToken(source, current, "light", token.name, `${formatNumber(value)}rem`),
+          )
         }
         onReset={() =>
           setTheme((current) => setToken(source, current, "light", token.name, token.light))
@@ -260,27 +279,21 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
   return (
     <div className="not-prose @container my-6 flex flex-col gap-6">
       <div className="grid items-start gap-6 @4xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex min-w-0 flex-col gap-3 @4xl:sticky @4xl:top-[calc(var(--fd-docs-row-1,0px)+1rem)]">
+        {/* Sticky beside the controls where the screen is tall enough to show all of it. */}
+        <div className="flex min-w-0 flex-col gap-3 @4xl:[@media(min-height:62rem)]:sticky @4xl:[@media(min-height:62rem)]:top-[calc(var(--fd-docs-row-1,0px)+1rem)]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <Segmented label="Preview" onValueChange={setView} options={views} value={view} />
-            <Segmented
-              label="Theme"
-              onValueChange={(next) => setPicked({ docs, mode: next })}
-              options={modes}
-              value={mode}
-            />
+            <Segmented label="Theme" onValueChange={setPicked} options={modes} value={mode} />
           </div>
           <div
-            {...{ [PREVIEW_SCOPE]: "" }}
-            className={`${dark ? "dark " : ""}h-[36rem] overflow-hidden rounded-xl border bg-background text-left text-foreground shadow-sm`}
-          >
-            <style>{previewCss(source, theme, mode, SCOPE)}</style>
-            <span hidden ref={probe} />
-            {view === "resources" ? (
-              <ResourcePreviewIsland availability status view="timeline-week" />
-            ) : (
-              <ThemeCalendarIsland onViewChange={setView} view={view} />
+            {...scopeProps(
+              picked,
+              "h-[36rem] overflow-hidden rounded-xl border bg-background text-left text-foreground shadow-sm",
             )}
+          >
+            <style>{previewCss(source, theme, SCOPE)}</style>
+            <span hidden ref={probe} />
+            {calendar}
           </div>
           <Contrast mode={mode} results={contrast} />
         </div>
@@ -292,14 +305,14 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
             source={source}
             theme={theme}
           />
-          <Section defaultOpen title={`Calendar colours, ${mode}`}>
+          <Section defaultOpen title={`Calendar colors, ${mode}`}>
             {tokens("calendar").map(colorControl)}
           </Section>
           <Section title={`Events, ${mode}`}>
             {tokens("events").map(colorControl)}
             <p className="text-xs text-fd-muted-foreground">
-              Events without a colour use these. A palette colour derives its own from a hue and a
-              chroma, below.
+              Events without a palette color use these, such as the standups in the week. A palette
+              color derives its own from a hue and a chroma, below.
             </p>
           </Section>
           <Section title="Event palette">
@@ -316,7 +329,7 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
                 <fieldset key={name} className="flex flex-col gap-2">
                   <legend className="sr-only">{title}</legend>
                   <div className="flex items-center justify-between gap-2">
-                    <Scoped className="inline-flex" dark={dark}>
+                    <Scoped className="inline-flex" picked={picked}>
                       <span
                         className="rounded-md border-s-3 border-calendar-event-border bg-calendar-event px-2 py-1 text-xs font-medium text-calendar-event-foreground"
                         data-color={name}
@@ -357,7 +370,7 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
             })}
             <fieldset className="flex flex-col gap-3 border-t pt-4">
               <legend className="mb-1 text-sm font-medium text-fd-foreground">
-                What every colour derives, {mode}
+                What every color derives, {mode}
               </legend>
               {Object.keys(source.eventColor[mode]).map((name) => (
                 <FormulaControl
@@ -397,7 +410,9 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
           <Section title={`Availability, ${mode}`}>
             {closedTime.map(colorControl)}
             <div className="flex flex-col gap-2">
-              <span className="text-sm text-fd-foreground">Closed time in time grids</span>
+              <span className="text-sm text-fd-foreground">
+                Closed time in time grids, both modes
+              </span>
               <Segmented
                 label="Shading recipe"
                 onValueChange={(recipe) => setShading({ recipe })}
@@ -446,7 +461,7 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
             {availability.filter((token) => !closedTime.includes(token)).map(colorControl)}
           </Section>
           <Section title="Density">{tokens("density").map(lengthControl)}</Section>
-          <Section title={`Base colours, ${mode}`}>
+          <Section title={`Base colors, ${mode}`}>
             <p className="text-xs text-fd-muted-foreground">
               The shadcn/ui tokens. Calendar tokens such as grid lines and event fills derive from
               them until you set those.

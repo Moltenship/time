@@ -23,6 +23,10 @@ const locale = "en-US";
 const noResourceIds: readonly never[] = [];
 const weekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] } as const;
 const getEventColor = (event: PreviewEvent) => event.color;
+/** Work meetings in the time grids use the default event tokens, so their controls show here. */
+const plain = new Set(["Standup", "Weekly planning", "Sprint planning", "Quarterly planning"]);
+const getTimeGridColor = (event: PreviewEvent) =>
+  plain.has(event.title) ? undefined : event.color;
 const policies = [availabilityPolicy<PreviewEvent, string, never>({ mode: "warn" })];
 
 const Calendar = createCalendar<PreviewEvent, never>()({
@@ -33,21 +37,22 @@ const Calendar = createCalendar<PreviewEvent, never>()({
     getTitle: (event) => event.title,
   }),
   views: [
-    createWeekView<PreviewEvent>({ dayView: "day", getEventColor }),
-    createDayView<PreviewEvent>({ getEventColor }),
+    createWeekView<PreviewEvent>({ dayView: "day", getEventColor: getTimeGridColor }),
+    createDayView<PreviewEvent>({ getEventColor: getTimeGridColor }),
+    // The month and agenda views take a palette color for every event.
     createMonthView<PreviewEvent>({ getEventColor }),
     createAgendaView<PreviewEvent>({ getEventColor }),
   ],
 });
 
-/** A colour per title, so this week shows every colour of the palette. */
+/** A color per title, so this week shows every color of the palette. */
 const colors: Readonly<Record<string, CalendarEventColor>> = {
   "1:1 with Maya": "teal",
-  "Acme kickoff (New York)": "orange",
+  "Acme kickoff (New York)": "blue",
   "Book club": "pink",
   "Brunch with parents": "pink",
   Climbing: "green",
-  "Deploy window": "red",
+  "Deploy window": "orange",
   Dentist: "red",
   "Design review": "purple",
   "Focus time": "yellow",
@@ -55,9 +60,7 @@ const colors: Readonly<Record<string, CalendarEventColor>> = {
   "Mom's birthday": "pink",
   "Release freeze": "red",
   "Release retro": "purple",
-  "Sprint planning": "blue",
   "Team lunch": "green",
-  "Weekly planning": "blue",
 };
 
 const selectAnchorDate = (state: { readonly anchorDate: Temporal.PlainDate }) => state.anchorDate;
@@ -81,8 +84,8 @@ function Sidebar({ today }: { readonly today: Temporal.PlainDate }) {
 }
 
 /**
- * This week in the visitor's time zone, in every palette colour, with office hours shaded and a
- * holiday on Friday. The mini month shows beside the view when the frame is wide enough. Edits
+ * This week in the visitor's time zone, in every palette color and the default event tokens, with
+ * office hours shaded and a holiday on Friday. The mini month shows beside the view when the frame is wide enough. Edits
  * stay in memory.
  */
 export default function ThemeCalendar({

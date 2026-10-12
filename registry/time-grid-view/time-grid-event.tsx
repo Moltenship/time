@@ -153,12 +153,12 @@ export function TimeGridEvent<TEvent>({
             {...chip}
             className={cn(
               // Raised while hovered, and above that while focused, so a stacked event's title shows
-              // over the ones covering it, wherever the pointer rests.
-              // The padding falls back to its default for a theme copied before its tokens.
-              "group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,0.375rem)] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20",
+              // over the ones covering it, wherever the pointer rests. The padding falls back to the
+              // old `px-1.5 py-1` for a theme copied before its tokens.
+              "group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20",
               compact
                 ? "flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none"
-                : "py-[var(--calendar-event-padding-y,0.25rem)]",
+                : "py-[var(--calendar-event-padding-y,var(--spacing))]",
               startsBeforeDay && "rounded-t-none",
               endsAfterDay && "rounded-b-none",
             )}

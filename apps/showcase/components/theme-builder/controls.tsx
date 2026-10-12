@@ -2,7 +2,8 @@ import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { useId, useState, type CSSProperties, type ReactNode } from "react";
 
-import { hexToOklch, isColor } from "./color";
+import { hexToOklch, isColor, type Swatch } from "./color";
+import { isSafeValue, type Mode } from "./theme";
 
 export const focusRing =
   "outline-none focus-visible:ring-2 focus-visible:ring-fd-ring focus-visible:ring-offset-1 focus-visible:ring-offset-fd-background";
@@ -11,27 +12,36 @@ const textInput = `w-full rounded-md border bg-fd-background px-2 py-1 font-mono
 /** The attribute the builder's scoped CSS styles: the preview, and the swatches beside controls. */
 export const PREVIEW_SCOPE = "data-theme-preview";
 
+/** A number as CSS writes it, without float noise: `0.375`, not `0.37500000000000006`. */
+export const formatNumber = (value: number) => String(Number(value.toFixed(4)));
+
+/**
+ * The attributes that put an element under the builder's CSS. Without a picked mode it follows the
+ * docs' theme; with one it takes that mode, its `dark` class for the `dark:` variant, and its
+ * colour scheme for scrollbars and form controls.
+ */
+export function scopeProps(picked: Mode | null, className = "", style?: CSSProperties) {
+  return {
+    [PREVIEW_SCOPE]: "",
+    className: `${picked === "dark" ? "dark " : ""}${className}`,
+    "data-mode": picked ?? undefined,
+    style: picked === null ? style : { colorScheme: picked, ...style },
+  };
+}
+
 /** An element styled by the theme being built, outside the preview, such as a swatch. */
 export function Scoped({
-  className,
-  dark,
-  style,
   children,
+  className,
+  picked,
+  style,
 }: {
   readonly children?: ReactNode;
   readonly className?: string;
-  readonly dark: boolean;
+  readonly picked: Mode | null;
   readonly style?: CSSProperties;
 }) {
-  return (
-    <span
-      {...{ [PREVIEW_SCOPE]: "" }}
-      className={`${dark ? "dark " : ""}${className ?? ""}`}
-      style={style}
-    >
-      {children}
-    </span>
-  );
+  return <span {...scopeProps(picked, className, style)}>{children}</span>;
 }
 
 /** Pill-shaped options, one pressed: the preview's view and mode, a recipe, the CSS's extent. */
@@ -103,20 +113,19 @@ export function ResetButton({
   );
 }
 
+const isValid = (text: string) => isSafeValue(text) && isColor(text);
+
 /**
  * Text that commits only once it is a colour, so a half-typed value never blanks the preview, and
- * goes back to the committed value on blur.
+ * goes back to the committed value on blur. Comments, quotes and anything that could end the
+ * declaration never commit, so they can't reach the preview's CSS or the copied CSS.
  */
 function ValueInput({
-  describedBy,
   id,
-  label,
   onChange,
   value,
 }: {
-  readonly describedBy?: string;
   readonly id: string;
-  readonly label?: string;
   readonly onChange: (value: string) => void;
   readonly value: string;
 }) {
@@ -127,33 +136,34 @@ function ValueInput({
     // A change from elsewhere, such as the picker or a reset; typing keeps its own text.
     if (draft.trim() !== value) setDraft(value);
   }
-  const valid = (text: string) => text.trim() !== "" && !/[;{}<>]/.test(text) && isColor(text);
+  const invalid = !isValid(draft);
 
   return (
-    <input
-      aria-describedby={describedBy}
-      aria-invalid={!valid(draft) || undefined}
-      aria-label={label}
-      autoCapitalize="off"
-      autoComplete="off"
-      className={textInput}
-      id={id}
-      onBlur={() => setDraft(value)}
-      onChange={(event) => {
-        const text = event.target.value;
-        setDraft(text);
-        if (valid(text)) onChange(text.trim());
-      }}
-      spellCheck={false}
-      type="text"
-      value={draft}
-    />
+    <>
+      <input
+        aria-describedby={invalid ? `${id}-error` : undefined}
+        aria-invalid={invalid || undefined}
+        autoCapitalize="off"
+        autoComplete="off"
+        className={textInput}
+        id={id}
+        onBlur={() => setDraft(value)}
+        onChange={(event) => {
+          const text = event.target.value;
+          setDraft(text);
+          if (isValid(text)) onChange(text.trim());
+        }}
+        spellCheck={false}
+        type="text"
+        value={draft}
+      />
+      {invalid ? (
+        <p className="mt-1 text-xs text-fd-error" id={`${id}-error`}>
+          Not a color the preview can use. It keeps {value}.
+        </p>
+      ) : null}
+    </>
   );
-}
-
-export interface Swatch {
-  readonly alpha: number;
-  readonly hex: string;
 }
 
 /**
@@ -162,20 +172,21 @@ export interface Swatch {
  */
 export function ColorControl({
   changed,
-  dark,
   label,
   name,
   onChange,
   onReset,
+  picked,
   swatch,
   value,
 }: {
   readonly changed: boolean;
-  readonly dark: boolean;
   readonly label: string;
   readonly name: string;
   readonly onChange: (value: string) => void;
   readonly onReset: () => void;
+  /** The mode picked for the preview, if any; see `scopeProps`. */
+  readonly picked: Mode | null;
   /** The browser's reading of the colour, once the preview has painted it. */
   readonly swatch?: Swatch;
   readonly value: string;
@@ -189,11 +200,11 @@ export function ColorControl({
       <span className="relative size-7 overflow-hidden rounded-md border has-focus-visible:ring-2 has-focus-visible:ring-fd-ring">
         <Scoped
           className="absolute inset-0"
-          dark={dark}
+          picked={picked}
           style={{ background: `linear-gradient(var(${name}), var(${name})), var(--background)` }}
         />
         <input
-          aria-label={`${label}: pick a colour`}
+          aria-label={`${label}: pick a color`}
           className="absolute inset-0 size-full cursor-pointer opacity-0"
           onChange={(event) => onChange(hexToOklch(event.target.value, swatch?.alpha ?? 1))}
           type="color"
@@ -243,8 +254,6 @@ export function FormulaControl({
   );
 }
 
-const trim = (value: number) => String(Number(value.toFixed(4)));
-
 /** A number on a slider, with its value shown and spoken in its unit. */
 export function SliderControl({
   changed,
@@ -271,7 +280,7 @@ export function SliderControl({
   readonly value: number;
 }) {
   const id = useId();
-  const shown = `${trim(value)}${unit}`;
+  const shown = `${formatNumber(value)}${unit}`;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-1">
       <label className="min-w-0 leading-tight" htmlFor={id}>

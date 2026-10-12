@@ -1,6 +1,12 @@
 /** Gamma-encoded sRGB channels and alpha, each from 0 to 1. */
 export type Rgba = readonly [number, number, number, number];
 
+/** A colour for a colour input, which has no alpha, and its alpha apart. */
+export interface Swatch {
+  readonly alpha: number;
+  readonly hex: string;
+}
+
 const round = (value: number, digits: number) => Number(value.toFixed(digits));
 
 /** `#rrggbb`, as a colour input gives it, in OKLCH with the theme's precision. */
@@ -79,8 +85,7 @@ export class ColorReader {
     else this.#probe.setAttribute("data-color", color);
   }
 
-  /** The colour for a colour input, which has no alpha, and its alpha apart. */
-  swatch(expression: string): { readonly alpha: number; readonly hex: string } {
+  swatch(expression: string): Swatch {
     this.#context.clearRect(0, 0, 1, 1);
     this.#paint(expression);
     const [, , , alpha] = this.#pixel();

@@ -6,17 +6,21 @@ import { calendarEventColors } from "@registry/calendar-theme/event-colors";
 import { composite, contrast, ThemeTokens } from "@registry/tests/theme-colors";
 
 import { hexToOklch } from "../components/theme-builder/color";
+import { contrastChecks } from "../components/theme-builder/contrast";
 import { applyPreset, isPresetApplied, presets } from "../components/theme-builder/presets";
 import {
   defaultTheme,
+  isSafeValue,
   isThemeChanged,
+  modeScopes,
+  normalizeValue,
   parseTheme,
   previewCss,
   setToken,
   themeCss,
   type Theme,
 } from "../components/theme-builder/theme";
-import { tokenInfo } from "../components/theme-builder/tokens";
+import { eventColorLabels, tokenInfo } from "../components/theme-builder/tokens";
 
 const css = await readFile(
   new URL("../../../registry/calendar-theme/calendar-theme.css", import.meta.url),
@@ -46,6 +50,7 @@ describe("one source of truth", () => {
 
     expect(token("--calendar-hour-height")).toEqual({
       dark: "3rem",
+      inDark: false,
       kind: "length",
       light: "3rem",
       name: "--calendar-hour-height",
@@ -65,6 +70,28 @@ describe("one source of truth", () => {
     expect(source.palette[0]).toEqual({ chroma: 0.17, hue: 258, name: "blue" });
   });
 
+  test("presets, contrast checks and labels name only what the file declares", () => {
+    const names = new Set(source.tokens.map(({ name }) => name));
+    for (const preset of presets) {
+      for (const name of [...Object.keys(preset.light ?? {}), ...Object.keys(preset.dark ?? {})]) {
+        expect(names, `${preset.name}: ${name}`).toContain(name);
+      }
+      for (const mode of ["light", "dark"] as const) {
+        for (const name of Object.keys(preset.eventColor?.[mode] ?? {})) {
+          expect(source.eventColor[mode], `${preset.name}: ${name}`).toHaveProperty([name]);
+        }
+      }
+    }
+    for (const { back, front } of contrastChecks) {
+      for (const expression of [back, front]) {
+        expect(names).toContain(/^var\((--[\w-]+)\)$/.exec(expression)?.[1]);
+      }
+    }
+    expect(Object.keys(eventColorLabels).toSorted()).toEqual(
+      Object.keys(source.eventColor.light).toSorted(),
+    );
+  });
+
   test("lengths have a slider and colours don't", () => {
     for (const { kind, name } of source.tokens) {
       expect(tokenInfo[name]?.range !== undefined, name).toBe(kind === "length");
@@ -75,6 +102,10 @@ describe("one source of truth", () => {
 describe("copied CSS", () => {
   test("says so when nothing changed", () => {
     expect(isThemeChanged(source, shipped)).toBe(false);
+    // Settings of a recipe that's off still count, so Reset all can clear them.
+    expect(isThemeChanged(source, { ...shipped, shading: { ...shipped.shading, fade: 2 } })).toBe(
+      true,
+    );
     expect(themeCss(source, shipped)).toBe(
       "/* No changes: the theme is calendar-theme.css as it ships. */\n",
     );
@@ -177,19 +208,133 @@ describe("copied CSS", () => {
   });
 });
 
-describe("preview CSS", () => {
-  test("sets every token of the mode under the preview's scope", () => {
-    const theme = setToken(source, shipped, "dark", "--calendar-now", "oklch(0.8 0.1 30)");
-    const light = previewCss(source, theme, "light", "[data-theme-preview]");
-    const dark = previewCss(source, theme, "dark", "[data-theme-preview]");
+/**
+ * The custom properties `calendar-theme.css` followed by a paste declares, as the cascade picks
+ * them: in light mode, under `<html class="dark">`, where `:root` and `.dark` meet on one element
+ * and the later rule wins, and on an element inside a nested `.dark`, which inherits `:root` from
+ * the page and takes `.dark` on itself. `.dark [data-color]` outranks `[data-color]` by
+ * specificity, wherever it comes.
+ */
+function cascade(text: string) {
+  const rules = [...text.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{};]+)\{([^{}]*)\}/g)].map(
+    ([, selector, body]) => {
+      const declarations: Record<string, string> = {};
+      for (const declaration of body!.split(";")) {
+        const [name, value] = declaration.split(/:(.*)/s).map((part) => part.trim());
+        if (name?.startsWith("--") && value) declarations[name] = normalizeValue(value);
+      }
+      return [selector!.trim(), declarations] as const;
+    },
+  );
+  const apply = (...selectors: string[]): Record<string, string> =>
+    Object.assign(
+      {},
+      ...rules.filter(([selector]) => selectors.includes(selector)).map(([, value]) => value),
+    );
+  return {
+    darkHtml: apply(":root", ".dark"),
+    darkNested: { ...apply(":root"), ...apply(".dark") },
+    eventDark: { ...apply("[data-color]"), ...apply(".dark [data-color]") },
+    eventLight: apply("[data-color]"),
+    light: apply(":root"),
+    palette: (name: string) => apply(`[data-color="${name}"]`),
+  };
+}
 
-    expect(light).toMatch(/^\[data-theme-preview\] \{\n {2}--radius: 0.625rem;/);
+describe("pasted after the theme", () => {
+  const edits: Record<string, Theme> = {
+    "a light-only primary": setToken(source, shipped, "light", "--primary", "oklch(0.5 0.2 260)"),
+    "a dark-only now line": setToken(
+      source,
+      shipped,
+      "dark",
+      "--calendar-now",
+      "oklch(0.8 0.1 30)",
+    ),
+    "light-only grid lines": setToken(source, shipped, "light", "--calendar-grid", "var(--input)"),
+    "a primary the same in both modes": setToken(
+      source,
+      setToken(source, shipped, "light", "--primary", "oklch(0.5 0.2 260)"),
+      "dark",
+      "--primary",
+      "oklch(0.5 0.2 260)",
+    ),
+    "a taller hour": setToken(source, shipped, "light", "--calendar-hour-height", "4rem"),
+    ...Object.fromEntries(
+      presets.map((preset) => [`the ${preset.name} preset`, applyPreset(source, shipped, preset)]),
+    ),
+  };
+
+  describe.each(Object.entries(edits))("%s", (_, theme) => {
+    test.each([false, true])("gives every mode its values, full: %s", (full) => {
+      const result = cascade(`${css}\n${themeCss(source, theme, { full })}`);
+      const value = (text: string | undefined) =>
+        text === undefined ? text : normalizeValue(text);
+
+      for (const { name } of source.tokens) {
+        expect(result.light[name], `${name}, light`).toBe(value(theme.light[name]));
+        expect(result.darkHtml[name], `${name}, html.dark`).toBe(value(theme.dark[name]));
+        expect(result.darkNested[name], `${name}, nested .dark`).toBe(value(theme.dark[name]));
+      }
+      for (const name of Object.keys(source.eventColor.light)) {
+        expect(result.eventLight[name]).toBe(value(theme.eventColor.light[name]));
+        expect(result.eventDark[name]).toBe(value(theme.eventColor.dark[name]));
+      }
+      for (const { name } of source.palette) {
+        const { chroma, hue } = theme.palette[name]!;
+        expect(result.palette(name)).toMatchObject({
+          "--calendar-event-chroma": String(chroma),
+          "--calendar-event-hue": String(hue),
+        });
+      }
+    });
+  });
+
+  test("a size is not restated in .dark, since both modes share it", () => {
+    expect(themeCss(source, edits["a taller hour"]!)).not.toContain(".dark");
+  });
+});
+
+describe("preview CSS", () => {
+  test("sets every token of both modes, following the page or a picked mode", () => {
+    const theme = setToken(source, shipped, "dark", "--calendar-now", "oklch(0.8 0.1 30)");
+    const preview = previewCss(source, theme, "[data-theme-preview]");
+    const scopes = modeScopes("[data-theme-preview]");
+
+    expect(scopes.light).toBe(
+      ':is(:root:not(.dark) [data-theme-preview]:not([data-mode="dark"]), [data-theme-preview][data-mode="light"])',
+    );
+    expect(preview).toContain(`${scopes.light} {\n  --radius: 0.625rem;`);
+    const [light, dark] = preview.split(`${scopes.dark} {`);
     expect(light).toContain("  --calendar-now: oklch(0.637 0.237 25.3);");
     expect(dark).toContain("  --calendar-now: oklch(0.8 0.1 30);");
-    expect(dark).toContain(
-      "[data-theme-preview] [data-color] {\n  --calendar-event: oklch(0.32 calc(var(--calendar-event-chroma) * 0.45) var(--calendar-event-hue));",
+    expect(preview).toContain(
+      `${scopes.dark} [data-color] {\n  --calendar-event: oklch(0.32 calc(var(--calendar-event-chroma) * 0.45) var(--calendar-event-hue));`,
     );
-    expect(light).toContain('[data-theme-preview] [data-color="gray"] {');
+    expect(preview).toContain('[data-theme-preview] [data-color="gray"] {');
+  });
+
+  test("only values that stay inside their declaration go in", () => {
+    for (const value of [
+      "oklch(0.5 0.1 30 / 0.5)",
+      "var(--primary)",
+      "color-mix(in oklch, red 5%, transparent)",
+    ]) {
+      expect(isSafeValue(value), value).toBe(true);
+    }
+    for (const value of [
+      "",
+      "red;",
+      "red} body { color: red",
+      "red /* brand",
+      "var(--x, */ red)",
+      "red !important",
+      'url("x")',
+      "\\72 ed",
+      "</style>",
+    ]) {
+      expect(isSafeValue(value), value).toBe(false);
+    }
   });
 });
 

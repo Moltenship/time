@@ -13,6 +13,8 @@ export interface ThemeToken {
   readonly light: string;
   /** Its value under `.dark`: the `.dark` rule's, or the light one where that rule leaves it. */
   readonly dark: string;
+  /** Whether the `.dark` rule sets it, rather than leaving it to `:root`. */
+  readonly inDark: boolean;
   readonly name: string;
 }
 
@@ -108,6 +110,7 @@ export function parseTheme(css: string): ThemeSource {
     palette,
     tokens: Object.entries(light).map(([name, value]) => ({
       dark: dark[name] ?? value,
+      inDark: name in dark,
       kind: LENGTH.test(value) ? "length" : "color",
       light: value,
       name,
@@ -130,6 +133,14 @@ export function defaultTheme(source: ThemeSource): Theme {
 
 const same = (left: string | undefined, right: string | undefined) =>
   left !== undefined && right !== undefined && normalizeValue(left) === normalizeValue(right);
+
+/**
+ * Whether a typed value can go into a declaration as it is: no character that could end the
+ * declaration or the rule, open a comment, or escape. Colour syntax is the browser's to check.
+ */
+export function isSafeValue(value: string): boolean {
+  return value.trim() !== "" && !/[;{}<>\\"'!]|\/\*|\*\//.test(value);
+}
 
 /** Sets a token for one mode; a length is the same in both. */
 export function setToken(
@@ -170,14 +181,17 @@ function formatRule([selector, declarations]: Rule, indent = ""): string {
 function themeRules(source: ThemeSource, theme: Theme, full: boolean): Rule[] {
   const names = source.tokens.map(({ name }) => name);
   const root = names.filter((name) => full || isTokenChanged(source, theme, "light", name));
-  // `.dark` wins over `:root` by coming after it, and so would a `:root` pasted after the theme.
-  // So in dark mode a token the paste sets in `:root` takes that value unless `.dark` restates it.
-  const dark = names.filter((name) => {
-    const inherited = root.includes(name)
-      ? theme.light[name]
-      : source.tokens.find((token) => token.name === name)?.dark;
-    return !same(theme.dark[name], inherited);
-  });
+  // On `<html class="dark">`, a `:root` pasted after the theme comes after the theme's `.dark` and
+  // wins, so a token it sets keeps another dark value only when `.dark` restates it. On a nested
+  // `.dark` element the theme's `.dark` rule applies there directly, so a token that rule sets
+  // needs restating whenever its dark value changed.
+  const dark = source.tokens
+    .filter(({ dark: shipped, inDark, name }) => {
+      const value = theme.dark[name];
+      if (root.includes(name) && !same(value, theme.light[name])) return true;
+      return !same(value, shipped) && (inDark || !root.includes(name));
+    })
+    .map(({ name }) => name);
   const eventTokens = (mode: Mode) =>
     Object.keys(source.eventColor[mode]).filter(
       (name) => full || !same(theme.eventColor[mode][name], source.eventColor[mode][name]),
@@ -205,12 +219,21 @@ function themeRules(source: ThemeSource, theme: Theme, full: boolean): Rule[] {
   return rules.filter(([, declarations]) => declarations.length > 0);
 }
 
-/** Whether the theme differs from `calendar-theme.css` as it ships. */
+/** Whether the theme differs from `calendar-theme.css` as it ships, or the shading from flat. */
 export function isThemeChanged(source: ThemeSource, theme: Theme): boolean {
-  return themeRules(source, theme, false).length > 0 || theme.shading.recipe !== "flat";
+  const { shading } = theme;
+  return (
+    themeRules(source, theme, false).length > 0 ||
+    (Object.keys(defaultShading) as (keyof Shading)[]).some(
+      (key) => shading[key] !== defaultShading[key],
+    )
+  );
 }
 
-/** The shading recipe's rules, under `scope` when given, as on the Availability page. */
+/**
+ * The shading recipe's rules, under `scope` when given. They follow the Availability page's
+ * recipes, but leave the tint to `--calendar-unavailable`, which has its own control.
+ */
 export function shadingCss(shading: Shading, scope = ""): string {
   const band = `${scope}[data-slot="time-grid-unavailable"]`;
   switch (shading.recipe) {
@@ -274,26 +297,39 @@ export function themeCss(source: ThemeSource, theme: Theme, { full = false } = {
 }
 
 /**
- * The CSS that styles the preview in one mode: every token, the event colours and the shading,
- * under `scope`. Unlayered, so it wins over the docs' own theme and over `calendar-theme.css`,
- * whose `.dark [data-color]` would otherwise reach a light preview on a dark page.
+ * Where each mode's preview CSS applies: elements with the `scope` attribute in that mode. A
+ * `data-mode` attribute picks the mode; without one they follow the page's `.dark` class, so the
+ * page renders in its own theme before the builder hydrates.
  */
-export function previewCss(source: ThemeSource, theme: Theme, mode: Mode, scope: string): string {
-  const tokens = source.tokens.map(({ name }): [string, string] => [name, theme[mode][name]!]);
-  const rules: Rule[] = [
-    [scope, tokens],
-    [`${scope} [data-color]`, Object.entries(theme.eventColor[mode])],
-    ...source.palette.map(({ name }): Rule => {
-      const { chroma, hue } = theme.palette[name]!;
-      return [
-        `${scope} [data-color="${name}"]`,
-        [
-          ["--calendar-event-hue", String(hue)],
-          ["--calendar-event-chroma", String(chroma)],
-        ],
-      ];
-    }),
-  ];
+export function modeScopes(scope: string): Readonly<Record<Mode, string>> {
+  return {
+    dark: `:is(.dark ${scope}:not([data-mode="light"]), ${scope}[data-mode="dark"])`,
+    light: `:is(:root:not(.dark) ${scope}:not([data-mode="dark"]), ${scope}[data-mode="light"])`,
+  };
+}
+
+/**
+ * The CSS that styles the preview: every token and the event colours of both modes, the palette
+ * and the shading, under `scope`. Unlayered, so it wins over the docs' own theme and over
+ * `calendar-theme.css`, whose `.dark [data-color]` would otherwise reach a light preview on a
+ * dark page.
+ */
+export function previewCss(source: ThemeSource, theme: Theme, scope: string): string {
+  const scopes = modeScopes(scope);
+  const rules: Rule[] = (["light", "dark"] as const).flatMap((mode): Rule[] => [
+    [scopes[mode], source.tokens.map(({ name }): [string, string] => [name, theme[mode][name]!])],
+    [`${scopes[mode]} [data-color]`, Object.entries(theme.eventColor[mode])],
+  ]);
+  for (const { name } of source.palette) {
+    const { chroma, hue } = theme.palette[name]!;
+    rules.push([
+      `${scope} [data-color="${name}"]`,
+      [
+        ["--calendar-event-hue", String(hue)],
+        ["--calendar-event-chroma", String(chroma)],
+      ],
+    ]);
+  }
   return [...rules.map((rule) => formatRule(rule)), shadingCss(theme.shading, `${scope} `)]
     .filter((part) => part !== "")
     .join("\n");

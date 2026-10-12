@@ -104,7 +104,7 @@ test("labels every control and gives every token one", async () => {
   }
   expect(input(container, "Today").value).toBe("oklch(0.52 0.215 262.9)");
   expect(container.querySelector('input[type="color"]')?.getAttribute("aria-label")).toBe(
-    "Grid lines: pick a colour",
+    "Grid lines: pick a color",
   );
 });
 
@@ -128,30 +128,45 @@ test("a token edit restyles the preview and the CSS, and its reset undoes it", a
   expect(css(container)).toContain("No changes");
 });
 
-test("a value that could escape the preview's rule is flagged and never applied", async () => {
+test("a value that could break the CSS is flagged, explained and never applied", async () => {
   const container = await render(<ThemeBuilder source={source} />);
   const today = input(container, "Today");
+  const before = previewStyle(container);
 
-  await type(today, "red} body { color: red");
+  for (const value of ["red} body { color: red", "oklch(0.6 0.2 30) /* brand"]) {
+    await type(today, value);
 
-  expect(today.getAttribute("aria-invalid")).toBe("true");
-  expect(previewStyle(container)).not.toContain("body");
-  await act(async () => today.dispatchEvent(new FocusEvent("blur")));
+    expect(today.getAttribute("aria-invalid")).toBe("true");
+    expect(
+      container.querySelector(`#${CSS.escape(today.getAttribute("aria-describedby")!)}`)
+        ?.textContent,
+    ).toBe("Not a color the preview can use. It keeps oklch(0.52 0.215 262.9).");
+    expect(previewStyle(container)).toBe(before);
+    expect(css(container)).toContain("No changes");
+  }
   await act(async () => today.dispatchEvent(new FocusEvent("focusout", { bubbles: true })));
   expect(today.value).toBe("oklch(0.52 0.215 262.9)");
+  expect(today.hasAttribute("aria-invalid")).toBe(false);
 });
 
 test("follows the docs theme, previews the other one, and edits the mode it shows", async () => {
   document.documentElement.classList.add("dark");
   const container = await render(<ThemeBuilder source={source} />);
-  const preview = container.querySelector("[data-theme-preview]")!;
+  const preview = container.querySelector<HTMLElement>("[data-theme-preview]")!;
+  const pressed = () =>
+    container.querySelector('[aria-label="Theme"] [aria-pressed="true"]')?.textContent;
 
-  expect(preview.classList.contains("dark")).toBe(true);
-  expect(previewStyle(container)).toContain("--calendar-today: oklch(0.707 0.165 254.6);");
+  // Following the page, the preview takes its mode from the page's class, as it did on the server.
+  expect(pressed()).toBe("Dark");
+  expect(preview.hasAttribute("data-mode")).toBe(false);
+  expect(container.textContent).toContain("Calendar colors, dark");
+  expect(input(container, "Today").value).toBe("oklch(0.707 0.165 254.6)");
 
   await act(async () => button(container, "Light").click());
+  expect(preview.getAttribute("data-mode")).toBe("light");
   expect(preview.classList.contains("dark")).toBe(false);
-  expect(container.textContent).toContain("Calendar colours, light");
+  expect(preview.style.colorScheme).toBe("light");
+  expect(container.textContent).toContain("Calendar colors, light");
 
   await act(async () => button(container, "Dark").click());
   await type(input(container, "Now line"), "oklch(0.8 0.1 30)");
@@ -159,7 +174,22 @@ test("follows the docs theme, previews the other one, and edits the mode it show
   expect(css(container)).not.toContain(":root");
 });
 
-test("presets press when applied, sizes slide in rem, and the full set copies", async () => {
+test("a mode picked against the docs theme lasts until the docs switch", async () => {
+  const container = await render(<ThemeBuilder source={source} />);
+  const preview = container.querySelector<HTMLElement>("[data-theme-preview]")!;
+
+  await act(async () => button(container, "Dark").click());
+  expect(preview.getAttribute("data-mode")).toBe("dark");
+  expect(preview.classList.contains("dark")).toBe(true);
+
+  // The docs' theme toggle sets the class on <html>; the builder watches it.
+  await act(async () => document.documentElement.classList.add("dark"));
+  await act(async () => document.documentElement.classList.remove("dark"));
+  expect(preview.hasAttribute("data-mode")).toBe(false);
+  expect(container.textContent).toContain("Calendar colors, light");
+});
+
+test("presets show when applied, sizes slide in rem, and the full set copies", async () => {
   const writeText = vi.fn(async () => {});
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
   const container = await render(<ThemeBuilder source={source} />);
@@ -167,13 +197,13 @@ test("presets press when applied, sizes slide in rem, and the full set copies", 
   const hourHeight = input(container, "Hour height");
 
   await act(async () => ocean.click());
-  expect(ocean.getAttribute("aria-pressed")).toBe("true");
-  expect(button(container, "Neutral").getAttribute("aria-pressed")).toBe("false");
+  expect(ocean.getAttribute("aria-current")).toBe("true");
+  expect(button(container, "Neutral").hasAttribute("aria-current")).toBe(false);
 
   await type(hourHeight, "4.5");
   expect(hourHeight.getAttribute("aria-valuetext")).toBe("4.5rem");
   expect(css(container)).toContain("--calendar-hour-height: 4.5rem;");
-  expect(button(container, "Roomy").getAttribute("aria-pressed")).toBe("false");
+  expect(button(container, "Roomy").hasAttribute("aria-current")).toBe(false);
 
   await act(async () => button(container, "All tokens").click());
   await act(async () => button(container, "Copy CSS").click());
@@ -182,7 +212,7 @@ test("presets press when applied, sizes slide in rem, and the full set copies", 
   expect(container.querySelector('[role="status"]')?.textContent).toBe("Copied");
 
   await act(async () => button(container, "Reset all").click());
-  expect(button(container, "Neutral").getAttribute("aria-pressed")).toBe("true");
+  expect(button(container, "Neutral").getAttribute("aria-current")).toBe("true");
   Reflect.deleteProperty(navigator, "clipboard");
 });
 
@@ -201,14 +231,20 @@ test("arrow keys move between the preview's views, which the tabs switch", async
   expect(container.querySelector('[data-testid="calendar"]')).toBeNull();
 });
 
-test("the preview's week shows the whole palette and hands date clicks to the tabs", async () => {
+test("the preview's week shows the palette and the default event tokens", async () => {
   const onViewChange = vi.fn();
   const container = await render(<ThemeCalendar onViewChange={onViewChange} view="week" />);
-  const colors = new Set(
-    [...container.querySelectorAll("[data-color]")].map((chip) => chip.getAttribute("data-color")),
-  );
+  const events = [...container.querySelectorAll<HTMLElement>('[data-slot="calendar-event"]')];
+  const colors = new Set(events.map((chip) => chip.getAttribute("data-color")));
 
-  expect(colors).toEqual(new Set(calendarEventColors));
+  expect(colors).toEqual(new Set([...calendarEventColors, null]));
+  // Time-grid events read their padding from the density tokens.
+  const timed = events.filter((chip) => chip.closest("[data-slot=time-grid-body]") !== null);
+  expect(timed.length).toBeGreaterThan(0);
+  for (const chip of timed) expect(chip.className).toContain("px-[var(--calendar-event-padding-x,");
+  expect(timed.some((chip) => chip.className.includes("py-[var(--calendar-event-padding-y,"))).toBe(
+    true,
+  );
   await act(async () =>
     container.querySelector<HTMLButtonElement>('button[aria-label^="Open "]')!.click(),
   );

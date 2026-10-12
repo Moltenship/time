@@ -30,6 +30,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | iCalendar      | #151, #153       | Standalone `@moltenship/ics`: ICS text to typed Temporal values, TZID resolution, a Standard Schema parser with typed extensions; a docs reference with a playground and a guide to showing a feed |
 | Time zones     | #165             | Secondary time zones (ADR 0165): `secondaryTimeZones` on `Root`, each hour line read in another zone on its own date (`timeGridZoneAxis`), an hour column per zone in the day, week, scrolling and resource columns views, notes on days a zone shifts, slot names with the time in each zone |
 | Recurrence     | #48, #49, #155   | `@moltenship/calendar-recurrence` (ADR 0048), shipped through #156–#159: an RFC 5545 rule engine and RRULE text; range-bounded expansion with stable occurrence IDs, EXDATE, RDATE, overrides and an ICS bridge; "this / following / all" edits and the registry scope dialog. #155 closes epic #2 with the demo and docs, in a PR of their own, and a gate: a DST matrix, Google/Outlook/iCloud interop fixtures and a year-view expansion benchmark (`vp run recurrence:gate`) |
+| Theme builder  | #166             | A docs page that edits every token of `calendar-theme.css` live, light and dark apart, over a scoped preview, with presets, contrast checks and CSS to copy; `--calendar-event-padding-x` and `-y` for time-grid events |
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
 0.4 — Availability, layout & scale are closed. Epic #2, recurrence, closes with #155.
@@ -61,6 +62,8 @@ issue's "Later" section when work starts.
 - Layout and frame budgets
 - Secondary time zone follow-ups from #165: a "swap zones" action, the now-line's time in each zone,
   the resource timeline's time header, and a label for the display zone
+- Theme builder follow-ups (#166): shareable URL state, pasting a theme in, adding a palette colour,
+  a month row height token
 - Recurrence follow-ups from the #155 gate: DST folds and cancelled first occurrences in edits, ICS
   bridge quirks, expansion speed-ups (#160)
 

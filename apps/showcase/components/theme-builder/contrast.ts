@@ -10,7 +10,10 @@ export interface ContrastCheck {
   readonly palette?: boolean;
 }
 
-/** The pairs `registry/tests/theme-contrast.test.ts` holds the shipped theme to. */
+/**
+ * The pairs `registry/tests/theme-contrast.test.ts` holds the shipped theme to, on `--background`,
+ * plus body text and the hour labels.
+ */
 export const contrastChecks: readonly ContrastCheck[] = [
   { back: "var(--background)", front: "var(--foreground)", label: "Text", minimum: 4.5 },
   {
@@ -33,6 +36,12 @@ export const contrastChecks: readonly ContrastCheck[] = [
     minimum: 4.5,
   },
   {
+    back: "var(--calendar-selection)",
+    front: "var(--calendar-today)",
+    label: "Today on the selection",
+    minimum: 4.5,
+  },
+  {
     back: "var(--background)",
     front: "var(--calendar-axis)",
     label: "Hour and weekday labels",
@@ -44,7 +53,28 @@ export const contrastChecks: readonly ContrastCheck[] = [
     label: "Text on closed time",
     minimum: 4.5,
   },
+  {
+    back: "var(--calendar-closed)",
+    front: "var(--muted-foreground)",
+    label: "Muted dates on closed days",
+    minimum: 4.5,
+  },
   { back: "var(--background)", front: "var(--calendar-now)", label: "Now line", minimum: 3 },
+  { back: "var(--background)", front: "var(--ring)", label: "Focus ring", minimum: 3 },
+  { back: "var(--background)", front: "var(--calendar-busy)", label: "Busy dot", minimum: 3 },
+  { back: "var(--background)", front: "var(--calendar-free)", label: "Free dot", minimum: 3 },
+  {
+    back: "var(--background)",
+    front: "var(--calendar-invalid)",
+    label: "Rejected change",
+    minimum: 3,
+  },
+  {
+    back: "var(--background)",
+    front: "var(--calendar-warning)",
+    label: "Flagged change",
+    minimum: 3,
+  },
 ];
 
 export interface ContrastResult {

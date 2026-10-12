@@ -18,25 +18,33 @@ The CSS has the shape of `calendar-theme.css`: tokens inside `@layer base`, ligh
 tokens, outside the layer, as on [Availability](/docs/availability#customize-the-shading).
 
 - **Changed tokens** copies what differs from the theme as it ships. A token you changed only in
-  light mode is restated in `.dark` too, so the dark theme keeps its own value.
+  light mode is restated in `.dark` too, so the dark theme keeps its own value, whether `.dark` is
+  on `<html>` or on an element around the calendar.
 - **All tokens** copies the whole theme, to replace the variables in your copy of the file.
 
-If your app defines the shadcn tokens itself, outside a layer, its rules win over the pasted ones.
-Change the base colors there instead.
+Rules your app writes outside a layer win over the pasted ones: its own shadcn theme, or overrides
+like those in [Changing tokens](/docs/theming#changing-tokens). Change those tokens there instead.
 
 ## What you can change
 
 - **Colors.** The tokens in [Theming](/docs/theming#tokens), and the shadcn tokens under **Base
   colors**. Many calendar tokens derive from those: grid lines are `var(--border)`, and the default
   event fill mixes `--primary` into `--background`. A derived token follows its source until you
-  set it.
+  set it. `--calendar-surface` isn't here: it's unset, and you set it on a container, as Theming
+  shows.
 - **Density.** The hour height and the event padding in time grids, and `--radius`, which rounds
   events, buttons and badges.
 - **Availability.** The tints for closed time and closed days, a shading recipe for closed time in
-  time grids, the busy and free dots, and the outlines of changes the policies reject or flag.
+  time grids, the busy and free dots, and the outlines of changes the policies reject or flag. The
+  recipes are the ones on Availability, but the tint stays the **Closed time** token's.
 - **Event palette.** Each color's hue and chroma, and how every color derives its fill, text and
   edge from them, per theme. To add a color, see [Adding a color](/docs/theming#adding-a-color).
 
-**Contrast** checks the pairs the theme's own test holds to WCAG AA, as the preview paints them:
-4.5:1 for text and 3:1 for the now line. For event text it reports the palette color with the
-lowest contrast. Menus, tooltips and popovers open outside the preview, in the docs' own theme.
+**Contrast** checks, as the preview paints them, the pairs the theme's own test holds to WCAG AA on
+the background, plus body text and the hour labels: 4.5:1 for text, 3:1 for the now line, the
+focus ring and the status marks. When event text falls short, it names the palette color with the
+lowest contrast.
+
+Menus, tooltips and popovers open outside the preview, in the docs' own theme. A light preview on
+a dark page also keeps a few dark-mode touches of the shadcn controls, such as the **Today**
+button's fill, since the page's `dark` class reaches them.
