@@ -82,8 +82,8 @@ function Planner() {
       eventTitle: change.event.event.title,
       scopes: recurrenceEditScopes(change, adapters),
     });
-    // Rejecting rolls the change back.
-    if (scope === null) throw new Error("cancelled");
+    // Rejecting rolls the change back; an `AbortError` is announced as a cancel.
+    if (scope === null) throw new DOMException("Cancelled", "AbortError");
     const edit = resolveRecurrenceEdit(change, scope, adapters, {
       newSeriesId: "standup-2",
       occurrences,
@@ -211,12 +211,8 @@ test("Escape rolls the change back and focus goes back to the occurrence", async
 
   await vi.waitFor(() => expect(document.activeElement).toBe(occurrence(thursday)));
   expect(label(document.activeElement)).toBe("Standup, Thursday, October 8, 9:00 – 9:30 AM");
-  // Known gap (#155): a cancelled question reads as a failed save. The calendar announces a
-  // rejected change with its reason alone, "handler-error" for anything `onEventChange` throws,
-  // so the messages can't tell a cancel from a failure without the error passed on.
-  await vi.waitFor(() =>
-    expect(said).toEqual(["Couldn't save Standup, so it's back where it was."]),
-  );
+  // A cancelled question isn't a failed save.
+  await vi.waitFor(() => expect(said).toEqual(["Cancelled. Standup is back where it was."]));
 });
 
 test("a delete asks the delete question, without This and following on the first occurrence", async () => {

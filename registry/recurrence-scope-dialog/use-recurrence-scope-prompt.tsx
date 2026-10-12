@@ -43,7 +43,8 @@ const closed: PromptState = { open: false, question: {} };
 /**
  * Asks which events of a recurring series a change applies to, as a promise. Await it in
  * `onEventChange`: the change stays on screen, pending, while the dialog is open, and rejecting
- * the change rolls it back.
+ * the change rolls it back. Reject a cancelled question with an `AbortError`, so the calendar's
+ * announcements say the change was cancelled, not that it couldn't be saved.
  *
  * `isRecurringChange(change)` from `@moltenship/calendar-recurrence` skips the question for
  * one-off events, and `recurrenceEditScopes(change, adapters)` from the same package lists the
@@ -72,8 +73,8 @@ const closed: PromptState = { open: false, question: {} };
  *       action: change.cause === "delete" ? "delete" : "edit",
  *       scopes: recurrenceEditScopes(change, adapters),
  *     });
- *     // Rejecting rolls the change back.
- *     if (scope === null) throw new Error("cancelled");
+ *     // Rejecting rolls the change back; an `AbortError` is announced as a cancel.
+ *     if (scope === null) throw new DOMException("Cancelled", "AbortError");
  *     // `newSeriesId` names the series "following" starts, so its IDs map too.
  *     const edit = resolveRecurrenceEdit(change, scope, adapters, { newSeriesId: createId() });
  *     if (edit.type === "rejected") throw new Error(edit.message);

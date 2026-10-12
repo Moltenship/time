@@ -55,6 +55,14 @@ test("explains rejections, and says nothing when a newer change replaced this on
   expect(say({ ...update, phase: "reject", reason: "handler-error" })).toBe(
     "Couldn't save standup, so it's back where it was.",
   );
+  // The application cancelled it, as when the user dismisses the recurrence scope question.
+  const cancelled = new DOMException("Cancelled", "AbortError");
+  expect(say({ ...update, error: cancelled, phase: "reject", reason: "handler-error" })).toBe(
+    "Cancelled. standup is back where it was.",
+  );
+  expect(
+    say({ ...update, error: new Error("offline"), phase: "reject", reason: "handler-error" }),
+  ).toBe("Couldn't save standup, so it's back where it was.");
   expect(say({ ...update, phase: "reject", reason: "superseded" })).toBeNull();
   expect(say({ ...update, cause: "create", event: null, phase: "cancel" })).toBe(
     "Cancelled the new event.",

@@ -122,7 +122,8 @@ export const testMessages: CalendarAnnouncementMessages = {
   cancel: ({ cause, event }) => `cancel ${cause} ${event?.title ?? "new"}`,
   commit: ({ cause, event, proposed }, { formatRange }) =>
     `commit ${cause} ${event?.title ?? "new"} ${formatRange(proposed)}`,
-  reject: ({ cause, event, reason }) => `reject ${cause} ${event?.title ?? "new"} ${reason}`,
+  reject: ({ cause, error, event, reason }) =>
+    `reject ${cause} ${event?.title ?? "new"} ${reason}${error instanceof Error ? ` (${error.message})` : ""}`,
   start: ({ cause, event, proposed }, { formatRange }) =>
     `start ${cause} ${event?.title ?? "new"} ${proposed === null ? "" : formatRange(proposed)}`,
   step: ({ proposed }, { formatRange }) => (proposed === null ? null : formatRange(proposed)),

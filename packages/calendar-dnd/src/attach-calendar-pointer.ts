@@ -236,7 +236,7 @@ export function attachCalendarPointer<
           readonly proposed: CalendarEventPlacement;
           readonly warnings?: readonly string[];
         }
-      | { readonly phase: "reject"; readonly reason: string },
+      | { readonly error?: unknown; readonly phase: "reject"; readonly reason: string },
   ): void {
     const { check, gesture } = current;
     current.announcer?.announce({
@@ -422,7 +422,11 @@ export function attachCalendarPointer<
               proposed: result.change.proposed!,
               warnings: result.change.warnings,
             }
-          : { phase: "reject", reason: result.reason },
+          : {
+              phase: "reject",
+              reason: result.reason,
+              ...(result.error === undefined ? {} : { error: result.error }),
+            },
       ),
     );
   }
