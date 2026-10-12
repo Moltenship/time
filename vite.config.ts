@@ -50,6 +50,11 @@ export default defineConfig({
         "vp run engine:build",
         "vp run --no-cache benchmark#core",
       ],
+      "recurrence:gate": [
+        "vp check",
+        "vp test packages/calendar-recurrence benchmarks/tests/recurrence.test.ts",
+        "vp run --no-cache benchmark#recurrence",
+      ],
       "react:store": [
         "vp run calendar-react#check",
         "vp run calendar-react#test",
