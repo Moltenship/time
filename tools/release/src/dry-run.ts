@@ -119,15 +119,23 @@ export async function dryRun({
     console.log("The working tree had changes, so the publish step won't accept this run.");
 }
 
+/**
+ * The version a dry run checks: `--version` first, else `RELEASE_VERSION`, which the release
+ * workflow sets for `release:gate`, whose lane runs the dry run without arguments. Neither means
+ * "whatever the manifests say".
+ */
+export function requestedVersion(
+  flag: string | true | undefined,
+  environment: string | undefined,
+): { readonly version?: string; readonly requestedFrom: "flag" | "env" } {
+  if (typeof flag === "string") return { version: flag, requestedFrom: "flag" };
+  return { version: environment || undefined, requestedFrom: "env" };
+}
+
 runMain(import.meta, async () => {
   const { flags } = parseArguments(process.argv.slice(2), ["require-clean"], ["version"]);
-  // RELEASE_VERSION lets a task that runs the dry run inside a lane, such as release:gate, pass
-  // the version the release workflow was started with.
-  const flag = flags.get("version");
-  const environment = process.env.RELEASE_VERSION;
   await dryRun({
-    version: typeof flag === "string" ? flag : environment || undefined,
-    requestedFrom: typeof flag === "string" ? "flag" : "env",
+    ...requestedVersion(flags.get("version"), process.env.RELEASE_VERSION),
     requireClean: flags.has("require-clean"),
   });
 });

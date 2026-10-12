@@ -174,13 +174,17 @@ export function parseArguments(
       positionals.push(argument);
       continue;
     }
-    const [key, inline] = argument.slice(2).split("=", 2) as [string, string | undefined];
+    // Split at the first "=" only, so a value may contain one.
+    const equals = argument.indexOf("=");
+    const key = equals === -1 ? argument.slice(2) : argument.slice(2, equals);
+    const inline = equals === -1 ? undefined : argument.slice(equals + 1);
     if (!booleans.includes(key) && !strings.includes(key))
       throw new Error(`Unknown option --${key}`);
     const next = argv[index + 1];
     if (inline !== undefined && booleans.includes(key)) {
       throw new Error(`--${key} takes no value`);
     }
+    if (inline === "") throw new Error(`--${key} needs a value`);
     if (inline !== undefined) flags.set(key, inline);
     else if (!booleans.includes(key) && next !== undefined && !next.startsWith("--")) {
       flags.set(key, next);

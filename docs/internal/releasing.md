@@ -27,9 +27,10 @@ tier, `vp run ready:full`, also runs `vp run release:dry-run`.
 
 The PR checks read the built packages, so on their own they run after `vp run ci:build`. Only the
 dry run writes `.release/`. It takes the version to check from `--version`, or else from
-`RELEASE_VERSION`, which is how `release:gate` passes it; a stray `RELEASE_VERSION` in your shell
-makes a plain dry run check that version, and the error says so. Without `--require-clean`, it also runs on a tree with changes and
-records that in the manifest, which the publish step then refuses; releases pass the flag.
+`RELEASE_VERSION`, which the release workflow sets for `release:gate`; a stray `RELEASE_VERSION` in
+your shell makes a plain dry run check that version, and the error says so. Without
+`--require-clean`, it also runs on a tree with changes and records that in the manifest, which the
+publish step then refuses; releases pass the flag.
 
 - **The API changed on purpose.** Run `vp run release:api:update` and commit the reports with the
   change. The diff in `packages/*/api-report.md` is what reviewers look at.
@@ -42,19 +43,20 @@ records that in the manifest, which the publish step then refuses; releases pass
    [`CHANGELOG.md`](../../CHANGELOG.md).
 2. **Version PR.** On a branch, run `vp run release:version 1.0.0-rc.1` (or whichever version).
    It sets the version in all seven manifests and turns "Unreleased" into `## 1.0.0-rc.1 (date)`.
-   Open a PR, review, merge. From then on, the docs site's registry asks for that version, which
-   npm doesn't have until step 4, so publish soon after merging.
-3. **Link a green `browsers` run.** Firefox and WebKit run on demand in CI:
-   `gh workflow run ci.yml --ref main`. Link the green run in the release PR or issue, as
-   `AGENTS.md` asks.
+   Open a PR and review it.
+3. **Link a green `browsers` run** before merging. Firefox and WebKit run on demand in CI:
+   `gh workflow run ci.yml --ref <version-branch>`. Link the green run in the version PR, as
+   `AGENTS.md` asks, then merge. From then on, the docs site's registry asks for that version,
+   which npm doesn't have until step 4, so publish soon after merging.
 4. **Publish from `main`**, one of two ways:
    - **GitHub Actions.** Actions → Release → Run workflow, on `main`, with the version. Leave
      "Publish to npm" off for a rehearsal, and rehearse at least once before the first real
      release: the clean-consumer and registry install tests haven't run on GitHub's runners yet.
      The `verify` job runs `vp run a11y` alone, as CI does, then `vp run release:gate` with
      `RELEASE_VERSION` set to the input. `release:gate` is `ready:full` without the browser runs
-     (a runner is what `a11y:ci-speed` simulates, and `browsers` runs on demand), with `release:dry-run --require-clean` for that
-     version and `release:registry-e2e` on the dry run's tarballs. The job keeps `.release/` as the
+     (a runner is what `a11y:ci-speed` simulates, and `browsers` runs on demand), with
+     `release:dry-run --require-clean` for that version and `release:registry-e2e` on the dry
+     run's tarballs. The job keeps `.release/` as the
      `release` artifact for seven days. A rehearsal before the version PR uses version `0.0.0`.
      With publishing on, the `publish` job downloads the artifact and runs
      `vp run release:publish --version <v> --provenance --yes` on the same commit. Only that job
@@ -151,12 +153,12 @@ Unpublish only for something that must disappear, such as a leaked secret. npm a
 
 ## Registry
 
-The registry (#43) isn't published to npm: the docs site serves it at `/r/<item>.json`, built from
-`main`. The dry run builds it into `.release/registry` and checks that `compatibility.json` and every
-item's `@moltenship/calendar` range ask for the version it packed, so after `release:version` the
-registry and the packages agree. `vp run release:registry-e2e` then builds it again from source with
-a local base URL, and installs it into clean apps against the exact tarballs the dry run checked.
-The release workflow runs both.
+The registry (#43) isn't published to npm: the docs site serves it at `/r/<item>.json`, built
+from `main`. The dry run builds it into `.release/registry` and checks that `compatibility.json`
+and every item's `@moltenship/calendar` range ask for the version it packed, so after
+`release:version` the registry and the packages agree. `vp run release:registry-e2e` then builds
+it again from source with a local base URL, and installs it into clean apps against the exact
+tarballs the dry run checked. The release workflow runs both.
 
 ## Open owner decisions
 

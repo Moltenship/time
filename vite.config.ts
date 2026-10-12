@@ -40,7 +40,8 @@ export default defineConfig({
         dependsOn: ["registry:smoke", "gate:serial"],
       },
       // The release gate: everything `ready` runs, the a11y suite at CI's speed and in Firefox and
-      // WebKit, the docs site's types and search, and the registry installed into clean apps.
+      // WebKit, the release dry run, the docs site's types and search, and the registry installed
+      // into clean apps.
       "ready:full": {
         command: "echo ready:full: the release gate passed",
         cache: false,
@@ -126,6 +127,7 @@ export default defineConfig({
         "vp run calendar-react#check",
         "vp run calendar-react#test",
         "vp run calendar-react#build",
+        "vp run release#size calendar-react",
       ],
       "react:factory": [
         "vp run calendar-react#check",

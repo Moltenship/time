@@ -64,8 +64,8 @@ step.
 
 The release workflow runs `vp run a11y`, then `RELEASE_VERSION=<version> vp run release:gate`:
 `ready:full` without the browser runs, with a strict release dry run (`docs/internal/releasing.md`).
-The same two commands reproduce it locally. A full-gate-only check also joins
-`gate:serial:release`, or the contract test's list of what `release:gate` leaves out.
+The same two commands reproduce it locally. A full-gate-only check also joins `release:gate` (its
+`gate:serial:release` lane, or its `dependsOn`), or the contract test's list of what it leaves out.
 
 # Pull requests
 

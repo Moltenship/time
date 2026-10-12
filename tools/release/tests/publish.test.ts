@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { dryRun } from "../src/dry-run";
+import { dryRun, requestedVersion } from "../src/dry-run";
 import {
   distTag,
   publishProblems,
@@ -153,6 +153,8 @@ describe("the publish guard", () => {
     expect(() => parse(["--tag", "--yes"])).toThrow("--tag needs a value");
     expect(() => parse(["--dry-run", "--yes"])).toThrow("Unknown option --dry-run");
     expect(() => parse(["1.0.0-rc.1"])).toThrow("Unexpected argument 1.0.0-rc.1");
+    expect(() => parse(["--tag="])).toThrow("--tag needs a value");
+    expect(parse(["--tag=a=b"]).flags.get("tag")).toBe("a=b");
     expect(parse(["--yes", "--tag", "next"]).flags).toEqual(
       new Map<string, string | true>([
         ["yes", true],
@@ -163,6 +165,19 @@ describe("the publish guard", () => {
 });
 
 describe("the dry run", () => {
+  test("checks --version first, then RELEASE_VERSION, then nothing", () => {
+    expect(requestedVersion("1.0.0", "2.0.0")).toEqual({ version: "1.0.0", requestedFrom: "flag" });
+    expect(requestedVersion(undefined, "2.0.0")).toEqual({
+      version: "2.0.0",
+      requestedFrom: "env",
+    });
+    expect(requestedVersion(undefined, "")).toEqual({ version: undefined, requestedFrom: "env" });
+    expect(requestedVersion(undefined, undefined)).toEqual({
+      version: undefined,
+      requestedFrom: "env",
+    });
+  });
+
   test("a failed run removes the manifest an earlier run left", async () => {
     const directory = await mkdtemp(join(tmpdir(), "release-dry-run-"));
     const manifestFile = join(directory, "manifest.json");

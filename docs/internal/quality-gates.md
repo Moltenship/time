@@ -23,8 +23,8 @@ clean apps, which never replay: they rewrite their own inputs, or reach the netw
 `gate:serial` runs `showcase:links`, `ci:check`, `ci:build`, `release:check`, `ci:test`,
 `react:gate`, `ssr:smoke` and `package:graph` in that order, because each writes or reads generated
 files: packages' `dist`, packed tarballs, the docs site's `.next` and `.source`. Steps outside it
-read only source, so they run at the same time; `a11y` and `a11y:ci-speed` keep their Vite dependency caches apart. CI's
-`quality-gates` job runs `vp run ready:checks` and its `accessibility` job runs `vp run a11y`:
+read only source, so they run at the same time; `a11y` and `a11y:ci-speed` keep their Vite
+dependency caches apart. CI's `quality-gates` job runs `vp run ready:checks` and its `accessibility` job runs `vp run a11y`:
 together, `vp run ready`. On demand (`gh workflow run ci.yml --ref <branch>`), a `browsers` job runs
 `vp run browsers` on Linux. When a job fails, its last step names the failed task. The contract test
 `tests/quality-gates.test.ts` holds the workflow to those task names and fails if `ready:full`
@@ -33,8 +33,9 @@ misses a step of `ready`.
 The release workflow runs `vp run a11y` on its own and then `vp run release:gate`: `ready:full`
 without the browser runs (a GitHub runner is what `a11y:ci-speed` simulates, and `browsers` runs on
 demand in CI), with a strict dry run and the shadcn install test against the dry run's tarballs.
-A check that joins only the full gate joins `gate:serial:release` too; the contract test lists
-what `release:gate` may leave out. See [releasing.md](./releasing.md).
+A check that joins only the full gate joins `release:gate` too: its lane, `gate:serial:release`,
+for a serial step, or its `dependsOn` for a parallel one. The contract test lists what
+`release:gate` may leave out. See [releasing.md](./releasing.md).
 
 ## CI and local runs
 
@@ -116,8 +117,8 @@ remains an explicit local task while its deterministic correctness and build che
 `vp run react:store` is the focused issue #25 gate. It checks and builds `calendar-react`, runs the
 controlled/uncontrolled state matrix, two-root isolation, selector invalidation, injected-store and
 cleanup checks, and verifies deterministic SSR/hydration. The production build check
-(`packages/calendar-react/scripts/verify-public-api.mjs`) fails if the React client boundary is dropped or the runtime
-outgrows its budget.
+(`packages/calendar-react/scripts/verify-public-api.mjs`) fails if the React client boundary is
+dropped, and `vp run release#size calendar-react` if the runtime outgrows its budget.
 
 `vp run react:factory` is the focused issue #26 gate. It adds the typed factory, compound controls,
 custom-view registry, diagnostics/capabilities, facade consumer, direct React 19 refs, deterministic
