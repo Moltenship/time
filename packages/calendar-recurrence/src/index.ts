@@ -48,3 +48,31 @@ export type {
   RecurrenceRuleWindow,
   RecurringCalendarEvent,
 } from "./types";
+
+// Series edits (#49)
+export {
+  applyRecurrenceEdit,
+  isRecurringChange,
+  recurrenceEditScopes,
+  recurrenceOverrideEdit,
+  resolveRecurrenceEdit,
+} from "./edits";
+export type {
+  ApplyRecurrenceEditOptions,
+  RecurrenceEdit,
+  RecurrenceEditRejection,
+  RecurrenceEditRejectionReason,
+  RecurrenceEditScope,
+  RecurrenceEventEdit,
+  RecurrenceKeyShift,
+  RecurrenceNewSeries,
+  RecurrenceOccurrenceChange,
+  RecurrenceOrdinalShift,
+  RecurrenceOverrideRekey,
+  RecurrenceOverrideWrite,
+  RecurrenceOverridesRule,
+  RecurrenceSeriesEdit,
+  RecurrenceSeriesWrite,
+  RecurringOccurrenceChange,
+  ResolveRecurrenceEditOptions,
+} from "./edits";

@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "recurrence-scope-dialog",
+  "type": "registry:component",
+  "title": "Recurrence scope dialog",
+  "description": "Asks whether a change to a recurring event applies to this event, this and following events, or all events, while the change waits on screen. A promise-based hook for onEventChange resolves the scope, or null on cancel so the change rolls back.",
+  "dependencies": ["@moltenship/calendar"],
+  "registryDependencies": ["button", "dialog"],
+  "files": [
+    {
+      "path": "registry/recurrence-scope-dialog/recurrence-scope-dialog.tsx",
+      "type": "registry:component",
+      "target": "components/calendar/recurrence-scope-dialog/recurrence-scope-dialog.tsx"
+    },
+    {
+      "path": "registry/recurrence-scope-dialog/use-recurrence-scope-prompt.tsx",
+      "type": "registry:hook",
+      "target": "components/calendar/recurrence-scope-dialog/use-recurrence-scope-prompt.tsx"
+    }
+  ],
+  "meta": {
+    "compatibility": {
+      "@moltenship/calendar": ">=0.0.0"
+    }
+  }
+}

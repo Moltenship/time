@@ -96,6 +96,7 @@ time/
 │   ├── list-view/
 │   ├── resource-columns-view/
 │   ├── resource-timeline-view/
+│   ├── recurrence-scope-dialog/  # "which events?" for edits to a recurring event
 │   ├── calendar-dnd/
 │   ├── calendar-theme/
 │   └── calendar-full/            # compositional registry block
