@@ -27,6 +27,7 @@ packing, replacing that development entry with `dist/index.mjs` and `dist/index.
 | `@moltenship/calendar` | Supported public facade | `calendar-core`, `calendar-react` |
 | `@moltenship/calendar-testing` | Published consumer test helpers | Public facade, dnd adapter, and Temporal utilities |
 | `@moltenship/calendar-recurrence` | Reserved post-1.0 engine | `calendar-core`, `calendar-temporal` |
+| `@moltenship/ics` | Standalone iCalendar parsing (ADR 0151) | None |
 | `showcase` | Consumer-equivalent documentation and labs | Public facade only |
 | `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade only |
 | `fixtures` | Internal deterministic fixture generation | `calendar-core` |
@@ -57,6 +58,8 @@ calendar-react ─────────────────────�
                       calendar-testing ← calendar-dnd / calendar-temporal
 
 calendar-core + calendar-temporal ─────→ calendar-recurrence (reserved)
+
+ics (standalone: no workspace imports, no runtime dependencies)
 ```
 
 Registry item directories are consumer-owned source boundaries, not npm packages. They may consume

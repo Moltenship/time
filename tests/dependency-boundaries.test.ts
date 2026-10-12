@@ -35,6 +35,7 @@ const expectedWorkspaceDependencies = {
     "@moltenship/calendar-dnd",
     "@moltenship/calendar-temporal",
   ],
+  "@moltenship/ics": [],
   benchmark: [
     "@moltenship/calendar-core",
     "@moltenship/calendar-react",
@@ -61,6 +62,7 @@ const workspaceManifestPaths = [
   "packages/calendar-recurrence/package.json",
   "packages/calendar-temporal/package.json",
   "packages/calendar-testing/package.json",
+  "packages/ics/package.json",
   "registry/package.json",
   "tools/fixtures/package.json",
   "tools/registry/package.json",
@@ -74,6 +76,7 @@ const publishableManifestPaths = [
   "packages/calendar-recurrence/package.json",
   "packages/calendar-temporal/package.json",
   "packages/calendar-testing/package.json",
+  "packages/ics/package.json",
 ] as const;
 
 async function cruiseWithArchitectureRules(roots: string[]) {
@@ -385,7 +388,7 @@ describe("workspace boundaries", { concurrent: false }, () => {
     );
   }, 30_000);
 
-  test.each(["calendar-core", "calendar-temporal"])(
+  test.each(["calendar-core", "calendar-temporal", "ics"])(
     "%s compiles without DOM or ambient package types",
     async (packageName) => {
       const tsconfig = JSON.parse(

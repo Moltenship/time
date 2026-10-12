@@ -8,6 +8,7 @@ const packageNames = [
   "calendar-recurrence",
   "calendar-temporal",
   "calendar-testing",
+  "ics",
 ] as const;
 
 const packageSourcePath = (packageName: string) => `(?:^|/)packages/${packageName}/src(?:/|$)`;
@@ -59,12 +60,20 @@ export default {
       },
     },
     {
+      name: "ics-is-standalone",
+      comment:
+        "The iCalendar package depends on no other workspace, so any application can use it.",
+      severity: "error",
+      from: { path: "(?:^|/)packages/ics/src(?:/|$)" },
+      to: { path: ["^@moltenship/", "(?:^|/)packages/(?!ics/)[^/]+/"] },
+    },
+    {
       name: "engine-has-no-ui-runtime-imports",
       comment:
-        "Temporal and core stay independent from React, Jotai, dnd-kit, DOM helpers, and CSS.",
+        "Temporal, core, and ICS stay independent from React, Jotai, dnd-kit, DOM helpers, and CSS.",
       severity: "error",
       from: {
-        path: "(?:^|/)packages/calendar-(?:core|temporal)/src(?:/|$)",
+        path: "(?:^|/)packages/(?:calendar-core|calendar-temporal|ics)/src(?:/|$)",
       },
       to: {
         path: ["^(?:react(?:-dom)?|jotai|@dnd-kit/)", "\\.(?:css|less|sass|scss)$"],
