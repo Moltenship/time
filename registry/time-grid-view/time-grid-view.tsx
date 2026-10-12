@@ -9,7 +9,7 @@ import {
   type TimeGridProjection,
   type TimeGridSpan,
 } from "@moltenship/calendar";
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
@@ -44,6 +44,12 @@ export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions {
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Colour for an event; sets `data-color` on every element that renders it. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /**
+   * A small icon before an event's title, such as a repeat mark on recurring events, or nothing.
+   * It's decorative and hidden from assistive technology: say the same in `describeEvent`, which
+   * adds to each event's accessible name.
+   */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   /**
    * Replaces the shading of closed time: an element, or a function of its props and of the band,
    * date and resource, such as a gradient into working hours or a tint for rooms.
@@ -146,6 +152,7 @@ export function TimeGridView<TEvent>({
             days={days}
             formatDate={formatDate}
             getEventColor={options.getEventColor}
+            getEventIcon={options.getEventIcon}
             labelEvent={labelEvent}
             onOpenDay={openDay}
             row={projection.allDay}
@@ -156,6 +163,7 @@ export function TimeGridView<TEvent>({
           days={days}
           environment={environment}
           getEventColor={options.getEventColor}
+          getEventIcon={options.getEventIcon}
           labelEvent={labelEvent}
           onColumnHeightChange={setColumnHeight}
           onOpenDay={openDay}

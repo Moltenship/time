@@ -106,6 +106,7 @@ function ScrollingAgendaView<TEvent>({
       describeEvent={options.describeEvent}
       environment={environment}
       getEventColor={options.getEventColor}
+      getEventIcon={options.getEventIcon}
       empty={emptyState}
       end={
         endRow?.kind === "end" && endRow.shown ? (

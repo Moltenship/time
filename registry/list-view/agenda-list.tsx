@@ -103,6 +103,8 @@ export interface AgendaListProps<TEvent> {
   readonly end?: ReactNode;
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  /** An icon before an event's title, or nothing. */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly list: AgendaListState;
   readonly loading: boolean;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
@@ -123,6 +125,7 @@ export function AgendaList<TEvent>({
   end,
   environment,
   getEventColor,
+  getEventIcon,
   list,
   loading,
   onOpenDay,
@@ -185,6 +188,7 @@ export function AgendaList<TEvent>({
                 day={row.day}
                 formats={formats}
                 getEventColor={getEventColor}
+                getEventIcon={getEventIcon}
                 labelEvent={labelEvent}
                 onOpenDay={onOpenDay}
               />

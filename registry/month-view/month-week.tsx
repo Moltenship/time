@@ -44,6 +44,8 @@ export interface MonthFormats {
 interface MonthWeekRowProps<TEvent> {
   readonly formats: MonthFormats;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  /** An icon before an event's title, or nothing. */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Shows every lane instead of `overflow`, while keyboard focus is on an event it hides. */
   readonly expanded: boolean;
@@ -141,6 +143,7 @@ function MoreEvents<TEvent>({
   day,
   formats,
   getEventColor,
+  getEventIcon,
   labelEvent,
   lane,
   onOpenDay,
@@ -151,6 +154,8 @@ function MoreEvents<TEvent>({
   readonly day: MonthDay;
   readonly formats: MonthFormats;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  /** An icon before an event's title, or nothing. */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly lane: number;
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
@@ -197,6 +202,7 @@ function MoreEvents<TEvent>({
                 }
                 className="h-6 shrink-0"
                 color={getEventColor?.(segment.event.event)}
+                icon={getEventIcon?.(segment.event.event)}
                 date={day.date}
                 endsAfter={fragment.endsAfterDay}
                 event={segment.event}
@@ -317,6 +323,7 @@ export function MonthWeekRow<TEvent>({
   expanded,
   formats,
   getEventColor,
+  getEventIcon,
   labelEvent,
   maxLanes,
   offscreen = false,
@@ -374,6 +381,7 @@ export function MonthWeekRow<TEvent>({
                   segment.endsAfter && "me-0",
                 )}
                 color={getEventColor?.(segment.event.event)}
+                icon={getEventIcon?.(segment.event.event)}
                 date={day.date}
                 days={segment.span}
                 endsAfter={segment.endsAfter}
@@ -392,6 +400,7 @@ export function MonthWeekRow<TEvent>({
               day={day}
               formats={formats}
               getEventColor={getEventColor}
+              getEventIcon={getEventIcon}
               labelEvent={labelEvent}
               lane={maxLanes - 1}
               onOpenDay={onOpenDay}

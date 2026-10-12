@@ -7,7 +7,7 @@ import {
   type TimeGridPosition,
 } from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
-import { useMemo, type RefCallback, type RefObject } from "react";
+import { useMemo, type ReactNode, type RefCallback, type RefObject } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
@@ -26,6 +26,7 @@ export interface ResourceColumnsBodyProps<TEvent> {
   /** Follows the body's vertical scroll; see `useAxisSync`. */
   readonly followY: RefCallback<HTMLElement>;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   /** The rendered columns, from the column virtualizer. */
   readonly items: readonly VirtualItem[];
   readonly labelEvent: EventLabeler<TEvent>;
@@ -48,6 +49,7 @@ function ResourceDays<TEvent>({
   colIndex,
   formats,
   getEventColor,
+  getEventIcon,
   labelEvent,
   now,
   renderUnavailable,
@@ -60,6 +62,7 @@ function ResourceDays<TEvent>({
   readonly colIndex: number;
   readonly formats: TimeGridColumnFormats;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly now: TimeGridPosition | null;
   readonly renderUnavailable?: UnavailableTimeRender;
@@ -91,6 +94,7 @@ function ResourceDays<TEvent>({
           day={day}
           formats={formats}
           getEventColor={getEventColor}
+          getEventIcon={getEventIcon}
           labelEvent={labelEvent}
           nowTop={now?.column === index ? now.top : null}
           renderUnavailable={renderUnavailable}
@@ -112,6 +116,7 @@ export function ResourceColumnsBody<TEvent>({
   environment,
   followY,
   getEventColor,
+  getEventIcon,
   items,
   labelEvent,
   onScroll,
@@ -166,6 +171,7 @@ export function ResourceColumnsBody<TEvent>({
               column={resources[index]!}
               formats={formats}
               getEventColor={getEventColor}
+              getEventIcon={getEventIcon}
               labelEvent={labelEvent}
               now={nowPosition}
               renderUnavailable={renderUnavailable}

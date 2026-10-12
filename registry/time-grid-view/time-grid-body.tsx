@@ -4,7 +4,7 @@ import {
   type CalendarEnvironmentBase,
   type TimeGridDay,
 } from "@moltenship/calendar";
-import { useLayoutEffect, useMemo, useRef, type RefObject } from "react";
+import { useLayoutEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
@@ -18,6 +18,7 @@ export interface TimeGridBodyProps<TEvent> {
   readonly days: readonly TimeGridDay<TEvent>[];
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Reports the 24-hour row's height in px when it changes, as zooming the hours does. */
   readonly onColumnHeightChange?: (height: number) => void;
@@ -110,6 +111,7 @@ export function TimeGridBody<TEvent>({
   days,
   environment,
   getEventColor,
+  getEventIcon,
   labelEvent,
   onColumnHeightChange,
   onOpenDay,
@@ -158,6 +160,7 @@ export function TimeGridBody<TEvent>({
               }
               day={day}
               getEventColor={getEventColor}
+              getEventIcon={getEventIcon}
               labelEvent={labelEvent}
               onOpenDay={onOpenDay}
               renderUnavailable={renderUnavailable}

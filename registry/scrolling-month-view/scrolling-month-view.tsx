@@ -226,6 +226,7 @@ function ScrollingMonthView<TEvent>({
                     expanded={expanded}
                     formats={formats}
                     getEventColor={options.getEventColor}
+                    getEventIcon={options.getEventIcon}
                     labelEvent={labelEvent}
                     maxLanes={maxLanes}
                     offscreen={offscreen}

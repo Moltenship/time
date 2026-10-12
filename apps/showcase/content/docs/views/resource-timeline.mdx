@@ -113,6 +113,17 @@ ResourceTimelineView             resource-timeline-view.tsx
         </>
       ),
     },
+    getEventIcon: {
+      type: "(event: TEvent) => ReactNode",
+      description: (
+        <>
+          A small icon before each event's title, such as a repeat mark on recurring events, or
+          nothing. It's decorative and hidden from screen readers: say the same in{" "}
+          <code>describeEvent</code>, which adds to the event's{" "}
+          <a href="/docs/accessibility#event-names">accessible name</a>.
+        </>
+      ),
+    },
     slotUnit: {
       type: '"hour" | "day"',
       description: (

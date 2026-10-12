@@ -1,8 +1,8 @@
 import type { EventId, NormalizedCalendarEvent, ResourceId } from "@moltenship/calendar";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
-import type { CSSProperties } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
-import { EventChip, useEventChip } from "@registry/calendar/event-chip";
+import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
@@ -21,6 +21,8 @@ export interface MonthEventProps<TEvent> {
   readonly event: NormalizedCalendarEvent<TEvent, EventId, ResourceId>;
   /** Whether the element is one of the view's focus targets; a copy in a list is not. */
   readonly focusTarget?: boolean;
+  /** Shown before the title, from the view's `getEventIcon`. */
+  readonly icon?: ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Rendered in a week beside the visible ones of a scrolling month: not a focus target. */
   readonly offscreen?: boolean;
@@ -44,6 +46,7 @@ export function MonthEvent<TEvent>({
   endsAfter,
   event,
   focusTarget,
+  icon,
   labelEvent,
   offscreen,
   startsBefore,
@@ -85,6 +88,7 @@ export function MonthEvent<TEvent>({
         </span>
       )}
       <span className={cn("min-w-0 flex-1 truncate max-sm:text-clip", !bar && "font-medium")}>
+        <EventIcon className="max-sm:size-2.5 max-sm:[&_svg]:size-2.5">{icon}</EventIcon>
         {event.title}
       </span>
       {bar && endsAfter && (

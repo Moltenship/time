@@ -15,7 +15,7 @@ import {
   type TimeGridColumn as Column,
   type TimeGridDay,
 } from "@moltenship/calendar";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import {
@@ -88,6 +88,8 @@ export interface TimeGridColumnProps<TEvent> {
   readonly colIndex?: number;
   readonly day: TimeGridDay<TEvent>;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /** An icon before an event's title, or nothing. */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Position of the now-line when the current time falls in this column. */
   readonly nowTop: number | null;
@@ -206,6 +208,7 @@ export function TimeGridColumn<TEvent>({
   colIndex,
   day: { column, events, isToday },
   getEventColor,
+  getEventIcon,
   labelEvent,
   nowTop,
   formats,
@@ -285,6 +288,7 @@ export function TimeGridColumn<TEvent>({
           <TimeGridEvent
             key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
             color={getEventColor?.(layout.fragment.event.event)}
+            icon={getEventIcon?.(layout.fragment.event.event)}
             labelEvent={labelHere}
             layout={layout}
             formats={formats}

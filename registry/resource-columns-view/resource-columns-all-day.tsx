@@ -1,6 +1,6 @@
 import { resourceIdAttributes, type ResourceColumn } from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
-import { useMemo, type RefCallback } from "react";
+import { useMemo, type ReactNode, type RefCallback } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
@@ -16,6 +16,7 @@ export interface ResourceColumnsAllDayProps<TEvent> {
   /** Follows the body's sideways scroll; see `useAxisSync`. */
   readonly followX: RefCallback<HTMLElement>;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   /** The rendered columns, from the column virtualizer. */
   readonly items: readonly VirtualItem[];
   readonly labelEvent: EventLabeler<TEvent>;
@@ -32,6 +33,7 @@ export interface ResourceColumnsAllDayProps<TEvent> {
 export function ResourceColumnsAllDay<TEvent>({
   followX,
   getEventColor,
+  getEventIcon,
   items,
   labelEvent,
   locale,
@@ -70,6 +72,7 @@ export function ResourceColumnsAllDay<TEvent>({
                   days={days}
                   formatDate={(date) => `${title}, ${format.format(date)}`}
                   getEventColor={getEventColor}
+                  getEventIcon={getEventIcon}
                   labelEvent={(event) => labelEvent(event, title)}
                   onExpand={collapse.expand}
                   overflow={collapse.overflows[index]!}

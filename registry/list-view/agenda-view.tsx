@@ -12,7 +12,7 @@ import {
   type ListViewOptions,
   type ResourceId,
 } from "@moltenship/calendar";
-import { useLayoutEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 
 import type { EventDescriber } from "@registry/calendar/event-label";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
@@ -27,6 +27,12 @@ export interface AgendaViewOptions<TEvent> extends ListViewOptions {
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Picks each event's `data-color`; events without one use the theme's default colour. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor;
+  /**
+   * A small icon before an event's title, such as a repeat mark on recurring events, or nothing.
+   * It's decorative and hidden from assistive technology: say the same in `describeEvent`, which
+   * adds to each event's accessible name.
+   */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   /**
    * Events for the view's dates are still being fetched: the view says they're loading instead of
    * that nothing is scheduled.
@@ -88,6 +94,7 @@ function PagedAgendaList<TEvent>({
       describeEvent={options.describeEvent}
       environment={environment}
       getEventColor={options.getEventColor}
+      getEventIcon={options.getEventIcon}
       list={list}
       loading={options.loading === true}
       onOpenDay={(date) => {

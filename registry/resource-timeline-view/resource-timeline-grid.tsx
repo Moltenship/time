@@ -8,7 +8,15 @@ import {
   type PlainDateInterval,
   type ResourceTimelineProjection,
 } from "@moltenship/calendar";
-import { useCallback, useLayoutEffect, useMemo, useRef, type CSSProperties, type Ref } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+  type Ref,
+} from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { ResourceStatusOptions } from "@registry/calendar/resource-status";
@@ -28,6 +36,8 @@ export interface ResourceTimelineGridProps<TEvent> {
   readonly entry: CalendarCellFocus | null;
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /** An icon before an event's title, or nothing. */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
   /** The view's keyboard handlers; the grid is its one tab stop. */
   readonly keyboard: CalendarKeyboardHandlers;
   /** The grid's accessible name, such as the visible range. */
@@ -70,6 +80,7 @@ export function ResourceTimelineGrid<TEvent>({
   entry,
   environment,
   getEventColor,
+  getEventIcon,
   keyboard,
   label,
   labelEvent,
@@ -177,6 +188,7 @@ export function ResourceTimelineGrid<TEvent>({
               environment={environment}
               formatTime={formatTime}
               getEventColor={getEventColor}
+              getEventIcon={getEventIcon}
               labelEvent={labelEvent}
               labels={labels}
               range={range}

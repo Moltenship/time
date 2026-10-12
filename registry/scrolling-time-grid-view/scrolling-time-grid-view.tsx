@@ -333,6 +333,7 @@ export function ScrollingTimeGridView<TEvent>({
                     days={days}
                     formatDate={formatDate}
                     getEventColor={options.getEventColor}
+                    getEventIcon={options.getEventIcon}
                     labelEvent={labelEvent}
                     onExpand={collapse.expand}
                     onOpenDay={openDay}
@@ -390,6 +391,7 @@ export function ScrollingTimeGridView<TEvent>({
                       day={day}
                       formats={columnFormats}
                       getEventColor={options.getEventColor}
+                      getEventIcon={options.getEventIcon}
                       labelEvent={labelEvent}
                       nowTop={nowPosition?.column === index ? nowPosition.top : null}
                       offscreen={!plainDateIntervalContains(range, day.column.date)}
