@@ -22,9 +22,10 @@ export interface RecurrenceScopeQuestion {
 
 export interface RecurrenceScopePrompt {
   /**
-   * Opens the dialog and resolves with the scope picked, or `null` when it is cancelled. Asking
-   * again while it is open resolves the earlier question with `null`, as does unmounting. The
-   * same function on every render.
+   * Opens the dialog and resolves with the scope picked, or `null` when it is cancelled, once the
+   * dialog has closed and focus is back where it was. Asking again while it is open resolves the
+   * earlier question with `null`, as does unmounting; an answer still closing is handed over at
+   * once. The same function on every render.
    */
   readonly ask: (question?: RecurrenceScopeQuestion) => Promise<RecurrenceEditScope | null>;
   /** The dialog; render it once, anywhere under the component that calls the hook. */
@@ -49,6 +50,10 @@ const closed: PromptState = { open: false, question: {} };
  * scopes that make sense for the change, such as no "This and following events" on a series'
  * first occurrence.
  *
+ * The answer comes once the dialog has closed and focus is back on the event. `"following"` and
+ * `"all"` give the event a new ID: map focus through `edit.occurrenceIds` before `onEventChange`
+ * returns, and the calendar moves focus to the event under its new ID.
+ *
  * @example
  * ```tsx
  * import {
@@ -59,6 +64,7 @@ const closed: PromptState = { open: false, question: {} };
  *
  * function Planner() {
  *   const { ask, dialog } = useRecurrenceScopePrompt();
+ *   const [focus, setFocus] = useState<CalendarFocus | null>(null);
  *
  *   async function onEventChange(change: Change) {
  *     if (!isRecurringChange(change)) return persist(change);
@@ -68,14 +74,25 @@ const closed: PromptState = { open: false, question: {} };
  *     });
  *     // Rejecting rolls the change back.
  *     if (scope === null) throw new Error("cancelled");
- *     const edit = resolveRecurrenceEdit(change, scope, adapters);
+ *     // `newSeriesId` names the series "following" starts, so its IDs map too.
+ *     const edit = resolveRecurrenceEdit(change, scope, adapters, { newSeriesId: createId() });
  *     if (edit.type === "rejected") throw new Error(edit.message);
  *     await persist(edit);
+ *     setFocus((current) =>
+ *       current?.kind === "event" && edit.type === "series"
+ *         ? { ...current, eventId: edit.occurrenceIds.get(current.eventId) ?? current.eventId }
+ *         : current,
+ *     );
  *   }
  *
  *   return (
  *     <>
- *       <Calendar.Root events={occurrences} onEventChange={onEventChange}>
+ *       <Calendar.Root
+ *         events={occurrences}
+ *         focus={focus}
+ *         onEventChange={onEventChange}
+ *         onFocusChange={setFocus}
+ *       >
  *         …
  *       </Calendar.Root>
  *       {dialog}
@@ -86,20 +103,32 @@ const closed: PromptState = { open: false, question: {} };
  */
 export function useRecurrenceScopePrompt(): RecurrenceScopePrompt {
   const [prompt, setPrompt] = useState<PromptState>(closed);
+  /** Resolves the open question until it is answered. */
   const pending = useRef<((scope: RecurrenceEditScope | null) => void) | null>(null);
+  /** Hands over an answer once the dialog has closed. */
+  const answered = useRef<(() => void) | null>(null);
   const unmounted = useRef(false);
 
-  /** Answers the open question, if there is one, once. */
-  const settle = useCallback((scope: RecurrenceEditScope | null) => {
+  /** Hands over an answer that is still closing. */
+  const handOver = useCallback(() => {
+    const answer = answered.current;
+    answered.current = null;
+    answer?.();
+  }, []);
+
+  /** Hands over an answer, and cancels a question that has none. */
+  const settle = useCallback(() => {
+    handOver();
     const resolve = pending.current;
     pending.current = null;
-    resolve?.(scope);
-  }, []);
+    resolve?.(null);
+  }, [handOver]);
 
   const ask = useCallback(
     (question: RecurrenceScopeQuestion = {}) => {
-      // A newer question replaces the open one, which counts as cancelled.
-      settle(null);
+      // A newer question replaces the open one, which counts as cancelled; an answer still
+      // closing goes now.
+      settle();
       if (unmounted.current) return Promise.resolve(null);
       if (offeredRecurrenceScopes(question.scopes).length === 0) {
         setPrompt((current) => (current.open ? { ...current, open: false } : current));
@@ -113,19 +142,19 @@ export function useRecurrenceScopePrompt(): RecurrenceScopePrompt {
     [settle],
   );
 
-  const onResolve = useCallback(
-    (scope: RecurrenceEditScope | null) => {
-      settle(scope);
-      setPrompt((current) => ({ ...current, open: false }));
-    },
-    [settle],
-  );
+  const onResolve = useCallback((scope: RecurrenceEditScope | null) => {
+    const resolve = pending.current;
+    pending.current = null;
+    // The answer waits for focus to be back on the event: applying it can replace the event.
+    if (resolve !== null) answered.current = () => resolve(scope);
+    setPrompt((current) => ({ ...current, open: false }));
+  }, []);
 
   useEffect(() => {
     unmounted.current = false;
     return () => {
       unmounted.current = true;
-      settle(null);
+      settle();
     };
   }, [settle]);
 
@@ -135,6 +164,7 @@ export function useRecurrenceScopePrompt(): RecurrenceScopePrompt {
       <RecurrenceScopeDialog
         action={prompt.question.action}
         eventTitle={prompt.question.eventTitle}
+        onClosed={handOver}
         onResolve={onResolve}
         open={prompt.open}
         scopes={prompt.question.scopes}

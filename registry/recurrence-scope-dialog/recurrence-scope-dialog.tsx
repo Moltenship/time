@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useInsertionEffect, useLayoutEffect, useRef } from "react";
 
 import { Button } from "@registry/ui/button";
 import {
@@ -62,6 +62,12 @@ export interface RecurrenceScopeDialogProps {
   /** The event's title, quoted in the question. */
   readonly eventTitle?: string;
   /**
+   * Called once the dialog has closed and focus is back where it was. Apply the answer then: when
+   * the edit replaces the focused event, as `"all"` does, the calendar moves focus to the new one.
+   * Applied earlier, focus has nowhere to go back to and drops to the page.
+   */
+  readonly onClosed?: () => void;
+  /**
    * Called with the scope picked, or with `null` when the dialog is dismissed: Cancel, Escape or
    * a click outside. Clicks while the dialog animates closed call nothing.
    */
@@ -75,6 +81,20 @@ export interface RecurrenceScopeDialogProps {
 }
 
 /**
+ * Calls `onClosed` once the dialog it is in has unmounted and focus is back. Base UI queues that
+ * focus as the popup unmounts, and the popup's cleanups run before those of its children, so the
+ * call this one queues comes after it.
+ */
+function ClosedSignal({ onClosed }: { readonly onClosed: (() => void) | undefined }) {
+  const latest = useRef(onClosed);
+  useInsertionEffect(() => {
+    latest.current = onClosed;
+  });
+  useLayoutEffect(() => () => queueMicrotask(() => latest.current?.()), []);
+  return null;
+}
+
+/**
  * Asks which events of a recurring series a change applies to: one button per scope, then
  * Cancel. Focus starts on the narrowest scope offered, stays in the dialog while it is open, and
  * goes back to where it was when the dialog closes. `useRecurrenceScopePrompt` wraps it in a
@@ -83,6 +103,7 @@ export interface RecurrenceScopeDialogProps {
 export function RecurrenceScopeDialog({
   action = "edit",
   eventTitle,
+  onClosed,
   onResolve,
   open,
   scopes,
@@ -125,6 +146,7 @@ export function RecurrenceScopeDialog({
         <DialogFooter>
           <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
         </DialogFooter>
+        <ClosedSignal onClosed={onClosed} />
       </DialogContent>
     </Dialog>
   );
