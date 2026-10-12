@@ -32,10 +32,11 @@ import {
   sameInterval,
 } from "./clock";
 
-// How many ranges each series remembers, how many rule windows, and how many occurrence objects.
+// How many ranges each series remembers, and how many rule windows.
 const rangesPerSeries = 4;
 const windowsPerSeries = 8;
-const occurrencesPerSeries = 1024;
+/** An instant on an all-day or floating series while `defaultTimeZone` isn't a time zone. */
+const unreadable = Symbol("unreadable");
 // A nominal DURATION lasts more or less than its exact time across DST; the rule window starts
 // this much earlier to cover it.
 const nominalMargin = Temporal.Duration.from({ days: 2 });
@@ -101,8 +102,8 @@ interface MasterRecord<TEvent, TEventId extends EventId> {
   readonly id: TEventId;
   readonly interval: CalendarEventInterval;
   plan?: SeriesPlan<TEvent, TEventId> | IssueDraft<TEvent, TEventId>;
-  /** Occurrences by recurrence key, most recent last, reused when they come out the same. */
-  readonly pool: Map<string, Occurrence<TEvent, TEventId>>;
+  /** The cached ranges' occurrences by ID, reused when they come out the same. */
+  pool: ReadonlyMap<TEventId | string, Occurrence<TEvent, TEventId>>;
   readonly ranges: Map<
     string,
     {
@@ -226,9 +227,10 @@ function reachOf<TEvent, TEventId extends EventId>(
  *   out with `duplicate-event-id`.
  *
  * Work is reused for events that are the same objects as before: each series remembers its last
- * few ranges and rule windows, and an occurrence that comes out the same keeps its object, so
- * memoized views don't re-render. Treat events as immutable. Throws a `RangeError` only for a
- * `maxIterations` that isn't a positive integer.
+ * few ranges and rule windows, and an occurrence those ranges have that comes out the same keeps
+ * its object, so memoized views don't re-render. Treat events as immutable. Throws a `RangeError`
+ * only for a `maxIterations` that isn't a positive integer; a `defaultTimeZone` that isn't a time
+ * zone reports `invalid-time-zone` for each date that needs it.
  */
 export function createOccurrenceExpander<
   TEvent,
@@ -246,6 +248,7 @@ export function createOccurrenceExpander<
   type Result = SeriesResult<TEvent, TEventId>;
 
   const defaultTimeZone = options.defaultTimeZone ?? "UTC";
+  const defaultZoneValid = isTimeZone(defaultTimeZone);
   const { maxIterations } = options;
   if (maxIterations !== undefined && !(Number.isInteger(maxIterations) && maxIterations >= 1)) {
     throw new RangeError("maxIterations must be a positive integer.");
@@ -330,27 +333,36 @@ export function createOccurrenceExpander<
     return record;
   }
 
+  /** `coerceRecurrenceDate` with the expander's `defaultTimeZone`, which may not be a zone. */
+  function coerceDate(
+    date: RecurrenceDate,
+    first: CalendarEventInterval,
+    role: RecurrenceDateRole,
+  ): RecurrenceDate | undefined | typeof unreadable {
+    if (!defaultZoneValid && first.kind !== "timed" && date instanceof Temporal.Instant) {
+      return unreadable;
+    }
+    return coerceRecurrenceDate(date, first, role, { defaultTimeZone });
+  }
+
   function plan(master: Master): Plan | Draft {
     const { event, id, interval: first, recurrence } = master;
     const timeZone =
       first.kind === "timed" ? (first.sourceTimeZone ?? defaultTimeZone) : defaultTimeZone;
-    const values = (recurrence.recurrenceDates ?? []).flatMap((date) =>
-      kindOf(date) === undefined
-        ? [(date as RecurrencePeriod).start, (date as RecurrencePeriod).end]
-        : [date as RecurrenceDate],
-    );
-    const dates = [recurrence.rule?.until, ...(recurrence.exceptionDates ?? []), ...values];
-    const usesZone =
-      first.kind === "timed" || dates.some((date) => date instanceof Temporal.Instant);
-    if (usesZone && !isTimeZone(timeZone)) {
+    if (first.kind === "timed" && !isTimeZone(timeZone)) {
       return draft("invalid-time-zone", event, id, `${timeZone} isn't a time zone.`);
     }
 
     const dropped = new Map<string, number>();
+    const unread = new Map<string, number>();
     const coerce = (value: unknown, name: string, role: RecurrenceDateRole) => {
       if (kindOf(value) === undefined) throw new TypeError(`${name} holds a non-date value.`);
-      const date = coerceRecurrenceDate(value as RecurrenceDate, first, role, { defaultTimeZone });
-      if (date === undefined) dropped.set(name, (dropped.get(name) ?? 0) + 1);
+      const date = coerceDate(value as RecurrenceDate, first, role);
+      if (date === undefined || date === unreadable) {
+        const counts = date === undefined ? dropped : unread;
+        counts.set(name, (counts.get(name) ?? 0) + 1);
+        return undefined;
+      }
       return date;
     };
 
@@ -371,11 +383,18 @@ export function createOccurrenceExpander<
     }
     let { rule } = recurrence;
     if (rule?.until !== undefined) rule = { ...rule, until: coerce(rule.until, "until", "until") };
-    const issues = [...dropped].map(([name, count]) => {
-      const dates = count === 1 ? "1 date" : `${count} dates`;
-      const message = `${name}: ${dates} can't be ${dateTypes[first.kind]}; dropped.`;
-      return draft("date-kind-mismatch", event, id, message);
-    });
+    const counted = (count: number, noun: string) => `${count} ${noun}${count === 1 ? "" : "s"}`;
+    const issues = [
+      ...[...dropped].map(([name, count]) => {
+        const message = `${name}: ${counted(count, "date")} can't be ${dateTypes[first.kind]}; dropped.`;
+        return draft("date-kind-mismatch", event, id, message);
+      }),
+      ...[...unread].map(([name, count]) => {
+        const instants = counted(count, "instant");
+        const message = `${name}: ${instants} can't be read in ${defaultTimeZone}, which isn't a time zone; dropped.`;
+        return draft("invalid-time-zone", event, id, message);
+      }),
+    ];
 
     const start: RecurrenceRuleStart =
       first.kind !== "timed"
@@ -469,12 +488,12 @@ export function createOccurrenceExpander<
 
   /**
    * Which occurrences a series' overrides replace, by key, and what each override shows. `coerce`
-   * brings a recurrence ID into the series' kind, or gives `undefined` when it can't.
+   * brings a recurrence ID into the series' kind, or says why it can't.
    */
   function resolveOverrides(
     master: Master,
     overrides: readonly Override[],
-    coerce: (date: RecurrenceDate) => RecurrenceDate | undefined,
+    coerce: (date: RecurrenceDate) => RecurrenceDate | undefined | typeof unreadable,
   ): { readonly replaced: ReadonlySet<string>; readonly results: Result["overrides"] } {
     const results = new Map<Override, OverrideResult<TEvent, TEventId>>();
     const winners = new Map<string, Override>();
@@ -488,11 +507,23 @@ export function createOccurrenceExpander<
       const sameKind = kindOf(recurrenceId) === master.interval.kind;
       const coerced = sameKind ? recurrenceId : coerce(recurrenceId);
       const type = dateTypes[master.interval.kind];
-      if (coerced === undefined) {
+      if (coerced === undefined || coerced === unreadable) {
         // It can't name an occurrence, so it shows on its own and replaces none.
-        const message = `recurrenceId can't be ${type} like its series' start; it replaces none.`;
-        const issues = [draft("date-kind-mismatch", override.event, override.id, message)];
-        results.set(override, { issues, ...shows(override, recurrenceId) });
+        const issue =
+          coerced === undefined
+            ? draft(
+                "date-kind-mismatch",
+                override.event,
+                override.id,
+                `recurrenceId can't be ${type} like its series' start; it replaces none.`,
+              )
+            : draft(
+                "invalid-time-zone",
+                override.event,
+                override.id,
+                `recurrenceId can't be read in ${defaultTimeZone}, which isn't a time zone; it replaces none.`,
+              );
+        results.set(override, { issues: [issue], ...shows(override, recurrenceId) });
         continue;
       }
       const message = `recurrenceId isn't ${type} like its series' start; converted.`;
@@ -504,7 +535,7 @@ export function createOccurrenceExpander<
       if (earlier !== undefined) {
         const message = `A later override replaces the same occurrence, ${key}.`;
         const issue = draft("duplicate-override", earlier.event, earlier.id, message);
-        results.set(earlier, { issues: [issue] });
+        results.set(earlier, { issues: [...(results.get(earlier)?.issues ?? []), issue] });
       }
       winners.set(key, override);
       results.set(override, { issues, ...shows(override, coerced) });
@@ -521,7 +552,7 @@ export function createOccurrenceExpander<
     const { event: series, id: seriesId } = master;
     const issues: Draft[] = [...plan.issues];
     const { replaced, results } = resolveOverrides(master, overrides, (date) =>
-      coerceRecurrenceDate(date, plan.first, "start", { defaultTimeZone }),
+      coerceDate(date, plan.first, "start"),
     );
 
     const occurrences: Occurrence<TEvent, TEventId>[] = [];
@@ -561,7 +592,6 @@ export function createOccurrenceExpander<
       }
     }
 
-    const { pool } = master;
     for (const [key, start] of starts) {
       if (replaced.has(key) || excluded(plan, start, key)) continue;
       const end = ends.get(key) ?? endOf(plan, start);
@@ -570,32 +600,34 @@ export function createOccurrenceExpander<
         (compareDates(end, range.start) > 0 || compareDates(start, range.start) >= 0);
       if (!overlaps) continue;
 
+      const id = occurrenceId(seriesId, start);
       const interval = intervalOf(start, end, plan.first);
-      const previous = master.pool.get(key);
-      const occurrence =
+      const previous = master.pool.get(id);
+      occurrences.push(
         previous !== undefined && sameInterval(previous.interval, interval)
           ? previous
           : Object.freeze({
               event: series,
-              id: occurrenceId(seriesId, start),
+              id,
               interval,
               recurrence: Object.freeze({ recurrenceId: start, series, seriesId }),
-            });
-      pool.delete(key);
-      pool.set(key, occurrence);
-      occurrences.push(occurrence);
-    }
-    for (const key of pool.keys()) {
-      if (pool.size <= occurrencesPerSeries) break;
-      pool.delete(key);
+            }),
+      );
     }
     occurrences.sort((left, right) => compareDates(left.interval.start, right.interval.start));
     return { issues, occurrences, overrides: results };
   }
 
-  /** A series that can't expand: its overrides still show. */
+  /** A series that can't expand: its overrides still show, under the IDs they have otherwise. */
   function failed(master: Master, overrides: readonly Override[], failure: Draft): Result {
-    const { results } = resolveOverrides(master, overrides, () => undefined);
+    const { results } = resolveOverrides(master, overrides, (date) => {
+      try {
+        return coerceDate(date, master.interval, "start");
+      } catch {
+        // The series' own time zone isn't one, and this date needs it.
+        return undefined;
+      }
+    });
     return { issues: [failure], occurrences: [], overrides: results };
   }
 
@@ -639,6 +671,12 @@ export function createOccurrenceExpander<
       return failed(master, overrides, failure);
     }
     remember(master.ranges, key, { overrides, result }, rangesPerSeries);
+    // Occurrence objects live as long as a cached range has them.
+    const pool = new Map<TEventId | string, Occurrence<TEvent, TEventId>>();
+    for (const cachedRange of master.ranges.values()) {
+      for (const occurrence of cachedRange.result.occurrences) pool.set(occurrence.id, occurrence);
+    }
+    master.pool = pool;
     return result;
   }
 
@@ -752,7 +790,8 @@ export function createOccurrenceExpander<
         issues: Object.freeze(issues),
         occurrences: Object.freeze(occurrences),
       });
-      last = { events, key, result };
+      // A copy, since an array changed in place would otherwise always match itself.
+      last = { events: events.slice(), key, result };
       return result;
     },
   };

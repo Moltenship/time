@@ -392,6 +392,43 @@ describe("createOccurrenceExpander lengths and time zones", () => {
     expect(occurrences[1]?.interval).not.toHaveProperty("sourceTimeZone");
   });
 
+  test("drops only the instants an unknown default time zone can't read", () => {
+    const yoga: Event = {
+      data: {},
+      end: dateTime("2026-10-21T08:00"),
+      id: "yoga",
+      kind: "floating",
+      recurrence: {
+        exceptionDates: [instant("2026-10-22T07:00:00Z")],
+        rule: { count: 3, frequency: "DAILY" },
+      },
+      start: dateTime("2026-10-21T07:00"),
+      title: "Yoga",
+    };
+    const moved: Event = {
+      ...yoga,
+      id: "yoga-moved",
+      override: { recurrenceId: instant("2026-10-23T07:00:00Z"), seriesId: "yoga" },
+      recurrence: undefined,
+    };
+    const expander = createOccurrenceExpander(adapters, { defaultTimeZone: "Nope/Zone" });
+    const { issues, occurrences } = expander.expand(
+      [yoga, moved],
+      range("2026-10-01", "2026-11-01"),
+    );
+
+    expect(ids(occurrences)).toEqual([
+      "yoga::2026-10-21T07:00:00",
+      "yoga::2026-10-22T07:00:00",
+      "yoga::2026-10-23T07:00:00",
+      "yoga::2026-10-23T07:00:00Z",
+    ]);
+    expect(issues.map(({ code, index }) => [code, index])).toEqual([
+      ["invalid-time-zone", 0],
+      ["invalid-time-zone", 1],
+    ]);
+  });
+
   test("reports a time zone Temporal doesn't know, and still shows overrides", () => {
     const mars = timed("mars", "2026-10-21T09:00", "Europe/Berlin", 60, {
       recurrence: { rule: { frequency: "WEEKLY" } },
@@ -535,6 +572,32 @@ describe("createOccurrenceExpander overrides", () => {
     expect(issues.map(({ code, event }) => [code, event])).toEqual([
       ["date-kind-mismatch", byDate],
     ]);
+  });
+
+  test("keeps the issues of an override a later one replaces", () => {
+    const byWallTime = {
+      ...moved,
+      override: { recurrenceId: dateTime("2026-10-28T09:00"), seriesId: "sync" },
+    };
+    const { issues } = expand([byWallTime, sync, moved], range("2026-10-26", "2026-11-02"));
+
+    expect(issues.map(({ code, index }) => [code, index])).toEqual([
+      ["date-kind-mismatch", 0],
+      ["duplicate-override", 0],
+    ]);
+  });
+
+  test("keeps an override's ID when its series can't expand", () => {
+    const byWallTime = {
+      ...moved,
+      override: { recurrenceId: dateTime("2026-10-28T09:00"), seriesId: "sync" },
+    };
+    const broken = { ...sync, recurrence: { exceptionDates: ["2026-10-28" as never] } };
+    const healthy = expand([sync, byWallTime], range("2026-10-26", "2026-11-02"));
+    const failing = expand([broken, byWallTime], range("2026-10-26", "2026-11-02"));
+
+    expect(ids(failing.occurrences)).toEqual(ids(healthy.occurrences));
+    expect(failing.issues.map(({ code }) => code)).toEqual(["invalid-rule", "date-kind-mismatch"]);
   });
 
   test("treats an event with both a recurrence and an override as an override", () => {

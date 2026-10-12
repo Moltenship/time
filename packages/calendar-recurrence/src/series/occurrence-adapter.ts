@@ -31,7 +31,8 @@ export function createOccurrenceAdapter<
   type Occurrence = RecurrenceOccurrence<TEvent, TEventId>;
 
   const identities = new WeakMap<object, number>();
-  const revisions = new WeakMap<Occurrence, string>();
+  // An occurrence's interval never changes, so its key is worth keeping; revisions are read live.
+  const intervalKeys = new WeakMap<Occurrence, string>();
   let nextIdentity = 0;
 
   function revisionOf(event: TEvent): string | number {
@@ -54,17 +55,17 @@ export function createOccurrenceAdapter<
     getInterval: (occurrence) => occurrence.interval,
     getResourceIds: (occurrence) => eventAdapter.getResourceIds(occurrence.event),
     getRevision(occurrence) {
-      let revision = revisions.get(occurrence);
-      if (revision === undefined) {
-        const series = occurrence.recurrence?.series;
-        revision = JSON.stringify([
-          revisionOf(occurrence.event),
-          series === undefined || series === occurrence.event ? null : revisionOf(series),
-          intervalKey(occurrence.interval),
-        ]);
-        revisions.set(occurrence, revision);
+      let key = intervalKeys.get(occurrence);
+      if (key === undefined) {
+        key = intervalKey(occurrence.interval);
+        intervalKeys.set(occurrence, key);
       }
-      return revision;
+      const series = occurrence.recurrence?.series;
+      return JSON.stringify([
+        revisionOf(occurrence.event),
+        series === undefined || series === occurrence.event ? null : revisionOf(series),
+        key,
+      ]);
     },
     getTitle: (occurrence) => eventAdapter.getTitle(occurrence.event),
     ...(isBusy === undefined

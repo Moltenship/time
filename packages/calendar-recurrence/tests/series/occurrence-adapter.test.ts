@@ -112,6 +112,24 @@ describe("createOccurrenceAdapter", () => {
     expect(adapter.getRevision?.(expand({ ...sync, version: 2 }))).not.toBe(first);
   });
 
+  test("reads the event adapter's revision every time", () => {
+    const master = { ...sync, version: 1 };
+    const adapter = createOccurrenceAdapter(
+      defineEventAdapter<typeof master>()({
+        ...adapters.event,
+        getRevision: (event) => event.version,
+      }),
+    );
+    const [occurrence] = createOccurrenceExpander({ ...adapters, event: adapters.event }).expand(
+      [master],
+      week,
+    ).occurrences as readonly RecurrenceOccurrence<typeof master, string>[];
+    const before = adapter.getRevision?.(occurrence!);
+    master.version = 2;
+
+    expect(adapter.getRevision?.(occurrence!)).not.toBe(before);
+  });
+
   test("keeps the snapshot current when the master changes", () => {
     const cache = createEventSnapshotCache(createOccurrenceAdapter(adapters.event));
     const expander = createOccurrenceExpander(adapters);

@@ -69,17 +69,30 @@ describe("createOccurrenceExpander reuse", () => {
     expect(renamed.occurrences[0]?.id).toBe(first.occurrences[0]?.id);
   });
 
-  test("keeps occurrence objects after the range cache forgets a range", () => {
+  test("lets occurrence objects go with the ranges the cache forgets", () => {
     const expander = createOccurrenceExpander(adapters);
     const first = expander.expand([sync], thisWeek);
-    for (let week = 1; week <= 6; week += 1) {
+    for (let week = 1; week <= 4; week += 1) {
       const start = Temporal.PlainDate.from("2026-10-19").add({ weeks: week });
       expander.expand([sync], range(start.toString(), start.add({ weeks: 1 }).toString()));
     }
     const back = expander.expand([sync], thisWeek);
 
-    expect(back).not.toBe(first);
-    expect(back.occurrences[0]).toBe(first.occurrences[0]);
+    // Four later weeks pushed it out, so its objects went with it; the IDs stay.
+    expect(back.occurrences[0]).not.toBe(first.occurrences[0]);
+    expect(ids(back.occurrences)).toEqual(ids(first.occurrences));
+  });
+
+  test("sees events added to an array changed in place", () => {
+    const expander = createOccurrenceExpander(adapters);
+    const events = [sync];
+    const first = expander.expand(events, thisWeek);
+    events.push(lunch);
+
+    expect(ids(expander.expand(events, thisWeek).occurrences)).toEqual([
+      ...ids(first.occurrences),
+      "lunch",
+    ]);
   });
 
   test("shares one view's work between time zones with the same instants", () => {
