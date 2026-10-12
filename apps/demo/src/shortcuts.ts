@@ -19,6 +19,7 @@ export const shortcuts: readonly Shortcut[] = [
   { command: { type: "view", view: "day" }, keys: ["d"], label: "Day view" },
   { command: { type: "view", view: "week" }, keys: ["w"], label: "Week view" },
   { command: { type: "view", view: "month" }, keys: ["m"], label: "Month view" },
+  { command: { type: "view", view: "year" }, keys: ["y"], label: "Year view" },
   { command: { type: "view", view: "agenda" }, keys: ["a"], label: "Agenda view" },
   { command: { type: "view", view: "resources" }, keys: ["r"], label: "Resources view" },
   { command: { type: "view", view: "timeline-week" }, keys: ["l"], label: "Timeline view" },

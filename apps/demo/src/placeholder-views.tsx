@@ -10,6 +10,7 @@ import {
   createScrollingWeekView,
 } from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
+import { createYearView } from "@registry/year-view/year-view";
 
 import type { DemoEvent } from "./calendar";
 import { demoCalendars, getCalendarColor } from "./calendars";
@@ -25,6 +26,7 @@ export const demoViews = [
   createWeekView<DemoEvent>({ ...options, dayView: "day" }),
   createDayView<DemoEvent>(options),
   createMonthView<DemoEvent>(options),
+  createYearView<DemoEvent>(options),
   createAgendaView<DemoEvent>(options),
   createResourceColumnsView<DemoEvent>({ ...options, resourceStatus: true }),
   createTimelineWeekView<DemoEvent>({ ...options, resourceStatus: true }),

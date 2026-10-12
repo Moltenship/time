@@ -11,7 +11,7 @@ export interface KeyboardShortcutsProps {
   readonly scrolling: boolean;
 }
 
-/** Global shortcuts: t today, d/w/m/a views, j/k or ←/→ to step, c to create, ? for help. */
+/** Global shortcuts: t today, d/w/m/y/a views, j/k or ←/→ to step, c to create, ? for help. */
 export function KeyboardShortcuts({ onCreate, onHelp, scrolling }: KeyboardShortcutsProps) {
   const actions = DemoCalendar.useCalendarActions();
 

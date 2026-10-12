@@ -26,6 +26,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | 0.4 agenda     | #131             | Virtualized agenda with sticky date headers and focus kept by key; a scrolling agenda over months or years that lets apps load events by range |
 | Scrolling views | #105            | Week, day and month views that scroll without end; `getLoadRange` on strategies and `onVisibleRangeChange` on `Root` |
 | Annotations    | #119             | Timeline annotations: core model and snapshot, `annotations` / `annotationSources` on `Root`, a rail in the time grid |
+| Year view      | #148             | Twelve month grids with a dot per event colour and a shared popover of a day's events; one tab stop across the year; read-only |
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
 0.4 — Availability, layout & scale are closed.

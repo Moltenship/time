@@ -6,6 +6,7 @@ import {
   ResourceColumnsAnatomy,
   ResourceTimelineAnatomy,
   TimeGridAnatomy,
+  YearAnatomy,
 } from "@/components/anatomy";
 import {
   CalendarPreview,
@@ -31,6 +32,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     ResourceColumnsAnatomy,
     ResourceTimelineAnatomy,
     TimeGridAnatomy,
+    YearAnatomy,
     Step,
     Steps,
     Tab,

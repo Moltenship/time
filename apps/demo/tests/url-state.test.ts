@@ -13,7 +13,7 @@ describe("calendar location in the URL", () => {
 
   test.each([
     ["no parameters", ""],
-    ["an unknown view and a bad date", "?view=year&date=24.12.2026"],
+    ["an unknown view and a bad date", "?view=decade&date=24.12.2026"],
   ])("falls back for %s", (_, search) => {
     const location = readCalendarLocation(search, fallback);
 

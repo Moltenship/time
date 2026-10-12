@@ -31,6 +31,10 @@ app's own shortcuts, even where there's nowhere to move.
 | Month     | A day                        | Page Up, Page Down           | Same day in the previous or next month                                                                  |
 | Month     | A day                        | Enter                        | Go into the day's events                                                                                |
 | Month     | An event                     | ↑ ↓                          | Previous or next event of the day; past the ends, to the day itself or the next week                    |
+| Year      | A day                        | ← → ↑ ↓                      | Previous or next day, or the same weekday a week away, across months                                    |
+| Year      | A day                        | Home, End                    | First or last day of the week's row in its month                                                        |
+| Year      | A day                        | Page Up, Page Down           | Same day in the previous or next month                                                                  |
+| Year      | A day                        | Enter, Space                 | Open the day's events in a popover; Escape returns to the day                                           |
 | Week, day | An all-day cell              | ↓                            | First slot of the day                                                                                   |
 | Week, day | A slot                       | ↑ ↓                          | Previous or next 15-minute slot; up from the first slot, the all-day cell                               |
 | Week, day | A day or slot                | ← →                          | Same slot on the previous or next day                                                                   |
@@ -68,7 +72,8 @@ the layout (see [Right-to-left](#right-to-left)).
 ### Changing events
 
 With `onEventChange` on `Root`, the month, week, day, resource columns, and resource timeline views
-can change events from the keyboard, just as a drag does. Moving a picked-up event into another
+can change events from the keyboard, just as a drag does. The year view shows events without
+changing them, so Space there opens a day's events. Moving a picked-up event into another
 resource's column or row swaps that resource, as dropping it there would.
 
 | Focus                              | Key                              | Effect                                                                                                                                                                                                |
@@ -192,6 +197,7 @@ view to add the detail, such as the calendar's name.
 | View              | Pattern                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
 | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Month             | A `grid` labelled with the month ("October 2026"). A header `row` holds a `columnheader` per weekday, named in full. Each week is a `row` of seven `gridcell`s named by date and event count ("Thursday, October 8, 2026, 2 events"). A cell holds its date button and the events that start that day. "+N more" opens a dialog named "Events on Thursday, October 8, 2026".                                                                                                                                                                                                                                |
+| Year              | A `group` labelled with the year ("2026") holding a `grid` per month, labelled "October 2026". A header `row` holds a `columnheader` per weekday, named in full. Each week is a `row` of seven `gridcell`s: a day is named by date and event count ("Thursday, October 8, 2026, 2 events") with `aria-haspopup="dialog"`, and cells outside the month are empty. The twelve grids share one tab stop. A day's events open in a dialog named "Events on Thursday, October 8, 2026".                                                                                                                          |
 | Week and day      | A `grid` labelled with the range ("Oct 4 – 10, 2026") with three rows: a header row of `columnheader`s (the time zone, then each day); the all-day row, led by an "All day" `rowheader` that also holds the expand toggle (`aria-expanded`), with a `gridcell` per day; and the timed row, led by a "Timed events" `rowheader`, with a `gridcell` per day. Hour labels are hidden from assistive tech. The focused slot renders as a `button` named "Thursday, October 8 at 9:30 AM"; the other slots aren't elements at all.                                                                               |
 | Resource columns  | A `grid` labelled with the range, with `aria-colcount` and an `aria-colindex` on every cell, since only the columns in view render. A header `row` has a `columnheader` per resource, named with its groups ("Maya, Design"), and a group's header holds its collapse toggle (`aria-expanded`). Then the all-day and timed rows, as in the week view, with each cell, slot and event named with its resource ("Maya, Thursday, October 8 at 9:30 AM").                                                                                                                                                      |
 | Resource timeline | A `grid` labelled with the range ("Oct 5 – 11, 2026" or "October 2026"). A header `row` holds a "Resources" `columnheader` and one per hour or day, named in full. Each resource is a `row` named by the resource, led by a `rowheader` with its name (and a group's expand toggle, `aria-expanded`, out of the tab order), then a `gridcell` per slot named by resource, time, and event count ("Orchid, Monday, October 5, 2026, 2 events"). `aria-rowcount` and `aria-colcount` count every resource and slot, though only those in view render. The focused cell renders a `button` with the same name. |
@@ -269,8 +275,8 @@ should too.
 [Custom views](/docs/views/custom-views) get the same keyboard support from three pieces:
 
 - **`getSpatialNavigation`** on the view's strategy says where each key moves focus. Reuse
-  `monthSpatialNavigation`, `timeGridSpatialNavigation`, or `listSpatialNavigation`, or write your
-  own.
+  `monthSpatialNavigation`, `yearSpatialNavigation`, `timeGridSpatialNavigation`, or
+  `listSpatialNavigation`, or write your own.
 - **`useCalendarKeyboard(options)`** returns `onKeyDown` and `onBlur` handlers. Spread them on the
   element around the view.
 - **`useRovingFocus(focus)`** returns the props for one focusable day (`{ kind: "day", date }`),

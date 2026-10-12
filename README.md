@@ -2,8 +2,8 @@
 
 A React 19 calendar built on the Temporal API. Time handles dates, time zones, navigation, calendar
 state, fast event lookups, and saving changes. Your events stay in the shape your app already uses.
-Week, day, month, and agenda views come as shadcn/ui-style source that you copy into your app and
-own.
+Week, day, month, year, and agenda views come as shadcn/ui-style source that you copy into your app
+and own.
 
 **[Documentation](https://moltenship-time.vercel.app/docs)** ·
 **[Live demo](https://moltenship-time-demo.vercel.app)**

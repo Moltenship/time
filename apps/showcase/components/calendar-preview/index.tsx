@@ -28,6 +28,7 @@ const frameSizes: Record<PreviewView | ResourceView, string> = {
   timeline: "h-[32rem]",
   "timeline-day": "h-[32rem]",
   week: "h-[32rem]",
+  year: "h-[36rem]",
   "scrolling-3-day": "h-[32rem]",
   "scrolling-day": "mx-auto h-[36rem] max-w-sm",
   "scrolling-month": "h-[36rem]",
@@ -64,11 +65,13 @@ export function CalendarPreview({ size, status, view = "week", ...props }: Calen
             ? `Live, in your time zone.${props.longRange === true ? " A year of events either way of today, fetched as you scroll." : ""}`
             : view === "agenda" && props.switcher !== true
               ? "Live, in your time zone."
-              : view === "resources" || view === "timeline" || view === "timeline-day"
-                ? "Live, in your time zone. Drag events between rooms and people, or resize and create them."
-                : view.startsWith("scrolling-")
-                  ? "Live, in your time zone. Scroll or swipe through the days, and drag to move, resize or create events."
-                  : "Live, in your time zone. Drag to move, resize or create events."}
+              : view === "year" && props.switcher !== true
+                ? "Live, in your time zone. Click a day to see its events, or a month's name to open it."
+                : view === "resources" || view === "timeline" || view === "timeline-day"
+                  ? "Live, in your time zone. Drag events between rooms and people, or resize and create them."
+                  : view.startsWith("scrolling-")
+                    ? "Live, in your time zone. Scroll or swipe through the days, and drag to move, resize or create events."
+                    : "Live, in your time zone. Drag to move, resize or create events."}
       </figcaption>
     </figure>
   );

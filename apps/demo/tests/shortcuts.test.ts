@@ -23,6 +23,7 @@ describe("keyboard shortcuts", () => {
     ["d", { type: "view", view: "day" }],
     ["w", { type: "view", view: "week" }],
     ["m", { type: "view", view: "month" }],
+    ["y", { type: "view", view: "year" }],
     ["a", { type: "view", view: "agenda" }],
     ["j", { type: "next" }],
     ["ArrowRight", { type: "next" }],

@@ -1,0 +1,140 @@
+---
+title: Year
+description: Twelve months at a glance, with a dot for each event color on a day and a popover of its events.
+---
+
+<CalendarPreview view="year" />
+
+Try it in the [live demo](https://moltenship-time-demo.vercel.app): pick Year in the view switcher,
+or press Y.
+
+`createYearView` shows the anchor's calendar year, January to December, as twelve small month
+grids. Weeks start on `weekRules.firstDay`. Each date shows once: a week that reaches into the
+month before or after leaves those cells empty, so every month keeps its own shape.
+
+## Add it
+
+Copy `registry/year-view` into your app (it uses shadcn's `popover`), along with the theme and
+`registry/calendar`, as described in [UI source](/docs/installation#ui-source-optional). Then
+register the view:
+
+```tsx
+import { createYearView } from "@/components/calendar/year-view/year-view";
+
+export const Calendar = createCalendar<Meeting>()({
+  eventAdapter,
+  views: [
+    createMonthView<Meeting>({ getEventColor: (meeting) => meeting.color }),
+    createYearView<Meeting>({ getEventColor: (meeting) => meeting.color }),
+    createDayView<Meeting>(),
+  ],
+});
+```
+
+The view is named `year`. Previous and Next move by one year. Its range is the whole year, so
+`onVisibleRangeChange` asks for a year of events at a time: see
+[loading events by range](/docs/views/scrolling#loading-events-as-you-scroll).
+
+## Anatomy
+
+`YearView` renders the parts below. To change one, edit it in the `registry/year-view` files you
+copied.
+
+<YearAnatomy />
+
+```txt title="Rendered by YearView"
+YearView                         year-view.tsx
+├── YearMonthGrid                year-month.tsx, one per month
+│   ├── Month name               opens the month view
+│   ├── Weekday initials
+│   └── Day cell                 data-date, the popover's trigger
+│       ├── Date                 aria-current="date" on today
+│       └── Event dots           data-color, one per color
+└── YearDayPopover               year-day-popover.tsx, one for the whole year
+    ├── Date                     opens the day view
+    └── YearEvent                a [data-event-id] button per event
+```
+
+The popover is one Base UI popover with a detached trigger in every day, so the year never mounts
+hundreds of popovers.
+
+## Options
+
+<TypeTable
+  type={{
+    getEventColor: {
+      type: "(event: TEvent) => CalendarEventColor",
+      description: (
+        <>
+          The color of each event's dot and of its row in the popover. See{" "}
+          <a href="/docs/theming#event-colors">event colors</a>.
+        </>
+      ),
+    },
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: "Extra words for each event's accessible name, such as its calendar.",
+    },
+    dayView: {
+      type: "string",
+      default: '"day"',
+      description: "The registered view a date opens.",
+    },
+    monthView: {
+      type: "string",
+      default: '"month"',
+      description: "The registered view a month's name opens.",
+    },
+    renderUnavailable: {
+      type: "UnavailableTimeRender",
+      description: (
+        <>
+          Replaces the shading of closed days. See{" "}
+          <a href="/docs/availability#customize-the-shading">Availability</a>.
+        </>
+      ),
+    },
+  }}
+/>
+
+## What it shows
+
+- **Months:** two to a row on a phone, up to six on a wide screen. Each keeps room for six weeks, so
+  months side by side line up.
+- **Days:** today's date sits in a filled circle. Under each date, a dot for every event color on
+  that day, up to three, in the order the day's events start. All-day and multi-day events count on
+  every date they cover.
+- **A day's events:** clicking a day opens a popover with its events, all-day first, then by start
+  time. Each event is a `<button data-event-id>`, so the app's own event details open from it as from
+  any other view. The date at the top opens the day in the view named `day`.
+- **Month names** open that month in the view named `month`.
+- **Closed days:** with [availability](/docs/availability), days without working hours are muted
+  and named "closed", as in the month view.
+- **Scrolling:** where the months don't fit, the view opens with today's month, or the day you last
+  focused, in view. Today, Previous, Next and a picked date scroll their month into view. Only the
+  view scrolls, never the page around it.
+- **Editing:** none. The year shows events without moving or creating them; open a day or a month
+  to edit.
+
+## Keyboard
+
+Tab into the preview above, or click a day, and try these keys. The
+[Accessibility](/docs/accessibility#keyboard) page has the full map.
+
+| Focus | Key                | Effect                                                                   |
+| ----- | ------------------ | ------------------------------------------------------------------------ |
+| A day | ← →                | Previous or next day, across months                                      |
+| A day | ↑ ↓                | Same weekday a week earlier or later, across months                      |
+| A day | Home, End          | First or last day of the week's row in its month                         |
+| A day | Page Up, Page Down | Same day in the previous or next month                                   |
+| A day | Enter, Space       | Open the day's events. Tab moves through them; Escape returns to the day |
+| A day | Shift+Enter        | Open the day in the day view                                             |
+
+Moving past December 31 or before January 1 navigates to the next or previous year.
+
+## Build your own
+
+The strategy pieces are exported, for a year that looks different, such as a heat map of busy days:
+`getYearRange`, `navigateYear`, `getYearTitle`, `projectYear` and `yearSpatialNavigation`.
+`projectYear` returns twelve months of week rows, each day with its event fragments in display
+order, or `null` outside the month. See [Custom views](/docs/views/custom-views).

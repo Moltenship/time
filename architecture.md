@@ -24,7 +24,7 @@ This document is the normative architecture contract.
 | Interval semantics | Every core interval is half-open: `[start, end)`.                                                                                                    |
 | Timezones          | Timed events are projected into one display timezone. DST gaps/folds use an explicit, configurable disambiguation policy.                            |
 | State              | Per-calendar store; independently controlled/uncontrolled state slices; Jotai is private implementation detail.                                      |
-| Views              | Day, week, month, list/agenda, resource columns, and resource timeline ship as explicit view definitions. Custom views use a stable plugin contract. |
+| Views              | Day, week, month, year, list/agenda, resource columns, and resource timeline ship as explicit view definitions. Custom views use a stable plugin contract. |
 | Resources          | An event can have zero-to-many resources. Both day-by-resource columns and horizontal resource timelines are first-class.                            |
 | Interaction        | Native Pointer Events live behind a semantic adapter (ADR 0037). Pointer, touch, keyboard, and explicit edit actions produce the same typed transaction. |
 | Recurrence         | Separate post-foundation package; the base contracts reserve occurrence identity without implementing RRULE expansion in v1.                         |
@@ -88,6 +88,7 @@ time/
 ├── registry/
 │   ├── calendar/                 # root, toolbar, shared renderers
 │   ├── month-view/
+│   ├── year-view/                # twelve month grids and a day popover
 │   ├── time-grid-view/           # day + week
 │   ├── list-view/
 │   ├── resource-columns-view/
@@ -442,6 +443,7 @@ This is a semver-protected plugin contract. Custom views do not import internal 
 | View              | Range/layout                                                     | Virtualization                                                  | Important behavior                                                   |
 | ----------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------- |
 | Month             | Padded week grid; multi-day segments packed across each week row | Months may virtualize; one month grid remains bounded           | All-day/timed summary, overflow, fixed or natural week count         |
+| Year              | The anchor's calendar year as twelve month grids, each date once | None: 365 cells, bounded                                        | Event dots per day, a day's events in one shared popover, read-only  |
 | Week              | 1–7 day time grid plus all-day lanes                             | Event fragments bounded; vertical time canvas may use windowing | Wall-clock slots, overlaps, current-time marker, business hours      |
 | Day               | Single-day time grid plus all-day lanes                          | Same projection as week                                         | Full event detail and precise create/resize                          |
 | List/agenda       | Chronological grouped occurrences/fragments                      | Vertical TanStack Virtual                                       | Keyboard-first equivalent and dense-data fallback                    |
@@ -591,7 +593,7 @@ API rules:
 1. `Root` receives data, environment, policies, and state control—not visual mode booleans.
 2. Structural customization uses children and compound components.
 3. Render callbacks exist only when a parent must supply typed event/fragment data.
-4. Day, week, month, list, and resource variants are explicit definitions.
+4. Day, week, month, year, list, and resource variants are explicit definitions.
 5. In React 19, DOM refs are ordinary props; composed callbacks preserve returned detach cleanup
    functions, and registry source does not add `forwardRef` wrappers.
 6. UI components consume a generic `{ state, actions, meta }` context contract. Only the provider knows Jotai exists.
@@ -877,7 +879,8 @@ WCAG 2.2 AA is a release gate, not an example-app enhancement.
 
 ### Semantic model
 
-- Month uses a labeled grid with deterministic row/column meaning.
+- Month uses a labeled grid with deterministic row/column meaning. Year is one labeled grid per
+  month, with a single tab stop across the twelve.
 - Time grids expose day/resource headers and event relationships without announcing every decorative slot.
 - List view is the dense-data and virtualization-friendly semantic equivalent.
 - Roving focus keeps one meaningful tab stop per active region.
@@ -993,7 +996,7 @@ One application owns both explanation and proof:
 | Area              | Purpose                                                                     |
 | ----------------- | --------------------------------------------------------------------------- |
 | Overview          | Principles, quick install, package/registry choice                          |
-| View gallery      | Day, week, month, list, resource columns, resource timeline                 |
+| View gallery      | Day, week, month, year, list, resource columns, resource timeline           |
 | Composition lab   | Replace toolbar, event, header, overflow, and empty-state source            |
 | Custom view lab   | Build a five-day workweek and a domain-specific view from public APIs       |
 | Event lab         | Timed, all-day, floating, multi-day, overlapping, read-only, multi-resource |

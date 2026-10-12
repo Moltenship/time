@@ -15,6 +15,7 @@ const viewOptions: readonly ViewSwitcherOption<DemoView>[] = [
   { label: "Day", shortcut: "D", value: "day" },
   { label: "Week", shortcut: "W", value: "week" },
   { label: "Month", shortcut: "M", value: "month" },
+  { label: "Year", shortcut: "Y", value: "year" },
   { label: "Agenda", shortcut: "A", value: "agenda" },
   { label: "Resources", shortcut: "R", value: "resources" },
   { label: "Timeline", shortcut: "L", value: "timeline-week" },

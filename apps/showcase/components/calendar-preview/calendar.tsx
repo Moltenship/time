@@ -29,6 +29,7 @@ import {
 } from "@registry/time-grid-view/time-grid-view";
 import { Button } from "@registry/ui/button";
 import { TooltipProvider } from "@registry/ui/tooltip";
+import { createYearView } from "@registry/year-view/year-view";
 
 import { createPreviewAnnotations, previewAnnotationSources } from "./annotations";
 import { previewAvailability } from "./availability";
@@ -44,6 +45,7 @@ export type PreviewView =
   | "week"
   | "day"
   | "month"
+  | "year"
   | "agenda"
   | "scrolling-week"
   | "scrolling-3-day"
@@ -65,7 +67,7 @@ export interface LiveCalendarProps {
   readonly longRange?: boolean;
   /** Show the registry mini month beside the view on large screens. */
   readonly sidebar?: boolean;
-  /** Add a view switcher for all four views. */
+  /** Add a view switcher for the week, day, month, year and agenda views. */
   readonly switcher?: boolean;
   readonly view: PreviewView;
 }
@@ -112,6 +114,7 @@ const Calendar = createCalendar<PreviewEvent, never>()({
     threeDayView,
     createDayView<PreviewEvent>({ getEventColor }),
     createMonthView<PreviewEvent>({ getEventColor }),
+    createYearView<PreviewEvent>({ getEventColor }),
     createAgendaView<PreviewEvent>({ getEventColor }),
     createScrollingWeekView<PreviewEvent>({ dayView: "scrolling-day", getEventColor }),
     scrollingThreeDayView,
@@ -125,6 +128,7 @@ const viewLabels: Record<PreviewView, string> = {
   week: "Week",
   day: "Day",
   month: "Month",
+  year: "Year",
   agenda: "Agenda",
   "scrolling-week": "Week",
   "scrolling-3-day": "3 days",
@@ -132,7 +136,7 @@ const viewLabels: Record<PreviewView, string> = {
   "scrolling-month": "Month",
   "scrolling-agenda": "Agenda",
 };
-const viewOptions = (["week", "day", "month", "agenda"] as const).map((value) => ({
+const viewOptions = (["week", "day", "month", "year", "agenda"] as const).map((value) => ({
   label: viewLabels[value],
   value,
 }));
