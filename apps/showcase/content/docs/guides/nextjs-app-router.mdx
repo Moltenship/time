@@ -6,7 +6,8 @@ description: A calendar whose view and date live in the URL, loaded by a Server 
 [Next.js and server rendering](/docs/guides/nextjs) covers the basics: Client Components, strings
 instead of Temporal values, and `now` and the time zone from the server. This page walks through a
 complete App Router route built on them. [Open the example](/examples/nextjs), then read its source
-here.
+here. To load events in the browser from an API instead, see
+[Load events with TanStack Query](/docs/guides/tanstack-query).
 
 - **The URL holds the view and the date**, as in `/examples/nextjs?view=week&date=2026-10-12`.
   Previous, next, Today and the view switcher change it, and Back and Forward work.
@@ -176,4 +177,5 @@ after hydration.
   the meeting they're changing.
 - **Refuse stale writes.** Give meetings a revision, send it with each change, and refuse a change
   made to an older one. The adapter's `getRevision` tells the calendar about them.
+  [Sync with Google Calendar](/docs/guides/google-calendar-sync) does the same with etags.
 - **Cache the reads** with `"use cache"` and `cacheTag`, and call `updateTag` from the actions.
