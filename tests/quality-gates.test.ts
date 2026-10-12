@@ -126,7 +126,12 @@ describe("CI quality gate contract", () => {
 
     expect(work("ready").filter((step) => !full.has(step))).toEqual([]);
     expect([...full]).toEqual(
-      expect.arrayContaining(["a11y:ci-speed", "showcase:types", "showcase#search:check"]),
+      expect.arrayContaining([
+        "a11y:ci-speed",
+        "showcase:types",
+        "showcase#search:check",
+        "registry:e2e",
+      ]),
     );
   });
 

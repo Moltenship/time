@@ -13,11 +13,12 @@ Three tasks group the gates below. `AGENTS.md` says which one a change runs.
 | ----- | -------------------- | -------------------------------------------------------------------------------------------- |
 | Quick | `vp run ready:quick` | `showcase:links`, `vp check`, `vp test`                                                      |
 | PR    | `vp run ready`       | `ready:checks` (`registry:smoke` beside the `gate:serial` lane) and `a11y`                   |
-| Full  | `vp run ready:full`  | Every PR step, `a11y:ci-speed`, then `showcase:types` and search in `gate:serial:full`       |
+| Full  | `vp run ready:full`  | Every PR step, `a11y:ci-speed`, then `showcase:types`, search and `registry:e2e` in `gate:serial:full` |
 
-On a 15-core Apple-silicon laptop, quick takes about 10 seconds, PR 38 seconds from a cold cache
-and 28 warm, and full 72 seconds cold and 30 warm. The warm floor is the steps that pack packages or
-build the docs site, which Vite Task can't replay because they rewrite their own inputs.
+On a 15-core Apple-silicon laptop, quick takes about 13 seconds, PR 37 seconds from a cold cache
+and 24 warm, and full 102 seconds cold and 97 warm. The warm floor is the steps that pack packages,
+build the docs site or install the registry into clean apps, which never replay: they rewrite their
+own inputs, or reach the network.
 
 `gate:serial` runs `showcase:links`, `ci:check`, `ci:build`, `ci:test`, `react:gate`, `ssr:smoke`
 and `package:graph` in that order, because each writes or reads generated files: packages' `dist`,

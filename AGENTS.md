@@ -35,7 +35,7 @@ smallest one that covers the change.
 | ----- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Quick | `vp run ready:quick` | The docs site's link check, which compiles every page, then `vp check` and `vp test`                                                                                |
 | PR    | `vp run ready`       | Quick, plus production builds, the React, SSR, registry and package-graph gates, and the a11y suite in Chromium. CI runs the same tasks: `ready:checks` and `a11y`. |
-| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and the docs site's types and search. It's the release gate.                                |
+| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`), the docs site's types and search, and `shadcn add` into clean Vite and Next.js apps (`registry:e2e`, which needs the network). It's the release gate. |
 
 - **Quick:** docs content (MDX), README, ADRs and `docs/internal` notes. Don't run the full gate
   for a typo.
@@ -45,7 +45,7 @@ smallest one that covers the change.
   UI that affects accessibility; CI config. Also before a release candidate or a release, and
   whenever CI and local disagree.
 
-On a recent laptop, quick takes about 10 seconds, PR about 40 and full about 75 from a cold cache.
+On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 100 from a cold cache.
 Steps run in parallel where they're independent. Steps that write or read generated files
 (`dist`, `.next`, `.source`, packed tarballs) run one after another in a `gate:serial` lane. Vite Task
 caches each step, so a rerun only redoes what changed; `a11y:ci-speed` never replays, since a timing

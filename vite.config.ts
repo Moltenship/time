@@ -39,8 +39,8 @@ export default defineConfig({
         cache: false,
         dependsOn: ["registry:smoke", "gate:serial"],
       },
-      // The release gate: everything `ready` runs, the a11y suite at CI's speed, and the docs
-      // site's types, links and search.
+      // The release gate: everything `ready` runs, the a11y suite at CI's speed, the docs site's
+      // types and search, and the registry installed into clean apps.
       "ready:full": {
         command: "echo ready:full: the release gate passed",
         cache: false,
@@ -48,9 +48,10 @@ export default defineConfig({
       },
       "gate:serial":
         "vp run showcase:links && vp run ci:check && vp run ci:build && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
-      // `ci:build` has built the docs site, so search checks that build.
+      // `ci:build` has built the docs site, so search checks that build. The registry's install
+      // test packs the packages and installs them into clean apps; it needs the network.
       "gate:serial:full":
-        "vp run gate:serial && vp run showcase:types && vp run showcase#search:check",
+        "vp run gate:serial && vp run showcase:types && vp run showcase#search:check && vp run registry:e2e",
       "ci:check": "vp check",
       "ci:test": "vp test",
       "ci:build": "vp run -r build",
