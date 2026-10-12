@@ -252,7 +252,7 @@ describe("createOccurrenceExpander exceptions and extra dates", () => {
         event: sync,
         eventId: "sync",
         index: 1,
-        message: "recurrenceDates: 1 date can't be a Instant; dropped.",
+        message: "recurrenceDates: 1 date can't be an Instant; dropped.",
       },
     ]);
   });
@@ -282,6 +282,52 @@ describe("createOccurrenceExpander exceptions and extra dates", () => {
       "office::2026-10-21",
       "office::2026-10-23",
     ]);
+  });
+});
+
+describe("createOccurrenceExpander COUNT and periods", () => {
+  test("counts occurrences an EXDATE removes toward COUNT, the first one included", () => {
+    const sync = berlinWeekly(
+      { exceptionDates: [instant("2026-10-21T07:00:00Z"), instant("2026-10-28T08:00:00Z")] },
+      { count: 3 },
+    );
+    expect(ids(expand([sync], range("2026-10-01", "2027-01-01")).occurrences)).toEqual([
+      "sync::2026-11-04T08:00:00Z",
+    ]);
+  });
+
+  test("gives an RDATE period its own length", () => {
+    const sync = berlinWeekly(
+      {
+        recurrenceDates: [
+          // Friday 30 October, 22:00 to Saturday 02:00 in Berlin.
+          { end: instant("2026-10-31T01:00:00Z"), start: instant("2026-10-30T21:00:00Z") },
+          instant("2026-10-30T13:00:00Z"),
+        ],
+      },
+      { count: 1 },
+    );
+    const { issues, occurrences } = expand(
+      [sync],
+      range("2026-10-31", "2026-11-02", "Europe/Berlin"),
+    );
+
+    // It starts before the range and ends inside it; the plain RDATE lasts an hour and doesn't.
+    expect(occurrences.map(({ id, interval }) => [id, String(interval.end)])).toEqual([
+      ["sync::2026-10-30T21:00:00Z", "2026-10-31T01:00:00Z"],
+    ]);
+    expect(issues).toEqual([]);
+  });
+
+  test("drops a period whose end can't take the series' kind", () => {
+    const sync = berlinWeekly(
+      { recurrenceDates: [{ end: date("2026-10-31"), start: instant("2026-10-30T21:00:00Z") }] },
+      { count: 1 },
+    );
+    const { issues, occurrences } = expand([sync], range("2026-10-19", "2026-11-02"));
+
+    expect(ids(occurrences)).toEqual(["sync::2026-10-21T07:00:00Z"]);
+    expect(issues.map(({ code }) => code)).toEqual(["date-kind-mismatch"]);
   });
 });
 
@@ -461,7 +507,7 @@ describe("createOccurrenceExpander overrides", () => {
     expect(loaded.occurrences[0]?.recurrence?.series).toBe(sync);
   });
 
-  test("matches an override's wall time on the series' clock", () => {
+  test("reports an override's wall time on a timed series, and matches it on the series' clock", () => {
     const byWallTime = {
       ...moved,
       override: { recurrenceId: dateTime("2026-10-28T09:00"), seriesId: "sync" },
@@ -470,7 +516,15 @@ describe("createOccurrenceExpander overrides", () => {
 
     expect(ids(occurrences)).toEqual(["sync::2026-10-28T08:00:00Z"]);
     expect(occurrences[0]?.event).toBe(byWallTime);
-    expect(issues).toEqual([]);
+    expect(issues).toEqual([
+      {
+        code: "date-kind-mismatch",
+        event: byWallTime,
+        eventId: "sync-moved",
+        index: 1,
+        message: "recurrenceId isn't an Instant like its series' start; converted.",
+      },
+    ]);
   });
 
   test("shows an override whose recurrence ID can't take its series' kind on its own", () => {
@@ -488,7 +542,7 @@ describe("createOccurrenceExpander overrides", () => {
     const { issues, occurrences } = expand([sync, both], range("2026-10-26", "2026-11-02"));
 
     expect(ids(occurrences)).toEqual(["sync::2026-10-28T08:00:00Z"]);
-    expect(issues.map(({ code, index }) => [code, index])).toEqual([["unsupported-rule", 1]]);
+    expect(issues.map(({ code, index }) => [code, index])).toEqual([["conflicting-recurrence", 1]]);
   });
 });
 
@@ -524,6 +578,34 @@ describe("createOccurrenceExpander output", () => {
     expect(snapshot.issues).toEqual([]);
     expect(snapshot.size).toBe(occurrences.length);
     expect(snapshot.get("sync::2026-10-28T08:00:00Z")?.event.event).toBe(moved);
+  });
+
+  test("keeps IDs unique, leaving out the later item that repeats one", () => {
+    const numeric = { ...berlinWeekly(), id: 42 } as unknown as Event;
+    const text = { ...berlinWeekly(), id: "42" };
+    const copy = { ...text, title: "Copy" };
+    // A one-off event whose ID is an occurrence's.
+    const clash = timed("42::2026-10-28T08:00:00Z", "2026-10-29T12:00", "Europe/Berlin");
+    const { issues, occurrences } = createOccurrenceExpander(
+      adapters as unknown as RecurrenceAdapters<Event, string | number, string>,
+    ).expand([clash, numeric, text, copy], range("2026-10-19", "2026-11-02"));
+
+    expect(occurrences.map(({ event }) => event)).toEqual([clash, numeric]);
+    expect(issues.map(({ code, event, index, message }) => [code, event, index, message])).toEqual([
+      [
+        "duplicate-event-id",
+        numeric,
+        1,
+        "An earlier event has the ID 42::2026-10-28T08:00:00Z; left out.",
+      ],
+      [
+        "duplicate-event-id",
+        text,
+        2,
+        "An earlier event has the ID 42::2026-10-21T07:00:00Z, 42::2026-10-28T08:00:00Z; left out.",
+      ],
+      ["duplicate-event-id", copy, 3, "An earlier series has the ID 42; left out."],
+    ]);
   });
 
   test("reports an adapter that throws and carries on", () => {

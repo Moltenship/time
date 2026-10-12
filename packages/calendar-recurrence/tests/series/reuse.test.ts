@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { createCanonicalRecurrenceAdapter, createOccurrenceExpander } from "../../src";
+import {
+  createCanonicalRecurrenceAdapter,
+  createOccurrenceExpander,
+  RecurrenceRuleError,
+} from "../../src";
 import { expandRecurrenceRule } from "../../src/rule/expand";
 import { ids, instant, range, timed, type Event } from "./helpers";
 
@@ -65,6 +69,19 @@ describe("createOccurrenceExpander reuse", () => {
     expect(renamed.occurrences[0]?.id).toBe(first.occurrences[0]?.id);
   });
 
+  test("keeps occurrence objects after the range cache forgets a range", () => {
+    const expander = createOccurrenceExpander(adapters);
+    const first = expander.expand([sync], thisWeek);
+    for (let week = 1; week <= 6; week += 1) {
+      const start = Temporal.PlainDate.from("2026-10-19").add({ weeks: week });
+      expander.expand([sync], range(start.toString(), start.add({ weeks: 1 }).toString()));
+    }
+    const back = expander.expand([sync], thisWeek);
+
+    expect(back).not.toBe(first);
+    expect(back.occurrences[0]).toBe(first.occurrences[0]);
+  });
+
   test("shares one view's work between time zones with the same instants", () => {
     const expander = createOccurrenceExpander(adapters);
     expander.expand([sync], range("2026-10-19", "2026-10-26", "Europe/Paris"));
@@ -74,18 +91,22 @@ describe("createOccurrenceExpander reuse", () => {
 });
 
 describe("createOccurrenceExpander engine errors", () => {
-  test("tells rules the engine doesn't support from invalid ones", () => {
-    engine.mockImplementationOnce(() => {
-      throw new RangeError("FREQ=SECONDLY isn't supported yet.");
-    });
-    const unsupported = createOccurrenceExpander(adapters).expand([sync], thisWeek);
-    engine.mockImplementationOnce(() => {
-      throw new RangeError("BY parts must not be empty.");
-    });
-    const invalid = createOccurrenceExpander(adapters).expand([sync], thisWeek);
+  test("reports a rule error under its code, and any other error as an invalid rule", () => {
+    const expandWith = (error: Error) => {
+      engine.mockImplementationOnce(() => {
+        throw error;
+      });
+      return createOccurrenceExpander(adapters).expand([sync], thisWeek);
+    };
+    const unsupported = expandWith(new RecurrenceRuleError("unsupported-rule", "Not yet."));
+    const zone = expandWith(new RecurrenceRuleError("invalid-time-zone", "No such zone."));
+    const other = expandWith(new RangeError("A window bug."));
 
-    expect(unsupported.issues).toMatchObject([{ code: "unsupported-rule", event: sync, index: 0 }]);
-    expect(invalid.issues).toMatchObject([{ code: "invalid-rule", event: sync, index: 0 }]);
+    expect(unsupported.issues).toMatchObject([
+      { code: "unsupported-rule", event: sync, index: 0, message: "Not yet." },
+    ]);
+    expect(zone.issues).toMatchObject([{ code: "invalid-time-zone" }]);
+    expect(other.issues).toMatchObject([{ code: "invalid-rule", message: "A window bug." }]);
     // The first occurrence is always one.
     expect(ids(unsupported.occurrences)).toEqual(["sync::2026-10-21T07:00:00Z"]);
   });

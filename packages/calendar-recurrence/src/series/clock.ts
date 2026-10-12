@@ -4,10 +4,11 @@ import type { RecurrenceDate } from "../types";
 
 export type SeriesKind = CalendarEventInterval["kind"];
 
+/** Each kind's date type, with its article. */
 export const dateTypes: Readonly<Record<SeriesKind, string>> = {
-  "all-day": "PlainDate",
-  floating: "PlainDateTime",
-  timed: "Instant",
+  "all-day": "a PlainDate",
+  floating: "a PlainDateTime",
+  timed: "an Instant",
 };
 
 export function kindOf(date: unknown): SeriesKind | undefined {

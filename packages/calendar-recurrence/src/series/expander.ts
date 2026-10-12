@@ -1,6 +1,7 @@
 import type { CalendarEventInterval, EventId, ResourceId } from "@moltenship/calendar-core";
 
 import { coerceRecurrenceDate, type RecurrenceDateRole } from "../dates";
+import { RecurrenceRuleError } from "../errors";
 import { occurrenceId, recurrenceKey } from "../occurrence-id";
 import { DEFAULT_MAX_ITERATIONS, expandRecurrenceRule } from "../rule/expand";
 import type {
@@ -14,6 +15,7 @@ import type {
   RecurrenceIssue,
   RecurrenceOccurrence,
   RecurrenceOverride,
+  RecurrencePeriod,
   RecurrenceRule,
   RecurrenceRuleExpansion,
   RecurrenceRuleStart,
@@ -30,9 +32,10 @@ import {
   sameInterval,
 } from "./clock";
 
-// How many ranges each series remembers, and how many rule windows.
+// How many ranges each series remembers, how many rule windows, and how many occurrence objects.
 const rangesPerSeries = 4;
 const windowsPerSeries = 8;
+const occurrencesPerSeries = 1024;
 // A nominal DURATION lasts more or less than its exact time across DST; the rule window starts
 // this much earlier to cover it.
 const nominalMargin = Temporal.Duration.from({ days: 2 });
@@ -48,8 +51,8 @@ interface SeriesPlan<TEvent, TEventId extends EventId> {
   readonly exceptionDays: ReadonlySet<string>;
   /** EXDATE keys. */
   readonly exceptions: ReadonlySet<string>;
-  /** RDATEs in the series' kind, in order and without duplicates. */
-  readonly extraDates: readonly RecurrenceDate[];
+  /** RDATEs in the series' kind, without duplicates; a period keeps its own end. */
+  readonly extras: readonly Extra[];
   readonly first: CalendarEventInterval;
   readonly issues: readonly IssueDraft<TEvent, TEventId>[];
   /** The first occurrence's exact length, or the DURATION's nominal one. */
@@ -59,6 +62,11 @@ interface SeriesPlan<TEvent, TEventId extends EventId> {
   readonly start: RecurrenceRuleStart;
   /** Where a timed series repeats, and where instants on other series are read. */
   readonly timeZone: string;
+}
+
+interface Extra {
+  readonly end?: RecurrenceDate;
+  readonly start: RecurrenceDate;
 }
 
 type RuleDates = RecurrenceRuleExpansion | { readonly error: unknown };
@@ -93,8 +101,8 @@ interface MasterRecord<TEvent, TEventId extends EventId> {
   readonly id: TEventId;
   readonly interval: CalendarEventInterval;
   plan?: SeriesPlan<TEvent, TEventId> | IssueDraft<TEvent, TEventId>;
-  /** The last expansion's occurrences by recurrence key, reused when they come out the same. */
-  pool: ReadonlyMap<string, Occurrence<TEvent, TEventId>>;
+  /** Occurrences by recurrence key, most recent last, reused when they come out the same. */
+  readonly pool: Map<string, Occurrence<TEvent, TEventId>>;
   readonly ranges: Map<
     string,
     {
@@ -147,11 +155,9 @@ function remember<K, V>(map: Map<K, V>, key: K, value: V, capacity: number): voi
   if (map.size > capacity) map.delete(map.keys().next().value as K);
 }
 
-/** An engine error as an issue code: the baseline engine says which rules it doesn't support. */
-function ruleProblem(error: unknown): "invalid-rule" | "unsupported-rule" {
-  return error instanceof RangeError && /isn't supported/.test(error.message)
-    ? "unsupported-rule"
-    : "invalid-rule";
+/** An engine error as an issue code. Any other error is a rule the engine can't take either. */
+function ruleProblem(error: unknown): RecurrenceRuleError["code"] {
+  return error instanceof RecurrenceRuleError ? error.code : "invalid-rule";
 }
 
 function endOf<TEvent, TEventId extends EventId>(
@@ -206,19 +212,23 @@ function reachOf<TEvent, TEventId extends EventId>(
  *   the series' time zone (RFC 5545 §3.8.5.3). Timed series repeat in `sourceTimeZone`, else
  *   `defaultTimeZone`, else UTC.
  * - EXDATE removes the occurrence with that original start, and a date-only one every occurrence
- *   starting that day. RDATE adds one, once even when the rule has it too. Dates of another kind
- *   go through `coerceRecurrenceDate`; one it can't convert is dropped with `date-kind-mismatch`.
+ *   starting that day; removed occurrences still count toward COUNT. RDATE adds one, once even
+ *   when the rule has it too; a period keeps its own length. Dates of another kind go through
+ *   `coerceRecurrenceDate`; one it can't convert is dropped with `date-kind-mismatch`.
  * - Overrides and one-off events pass through whatever the range. An override takes the ID of the
  *   occurrence it replaces, and hides it; a cancelled one only hides it. Of two overrides for the
  *   same occurrence the later wins (`duplicate-override`). One whose master is missing keeps that
  *   ID, without `series`, and reports `missing-series`. An event with both a recurrence and an
- *   override is an override; its recurrence is ignored with `unsupported-rule`.
- * - Output follows the input order of events, each series' occurrences in time order. Two masters
- *   with one ID both expand, and the snapshot reports their duplicate IDs, as it does for others.
+ *   override is an override, with `conflicting-recurrence`. A `recurrenceId` of another kind than
+ *   the series' start reports `date-kind-mismatch`, and one that can't convert replaces nothing.
+ * - Output follows the input order of events, each series' occurrences in time order. IDs are
+ *   unique: an item whose ID an earlier one has, such as a second master with the same ID, is left
+ *   out with `duplicate-event-id`.
  *
  * Work is reused for events that are the same objects as before: each series remembers its last
  * few ranges and rule windows, and an occurrence that comes out the same keeps its object, so
- * memoized views don't re-render. Treat events as immutable.
+ * memoized views don't re-render. Treat events as immutable. Throws a `RangeError` only for a
+ * `maxIterations` that isn't a positive integer.
  */
 export function createOccurrenceExpander<
   TEvent,
@@ -236,6 +246,10 @@ export function createOccurrenceExpander<
   type Result = SeriesResult<TEvent, TEventId>;
 
   const defaultTimeZone = options.defaultTimeZone ?? "UTC";
+  const { maxIterations } = options;
+  if (maxIterations !== undefined && !(Number.isInteger(maxIterations) && maxIterations >= 1)) {
+    throw new RangeError("maxIterations must be a positive integer.");
+  }
   const records = new WeakMap<object, Record>();
   const noOverrides: readonly Override[] = Object.freeze([]);
   let last:
@@ -275,7 +289,14 @@ export function createOccurrenceExpander<
         const issues =
           recurrence === undefined
             ? []
-            : [draft("unsupported-rule", event, id, "An override's own recurrence is ignored.")];
+            : [
+                draft(
+                  "conflicting-recurrence",
+                  event,
+                  id,
+                  "It is an override; its recurrence is ignored.",
+                ),
+              ];
         return { event, id, interval, issues, override, role: "override" };
       }
       if (recurrence !== undefined) {
@@ -313,53 +334,48 @@ export function createOccurrenceExpander<
     const { event, id, interval: first, recurrence } = master;
     const timeZone =
       first.kind === "timed" ? (first.sourceTimeZone ?? defaultTimeZone) : defaultTimeZone;
-    const dates = [
-      recurrence.rule?.until,
-      ...(recurrence.exceptionDates ?? []),
-      ...(recurrence.recurrenceDates ?? []),
-    ];
+    const values = (recurrence.recurrenceDates ?? []).flatMap((date) =>
+      kindOf(date) === undefined
+        ? [(date as RecurrencePeriod).start, (date as RecurrencePeriod).end]
+        : [date as RecurrenceDate],
+    );
+    const dates = [recurrence.rule?.until, ...(recurrence.exceptionDates ?? []), ...values];
     const usesZone =
       first.kind === "timed" || dates.some((date) => date instanceof Temporal.Instant);
     if (usesZone && !isTimeZone(timeZone)) {
       return draft("invalid-time-zone", event, id, `${timeZone} isn't a time zone.`);
     }
 
-    const issues: Draft[] = [];
-    const coerce = (
-      values: readonly RecurrenceDate[] | undefined,
-      name: string,
-      role: RecurrenceDateRole,
-    ): RecurrenceDate[] => {
-      const coerced: RecurrenceDate[] = [];
-      let dropped = 0;
-      for (const value of values ?? []) {
-        if (kindOf(value) === undefined) throw new TypeError(`${name} holds a non-date value.`);
-        const date = coerceRecurrenceDate(value, first, role, { timeZone });
-        if (date === undefined) dropped += 1;
-        else coerced.push(date);
-      }
-      if (dropped > 0) {
-        const count = dropped === 1 ? "1 date" : `${dropped} dates`;
-        const message = `${name}: ${count} can't be a ${dateTypes[first.kind]}; dropped.`;
-        issues.push(draft("date-kind-mismatch", event, id, message));
-      }
-      return coerced;
+    const dropped = new Map<string, number>();
+    const coerce = (value: unknown, name: string, role: RecurrenceDateRole) => {
+      if (kindOf(value) === undefined) throw new TypeError(`${name} holds a non-date value.`);
+      const date = coerceRecurrenceDate(value as RecurrenceDate, first, role, { defaultTimeZone });
+      if (date === undefined) dropped.set(name, (dropped.get(name) ?? 0) + 1);
+      return date;
     };
 
     const exceptions = new Set<string>();
     const exceptionDays = new Set<string>();
-    for (const date of coerce(recurrence.exceptionDates, "exceptionDates", "exception")) {
+    for (const value of recurrence.exceptionDates ?? []) {
+      const date = coerce(value, "exceptionDates", "exception");
+      if (date === undefined) continue;
       (kindOf(date) === first.kind ? exceptions : exceptionDays).add(recurrenceKey(date));
     }
-    const extraDates = new Map<string, RecurrenceDate>();
-    for (const date of coerce(recurrence.recurrenceDates, "recurrenceDates", "start")) {
-      extraDates.set(recurrenceKey(date), date);
+    const extras = new Map<string, Extra>();
+    for (const value of recurrence.recurrenceDates ?? []) {
+      const period = kindOf(value) === undefined ? (value as RecurrencePeriod) : undefined;
+      const start = coerce(period?.start ?? value, "recurrenceDates", "start");
+      const end = period === undefined ? undefined : coerce(period.end, "recurrenceDates", "start");
+      if (start === undefined || (period !== undefined && end === undefined)) continue;
+      extras.set(recurrenceKey(start), end === undefined ? { start } : { end, start });
     }
     let { rule } = recurrence;
-    if (rule?.until !== undefined) {
-      const [until] = coerce([rule.until], "until", "until");
-      rule = { ...rule, until };
-    }
+    if (rule?.until !== undefined) rule = { ...rule, until: coerce(rule.until, "until", "until") };
+    const issues = [...dropped].map(([name, count]) => {
+      const dates = count === 1 ? "1 date" : `${count} dates`;
+      const message = `${name}: ${dates} can't be ${dateTypes[first.kind]}; dropped.`;
+      return draft("date-kind-mismatch", event, id, message);
+    });
 
     const start: RecurrenceRuleStart =
       first.kind !== "timed"
@@ -372,7 +388,7 @@ export function createOccurrenceExpander<
     return {
       exceptionDays,
       exceptions,
-      extraDates: [...extraDates.values()].sort(compareDates),
+      extras: [...extras.values()],
       first,
       issues,
       length: recurrence.duration ?? durationBetween(first.start, first.end),
@@ -413,9 +429,7 @@ export function createOccurrenceExpander<
           dates = expandRecurrenceRule(plan.rule, plan.start, {
             before,
             from,
-            ...(options.maxIterations === undefined
-              ? {}
-              : { maxIterations: options.maxIterations }),
+            ...(maxIterations === undefined ? {} : { maxIterations }),
           });
         } catch (error) {
           dates = { error };
@@ -471,15 +485,20 @@ export function createOccurrenceExpander<
 
     for (const override of overrides) {
       const { recurrenceId } = override.override;
-      const coerced = coerce(recurrenceId);
+      const sameKind = kindOf(recurrenceId) === master.interval.kind;
+      const coerced = sameKind ? recurrenceId : coerce(recurrenceId);
+      const type = dateTypes[master.interval.kind];
       if (coerced === undefined) {
         // It can't name an occurrence, so it shows on its own and replaces none.
-        const type = dateTypes[master.interval.kind];
-        const message = `recurrenceId can't be a ${type} like its series' start.`;
+        const message = `recurrenceId can't be ${type} like its series' start; it replaces none.`;
         const issues = [draft("date-kind-mismatch", override.event, override.id, message)];
         results.set(override, { issues, ...shows(override, recurrenceId) });
         continue;
       }
+      const message = `recurrenceId isn't ${type} like its series' start; converted.`;
+      const issues = sameKind
+        ? []
+        : [draft("date-kind-mismatch", override.event, override.id, message)];
       const key = recurrenceKey(coerced);
       const earlier = winners.get(key);
       if (earlier !== undefined) {
@@ -488,7 +507,7 @@ export function createOccurrenceExpander<
         results.set(earlier, { issues: [issue] });
       }
       winners.set(key, override);
-      results.set(override, { issues: [], ...shows(override, coerced) });
+      results.set(override, { issues, ...shows(override, coerced) });
     }
     return { replaced: new Set(winners.keys()), results };
   }
@@ -502,7 +521,7 @@ export function createOccurrenceExpander<
     const { event: series, id: seriesId } = master;
     const issues: Draft[] = [...plan.issues];
     const { replaced, results } = resolveOverrides(master, overrides, (date) =>
-      coerceRecurrenceDate(date, plan.first, "start", { timeZone: plan.timeZone }),
+      coerceRecurrenceDate(date, plan.first, "start", { defaultTimeZone }),
     );
 
     const occurrences: Occurrence<TEvent, TEventId>[] = [];
@@ -530,16 +549,22 @@ export function createOccurrenceExpander<
       }
       for (const date of dates.dates) starts.set(recurrenceKey(date), date);
     }
-    for (const date of plan.extraDates) {
-      if (compareDates(date, from) >= 0 && compareDates(date, before) < 0) {
-        starts.set(recurrenceKey(date), date);
+    // A period has its own end, so the overlap test below decides it rather than the window.
+    const ends = new Map<string, RecurrenceDate>();
+    for (const { end, start } of plan.extras) {
+      const key = recurrenceKey(start);
+      if (end !== undefined) {
+        starts.set(key, start);
+        ends.set(key, end);
+      } else if (compareDates(start, from) >= 0 && compareDates(start, before) < 0) {
+        starts.set(key, start);
       }
     }
 
-    const pool = new Map<string, Occurrence<TEvent, TEventId>>();
+    const { pool } = master;
     for (const [key, start] of starts) {
       if (replaced.has(key) || excluded(plan, start, key)) continue;
-      const end = endOf(plan, start);
+      const end = ends.get(key) ?? endOf(plan, start);
       const overlaps =
         compareDates(start, range.end) < 0 &&
         (compareDates(end, range.start) > 0 || compareDates(start, range.start) >= 0);
@@ -556,19 +581,21 @@ export function createOccurrenceExpander<
               interval,
               recurrence: Object.freeze({ recurrenceId: start, series, seriesId }),
             });
+      pool.delete(key);
       pool.set(key, occurrence);
       occurrences.push(occurrence);
     }
-    master.pool = pool;
+    for (const key of pool.keys()) {
+      if (pool.size <= occurrencesPerSeries) break;
+      pool.delete(key);
+    }
     occurrences.sort((left, right) => compareDates(left.interval.start, right.interval.start));
     return { issues, occurrences, overrides: results };
   }
 
   /** A series that can't expand: its overrides still show. */
   function failed(master: Master, overrides: readonly Override[], failure: Draft): Result {
-    const { results } = resolveOverrides(master, overrides, (date) =>
-      kindOf(date) === master.interval.kind ? date : undefined,
-    );
+    const { results } = resolveOverrides(master, overrides, () => undefined);
     return { issues: [failure], occurrences: [], overrides: results };
   }
 
@@ -640,11 +667,7 @@ export function createOccurrenceExpander<
       const resultFor = (master: Master): Result => {
         let result = results.get(master);
         if (result === undefined) {
-          // A second master with the same ID expands on its own; the snapshot reports the IDs.
-          const overrides =
-            masters.get(master.id) === master
-              ? (overridesBySeries.get(master.id) ?? noOverrides)
-              : noOverrides;
+          const overrides = overridesBySeries.get(master.id) ?? noOverrides;
           result = seriesResult(master, overrides, range);
           results.set(master, result);
         }
@@ -656,18 +679,48 @@ export function createOccurrenceExpander<
       const report = (drafts: readonly Draft[], index: number) => {
         for (const issue of drafts) issues.push(Object.freeze({ ...issue, index }));
       };
+      // IDs stay unique: an item whose ID an earlier item has is left out.
+      const taken = new Set<TEventId | string>();
+      const show = (
+        shown: readonly Occurrence<TEvent, TEventId>[],
+        event: TEvent,
+        eventId: TEventId,
+        index: number,
+      ) => {
+        const duplicates = shown.filter((occurrence) => {
+          if (taken.has(occurrence.id)) return true;
+          taken.add(occurrence.id);
+          occurrences.push(occurrence);
+          return false;
+        });
+        if (duplicates.length === 0) return;
+        const ids = duplicates.map(({ id }) => String(id));
+        const message = `An earlier event has the ID ${ids.join(", ")}; left out.`;
+        report([draft("duplicate-event-id", event, eventId, message)], index);
+      };
+
       eventRecords.forEach((record, index) => {
         switch (record.role) {
           case "skipped":
             report([record.issue], index);
             break;
           case "one-off":
-            occurrences.push(record.occurrence);
+            show(
+              [record.occurrence],
+              record.occurrence.event,
+              record.occurrence.id as TEventId,
+              index,
+            );
             break;
           case "master": {
+            if (masters.get(record.id) !== record) {
+              const message = `An earlier series has the ID ${String(record.id)}; left out.`;
+              report([draft("duplicate-event-id", record.event, record.id, message)], index);
+              break;
+            }
             const result = resultFor(record);
             report(result.issues, index);
-            occurrences.push(...result.occurrences);
+            show(result.occurrences, record.event, record.id, index);
             break;
           }
           case "override": {
@@ -678,14 +731,17 @@ export function createOccurrenceExpander<
               const message = `No series has the ID ${String(seriesId)}.`;
               report([draft("missing-series", record.event, record.id, message)], index);
               if (cancelled !== true) {
-                occurrences.push(overrideOccurrence(record, undefined, seriesId, recurrenceId));
+                const occurrence = overrideOccurrence(record, undefined, seriesId, recurrenceId);
+                show([occurrence], record.event, record.id, index);
               }
               break;
             }
             const result = resultFor(master).overrides.get(record);
             if (result !== undefined) {
               report(result.issues, index);
-              if (result.occurrence !== undefined) occurrences.push(result.occurrence);
+              if (result.occurrence !== undefined) {
+                show([result.occurrence], record.event, record.id, index);
+              }
             }
             break;
           }
