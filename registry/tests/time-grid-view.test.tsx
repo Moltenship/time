@@ -191,7 +191,7 @@ test("places overlapping events side by side and back-to-back events in a shared
   expect(position("b")).toEqual([`${(9.5 / 24) * 100}%`, "50%", "50%"]);
   expect(position("c")).toEqual([`${(10 / 24) * 100}%`, "0%", "50%"]);
   expect(event(container, "a")[0]!.getAttribute("data-color")).toBe("green");
-  expect(event(container, "a")[0]!.textContent).toBe("Meeting a9:00\u2009–\u200910:00 AM");
+  expect(event(container, "a")[0]!.textContent).toBe("Meeting a9:00 – 10:00 AM");
 });
 
 test("marks resize edges only where an editable fragment starts or ends", async () => {

@@ -5,6 +5,7 @@ import {
 } from "@moltenship/calendar-temporal";
 
 import type { CalendarWeekRules } from "../../environment";
+import { withAsciiSpaces } from "../../format";
 
 /** The anchor's week, or `count` consecutive days starting at the anchor (a day view is one). */
 export type TimeGridSpan =
@@ -57,9 +58,11 @@ export function timeGridTitle(range: PlainDateInterval, locale: Intl.Locale | st
     }).format(last);
   }
 
-  return new Intl.DateTimeFormat(locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).formatRange(range.start, last);
+  return withAsciiSpaces(
+    new Intl.DateTimeFormat(locale, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).formatRange(range.start, last),
+  );
 }

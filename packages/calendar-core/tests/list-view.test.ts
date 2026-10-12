@@ -67,9 +67,7 @@ describe("list range, navigation, and title", () => {
   test("titles the inclusive date range", () => {
     const env = environment("UTC");
 
-    expect(getListTitle(getListRange(anchor, env), env).replace(/\s/g, " ")).toBe(
-      "Oct 4 – 31, 2026",
-    );
+    expect(getListTitle(getListRange(anchor, env), env)).toBe("Oct 4 – 31, 2026");
   });
 });
 

@@ -23,8 +23,7 @@ function ranges(anchor: string, options: ListViewOptions = {}) {
   return {
     load: span(resolveViewLoadRange(strategy, date(anchor), env, options, range)),
     range: span(range),
-    // Intl separates ranges with thin spaces.
-    title: strategy.getTitle(range, env, options).replace(/\s/g, " "),
+    title: strategy.getTitle(range, env, options),
   };
 }
 

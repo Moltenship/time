@@ -43,6 +43,9 @@ same markup as long as they get the same props. In practice:
 - **Choose the time zone on the server**, for example from the user's profile or a cookie. The
   server's own zone is rarely the user's.
 - **Pass the same `locale`** to both. Dates and times are formatted with `Intl`, which depends on it.
+  Runtimes also disagree on some spaces: Node.js puts thin spaces around the dash in "Oct 12 – 18"
+  where Chrome puts plain ones. Time writes them all as plain spaces, and so can your own formatting,
+  with `withAsciiSpaces(format.formatRange(start, end))`.
 
 If you only learn the user's time zone in the browser, render the calendar after hydration, or pass
 the zone as a controlled `timeZone` and update it once you know it.
@@ -52,3 +55,9 @@ the zone as a controlled `timeZone` and update it once you know it.
 `Root` derives element IDs from React's `useId`, so they match between server and browser. If you
 render several separate React roots on one page, give each a distinct `identifierPrefix` when you
 create it (on both server and client), or pass an explicit `id` to each `Root`.
+
+## A complete example
+
+[Next.js App Router example](/docs/guides/nextjs-app-router) builds a whole route on this page: the
+view and the date in the URL, events fetched by a Server Component, changes saved through Server
+Actions, and the time zone in a cookie.

@@ -1,3 +1,4 @@
+export { withAsciiSpaces } from "./format";
 export { isAnnotationId, isEventId, isResourceId } from "./ids";
 export type { AnnotationId, CalendarEntityId, EventId, ResourceId } from "./ids";
 

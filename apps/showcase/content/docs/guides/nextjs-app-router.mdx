@@ -1,0 +1,169 @@
+---
+title: Next.js App Router example
+description: A calendar whose view and date live in the URL, loaded by a Server Component and saved through Server Actions.
+---
+
+[Next.js and server rendering](/docs/guides/nextjs) covers the basics: Client Components, strings
+instead of Temporal values, and `now` and the time zone from the server. This page walks through a
+complete App Router route built on them. [Open the example](/examples/nextjs), then read its source
+here.
+
+- **The URL holds the view and the date**, as in `/examples/nextjs?view=week&date=2026-10-12`.
+  Previous, next, Today and the view switcher change it, and Back and Forward work.
+- **A Server Component fetches the meetings** for the range the URL shows.
+- **Server Actions save** created, moved and resized meetings. The calendar proposes each change, the
+  server decides, and the page renders again with the result.
+- **The time zone comes from a cookie**, and the current time from the server.
+
+The route has seven files:
+
+| File                | Kind             | What it does                                            |
+| ------------------- | ---------------- | ------------------------------------------------------- |
+| `page.tsx`          | Server Component | Reads the URL and the cookies, and fetches the meetings |
+| `loading.tsx`       | Server Component | The first load's skeleton                               |
+| `location.ts`       | Shared           | The URL's view and date, and the dates they show        |
+| `meetings.ts`       | Server only      | An in-memory store that stands in for your database     |
+| `actions.ts`        | Server Actions   | Save meetings and the time zone                         |
+| `calendar.ts`       | Client           | The calendar, its views and its policies                |
+| `team-calendar.tsx` | Client Component | The calendar's state, wired to the URL and the actions  |
+
+## The URL
+
+The view and the date are search params. Anything missing or broken falls back to this week, so
+every link opens something:
+
+<include meta='title="location.ts"'>
+  ../../../app/(home)/examples/nextjs/location.ts#location
+</include>
+
+## The page
+
+The page is a Server Component. It reads the URL, the visitor and the clock, and fetches the
+meetings for the range the calendar will show:
+
+<include meta='title="page.tsx"'>../../../app/(home)/examples/nextjs/page.tsx#page</include>
+
+- **It renders on every request.** Reading `searchParams` and cookies makes the page dynamic.
+- **`now` is read once**, here, and passed down as a string. Each render on the server moves it on,
+  so it stays current as the visitor navigates and saves.
+- **Meetings arrive as strings.** `meetings.ts` sends them as `MeetingJson`, with ISO 8601 times:
+
+<include meta='title="meetings.ts"'>../../../app/(home)/examples/nextjs/meetings.ts#types</include>
+
+The server works out the dates with the functions the views use, so it fetches exactly what they
+show. The example's tests check that the two agree for every view:
+
+<include meta='title="location.ts"'>../../../app/(home)/examples/nextjs/location.ts#range</include>
+
+`visibleRange` turns the dates into instants in the visitor's time zone, as `Root` does for
+`onVisibleRangeChange`. A week in Tokyo starts nine hours before a week in UTC.
+
+## The calendar
+
+The calendar is defined in a client module. Meetings have a time, so a policy refuses drops on the
+all-day row before they reach the server:
+
+<include meta='title="calendar.ts"'>
+  ../../../app/(home)/examples/nextjs/calendar.ts#calendar
+</include>
+
+The Client Component wires it to the URL, the Server Actions and the time zone cookie:
+
+<include meta='title="team-calendar.tsx"'>
+  ../../../app/(home)/examples/nextjs/team-calendar.tsx#root
+</include>
+
+`view` and `anchorDate` are controlled, so the URL decides what the calendar shows. `timeZone` is
+controlled too, and comes from the cookie.
+
+## Navigation
+
+When someone moves to another week or view, the calendar calls `onAnchorDateChange` or
+`onViewChange`. The component pushes a new URL instead of keeping the change in state:
+
+<include meta='title="team-calendar.tsx"'>
+  ../../../app/(home)/examples/nextjs/team-calendar.tsx#navigation
+</include>
+
+- **The grid moves on the click.** `router.push` runs inside a transition, and `useOptimistic` shows
+  the new view and date until the server's render for them arrives. In the meantime the meetings
+  from the last range stay on screen.
+- **The page says it's loading.** The transition's `loading` flag sets `aria-busy` on the viewport
+  and shows a thin bar under the toolbar. Nothing blanks.
+- **One click, one URL.** Opening a day from the month view changes the view and the date. The
+  changes queue for one microtask, so they land in a single URL and a single history entry.
+- **Back and Forward** change the URL, the page renders on the server again, and the controlled
+  props follow.
+
+The calendar stays mounted through all of this. Next.js keeps the page on screen while it fetches
+the next render, and the props change in place, so the scroll position and the focus survive.
+`loading.tsx` only shows when the route first loads, before there's a page to keep:
+
+<include meta='title="loading.tsx"'>
+  ../../../app/(home)/examples/nextjs/loading.tsx#loading
+</include>
+
+## Saving
+
+The calendar proposes; the app commits. Every move, resize and create runs through the calendar's
+policies first, then reaches `onEventChange`, which calls a Server Action:
+
+<include meta='title="actions.ts"'>../../../app/(home)/examples/nextjs/actions.ts#actions</include>
+
+- **Check every argument.** A Server Action is a public endpoint, and anyone can call it with
+  anything. The calendar's snap and minimum duration don't protect the server.
+- **The server has the last word.** This one refuses meetings that start in the past, a rule the
+  calendar doesn't know.
+- **`refresh()` re-renders the page** in the same response as the action's result, so the saved
+  meeting arrives without another request. If your reads are cached with `"use cache"`, call
+  `updateTag` instead.
+- **Saves run one at a time.** Next.js sends a page's Server Actions in order, so two quick moves of
+  one meeting are saved in the order they were made.
+
+On the client, `save` turns the action's result into the promise the calendar waits for:
+
+<include meta='title="team-calendar.tsx"'>
+  ../../../app/(home)/examples/nextjs/team-calendar.tsx#save
+</include>
+
+- **Moves and resizes** stay where they were dropped while the promise is pending. The calendar
+  shows them as saving, then keeps them in place until the page's next render has the saved times.
+- **A refusal** rejects the promise, and the calendar moves the meeting back. The reason shows under
+  the calendar.
+- **New meetings** have no ID until the server gives them one, so the calendar can't show them as
+  pending. `useOptimistic` adds them to the meetings on screen until the page renders again with the
+  saved one. They're marked `pending`, and the adapter's `isReadOnly` keeps them still until then.
+
+## The time zone
+
+The page renders in the zone from the `time-zone` cookie. On a first visit there's no cookie, so the
+server renders in UTC, and the browser sends its own zone once it has hydrated:
+
+<include meta='title="team-calendar.tsx"'>
+  ../../../app/(home)/examples/nextjs/team-calendar.tsx#time-zone
+</include>
+
+Setting a cookie in a Server Action re-renders the page in the same response, so the calendar
+switches zones as soon as the action returns. Every later request renders in the right zone from the
+start, and hydration matches. The picker under the calendar calls the same action.
+
+<include meta='title="actions.ts"'>
+  ../../../app/(home)/examples/nextjs/actions.ts#time-zone
+</include>
+
+## Temporal in the browser
+
+The server runs on Node.js 26, which has `Temporal`. The calendar also renders while the page
+hydrates, so `Temporal` has to exist in the browser before then. `team-calendar.tsx` imports
+`temporal-polyfill/global` before anything else. The polyfill installs itself only in browsers
+without `Temporal`. See [Installation](/docs/installation#temporal).
+
+## Make it yours
+
+- **Replace `meetings.ts`** with your database. Its functions take the visitor and a range, as
+  queries would.
+- **Use your auth** in place of the session cookie, and check in every action that the visitor owns
+  the meeting they're changing.
+- **Refuse stale writes.** Give meetings a revision, send it with each change, and refuse a change
+  made to an older one. The adapter's `getRevision` tells the calendar about them.
+- **Cache the reads** with `"use cache"` and `cacheTag`, and call `updateTag` from the actions.

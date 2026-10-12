@@ -1,9 +1,10 @@
 import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
-import type {
-  EventDayFragment,
-  EventId,
-  ResourceId,
-  TimeGridEventLayout,
+import {
+  withAsciiSpaces,
+  type EventDayFragment,
+  type EventId,
+  type ResourceId,
+  type TimeGridEventLayout,
 } from "@moltenship/calendar";
 import { useRef, useState, type ReactNode } from "react";
 
@@ -68,7 +69,7 @@ function rangeDash(
   const dash = parts.find(
     (part, index) => part.source === "shared" && parts[index - 1]?.source === "startRange",
   )?.value;
-  return dash !== undefined && /^\s*[–—-]\s*$/u.test(dash) ? dash : " – ";
+  return dash !== undefined && /^\s*[–—-]\s*$/u.test(dash) ? withAsciiSpaces(dash) : " – ";
 }
 
 /**
@@ -98,7 +99,7 @@ export function eventTimeRange(
 ): string {
   const nextMidnight = start.toPlainDate().add({ days: 1 }).toPlainDateTime();
   if (Temporal.PlainDateTime.compare(end, nextMidnight) <= 0) {
-    return formats.time.formatRange(start.toPlainTime(), end.toPlainTime());
+    return withAsciiSpaces(formats.time.formatRange(start.toPlainTime(), end.toPlainTime()));
   }
   const dash = rangeDash(formats.time, start.toPlainTime(), end.toPlainTime());
   return `${formats.time.format(start.toPlainTime())}${dash}${formats.dayTime.format(end)}`;

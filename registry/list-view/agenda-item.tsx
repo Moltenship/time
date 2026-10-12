@@ -1,4 +1,9 @@
-import type { EventId, ListItem, ResourceId } from "@moltenship/calendar";
+import {
+  withAsciiSpaces,
+  type EventId,
+  type ListItem,
+  type ResourceId,
+} from "@moltenship/calendar";
 import type { ReactNode } from "react";
 
 import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
@@ -23,7 +28,7 @@ function timeLabel(
   if (event.kind === "all-day" || (startsBeforeDay && endsAfterDay)) return undefined;
   if (startsBeforeDay) return `Until ${format.format(end.toPlainTime())}`;
   if (endsAfterDay) return `From ${format.format(start.toPlainTime())}`;
-  return format.formatRange(start.toPlainTime(), end.toPlainTime());
+  return withAsciiSpaces(format.formatRange(start.toPlainTime(), end.toPlainTime()));
 }
 
 /** One agenda row: time range or an "All day" badge, the title, and "Day k of n" for long events. */

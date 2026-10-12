@@ -6,6 +6,7 @@ import {
   type EventId,
   type ListProjection,
   type ResourceId,
+  withAsciiSpaces,
 } from "@moltenship/calendar";
 import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
@@ -76,7 +77,9 @@ function ScrollingAgendaView<TEvent>({
   const emptyState = (
     <div className="flex flex-1 items-center justify-center p-6 text-center">
       <EmptyAgenda
-        dates={formats.range.formatRange(range.start, range.end.subtract({ days: 1 }))}
+        dates={withAsciiSpaces(
+          formats.range.formatRange(range.start, range.end.subtract({ days: 1 })),
+        )}
         loading={loading}
         start={range.start}
       />

@@ -11,6 +11,7 @@ import {
   type ListProjection,
   type ListViewOptions,
   type ResourceId,
+  withAsciiSpaces,
 } from "@moltenship/calendar";
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 
@@ -60,7 +61,9 @@ function EmptyAgendaView<TEvent>({ environment, options, range }: AgendaViewProp
       className="flex h-full items-center justify-center p-6 text-center"
     >
       <EmptyAgenda
-        dates={formats.range.formatRange(range.start, range.end.subtract({ days: 1 }))}
+        dates={withAsciiSpaces(
+          formats.range.formatRange(range.start, range.end.subtract({ days: 1 })),
+        )}
         loading={options.loading === true}
         start={range.start}
       />

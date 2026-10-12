@@ -1,9 +1,10 @@
-import type {
-  CalendarEnvironmentBase,
-  CalendarEventInterval,
-  EventId,
-  NormalizedCalendarEvent,
-  ResourceId,
+import {
+  withAsciiSpaces,
+  type CalendarEnvironmentBase,
+  type CalendarEventInterval,
+  type EventId,
+  type NormalizedCalendarEvent,
+  type ResourceId,
 } from "@moltenship/calendar";
 import { useMemo } from "react";
 
@@ -55,7 +56,7 @@ export function describeWhen(interval: CalendarEventInterval, where: Where): str
       const last = interval.end.subtract({ days: 1 });
       const dates = last.equals(interval.start)
         ? date.format(interval.start)
-        : date.formatRange(interval.start, last);
+        : withAsciiSpaces(date.formatRange(interval.start, last));
       return `all day, ${dates}`;
     }
     case "timed": {
@@ -64,11 +65,11 @@ export function describeWhen(interval: CalendarEventInterval, where: Where): str
       // Across a clock change the wall times alone can repeat or run backwards, and a range
       // format collapses them, so name each end with its zone: "1:30 AM EDT – 1:30 AM EST".
       return start.offsetNanoseconds === end.offsetNanoseconds
-        ? dateTime.formatRange(start.toPlainDateTime(), end.toPlainDateTime())
+        ? withAsciiSpaces(dateTime.formatRange(start.toPlainDateTime(), end.toPlainDateTime()))
         : `${zonedDateTime.format(interval.start)} – ${zonedDateTime.format(interval.end)}`;
     }
     case "floating":
-      return dateTime.formatRange(interval.start, interval.end);
+      return withAsciiSpaces(dateTime.formatRange(interval.start, interval.end));
   }
 }
 

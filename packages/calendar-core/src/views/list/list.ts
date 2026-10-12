@@ -6,6 +6,7 @@ import {
 } from "@moltenship/calendar-temporal";
 
 import type { CalendarEnvironmentBase } from "../../environment";
+import { withAsciiSpaces } from "../../format";
 import type { EventId, ResourceId } from "../../ids";
 import {
   eventDateRanges,
@@ -76,11 +77,13 @@ export function getListTitle(
   range: PlainDateInterval,
   environment: CalendarEnvironmentBase,
 ): string {
-  return new Intl.DateTimeFormat(environment.locale, {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-  }).formatRange(range.start, range.end.subtract({ days: 1 }));
+  return withAsciiSpaces(
+    new Intl.DateTimeFormat(environment.locale, {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).formatRange(range.start, range.end.subtract({ days: 1 })),
+  );
 }
 
 function toListItem<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(

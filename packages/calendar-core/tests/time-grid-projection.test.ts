@@ -68,7 +68,7 @@ describe("time-grid strategy", () => {
 
     expect(`${range.start.toString()}/${range.end.toString()}`).toBe("2026-10-05/2026-10-12");
     expect(week.navigate(anchor, -2, undefined).toString()).toBe("2026-09-24");
-    expect(week.getTitle(range, env, undefined)).toBe("Oct 5 – 11, 2026");
+    expect(week.getTitle(range, env, undefined)).toBe("Oct 5 – 11, 2026");
     expect(day.getTitle(day.getRange(anchor, env, undefined), env, undefined)).toBe(
       "October 8, 2026",
     );

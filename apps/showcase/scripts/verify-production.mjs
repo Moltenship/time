@@ -86,8 +86,17 @@ try {
     );
   }
 
+  // The App Router example renders on request: the URL's range, in the cookie's time zone.
+  const example = await fetch(`${origin}/examples/nextjs?view=day&date=2026-10-14`, {
+    headers: { cookie: "time-zone=Asia/Tokyo" },
+  });
+  assert.equal(example.status, 200, "/examples/nextjs did not render.");
+  const exampleHtml = await example.text();
+  assert.match(exampleHtml, /October 14, 2026/);
+  assert.match(exampleHtml, /Asia\/Tokyo/);
+
   console.log(
-    "Verified the landing page, every docs route, not-found handling, and static search.",
+    "Verified the landing page, every docs route, the App Router example, not-found handling, and static search.",
   );
 } finally {
   server.kill("SIGTERM");

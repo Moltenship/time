@@ -2,6 +2,7 @@
   "title": "Guides",
   "pages": [
     "nextjs",
+    "nextjs-app-router",
     "ics",
     "recurring-events",
     "google-calendar",

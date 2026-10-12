@@ -60,9 +60,9 @@ describe("time-grid titles", () => {
 
   test("formats one day in full and several days as a compact range", () => {
     expect(title("2026-10-08", 1)).toBe("October 8, 2026");
-    expect(title("2026-10-06", 7)).toBe("Oct 6\u2009–\u200912, 2026");
-    expect(title("2026-09-28", 7)).toBe("Sep 28\u2009–\u2009Oct 4, 2026");
-    expect(title("2026-12-28", 7)).toBe("Dec 28, 2026\u2009–\u2009Jan 3, 2027");
+    expect(title("2026-10-06", 7)).toBe("Oct 6 – 12, 2026");
+    expect(title("2026-09-28", 7)).toBe("Sep 28 – Oct 4, 2026");
+    expect(title("2026-12-28", 7)).toBe("Dec 28, 2026 – Jan 3, 2027");
   });
 
   test("follows the locale", () => {
