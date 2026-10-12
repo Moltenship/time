@@ -92,11 +92,12 @@ async function cruiseWithArchitectureRules(roots: string[]) {
 }
 
 describe("workspace boundaries", { concurrent: false }, () => {
+  // Cruising every workspace takes a few seconds alone, and longer under a full parallel run.
   test("production source obeys the dependency rules", async () => {
     const result = await cruiseWithArchitectureRules(productionRoots);
 
     expect(result.summary.violations).toEqual([]);
-  });
+  }, 30_000);
 
   test("a deliberately invalid deep import fails the boundary rule", async () => {
     const result = await cruiseWithArchitectureRules([invalidFixtureRoot]);
