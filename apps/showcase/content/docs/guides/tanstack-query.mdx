@@ -72,9 +72,9 @@ The cache keeps events as the API sends them, and the event adapter reads their 
 
 <include meta='title="query-calendar.tsx"'>../../examples/query-calendar.tsx#calendar</include>
 
-- **Plain JSON in the cache.** After a reload, TanStack Query's structural sharing keeps the
-  records that didn't change as the same objects, so the calendar re-reads only the others. JSON
-  also survives dehydration, for [server rendering](#server-rendering).
+- **Plain JSON in the cache.** When a reload brings nothing new, TanStack Query's structural
+  sharing keeps the same array, so the calendar has nothing to redo. JSON also survives
+  dehydration, for [server rendering](#server-rendering).
 - **No `getRevision`.** A change shown before it's saved keeps the record's old `version`. The
   calendar skips a record whose revision it has seen, so it would keep the old times.
 
@@ -91,8 +91,9 @@ for, `loadRange`. Keep `loadRange` in state, and turn it into the window a query
   again on every step, and cache each week apart. The window is the month that holds the middle of
   the load range, with a month on either side, so the weeks of a month share one query, and so do
   a month view's six weeks.
-- **One month on.** The next week or month moves the middle into the next month, and the window
-  by exactly one month, so `shiftWindow` names the windows to [prefetch](#prefetch-the-next-window).
+- **One month on.** When the next week or month moves the middle into the next month, the window
+  moves by exactly one month, so `shiftWindow` names the windows to
+  [prefetch](#prefetch-the-next-window).
 - **Long load ranges.** A [scrolling view](/docs/views/scrolling) loads a page on either side of
   what it shows. The window grows to hold its load range, such as a scrolling month's eighteen weeks.
 - **ISO strings and the time zone.** The key is JSON, which TanStack Query hashes. The same dates
@@ -101,6 +102,9 @@ for, `loadRange`. Keep `loadRange` in state, and turn it into the window a query
 ## Show what's loading
 
 <include meta='title="query-calendar.tsx"'>../../examples/query-calendar.tsx#root</include>
+
+`LoadingIndicator` and `CalendarViewSwitcher` are small components in the same file: a spinner, and
+the registry's view switcher.
 
 - **The first render.** The calendar reports its dates after it renders, and never on the server,
   so the state starts from the week it opens on, from `weekRange`. The window rounds both to the
@@ -111,10 +115,11 @@ for, `loadRange`. Keep `loadRange` in state, and turn it into the window a query
   empty for every load.
 - **Loading.** `isFetching` turns on the spinner in the toolbar, and `aria-busy` on the viewport,
   for every load of the window on screen, also a reload after a save.
-- **Errors.** TanStack Query retries a failed load three times before `isError` shows the message.
-  "Try again" calls `refetch`. A failed save shows its own message, first, since it answers what
-  the user just did, and the calendar announces it.
-- **Strict Mode.** `onVisibleRangeChange` reports each range once, also when Strict Mode runs
+- **Errors.** TanStack Query retries a failed load three times by default before `isError` shows
+  the message; the preview retries once. "Try again" calls `refetch`. A window that fails to load
+  has no events to keep, so the grid behind the message is empty. A failed save shows its own
+  message first, since it answers what the user just did, and the calendar announces it.
+- **Strict Mode.** `onVisibleRangeChange` reports each change once, also when Strict Mode runs
   effects twice. Setting the same range again would do nothing anyway.
 
 ### Prefetch the next window
@@ -132,7 +137,8 @@ the change rolls back. A change becomes a write: the event's record before and a
 <include meta='title="query-events.ts"'>../../examples/query-events.ts#write</include>
 
 A new event gets its ID here, so the event shown while it saves and the saved one are the same
-event, with no temporary ID to swap. The record goes into every cached window it overlaps:
+event, with no temporary ID to swap. The calendar keeps no pending copy of a new event: it shows
+once it's in the cache. The record goes into every cached window it overlaps:
 
 <include meta='title="query-events.ts"'>../../examples/query-events.ts#cache</include>
 
@@ -140,14 +146,18 @@ And the mutation updates the cache before the save, and puts it back if the save
 
 <include meta='title="query-events.ts"'>../../examples/query-events.ts#mutation</include>
 
-1. **`onMutate`** cancels loads on their way, which could bring back what they read before the
+1. **`scope`** sends the saves one at a time, in the order they were made, so a server never
+   applies an older move after a newer one. `onMutate` still runs at once for each.
+2. **`onMutate`** cancels reloads on their way, which could bring back what they read before the
    change, and puts the new record in the cache. A move from October to December leaves the
-   windows that held October and shows in those that hold December, before it's saved.
-2. **`onError`** puts the old record back the same way. It writes only this event, rather than a
+   windows that held October and shows in those that hold December, before it's saved. Loads of
+   windows with nothing cached yet carry on, so prefetches aren't lost.
+3. **`onError`** puts the old record back the same way. It writes only this event, rather than a
    copy of the whole cache from before the change, so another change that's still saving stays.
-3. **`onSettled`** marks every events query stale, and reloads the ones on screen, once the last
-   save has settled. A reload between two saves would show the first without the second. Returning
-   its promise keeps the change pending until the reload is done.
+4. **`onSettled`** marks every events query stale, and reloads the ones on screen, once the last
+   save has settled. A reload between two saves would show the first without the second. After a
+   save, returning the reload's promise keeps the change pending until the reload shows it. After a
+   failure, it returns nothing, so the change rolls back at once.
 
 `mutateAsync` rejects when the save fails, after `onError` has put the old record back, so
 `onEventChange` rejects too and the calendar rolls back the change.

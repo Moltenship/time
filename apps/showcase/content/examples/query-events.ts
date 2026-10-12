@@ -128,23 +128,31 @@ export function useSaveEvent(api: EventsApi) {
 
   return useMutation({
     mutationKey: eventsKey,
+    // Saves reach the server one at a time, in the order they were made. Each shows at once.
+    scope: { id: "events" },
     mutationFn: async ({ after, before, id }: EventWrite) => {
       if (after === null) await api.deleteEvent(id);
       else if (before === null) await api.createEvent(after);
       else await api.updateEvent(after);
     },
     onMutate: async ({ after, id }) => {
-      // A load on its way could bring back what it read before the change.
-      await queryClient.cancelQueries({ queryKey: eventsKey });
+      // A reload on its way could bring back what it read before the change. Loads with nothing
+      // cached yet carry on: there's nothing to change in them.
+      await queryClient.cancelQueries({
+        queryKey: eventsKey,
+        predicate: (query) => query.state.data !== undefined,
+      });
       putEvent(queryClient, id, after);
     },
     // Put the event back as it was, in every window. Other changes that are saving stay.
     onError: (_error, { before, id }) => putEvent(queryClient, id, before),
-    // Reload once the last save settles, so a reload between two saves can't undo the second.
-    onSettled: () =>
-      queryClient.isMutating({ mutationKey: eventsKey }) === 1
-        ? queryClient.invalidateQueries({ queryKey: eventsKey })
-        : undefined,
+    onSettled: (_data, error) => {
+      // Reload once the last save settles, so a reload between two saves can't undo the second.
+      if (queryClient.isMutating({ mutationKey: eventsKey }) !== 1) return;
+      const reload = queryClient.invalidateQueries({ queryKey: eventsKey });
+      // A saved change stays pending until the reload shows it; a failed one rolls back now.
+      return error === null ? reload : undefined;
+    },
   });
 }
 // #endregion mutation

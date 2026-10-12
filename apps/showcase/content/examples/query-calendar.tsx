@@ -115,7 +115,8 @@ export function EventsCalendar({ api, timeZone }: EventsCalendarProps) {
           <CalendarViewSwitcher />
         </CalendarToolbar>
         {saveEvent.isError ? (
-          <div className="flex items-center gap-3 border-b px-4 py-2 text-sm" role="alert">
+          // No live role: the calendar's announcer already says the change was undone.
+          <div className="flex items-center gap-3 border-b px-4 py-2 text-sm">
             Couldn't save the change, so it was undone.
             <Button className="ms-auto" onClick={saveEvent.reset} size="sm" variant="outline">
               Dismiss

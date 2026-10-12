@@ -216,7 +216,8 @@ own.
         <>
           Called after mount and whenever the active view, its dates, or the time zone change, with
           the visible <code>range</code> and the <code>loadRange</code> to have events for. Each
-          range is reported once, also under Strict Mode, and never on the server. See{" "}
+          change is reported once, also under Strict Mode or when a hidden <code>Activity</code> is
+          revealed, and never on the server. See{" "}
           <a href="/docs/views/scrolling#loading-events-as-you-scroll">loading events</a> and{" "}
           <a href="/docs/guides/tanstack-query">TanStack Query</a>.
         </>

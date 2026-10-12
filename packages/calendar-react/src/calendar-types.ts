@@ -219,8 +219,9 @@ interface CalendarRootBaseProps<
   /**
    * Called after the active view first shows its dates and whenever they, the view, or the time
    * zone change, but not when only events do. Load events for `loadRange`, and a scrolling view's
-   * next pages are ready before they scroll into view. Each range is reported once, also under
-   * Strict Mode, and never on the server, so the first render needs a guess of its own.
+   * next pages are ready before they scroll into view. Each change is reported once, also when
+   * Strict Mode runs effects twice or a hidden `Activity` is revealed, and never on the server, so
+   * the first render needs a guess of its own.
    */
   readonly onVisibleRangeChange?: (range: CalendarVisibleRange<TViewDef["name"]>) => void;
   /** Run in order on every proposed change, after the built-in read-only check. */

@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { createFakeEventsApi } from "@/content/examples/query-api";
 import { EventsCalendar } from "@/content/examples/query-calendar";
@@ -24,12 +24,12 @@ export default function QueryPreviewCalendar({
   const failId = useId();
   const [failing, setFailing] = useState(false);
   // Read by the server as each request starts, so a switch only affects requests after it.
-  const [network] = useState(() => ({ failing: false }));
+  const failingRef = useRef(false);
   const [timeZone] = useState(() => Temporal.Now.timeZoneId());
   const [api] = useState(() =>
     createFakeEventsApi(createSampleEvents(Temporal.Now.plainDateISO(timeZone), timeZone), {
       latency,
-      shouldFail: () => network.failing,
+      shouldFail: () => failingRef.current,
     }),
   );
   // One client per preview; a failed load is tried once more before it shows an error.
@@ -49,7 +49,7 @@ export default function QueryPreviewCalendar({
               checked={failing}
               id={failId}
               onCheckedChange={(checked) => {
-                network.failing = checked;
+                failingRef.current = checked;
                 setFailing(checked);
               }}
             />

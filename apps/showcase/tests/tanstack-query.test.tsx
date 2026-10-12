@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { plainDateInterval, weekRange, type CalendarEventPlacement } from "@moltenship/calendar";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { act, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeAll, describe, expect, test, vi } from "vite-plus/test";
@@ -309,9 +309,66 @@ async function render(element: ReactNode) {
   return container;
 }
 
-/** Lets the pretend server answer and React render what arrived. */
-async function settle() {
-  await act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+/**
+ * Waits a little at a time until `check` passes, so the pretend server can answer and React can
+ * render what arrived. TanStack Query tells observers on a timer, so each wait is inside `act`.
+ */
+async function waitUntil(check: () => void, timeout = 3000) {
+  const started = performance.now();
+  for (;;) {
+    try {
+      check();
+      return;
+    } catch (error) {
+      if (performance.now() - started > timeout) throw error;
+    }
+    await act(() => new Promise((resolve) => setTimeout(resolve, 10)));
+  }
+}
+
+/**
+ * The pretend server with saves, and loads while `holdLoads` is on, held until the test answers
+ * them, so the order of events doesn't depend on timers.
+ */
+function controlledApi(seed: readonly ApiEvent[]) {
+  const server = createFakeEventsApi(seed, { latency: 0 });
+  const held: { kind: "load" | "save"; answer: (fail?: boolean) => void }[] = [];
+  let holdLoads = false;
+
+  function hold<T>(kind: "load" | "save", respond: () => Promise<T>): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      held.push({
+        answer: (fail = false) =>
+          fail
+            ? reject(new Error("The server didn't answer."))
+            : void respond().then(resolve, reject),
+        kind,
+      });
+    });
+  }
+
+  const api: EventsApi = {
+    ...server,
+    listEvents: (dates, signal) =>
+      holdLoads
+        ? hold("load", () => server.listEvents(dates, signal))
+        : server.listEvents(dates, signal),
+    updateEvent: (event) => hold("save", () => server.updateEvent(event)),
+  };
+
+  return {
+    api,
+    /** Answers the oldest held request of `kind`. */
+    answer(kind: "load" | "save", fail = false) {
+      const index = held.findIndex((request) => request.kind === kind);
+      if (index === -1) throw new Error(`No ${kind} is waiting`);
+      held.splice(index, 1)[0]!.answer(fail);
+    },
+    held: (kind: "load" | "save") => held.filter((request) => request.kind === kind).length,
+    holdLoads(value: boolean) {
+      holdLoads = value;
+    },
+  };
 }
 
 describe("useSaveEvent", () => {
@@ -319,65 +376,121 @@ describe("useSaveEvent", () => {
   const november = months("2026-10-01", "2027-01-01");
   const event = timedEvent("review", "2026-10-28T09:00:00Z", "2026-10-28T10:00:00Z");
   const later = { ...event, end: "2026-12-02T10:00:00Z", start: "2026-12-02T09:00:00Z" };
+  const other = timedEvent("retro", "2026-10-29T09:00:00Z", "2026-10-29T10:00:00Z");
 
-  async function setup({ failSaves }: { readonly failSaves: boolean }) {
-    let loaded = false;
-    const api = createFakeEventsApi([event], {
-      latency: 5,
-      shouldFail: () => loaded && failSaves,
-    });
+  /** Caches both windows, and renders `useSaveEvent`, with the window `watched` on screen. */
+  async function setup({ watched }: { readonly watched?: EventsWindow } = {}) {
+    const server = controlledApi([event, other]);
     const client = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } });
-    for (const dates of [october, november]) await client.prefetchQuery(eventsQuery(api, dates));
-    loaded = true;
+    for (const dates of [october, november]) {
+      await client.prefetchQuery(eventsQuery(server.api, dates));
+    }
     let save: ((write: EventWrite) => Promise<void>) | undefined;
     function Saver() {
-      save = useSaveEvent(api).mutateAsync;
+      save = useSaveEvent(server.api).mutateAsync;
+      return null;
+    }
+    function Watcher({ dates }: { readonly dates: EventsWindow }) {
+      useQuery(eventsQuery(server.api, dates));
       return null;
     }
     await render(
       <QueryClientProvider client={client}>
         <Saver />
+        {watched === undefined ? null : <Watcher dates={watched} />}
       </QueryClientProvider>,
     );
-    const ids = (dates: EventsWindow) =>
-      client.getQueryData(eventsQuery(api, dates).queryKey)?.map((cached) => cached.start);
-    return { api, ids, save: save! };
+    const starts = (dates: EventsWindow) =>
+      client
+        .getQueryData(eventsQuery(server.api, dates).queryKey)
+        ?.filter((cached) => cached.id === event.id)
+        .map((cached) => cached.start);
+    const stale = (dates: EventsWindow) =>
+      client.getQueryState(eventsQuery(server.api, dates).queryKey)?.isInvalidated;
+    return { client, save: save!, server, stale, starts };
   }
 
-  test("shows a change in every window at once, and reloads the saved events after", async () => {
-    const { api, ids, save } = await setup({ failSaves: false });
-    expect(ids(october)).toEqual([event.start]);
-    expect(ids(november)).toEqual([event.start]);
+  test("shows a change in every window at once, and marks them stale once it's saved", async () => {
+    const { save, server, stale, starts } = await setup();
+    expect(starts(october)).toEqual([event.start]);
+    expect(starts(november)).toEqual([event.start]);
 
     let saved: Promise<void> | undefined;
     await act(async () => {
       saved = save({ after: later, before: event, id: event.id });
     });
-    expect(ids(october)).toEqual([]);
-    expect(ids(november)).toEqual([later.start]);
+    expect(starts(october)).toEqual([]);
+    expect(starts(november)).toEqual([later.start]);
+    expect(stale(november)).toBe(false);
 
+    await waitUntil(() => expect(server.held("save")).toBe(1));
+    server.answer("save");
     await act(async () => saved);
-    // TanStack Query tells observers on a timer, so let the last update land.
-    await settle();
-    const [stored] = await api.listEvents(november);
+    expect(stale(october)).toBe(true);
+    expect(stale(november)).toBe(true);
+    const [stored] = await server.api.listEvents(months("2026-12-01", "2027-01-01"));
     expect(stored).toMatchObject({ start: later.start, version: 2 });
   });
 
-  test("puts the event back in every window when the save fails", async () => {
-    const { ids, save } = await setup({ failSaves: true });
+  test("saves one at a time, and reloads once, after the last", async () => {
+    const { save, server, stale, starts } = await setup();
+    const moved = { ...other, start: "2026-10-30T09:00:00Z", end: "2026-10-30T10:00:00Z" };
+    let first: Promise<void> | undefined;
+    let second: Promise<void> | undefined;
+    await act(async () => {
+      first = save({ after: later, before: event, id: event.id });
+      second = save({ after: moved, before: other, id: other.id });
+    });
+    // Both show at once; the second waits for the first to reach the server.
+    expect(starts(november)).toEqual([later.start]);
+    await waitUntil(() => expect(server.held("save")).toBe(1));
+
+    server.answer("save");
+    await act(async () => first);
+    expect(stale(november)).toBe(false);
+
+    await waitUntil(() => expect(server.held("save")).toBe(1));
+    server.answer("save");
+    await act(async () => second);
+    expect(stale(november)).toBe(true);
+  });
+
+  test("puts the event back in every window when the save fails, without waiting for a reload", async () => {
+    const { save, server, starts } = await setup({ watched: november });
+    // The reload after the failure never answers; the rollback mustn't wait for it.
+    server.holdLoads(true);
 
     let saved: Promise<void> | undefined;
     await act(async () => {
       saved = save({ after: later, before: event, id: event.id });
     });
-    expect(ids(november)).toEqual([later.start]);
+    expect(starts(november)).toEqual([later.start]);
 
+    await waitUntil(() => expect(server.held("save")).toBe(1));
+    server.answer("save", true);
     await act(async () => {
       await expect(saved).rejects.toThrow("didn't answer");
     });
-    await settle();
-    expect(ids(october)).toEqual([event.start]);
-    expect(ids(november)).toEqual([event.start]);
+    expect(starts(october)).toEqual([event.start]);
+    expect(starts(november)).toEqual([event.start]);
+    // The reload started anyway.
+    expect(server.held("load")).toBe(1);
+  });
+
+  test("lets loads with nothing cached yet finish, so prefetches aren't lost", async () => {
+    const { client, save, server } = await setup();
+    const december = months("2026-11-01", "2027-02-01");
+    server.holdLoads(true);
+    void client.prefetchQuery(eventsQuery(server.api, december));
+    await waitUntil(() => expect(server.held("load")).toBe(1));
+
+    await act(async () => {
+      void save({ after: later, before: event, id: event.id }).catch(() => undefined);
+    });
+    server.answer("load");
+    await waitUntil(() =>
+      expect(client.getQueryData(eventsQuery(server.api, december).queryKey)).toBeDefined(),
+    );
   });
 });
 
@@ -406,16 +519,19 @@ describe("EventsCalendar", () => {
     const client = new QueryClient();
     const api = createFakeEventsApi(createSampleEvents(today, timeZone), { latency: 0 });
     const container = await renderCalendar(api, client);
-    await settle();
 
     // Five weekdays, whichever weekday today is.
-    expect(standups(container)).toHaveLength(5);
-    const loaded = client
-      .getQueriesData({ queryKey: ["events"] })
-      .map(([queryKey]) => (queryKey[1] as EventsWindow).start);
+    await waitUntil(() => expect(standups(container)).toHaveLength(5));
     const current = eventsWindow(weekRange(today, { weekStartsOn: 1 }), timeZone);
-    expect(loaded.toSorted()).toEqual(
-      [shiftWindow(current, -1), current, shiftWindow(current, 1)].map((dates) => dates.start),
+    await waitUntil(() =>
+      expect(
+        client
+          .getQueriesData({ queryKey: ["events"] })
+          .map(([queryKey]) => (queryKey[1] as EventsWindow).start)
+          .toSorted(),
+      ).toEqual(
+        [shiftWindow(current, -1), current, shiftWindow(current, 1)].map((dates) => dates.start),
+      ),
     );
   });
 
@@ -429,21 +545,22 @@ describe("EventsCalendar", () => {
       api,
       new QueryClient({ defaultOptions: { queries: { retry: false } } }),
     );
-    await settle();
 
-    const alert = container.querySelector('[role="alert"]');
-    expect(alert?.textContent).toContain("Couldn't load events.");
+    await waitUntil(() =>
+      expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+        "Couldn't load events.",
+      ),
+    );
     expect(standups(container)).toEqual([]);
 
     failing = false;
     await act(async () => {
-      [...alert!.querySelectorAll("button")]
+      [...container.querySelectorAll('[role="alert"] button')]
         .find((button) => button.textContent === "Try again")
-        ?.click();
+        ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    await settle();
+    await waitUntil(() => expect(standups(container)).toHaveLength(5));
     expect(container.querySelector('[role="alert"]')).toBeNull();
-    expect(standups(container)).toHaveLength(5);
   });
 });
 
@@ -458,18 +575,17 @@ describe("the guide's preview", () => {
 
   test("fails requests while the switch is on, and loads again after a retry", async () => {
     const container = await render(<QueryPreviewCalendar latency={0} />);
-    await settle();
-    expect(standups(container)).toBe(5);
+    await waitUntil(() => expect(standups(container)).toBe(5));
 
     await click(container.querySelector('[role="checkbox"]'));
-    // Ten weeks on, past the windows loaded so far.
+    // Ten weeks on, past the windows loaded so far. The failed load is tried once more first.
     for (let week = 0; week < 10; week += 1) {
       await click(container.querySelector('[data-calendar-part="next-trigger"]'));
     }
-    // The failed load is tried once more, 0.3 seconds later.
-    await act(() => new Promise((resolve) => setTimeout(resolve, 400)));
-    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
-      "Couldn't load events.",
+    await waitUntil(() =>
+      expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+        "Couldn't load events.",
+      ),
     );
 
     await click(container.querySelector('[role="checkbox"]'));
@@ -478,8 +594,7 @@ describe("the guide's preview", () => {
         (button) => button.textContent === "Try again",
       ),
     );
-    await settle();
+    await waitUntil(() => expect(standups(container)).toBe(5));
     expect(container.querySelector('[role="alert"]')).toBeNull();
-    expect(standups(container)).toBe(5);
   });
 });
