@@ -213,8 +213,13 @@ test("presets show when applied, sizes slide in rem, and the full set copies", a
   expect(css(container)).toContain("--calendar-grid: var(--border);");
   expect(container.querySelector('[role="status"]')?.textContent).toBe("Copied");
 
-  await act(async () => button(container, "Reset all").click());
+  const resetAll = button(container, "Reset all");
+  await act(async () => resetAll.focus());
+  await act(async () => resetAll.click());
   expect(button(container, "Neutral").getAttribute("aria-current")).toBe("true");
+  // Nothing left to reset, but the button keeps focus rather than dropping it to the page.
+  expect(resetAll.getAttribute("aria-disabled")).toBe("true");
+  expect(document.activeElement).toBe(resetAll);
   Reflect.deleteProperty(navigator, "clipboard");
 });
 

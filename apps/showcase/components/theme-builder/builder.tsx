@@ -96,6 +96,7 @@ function Presets({
   readonly theme: Theme;
 }) {
   const id = useId();
+  const changed = isThemeChanged(source, theme);
   const row = (kind: Preset["kind"], label: string) => (
     <div className="flex flex-col gap-2">
       <span className="text-xs font-medium text-fd-muted-foreground" id={`${id}-${kind}`}>
@@ -123,10 +124,13 @@ function Presets({
     <div className="flex flex-col gap-4 rounded-xl border bg-fd-card p-4">
       {row("colors", "Color presets")}
       {row("density", "Density presets")}
+      {/* `aria-disabled` rather than `disabled`, so focus stays on it after a reset. */}
       <button
-        className={`self-start rounded-md border px-3 py-1.5 text-sm text-fd-foreground transition-colors hover:bg-fd-accent disabled:opacity-50 disabled:hover:bg-transparent ${focusRing}`}
-        disabled={!isThemeChanged(source, theme)}
-        onClick={onReset}
+        aria-disabled={!changed || undefined}
+        className={`self-start rounded-md border px-3 py-1.5 text-sm text-fd-foreground transition-colors hover:bg-fd-accent aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:bg-transparent ${focusRing}`}
+        onClick={() => {
+          if (changed) onReset();
+        }}
         type="button"
       >
         Reset all
@@ -201,6 +205,7 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
     [view],
   );
   const probe = useRef<HTMLSpanElement>(null);
+  const paletteId = useId();
   const [swatches, setSwatches] = useState<Readonly<Record<string, Swatch>>>({});
   const [contrast, setContrast] = useState<readonly ContrastResult[]>([]);
 
@@ -341,12 +346,14 @@ export default function ThemeBuilder({ source }: { readonly source: ThemeSource 
                     </Scoped>
                     <ResetButton
                       changed={isPaletteChanged(source, theme, name)}
+                      focusAfter={`${paletteId}-${name}-hue`}
                       label={title}
                       onReset={() => setColor({ chroma: shipped.chroma, hue: shipped.hue })}
                     />
                   </div>
                   <SliderControl
                     changed={hue !== shipped.hue}
+                    id={`${paletteId}-${name}-hue`}
                     label={`${title} hue`}
                     max={360}
                     min={0}

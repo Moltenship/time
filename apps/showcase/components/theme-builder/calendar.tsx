@@ -84,8 +84,8 @@ function Sidebar({ today }: { readonly today: Temporal.PlainDate }) {
 
 /**
  * This week in the visitor's time zone, in every palette color and the default event tokens, with
- * office hours shaded and a holiday on Friday. The mini month shows beside the view when the frame is wide enough. Edits
- * stay in memory.
+ * office hours shaded and a holiday on Friday. The mini month shows beside the view when the frame
+ * is wide enough. Edits stay in memory.
  */
 export default function ThemeCalendar({
   onViewChange,

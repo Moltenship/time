@@ -85,7 +85,10 @@ export function ResetButton({
   onReset,
 }: {
   readonly changed: boolean;
-  /** The field to focus after a reset, since the button hides once there's nothing to reset. */
+  /**
+   * The field to focus after a reset from the keyboard, since the button hides once there's
+   * nothing to reset. A tap leaves focus alone, so a phone keeps its keyboard closed.
+   */
   readonly focusAfter?: string;
   readonly label: string;
   readonly onReset: () => void;
@@ -95,9 +98,12 @@ export function ResetButton({
       aria-label={`Reset ${label}`}
       className={`grid size-7 shrink-0 place-items-center rounded-md text-fd-muted-foreground transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground disabled:invisible ${focusRing}`}
       disabled={!changed}
-      onClick={() => {
+      onClick={(event) => {
         onReset();
-        if (focusAfter !== undefined) document.getElementById(focusAfter)?.focus();
+        // Enter and Space click with a `detail` of 0; a pointer counts its clicks.
+        if (focusAfter !== undefined && event.detail === 0) {
+          document.getElementById(focusAfter)?.focus();
+        }
       }}
       title={`Reset ${label}`}
       type="button"
@@ -263,6 +269,7 @@ export function FormulaControl({
 /** A number on a slider, with its value shown and spoken in its unit. */
 export function SliderControl({
   changed,
+  id: givenId,
   label,
   max,
   min,
@@ -274,6 +281,8 @@ export function SliderControl({
   value,
 }: {
   readonly changed: boolean;
+  /** The slider's ID, for a control elsewhere that focuses it. */
+  readonly id?: string;
   readonly label: string;
   readonly max: number;
   readonly min: number;
@@ -285,7 +294,8 @@ export function SliderControl({
   readonly unit: string;
   readonly value: number;
 }) {
-  const id = useId();
+  const generatedId = useId();
+  const id = givenId ?? generatedId;
   const shown = `${formatNumber(value)}${unit}`;
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-x-2 gap-y-1">
