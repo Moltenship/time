@@ -612,6 +612,12 @@ describe("rules it can't expand", () => {
     ).toThrow(message);
   });
 
+  test("a negative maxIterations", () => {
+    expect(() =>
+      expandRecurrenceRule(rule("FREQ=DAILY"), allDay("2026-01-01"), { maxIterations: -1 }),
+    ).toThrow(/maxIterations/);
+  });
+
   test("window dates of another kind", () => {
     expect(() =>
       expandRecurrenceRule(rule("FREQ=DAILY"), allDay("2026-01-01"), {

@@ -71,8 +71,8 @@ function nanosecondsOf(date: RecurrenceDate, first: CalendarEventInterval, name:
  *   skipped and don't count.
  * - Without COUNT, the loop skips ahead to `window.from` instead of stepping from the first start.
  *
- * Throws a `RangeError` for a rule it can't expand, or window dates of another kind than `first`.
- * UNTIL of another kind is brought in by `coerceRecurrenceDate`.
+ * Throws a `RangeError` for a rule it can't expand, window dates of another kind than `first`, or
+ * a negative `maxIterations`. UNTIL of another kind is brought in by `coerceRecurrenceDate`.
  */
 export function expandRecurrenceRule(
   rule: RecurrenceRule,
@@ -83,6 +83,11 @@ export function expandRecurrenceRule(
     rule.until === undefined ? undefined : coerceRecurrenceDate(rule.until, first, "until");
   if (rule.until !== undefined && until === undefined) {
     throw new RangeError(`UNTIL ${String(rule.until)} can't end a ${first.kind} series.`);
+  }
+
+  const maxIterations = window.maxIterations ?? DEFAULT_MAX_ITERATIONS;
+  if (!(maxIterations >= 0)) {
+    throw new RangeError(`maxIterations must be 0 or more; got ${maxIterations}.`);
   }
 
   // Times are whole seconds, since the epoch for timed series and of wall time otherwise. Every
@@ -191,7 +196,6 @@ export function expandRecurrenceRule(
   const clock = timeZone === undefined ? undefined : new WallClock(timeZone);
   // Gap times that moved forward, waiting until no later wall time can resolve before them.
   const waiting: { readonly time: number; readonly wall: number }[] = [];
-  const maxIterations = window.maxIterations ?? DEFAULT_MAX_ITERATIONS;
   let steps = 0;
 
   for (;;) {
