@@ -233,7 +233,10 @@ export class ComponentReader {
     const reported = unknownTimeZones.get(tzid);
     const line = property.line ?? this.component.line ?? 0;
     if (reported !== undefined && (issues[reported]?.line ?? 0) <= line) return;
-    const message = `TZID ${quote(tzid)} resolves to no time zone; its times stay unresolved`;
+    const message =
+      property.name === "X-WR-TIMEZONE"
+        ? `X-WR-TIMEZONE ${quote(tzid)} resolves to no time zone; the calendar has no timeZone`
+        : `TZID ${quote(tzid)} resolves to no time zone; its times stay unresolved`;
     this.report("warning", "unknown-time-zone", message, property, at);
     if (reported === undefined) {
       unknownTimeZones.set(tzid, issues.length - 1);

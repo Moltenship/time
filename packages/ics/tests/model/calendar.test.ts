@@ -87,6 +87,9 @@ describe("VCALENDAR", () => {
   test("leaves out an X-WR-TIMEZONE that resolves to nothing, with a warning", () => {
     const result = parse(calendarText("X-WR-TIMEZONE:Mars/Olympus_Mons"));
     expect(onlyCalendar(result).timeZone).toBeUndefined();
+    expect(result.issues[0]?.message).toBe(
+      'X-WR-TIMEZONE "Mars/Olympus_Mons" resolves to no time zone; the calendar has no timeZone',
+    );
     expect(issuesOf(result.issues)).toEqual([
       {
         code: "unknown-time-zone",

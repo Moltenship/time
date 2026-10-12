@@ -117,7 +117,8 @@ event.extensions.guests; // number | undefined
 
 `type` picks the RFC 5545 value type used to decode the raw value (TEXT by default). `multiple`
 collects every occurrence and every comma-separated value. A value the schema rejects is dropped
-with a `schema` issue. Schemas must validate synchronously.
+with an error-severity `schema` issue, so strict parsing throws and Standard Schema validation
+fails. Schemas must validate synchronously.
 
 To name the result's types in your own code, keep the `extensions` object in a constant: every
 type takes it the same way, as in `IcsCalendar<typeof extensions>` or `IcsEvent<typeof extensions>`.
