@@ -21,6 +21,7 @@ import {
   CalendarEnvironment,
   CalendarEnvironmentBase,
   CalendarEventChangeHandler,
+  CalendarEventInput,
   CalendarEventInterval,
   CalendarEventProposal,
   CalendarFocus,
@@ -225,7 +226,7 @@ interface CalendarRootBaseProps<TEvent, TResource, TViewDef extends AnyCalendarV
   readonly defaultView?: TViewDef["name"];
   readonly direction?: CalendarEnvironment["direction"];
   readonly disambiguation?: CalendarEnvironment["disambiguation"];
-  readonly events: readonly TEvent[];
+  readonly events: CalendarEventInput<TEvent>;
   readonly expandedResourceIds?: readonly TResourceId[];
   readonly focus?: TFocus | null;
   readonly id?: string;

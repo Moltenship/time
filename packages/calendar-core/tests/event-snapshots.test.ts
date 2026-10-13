@@ -13,10 +13,10 @@ import {
   createEventSnapshotCache,
   InvalidCalendarEventSnapshotError,
   type CalendarEvent,
+  type CalendarEventInput,
   type CalendarEventInterval,
   type CalendarEventSource,
   type EventAdapter,
-  type EventSnapshot,
 } from "../src/index";
 
 type TestEvent = CalendarEvent<Readonly<{ readonly revision: number }>, string, string>;
@@ -647,19 +647,19 @@ describe("event snapshots", () => {
     ]);
   });
 
-  test("exposes the advanced external-store contract without owning subscriptions", () => {
-    const snapshot = createEventSnapshot(
-      Object.freeze([timedEvent("a", "2026-08-15T09:00Z", "2026-08-15T10:00Z")]),
-      canonicalAdapter,
-    );
+  test("describes an external store of event arrays, which a cache turns into snapshots", () => {
+    const events = Object.freeze([timedEvent("a", "2026-08-15T09:00Z", "2026-08-15T10:00Z")]);
     const source = {
-      getServerSnapshot: () => snapshot,
-      getSnapshot: () => snapshot,
+      getServerSnapshot: () => events,
+      getSnapshot: () => events,
       subscribe: () => () => undefined,
-    } satisfies CalendarEventSource<TestEvent, string, string>;
+    } satisfies CalendarEventSource<TestEvent>;
+    const cache = createEventSnapshotCache(canonicalAdapter);
 
-    expect(source.getServerSnapshot()).toBe(source.getSnapshot());
-    expectTypeOf(source.getSnapshot()).toEqualTypeOf<EventSnapshot<TestEvent, string, string>>();
+    expect(cache.getSnapshot(source.getSnapshot())).toBe(cache.getSnapshot(events));
+    expectTypeOf(source.getSnapshot()).toEqualTypeOf<readonly TestEvent[]>();
+    expectTypeOf(events).toExtend<CalendarEventInput<TestEvent>>();
+    expectTypeOf(source).toExtend<CalendarEventInput<TestEvent>>();
   });
 });
 

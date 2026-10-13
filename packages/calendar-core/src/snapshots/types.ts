@@ -134,19 +134,22 @@ export interface EventSnapshotCache<
   getSnapshot(events: readonly TEvent[]): EventSnapshot<TEvent, TEventId, TResourceId>;
 }
 
-export interface CalendarEventSource<
-  TEvent,
-  TEventId extends EventId,
-  TResourceId extends ResourceId,
-> {
-  getServerSnapshot(): EventSnapshot<TEvent, TEventId, TResourceId>;
-  getSnapshot(): EventSnapshot<TEvent, TEventId, TResourceId>;
+/**
+ * Events kept in an external store, such as one a websocket or a Zustand-like library updates.
+ * `Root` reads it through `useSyncExternalStore`, so an update renders the calendar without the
+ * component that renders `Root`. Both getters return the same array until the events change.
+ */
+export interface CalendarEventSource<TEvent> {
+  /** The events the server rendered with, read on the server and while hydrating. */
+  getServerSnapshot(): readonly TEvent[];
+  /** The current events. */
+  getSnapshot(): readonly TEvent[];
+  /** Calls `listener` after the events change, and returns a function that stops it. */
   subscribe(listener: () => void): () => void;
 }
 
-export type CalendarEventInput<TEvent, TEventId extends EventId, TResourceId extends ResourceId> =
-  | readonly TEvent[]
-  | CalendarEventSource<TEvent, TEventId, TResourceId>;
+/** The events `Root` takes: an array, or a source an external store updates. */
+export type CalendarEventInput<TEvent> = readonly TEvent[] | CalendarEventSource<TEvent>;
 
 export class InvalidCalendarEventSnapshotError<TEvent, TEventId extends EventId> extends TypeError {
   readonly issues: readonly EventSnapshotIssue<TEvent, TEventId>[];

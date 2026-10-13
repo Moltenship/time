@@ -392,16 +392,31 @@ const TeamCalendar = createCalendar<ApiEvent, Room>()({ eventAdapter, views });
 <TeamCalendar.Root events={events} {...environmentAndState} />
 ```
 
-For high-frequency external stores, core exports the shape of an advanced source. Nothing accepts
-one yet: `Root` takes the array form only (#200).
+For events kept outside React and updated often, such as a store a websocket or a Zustand-like
+library updates, `events` also takes a source, read through `useSyncExternalStore` (#200):
 
 ```ts
-interface CalendarEventSource<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
-  getSnapshot(): EventSnapshot<TEvent, TEventId, TResourceId>;
-  getServerSnapshot(): EventSnapshot<TEvent, TEventId, TResourceId>;
+interface CalendarEventSource<TEvent> {
+  getSnapshot(): readonly TEvent[];
+  getServerSnapshot(): readonly TEvent[];
   subscribe(listener: () => void): () => void;
 }
+
+type CalendarEventInput<TEvent> = readonly TEvent[] | CalendarEventSource<TEvent>;
 ```
+
+- A source's update renders `Root` and the parts that read what changed, not the component that
+  renders `Root`. Both getters return the same array until the events change, as
+  `useSyncExternalStore` requires.
+- The server and hydration read `getServerSnapshot`; after hydration `Root` reads `getSnapshot`,
+  and renders again if it differs. Its members are called as methods, and a new source object
+  subscribes again. Unmounting, or switching to an array, unsubscribes.
+- A source yields arrays, not snapshots. Both forms go through the root's one snapshot cache, so
+  the factory's adapter and `invalidEventPolicy` apply to both, diagnostics are the same, and a
+  switch between an array and a source reuses what the cache can (§6.3): to pending changes it is
+  new events like any other (§10).
+- React renders a source's updates synchronously, as it does for any external store; an update
+  meant for a transition passes an array instead.
 
 The calendar never fetches data or mutates backend records.
 
@@ -426,8 +441,8 @@ The interval-tree implementation is wrapped behind an internal `IntervalIndex` i
 ### 6.3 Snapshot lifecycle
 
 - The adapter is fixed when `createCalendar` runs, so it never changes under a `Root`.
-- `Root` compares `events` item by item. A new array with the same records reuses the complete
-  snapshot.
+- `Root` compares `events`, or a source's array, item by item. A new array with the same records
+  reuses the complete snapshot.
 - A changed array triggers one normalization pass, not work per rendered component. The interval
   indexes are rebuilt only when records were added, removed or reordered, or a record's normalized
   fields changed (with a revision accessor, only when its revision changed).

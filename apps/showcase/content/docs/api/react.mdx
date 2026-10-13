@@ -80,8 +80,17 @@ own.
 <TypeTable
   type={{
     events: {
-      type: "readonly TEvent[]",
-      description: "Your events. A new array holding the same records is treated as unchanged.",
+      type: "readonly TEvent[] | CalendarEventSource<TEvent>",
+      description: (
+        <>
+          Your events. A new array holding the same records is treated as unchanged. A source is an
+          external store <code>Root</code> subscribes to; see{" "}
+          <a href="/docs/concepts/events#events-from-an-external-store">
+            events from an external store
+          </a>
+          .
+        </>
+      ),
       required: true,
     },
     locale: {

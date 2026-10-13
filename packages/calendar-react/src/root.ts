@@ -65,6 +65,7 @@ import {
 } from "./equality";
 import { CalendarInteractionContext, type CalendarInteractionRuntime } from "./interaction";
 import { createDraftStore } from "./draft";
+import { useEventInput } from "./event-input";
 import { createKeyboardSessionStore } from "./keyboard-store";
 import { CalendarResourcesContext } from "./resources";
 import { useCalendarStateBinding } from "./state-binding";
@@ -394,7 +395,9 @@ export function createCalendarRoot<
         invalidEventPolicy: config.invalidEventPolicy,
       }),
     );
-    const stableEvents = useStableValue(events, sameElements);
+    // An array and a source share the cache, so switching between them reuses what it can, and
+    // pending changes reconcile against the new events as against any others.
+    const stableEvents = useStableValue(useEventInput(events), sameElements);
     const eventSnapshot = useMemo(
       () => snapshotCache.getSnapshot(stableEvents),
       [snapshotCache, stableEvents],
