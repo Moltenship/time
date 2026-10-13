@@ -31,10 +31,10 @@ export const publishedPackages: readonly PublishedPackage[] = [
   // 77,824 raw bytes, and onEventChangeResult with useCalendarPendingChanges (#199) to 79,597 raw
   // and 20,740 of 20,480 gzip bytes. 80 and 21 KiB leave the usual headroom.
   { directory: "calendar-react", budgets: { ".": { raw: 80 * KiB, gzip: 21 * KiB } } },
-  // The ICS bridge's RANGE=THISANDFUTURE split, Outlook's all-day flag and the feed's zone (#160)
-  // took calendar-recurrence to 144,250 of 147,456 raw and 38,871 of 36,864 gzip bytes. 148 and
-  // 40 KiB leave the usual headroom.
-  { directory: "calendar-recurrence", budgets: { ".": { raw: 148 * KiB, gzip: 40 * KiB } } },
+  // The ICS bridge's RANGE=THISANDFUTURE split, Outlook's all-day flag and the feed's zone, then
+  // edits replayed on the series' clock (#160), took calendar-recurrence from 130,708 raw and
+  // 35,063 gzip bytes to 148,799 and 39,899. 152 and 42 KiB leave the usual headroom.
+  { directory: "calendar-recurrence", budgets: { ".": { raw: 152 * KiB, gzip: 42 * KiB } } },
   { directory: "calendar-temporal", budgets: { ".": { raw: 30 * KiB, gzip: 7 * KiB } } },
   // ics keeps the Unicode License v3 of its CLDR data in its build: 1.2 KiB gzip, which took it
   // to 25,267 of 25,600 bytes. 26 KiB leaves the usual headroom.
