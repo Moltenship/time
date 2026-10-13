@@ -84,7 +84,7 @@ Open:
 4. **Parity in the resource views**: no pointer-versus-keyboard equality check for resource columns or the resource timeline. #189.
 5. **The store's records.** #205 rewrote `architecture.md` for `calendar-react`'s own store; still open is a short ADR that supersedes ADR 0025 (Jotai). #184.
 6. **A literal colour in registry source**: `registry/time-grid-view/time-grid-annotations.tsx` draws the annotation icon disc with `bg-white/35 text-black/70`, over the mark's colour. *Owner decision:* a token, or a documented exception.
-7. **Registry views don't declare `"use client"`**: a Server Component that imports a view directly fails. #190.
+7. ~~**Registry views don't declare `"use client"`**: a Server Component that imports a view directly fails.~~ Closed by #213 (#190).
 8. **God files**: no check. The largest: `calendar-recurrence/src/series/expander.ts` (815 lines), `calendar-core/src/snapshots/event-snapshot.ts` (708), `calendar-react/src/root.ts` (687), `ics/src/types.ts` (621), `calendar-recurrence/src/edits/series.ts` (528), `registry/time-grid-view/time-grid-annotations.tsx` (520). *Owner decision:* a `max-lines` warning, or review.
 9. **No manual screen-reader passes**, which §17 requires before release. #186, a 1.0 blocker. It needs a person at VoiceOver and NVDA.
 10. **Focus out of view in WebKit's scrolling agenda** after some keys, about half the time (WCAG 2.4.11). #185, a 1.0 blocker. With #204's waits the tests check the list at rest, and it still fails in 1 to 3 of 4 cases a run: a product bug, not the tests.
