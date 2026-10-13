@@ -10,6 +10,7 @@ import {
   CalendarDraft,
   CalendarEventProposal,
   CalendarPolicyResult,
+  CalendarProposalDetail,
   CalendarTransactionResult,
   EventId,
   EventSnapshot,
@@ -25,7 +26,7 @@ import {
 
 interface CalendarPointerOptions<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
   readonly events: EventSnapshot<TEvent, TEventId, TResourceId>;
-  readonly onPropose: (proposal: CalendarEventProposal<TEventId, TResourceId>) => void | PromiseLike<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  readonly onPropose: (proposal: CalendarEventProposal<TEventId, TResourceId>, detail: CalendarProposalDetail) => void | PromiseLike<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
   readonly timeZone: string;
   readonly announcer?: CalendarAnnouncer;
   readonly check?: (proposal: CalendarEventProposal<TEventId, TResourceId>) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;

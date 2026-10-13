@@ -184,6 +184,17 @@ own.
         </>
       ),
     },
+    onEventChangeResult: {
+      type: "(result, { input }) => void",
+      description: (
+        <>
+          Hears how each proposal ended, once it settles: the result <code>proposeEventChange</code>{" "}
+          resolves with, and the <code>input</code> that made it, <code>"pointer"</code>,{" "}
+          <code>"keyboard"</code> or <code>"api"</code>. See{" "}
+          <a href="/docs/interactions#how-changes-end">how changes end</a>.
+        </>
+      ),
+    },
     policies: {
       type: "readonly CalendarPolicy[]",
       description: (
@@ -356,18 +367,19 @@ accepts that element's usual props, including `className`, `style`, `ref`, and e
 The hooks on your calendar work anywhere inside its `Root`. Using them, or any component above,
 outside `Root` throws `calendar-hook-outside-root`.
 
-| Hook                                   | Returns                                             |
-| -------------------------------------- | --------------------------------------------------- |
-| `useCalendar()`                        | `{ state, actions, meta }`                          |
-| `useCalendarState()`                   | The six [state](/docs/concepts/state) values        |
-| `useCalendarActions()`                 | The actions below. The object never changes.        |
-| `useCalendarMeta()`                    | The [meta](#meta) object                            |
-| `useCalendarSelector(selector, opts?)` | `selector(state)`. Re-renders only when it changes. |
-| `useVisibleRange()`                    | The active view's visible dates, or `null`          |
-| `useViewProjection()`                  | The active view and its projection, or `null`       |
+| Hook                                          | Returns                                                                                                                |
+| --------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `useCalendar()`                               | `{ state, actions, meta }`                                                                                             |
+| `useCalendarState()`                          | The six [state](/docs/concepts/state) values                                                                           |
+| `useCalendarActions()`                        | The actions below. The object never changes.                                                                           |
+| `useCalendarMeta()`                           | The [meta](#meta) object                                                                                               |
+| `useCalendarSelector(selector, opts?)`        | `selector(state)`. Re-renders only when it changes.                                                                    |
+| `useCalendarPendingChanges(selector?, opts?)` | The changes still on their way, or `selector(changes)`. See [pending changes](/docs/interactions#across-the-calendar). |
+| `useVisibleRange()`                           | The active view's visible dates, or `null`                                                                             |
+| `useViewProjection()`                         | The active view and its projection, or `null`                                                                          |
 
-`useCalendarSelector` compares results with `Object.is`. Pass `{ isEqual }` to compare another way.
-The selector can be an inline function.
+`useCalendarSelector` and `useCalendarPendingChanges` compare results with `Object.is`. Pass
+`{ isEqual }` to compare another way. The selector can be an inline function.
 
 `Announcer`'s messages, and the keyboard hooks for your own views (`useCalendarKeyboard`,
 `useRovingFocus`, `useCalendarInteraction`, `useCalendarAnnouncer`), are covered in
@@ -387,18 +399,18 @@ it. The [scrolling views](/docs/views/scrolling) do this.
 
 ### Actions
 
-| Action                                 | Effect                                                                                                                                                                                                 |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `setView(name)`                        | Changes the view                                                                                                                                                                                       |
-| `setAnchorDate(date)`                  | Changes the date                                                                                                                                                                                       |
-| `setTimeZone(zone)`                    | Changes the time zone                                                                                                                                                                                  |
-| `setSelection(value)`                  | Changes the selection (`null` clears it)                                                                                                                                                               |
-| `setFocus(value)`                      | Changes the focus (`null` clears it)                                                                                                                                                                   |
-| `setExpandedResourceIds(ids)`          | Changes the expanded resources                                                                                                                                                                         |
-| `navigatePrevious()`, `navigateNext()` | Moves by one step of the active view                                                                                                                                                                   |
-| `navigateToday()`                      | Moves to today in the calendar's time zone                                                                                                                                                             |
-| `proposeEventChange(proposal)`         | Proposes a change to an event and resolves with the outcome. See [Interactions](/docs/interactions#changing-events-from-your-own-ui).                                                                  |
-| `checkEventChange(proposal)`           | Runs the policies on a proposal without showing or saving it. Returns `{ status: "accepted", change }` or `{ status: "rejected", change, reason }`, or `null` for an unknown event or an async policy. |
+| Action                                  | Effect                                                                                                                                                                                                              |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setView(name)`                         | Changes the view                                                                                                                                                                                                    |
+| `setAnchorDate(date)`                   | Changes the date                                                                                                                                                                                                    |
+| `setTimeZone(zone)`                     | Changes the time zone                                                                                                                                                                                               |
+| `setSelection(value)`                   | Changes the selection (`null` clears it)                                                                                                                                                                            |
+| `setFocus(value)`                       | Changes the focus (`null` clears it)                                                                                                                                                                                |
+| `setExpandedResourceIds(ids)`           | Changes the expanded resources                                                                                                                                                                                      |
+| `navigatePrevious()`, `navigateNext()`  | Moves by one step of the active view                                                                                                                                                                                |
+| `navigateToday()`                       | Moves to today in the calendar's time zone                                                                                                                                                                          |
+| `proposeEventChange(proposal, detail?)` | Proposes a change to an event and resolves with the outcome. `detail.input` names the input for `onEventChangeResult`, `"api"` by default. See [Interactions](/docs/interactions#changing-events-from-your-own-ui). |
+| `checkEventChange(proposal)`            | Runs the policies on a proposal without showing or saving it. Returns `{ status: "accepted", change }` or `{ status: "rejected", change, reason }`, or `null` for an unknown event or an async policy.              |
 
 Setting the current value again (the same date, view, time zone or resource IDs, or the same
 `selection` or `focus` object) doesn't change state or call its handler, unless the value is

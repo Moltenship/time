@@ -1,4 +1,9 @@
-import type { CalendarNowSource } from "@moltenship/calendar-core";
+import type {
+  CalendarNowSource,
+  CalendarPendingChanges,
+  EventId,
+  ResourceId,
+} from "@moltenship/calendar-core";
 import { createContext, useContext, type Context } from "react";
 
 import type { CalendarMeta, CalendarSemanticActions } from "./calendar-types";
@@ -6,6 +11,7 @@ import type { CalendarPublicState } from "./types";
 import type { AnyCalendarView, CalendarActiveView } from "./views";
 
 export type AnyCalendarState = CalendarPublicState<string, unknown, unknown>;
+export type AnyPendingChanges = CalendarPendingChanges<unknown, EventId, ResourceId>;
 
 export interface CalendarStateSource<TState = AnyCalendarState> {
   readonly getSnapshot: () => TState;
@@ -18,6 +24,8 @@ type AnyCalendarActions = CalendarSemanticActions<any, any, any, any, any, any>;
 /** One factory's providers. The factory narrows these untyped contexts to its own records. */
 export interface CalendarContexts {
   readonly actions: Context<AnyCalendarActions | null>;
+  /** The root's pending changes, for `useCalendarPendingChanges`. */
+  readonly changes: Context<CalendarStateSource<AnyPendingChanges> | null>;
   readonly meta: Context<CalendarMeta<unknown, unknown> | null>;
   readonly source: Context<CalendarStateSource | null>;
   readonly state: Context<AnyCalendarState | null>;
@@ -29,6 +37,7 @@ export interface CalendarContexts {
 export function createCalendarContexts(): CalendarContexts {
   return Object.freeze({
     actions: createContext<AnyCalendarActions | null>(null),
+    changes: createContext<CalendarStateSource<AnyPendingChanges> | null>(null),
     meta: createContext<CalendarMeta<unknown, unknown> | null>(null),
     source: createContext<CalendarStateSource | null>(null),
     state: createContext<AnyCalendarState | null>(null),

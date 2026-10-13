@@ -104,6 +104,14 @@ export type CalendarEventChangeHandler<
   TResourceId extends ResourceId,
 > = (change: CalendarEventChange<TEvent, TEventId, TResourceId>) => void | Promise<void>;
 
+/** Which input made a proposal: a pointer or keyboard gesture, or the application's own code. */
+export type CalendarChangeInput = "pointer" | "keyboard" | "api";
+
+/** What a proposal says beside the change itself; `onEventChangeResult` gets it back. */
+export interface CalendarProposalDetail {
+  readonly input: CalendarChangeInput;
+}
+
 export type CalendarTransactionResult<
   TEvent,
   TEventId extends EventId,
@@ -140,3 +148,26 @@ export type CalendarPendingPlacements<
   TEventId extends EventId,
   TResourceId extends ResourceId,
 > = ReadonlyMap<TEventId, CalendarEventPlacement<TResourceId> | null>;
+
+/**
+ * Where a pending proposal is: its async policies deciding (`validating`), the handler's promise
+ * running (`saving`), or saved but not yet in the application's events (`awaiting-events`).
+ */
+export type CalendarPendingChangePhase = "validating" | "saving" | "awaiting-events";
+
+export interface CalendarPendingChange<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+> {
+  /** The change as proposed while `validating`, and as the handler got it after that. */
+  readonly change: CalendarEventChange<TEvent, TEventId, TResourceId>;
+  readonly phase: CalendarPendingChangePhase;
+}
+
+/** Pending proposals by change ID, in the order they were proposed. */
+export type CalendarPendingChanges<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+> = ReadonlyMap<string, CalendarPendingChange<TEvent, TEventId, TResourceId>>;

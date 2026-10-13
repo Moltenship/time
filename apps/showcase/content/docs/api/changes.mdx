@@ -46,6 +46,12 @@ change still pending for the same event. `warnings` is absent when no policy fla
 `proposeEventChange` resolves with `{ status: "committed", change }` or
 `{ status: "rejected", reason, change?, error? }`. It never rejects. The
 [reasons](/docs/interactions#changing-events-from-your-own-ui) are listed on the Interactions page.
+`Root`'s `onEventChangeResult` gets the same result for every proposal, with
+`{ input: "pointer" | "keyboard" | "api" }` (`CalendarProposalDetail`).
+
+While a proposal is on its way, `useCalendarPendingChanges` lists it as a `CalendarPendingChange`,
+`{ change, phase }`, with `phase` one of `"validating"`, `"saving"` and `"awaiting-events"`. See
+[pending changes](/docs/interactions#across-the-calendar).
 
 ## Policies
 
@@ -95,7 +101,9 @@ For example, this moves an event to the same time on the next day:
 <include meta='title="move-to-tomorrow.ts"'>../../examples/editing.tsx#placement</include>
 
 `createEventTransactions` and `applyEventOverlay` are the engine `Root` uses to run proposals and
-draw pending changes. You only need them to handle changes outside React.
+draw pending changes. You only need them to handle changes outside React. The engine's
+`getPending()` returns the pending placements `applyEventOverlay` draws, and `getPendingChanges()`
+the changes `useCalendarPendingChanges` reads.
 
 ## Pointer layer
 
@@ -116,11 +124,13 @@ React and returns a cleanup function. Both come from `@moltenship/calendar-dnd`,
       required: true,
     },
     onPropose: {
-      type: "(proposal) => void | PromiseLike<CalendarTransactionResult>",
+      type: '(proposal, { input: "pointer" }) => void | PromiseLike<CalendarTransactionResult>',
       description: (
         <>
-          Receives one proposal per finished drag. Usually <code>actions.proposeEventChange</code>.
-          Return the result, as it does, so the announcer says whether the change was saved.
+          Receives one proposal per finished drag, and <code>{'{ input: "pointer" }'}</code>.
+          Usually <code>actions.proposeEventChange</code>, so <code>onEventChangeResult</code> hears
+          the drag as the pointer's. Return the result, as it does, so the announcer says whether
+          the change was saved.
         </>
       ),
       required: true,

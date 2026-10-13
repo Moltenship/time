@@ -94,7 +94,7 @@ Open:
 14. **Registry labels are English literals**, not a messages contract: they're source the app owns and edits. Since #205, §18 says so: registry source is where apps localize. *Owner:* confirm, or ask for a contract (#207).
 15. **`tools/a11y` sits outside the package graph.** It isn't in `tests/dependency-boundaries.test.ts`'s matrix, and it imports the demo's `App` by a relative path. #209.
 16. **The year view's popover renders all 365 day triggers on each open and close.** Performance on slow devices; the tests no longer feel it since #204 dropped React's act warning (Firefox's whole year-view file takes under 8 s on a runner). #197.
-17. **Found by #205:** a keyboard preview marks the event `isPending` (#198); a `Root` without `onEventChange` still started drags and keyboard grabs (#201, fixed in #214); `CalendarEventSource` was exported but nothing accepted it (#200; built, not removed: `Root` takes one). Post-1.0: a public read of pending changes (#199), locale week rules (#202). #198 is p2 without a milestone; #207 proposes the 1.0 milestone for it.
+17. **Found by #205:** a keyboard preview marks the event `isPending` (#198); a `Root` without `onEventChange` still started drags and keyboard grabs (#201, fixed in #214); `CalendarEventSource` was exported but nothing accepted it (#200; built, not removed: `Root` takes one). A public read of pending changes (#199), built before 1.0 at the owner's call. Post-1.0: locale week rules (#202). #198 is p2 without a milestone; #207 proposes the 1.0 milestone for it.
 18. **Extreme load.** Under 15 spinning threads on 15 cores, before #195 and #204, `ready:full` failed 3 of 3, once after a 26-minute stall; no run at that load has been made since. The watchdog fails a page that stops making progress in two minutes, shown on a page that spins its main thread, not under that load. The cause of the stalls inside the browsers wasn't chased. No issue: a known limit.
 
 ## Browsers
@@ -142,7 +142,8 @@ Each open finding, and whether it blocks the release candidate. The owner's step
 | #197, the year view renders 365 triggers per popover | No | Performance on slow devices. |
 | #187, whole-day moves shift silently in a DST gap | No | The docs are now accurate; the behaviour is the owner's call. |
 | #181, #182, #188, #189, #209, gaps 6, 8, 14, 18 | No | p2 or docs, tracked in their issues; gaps 6, 8 and 14 are owner decisions in #207. |
-| #199, #202 | No | Post-1.0. |
+| #199 | No: done | The owner moved it before 1.0; `onEventChangeResult` and `useCalendarPendingChanges` are built. |
+| #202 | No | Post-1.0. |
 
 ## Phase 2
 

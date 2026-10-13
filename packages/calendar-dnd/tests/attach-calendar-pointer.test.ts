@@ -96,6 +96,23 @@ describe("time grid", () => {
     expect(element.hasAttribute("data-dragging")).toBe(false);
   });
 
+  test("tells onPropose that the proposal came from a pointer", () => {
+    const grid = mountTimeGrid([meeting]);
+    const onPropose = vi.fn<Options["onPropose"]>();
+    setup(grid, { columns: grid.columns, onPropose });
+    const element = grid.elements.get("a")!;
+
+    pointer("pointerdown", element, xAt("2026-08-17"), yAt("09:30"));
+    pointer("pointermove", element, xAt("2026-08-18"), yAt("11:30"));
+    pointer("pointerup", element, xAt("2026-08-18"), yAt("11:30"));
+
+    expect(onPropose).toHaveBeenCalledOnce();
+    expect(onPropose.mock.calls[0]).toEqual([
+      { cause: "move", eventId: "a", proposed: expect.any(Object) },
+      { input: "pointer" },
+    ]);
+  });
+
   test("reports the draft once a step while dragging, and null when the drag ends", () => {
     const grid = mountTimeGrid([meeting]);
     const drafts: (string | null)[] = [];

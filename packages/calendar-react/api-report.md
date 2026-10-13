@@ -28,8 +28,10 @@ import {
   CalendarInteractionCheck,
   CalendarKeyboardSession,
   CalendarNowSource,
+  CalendarPendingChanges,
   CalendarPolicy,
   CalendarPolicyResult,
+  CalendarProposalDetail,
   CalendarSecondaryTimeZone,
   CalendarSelection,
   CalendarTransactionResult,
@@ -156,6 +158,8 @@ interface CalendarFactory<TEvent, TResource, TViewDef extends AnyCalendarView = 
   useCalendar(): CalendarContextValue<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>;
   useCalendarActions(): CalendarSemanticActions<TViewDef["name"], TSelection, TFocus, TResourceId, TEvent, TEventId>;
   useCalendarMeta(): CalendarMeta<TEvent, TResource, TViewDef, TEventId, TResourceId>;
+  useCalendarPendingChanges(): CalendarPendingChanges<TEvent, TEventId, TResourceId>;
+  useCalendarPendingChanges<TSelected>(selector: CalendarStateSelector<CalendarPendingChanges<TEvent, TEventId, TResourceId>, TSelected>, options?: CalendarStateSelectorOptions<TSelected>): TSelected;
   useCalendarSelector<TSelected>(selector: CalendarStateSelector<CalendarPublicState<TViewDef["name"], TSelection, TFocus, TResourceId>, TSelected>, options?: CalendarStateSelectorOptions<TSelected>): TSelected;
   useCalendarState(): CalendarPublicState<TViewDef["name"], TSelection, TFocus, TResourceId>;
   useViewProjection(): CalendarActiveView<TViewDef> | null;
@@ -234,6 +238,7 @@ interface CalendarRootBaseProps<TEvent, TResource, TViewDef extends AnyCalendarV
   readonly onAnchorDateChange?: CalendarStateChangeHandler<Temporal.PlainDate, "anchorDate">;
   readonly onDiagnosticsChange?: (diagnostics: readonly CalendarDiagnostic<TEvent, TEventId>[]) => void;
   readonly onEventChange?: CalendarEventChangeHandler<TEvent, TEventId, TResourceId>;
+  readonly onEventChangeResult?: (result: CalendarTransactionResult<TEvent, TEventId, TResourceId>, detail: CalendarProposalDetail) => void;
   readonly onExpandedResourceIdsChange?: CalendarStateChangeHandler<readonly TResourceId[], "expandedResourceIds">;
   readonly onFocusChange?: CalendarStateChangeHandler<TFocus | null, "focus">;
   readonly onSelectionChange?: CalendarStateChangeHandler<TSelection | null, "selection">;
@@ -270,7 +275,7 @@ type CalendarSemanticActions<TView extends string = string, TSelection = Calenda
   navigatePrevious(): void;
   navigateToday(): void;
   readonly checkEventChange: (proposal: CalendarEventProposal<TEventId, TResourceId>) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
-  readonly proposeEventChange: (proposal: CalendarEventProposal<TEventId, TResourceId>) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  readonly proposeEventChange: (proposal: CalendarEventProposal<TEventId, TResourceId>, detail?: CalendarProposalDetail) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
 };
 interface CalendarStateChangeDetail<TValue, TSlice extends CalendarStateSlice = CalendarStateSlice> {
   readonly controlled: boolean;
@@ -311,7 +316,7 @@ interface CalendarViewActions {
   navigateNext(): void;
   navigatePrevious(): void;
   navigateToday(): void;
-  readonly proposeEventChange: (proposal: CalendarEventProposal<EventId, ResourceId>) => Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
+  readonly proposeEventChange: (proposal: CalendarEventProposal<EventId, ResourceId>, detail?: CalendarProposalDetail) => Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
   setAnchorDate(anchorDate: Temporal.PlainDate): void;
   setFocus(focus: CalendarFocus | null): void;
   setSelection(selection: CalendarSelection | null): void;

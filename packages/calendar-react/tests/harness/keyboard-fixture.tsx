@@ -10,6 +10,8 @@ import {
   type CalendarEventChange,
   type CalendarFocus,
   type CalendarPolicy,
+  type CalendarProposalDetail,
+  type CalendarTransactionResult,
   type DayGridSegment,
   type EventId,
   type MonthProjection,
@@ -151,6 +153,7 @@ export function KeyboardFixture({
   defaultFocus = null,
   initialEvents,
   onChange,
+  onResult,
   persist,
   policies,
   readOnly = false,
@@ -160,6 +163,10 @@ export function KeyboardFixture({
   readonly defaultFocus?: CalendarFocus | null;
   readonly initialEvents: readonly FixtureEvent[];
   readonly onChange?: (change: Change) => void;
+  readonly onResult?: (
+    result: CalendarTransactionResult<FixtureEvent, string, string>,
+    detail: CalendarProposalDetail,
+  ) => void;
   readonly persist?: (change: Change) => Promise<void>;
   readonly policies?: readonly CalendarPolicy<FixtureEvent, string, string>[];
   readonly readOnly?: boolean;
@@ -202,6 +209,7 @@ export function KeyboardFixture({
               return persist(change).then(() => apply(change));
             }
       }
+      onEventChangeResult={onResult}
       onFocusChange={controlFocus ? setFocus : undefined}
       policies={policies}
       weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}

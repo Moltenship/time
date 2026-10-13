@@ -847,7 +847,10 @@ type CalendarTransactionResult<TEvent, TEventId extends EventId, TResourceId ext
 Pointer and keyboard gestures make `create`, `move`, `resize-start` and `resize-end`. A move to
 another resource is a `move` with new `resourceIds`. `update` and `delete` come only from
 `actions.proposeEventChange()`, as an event form sends them. The change doesn't say which input
-made it; gestures tell only the announcer (`input: "pointer" | "keyboard"`). `id` names the change
+made it; the proposal's detail does, `proposeEventChange(proposal, { input })` with
+`CalendarChangeInput = "pointer" | "keyboard" | "api"`: the pointer layer passes
+`{ input: "pointer" }` to `onPropose`, `useCalendarKeyboard` proposes as `"keyboard"`, and anything
+else is `"api"`. The announcer and `onEventChangeResult` hear it. `id` names the change
 within one calendar, such as `change-3`. `warnings` holds the reasons policies flagged the change
 with while letting it through. There are no recurrence fields: `resolveRecurrenceEdit` in
 `@moltenship/calendar-recurrence` turns a change to an occurrence into a this, following or all
@@ -881,19 +884,41 @@ Lifecycle:
    still in validation resolves as rejected with the reason `superseded`, a late result from an
    older one leaves the newer change alone, and a synchronous commit replaces an older change still
    saving.
-9. `proposeEventChange` resolves with the result and never rejects. The built-in views announce a
-   gesture's outcome through the root's `Announcer`; the registry's messages read an `AbortError`
-   from the handler as a cancel, not a failed save. Proposals from application code aren't
-   announced.
+9. `proposeEventChange` resolves with the result and never rejects. `Root`'s
+   `onEventChangeResult` hears every proposal's result first, with its input, from the latest
+   render, also after `Root` unmounts; a throw in it is reported and changes nothing. The built-in
+   views announce a gesture's outcome through the root's `Announcer`; the registry's messages read
+   an `AbortError` from the handler as a cancel, not a failed save. Proposals from application code
+   aren't announced. A cancelled gesture, a refused keyboard grab and a `checkEventChange` preview
+   propose nothing, so they have no result.
 
 Optimistic rendering is not a mode: the handler's return value decides it. A handler can't refuse a
-change by returning `false`; it throws or rejects. The engine is `createEventTransactions()` in
-`calendar-core`, with `propose`, `check`, `reconcile`, `getPending` and `subscribe`, for use outside
-React. `Root` keeps one per calendar and doesn't expose it. Pending changes are keyed by event ID,
-so an event has at most one. In React, pending state shows per event (`isPending`) and per proposal
-(the promise). There is no calendar-wide pending reader, no `onTransactionStateChange` and no
-transaction controller. #199 proposes a public outcome callback and a pending-changes hook. A
-keyboard gesture's preview also marks the grabbed event `isPending` (#198).
+change by returning `false`; it throws or rejects. A root without `onEventChange` rejects every
+proposal in its read-only check, so its results carry the change like any policy's rejection;
+only `unknown-event` has none. The engine is `createEventTransactions()` in `calendar-core`, with
+`propose`, `check`, `reconcile`, `getPending`, `getPendingChanges` and `subscribe`, for use outside
+React. `Root` keeps one per calendar and doesn't expose it. The overlay is keyed by event ID, so an
+event shows at most one pending change.
+
+In React, pending state shows per event (`isPending`), per proposal (the promise and
+`onEventChangeResult`), and across the calendar: `useCalendarPendingChanges(selector?, options?)`
+reads `getPendingChanges()`, a frozen map from change ID to `{ change, phase }` in proposal order
+(#199). Its phases:
+
+- `validating`: async policies decide; the change is the proposal as made;
+- `saving`: the handler's promise runs; the change is the one the handler got;
+- `awaiting-events`: the promise resolved and `events`, an array or a source (§6.1), don't show the
+  change yet; it ends with the next new events, as the overlay does.
+
+The map includes creates, which end at `saving`, and an older proposal still saving after a newer
+one replaced it on screen, which an event-ID map couldn't hold. A proposal leaves it when it is
+rejected or superseded, when a synchronous handler commits it, or when its last phase ends. A change
+of phase alone publishes a new changes map and keeps the placements map, so it doesn't re-render
+`Root` or re-project the view. The hook selects like `useCalendarSelector`, and the server and
+hydration read the empty map. There is no `onTransactionStateChange` and no transaction controller:
+a promise plus reconciling against `events` covers queued and server-pushed confirmation, and a
+source's push confirms a change by itself. A keyboard gesture's preview marks the grabbed event
+`isPending` (#198), but it isn't a proposal, so it isn't in the map.
 
 ## 11. Drag, resize, selection, and creation
 

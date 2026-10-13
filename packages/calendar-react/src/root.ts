@@ -25,6 +25,8 @@ import {
   type EventTransactions,
   type InvalidCalendarEventPolicy,
   type CalendarPendingPlacements,
+  type CalendarProposalDetail,
+  type CalendarTransactionResult,
   type ResourceId,
   type SecondaryTimeZoneIssue,
 } from "@moltenship/calendar-core";
@@ -52,7 +54,12 @@ import type {
 import { CalendarAnnotationsContext } from "./annotations";
 import { createAnnouncerChannel } from "./announcer";
 import { CalendarAvailabilityContext } from "./availability";
-import { CalendarNowSourceContext, type CalendarContexts } from "./context";
+import {
+  CalendarNowSourceContext,
+  type AnyPendingChanges,
+  type CalendarContexts,
+  type CalendarStateSource,
+} from "./context";
 import {
   sameAvailability,
   sameElements,
@@ -99,6 +106,12 @@ interface CommittedRootInputs<TEvent, TEventId extends EventId, TResourceId exte
     | ((diagnostics: readonly CalendarDiagnostic<TEvent, TEventId>[]) => void)
     | undefined;
   readonly onEventChange: CalendarEventChangeHandler<TEvent, TEventId, TResourceId> | undefined;
+  readonly onEventChangeResult:
+    | ((
+        result: CalendarTransactionResult<TEvent, TEventId, TResourceId>,
+        detail: CalendarProposalDetail,
+      ) => void)
+    | undefined;
   readonly onVisibleRangeChange: ((range: CalendarVisibleRange<string>) => void) | undefined;
   readonly policies: readonly CalendarPolicy<TEvent, TEventId, TResourceId>[] | undefined;
   readonly resourceTree: ResourceTree;
@@ -113,6 +126,17 @@ const todaySampleIntervalMs = 60_000;
 const systemClock = createSystemClock();
 /** A root without `onEventChange` is read-only, so its checks reject everything. */
 const readOnlyRoot = () => ({ reason: "read-only", type: "reject" }) as const;
+/** A read-only root's handler: its check rejects every change first, so this never runs. */
+const noHandler = () => {
+  throw new TypeError("calendar-root-is-read-only");
+};
+const apiInput: CalendarProposalDetail = Object.freeze({ input: "api" });
+
+/** Reports an application callback's error without failing the proposal it heard about. */
+function reportCallbackError(error: unknown): void {
+  if (typeof reportError === "function") reportError(error);
+  else console.error(error);
+}
 
 function sameLocale(left: Intl.Locale | string, right: Intl.Locale | string): boolean {
   return String(left) === String(right);
@@ -253,18 +277,26 @@ function createSemanticActions<
       const instant = environment.now ?? (environment.clock ?? systemClock).instant();
       actions.setAnchorDate(instant.toZonedDateTimeISO(read().timeZone).toPlainDate());
     },
-    proposeEventChange(proposal) {
+    proposeEventChange(proposal, detail = apiInput) {
       const { availability, eventSnapshot, onEventChange } = committed.current;
-      if (onEventChange === undefined) {
-        return Promise.resolve({ reason: "read-only", status: "rejected" });
-      }
-      return transactions.propose(proposal, {
-        availability,
-        onEventChange,
-        policies: policiesOf(committed.current),
-        snapshot: eventSnapshot,
-        timeZone: read().timeZone,
-      });
+      const reported = Object.freeze({ input: detail.input });
+      return transactions
+        .propose(proposal, {
+          availability,
+          onEventChange: onEventChange ?? noHandler,
+          policies: policiesOf(committed.current),
+          snapshot: eventSnapshot,
+          timeZone: read().timeZone,
+        })
+        .then((result) => {
+          // The latest render's callback, even after the root unmounts, as the save may outlive it.
+          try {
+            committed.current.onEventChangeResult?.(result, reported);
+          } catch (error) {
+            reportCallbackError(error);
+          }
+          return result;
+        });
     },
   });
 }
@@ -308,6 +340,7 @@ export function createCalendarRoot<
     onAnchorDateChange,
     onDiagnosticsChange,
     onEventChange,
+    onEventChangeResult,
     onExpandedResourceIdsChange,
     onFocusChange,
     onSelectionChange,
@@ -407,6 +440,12 @@ export function createCalendarRoot<
       transactions.subscribe,
       transactions.getPending,
       transactions.getPending,
+    );
+    const [pendingChanges] = useState(() =>
+      Object.freeze({
+        getSnapshot: transactions.getPendingChanges,
+        subscribe: transactions.subscribe,
+      }),
     );
     const [keyboard] = useState(createKeyboardSessionStore);
     const [pointerDraft] = useState(createDraftStore);
@@ -552,6 +591,7 @@ export function createCalendarRoot<
       eventSnapshot,
       onDiagnosticsChange,
       onEventChange,
+      onEventChangeResult,
       onVisibleRangeChange,
       policies,
       resourceTree,
@@ -657,27 +697,35 @@ export function createCalendarRoot<
           contexts.actions,
           { value: actions },
           createElement(
-            contexts.meta,
-            { value: meta },
+            contexts.changes,
+            { value: pendingChanges as CalendarStateSource<AnyPendingChanges> },
             createElement(
-              contexts.state,
-              { value: state },
+              contexts.meta,
+              { value: meta },
               createElement(
-                contexts.view,
-                { value: activeView },
+                contexts.state,
+                { value: state },
                 createElement(
-                  CalendarResourcesContext,
-                  { value: resourceTree },
+                  contexts.view,
+                  { value: activeView },
                   createElement(
-                    CalendarAnnotationsContext,
-                    { value: annotationContext },
+                    CalendarResourcesContext,
+                    { value: resourceTree },
                     createElement(
-                      CalendarAvailabilityContext,
-                      { value: availabilitySnapshot },
+                      CalendarAnnotationsContext,
+                      { value: annotationContext },
                       createElement(
-                        CalendarEventsContext,
-                        { value: visibleSnapshot as EventSnapshot<unknown, EventId, ResourceId> },
-                        createElement(CalendarInteractionContext, { value: interaction }, children),
+                        CalendarAvailabilityContext,
+                        { value: availabilitySnapshot },
+                        createElement(
+                          CalendarEventsContext,
+                          { value: visibleSnapshot as EventSnapshot<unknown, EventId, ResourceId> },
+                          createElement(
+                            CalendarInteractionContext,
+                            { value: interaction },
+                            children,
+                          ),
+                        ),
                       ),
                     ),
                   ),
