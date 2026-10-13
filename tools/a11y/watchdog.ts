@@ -22,9 +22,10 @@ type Event =
 
 /**
  * The watch, in a worker thread of its own, so it fires even when the main thread is held up. It
- * writes straight to the file descriptor, asks the main thread to cancel the run, and if the run
- * hasn't ended after the grace period, kills the process and every process under it, the
- * browsers included. It runs from its own source text, so it closes over nothing.
+ * sends the main thread its report, which prints it and cancels the run, and writes the report
+ * itself only if the main thread doesn't answer. If the run hasn't ended after the grace period,
+ * it kills the process and every process under it, the browsers included. It runs from its own
+ * source text, so it closes over nothing.
  */
 function watch() {
   const { parentPort, workerData } = process.getBuiltinModule("node:worker_threads");
@@ -55,8 +56,9 @@ function watch() {
       }
     }
   };
-  /** Set once the main thread has printed the report. */
+  /** Set once the report is out, from the main thread or from here. */
   let printed = false;
+  let fallback: ReturnType<typeof setTimeout> | undefined;
 
   /** Every process under this one, children before their parents. */
   const descendants = () => {
@@ -106,8 +108,10 @@ function watch() {
     // summary Vitest redraws in a terminal, which would erase a write of the watch's own. A main
     // thread held up doesn't answer, and doesn't redraw either: then the watch writes it.
     parentPort!.postMessage(text);
-    setTimeout(() => {
-      if (!printed) write(text);
+    fallback = setTimeout(() => {
+      if (printed) return;
+      printed = true;
+      write(text);
     }, 2000);
     kill = setTimeout(() => {
       let pids: number[] = [];
@@ -137,13 +141,15 @@ function watch() {
     } else if (event.type === "start") {
       files.clear();
       started = progress = at;
-      fired = false;
+      fired = printed = false;
       clearInterval(timer);
       clearTimeout(kill);
+      clearTimeout(fallback);
       timer = setInterval(check, 1000);
     } else if (event.type === "end") {
       clearInterval(timer);
       clearTimeout(kill);
+      clearTimeout(fallback);
     } else if (event.type === "queued") {
       files.set(event.key, { label: event.label, since: at, running: false });
     } else if (event.type === "started") {
@@ -187,11 +193,11 @@ export class Watchdog implements Reporter {
     const { fd } = this.#options;
     // The report; then the run stops as it does after a failure with `--bail`.
     worker.on("message", (report: string) => {
+      process.exitCode = 1;
+      void vitest.cancelCurrentRun("test-failure");
       if (fd === 2) process.stderr.write(report);
       else writeSync(fd, report);
       this.#post({ type: "printed" });
-      process.exitCode = 1;
-      void vitest.cancelCurrentRun("test-failure");
     });
     worker.on("error", (error) => {
       console.error("Watchdog: the watch failed, so this run has none:", error);

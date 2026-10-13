@@ -128,6 +128,28 @@ describe("the browser runs' watchdog", () => {
     expect(await report.read()).toBe("");
   });
 
+  test("a stuck main thread gets the report once, from the watch", async () => {
+    const script = `
+      import { Watchdog } from ${JSON.stringify(watchdog)};
+      const dog = new Watchdog({ graceMs: 3500, limitMs: 60_000, stallMs: 1000 });
+      dog.onInit({ cancelCurrentRun: async () => {}, config: { browser: { headless: true }, inspector: {}, watch: false } });
+      dog.onTestRunStart();
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 30_000);
+    `;
+    const run = spawn(process.execPath, ["--input-type=module", "-e", script], {
+      stdio: ["ignore", "ignore", "pipe"],
+    });
+    cleanup.push(async () => {
+      if (run.exitCode === null) run.kill("SIGKILL");
+    });
+    let stderr = "";
+    run.stderr.on("data", (chunk) => (stderr += chunk));
+    await new Promise((resolve) => run.on("close", resolve));
+
+    expect(stderr.split("Still running:").length - 1).toBe(1);
+    expect(stderr).toContain("so it's killed");
+  }, 20_000);
+
   test("a run that doesn't stop is killed, with the processes it started", async () => {
     // A process whose main thread never comes back, with a child of its own, as a browser is.
     const script = `
