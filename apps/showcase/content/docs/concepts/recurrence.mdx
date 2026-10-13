@@ -111,16 +111,16 @@ events change and the series is expanded again.
   BYSETPOS rule moved to another day can't, the bridge reports it and the override replaces only its
   own occurrence.
 - **Drags use the calendar's clock.** In a time zone whose daylight saving time changes on other
-  dates than the series' zone, dragging an occurrence by days with "All events" moves the series'
-  time by an hour, unless the edit gets the calendar's `timeZone`, which
-  [the guide](/docs/guides/recurring-events#ask-which-events-a-change-applies-to) passes.
-  `timeZone` covers drags by whole days. A drag that also changes the time of day, a resize by
-  days, or an editor update are still measured on the series' clock, so in those weeks the series
-  can move, or a resize change its length, by an hour.
-- **A repeated hour.** With "All events", a start dropped on the second of two equal wall times, as
-  the hour repeated when clocks go back, lands on the first, as every occurrence of the series does.
-- **Cancelled first occurrences.** Edits read one occurrence and its series, not the other
-  overrides. When a cancelled override hides the first occurrence, "This and following events" from
-  the second still splits the series rather than changing all of it.
+  dates than the series' zone, a drag, resize or editor change with "All events" or "This and
+  following events" moves the series by an hour more or less than the user did, unless the edit
+  gets the calendar's `timeZone`, which
+  [the guide](/docs/guides/recurring-events#ask-which-events-a-change-applies-to) passes. With it,
+  the change is replayed on the series' clock.
+- **A repeated hour.** A rule can't say "the later 02:30" of the night clocks go back, so with "All
+  events" a start dropped on the later of two equal wall times gets an override there, and the rest
+  of the series repeats at the earlier one.
+- **Cancelled first occurrences.** Edits read one occurrence and its series. When cancelled overrides
+  hide the first occurrences, "This and following events" from the next still splits the series,
+  unless the edit gets the series' overrides as `overrides`.
 - **The ISO calendar.** Rules repeat in the ISO calendar, iCalendar's Gregorian one: a monthly series
   steps by Gregorian months even when its dates use another calendar.

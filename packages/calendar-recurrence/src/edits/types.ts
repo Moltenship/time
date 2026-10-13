@@ -53,11 +53,19 @@ export interface ResolveRecurrenceEditOptions<TEvent, TEventId extends EventId =
    */
   readonly occurrences?: readonly RecurrenceOccurrence<TEvent, TEventId>[];
   /**
-   * The calendar's time zone, which the user moves occurrences on. With it, a timed series dragged
-   * by whole days there moves by whole days on its own clock and keeps its time of day, as
-   * `"all"` and `"following"` should, even in a week when the calendar's zone has changed DST and
-   * the series' hasn't. Without it, the series takes the time the occurrence was dropped at, which
-   * is an hour off then.
+   * The series' overrides, or all the application's events: only cancelled overrides of the edited
+   * series are read. With them, cancelled overrides hide occurrences as EXDATEs do, so `"following"`
+   * from the first occurrence left to show changes all of them instead of splitting off a series
+   * that shows nothing.
+   */
+  readonly overrides?: readonly TEvent[];
+  /**
+   * The calendar's time zone, which the user moves and resizes occurrences on, and its editor shows
+   * times in. With it, `"all"` and `"following"` replay the change on the series' own clock, even in
+   * a week when the calendar's zone has changed DST and the series' hasn't: a drag by a week keeps
+   * the series' time of day, a drag an hour later moves it an hour, and a resize by days stretches
+   * it by days on its clock. Without it, the series takes the instants the calendar proposes, which
+   * are an hour off then.
    */
   readonly timeZone?: string;
 }

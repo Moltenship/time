@@ -373,6 +373,44 @@ describe(`time zones and excluded first occurrences`, () => {
     // The old master has COUNT=1 and its only occurrence excluded: a zero-occurrence event.
     expect(visibleFromOld.length > 0 || edit.series.action === "delete").toBe(true);
   });
+
+  test(`"following" after occurrences cancelled overrides hide is "all", given the overrides`, () => {
+    const s = timed("s", "2026-10-19T09:00", "2026-10-19T09:30", {
+      recurrence: { rule: { count: 4, frequency: "WEEKLY" } },
+    });
+    const cancel = (id: string, start: string) =>
+      overrideOf(
+        s,
+        id,
+        at(start),
+        { end: at(start).add({ minutes: 30 }), kind: "timed", start: at(start) },
+        { cancelled: true },
+      );
+    const first = cancel("first", "2026-10-19T09:00");
+    const second = cancel("second", "2026-10-26T09:00");
+    // Another series' cancelled override, and an override that still shows, change nothing.
+    const other = {
+      ...cancel("other", "2026-10-26T09:00"),
+      override: { cancelled: true as const, recurrenceId: at("2026-10-26T09:00"), seriesId: "t" },
+    };
+    const moved = overrideOf(s, "moved", at("2026-10-19T09:00"), {
+      end: at("2026-10-19T12:30"),
+      kind: "timed",
+      start: at("2026-10-19T12:00"),
+    });
+    const third = move(find(expand([s, first, second]), "2026-11-02T08:00:00Z"), { hours: 1 });
+
+    expect(series(resolveRecurrenceEdit(third, "following", adapters)).scope).toBe("following");
+    const overrides = [s, first, second, other];
+    const edit = series(resolveRecurrenceEdit(third, "following", adapters, { overrides }));
+    expect(edit.scope).toBe("all");
+    expect(recurrenceEditScopes(third, adapters, { overrides })).toEqual(["this", "all"]);
+    // With the first occurrence moved rather than cancelled, something before still shows.
+    expect(
+      series(resolveRecurrenceEdit(third, "following", adapters, { overrides: [moved, second] }))
+        .scope,
+    ).toBe("following");
+  });
 });
 
 describe(`round trips`, () => {

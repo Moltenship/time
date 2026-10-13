@@ -675,6 +675,17 @@ Both take a `ResolveRecurrenceEditOptions`:
         </>
       ),
     },
+    overrides: {
+      type: "readonly TEvent[]",
+      description: (
+        <>
+          The series' overrides, or all your events: only cancelled overrides of the edited series
+          are read. They then hide occurrences as EXDATEs do, so <code>"following"</code> from the
+          first occurrence left to show is <code>"all"</code>. Pass them when you keep deleted
+          occurrences as cancelled overrides, as Google's API does.
+        </>
+      ),
+    },
     maxIterations: {
       type: "number",
       description: (
@@ -688,10 +699,12 @@ Both take a `ResolveRecurrenceEditOptions`:
       type: "string",
       description: (
         <>
-          The calendar's time zone, which occurrences are moved on. With it, a timed series dragged
-          by whole days moves by whole days on its own clock and keeps its time of day, even in a
-          week when the calendar's zone has changed DST and the series' hasn't. Without it, the
-          series takes the time the occurrence was dropped at, which is an hour off then.
+          The calendar's time zone, which occurrences are moved and resized on and the editor shows
+          times in. With it, <code>"all"</code> and <code>"following"</code> replay the change on
+          the series' own clock: a drag by a week keeps its time of day, a drag an hour later moves
+          it an hour, and a resize by days stretches it by days, even in a week when the calendar's
+          zone has changed DST and the series' hasn't. Without it, the series takes the instants the
+          calendar proposes, which are an hour off then.
         </>
       ),
     },
@@ -709,13 +722,16 @@ Both take a `ResolveRecurrenceEditOptions`:
   occurrence's start, or COUNT the number of occurrences before it. A new series starts where the
   change puts the occurrence, with the rest of the rule moved as `"all"` moves it, and later
   EXDATEs, RDATEs and overrides move to it. A delete only ends the series. Google Calendar and
-  Outlook on the web split a series the same way.
+  Outlook on the web split a series the same way. When nothing before the occurrence is left to
+  show, it's `"all"`: EXDATEs count for that, and cancelled overrides when you pass `overrides`.
 - **`"all"`.** The change from where the occurrence showed to where it goes, measured on the
   series' wall clock, applies to every occurrence. The rule moves with it, such as BYDAY when the
   day changes, and so do EXDATEs, RDATEs, UNTIL and every override's `recurrenceId`, so deleted
   occurrences stay deleted and moved ones don't appear twice. Overrides keep their own placements.
   A move keeps the series' length; a resize changes it. A delete removes the master and its
-  overrides.
+  overrides. An occurrence dropped on the later of two equal wall times, as DST's end repeats an
+  hour, gets an override there, since a rule can only say the earlier one, where the rest of the
+  series goes.
 
 A timed occurrence dropped on a day, or an all-day one dropped on a time, works in every scope.
 `"following"` and `"all"` change the series' kind and convert its dates; a rule with several times

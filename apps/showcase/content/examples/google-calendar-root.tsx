@@ -165,8 +165,10 @@ export function GoogleCalendar({ sync, timeZone }: GoogleCalendarProps) {
   // #region change
   async function onEventChange(change: OccurrenceChange) {
     let scope: RecurrenceEditScope = "this";
+    // Google keeps deleted instances as cancelled overrides, which hide occurrences as EXDATEs do.
+    const options = { overrides: events, timeZone };
     if (isRecurringChange(change)) {
-      const scopes = recurrenceEditScopes(change, adapters, { timeZone });
+      const scopes = recurrenceEditScopes(change, adapters, options);
       if (scopes.length === 0) {
         setStatus("This repeating event can't change that way.");
         throw new Error("No scope applies");
@@ -180,10 +182,10 @@ export function GoogleCalendar({ sync, timeZone }: GoogleCalendarProps) {
       scope = picked;
     }
     const edit = resolveRecurrenceEdit(change, scope, adapters, {
+      ...options,
       // Google takes IDs you pick, so a "following" edit's new series is known before it's saved.
       newSeriesId: newGoogleId(),
       occurrences,
-      timeZone,
     });
     if (edit.type === "rejected") {
       setStatus(edit.message);
