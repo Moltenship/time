@@ -100,9 +100,10 @@ and fails fast when a browser run stalls:
   the watchdog a stuck page. When a test times out, each wait pending at that moment says what it
   was waiting for, then stops. `setup.ts` drops React's "not wrapped in act" warning: real input
   from Playwright lands outside `act()` by design, and thousands of the warnings a file, each sent
-  to Node, made a popover test slower than its popover. The browser tests don't sleep for a fixed time, or give a step a
-  one-second deadline, which a slow machine misses. A unit test that compares durations measures
-  CPU time (`process.threadCpuUsage()`), which a busy machine stretches far less than wall time.
+  to Node, cost a popover test more time than the popover did. The browser tests don't sleep for
+  a fixed time, or give a step a one-second deadline, which a slow machine misses. A unit test that
+  compares durations measures CPU time (`process.threadCpuUsage()`), which a busy machine
+  stretches far less than wall time.
 
 To check the gate under load, run it beside a CPU load, such as a few threads spinning in a loop.
 Rerun a failing file alone before calling it a flake: `vp run a11y#test tests/<file>`, or

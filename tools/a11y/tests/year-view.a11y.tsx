@@ -123,8 +123,8 @@ async function closed(popup: Element) {
   expect(document.activeElement).toBe(day());
 }
 
-// Opening the popover renders every day's trigger again, which takes seconds at CI's speed (#197):
-// each test opens it twice and closes it once.
+// Opening the popover renders every day's trigger again (#197): each test opens it twice and
+// closes it once.
 test("a clicked day's popover hands focus back to the day, where Space opens it again", async () => {
   const onEventChange = vi.fn();
   await render(<PhoneYear onEventChange={onEventChange} />);

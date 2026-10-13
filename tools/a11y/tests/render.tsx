@@ -46,7 +46,7 @@ export const nextFrame = () =>
  * The running test's signal. Vitest aborts it when the test times out, before the `afterEach`
  * hooks clean the page up, so a wait still pending then can say what it was waiting for, and stop
  * instead of acting on the next test's page. A signal already aborted, as a retry inherits, is
- * left alone. `done` ends the watch when the wait ends.
+ * left alone, so a retry's waits run unwatched. `done` ends the watch when the wait ends.
  */
 function timedOut(what: () => unknown): { readonly aborted: boolean; readonly done: () => void } {
   const found = TestRunner.getCurrentTest()?.context.signal;
@@ -103,12 +103,17 @@ export async function until(check: () => void): Promise<void> {
 
 /** Resolves once `element` has left the page, as a popup does after its exit animation. */
 export async function removed(element: Element): Promise<void> {
-  let gone = !element.isConnected;
+  let over = false;
+  const what = clip(element.outerHTML, 120);
   const test = timedOut(() =>
-    gone ? undefined : `${clip(element.outerHTML, 120)} to leave the page`,
+    over
+      ? undefined
+      : element.isConnected
+        ? `${what} to leave the page`
+        : `the work ${what} set off as it left`,
   );
   try {
-    if (!gone) {
+    if (element.isConnected) {
       const left = await new Promise<boolean>((resolve) => {
         const observer = new MutationObserver(() => {
           if (test.aborted) resolve(false);
@@ -126,7 +131,8 @@ export async function removed(element: Element): Promise<void> {
     }
     // What the unmount set off, such as focus going back, runs in a microtask and React work.
     await act(async () => {});
-    gone = true;
+    if (test.aborted) return abandoned();
+    over = true;
   } finally {
     test.done();
   }
@@ -167,6 +173,7 @@ export async function atRest(element: HTMLElement, frames = 5): Promise<void> {
       position = now;
     }
     await act(async () => {});
+    if (test.aborted) return abandoned();
     resting = true;
   } finally {
     element.removeEventListener("scroll", onScroll);
