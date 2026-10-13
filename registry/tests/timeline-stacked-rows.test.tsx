@@ -108,9 +108,15 @@ test("a room's row stacks its bookings a third of a lane apart, and a person's k
     ["standup", 6],
     ["review", 32],
   ]);
-  // The stack needs a lane and two thirds; two lanes need two.
-  expect(Number.parseFloat(row(container, "orchid").style.height)).toBeCloseTo(12 + (5 / 3) * 26);
-  expect(Number.parseFloat(row(container, "ada").style.height)).toBe(12 + 2 * 26);
+  // The stack needs a lane and two thirds, rounded up to a whole pixel; two lanes need two.
+  expect(row(container, "orchid").style.height).toBe(`${Math.ceil(12 + (5 / 3) * 26)}px`);
+  expect(row(container, "ada").style.height).toBe(`${12 + 2 * 26}px`);
+  // Only the bars a stack sets part-way down a lane get the ring that sets them apart.
+  const ringed = (resourceId: string) =>
+    [...row(container, resourceId).querySelectorAll("[data-event-id]")]
+      .filter((bar) => bar.className.includes("shadow-[0_0_0_1px"))
+      .map((bar) => bar.getAttribute("data-event-id"));
+  expect([ringed("orchid"), ringed("ada")]).toEqual([["review", "interview"], []]);
 });
 
 test("moving a stacked booking to a person from the keyboard gives the pointer's change", async () => {

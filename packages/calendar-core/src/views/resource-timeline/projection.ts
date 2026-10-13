@@ -9,7 +9,12 @@ import {
 import type { CalendarEventInterval } from "../../events";
 import type { EventId, ResourceId } from "../../ids";
 import { layoutDayGridRow, type DayGridSegment } from "../../layout/day-grid";
-import type { OverlapLayout, ResourceOverlapLayoutOptions } from "../../layout/timed-overlap";
+import {
+  checkLayout,
+  endsBy,
+  type OverlapLayout,
+  type ResourceOverlapLayoutOptions,
+} from "../../layout/timed-overlap";
 import { resourceTimelineSpatialNavigation } from "../../navigation/resource-timeline";
 import { compareEventIds, splitEventsByDay } from "../../projection/day-fragments";
 import { queryVisibleEvents } from "../../projection/visible-events";
@@ -46,15 +51,19 @@ export interface ResourceTimelineOptions extends ResourceVisibilityOptions {
 /**
  * How an hour timeline's rows share out overlapping events, as the resource's
  * `getResourceOverlapLayout`, or else `overlapLayout`, chooses: `"columns"` and `"equal"` give
- * each level of overlap a lane of its own, the row growing to fit, and `"stack"` cascades them
- * within about a lane, each bar a third of a lane below the one it covers. Each event's own
+ * each level of overlap a lane of its own, the row growing to fit, and `"stack"` cascades them,
+ * each bar a third of a lane below the one it covers, so a stacked row is at most two lanes tall.
+ * A group's deepest bar sets its step, so a deep group steps less. Each event's own
  * `getEventOverlapLayout` refines it as in the time grid: a group of overlapping events that all
  * agree takes it. A day timeline lays each row out like a month row, whatever the layout.
  */
 export type ResourceTimelineLayoutOptions<
   TEvent = unknown,
   TResource = CalendarResource<unknown, ResourceId>,
-> = Omit<ResourceOverlapLayoutOptions<TEvent, TResource>, "stackIndent">;
+> = Pick<
+  ResourceOverlapLayoutOptions<TEvent, TResource>,
+  "getEventOverlapLayout" | "getResourceOverlapLayout" | "overlapLayout"
+>;
 
 /** An event along an hour timeline's row, clipped to the range and placed in a lane. */
 export interface ResourceTimelineBar<TEvent> extends TimelineExtent {
@@ -175,22 +184,26 @@ function layoutRow<TEvent>(
   const placeGroup = (group: readonly UnplacedBar<TEvent>[]) => {
     let layout: OverlapLayout | undefined;
     for (const { event } of group) {
-      const mine = own?.(event.event) ?? fallback;
+      // `null`, as from data, counts as no layout of its own.
+      const mine = checkLayout(own?.(event.event) ?? fallback);
       layout = layout === undefined || layout === mine ? mine : fallback;
     }
     // Where each lane, or each level of the stack, is free from: its last bar's reserved end.
+    // Ends are compared with the time grid's tolerance, so a quarter hour reserved from 10:00
+    // never reaches into an event starting at 10:15.
     const ends: number[] = [];
+    let deepest = 0;
     const lanes = group.map((bar) => {
       const end = Math.max(bar.end, bar.start + minimumWidth);
       const lane =
         layout === "stack"
-          ? ends.reduce((deepest, open, level) => (open > bar.start ? level + 1 : deepest), 0)
-          : ends.findIndex((open) => open <= bar.start);
+          ? ends.reduce((level, open, at) => (endsBy(open, bar.start) ? level : at + 1), 0)
+          : ends.findIndex((open) => endsBy(open, bar.start));
       const at = lane === -1 ? ends.length : lane;
       ends[at] = end;
+      deepest = Math.max(deepest, at);
       return at;
     });
-    const deepest = Math.max(0, ...lanes);
     const step =
       layout === "stack" && deepest > 0 ? Math.min(STACK_STEP, MAX_STACK_OFFSET / deepest) : 1;
     group.forEach((bar, index) => {
@@ -203,7 +216,7 @@ function layoutRow<TEvent>(
   let group: UnplacedBar<TEvent>[] = [];
   let groupEnd = -Infinity;
   for (const bar of sorted) {
-    if (groupEnd <= bar.start) {
+    if (endsBy(groupEnd, bar.start)) {
       if (group.length > 0) placeGroup(group);
       group = [];
     }
@@ -219,7 +232,7 @@ function layoutRow<TEvent>(
  * row lays its events out like a month row, a segment per run of days; with hour slots each event
  * is one bar along the nominal wall clock, clipped to the range and not split by day, and bars are
  * laid out per row: in lanes, or stacked where the row's layout or a group's own says so; see
- * `ResourceTimelineOptions`.
+ * `ResourceTimelineLayoutOptions`.
  */
 export function projectResourceTimeline<TEvent>({
   environment,
@@ -257,9 +270,10 @@ export function projectResourceTimeline<TEvent>({
   const minimumWidth = MINIMUM_EVENT_MINUTES / (columns.length * 24 * 60);
   const rows = visible.map((resource, index) => {
     // The unassigned bucket isn't a resource, so it keeps the view's layout.
-    const fallback =
+    const fallback = checkLayout(
       (resource.resource === null ? undefined : getResourceOverlapLayout?.(resource.resource)) ??
-      overlapLayout;
+        overlapLayout,
+    );
     const layout = { fallback, own: getEventOverlapLayout };
     return Object.freeze({ ...layoutRow(byResource[index]!, minimumWidth, layout), resource });
   });

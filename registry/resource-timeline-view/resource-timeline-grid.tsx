@@ -70,10 +70,13 @@ const DEFAULT_HOUR = 8;
 
 const noCells: readonly CalendarCellFocus[] = [];
 
-/** A row tall enough for its lanes, or its stacks, and never shorter than an empty one. */
+/**
+ * A row tall enough for its lanes, or its stacks, and never shorter than an empty one. Whole
+ * pixels, so the rows below a stack keep their lines on the pixel grid.
+ */
 function rowHeight(row: ResourceTimelineProjection<unknown>["rows"][number]): number {
   const lanes = "height" in row ? row.height : row.laneCount;
-  return Math.max(MIN_ROW_HEIGHT, 2 * ROW_PADDING + lanes * (LANE_HEIGHT + LANE_GAP));
+  return Math.max(MIN_ROW_HEIGHT, Math.ceil(2 * ROW_PADDING + lanes * (LANE_HEIGHT + LANE_GAP)));
 }
 
 /**

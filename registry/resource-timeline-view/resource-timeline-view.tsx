@@ -201,7 +201,8 @@ function timelineView<
 
 /**
  * The anchor date in hours, named `timeline-day`. Pass the root's resource type as `TResource` to
- * read your own fields in `getResourceOverlapLayout`.
+ * read your own fields in `getResourceOverlapLayout`. The overlap layout options apply to hour
+ * rows: here, or in the other timelines with `slotUnit: "hour"`.
  */
 export function createTimelineDayView<
   TEvent = unknown,
@@ -210,7 +211,11 @@ export function createTimelineDayView<
   return timelineView("timeline-day", { count: 1, kind: "days" }, defaultOptions);
 }
 
-/** A week of days, starting on the calendar's `weekRules.firstDay`, named `timeline-week`. */
+/**
+ * A week of days, starting on the calendar's `weekRules.firstDay`, named `timeline-week`. Its day
+ * rows lay events out like a month row; the overlap layout options apply with `slotUnit: "hour"`.
+ * Pass the root's resource type as `TResource`, as for `createTimelineDayView`.
+ */
 export function createTimelineWeekView<
   TEvent = unknown,
   TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
@@ -218,7 +223,10 @@ export function createTimelineWeekView<
   return timelineView("timeline-week", { kind: "week" }, defaultOptions);
 }
 
-/** The anchor's calendar month, day by day, named `timeline-month`. */
+/**
+ * The anchor's calendar month, day by day, named `timeline-month`. As with the week, the overlap
+ * layout options apply with `slotUnit: "hour"`, and `TResource` is the root's resource type.
+ */
 export function createTimelineMonthView<
   TEvent = unknown,
   TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,

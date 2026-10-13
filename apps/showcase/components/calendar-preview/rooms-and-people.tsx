@@ -28,6 +28,12 @@ const spaces: readonly Space[] = [
 ];
 const rooms = new Set(spaces.filter(({ data }) => data.kind === "room").map(({ id }) => id));
 
+/** In a timeline, `"columns"` and `"equal"` are the same lanes. */
+const timelineLayouts = [
+  { label: "Lanes", value: "columns" },
+  { label: "Stack", value: "stack" },
+] as const satisfies readonly { readonly label: string; readonly value: OverlapLayout }[];
+
 const conflictModes = [
   { label: "Block", value: "block" },
   { label: "Warn", value: "warn" },
@@ -162,13 +168,13 @@ export default function RoomsAndPeopleCalendar({
                 <ChoiceToggle
                   label="Rooms"
                   onChange={setRoomLayout}
-                  options={overlapLayouts}
+                  options={view === "resources" ? overlapLayouts : timelineLayouts}
                   value={roomLayout}
                 />
                 <ChoiceToggle
                   label="People"
                   onChange={setPeopleLayout}
-                  options={overlapLayouts}
+                  options={view === "resources" ? overlapLayouts : timelineLayouts}
                   value={peopleLayout}
                 />
               </>

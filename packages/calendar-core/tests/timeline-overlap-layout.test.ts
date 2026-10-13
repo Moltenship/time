@@ -19,6 +19,7 @@ import {
   allDay,
   dates,
   environment,
+  floating,
   snapshotOf,
   timed,
   viewInput,
@@ -247,6 +248,65 @@ describe("hour rows by overlap layout", () => {
     });
   });
 
+  test("back-to-back quarter hours never collide, wherever they fall in the day", () => {
+    // 10:00 + a quarter hour lands a hair past 10:15 as a share of the day.
+    const events = both([
+      timed("first", "2026-10-08T10:00Z", "2026-10-08T10:15Z"),
+      timed("second", "2026-10-08T10:15Z", "2026-10-08T10:30Z"),
+      timed("blip", "2026-10-08T10:30Z", "2026-10-08T10:35Z"),
+      timed("next", "2026-10-08T10:45Z", "2026-10-08T11:00Z"),
+    ]);
+
+    expect(read(project(events, "2026-10-08", { getResourceOverlapLayout: roomsStack }))).toEqual({
+      ada: "1/1: first@0/0 second@0/0 blip@0/0 next@0/0",
+      null: "0/0: ",
+      orchid: "1/1: first@0/0 second@0/0 blip@0/0 next@0/0",
+    });
+  });
+
+  test("lays out the skipped hour of a spring-forward day in each resource's layout", () => {
+    // New York on March 8 2026: a night across the gap, a floating hour in it, and an early start.
+    const springForward = both([
+      timed("night", "2026-03-08T06:00Z", "2026-03-08T08:00Z"),
+      floating("skipped", "2026-03-08T02:00", "2026-03-08T03:00"),
+      timed("early", "2026-03-08T07:30Z", "2026-03-08T08:30Z"),
+    ]);
+
+    expect(
+      read(
+        project(
+          springForward,
+          "2026-03-08",
+          { getResourceOverlapLayout: roomsStack },
+          "America/New_York",
+        ),
+      ),
+    ).toEqual({
+      ada: "2/2: night@0/0 skipped@1/1 early@1/1",
+      null: "0/0: ",
+      orchid: "2/1.333: night@0/0 skipped@1/0.333 early@1/0.333",
+    });
+  });
+
+  test("rejects an unknown layout from the view, a resource or an event", () => {
+    const events = both([timed("a", "2026-10-08T09:00Z", "2026-10-08T10:00Z")]);
+    const invalid = new RangeError("invalid-overlap-layout");
+
+    expect(() =>
+      project(events, "2026-10-08", { overlapLayout: "Stack" as OverlapLayout }),
+    ).toThrow(invalid);
+    expect(() =>
+      project(events, "2026-10-08", { getResourceOverlapLayout: () => "bogus" as OverlapLayout }),
+    ).toThrow(invalid);
+    expect(() =>
+      project(events, "2026-10-08", { getEventOverlapLayout: () => "bogus" as OverlapLayout }),
+    ).toThrow(invalid);
+    // `null`, as from data, counts as none.
+    expect(
+      read(project(events, "2026-10-08", { getEventOverlapLayout: () => null as never })).orchid,
+    ).toBe("1/1: a@0/0");
+  });
+
   test("day rows lay events out like a month row, whatever the layout", () => {
     const range = dates("2026-10-05", "2026-10-12");
     const strategy = resourceTimelineStrategy<Options, FixtureEvent>({ kind: "week" });
@@ -329,7 +389,8 @@ describe("hour rows' contract", () => {
         );
         const ends: number[] = [];
         const lanes = row!.bars.map(({ end, start }) => {
-          const free = ends.findIndex((open) => open <= start);
+          // With the time grid's tolerance, so back-to-back events never collide.
+          const free = ends.findIndex((open) => open <= start + 1e-9);
           const lane = free === -1 ? ends.length : free;
           ends[lane] = Math.max(end, start + minimumWidth);
           return lane;
@@ -339,6 +400,65 @@ describe("hour rows' contract", () => {
           lanes.map((lane) => [lane, lane]),
         );
         expect([row!.laneCount, row!.height]).toEqual([ends.length, ends.length]);
+      }),
+      { numRuns: 200 },
+    );
+  });
+
+  test("bars on one level of a stack never overlap, so a lane keeps its meaning", () => {
+    fc.assert(
+      fc.property(randomDay, (events) => {
+        const [row] = project(events, "2026-10-08", { overlapLayout: "stack" }).rows.filter(
+          ({ resource }) => resource.id === null,
+        );
+        for (const [index, earlier] of row!.bars.entries()) {
+          for (const later of row!.bars.slice(index + 1)) {
+            if (later.lane === earlier.lane)
+              expect(earlier.end).toBeLessThanOrEqual(later.start + 1e-9);
+          }
+        }
+      }),
+      { numRuns: 200 },
+    );
+  });
+
+  test("keeps every bar's place when an event it never overlaps comes or goes", () => {
+    const stackShort = (event: FixtureEvent) =>
+      Number(event.id.slice(1)) % 2 === 0 ? "stack" : undefined;
+    const scenario = fc.tuple(
+      randomDay,
+      fc.record({
+        minutes: fc.integer({ max: 180, min: 5 }),
+        quarter: fc.integer({ max: 92, min: 0 }),
+      }),
+      fc.constantFrom<OverlapLayout>("columns", "stack"),
+    );
+    fc.assert(
+      fc.property(scenario, ([events, { minutes, quarter }, overlapLayout]) => {
+        const start = at("00:00").add({ minutes: quarter * 15 });
+        const extra = timed("x", start.toString(), start.add({ minutes }).toString());
+        const options = { getEventOverlapLayout: stackShort, overlapLayout };
+        const rowOf = (shown: readonly FixtureEvent[]) =>
+          project(shown, "2026-10-08", options).rows.find(({ resource }) => resource.id === null)!;
+        const before = rowOf(events);
+        const after = rowOf([...events, extra]);
+        // The extra event's group, by the same sweep of reserved ends as the layout's.
+        const reserved = (bar: (typeof after.bars)[number]) =>
+          Math.max(bar.end, bar.start + 15 / (24 * 60));
+        const groups: unknown[][] = [];
+        let groupEnd = -Infinity;
+        for (const bar of after.bars) {
+          if (groupEnd <= bar.start + 1e-9) groups.push([]);
+          groups.at(-1)!.push(bar.event.id);
+          groupEnd = Math.max(groupEnd, reserved(bar));
+        }
+        const group = new Set<unknown>(groups.find((ids) => ids.includes("x")));
+        const unrelated = (row: typeof after) =>
+          row.bars
+            .filter(({ event }) => !group.has(event.id))
+            .map(({ event, lane, top }) => [event.id, lane, top]);
+
+        expect(unrelated(after)).toEqual(unrelated(before));
       }),
       { numRuns: 200 },
     );
@@ -373,13 +493,17 @@ describe("hour rows' contract", () => {
         fc.shuffledSubarray(events, { maxLength: events.length, minLength: events.length }),
       ),
     );
+    // Every third event stacks on its own, so groups agree or fall back as the order allows.
+    const stackSome = (event: FixtureEvent) =>
+      Number(event.id.slice(1)) % 3 === 0 ? "stack" : undefined;
     fc.assert(
       fc.property(
         scenario,
-        fc.constantFrom<OverlapLayout>("columns", "stack"),
+        fc.constantFrom<OverlapLayout>("columns", "equal", "stack"),
         ([events, shuffled], overlapLayout) => {
-          expect(read(project(shuffled, "2026-10-08", { overlapLayout }))).toEqual(
-            read(project(events, "2026-10-08", { overlapLayout })),
+          const options = { getEventOverlapLayout: stackSome, overlapLayout };
+          expect(read(project(shuffled, "2026-10-08", options))).toEqual(
+            read(project(events, "2026-10-08", options)),
           );
         },
       ),

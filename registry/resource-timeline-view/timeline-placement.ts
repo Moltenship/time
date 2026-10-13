@@ -19,7 +19,7 @@ export interface TimelineBar<TEvent> {
   readonly startsBefore: boolean;
   /** A timed event's start, shown when its bar fits in one day slot. */
   readonly time?: string;
-  /** How far below the row's first lane the bar sits, in lanes; less than `lane` in a stack. */
+  /** How far below the row's first lane the bar sits, in lanes: `lane`, or a fraction of it in a stack. */
   readonly top: number;
 }
 

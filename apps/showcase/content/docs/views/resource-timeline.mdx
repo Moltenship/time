@@ -249,6 +249,8 @@ const view = createTimelineDayView<Meeting, Resource>({
 
 - `"columns"` and `"equal"` are the same here: a lane per level of overlap. A row has no fixed
   height to share, so no bar narrows.
+- A group's deepest bar sets its step, so a long booking under a busy stretch, such as a desk
+  booked all day, compresses every cascade in it. Hover or focus a covered bar to bring it up.
 - The rules are the time grid's. A group of overlapping events takes its events' own layout,
   from `getEventOverlapLayout`, when they all agree, and otherwise its row's. A group's layout
   depends only on its own events. The Unassigned row follows `overlapLayout`.

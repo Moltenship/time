@@ -739,7 +739,7 @@ interface ResourceTimelineHourRow<TEvent> {
   readonly laneCount: number;
   readonly resource: VisibleResource;
 }
-type ResourceTimelineLayoutOptions<TEvent = unknown, TResource = CalendarResource<unknown, ResourceId>> = Omit<ResourceOverlapLayoutOptions<TEvent, TResource>, "stackIndent">;
+type ResourceTimelineLayoutOptions<TEvent = unknown, TResource = CalendarResource<unknown, ResourceId>> = Pick<ResourceOverlapLayoutOptions<TEvent, TResource>, "getEventOverlapLayout" | "getResourceOverlapLayout" | "overlapLayout">;
 interface ResourceTimelineOptions extends ResourceVisibilityOptions {
   readonly slotUnit?: "day" | "hour";
 }
