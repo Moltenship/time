@@ -48,3 +48,10 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   of two equal wall times at DST's end gets an override there. A new `overrides` option takes the
   series' overrides, so cancelled ones count as hiding occurrences and `"following"` from the first
   one left to show is `"all"` (#160).
+- Overlap layouts vary per resource and per calendar. The time-grid views take
+  `getEventOverlapLayout`, an event's own layout, such as its calendar's. The resource columns
+  view also takes `getResourceOverlapLayout`, a resource's layout in its columns, such as `"stack"`
+  for rooms. A group of overlapping events takes its events' own layout when they all agree, and
+  otherwise its column's: the resource's, then `overlapLayout`. `ResourceOverlapLayoutOptions`
+  and `TimeGridLayoutOptions` are new, `layoutTimeGrid` takes `getEventOverlapLayout`, and an
+  invalid `stackIndent` now throws whatever the layout (#230).

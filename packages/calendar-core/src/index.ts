@@ -150,6 +150,7 @@ export type {
   TimeGridZoneTime,
 } from "./views/time-grid/zones";
 export { layoutTimeGrid } from "./views/time-grid/layout";
+export type { TimeGridLayoutOptions } from "./views/time-grid/layout";
 export type { TimeGridEventLayout } from "./views/time-grid/layout";
 export {
   belongsInTimeGridAllDayRow,
@@ -165,6 +166,7 @@ export type {
 export type {
   OverlapLayout,
   OverlapLayoutOptions,
+  ResourceOverlapLayoutOptions,
   TimedOverlapOptions,
 } from "./layout/timed-overlap";
 export {

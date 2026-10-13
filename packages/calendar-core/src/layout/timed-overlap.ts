@@ -1,3 +1,6 @@
+import type { ResourceId } from "../ids";
+import type { CalendarResource } from "../resources";
+
 /**
  * How overlapping timed events share a day column:
  *
@@ -9,25 +12,59 @@
  */
 export type OverlapLayout = "columns" | "equal" | "stack";
 
-/** How a time grid lays out overlapping events; the time-grid views take these as options. */
-export interface OverlapLayoutOptions {
+/**
+ * How a time grid lays out overlapping events; the time-grid views take these as options. A
+ * collision group takes its events' own layout from `getEventOverlapLayout` when they all agree,
+ * and otherwise its column's: `overlapLayout`, or a resource's in resource columns.
+ */
+export interface OverlapLayoutOptions<TEvent = unknown> {
+  /**
+   * An event's own layout, such as its calendar's; `undefined` leaves it to its column's. A
+   * collision group whose events all resolve to one layout takes it, and any other group its
+   * column's, so an event that overlaps none of a group never changes how the group is drawn.
+   * While an event is being moved or saved, this still gets the event as stored, not its new
+   * time or resources: base it on what a move doesn't change, such as the calendar.
+   */
+  readonly getEventOverlapLayout?: (event: TEvent) => OverlapLayout | undefined;
   /** How overlapping events share a day column; `"columns"` by default. */
   readonly overlapLayout?: OverlapLayout;
   /**
-   * Each level's indent under `"stack"`, as a fraction of the column width; 0.15 by default. A
-   * deeper stack indents less, so its top event always keeps at least half the width.
+   * Each level's indent in a stack, as a fraction of the column width, the same for every stacked
+   * group; 0.15 by default. A deeper stack indents less, so its top event always keeps at least
+   * half the width. A value that isn't positive throws, whatever the layout, since any group may
+   * stack.
    */
   readonly stackIndent?: number;
+}
+
+/** Overlap layout options for a view with a column per resource, such as resource columns. */
+export interface ResourceOverlapLayoutOptions<
+  TEvent = unknown,
+  TResource = CalendarResource<unknown, ResourceId>,
+> extends OverlapLayoutOptions<TEvent> {
+  /**
+   * A resource's layout in its columns, such as `"stack"` for rooms; `undefined` keeps
+   * `overlapLayout`. Events without resources, in the unassigned bucket, follow `overlapLayout`.
+   */
+  readonly getResourceOverlapLayout?: (resource: TResource) => OverlapLayout | undefined;
 }
 
 export interface TimedOverlapItem {
   readonly height: number;
   /** Stable identity; breaks ordering ties so equal inputs always produce equal layouts. */
   readonly key: string;
+  /**
+   * The item's own layout; without it, the options' `overlapLayout`. A collision group whose
+   * items all resolve to one layout takes it, and any other group the options' `overlapLayout`.
+   */
+  readonly overlapLayout?: OverlapLayout;
   readonly top: number;
 }
 
-export interface TimedOverlapOptions extends OverlapLayoutOptions {
+export interface TimedOverlapOptions extends Pick<
+  OverlapLayoutOptions,
+  "overlapLayout" | "stackIndent"
+> {
   /** Smallest rendered height, in the same units as `top`; shorter items reserve this much. */
   readonly minHeight?: number;
 }
@@ -144,31 +181,48 @@ function placeStack<TItem>(
   for (const entry of group) place(entry, entry.lane * step, 1 - entry.lane * step);
 }
 
-function groupPlacer<TItem>(
-  options: TimedOverlapOptions,
-  place: Place<TItem>,
-): (group: readonly Entry<TItem>[]) => void {
-  switch (options.overlapLayout ?? "columns") {
-    case "columns":
-      return (group) => placeColumns(group, place);
-    case "equal":
-      return (group) => placeEqual(group, place);
-    case "stack": {
-      const indent = options.stackIndent ?? DEFAULT_STACK_INDENT;
-      if (!(indent > 0)) throw new RangeError("invalid-stack-indent");
-      return (group) => placeStack(group, place, indent);
-    }
-    default:
-      throw new RangeError("invalid-overlap-layout");
+function checkLayout(layout: OverlapLayout): OverlapLayout {
+  if (layout !== "columns" && layout !== "equal" && layout !== "stack") {
+    throw new RangeError("invalid-overlap-layout");
   }
+  return layout;
 }
 
 /**
- * Lays out vertical items that may overlap, by `options.overlapLayout`. Transitively overlapping
- * items form a collision group, laid out on its own, so a change outside a group never moves its
- * items. Under `"columns"` and `"equal"` each item takes the lowest lane free in its group; under
+ * Places each collision group by the layout its items agree on, or `fallback` when they don't.
+ * Agreement doesn't depend on order, and a group's layout only on its own items.
+ */
+function groupPlacer<TItem extends TimedOverlapItem>(
+  fallback: OverlapLayout,
+  indent: number,
+  place: Place<TItem>,
+): (group: readonly Entry<TItem>[]) => void {
+  return (group) => {
+    let layout: OverlapLayout | undefined;
+    for (const { item } of group) {
+      // `null`, as from data, counts as no layout of its own, as it does for a resource's.
+      const own = checkLayout(item.overlapLayout ?? fallback);
+      layout = layout === undefined || layout === own ? own : fallback;
+    }
+    switch (layout ?? fallback) {
+      case "columns":
+        return placeColumns(group, place);
+      case "equal":
+        return placeEqual(group, place);
+      case "stack":
+        return placeStack(group, place, indent);
+    }
+  };
+}
+
+/**
+ * Lays out vertical items that may overlap. Transitively overlapping items form a collision
+ * group, laid out on its own, so a change outside a group never moves its items. A group takes
+ * the layout its items' own `overlapLayout` agree on, and otherwise `options.overlapLayout`.
+ * Under `"columns"` and `"equal"` each item takes the lowest lane free in its group; under
  * `"stack"` each item sits one level deeper than the deepest earlier item it overlaps. Intervals
- * are half-open, so an item ending where another starts does not collide.
+ * are half-open, so an item ending where another starts does not collide. An invalid
+ * `stackIndent` throws whatever the layout, since any group may stack.
  *
  * Placements are ordered by top, then longer first, then key. That is also their order on top of
  * each other: render them in order, and a stacked item is drawn over the items it overlaps.
@@ -178,6 +232,9 @@ export function layoutTimedOverlaps<TItem extends TimedOverlapItem>(
   options: TimedOverlapOptions = {},
 ): readonly TimedOverlapPlacement<TItem>[] {
   const minHeight = options.minHeight ?? 0;
+  const fallback = checkLayout(options.overlapLayout ?? "columns");
+  const indent = options.stackIndent ?? DEFAULT_STACK_INDENT;
+  if (!(indent > 0)) throw new RangeError("invalid-stack-indent");
   const entries = items
     .map((item) => ({
       bottom: item.top + Math.max(item.height, minHeight),
@@ -187,7 +244,7 @@ export function layoutTimedOverlaps<TItem extends TimedOverlapItem>(
     }))
     .sort(compareEntries);
   const placements: TimedOverlapPlacement<TItem>[] = [];
-  const placeGroup = groupPlacer<TItem>(options, (entry, left, width) => {
+  const placeGroup = groupPlacer<TItem>(fallback, indent, (entry, left, width) => {
     placements.push(
       Object.freeze({
         height: entry.bottom - entry.top,

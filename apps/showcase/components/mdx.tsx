@@ -11,6 +11,7 @@ import {
 import {
   CalendarPreview,
   OverlapLayoutPreview,
+  RoomsAndPeoplePreview,
   SecondaryTimeZonesPreview,
   ShadingRecipesPreview,
 } from "@/components/calendar-preview";
@@ -40,6 +41,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     OverlapLayoutPreview,
     QueryPreview,
     RecurrencePreview,
+    RoomsAndPeoplePreview,
     SecondaryTimeZonesPreview,
     ShadingRecipesPreview,
     ResourceColumnsAnatomy,

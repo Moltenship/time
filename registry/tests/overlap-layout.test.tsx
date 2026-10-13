@@ -1,13 +1,22 @@
 // @vitest-environment jsdom
 
-import type { CalendarEventChange, CalendarFocus, OverlapLayout } from "@moltenship/calendar";
+import {
+  createCalendar,
+  createCanonicalEventAdapter,
+  type CalendarEventChange,
+  type CalendarFocus,
+  type CalendarResource,
+  type OverlapLayout,
+  type OverlapLayoutOptions,
+} from "@moltenship/calendar";
 import { act } from "react";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
+import { createResourceColumnsView } from "../resource-columns-view/resource-columns-view";
 import { createWeekView } from "../time-grid-view/time-grid-view";
 import { drag, layOut } from "./pointer";
 import { render } from "./render";
-import { people, ResourceCalendar, shift } from "./resource-fixtures";
+import { people, ResourceCalendar, shift, type StaffEvent } from "./resource-fixtures";
 import { anchorDate, clock, createTestCalendar, timed, type ColoredEvent } from "./view-fixtures";
 
 type Change = CalendarEventChange<ColoredEvent, string | number, string>;
@@ -48,12 +57,14 @@ afterEach(async () => {
 });
 
 async function renderWeek(
-  overlapLayout: OverlapLayout,
+  layout: OverlapLayout | OverlapLayoutOptions<ColoredEvent>,
   {
     defaultFocus = null,
+    events: shown = events,
     onEventChange = () => {},
   }: {
     readonly defaultFocus?: CalendarFocus | null;
+    readonly events?: readonly ColoredEvent[];
     readonly onEventChange?: (change: Change) => void;
   } = {},
 ) {
@@ -64,10 +75,10 @@ async function renderWeek(
       defaultFocus={defaultFocus}
       defaultTimeZone="UTC"
       defaultView="week"
-      events={events}
+      events={shown}
       locale="en-US"
       onEventChange={onEventChange}
-      viewOptions={{ week: { overlapLayout } }}
+      viewOptions={{ week: typeof layout === "string" ? { overlapLayout: layout } : layout }}
       weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
     >
       <Calendar.ActiveView />
@@ -188,4 +199,152 @@ test("the resource columns view lays out each resource's events by its overlap l
     ["review", 0.15, 0.85],
   ]);
   expect(placed("p2")).toEqual([["review", 0, 1]]);
+});
+
+test("the week view gives each group of events their calendar's layout when they all agree", async () => {
+  // Purple is focus time, which stacks; d's calendar has no layout, so d and e sit side by side.
+  const container = await renderWeek(
+    { getEventOverlapLayout: (event) => (event.data.color === "purple" ? "stack" : undefined) },
+    {
+      events: [
+        timed("a", "2026-10-08T09:00Z", "2026-10-08T12:00Z", "purple"),
+        timed("b", "2026-10-08T09:30Z", "2026-10-08T11:00Z", "purple"),
+        timed("c", "2026-10-08T10:00Z", "2026-10-08T10:30Z", "purple"),
+        timed("d", "2026-10-08T13:00Z", "2026-10-08T14:00Z"),
+        timed("e", "2026-10-08T13:30Z", "2026-10-08T14:30Z", "purple"),
+      ],
+    },
+  );
+
+  expect(positions(container)).toEqual([
+    ["a", 0, 1],
+    ["b", 0.15, 0.85],
+    ["c", 0.3, 0.7],
+    ["d", 0, 0.5],
+    ["e", 0.5, 0.5],
+  ]);
+});
+
+describe("per-resource layouts in resource columns", () => {
+  type Space = CalendarResource<{ readonly kind: "person" | "room" }>;
+  const RoomCalendar = createCalendar<StaffEvent, Space>()({
+    eventAdapter: createCanonicalEventAdapter<null, string, string>(),
+    views: [
+      createResourceColumnsView<StaffEvent, Space>({
+        // Rooms stack their bookings; people keep the view's side-by-side lanes.
+        getResourceOverlapLayout: (resource) =>
+          resource.data.kind === "room" ? "stack" : undefined,
+      }),
+    ],
+  });
+  const spaces: readonly Space[] = [
+    { data: { kind: "room" }, id: "orchid", title: "Orchid" },
+    { data: { kind: "person" }, id: "ada", title: "Ada" },
+  ];
+  type Booking = CalendarEventChange<StaffEvent, string, string>;
+  const bookings = [
+    shift("a", ["orchid", "ada"], "2026-10-08T09:00Z", "2026-10-08T12:00Z"),
+    shift("b", ["orchid", "ada"], "2026-10-08T09:30Z", "2026-10-08T11:00Z"),
+    shift("c", ["orchid"], "2026-10-08T10:00Z", "2026-10-08T10:30Z"),
+    shift("d", ["ada"], "2026-10-08T10:00Z", "2026-10-08T10:30Z"),
+  ];
+
+  async function renderRooms({
+    defaultFocus = null,
+    onEventChange = () => {},
+  }: {
+    readonly defaultFocus?: CalendarFocus | null;
+    readonly onEventChange?: (change: Booking) => void;
+  } = {}) {
+    const view = await render(
+      <RoomCalendar.Root
+        defaultAnchorDate={anchorDate}
+        defaultFocus={defaultFocus}
+        defaultTimeZone="UTC"
+        defaultView="resources"
+        events={bookings}
+        locale="en-US"
+        now={Temporal.Instant.from("2026-10-08T12:00Z")}
+        onEventChange={onEventChange}
+        resources={spaces}
+        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+      >
+        <RoomCalendar.ActiveView />
+      </RoomCalendar.Root>,
+    );
+    cleanup = view.unmount;
+    return view.container;
+  }
+
+  const placed = (container: HTMLElement, resourceId: string) =>
+    [
+      ...container.querySelectorAll<HTMLElement>(
+        `[data-slot="resource-columns-body"] [data-resource-id="${resourceId}"] [data-event-id]`,
+      ),
+    ].map((event) => [
+      event.getAttribute("data-event-id"),
+      share(event.style.insetInlineStart),
+      share(event.style.width),
+    ]);
+
+  test("draws each resource's column by its own layout, in the order they cover each other", async () => {
+    const container = await renderRooms();
+
+    // Document order is drawing order: in the room, each stacked booking covers the one before.
+    expect(placed(container, "orchid")).toEqual([
+      ["a", 0, 1],
+      ["b", 0.15, 0.85],
+      ["c", 0.3, 0.7],
+    ]);
+    expect(placed(container, "ada")).toEqual([
+      ["a", 0, 0.333],
+      ["b", 0.333, 0.333],
+      ["d", 0.667, 0.333],
+    ]);
+  });
+
+  test("moving a stacked booking to a person from the keyboard gives the pointer's change", async () => {
+    const pointerChange = vi.fn<(change: Booking) => void>();
+    const container = await renderRooms({ onEventChange: pointerChange });
+    // 100px columns, 100px an hour: c is drawn at 30–100px of Orchid's column, 10:00–10:30.
+    const event = container.querySelector('[data-event-id="c"]')!;
+    const columns = [
+      ...container.querySelectorAll('[data-slot="resource-columns-body"] [data-date]'),
+    ];
+    layOut([
+      [event, { height: 50, width: 70, x: 30, y: 1000 }],
+      ...columns.map(
+        (column, index) => [column, { height: 2400, width: 100, x: index * 100, y: 0 }] as const,
+      ),
+    ]);
+    drag(event, [
+      [65, 1010],
+      [165, 1010],
+    ]);
+    await cleanup?.();
+
+    const keyboardChange = vi.fn<(change: Booking) => void>();
+    await renderRooms({
+      defaultFocus: { date: anchorDate, eventId: "a", kind: "event", resourceId: "orchid" },
+      onEventChange: keyboardChange,
+    });
+    await act(async () =>
+      document.querySelector<HTMLElement>('[role="grid"] [tabindex="0"]')!.focus(),
+    );
+    // Through the stack as drawn: each booking sits on the one before it.
+    const visited = [];
+    for (const key of ["ArrowRight", "ArrowRight"]) {
+      await press(key);
+      visited.push(document.activeElement?.getAttribute("data-event-id"));
+    }
+    for (const key of [" ", "ArrowRight", "Enter"]) await press(key);
+
+    expect(visited).toEqual(["b", "c"]);
+    const fromPointer = pointerChange.mock.calls[0]![0];
+    const fromKeyboard = keyboardChange.mock.calls[0]![0];
+    expect(fromKeyboard.cause).toBe("move");
+    expect(fromKeyboard.proposed).toEqual(fromPointer.proposed);
+    expect(fromKeyboard.proposed?.resourceIds).toEqual(["ada"]);
+    expect(fromKeyboard.proposed?.start.toString()).toBe("2026-10-08T10:00:00Z");
+  });
 });

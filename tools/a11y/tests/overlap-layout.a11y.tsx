@@ -249,3 +249,127 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
     );
   });
 });
+
+type Space = CalendarResource<{ readonly kind: "person" | "room" }>;
+
+/**
+ * Rooms stack their bookings and people keep side-by-side lanes; in the week view, the reviews'
+ * calendar stacks, where a whole group of its events overlaps.
+ */
+const MixedCalendar = createCalendar<Fixture, Space>()({
+  eventAdapter: createCanonicalEventAdapter<{ readonly color: CalendarEventColor }, string>(),
+  views: [
+    createWeekView<Fixture>({
+      getEventColor,
+      getEventOverlapLayout: (event) => (event.title.startsWith("Review") ? "stack" : undefined),
+    }),
+    createResourceColumnsView<Fixture, Space>({
+      getEventColor,
+      getResourceOverlapLayout: (resource) => (resource.data.kind === "room" ? "stack" : undefined),
+    }),
+  ],
+});
+const spaces: readonly Space[] = [
+  { data: { kind: "room" }, id: "orchid", title: "Orchid" },
+  { data: { kind: "person" }, id: "ada", title: "Ada" },
+];
+/** Ada's day, booked in Orchid too. */
+const booked: readonly Fixture[] = events.map((event) => ({
+  ...event,
+  resourceIds: ["orchid", "ada"],
+}));
+
+function MixedScreen({
+  dir,
+  view,
+}: {
+  readonly dir?: "ltr" | "rtl";
+  readonly view: "resources" | "week";
+}) {
+  return (
+    <TooltipProvider>
+      <MixedCalendar.Root
+        defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+        defaultTimeZone="UTC"
+        defaultView={view}
+        direction={dir}
+        events={booked}
+        locale="en-US"
+        now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
+        resources={spaces}
+        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+      >
+        <MixedCalendar.Frame className="flex h-dvh flex-col" dir={dir}>
+          <MixedCalendar.Viewport className="min-h-0 flex-1">
+            <MixedCalendar.ActiveView />
+          </MixedCalendar.Viewport>
+        </MixedCalendar.Frame>
+      </MixedCalendar.Root>
+    </TooltipProvider>
+  );
+}
+
+/** An event's element in a resource's column. */
+const bookingIn = (resourceId: string, title: string) =>
+  document.querySelector<HTMLElement>(
+    `[data-slot="resource-columns-body"] [data-resource-id="${resourceId}"] [data-event-id="${title}"]`,
+  )!;
+
+describe.each(themes)("mixed overlap layouts, %s theme", (theme) => {
+  test.each(["week", "resources"] as const)("in the %s view", async (view) => {
+    setTheme(theme);
+    await render(<MixedScreen view={view} />);
+
+    expect(await seriousViolations()).toEqual([]);
+  });
+});
+
+describe.each(["ltr", "rtl"] as const)("mixed overlap layouts, %s", (dir) => {
+  test("a room's column stacks its bookings over each other, and a person's sets them side by side", async () => {
+    await render(<MixedScreen dir={dir} view="resources" />);
+    const box = (resourceId: string, title: string) =>
+      bookingIn(resourceId, title).getBoundingClientRect();
+    const roomTalk = box("orchid", "Talk");
+    const personTalk = box("ada", "Talk");
+    const personWorkshop = box("ada", "Workshop");
+
+    // In the room, the talk covers the workshop where they overlap.
+    expect(eventAt(roomTalk.x + roomTalk.width / 2, roomTalk.y + 8)).toBe(
+      bookingIn("orchid", "Talk"),
+    );
+    expect(roomTalk.width).toBeGreaterThan(box("orchid", "Workshop").width / 2);
+    // For the person, the two sit side by side and cover nothing.
+    expect(
+      personTalk.left >= personWorkshop.right - 1 || personTalk.right <= personWorkshop.left + 1,
+    ).toBe(true);
+  });
+
+  test("the keyboard walks a stacked room's bookings in the order they're drawn", async () => {
+    await render(<MixedScreen dir={dir} view="resources" />);
+    await act(async () => bookingIn("orchid", "Workshop").focus());
+    const forward = dir === "ltr" ? "{ArrowRight}" : "{ArrowLeft}";
+
+    await userEvent.keyboard(forward);
+    expect(document.activeElement).toBe(bookingIn("orchid", "Talk"));
+    await userEvent.keyboard(forward);
+    expect(document.activeElement).toBe(bookingIn("orchid", "Call"));
+    // Focused, the call is on top where all three overlap.
+    const call = bookingIn("orchid", "Call").getBoundingClientRect();
+    expect(eventAt(call.x + call.width / 2, call.y + 8)).toBe(bookingIn("orchid", "Call"));
+  });
+
+  test("the week view stacks the reviews' calendar and keeps the rest side by side", async () => {
+    await render(<MixedScreen dir={dir} view="week" />);
+    const area = eventElement("Workshop").parentElement!.getBoundingClientRect();
+    const box = (title: string) => eventElement(title).getBoundingClientRect();
+    const reviews = ["Review 1", "Review 2", "Review 3"].map(box);
+
+    // The workshop, talk and call have no layout of their own: lanes, as the view's default.
+    expect(box("Talk").width).toBeCloseTo(area.width / 3, 0);
+    // The reviews all stack: each indented past the one before and drawn over it.
+    expect(reviews[1]!.width).toBeCloseTo(0.85 * area.width, 0);
+    expect(reviews[2]!.width).toBeCloseTo(0.7 * area.width, 0);
+    const top = reviews[2]!;
+    expect(eventAt(top.x + top.width / 2, top.y + 8)).toBe(eventElement("Review 3"));
+  });
+});

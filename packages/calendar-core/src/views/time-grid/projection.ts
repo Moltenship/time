@@ -33,16 +33,17 @@ export type TimeGridProjectionInput<TEvent> = Pick<
   CalendarViewProjectionInput<unknown, TEvent>,
   "environment" | "range" | "snapshot" | "today"
 > &
-  OverlapLayoutOptions;
+  OverlapLayoutOptions<TEvent>;
 
 /**
  * The overlap layout a view's options choose. A time-grid strategy takes options of any type, so
  * it reads them only from an object.
  */
-export function overlapLayoutOf(options: unknown): OverlapLayoutOptions {
+export function overlapLayoutOf<TEvent>(options: unknown): OverlapLayoutOptions<TEvent> {
   if (typeof options !== "object" || options === null) return {};
-  const { overlapLayout, stackIndent } = options as OverlapLayoutOptions;
-  return { overlapLayout, stackIndent };
+  const { getEventOverlapLayout, overlapLayout, stackIndent } =
+    options as OverlapLayoutOptions<TEvent>;
+  return { getEventOverlapLayout, overlapLayout, stackIndent };
 }
 
 /**
@@ -69,7 +70,7 @@ export function timeGridOf<TEvent>(
   columns: readonly TimeGridColumn[],
   range: PlainDateInterval,
   today: Temporal.PlainDate | null,
-  layout: OverlapLayoutOptions,
+  layout: OverlapLayoutOptions<TEvent>,
 ): TimeGridProjection<TEvent> {
   const allDay = fragments.filter((fragment) => belongsInTimeGridAllDayRow(fragment.event));
   const timed = fragments.filter((fragment) => !belongsInTimeGridAllDayRow(fragment.event));
@@ -91,10 +92,11 @@ export function timeGridOf<TEvent>(
 
 /**
  * Splits the visible events into the all-day row and per-day columns of positioned blocks, which
- * overlap as `overlapLayout` chooses.
+ * overlap as `overlapLayout` and each event's own `getEventOverlapLayout` choose.
  */
 export function projectTimeGrid<TEvent>({
   environment,
+  getEventOverlapLayout,
   overlapLayout,
   range,
   snapshot,
@@ -108,6 +110,7 @@ export function projectTimeGrid<TEvent>({
     timeZone,
   );
   return timeGridOf(fragments, timeGridColumns(range, timeZone), range, today, {
+    getEventOverlapLayout,
     overlapLayout,
     stackIndent,
   });
@@ -115,7 +118,8 @@ export function projectTimeGrid<TEvent>({
 
 /**
  * Range, navigation, keyboard navigation, title, and projection for a day, week, or N-day grid.
- * Overlapping events follow the `overlapLayout` and `stackIndent` in the view's options.
+ * Overlapping events follow the `overlapLayout`, `getEventOverlapLayout` and `stackIndent` in the
+ * view's options.
  */
 export function timeGridStrategy<TOptions = undefined, TEvent = unknown>(
   span: TimeGridSpan,
@@ -125,7 +129,7 @@ export function timeGridStrategy<TOptions = undefined, TEvent = unknown>(
     getSpatialNavigation: timeGridSpatialNavigation,
     getTitle: (range, environment) => timeGridTitle(range, environment.locale),
     navigate: (anchor, delta) => navigateTimeGrid(anchor, delta, span),
-    project: (input) => projectTimeGrid({ ...input, ...overlapLayoutOf(input.options) }),
+    project: (input) => projectTimeGrid({ ...input, ...overlapLayoutOf<TEvent>(input.options) }),
   };
   return Object.freeze(strategy);
 }

@@ -337,3 +337,188 @@ describe("drawn overlap", () => {
     );
   });
 });
+
+describe("items' own layouts", () => {
+  /** Items as in `items`, each with its own layout after a colon, e.g. `"a 9-11:stack"`. */
+  function own(...specs: readonly string[]): readonly TimedOverlapItem[] {
+    return specs.map((spec) => {
+      const [range, overlapLayout] = spec.split(":") as [string, OverlapLayout | undefined];
+      return { ...items(range)[0]!, ...(overlapLayout === undefined ? {} : { overlapLayout }) };
+    });
+  }
+  const layout = (specs: readonly string[], options?: TimedOverlapOptions) =>
+    layoutTimedOverlaps(own(...specs), options).map(({ item, left, width }) => [
+      item.key,
+      left,
+      width,
+    ]);
+
+  test("a group whose items all ask for one layout takes it", () => {
+    expect(layout(["a 9-11:stack", "b 10-12:stack"])).toEqual([
+      ["a", 0, 1],
+      ["b", 0.15, 0.85],
+    ]);
+    expect(layout(["a 9-11:columns", "b 10-12:columns"], { overlapLayout: "stack" })).toEqual([
+      ["a", 0, 0.5],
+      ["b", 0.5, 0.5],
+    ]);
+  });
+
+  test("a group whose items disagree takes the options' layout", () => {
+    expect(layout(["a 9-11:stack", "b 10-12:equal"])).toEqual([
+      ["a", 0, 0.5],
+      ["b", 0.5, 0.5],
+    ]);
+    expect(layout(["a 9-11:stack", "b 10-12:columns"], { overlapLayout: "equal" })).toEqual([
+      ["a", 0, 0.5],
+      ["b", 0.5, 0.5],
+    ]);
+  });
+
+  test("an item without a layout of its own counts as the options' layout", () => {
+    // b agrees with the stack around it under "stack", and not under the default "columns".
+    expect(layout(["a 9-11:stack", "b 10-12"], { overlapLayout: "stack" })).toEqual([
+      ["a", 0, 1],
+      ["b", 0.15, 0.85],
+    ]);
+    expect(layout(["a 9-11:stack", "b 10-12"])).toEqual([
+      ["a", 0, 0.5],
+      ["b", 0.5, 0.5],
+    ]);
+  });
+
+  test("each collision group decides on its own", () => {
+    expect(
+      layout([
+        "a 9-11:stack",
+        "b 10-12:stack",
+        // Starts as b ends: a group of its own.
+        "c 12-14:columns",
+        "d 12-13",
+        "e 13-14:equal",
+      ]),
+    ).toEqual([
+      ["a", 0, 1],
+      ["b", 0.15, 0.85],
+      ["c", 0, 0.5],
+      ["d", 0.5, 0.5],
+      ["e", 0.5, 0.5],
+    ]);
+  });
+
+  test("rejects an unknown layout on any item, also in a group that disagrees", () => {
+    expect(() => layout(["a 9-10:grid"])).toThrow(new RangeError("invalid-overlap-layout"));
+    expect(() => layout(["a 9-11:stack", "b 9-12:equal", "c 10-11:grid"])).toThrow(
+      new RangeError("invalid-overlap-layout"),
+    );
+  });
+
+  test("rejects an indent that is not positive whatever the layout, since any group may stack", () => {
+    expect(() => layout([], { overlapLayout: "columns", stackIndent: 0 })).toThrow(
+      new RangeError("invalid-stack-indent"),
+    );
+  });
+});
+
+/** As `day`, each item with a layout of its own or none. */
+const mixedDay = day.chain((input) =>
+  fc.tuple(
+    ...input.map((item) =>
+      fc
+        .option(fc.constantFrom(...policies), { nil: undefined })
+        .map((overlapLayout): TimedOverlapItem => ({ ...item, overlapLayout })),
+    ),
+  ),
+);
+
+/** Collision groups in placement order, by the same half-open sweep as the layout's. */
+function groupsOf<TItem extends TimedOverlapItem>(
+  placements: readonly { readonly height: number; readonly item: TItem; readonly top: number }[],
+): readonly (readonly TItem[])[] {
+  const groups: TItem[][] = [];
+  let bottom = -Infinity;
+  for (const { height, item, top } of placements) {
+    if (bottom <= top) groups.push([]);
+    groups.at(-1)!.push(item);
+    bottom = Math.max(bottom, top + height);
+  }
+  return groups;
+}
+
+describe.each(policies)("mixed items' layouts under %s", (overlapLayout) => {
+  const layout = (input: readonly TimedOverlapItem[]) =>
+    layoutTimedOverlaps(input, { overlapLayout });
+
+  test("draws each collision group as its agreed layout would alone", () => {
+    fc.assert(
+      fc.property(mixedDay, (input) => {
+        const placements = layout(input);
+        const byKey = new Map(placements.map((placement) => [placement.item.key, placement]));
+        for (const group of groupsOf(placements)) {
+          const resolved = new Set(group.map((item) => item.overlapLayout ?? overlapLayout));
+          const agreed = resolved.size === 1 ? [...resolved][0]! : overlapLayout;
+          const alone = layoutTimedOverlaps(
+            group.map(({ height, key, top }) => ({ height, key, top })),
+            { overlapLayout: agreed },
+          );
+          expect(alone.map(({ item, left, width }) => [item.key, left, width])).toEqual(
+            group.map((item) => [item.key, byKey.get(item.key)!.left, byKey.get(item.key)!.width]),
+          );
+        }
+      }),
+      { numRuns: 300 },
+    );
+  });
+
+  test("places every item independent of input order", () => {
+    const scenario = mixedDay.chain((input) =>
+      fc.tuple(
+        fc.constant(input),
+        fc.shuffledSubarray(input, { maxLength: input.length, minLength: input.length }),
+      ),
+    );
+
+    fc.assert(
+      fc.property(scenario, ([input, shuffled]) => {
+        expect(layout(shuffled)).toEqual(layout(input));
+      }),
+      { numRuns: 200 },
+    );
+  });
+
+  test("keeps every item's placement when an item it never collides with changes", () => {
+    const scenario = fc.tuple(
+      mixedDay,
+      fc.record({
+        height: fc.integer({ max: 16, min: 1 }),
+        key: fc.constant("extra"),
+        overlapLayout: fc.option(fc.constantFrom(...policies), { nil: undefined }),
+        top: fc.integer({ max: 92, min: 0 }),
+      }),
+    );
+
+    fc.assert(
+      fc.property(scenario, ([input, extra]) => {
+        const before = layout(input);
+        const after = layout([...input, extra]);
+        const group = groupsOf(after).find((items) => items.includes(extra))!;
+        const unrelated = (placements: typeof before) =>
+          placements.filter(({ item }) => !group.includes(item));
+
+        expect(unrelated(after)).toEqual(unrelated(before));
+      }),
+      { numRuns: 200 },
+    );
+  });
+
+  test("lists placements as the keyboard walks them: top to bottom, then from the inline start", () => {
+    fc.assert(
+      fc.property(mixedDay, (input) => {
+        const placements = layout(input);
+
+        expect(placements.toSorted((a, b) => a.top - b.top || a.left - b.left)).toEqual(placements);
+      }),
+      { numRuns: 200 },
+    );
+  });
+});

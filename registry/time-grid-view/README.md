@@ -20,7 +20,9 @@ const views = [
   "equal"` for lanes of equal width, or `"stack"` to cascade them, each indented past the events
   it overlaps by `stackIndent` (a fraction of the column) and drawn on top. A stacked event rises
   to the top while hovered or focused, so its title stays readable, and a title too long for its
-  event shows in full in a tooltip.
+  event shows in full in a tooltip. `getEventOverlapLayout` gives events their own layout, such
+  as their calendar's: a group of overlapping events takes it when they all agree, and
+  `overlapLayout` otherwise.
 - All-day events and events of 24 hours or more sit in the all-day row, which collapses busy days
   to three lanes with "+N more".
 - Columns use a nominal 24-hour wall clock. Spring-forward hours are hatched, repeated fall-back

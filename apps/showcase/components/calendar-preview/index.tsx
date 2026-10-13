@@ -2,6 +2,7 @@ import type { LiveCalendarProps, PreviewView } from "./calendar";
 import PreviewIsland, {
   OverlapPreviewIsland,
   ResourcePreviewIsland,
+  RoomsAndPeoplePreviewIsland,
   ShadingPreviewIsland,
   TimeZonesPreviewIsland,
 } from "./island";
@@ -87,6 +88,21 @@ export function OverlapLayoutPreview() {
       </div>
       <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
         Live. Switch the layout, or drag events to see the others make room.
+      </figcaption>
+    </figure>
+  );
+}
+
+/** Two rooms and two people over a day, with a toggle for each kind's overlap layout. */
+export function RoomsAndPeoplePreview() {
+  return (
+    <figure className="not-prose my-6">
+      <div className="h-[32rem] overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm">
+        <RoomsAndPeoplePreviewIsland />
+      </div>
+      <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
+        Live, in your time zone. Pick a layout for the rooms and one for the people, or drag a
+        booking from a room to a person.
       </figcaption>
     </figure>
   );

@@ -13,3 +13,6 @@ A day or N-day time grid with a column per resource, built on the week and day v
 - The header and the hour gutter sit beside the scrolling body rather than over it and follow its
   scroll, so a drag never targets a column hidden under them.
 - Overlapping events follow `overlapLayout` and `stackIndent`, as in the week and day views.
+  `getResourceOverlapLayout` gives a resource's columns their own layout, such as `"stack"` for
+  rooms, and `getEventOverlapLayout` an event its own, such as its calendar's, taken by a group of
+  overlapping events that all agree.

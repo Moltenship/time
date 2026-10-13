@@ -44,7 +44,7 @@ export function scrollingTimeGridStrategy<TOptions = undefined, TEvent = unknown
     project: (input) =>
       projectTimeGrid({
         ...input,
-        ...overlapLayoutOf(input.options),
+        ...overlapLayoutOf<TEvent>(input.options),
         range: input.loadRange ?? input.range,
       }),
   };
