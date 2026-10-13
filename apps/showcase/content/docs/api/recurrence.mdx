@@ -549,7 +549,8 @@ const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEv
 - With `X-MICROSOFT-CDO-ALLDAYEVENT:TRUE`, an event written from midnight to a later midnight, or
   from midnight without an end, as older Outlook and Exchange exports write all-day events, is
   all-day on the dates written, even when its TZID resolves to no zone. Its series' midnight
-  EXDATE, UNTIL and RECURRENCE-ID values are those dates, and UTC ones read in its DTSTART's zone.
+  EXDATE, UNTIL and RECURRENCE-ID values are those dates. UTC ones read in its DTSTART's zone (UTC
+  for a UTC one), else in `timeZone`.
 - EXDATE, RDATE, UNTIL and RECURRENCE-ID take the series' kind through `coerceRecurrenceDate`.
 - A cancelled master or one-off event is left out, with the master's overrides. A cancelled
   override comes out with `override.cancelled`, which hides its occurrence.

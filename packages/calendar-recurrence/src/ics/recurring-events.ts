@@ -80,7 +80,7 @@ export interface IcsRecurringEventsOptions {
    * The feed's time zone: its X-WR-TIMEZONE (`IcsCalendar.timeZone`), or one the application
    * chose. UTC times on all-day and floating series, such as an UNTIL, are read in it, so they keep
    * the feed's dates; on an all-day series Outlook flags with `X-MICROSOFT-CDO-ALLDAYEVENT`, they
-   * are read in the zone of its DTSTART instead. Floating DTSTARTs stay floating. Defaults to the
+   * are read in the zone its DTSTART was written in instead (UTC for a UTC one), when it has one. Floating DTSTARTs stay floating. Defaults to the
    * zone most of the events' TZIDs resolve to, as feeds without X-WR-TIMEZONE, such as Exchange's,
    * need, and to UTC when none has one. Pass `"UTC"` for the reading before that default.
    */
@@ -123,6 +123,8 @@ function timeZoneOf(timeZone: string | undefined): string | undefined {
 type IcsEventTimes = Pick<IcsEvent, "duration" | "end" | "otherProperties" | "start">;
 
 const allDayProperty = "X-MICROSOFT-CDO-ALLDAYEVENT";
+
+const withZone = (timeZone: string | undefined) => (timeZone === undefined ? {} : { timeZone });
 
 /** The zone a value was written in: its TZID's, UTC for a UTC time, else none. */
 function zoneOf(value: IcsDateValue): string | undefined {
@@ -288,8 +290,8 @@ function unique<TDate extends RecurrenceDate | RecurrencePeriod>(
  *   it), an event written from midnight to a later midnight, or from midnight without DTEND or
  *   DURATION, as older Outlook and Exchange exports write all-day events, is all-day on the dates
  *   written, even when its TZID resolves to no zone. Its series' EXDATE, UNTIL and RECURRENCE-ID
- *   values at midnight are those dates, without an issue, and UTC ones read in the zone of its
- *   DTSTART, or UTC.
+ *   values at midnight are those dates, without an issue. UTC ones read in the zone its DTSTART was
+ *   written in (UTC for a UTC one), else in `timeZone`.
  * - Dates: EXDATE, RDATE, UNTIL and RECURRENCE-ID take the kind of the series' first occurrence
  *   through `coerceRecurrenceDate`. A date-only EXDATE excludes the whole day, a date-only UNTIL
  *   lasts through that day, and a date-only RDATE or RECURRENCE-ID on a timed or floating series
@@ -391,10 +393,9 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
     } else if (first.kind === "all-day" && flaggedAllDay(event)) {
       // Outlook's all-day series write their dates as midnights, and UTC ones at the midnight of
       // the zone DTSTART was written in.
-      const own = zoneOf(event.start) ?? timeZone;
-      series.set(uid, { first, midnights: true, ...(own === undefined ? {} : { timeZone: own }) });
+      series.set(uid, { first, midnights: true, ...withZone(zoneOf(event.start) ?? timeZone) });
     } else {
-      series.set(uid, { first, ...(timeZone === undefined ? {} : { timeZone }) });
+      series.set(uid, { first, ...withZone(timeZone) });
     }
   }
 
@@ -421,7 +422,11 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
       // A flagged all-day override names its occurrence by a midnight, as its series would.
       recurrenceId =
         (interval.kind === "all-day" && flaggedAllDay(event)
-          ? midnightDate(value, { first: interval, midnights: true, timeZone: zoneOf(event.start) })
+          ? midnightDate(value, {
+              first: interval,
+              midnights: true,
+              ...withZone(zoneOf(event.start) ?? timeZone),
+            })
           : undefined) ?? ownRecurrenceId(value, interval);
     } else {
       const { date, mismatch } = toSeriesDate(value, time, "start", "RECURRENCE-ID");

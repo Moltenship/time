@@ -1119,6 +1119,26 @@ describe("recurringEventsFromIcs: Outlook's X-MICROSOFT-CDO-ALLDAYEVENT", () => 
       recurringEventsFromIcs(events).events.find((event) => event.override !== undefined)?.id;
     expect(idOf(parse(override))).toBe("wfh::2026-12-11");
     expect(idOf(parse(master, override))).toBe("wfh::2026-12-11");
+    // Exchange 2010 writes a DATE DTSTART and a UTC RECURRENCE-ID at the owner's midnight, read in
+    // the feed's zone either way.
+    const dateOverride = [
+      "UID:office",
+      "RECURRENCE-ID:20260729T220000Z",
+      "DTSTART;VALUE=DATE:20260731",
+      flagged,
+    ];
+    const dateMaster = [
+      "UID:office",
+      "DTSTART;VALUE=DATE:20260714",
+      "RRULE:FREQ=WEEKLY;BYDAY=TU,TH",
+      flagged,
+    ];
+    const options = { timeZone: "Europe/Berlin" };
+    const dateIdOf = (events: readonly IcsEvent[]) =>
+      recurringEventsFromIcs(events, options).events.find((event) => event.override !== undefined)
+        ?.id;
+    expect(dateIdOf(parse(dateOverride))).toBe("office::2026-07-30");
+    expect(dateIdOf(parse(dateMaster, dateOverride))).toBe("office::2026-07-30");
   });
 
   test("reads a flagged series' midnights as its dates, and its UTC dates in its zone", () => {
