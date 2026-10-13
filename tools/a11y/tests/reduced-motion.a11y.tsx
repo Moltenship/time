@@ -1,11 +1,11 @@
 import { act } from "react";
-import { describe, expect, test, vi } from "vite-plus/test";
+import { describe, expect, test } from "vite-plus/test";
 
 import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@registry/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@registry/ui/popover";
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@registry/ui/sheet";
 
-import { click, render } from "./render";
+import { click, render, until } from "./render";
 import { axis, ScrollingScreen, title } from "./scrolling-screen";
 
 function position(element: Element) {
@@ -26,7 +26,7 @@ async function entry(selector: string) {
   }
   const first = position(element);
   for (const animation of animations) animation.play();
-  await vi.waitFor(() => {
+  await until(() => {
     expect(element.hasAttribute("data-starting-style")).toBe(false);
     expect(element.getAnimations()).toEqual([]);
   });

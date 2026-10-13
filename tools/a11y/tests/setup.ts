@@ -31,12 +31,14 @@ if (import.meta.env.MODE === "browsers" && server.browser === "webkit") {
 }
 
 // The mouse stays where a test leaves it, over whatever the next test renders there, which it
-// would hover. Each test ends with the mouse parked on a corner of its own, above the page.
+// would hover. Each test ends with the mouse parked on a corner of its own, above the page. The
+// corner never moves, so the move skips Playwright's checks, which wait for frames, and a page
+// that doesn't take the move in 10 seconds fails the test instead of holding up the run.
 const corner = document.createElement("div");
 corner.setAttribute("aria-hidden", "true");
 corner.style.cssText =
   "position: fixed; top: 0; left: 0; z-index: 2147483647; width: 1px; height: 1px";
 document.body.append(corner);
 afterEach(async () => {
-  await userEvent.hover(corner);
+  await userEvent.hover(corner, { force: true, timeout: 10_000 });
 });

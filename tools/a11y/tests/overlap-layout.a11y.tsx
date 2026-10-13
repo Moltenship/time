@@ -15,7 +15,7 @@ import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { seriousViolations, setTheme, themes } from "./axe";
-import { render } from "./render";
+import { nextFrame, render, until } from "./render";
 
 type Fixture = CalendarEvent<{ readonly color: CalendarEventColor }, string>;
 
@@ -189,6 +189,7 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
 
     // The pointer rests on the top review while the keyboard focuses the one under it.
     await userEvent.hover(reviews[2]!);
+    await until(() => expect(reviews[2]!.matches(":hover")).toBe(true));
     await act(async () => reviews[0]!.focus());
 
     expect(eventAt(...title)).toBe(reviews[0]);
@@ -200,22 +201,24 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
     const long = eventElement("Quarterly planning with the infrastructure and platform teams");
     const tooltip = () => document.querySelector('[data-slot="tooltip-content"]');
 
+    // The tooltips open without a delay, so a few frames after the pointer comes, one would show.
     await userEvent.hover(eventElement("Review 3"));
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await until(() => expect(eventElement("Review 3").matches(":hover")).toBe(true));
+    for (let frame = 0; frame < 5; frame += 1) await nextFrame();
     expect(tooltip()).toBeNull();
 
     await userEvent.hover(long);
-    await vi.waitFor(() =>
+    await until(() =>
       expect(tooltip()?.textContent).toBe(
         "Quarterly planning with the infrastructure and platform teams",
       ),
     );
     expect(await seriousViolations()).toEqual([]);
     await userEvent.unhover(long);
-    await vi.waitFor(() => expect(tooltip()).toBeNull());
+    await until(() => expect(tooltip()).toBeNull());
 
     await act(async () => long.focus());
-    await vi.waitFor(() => expect(tooltip()).not.toBeNull());
+    await until(() => expect(tooltip()).not.toBeNull());
   });
 
   test("Escape still reaches the calendar while the title tooltip is open", async () => {
@@ -227,7 +230,7 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
 
     // Picked up and moved, Escape cancels the move.
     await act(async () => eventElement(title).focus());
-    await vi.waitFor(() => expect(tooltip()).not.toBeNull());
+    await until(() => expect(tooltip()).not.toBeNull());
     await userEvent.keyboard(" ");
     await userEvent.keyboard("{ArrowDown}");
     await userEvent.keyboard("{Escape}");
@@ -239,7 +242,7 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
     // and the event kept focus, so focus comes back to it to open the tooltip again.
     await act(async () => eventElement(title).blur());
     await act(async () => eventElement(title).focus());
-    await vi.waitFor(() => expect(tooltip()).not.toBeNull());
+    await until(() => expect(tooltip()).not.toBeNull());
     await userEvent.keyboard("{Escape}");
     expect(document.activeElement?.getAttribute("aria-label")).toBe(
       "Thursday, October 8 at 4:00 PM",

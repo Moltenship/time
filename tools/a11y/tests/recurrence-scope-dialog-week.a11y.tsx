@@ -11,7 +11,7 @@ import {
   type RecurringCalendarEvent,
 } from "@moltenship/calendar-recurrence";
 import { useMemo, useState } from "react";
-import { expect, test, vi } from "vite-plus/test";
+import { expect, test } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 
 import { calendarAnnouncements } from "@registry/calendar/announcements";
@@ -19,7 +19,7 @@ import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 
 import { seriousViolations, setTheme, themes } from "./axe";
-import { inWebKit, render } from "./render";
+import { removed, render, until } from "./render";
 
 type Standup = RecurringCalendarEvent<null, string>;
 type Occurrence = RecurrenceOccurrence<Standup, string>;
@@ -152,22 +152,19 @@ async function moveFromKeyboard(eventId: string, keys: string) {
   await userEvent.keyboard(" ");
   await userEvent.keyboard(keys);
   await userEvent.keyboard("{Enter}");
-  // Focus can take over a second to move into the question in WebKit on temporal-polyfill on a
-  // CI runner.
-  await vi.waitFor(() => expect(dialog()?.contains(document.activeElement)).toBe(true), {
-    timeout: inWebKit ? 3000 : 1000,
-  });
+  await until(() => expect(dialog()?.contains(document.activeElement)).toBe(true));
 }
 
 /** Tabs to a choice in the dialog and presses Enter on it. */
 async function choose(text: string) {
   // From the first choice, which the dialog focuses in the next animation frame.
-  await vi.waitFor(() => expect(dialog()!.querySelector("button")).toBe(document.activeElement));
+  await until(() => expect(dialog()!.querySelector("button")).toBe(document.activeElement));
   for (let tabs = 0; tabs < 4 && document.activeElement?.textContent !== text; tabs += 1) {
     await userEvent.keyboard("{Tab}");
   }
+  const question = dialog()!;
   await userEvent.keyboard("{Enter}");
-  await vi.waitFor(() => expect(dialog()).toBeNull());
+  await removed(question);
 }
 
 test("a keyboard drop asks which events it applies to while the change waits", async () => {
@@ -187,7 +184,7 @@ test("a keyboard drop asks which events it applies to while the change waits", a
   );
   expect(choices()).toEqual(["This event", "This and following events", "All events", "Cancel"]);
   // The dialog moves focus to its first choice in the next animation frame.
-  await vi.waitFor(() => expect(document.activeElement?.textContent).toBe("This event"));
+  await until(() => expect(document.activeElement?.textContent).toBe("This event"));
 });
 
 test.each([
@@ -202,12 +199,12 @@ test.each([
   await choose(scope);
 
   // "This event" keeps the occurrence's ID; the others give it a new one, which focus follows.
-  await vi.waitFor(() => expect(document.activeElement).toBe(occurrence(id)));
+  await until(() => expect(document.activeElement).toBe(occurrence(id)));
   // Focus can come back before the change is saved, while the occurrence still says "saving".
-  await vi.waitFor(() =>
+  await until(() =>
     expect(label(document.activeElement)).toBe("Standup, Thursday, October 8, 9:15 – 9:45 AM"),
   );
-  await vi.waitFor(() =>
+  await until(() =>
     expect(said).toEqual(["Moved Standup to Thursday, October 8, 9:15 – 9:45 AM."]),
   );
 });
@@ -220,10 +217,10 @@ test("Escape rolls the change back and focus goes back to the occurrence", async
 
   await userEvent.keyboard("{Escape}");
 
-  await vi.waitFor(() => expect(document.activeElement).toBe(occurrence(thursday)));
+  await until(() => expect(document.activeElement).toBe(occurrence(thursday)));
   expect(label(document.activeElement)).toBe("Standup, Thursday, October 8, 9:00 – 9:30 AM");
   // A cancelled question isn't a failed save.
-  await vi.waitFor(() => expect(said).toEqual(["Cancelled. Standup is back where it was."]));
+  await until(() => expect(said).toEqual(["Cancelled. Standup is back where it was."]));
 });
 
 test("a delete asks the delete question, without This and following on the first occurrence", async () => {
@@ -234,7 +231,7 @@ test("a delete asks the delete question, without This and following on the first
   )!;
   button.focus();
   await userEvent.keyboard("{Enter}");
-  await vi.waitFor(() => expect(dialog()?.contains(document.activeElement)).toBe(true));
+  await until(() => expect(dialog()?.contains(document.activeElement)).toBe(true));
 
   expect(textOf(dialog()!.getAttribute("aria-labelledby"))).toBe("Delete recurring event");
   expect(textOf(dialog()!.getAttribute("aria-describedby"))).toBe(
@@ -244,8 +241,8 @@ test("a delete asks the delete question, without This and following on the first
 
   await choose("This event");
 
-  await vi.waitFor(() => expect(occurrence(monday)).toBeNull());
-  await vi.waitFor(() => expect(document.activeElement).toBe(button));
+  await until(() => expect(occurrence(monday)).toBeNull());
+  await until(() => expect(document.activeElement).toBe(button));
   // The calendar announces its own gestures; a change from the page's own controls is the page's
   // to announce.
   expect(said).toEqual([]);
