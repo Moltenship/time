@@ -71,6 +71,7 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
 - The resource timeline's hour rows can stack overlapping events. `overlapLayout`,
   `getResourceOverlapLayout` and `getEventOverlapLayout` work as in resource columns: `"stack"`
   cascades a row's bars a third of a lane apart, never more than two lanes tall, and the other
-  layouts keep a lane per level of overlap. Bars get `top` and rows `height`, both in lanes;
-  `ResourceTimelineLayoutOptions` is new, and the timeline views take the root's resource type as
-  `TResource` (#230).
+  layouts keep a lane per level of overlap. Back-to-back events of a quarter hour or less no longer
+  take a second lane at some times of day, such as 10:00. Bars get `top` and rows `height`, both
+  in lanes; `ResourceTimelineLayoutOptions` is new, and the timeline views take the root's resource
+  type as `TResource` (#230).

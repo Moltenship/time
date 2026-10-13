@@ -77,7 +77,7 @@ issue's "Later" section when work starts.
   read-only roots' gestures (#201), week rules from the locale (#202)
 - Agenda follow-ups from #136 (#138)
 - Capacity rules, buffers between bookings, free-slot search (#129)
-- [x] Per-calendar or per-resource overlap policy overrides (#130), done in #230
+- [x] Per-calendar or per-resource overlap policy overrides (#130), done in #230; follow-ups in #241
 - Agenda grouping by calendar or resource, search and filter (#131)
 - Optional dnd-kit adapter (#37)
 - Layout and frame budgets
