@@ -127,10 +127,15 @@ describe("performance", () => {
     return lines.join("\r\n");
   }
 
+  /**
+   * The CPU time the parse takes on this thread. A busy machine stretches wall time, by more for
+   * the longer parse when other work starts mid-way; CPU time stays the parse's own.
+   */
   function time(text: string): number {
-    const started = performance.now();
+    const started = process.threadCpuUsage();
     parseIcs(text);
-    return performance.now() - started;
+    const { system, user } = process.threadCpuUsage(started);
+    return system + user;
   }
 
   test("stays linear in the number of events", () => {

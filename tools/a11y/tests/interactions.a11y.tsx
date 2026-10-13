@@ -11,7 +11,7 @@ import { server, userEvent } from "vite-plus/test/browser";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
-import { render } from "./render";
+import { render, until } from "./render";
 
 type Fixture = CalendarEvent<null, string>;
 type Change = CalendarEventChange<Fixture, string, string>;
@@ -102,7 +102,7 @@ describe(`interactions in ${server.browser}`, () => {
 
     await drag(event(), 1);
 
-    await vi.waitFor(() =>
+    await until(() =>
       expect(placed(onEventChange)).toBe("move 2026-10-08T11:00:00Z/2026-10-08T12:00:00Z"),
     );
     expect(onEventChange).toHaveBeenCalledTimes(1);
@@ -114,7 +114,7 @@ describe(`interactions in ${server.browser}`, () => {
 
     await drag(event().querySelector<HTMLElement>('[data-resize="end"]')!, 0.5);
 
-    await vi.waitFor(() =>
+    await until(() =>
       expect(placed(onEventChange)).toBe("resize-end 2026-10-08T10:00:00Z/2026-10-08T11:30:00Z"),
     );
   });
@@ -129,7 +129,7 @@ describe(`interactions in ${server.browser}`, () => {
     await userEvent.keyboard("{ArrowDown}{ArrowDown}{ArrowDown}{ArrowDown}{ArrowRight}");
     await userEvent.keyboard("{Enter}");
 
-    await vi.waitFor(() =>
+    await until(() =>
       expect(placed(onEventChange)).toBe("move 2026-10-09T11:00:00Z/2026-10-09T12:00:00Z"),
     );
   });
@@ -143,7 +143,7 @@ describe(`interactions in ${server.browser}`, () => {
     await userEvent.keyboard("{ArrowDown}{ArrowDown}");
     await userEvent.keyboard("{Enter}");
 
-    await vi.waitFor(() =>
+    await until(() =>
       expect(placed(onEventChange)).toBe("resize-end 2026-10-08T10:00:00Z/2026-10-08T11:30:00Z"),
     );
   });

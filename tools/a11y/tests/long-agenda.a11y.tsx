@@ -4,7 +4,7 @@ import {
   type CalendarEvent,
 } from "@moltenship/calendar";
 import { act } from "react";
-import { afterEach, describe, expect, test, vi } from "vite-plus/test";
+import { afterEach, describe, expect, test } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
@@ -12,7 +12,7 @@ import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createScrollingAgendaView } from "@registry/scrolling-list-view/scrolling-agenda-view";
 
 import { seriousViolations, setTheme, themes } from "./axe";
-import { inWebKit, press, render } from "./render";
+import { atRest, inWebKit, press, render, until } from "./render";
 
 type Fixture = CalendarEvent<null, string>;
 
@@ -90,7 +90,6 @@ afterEach(() => {
   anchors.length = 0;
 });
 
-const settled = { interval: 50, timeout: 3000 };
 const list = () => document.querySelector<HTMLElement>('[data-slot="agenda-view"]')!;
 const days = () => [...list().querySelectorAll<HTMLElement>("li[data-date]")];
 const title = () => document.querySelector('[data-calendar-part="title"]')?.textContent;
@@ -102,7 +101,9 @@ async function scrollList(pixels: number) {
     list().dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY: pixels }));
     list().scrollBy({ behavior: "instant", top: pixels });
   });
-  await vi.waitFor(() => expect(anchors.length).toBeGreaterThan(before), settled);
+  await until(() => expect(anchors.length).toBeGreaterThan(before));
+  // The anchor moves before React lays out the rows it loads.
+  await atRest(list());
 }
 
 /** Whether `element` is inside the list's visible box. */
@@ -158,20 +159,26 @@ describe.each(["ltr", "rtl"] as const)(
           Temporal.PlainDate.from(
             document.activeElement!.closest("li")!.parentElement!.closest("li")!.dataset.date!,
           );
+        // Focus scrolls the list, which measures the rows it brings in a frame later and keeps
+        // what's on top in place: check what's in view once the list is at rest.
         for (let step = 0; step < 40; step += 1) await press("ArrowDown");
         expect(document.activeElement?.getAttribute("data-slot")).toBe("calendar-event");
         expect(Temporal.PlainDate.compare(dayOf(), anchor)).toBe(1);
+        await atRest(list());
         expect(inView(document.activeElement!)).toBe(true);
 
         const from = dayOf();
         for (let step = 0; step < 10; step += 1) await press("PageDown");
         expect(dayOf().toString()).toBe(from.add({ days: 10 }).toString());
+        await atRest(list());
         expect(inView(document.activeElement!)).toBe(true);
         await press("PageUp");
         expect(dayOf().toString()).toBe(from.add({ days: 9 }).toString());
         await press("End");
+        await atRest(list());
         expect(inView(document.activeElement!)).toBe(true);
         await press("Home");
+        await atRest(list());
         expect(inView(document.activeElement!)).toBe(true);
         expect(days().length).toBeLessThan(16);
       },
@@ -193,13 +200,15 @@ describe.each(["ltr", "rtl"] as const)(
         // from a script, and the list tells its own keys apart from other requests across them.
         // Back past the anchor date: the last event of the day before, in view.
         await userEvent.keyboard("{ArrowUp}");
-        await vi.waitFor(() => expect(dayOf().toString()).toBe("2026-10-07"));
+        await until(() => expect(dayOf().toString()).toBe("2026-10-07"));
+        await atRest(list());
         expect(inView(document.activeElement!)).toBe(true);
         // On past the week's end, a day at a time.
         for (let step = 1; step <= 10; step += 1) {
           await userEvent.keyboard("{PageDown}");
           const day = Temporal.PlainDate.from("2026-10-07").add({ days: step }).toString();
-          await vi.waitFor(() => expect(dayOf().toString()).toBe(day));
+          await until(() => expect(dayOf().toString()).toBe(day));
+          await atRest(list());
           expect(inView(document.activeElement!)).toBe(true);
         }
       },
@@ -219,9 +228,7 @@ describe.each(["ltr", "rtl"] as const)(
       ).toBe(1);
 
       while (document.querySelector(`[data-event-id="${id}"]`) === null) await scrollList(-3000);
-      await vi.waitFor(() =>
-        expect(document.activeElement?.getAttribute("data-event-id")).toBe(id),
-      );
+      await until(() => expect(document.activeElement?.getAttribute("data-event-id")).toBe(id));
       expect(inView(document.activeElement!)).toBe(true);
     });
   },
@@ -236,7 +243,7 @@ test("the paged agenda renders only the days in view of two years of weeks", asy
   await act(async () => list().scrollBy({ behavior: "instant", top: 120_000 }));
   // The first and last days stay rendered, as where focus enters; the rest are those in view.
   const inViewDay = () => days().find(inView)?.getAttribute("aria-posinset");
-  await vi.waitFor(() => expect(Number(inViewDay())).toBeGreaterThan(100));
+  await until(() => expect(Number(inViewDay())).toBeGreaterThan(100));
   expect(days().length).toBeLessThan(16);
   // A paged agenda stays put: scrolling never moves its dates.
   expect(title()).toBe("Oct 5, 2026 – Oct 1, 2028");
@@ -258,7 +265,7 @@ describe.each(themes)("long agenda, %s theme", (theme) => {
       list().dispatchEvent(new WheelEvent("wheel", { bubbles: true }));
       list().scrollTo({ behavior: "instant", top: list().scrollHeight });
     });
-    await vi.waitFor(() => expect(list().textContent).toContain("Loading events…"));
+    await until(() => expect(list().textContent).toContain("Loading events…"));
     // The spinner turns until events arrive; the check waits for animations to finish.
     for (const animation of document.getAnimations()) animation.cancel();
     expect(await seriousViolations()).toEqual([]);

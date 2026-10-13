@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { describe, expect, test, vi } from "vite-plus/test";
+import { describe, expect, test } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 
 import type {
@@ -9,7 +9,7 @@ import type {
 import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-recurrence-scope-prompt";
 
 import { seriousViolations, setTheme, themes } from "./axe";
-import { render } from "./render";
+import { render, until } from "./render";
 
 /** A page with an event that asks, as `onEventChange` would, and shows the answer. */
 function Page({
@@ -50,7 +50,7 @@ const focusedText = () => document.activeElement?.textContent;
  * Tab past either end lands on the dialog's focus guard, which moves focus on to the other end in
  * the next animation frame, so wait for it.
  */
-const focusReaches = (text: string) => vi.waitFor(() => expect(focusedText()).toBe(text));
+const focusReaches = (text: string) => until(() => expect(focusedText()).toBe(text));
 const textOf = (ids: string | null) =>
   (ids ?? "")
     .split(" ")
@@ -61,7 +61,7 @@ const textOf = (ids: string | null) =>
 async function openFromKeyboard() {
   event().focus();
   await userEvent.keyboard("{Enter}");
-  await vi.waitFor(() => expect(dialog()?.contains(document.activeElement)).toBe(true));
+  await until(() => expect(dialog()?.contains(document.activeElement)).toBe(true));
 }
 
 describe.each(themes)("recurrence scope dialog, %s theme", (theme) => {
@@ -102,8 +102,8 @@ test("Tab and Shift+Tab stay in the dialog, and Enter picks a scope", async () =
 
   await userEvent.keyboard("{Enter}");
 
-  await vi.waitFor(() => expect(answer()).toBe("all"));
-  await vi.waitFor(() => expect(dialog()).toBeNull());
+  await until(() => expect(answer()).toBe("all"));
+  await until(() => expect(dialog()).toBeNull());
   expect(document.activeElement).toBe(event());
 });
 
@@ -115,8 +115,8 @@ test("Escape cancels and focus goes back to the event", async () => {
   await focusReaches("This and following events");
   await userEvent.keyboard("{Escape}");
 
-  await vi.waitFor(() => expect(answer()).toBe("cancelled"));
-  await vi.waitFor(() => expect(dialog()).toBeNull());
+  await until(() => expect(answer()).toBe("cancelled"));
+  await until(() => expect(dialog()).toBeNull());
   expect(document.activeElement).toBe(event());
 });
 
@@ -130,6 +130,6 @@ test("Space on Cancel cancels", async () => {
 
   await userEvent.keyboard(" ");
 
-  await vi.waitFor(() => expect(answer()).toBe("cancelled"));
-  await vi.waitFor(() => expect(document.activeElement).toBe(event()));
+  await until(() => expect(answer()).toBe("cancelled"));
+  await until(() => expect(document.activeElement).toBe(event()));
 });

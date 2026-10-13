@@ -1,9 +1,9 @@
-import { describe, expect, test, vi } from "vite-plus/test";
+import { describe, expect, test } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 
 import { seriousViolations, setTheme, themes } from "./axe";
 import { RegistryScreen, registryViews } from "./registry-screen";
-import { click, press, render } from "./render";
+import { click, press, removed, render, until } from "./render";
 
 describe.each(themes)("registry views, %s theme", (theme) => {
   test.each(registryViews)("%s view, toolbar and mini month", async (view) => {
@@ -31,9 +31,7 @@ describe.each(themes)("registry views, %s theme", (theme) => {
     ).toBe(true);
     await press("Escape");
     // It closes after its exit animation.
-    await vi.waitFor(() =>
-      expect(document.querySelector('[data-slot="popover-content"]')).toBeNull(),
-    );
+    await until(() => expect(document.querySelector('[data-slot="popover-content"]')).toBeNull());
     expect(document.activeElement?.closest('[aria-hidden="true"]') ?? null).toBeNull();
   });
 
@@ -50,9 +48,7 @@ describe.each(themes)("registry views, %s theme", (theme) => {
     );
     expect(document.querySelector('[data-slot="popover-content"]')!.textContent).toContain("Sleep");
     await press("Escape");
-    await vi.waitFor(() =>
-      expect(document.querySelector('[data-slot="popover-content"]')).toBeNull(),
-    );
+    await until(() => expect(document.querySelector('[data-slot="popover-content"]')).toBeNull());
 
     expect(document.activeElement).toBe(previous);
   });
@@ -67,10 +63,15 @@ describe.each(themes)("registry views, %s theme", (theme) => {
       await click(
         document.querySelector<HTMLElement>('[data-slot="annotation-mark"][data-source="music"]'),
       );
-      await userEvent.click(field);
-      await vi.waitFor(() =>
-        expect(document.querySelector('[data-slot="popover-content"]')).toBeNull(),
+      // Open, with focus inside, a frame after it mounts: only then is a click outside one.
+      await until(() =>
+        expect(
+          document.querySelector('[data-slot="popover-content"]')?.contains(document.activeElement),
+        ).toBe(true),
       );
+      const popup = document.querySelector('[data-slot="popover-content"]')!;
+      await userEvent.click(field);
+      await removed(popup);
 
       expect(document.activeElement).toBe(field);
     } finally {

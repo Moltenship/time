@@ -11,7 +11,7 @@ import { userEvent } from "vite-plus/test/browser";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { createYearView } from "@registry/year-view/year-view";
 
-import { press, render } from "./render";
+import { atRest, press, removed, render, until } from "./render";
 
 type Fixture = CalendarEvent<null, string>;
 
@@ -78,12 +78,15 @@ test("Today, Previous and Next bring the anchor's month back into view", async (
   await render(<PhoneYear />);
   view().scrollTop = 0;
 
+  // Each scrolls the view smoothly.
   await click("Today");
-  await vi.waitFor(() => expect(showsMonth("2026-10")).toBe(true));
+  await atRest(view());
+  expect(showsMonth("2026-10")).toBe(true);
 
   await click("Next period");
   expect(document.querySelector('[data-month="2027-10"]')).not.toBeNull();
-  await vi.waitFor(() => expect(showsMonth("2027-10")).toBe(true));
+  await atRest(view());
+  expect(showsMonth("2027-10")).toBe(true);
   expect(window.scrollY).toBe(0);
 });
 
@@ -95,31 +98,52 @@ test("keyboard focus brings its own day into view as it crosses the year", async
 
   await press("ArrowRight");
 
-  await vi.waitFor(() =>
-    expect(document.activeElement?.getAttribute("data-date")).toBe("2027-01-01"),
-  );
+  await until(() => expect(document.activeElement?.getAttribute("data-date")).toBe("2027-01-01"));
+  await atRest(view());
   const bounds = view().getBoundingClientRect();
   const day = document.activeElement!.getBoundingClientRect();
   expect(day.top >= bounds.top && day.bottom <= bounds.bottom).toBe(true);
 });
 
+/** The day the popover tests open, and the popup once it has opened and taken focus. */
+const day = () => document.querySelector<HTMLElement>('[role="gridcell"][data-date="2026-10-14"]')!;
+async function opened() {
+  // The popup takes focus a frame after it mounts.
+  await until(() =>
+    expect(
+      document.querySelector('[data-slot="popover-content"]')?.contains(document.activeElement),
+    ).toBe(true),
+  );
+  return document.querySelector('[data-slot="popover-content"]')!;
+}
+/** Escape closes the popup. Focus goes back to the day once it unmounts, after its exit animation. */
+async function closed(popup: Element) {
+  await userEvent.keyboard("{Escape}");
+  await removed(popup);
+  expect(document.activeElement).toBe(day());
+}
+
+// Opening the popover renders every day's trigger again (#197): each test opens it twice and
+// closes it once.
 test("a clicked day's popover hands focus back to the day, where Space opens it again", async () => {
   const onEventChange = vi.fn();
   await render(<PhoneYear onEventChange={onEventChange} />);
-  const cell = document.querySelector<HTMLElement>('[role="gridcell"][data-date="2026-10-14"]')!;
-  const popover = () => document.querySelector('[data-slot="popover-content"]');
 
-  await userEvent.click(cell.querySelector("button")!);
-  await vi.waitFor(() => expect(popover()?.contains(document.activeElement)).toBe(true));
-  await userEvent.keyboard("{Escape}");
-  await vi.waitFor(() => expect(document.activeElement).toBe(cell));
-  await vi.waitFor(() => expect(popover()).toBeNull());
-
+  await userEvent.click(day().querySelector("button")!);
+  await closed(await opened());
   await userEvent.keyboard(" ");
-  await vi.waitFor(() => expect(popover()?.contains(document.activeElement)).toBe(true));
-  await userEvent.keyboard("{Escape}");
-  await vi.waitFor(() => expect(document.activeElement).toBe(cell));
+  await opened();
+  expect(onEventChange).not.toHaveBeenCalled();
+});
+
+test("a popover opened from the keyboard hands focus back to the day, where Enter opens it again", async () => {
+  const onEventChange = vi.fn();
+  await render(<PhoneYear onEventChange={onEventChange} />);
+  await act(async () => day().focus());
+
   await userEvent.keyboard("{Enter}");
-  await vi.waitFor(() => expect(popover()?.contains(document.activeElement)).toBe(true));
+  await closed(await opened());
+  await userEvent.keyboard("{Enter}");
+  await opened();
   expect(onEventChange).not.toHaveBeenCalled();
 });
