@@ -123,4 +123,6 @@ vp run ready:full  # the release gate
 
 ## License
 
-[MIT](./LICENSE)
+[MIT](./LICENSE). `@moltenship/ics` also bundles Unicode CLDR data under the Unicode License v3, so
+it's `MIT AND Unicode-3.0`; see its
+[THIRD-PARTY-NOTICES.md](./packages/ics/THIRD-PARTY-NOTICES.md).

@@ -119,7 +119,7 @@ describe("published package metadata", () => {
 
   // pnpm adds the workspace root LICENSE to a tarball when no packed file's path contains "license"
   // or "licence", in any case.
-  test("every published tarball contains LICENSE, and the notices for data it bundles", async () => {
+  test("every published tarball has its README and LICENSE, and the notices for data it bundles", async () => {
     const tarballs = await Promise.all(
       publishedPackageDirectories.map(
         async (directory) => [directory, await packedFiles(directory)] as const,
@@ -128,6 +128,7 @@ describe("published package metadata", () => {
 
     for (const [directory, files] of tarballs) {
       expect(files, directory).toContain("LICENSE");
+      expect(files, directory).toContain("README.md");
       if (directory in bundledData) expect(files, directory).toContain("THIRD-PARTY-NOTICES.md");
     }
   }, 30_000);
@@ -147,6 +148,10 @@ describe("published package metadata", () => {
 
       expect(noticeText).toContain(`SPDX-License-Identifier: ${license}`);
       expect(commentText).toBe(noticeText);
+      // Both name the same data release, as "release 48.2" and "release-48-2".
+      const release = /CLDR release-(\d+)-(\d+)/.exec(generated);
+      expect(release).not.toBeNull();
+      expect(notices).toContain(`release ${release![1]}.${release![2]}`);
     },
   );
 });

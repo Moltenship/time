@@ -7,6 +7,7 @@ following events" or "all events".
 
 It's a separate package: `@moltenship/calendar` doesn't re-export it, and the calendar doesn't need
 it. Occurrences reach the calendar as ordinary events, through an adapter. It doesn't use React.
+Use the same version as `@moltenship/calendar`, so they share one copy of the engine.
 
 ## Install
 
