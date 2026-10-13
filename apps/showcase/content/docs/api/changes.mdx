@@ -179,7 +179,16 @@ React and returns a cleanup function. Both come from `@moltenship/calendar-dnd`,
       default: "silent; ranges in the runtime's locale",
     },
     ghostClassName: { type: "string", description: "Extra classes for the drag preview." },
-    disabled: { type: "boolean", description: "Turns gestures off.", default: "false" },
+    disabled: {
+      type: "boolean",
+      description: (
+        <>
+          Turns gestures off. Pass the Renderer's <code>isReadOnly</code>, so a calendar without{" "}
+          <code>onEventChange</code> starts none.
+        </>
+      ),
+      default: "false",
+    },
   }}
 />
 

@@ -91,6 +91,8 @@ export interface TimeGridColumnProps<TEvent> {
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   /** An icon before an event's title, or nothing. */
   readonly getEventIcon?: (event: TEvent) => ReactNode;
+  /** The root takes no changes: events have no resize handles. */
+  readonly isReadOnly?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Position of the now-line when the current time falls in this column. */
   readonly nowTop: number | null;
@@ -212,6 +214,7 @@ export function TimeGridColumn<TEvent>({
   day: { column, events, isToday },
   getEventColor,
   getEventIcon,
+  isReadOnly,
   labelEvent,
   nowTop,
   formats,
@@ -293,6 +296,7 @@ export function TimeGridColumn<TEvent>({
             key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
             color={getEventColor?.(layout.fragment.event.event)}
             icon={getEventIcon?.(layout.fragment.event.event)}
+            isReadOnly={isReadOnly}
             labelEvent={labelHere}
             layout={layout}
             formats={formats}

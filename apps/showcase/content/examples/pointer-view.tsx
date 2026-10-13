@@ -6,9 +6,10 @@ import { defineCalendarView, timeGridStrategy, useCalendarPointer } from "@molte
 export const myWeekView = defineCalendarView({
   name: "week",
   strategy: timeGridStrategy({ kind: "week" }),
-  Renderer: function MyWeek({ actions, environment, events, projection }) {
+  Renderer: function MyWeek({ actions, environment, events, isReadOnly, projection }) {
     const ref = useCalendarPointer({
       columns: projection.days.map((day) => day.column),
+      disabled: isReadOnly,
       events,
       onPropose: actions.proposeEventChange,
       timeZone: environment.timeZone,

@@ -333,6 +333,7 @@ interface CalendarViewRendererProps<TProjection, TOptions> {
   readonly actions: CalendarViewActions;
   readonly environment: CalendarEnvironmentBase;
   readonly events: EventSnapshot<unknown, EventId, ResourceId>;
+  readonly isReadOnly?: boolean;
   readonly loadRange?: PlainDateInterval;
   readonly options: TOptions;
   readonly projection: TProjection;

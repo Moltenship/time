@@ -59,6 +59,8 @@ export interface ResourceTimelineRowProps<TEvent> {
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   /** An icon before an event's title, or nothing. */
   readonly getEventIcon?: (event: TEvent) => ReactNode;
+  /** The root takes no changes: events have no resize handles. */
+  readonly isReadOnly?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly labels: TimelineLabels;
   /** The visible dates, for closed days in a day row. */
@@ -258,6 +260,7 @@ function ResourceTimelineRowBase<TEvent>({
   formatTime,
   getEventColor,
   getEventIcon,
+  isReadOnly,
   labelEvent,
   labels,
   range,
@@ -418,6 +421,7 @@ function ResourceTimelineRowBase<TEvent>({
                 bar={bar}
                 color={getEventColor?.(bar.event.event)}
                 icon={getEventIcon?.(bar.event.event)}
+                isReadOnly={isReadOnly}
                 labelEvent={labelInRow}
                 resourceId={resource.id}
               />

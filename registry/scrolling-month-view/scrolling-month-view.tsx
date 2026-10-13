@@ -85,6 +85,7 @@ function ScrollingMonthView<TEvent>({
   actions,
   environment,
   events,
+  isReadOnly,
   loadRange,
   options,
   projection,
@@ -124,6 +125,7 @@ function ScrollingMonthView<TEvent>({
   const pointerRef = useCalendarPointer({
     announcer,
     check: actions.checkEventChange,
+    disabled: isReadOnly,
     events,
     onPropose: actions.proposeEventChange,
     scrollContainer: axis.scrollRef,

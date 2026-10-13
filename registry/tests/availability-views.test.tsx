@@ -433,6 +433,8 @@ async function draftAtLunch(view: "resources" | "timeline-day", options: object)
       time: time(view === "resources" ? "12:30" : "12:00"),
     },
     events: [lunch],
+    // Space starts a create only where changes are taken.
+    onEventChange: () => {},
     options,
   });
   await act(async () =>

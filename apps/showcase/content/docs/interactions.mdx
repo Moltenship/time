@@ -12,8 +12,9 @@ This page uses the `Calendar` and `Meeting` from the [Quick start](/docs/quick-s
 
 ## Saving changes
 
-Pass `onEventChange` to `Root`. Without it, every change is rejected as `read-only`: drags and
-keyboard grabs still start and their previews show as invalid, but nothing is saved.
+Pass `onEventChange` to `Root`. Without it, the calendar is read-only: the views start no drags or
+keyboard grabs and draw no resize handles, and every change proposed through `actions` is rejected
+as `read-only`.
 
 <include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#root</include>
 
@@ -142,7 +143,9 @@ Clicking an empty slot doesn't create an event; creating needs a drag.
 ### In your own views
 
 The built-in views use `useCalendarPointer`, and your views can too. Call it in the Renderer with
-the props the Renderer receives, and put the returned ref on the element that contains the days:
+the props the Renderer receives, and put the returned ref on the element that contains the days.
+Pass `isReadOnly` as `disabled`, so a calendar without `onEventChange` starts no drags, and draw no
+resize handles while it's set:
 
 <include meta='title="my-week-view.tsx"'>../examples/pointer-view.tsx#view</include>
 

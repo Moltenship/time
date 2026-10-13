@@ -18,6 +18,8 @@ export interface CalendarInteractionRuntime {
   // oxlint-disable-next-line typescript/no-explicit-any -- views drive every factory's root.
   readonly actions: CalendarSemanticActions<any, any, any, any, any, any>;
   readonly announcements: AnnouncerChannel;
+  /** The root has no `onEventChange`, so it rejects every change and views start no gestures. */
+  readonly isReadOnly: boolean;
   readonly keyboard: KeyboardSessionStore;
   /** The pointer's draft while a drag previews a change; the keyboard's is in `keyboard`. */
   readonly pointerDraft: DraftStore;

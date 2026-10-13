@@ -93,6 +93,8 @@ async function renderCalendar(
       events={events}
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T16:30Z")}
+      // Editable, so events have resize handles.
+      onEventChange={() => {}}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
       <Calendar.ActiveView />

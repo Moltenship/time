@@ -84,6 +84,7 @@ export function ResourceTimelineView<TEvent>({
   actions,
   environment,
   events,
+  isReadOnly,
   options,
   projection,
   range,
@@ -97,6 +98,7 @@ export function ResourceTimelineView<TEvent>({
     announcer,
     check: actions.checkEventChange,
     columns: projection.unit === "hour" ? projection.columns : undefined,
+    disabled: isReadOnly,
     events,
     onPreview: reportDraft,
     onPropose: actions.proposeEventChange,
@@ -144,6 +146,7 @@ export function ResourceTimelineView<TEvent>({
       environment={environment}
       getEventColor={options.getEventColor}
       getEventIcon={options.getEventIcon}
+      isReadOnly={isReadOnly}
       keyboard={keyboard}
       label={gridLabel(range, environment.locale)}
       labelEvent={labelEvent}

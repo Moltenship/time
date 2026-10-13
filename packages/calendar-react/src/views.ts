@@ -46,6 +46,12 @@ export interface CalendarViewRendererProps<TProjection, TOptions> {
   /** The events the projection was built from, pending changes included. */
   readonly events: EventSnapshot<unknown, EventId, ResourceId>;
   /**
+   * The root has no `onEventChange`, so it rejects every change: start no pointer gestures (pass
+   * it as `useCalendarPointer`'s `disabled`) and draw no resize handles. Keyboard grabs stay off
+   * on their own. `ActiveView` always passes it; a renderer used on its own is editable.
+   */
+  readonly isReadOnly?: boolean;
+  /**
    * The dates the projection covers: `range`, plus the neighbouring dates a scrolling view keeps
    * ready (its strategy's `getLoadRange`). `ActiveView` always passes it; a renderer used on its
    * own falls back to `range`.

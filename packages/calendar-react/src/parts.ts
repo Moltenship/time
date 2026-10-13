@@ -184,7 +184,7 @@ export function createCalendarParts(contexts: CalendarContexts) {
   function ActiveView({ fallback = null }: CalendarActiveViewProps) {
     const actions = useRootContext(contexts.actions);
     const activeView = useActiveViewContext(contexts.view);
-    const { source } = useInteractionRuntime();
+    const { isReadOnly, source } = useInteractionRuntime();
     const latest = useRef<CalendarActiveView<AnyCalendarView> | null>(activeView);
     useInsertionEffect(() => {
       latest.current = activeView;
@@ -205,6 +205,7 @@ export function createCalendarParts(contexts: CalendarContexts) {
         actions,
         environment,
         events,
+        isReadOnly,
         loadRange,
         options,
         projection,

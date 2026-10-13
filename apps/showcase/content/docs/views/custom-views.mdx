@@ -134,6 +134,7 @@ The Renderer is a regular component, so it can use hooks. It receives:
 | `options`     | The view's options                                                                                                                                    |
 | `environment` | Locale, time zone, secondary time zones, week rules, direction, disambiguation                                                                        |
 | `events`      | The snapshot `project` received, with [pending changes](/docs/interactions#pending-changes) applied                                                   |
+| `isReadOnly`  | `true` when `Root` has no `onEventChange`: start no drags and draw no resize handles. Keyboard grabs stay off by themselves                           |
 | `actions`     | `setAnchorDate`, `setView`, `setSelection`, `setFocus`, `navigateNext`, `navigatePrevious`, `navigateToday`, `proposeEventChange`, `checkEventChange` |
 
 `actions` never changes identity. `setView` takes any registered view name; an unknown name shows up
