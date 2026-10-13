@@ -7,9 +7,20 @@ import type {
 
 import type { RecurrenceOccurrence } from "../types";
 
+// Shared by every adapter, so one made for each render starts warm: objects' identity numbers, and
+// occurrences' interval keys. An occurrence's interval never changes, so its key is worth keeping;
+// revisions are read live.
+const identities = new WeakMap<object, number>();
+const intervalKeys = new WeakMap<object, string>();
+let nextIdentity = 0;
+
 function intervalKey(interval: CalendarEventInterval): string {
-  const zone = interval.kind === "timed" ? (interval.sourceTimeZone ?? "") : "";
-  return `${interval.kind}:${String(interval.start)}/${String(interval.end)}:${zone}`;
+  // Instants as epoch nanoseconds: ISO text cost a third of the snapshot.
+  if (interval.kind === "timed") {
+    const { end, sourceTimeZone = "", start } = interval;
+    return `timed:${start.epochNanoseconds}/${end.epochNanoseconds}:${sourceTimeZone}`;
+  }
+  return `${interval.kind}:${String(interval.start)}/${String(interval.end)}`;
 }
 
 /**
@@ -29,11 +40,6 @@ export function createOccurrenceAdapter<
   eventAdapter: EventAdapter<TEvent, TEventId, TResourceId>,
 ): EventAdapter<RecurrenceOccurrence<TEvent, TEventId>, TEventId | string, TResourceId> {
   type Occurrence = RecurrenceOccurrence<TEvent, TEventId>;
-
-  const identities = new WeakMap<object, number>();
-  // An occurrence's interval never changes, so its key is worth keeping; revisions are read live.
-  const intervalKeys = new WeakMap<Occurrence, string>();
-  let nextIdentity = 0;
 
   function revisionOf(event: TEvent): string | number {
     if (eventAdapter.getRevision !== undefined) return eventAdapter.getRevision(event);

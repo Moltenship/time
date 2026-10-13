@@ -88,6 +88,21 @@ describe("createOccurrenceAdapter", () => {
     expect(overridden).not.toBe(base[1]);
   });
 
+  test("gives a new adapter the same revisions, so a snapshot keeps its records", () => {
+    const { occurrences } = createOccurrenceExpander(adapters).expand(
+      [sync, overrideOf("2026-10-28T15:00")],
+      range("2026-10-26", "2026-11-09", "Europe/Berlin"),
+    );
+    const revisions = () => {
+      const adapter = createOccurrenceAdapter(adapters.event);
+      return occurrences.map((occurrence) => adapter.getRevision?.(occurrence));
+    };
+    const first = revisions();
+
+    expect(new Set(first).size).toBe(occurrences.length);
+    expect(revisions()).toEqual(first);
+  });
+
   test("keeps an orphan override's revision to the override", () => {
     const adapter = createOccurrenceAdapter(adapters.event);
     const moved = overrideOf("2026-10-28T15:00");

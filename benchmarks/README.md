@@ -72,14 +72,20 @@ shows less fails.
 
 | Stage | Work measured now | Measured p50 / p95 | p95 gate |
 | --- | --- | --- | --- |
-| `expand-cold` | A new expander expands all 200 series over the year's load range: the year view's first paint | 23–24 / 24–28 ms | 50 ms |
-| `expand-warm` | An expander that has just shown the year is asked for the next year: navigating forward | 21–22 / 23–30 ms | 50 ms |
-| `occurrence-snapshot` | Core's `createEventSnapshot` of the year's occurrences through `createOccurrenceAdapter`, as the calendar builds next | 25–27 / 28–32 ms | Report only |
+| `expand-cold` | A new expander expands all 200 series over the year's load range: the year view's first paint | 19 / 19–21 ms | 40 ms |
+| `expand-warm` | An expander that has just shown the year is asked for the next year: navigating forward | 18 / 19–22 ms | 40 ms |
+| `occurrence-snapshot` | Core's `createEventSnapshot` of the year's occurrences through a new `createOccurrenceAdapter`, as the calendar builds next | 17–18 / 18–33 ms | Report only |
 
 Measured in eight full gated runs on an Apple M5 Pro with Node 26.9. The gates leave about twice
 the worst p95, as the core build gate does over its 13 ms, so they catch a real regression such as
-losing skip-ahead without failing on a slower laptop. 50 ms is also half the 100 ms a navigation
-has to respond in, which leaves the rest for the snapshot, projection, and render.
+losing skip-ahead without failing on a slower laptop. 40 ms is also under half the 100 ms a
+navigation has to respond in, which leaves the rest for the snapshot, projection, and render.
+Before #160 the stages took 23–24 / 24–28, 21–22 / 23–30 and 25–27 / 28–32 ms, under 50 ms gates:
+the expander now keys each occurrence once and sorts only series with RDATEs, and
+`createOccurrenceAdapter` keys intervals by epoch nanoseconds rather than ISO text and shares the
+keys between adapters. The snapshot stage makes a new adapter for each sample, as a calendar that
+creates one on every render does, so after the first sample it reads the keys earlier adapters
+made; keyed afresh, it takes about 21.5 / 23.5 ms.
 
 The warm stage asks for the next year because that is the expansion a user waits for after the
 first paint. Asked for the same range with the same events, the expander returns its memoized

@@ -47,8 +47,8 @@ export const RECURRENCE_BENCHMARK_STAGES: readonly BenchmarkStage[] = Object.fre
 
 const initialP95ThresholdsMs: Readonly<Partial<Record<BenchmarkStage, number>>> = Object.freeze({
   build: 25,
-  "expand-cold": 50,
-  "expand-warm": 50,
+  "expand-cold": 40,
+  "expand-warm": 40,
   layout: 8,
   "pointer-frame": 4,
   query: 1,
