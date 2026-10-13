@@ -1,3 +1,4 @@
+import { writeSync } from "node:fs";
 import { Worker } from "node:worker_threads";
 
 import type { Reporter, TestCase, TestModule, Vitest } from "vite-plus/test/node";
@@ -14,7 +15,7 @@ export interface WatchdogOptions {
 }
 
 type Event =
-  | { readonly type: "start" | "end" }
+  | { readonly type: "start" | "end" | "printed" }
   | { readonly type: "queued" | "started"; readonly key: string; readonly label: string }
   | { readonly type: "test"; readonly key: string; readonly label: string }
   | { readonly type: "done"; readonly key: string; readonly file: boolean };
@@ -42,13 +43,20 @@ function watch() {
   // Monotonic, so a laptop waking from sleep or a clock correction isn't a stall.
   const now = () => performance.now();
   const seconds = (ms: number) => `${Math.round(ms / 1000)} s`;
-  const report = (text: string) => {
-    try {
-      writeSync(fd, text);
-    } catch {
-      // stderr is full or gone; the run still fails.
+  /** Writes all of `text`, retrying a full pipe a few times; a pipe that stays full or is gone loses it. */
+  const write = (text: string) => {
+    let rest = Buffer.from(text);
+    for (let tries = 0; rest.length > 0 && tries < 50; tries += 1) {
+      try {
+        rest = rest.subarray(writeSync(fd, rest));
+      } catch (error) {
+        if ((error as { code?: string }).code !== "EAGAIN") return;
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 10);
+      }
     }
   };
+  /** Set once the main thread has printed the report. */
+  let printed = false;
 
   /** Every process under this one, children before their parents. */
   const descendants = () => {
@@ -86,11 +94,22 @@ function watch() {
           ? `  ${file.label}: no test reported running; the page may be stuck in one it hadn't reported yet (file running ${seconds(at - file.since)})`
           : `  ${file.label} > ${file.test}: the last test the page reported starting, ${seconds(at - file.testSince)} ago`,
     );
-    // Cancel and arm the kill first: a report that can't be written, as when nobody reads stderr,
-    // mustn't leave the run hanging.
-    parentPort!.postMessage("cancel");
+    const text = [
+      "",
+      `Watchdog: ${reason}. Still running:`,
+      ...(lines.length > 0 ? lines : ["  no test file"]),
+      "Rerun the file alone to see whether it stops there too (docs/internal/quality-gates.md).",
+      "",
+      "",
+    ].join("\n");
+    // The main thread prints the report and cancels the run. It prints through stderr, above the
+    // summary Vitest redraws in a terminal, which would erase a write of the watch's own. A main
+    // thread held up doesn't answer, and doesn't redraw either: then the watch writes it.
+    parentPort!.postMessage(text);
+    setTimeout(() => {
+      if (!printed) write(text);
+    }, 2000);
     kill = setTimeout(() => {
-      report(`Watchdog: the run didn't stop within ${seconds(graceMs)}, so it's killed.\n`);
       let pids: number[] = [];
       try {
         pids = descendants();
@@ -104,23 +123,18 @@ function watch() {
           // It has exited already.
         }
       }
+      // Last, so nothing redraws over it.
+      if (!printed) write(text);
+      write(`Watchdog: the run didn't stop within ${seconds(graceMs)}, so it's killed.\n`);
       process.kill(process.pid, "SIGKILL");
     }, graceMs);
-    report(
-      [
-        "",
-        `Watchdog: ${reason}. Still running:`,
-        ...(lines.length > 0 ? lines : ["  no test file"]),
-        "Rerun the file alone to see whether it stops there too (docs/internal/quality-gates.md).",
-        "",
-        "",
-      ].join("\n"),
-    );
   };
 
   parentPort!.on("message", (event: Event) => {
     const at = now();
-    if (event.type === "start") {
+    if (event.type === "printed") {
+      printed = true;
+    } else if (event.type === "start") {
       files.clear();
       started = progress = at;
       fired = false;
@@ -170,8 +184,12 @@ export class Watchdog implements Reporter {
     const { browser, inspector, watch: watching } = vitest.config;
     if (watching || !browser.headless || inspector.enabled) return;
     const worker = new Worker(`(${watch.toString()})()`, { eval: true, workerData: this.#options });
-    // The watch has said why; the run stops as it does after a failure with `--bail`.
-    worker.on("message", () => {
+    const { fd } = this.#options;
+    // The report; then the run stops as it does after a failure with `--bail`.
+    worker.on("message", (report: string) => {
+      if (fd === 2) process.stderr.write(report);
+      else writeSync(fd, report);
+      this.#post({ type: "printed" });
       process.exitCode = 1;
       void vitest.cancelCurrentRun("test-failure");
     });

@@ -62,8 +62,8 @@ or a release, link a green run of that job too.
 
 A new check joins a tier in `vite.config.ts`: `ready:checks` or `gate:serial` for the PR tier,
 `ready:full` or `gate:serial:full` for the full gate only. Put it in a `gate:serial` lane if it
-writes or reads generated files, and a new browser run in `gate:browsers`. `tests/quality-gates.test.ts` fails if the full gate misses a PR
-step.
+writes or reads generated files, and a new browser run in `gate:browsers`.
+`tests/quality-gates.test.ts` fails if the full gate misses a PR step.
 
 The release workflow runs `vp run a11y`, then `RELEASE_VERSION=<version> vp run release:gate`:
 `ready:full` without the browser runs, with a strict release dry run (`docs/internal/releasing.md`).

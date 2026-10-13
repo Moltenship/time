@@ -24,10 +24,10 @@ clean apps, which never replay: they rewrite their own inputs, or reach the netw
 `gate:serial` runs `showcase:links`, `ci:check`, `ci:build`, `release:check`, `ci:test`,
 `react:gate`, `ssr:smoke` and `package:graph` in that order, because each writes or reads generated
 files: packages' `dist`, packed tarballs, the docs site's `.next` and `.source`. Steps outside it
-read only source, so they run at the same time; `a11y` and `a11y:ci-speed` keep their Vite
-dependency caches apart. The full gate runs its three browser runs one after another in a lane of
-their own, `gate:browsers`, beside the serial lane: see [Load](#load). CI's `quality-gates` job runs `vp run ready:checks` and its `accessibility` job runs `vp run a11y`:
-together, `vp run ready`. On demand (`gh workflow run ci.yml --ref <branch>`), a `browsers` job runs
+read only source, so they run at the same time. The full gate runs its three browser runs one
+after another in a lane of their own, `gate:browsers`, beside the serial lane: see [Load](#load).
+Each browser mode keeps its own Vite dependency cache. CI's `quality-gates` job runs
+`vp run ready:checks` and its `accessibility` job runs `vp run a11y`: together, `vp run ready`. On demand (`gh workflow run ci.yml --ref <branch>`), a `browsers` job runs
 `vp run browsers` on Linux. When a job fails, its last step names the failed task. The contract test
 `tests/quality-gates.test.ts` holds the workflow to those task names and fails if `ready:full`
 misses a step of `ready`.
@@ -78,7 +78,8 @@ and fails fast when a browser run stalls:
   20 minutes and more. Now `tools/a11y/vite.config.ts` gives a run half the cores, split between
   its browsers (Firefox and WebKit get a quarter each), and the full gate's `gate:browsers` lane
   runs `a11y`, `browsers` and `a11y:ci-speed` one at a time, beside the serial lane. The lane stops
-  at the first run that fails. Reduced motion runs its one file in a page of its own beside them.
+  at the first run that fails. Reduced motion runs its one file in a page of its own, beside the
+  Chromium pages of `a11y`.
   In CI's 4-core runner the `accessibility` job gets 2 pages and the `browsers` job 1 per browser.
 - **Half the cores for the unit tests.** `vp test` from the root (`ci:test`, the quick tier, the
   engine tasks) takes half the cores too, in the root `vite.config.ts`, since in the PR and full
@@ -94,7 +95,8 @@ and fails fast when a browser run stalls:
   command line replaces it. `tools/a11y/watchdog.test.ts` tests it.
 
 To check the gate under load, run it beside a CPU load, such as a few threads spinning in a loop.
-Rerun a failing file alone before calling it a flake.
+Rerun a failing file alone before calling it a flake: `vp run a11y#test tests/<file>`, or
+`cd tools/a11y && vp test --mode ci-speed tests/<file>` (or `--mode browsers`).
 
 ## Browsers
 
