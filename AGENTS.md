@@ -80,6 +80,21 @@ locally. To rehearse it without the release workflow, dispatch CI
 (`gh workflow run ci.yml --ref <branch>`): its `release-gate` job runs the same steps
 (`docs/internal/releasing.md`).
 
+# Commits
+
+Every commit message and every PR title is `<type>(<scope>)!: <summary>`, per [Conventional Commits](https://www.conventionalcommits.org). The rule applies from now on; don't rewrite history.
+
+- **Squash merges:** the PR's title becomes the commit on `main`, so the title follows the format too. The merge keeps GitHub's ` (#N)` suffix.
+- **Types:** `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `revert`, `style`. `refactor` changes no behaviour and `perf` only speed or memory; `build` is dependencies, bundling and the `vite.config.ts` tasks, `ci` the workflows; `style` is formatting alone; `revert` repeats the reverted title; `chore` is the rest.
+- **Scopes:** optional. Packages by short name: `calendar` (`@moltenship/calendar`), `core`, `temporal`, `recurrence`, `react`, `dnd`, `testing` (`@moltenship/calendar-*`) and `ics`. Areas: `registry` (`registry/`, `tools/registry`), `demo` (`apps/demo`), `docs-site` (`apps/showcase`), `ssr-fixture`, `a11y` (`tools/a11y`), `release` (`tools/release`, `release.yml`) and `gate` (the quality gate's tasks). Leave the scope out when a change spans many areas.
+- **Summary:** imperative mood, lowercase start, no trailing period, about 72 characters at most. Issue references go in the body (`Closes #N`), not in the summary.
+- **Breaking changes:** `!` after the type or scope, plus a `BREAKING CHANGE:` footer that explains the migration; on a squash merge, put it in the merge's body. After 1.0 this is how a break in the public API is marked.
+- **Examples:**
+  - `feat(react): add onEventChangeResult and useCalendarPendingChanges`
+  - `perf(recurrence): key occurrences once`
+  - `fix: start no drags, grabs or resize handles on read-only roots`
+  - `docs: move the docs site to time.molten.sh`
+
 # Pull requests
 
 ## Code review
