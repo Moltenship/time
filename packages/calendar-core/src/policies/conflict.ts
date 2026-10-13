@@ -3,12 +3,25 @@ import type { EventId, ResourceId } from "../ids";
 import { sameTime } from "./availability";
 import type { CalendarPolicy } from "./types";
 
-export interface ConflictPolicyOptions {
+/**
+ * What double-booking a resource does: `"block"` rejects the change, `"warn"` lets it through,
+ * flagged in its `warnings`, and `"allow"` lets it through as it is.
+ */
+export type ConflictMode = "allow" | "block" | "warn";
+
+export interface ConflictPolicyOptions<TResourceId extends ResourceId = ResourceId> {
   /**
-   * `"block"` (the default) rejects a change that double-books a resource; `"warn"` lets it
-   * through, flagged in its `warnings`. Either way the reason is `"resource-conflict"`.
+   * A resource's own mode, such as `"block"` for rooms and `"warn"` for people; `undefined` keeps
+   * `mode`. It's called once for each resource a busy change alters, so keep it cheap, such as a
+   * lookup.
    */
-  readonly mode?: "block" | "warn";
+  readonly getResourceMode?: (resourceId: TResourceId) => ConflictMode | undefined;
+  /**
+   * The mode for every resource `getResourceMode` leaves out: `"block"` (the default) rejects a
+   * change that double-books one, `"warn"` lets it through, flagged in its `warnings`, and
+   * `"allow"` lets it through as it is. Rejected or flagged, the reason is `"resource-conflict"`.
+   */
+  readonly mode?: ConflictMode;
 }
 
 const reason = "resource-conflict";
@@ -19,10 +32,15 @@ const reason = "resource-conflict";
  * overlap. An event that isn't busy, such as an all-day one by default, books nothing. Only what
  * a change alters is checked: its time, or the resources it adds when the time stays, so events
  * already double-booked can still be edited. Deletes always pass.
+ *
+ * Each resource follows its own mode from `getResourceMode`, or else `mode`. When a change
+ * double-books several resources, the strictest of their modes decides: any `"block"` rejects it,
+ * and otherwise any `"warn"` flags it. Resources in `"allow"` mode aren't checked at all.
  */
 export function conflictPolicy<TEvent, TEventId extends EventId, TResourceId extends ResourceId>({
+  getResourceMode,
   mode = "block",
-}: ConflictPolicyOptions = {}): CalendarPolicy<TEvent, TEventId, TResourceId> {
+}: ConflictPolicyOptions<TResourceId> = {}): CalendarPolicy<TEvent, TEventId, TResourceId> {
   return ({ eventId, original, proposed }, { events, timeZone }) => {
     if (proposed === null) return { type: "accept" };
     const current = eventId === null ? undefined : events.get(eventId);
@@ -30,17 +48,27 @@ export function conflictPolicy<TEvent, TEventId extends EventId, TResourceId ext
     if (!isBusyEvent({ isBusy: current?.isBusy, kind: proposed.kind })) {
       return { type: "accept" };
     }
-    const checked =
+    const changed =
       original !== null && sameTime(original, proposed)
         ? proposed.resourceIds.filter((resourceId) => !original.resourceIds.includes(resourceId))
         : proposed.resourceIds;
-    if (checked.length === 0) return { type: "accept" };
+    const modes = new Map<TResourceId, ConflictMode>();
+    const asked = new Set<TResourceId>();
+    for (const resourceId of changed) {
+      if (asked.has(resourceId)) continue;
+      asked.add(resourceId);
+      const own = getResourceMode?.(resourceId) ?? mode;
+      if (own !== "allow") modes.set(resourceId, own);
+    }
+    if (modes.size === 0) return { type: "accept" };
     const busy = busyResources(events, proposed, {
       ...(eventId === null ? {} : { exclude: eventId }),
-      resourceIds: checked,
+      resourceIds: [...modes.keys()],
       timeZone,
     });
     if (busy.size === 0) return { type: "accept" };
-    return mode === "warn" ? { reason, type: "warn" } : { reason, type: "reject" };
+    // Anything but "warn" blocks, as an unknown mode always has.
+    const warnOnly = [...busy.keys()].every((resourceId) => modes.get(resourceId) === "warn");
+    return warnOnly ? { reason, type: "warn" } : { reason, type: "reject" };
   };
 }

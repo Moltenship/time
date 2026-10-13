@@ -165,8 +165,8 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
           : `${subject(update)} can't go outside working hours, so it's back where it was.`;
       case "resource-conflict":
         return update.cause === "create"
-          ? "Can't create an event there: someone it books is busy then."
-          : `${subject(update)} would double-book someone, so it's back where it was.`;
+          ? "Can't create an event there: a room or person it books is busy then."
+          : `${subject(update)} would double-book a room or person, so it's back where it was.`;
       default:
         return `Couldn't save ${subject(update)}, so it's back where it was.`;
     }

@@ -1,6 +1,6 @@
 ---
 title: Availability
-description: Working hours, closed days and holidays, people and rooms in their own time zones, shading you can restyle, a busy or free status, and a policy that keeps bookings inside working hours.
+description: Working hours, closed days and holidays, people and rooms in their own time zones, shading you can restyle, a busy or free status, and policies that keep bookings inside working hours and rooms from being double-booked.
 ---
 
 <CalendarPreview view="week" availability announcements />
@@ -321,8 +321,8 @@ re-renders only when its own answer changes; a keyboard move or resize changes t
 shows on each step, so headers re-render then too, which stays cheap.
 
 An all-day draft shows who has busy time that day, even though an all-day event is free by default
-and so doesn't conflict under `conflictPolicy`; the status is information, not a rule. To flag or prevent double-booking on save, add `conflictPolicy({ mode: "warn" | "block" })`
-to the root's `policies`; it runs the same query, with the reason `"resource-conflict"`.
+and so doesn't conflict under `conflictPolicy`; the status is information, not a rule. To flag or
+prevent double-booking on save, see [double booking](#double-booking).
 
 ### Customize
 
@@ -411,6 +411,70 @@ function RoomPicker({ interval, eventId }: { interval: CalendarEventInterval; ev
 }
 ```
 
+## Double booking
+
+`conflictPolicy` in the root's `policies` checks a change against double-booking: a busy event
+may not overlap another busy event of a resource it books. It runs the same query as
+`busyResources`, with the reason `"resource-conflict"`. Each resource can follow its own mode, so a
+room can't be double-booked while a person can, with a warning. Drag a booking onto another one
+here, and switch the modes:
+
+<RoomsAndPeoplePreview rules="conflicts" />
+
+```tsx
+import { conflictPolicy } from "@moltenship/calendar";
+
+const rooms = new Set(resources.filter((r) => r.data.kind === "room").map((r) => r.id));
+
+const policies = [
+  conflictPolicy<Meeting, string, string>({
+    mode: "warn", // people, and any resource getResourceMode leaves out
+    getResourceMode: (resourceId) => (rooms.has(resourceId) ? "block" : undefined),
+  }),
+];
+
+<Calendar.Root policies={policies} resources={resources} /* … */ />;
+```
+
+| Mode      | Double-booking the resource…                                                            |
+| --------- | --------------------------------------------------------------------------------------- |
+| `"block"` | Rejects the change, and the event goes back where it was. The default.                  |
+| `"warn"`  | Saves it, with `"resource-conflict"` in its `warnings`, so you can say so or ask first. |
+| `"allow"` | Saves it as it is, as if the resource had no check.                                     |
+
+- `mode` is the mode for every resource. `getResourceMode` gives a resource its own, by its ID;
+  `undefined` keeps `mode`. Policies don't see your resources, so look the ID up in yours, as above.
+- When a change double-books several resources, the strictest of their modes decides: any
+  `"block"` rejects it, and otherwise any `"warn"` flags it. A room that's free doesn't block a
+  meeting whose person is busy.
+- Only what a change alters is checked: its time, or the resources it adds when the time stays.
+  An event that's already double-booked can still be edited. Resources in `"allow"` mode aren't
+  queried at all, and deletes always pass.
+- Events that only touch don't conflict, and an event that isn't busy books nothing: the event
+  adapter's [`isBusy`](#busy-or-available) decides, for `conflictPolicy` as for the status.
+- The modes decide what saving does, not who's busy. A person in `"allow"` mode still shows as busy
+  in the [badge](#busy-badge-in-resource-views) and while you place an event.
+- Previews follow the modes: dragging a meeting over a busy room that blocks marks the preview red,
+  and over a busy person who warns, amber. See [keep changes inside](#keep-changes-inside).
+
+There's no mode per calendar. A conflict is between two bookings of one resource, often from
+different calendars, and a new event has no calendar yet when the policies run. To keep a whole
+calendar out of conflicts, such as tentative holds, mark its events free in `isBusy`. For stricter
+checks on one calendar's events, choose between two policies in your own, since a policy is a
+function:
+
+```ts
+import { conflictPolicy, type CalendarPolicy } from "@moltenship/calendar";
+
+const strict = conflictPolicy<Meeting, string, string>({ mode: "block" });
+const lenient = conflictPolicy<Meeting, string, string>({ mode: "warn" });
+const byCalendar: CalendarPolicy<Meeting, string, string> = (change, context) =>
+  change.event?.calendarId === "interviews" ? strict(change, context) : lenient(change, context);
+```
+
+How overlapping events are drawn is separate: see
+[rooms and people](/docs/views/resource-columns#rooms-and-people) for a layout per resource.
+
 ## Keep changes inside
 
 `availabilityPolicy({ mode })` checks every move, resize and create, whether it comes from a drag,
@@ -437,17 +501,19 @@ own UI can ask the same question with
 Availability adds no keys and no tab stops; each view keeps its [key map](/docs/accessibility).
 The shading is hidden from screen readers, which hear the same information in words:
 
-| Where                              | What a screen reader hears                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------ |
-| A time-grid slot, with ↑ ↓         | "Thursday, October 8 at 8:45 AM, outside working hours"                        |
-| A month or year day                | "Friday, December 25, 2026, Christmas, closed, no events"                      |
-| A timeline day                     | "Orchid, Friday, December 25, 2026, closed"                                    |
-| A step of a move, resize or create | "Thursday, October 8, 4:45 – 5:15 PM, outside working hours"                   |
-| A blocked drop                     | "Standup can't go outside working hours, so it's back where it was."           |
-| A saved change with a warning      | "Moved Standup to Thursday, October 8, 4:45 – 5:15 PM, outside working hours." |
-| A resource header in another zone  | "Lee, local time 7:48 PM GMT+5:30"                                             |
-| A resource header with its status  | "Maya, Busy until 3:00 PM"                                                     |
-| A resource header during a draft   | "Maya, Busy", or "Leo, Outside hours"                                          |
+| Where                                       | What a screen reader hears                                                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------ |
+| A time-grid slot, with ↑ ↓                  | "Thursday, October 8 at 8:45 AM, outside working hours"                        |
+| A month or year day                         | "Friday, December 25, 2026, Christmas, closed, no events"                      |
+| A timeline day                              | "Orchid, Friday, December 25, 2026, closed"                                    |
+| A step of a move, resize or create          | "Thursday, October 8, 4:45 – 5:15 PM, outside working hours"                   |
+| A blocked drop                              | "Standup can't go outside working hours, so it's back where it was."           |
+| A saved change with a warning               | "Moved Standup to Thursday, October 8, 4:45 – 5:15 PM, outside working hours." |
+| A drop that double-books a room that blocks | "Standup would double-book a room or person, so it's back where it was."       |
+| A double booking saved with a warning       | "Moved Standup to Thursday, October 8, 9:00 – 9:30 AM, Maya, double-booked."   |
+| A resource header in another zone           | "Lee, local time 7:48 PM GMT+5:30"                                             |
+| A resource header with its status           | "Maya, Busy until 3:00 PM"                                                     |
+| A resource header during a draft            | "Maya, Busy", or "Leo, Outside hours"                                          |
 
 The messages live in `components/calendar/announcements.ts` in your app, ready to translate.
 

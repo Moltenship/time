@@ -113,15 +113,15 @@ Policies decide which changes are allowed. Each one looks at a change and accept
 rejects it, or accepts it with a warning in `change.warnings`. They run in order, and each sees the change as adjusted by the ones before it. Pass
 them to `Root` as `policies`, as in the example above.
 
-| Policy                                   | What it does                                                                                                                                |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `snapPolicy({ minutes: 15 })`            | Rounds timed and floating changes to a grid in the calendar's time zone                                                                     |
-| `minimumDurationPolicy({ minutes: 15 })` | Lengthens timed and floating events that would be shorter than the minimum                                                                  |
-| `boundsPolicy({ start, end })`           | Rejects changes that end up outside the given instants                                                                                      |
-| `availabilityPolicy({ mode })`           | Blocks changes outside [working hours](/docs/availability), or saves them with a warning in `change.warnings`                               |
-| `conflictPolicy({ mode })`               | Blocks a change that makes a busy event overlap another busy event on one of its resources, or saves it with a warning. Deletes always pass |
-| `readOnlyResourcesPolicy(isReadOnly)`    | Rejects changes to the schedule of the resources `isReadOnly(resourceId)` marks                                                             |
-| `readOnlyPolicy()`                       | Rejects changes to events your adapter marks with `isReadOnly`. `Root` always runs it first, so you don't need to pass it.                  |
+| Policy                                      | What it does                                                                                                                                                                                                                            |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `snapPolicy({ minutes: 15 })`               | Rounds timed and floating changes to a grid in the calendar's time zone                                                                                                                                                                 |
+| `minimumDurationPolicy({ minutes: 15 })`    | Lengthens timed and floating events that would be shorter than the minimum                                                                                                                                                              |
+| `boundsPolicy({ start, end })`              | Rejects changes that end up outside the given instants                                                                                                                                                                                  |
+| `availabilityPolicy({ mode })`              | Blocks changes outside [working hours](/docs/availability), or saves them with a warning in `change.warnings`                                                                                                                           |
+| `conflictPolicy({ mode, getResourceMode })` | Blocks a change that makes a busy event overlap another busy event on one of its resources, saves it with a warning, or allows it, by a mode per resource. Deletes always pass. See [double booking](/docs/availability#double-booking) |
+| `readOnlyResourcesPolicy(isReadOnly)`       | Rejects changes to the schedule of the resources `isReadOnly(resourceId)` marks                                                                                                                                                         |
+| `readOnlyPolicy()`                          | Rejects changes to events your adapter marks with `isReadOnly`. `Root` always runs it first, so you don't need to pass it.                                                                                                              |
 
 A policy is a function, so you can write your own. This one keeps meetings out of the all-day row.
 Policies can also be `async`, for example to check availability on your server.

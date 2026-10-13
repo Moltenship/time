@@ -1020,6 +1020,14 @@ warning. An async policy leaves the preview unmarked. `availabilityPolicy` and `
 `mode`: `"block"` (reject, the default) or `"warn"` (save with a warning). An adjusting policy
 changes what is saved, not the preview.
 
+`conflictPolicy` also takes `"allow"`, and a mode per resource from `getResourceMode(resourceId)`,
+such as rooms `"block"` and people `"warn"` (#230). It's keyed by ID because policies don't see the
+root's resources. The strictest mode among the resources a change actually double-books decides,
+and resources in `"allow"` mode aren't queried. The reason stays `"resource-conflict"`. Modes decide
+what saving does, not occupancy: `busyAt`, `busyResources` and the resource status report a
+resource as busy whatever its mode. There's no mode per calendar: a conflict is between bookings of
+one resource, and the adapter's `isBusy` already says which events book anything.
+
 ## 12. Layout engines
 
 Layout is pure and deterministic. The benchmark's layout stage still times a reference implementation (#188).

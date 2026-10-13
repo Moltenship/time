@@ -93,16 +93,24 @@ export function OverlapLayoutPreview() {
   );
 }
 
-/** Two rooms and two people over a day, with a toggle for each kind's overlap layout. */
-export function RoomsAndPeoplePreview() {
+/**
+ * Two rooms and two people over a day, with a toggle for each kind's overlap layout, or with
+ * `rules="conflicts"` for what double-booking each kind does.
+ */
+export function RoomsAndPeoplePreview({
+  rules = "layout",
+}: {
+  readonly rules?: "conflicts" | "layout";
+}) {
   return (
     <figure className="not-prose my-6">
       <div className="h-[32rem] overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm">
-        <RoomsAndPeoplePreviewIsland />
+        <RoomsAndPeoplePreviewIsland rules={rules} />
       </div>
       <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
-        Live, in your time zone. Pick a layout for the rooms and one for the people, or drag a
-        booking from a room to a person.
+        {rules === "layout"
+          ? "Live, in your time zone. Pick a layout for the rooms and one for the people, or drag a booking from a room to a person."
+          : "Live, in your time zone. Drag a booking onto another one: a room that blocks turns the preview red and takes it back, and a person who warns saves it, flagged."}
       </figcaption>
     </figure>
   );

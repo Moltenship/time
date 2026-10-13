@@ -196,7 +196,9 @@ function EventForm({
       setError(
         check.reason === "outside-availability"
           ? "That's outside working hours. Pick another time, or change Working hours in Settings."
-          : "That change isn't allowed.",
+          : check.reason === "resource-conflict"
+            ? "A room it books is taken then. Pick another room or time, or change Rooms and people in Settings."
+            : "That change isn't allowed.",
       );
       return;
     }
