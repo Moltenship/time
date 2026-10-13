@@ -20,7 +20,7 @@ pnpm add @moltenship/calendar-react react
 
 ## Documentation
 
-- [React components and hooks](https://moltenship-time.vercel.app/docs/api/react)
+- [React components and hooks](https://time.molten.sh/docs/api/react)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

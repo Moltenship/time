@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "description": "Consumer-facing fixtures, harnesses, and semantic assertions for Moltenship Time.",
-  "homepage": "https://moltenship-time.vercel.app/docs",
+  "homepage": "https://time.molten.sh/docs",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

@@ -27,12 +27,12 @@ pnpm add @moltenship/calendar react react-dom
 
 The styled views, toolbar and theme aren't in this package. They're source files
 that you add to your app with the shadcn CLI and then own; see
-[Installation](https://moltenship-time.vercel.app/docs/installation).
+[Installation](https://time.molten.sh/docs/installation).
 
 ## Documentation
 
-- [Docs](https://moltenship-time.vercel.app/docs), starting with the
-  [Quick start](https://moltenship-time.vercel.app/docs/quick-start)
+- [Docs](https://time.molten.sh/docs), starting with the
+  [Quick start](https://time.molten.sh/docs/quick-start)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

@@ -105,9 +105,7 @@ describe("published package metadata", () => {
       expect(manifest.scripts?.prepublishOnly).toMatch(/release:publish.*&& exit 1$/);
 
       // The homepage is a docs page that exists in the showcase.
-      const page = /^https:\/\/moltenship-time\.vercel\.app\/docs(?:\/(.+))?$/.exec(
-        manifest.homepage ?? "",
-      );
+      const page = /^https:\/\/time\.molten\.sh\/docs(?:\/(.+))?$/.exec(manifest.homepage ?? "");
       expect(page, manifest.homepage).not.toBeNull();
       const content = join("apps/showcase/content/docs", page![1] ?? "index");
       expect(

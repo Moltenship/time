@@ -35,7 +35,7 @@ const { dates } = expandRecurrenceRule(
 
 ## Documentation
 
-- [Recurrence API](https://moltenship-time.vercel.app/docs/api/recurrence)
+- [Recurrence API](https://time.molten.sh/docs/api/recurrence)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

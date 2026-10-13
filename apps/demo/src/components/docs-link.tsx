@@ -3,7 +3,7 @@ import { BookOpenIcon } from "lucide-react";
 
 import { buttonVariants } from "@registry/ui/button";
 
-const docsUrl = "https://moltenship-time.vercel.app";
+const docsUrl = "https://time.molten.sh";
 
 /** A link styled as a ghost button, so it keeps link semantics. */
 export function DocsLink({ className }: { readonly className?: string }) {

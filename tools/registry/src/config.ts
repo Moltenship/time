@@ -7,7 +7,7 @@ export const registryNamespace = "@moltenship";
  * a build for another host (a local server, a custom domain) passes its own `baseUrl`, or sets
  * `REGISTRY_BASE_URL` for the docs build.
  */
-export const defaultRegistryHomepage = "https://moltenship-time.vercel.app";
+export const defaultRegistryHomepage = "https://time.molten.sh";
 export const defaultRegistryBaseUrl = `${defaultRegistryHomepage}/r`;
 
 /** Source manifests live one folder deep under `registry/`. */

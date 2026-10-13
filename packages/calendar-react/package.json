@@ -2,7 +2,7 @@
   "name": "@moltenship/calendar-react",
   "version": "0.0.0",
   "description": "Headless React integration for Moltenship Time.",
-  "homepage": "https://moltenship-time.vercel.app/docs/api/react",
+  "homepage": "https://time.molten.sh/docs/api/react",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

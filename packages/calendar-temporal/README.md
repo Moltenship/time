@@ -31,7 +31,7 @@ pnpm add @moltenship/calendar-temporal
 
 ## Documentation
 
-- [Temporal helpers](https://moltenship-time.vercel.app/docs/api/temporal)
+- [Temporal helpers](https://time.molten.sh/docs/api/temporal)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

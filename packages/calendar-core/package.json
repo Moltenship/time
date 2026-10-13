@@ -2,7 +2,7 @@
   "name": "@moltenship/calendar-core",
   "version": "0.0.0",
   "description": "Framework-independent calendar data, projection, layout, and interaction engine.",
-  "homepage": "https://moltenship-time.vercel.app/docs/api",
+  "homepage": "https://time.molten.sh/docs/api",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

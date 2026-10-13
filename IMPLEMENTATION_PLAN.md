@@ -44,7 +44,7 @@ deploy (`git.deploymentEnabled` in each app's `vercel.json`), so the Hobby limit
 a day goes to production:
 
 - Demo: https://moltenship-time-demo.vercel.app
-- Docs: https://moltenship-time.vercel.app
+- Docs: https://time.molten.sh
 
 UI source uses shadcn's default Base UI primitives, not Radix. Dependencies are kept at their
 latest releases.
