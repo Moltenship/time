@@ -5,8 +5,8 @@ description: A React 19 calendar built on the Temporal API, with views you copy 
 
 Moltenship Time handles the hard parts of a calendar: dates, time zones, navigation, calendar
 state, fast event lookups, and saving changes. Your events stay in the shape your app already uses,
-and Time reads them through a small adapter. The week, day, month, and agenda views are source files
-you copy into your app, so you can change how they look and behave.
+and Time reads them through a small adapter. The week, day, month, year, agenda and resource views are
+source files you copy into your app, so you can change how they look and behave.
 
 <CalendarPreview switcher />
 
@@ -36,8 +36,11 @@ who want to:
 
 ## What you get today
 
-- **Built-in views.** [Week, day](/docs/views/week-and-day), [month](/docs/views/month), and
-  [agenda](/docs/views/agenda), in the style of Google Calendar, built on shadcn/ui and Tailwind
+- **Built-in views.** [Week, day](/docs/views/week-and-day), [month](/docs/views/month),
+  [year](/docs/views/year), [agenda](/docs/views/agenda),
+  [resource columns](/docs/views/resource-columns) and
+  [resource timeline](/docs/views/resource-timeline), plus week, day, month and agenda views that
+  [scroll without end](/docs/views/scrolling), in the style of Google Calendar, built on shadcn/ui and Tailwind
   CSS. A [theme](/docs/theming) with calendar tokens and an event color palette comes with them.
 - **Your data, read through an adapter.** You describe how to read an ID, title, and time range
   from your records. TypeScript keeps your record and ID types all the way through.

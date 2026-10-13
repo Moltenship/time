@@ -54,6 +54,17 @@ and then infer the ID types from `getId` and `getResourceIds`.
       ),
       default: "false",
     },
+    isBusy: {
+      type: "(event) => boolean",
+      description: (
+        <>
+          Whether the event makes its resources busy, as "show as busy" or "free" does. Exposed as{" "}
+          <code>isBusy</code> on normalized events. See{" "}
+          <a href="/docs/availability#busy-or-available">busy or available</a>.
+        </>
+      ),
+      default: "timed and floating events are busy; all-day events are free",
+    },
   }}
 />
 
@@ -96,11 +107,11 @@ result.valid; // false
 result.valid || result.issues; // [{ code: "start-not-before-end", kind: "timed" }]
 ```
 
-| Function                                           | Checks                                             |
-| -------------------------------------------------- | -------------------------------------------------- |
-| `isEventId(value)`, `isResourceId(value)`          | A non-empty string or a finite number              |
-| `validateCalendarEvent(event)`                     | A `CalendarEvent`: its ID, resource IDs, and range |
-| `validateCalendarEventInterval(interval, compare)` | A range, using the comparison functions you pass   |
+| Function                                               | Checks                                                                                   |
+| ------------------------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `isEventId(value)`, `isResourceId(value)`              | A non-empty string or a finite number                                                    |
+| `validateCalendarEvent(event)`                         | A `CalendarEvent`: its ID, resource IDs, and range                                       |
+| `validateCalendarEventInterval(interval, comparators)` | A range, using the `{ instant, plainDate, plainDateTime }` comparison functions you pass |
 
 ## Snapshots
 
@@ -147,7 +158,8 @@ and builds a new one, reusing what it can, for a new array. For a one-off snapsh
 | `getQueryCacheStatistics()` | `capacity`, `size`, `hits`, `misses`, and `evictions`    |
 
 A normalized event has your record as `event`, plus `id`, `title`, `resourceIds`, `isReadOnly`,
-`revision`, `inputIndex`, and the range fields (`kind`, `start`, `end`). Inside a calendar, an event
+`revision`, `inputIndex`, `isBusy` when the adapter has `isBusy`, and the range fields (`kind`, `start`,
+`end`, and, on timed events, `sourceTimeZone` when the range has one). Inside a calendar, an event
 with a change that is still saving also has `isPending: true` and shows its proposed range; see
 [pending changes](/docs/interactions#pending-changes).
 
@@ -176,17 +188,18 @@ snapshot.get("meeting-1");
 With the default policy, invalid records are left out of the snapshot and listed in
 `snapshot.issues`. In React they also appear as `invalid-event` [diagnostics](/docs/api/react#diagnostics).
 Each issue has the `event`, its `index` in your array, a `code`, and when known the `eventId`, the
-adapter function that failed (`accessor`), and a `message`.
+adapter function that failed (`accessor`), the position of a bad resource ID (`resourceIndex`), and a
+`message`.
 
-| `code`                   | Cause                                                            |
-| ------------------------ | ---------------------------------------------------------------- |
-| `adapter-error`          | An adapter function threw                                        |
-| `invalid-event-id`       | `getId` returned an empty string, `NaN`, or another non-ID value |
-| `duplicate-event-id`     | Another record already has this ID                               |
-| `invalid-resource-id`    | `getResourceIds` returned a non-ID value                         |
-| `invalid-revision`       | `getRevision` returned something other than a string or number   |
-| `invalid-event-interval` | The range has an unknown `kind` or the wrong Temporal type       |
-| `start-not-before-end`   | The range is empty or reversed                                   |
+| `code`                   | Cause                                                                                                                                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `adapter-error`          | An adapter function threw, `getTitle` returned something other than a string, `getResourceIds` something other than an array, or `isReadOnly` or `isBusy` something other than a boolean |
+| `invalid-event-id`       | `getId` returned an empty string, `NaN`, or another non-ID value                                                                                                                         |
+| `duplicate-event-id`     | Another record already has this ID                                                                                                                                                       |
+| `invalid-resource-id`    | `getResourceIds` returned an array with a non-ID value (its position is `resourceIndex`)                                                                                                 |
+| `invalid-revision`       | `getRevision` returned something other than a string or a finite number                                                                                                                  |
+| `invalid-event-interval` | The range has an unknown `kind`, the wrong Temporal type, a `sourceTimeZone` that isn't a string, or fields that throw when read                                                         |
+| `start-not-before-end`   | The range is empty or reversed                                                                                                                                                           |
 
 With `invalidEventPolicy: "throw"`, building the snapshot throws an
 `InvalidCalendarEventSnapshotError` with every issue on its `issues` property instead.

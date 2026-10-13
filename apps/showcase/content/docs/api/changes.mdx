@@ -28,17 +28,18 @@ A placement is a [range](/docs/api/events#ranges) (`kind`, `start`, `end`) plus 
 
 `onEventChange` and policies receive a `CalendarEventChange`:
 
-| Field      | `create`          | `move`, `resize-*`, `update` | `delete`             |
-| ---------- | ----------------- | ---------------------------- | -------------------- |
-| `cause`    | `"create"`        | the cause                    | `"delete"`           |
-| `id`       | a change ID       | a change ID                  | a change ID          |
-| `eventId`  | `null`            | the event's ID               | the event's ID       |
-| `event`    | `null`            | your record                  | your record          |
-| `original` | `null`            | the placement before         | the placement before |
-| `proposed` | the new placement | the new placement            | `null`               |
+| Field      | `create`                                | `move`, `resize-*`, `update` | `delete`             |
+| ---------- | --------------------------------------- | ---------------------------- | -------------------- |
+| `cause`    | `"create"`                              | the cause                    | `"delete"`           |
+| `id`       | a change ID                             | a change ID                  | a change ID          |
+| `eventId`  | `null`                                  | the event's ID               | the event's ID       |
+| `event`    | `null`                                  | your record                  | your record          |
+| `original` | `null`                                  | the placement before         | the placement before |
+| `proposed` | the new placement                       | the new placement            | `null`               |
+| `warnings` | reasons `warn` policies flagged, if any | the same                     | the same             |
 
 Placements in a change always include `resourceIds`. `original` is what the user saw, including any
-change still pending for the same event.
+change still pending for the same event. `warnings` is absent when no policy flagged the change.
 
 ## Results
 
@@ -51,22 +52,30 @@ change still pending for the same event.
 ```ts
 type CalendarPolicy = (
   change: CalendarEventChange,
-  context: { events: EventSnapshot; timeZone: string },
+  context: { events: EventSnapshot; timeZone: string; availability?: AvailabilitySnapshot },
 ) => Decision | Promise<Decision>;
 
 type Decision =
-  { type: "accept" } | { type: "adjust"; proposed: Placement } | { type: "reject"; reason: string };
+  | { type: "accept" }
+  | { type: "adjust"; proposed: Placement }
+  | { type: "reject"; reason: string }
+  | { type: "warn"; reason: string };
 ```
 
-`context.events` includes pending changes, so a policy sees the calendar as the user does. A policy
+`warn` accepts the change and adds `reason` to its `warnings`. `context.availability` holds the
+root's working hours, for `availabilityPolicy`. `context.events` includes pending changes, so a
+policy sees the calendar as the user does. A policy
 that throws rejects the change with the reason `policy-error`.
 
-| Policy                           | Behaviour                                                                                                                                                                                                                                                    |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `snapPolicy(increment)`          | Rounds timed and floating changes to a wall-clock grid in the calendar's time zone, such as `{ minutes: 15 }`. Moves keep their length; resizes snap only the dragged edge. All-day changes pass through. The increment must divide an hour or a day evenly. |
-| `minimumDurationPolicy(minimum)` | Lengthens timed and floating changes shorter than `minimum`. Resizing the start moves the start earlier; anything else moves the end later.                                                                                                                  |
-| `boundsPolicy({ start, end })`   | Rejects changes that reach outside `[start, end)`, with the reason `out-of-bounds`. Both bounds are optional instants.                                                                                                                                       |
-| `readOnlyPolicy()`               | Rejects changes to events whose adapter `isReadOnly` returns `true`, with the reason `read-only`. `Root` runs it before your policies.                                                                                                                       |
+| Policy                                | Behaviour                                                                                                                                                                                                                                                    |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `snapPolicy(increment)`               | Rounds timed and floating changes to a wall-clock grid in the calendar's time zone, such as `{ minutes: 15 }`. Moves keep their length; resizes snap only the dragged edge. All-day changes pass through. The increment must divide an hour or a day evenly. |
+| `minimumDurationPolicy(minimum)`      | Lengthens timed and floating changes shorter than `minimum`. Resizing the start moves the start earlier; anything else moves the end later.                                                                                                                  |
+| `boundsPolicy({ start, end })`        | Rejects changes that reach outside `[start, end)`, with the reason `out-of-bounds`. Both bounds are optional instants.                                                                                                                                       |
+| `readOnlyPolicy()`                    | Rejects changes to events whose adapter `isReadOnly` returns `true`, with the reason `read-only`. `Root` runs it before your policies.                                                                                                                       |
+| `availabilityPolicy({ mode })`        | Rejects a change outside working hours, with the reason `outside-availability`, or with `mode: "warn"` saves it with that warning. See [Availability](/docs/availability#keep-changes-inside).                                                               |
+| `conflictPolicy({ mode })`            | Rejects a change that makes a busy event overlap another busy event on one of its resources, with the reason `resource-conflict`, or with `mode: "warn"` saves it with that warning. Deletes always pass.                                                    |
+| `readOnlyResourcesPolicy(isReadOnly)` | Rejects creating, deleting, or changing the time of an event on a resource `isReadOnly(resourceId)` marks, and adding or removing that resource, with the reason `read-only-resource`.                                                                       |
 
 ## Placement helpers
 
@@ -107,21 +116,43 @@ React and returns a cleanup function. Both come from `@moltenship/calendar-dnd`,
       required: true,
     },
     onPropose: {
-      type: "(proposal) => void",
+      type: "(proposal) => void | PromiseLike<CalendarTransactionResult>",
       description: (
         <>
           Receives one proposal per finished drag. Usually <code>actions.proposeEventChange</code>.
+          Return the result, as it does, so the announcer says whether the change was saved.
         </>
       ),
       required: true,
+    },
+    check: {
+      type: "(proposal) => CalendarPolicyResult | null",
+      description: (
+        <>
+          Asks the policies about the drop the preview shows, so the preview can mark it. Pass{" "}
+          <code>actions.checkEventChange</code>.
+        </>
+      ),
+    },
+    onPreview: {
+      type: "(draft: { eventId, proposed } | null) => void",
+      description: (
+        <>
+          Hears where a drop would land, once per change, and <code>null</code> when there&apos;s
+          nowhere to drop or the gesture ends. Pass <code>useCalendarDraftReporter()</code> so{" "}
+          <code>useCalendarDraft</code> and <code>useDraftBusy</code> follow pointer drags.
+        </>
+      ),
     },
     timeZone: { type: "string", description: "The calendar's time zone.", required: true },
     columns: {
       type: "readonly TimeGridColumn[]",
       description: (
         <>
-          The day columns of a time grid: <code>projection.days.map((day) =&gt; day.column)</code>.
-          Leave it out in a month grid.
+          The day columns of a time axis, a time grid&apos;s or an hour timeline&apos;s:{" "}
+          <code>projection.days.map((day) =&gt; day.column)</code> in a time grid,{" "}
+          <code>projection.columns</code> in resource columns or an hour timeline. Leave it out in a
+          month grid or a day timeline.
         </>
       ),
     },
@@ -154,5 +185,7 @@ React and returns a cleanup function. Both come from `@moltenship/calendar-dnd`,
 
 While a gesture runs, the region has `data-interaction="move"`, `"resize"`, or `"create"`, and the
 event being dragged has `data-dragging`. Preview elements have `data-calendar-ghost="event"` or
-`"range"` and read `--calendar-ghost-background`, `--calendar-ghost-radius`, and
+`"range"`, and `data-invalid` or `data-warning` when `check` says a policy would reject or flag the
+drop. Range previews read `--calendar-ghost-background` and `--calendar-ghost-radius`, event
+previews `--calendar-ghost-shadow` and `--calendar-ghost-opacity`, and both
 `--calendar-ghost-z-index`.

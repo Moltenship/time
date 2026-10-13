@@ -7,8 +7,8 @@ ownership. A workspace may import only the public entry points of workspaces lis
 Entry points expose only contracts approved by their owning implementation issues. Calendar core
 and Temporal expose the canonical engine contracts. Calendar React exposes its state/SSR layer and
 the issue #26 factory, compound context, and custom-view surface. The internal fixtures and
-benchmark workspaces own reproducible data and performance protocol code; other workspace shells
-stay empty until their implementation and validation issues land.
+benchmark workspaces own reproducible data and performance protocol code. Every package except
+`calendar-testing` is implemented; `calendar-testing` exports nothing until #45.
 
 Publishable workspaces expose `src/index.ts` inside the checkout so declared package imports work
 before any ignored build output exists. pnpm applies each package's `publishConfig.exports` while
@@ -46,25 +46,28 @@ packed code carries the `/*!` notice.
 | `@moltenship/calendar-temporal` | Engine: type-specific Temporal utilities | None |
 | `@moltenship/calendar-core` | Engine: snapshots, indexes, projections, layouts, and transactions | `calendar-temporal` |
 | `@moltenship/calendar-react` | React integration: provider, selectors, actions, and headless primitives | `calendar-core`, `calendar-temporal` |
-| `@moltenship/calendar-dnd` | Optional interaction adapter | `calendar-core`, `calendar-temporal` |
+| `@moltenship/calendar-dnd` | Pointer interaction adapter (native Pointer Events) | `calendar-core`, `calendar-temporal` |
 | `@moltenship/calendar` | Supported public facade | `calendar-core`, `calendar-dnd`, `calendar-react`, `calendar-temporal` |
 | `@moltenship/calendar-testing` | Consumer test helpers; private until after 1.0 (#45) | Public facade, dnd adapter, and Temporal utilities |
 | `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `calendar-temporal`, `ics` |
 | `@moltenship/ics` | Standalone iCalendar parsing (ADR 0151) | None |
-| `showcase` | Consumer-equivalent documentation and labs | Public facade, `calendar-recurrence` and `@moltenship/ics` |
+| `showcase` | Consumer-equivalent documentation and examples | Public facade, `calendar-recurrence` and `@moltenship/ics` |
 | `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade only |
 | `fixtures` | Internal deterministic fixture generation | `calendar-core` |
-| `benchmark` | Internal core and React performance runners | Core, React bindings, recurrence, Temporal utilities, and fixture tooling |
+| `benchmark` | Internal core, React and recurrence benchmark runners | Core, React bindings, recurrence, Temporal utilities, and fixture tooling |
 | `demo` | The Google Calendar-style demo app | Public facade and `calendar-recurrence` |
 | `registry-source` | Registry source, type-checked and tested in place | Public facade only |
+| `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, registry source in place (`@registry/*`), and the demo's `App` by path (`apps/demo/src/app`); not in the manifest check yet |
 | `registry` | Internal shadcn build, validation and install test (`tools/registry`) | None |
 | `release` | Internal release tooling: size budgets, API reports, export checks, clean-consumer install, dry run, publish | None; it reads built and packed packages from disk |
 
-External dependencies are added by the issue that validates their contract. React 19 is a
-`calendar-react` peer. `calendar-react` has no runtime dependency outside the workspace; it dropped
-Jotai in #70, which ADR 0025 doesn't say yet (#184). The dnd-kit,
-interval-tree, virtualization, and browser-test dependencies remain owned by their corresponding
-implementation or harness issues.
+External dependencies are added by the issue that validates their contract. React 19 is a peer of
+`calendar-react`, `calendar-dnd` and `calendar`. `calendar-react` has no runtime dependency outside
+the workspace; it dropped Jotai in #70 (#184). `calendar-core` depends on
+`@flatten-js/interval-tree` behind its internal `IntervalIndex` (ADR 0016). dnd-kit is only in
+`tools/dnd-adapter-spike` (ADR 0037). TanStack Virtual is a registry-source dependency, not a
+package one. Playwright and axe-core are `tools/a11y` development dependencies. The `*-spike`
+workspaces under `tools/` import no workspace.
 
 Every workspace compiles with the cataloged current TypeScript toolchain against the `ESNext`
 standard library. Temporal is an ambient global, so `calendar-temporal` has no declaration
@@ -83,26 +86,27 @@ calendar-core + calendar-temporal → calendar-dnd
 
 calendar-core + calendar-dnd + calendar-react + calendar-temporal
        ↓
-calendar (facade) ─────→ showcase / ssr-fixture / demo / registry-source
+calendar (facade) ─────→ showcase / ssr-fixture / demo / registry-source / a11y
        ↓
 calendar-testing ← calendar-dnd / calendar-temporal
 
-calendar-core + calendar-temporal + ics ─────→ calendar-recurrence ─────→ showcase / demo / benchmark
+calendar-core + calendar-temporal + ics ─────→ calendar-recurrence ─────→ showcase / demo / benchmark / a11y
 
 ics (standalone: no workspace imports, no runtime dependencies) ─────→ showcase
 ```
 
-Registry item directories are consumer-owned source boundaries, not npm packages. They may consume
-supported public packages once implemented, but published packages must never import registry,
-application, benchmark, or tool source.
+Registry item directories are consumer-owned source boundaries, not npm packages. Of our packages,
+they import only the `@moltenship/calendar` facade, which the `registry-source-uses-calendar-facade` rule enforces,
+and published packages must never import registry, application, benchmark, or tool source.
 
 ## Enforcement
 
 `vp run check:boundaries` uses dependency-cruiser to validate source edges and Vitest to validate
 the workspace manifest graph. The same test runs dependency-cruiser against a deliberately invalid
-fixture and passes only when the expected deep-import violation is reported. Core and Temporal
-configuration is also asserted to omit DOM libraries and ambient package types.
+fixture and passes only when the expected deep-import violation is reported. Core, Temporal and
+`ics` configuration is also asserted to omit DOM libraries and ambient package types.
 
 Dependency-cruiser 18 uses an isolated TypeScript 6 parser through `packageExtensions` because its
 boundary analysis does not yet work with TypeScript 7. This exception is tooling-only: Vite+, the
 packed-consumer test, and every workspace compile with the cataloged current TypeScript toolchain.
+The release clean-consumer check also compiles with TypeScript 6, the oldest the README supports.

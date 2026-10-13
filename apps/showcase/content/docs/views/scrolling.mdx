@@ -50,13 +50,13 @@ the month. For another number of days, define a view with
 
 ## How they move
 
-| View               | Shows                               | A swipe moves | Previous and Next | Today                     |
-| ------------------ | ----------------------------------- | ------------- | ----------------- | ------------------------- |
-| `scrolling-week`   | The anchor's week, from `weekRules` | A week        | A week            | Today's week              |
-| `scrolling-3-day`  | Three days from the anchor date     | Three days    | Three days        | Today in the first column |
-| `scrolling-day`    | The anchor date                     | A day         | A day             | Today                     |
-| `scrolling-month`  | Six weeks from the week of the 1st  | A month       | A month           | Today's month             |
-| `scrolling-agenda` | Four weeks from the anchor date     | Free, any day | Four weeks        | Today on top              |
+| View               | Shows                                                                                               | A swipe moves | Previous and Next | Today                     |
+| ------------------ | --------------------------------------------------------------------------------------------------- | ------------- | ----------------- | ------------------------- |
+| `scrolling-week`   | The anchor's week, from `weekRules`                                                                 | A week        | A week            | Today's week              |
+| `scrolling-3-day`  | Three days from the anchor date                                                                     | Three days    | Three days        | Today in the first column |
+| `scrolling-day`    | The anchor date                                                                                     | A day         | A day             | Today                     |
+| `scrolling-month`  | Six weeks from the week of the 1st, or up to twelve with `createScrollingMonthView(options, weeks)` | A month       | A month           | Today's month             |
+| `scrolling-agenda` | Four weeks from the anchor date                                                                     | Free, any day | Four weeks        | Today on top              |
 
 The anchor date is the scroll position. A swipe follows your finger and comes to rest on the
 next page, or back on this one if it went less than halfway; a fling moves one page. When a

@@ -77,9 +77,10 @@ Any component inside `Root` can use the hooks on your calendar:
 - `useCalendarState()` returns all six values.
 - `useCalendarSelector(selector)` returns one derived value and re-renders only when it changes.
 - `useCalendarActions()` returns `setView`, `setAnchorDate`, `setTimeZone`, `setSelection`,
-  `setFocus`, `setExpandedResourceIds`, `navigateNext`, `navigatePrevious`, and `navigateToday`.
-- `useCalendarMeta()` returns everything else: the event snapshot, resources, the active view,
-  diagnostics, and element IDs and refs.
+  `setFocus`, `setExpandedResourceIds`, `navigateNext`, `navigatePrevious`, `navigateToday`,
+  `proposeEventChange`, and `checkEventChange`.
+- `useCalendarMeta()` returns everything else: the event snapshot, resources, the environment, the
+  active view and the registered views, diagnostics, the instance ID, and element IDs and refs.
 - `useCalendar()` returns `state`, `actions`, and `meta` together.
 - `useVisibleRange()` and `useViewProjection()` return what the active view shows. See
   [Custom views](/docs/views/custom-views#reading-the-view-from-other-components).

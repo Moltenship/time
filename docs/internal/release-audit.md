@@ -20,7 +20,7 @@ The checklist in `architecture.md` §26.
 
 | Invariant | Proof | Runs in | Verdict |
 | --- | --- | --- | --- |
-| **External events stay authoritative** (ADR 0003). | `calendar-core/tests/event-transactions.test.ts`: pending until the handler settles, confirmed by revision, rolled back on a reject or a throw, the latest proposal wins, a late rejection is ignored. `event-overlay.test.ts`: the overlay never rebuilds the base indexes. `event-snapshots.test.ts`: the external-store contract. `calendar-react/tests/event-changes.test.tsx`. | `ci:test` | Proven; §10 drift: gap 1 |
+| **External events stay authoritative** (ADR 0003). | `calendar-core/tests/event-transactions.test.ts`: pending until the handler settles, confirmed by revision, rolled back on a reject or a throw, the latest proposal wins, a late rejection is ignored. `event-overlay.test.ts`: the overlay never rebuilds the base indexes. `event-snapshots.test.ts`: the external-store contract. `calendar-react/tests/event-changes.test.tsx`. | `ci:test` | Proven |
 | **Every interval is typed and half-open** (ADR 0002). | `calendar-temporal/tests/half-open.test.ts`; fast-check properties in `interval-operations.test.ts`, `iteration.property.test.ts` and the zoned slot and rounding tests; `calendar-core/tests/event-snapshots.test.ts`, "matches a simple reference for randomized half-open queries"; `timed-overlap.test.ts`. | `ci:test`, `engine:gate` | Proven |
 | **No host time zone or current time is read implicitly during render** (ADR 0004). | `tests/temporal-utilities-boundary.test.ts`: only `calendar-temporal`'s system clock reads the time, and no package or registry view uses `Date`, across every package's source (new in this audit). `tests/ics-boundary.test.ts`. `calendar-react/tests/use-now.test.tsx`: no now on the server, the injected clock after. The DST matrix across `calendar-core/tests`. | `ci:test`, `a11y` | Proven; DST claim: gap 2 |
 | **Core imports no React, DOM, Jotai, dnd-kit, Tailwind or app code.** The dependency law, §2 (ADR 0005). | `dependency-cruiser.config.ts`, run by `tests/dependency-boundaries.test.ts`: production source obeys the rules; known-bad deep imports fail statically and against the packed tarball; the manifest matrix; core, temporal and ics compile with `types: []` and no DOM. | `package:graph`, `react:gate`, `ci:test` | Proven |
@@ -60,7 +60,7 @@ Closed by the audit's PRs:
 
 Open:
 
-1. **§10 describes transaction APIs the code doesn't have**: `onTransactionStateChange`, a transaction controller, and other `cause` values. #191.
+1. **§10 described transaction APIs the code doesn't have**: `onTransactionStateChange`, a transaction controller, and other `cause` values. Closed by #205: §10 describes the code, and a public transaction-state API is #199.
 2. **§4.5 promises announced DST gap shifts.** Views get `environment.disambiguation` and the helpers honour it, but the time grid can't place a drop in a gap, and nothing carries or announces a shift. #187.
 3. **The performance contract.** Its numbers are local reference-hardware benchmarks, not run in CI or `ready:full`, by design. The layout and pointer-frame rows time reference code, and nothing measures scrolling; the scrolling agenda re-projects its whole load range on each anchor move. #188.
 4. **Parity in the resource views**: no pointer-versus-keyboard equality check for resource columns or the resource timeline. #189.

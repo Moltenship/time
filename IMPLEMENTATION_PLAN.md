@@ -55,7 +55,8 @@ The shadcn registry shipped (#43) and `calendar-testing` stays private until aft
 tooling (#46) is done, and the full tier runs the SSR fixture, the docs site and the registry's
 clean apps on the dry run's tarballs (`vp run release:artifacts`). Next in the second phase of the
 release audit (#47): the full release dry run, the screen-reader passes (#186) and the release
-candidate report, with a green CI `browsers` run (#192). The audit's proposed 1.0 blockers:
+candidate report, with a green CI `browsers` run (#192), and a decision on `CalendarEventSource`
+(#200) before the API reports freeze. The audit's proposed 1.0 blockers:
 #185, #186.
 
 ## Later
@@ -68,7 +69,10 @@ issue's "Later" section when work starts.
   follow-ups: WebKit failures (#181), Playwright's Firefox on macOS 27 (#182)
 - Release audit findings for after 1.0 unless the owner says otherwise: an empty week's focus
   target (#180), the store's records (#184), DST shifts (#187), performance benchmarks (#188),
-  resource-view parity (#189), the registry's client boundary (#190), transaction docs (#191)
+  resource-view parity (#189), the registry's client boundary (#190), a public transaction-state
+  API (#199)
+- Architecture drift follow-ups from #191: keyboard previews and `isPending` (#198),
+  read-only roots' gestures (#201), week rules from the locale (#202)
 - Agenda follow-ups from #136 (#138)
 - Capacity rules, buffers between bookings, free-slot search (#129)
 - Per-calendar or per-resource overlap policy overrides (#130)

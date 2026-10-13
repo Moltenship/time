@@ -48,7 +48,7 @@ them.
   `end` at or before `start` runs past midnight, so `22:00` to `06:00` is a night and `00:00` to
   `00:00` a whole day. Leave `weekly` out to open every day all day.
 - **Exceptions.** An exception replaces one date's hours. Without `hours` it closes the date; its
-  `label`, such as "Christmas", names the closed day in the month.
+  `label`, such as "Christmas", names the closed day in the month and year views.
 - **Time zones.** The hours are on the display time zone's clock unless `availability.timeZone`
   says otherwise, such as the office's.
 - **Daylight saving time.** Hours are half-open, `[start, end)`, and read on the wall clock. On a
@@ -100,13 +100,13 @@ const resources = [
 Each stretch of closed time is a `div` hidden from screen readers. It carries why it is closed and
 where it meets open time, so CSS can restyle it:
 
-| Attribute or variable                   | Value                                                                                   |
-| --------------------------------------- | --------------------------------------------------------------------------------------- |
-| `data-slot`                             | `time-grid-unavailable`, `resource-timeline-unavailable` or `month-closed`              |
-| `data-reason`                           | `outside-hours`, `closed-day` (no weekly hours that day) or `exception` (a closed date) |
-| `data-label`                            | The exception's `label`, such as "Company holiday"                                      |
-| `data-opens-before`, `data-opens-after` | Present where open time meets the band's start or end in the view                       |
-| `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                  |
+| Attribute or variable                   | Value                                                                                     |
+| --------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `data-slot`                             | `time-grid-unavailable`, `resource-timeline-unavailable`, `month-closed` or `year-closed` |
+| `data-reason`                           | `outside-hours`, `closed-day` (no weekly hours that day) or `exception` (a closed date)   |
+| `data-label`                            | The exception's `label`, such as "Company holiday"                                        |
+| `data-opens-before`, `data-opens-after` | Present where open time meets the band's start or end in the view                         |
+| `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                    |
 
 <ShadingRecipesPreview />
 
@@ -184,8 +184,9 @@ const views = [
 ];
 ```
 
-Every view takes `renderUnavailable`: week, day, month, the scrolling views, resource columns and
-the timeline.
+Every view that shades closed time takes `renderUnavailable`: week, day, month, year, the scrolling
+week, day and month views, resource columns and the timeline. The agenda views don't shade closed
+time.
 
 ## Busy or available
 
@@ -426,8 +427,9 @@ can still be edited.
 | `"warn"`  | Saved, with `"outside-availability"` in its `warnings`, so you can say so or ask to confirm. |
 
 While a gesture is in progress, its preview shows what the policies would say: a drag preview or a
-keyboard-moved event gets a dashed outline, red when the change would be rejected and amber when it
-would be saved with a warning. Your own UI can ask the same question with
+keyboard create's draft gets a dashed outline, and an event moved or resized from the keyboard a
+ring, red when the change would be rejected and amber when it would be saved with a warning. Your
+own UI can ask the same question with
 `actions.checkEventChange(proposal)`, which runs the policies without saving anything.
 
 ## Keyboard and screen readers
@@ -438,7 +440,8 @@ The shading is hidden from screen readers, which hear the same information in wo
 | Where                              | What a screen reader hears                                                     |
 | ---------------------------------- | ------------------------------------------------------------------------------ |
 | A time-grid slot, with ↑ ↓         | "Thursday, October 8 at 8:45 AM, outside working hours"                        |
-| A month day or a timeline day      | "Friday, December 25, 2026, Christmas, closed, no events"                      |
+| A month or year day                | "Friday, December 25, 2026, Christmas, closed, no events"                      |
+| A timeline day                     | "Orchid, Friday, December 25, 2026, closed"                                    |
 | A step of a move, resize or create | "Thursday, October 8, 4:45 – 5:15 PM, outside working hours"                   |
 | A blocked drop                     | "Standup can't go outside working hours, so it's back where it was."           |
 | A saved change with a warning      | "Moved Standup to Thursday, October 8, 4:45 – 5:15 PM, outside working hours." |
@@ -465,6 +468,9 @@ TimeGridColumn                   time-grid-column.tsx
   closed days along day rows, whose cells also get `data-closed`.
 - **Month.** A closed day gets a `month-closed` band in `--calendar-closed`, light enough that its
   date and events stay readable, and its cell gets `data-closed`.
+- **Year.** Every closed day's cell gets `data-closed`; a shaded one also gets a `year-closed` band
+  in `--calendar-closed`, joined with the shaded days beside it in its row. By default only dates an
+  exception closes are shaded; `closedDays: "all"` adds the weekly closed days.
 - **Resource headers.** `ResourceHeaderTime` shows a resource's local time and
   `ResourceHeaderStatus` its status; add them to your own `ResourceHeader` composition.
 

@@ -111,6 +111,9 @@ events change and the series is expanded again.
   dates than the series' zone, dragging an occurrence by days with "All events" moves the series'
   time by an hour, unless the edit gets the calendar's `timeZone`, which
   [the guide](/docs/guides/recurring-events#ask-which-events-a-change-applies-to) passes.
+  `timeZone` covers drags by whole days. A drag that also changes the time of day, a resize by
+  days, or an editor update are still measured on the series' clock, so in those weeks the series
+  can move, or a resize change its length, by an hour.
 - **A repeated hour.** With "All events", a start dropped on the second of two equal wall times, as
   the hour repeated when clocks go back, lands on the first, as every occurrence of the series does.
 - **Cancelled first occurrences.** Edits read one occurrence and its series, not the other

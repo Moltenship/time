@@ -123,6 +123,29 @@ TimeGridView                     time-grid-view.tsx
         </>
       ),
     },
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: "Extra words for each event's accessible name, such as its calendar.",
+    },
+    renderUnavailable: {
+      type: "UnavailableTimeRender",
+      description: (
+        <>
+          Replaces the shading of closed time: an element, or a function of its props. See{" "}
+          <a href="/docs/availability#customize-the-shading">customize the shading</a>.
+        </>
+      ),
+    },
+    annotations: {
+      type: "TimeGridAnnotationOptions",
+      description: (
+        <>
+          How the root's annotations draw: a rail beside the events or an overlay (
+          <code>placement</code>), the rail's size and side, or your own parts. See{" "}
+          <a href="/docs/annotations#options">Annotations</a>.
+        </>
+      ),
+    },
   }}
 />
 

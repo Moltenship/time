@@ -12,24 +12,25 @@ This page uses the `Calendar` and `Meeting` from the [Quick start](/docs/quick-s
 
 ## Saving changes
 
-Pass `onEventChange` to `Root`. Without it, the calendar is read-only.
+Pass `onEventChange` to `Root`. Without it, every change is rejected as `read-only`: drags and
+keyboard grabs still start and their previews show as invalid, but nothing is saved.
 
 <include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#root</include>
 
 The handler receives a change object:
 
-| Field      | Contents                                                                                             |
-| ---------- | ---------------------------------------------------------------------------------------------------- |
-| `cause`    | `"move"`, `"resize-start"`, `"resize-end"`, `"create"`, `"delete"`, or `"update"`                    |
-| `eventId`  | The event's ID, or `null` for `"create"`                                                             |
-| `event`    | Your record, or `null` for `"create"`                                                                |
-| `original` | Where the event was, as the user saw it, or `null` for `"create"`                                    |
-| `proposed` | Where it should go: a range with `kind`, `start`, `end`, and `resourceIds`, or `null` for `"delete"` |
-| `id`       | Identifies the change within this calendar, such as `change-3`. It isn't an event ID                 |
+| Field      | Contents                                                                                                               |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `cause`    | `"move"`, `"resize-start"`, `"resize-end"`, `"create"`, `"delete"`, or `"update"`                                      |
+| `eventId`  | The event's ID, or `null` for `"create"`                                                                               |
+| `event`    | Your record, or `null` for `"create"`                                                                                  |
+| `original` | Where the event was, as the user saw it, or `null` for `"create"`                                                      |
+| `proposed` | Where it should go: a range with `kind`, `start`, `end`, and `resourceIds`, or `null` for `"delete"`                   |
+| `id`       | Identifies the change within this calendar, such as `change-3`. It isn't an event ID                                   |
+| `warnings` | Reasons policies flagged the change with but let through, such as `"outside-availability"`. Absent when there are none |
 
 `applyChange` turns a change into new state. A created event needs an ID of your own, usually from
-your server; this example makes one up. Records you don't touch stay the same objects, which keeps
-re-rendering cheap:
+your server; this example makes one up. Records you don't touch stay the same objects:
 
 <include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#apply</include>
 
@@ -50,13 +51,15 @@ How long a change stays pending depends on your handler:
 <include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#save</include>
 
 Pending events have `isPending: true` in projections, in `meta.eventSnapshot`, and in
-`Calendar.Event`. The built-in views render them at 60% opacity: the week and day views set
-`data-pending` on them, and the month and agenda views set `aria-busy`. Target those attributes to
-style pending events your own way.
+`Calendar.Event`. Every built-in view renders them at 60% opacity with `data-pending` and
+`aria-busy`, and adds "saving" to the event's accessible name. Target those attributes to style
+pending events your own way. A keyboard gesture previews the grabbed event the same way, so it also
+reads `isPending: true` until the gesture ends; the built-in views don't show it as saving.
 
 If the same event changes again before the first change finishes saving, the calendar shows the
-newer change. Your handler still receives both, and their saves can finish in either order, or one
-can fail. The example numbers each change as it starts. When a save succeeds, it updates the state
+newer change. Your handler still receives both, unless an async policy was still deciding on the
+first; that one is rejected with the reason `superseded` and never reaches your handler. Their saves can finish in either
+order, or one can fail. The example numbers each change as it starts. When a save succeeds, it updates the state
 only if no newer change to that event has been applied yet. So a slow save never replaces a newer
 saved edit, and if the newer save fails, the older one that succeeded is still shown. Your server
 needs the same care, for example by rejecting writes that carry an outdated version.
@@ -64,16 +67,18 @@ needs the same care, for example by rejecting writes that carry an outdated vers
 ## Policies
 
 Policies decide which changes are allowed. Each one looks at a change and accepts it, adjusts it,
-or rejects it. They run in order, and each sees the change as adjusted by the ones before it. Pass
+rejects it, or accepts it with a warning in `change.warnings`. They run in order, and each sees the change as adjusted by the ones before it. Pass
 them to `Root` as `policies`, as in the example above.
 
-| Policy                                   | What it does                                                                                                               |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `snapPolicy({ minutes: 15 })`            | Rounds timed changes to a grid in the calendar's time zone                                                                 |
-| `minimumDurationPolicy({ minutes: 15 })` | Lengthens timed events that would be shorter than the minimum                                                              |
-| `boundsPolicy({ start, end })`           | Rejects changes that end up outside the given instants                                                                     |
-| `availabilityPolicy({ mode })`           | Blocks changes outside [working hours](/docs/availability), or saves them with a warning in `change.warnings`              |
-| `readOnlyPolicy()`                       | Rejects changes to events your adapter marks with `isReadOnly`. `Root` always runs it first, so you don't need to pass it. |
+| Policy                                   | What it does                                                                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `snapPolicy({ minutes: 15 })`            | Rounds timed and floating changes to a grid in the calendar's time zone                                                                     |
+| `minimumDurationPolicy({ minutes: 15 })` | Lengthens timed and floating events that would be shorter than the minimum                                                                  |
+| `boundsPolicy({ start, end })`           | Rejects changes that end up outside the given instants                                                                                      |
+| `availabilityPolicy({ mode })`           | Blocks changes outside [working hours](/docs/availability), or saves them with a warning in `change.warnings`                               |
+| `conflictPolicy({ mode })`               | Blocks a change that makes a busy event overlap another busy event on one of its resources, or saves it with a warning. Deletes always pass |
+| `readOnlyResourcesPolicy(isReadOnly)`    | Rejects changes to the schedule of the resources `isReadOnly(resourceId)` marks                                                             |
+| `readOnlyPolicy()`                       | Rejects changes to events your adapter marks with `isReadOnly`. `Root` always runs it first, so you don't need to pass it.                  |
 
 A policy is a function, so you can write your own. This one keeps meetings out of the all-day row.
 Policies can also be `async`, for example to check availability on your server.
@@ -114,15 +119,20 @@ mouse, a pen, or touch:
 | Week and day | Across days and times. Dropping on the all-day row makes it all-day. | Drag the top or bottom edge | Drag across empty time, or across all-day cells |
 | Month        | Across days. Timed events keep their time.                           | –                           | Drag across days to make an all-day event       |
 
+The resource columns and resource timeline views, and the scrolling week, day and month views, use
+the same pointer layer; a drop on another resource swaps that resource in the event's
+`resourceIds`.
+
 Each finished drag sends exactly one change to your handler, so the policies and pending state above
 apply. A few details:
 
-- Times snap to 15 minutes, and a resized event keeps at least one 15-minute slot.
+- Time grids snap to 15 minutes, and a resized event keeps at least one slot. Hour timelines snap
+  to 30 minutes, and day timelines step whole days.
 - A movement under 4px is a click, so clicking an event still works. The click that ends a drag
   doesn't count as a click.
 - Escape cancels a drag, and so does dropping outside the view.
 - On touch screens, press and hold for a moment to start a drag, so swiping still scrolls.
-- The view scrolls when you drag near its top or bottom edge.
+- The view scrolls when you drag near any edge of its scroll container.
 - Read-only events (your adapter's `isReadOnly`) can't be dragged and have no resize handles.
 - While dragging, the original event dims (it has `data-dragging`) and a preview follows the
   pointer. Dragging never re-renders the view.
@@ -136,17 +146,22 @@ the props the Renderer receives, and put the returned ref on the element that co
 
 <include meta='title="my-week-view.tsx"'>../examples/pointer-view.tsx#view</include>
 
-Pass `columns` only in time-grid views; a month grid finds days by their `data-date`. The hook reads
-these attributes from your markup:
+Pass `columns` in views with a time axis: a time grid, resource columns or an hour timeline. A month
+grid or a day timeline finds days by their `data-date`. The hook reads these attributes from your markup:
 
-| Element                                        | Attribute                        |
-| ---------------------------------------------- | -------------------------------- |
-| A day column in a time grid, covering 24 hours | `data-date="2026-10-08"`         |
-| An all-day cell                                | `data-date="…" data-all-day`     |
-| A day cell in a month grid                     | `data-date="…"`                  |
-| An event (render it as a `<button>`)           | `data-event-id`                  |
-| A resize handle inside an event                | `data-resize="start"` or `"end"` |
-| A control that never starts a drag             | `data-calendar-pointer="none"`   |
+| Element                                                     | Attribute                                                   |
+| ----------------------------------------------------------- | ----------------------------------------------------------- |
+| A day column in a time grid, covering 24 hours              | `data-date="2026-10-08"`                                    |
+| An all-day cell                                             | `data-date="…" data-all-day`                                |
+| A day cell in a month grid                                  | `data-date="…"`                                             |
+| An event (render it as a `<button>`)                        | `data-event-id`                                             |
+| A resize handle inside an event                             | `data-resize="start"` or `"end"`                            |
+| A control that never starts a drag                          | `data-calendar-pointer="none"`                              |
+| A cell or row of one resource, in a resource view           | `data-resource-id`, from `resourceIdAttributes(id)`         |
+| An event whose ID is a number                               | `data-event-id-type="number"`, from `eventIdAttributes(id)` |
+| The element inside an event that shows its time             | `data-event-time`                                           |
+| A part over the cells, such as a sticky header              | `data-occludes`                                             |
+| A timeline's time strip for one date, its date in `columns` | `data-date="…" data-axis="inline"`                          |
 
 The [pointer layer reference](/docs/api/changes#pointer-layer) lists the hook's options and styling
 hooks.
