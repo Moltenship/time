@@ -32,7 +32,7 @@ export const publishedPackages: readonly PublishedPackage[] = [
   // and 20,740 of 20,480 gzip bytes. 80 and 21 KiB leave the usual headroom.
   { directory: "calendar-react", budgets: { ".": { raw: 80 * KiB, gzip: 21 * KiB } } },
   // The ICS bridge's RANGE=THISANDFUTURE split, Outlook's all-day flag and the feed's zone (#160)
-  // took calendar-recurrence to 141,889 of 147,456 raw and 38,260 of 36,864 gzip bytes. 148 and
+  // took calendar-recurrence to 144,250 of 147,456 raw and 38,871 of 36,864 gzip bytes. 148 and
   // 40 KiB leave the usual headroom.
   { directory: "calendar-recurrence", budgets: { ".": { raw: 148 * KiB, gzip: 40 * KiB } } },
   { directory: "calendar-temporal", budgets: { ".": { raw: 30 * KiB, gzip: 7 * KiB } } },
