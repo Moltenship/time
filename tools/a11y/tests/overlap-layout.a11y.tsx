@@ -11,6 +11,7 @@ import { userEvent } from "vite-plus/test/browser";
 
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
+import { createTimelineDayView } from "@registry/resource-timeline-view/resource-timeline-view";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
@@ -267,6 +268,10 @@ const MixedCalendar = createCalendar<Fixture, Space>()({
       getEventColor,
       getResourceOverlapLayout: (resource) => (resource.data.kind === "room" ? "stack" : undefined),
     }),
+    createTimelineDayView<Fixture, Space>({
+      getEventColor,
+      getResourceOverlapLayout: (resource) => (resource.data.kind === "room" ? "stack" : undefined),
+    }),
   ],
 });
 const spaces: readonly Space[] = [
@@ -284,7 +289,7 @@ function MixedScreen({
   view,
 }: {
   readonly dir?: "ltr" | "rtl";
-  readonly view: "resources" | "week";
+  readonly view: "resources" | "timeline-day" | "week";
 }) {
   return (
     <TooltipProvider>
@@ -316,7 +321,7 @@ const bookingIn = (resourceId: string, title: string) =>
   )!;
 
 describe.each(themes)("mixed overlap layouts, %s theme", (theme) => {
-  test.each(["week", "resources"] as const)("in the %s view", async (view) => {
+  test.each(["week", "resources", "timeline-day"] as const)("in the %s view", async (view) => {
     setTheme(theme);
     await render(<MixedScreen view={view} />);
 
@@ -371,5 +376,50 @@ describe.each(["ltr", "rtl"] as const)("mixed overlap layouts, %s", (dir) => {
     expect(reviews[2]!.width).toBeCloseTo(0.7 * area.width, 0);
     const top = reviews[2]!;
     expect(eventAt(top.x + top.width / 2, top.y + 8)).toBe(eventElement("Review 3"));
+  });
+});
+
+/** An event's bar in a timeline row. */
+const barIn = (resourceId: string, title: string) =>
+  document.querySelector<HTMLElement>(
+    `[role="row"][data-resource-id="${resourceId}"] [data-event-id="${title}"]`,
+  )!;
+
+describe.each(["ltr", "rtl"] as const)("stacked timeline rows, %s", (dir) => {
+  test("a room's row cascades its bookings, each over the one before it", async () => {
+    await render(<MixedScreen dir={dir} view="timeline-day" />);
+    const box = (resourceId: string, title: string) =>
+      barIn(resourceId, title).getBoundingClientRect();
+    const workshop = box("orchid", "Workshop");
+    const talk = box("orchid", "Talk");
+    const call = box("orchid", "Call");
+
+    // A third of a 26px lane further down each level, all as tall as a lane.
+    expect(talk.top - workshop.top).toBeCloseTo(26 / 3, 0);
+    expect(call.top - talk.top).toBeCloseTo(26 / 3, 0);
+    expect(call.height).toBeCloseTo(workshop.height, 0);
+    // Where all three overlap, the call is on top, and the talk's top strip still shows.
+    expect(eventAt(call.x + call.width / 2, call.y + call.height / 2)).toBe(
+      barIn("orchid", "Call"),
+    );
+    expect(eventAt(call.x + call.width / 2, talk.y + 4)).toBe(barIn("orchid", "Talk"));
+    // Ada keeps a lane per level, side by side down the row.
+    expect(box("ada", "Talk").top - box("ada", "Workshop").top).toBeCloseTo(26, 0);
+  });
+
+  test("a covered booking rises while hovered or focused", async () => {
+    await render(<MixedScreen dir={dir} view="timeline-day" />);
+    const talk = barIn("orchid", "Talk");
+    const call = barIn("orchid", "Call").getBoundingClientRect();
+    // Just inside the call's top edge, where all three bookings overlap.
+    const covered = [call.x + call.width / 2, call.y + 2] as const;
+
+    expect(eventAt(...covered)).toBe(barIn("orchid", "Call"));
+
+    await userEvent.hover(talk, { position: { x: 4, y: 4 } });
+    expect(eventAt(...covered)).toBe(talk);
+    await userEvent.unhover(talk);
+    await act(async () => barIn("orchid", "Workshop").focus());
+    expect(eventAt(...covered)).toBe(barIn("orchid", "Workshop"));
   });
 });

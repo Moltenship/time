@@ -29,10 +29,12 @@ export interface ResourceTimelineEventProps<TEvent> {
 
 /**
  * An event's bar in its lane, across the time it covers. Ends cut off by the range are squared;
- * the others carry resize handles, unless the event or the root is read-only.
+ * the others carry resize handles, unless the event or the root is read-only. In a stacked row,
+ * render bars in the row's order, so each covers the ones before it; a covered bar rises while
+ * hovered, and above that while focused, so its title shows.
  */
 export function ResourceTimelineEvent<TEvent>({
-  bar: { date, days, endsAfter, event, lane, offset, startsBefore, time, width },
+  bar: { date, days, endsAfter, event, lane, offset, startsBefore, time, top, width },
   color,
   icon,
   isReadOnly = false,
@@ -48,14 +50,16 @@ export function ResourceTimelineEvent<TEvent>({
       {...chip}
       title={event.title}
       className={cn(
-        "group absolute z-1 gap-1 rounded-sm px-1.5 py-0 leading-6 focus-visible:z-2 data-grabbed:z-3",
+        "group absolute z-1 gap-1 rounded-sm px-1.5 py-0 leading-6 hover:z-2 focus-visible:z-3 data-grabbed:z-4",
+        // A stacked bar sits part-way down a lane, over the one before it: a ring sets it apart.
+        top !== lane && "shadow-[0_0_0_1px_var(--calendar-surface,var(--background))]",
         startsBefore && "rounded-s-none border-s-0",
         endsAfter && "rounded-e-none",
       )}
       style={{
         height: LANE_HEIGHT,
         insetInlineStart: offset,
-        top: ROW_PADDING + lane * (LANE_HEIGHT + LANE_GAP),
+        top: ROW_PADDING + top * (LANE_HEIGHT + LANE_GAP),
         width,
       }}
     >

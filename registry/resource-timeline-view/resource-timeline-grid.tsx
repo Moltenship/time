@@ -70,9 +70,10 @@ const DEFAULT_HOUR = 8;
 
 const noCells: readonly CalendarCellFocus[] = [];
 
-/** A row tall enough for its lanes, and never shorter than an empty one. */
-function rowHeight(laneCount: number): number {
-  return Math.max(MIN_ROW_HEIGHT, 2 * ROW_PADDING + laneCount * (LANE_HEIGHT + LANE_GAP));
+/** A row tall enough for its lanes, or its stacks, and never shorter than an empty one. */
+function rowHeight(row: ResourceTimelineProjection<unknown>["rows"][number]): number {
+  const lanes = "height" in row ? row.height : row.laneCount;
+  return Math.max(MIN_ROW_HEIGHT, 2 * ROW_PADDING + lanes * (LANE_HEIGHT + LANE_GAP));
 }
 
 /**
@@ -111,7 +112,7 @@ export function ResourceTimelineGrid<TEvent>({
     return (instant: Temporal.Instant) => format.format(instant);
   }, [locale, timeZone]);
   const rowKey = useCallback((index: number) => rows[index]!.resource.key, [rows]);
-  const rowSize = useCallback((index: number) => rowHeight(rows[index]!.laneCount), [rows]);
+  const rowSize = useCallback((index: number) => rowHeight(rows[index]!), [rows]);
   const slotKey = useCallback((index: number) => slots[index]!.key, [slots]);
   // The entry and the focused row and slot always render, so there is always a tab stop, roving
   // focus finds its element at once, and the browser scrolls it into view clear of the sticky

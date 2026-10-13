@@ -10,8 +10,11 @@ import {
   useCalendarDraftReporter,
   useCalendarPointer,
   type CalendarDayFocus,
+  type CalendarResource,
   type CalendarViewRendererProps,
   type PlainDateInterval,
+  type ResourceId,
+  type ResourceTimelineLayoutOptions,
   type ResourceTimelineOptions,
   type ResourceTimelineProjection,
   type ResourceTimelineSpan,
@@ -29,7 +32,16 @@ import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 
 import { ResourceTimelineGrid } from "./resource-timeline-grid";
 
-export interface ResourceTimelineViewOptions<TEvent> extends ResourceTimelineOptions {
+/**
+ * In an hour timeline, overlapping events in a row sit in lanes, or cascade in a stack where the
+ * resource's `getResourceOverlapLayout`, or else `overlapLayout`, is `"stack"`; see
+ * `ResourceTimelineLayoutOptions`.
+ */
+export interface ResourceTimelineViewOptions<
+  TEvent,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+>
+  extends ResourceTimelineOptions, ResourceTimelineLayoutOptions<TEvent, TResource> {
   /** Extra words for each event's accessible name, such as its calendar. */
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Colour for an event; sets `data-color` on every element that renders it. */
@@ -53,9 +65,12 @@ export interface ResourceTimelineViewOptions<TEvent> extends ResourceTimelineOpt
   readonly resourceStatus?: boolean | ResourceStatusOptions;
 }
 
-export type ResourceTimelineViewProps<TEvent> = CalendarViewRendererProps<
+export type ResourceTimelineViewProps<
+  TEvent,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+> = CalendarViewRendererProps<
   ResourceTimelineProjection<TEvent>,
-  ResourceTimelineViewOptions<TEvent>
+  ResourceTimelineViewOptions<TEvent, TResource>
 >;
 
 /** The grid's name: the title the toolbar shows for the range, "October 2026" for a month. */
@@ -82,7 +97,10 @@ const entrySnap = { increment: 15, smallestUnit: "minute" } as const;
  * From the keyboard the grid is one tab stop: arrow keys move along a row and between rows, and
  * Space picks up an event (Shift+Space to resize) or starts one on the focused cell.
  */
-export function ResourceTimelineView<TEvent>({
+export function ResourceTimelineView<
+  TEvent,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+>({
   actions,
   environment,
   events,
@@ -90,7 +108,7 @@ export function ResourceTimelineView<TEvent>({
   options,
   projection,
   range,
-}: ResourceTimelineViewProps<TEvent>) {
+}: ResourceTimelineViewProps<TEvent, TResource>) {
   // Hour rows map a pointer along their date strips through the columns; day rows have plain day
   // cells, which steps drags by whole days. Drags speak through the same messages as the keyboard.
   const announcer = useCalendarAnnouncer();
@@ -162,36 +180,48 @@ export function ResourceTimelineView<TEvent>({
   );
 }
 
-function timelineView<const TName extends string, TEvent>(
+function timelineView<
+  const TName extends string,
+  TEvent,
+  TResource extends CalendarResource<unknown, ResourceId>,
+>(
   name: TName,
   span: ResourceTimelineSpan,
-  defaultOptions: ResourceTimelineViewOptions<TEvent>,
+  defaultOptions: ResourceTimelineViewOptions<TEvent, TResource>,
 ) {
   return defineCalendarView({
     defaultOptions,
     name,
-    strategy: resourceTimelineStrategy<ResourceTimelineViewOptions<TEvent>, TEvent>(span),
-    Renderer: ResourceTimelineView<TEvent>,
+    strategy: resourceTimelineStrategy<ResourceTimelineViewOptions<TEvent, TResource>, TEvent>(
+      span,
+    ),
+    Renderer: ResourceTimelineView<TEvent, TResource>,
   });
 }
 
-/** The anchor date in hours, named `timeline-day`. */
-export function createTimelineDayView<TEvent = unknown>(
-  defaultOptions: ResourceTimelineViewOptions<TEvent> = {},
-) {
+/**
+ * The anchor date in hours, named `timeline-day`. Pass the root's resource type as `TResource` to
+ * read your own fields in `getResourceOverlapLayout`.
+ */
+export function createTimelineDayView<
+  TEvent = unknown,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+>(defaultOptions: ResourceTimelineViewOptions<TEvent, TResource> = {}) {
   return timelineView("timeline-day", { count: 1, kind: "days" }, defaultOptions);
 }
 
 /** A week of days, starting on the calendar's `weekRules.firstDay`, named `timeline-week`. */
-export function createTimelineWeekView<TEvent = unknown>(
-  defaultOptions: ResourceTimelineViewOptions<TEvent> = {},
-) {
+export function createTimelineWeekView<
+  TEvent = unknown,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+>(defaultOptions: ResourceTimelineViewOptions<TEvent, TResource> = {}) {
   return timelineView("timeline-week", { kind: "week" }, defaultOptions);
 }
 
 /** The anchor's calendar month, day by day, named `timeline-month`. */
-export function createTimelineMonthView<TEvent = unknown>(
-  defaultOptions: ResourceTimelineViewOptions<TEvent> = {},
-) {
+export function createTimelineMonthView<
+  TEvent = unknown,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+>(defaultOptions: ResourceTimelineViewOptions<TEvent, TResource> = {}) {
   return timelineView("timeline-month", { kind: "month" }, defaultOptions);
 }

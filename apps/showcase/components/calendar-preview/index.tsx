@@ -94,23 +94,29 @@ export function OverlapLayoutPreview() {
 }
 
 /**
- * Two rooms and two people over a day, with a toggle for each kind's overlap layout, or with
- * `rules="conflicts"` for what double-booking each kind does.
+ * Two rooms and two people over a day, as resource columns or a timeline, with a toggle for each
+ * kind's overlap layout, or with `rules="conflicts"` for what double-booking each kind does.
  */
 export function RoomsAndPeoplePreview({
   rules = "layout",
+  view = "resources",
 }: {
   readonly rules?: "conflicts" | "layout";
+  readonly view?: "resources" | "timeline-day";
 }) {
   return (
     <figure className="not-prose my-6">
-      <div className="h-[32rem] overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm">
-        <RoomsAndPeoplePreviewIsland rules={rules} />
+      <div
+        className={`overflow-hidden rounded-xl border bg-fd-background text-left shadow-sm ${view === "resources" ? "h-[32rem]" : "h-[25rem]"}`}
+      >
+        <RoomsAndPeoplePreviewIsland rules={rules} view={view} />
       </div>
       <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
-        {rules === "layout"
-          ? "Live, in your time zone. Pick a layout for the rooms and one for the people, or drag a booking from a room to a person."
-          : "Live, in your time zone. Drag a booking onto another one: a room that blocks turns the preview red and takes it back, and a person who warns saves it, flagged."}
+        {rules === "conflicts"
+          ? "Live, in your time zone. Drag a booking onto another one: a room that blocks turns the preview red and takes it back, and a person who warns saves it, flagged."
+          : view === "resources"
+            ? "Live, in your time zone. Pick a layout for the rooms and one for the people, or drag a booking from a room to a person."
+            : "Live, in your time zone. Stack the rooms or the people: their rows cascade overlapping bookings within two lanes."}
       </figcaption>
     </figure>
   );

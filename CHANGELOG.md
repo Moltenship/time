@@ -68,3 +68,9 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   rooms and `"warn"` for people, and a third mode, `"allow"`. The strictest mode among the
   resources a change double-books decides, and the reason stays `"resource-conflict"`. Existing
   calls work as before. `ConflictMode` is new (#230).
+- The resource timeline's hour rows can stack overlapping events. `overlapLayout`,
+  `getResourceOverlapLayout` and `getEventOverlapLayout` work as in resource columns: `"stack"`
+  cascades a row's bars a third of a lane apart, never more than two lanes tall, and the other
+  layouts keep a lane per level of overlap. Bars get `top` and rows `height`, both in lanes;
+  `ResourceTimelineLayoutOptions` is new, and the timeline views take the root's resource type as
+  `TResource` (#230).

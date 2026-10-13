@@ -99,7 +99,7 @@ ResourceTimelineView             resource-timeline-view.tsx
 - The header and the resource column are `position: sticky` inside the one scrolling element, so
   they move with it exactly and a row's name stays inside its row for screen readers.
 - `timeline-placement.ts` puts each bar in the first rendered cell it covers, so a bar that starts
-  off-screen still shows. A row is as tall as its lanes need, and at least 44px.
+  off-screen still shows. A row is as tall as its lanes, or its stacks, need, and at least 44px.
 
 ## Options
 
@@ -125,6 +125,36 @@ ResourceTimelineView             resource-timeline-view.tsx
           nothing. It's decorative and hidden from screen readers: say the same in{" "}
           <code>describeEvent</code>, which adds to the event's{" "}
           <a href="/docs/accessibility#event-names">accessible name</a>.
+        </>
+      ),
+    },
+    getEventOverlapLayout: {
+      type: '(event: TEvent) => "columns" | "equal" | "stack" | undefined',
+      description: (
+        <>
+          In an hour timeline, an event's own layout, such as its calendar's: a group of overlapping
+          events in a row takes it when they all agree. See <a href="#stacked-rows">stacked rows</a>
+          .
+        </>
+      ),
+    },
+    getResourceOverlapLayout: {
+      type: '(resource: TResource) => "columns" | "equal" | "stack" | undefined',
+      description: (
+        <>
+          In an hour timeline, a resource's layout in its row, such as <code>"stack"</code> for
+          rooms; <code>undefined</code> keeps <code>overlapLayout</code>.
+        </>
+      ),
+    },
+    overlapLayout: {
+      type: '"columns" | "equal" | "stack"',
+      default: '"columns"',
+      description: (
+        <>
+          In an hour timeline, how a row shares out overlapping events: a lane for each level of
+          overlap, or <code>"stack"</code> to cascade them. See{" "}
+          <a href="#stacked-rows">stacked rows</a>.
         </>
       ),
     },
@@ -181,7 +211,8 @@ Set options when you create the view, or per calendar with
   [day view](/docs/views/week-and-day). Hours skipped when the clocks go forward are hatched, and
   hours repeated when they go back are tinted.
 - **Both:** an event that starts before or ends after the range is squared off at that edge.
-  Events that overlap stack in lanes, and the row grows to fit them.
+  Events that overlap sit in lanes, and the row grows to fit them. Over hours, a row can
+  [stack](#stacked-rows) them instead.
 - **Current time:** a line through today at the current time, from
   [`useNow()`](/docs/concepts/time#the-current-time). A day opens scrolled to it, or to 08:00 when
   today isn't shown.
@@ -199,6 +230,33 @@ Set options when you create the view, or per calendar with
 A day of rooms and people, in hours:
 
 <CalendarPreview view="timeline-day" />
+
+## Stacked rows
+
+A busy room takes a lane for each level of overlap, so its row grows. In an hour timeline,
+`overlapLayout: "stack"` cascades a row's overlapping events instead: each bar sits a third of a
+lane below the one it covers and is drawn over it, and a deep stack steps less, so the row is never
+more than two lanes tall. `getResourceOverlapLayout` picks it per resource, as in
+[resource columns](/docs/views/resource-columns#rooms-and-people):
+
+<RoomsAndPeoplePreview view="timeline-day" />
+
+```tsx
+const view = createTimelineDayView<Meeting, Resource>({
+  getResourceOverlapLayout: (resource) => (resource.data.kind === "room" ? "stack" : undefined),
+});
+```
+
+- `"columns"` and `"equal"` are the same here: a lane per level of overlap. A row has no fixed
+  height to share, so no bar narrows.
+- The rules are the time grid's. A group of overlapping events takes its events' own layout,
+  from `getEventOverlapLayout`, when they all agree, and otherwise its row's. A group's layout
+  depends only on its own events. The Unassigned row follows `overlapLayout`.
+- Bars are drawn in time order, so each covers the ones before it. A covered bar rises while you
+  hover over it or focus it, so its title shows. ← and → walk a row's bars in the same order, and
+  Enter on a cell starts at the bar the others cover, as in lanes.
+- A day timeline lays each row out like a month row, whatever the layout, as the time grid's
+  all-day row does.
 
 ## Keyboard
 
