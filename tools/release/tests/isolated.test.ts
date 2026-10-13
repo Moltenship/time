@@ -168,6 +168,12 @@ describe("an offline install that a cold cache can't do", () => {
         "Error: ERR_PNPM_BAD_CONFIG_DEP\n  × resolve package manager dependencies\n  ╰─▶ Failed to resolve config dependency pnpm@12.10.1: Failed to resolve\n      pnpm@12.10.1 in package mirror",
       ),
     ).toBe(true);
+    // A cause pnpm frames with box-drawing characters, split across lines.
+    expect(
+      lacksMetadata(
+        "ERR_PNPM_BAD_CONFIG_DEP\n  ├─▶ Failed to resolve pnpm@12.10.1 in package\n  │   mirror",
+      ),
+    ).toBe(true);
     expect(lacksMetadata("ERR_PNPM_BAD_CONFIG_DEP  a config dependency has no integrity")).toBe(
       false,
     );

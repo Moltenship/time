@@ -88,6 +88,7 @@ describe("release workflow contract", () => {
     expect(setup(rehearsal)).toEqual(setup(verify));
     expect(rehearsal?.environment).toBeUndefined();
     expect(rehearsal?.permissions).toBeUndefined();
+    expect(ci.permissions).toEqual({ contents: "read" });
     expect(JSON.stringify(rehearsal)).not.toContain("release:publish");
   });
 

@@ -78,8 +78,8 @@ export default defineConfig({
         "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
       // `ci:build` has built the docs site, so search checks that build. The release dry run
       // rebuilds and packs every published package and installs them from the pnpm store into a
-      // clean project. Then the SSR fixture, the docs site and the registry's clean apps install the dry
-      // run's tarballs, side by side; the registry's apps need the network.
+      // clean project. Then the SSR fixture, the docs site and the registry's clean apps install
+      // the dry run's tarballs, side by side; the registry's apps need the network.
       "gate:serial:full":
         "vp run gate:serial && vp run release:dry-run && vp run showcase:types && vp run showcase#search:check && vp run release:artifacts",
       "gate:serial:release":

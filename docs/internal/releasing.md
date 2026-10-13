@@ -1,10 +1,10 @@
 # Releasing
 
 How the packages get to npm. Only the owner publishes. Everything before the publish step runs
-locally or in CI, and nothing installs our packages from npm. The dry run installs from the pnpm store,
-reading package metadata from npm only when a cold cache lacks it, as on a fresh runner; the
-checks on its tarballs reach the network only for third-party packages, shadcn's components and the
-docs site's fonts.
+locally or in CI, and nothing installs our packages from npm. The dry run installs from the pnpm
+store, reading package metadata from npm only when a cold cache lacks it, as on a fresh runner;
+the checks on its tarballs reach the network only for third-party packages, shadcn's components
+and the docs site's fonts.
 
 Seven packages publish under `@moltenship`, listed in
 [`tools/release/src/config.ts`](../../tools/release/src/config.ts) and

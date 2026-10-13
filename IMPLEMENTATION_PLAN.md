@@ -107,7 +107,8 @@ issue's "Later" section when work starts.
 - The local `vp run ready` is the merge gate. Once it's green, merge without waiting for GitHub
   Actions; CI runs the same tasks as a backstop. A red CI run on `main` gets fixed right away, and
   CI red with local green is a gate bug: the local gate must reproduce it. Release work is the
-  exception: the release job's gate must pass, and a change to it shows a green CI rehearsal.
+  exception: the release job's gate must pass, and a change to it, or a version PR, links a green
+  CI rehearsal.
 - Every PR gets a code review. Fix each finding, or reply with the reason you didn't. Get the
   review from Claude Opus 5.5 (xhigh) instead of Pullfrog, and post the local gate's result on
   the PR.
