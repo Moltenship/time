@@ -41,6 +41,8 @@ function offsetLabel(timeZone: string): string {
 }
 
 interface SettingItem {
+  /** What the option does, shown under the select while it's chosen. */
+  readonly description?: string;
   /** Shown after the label in the list only, such as a UTC offset. */
   readonly hint?: string;
   readonly label: string;
@@ -59,6 +61,7 @@ function Setting({
   readonly value: string;
 }) {
   const id = useId();
+  const description = items.find((item) => item.value === value)?.description;
   return (
     <div className="grid gap-1.5">
       <Label htmlFor={id} className="text-xs text-muted-foreground">
@@ -71,7 +74,12 @@ function Setting({
         }}
         value={value}
       >
-        <SelectTrigger className="w-full" id={id} size="sm">
+        <SelectTrigger
+          aria-describedby={description === undefined ? undefined : `${id}-description`}
+          className="w-full"
+          id={id}
+          size="sm"
+        >
           <SelectValue />
         </SelectTrigger>
         <SelectContent alignItemWithTrigger={false}>
@@ -87,6 +95,11 @@ function Setting({
           </SelectGroup>
         </SelectContent>
       </Select>
+      {description !== undefined && (
+        <p className="text-xs text-muted-foreground" id={`${id}-description`}>
+          {description}
+        </p>
+      )}
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { instantInterval } from "@moltenship/calendar-temporal";
-import { describe, expect, test } from "vite-plus/test";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import {
   busyResources,
@@ -9,6 +9,7 @@ import {
   type CalendarEvent,
   type CalendarEventChange,
   type CalendarEventPlacement,
+  type ConflictMode,
   type EventSnapshot,
 } from "../src/index";
 
@@ -297,6 +298,162 @@ describe("conflict policy", () => {
     expect(move({ ...original, resourceIds: ["ben", "ana"] })).toEqual({
       reason: "resource-conflict",
       type: "reject",
+    });
+  });
+
+  describe("per-resource modes", () => {
+    // Orchid and Cedar are rooms; Ana and Ben are people.
+    const rooms = new Set(["orchid", "cedar"]);
+    const roomsBlock = (resourceId: string): ConflictMode | undefined =>
+      rooms.has(resourceId) ? "block" : undefined;
+    const reject = { reason: "resource-conflict", type: "reject" } as const;
+    const warn = { reason: "resource-conflict", type: "warn" } as const;
+    // The standup has Ana and Orchid until 09:30; Ana's review runs to 10:30.
+    const standupTime = (...resourceIds: string[]) =>
+      create("2026-10-08T09:15", "2026-10-08T09:45", resourceIds);
+
+    test("rooms block and people warn, each by its own mode", () => {
+      const policy = conflictPolicy<TestEvent, string, string>({
+        getResourceMode: roomsBlock,
+        mode: "warn",
+      });
+
+      expect(policy(standupTime("orchid"), context)).toEqual(reject);
+      expect(policy(standupTime("ana"), context)).toEqual(warn);
+    });
+
+    test("the strictest mode among the double-booked resources decides", () => {
+      const policy = conflictPolicy<TestEvent, string, string>({
+        getResourceMode: roomsBlock,
+        mode: "warn",
+      });
+
+      expect(policy(standupTime("ana", "orchid"), context)).toEqual(reject);
+      // At 10:00 Orchid is free, so its block doesn't apply; Ana is still in the review.
+      expect(
+        policy(create("2026-10-08T10:00", "2026-10-08T10:30", ["ana", "orchid"]), context),
+      ).toEqual(warn);
+      // Booking a free room with a free person passes.
+      expect(
+        policy(create("2026-10-08T11:00", "2026-10-08T11:30", ["ana", "orchid"]), context),
+      ).toEqual({ type: "accept" });
+    });
+
+    test("allow lets a resource be double-booked, as a default or for one resource", () => {
+      const roomsOnly = conflictPolicy<TestEvent, string, string>({
+        getResourceMode: roomsBlock,
+        mode: "allow",
+      });
+      expect(roomsOnly(standupTime("ana"), context)).toEqual({ type: "accept" });
+      expect(roomsOnly(standupTime("ana", "orchid"), context)).toEqual(reject);
+
+      const anaAllowed = conflictPolicy<TestEvent, string, string>({
+        getResourceMode: (resourceId) => (resourceId === "ana" ? "allow" : undefined),
+      });
+      expect(anaAllowed(standupTime("ana"), context)).toEqual({ type: "accept" });
+      expect(anaAllowed(standupTime("ana", "orchid"), context)).toEqual(reject);
+      expect(conflictPolicy({ mode: "allow" })(standupTime("ana", "orchid"), context)).toEqual({
+        type: "accept",
+      });
+    });
+
+    test("an unknown mode blocks, as it always has, and a busy allowed resource adds nothing", () => {
+      expect(
+        conflictPolicy({ mode: "ignore" as ConflictMode })(standupTime("orchid"), context),
+      ).toEqual(reject);
+      expect(
+        conflictPolicy({ getResourceMode: () => "later" as ConflictMode, mode: "warn" })(
+          standupTime("orchid"),
+          context,
+        ),
+      ).toEqual(reject);
+      // Ana warns and Orchid allows, both busy: a warning.
+      expect(
+        conflictPolicy({
+          getResourceMode: (resourceId) => (resourceId === "orchid" ? "allow" : "warn"),
+        })(standupTime("ana", "orchid"), context),
+      ).toEqual(warn);
+    });
+
+    test("asks about a resource listed twice once", () => {
+      const getResourceMode = vi.fn(roomsBlock);
+      expect(
+        conflictPolicy({ getResourceMode, mode: "warn" })(standupTime("ana", "ana"), context),
+      ).toEqual(warn);
+      expect(getResourceMode.mock.calls).toEqual([["ana"]]);
+      // Also one it allows.
+      const allowOrchid = vi.fn((): ConflictMode => "allow");
+      expect(
+        conflictPolicy({ getResourceMode: allowOrchid })(standupTime("orchid", "orchid"), context),
+      ).toEqual({ type: "accept" });
+      expect(allowOrchid.mock.calls).toEqual([["orchid"]]);
+    });
+
+    test("asks only about the resources a change alters, and queries none it allows", () => {
+      const getResourceMode = vi.fn((resourceId: string): ConflictMode | undefined =>
+        resourceId === "orchid" ? "allow" : roomsBlock(resourceId),
+      );
+      const policy = conflictPolicy<TestEvent, string, string>({ getResourceMode, mode: "warn" });
+      const call = events.get("call")!;
+      const original: CalendarEventPlacement<string> = {
+        end: at("2026-10-08T11:00"),
+        kind: "timed",
+        resourceIds: ["ben"],
+        start: at("2026-10-08T10:00"),
+      };
+      // Counts the snapshot's queries; it's frozen, and its methods read private fields.
+      const queries: string[] = [];
+      const watched = new Proxy(events, {
+        get(target, key) {
+          const value: unknown = Reflect.get(target, key);
+          if (typeof value !== "function") return value;
+          if (typeof key === "string" && key.startsWith("query")) queries.push(key);
+          return value.bind(target);
+        },
+      });
+      const addAt = (resourceIds: string[]) =>
+        policy(
+          {
+            cause: "move",
+            event: call.event,
+            eventId: "call",
+            id: "change",
+            original,
+            proposed: { ...original, resourceIds },
+          },
+          { ...context, events: watched },
+        );
+
+      // Same time, Ana added: only Ana is asked about, and she's in the review until 10:30.
+      expect(addAt(["ben", "ana"])).toEqual(warn);
+      expect(getResourceMode.mock.calls).toEqual([["ana"]]);
+      expect(queries).not.toEqual([]);
+      // Orchid is allowed, so a change that only adds Orchid passes without a query.
+      getResourceMode.mockClear();
+      queries.length = 0;
+      expect(addAt(["ben", "orchid"])).toEqual({ type: "accept" });
+      expect(getResourceMode.mock.calls).toEqual([["orchid"]]);
+      expect(queries).toEqual([]);
+    });
+
+    test("an all-day booking still books nothing, whatever the resources' modes", () => {
+      const change: CalendarEventChange<TestEvent, string, string> = {
+        cause: "create",
+        event: null,
+        eventId: null,
+        id: "change",
+        original: null,
+        proposed: {
+          end: Temporal.PlainDate.from("2026-10-09"),
+          kind: "all-day",
+          resourceIds: ["orchid"],
+          start: Temporal.PlainDate.from("2026-10-08"),
+        },
+      };
+
+      expect(
+        conflictPolicy<TestEvent, string, string>({ getResourceMode: roomsBlock })(change, context),
+      ).toEqual({ type: "accept" });
     });
   });
 

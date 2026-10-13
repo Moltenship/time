@@ -132,3 +132,56 @@ test("the rooms and people preview lays each kind of resource out by its own tog
 
   expect([standup("orchid"), standup("sam")]).toEqual([`${0.5 * 100}%`, `${0.3 * 100}%`]);
 });
+
+test("the double booking preview starts with rooms that block and people who warn", async () => {
+  const container = await render(<RoomsAndPeopleCalendar rules="conflicts" />);
+  const pressed = [...container.querySelectorAll('[aria-labelledby] button[aria-pressed="true"]')];
+
+  expect(pressed.map((button) => button.textContent)).toEqual(["Block", "Warn"]);
+  expect(container.textContent).toContain(
+    "Drag a booking onto another in the same room or person.",
+  );
+});
+
+test("the double booking preview blocks or allows a room by its toggle and says how it went", async () => {
+  const container = await render(<RoomsAndPeopleCalendar rules="conflicts" />);
+  const press = async (key: string) =>
+    act(async () => {
+      document.activeElement!.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key }),
+      );
+    });
+  // The interview, in Orchid and Maya's columns at 10:00, moved up an hour onto the design review.
+  const moveInterviewUp = async () => {
+    await act(async () =>
+      container
+        .querySelector<HTMLElement>(
+          '[data-slot="resource-columns-body"] [data-resource-id="orchid"] [data-event-id="booking-4"]',
+        )!
+        .focus(),
+    );
+    await press(" ");
+    for (let step = 0; step < 4; step += 1) await press("ArrowUp");
+    await press("Enter");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve));
+    });
+  };
+  const status = () => container.querySelector('[data-slot="rooms-preview-outcome"]')?.textContent;
+
+  await moveInterviewUp();
+  expect(status()).toBe("Interview wasn't saved: it would be double-booked.");
+
+  await click(
+    [...container.querySelectorAll("[aria-labelledby] button")].find(
+      (button) =>
+        button.textContent === "Allow" &&
+        document.getElementById(button.parentElement!.getAttribute("aria-labelledby")!)
+          ?.textContent === "Rooms",
+    ),
+  );
+  expect(status()).toBe("Drag a booking onto another in the same room or person.");
+  await moveInterviewUp();
+  // Orchid allows it now; Maya, also in the review then, still warns.
+  expect(status()).toBe("Interview was saved, flagged as double-booked.");
+});

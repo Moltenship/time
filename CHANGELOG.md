@@ -64,3 +64,7 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   none of it. A create proposal can carry a record as `event`, which its change hands on, and
   `onEventChangeResult` gets the detail a proposal was made with, which an event history's
   inverses mark with `history` (#227).
+- `conflictPolicy` takes a mode per resource, `getResourceMode(resourceId)`, such as `"block"` for
+  rooms and `"warn"` for people, and a third mode, `"allow"`. The strictest mode among the
+  resources a change double-books decides, and the reason stays `"resource-conflict"`. Existing
+  calls work as before. `ConflictMode` is new (#230).

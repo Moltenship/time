@@ -467,8 +467,10 @@ interface ClosedTime {
   readonly opensBefore: boolean;
   readonly opensAfter: boolean;
 }
-interface ConflictPolicyOptions {
-  readonly mode?: "block" | "warn";
+type ConflictMode = "allow" | "block" | "warn";
+interface ConflictPolicyOptions<TResourceId extends ResourceId = ResourceId> {
+  readonly getResourceMode?: (resourceId: TResourceId) => ConflictMode | undefined;
+  readonly mode?: ConflictMode;
 }
 type DayFragment = EventDayFragment<unknown, EventId, ResourceId>;
 interface DayGridOverflow<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
@@ -920,7 +922,7 @@ export declare function boundsPolicy<TEvent, TEventId extends EventId, TResource
 export declare function busyAt<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(events: EventSnapshot<TEvent, TEventId, TResourceId>, at: Temporal.Instant, query: BusyQuery<TResourceId>): BusyStatus<NormalizedCalendarEvent<TEvent, TEventId, TResourceId>>;
 export declare function busyResources<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(events: EventSnapshot<TEvent, TEventId, TResourceId>, range: InstantInterval | CalendarEventInterval, { exclude, resourceIds, timeZone }: BusyResourcesQuery<TEventId, TResourceId>): ReadonlyMap<TResourceId, readonly NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[]>;
 export declare function closedDates(range: PlainDateInterval, schedule: AvailabilitySchedule | null, timeZone: string): ReadonlyMap<string, ClosedDate>;
-export declare function conflictPolicy<TEvent, TEventId extends EventId, TResourceId extends ResourceId>({ mode }?: ConflictPolicyOptions): CalendarPolicy<TEvent, TEventId, TResourceId>;
+export declare function conflictPolicy<TEvent, TEventId extends EventId, TResourceId extends ResourceId>({ getResourceMode, mode }?: ConflictPolicyOptions<TResourceId>): CalendarPolicy<TEvent, TEventId, TResourceId>;
 export declare function createAnnotationSnapshot<TData = unknown, TResourceId extends ResourceId = ResourceId>(input: readonly CalendarAnnotation<TData, TResourceId>[]): AnnotationSnapshot<TData, TResourceId>;
 export declare function createAvailabilitySnapshot({ availability, resources, timeZone }: AvailabilitySnapshotInput): AvailabilitySnapshot;
 export declare function createCanonicalEventAdapter<TData = unknown, TEventId extends EventId = string, TResourceId extends ResourceId = string>(): EventAdapter<CalendarEvent<TData, TEventId, TResourceId>, TEventId, TResourceId>;
@@ -1131,6 +1133,7 @@ export {
   type CalendarWeekRules,
   type ClosedDate,
   type ClosedTime,
+  type ConflictMode,
   type ConflictPolicyOptions,
   type DayGridOverflow,
   type DayGridRow,

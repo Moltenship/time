@@ -40,7 +40,7 @@ export const OverlapPreviewIsland = dynamic(() => withTemporal(() => import("./o
   ssr: false,
 });
 
-/** Rooms and people over a day, with a layout for each kind of resource. */
+/** Rooms and people over a day, with a layout or a double-booking mode for each kind of resource. */
 export const RoomsAndPeoplePreviewIsland = dynamic(
   () => withTemporal(() => import("./rooms-and-people")),
   { loading: PreviewSkeleton, ssr: false },

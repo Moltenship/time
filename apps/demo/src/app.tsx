@@ -56,7 +56,7 @@ import {
 } from "./event-draft";
 import { useHiddenCalendars } from "./hidden-calendars";
 import { useOccurrences } from "./occurrences";
-import { demoResourceOverlapLayout } from "./resource-rules";
+import { demoResourceConflictMode, demoResourceOverlapLayout } from "./resource-rules";
 import { demoResourceGroups, demoResources, type DemoResourceId } from "./resources";
 import { useDemoSettings } from "./settings";
 import { viewFor } from "./scrolling";
@@ -67,17 +67,15 @@ import { useCalendarLocation } from "./url-state";
 const saveDelayMs = 600;
 /** Double-booking a room or person is allowed, as it can be on purpose, and flagged. */
 const flagConflicts = conflictPolicy<DemoOccurrence, string, DemoResourceId>({ mode: "warn" });
-const demoPolicies = [demoEventPolicy, flagConflicts];
-const warnOutsideHours = [
-  demoEventPolicy,
-  availabilityPolicy<DemoOccurrence, string, DemoResourceId>({ mode: "warn" }),
-  flagConflicts,
-];
-const blockOutsideHours = [
-  demoEventPolicy,
-  availabilityPolicy<DemoOccurrence, string, DemoResourceId>({ mode: "block" }),
-  flagConflicts,
-];
+/** Under "Rooms and people", a room can't be double-booked; a person still can, flagged. */
+const conflictsByKind = conflictPolicy<DemoOccurrence, string, DemoResourceId>({
+  getResourceMode: demoResourceConflictMode,
+  mode: "warn",
+});
+const hoursPolicies = {
+  block: availabilityPolicy<DemoOccurrence, string, DemoResourceId>({ mode: "block" }),
+  warn: availabilityPolicy<DemoOccurrence, string, DemoResourceId>({ mode: "warn" }),
+};
 const createId = () => crypto.randomUUID();
 
 /** What a saved change's warnings say. */
@@ -146,12 +144,13 @@ export function App() {
       workingHours === "off" ? undefined : demoAvailability(Temporal.PlainDate.from(todayKey)),
     [todayKey, workingHours],
   );
-  const policies =
-    workingHours === "warn"
-      ? warnOutsideHours
-      : workingHours === "block"
-        ? blockOutsideHours
-        : demoPolicies;
+  // Working hours that are only shown, or hidden, check nothing.
+  const policies = useMemo(() => {
+    const conflicts = resourceRules === "by-kind" ? conflictsByKind : flagConflicts;
+    return workingHours === "warn" || workingHours === "block"
+      ? [demoEventPolicy, hoursPolicies[workingHours], conflicts]
+      : [demoEventPolicy, conflicts];
+  }, [resourceRules, workingHours]);
   const annotationSources = useMemo(
     () => demoAnnotationSources.filter(({ id }) => !hiddenSources.has(id)),
     [hiddenSources],

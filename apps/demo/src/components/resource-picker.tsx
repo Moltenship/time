@@ -28,7 +28,8 @@ export interface ResourcePickerProps {
  * A "find a room" picker, built on `useBusyResources` rather than shipped as a part: rooms and
  * people split into Available and Busy at the event's time, free first. Busy ones stay
  * selectable, since a double booking can be on purpose, and say so in words; so does a time
- * outside someone's hours.
+ * outside someone's hours. When "Rooms and people" blocks double-booking rooms, saving with a
+ * busy room says so instead.
  */
 export function ResourcePicker({ eventId, interval, onChange, value }: ResourcePickerProps) {
   const id = useId();

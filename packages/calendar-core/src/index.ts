@@ -293,7 +293,7 @@ export type {
 
 export { availabilityPolicy, fitsAvailability } from "./policies/availability";
 export { conflictPolicy } from "./policies/conflict";
-export type { ConflictPolicyOptions } from "./policies/conflict";
+export type { ConflictMode, ConflictPolicyOptions } from "./policies/conflict";
 export type { AvailabilityPolicyOptions } from "./policies/availability";
 export { boundsPolicy } from "./policies/bounds";
 export { minimumDurationPolicy } from "./policies/minimum-duration";

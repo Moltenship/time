@@ -1,7 +1,10 @@
 import {
+  conflictPolicy,
   createCalendar,
   defineEventAdapter,
   type CalendarResource,
+  type CalendarTransactionResult,
+  type ConflictMode,
   type OverlapLayout,
 } from "@moltenship/calendar";
 import { useMemo, useState } from "react";
@@ -22,6 +25,13 @@ const spaces: readonly Space[] = [
   { data: { kind: "person" }, id: "maya", title: "Maya" },
   { data: { kind: "person" }, id: "sam", title: "Sam" },
 ];
+const rooms = new Set(spaces.filter(({ data }) => data.kind === "room").map(({ id }) => id));
+
+const conflictModes = [
+  { label: "Block", value: "block" },
+  { label: "Warn", value: "warn" },
+  { label: "Allow", value: "allow" },
+] as const satisfies readonly { readonly label: string; readonly value: ConflictMode }[];
 
 const noResourceIds: readonly string[] = [];
 const getEventColor = (event: PreviewEvent) => event.color;
@@ -72,21 +82,53 @@ export function createRoomBookings(day: Temporal.ZonedDateTime): readonly Previe
   });
 }
 
+/** What happened to the last change, in words. */
+function describeResult(result: CalendarTransactionResult<PreviewEvent, string, string>): string {
+  const title = result.change?.event?.title ?? "The new event";
+  if (result.status === "rejected") {
+    return result.reason === "resource-conflict"
+      ? `${title} wasn't saved: it would be double-booked.`
+      : `${title} wasn't saved.`;
+  }
+  return result.change.warnings?.includes("resource-conflict")
+    ? `${title} was saved, flagged as double-booked.`
+    : `${title} was saved.`;
+}
+
 /**
- * Two rooms and two people over tomorrow, so it opens at 08:00, with a layout for each kind of
- * resource. Edits stay in memory.
+ * Two rooms and two people over tomorrow, so it opens at 08:00. With `rules="layout"`, a toggle
+ * picks each kind's overlap layout; with `rules="conflicts"`, rooms stack and people sit side by
+ * side, and a toggle picks what double-booking each kind does. Edits stay in memory.
  */
-export default function RoomsAndPeopleCalendar() {
+export default function RoomsAndPeopleCalendar({
+  rules = "layout",
+}: {
+  readonly rules?: "conflicts" | "layout";
+}) {
   const [day] = useState(() => Temporal.Now.zonedDateTimeISO().add({ days: 1 }).startOfDay());
   const [events, setEvents] = useState(() => createRoomBookings(day));
-  const [rooms, setRooms] = useState<OverlapLayout>("stack");
-  const [people, setPeople] = useState<OverlapLayout>("columns");
+  const [roomLayout, setRoomLayout] = useState<OverlapLayout>("stack");
+  const [peopleLayout, setPeopleLayout] = useState<OverlapLayout>("columns");
+  const [roomMode, setRoomMode] = useState<ConflictMode>("block");
+  const [peopleMode, setPeopleMode] = useState<ConflictMode>("warn");
+  const [lastResult, setLastResult] = useState<string | null>(null);
   const resourceOptions = useMemo(
     () => ({
       getResourceOverlapLayout: (resource: Space) =>
-        resource.data.kind === "room" ? rooms : people,
+        resource.data.kind === "room" ? roomLayout : peopleLayout,
     }),
-    [people, rooms],
+    [peopleLayout, roomLayout],
+  );
+  const policies = useMemo(
+    () =>
+      rules === "conflicts"
+        ? [
+            conflictPolicy<PreviewEvent, string, string>({
+              getResourceMode: (resourceId) => (rooms.has(resourceId) ? roomMode : peopleMode),
+            }),
+          ]
+        : undefined,
+    [peopleMode, roomMode, rules],
   );
 
   return (
@@ -97,24 +139,59 @@ export default function RoomsAndPeopleCalendar() {
         events={events}
         locale="en-US"
         onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}
+        onEventChangeResult={
+          rules === "conflicts" ? (result) => setLastResult(describeResult(result)) : undefined
+        }
+        policies={policies}
         resources={spaces}
         viewOptions={{ resources: resourceOptions }}
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >
         <Calendar.Frame className="flex h-full flex-col">
           <div className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-2">
-            <ChoiceToggle
-              label="Rooms"
-              onChange={setRooms}
-              options={overlapLayouts}
-              value={rooms}
-            />
-            <ChoiceToggle
-              label="People"
-              onChange={setPeople}
-              options={overlapLayouts}
-              value={people}
-            />
+            {rules === "layout" ? (
+              <>
+                <ChoiceToggle
+                  label="Rooms"
+                  onChange={setRoomLayout}
+                  options={overlapLayouts}
+                  value={roomLayout}
+                />
+                <ChoiceToggle
+                  label="People"
+                  onChange={setPeopleLayout}
+                  options={overlapLayouts}
+                  value={peopleLayout}
+                />
+              </>
+            ) : (
+              <>
+                <ChoiceToggle
+                  label="Rooms"
+                  onChange={(mode) => {
+                    setRoomMode(mode);
+                    setLastResult(null);
+                  }}
+                  options={conflictModes}
+                  value={roomMode}
+                />
+                <ChoiceToggle
+                  label="People"
+                  onChange={(mode) => {
+                    setPeopleMode(mode);
+                    setLastResult(null);
+                  }}
+                  options={conflictModes}
+                  value={peopleMode}
+                />
+                <p
+                  data-slot="rooms-preview-outcome"
+                  className="min-h-5 basis-full text-sm text-fd-muted-foreground"
+                >
+                  {lastResult ?? "Drag a booking onto another in the same room or person."}
+                </p>
+              </>
+            )}
           </div>
           <Calendar.Viewport className="min-h-0 flex-1">
             <Calendar.ActiveView />

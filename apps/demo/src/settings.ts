@@ -6,7 +6,10 @@ export interface DemoSettings {
   readonly locale: string;
   /** How overlapping events share a column in the day, week and resource views. */
   readonly overlapLayout: OverlapLayout;
-  /** Whether rooms and people have layouts of their own in resource columns; see `resource-rules.ts`. */
+  /**
+   * Whether rooms and people follow rules of their own: how resource columns lay out their
+   * overlapping events, and what double-booking them does; see `resource-rules.ts`.
+   */
   readonly resourceRules: ResourceRules;
   /**
    * Whether day, 3 days, week, month, and agenda are the scrolling views, which scroll without end.
@@ -46,8 +49,17 @@ export const overlapLayoutOptions = [
 ] as const satisfies readonly { readonly label: string; readonly value: OverlapLayout }[];
 
 export const resourceRulesOptions = [
-  { label: "Same rules", value: "same" },
-  { label: "Rooms stacked, people side by side", value: "by-kind" },
+  {
+    description: "Rooms and people follow the settings above, and double booking is flagged.",
+    label: "Same rules",
+    value: "same",
+  },
+  {
+    description:
+      "Rooms stack their bookings and can't be double-booked. People's events sit side by side, and double booking them is flagged.",
+    label: "Rooms stack and block",
+    value: "by-kind",
+  },
 ] as const;
 
 export const weekStartOptions = [
