@@ -227,6 +227,9 @@ catalogs:
     cn:
       specifier: 0.4.0
       version: 0.4.0
+    esbuild:
+      specifier: 0.28.2
+      version: 0.28.2
     fast-check:
       specifier: ^4.10.2
       version: 4.10.2
@@ -1038,6 +1041,9 @@ importers:
       '@types/semver':
         specifier: 'catalog:'
         version: 7.8.0
+      esbuild:
+        specifier: 'catalog:'
+        version: 0.28.2
       tsx:
         specifier: 'catalog:'
         version: 4.23.15

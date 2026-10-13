@@ -1,0 +1,176 @@
+---
+title: Undo and redo
+description: Record the changes people make, and take them back through the same pipeline that saved them.
+---
+
+<HistoryPreview />
+
+An event history records the changes your calendar commits, and undoes them by proposing the
+inverse change. The inverse goes through the same pipeline as a drag: your policies check it, the
+calendar shows it while it saves, and your `onEventChange` saves it. Redo proposes the change again.
+
+It's opt-in. A calendar without a history records nothing, listens for no keys, and bundles none of
+its code.
+
+This page uses the `Calendar` and `Meeting` from the [Quick start](/docs/quick-start).
+
+## Connect a history
+
+Create a history with `createEventHistory` and pass its `record` to `Root`'s `onEventChangeResult`,
+which hears how every proposal ended. If you have your own `onEventChangeResult`, call
+`history.record(result, detail)` from it.
+
+<include meta='title="undoable-calendar.tsx"'>../examples/undo-redo.tsx#root</include>
+
+Inside `Root`, `useCalendarHistory(history)` binds the history to the calendar: `undo()` and
+`redo()` propose through the root's `proposeEventChange`, and `canUndo` and `canRedo` say whether
+there is anything to take.
+
+<include meta='title="undoable-calendar.tsx"'>../examples/undo-redo.tsx#buttons</include>
+
+`useCalendarHistory` returns:
+
+| Field              | Contents                                                                                              |
+| ------------------ | ----------------------------------------------------------------------------------------------------- |
+| `undo({ input? })` | Takes the last step back. Resolves with the [outcome](#outcomes)                                      |
+| `redo({ input? })` | Takes the last undone step forward again. Resolves with the outcome                                   |
+| `canUndo`          | Whether there is a step to undo                                                                       |
+| `canRedo`          | Whether there is a step to redo                                                                       |
+| `past`, `future`   | The steps undo and redo take, oldest first: each takes the last                                       |
+| `pending`          | `{ direction, step }` while an undo or redo waits for its result, or `null`                           |
+| `latest`           | The latest thing the history did: `{ type: "record", step }` or `{ type: "undo" \| "redo", outcome }` |
+
+`input` says where the command came from, `"api"` by default. Your `onEventChangeResult` gets it
+back, with `history: "undo"` or `"redo"` on the detail, so it can tell an undo from a drag. The
+server and hydration read an empty history.
+
+## What gets recorded
+
+A history records a change only when it committed: a policy's rejection, a failed save, a cancel or
+a proposal a newer one superseded never becomes a step. Its own undos and redos don't either. A new
+step clears what redo would take forward.
+
+Each step changes one event: where it was before (`before`) and where the step left it (`after`),
+with `null` where there's no event, as before a create or after a delete. A step also keeps its
+`cause`, the `input` that made it, your record (`event`), the event's ID and the changes it was made
+of.
+
+`createEventHistory` takes these options:
+
+| Option                           | Default   | Effect                                                                                                                                   |
+| -------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `limit`                          | `100`     | The most steps the undo stack keeps; the oldest drops. `0` records nothing                                                               |
+| `inputs`                         | all three | The inputs whose changes are recorded: `"pointer"`, `"keyboard"`, `"api"`                                                                |
+| `filter(change, detail)`         | keeps all | Records a change only when it returns `true`                                                                                             |
+| `coalesce(change, step, detail)` | never     | Return `true` to fold a change into the step on top, when both change the same event: the step keeps its `before`, takes the new `after` |
+| `createdEventId(change, events)` | none      | The event a committed create became. Without it, creates aren't recorded. See [creates and deletes](#creates-and-deletes)                |
+
+A keyboard grab is already one step: arrow keys move its preview, and Enter proposes once.
+`coalesce` is for several proposals you want undone together, such as nudges from your own buttons.
+A step that spans several events isn't supported yet.
+
+## How undo works
+
+| Step                 | Undo proposes                                                            | Redo proposes                             |
+| -------------------- | ------------------------------------------------------------------------ | ----------------------------------------- |
+| move, resize, update | the same cause, with the placement `before`, resources included          | the same, with the placement `after`      |
+| delete               | a create with the deleted record: `{ cause: "create", event, proposed }` | a delete of the restored event            |
+| create               | a delete of the event it became                                          | a create with the record the undo removed |
+
+Undos and redos run one at a time: pressing undo three times undoes three steps, in order. An undo
+pressed while a change still saves waits for it, so it takes that change back rather than the one
+before. It waits for every change in the calendar, so a save that never ends holds undo and redo.
+When an inverse commits, its step moves to the other stack, with the placement that was saved,
+since a policy may have adjusted it. A redo that commits after a new change goes back on top of the
+undo stack.
+
+### Outcomes
+
+`undo()` and `redo()` resolve with one of these. Through `useCalendarHistory`, they reject only if
+your `createdEventId` throws.
+
+| `status`      | When                                                                                                                                                                                            |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `"committed"` | The inverse saved. `result` is its transaction result, `step` the step as it is now                                                                                                             |
+| `"rejected"`  | A policy rejected the inverse, the save failed, or a drag superseded it. Or `createdEventId` can't name the event yet (`unknown-event`). The step stays where it was, so the user can try again |
+| `"stale"`     | The step's event changed elsewhere since. The step is dropped and nothing is proposed                                                                                                           |
+| `"empty"`     | There was nothing to undo or redo                                                                                                                                                               |
+
+### Changes from elsewhere
+
+Before it proposes, the history checks that the event is still where the step left it: at `after`
+for an undo, at `before` for a redo, gone for an undone create, and so on. If another user moved
+it, a server push deleted it, or someone restored it first, the step is stale. The history drops it
+rather than move the event back over that change, and the next undo goes on with the next step.
+
+Only the placement counts. A title changed elsewhere doesn't make a step stale, and since an undo
+proposes only a placement, your handler keeps the new title.
+
+## Creates and deletes
+
+Undoing a delete proposes a create that carries the deleted record as `change.event`. Restore it in
+your handler: a create with `event: null` is a new event, as from a range dragged out in a view.
+
+<include meta='title="undoable-calendar.tsx"'>../examples/undo-redo.tsx#apply</include>
+
+The calendar can't tell which event a create became, so the history needs your help to undo one:
+
+- **A restored event** is looked for under the ID it had. If you restore records as they were, under
+  their own IDs, there is nothing to do.
+- **`createdEventId(change, events)`** returns the event a committed create became, or `undefined`
+  while your events don't show it yet. The history asks it when it undoes or redoes the step, not
+  when it records it. With it, creates are recorded, and a restored event that got a new ID, as
+  from a server that assigns them, is found under that ID. The other steps for the event follow it
+  to the new ID.
+- **An event it can't name** leaves the step for another try (`unknown-event`). If newer events
+  still don't have it, it was deleted somewhere the history didn't see, and the step is dropped as
+  stale.
+
+If your handler can't restore a deleted record, leave deletes out:
+`filter: (change) => change.cause !== "delete"`.
+
+## Recurring events
+
+Changes to occurrences of a recurring event aren't supported yet. Your handler turns such a change
+into an edit of the series ("this event", "this and following", "all events"), and taking back a
+split series or a shifted one isn't a change of one event's placement. Leave them out with the
+recurrence package's `isRecurringChange`:
+
+```ts
+import { isRecurringChange } from "@moltenship/calendar-recurrence";
+
+const history = createEventHistory<TeamEvent, string, string>({
+  filter: (change) => !isRecurringChange(change),
+});
+```
+
+## Announcements
+
+With `messages`, `useCalendarHistory` speaks each undo and redo outcome through the root's
+`Announcer`, such as "Undid the move: Design review is back at Thursday, October 8, 3:00 – 4:00
+PM." The packages ship no text: the registry's `calendar/announcements.ts` has an English set,
+`calendarHistoryAnnouncements`, to edit or translate. Each message gets the outcome and the
+announcement context, with the step's event when the calendar shows it.
+
+## Outside React
+
+`createEventHistory` doesn't use React. Record each result yourself, and pass `undo` and `redo` the
+events the user sees and a function that proposes, such as `propose` from
+[`createEventTransactions`](/docs/api/changes#results). `getEvents` must return the same snapshot
+until the events change: the history tells events that haven't caught up with its own saves by
+that. Pass `whenSettled` too, a promise for when no change is validating or saving, so an undo
+waits for a change still saving:
+
+```ts
+const history = createEventHistory<Meeting, string, never>();
+history.record(result, { input: "api" });
+
+await history.undo({
+  getEvents: () => visibleEvents(),
+  propose: (proposal, detail) => proposeAndRecord(proposal, detail),
+  whenSettled: () => changesSettled(),
+});
+```
+
+`history.subscribe` and `history.getSnapshot` follow the store contract, and `history.clear()`
+empties both stacks.

@@ -17,6 +17,15 @@ export {
   useDraftBusy,
 } from "./draft";
 export type { CalendarBusyResources, CalendarDraftBusy } from "./draft";
+export { useCalendarHistory } from "./history";
+export type {
+  CalendarHistory,
+  CalendarHistoryAnnouncementBuilder,
+  CalendarHistoryAnnouncementContext,
+  CalendarHistoryCommandOptions,
+  CalendarHistoryMessages,
+  CalendarHistoryOptions,
+} from "./history";
 export { useResourceStatus } from "./status";
 export type { CalendarResourceStatus } from "./status";
 export { createCalendarStore } from "./store";

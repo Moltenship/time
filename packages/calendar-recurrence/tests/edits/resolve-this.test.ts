@@ -69,6 +69,23 @@ describe("changes that need no scope", () => {
     });
   });
 
+  test("a create that carries an occurrence, as an undone delete does, carries its event", () => {
+    const occurrence = find(expand([lunch]), "lunch");
+    const restore: Change = {
+      cause: "create",
+      event: occurrence,
+      eventId: null,
+      id: "change-2",
+      original: null,
+      proposed: { ...allDay("x", "2026-10-20", "2026-10-21"), resourceIds: [] },
+    };
+    expect(isRecurringChange(restore)).toBe(false);
+    expect(resolveRecurrenceEdit(restore, "this", adapters)).toEqual({
+      change: { ...restore, event: lunch },
+      type: "event",
+    });
+  });
+
   test("an occurrence of a series is recurring, a delete too", () => {
     const occurrence = find(expand([standup]), "2026-10-26T08:00:00Z");
     expect(isRecurringChange(move(occurrence, { hours: 1 }))).toBe(true);

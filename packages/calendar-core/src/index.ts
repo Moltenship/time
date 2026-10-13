@@ -199,6 +199,17 @@ export type {
   ResourceTimelineProjectionInput,
 } from "./views/resource-timeline/projection";
 
+export { createEventHistory } from "./history/event-history";
+export type {
+  EventHistory,
+  EventHistoryActivity,
+  EventHistoryContext,
+  EventHistoryDirection,
+  EventHistoryOptions,
+  EventHistoryOutcome,
+  EventHistorySnapshot,
+  EventHistoryStep,
+} from "./history/types";
 export { createEventTransactions } from "./transactions/event-transactions";
 export type { EventTransactions } from "./transactions/event-transactions";
 export { applyEventOverlay } from "./transactions/overlay";

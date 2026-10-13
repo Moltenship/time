@@ -170,7 +170,7 @@ interface CalendarEventBase<TData, TEventId extends EventId, TResourceId extends
   readonly resourceIds?: readonly TResourceId[];
   readonly title: string;
 }
-type CalendarEventChange<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = CalendarEventCreateChange<TResourceId> | CalendarEventUpdateChange<TEvent, TEventId, TResourceId> | CalendarEventDeleteChange<TEvent, TEventId, TResourceId>;
+type CalendarEventChange<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = CalendarEventCreateChange<TResourceId, TEvent> | CalendarEventUpdateChange<TEvent, TEventId, TResourceId> | CalendarEventDeleteChange<TEvent, TEventId, TResourceId>;
 type CalendarEventChangeHandler<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = (change: CalendarEventChange<TEvent, TEventId, TResourceId>) => void | Promise<void>;
 type CalendarEventContractValidation<TValue> = {
   readonly valid: true;
@@ -179,9 +179,9 @@ type CalendarEventContractValidation<TValue> = {
   readonly issues: readonly CalendarEventValidationIssue[];
   readonly valid: false;
 };
-interface CalendarEventCreateChange<TResourceId extends ResourceId> {
+interface CalendarEventCreateChange<TResourceId extends ResourceId, TEvent = never> {
   readonly cause: "create";
-  readonly event: null;
+  readonly event: TEvent | null;
   readonly eventId: null;
   readonly id: string;
   readonly original: null;
@@ -229,8 +229,9 @@ type CalendarEventPlacement<TResourceId extends ResourceId = ResourceId> = Calen
 type CalendarEventPlacementInput<TResourceId extends ResourceId = ResourceId> = CalendarEventInterval & {
   readonly resourceIds?: readonly TResourceId[];
 };
-type CalendarEventProposal<TEventId extends EventId, TResourceId extends ResourceId> = {
+type CalendarEventProposal<TEventId extends EventId, TResourceId extends ResourceId, TEvent = never> = {
   readonly cause: "create";
+  readonly event?: TEvent;
   readonly proposed: CalendarEventPlacementInput<TResourceId>;
 } | {
   readonly cause: "move" | "resize-start" | "resize-end" | "update";
@@ -362,6 +363,7 @@ type CalendarPolicyResult<TEvent, TEventId extends EventId, TResourceId extends 
   readonly status: "rejected";
 };
 interface CalendarProposalDetail {
+  readonly history?: "undo" | "redo";
   readonly input: CalendarInputMethod;
 }
 interface CalendarResource<TData = unknown, TResourceId extends ResourceId = string> {
@@ -506,6 +508,76 @@ interface EventDayFragment<TEvent, TEventId extends EventId, TResourceId extends
   readonly start: Temporal.PlainDateTime;
   readonly startsBeforeDay: boolean;
 }
+interface EventHistory<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly clear: () => void;
+  readonly getSnapshot: () => EventHistorySnapshot<TEvent, TEventId, TResourceId>;
+  readonly record: (result: CalendarTransactionResult<TEvent, TEventId, TResourceId>, detail: CalendarProposalDetail) => void;
+  readonly redo: (context: EventHistoryContext<TEvent, TEventId, TResourceId>) => Promise<EventHistoryOutcome<TEvent, TEventId, TResourceId>>;
+  readonly subscribe: (listener: () => void) => () => void;
+  readonly undo: (context: EventHistoryContext<TEvent, TEventId, TResourceId>) => Promise<EventHistoryOutcome<TEvent, TEventId, TResourceId>>;
+}
+type EventHistoryActivity<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = {
+  readonly step: EventHistoryStep<TEvent, TEventId, TResourceId>;
+  readonly type: "record";
+} | {
+  readonly outcome: EventHistoryOutcome<TEvent, TEventId, TResourceId>;
+  readonly type: EventHistoryDirection;
+};
+interface EventHistoryContext<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly getEvents: () => EventSnapshot<TEvent, TEventId, TResourceId>;
+  readonly input?: CalendarInputMethod;
+  readonly propose: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>, detail: CalendarProposalDetail) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  readonly whenSettled?: () => Promise<void> | undefined;
+}
+type EventHistoryDirection = "undo" | "redo";
+interface EventHistoryOptions<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly coalesce?: (change: CalendarEventChange<TEvent, TEventId, TResourceId>, previous: EventHistoryStep<TEvent, TEventId, TResourceId>, detail: CalendarProposalDetail) => boolean;
+  readonly createdEventId?: (change: CalendarEventCreateChange<TResourceId, TEvent>, events: EventSnapshot<TEvent, TEventId, TResourceId>) => TEventId | undefined;
+  readonly filter?: (change: CalendarEventChange<TEvent, TEventId, TResourceId>, detail: CalendarProposalDetail) => boolean;
+  readonly inputs?: readonly CalendarInputMethod[];
+  readonly limit?: number;
+}
+type EventHistoryOutcome<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = {
+  readonly direction: EventHistoryDirection;
+  readonly status: "empty";
+} | {
+  readonly direction: EventHistoryDirection;
+  readonly status: "stale";
+  readonly step: EventHistoryStep<TEvent, TEventId, TResourceId>;
+} | {
+  readonly direction: EventHistoryDirection;
+  readonly result: Extract<CalendarTransactionResult<TEvent, TEventId, TResourceId>, {
+    readonly status: "committed";
+  }>;
+  readonly status: "committed";
+  readonly step: EventHistoryStep<TEvent, TEventId, TResourceId>;
+} | {
+  readonly direction: EventHistoryDirection;
+  readonly result: Extract<CalendarTransactionResult<TEvent, TEventId, TResourceId>, {
+    readonly status: "rejected";
+  }>;
+  readonly status: "rejected";
+  readonly step: EventHistoryStep<TEvent, TEventId, TResourceId>;
+};
+interface EventHistorySnapshot<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly future: readonly EventHistoryStep<TEvent, TEventId, TResourceId>[];
+  readonly latest: EventHistoryActivity<TEvent, TEventId, TResourceId> | null;
+  readonly past: readonly EventHistoryStep<TEvent, TEventId, TResourceId>[];
+  readonly pending: {
+    readonly direction: EventHistoryDirection;
+    readonly step: EventHistoryStep<TEvent, TEventId, TResourceId>;
+  } | null;
+}
+interface EventHistoryStep<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly after: CalendarEventPlacement<TResourceId> | null;
+  readonly before: CalendarEventPlacement<TResourceId> | null;
+  readonly cause: CalendarChangeCause;
+  readonly changes: readonly CalendarEventChange<TEvent, TEventId, TResourceId>[];
+  readonly event: TEvent | null;
+  readonly eventId: TEventId | null;
+  readonly id: string;
+  readonly input: CalendarInputMethod;
+}
 type EventId = CalendarEntityId;
 interface EventSnapshot<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
   readonly byId: ReadonlyMap<TEventId, NormalizedCalendarEvent<TEvent, TEventId, TResourceId>>;
@@ -549,8 +621,8 @@ interface EventSnapshotQueryOptions<TResourceId extends ResourceId> {
 interface EventTransactions<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
   readonly getPending: () => CalendarPendingPlacements<TEventId, TResourceId>;
   readonly getPendingChanges: () => CalendarPendingChanges<TEvent, TEventId, TResourceId>;
-  readonly propose: (proposal: CalendarEventProposal<TEventId, TResourceId>, context: CalendarTransactionContext<TEvent, TEventId, TResourceId>) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
-  readonly check: (proposal: CalendarEventProposal<TEventId, TResourceId>, context: Omit<CalendarTransactionContext<TEvent, TEventId, TResourceId>, "onEventChange">) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
+  readonly propose: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>, context: CalendarTransactionContext<TEvent, TEventId, TResourceId>) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  readonly check: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>, context: Omit<CalendarTransactionContext<TEvent, TEventId, TResourceId>, "onEventChange">) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
   readonly reconcile: (snapshot: EventSnapshot<TEvent, TEventId, TResourceId>) => void;
   readonly subscribe: (listener: () => void) => () => void;
 }
@@ -852,6 +924,7 @@ export declare function conflictPolicy<TEvent, TEventId extends EventId, TResour
 export declare function createAnnotationSnapshot<TData = unknown, TResourceId extends ResourceId = ResourceId>(input: readonly CalendarAnnotation<TData, TResourceId>[]): AnnotationSnapshot<TData, TResourceId>;
 export declare function createAvailabilitySnapshot({ availability, resources, timeZone }: AvailabilitySnapshotInput): AvailabilitySnapshot;
 export declare function createCanonicalEventAdapter<TData = unknown, TEventId extends EventId = string, TResourceId extends ResourceId = string>(): EventAdapter<CalendarEvent<TData, TEventId, TResourceId>, TEventId, TResourceId>;
+export declare function createEventHistory<TEvent, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId>(options?: EventHistoryOptions<TEvent, TEventId, TResourceId>): EventHistory<TEvent, TEventId, TResourceId>;
 export declare function createEventPlacement<TResourceId extends ResourceId>(anchor: CalendarEventInterval, focus: CalendarEventInterval, resourceIds?: readonly TResourceId[]): CalendarEventPlacement<TResourceId>;
 export declare function createEventSnapshot<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(events: readonly TEvent[], adapter: EventAdapter<TEvent, TEventId, TResourceId>, options?: EventSnapshotOptions): EventSnapshot<TEvent, TEventId, TResourceId>;
 export declare function createEventSnapshotCache<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(adapter: EventAdapter<TEvent, TEventId, TResourceId>, options?: EventSnapshotOptions): EventSnapshotCache<TEvent, TEventId, TResourceId>;
@@ -1065,6 +1138,14 @@ export {
   type EventAdapter,
   type EventAdapterAccessor,
   type EventDayFragment,
+  type EventHistory,
+  type EventHistoryActivity,
+  type EventHistoryContext,
+  type EventHistoryDirection,
+  type EventHistoryOptions,
+  type EventHistoryOutcome,
+  type EventHistorySnapshot,
+  type EventHistoryStep,
   type EventId,
   type EventSnapshot,
   type EventSnapshotCache,

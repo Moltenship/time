@@ -185,12 +185,13 @@ own.
       ),
     },
     onEventChangeResult: {
-      type: "(result, { input }) => void",
+      type: "(result, detail) => void",
       description: (
         <>
           Hears how each proposal ended, once it settles: the result <code>proposeEventChange</code>{" "}
-          resolves with, and the <code>input</code> that made it, <code>"pointer"</code>,{" "}
-          <code>"keyboard"</code> or <code>"api"</code>. See{" "}
+          resolves with, and the detail it was proposed with, whose <code>input</code> is{" "}
+          <code>"pointer"</code>, <code>"keyboard"</code> or <code>"api"</code>. Pass an event
+          history's <code>record</code> here to <a href="/docs/undo-redo">undo and redo</a>. See{" "}
           <a href="/docs/interactions#how-changes-end">how changes end</a>.
         </>
       ),
@@ -380,6 +381,10 @@ outside `Root` throws `calendar-hook-outside-root`.
 
 `useCalendarSelector` and `useCalendarPendingChanges` compare results with `Object.is`. Pass
 `{ isEqual }` to compare another way. The selector can be an inline function.
+
+`useCalendarHistory(history, { messages? })` is exported on its own too. It binds an event history
+to the nearest `Root`, with `undo`, `redo`, `canUndo` and `canRedo`; see
+[Undo and redo](/docs/undo-redo).
 
 `Announcer`'s messages, and the keyboard hooks for your own views (`useCalendarKeyboard`,
 `useRovingFocus`, `useCalendarInteraction`, `useCalendarAnnouncer`), are covered in

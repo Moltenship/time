@@ -95,7 +95,7 @@ function createHarness(
       transactions.reconcile(cache.getSnapshot(events));
     },
     propose(
-      proposal: CalendarEventProposal<string, string>,
+      proposal: CalendarEventProposal<string, string, TestEvent>,
       onEventChange: Handler,
       policies?: readonly Policy[],
     ) {
@@ -505,6 +505,34 @@ describe("event transactions", () => {
 
     saving.resolve();
     await expect(result).resolves.toMatchObject({ status: "committed" });
+  });
+
+  test("hands a create the record it carries, for the handler to restore", async () => {
+    const app = createHarness([]);
+    const record = event("a", "2026-08-15T09:00", "2026-08-15T10:00");
+    const policy = vi.fn<Policy>(() => ({ type: "accept" }));
+    const handler = vi.fn<Handler>();
+
+    await app.propose(
+      {
+        cause: "create",
+        event: record,
+        proposed: placement("2026-08-15T11:00", "2026-08-15T12:00"),
+      },
+      handler,
+      [policy],
+    );
+    expect(policy.mock.calls[0]?.[0]).toMatchObject({
+      cause: "create",
+      event: record,
+      eventId: null,
+    });
+    expect(handler.mock.calls[0]?.[0]).toMatchObject({
+      cause: "create",
+      event: record,
+      eventId: null,
+      original: null,
+    });
   });
 
   test("hides a pending deletion until the application removes the event", async () => {

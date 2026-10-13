@@ -3,7 +3,7 @@
   "name": "calendar",
   "type": "registry:component",
   "title": "Calendar shell",
-  "description": "Toolbar, view switcher, event chip, accessible event names, English announcements for screen readers, sidebar mini month, the endless scroll axis, and the replaceable shading of closed time and resource status badges shared by every calendar view.",
+  "description": "Toolbar, view switcher, event chip, accessible event names, English screen-reader announcements of gestures, undo and redo, sidebar mini month, the endless scroll axis, and the replaceable shading of closed time and resource status badges shared by every calendar view.",
   "dependencies": ["@base-ui/react", "@moltenship/calendar", "cn", "lucide-react"],
   "registryDependencies": ["badge", "button", "select", "tooltip", "@moltenship/calendar-theme"],
   "files": [

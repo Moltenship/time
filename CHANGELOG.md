@@ -55,3 +55,12 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   otherwise its column's: the resource's, then `overlapLayout`. `ResourceOverlapLayoutOptions`
   and `TimeGridLayoutOptions` are new, `layoutTimeGrid` takes `getEventOverlapLayout`, and an
   invalid `stackIndent` now throws whatever the layout (#230).
+- Undo and redo, opt-in: `createEventHistory(options?)` records committed changes from `Root`'s
+  `onEventChangeResult` and undoes and redoes them by proposing the inverse through the same
+  pipeline, so policies run and `onEventChange` saves it.
+  `useCalendarHistory(history, { messages? })` binds a history to a `Root` and speaks outcomes
+  through its `Announcer`. A step whose event changed elsewhere is dropped, and an undo waits for a
+  change still saving; recurring events aren't supported yet. A calendar without a history bundles
+  none of it. A create proposal can carry a record as `event`, which its change hands on, and
+  `onEventChangeResult` gets the detail a proposal was made with, which an event history's
+  inverses mark with `history` (#227).

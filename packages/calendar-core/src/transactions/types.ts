@@ -32,9 +32,19 @@ export interface CalendarDraft<TEventId extends EventId, TResourceId extends Res
   readonly proposed: CalendarEventPlacement<TResourceId>;
 }
 
-export type CalendarEventProposal<TEventId extends EventId, TResourceId extends ResourceId> =
+/**
+ * A change to propose. A create may carry an application record, such as a deleted event the
+ * history restores; the handler gets it as the change's `event`.
+ */
+export type CalendarEventProposal<
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+  TEvent = never,
+> =
   | {
       readonly cause: "create";
+      /** The record the new event restores or copies; omitted for a new event. */
+      readonly event?: TEvent;
       readonly proposed: CalendarEventPlacementInput<TResourceId>;
     }
   | {
@@ -47,9 +57,13 @@ export type CalendarEventProposal<TEventId extends EventId, TResourceId extends 
       readonly eventId: TEventId;
     };
 
-export interface CalendarEventCreateChange<TResourceId extends ResourceId> {
+export interface CalendarEventCreateChange<TResourceId extends ResourceId, TEvent = never> {
   readonly cause: "create";
-  readonly event: null;
+  /**
+   * The record the proposal carried, such as a deleted event the history restores; `null` for a
+   * new event, as from a range made in a view. The new event has no ID yet either way.
+   */
+  readonly event: TEvent | null;
   readonly eventId: null;
   readonly id: string;
   readonly original: null;
@@ -90,7 +104,7 @@ export interface CalendarEventDeleteChange<
 }
 
 export type CalendarEventChange<TEvent, TEventId extends EventId, TResourceId extends ResourceId> =
-  | CalendarEventCreateChange<TResourceId>
+  | CalendarEventCreateChange<TResourceId, TEvent>
   | CalendarEventUpdateChange<TEvent, TEventId, TResourceId>
   | CalendarEventDeleteChange<TEvent, TEventId, TResourceId>;
 
@@ -109,6 +123,8 @@ export type CalendarInputMethod = "pointer" | "keyboard" | "api";
 
 /** What a proposal says beside the change itself; `onEventChangeResult` gets it back. */
 export interface CalendarProposalDetail {
+  /** Set on the inverse an event history proposes to undo or redo a step. */
+  readonly history?: "undo" | "redo";
   readonly input: CalendarInputMethod;
 }
 

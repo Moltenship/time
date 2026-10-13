@@ -33,7 +33,8 @@ function unwrap<TEvent, TEventId extends EventId, TResourceId extends ResourceId
   change: RecurrenceOccurrenceChange<TEvent, TEventId, TResourceId>,
   adapters: RecurrenceAdapters<TEvent, TEventId, TResourceId>,
 ): CalendarEventChange<TEvent, TEventId, TResourceId> {
-  if (change.cause === "create") return change;
+  // A create that carries an occurrence, as a restore does, carries its event.
+  if (change.cause === "create") return { ...change, event: change.event?.event ?? null };
   const { event } = change.event;
   const eventId = adapters.event.getId(event);
   // The same spread on both sides, so each keeps its own member of the change union.

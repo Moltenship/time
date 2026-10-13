@@ -3,7 +3,7 @@ import { createContext, useContext, type Context } from "react";
 
 import type { AnnouncerChannel } from "./announcer";
 import type { CalendarSemanticActions } from "./calendar-types";
-import type { AnyCalendarState, CalendarStateSource } from "./context";
+import type { AnyCalendarState, AnyPendingChanges, CalendarStateSource } from "./context";
 import type { DraftStore } from "./draft";
 import type { KeyboardSessionStore } from "./keyboard-store";
 import type { RovingFocusStore } from "./roving-focus";
@@ -18,6 +18,8 @@ export interface CalendarInteractionRuntime {
   // oxlint-disable-next-line typescript/no-explicit-any -- views drive every factory's root.
   readonly actions: CalendarSemanticActions<any, any, any, any, any, any>;
   readonly announcements: AnnouncerChannel;
+  /** The root's pending changes, which an event history waits out before it undoes. */
+  readonly changes: CalendarStateSource<AnyPendingChanges>;
   /** The root has no `onEventChange`, so it rejects every change and views start no gestures. */
   readonly isReadOnly: boolean;
   readonly keyboard: KeyboardSessionStore;

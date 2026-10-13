@@ -58,16 +58,17 @@ export type CalendarSemanticActions<
    * any `change.warnings`. `null` for an unknown event, or when a policy answers asynchronously.
    */
   readonly checkEventChange: (
-    proposal: CalendarEventProposal<TEventId, TResourceId>,
+    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
   ) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
   /**
    * Validates a change against the root's policies, shows it while `onEventChange` persists it,
-   * and resolves with the outcome, which `onEventChangeResult` hears first. Read-only events and
-   * roots without `onEventChange` reject. `detail.input` names the input that made the proposal,
-   * `"api"` by default. A plain function, so it can be passed on as a callback.
+   * and resolves with the outcome, which `onEventChangeResult` hears first, with `detail` as
+   * given. Read-only events and roots without `onEventChange` reject. `detail.input` names the
+   * input that made the proposal, `"api"` by default. A plain function, so it can be passed on as
+   * a callback.
    */
   readonly proposeEventChange: (
-    proposal: CalendarEventProposal<TEventId, TResourceId>,
+    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
     detail?: CalendarProposalDetail,
   ) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
 };

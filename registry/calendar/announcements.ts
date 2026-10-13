@@ -2,6 +2,8 @@ import type {
   CalendarAnnouncementContext,
   CalendarAnnouncementMessages,
   CalendarEventPlacement,
+  CalendarHistoryAnnouncementBuilder,
+  CalendarHistoryMessages,
   CalendarInteractionCause,
   CalendarInteractionCheck,
   CalendarInteractionUpdate,
@@ -170,4 +172,54 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
     }
   },
   cancel: cancelled,
+};
+
+/** What an undo or redo couldn't do, after "Couldn't undo: ", by the reason it was rejected. */
+const historyFailures: Readonly<Record<string, (name: string) => string>> = {
+  "invalid-placement": (name) => `${name} can't go there.`,
+  "out-of-bounds": (name) => `${name} can't go there.`,
+  "outside-availability": (name) => `${name} can't go outside working hours.`,
+  "read-only": (name) => `${name} is read-only.`,
+  "resource-conflict": (name) => `${name} would double-book someone.`,
+};
+
+/** Says how an undo or redo went, naming the event when the calendar shows it. */
+const historyOutcome: CalendarHistoryAnnouncementBuilder = (outcome, where) => {
+  const verb = outcome.direction;
+  if (outcome.status === "empty") return `Nothing to ${verb}.`;
+  const name = where.event === undefined ? "the event" : eventTitle(where.event);
+  if (outcome.status === "stale") return `Can't ${verb} that: ${name} has changed since.`;
+  if (outcome.status === "rejected") {
+    const { error, reason } = outcome.result;
+    if (reason === "superseded") return null;
+    if (reason === "handler-error" && isAbort(error)) return `Cancelled the ${verb}.`;
+    const failure = historyFailures[reason];
+    return failure === undefined
+      ? `Couldn't ${verb} the change to ${name}.`
+      : `Couldn't ${verb}: ${failure(name)}`;
+  }
+  const { cause } = outcome.step;
+  const placement = verb === "undo" ? outcome.step.before : outcome.step.after;
+  if (placement === null) {
+    return verb === "undo" ? `Undid creating ${name}.` : `Deleted ${name} again.`;
+  }
+  const when = describePlacement(placement, where, true);
+  if (cause === "delete" || cause === "create") return `Restored ${name}, ${when}.`;
+  if (cause === "move") {
+    return verb === "undo"
+      ? `Undid the move: ${name} is back at ${when}.`
+      : `Moved ${name} to ${when} again.`;
+  }
+  const action = cause === "update" ? "change" : "resize";
+  return `${verb === "undo" ? "Undid" : "Redid"} the ${action}: ${name} runs ${describeWhen(placement, where)}.`;
+};
+
+/**
+ * English announcements for undo and redo. Pass them to `useCalendarHistory(history, { messages:
+ * calendarHistoryAnnouncements })`, and edit or translate them here. They name the event when the
+ * calendar shows it, and where it is now.
+ */
+export const calendarHistoryAnnouncements: CalendarHistoryMessages = {
+  redo: historyOutcome,
+  undo: historyOutcome,
 };

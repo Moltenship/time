@@ -11,6 +11,7 @@ export default defineConfig({
       api: script("api.ts"),
       "api:update": { command: script("api.ts --update"), cache: false },
       exports: { command: script("exports.ts"), cache: false },
+      treeshake: script("treeshake.ts"),
       consumer: { command: script("consumer.ts"), cache: false },
       "dry-run": { command: script("dry-run.ts"), cache: false },
       version: { command: script("version.ts"), cache: false },
