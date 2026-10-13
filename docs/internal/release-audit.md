@@ -113,7 +113,7 @@ After #46 merges:
 - Done in this PR: the SSR fixture, the docs site and the registry's clean apps install the dry
   run's tarballs instead of workspace source (`release:artifacts`, in `ready:full` and
   `release:gate`).
-- Done in #177: `ready:full` runs the release dry run, and the release workflow runs the shadcn install test on the dry run's tarballs (`release:registry-e2e`).
+- Done in #177: `ready:full` runs the release dry run, and the release workflow runs the shadcn install test on the dry run's tarballs (now part of `release:artifacts`).
 - A green run of CI's on-demand `browsers` job, the only place Firefox runs while it can't start on
   macOS 27 (#182, #192).
 - The full release dry run, the screen-reader passes (#186) and the RC report on #47.

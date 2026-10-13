@@ -149,9 +149,9 @@ The hydration fixture renders different server/client locale text and reports Re
 ## Release artifacts
 
 `vp run release:artifacts` runs what uses the release artifacts on the tarballs the dry run packed.
-The full tier and the release gate run it right after `release:dry-run`, in the same lane. It reads
-`.release/manifest.json`, which must come from a dry run of `HEAD`, and checks every tarball's and
-registry file's sha512 against it before and after. Nothing packs again.
+The full tier and the release gate run it after `release:dry-run`, at the end of the same lane. It
+reads `.release/manifest.json`, which must come from a dry run of `HEAD`, and checks every tarball's
+and registry file's sha512 against it before and after. Nothing packs again.
 
 | Consumer | What it runs | Network |
 | --- | --- | --- |
@@ -161,23 +161,30 @@ registry file's sha512 against it before and after. Nothing packs again.
 
 The SSR fixture and the docs site run in a copy outside the workspace: `apps/ssr-fixture`, or
 `apps/showcase` with `registry/`, at the same paths, with the files git tracks or would track. The
-copy is a pnpm workspace of its own. It has the workspace's catalog, overrides and lockfile, so
-third-party packages keep their versions, and overrides that send every `@moltenship` dependency,
-direct or not, to its tarball. Its `tsconfig.base.json` has no `paths` into package source, and it
-has no package source at all. It installs with `--offline` from the pnpm store that `vp install`
-filled, and its commands find the copy's binaries, never the workspace's. Then its lockfile must
-list each `@moltenship` package with its tarball's hash. The registry's install test checks its
-apps' lockfiles the same way, against the tarballs it served. The workspace keeps its links, so dev
+copy is a pnpm workspace of its own, with the workspace's catalog, overrides and lockfile, and
+overrides that send every `@moltenship` dependency, direct or not, to its tarball. Its
+`tsconfig.base.json` has no `paths` into package source, and it has no package source at all. Its
+commands find the copy's binaries, never the workspace's. The workspace keeps its links, so dev
 setup doesn't change.
+
+The copy installs with `--offline`, from the pnpm store and metadata cache that `vp install`
+filled. A fresh machine's cache may lack metadata that resolving the copy needs, since
+`vp install --frozen-lockfile` skips resolution; then the install reads that metadata from npm, says
+so, and still takes every package from the store. Either way, the copy's lockfile must list each
+`@moltenship` package with its tarball's hash, and every other package with the version and hash
+the workspace's lockfile has. The registry's install test checks its apps' lockfiles against the
+tarballs it served, and reports their hashes, which must be the dry run's.
 
 The docs site builds in full: from scratch, the build takes about 10 seconds on a laptop, and it
 compiles, type-checks and prerenders every page, live examples included. A smaller proof would
-leave pages out. Two docs tests, `anatomy` and `recurrence-examples`, compare the docs with
-package source, which the copy doesn't have, so this run leaves them out; `ci:test` runs them.
+leave pages out. Two docs tests, `anatomy-source` and `recurrence-api-reference`, compare the docs
+with package source, which the copy doesn't have, so this run leaves them out; `ci:test` runs them.
 
-The three consumers run side by side. None opens a browser, so the browser runs keep their lanes. A
-failure doesn't stop the others. The summary gives each consumer's time and its steps', and a
-failure names the consumer and the step, shows the end of the command's output and keeps the copy:
+The consumers run side by side, one per four cores: all three on a laptop, one after another on a
+4-core CI runner. None opens a browser, so the browser runs keep their lanes. A failure doesn't stop
+the others. The summary gives each consumer's time and its steps', and a failure names the consumer
+and the step, shows the end of the command's output and keeps the copy. The registry's failures
+name the app and its step:
 
 ```text
 ✓ ssr-fixture   4.0s  install 0.8s · render and hydrate 2.7s
@@ -187,6 +194,10 @@ showcase failed at "build": next build exited with 1 in /var/folders/…/moltens
 ```
 
 `vp run release:artifacts showcase` runs one consumer, and `--keep` keeps the copies.
+
+On the 15-core laptop, quiet, `release:artifacts` takes about 22 seconds: the registry's install
+test, which the full tier ran on its own before (about 20 seconds, packing its own tarballs), is
+the longest, and the other two finish beside it. Its cost to the full tier is a second or two.
 
 ## Registry
 

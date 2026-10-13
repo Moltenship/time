@@ -86,14 +86,22 @@ describe("a copy on the dry run's tarballs", () => {
     });
   });
 
-  test("a lockfile with the tarballs' hashes passes", () => {
+  const workspaceLockfile = lockfile({
+    "react@19.3.0": "sha512-react",
+    "scheduler@0.28.0": "sha512-scheduler",
+  });
+  const expected = ["@moltenship/calendar"];
+
+  test("a lockfile with the tarballs' hashes and the workspace's other packages passes", () => {
     const installed = lockfile({
       "@moltenship/calendar@file:../release/moltenship-calendar-1.0.0.tgz": "sha512-a",
       "@moltenship/calendar-core@file:../release/moltenship-calendar-core-1.0.0.tgz": "sha512-b",
       "react@19.3.0": "sha512-react",
     });
 
-    expect(lockfileProblems(installed, packed, ["@moltenship/calendar"])).toEqual([]);
+    expect(
+      lockfileProblems({ lockfile: installed, packages: packed, expected, workspaceLockfile }),
+    ).toEqual([]);
   });
 
   test("a package with another hash, one the dry run didn't pack, or one missing fails", () => {
@@ -102,10 +110,27 @@ describe("a copy on the dry run's tarballs", () => {
       "@moltenship/calendar-testing@1.0.0": "sha512-c",
     });
 
-    expect(lockfileProblems(installed, packed, ["@moltenship/calendar"])).toEqual([
+    expect(
+      lockfileProblems({ lockfile: installed, packages: packed, expected, workspaceLockfile }),
+    ).toEqual([
       "@moltenship/calendar-core is installed with sha512-npm, not the dry run's sha512-b",
       "@moltenship/calendar-testing is installed, but the dry run didn't pack it",
       "@moltenship/calendar isn't installed from the dry run's tarball",
+    ]);
+  });
+
+  test("a third-party package the workspace doesn't lock, or locks with another hash, fails", () => {
+    const installed = lockfile({
+      "@moltenship/calendar@file:../release/moltenship-calendar-1.0.0.tgz": "sha512-a",
+      "react@19.4.0": "sha512-newer",
+      "scheduler@0.28.0": "sha512-other",
+    });
+
+    expect(
+      lockfileProblems({ lockfile: installed, packages: packed, expected, workspaceLockfile }),
+    ).toEqual([
+      "react@19.4.0 isn't in the workspace's lockfile",
+      "scheduler@0.28.0 has another hash than the workspace's",
     ]);
   });
 

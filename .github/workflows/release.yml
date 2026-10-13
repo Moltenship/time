@@ -57,8 +57,8 @@ jobs:
       - name: Accessibility checks
         run: vp run a11y
 
-      # Everything else in ready:full, with a strict dry run for this version and the shadcn
-      # install test against the dry run's tarballs.
+      # Everything else in ready:full, with a strict dry run for this version, then the SSR
+      # fixture, the docs site and the shadcn install test on the dry run's tarballs.
       - name: Release gate and dry run
         env:
           RELEASE_VERSION: ${{ inputs.version }}

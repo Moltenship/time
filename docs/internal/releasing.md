@@ -1,7 +1,9 @@
 # Releasing
 
 How the packages get to npm. Only the owner publishes. Everything before the publish step runs
-locally and offline, and never talks to the npm registry.
+locally, and nothing installs our packages from npm. The dry run is offline; the checks on its
+tarballs reach the network only for third-party packages, shadcn's components and the docs site's
+fonts.
 
 Seven packages publish under `@moltenship`, listed in
 [`tools/release/src/config.ts`](../../tools/release/src/config.ts) and
@@ -27,12 +29,12 @@ on what the dry run packed.
 | `vp run release:artifacts` | What uses the release, on the dry run's tarballs and registry, with their hashes checked: the SSR fixture's render and hydration tests and the docs site's build, routes and example tests, each in a copy outside the workspace installed offline; and #43's install test, `shadcn add` into clean Vite and Next.js apps, which needs the network for npm and shadcn's own components. See [quality-gates.md](./quality-gates.md#release-artifacts) | Full |
 
 The PR checks read the built packages, so on their own they run after `vp run ci:build`. Only the
-dry run writes `.release/`; `release:artifacts` reads it and packs nothing, and refuses a manifest
-from another commit or a file whose hash changed since. It takes the version to check from `--version`, or else from
+dry run writes `.release/`. It takes the version to check from `--version`, or else from
 `RELEASE_VERSION`, which the release workflow sets for `release:gate`; a stray `RELEASE_VERSION` in
 your shell makes a plain dry run check that version, and the error says so. Without
 `--require-clean`, it also runs on a tree with changes and records that in the manifest, which the
-publish step then refuses; releases pass the flag.
+publish step then refuses; releases pass the flag. `release:artifacts` only reads `.release/`: it
+packs nothing, and refuses a manifest from another commit or a file whose hash changed since.
 
 - **The API changed on purpose.** Run `vp run release:api:update` and commit the reports with the
   change. The diff in `packages/*/api-report.md` is what reviewers look at.

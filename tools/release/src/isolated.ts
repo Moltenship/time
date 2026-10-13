@@ -65,42 +65,61 @@ export function workspaceSettings(
   return stringify({ ...settings, packages: [...directories], overrides });
 }
 
-/**
- * Checks what a consumer's lockfile installed of ours: each `@moltenship` package must have the
- * hash of the dry run's tarball, and each one the consumer asks for must be there, from a tarball
- * rather than a link.
- */
-export function lockfileProblems(
-  lockfile: string,
-  packages: ReleaseManifest["packages"],
-  expected: readonly string[],
-): string[] {
+/** Each package a pnpm lockfile installs, by its key, such as `react@19.3.0`, with its hash. */
+export function lockfileEntries(lockfile: string): Map<string, string | undefined> {
   // pnpm writes the package manager's own lockfile as a first document.
-  const entries = parseAllDocuments(lockfile).flatMap((document) =>
-    Object.entries(
-      (
-        document.toJS() as {
-          readonly packages?: Record<
-            string,
-            { readonly resolution?: { readonly integrity?: string } }
-          >;
-        } | null
-      )?.packages ?? {},
+  return new Map(
+    parseAllDocuments(lockfile).flatMap((document) =>
+      Object.entries(
+        (
+          document.toJS() as {
+            readonly packages?: Record<
+              string,
+              { readonly resolution?: { readonly integrity?: string } }
+            >;
+          } | null
+        )?.packages ?? {},
+      ).map(([key, entry]) => [key, entry.resolution?.integrity] as const),
     ),
   );
-  const integrity = new Map(packages.map(({ name, integrity }) => [name, integrity]));
+}
+
+/**
+ * Checks what a copy's lockfile installed. Each `@moltenship` package must have the hash of the
+ * dry run's tarball, and each one the copy asks for must be there, from a tarball rather than a
+ * link. Every other package must be one the workspace's lockfile has, with the same hash.
+ */
+export function lockfileProblems({
+  lockfile,
+  packages,
+  expected,
+  workspaceLockfile,
+}: {
+  readonly lockfile: string;
+  readonly packages: ReleaseManifest["packages"];
+  /** The published packages the copy depends on directly. */
+  readonly expected: readonly string[];
+  readonly workspaceLockfile: string;
+}): string[] {
+  const packed = new Map(packages.map(({ name, integrity }) => [name, integrity]));
+  const workspace = lockfileEntries(workspaceLockfile);
   const installed = new Set<string>();
   const problems: string[] = [];
-  for (const [key, entry] of entries) {
+  for (const [key, integrity] of lockfileEntries(lockfile)) {
     const name = /^(@moltenship\/[^@]+)@/u.exec(key)?.[1];
-    if (name === undefined) continue;
+    if (name === undefined) {
+      if (!workspace.has(key)) problems.push(`${key} isn't in the workspace's lockfile`);
+      else if (workspace.get(key) !== integrity) {
+        problems.push(`${key} has another hash than the workspace's`);
+      }
+      continue;
+    }
     installed.add(name);
-    const packed = integrity.get(name);
-    const actual = entry.resolution?.integrity;
-    if (packed === undefined) problems.push(`${name} is installed, but the dry run didn't pack it`);
-    else if (actual !== packed) {
+    const hash = packed.get(name);
+    if (hash === undefined) problems.push(`${name} is installed, but the dry run didn't pack it`);
+    else if (integrity !== hash) {
       problems.push(
-        `${name} is installed with ${actual ?? "no hash"}, not the dry run's ${packed}`,
+        `${name} is installed with ${integrity ?? "no hash"}, not the dry run's ${hash}`,
       );
     }
   }
@@ -163,26 +182,48 @@ async function workspaceFiles(directories: readonly string[]): Promise<string[]>
   return present.filter((file) => file !== undefined);
 }
 
-/**
- * Installs a project offline from the pnpm store that `vp install` filled. Inside a `vp run` task,
- * `vp` on PATH is the workspace's local CLI, whose pnpm tries to fetch the pinned pnpm version from
- * the registry; VP_CLI_BIN is the global vp that started the task.
- */
-export async function installOffline(directory: string): Promise<void> {
-  const install = await run(
+// Inside a `vp run` task, `vp` on PATH is the workspace's local CLI, whose pnpm tries to fetch the
+// pinned pnpm version from the registry. VP_CLI_BIN is the global vp that started the task.
+const install = (directory: string, mode: "--offline" | "--prefer-offline") =>
+  run(
     process.env.VP_CLI_BIN ?? "vp",
-    ["install", "--offline", "--ignore-scripts", "--no-frozen-lockfile"],
+    ["install", mode, "--ignore-scripts", "--no-frozen-lockfile"],
     { cwd: directory },
   );
-  if (install.code !== 0) {
-    throw new Error(
-      `The offline install failed in ${directory}. Run vp install in the workspace first, so the pnpm store has every dependency.\n${lastLines(`${install.stdout}${install.stderr}`)}`,
-    );
+
+function installFailure(directory: string, result: { stdout: string; stderr: string }) {
+  return new Error(
+    `The install failed in ${directory}. Run vp install in the workspace first, so the pnpm store has every package.\n${lastLines(`${result.stdout}\n${result.stderr}`)}`,
+  );
+}
+
+/** Installs a project offline from the pnpm store and metadata cache that `vp install` filled. */
+export async function installOffline(directory: string): Promise<void> {
+  const result = await install(directory, "--offline");
+  if (result.code !== 0) throw installFailure(directory, result);
+}
+
+/**
+ * Installs a project from the pnpm store, offline when pnpm's metadata cache has what resolving
+ * it needs. A fresh machine's cache may not: `vp install --frozen-lockfile` skips resolution, and
+ * keeps only part of the metadata. Then pnpm reads the missing metadata from npm, and still takes
+ * every package from the store. Says whether it read from npm.
+ */
+export async function installFromStore(directory: string): Promise<{ readonly online: boolean }> {
+  const offline = await install(directory, "--offline");
+  if (offline.code === 0) return { online: false };
+  if (!`${offline.stdout}${offline.stderr}`.includes("ERR_PNPM_NO_OFFLINE_META")) {
+    throw installFailure(directory, offline);
   }
+  const online = await install(directory, "--prefer-offline");
+  if (online.code !== 0) throw installFailure(directory, online);
+  return { online: true };
 }
 
 export interface IsolatedWorkspace {
   readonly root: string;
+  /** Whether the install read package metadata from npm, which a cold pnpm cache needs. */
+  readonly online: boolean;
   /** Runs a command in a copied folder and returns its output; a failure shows the end of it. */
   readonly run: (
     directory: string,
@@ -267,18 +308,20 @@ export async function isolatedWorkspace({
   delete options.paths;
   await writeFile(join(root, "tsconfig.base.json"), json({ ...base, compilerOptions: options }));
 
-  await installOffline(root);
-  const problems = lockfileProblems(
-    await readFile(join(root, "pnpm-lock.yaml"), "utf8"),
-    manifest.packages,
-    [...expected],
-  );
+  const { online } = await installFromStore(root);
+  const problems = lockfileProblems({
+    lockfile: await readFile(join(root, "pnpm-lock.yaml"), "utf8"),
+    packages: manifest.packages,
+    expected: [...expected],
+    workspaceLockfile: await readFile(join(workspaceRoot, "pnpm-lock.yaml"), "utf8"),
+  });
   if (problems.length > 0) {
     throw new Error(`The install isn't the dry run's tarballs:\n- ${problems.join("\n- ")}`);
   }
 
   return {
     root,
+    online,
     run: async (directory, command, args, environment = {}) => {
       const cwd = join(root, directory);
       const result = await run(command, args, {

@@ -156,7 +156,13 @@ export async function changedArtifacts(
  * The manifest of a passing dry run of `HEAD`, whose tarballs and registry files are still the
  * ones it checked. Everything that uses the release artifacts starts here, so nothing packs twice.
  */
-export async function readCheckedManifest(path = manifestPath): Promise<ReleaseManifest> {
+export async function readCheckedManifest({
+  path = manifestPath,
+  directories,
+}: {
+  readonly path?: string;
+  readonly directories?: Parameters<typeof changedArtifacts>[1];
+} = {}): Promise<ReleaseManifest> {
   const manifest = await readManifest(path);
   if (!manifest) throw new Error("No dry-run manifest. Run vp run release:dry-run first.");
   const { head } = await gitState();
@@ -165,7 +171,7 @@ export async function readCheckedManifest(path = manifestPath): Promise<ReleaseM
       `The dry run checked commit ${manifest.commit}, but HEAD is ${head}. Run it again.`,
     );
   }
-  const changed = await changedArtifacts(manifest);
+  const changed = await changedArtifacts(manifest, directories);
   if (changed.length > 0) {
     throw new Error(`Changed after the dry run: ${changed.join(", ")}. Run it again.`);
   }

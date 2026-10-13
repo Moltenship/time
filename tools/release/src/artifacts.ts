@@ -1,5 +1,6 @@
 import { copyFile, mkdir, rm } from "node:fs/promises";
 import { createServer, type AddressInfo } from "node:net";
+import { availableParallelism } from "node:os";
 import { join } from "node:path";
 
 import { isolatedWorkspace, lastLines, temporaryRoot, type IsolatedWorkspace } from "./isolated";
@@ -18,6 +19,8 @@ interface ConsumerContext {
   readonly step: <T>(name: string, action: () => Promise<T>) => Promise<T>;
   /** Logs what a step showed, such as how many tests passed. */
   readonly note: (message: string | undefined) => void;
+  /** Whether to keep what a consumer made, even when it passes. */
+  readonly keep: boolean;
   /** Copies workspace folders into a clean workspace on the dry run's tarballs, kept if a step fails. */
   readonly isolate: (
     directories: readonly string[],
@@ -31,7 +34,7 @@ export interface Consumer {
 }
 
 /** Docs tests that compare the docs with package source, which a copy on the tarballs doesn't have. */
-const sourceTests = ["tests/anatomy.test.ts", "tests/recurrence-examples.test.ts"];
+const sourceTests = ["tests/anatomy-source.test.ts", "tests/recurrence-api-reference.test.ts"];
 
 /** Vitest's count of passed tests, or the output's last line. */
 export function outcome(output: string): string | undefined {
@@ -40,6 +43,33 @@ export function outcome(output: string): string | undefined {
   const pages = /Generating static pages.*\((\d+)\/\1\)/u.exec(output)?.[1];
   if (pages) return `${pages} pages generated`;
   return output.trim().split("\n").at(-1)?.trim() || undefined;
+}
+
+/** Ways the tarballs the registry's install test served differ from the dry run's. */
+export function servedProblems(
+  served: Readonly<Record<string, string>> | undefined,
+  packages: ReleaseManifest["packages"],
+): string[] {
+  if (!served) return ["the install test didn't report the tarballs it served"];
+  const problems: string[] = [];
+  for (const { name, integrity } of packages) {
+    if (served[name] === undefined) problems.push(`it didn't serve ${name}`);
+    else if (served[name] !== integrity) {
+      problems.push(`it served ${name} with ${served[name]}, not the dry run's ${integrity}`);
+    }
+  }
+  for (const name of Object.keys(served)) {
+    if (!packages.some((entry) => entry.name === name)) {
+      problems.push(`it served ${name}, which the dry run didn't pack`);
+    }
+  }
+  return problems;
+}
+
+/** The JSON after `<label> ` on a line of a command's output. */
+function report<T>(output: string, label: string): T | undefined {
+  const line = new RegExp(`^${label} (.*)$`, "mu").exec(output)?.[1];
+  return line === undefined ? undefined : (JSON.parse(line) as T);
 }
 
 async function freePort(): Promise<number> {
@@ -107,21 +137,41 @@ export const consumers: readonly Consumer[] = [
     // build of each, with the tarballs served as the `@moltenship` packages. It needs the network
     // for npm and shadcn's own components.
     name: "registry",
-    run: async ({ step, note }) => {
+    run: async ({ manifest, step, note, keep }) => {
       await step("shadcn add, typecheck and build", async () => {
         const result = await run("vp", ["run", "registry:e2e"], {
           env: {
             ...process.env,
             REGISTRY_E2E_PACKAGES: "local",
             REGISTRY_E2E_TARBALLS: tarballDirectory,
+            REGISTRY_E2E_APPS: "vite,next",
+            REGISTRY_E2E_KEEP: keep ? "1" : "failed",
           },
         });
+        const kept = /^Kept .*$/mu.exec(result.stdout)?.[0];
         if (result.code !== 0) {
+          const apps = report<{ app: string; step: string }[]>(
+            result.stdout,
+            "REGISTRY_E2E_FAILED",
+          );
+          const failed = apps?.map(({ app, step }) => `${app} at "${step}"`).join(", ");
+          const output = failed ? result.stderr : `${result.stdout}\n${result.stderr}`;
           throw new Error(
-            `vp run registry:e2e exited with ${result.code}\n${lastLines(`${result.stdout}\n${result.stderr}`)}`,
+            `${failed ? `${failed} failed` : `vp run registry:e2e exited with ${result.code}`}\n${lastLines(output, 150)}${kept ? `\n${kept}` : ""}`,
           );
         }
-        note(/^REGISTRY_E2E .*$/mu.exec(result.stdout)?.[0]);
+        const passed = report<{
+          apps: { app: string; seconds: number }[];
+          served?: Record<string, string>;
+        }>(result.stdout, "REGISTRY_E2E");
+        const problems = servedProblems(passed?.served, manifest.packages);
+        if (problems.length > 0) {
+          throw new Error(
+            `The install test didn't run on the dry run's tarballs:\n- ${problems.join("\n- ")}`,
+          );
+        }
+        note(passed?.apps.map(({ app, seconds }) => `${app} passed in ${seconds}s`).join(", "));
+        if (kept) note(kept);
       });
     },
   },
@@ -148,6 +198,9 @@ async function runConsumer(
   manifest: ReleaseManifest,
   keep: boolean,
 ): Promise<ConsumerResult> {
+  const note = (message: string | undefined) => {
+    if (message) console.log(`[${consumer.name}] ${message}`);
+  };
   const started = performance.now();
   const steps: StepRecord[] = [];
   const copies: string[] = [];
@@ -165,13 +218,23 @@ async function runConsumer(
         throw error;
       }
     },
-    note: (message) => {
-      if (message) console.log(`[${consumer.name}] ${message}`);
-    },
+    note,
+    keep,
     isolate: async (directories, options) => {
       const root = await temporaryRoot(consumer.name);
       copies.push(root);
-      return isolatedWorkspace({ root, directories, manifest, drop: options?.drop });
+      const workspace = await isolatedWorkspace({
+        root,
+        directories,
+        manifest,
+        drop: options?.drop,
+      });
+      if (workspace.online) {
+        note(
+          "pnpm's cache lacked some metadata, so the install read it from npm; packages came from the store",
+        );
+      }
+      return workspace;
     },
   };
   try {
@@ -193,6 +256,26 @@ async function runConsumer(
   }
   return { name: consumer.name, seconds: seconds(started), steps };
 }
+
+/** Runs `tasks`, at most `limit` at a time, and returns their results in order. */
+async function inPool<T>(tasks: readonly (() => Promise<T>)[], limit: number): Promise<T[]> {
+  const results: T[] = [];
+  let next = 0;
+  const worker = async () => {
+    while (next < tasks.length) {
+      const index = next++;
+      results[index] = await tasks[index]!();
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, worker));
+  return results;
+}
+
+/**
+ * Consumers to run at once: each builds an app, and the registry's builds two, so one per four
+ * cores. A laptop runs all three; a 4-core CI runner runs them one after another.
+ */
+export const concurrency = (cores = availableParallelism()) => Math.max(1, Math.floor(cores / 4));
 
 /** One line per consumer: its time and each step's. */
 export function summary(results: readonly ConsumerResult[]): string {
@@ -230,13 +313,20 @@ export async function checkArtifacts({
   }
   const selected = consumers.filter(({ name }) => only.length === 0 || only.includes(name));
   const manifest = await readCheckedManifest();
+  const limit = concurrency();
   console.log(
-    `Release artifacts: ${manifest.packages.length} tarballs and ${manifest.registry?.length ?? 0} registry files for ${manifest.version}, from the dry run of ${manifest.commit.slice(0, 12)}.`,
+    `Release artifacts: ${manifest.packages.length} tarballs and ${manifest.registry?.length ?? 0} registry files for ${manifest.version}, from the dry run of ${manifest.commit.slice(0, 12)}; ${limit} consumer${limit === 1 ? "" : "s"} at a time.`,
   );
+  if (!manifest.clean) {
+    console.log(
+      "The dry run ran on a working tree with changes. Package edits since then aren't in its tarballs.",
+    );
+  }
 
   const started = performance.now();
-  const results = await Promise.all(
-    selected.map((consumer) => runConsumer(consumer, manifest, keep)),
+  const results = await inPool(
+    selected.map((consumer) => () => runConsumer(consumer, manifest, keep)),
+    limit,
   );
   const changed = await changedArtifacts(manifest);
   console.log(`\n${summary(results)}`);

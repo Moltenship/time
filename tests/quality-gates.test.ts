@@ -166,7 +166,8 @@ describe("CI quality gate contract", () => {
       expect(dryRun).toBeGreaterThan(-1);
       expect(lane.indexOf("vp run release:artifacts")).toBeGreaterThan(dryRun);
     }
-    // It runs the registry's install test on the dry run's tarballs, so the gates don't pack again.
+    // The install test on its own packs its own tarballs; the gates run it only through
+    // release:artifacts, on the dry run's (tools/release/tests/artifacts.test.ts).
     expect(work("ready:full")).not.toContain("registry:e2e");
   });
 

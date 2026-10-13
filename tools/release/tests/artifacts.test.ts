@@ -1,6 +1,13 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { checkArtifacts, consumers, outcome, summary } from "../src/artifacts";
+import {
+  checkArtifacts,
+  concurrency,
+  consumers,
+  outcome,
+  servedProblems,
+  summary,
+} from "../src/artifacts";
 
 describe("the release artifacts' consumers", () => {
   test("the SSR fixture, the docs site and the registry's clean apps use the artifacts", () => {
@@ -11,6 +18,41 @@ describe("the release artifacts' consumers", () => {
     await expect(checkArtifacts({ only: ["docs"] })).rejects.toThrow(
       "Unknown consumer docs. Choose from ssr-fixture, showcase, registry.",
     );
+  });
+
+  test("the registry's install test must serve exactly the dry run's tarballs", () => {
+    const packed = [
+      {
+        name: "@moltenship/calendar",
+        file: "moltenship-calendar-1.0.0.tgz",
+        integrity: "sha512-a",
+      },
+      { name: "@moltenship/ics", file: "moltenship-ics-1.0.0.tgz", integrity: "sha512-b" },
+    ];
+
+    expect(
+      servedProblems({ "@moltenship/calendar": "sha512-a", "@moltenship/ics": "sha512-b" }, packed),
+    ).toEqual([]);
+    expect(
+      servedProblems(
+        {
+          "@moltenship/calendar": "sha512-packed-again",
+          "@moltenship/calendar-testing": "sha512-c",
+        },
+        packed,
+      ),
+    ).toEqual([
+      "it served @moltenship/calendar with sha512-packed-again, not the dry run's sha512-a",
+      "it didn't serve @moltenship/ics",
+      "it served @moltenship/calendar-testing, which the dry run didn't pack",
+    ]);
+    expect(servedProblems(undefined, packed)).toEqual([
+      "the install test didn't report the tarballs it served",
+    ]);
+  });
+
+  test("one consumer at a time per four cores, and at least one", () => {
+    expect([2, 4, 8, 15, 16].map((cores) => concurrency(cores))).toEqual([1, 1, 2, 3, 4]);
   });
 
   test("a step's outcome is the tests that passed, the pages built, or the last line", () => {
