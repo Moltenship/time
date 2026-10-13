@@ -226,6 +226,67 @@ describe(`a change on a calendar in another zone`, () => {
     );
   });
 
+  test(`on the series' own spring-forward night, the change is the one the series' zone makes`, () => {
+    // 02:30 doesn't exist in Berlin on 29 March, so that night's occurrence shows 03:30–04:00.
+    const nightly = timed("nightly", "2026-03-27T02:30", "2026-03-27T03:00", {
+      recurrence: { rule: { count: 5, frequency: "DAILY" } },
+    });
+    const gapNight = find(expand([nightly]), "2026-03-29T01:30:00Z");
+    const startOf = (edit: RecurrenceEdit<Event, string, string>) => {
+      const { series: write } = series(edit);
+      return write.action === "update"
+        ? `${wall(write.placement.start)}–${wall(write.placement.end).slice(11)}`
+        : write.action;
+    };
+    // An hour later, from New York or from Berlin, moves the series where Berlin's calendar does.
+    const later = startOf(resolveRecurrenceEdit(move(gapNight, { hours: 1 }), "all", adapters));
+    expect(later).toBe("2026-03-27T04:30:00–05:00:00");
+    expect(
+      startOf(
+        resolveRecurrenceEdit(move(gapNight, { hours: 1 }, newYork), "all", adapters, inNewYork),
+      ),
+    ).toBe(later);
+    // A day later in the editor keeps the time written and the length, from either calendar.
+    const { end, start } = gapNight.interval as { end: Temporal.Instant; start: Temporal.Instant };
+    const nextDay = (timeZone: string) =>
+      change(gapNight, "update", {
+        end: end.toZonedDateTimeISO(timeZone).add({ days: 1 }).toInstant(),
+        kind: "timed",
+        sourceTimeZone: "Europe/Berlin",
+        start: start.toZonedDateTimeISO(timeZone).add({ days: 1 }).toInstant(),
+      });
+    expect(startOf(resolveRecurrenceEdit(nextDay(newYork), "all", adapters, inNewYork))).toBe(
+      "2026-03-28T02:30:00–03:00:00",
+    );
+    expect(startOf(resolveRecurrenceEdit(nextDay("Europe/Berlin"), "all", adapters))).toBe(
+      "2026-03-28T02:30:00–03:00:00",
+    );
+  });
+
+  test(`a move takes one change for both ends, whatever the occurrence's length`, () => {
+    // 07:30 in Berlin is 01:30 in New York on 8 March, just before New York skips 02:00–03:00.
+    // Thirty minutes later is 08:00 in Berlin, for a two-hour occurrence and a half-hour one.
+    const at730 = (minutes: number) =>
+      timed(`s${minutes}`, "2026-03-06T07:30", "2026-03-06T07:30", {
+        end: at("2026-03-06T07:30").add({ minutes }),
+        recurrence: { rule: { count: 5, frequency: "DAILY" } },
+      } as Partial<Event>);
+    for (const minutes of [120, 30]) {
+      const occurrence = find(expand([at730(minutes)]), "2026-03-08T06:30:00Z");
+      const edit = series(
+        resolveRecurrenceEdit(
+          move(occurrence, { minutes: 30 }, newYork),
+          "all",
+          adapters,
+          inNewYork,
+        ),
+      );
+      expect(edit.series.action === "update" && wall(edit.series.placement.start)).toBe(
+        "2026-03-06T08:00:00",
+      );
+    }
+  });
+
   test(`a calendar zone that isn't a time zone is a rejection`, () => {
     expect(
       resolveRecurrenceEdit(lastWinterWeek(), "all", adapters, { timeZone: "Mars/Olympus" }),

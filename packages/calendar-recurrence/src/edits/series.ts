@@ -239,67 +239,101 @@ function clockOf(
 }
 
 /**
- * The change as if the user had made it on the occurrence's own clock. The calendar moves and
- * resizes occurrences, and its editor shows their times, on the calendar's clock, `options.timeZone`.
- * In a week when that zone's DST differs from the occurrence's, the instants it proposes are an hour
- * off what the same change means on the series' clock: a drag by a week keeps 05:00 in New York,
- * which is 11:00 in Berlin instead of 10:00. So each end's change on the calendar's wall clock,
- * days and time, is replayed on the occurrence's: the drag keeps 10:00. An end dropped on either of
- * two equal wall times there keeps its instant. Changes that give the occurrence another kind or
- * zone, and calendars on the occurrence's own clock, are left as they are.
+ * The change as the same gesture makes it on the series' own clock. The calendar moves and resizes
+ * occurrences, and its editor shows their times, on its clock, `options.timeZone`, which defaults
+ * to the series': a change there is calendar days on its wall clock and then exact time, as core's
+ * placement helpers apply it. Replayed on the series' clock, a drag by a week keeps the series' time
+ * of day in a week when the calendar's zone has changed DST and the series' hasn't, and a drag an
+ * hour later moves it an hour. Days count from the series' written time, so an occurrence a DST gap
+ * moved forward and dragged a day keeps the time written; a move keeps the occurrence's length, and
+ * a resize or an update moves each end it changes by its own change. An end dropped on either of
+ * two equal wall times there keeps its instant. An override in another zone measures the change on
+ * its own clock, so it replays there; changes that give the occurrence another kind or zone are left
+ * as they are.
  */
 export function onSeriesClock<TChange extends Change<unknown, EventId, ResourceId>>(
   series: Series<unknown, EventId, ResourceId>,
   change: TChange,
   options: Options<unknown, EventId>,
 ): TChange | RecurrenceEditRejection {
-  const { timeZone } = options;
-  if (timeZone === undefined) return change;
-  if (!isTimeZone(timeZone)) return reject("invalid-time-zone", `${timeZone} isn't a time zone.`);
+  if (options.timeZone !== undefined && !isTimeZone(options.timeZone)) {
+    return reject("invalid-time-zone", `${options.timeZone} isn't a time zone.`);
+  }
   if (change.cause === "delete") return change;
   const { original, proposed } = change;
   if (original.kind !== "timed" || proposed.kind !== "timed") return change;
   const defaultTimeZone = options.defaultTimeZone ?? "UTC";
   const clock = clockOf(original, series, defaultTimeZone);
-  if (clock.timeZone !== clockOf(proposed, series, defaultTimeZone).timeZone) return change;
-  if (clock.timeZone === timeZone || !isTimeZone(clock.timeZone)) return change;
-
-  const calendar: SeriesTime = { kind: "timed", timeZone };
+  if (clockOf(proposed, series, defaultTimeZone).timeZone !== clock.timeZone) return change;
+  if (!isTimeZone(clock.timeZone)) return change;
+  const timeZone = options.timeZone ?? clock.timeZone;
   // On the series' own clock, a start a DST gap moved forward reads back to its written time.
-  const onSeries = clock.timeZone === series.time.timeZone && series.time.kind === "timed";
-  const replay = (from: Temporal.Instant, to: Temporal.Instant, edge: "end" | "start") => {
-    const delta = toWall(from, calendar).until(toWall(to, calendar));
-    const wall =
-      edge === "start" && onSeries
-        ? seriesWall(from, keyShift(series, undefined))
-        : toWall(from, clock);
-    const target = wall.add(delta);
-    return toWall(to, clock).equals(target) ? to : (fromWall(target, clock) as Temporal.Instant);
+  const onSeries = series.time.kind === "timed" && clock.timeZone === series.time.timeZone;
+
+  // The change on the calendar's clock: calendar days, then exact time.
+  const delta = (from: Temporal.Instant, to: Temporal.Instant) => {
+    const shown = from.toZonedDateTimeISO(timeZone);
+    const days = shown.toPlainDate().until(to.toZonedDateTimeISO(timeZone).toPlainDate()).days;
+    return { days, time: shown.add({ days }).toInstant().until(to) };
   };
-  const start = replay(original.start, proposed.start, "start");
-  const end = replay(original.end, proposed.end, "end");
+  const written = onSeries
+    ? seriesWall(original.start, keyShift(series, undefined))
+    : toWall(original.start, clock);
+  const startAt = (from: Temporal.Instant, to: Temporal.Instant) => {
+    const { days, time } = delta(from, to);
+    return (fromWall(written.add({ days }), clock) as Temporal.Instant).add(time);
+  };
+  const endAt = (from: Temporal.Instant, to: Temporal.Instant) => {
+    const { days, time } = delta(from, to);
+    return from.toZonedDateTimeISO(clock.timeZone).add({ days }).toInstant().add(time);
+  };
+  // A target on the same wall time as the drop, as either 02:30 of DST's end, is the drop.
+  const keep = (dropped: Temporal.Instant, target: Temporal.Instant) =>
+    toWall(dropped, clock).equals(toWall(target, clock)) ? dropped : target;
+
+  const length = original.start.until(original.end);
+  let { end, start } = proposed;
+  switch (change.cause) {
+    case "move":
+      start = keep(proposed.start, startAt(original.start, proposed.start));
+      end = start.add(length);
+      break;
+    case "resize-start":
+      start = keep(proposed.start, startAt(original.start, proposed.start));
+      break;
+    case "resize-end":
+      end = keep(proposed.end, endAt(original.end, proposed.end));
+      break;
+    case "update": {
+      start = keep(proposed.start, startAt(original.start, proposed.start));
+      const kept = Temporal.Duration.compare(proposed.start.until(proposed.end), length) === 0;
+      end = kept ? start.add(length) : keep(proposed.end, endAt(original.end, proposed.end));
+      break;
+    }
+  }
   if (Temporal.Instant.compare(end, start) <= 0) return change;
   return { ...change, proposed: { ...proposed, end, start } };
 }
 
 /**
  * The original starts of the series' cancelled overrides among `options.overrides`, by recurrence
- * key: occurrences that don't show though the rule has them.
+ * key: occurrences that don't show though the rule has them. As in the expander, of two overrides
+ * for one occurrence the later wins.
  */
 export function cancelledStarts<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
   series: Series<TEvent, TEventId, TResourceId>,
   adapters: RecurrenceAdapters<TEvent, TEventId, TResourceId>,
   options: Options<TEvent, TEventId>,
 ): ReadonlySet<string> {
-  const keys = new Set<string>();
+  const cancelled = new Map<string, boolean>();
   const shift = keyShift(series, undefined);
   for (const event of options.overrides ?? []) {
     const override = adapters.recurrence.getOverride?.(event);
-    if (override?.cancelled !== true || override.seriesId !== series.id) continue;
+    if (override === undefined || override.seriesId !== series.id) continue;
     const key = readKey(shift, override.recurrenceId, "start");
-    if (key !== undefined) keys.add(recurrenceKey(key));
+    if (key !== undefined) cancelled.set(recurrenceKey(key), override.cancelled === true);
   }
-  return keys;
+  return new Set([...cancelled].flatMap(([key, hidden]) => (hidden ? [key] : [])));
 }
 
 export function measureMove(

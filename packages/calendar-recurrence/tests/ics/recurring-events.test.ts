@@ -1499,6 +1499,38 @@ describe("recurringEventsFromIcs: RANGE=THISANDFUTURE", () => {
     ).toEqual(["2026-03-29T03:30–04:30", "2026-04-05T02:30–03:30", "2026-04-12T02:30–03:30"]);
   });
 
+  test("gives an override at the later of two equal wall times the override's VEVENT", () => {
+    // 24 October is excluded, so the range on 25 October changes the whole series. Its DTSTART,
+    // written in UTC, is the later 02:30 of the night Berlin repeats 02:00–03:00, which a rule
+    // can't give: an override keeps it.
+    const events = parse(
+      [
+        "UID:night",
+        "SUMMARY:Backup",
+        "DTSTART;TZID=Europe/Berlin:20261024T023000",
+        "DTEND;TZID=Europe/Berlin:20261024T030000",
+        "RRULE:FREQ=DAILY;COUNT=4",
+        "EXDATE;TZID=Europe/Berlin:20261024T023000",
+      ],
+      [
+        "UID:night",
+        "SUMMARY:Backup (after the change)",
+        "RECURRENCE-ID;RANGE=THISANDFUTURE;TZID=Europe/Berlin:20261025T023000",
+        "DTSTART:20261025T013000Z",
+        "DTEND:20261025T020000Z",
+      ],
+    );
+    expect(bridge(events).events).toMatchObject([
+      { id: "night", title: "Backup (after the change)" },
+      {
+        id: "night::2026-10-25T00:30:00Z",
+        override: { recurrenceId: "2026-10-25T00:30:00Z", seriesId: "night" },
+        start: "2026-10-25T01:30:00Z",
+        title: "Backup (after the change)",
+      },
+    ]);
+  });
+
   test("replaces only the occurrence it names when the series can't take it, with an issue", () => {
     const firstMonday = [
       "UID:sync",

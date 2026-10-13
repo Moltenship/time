@@ -700,11 +700,13 @@ Both take a `ResolveRecurrenceEditOptions`:
       description: (
         <>
           The calendar's time zone, which occurrences are moved and resized on and the editor shows
-          times in. With it, <code>"all"</code> and <code>"following"</code> replay the change on
-          the series' own clock: a drag by a week keeps its time of day, a drag an hour later moves
-          it an hour, and a resize by days stretches it by days, even in a week when the calendar's
-          zone has changed DST and the series' hasn't. Without it, the series takes the instants the
-          calendar proposes, which are an hour off then.
+          times in. <code>"all"</code> and <code>"following"</code> replay the change, calendar days
+          and then exact time, on the series' own clock: a drag by a week keeps its time of day, a
+          drag an hour later moves it an hour, and a resize by days stretches it by days, even in a
+          week when the calendar's zone has changed DST and the series' hasn't. Without it, the
+          calendar is taken to show the series' own zone, and the series takes the instants it
+          proposes, which are an hour off then. An override in another zone replays on its own
+          clock.
         </>
       ),
     },

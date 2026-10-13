@@ -8,8 +8,9 @@ import {
 } from "../../src";
 import { adapters, change, move, resize } from "../edits/harness";
 import { createExpander, timedSeries, type Event, type Occurrence } from "./calendar";
+import { kolkata } from "./zones";
 
-// Edits on DST change days, through the expander and `applyRecurrenceEdit`, in a zone of each
+// Edits on DST change days, through the expander and, where they write, `applyRecurrenceEdit`, in a zone of each
 // kind: Berlin and New York in the north, Sydney in the south, and Lord Howe, whose clocks move by
 // half an hour. Each series repeats at a time the zone skips in one change, or repeats in the
 // other, and the calendar shows the series' own zone. Times are worked out by hand from the zones'
@@ -213,6 +214,68 @@ describe.each(zones)("$timeZone: edits on DST change days", (zone) => {
     const edit = series(resolveRecurrenceEdit(dropped, "following", adapters));
     expect(edit.newSeries?.placement.start).toEqual(later);
     expect(edit.override).toBeUndefined();
+    const after = apply([foldNights], edit);
+    expect(occurrenceOn(after, foldDay).interval.start).toEqual(later);
+    expect(shown(after, day(foldDay, 1))[0]).toBe(
+      `${day(foldDay, 1)}T${foldTime}–${addMinutes(foldTime, 30)}`,
+    );
+  });
+
+  // From a calendar in Kolkata, which has no DST, and from the series' own zone.
+  describe.each([timeZone, kolkata])("on a calendar in %s", (calendar) => {
+    const options = calendar === timeZone ? {} : { timeZone: calendar };
+
+    test(`"all" dragged a day off the gap night keeps the series' written time`, () => {
+      const dragged = move(occurrenceOn([gapNights], gapDay), { days: 1 }, calendar);
+      const after = apply(
+        [gapNights],
+        series(resolveRecurrenceEdit(dragged, "all", adapters, options)),
+      );
+      expect(shown(after, day(gapDay, -1)).slice(0, 3)).toEqual([
+        `${day(gapDay, -1)}T${gapTime}–${addMinutes(gapTime, 30)}`,
+        `${gapDay}T${gapShown}–${addMinutes(gapShown, 30)}`,
+        `${day(gapDay, 1)}T${gapTime}–${addMinutes(gapTime, 30)}`,
+      ]);
+    });
+
+    test(`"all" changed to the next day in the editor keeps the length and written time`, () => {
+      const gapNight = occurrenceOn([gapNights], gapDay);
+      const { end, start } = gapNight.interval as {
+        end: Temporal.Instant;
+        start: Temporal.Instant;
+      };
+      const nextDay = (instant: Temporal.Instant) =>
+        instant.toZonedDateTimeISO(calendar).add({ days: 1 }).toInstant();
+      const updated = change(gapNight, "update", {
+        end: nextDay(end),
+        kind: "timed",
+        sourceTimeZone: timeZone,
+        start: nextDay(start),
+      });
+      const edit = series(resolveRecurrenceEdit(updated, "all", adapters, options));
+      expect(
+        edit.series.action === "update" && wall(edit.series.placement.start as Temporal.Instant),
+      ).toBe(`${day(gapDay, -2)}T${gapTime}`);
+      expect(
+        edit.series.action === "update" && wall(edit.series.placement.end as Temporal.Instant),
+      ).toBe(`${day(gapDay, -2)}T${addMinutes(gapTime, 30)}`);
+    });
+
+    test(`"all" dragged an hour later on the gap night moves as the zone's own calendar does`, () => {
+      const startOf = (edit: RecurrenceEdit<Event, string, string>) => {
+        const { series: write } = series(edit);
+        return write.action === "update" ? String(write.placement.start) : write.action;
+      };
+      const gapNight = occurrenceOn([gapNights], gapDay);
+      const own = resolveRecurrenceEdit(move(gapNight, { hours: 1 }, timeZone), "all", adapters);
+      const here = resolveRecurrenceEdit(
+        move(gapNight, { hours: 1 }, calendar),
+        "all",
+        adapters,
+        options,
+      );
+      expect(startOf(here)).toBe(startOf(own));
+    });
   });
 
   test(`"this" moved to the later of the repeated times keeps the occurrence's ID`, () => {

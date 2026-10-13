@@ -70,10 +70,11 @@ function unwrap<TEvent, TEventId extends EventId, TResourceId extends ResourceId
  *   series), applies to every occurrence's original start. So a moved override that is dragged a
  *   day moves the series a day, at its own time, and one that is stretched stretches the series.
  *   The calendar moves and resizes an occurrence on the clock it shows; pass its zone as
- *   `options.timeZone`, so the change is replayed on the series' clock, for `"following"` too: a
- *   drag by days keeps the series' time of day even in a week when the two zones' DST differs, and
- *   a drag an hour later moves it an hour. Without it, the series takes the instants the calendar
- *   proposes. The rule moves
+ *   `options.timeZone`, so the change, calendar days and then exact time, is replayed on the series'
+ *   clock, for `"following"` too: a drag by days keeps the series' time of day even in a week when
+ *   the two zones' DST differs, and a drag an hour later moves it an hour. Days count from the
+ *   series' written time, so a night's occurrence a DST gap moved forward, dragged a day, keeps it.
+ *   Without the zone, the calendar is taken to show the series' own. The rule moves
  *   with the delta (BYDAY, month and year days, BYMONTH, BYHOUR, BYMINUTE, BYSECOND and WKST; see
  *   `shiftRule`), and so do EXDATEs, RDATEs, UNTIL and every override's `recurrenceId`, so deleted
  *   occurrences stay deleted and moved ones don't appear twice. Under an ordinal weekday rule, each

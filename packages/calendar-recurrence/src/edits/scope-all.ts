@@ -133,7 +133,6 @@ export function resolveAll<TEvent, TEventId extends EventId, TResourceId extends
   // earlier one.
   const later =
     override === undefined &&
-    !unchanged &&
     move.to.kind === "timed" &&
     measured.proposed.start instanceof Temporal.Instant &&
     !datesEqual(editedKey, measured.proposed.start) &&
