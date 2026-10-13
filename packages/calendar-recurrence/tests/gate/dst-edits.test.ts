@@ -10,11 +10,11 @@ import { adapters, change, move, resize } from "../edits/harness";
 import { createExpander, timedSeries, type Event, type Occurrence } from "./calendar";
 import { kolkata } from "./zones";
 
-// Edits on DST change days, through the expander and, where they write, `applyRecurrenceEdit`, in a zone of each
-// kind: Berlin and New York in the north, Sydney in the south, and Lord Howe, whose clocks move by
-// half an hour. Each series repeats at a time the zone skips in one change, or repeats in the
-// other, and the calendar shows the series' own zone. Times are worked out by hand from the zones'
-// 2026 offsets (see `zones.ts`).
+// Edits on DST change days, through the expander and, where they write, `applyRecurrenceEdit`, in a
+// zone of each kind: Berlin and New York in the north, Sydney in the south, and Lord Howe, whose
+// clocks move by half an hour. Each series repeats at a time the zone skips in one change, or
+// repeats in the other. The calendar shows the series' own zone, or Kolkata's, which has no DST.
+// Times are worked out by hand from the zones' 2026 offsets (see `zones.ts`).
 
 interface EditZone {
   readonly timeZone: string;
@@ -169,7 +169,7 @@ describe.each(zones)("$timeZone: edits on DST change days", (zone) => {
     ]);
   });
 
-  test(`"all" dropped on the later of the repeated times keeps that instant with an override`, () => {
+  test(`"all" dropped on the later repeated time keeps that instant with an override`, () => {
     const [earlier, later] = foldInstants.map((text) => Temporal.Instant.from(text));
     const occurrence = occurrenceOn([foldNights], day(foldDay, -1));
     const dropped = change(occurrence, "move", {
@@ -262,7 +262,7 @@ describe.each(zones)("$timeZone: edits on DST change days", (zone) => {
       ).toBe(`${day(gapDay, -2)}T${addMinutes(gapShown, 30)}`);
     });
 
-    test(`"all" dragged an hour later on the gap night moves as the zone's own calendar does`, () => {
+    test(`"all" dragged an hour later on the gap night moves as the zone's calendar does`, () => {
       const startOf = (edit: RecurrenceEdit<Event, string, string>) => {
         const { series: write } = series(edit);
         return write.action === "update" ? String(write.placement.start) : write.action;

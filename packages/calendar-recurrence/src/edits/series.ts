@@ -222,7 +222,7 @@ export function keyShift(
   };
 }
 
-/** The clock a placement shows on: its zone, the series' for a timed one without, else the default. */
+/** The clock a placement shows on: its zone, else the series' for a timed one, else the default. */
 function clockOf(
   placement: CalendarEventPlacement<ResourceId>,
   series: Series<unknown, EventId, ResourceId>,
@@ -242,15 +242,15 @@ function clockOf(
  * The change as the same gesture makes it on the series' own clock. The calendar moves and resizes
  * occurrences, and its editor shows their times, on its clock, `options.timeZone`, which defaults
  * to the series': a change there is calendar days on its wall clock and then exact time, as core's
- * placement helpers apply it. Replayed on the series' clock, a drag by a week keeps the series' time
- * of day in a week when the calendar's zone has changed DST and the series' hasn't, and a drag an
- * hour later moves it an hour. A drag's days count from the series' written time, so an occurrence a
- * DST gap moved forward and dragged a day keeps the time written; an editor's update names the
- * times it shows, so it counts from where the occurrence shows. A move keeps the occurrence's
- * length, and a resize or an update moves each end it changes by its own change. An end dropped on
- * either of two equal wall times there keeps its instant. An override in another zone measures the change on
- * its own clock, so it replays there; changes that give the occurrence another kind or zone are left
- * as they are.
+ * placement helpers apply it. Replayed on the series' clock, a drag by a week keeps the series'
+ * time of day in a week when the calendar's zone has changed DST and the series' hasn't, and a drag
+ * an hour later moves it an hour. A drag's days count from the series' written time, so an
+ * occurrence a DST gap moved forward and dragged a day keeps the time written; an editor's update
+ * names the times it shows, so it counts from where the occurrence shows. A move keeps the
+ * occurrence's length, and a resize or an update moves each end it changes by its own change. An
+ * end dropped on either of two equal wall times there keeps its instant. An override in another
+ * zone measures the change on its own clock, so it replays there; changes that give the occurrence
+ * another kind or zone are left as they are.
  */
 export function onSeriesClock<TChange extends Change<unknown, EventId, ResourceId>>(
   series: Series<unknown, EventId, ResourceId>,
