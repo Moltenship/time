@@ -37,7 +37,9 @@ holds the workflows to those task names and fails if `ready:full` misses a step 
 
 The release workflow runs `vp run release:gate` before it publishes: the whole full tier, with a
 strict dry run of the version it publishes (`--require-clean`, `RELEASE_VERSION`) in its own lane,
-`gate:serial:release`. `RELEASE_VERSION=<version> vp run release:gate` reproduces it locally, and
+`gate:serial:release`. It runs its lanes one after the other, the serial lane and then the browser
+runs: on a 4-core runner the serial lane's builds take every core, and beside them the year
+view's popover test ran out of its 15 s (#197). `RELEASE_VERSION=<version> vp run release:gate` reproduces it locally, and
 CI's on-demand `release-gate` job runs the same steps on a fresh runner without publishing. A check
 that joins only the full gate joins `release:gate` too: its lane for a serial step, or its
 `dependsOn` for a parallel one. The contract test fails if the two differ in anything but their

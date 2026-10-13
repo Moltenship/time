@@ -40,11 +40,15 @@ When each tier runs:
 
 - **Quick, after every change.** Docs content (MDX), README, ADRs and `docs/internal` notes may
   stop here.
-- **PR, before every merge**, whatever the change touches. CI runs the same on every PR.
+- **PR, before every merge**, whatever the change touches. The local `vp run ready` is the merge
+  gate: once it's green, merge without waiting for the GitHub Actions run. CI runs the same tasks
+  as a backstop. If CI goes red on `main`, fix it right away. CI red with local green is a gate
+  bug: fix the local gate until it reproduces the failure.
 - **Full, for releases only:** the release workflow runs it before publishing, and you run it by
   hand right before cutting a release candidate or a release. A PR doesn't run it, with one
   exception: a PR that changes the full gate itself or the release tooling runs it once, to show
-  the gate still works.
+  the gate still works. Release work is where CI does gate: the release job's gate must pass, and a
+  change to the release job shows a green run of CI's `release-gate` job on a fresh runner.
 
 On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 120 from a cold cache.
 Steps run in parallel where they're independent. Steps that write or read generated files
@@ -68,8 +72,9 @@ also joins `release:gate`, in its `gate:serial:release` lane or its `dependsOn`.
 one.
 
 The release workflow runs the whole full tier on a GitHub runner, with a strict dry run of the
-version it publishes: `RELEASE_VERSION=<version> vp run release:gate`, the one command that
-reproduces it locally. To rehearse it without the release workflow, dispatch CI
+version it publishes, and its two lanes one after the other, since a 4-core runner can't run both
+at once: `RELEASE_VERSION=<version> vp run release:gate`, the one command that reproduces it
+locally. To rehearse it without the release workflow, dispatch CI
 (`gh workflow run ci.yml --ref <branch>`): its `release-gate` job runs the same steps
 (`docs/internal/releasing.md`).
 

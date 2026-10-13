@@ -61,13 +61,13 @@ export default defineConfig({
         dependsOn: ["registry:smoke", "gate:browsers", "gate:serial:full"],
       },
       // The release workflow's gate before it publishes: the whole full tier, with a strict dry
-      // run of RELEASE_VERSION in its own lane. `RELEASE_VERSION=<version> vp run release:gate`
-      // reproduces it, and CI's on-demand release-gate job rehearses it. A full-only check joins
-      // gate:serial:release too.
+      // run of RELEASE_VERSION, its lanes one after the other. On a 4-core runner both at once ran
+      // the browser tests out of time: the serial lane's builds take every core. Locally,
+      // `RELEASE_VERSION=<version> vp run release:gate` reproduces it, and CI's on-demand
+      // release-gate job rehearses it. A full-only check joins gate:serial:release too.
       "release:gate": {
-        command: "echo release:gate passed",
+        command: "vp run registry:smoke && vp run gate:serial:release && vp run gate:browsers",
         cache: false,
-        dependsOn: ["registry:smoke", "gate:browsers", "gate:serial:release"],
       },
       // The full gate's browser runs, one at a time beside its serial lane. Each takes half the
       // cores, and a watchdog fails a run that stops making progress (tools/a11y/vite.config.ts).

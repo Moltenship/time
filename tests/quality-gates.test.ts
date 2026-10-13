@@ -198,7 +198,10 @@ describe("CI quality gate contract", () => {
     // They differ only in their lanes, and the release lane's dry run is strict.
     expect([...full].filter((step) => !release.has(step))).toEqual(["gate:serial:full"]);
     expect([...release].filter((step) => !full.has(step))).toEqual(["gate:serial:release"]);
-    expect(dependenciesOf(tasks["release:gate"]!)).toContain("gate:browsers");
+    // One lane after the other, as a 4-core runner needs: the serial lane, then the browser runs.
+    expect(commandsOf(tasks["release:gate"]!)).toEqual([
+      "vp run registry:smoke && vp run gate:serial:release && vp run gate:browsers",
+    ]);
     expect(commandsOf(tasks["gate:serial:release"]!)[0]).toContain(
       "vp run release:dry-run --require-clean",
     );
@@ -217,7 +220,7 @@ describe("CI quality gate contract", () => {
   });
 
   test("groups only gather steps, so the comparison sees every one", () => {
-    for (const name of ["ready", "ready:checks", "ready:full", "release:gate"]) {
+    for (const name of ["ready", "ready:checks", "ready:full"]) {
       expect(isGroup(tasks[name]!)).toBe(true);
     }
   });

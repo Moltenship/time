@@ -104,6 +104,10 @@ issue's "Later" section when work starts.
   ready:full` runs for releases: in the release workflow, and by hand right before a release
   candidate or a release. A PR runs it only when it changes the full gate itself or the release
   tooling. Add any focused `vp run` gate or lane the change touches.
+- The local `vp run ready` is the merge gate. Once it's green, merge without waiting for GitHub
+  Actions; CI runs the same tasks as a backstop. A red CI run on `main` gets fixed right away, and
+  CI red with local green is a gate bug: the local gate must reproduce it. Release work is the
+  exception: the release job's gate must pass, and a change to it shows a green CI rehearsal.
 - Every PR gets a code review. Fix each finding, or reply with the reason you didn't. While GitHub
   Actions is capped on this account, CI and Pullfrog don't run: run the tier the change needs
   locally and post the result on the PR, and get the review from Claude Opus 5.5 (xhigh) instead of

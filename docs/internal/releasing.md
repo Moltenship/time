@@ -58,7 +58,7 @@ packs nothing, and refuses a manifest from another commit or a file whose hash c
      release. The `verify` job installs Chromium, Firefox and WebKit, then runs
      `vp run release:gate` with `RELEASE_VERSION` set to the input: the whole full tier, its three
      browser runs included, with `release:dry-run --require-clean` for that version and
-     `release:artifacts` on the dry run's tarballs. CI's on-demand `release-gate` job runs the same
+     `release:artifacts` on the dry run's tarballs, its lanes one after the other. CI's on-demand `release-gate` job runs the same
      steps on any branch, without publishing, for a rehearsal before the version PR. The job keeps
      `.release/` as the `release` artifact for seven days. A rehearsal of the release workflow
      itself before the version PR uses version `0.0.0`.
