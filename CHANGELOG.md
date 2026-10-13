@@ -26,3 +26,6 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   `events`. `proposeEventChange` takes an optional `{ input }`, and the pointer layer's `onPropose`
   gets `{ input: "pointer" }`. A `Root` without `onEventChange` rejects with the change, as a
   policy does (#199).
+- `@moltenship/calendar-recurrence` expands a year of 200 series about 18% faster.
+  `createOccurrenceAdapter` shares its revision work between adapters, so one made on every render
+  gives the same revisions and core's snapshot keeps its records (#160).

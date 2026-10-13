@@ -189,8 +189,8 @@ describe("recurrence benchmark protocol", () => {
         status === "report-only" ? status : thresholdP95Ms,
       ]),
     ).toEqual([
-      ["expand-cold", 50],
-      ["expand-warm", 50],
+      ["expand-cold", 40],
+      ["expand-warm", 40],
       ["occurrence-snapshot", "report-only"],
     ]);
   });

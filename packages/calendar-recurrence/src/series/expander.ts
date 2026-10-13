@@ -17,7 +17,7 @@ import {
   type SeriesKind,
   type SeriesTime,
 } from "../internal/dates";
-import { occurrenceId, recurrenceKey } from "../occurrence-id";
+import { keyedOccurrenceId, recurrenceKey } from "../occurrence-id";
 import { DEFAULT_MAX_ITERATIONS, expandRecurrenceRule } from "../rule/expand";
 import type {
   EventRecurrence,
@@ -490,7 +490,7 @@ export function createOccurrenceExpander<
     const { event } = override;
     const occurrence = Object.freeze({
       event,
-      id: occurrenceId(seriesId, recurrenceId),
+      id: keyedOccurrenceId(seriesId, key),
       interval: override.interval,
       recurrence: Object.freeze({
         override: event,
@@ -617,7 +617,7 @@ export function createOccurrenceExpander<
         (compareDates(end, range.start) > 0 || compareDates(start, range.start) >= 0);
       if (!overlaps) continue;
 
-      const id = occurrenceId(seriesId, start);
+      const id = keyedOccurrenceId(seriesId, key);
       const interval = intervalOf(start, end, plan.first);
       const previous = master.pool.get(id);
       occurrences.push(
@@ -631,7 +631,10 @@ export function createOccurrenceExpander<
             }),
       );
     }
-    occurrences.sort((left, right) => compareDates(left.interval.start, right.interval.start));
+    // Rule dates come out in order, so only RDATEs, added after them, can break it.
+    if (plan.extras.length > 0) {
+      occurrences.sort((left, right) => compareDates(left.interval.start, right.interval.start));
+    }
     return { issues, occurrences, overrides: results };
   }
 

@@ -21,7 +21,12 @@ export function recurrenceKey(recurrenceId: RecurrenceDate): string {
  * whole series, or to this and following occurrences, change the starts and so the IDs.
  */
 export function occurrenceId(seriesId: EventId, recurrenceId: RecurrenceDate): string {
-  return `${String(seriesId)}${separator}${recurrenceKey(recurrenceId)}`;
+  return keyedOccurrenceId(seriesId, recurrenceKey(recurrenceId));
+}
+
+/** `occurrenceId` from a `recurrenceKey` already made, for the expander's hot path. */
+export function keyedOccurrenceId(seriesId: EventId, key: string): string {
+  return `${String(seriesId)}${separator}${key}`;
 }
 
 /**

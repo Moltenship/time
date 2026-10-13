@@ -1461,7 +1461,7 @@ over `loadRange`, `createOccurrenceAdapter` and the `recurringEventsFromIcs` bri
   Sydney, shown in each of those zones and in Kolkata, with positions, counts and occurrence IDs
   pinned across every change week, and IDs stable across ranges and display zones;
 - Google Calendar, Outlook/Exchange and iCloud interop fixtures, parsed, bridged and expanded;
-- a year-view expansion benchmark: 200 series, about 10,000 occurrences, gated at 50 ms p95
+- a year-view expansion benchmark: 200 series, about 10,000 occurrences, gated at 40 ms p95
   (`vp run recurrence:gate`);
 - the scope dialog's focus and announcements in the a11y suite.
 
