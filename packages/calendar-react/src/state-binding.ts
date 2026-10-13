@@ -101,24 +101,21 @@ export function useStateSelector<TState, TSelected>(
 ): TSelected {
   const committed = useRef<{ readonly selected: TSelected } | null>(null);
   const [getSelection, getServerSelection] = useMemo(() => {
-    const selecting = (read: () => TState) => {
-      let memo: { readonly selected: TSelected; readonly state: TState } | undefined;
-      return () => {
-        const state = read();
-        if (memo !== undefined && memo.state === state) return memo.selected;
-        const next = selector(state);
-        const previous = memo ?? committed.current;
-        const selected =
-          previous !== null && isEqual(previous.selected, next) ? previous.selected : next;
-        memo = { selected, state };
-        return selected;
-      };
+    // One memo for both reads, so the same state selects the same value on the server snapshot
+    // and the client's, and hydration doesn't render again for a new but equal selection.
+    let memo: { readonly selected: TSelected; readonly state: TState } | undefined;
+    const select = (state: TState) => {
+      if (memo !== undefined && memo.state === state) return memo.selected;
+      const next = selector(state);
+      const previous = memo ?? committed.current;
+      const selected =
+        previous !== null && isEqual(previous.selected, next) ? previous.selected : next;
+      memo = { selected, state };
+      return selected;
     };
-    const client = selecting(source.getSnapshot);
-    return [
-      client,
-      source.getServerSnapshot === undefined ? client : selecting(source.getServerSnapshot),
-    ];
+    const client = () => select(source.getSnapshot());
+    const server = source.getServerSnapshot;
+    return [client, server === undefined ? client : () => select(server())];
   }, [isEqual, selector, source]);
   const selected = useSyncExternalStore(source.subscribe, getSelection, getServerSelection);
   useInsertionEffect(() => {
