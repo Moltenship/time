@@ -150,10 +150,24 @@ describe("CI quality gate contract", () => {
         "a11y:ci-speed",
         "showcase:types",
         "showcase#search:check",
-        "registry:e2e",
         "release:dry-run",
+        "release:artifacts",
       ]),
     );
+  });
+
+  test("what uses the release artifacts runs after the dry run that packs them, in both gates", () => {
+    for (const name of ["gate:serial:full", "gate:serial:release"]) {
+      const lane = commandsOf(tasks[name]!)[0]!
+        .split("&&")
+        .map((step) => step.trim());
+      const dryRun = lane.findIndex((step) => step.startsWith("vp run release:dry-run"));
+
+      expect(dryRun).toBeGreaterThan(-1);
+      expect(lane.indexOf("vp run release:artifacts")).toBeGreaterThan(dryRun);
+    }
+    // It runs the registry's install test on the dry run's tarballs, so the gates don't pack again.
+    expect(work("ready:full")).not.toContain("registry:e2e");
   });
 
   test("the release checks run right after the build, in the lane CI runs", () => {
@@ -167,19 +181,16 @@ describe("CI quality gate contract", () => {
 
   test("the release workflow's gate is the full gate without the browser runs", () => {
     const release = new Set(work("release:gate"));
-    // The workflow runs a11y in a step of its own; CI runs browsers on demand; the shadcn install
-    // test runs on the dry run's tarballs instead; and release:gate has its own lane.
-    const dropped = ["a11y", "a11y:ci-speed", "browsers", "registry:e2e"].flatMap((name) => [
-      name,
-      ...work(name),
-    ]);
+    // The workflow runs a11y in a step of its own; CI runs browsers on demand; and release:gate
+    // has its own lane.
+    const dropped = ["a11y", "a11y:ci-speed", "browsers"].flatMap((name) => [name, ...work(name)]);
 
     expect(
       work("ready:full")
         .filter((step) => !release.has(step))
         .sort(),
     ).toEqual([...dropped, "gate:serial:full"].sort());
-    expect(release.has("release:registry-e2e")).toBe(true);
+    expect(release.has("release:artifacts")).toBe(true);
     expect(commandsOf(tasks["gate:serial:release"]!)[0]).toContain(
       "vp run release:dry-run --require-clean",
     );

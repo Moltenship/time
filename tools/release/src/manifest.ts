@@ -5,9 +5,12 @@ import { prerelease, valid, validRange } from "semver";
 
 import { releaseDirectory } from "./config";
 import { integrityOf, tarballDirectory } from "./pack";
-import { tarballName, workspaceRoot } from "./workspace";
+import { gitState, tarballName, workspaceRoot } from "./workspace";
 
 export const manifestPath = join(workspaceRoot, releaseDirectory, "manifest.json");
+
+/** Where the dry run builds the registry for the packed version. */
+export const registryDirectory = join(workspaceRoot, releaseDirectory, "registry");
 
 /** What a passing dry run vouches for. The publish step trusts nothing else. */
 export interface ReleaseManifest {
@@ -97,13 +100,13 @@ export function publishProblems(state: PublishState): string[] {
   return problems;
 }
 
-/** Current integrity of each tarball the manifest lists. */
-export async function tarballIntegrity(
-  manifest: ReleaseManifest | undefined,
-  directory = tarballDirectory,
+/** Current integrity of each file; undefined when it's missing. */
+async function currentIntegrity(
+  files: readonly string[],
+  directory: string,
 ): Promise<Record<string, string | undefined>> {
   const entries = await Promise.all(
-    (manifest?.packages ?? []).map(async ({ file }) => {
+    files.map(async (file) => {
       const path = join(directory, file);
       const exists = await access(path).then(
         () => true,
@@ -113,6 +116,60 @@ export async function tarballIntegrity(
     }),
   );
   return Object.fromEntries(entries);
+}
+
+/** Current integrity of each tarball the manifest lists. */
+export function tarballIntegrity(
+  manifest: ReleaseManifest | undefined,
+  directory = tarballDirectory,
+): Promise<Record<string, string | undefined>> {
+  return currentIntegrity(
+    (manifest?.packages ?? []).map(({ file }) => file),
+    directory,
+  );
+}
+
+/** The dry run's files that are missing or changed since it hashed them, as `tarballs/<file>`. */
+export async function changedArtifacts(
+  manifest: ReleaseManifest,
+  directories = { tarballs: tarballDirectory, registry: registryDirectory },
+): Promise<string[]> {
+  const listed = [
+    ["tarballs", manifest.packages],
+    ["registry", manifest.registry ?? []],
+  ] as const;
+  const changed = await Promise.all(
+    listed.map(async ([kind, files]) => {
+      const current = await currentIntegrity(
+        files.map(({ file }) => file),
+        directories[kind],
+      );
+      return files
+        .filter(({ file, integrity }) => current[file] !== integrity)
+        .map(({ file }) => `${kind}/${file}`);
+    }),
+  );
+  return changed.flat();
+}
+
+/**
+ * The manifest of a passing dry run of `HEAD`, whose tarballs and registry files are still the
+ * ones it checked. Everything that uses the release artifacts starts here, so nothing packs twice.
+ */
+export async function readCheckedManifest(path = manifestPath): Promise<ReleaseManifest> {
+  const manifest = await readManifest(path);
+  if (!manifest) throw new Error("No dry-run manifest. Run vp run release:dry-run first.");
+  const { head } = await gitState();
+  if (manifest.commit !== head) {
+    throw new Error(
+      `The dry run checked commit ${manifest.commit}, but HEAD is ${head}. Run it again.`,
+    );
+  }
+  const changed = await changedArtifacts(manifest);
+  if (changed.length > 0) {
+    throw new Error(`Changed after the dry run: ${changed.join(", ")}. Run it again.`);
+  }
+  return manifest;
 }
 
 /** Prereleases go to `next`, so `npm install` keeps getting the last stable version. */

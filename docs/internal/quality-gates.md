@@ -13,7 +13,7 @@ Three tasks group the gates below. `AGENTS.md` says which one a change runs.
 | ----- | -------------------- | -------------------------------------------------------------------------------------------- |
 | Quick | `vp run ready:quick` | `showcase:links`, `vp check`, `vp test`                                                      |
 | PR    | `vp run ready`       | `ready:checks` (`registry:smoke` beside the `gate:serial` lane) and `a11y`                   |
-| Full  | `vp run ready:full`  | Every PR step, `a11y:ci-speed`, `browsers`, then `release:dry-run`, `showcase:types`, search and `registry:e2e` in `gate:serial:full` |
+| Full  | `vp run ready:full`  | Every PR step, `a11y:ci-speed`, `browsers`, then `release:dry-run`, `showcase:types`, search and `release:artifacts` in `gate:serial:full` |
 
 On a 15-core Apple-silicon laptop, quick takes about 13 seconds, PR 37 seconds from a cold cache
 and 24 warm, and full 112 seconds cold and 103 warm, plus about 6 seconds for the release dry run.
@@ -32,7 +32,7 @@ misses a step of `ready`.
 
 The release workflow runs `vp run a11y` on its own and then `vp run release:gate`: `ready:full`
 without the browser runs (a GitHub runner is what `a11y:ci-speed` simulates, and `browsers` runs on
-demand in CI), with a strict dry run and the shadcn install test against the dry run's tarballs.
+demand in CI), with a strict dry run.
 A check that joins only the full gate joins `release:gate` too: its lane, `gate:serial:release`,
 for a serial step, or its `dependsOn` for a parallel one. The contract test lists what
 `release:gate` may leave out. See [releasing.md](./releasing.md).
@@ -146,6 +146,48 @@ vp run registry#fixture:known-bad
 
 The hydration fixture renders different server/client locale text and reports React's hydration mismatch. The browser-global fixture reads `window` at module scope and fails during a server import. The registry fixture is valid enough for shadcn's base schema to reach the repository checks, then fails its npm dependency, drag-and-drop, registry dependency, source/target, CSS variable, stylesheet, and generated-compatibility contracts.
 
+## Release artifacts
+
+`vp run release:artifacts` runs what uses the release artifacts on the tarballs the dry run packed.
+The full tier and the release gate run it right after `release:dry-run`, in the same lane. It reads
+`.release/manifest.json`, which must come from a dry run of `HEAD`, and checks every tarball's and
+registry file's sha512 against it before and after. Nothing packs again.
+
+| Consumer | What it runs | Network |
+| --- | --- | --- |
+| `ssr-fixture` | The fixture's tests: render, hydrate, interact and unmount, and the known-bad cases fail | None |
+| `showcase` | `next build` of the docs site; every route through `next start` (`scripts/verify-production.mjs`), with the dry run's registry at `/r`; then the docs tests, which render the live examples | The build fetches the site's Google fonts, as `ci:build` does |
+| `registry` | `vp run registry:e2e` on the dry run's tarballs: `shadcn add` into clean Vite and Next.js apps, then a typecheck and a build of each | npm and shadcn's own components |
+
+The SSR fixture and the docs site run in a copy outside the workspace: `apps/ssr-fixture`, or
+`apps/showcase` with `registry/`, at the same paths, with the files git tracks or would track. The
+copy is a pnpm workspace of its own. It has the workspace's catalog, overrides and lockfile, so
+third-party packages keep their versions, and overrides that send every `@moltenship` dependency,
+direct or not, to its tarball. Its `tsconfig.base.json` has no `paths` into package source, and it
+has no package source at all. It installs with `--offline` from the pnpm store that `vp install`
+filled, and its commands find the copy's binaries, never the workspace's. Then its lockfile must
+list each `@moltenship` package with its tarball's hash. The registry's install test checks its
+apps' lockfiles the same way, against the tarballs it served. The workspace keeps its links, so dev
+setup doesn't change.
+
+The docs site builds in full: from scratch, the build takes about 10 seconds on a laptop, and it
+compiles, type-checks and prerenders every page, live examples included. A smaller proof would
+leave pages out. Two docs tests, `anatomy` and `recurrence-examples`, compare the docs with
+package source, which the copy doesn't have, so this run leaves them out; `ci:test` runs them.
+
+The three consumers run side by side. None opens a browser, so the browser runs keep their lanes. A
+failure doesn't stop the others. The summary gives each consumer's time and its steps', and a
+failure names the consumer and the step, shows the end of the command's output and keeps the copy:
+
+```text
+✓ ssr-fixture   4.0s  install 0.8s · render and hydrate 2.7s
+✗ showcase     15.5s  install 2.6s · build failed after 12.9s
+
+showcase failed at "build": next build exited with 1 in /var/folders/…/moltenship-showcase-7EQG2D/apps/showcase
+```
+
+`vp run release:artifacts showcase` runs one consumer, and `--keep` keeps the copies.
+
 ## Registry
 
 `vp run registry:smoke` runs in `ready`. It validates every `registry-item.json` under `registry/`
@@ -156,13 +198,15 @@ every other item and owns no files, no two items write the same file, nothing de
 drag-and-drop library, and each range holds for the workspace versions. `vp run registry#fixture:known-bad`
 must fail.
 
-`vp run registry:e2e` is the full-tier install test. It needs the network for npm and shadcn's own
+`vp run registry:e2e` is the install test. It needs the network for npm and shadcn's own
 components, takes 15 to 35 seconds once the pnpm store is warm, and isn't part of `ready`. It
 makes clean Vite and Next.js apps with `shadcn init`, runs `shadcn add <url>/calendar-full.json`
 against the registry served from a local server, checks the files, aliases, package.json and
-installed runtime, then typechecks and builds both apps. The runtime packages come from the workspace, packed and served from a local npm
-registry for the `@moltenship` scope, until `REGISTRY_E2E_PACKAGES=npm` switches the test to the
-published ones. `registry/README.md` lists its other switches.
+installed runtime, then typechecks and builds both apps. The runtime packages are packed from the
+workspace and served from a local npm registry for the `@moltenship` scope, and each app's lockfile
+must have them with the served tarballs' hashes. The full tier runs it through
+`release:artifacts`, with the dry run's tarballs instead of packing again. `REGISTRY_E2E_PACKAGES=npm`
+switches the test to the published packages; `registry/README.md` lists its other switches.
 
 ### Registry compatibility metadata
 

@@ -14,6 +14,8 @@ const publishedAt = "2000-01-01T00:00:00.000Z";
 interface Tarball {
   readonly file: string;
   readonly bytes: Buffer;
+  /** `sha512-<base64>`, as npm and lockfiles record it. */
+  readonly integrity: string;
   readonly manifest: { readonly name: string; readonly version: string } & Record<string, unknown>;
 }
 
@@ -22,6 +24,8 @@ export interface LocalRegistryServer {
   readonly origin: string;
   /** Where `.npmrc` points the `@moltenship` scope, when tarballs are served. */
   readonly npmRegistry: string;
+  /** The hash of each served package's tarball, by package name. */
+  readonly integrity: ReadonlyMap<string, string>;
   readonly close: () => Promise<void>;
 }
 
@@ -38,7 +42,9 @@ async function readTarballs(directory: string): Promise<Map<string, Tarball>> {
     const path = join(directory, file);
     const { stdout } = await execFileAsync("tar", ["-xzOf", path, "package/package.json"]);
     const manifest = JSON.parse(stdout) as Tarball["manifest"];
-    tarballs.set(manifest.name, { bytes: await readFile(path), file, manifest });
+    const bytes = await readFile(path);
+    const integrity = `sha512-${createHash("sha512").update(bytes).digest("base64")}`;
+    tarballs.set(manifest.name, { bytes, file, integrity, manifest });
   }
   return tarballs;
 }
@@ -87,7 +93,7 @@ export async function startLocalRegistryServer({
               ...tarball.manifest,
               dist: {
                 tarball: `${origin}/npm/-/${tarball.file}`,
-                integrity: `sha512-${createHash("sha512").update(tarball.bytes).digest("base64")}`,
+                integrity: tarball.integrity,
                 shasum: createHash("sha1").update(tarball.bytes).digest("hex"),
               },
             },
@@ -114,6 +120,7 @@ export async function startLocalRegistryServer({
   return {
     origin,
     npmRegistry: `${origin}/npm/`,
+    integrity: new Map([...tarballs].map(([name, { integrity }]) => [name, integrity])),
     close: () => new Promise((resolve) => server.close(() => resolve())),
   };
 }

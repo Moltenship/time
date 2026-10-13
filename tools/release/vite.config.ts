@@ -15,7 +15,7 @@ export default defineConfig({
       "dry-run": { command: script("dry-run.ts"), cache: false },
       version: { command: script("version.ts"), cache: false },
       publish: { command: script("publish.ts"), cache: false },
-      "registry-e2e": { command: script("registry.ts"), cache: false },
+      artifacts: { command: script("artifacts.ts"), cache: false },
     },
   },
   test: {

@@ -72,9 +72,11 @@ Items reach each other through URLs under `https://moltenship-time.vercel.app/r`
   `shadcn add <url>/calendar-full.json` against the registry served locally, checks where the
   files landed and what the app installed, then typechecks and builds both apps. The Vite app uses
   a non-default `components` alias. The runtime packages aren't on npm yet, so the test packs them
-  from the workspace and serves them from a local npm registry for the `@moltenship` scope;
+  from the workspace and serves them from a local npm registry for the `@moltenship` scope, and
+  each app's lockfile must have them with the served tarballs' hashes;
   `REGISTRY_E2E_PACKAGES=npm` uses the published ones instead, `REGISTRY_E2E_TARBALLS=<dir>` serves
-  tarballs made elsewhere, and `REGISTRY_E2E_KEEP=1` keeps the apps.
+  tarballs made elsewhere, and `REGISTRY_E2E_KEEP=1` keeps the apps. The full tier runs it through
+  `vp run release:artifacts`, on the release dry run's tarballs.
 
 ## Conventions
 

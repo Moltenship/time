@@ -14,8 +14,9 @@ import {
 } from "./compatibility";
 import { dragAndDropPackages } from "./config";
 import { itemClosure } from "./items";
+import { servedPackageProblems } from "./lockfile";
 import { packRuntimePackages } from "./packages";
-import { startLocalRegistryServer } from "./server";
+import { startLocalRegistryServer, type LocalRegistryServer } from "./server";
 
 /**
  * The install test. Clean Vite and Next.js apps made by `shadcn init` run
@@ -26,7 +27,7 @@ import { startLocalRegistryServer } from "./server";
  *   packed from the workspace and served from a local npm registry for the `@moltenship` scope.
  *   `npm` installs the published packages instead, once they exist.
  * - `REGISTRY_E2E_TARBALLS=<dir>`: serve these tarballs instead of packing, such as a release dry
- *   run's.
+ *   run's. Either way, each app's lockfile must have our packages with the served tarballs' hashes.
  * - `REGISTRY_E2E_APPS=vite,next`: which apps to make.
  * - `REGISTRY_E2E_KEEP=1`: keep the temporary folder to look at the apps.
  */
@@ -172,6 +173,7 @@ async function verifyInstall(
   app: App,
   root: string,
   manifest: RegistryManifest,
+  served: ReadonlyMap<string, string> | null,
 ): Promise<string[]> {
   const problems: string[] = [];
   const componentsDir = join(root, app.componentsDir);
@@ -214,6 +216,11 @@ async function verifyInstall(
     if (!dependencies[name]) problems.push(`package.json doesn't depend on ${name}`);
   }
 
+  if (served) {
+    const lockfile = await readFile(join(root, "pnpm-lock.yaml"), "utf8");
+    problems.push(...servedPackageProblems(lockfile, served, Object.keys(manifest.runtime)));
+  }
+
   const versions = await installedVersions(root, Object.keys(manifest.runtime));
   problems.push(
     ...findIncompatibleItems(manifest, versions, [fullItemName]).map(describeIncompatibility),
@@ -231,7 +238,8 @@ async function testApp(
   directory: string,
   registryUrl: string,
   manifest: RegistryManifest,
-  npmRegistry: string | null,
+  /** The local npm registry for the `@moltenship` scope, or none to install from npm. */
+  local: Pick<LocalRegistryServer, "npmRegistry" | "integrity"> | null,
 ): Promise<{ readonly app: string; readonly files: number; readonly seconds: number }> {
   const started = performance.now();
   // Each app gets its own temporary folder: `shadcn init` clones its template into one named by the
@@ -261,9 +269,9 @@ async function testApp(
     directory,
     env,
   );
-  if (npmRegistry) {
+  if (local) {
     // The packed runtime packages, for the @moltenship scope only.
-    await writeFile(join(root, ".npmrc"), `@moltenship:registry=${npmRegistry}\n`);
+    await writeFile(join(root, ".npmrc"), `@moltenship:registry=${local.npmRegistry}\n`);
   }
   if (app.componentsAlias !== "@/components") {
     await edit(join(root, "components.json"), (source) =>
@@ -279,7 +287,7 @@ async function testApp(
     env,
   );
 
-  const problems = await verifyInstall(app, root, manifest);
+  const problems = await verifyInstall(app, root, manifest, local?.integrity ?? null);
   if (problems.length > 0) {
     throw new Error(
       `[${app.name}] the install is wrong:\n${problems.map((line) => `- ${line}`).join("\n")}`,
@@ -343,13 +351,7 @@ try {
       apps
         .filter(({ name }) => wantedApps.includes(name))
         .map((app) =>
-          testApp(
-            app,
-            directory,
-            registryUrl,
-            manifest,
-            packageSource === "local" ? server.npmRegistry : null,
-          ),
+          testApp(app, directory, registryUrl, manifest, packageSource === "local" ? server : null),
         ),
     );
     const failures = settled.flatMap((result) =>
