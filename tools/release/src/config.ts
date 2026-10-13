@@ -25,7 +25,9 @@ export const publishedPackages: readonly PublishedPackage[] = [
   { directory: "calendar", budgets: { ".": { raw: 4 * KiB, gzip: 1.5 * KiB } } },
   { directory: "calendar-core", budgets: { ".": { raw: 180 * KiB, gzip: 46 * KiB } } },
   { directory: "calendar-dnd", budgets: { ".": { raw: 36 * KiB, gzip: 10 * KiB } } },
-  { directory: "calendar-react", budgets: { ".": { raw: 76 * KiB, gzip: 20 * KiB } } },
+  // Root's event source (#200), read through useSyncExternalStore, took calendar-react to 78,147 of
+  // 77,824 raw bytes. 78 KiB leaves the usual headroom.
+  { directory: "calendar-react", budgets: { ".": { raw: 78 * KiB, gzip: 20 * KiB } } },
   { directory: "calendar-recurrence", budgets: { ".": { raw: 144 * KiB, gzip: 36 * KiB } } },
   { directory: "calendar-temporal", budgets: { ".": { raw: 30 * KiB, gzip: 7 * KiB } } },
   // ics keeps the Unicode License v3 of its CLDR data in its build: 1.2 KiB gzip, which took it

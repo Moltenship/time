@@ -9,6 +9,7 @@ import type {
   CalendarFocus,
   CalendarSelection,
   CalendarEventChangeHandler,
+  CalendarEventInput,
   CalendarEventProposal,
   CalendarNowSource,
   CalendarPolicy,
@@ -193,7 +194,12 @@ interface CalendarRootBaseProps<
   readonly defaultView?: TViewDef["name"];
   readonly direction?: CalendarEnvironment["direction"];
   readonly disambiguation?: CalendarEnvironment["disambiguation"];
-  readonly events: readonly TEvent[];
+  /**
+   * Your events: an array, or a `CalendarEventSource` an external store updates. A new array
+   * holding the same records counts as unchanged. A source's updates render the calendar without
+   * the component that renders `Root`; keep the source stable, since a new one subscribes again.
+   */
+  readonly events: CalendarEventInput<TEvent>;
   readonly expandedResourceIds?: readonly TResourceId[];
   readonly focus?: TFocus | null;
   readonly id?: string;

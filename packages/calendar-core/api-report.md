@@ -202,7 +202,7 @@ interface CalendarEventFocus<TEventId extends EventId = EventId> extends Calenda
   readonly eventId: TEventId;
   readonly kind: "event";
 }
-type CalendarEventInput<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = readonly TEvent[] | CalendarEventSource<TEvent, TEventId, TResourceId>;
+type CalendarEventInput<TEvent> = readonly TEvent[] | CalendarEventSource<TEvent>;
 type CalendarEventInterval = TimedCalendarEventInterval | AllDayCalendarEventInterval | FloatingCalendarEventInterval;
 interface CalendarEventIntervalComparators<TInstant, TPlainDate, TPlainDateTime> {
   readonly instant: HalfOpenIntervalComparator<TInstant>;
@@ -240,9 +240,9 @@ type CalendarEventProposal<TEventId extends EventId, TResourceId extends Resourc
   readonly cause: "delete";
   readonly eventId: TEventId;
 };
-interface CalendarEventSource<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
-  getServerSnapshot(): EventSnapshot<TEvent, TEventId, TResourceId>;
-  getSnapshot(): EventSnapshot<TEvent, TEventId, TResourceId>;
+interface CalendarEventSource<TEvent> {
+  getServerSnapshot(): readonly TEvent[];
+  getSnapshot(): readonly TEvent[];
   subscribe(listener: () => void): () => void;
 }
 interface CalendarEventUpdateChange<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {

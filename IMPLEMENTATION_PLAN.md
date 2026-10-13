@@ -55,8 +55,8 @@ The shadcn registry shipped (#43) and `calendar-testing` stays private until aft
 tooling (#46) is done, and the full tier runs the SSR fixture, the docs site and the registry's
 clean apps on the dry run's tarballs (`vp run release:artifacts`). Next in the second phase of the
 release audit (#47): the full release dry run, the screen-reader passes (#186) and the release
-candidate report, with a green CI `browsers` run (#192), and a decision on `CalendarEventSource`
-(#200) before the API reports freeze. The audit's proposed 1.0 blockers:
+candidate report, with a green CI `browsers` run (#192). `CalendarEventSource` was built, not
+removed, before the API reports freeze (#200). The audit's proposed 1.0 blockers:
 #185, #186.
 
 ## Later

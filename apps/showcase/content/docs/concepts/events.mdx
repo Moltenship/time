@@ -64,6 +64,42 @@ through the adapter; if every record comes out the same, in the same order, it k
 `getRevision`, a record whose revision is unchanged is skipped after `getId` and `getRevision`. The [performance guide](/docs/guides/performance)
 explains how to make the most of that.
 
+## Events from an external store
+
+`events` also takes a **source**: an object with `getSnapshot`, `getServerSnapshot` and
+`subscribe`, the shape React's `useSyncExternalStore` reads. Use one when your events live outside
+React and change often, as in a store a websocket or a sync engine updates, or a Zustand-like
+store. `Root` subscribes to the source itself, so an update renders the calendar, not the component
+that renders `Root`. With a Zustand store:
+
+```tsx
+import type { CalendarEventSource } from "@moltenship/calendar";
+
+// At module scope, so the source stays the same object.
+const bookingSource: CalendarEventSource<Booking> = {
+  getSnapshot: () => useBookings.getState().bookings,
+  getServerSnapshot: () => useBookings.getInitialState().bookings,
+  subscribe: useBookings.subscribe,
+};
+
+<BookingCalendar.Root events={bookingSource} {...otherProps} />;
+```
+
+- `getSnapshot` returns the same array until the events change. Don't filter or map inside it: a
+  new array on every call looks like a change every time, and React renders in a loop.
+- `getServerSnapshot` returns the events the server rendered with. The server and hydration read
+  it, then `Root` shows `getSnapshot`'s events and subscribes. Without server rendering, return the
+  store's initial events.
+- Keep the source stable, at module scope or in `useState`. A new source object subscribes again.
+
+Everything else works as with an array: records are compared item by item and read through your
+adapter, a saved change stays [pending](/docs/interactions#pending-changes) until the source's
+events next change, and you can switch between an array and a source. A busy source changes
+often, so write a saved change into the store before your handler's promise resolves: otherwise
+the source's next update, even one about other events, decides where the event is. React renders a source's
+updates right away, as it does for any external store; to update in a transition, keep the events
+in state and pass the array.
+
 ## Invalid records
 
 By default, an invalid record is skipped and reported. The rest of the calendar keeps working.

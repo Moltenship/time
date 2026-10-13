@@ -13,3 +13,6 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   comment that bundlers keep, in its built code.
 - A `Root` without `onEventChange` is read-only in its views too: they start no drags or keyboard
   grabs and draw no resize handles. Renderers get `isReadOnly` to tell (#201).
+- `Root`'s `events` takes a `CalendarEventSource<TEvent>` as well as an array: events in an
+  external store, read through `useSyncExternalStore`, with `getServerSnapshot` for server rendering
+  and hydration. Its getters return event arrays (#200).
