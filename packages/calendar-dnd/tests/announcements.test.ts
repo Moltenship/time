@@ -191,7 +191,7 @@ describe("pointer announcements", () => {
     expect(updates.at(-1)).toMatchObject({ error, phase: "reject", reason: "handler-error" });
   });
 
-  test("announce a cancel for Escape, a drop that changes nothing, and a pointercancel", () => {
+  test("announce a cancel for Escape, a drop that changes nothing, a pointercancel, and a detach", () => {
     const month = mountMonth([meeting]);
     const updates = setup(month);
     const element = month.elements.get("a")!;
@@ -221,6 +221,13 @@ describe("pointer announcements", () => {
     pointer("pointerdown", element, at("2026-08-17").x, at("2026-08-17").y);
     pointer("pointerup", element, at("2026-08-17").x, at("2026-08-17").y);
     expect(updates).toHaveLength(6);
+
+    // Detaching mid-drag, as a view that goes read-only does, cancels the drag.
+    pointer("pointerdown", element, at("2026-08-17").x, at("2026-08-17").y);
+    pointer("pointermove", element, at("2026-08-18").x, at("2026-08-18").y);
+    detach?.();
+    detach = undefined;
+    expect(updates.slice(6).map((update) => update.phase)).toEqual(["start", "cancel"]);
   });
 
   test("announce creates with no event", () => {

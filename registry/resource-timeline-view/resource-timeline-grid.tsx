@@ -24,6 +24,7 @@ import type { EventLabeler } from "@registry/calendar/event-label";
 import type { ResourceStatusOptions } from "@registry/calendar/resource-status";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import { cn } from "cn";
 
 import { LANE_GAP, LANE_HEIGHT, ROW_PADDING } from "./resource-timeline-event";
 import { cellTargets } from "./resource-timeline-focus";
@@ -162,7 +163,11 @@ export function ResourceTimelineGrid<TEvent>({
       {...keyboard}
       data-slot="resource-timeline"
       dir={direction}
-      className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ew-resize"
+      className={cn(
+        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ew-resize",
+        // A long-press on a touch screen picks events up: it selects no text and opens no callout.
+        !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
+      )}
       style={
         {
           "--calendar-resource-column": `${columnWidth}px`,

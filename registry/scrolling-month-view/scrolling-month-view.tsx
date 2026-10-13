@@ -158,7 +158,11 @@ function ScrollingMonthView<TEvent>({
       aria-label={title}
       {...keyboard}
       data-slot="scrolling-month"
-      className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing"
+      className={cn(
+        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
+        // A long-press on a touch screen picks events up: it selects no text and opens no callout.
+        !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
+      )}
     >
       <div role="row" className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
         {projection.weeks[0]?.days.map(({ date }) => (

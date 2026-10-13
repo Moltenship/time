@@ -26,6 +26,7 @@ import { useEventLabel, type EventDescriber } from "@registry/calendar/event-lab
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import { cn } from "cn";
 
 import { DATE_ROW_HEIGHT, LANE_HEIGHT, MonthWeekRow, type MonthFormats } from "./month-week";
 
@@ -182,7 +183,11 @@ function MonthView<TEvent>({
       aria-label={getMonthTitle(range, environment)}
       {...keyboard}
       data-slot="month-view"
-      className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing"
+      className={cn(
+        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
+        // A long-press on a touch screen picks events up: it selects no text and opens no callout.
+        !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
+      )}
     >
       <div role="row" className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
         {projection.weeks[0]?.days.map(({ date }) => (

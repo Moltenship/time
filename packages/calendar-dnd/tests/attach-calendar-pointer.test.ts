@@ -15,6 +15,7 @@ import {
   mountTimelineRows,
   place,
   pointer,
+  resetLayout,
   timedEvent,
   timeZone,
   xAt,
@@ -407,7 +408,106 @@ describe("time grid", () => {
     expect(proposals).toMatchObject([{ cause: "move", eventId: 7 }]);
   });
 
-  test("starts touch drags with a long-press and lets quick swipes scroll", () => {
+  test("starts touch drags after a still 450 ms press, and lets a finger that moves sooner scroll", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    const proposals = setup(grid, { columns: grid.columns });
+    const element = grid.elements.get("a")!;
+    const touch = { pointerType: "touch" };
+    /** Whether the page would hold still under a finger moving now. */
+    const holdsStill = () => {
+      const scroll = new Event("touchmove", { bubbles: true, cancelable: true });
+      element.dispatchEvent(scroll);
+      return scroll.defaultPrevented;
+    };
+
+    // A finger that rests a moment before it moves still scrolls.
+    pointer("pointerdown", element, 50, yAt("09:30"), touch);
+    vi.advanceTimersByTime(300);
+    expect(holdsStill()).toBe(false);
+    pointer("pointermove", element, 50, yAt("09:30") + 20, touch);
+    vi.advanceTimersByTime(300);
+    expect(grid.region.hasAttribute("data-interaction")).toBe(false);
+    pointer("pointerup", element, 50, yAt("09:30") + 20, touch);
+
+    // One that rests 450 ms picks the event up, and the page holds still under it.
+    pointer("pointerdown", element, 50, yAt("09:30"), touch);
+    vi.advanceTimersByTime(449);
+    expect(grid.region.hasAttribute("data-interaction")).toBe(false);
+    vi.advanceTimersByTime(1);
+    expect(grid.region.getAttribute("data-interaction")).toBe("move");
+    expect(holdsStill()).toBe(true);
+    pointer("pointermove", element, 50, yAt("10:30"), touch);
+    pointer("pointerup", element, 50, yAt("10:30"), touch);
+    expect(holdsStill()).toBe(false);
+
+    expect(proposals).toHaveLength(1);
+    expect(interval(proposals[0])).toBe("timed 2026-08-17T10:00:00Z/2026-08-17T11:00:00Z");
+  });
+
+  test("listens for touch moves on the region from the start, so Safari lets a drag cancel scrolling", () => {
+    const grid = mountTimeGrid([meeting]);
+    const regionListens = vi.spyOn(grid.region, "addEventListener");
+    const windowListens = vi.spyOn(window, "addEventListener");
+    setup(grid, { columns: grid.columns });
+
+    expect(regionListens).toHaveBeenCalledWith("touchmove", expect.any(Function), {
+      passive: false,
+    });
+    vi.useFakeTimers();
+    const element = grid.elements.get("a")!;
+    pointer("pointerdown", element, 50, yAt("09:30"), { pointerType: "touch" });
+    vi.advanceTimersByTime(450);
+    expect(grid.region.getAttribute("data-interaction")).toBe("move");
+    expect(windowListens.mock.calls.map(([type]) => type)).not.toContain("touchmove");
+  });
+
+  test("doesn't listen for touch moves on a region disabled when it's attached", () => {
+    const grid = mountTimeGrid([meeting]);
+    const regionListens = vi.spyOn(grid.region, "addEventListener");
+    setup(grid, { disabled: true });
+
+    expect(regionListens.mock.calls.map(([type]) => type)).toEqual(["pointerdown"]);
+  });
+
+  test("keeps the region listening after a press on the region itself", () => {
+    vi.useFakeTimers();
+    const { snapshot } = mountTimeGrid([]);
+    resetLayout();
+    // A one-day view with its ref on the day's own cell.
+    const region = document.createElement("div");
+    region.setAttribute("data-date", "2026-08-17");
+    document.body.append(place(region, { height: 100, left: 0, top: 0, width: 100 }, 0));
+    setup({ region, snapshot });
+    const touch = { pointerType: "touch" };
+
+    for (let press = 0; press < 2; press++) {
+      pointer("pointerdown", region, 50, 50, touch);
+      vi.advanceTimersByTime(450);
+      expect(region.getAttribute("data-interaction")).toBe("create");
+      const scroll = new Event("touchmove", { bubbles: true, cancelable: true });
+      region.dispatchEvent(scroll);
+      expect(scroll.defaultPrevented).toBe(true);
+      pointer("pointerup", region, 50, 50, touch);
+    }
+  });
+
+  test("holds the page still under a drag whose pressed element leaves the page", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    setup(grid, { columns: grid.columns });
+    const element = grid.elements.get("a")!;
+
+    pointer("pointerdown", element, 50, yAt("09:30"), { pointerType: "touch" });
+    vi.advanceTimersByTime(450);
+    // A scrolling view drops the element; the finger's moves still go to it.
+    element.remove();
+    const scroll = new Event("touchmove", { bubbles: true, cancelable: true });
+    element.dispatchEvent(scroll);
+    expect(scroll.defaultPrevented).toBe(true);
+  });
+
+  test("keeps a drag going when the browser takes over another finger", () => {
     vi.useFakeTimers();
     const grid = mountTimeGrid([meeting]);
     const proposals = setup(grid, { columns: grid.columns });
@@ -415,22 +515,16 @@ describe("time grid", () => {
     const touch = { pointerType: "touch" };
 
     pointer("pointerdown", element, 50, yAt("09:30"), touch);
-    pointer("pointermove", element, 50, yAt("09:30") + 20, touch);
-    vi.advanceTimersByTime(300);
-    expect(grid.region.hasAttribute("data-interaction")).toBe(false);
-    pointer("pointerup", element, 50, yAt("09:30") + 20, touch);
-
-    pointer("pointerdown", element, 50, yAt("09:30"), touch);
-    vi.advanceTimersByTime(300);
+    vi.advanceTimersByTime(450);
+    // A second finger, which the browser takes for a pinch.
+    window.dispatchEvent(
+      Object.defineProperty(new MouseEvent("pointercancel"), "pointerId", { value: 2 }),
+    );
     expect(grid.region.getAttribute("data-interaction")).toBe("move");
-    const scroll = new Event("touchmove", { cancelable: true });
-    window.dispatchEvent(scroll);
-    expect(scroll.defaultPrevented).toBe(true);
     pointer("pointermove", element, 50, yAt("10:30"), touch);
     pointer("pointerup", element, 50, yAt("10:30"), touch);
 
     expect(proposals).toHaveLength(1);
-    expect(interval(proposals[0])).toBe("timed 2026-08-17T10:00:00Z/2026-08-17T11:00:00Z");
   });
 
   test("scrolls the container while the pointer rests near its edge", () => {

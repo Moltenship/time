@@ -45,6 +45,7 @@ const snapshot = createEventSnapshot(
 /** The smallest view the hook supports: day columns with events and resize handles. */
 function FixtureView(props: {
   readonly columns: readonly TimeGridColumn[];
+  readonly disabled?: boolean;
   readonly events: EventSnapshot<TestEvent, string | number, string>;
   readonly onPropose: Propose;
   readonly onRender: () => void;
@@ -52,6 +53,7 @@ function FixtureView(props: {
   props.onRender();
   const ref = useCalendarPointer({
     columns: props.columns,
+    disabled: props.disabled,
     events: props.events,
     onPropose: props.onPropose,
     timeZone,
@@ -108,6 +110,7 @@ beforeEach(() => {
 
 afterEach(() => {
   act(() => root.unmount());
+  vi.useRealTimers();
 });
 
 describe("useCalendarPointer", () => {
@@ -133,6 +136,40 @@ describe("useCalendarPointer", () => {
     expect(stale).not.toHaveBeenCalled();
     expect(latest).toHaveBeenCalledTimes(1);
     expect(latest.mock.calls[0]?.[0]).toMatchObject({ cause: "move", eventId: "a" });
+  });
+
+  test("listens for touch moves only while enabled, attaching again when that changes", () => {
+    vi.useFakeTimers();
+    const view = (disabled: boolean) => (
+      <FixtureView
+        columns={columns}
+        disabled={disabled}
+        events={snapshot}
+        onPropose={() => {}}
+        onRender={() => {}}
+      />
+    );
+    act(() => root.render(view(true)));
+    const region = container.firstElementChild!;
+    const added = vi.spyOn(region, "addEventListener");
+    const removed = vi.spyOn(region, "removeEventListener");
+    const touchMoves = (spy: typeof added) =>
+      spy.mock.calls.filter(([type]) => type === "touchmove").map(([, listener]) => listener);
+
+    act(() => root.render(view(false)));
+    const event = layOut(container);
+    pointer("pointerdown", event, 50, yAt("09:30"), { pointerType: "touch" });
+    vi.advanceTimersByTime(450);
+    // The region itself holds the page still.
+    const scroll = new Event("touchmove", { cancelable: true });
+    region.dispatchEvent(scroll);
+    expect(scroll.defaultPrevented).toBe(true);
+    pointer("pointerup", event, 50, yAt("09:30"), { pointerType: "touch" });
+
+    act(() => root.render(view(true)));
+    // Added once, while enabled, and removed again.
+    expect(touchMoves(added)).toHaveLength(1);
+    expect(touchMoves(removed)).toContain(touchMoves(added)[0]);
   });
 
   test("removes the preview when the view unmounts mid-drag", () => {

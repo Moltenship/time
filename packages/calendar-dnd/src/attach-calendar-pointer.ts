@@ -64,6 +64,11 @@ export interface CalendarPointerOptions<
    * renders more days while a drag scrolls it needs.
    */
   readonly columns?: readonly TimeGridColumn[];
+  /**
+   * Turns gestures off. It's also read when the layer attaches: a region disabled then doesn't
+   * listen for touch moves, which a drag needs on iOS, so attach again when it changes, as
+   * `useCalendarPointer` does.
+   */
   readonly disabled?: boolean;
   /**
    * Hears the draft as the preview moves: once per change of where a drop would land, and `null`
@@ -114,6 +119,8 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
   readonly pointerId: number;
   readonly pointerType: string;
   readonly scrollContainer: Element;
+  /** Where a touch started, which keeps its `touchmove`s even after a re-render removes it. */
+  readonly touchTarget: EventTarget | null;
   /** Rebuilt when the view renders new columns mid-gesture, as a scrolling view does. */
   surface: TargetSurface;
   /** The `columns` option `surface` was built from. */
@@ -123,8 +130,11 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
 const DEFAULT_SNAP: WallTimeSnapOptions = { increment: 15, smallestUnit: "minute" };
 /** Pointer travel that turns a mouse or pen press into a drag; anything less is a click. */
 const DRAG_DISTANCE = 4;
-/** Touch drags start after a still long-press, so a swipe keeps scrolling. */
-const LONG_PRESS_MS = 250;
+/**
+ * Touch drags start after a still long-press, about as long as the platforms' own, so a swipe keeps
+ * scrolling even when the finger rests a moment first.
+ */
+const LONG_PRESS_MS = 450;
 const TOUCH_TOLERANCE = 8;
 
 function preventDefault(event: Event): void {
@@ -203,8 +213,9 @@ function resolveEvent<TEvent, TEventId extends EventId, TResourceId extends Reso
  *   marks, so pressing them never starts a drag.
  *
  * The preview moves without re-rendering. `onPropose` runs once per drop; a click (less than a few
- * pixels of travel) is left alone, and Escape cancels. Touch drags start with a long-press.
- * Returns a function that detaches everything.
+ * pixels of travel) is left alone, and Escape cancels. Touch drags start after a finger rests still
+ * for 450 ms, so a swipe scrolls; once one starts, the page holds still under it. Returns a function
+ * that detaches everything.
  */
 export function attachCalendarPointer<
   TEvent,
@@ -324,7 +335,6 @@ export function attachCalendarPointer<
       current.gesture.element.setAttribute("data-dragging", "");
     }
     getSelection()?.removeAllRanges();
-    window.addEventListener("touchmove", preventDefault, { passive: false });
     current.frame = requestAnimationFrame(scrollFrame);
     preview(current);
     announce(current, { phase: "start" });
@@ -344,9 +354,9 @@ export function attachCalendarPointer<
 
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
-    window.removeEventListener("pointercancel", cancel);
+    window.removeEventListener("pointercancel", onPointerCancel);
     window.removeEventListener("keydown", onKeyDown, true);
-    window.removeEventListener("touchmove", preventDefault);
+    current.touchTarget?.removeEventListener("touchmove", onTouchMove);
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.removeEventListener(type, preventDefault);
     }
@@ -356,6 +366,11 @@ export function attachCalendarPointer<
   function cancel(): void {
     if (session?.active === true) announce(session, { phase: "cancel" });
     end();
+  }
+
+  /** Cancels when the browser takes over the gesture's own pointer, not another finger. */
+  function onPointerCancel(event: PointerEvent): void {
+    if (event.pointerId === session?.pointerId) cancel();
   }
 
   function proposal(
@@ -489,24 +504,45 @@ export function attachCalendarPointer<
       scrollContainer: options.scrollContainer?.current ?? scrollableAncestor(event.target),
       surface,
       surfaceColumns: options.columns,
+      // The region listens already; adding its listener again would add nothing, and removing it
+      // when the gesture ends would leave the region deaf.
+      touchTarget: event.pointerType === "touch" && event.target !== region ? event.target : null,
     };
     session = current;
 
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("pointercancel", onPointerCancel);
     window.addEventListener("keydown", onKeyDown, true);
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.addEventListener(type, preventDefault);
     }
     if (event.pointerType === "touch") {
+      // A scrolling view can drop the pressed element as a drag scrolls it; its touch moves still
+      // go to it, off the page, where the region doesn't hear them.
+      current.touchTarget?.addEventListener("touchmove", onTouchMove, { passive: false });
       current.longPress = setTimeout(() => activate(current), LONG_PRESS_MS);
     }
   }
 
+  /**
+   * Holds the page still under a drag that has started. The region listens from the start, not
+   * from the long-press: Safari on iOS decides whether a touch can cancel scrolling when the touch
+   * begins. A non-passive listener makes each touch on the region wait for the main thread before
+   * it scrolls, so a region disabled when it's attached doesn't listen.
+   */
+  function onTouchMove(event: Event): void {
+    if (session?.active === true) event.preventDefault();
+  }
+
   region.addEventListener("pointerdown", onPointerDown);
+  if (getOptions().disabled !== true) {
+    region.addEventListener("touchmove", onTouchMove, { passive: false });
+  }
   return () => {
-    end();
+    // A drag in progress is announced as cancelled, as when the view goes read-only mid-drag.
+    cancel();
     region.removeEventListener("pointerdown", onPointerDown);
+    region.removeEventListener("touchmove", onTouchMove);
   };
 }

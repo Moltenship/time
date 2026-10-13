@@ -148,6 +148,8 @@ export function TimeGridView<TEvent>({
         className={cn(
           "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize",
           timeGridGutterClassName,
+          // A long-press on a touch screen picks events up: it selects no text and opens no callout.
+          !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
         )}
         style={gutterStyle(zones)}
       >
