@@ -46,13 +46,21 @@ Other decisions, from §1 and the sections behind it:
 | **iCalendar stands alone** (ADR 0151). | `tests/ics-boundary.test.ts`: no dependencies, self-contained declarations, no clock, host zone, `Date` or polyfill. The `ics` rules in `dependency-cruiser.config.ts`. | `ci:test`, `package:graph` | Proven |
 | **An event has zero to many resources.** | `calendar-core/tests/resource-columns-projection.test.ts`: "keeps one canonical event behind every resource's fragment", "hides events without resources unless they get a bucket". `resources.test.ts` (the hierarchy), `resource-interactions.test.ts`. | `ci:test` | Proven |
 | **WCAG 2.2 AA is a release gate.** | axe with the WCAG 2.2 A and AA and best-practice tags over every registry view, light and dark, the demo, popovers, dialogs, RTL and reduced motion; hovered controls on purpose (`tools/a11y`). Token contrast: `registry/tests/theme-contrast.test.ts`. Announcements: `registry/tests/announcements.test.ts`. The suite at CI's speed. | `a11y`, `ci:test`; `a11y:ci-speed` in `ready:full` | Partial: gaps 9, 10, 11 |
-| **Modern browsers, with native Temporal or an app-installed polyfill.** | `vp run browsers`: the a11y suite and `interactions.a11y.tsx` in Firefox and WebKit, WebKit on `temporal-polyfill` installed by the test page as an app would, checked by a test. CI's `browsers` job passed five dispatched runs in a row (#192, closed). Results below. | `browsers` in the full tier and the release job; CI on demand | Partial: gaps 10, 12 |
-| **Curated exports; a size budget per package.** | Every package exports `.` and `./package.json`, with `dist` through `publishConfig`. Packed-tarball checks for `calendar-temporal`, `calendar-core` and `calendar-react` (`tests/dependency-boundaries.test.ts`), a README and the LICENSE in each tarball, and `ics`'s Unicode-3.0 notice in its tarball and its built code (`tests/package-metadata.test.ts`, `tests/ics-boundary.test.ts`, #196). An ESM budget for every published entry point in `tools/release/src/config.ts`, a committed API report per package, publint and are-the-types-wrong on every tarball (`release:check`, #46). | `ci:build`, `release:check`, `ci:test` | Proven |
+| **Modern browsers, with native Temporal or an app-installed polyfill.** | `vp run browsers`: the a11y suite and `interactions.a11y.tsx` in Firefox and WebKit, WebKit on `temporal-polyfill` installed by the test page as an app would, checked by a test. CI's `browsers` job passed six dispatched runs in a row with #204's code, [38358295207](https://github.com/Moltenship/time/actions/runs/38358295207) to [38365174860](https://github.com/Moltenship/time/actions/runs/38365174860) (#192, closed). Results below. | `browsers` in the full tier and the release job; CI on demand | Partial: gaps 10, 12 |
+| **Curated exports; a size budget per package.** | Every package exports `.` and `./package.json`, with `dist` through `publishConfig`. Packed-tarball checks for `calendar-temporal`, `calendar-core` and `calendar-react` (`tests/dependency-boundaries.test.ts`), a README and the LICENSE in each tarball, and `ics`'s Unicode-3.0 notice in its tarball and its built code (`tests/package-metadata.test.ts`, `tests/ics-boundary.test.ts`, #196). An ESM budget for every published entry point in `tools/release/src/config.ts`, a committed API report per package, publint and are-the-types-wrong on every tarball (`release:check`, #46). | `ci:build`, `release:check`, `ci:test` | Proven; one export nothing accepts (gap 17, #200) |
 | **The upgrade story** (§24): semver and lockstep versions, explicit registry diffs, a generated changelog and release checks, publishing as an explicit step. | The MIT LICENSE and package links (#175). Registry compatibility ranges and `compatibility.json` (#176). One version for the published packages, `CHANGELOG.md` and `release:version`; the release checks and a dry run that checks the registry against the packed version; `release:publish` as the explicit, guarded publish step (#46, `docs/internal/releasing.md`). | `registry:smoke`, `release:check`; the dry run in `ready:full` | Proven |
 | **The docs and fixtures run on what we publish** (§15, §20; #47, #203). | `vp run release:artifacts` (`tools/release/src/artifacts.ts`), after the dry run, on its tarballs and registry with their hashes checked: the SSR fixture's tests, and the docs site's production build, every route through `next start` and its example tests, each in a copy outside the workspace installed from the pnpm store, its lockfile checked against the tarballs' hashes and the workspace's third-party versions; #43's `shadcn add` into clean Vite and Next.js apps, typechecked and built, with the hashes it served checked against the dry run's. `tools/release/tests/manifest.test.ts`, `isolated.test.ts`, `artifacts.test.ts`; `tools/registry/tests/lockfile.test.ts`. | `ready:full`, `release:gate` | Proven |
-| **The gate passes or fails on the code, not the machine's load** (#47). | Browser runs one at a time in `gate:browsers`, each on half the cores, and the unit tests on half (#195). A watchdog fails a browser run that stops making progress, naming the files and tests still running (`tools/a11y/watchdog.ts`, `watchdog.test.ts`). Tests wait on conditions, not time (`tools/a11y/tests/render.tsx`, #204). `ready:full` passed 3 of 3 runs beside six spinning threads (105, 104, 127 s), where `main` had failed 3 of 3 under load. | `ci:test`; every browser run | Proven |
-| **The release job runs the whole full tier, strict, on a fresh runner** (#206). | `release:gate`: the serial lane with `release:dry-run --require-clean`, then the three browser runs. `tools/release/tests/workflow.test.ts` pins `release.yml` and CI's on-demand `release-gate` job to the same steps. Release installs fall back to npm's metadata on a cold cache (`lacksMetadata`, `installFromStore`), with a lockfile check. Green on fresh runners: CI runs 38359649621 and 38361386305. | `release:gate`; CI's `release-gate` on demand | Proven |
-| **No English from core; a typed messages contract** (§18). | Core formats through `Intl` with the environment's locale. Announcements go through the typed `CalendarAnnouncementMessages`, with English defaults in registry source. | `ci:test` | Partial: gap 14 |
+| **No English from core** (§18). | Core formats through `Intl` with the environment's locale. Announcements go through the typed `CalendarAnnouncementMessages`, with English defaults in registry source. Since #205, §18 says labels are props, or registry source the app owns and edits to localize. | `ci:test` | Proven; gap 14 for the owner to confirm |
+
+## The gate
+
+Properties of the quality gate itself, from #47, not decisions in `architecture.md`.
+
+| Property | Proof | Runs in | Verdict |
+| --- | --- | --- | --- |
+| **The full tier passes or fails on the code, at the load other agents put on a shared machine.** | Browser runs one at a time in `gate:browsers`, each on half the cores, and the unit tests on half (#195). Tests wait on conditions, not time (`tools/a11y/tests/render.tsx`, #204). `ready:full` passed 3 of 3 runs beside six spinning threads on 15 cores: 105, 104 and 127 s with #195 and #204, and 102, 102 and 102 s on `main` after #206, where `main` before them failed 3 of 3 under 15 threads. | `ci:test`; every browser run | Proven at that load; gap 18 |
+| **A stuck browser run fails in minutes, naming what's stuck.** | `tools/a11y/watchdog.ts`: no test finished for two minutes, or a run past ten, and it names the files and tests, cancels, then kills (`tools/a11y/watchdog.test.ts`). | `ci:test`; every browser run | Proven |
+| **The release job runs the whole full tier, strict, on a fresh runner** (#206). | `release:gate`: the serial lane with `release:dry-run --require-clean`, then the three browser runs. `tools/release/tests/workflow.test.ts` pins `release.yml` and CI's on-demand `release-gate` job to the same steps, runner and setup. Release installs read metadata from npm on a cold cache (`lacksMetadata`, `installFromStore`, `tools/release/tests/isolated.test.ts`), with a lockfile check. Green on fresh runners at #206's last commits, [38363085068](https://github.com/Moltenship/time/actions/runs/38363085068) and [38365174860](https://github.com/Moltenship/time/actions/runs/38365174860), and on `main`: [38367732111](https://github.com/Moltenship/time/actions/runs/38367732111). | `ci:test`; `release:gate`; CI's `release-gate` on demand | Proven |
 
 ## Gaps
 
@@ -63,15 +71,15 @@ Closed by the audit's PRs:
 - Only Chromium ran anything (#183): `vp run browsers`, the polyfill path, and real mouse and keyboard interactions everywhere.
 - `navigateToday` read `Temporal.Now` outside the clock boundary (#193): it goes through the system clock, and the boundary test now covers every package's source and the registry.
 - `docs/internal/quality-gates.md` listed old size budgets and a Jotai check that doesn't exist, and `docs/internal/package-topology.md`'s import table differed from the enforced matrix (#193).
-- The full gate failed under load (#195, #204). Three browser runs at once with up to 12 pages each, beside the build and the unit tests, ran tests out of time, and some runs stalled for 20 minutes and more. Tests slept for fixed times or gave steps 1 s deadlines. React's "not wrapped in act" warning, sent to Node thousands of times a file, was most of the year view's popover test. A unit test compared wall times.
+- The full gate failed under load (#195, #204). Three browser runs at once with up to 12 pages each, beside the build and the unit tests, ran tests out of time, and some runs stalled for 20 to 35 minutes. Tests slept for fixed times or gave steps 1 s deadlines. React's "not wrapped in act" warning, sent to Node thousands of times a file, was most of the year view's popover test. A unit test compared wall times.
 - Packages without READMEs, and `ics`'s license (#196): a README in every tarball; `ics` is `MIT AND Unicode-3.0`, with the CLDR notice in its tarball and its built code.
 - The showcase and fixtures ran on workspace source (#203): `release:artifacts` runs them on the dry run's tarballs.
 - The release job skipped the browser runs, and its clean consumer couldn't install on a cold runner (#206).
 
 Open:
 
-1. ~~**§10 describes transaction APIs the code doesn't have.**~~ Closed by #205 (#191). It filed #198, #199, #200 and #201: see gap 17.
-2. **§4.5 promises announced DST gap shifts.** #205 made §4.5 say what's true: snapped drops never land in a skipped hour, and nothing carries or announces a shift. Left for the owner: whole-day moves resolve a gap with Temporal's `"compatible"` rule whatever `disambiguation` says, and shift silently. #187.
+1. ~~**§10 describes transaction APIs the code doesn't have.**~~ Closed by #205 (#191). It filed #198 to #202: see gap 17.
+2. **DST gap shifts.** Since #205, §4.5 says what's true: snapped drops never land in a skipped hour, and nothing carries or announces a shift. *Owner decision:* whole-day moves resolve a gap with Temporal's `"compatible"` rule whatever `disambiguation` says, and shift silently; close on the docs, or build the announced shift. #187.
 3. **The performance contract.** Its numbers are local reference-hardware benchmarks, not run in CI or `ready:full`, by design. The layout and pointer-frame rows time reference code, and nothing measures scrolling; the scrolling agenda re-projects its whole load range on each anchor move. #188.
 4. **Parity in the resource views**: no pointer-versus-keyboard equality check for resource columns or the resource timeline. #189.
 5. **The store's records.** #205 rewrote `architecture.md` for `calendar-react`'s own store; still open is a short ADR that supersedes ADR 0025 (Jotai). #184.
@@ -80,13 +88,14 @@ Open:
 8. **God files**: no check. The largest: `calendar-recurrence/src/series/expander.ts` (815 lines), `calendar-core/src/snapshots/event-snapshot.ts` (708), `calendar-react/src/root.ts` (687), `ics/src/types.ts` (621), `calendar-recurrence/src/edits/series.ts` (528), `registry/time-grid-view/time-grid-annotations.tsx` (520). *Owner decision:* a `max-lines` warning, or review.
 9. **No manual screen-reader passes**, which §17 requires before release. #186, a 1.0 blocker. It needs a person at VoiceOver and NVDA.
 10. **Focus out of view in WebKit's scrolling agenda** after some keys, about half the time (WCAG 2.4.11). #185, a 1.0 blocker. With #204's waits the tests check the list at rest, and it still fails in 1 to 3 of 4 cases a run: a product bug, not the tests.
-11. **An empty week's scroll area has nothing to focus** (axe `scrollable-region-focusable`, serious). #180. *Owner decision:* a 1.0 blocker or not.
+11. **An empty week's scroll area has nothing to focus** (axe `scrollable-region-focusable`, serious, tagged WCAG 2.1.1, Level A). Arrow keys do reach the slots from the grid. #180. *Owner decision:* a 1.0 blocker or not (#207).
 12. **Other browser findings.** WebKit tests skipped there until they're fixed, or rewritten if the test is at fault: the agenda's end, the 10,000-event agenda on the polyfill in CI, a day swipe's and a month step's snap points, a drag against the edge (#181). Playwright's Firefox doesn't start on macOS 27 (#182), so a local full run there is WebKit alone. CI's `browsers` job is stable now (#192, closed).
 13. ~~**Release tooling.**~~ Closed by #177.
-14. **Registry labels are English literals**, not a messages contract: they're source the app owns and edits. *Owner decision:* say registry source is where apps localize, or add a contract.
-15. **`tools/a11y` sits outside the package graph.** It isn't in `tests/dependency-boundaries.test.ts`'s matrix, and it imports the demo's `App` by path. Not filed.
-16. **The year view's popover renders all 365 day triggers on each open and close.** Firefox on a runner still takes 8 to 12 s of the popover test's 15 s. #197.
-17. **Found by #205:** a keyboard preview marks the event `isPending` (#198); a `Root` without `onEventChange` still starts drags and keyboard grabs (#201); `CalendarEventSource` is exported but nothing accepts it (#200, decide before 1.0). Post-1.0: a public read of pending changes (#199), locale week rules (#202).
+14. **Registry labels are English literals**, not a messages contract: they're source the app owns and edits. Since #205, §18 says so: registry source is where apps localize. *Owner:* confirm, or ask for a contract (#207).
+15. **`tools/a11y` sits outside the package graph.** It isn't in `tests/dependency-boundaries.test.ts`'s matrix, and it imports the demo's `App` by a relative path. #209.
+16. **The year view's popover renders all 365 day triggers on each open and close.** Performance on slow devices; the tests no longer feel it since #204 dropped React's act warning (Firefox's whole year-view file takes about 8 s on a runner). #197.
+17. **Found by #205:** a keyboard preview marks the event `isPending` (#198); a `Root` without `onEventChange` still starts drags and keyboard grabs (#201); `CalendarEventSource` is exported but nothing accepts it (#200, to decide before rc.1). Post-1.0: a public read of pending changes (#199), locale week rules (#202). #198, #200 and #201 are p2 without a milestone; #207 proposes the 1.0 milestone for them.
+18. **Extreme load.** Under 15 spinning threads on 15 cores, browser runs used to stall for 20 to 35 minutes. The watchdog now fails them at two; the cause inside the browsers wasn't chased.
 
 ## Browsers
 
@@ -102,7 +111,7 @@ Base UI makes its focus guards unnamed buttons in WebKit on purpose, for VoiceOv
 
 ## Open issues: p0 and p1
 
-The only p0 issues are the two epics that track the release; the p1s are this audit's findings.
+The only p0 issues are the two epics that track the release. The p1s are this audit's findings, and #207, the owner's checklist for the release itself, which closes after publishing.
 
 | Issue | Remaining | Proposal for the owner |
 | --- | --- | --- |
@@ -111,7 +120,9 @@ The only p0 issues are the two epics that track the release; the p1s are this au
 | #185 Safari: focus left out of view in the scrolling agenda (p1) | A product bug, confirmed after #204's waits. | Fix before the RC, or ship rc.1 with it as a known issue. |
 | #186 Manual VoiceOver and NVDA passes (p1) | Needs a person at each screen reader. | Run before the RC, as its title says. |
 
-Done in this triage: #45 (publish `calendar-testing`) left the 1.0 milestone. #146 and the owner's comment on it keep the package private for 1.0 (#175). #192 (a stable CI `browsers` job) closed: five green dispatched runs in a row.
+Done in this triage: #45 (publish `calendar-testing`) left the 1.0 milestone. #146 and the owner's comment on it keep the package private for 1.0 (#175). #192 (a stable CI `browsers` job) closed: six green dispatched runs in a row with #204's code.
+
+Post-1.0 by #146: #45, #132, #133 (the full browser matrix), #138, #143 and #160.
 
 ## Before 1.0.0-rc.1
 
@@ -119,16 +130,18 @@ Each open finding, and whether it blocks the release candidate. The owner's step
 
 | Finding | Blocks rc.1? | Why |
 | --- | --- | --- |
-| The docs site in production returns `DEPLOYMENT_NOT_FOUND` | Yes | Every package's `homepage` and `shadcn add` point at it. A local production build serves the registry (`release:artifacts`), so this is Vercel's setup: an owner action. |
-| #185, focus out of view in Safari's scrolling agenda | Yes, unless the owner accepts it | WCAG 2.2 AA is the release gate (§17), and it's p1. |
+| The docs site in production returns `DEPLOYMENT_NOT_FOUND` | Yes | Every package's `homepage` and `shadcn add` point at it. The project's production deployments succeed (the latest is `2eebe97`) behind Vercel's login, but the `moltenship-time.vercel.app` domain answers none of them: an owner action in Vercel's settings. A local production build serves the registry (`release:artifacts`). |
+| #185, focus out of view in the scrolling agenda in WebKit | Yes, unless the owner accepts it | WCAG 2.2 AA is the release gate (§17), and it's p1. The evidence is Playwright's WebKit 27.2 on `temporal-polyfill`; a check in Safari would help that call. |
 | #186, the screen-reader passes | Yes | §17 asks for them before release; its title says before the RC. |
 | #200, `CalendarEventSource` exported but unused | Decide first | An RC should freeze the API; removing it after rc.1 breaks it. A small decision. |
+| The npm scope, the `npm` environment and the publish path | Yes | Owner setup, in #207. |
 | #1 and #5, the p0 epics | Relabel | Trackers, not work; they keep "no p0/p1 left" from being true. |
-| #201, read-only roots still start drags and grabs | No, fix before 1.0 | A behaviour bug, not an API change; an RC is where users find these. |
-| #198, keyboard previews mark the event `isPending` | No, fix before 1.0 | A wrong state during a keyboard gesture. |
-| #197, the year view renders 365 triggers per popover | No | Performance. Firefox's popover test uses 8 to 12 s of 15 on a runner, the release gate's thinnest margin. |
+| #180, an empty week's scroll area | Owner decides | Tagged WCAG 2.1.1 (Level A) by axe, though arrow keys reach the slots. |
+| #201, read-only roots still start drags and grabs | No, fix before 1.0 | A behaviour bug, not an API change. If rc.1 goes out first, `latest` points at it, so default installs get it until 1.0. |
+| #198, keyboard previews mark the event `isPending` | No, fix before 1.0 | A wrong state during a keyboard gesture; the same `latest` caveat. |
+| #197, the year view renders 365 triggers per popover | No | Performance on slow devices. |
 | #187, whole-day moves shift silently in a DST gap | No | The docs are now accurate; the behaviour is the owner's call. |
-| #180, #181, #182, #184, #188–#190, gaps 6, 8, 14, 15 | No | p2 or docs; tracked. |
+| #181, #182, #184, #188–#190, #209, gaps 6, 8, 14, 18 | No | p2 or docs, tracked in their issues; gaps 6, 8 and 14 are owner decisions in #207. |
 | #199, #202 | No | Post-1.0. |
 
 ## Phase 2
@@ -140,9 +153,9 @@ Done:
 - #204: the browser tests wait on conditions. `ready:full` passed 3 of 3 runs beside six spinning threads.
 - #196: a README in every published package; `ics` is `MIT AND Unicode-3.0`.
 - #203: the SSR fixture, the docs site and the registry's clean apps install the dry run's tarballs (`release:artifacts`, in `ready:full` and `release:gate`).
-- #206: the gate policy (quick after every change, `ready` before every merge, the full tier for releases). The release job runs the whole full tier with a strict dry run, rehearsed green on fresh runners by CI's on-demand `release-gate` job.
+- #206: the gate policy (quick after every change, the local `ready` before every other merge, the full tier for releases). The release job runs the whole full tier with a strict dry run, rehearsed green on fresh runners by CI's on-demand `release-gate` job.
 - #205 (#191): `architecture.md` and the docs match the code.
-- CI's `browsers` job: green five dispatched runs in a row (#192).
+- CI's `browsers` job: green six dispatched runs in a row with #204's code (#192).
 - The RC report, on #47.
 
 Left for the owner: #207.
