@@ -31,7 +31,7 @@ import { MonthEvent } from "./month-event";
 
 /**
  * Pixel height of a cell's date row and of one event lane; lanes are derived from these. A view
- * sets the lane's height as `--calendar-month-lane` on its root: 22 px, and 26 px where a pointer
+ * sets the lane's height as `--calendar-month-lane` on its root: 22 px, and 26 px where the pointer
  * is coarse, so on a touch screen events and "+N more" are 24 px tall, as WCAG 2.5.8 asks.
  */
 export const DATE_ROW_HEIGHT = 28;

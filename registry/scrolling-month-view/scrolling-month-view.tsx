@@ -164,7 +164,7 @@ function ScrollingMonthView<TEvent>({
       {...keyboard}
       data-slot="scrolling-month"
       className={cn(
-        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-month-lane:22px] any-pointer-coarse:[--calendar-month-lane:26px] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
+        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-month-lane:22px] pointer-coarse:[--calendar-month-lane:26px] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
         // A long-press on a touch screen picks events up: it selects no text and opens no callout.
         !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
       )}

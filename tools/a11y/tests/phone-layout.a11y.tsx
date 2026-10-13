@@ -4,7 +4,7 @@ import {
   type CalendarEvent,
   type CalendarResource,
 } from "@moltenship/calendar";
-import { beforeAll, describe, expect, test } from "vite-plus/test";
+import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 import { cdp, page, server } from "vite-plus/test/browser";
 
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
@@ -182,6 +182,10 @@ describe.runIf(server.browser === "chromium")("on a 375 px touch screen", () => 
   beforeAll(async () => {
     await page.viewport(375, 667);
     await cdp().send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
+  });
+  // The page outlives this file: the next file in it gets a mouse again, and hover with it.
+  afterAll(async () => {
+    await cdp().send("Emulation.setTouchEmulationEnabled", { enabled: false });
   });
 
   // The week isn't here: seven columns at 375 px are 40 px wide, too narrow for its events. Phones
