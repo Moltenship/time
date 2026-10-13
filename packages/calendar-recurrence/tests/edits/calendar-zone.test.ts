@@ -246,7 +246,7 @@ describe(`a change on a calendar in another zone`, () => {
         resolveRecurrenceEdit(move(gapNight, { hours: 1 }, newYork), "all", adapters, inNewYork),
       ),
     ).toBe(later);
-    // A day later in the editor keeps the time written and the length, from either calendar.
+    // The editor names the times it shows: a day later is 03:30 the next day, from either calendar.
     const { end, start } = gapNight.interval as { end: Temporal.Instant; start: Temporal.Instant };
     const nextDay = (timeZone: string) =>
       change(gapNight, "update", {
@@ -256,11 +256,17 @@ describe(`a change on a calendar in another zone`, () => {
         start: start.toZonedDateTimeISO(timeZone).add({ days: 1 }).toInstant(),
       });
     expect(startOf(resolveRecurrenceEdit(nextDay(newYork), "all", adapters, inNewYork))).toBe(
-      "2026-03-28T02:30:00–03:00:00",
+      "2026-03-28T03:30:00–04:00:00",
     );
     expect(startOf(resolveRecurrenceEdit(nextDay("Europe/Berlin"), "all", adapters))).toBe(
-      "2026-03-28T02:30:00–03:00:00",
+      "2026-03-28T03:30:00–04:00:00",
     );
+    // Dragged a day, it keeps the time written.
+    expect(
+      startOf(
+        resolveRecurrenceEdit(move(gapNight, { days: 1 }, newYork), "all", adapters, inNewYork),
+      ),
+    ).toBe("2026-03-28T02:30:00–03:00:00");
   });
 
   test(`a move takes one change for both ends, whatever the occurrence's length`, () => {

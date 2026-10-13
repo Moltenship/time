@@ -238,7 +238,7 @@ describe.each(zones)("$timeZone: edits on DST change days", (zone) => {
       ]);
     });
 
-    test(`"all" changed to the next day in the editor keeps the length and written time`, () => {
+    test(`"all" changed to the next day in the editor takes the time it shows`, () => {
       const gapNight = occurrenceOn([gapNights], gapDay);
       const { end, start } = gapNight.interval as {
         end: Temporal.Instant;
@@ -253,12 +253,13 @@ describe.each(zones)("$timeZone: edits on DST change days", (zone) => {
         start: nextDay(start),
       });
       const edit = series(resolveRecurrenceEdit(updated, "all", adapters, options));
+      // The editor showed the time the gap moved it to, and names it for the next day.
       expect(
         edit.series.action === "update" && wall(edit.series.placement.start as Temporal.Instant),
-      ).toBe(`${day(gapDay, -2)}T${gapTime}`);
+      ).toBe(`${day(gapDay, -2)}T${gapShown}`);
       expect(
         edit.series.action === "update" && wall(edit.series.placement.end as Temporal.Instant),
-      ).toBe(`${day(gapDay, -2)}T${addMinutes(gapTime, 30)}`);
+      ).toBe(`${day(gapDay, -2)}T${addMinutes(gapShown, 30)}`);
     });
 
     test(`"all" dragged an hour later on the gap night moves as the zone's own calendar does`, () => {

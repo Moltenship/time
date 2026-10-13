@@ -1531,6 +1531,29 @@ describe("recurringEventsFromIcs: RANGE=THISANDFUTURE", () => {
     ]);
   });
 
+  test("starts the new series at the override's DTSTART when the occurrence it names was in a gap", () => {
+    // 02:30 doesn't exist in Berlin on 29 March, so that occurrence shows 03:30. The override moves
+    // it, and the rest, to 03:30 the next day.
+    const events = parse(
+      [
+        "UID:night",
+        "DTSTART;TZID=Europe/Berlin:20260327T023000",
+        "DTEND;TZID=Europe/Berlin:20260327T030000",
+        "RRULE:FREQ=DAILY;COUNT=5",
+      ],
+      [
+        "UID:night",
+        "RECURRENCE-ID;RANGE=THISANDFUTURE;TZID=Europe/Berlin:20260329T023000",
+        "DTSTART;TZID=Europe/Berlin:20260330T033000",
+        "DTEND;TZID=Europe/Berlin:20260330T040000",
+      ],
+    );
+    expect(bridge(events).events).toMatchObject([
+      { id: "night", recurrence: { rule: { count: 2, frequency: "DAILY" } } },
+      { id: "night::2026-03-29T01:30:00Z", start: "2026-03-30T01:30:00Z" },
+    ]);
+  });
+
   test("replaces only the occurrence it names when the series can't take it, with an issue", () => {
     const firstMonday = [
       "UID:sync",

@@ -458,6 +458,48 @@ describe(`the later of two equal wall times`, () => {
   });
 });
 
+describe(`editor updates name the times they show`, () => {
+  const edited = (occurrence: Occurrence, start: string, end: string) =>
+    change(occurrence, "update", {
+      end: Temporal.Instant.from(end),
+      kind: "timed",
+      sourceTimeZone: berlin,
+      start: Temporal.Instant.from(start),
+    });
+  const startOf = (edit: RecurrenceEdit<Event, string, string>) => {
+    const { series: write } = series(edit);
+    return write.action === "update" ? wall(write.placement.start) : write.action;
+  };
+
+  test(`a gap night's occurrence set to 05:00 the next day lands at 05:00`, () => {
+    const nightly = timed("nightly", "2026-03-27T02:30", "2026-03-27T03:00", {
+      recurrence: { rule: { count: 5, frequency: "DAILY" } },
+    });
+    // 29 March's occurrence shows 03:30; the editor sets 30 March, 05:00–05:30.
+    const gapNight = find(expand([nightly]), "2026-03-29T01:30:00Z");
+    const update = edited(gapNight, "2026-03-30T03:00:00Z", "2026-03-30T03:30:00Z");
+    expect(startOf(resolveRecurrenceEdit(update, "all", adapters))).toBe("2026-03-28T05:00:00");
+    const following = series(resolveRecurrenceEdit(update, "following", adapters));
+    expect(following.newSeries && wall(following.newSeries.placement.start)).toBe(
+      "2026-03-30T05:00:00",
+    );
+  });
+
+  test(`an occurrence at the later 02:30 set to 03:30 moves the series to 03:30`, () => {
+    // The first occurrence is written at the later 02:30 of 25 October, in UTC.
+    const nightly = {
+      ...timed("nightly", "2026-10-25T02:30", "2026-10-25T03:00", {
+        recurrence: { rule: { count: 3, frequency: "DAILY" } },
+      }),
+      end: Temporal.Instant.from("2026-10-25T02:00:00Z"),
+      start: Temporal.Instant.from("2026-10-25T01:30:00Z"),
+    } as Event;
+    const first = find(expand([nightly]), "2026-10-25T01:30:00Z");
+    const update = edited(first, "2026-10-25T02:30:00Z", "2026-10-25T03:00:00Z");
+    expect(startOf(resolveRecurrenceEdit(update, "all", adapters))).toBe("2026-10-25T03:30:00");
+  });
+});
+
 describe(`round trips`, () => {
   test(`"all" across DST with EXDATEs, an RDATE, an override and UNTIL keeps the set`, () => {
     const base = timed("w", "2026-10-05T09:00", "2026-10-05T09:30", {

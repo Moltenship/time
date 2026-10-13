@@ -244,10 +244,11 @@ function clockOf(
  * to the series': a change there is calendar days on its wall clock and then exact time, as core's
  * placement helpers apply it. Replayed on the series' clock, a drag by a week keeps the series' time
  * of day in a week when the calendar's zone has changed DST and the series' hasn't, and a drag an
- * hour later moves it an hour. Days count from the series' written time, so an occurrence a DST gap
- * moved forward and dragged a day keeps the time written; a move keeps the occurrence's length, and
- * a resize or an update moves each end it changes by its own change. An end dropped on either of
- * two equal wall times there keeps its instant. An override in another zone measures the change on
+ * hour later moves it an hour. A drag's days count from the series' written time, so an occurrence a
+ * DST gap moved forward and dragged a day keeps the time written; an editor's update names the
+ * times it shows, so it counts from where the occurrence shows. A move keeps the occurrence's
+ * length, and a resize or an update moves each end it changes by its own change. An end dropped on
+ * either of two equal wall times there keeps its instant. An override in another zone measures the change on
  * its own clock, so it replays there; changes that give the occurrence another kind or zone are left
  * as they are.
  */
@@ -279,11 +280,12 @@ export function onSeriesClock<TChange extends Change<unknown, EventId, ResourceI
   const written = onSeries
     ? seriesWall(original.start, keyShift(series, undefined))
     : toWall(original.start, clock);
-  const startAt = (from: Temporal.Instant, to: Temporal.Instant) => {
+  // A drag's start from the written time; an editor's times, and ends, from where they show.
+  const dragged = (from: Temporal.Instant, to: Temporal.Instant) => {
     const { days, time } = delta(from, to);
     return (fromWall(written.add({ days }), clock) as Temporal.Instant).add(time);
   };
-  const endAt = (from: Temporal.Instant, to: Temporal.Instant) => {
+  const shown = (from: Temporal.Instant, to: Temporal.Instant) => {
     const { days, time } = delta(from, to);
     return from.toZonedDateTimeISO(clock.timeZone).add({ days }).toInstant().add(time);
   };
@@ -295,19 +297,19 @@ export function onSeriesClock<TChange extends Change<unknown, EventId, ResourceI
   let { end, start } = proposed;
   switch (change.cause) {
     case "move":
-      start = keep(proposed.start, startAt(original.start, proposed.start));
+      start = keep(proposed.start, dragged(original.start, proposed.start));
       end = start.add(length);
       break;
     case "resize-start":
-      start = keep(proposed.start, startAt(original.start, proposed.start));
+      start = keep(proposed.start, dragged(original.start, proposed.start));
       break;
     case "resize-end":
-      end = keep(proposed.end, endAt(original.end, proposed.end));
+      end = keep(proposed.end, shown(original.end, proposed.end));
       break;
     case "update": {
-      start = keep(proposed.start, startAt(original.start, proposed.start));
+      start = keep(proposed.start, shown(original.start, proposed.start));
       const kept = Temporal.Duration.compare(proposed.start.until(proposed.end), length) === 0;
-      end = kept ? start.add(length) : keep(proposed.end, endAt(original.end, proposed.end));
+      end = kept ? start.add(length) : keep(proposed.end, shown(original.end, proposed.end));
       break;
     }
   }
