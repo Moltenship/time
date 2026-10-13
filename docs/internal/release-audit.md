@@ -45,7 +45,7 @@ Other decisions, from §1 and the sections behind it:
 | **Modern browsers, with native Temporal or an app-installed polyfill.** | `vp run browsers`: the a11y suite and `interactions.a11y.tsx` in Firefox and WebKit, WebKit on `temporal-polyfill` installed by the test page as an app would, checked by a test. Results below. | `browsers` in `ready:full`; CI on demand | Partial: gaps 10, 12 |
 | **Curated exports; a size budget per package.** | Every package exports `.` and `./package.json`, with `dist` through `publishConfig`. Packed-tarball checks for `calendar-temporal`, `calendar-core` and `calendar-react` (`tests/dependency-boundaries.test.ts`), the LICENSE in each tarball (`tests/package-metadata.test.ts`). An ESM budget for every published entry point in `tools/release/src/config.ts`, a committed API report per package, publint and are-the-types-wrong on every tarball (`release:check`, #46). | `ci:build`, `release:check`, `ci:test` | Proven |
 | **The upgrade story** (§24): semver and lockstep versions, explicit registry diffs, a generated changelog and release checks, publishing as an explicit step. | The MIT LICENSE and package links (#175). Registry compatibility ranges and `compatibility.json` (#176). One version for the published packages, `CHANGELOG.md` and `release:version`; the release checks and a dry run that checks the registry against the packed version; `release:publish` as the explicit, guarded publish step (#46, `docs/internal/releasing.md`). | `registry:smoke`, `release:check`; the dry run in `ready:full` | Proven |
-| **The docs and fixtures run on what we publish** (§15, §20; #47). | `vp run release:artifacts` (`tools/release/src/artifacts.ts`), after the dry run, on its tarballs and registry with their hashes checked: the SSR fixture's tests, and the docs site's production build, every route through `next start` and its example tests, each in a copy outside the workspace installed offline, its lockfile checked against the tarballs' hashes; #43's `shadcn add` into clean Vite and Next.js apps, typechecked and built. `tools/release/tests/isolated.test.ts`, `artifacts.test.ts`; `tools/registry/tests/lockfile.test.ts`. | `ready:full`, `release:gate` | Proven |
+| **The docs and fixtures run on what we publish** (§15, §20; #47, #203). | `vp run release:artifacts` (`tools/release/src/artifacts.ts`), after the dry run, on its tarballs and registry with their hashes checked: the SSR fixture's tests, and the docs site's production build, every route through `next start` and its example tests, each in a copy outside the workspace installed offline, its lockfile checked against the tarballs' hashes; #43's `shadcn add` into clean Vite and Next.js apps, typechecked and built. `tools/release/tests/isolated.test.ts`, `artifacts.test.ts`; `tools/registry/tests/lockfile.test.ts`. | `ready:full`, `release:gate` | Proven |
 | **No English from core; a typed messages contract** (§18). | Core formats through `Intl` with the environment's locale. Announcements go through the typed `CalendarAnnouncementMessages`, with English defaults in registry source. | `ci:test` | Partial: gap 14 |
 
 ## Gaps
@@ -110,9 +110,8 @@ Everything else open is post-1.0 by #146, or a p2 finding from this audit: #132,
 
 After #46 merges:
 
-- Done in this PR: the SSR fixture, the docs site and the registry's clean apps install the dry
-  run's tarballs instead of workspace source (`release:artifacts`, in `ready:full` and
-  `release:gate`).
+- Done in #203: the SSR fixture, the docs site and the registry's clean apps install the dry run's
+  tarballs instead of workspace source (`release:artifacts`, in `ready:full` and `release:gate`).
 - Done in #177: `ready:full` runs the release dry run, and the release workflow runs the shadcn install test on the dry run's tarballs (now part of `release:artifacts`).
 - A green run of CI's on-demand `browsers` job, the only place Firefox runs while it can't start on
   macOS 27 (#182, #192).
