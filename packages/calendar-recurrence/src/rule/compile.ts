@@ -50,7 +50,11 @@ export interface OrdinalWeekday {
  */
 export interface CompiledRule {
   readonly count?: number;
-  /** The day parts meet on no date of any year, such as BYMONTH=2;BYMONTHDAY=30. */
+  /**
+   * The rule can't produce anything after its start: its day parts meet on no date of any year,
+   * such as BYMONTH=2;BYMONTHDAY=30, or INTERVAL's steps never reach its BY values, such as
+   * FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1 from an even minute.
+   */
   readonly impossible: boolean;
   readonly frequency: Frequency;
   /** Indexed by hour; limits sub-daily periods. */
@@ -150,6 +154,74 @@ function impossible(
     ordinalWeekdays !== undefined &&
     ordinalWeekdays.every(({ ordinal }) => Math.abs(ordinal) > 5)
   );
+}
+
+function greatestCommonDivisor(left: number, right: number): number {
+  while (right !== 0) [left, right] = [right, left % right];
+  return left;
+}
+
+/** `0` to `size - 1`, or the values listed. */
+const each = (values: readonly number[] | undefined, size: number) =>
+  values ?? Array.from({ length: size }, (_, index) => index);
+
+/**
+ * Whether INTERVAL's steps never reach a position the BY parts allow in a cycle of fixed length:
+ * the second, minute or hour of the day for SECONDLY, MINUTELY and HOURLY rules, the weekday for
+ * DAILY ones and the month for MONTHLY ones. From the start, steps of `interval` periods only reach
+ * the positions congruent to the start's modulo the greatest common divisor of `interval` and the
+ * cycle's length, so every other minute from an even one never reaches minute 1. Rules step on the
+ * wall clock, which DST doesn't break.
+ */
+function outOfPhase(
+  frequency: Frequency,
+  interval: number,
+  start: RuleStart,
+  byHour: readonly number[] | undefined,
+  byMinute: readonly number[] | undefined,
+  bySecond: readonly number[] | undefined,
+  weekdays: readonly number[] | undefined,
+  byMonth: readonly number[] | undefined,
+): boolean {
+  let length: number;
+  let position: number;
+  let allowed: number[];
+  switch (frequency) {
+    case Frequency.Secondly:
+      if (byHour === undefined && byMinute === undefined && bySecond === undefined) return false;
+      length = 86_400;
+      position = start.hour * 3600 + start.minute * 60 + start.second;
+      allowed = each(byHour, 24).flatMap((hour) =>
+        each(byMinute, 60).flatMap((minute) =>
+          each(bySecond, 60).map((second) => hour * 3600 + minute * 60 + second),
+        ),
+      );
+      break;
+    case Frequency.Minutely:
+      if (byHour === undefined && byMinute === undefined) return false;
+      length = 1440;
+      position = start.hour * 60 + start.minute;
+      allowed = each(byHour, 24).flatMap((hour) =>
+        each(byMinute, 60).map((minute) => hour * 60 + minute),
+      );
+      break;
+    case Frequency.Hourly:
+      if (byHour === undefined) return false;
+      [length, position, allowed] = [24, start.hour, [...byHour]];
+      break;
+    case Frequency.Daily:
+      if (weekdays === undefined) return false;
+      [length, position, allowed] = [7, start.weekday - 1, weekdays.map((day) => day - 1)];
+      break;
+    case Frequency.Monthly:
+      if (byMonth === undefined) return false;
+      [length, position, allowed] = [12, start.month - 1, byMonth.map((month) => month - 1)];
+      break;
+    default:
+      return false;
+  }
+  const step = greatestCommonDivisor(interval, length);
+  return step > 1 && !allowed.some((value) => (value - position) % step === 0);
 }
 
 /**
@@ -270,12 +342,24 @@ export function compileRule(rule: RecurrenceRule, start: RuleStart): CompiledRul
     times.push(0);
   }
 
+  const interval = rule.interval ?? 1;
   return {
     count: rule.count,
-    impossible: impossible(months, monthDays, ordinalWeekdays, weekdays, frequency),
+    impossible:
+      impossible(months, monthDays, ordinalWeekdays, weekdays, frequency) ||
+      outOfPhase(
+        frequency,
+        interval,
+        start,
+        byHour,
+        byMinute,
+        bySecond?.filter((second) => second < 60),
+        weekdays,
+        byMonth,
+      ),
     frequency,
     hours: frequency >= Frequency.Hourly && byHour !== undefined ? flags(byHour, 24) : undefined,
-    interval: rule.interval ?? 1,
+    interval,
     minutes:
       frequency >= Frequency.Minutely && byMinute !== undefined ? flags(byMinute, 60) : undefined,
     monthDays: monthDays && new Set(monthDays),

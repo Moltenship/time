@@ -29,3 +29,6 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
 - `@moltenship/calendar-recurrence` expands a year of 200 series about 18% faster.
   `createOccurrenceAdapter` shares its revision work between adapters, so one made on every render
   gives the same revisions and core's snapshot keeps its records (#160).
+- `expandRecurrenceRule` ends a rule whose INTERVAL never reaches its BY values, such as
+  `FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1` from an even minute, after its first occurrence instead of
+  running to `maxIterations` and reporting `truncated` (#160).
