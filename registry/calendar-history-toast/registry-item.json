@@ -1,0 +1,16 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "calendar-history-toast",
+  "type": "registry:component",
+  "title": "Undo toast",
+  "description": "An Undo toast for a calendar's event history, built on Base UI's Toast: after each change it offers to undo it, and after an undo, to redo it. It adds Mod+Z and Shift+Mod+Z or Ctrl+Y in the calendar's frame, speaks undo and redo through the Announcer, and speaks a change no gesture announced with how to reach Undo. English messages to edit or translate.",
+  "dependencies": ["@base-ui/react", "@moltenship/calendar", "cn", "lucide-react"],
+  "registryDependencies": ["@moltenship/calendar"],
+  "files": [
+    {
+      "path": "registry/calendar-history-toast/calendar-history-toast.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/calendar-history-toast/calendar-history-toast.tsx"
+    }
+  ]
+}

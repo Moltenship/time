@@ -11,9 +11,11 @@ import { afterAll, beforeAll, expect, test } from "vite-plus/test";
  * built from workspace source, minified, and must keep no module from the history's files.
  */
 const facadeEntry = resolve("packages/calendar/src/index.ts");
-const historyExports = ["createEventHistory", "useCalendarHistory"];
+const historyExports = ["createEventHistory", "useCalendarHistory", "useCalendarHistoryShortcuts"];
 const isHistoryModule = (id: string) =>
-  /\/packages\/calendar-(core|react)\/src\/history(\/|\.ts$)/.test(id.replaceAll("\\", "/"));
+  /\/packages\/calendar-(core|react)\/src\/history(\/|\.ts$|-shortcuts\.ts$)/.test(
+    id.replaceAll("\\", "/"),
+  );
 
 let directory: string;
 

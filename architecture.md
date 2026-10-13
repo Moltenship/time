@@ -100,6 +100,7 @@ time/
 │   ├── resource-columns-view/
 │   ├── resource-timeline-view/
 │   ├── recurrence-scope-dialog/  # "which events?" for edits to a recurring event
+│   ├── calendar-history-toast/   # an Undo toast and keys for an event history
 │   ├── calendar-theme/
 │   ├── calendar-full/            # installs every item; owns no files
 │   └── ui/                       # stock shadcn components (Base UI) the source compiles against
@@ -954,6 +955,17 @@ bundle of the facade's other exports keeps none of the history's modules.
   `isRecurringChange`, since an edit to "this and following" or "all" isn't one placement change.
 - **Announcements.** With `messages`, the hook speaks each outcome through the root's `Announcer`;
   the registry has an English set.
+- **Keys.** `useCalendarHistoryShortcuts(history, { scope, undo?, redo?, disabled? })` adds one
+  `keydown` listener to the document while mounted and enabled, acting on keys inside `scope`,
+  usually the frame, after the page's own handlers: Mod+Z, and Shift+Mod+Z or Ctrl+Y, rebindable,
+  by letter, or by position for keys that type no Latin letter. It leaves text fields, editable
+  elements, dialogs, menus and lists inside the scope, gestures in progress, composition and
+  handled keys alone.
+- **Toast.** The registry's `calendar-history-toast` (Base UI's Toast) offers Undo after each
+  recorded step and Redo after an undo, adds the keys in the frame, and leaves speech to the
+  `Announcer`: its region is not live. Deletes, updates and an app's own changes, which no gesture
+  announced, are spoken once by its own status region, with how to reach Undo, and that toast
+  stays at least 10 seconds.
 
 ## 11. Drag, resize, selection, and creation
 

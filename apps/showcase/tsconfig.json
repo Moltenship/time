@@ -26,6 +26,7 @@
       "@/components/calendar/recurrence-scope-dialog/*": [
         "../../registry/recurrence-scope-dialog/*"
       ],
+      "@/components/calendar/calendar-history-toast/*": ["../../registry/calendar-history-toast/*"],
       "@/components/calendar/event-colors": ["../../registry/calendar-theme/event-colors"],
       "@/components/calendar/*": ["../../registry/calendar/*"],
       "@/components/ui/*": ["../../registry/ui/*"],

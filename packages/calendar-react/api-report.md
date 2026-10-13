@@ -191,6 +191,16 @@ interface CalendarHistoryMessages<TEvent = unknown, TEventId extends EventId = E
 interface CalendarHistoryOptions<TEvent, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
   readonly messages?: CalendarHistoryMessages<TEvent, TEventId, TResourceId>;
 }
+interface CalendarHistoryShortcutsOptions {
+  readonly disabled?: boolean;
+  readonly redo?: readonly string[];
+  readonly scope: RefObject<HTMLElement | null>;
+  readonly undo?: readonly string[];
+}
+interface CalendarHistoryShortcutsTarget {
+  readonly redo: (options?: CalendarHistoryCommandOptions) => unknown;
+  readonly undo: (options?: CalendarHistoryCommandOptions) => unknown;
+}
 interface CalendarKeyboardHandlers {
   readonly onBlur: (event: FocusEvent<HTMLElement>) => void;
   readonly onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
@@ -404,6 +414,7 @@ export declare function useCalendarDraft(): AnyDraft | null;
 export declare function useCalendarDraftReporter(): (draft: AnyDraft | null) => void;
 export declare function useCalendarFocus<TSelected>(selector: (focus: CalendarFocus | null) => TSelected, options?: CalendarStateSelectorOptions<TSelected>): TSelected;
 export declare function useCalendarHistory<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(history: EventHistory<TEvent, TEventId, TResourceId>, options?: CalendarHistoryOptions<NoInfer<TEvent>, NoInfer<TEventId>, NoInfer<TResourceId>>): CalendarHistory<TEvent, TEventId, TResourceId>;
+export declare function useCalendarHistoryShortcuts(history: CalendarHistoryShortcutsTarget, options: CalendarHistoryShortcutsOptions): void;
 export declare function useCalendarInteraction(): CalendarKeyboardSession | null;
 export declare function useCalendarInteraction<TSelected>(selector: (session: CalendarKeyboardSession | null, check: CalendarInteractionCheck) => TSelected, options?: CalendarStateSelectorOptions<TSelected>): TSelected;
 export declare function useCalendarKeyboard(options?: CalendarKeyboardOptions): CalendarKeyboardHandlers;
@@ -441,6 +452,8 @@ export {
   type CalendarHistoryCommandOptions,
   type CalendarHistoryMessages,
   type CalendarHistoryOptions,
+  type CalendarHistoryShortcutsOptions,
+  type CalendarHistoryShortcutsTarget,
   type CalendarKeyboardHandlers,
   type CalendarKeyboardOptions,
   type CalendarMeta,

@@ -25,6 +25,15 @@ const editingKeys = [
   { keys: ["Escape"], label: "Cancel the change" },
 ] as const;
 
+const isApple =
+  typeof navigator !== "undefined" && /mac|iphone|ipad|ipod/i.test(navigator.platform);
+
+/** Undo and redo, which work while focus is in the calendar. */
+const historyKeys = [
+  { keys: [isApple ? "⌘Z" : "Ctrl+Z"], label: "Undo the last change" },
+  { keys: isApple ? ["Shift+⌘Z"] : ["Shift+Ctrl+Z", "Ctrl+Y"], label: "Redo it" },
+];
+
 const keyNames: Readonly<Record<string, string>> = {
   ArrowDown: "↓",
   ArrowLeft: "←",
@@ -82,6 +91,7 @@ export function ShortcutsDialog({
         <KeyList items={shortcuts} title="Anywhere" />
         <KeyList items={navigationKeys} title="In the calendar" />
         <KeyList items={editingKeys} title="Changing events" />
+        <KeyList items={historyKeys} title="Undo and redo" />
       </DialogContent>
     </Dialog>
   );

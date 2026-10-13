@@ -13,6 +13,9 @@
       "@/components/calendar/recurrence-scope-dialog/*": [
         "../../../registry/recurrence-scope-dialog/*"
       ],
+      "@/components/calendar/calendar-history-toast/*": [
+        "../../../registry/calendar-history-toast/*"
+      ],
       "@/components/calendar/resource-columns-view/*": [
         "../../../registry/resource-columns-view/*"
       ],

@@ -1,4 +1,5 @@
-import { describe, expect, test } from "vite-plus/test";
+import { act } from "react";
+import { describe, expect, test, vi } from "vite-plus/test";
 
 import { App } from "../../../apps/demo/src/app";
 import { seriousViolations, setTheme, themes } from "./axe";
@@ -60,6 +61,29 @@ describe.each(themes)("demo, %s theme", (theme) => {
     await click(create);
 
     expect(document.querySelector('[data-slot="dialog-content"]')).not.toBeNull();
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test("undo toast", async () => {
+    setTheme(theme);
+    await renderDemo("week");
+    // A stored event: the meetings in progress as the demo opens are read-only.
+    await click(
+      document.querySelector<HTMLElement>(
+        'main [data-event-id]:not([data-event-id^="busy-now-"]):not([data-event-id*="::"])',
+      ),
+    );
+    await click(document.querySelector<HTMLElement>('button[aria-label="Delete event"]'));
+    // The demo saves after a delay; the toast offers to undo once the delete is saved.
+    await vi.waitFor(
+      async () => {
+        await act(async () => undefined);
+        expect(
+          document.querySelector('[aria-label="Notifications"] [role="dialog"]'),
+        ).not.toBeNull();
+      },
+      { timeout: 3000 },
+    );
     expect(await seriousViolations()).toEqual([]);
   });
 });

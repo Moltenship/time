@@ -31,9 +31,10 @@ export const publishedPackages: readonly PublishedPackage[] = [
   { directory: "calendar-dnd", budgets: { ".": { raw: 36 * KiB, gzip: 10 * KiB } } },
   // Root's event source (#200), read through useSyncExternalStore, took calendar-react to 78,147 of
   // 77,824 raw bytes, onEventChangeResult with useCalendarPendingChanges (#199) to 79,597 raw
-  // and 20,740 of 20,480 gzip bytes, and useCalendarHistory (#227) to 83,691 raw and 21,947 gzip
-  // bytes; apps that don't import it bundle none of it. 84 and 22 KiB leave the usual headroom.
-  { directory: "calendar-react", budgets: { ".": { raw: 84 * KiB, gzip: 22 * KiB } } },
+  // and 20,740 of 20,480 gzip bytes, and useCalendarHistory with useCalendarHistoryShortcuts (#227)
+  // to 87,947 raw and 23,333 gzip bytes; apps that don't import them bundle none of them. 90 and
+  // 24 KiB leave the usual headroom.
+  { directory: "calendar-react", budgets: { ".": { raw: 90 * KiB, gzip: 24 * KiB } } },
   // The ICS bridge's RANGE=THISANDFUTURE split, Outlook's all-day flag and the feed's zone, then
   // edits replayed on the series' clock (#160), took calendar-recurrence from 130,708 raw and
   // 35,063 gzip bytes to 148,799 and 39,899. 152 and 42 KiB leave the usual headroom.
@@ -65,12 +66,13 @@ export interface OptionalFeature {
 export const optionalFeatures: readonly OptionalFeature[] = [
   {
     name: "the event history (#227)",
-    exports: ["createEventHistory", "useCalendarHistory"],
-    markers: ["createdEventId", "whenSettled", "canRedo"],
+    exports: ["createEventHistory", "useCalendarHistory", "useCalendarHistoryShortcuts"],
+    markers: ["createdEventId", "whenSettled", "canRedo", "Mod+Z"],
     files: [
       "packages/calendar-core/src/history/event-history.ts",
       "packages/calendar-core/src/history/types.ts",
       "packages/calendar-react/src/history.ts",
+      "packages/calendar-react/src/history-shortcuts.ts",
     ],
   },
 ];

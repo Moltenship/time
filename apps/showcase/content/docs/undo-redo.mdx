@@ -9,10 +9,12 @@ An event history records the changes your calendar commits, and undoes them by p
 inverse change. The inverse goes through the same pipeline as a drag: your policies check it, the
 calendar shows it while it saves, and your `onEventChange` saves it. Redo proposes the change again.
 
-It's opt-in. A calendar without a history records nothing, listens for no keys, and bundles none of
-its code.
+It's opt-in, and each part is separate: recording, the buttons you draw, the keyboard shortcuts and
+the registry's undo toast. A calendar without a history records nothing, listens for no keys, and
+bundles none of its code.
 
-This page uses the `Calendar` and `Meeting` from the [Quick start](/docs/quick-start).
+This page uses the `Calendar` and `Meeting` from the [Quick start](/docs/quick-start). The example
+above also renders the [undo toast](#undo-toast).
 
 ## Connect a history
 
@@ -43,6 +45,72 @@ there is anything to take.
 `input` says where the command came from, `"api"` by default. Your `onEventChangeResult` gets it
 back, with `history: "undo"` or `"redo"` on the detail, so it can tell an undo from a drag. The
 server and hydration read an empty history.
+
+## Keyboard shortcuts
+
+`useCalendarHistoryShortcuts(history, { scope })` adds undo and redo keys to an element, usually the
+root's frame. They're Mod+Z to undo and Shift+Mod+Z or Ctrl+Y to redo, where Mod is ⌘ on Apple
+platforms and Ctrl elsewhere.
+
+```tsx
+const history = useCalendarHistory(eventHistory, { messages: calendarHistoryAnnouncements });
+useCalendarHistoryShortcuts(history, { scope: Calendar.useCalendarMeta().refs.frame });
+```
+
+| Option     | Default                     | Effect                                                |
+| ---------- | --------------------------- | ----------------------------------------------------- |
+| `scope`    | required                    | The element whose keys undo and redo                  |
+| `undo`     | `["Mod+Z"]`                 | Keys that undo: modifiers joined by `+`, then the key |
+| `redo`     | `["Shift+Mod+Z", "Ctrl+Y"]` | Keys that redo. `[]` turns an action's keys off       |
+| `disabled` | `false`                     | Listens for nothing                                   |
+
+While it's mounted and enabled, the hook adds one `keydown` listener to the document, which acts
+only on keys whose target is inside the scope, after the page's own handlers, React's included.
+Keys elsewhere on the page are left alone, as are dialogs rendered in a portal outside the scope,
+and so are keys:
+
+- in a text field or an editable element, where the browser undoes the text;
+- in a dialog, menu or list inside the scope;
+- during a keyboard grab or a pointer drag, or while an input method composes text;
+- that something else already handled.
+
+A key matches by the letter it types. One that types no Latin letter, as on a Russian layout or
+with Option on a Mac, matches by its position, so Ctrl+Z still works there. Commands from the keys
+pass `{ input: "keyboard" }`.
+
+## Undo toast
+
+The registry's `calendar-history-toast` item is an "Undo" toast built on Base UI's Toast. After each
+change it offers to undo it, and after an undo, to redo it. It also adds the keys above in the
+calendar's frame and speaks undo and redo through the `Announcer`. Install it with the
+[shadcn CLI](/docs/installation#ui-source-optional), then render it inside `Root`:
+
+```tsx
+import { CalendarHistoryToast } from "@/components/calendar/calendar-history-toast/calendar-history-toast";
+
+<Calendar.Root onEventChangeResult={history.record} …>
+  …
+  <CalendarHistoryToast calendar={Calendar} history={history} />
+</Calendar.Root>;
+```
+
+| Prop            | Default                        | Effect                                                                 |
+| --------------- | ------------------------------ | ---------------------------------------------------------------------- |
+| `calendar`      | required                       | Your calendar, for its frame and event titles                          |
+| `history`       | required                       | The history `onEventChangeResult` records into                         |
+| `messages`      | `calendarHistoryToastMessages` | What the toast says: English, in the item's file, to edit or translate |
+| `announcements` | `calendarHistoryAnnouncements` | What the `Announcer` says after an undo or redo; `null` says nothing   |
+| `shortcuts`     | the default keys               | `{ undo?, redo? }` to change them, `false` to turn them off            |
+| `timeout`       | `6000`                         | How long a toast stays, in milliseconds                                |
+| `className`     |                                | Classes for the toast's region, such as where it sits                  |
+
+One toast shows at a time, and a cleared history closes it. A message that returns `null` shows no
+toast and closes the one on screen: the English set does so for an empty stack or a change you
+cancelled. The toast's region doesn't speak, so nothing is said twice: changes made by a gesture
+are announced as they're made, and undo and redo by the `Announcer`. Deletes, updates and changes
+from your own UI, which no gesture announced, are spoken once with how to reach Undo
+(`recordedAnnouncement`), and that toast stays at least 10 seconds, long enough to hear it out and
+press F6. The region's name is `region`.
 
 ## What gets recorded
 
