@@ -1,8 +1,8 @@
 # ADR 0025: Native Jotai bindings for the production React store
 
-- Status: Accepted, no longer in effect: `calendar-react` dropped Jotai in #70 for a store of its
-  own, read through `useSyncExternalStore` (`architecture.md` §9.1). #184 tracks the ADR that
-  supersedes this one.
+- Status: superseded by [ADR 0070](./0070-own-react-store.md). `calendar-react` dropped Jotai in
+  #70 for a store of its own, read through `useSyncExternalStore` (`architecture.md` §9.1). This
+  record stays as history.
 - Date: 2026-08-15
 - Issue: [#25](https://github.com/Moltenship/time/issues/25)
 - Supersedes in production: the handwritten subscription adapter from the

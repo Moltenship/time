@@ -63,7 +63,7 @@ packed code carries the `/*!` notice.
 
 External dependencies are added by the issue that validates their contract. React 19 is a peer of
 `calendar-react`, `calendar-dnd` and `calendar`. `calendar-react` has no runtime dependency outside
-the workspace; it dropped Jotai in #70 (#184). `calendar-core` depends on
+the workspace; it dropped Jotai in #70 (ADR 0070). `calendar-core` depends on
 `@flatten-js/interval-tree` behind its internal `IntervalIndex` (ADR 0016). dnd-kit is only in
 `tools/dnd-adapter-spike` (ADR 0037). TanStack Virtual is a registry-source dependency, not a
 package one. Playwright and axe-core are `tools/a11y` development dependencies. The `*-spike`
