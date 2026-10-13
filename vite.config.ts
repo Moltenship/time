@@ -40,8 +40,8 @@ export default defineConfig({
         dependsOn: ["registry:smoke", "gate:serial"],
       },
       // The release gate: everything `ready` runs, the a11y suite at CI's speed and in Firefox and
-      // WebKit, the release dry run, the docs site's types and search, and the registry installed
-      // into clean apps.
+      // WebKit, the release dry run, the docs site's types and search, and the dry run's tarballs
+      // in the SSR fixture, the docs site and the registry's clean apps.
       "ready:full": {
         command: "echo ready:full: the release gate passed",
         cache: false,
@@ -49,8 +49,8 @@ export default defineConfig({
       },
       // The release workflow's gate on a GitHub runner: ready:full without the browser runs. The
       // workflow runs a11y alone first, as CI does; a11y:ci-speed only simulates a runner, and
-      // browsers runs on demand in CI (#192). Its dry run is strict, and the shadcn install test
-      // uses the dry run's tarballs. A full-only check joins gate:serial:release too.
+      // browsers runs on demand in CI (#192). Its dry run is strict. A full-only check joins
+      // gate:serial:release too.
       "release:gate": {
         command: "echo release:gate passed",
         cache: false,
@@ -61,11 +61,12 @@ export default defineConfig({
         "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
       // `ci:build` has built the docs site, so search checks that build. The release dry run
       // rebuilds and packs every published package and installs them offline into a clean
-      // project. The registry's install test installs into clean apps; it needs the network.
+      // project. Then the SSR fixture, the docs site and the registry's clean apps install the dry
+      // run's tarballs, side by side; the registry's apps need the network.
       "gate:serial:full":
-        "vp run gate:serial && vp run release:dry-run && vp run showcase:types && vp run showcase#search:check && vp run registry:e2e",
+        "vp run gate:serial && vp run release:dry-run && vp run showcase:types && vp run showcase#search:check && vp run release:artifacts",
       "gate:serial:release":
-        "vp run gate:serial && vp run release:dry-run --require-clean && vp run showcase:types && vp run showcase#search:check && vp run release:registry-e2e",
+        "vp run gate:serial && vp run release:dry-run --require-clean && vp run showcase:types && vp run showcase#search:check && vp run release:artifacts",
       "ci:check": "vp check",
       "ci:test": "vp test",
       "ci:build": "vp run -r build",
@@ -83,8 +84,9 @@ export default defineConfig({
       "release:dry-run": { command: "vp run release#dry-run", cache: false },
       "release:version": { command: "vp run release#version", cache: false },
       "release:publish": { command: "vp run release#publish", cache: false },
-      // Needs the network: #43's shadcn install test against the dry run's tarballs.
-      "release:registry-e2e": { command: "vp run release#registry-e2e", cache: false },
+      // What uses the dry run's tarballs: the SSR fixture, the docs site, and #43's shadcn install
+      // test, which needs the network. `vp run release:artifacts showcase` runs one.
+      "release:artifacts": { command: "vp run release#artifacts", cache: false },
       a11y: "vp run a11y#test",
       // The a11y suite with Chromium slowed down to a CI runner's speed. Never replayed: it's what
       // to run when CI and local disagree, and a timing race can pass once by luck.

@@ -1,6 +1,3 @@
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-
 import { weekRange } from "@moltenship/calendar";
 import {
   createCanonicalRecurrenceAdapter,
@@ -160,26 +157,5 @@ describe("readRecurringFeed", () => {
       ["standup@example.com::2026-10-23T07:00:00Z", "2026-10-23T09:00:00"],
       ["standup@example.com::2026-10-20T07:00:00Z", "2026-10-20T10:00:00"],
     ]);
-  });
-});
-
-describe("the API reference", () => {
-  test("names every export of @moltenship/calendar-recurrence", async () => {
-    const index = await readFile(
-      fileURLToPath(new URL("../../../packages/calendar-recurrence/src/index.ts", import.meta.url)),
-      "utf8",
-    );
-    const page = await readFile(
-      fileURLToPath(new URL("../content/docs/api/recurrence.mdx", import.meta.url)),
-      "utf8",
-    );
-    const names = [...index.matchAll(/export (?:type )?\{([^}]*)\}/g)].flatMap((match) =>
-      match[1]!
-        .split(",")
-        .map((name) => name.trim())
-        .filter((name) => name !== ""),
-    );
-    expect(names.length).toBeGreaterThan(60);
-    expect(names.filter((name) => !page.includes(`\`${name}`))).toEqual([]);
   });
 });

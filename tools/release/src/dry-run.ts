@@ -87,8 +87,8 @@ export async function dryRun({
   await record("exports", () => checkTarballs(tarballs));
   await record("consumer", () => checkConsumer(tarballs));
   // The registry (#43): its schema smoke, then a build for the packed version into
-  // .release/registry. Its install test needs the network, so it runs on its own afterwards:
-  // vp run release:registry-e2e.
+  // .release/registry. What uses the artifacts, its install test included, runs on its own
+  // afterwards: vp run release:artifacts.
   const registry = await record("registry", async () => {
     await runOrThrow("vp", ["run", "--no-cache", "registry:smoke"], { inherit: true });
     return buildRegistry(tarballs);

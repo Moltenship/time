@@ -52,9 +52,10 @@ latest releases.
 ## Next: 1.0 — Public release
 
 The shadcn registry shipped (#43) and `calendar-testing` stays private until after 1.0 (#45). Release
-tooling (#46) is done. Next is the second phase of the release audit (#47): the showcase and fixtures on
-the packed release artifacts, the full release dry run, the screen-reader passes (#186) and the
-release candidate report, with a green CI `browsers` run (#192). The audit's proposed 1.0 blockers:
+tooling (#46) is done, and the full tier runs the SSR fixture, the docs site and the registry's
+clean apps on the dry run's tarballs (`vp run release:artifacts`). Next in the second phase of the
+release audit (#47): the full release dry run, the screen-reader passes (#186) and the release
+candidate report, with a green CI `browsers` run (#192). The audit's proposed 1.0 blockers:
 #185, #186.
 
 ## Later

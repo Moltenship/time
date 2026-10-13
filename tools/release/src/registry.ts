@@ -3,19 +3,10 @@ import { join } from "node:path";
 
 import { satisfies } from "semver";
 
-import { facadePackage, releaseDirectory } from "./config";
-import { manifestPath, readManifest, tarballIntegrity } from "./manifest";
-import { integrityOf, tarballDirectory, type PackedTarball } from "./pack";
-import {
-  gitState,
-  parseArguments,
-  readJson,
-  runMain,
-  runOrThrow,
-  workspaceRoot,
-} from "./workspace";
-
-export const registryDirectory = join(workspaceRoot, releaseDirectory, "registry");
+import { facadePackage } from "./config";
+import { registryDirectory } from "./manifest";
+import { integrityOf, type PackedTarball } from "./pack";
+import { readJson, runOrThrow } from "./workspace";
 
 /** The parts of the registry's `compatibility.json` (#43) the release checks read. */
 export interface RegistryCompatibility {
@@ -102,39 +93,3 @@ export async function buildRegistry(
     })),
   );
 }
-
-/**
- * #43's install test (`shadcn add` into clean Vite and Next.js apps) against the tarballs a passing
- * dry run checked. It needs the network for npm and shadcn's own components, so it isn't part of
- * the offline dry run.
- */
-export async function registryInstallTest(): Promise<void> {
-  const manifest = await readManifest(manifestPath);
-  if (!manifest) throw new Error("No dry-run manifest. Run vp run release:dry-run first.");
-  const { head } = await gitState();
-  if (manifest.commit !== head) {
-    throw new Error(
-      `The dry run checked commit ${manifest.commit}, but HEAD is ${head}. Run it again.`,
-    );
-  }
-  const current = await tarballIntegrity(manifest);
-  const changed = manifest.packages.filter(({ file, integrity }) => current[file] !== integrity);
-  if (changed.length > 0) {
-    throw new Error(
-      `Tarballs changed after the dry run: ${changed.map(({ file }) => file).join(", ")}`,
-    );
-  }
-  await runOrThrow("vp", ["run", "registry:e2e"], {
-    env: {
-      ...process.env,
-      REGISTRY_E2E_PACKAGES: "local",
-      REGISTRY_E2E_TARBALLS: tarballDirectory,
-    },
-    inherit: true,
-  });
-}
-
-runMain(import.meta, async () => {
-  parseArguments(process.argv.slice(2));
-  await registryInstallTest();
-});

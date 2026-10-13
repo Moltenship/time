@@ -7,6 +7,7 @@ import { build } from "vite-plus";
 import { parse, stringify } from "yaml";
 
 import { facadePackage, pointerAdapterPackage } from "./config";
+import { installOffline } from "./isolated";
 import { withPackedPackages, type PackedTarball } from "./pack";
 import { parseArguments, readJson, run, runMain, runOrThrow, workspaceRoot } from "./workspace";
 
@@ -50,21 +51,7 @@ export async function installConsumer(tarballs: readonly PackedTarball[]): Promi
     )}\n`,
   );
   await writeFile(join(directory, "pnpm-workspace.yaml"), stringify({ overrides: files }));
-  // Inside a `vp run` task, `vp` on PATH is the workspace's local CLI, whose pnpm tries to fetch
-  // the pinned pnpm version from the registry. VP_CLI_BIN is the global vp that started the task.
-  const vp = process.env.VP_CLI_BIN ?? "vp";
-  const install = await run(
-    vp,
-    ["install", "--offline", "--ignore-scripts", "--no-frozen-lockfile"],
-    {
-      cwd: directory,
-    },
-  );
-  if (install.code !== 0) {
-    throw new Error(
-      `The offline install failed in ${directory}. Run vp install in the workspace first, so the pnpm store has every dependency.\n${install.stdout}${install.stderr}`.trim(),
-    );
-  }
+  await installOffline(directory);
   return directory;
 }
 

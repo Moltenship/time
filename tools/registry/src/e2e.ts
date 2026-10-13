@@ -14,8 +14,9 @@ import {
 } from "./compatibility";
 import { dragAndDropPackages } from "./config";
 import { itemClosure } from "./items";
+import { servedPackageProblems } from "./lockfile";
 import { packRuntimePackages } from "./packages";
-import { startLocalRegistryServer } from "./server";
+import { startLocalRegistryServer, type LocalRegistryServer } from "./server";
 
 /**
  * The install test. Clean Vite and Next.js apps made by `shadcn init` run
@@ -26,9 +27,13 @@ import { startLocalRegistryServer } from "./server";
  *   packed from the workspace and served from a local npm registry for the `@moltenship` scope.
  *   `npm` installs the published packages instead, once they exist.
  * - `REGISTRY_E2E_TARBALLS=<dir>`: serve these tarballs instead of packing, such as a release dry
- *   run's.
+ *   run's. Either way, each app's lockfile must have our packages with the served tarballs' hashes.
  * - `REGISTRY_E2E_APPS=vite,next`: which apps to make.
- * - `REGISTRY_E2E_KEEP=1`: keep the temporary folder to look at the apps.
+ * - `REGISTRY_E2E_KEEP=1`: keep the temporary folder to look at the apps; `failed`: only when an app
+ *   fails.
+ *
+ * It prints `REGISTRY_E2E <json>` when both apps pass, with the hash of each tarball it served, and
+ * `REGISTRY_E2E_FAILED <json>` naming each app that failed and its step.
  */
 
 const workspaceRoot = resolve(import.meta.dirname, "../../..");
@@ -172,6 +177,7 @@ async function verifyInstall(
   app: App,
   root: string,
   manifest: RegistryManifest,
+  served: ReadonlyMap<string, string> | null,
 ): Promise<string[]> {
   const problems: string[] = [];
   const componentsDir = join(root, app.componentsDir);
@@ -214,6 +220,11 @@ async function verifyInstall(
     if (!dependencies[name]) problems.push(`package.json doesn't depend on ${name}`);
   }
 
+  if (served) {
+    const lockfile = await readFile(join(root, "pnpm-lock.yaml"), "utf8");
+    problems.push(...servedPackageProblems(lockfile, served, Object.keys(manifest.runtime)));
+  }
+
   const versions = await installedVersions(root, Object.keys(manifest.runtime));
   problems.push(
     ...findIncompatibleItems(manifest, versions, [fullItemName]).map(describeIncompatibility),
@@ -226,12 +237,25 @@ async function verifyInstall(
   return problems;
 }
 
+/** An app's failure, with the step it failed at. */
+class AppFailure extends Error {
+  readonly app: string;
+  readonly step: string;
+
+  constructor(app: string, step: string, cause: unknown) {
+    super(cause instanceof Error ? cause.message : String(cause));
+    this.app = app;
+    this.step = step;
+  }
+}
+
 async function testApp(
   app: App,
   directory: string,
   registryUrl: string,
   manifest: RegistryManifest,
-  npmRegistry: string | null,
+  /** The local npm registry for the `@moltenship` scope, or none to install from npm. */
+  local: Pick<LocalRegistryServer, "npmRegistry" | "integrity"> | null,
 ): Promise<{ readonly app: string; readonly files: number; readonly seconds: number }> {
   const started = performance.now();
   // Each app gets its own temporary folder: `shadcn init` clones its template into one named by the
@@ -240,64 +264,73 @@ async function testApp(
   await mkdir(temporary, { recursive: true });
   const env = { npm_config_user_agent: pnpmUserAgent, TMPDIR: temporary };
   const root = join(directory, app.name);
+  let step = "";
+  const begin = (name: string, message = name) => {
+    step = name;
+    log(app.name, message);
+  };
 
-  log(app.name, "shadcn init");
-  await run(
-    process.execPath,
-    [
-      shadcn,
-      "init",
-      "--template",
-      app.name,
-      "--base",
-      "base",
-      "--preset",
-      "nova",
-      "--name",
-      app.name,
-      "--yes",
-      "--no-monorepo",
-    ],
-    directory,
-    env,
-  );
-  if (npmRegistry) {
-    // The packed runtime packages, for the @moltenship scope only.
-    await writeFile(join(root, ".npmrc"), `@moltenship:registry=${npmRegistry}\n`);
-  }
-  if (app.componentsAlias !== "@/components") {
-    await edit(join(root, "components.json"), (source) =>
-      source.replace('"components": "@/components"', `"components": "${app.componentsAlias}"`),
+  try {
+    begin("shadcn init");
+    await run(
+      process.execPath,
+      [
+        shadcn,
+        "init",
+        "--template",
+        app.name,
+        "--base",
+        "base",
+        "--preset",
+        "nova",
+        "--name",
+        app.name,
+        "--yes",
+        "--no-monorepo",
+      ],
+      directory,
+      env,
     );
-  }
+    if (local) {
+      // The packed runtime packages, for the @moltenship scope only.
+      await writeFile(join(root, ".npmrc"), `@moltenship:registry=${local.npmRegistry}\n`);
+    }
+    if (app.componentsAlias !== "@/components") {
+      await edit(join(root, "components.json"), (source) =>
+        source.replace('"components": "@/components"', `"components": "${app.componentsAlias}"`),
+      );
+    }
 
-  log(app.name, `shadcn add ${registryUrl}/${fullItemName}.json`);
-  await run(
-    process.execPath,
-    [shadcn, "add", `${registryUrl}/${fullItemName}.json`, "--yes"],
-    root,
-    env,
-  );
-
-  const problems = await verifyInstall(app, root, manifest);
-  if (problems.length > 0) {
-    throw new Error(
-      `[${app.name}] the install is wrong:\n${problems.map((line) => `- ${line}`).join("\n")}`,
+    begin("shadcn add", `shadcn add ${registryUrl}/${fullItemName}.json`);
+    await run(
+      process.execPath,
+      [shadcn, "add", `${registryUrl}/${fullItemName}.json`, "--yes"],
+      root,
+      env,
     );
+
+    step = "the install";
+    const problems = await verifyInstall(app, root, manifest, local?.integrity ?? null);
+    if (problems.length > 0) {
+      throw new Error(`the install is wrong:\n${problems.map((line) => `- ${line}`).join("\n")}`);
+    }
+
+    step = "set up";
+    await app.setUp(root);
+    const page = (await readFile(fixture, "utf8")).replaceAll(
+      "@/components/calendar/",
+      `${app.componentsAlias}/calendar/`,
+    );
+    await mkdir(dirname(join(root, app.page)), { recursive: true });
+    await writeFile(join(root, app.page), page);
+
+    begin("typecheck");
+    for (const args of app.typecheck) await run("pnpm", args, root, env);
+    begin("build");
+    await run("pnpm", ["run", "build"], root, env);
+  } catch (error) {
+    throw new AppFailure(app.name, step, error);
   }
-
-  await app.setUp(root);
-  const page = (await readFile(fixture, "utf8")).replaceAll(
-    "@/components/calendar/",
-    `${app.componentsAlias}/calendar/`,
-  );
-  await mkdir(dirname(join(root, app.page)), { recursive: true });
-  await writeFile(join(root, app.page), page);
-
-  log(app.name, "typecheck");
-  for (const args of app.typecheck) await run("pnpm", args, root, env);
-  log(app.name, "build");
-  await run("pnpm", ["run", "build"], root, env);
 
   const seconds = Math.round((performance.now() - started) / 1000);
   log(app.name, `passed in ${seconds}s`);
@@ -309,9 +342,11 @@ if (packageSource !== "local" && packageSource !== "npm") {
   throw new Error(`REGISTRY_E2E_PACKAGES must be "local" or "npm", not "${packageSource}"`);
 }
 const wantedApps = (process.env.REGISTRY_E2E_APPS ?? "vite,next").split(",");
+const keep = process.env.REGISTRY_E2E_KEEP;
 const directory = await mkdtemp(join(tmpdir(), "time-registry-e2e-"));
 const siteDir = join(directory, "site");
 let tarballDir: string | undefined;
+let failed = true;
 
 try {
   if (packageSource === "local") {
@@ -343,29 +378,35 @@ try {
       apps
         .filter(({ name }) => wantedApps.includes(name))
         .map((app) =>
-          testApp(
-            app,
-            directory,
-            registryUrl,
-            manifest,
-            packageSource === "local" ? server.npmRegistry : null,
-          ),
+          testApp(app, directory, registryUrl, manifest, packageSource === "local" ? server : null),
         ),
     );
-    const failures = settled.flatMap((result) =>
-      result.status === "rejected"
-        ? [result.reason instanceof Error ? result.reason.message : String(result.reason)]
-        : [],
-    );
-    if (failures.length > 0) throw new Error(failures.join("\n\n"));
-    const results = settled.flatMap((result) =>
-      result.status === "fulfilled" ? [result.value] : [],
-    );
-    console.log(`REGISTRY_E2E ${JSON.stringify({ packages: packageSource, apps: results })}`);
+    const failures = settled.flatMap((result) => {
+      if (result.status === "fulfilled") return [];
+      const { reason } = result;
+      return [reason instanceof AppFailure ? reason : new AppFailure("?", "?", reason)];
+    });
+    if (failures.length > 0) {
+      for (const { app, step, message } of failures)
+        console.error(`\n[${app}] ${step} failed: ${message}`);
+      console.log(
+        `REGISTRY_E2E_FAILED ${JSON.stringify(failures.map(({ app, step }) => ({ app, step })))}`,
+      );
+      process.exitCode = 1;
+    } else {
+      failed = false;
+      const results = settled.flatMap((result) =>
+        result.status === "fulfilled" ? [result.value] : [],
+      );
+      const served = packageSource === "local" ? Object.fromEntries(server.integrity) : undefined;
+      console.log(
+        `REGISTRY_E2E ${JSON.stringify({ packages: packageSource, apps: results, served })}`,
+      );
+    }
   } finally {
     await server.close();
   }
 } finally {
-  if (process.env.REGISTRY_E2E_KEEP === "1") console.log(`Kept ${directory}`);
+  if (keep === "1" || (keep === "failed" && failed)) console.log(`Kept ${directory}`);
   else await rm(directory, { force: true, recursive: true });
 }
