@@ -47,6 +47,27 @@ function tidy<TExtensions extends IcsExtensionsConfig>(
   };
 }
 
+/**
+ * The recurrence of a series that starts at an override written in a DST gap: it repeats at the
+ * written time, as a master written there does.
+ */
+function writtenStartOf<TExtensions extends IcsExtensionsConfig>(
+  master: Event<TExtensions>,
+  data: IcsEvent<TExtensions>,
+): Event<TExtensions>["recurrence"] {
+  const { recurrence } = master;
+  const { start } = data;
+  if (recurrence === undefined || master.kind !== "timed" || start.kind !== "zoned") {
+    return recurrence;
+  }
+  const inGap = !start.wallTime.equals(start.zoned.toPlainDateTime());
+  return inGap &&
+    master.sourceTimeZone === start.zoned.timeZoneId &&
+    master.start.equals(start.zoned.toInstant())
+    ? { ...recurrence, wallStart: start.wallTime }
+    : recurrence;
+}
+
 /** The occurrence a master gives at `recurrenceId`, as the expander shows it without overrides. */
 function occurrenceAt<TExtensions extends IcsExtensionsConfig>(
   master: Event<TExtensions>,
@@ -85,8 +106,9 @@ export interface ThisAndFuture<TExtensions extends IcsExtensionsConfig> {
  * and title, starts where the override is, with the rest of the rule moved by the same difference
  * and the override's length. Later EXDATEs, RDATEs and overrides move to it and keep their own
  * placements, since instances in separate components aren't impacted. On the first occurrence it
- * changes the whole series instead. A cancelled one ends the series there, or leaves it out with its
- * overrides when nothing before is left. One the edit can't apply, such as a BYSETPOS rule moved to
+ * changes the whole series instead, and a new series that starts in a DST gap repeats at the time
+ * written. A cancelled one ends the series there; when nothing before it is left, the series keeps
+ * no occurrence, but later overrides stay. One the edit can't apply, such as a BYSETPOS rule moved to
  * another day, stays an override of one occurrence, with the reason. Overrides end up with the IDs
  * of the occurrences they now replace.
  */
@@ -97,6 +119,8 @@ export function applyThisAndFuture<TExtensions extends IcsExtensionsConfig>(
 ): ThisAndFuture<TExtensions> {
   const adapters = createCanonicalRecurrenceAdapter<IcsEvent<TExtensions>>();
   const failures = new Map<IcsEvent<TExtensions>, string>();
+  // Series a cancelled one ended, which later ones can't name occurrences of.
+  const ended = new Set<string>();
   let events: readonly Event<TExtensions>[] = input;
   const overrideOf = (data: IcsEvent<TExtensions>) =>
     events.findIndex((event) => event.data === data && event.override !== undefined);
@@ -116,9 +140,8 @@ export function applyThisAndFuture<TExtensions extends IcsExtensionsConfig>(
     });
 
   for (const { data } of ordered) {
+    // Nothing removes an override, so each is still there.
     const index = overrideOf(data);
-    // An earlier cancelled one left its series out with its overrides, this one too.
-    if (index < 0) continue;
     const range = events[index]!;
     const { recurrenceId, seriesId } = range.override!;
     const cancelled = range.override!.cancelled === true;
@@ -132,7 +155,10 @@ export function applyThisAndFuture<TExtensions extends IcsExtensionsConfig>(
     }
     const occurrence = occurrenceAt(master, recurrenceId, timeZone);
     if (occurrence === undefined) {
-      failures.set(data, "its series has no occurrence at its RECURRENCE-ID");
+      const reason = ended.has(seriesId)
+        ? "an earlier cancelled RANGE=THISANDFUTURE ended its series"
+        : "its series has no occurrence at its RECURRENCE-ID";
+      failures.set(data, reason);
       continue;
     }
 
@@ -167,24 +193,32 @@ export function applyThisAndFuture<TExtensions extends IcsExtensionsConfig>(
     }
     if (edit.type !== "series") continue;
 
+    const rest = events.filter((_, position) => position !== index);
+    if (cancelled) ended.add(seriesId);
+    if (cancelled && edit.scope === "all") {
+      // Nothing before it is left, so the series keeps no occurrence: its first is excluded, and
+      // no rule or RDATE adds others. Later overrides stay with it, as for a partial one.
+      const none = {
+        ...master,
+        recurrence: { exceptionDates: [master.start] },
+      } as Event<TExtensions>;
+      events = rest.map((event) => (event === master ? none : event));
+      continue;
+    }
     // Instances in separate components aren't impacted, so a cancelled one keeps later overrides.
-    const applied =
-      cancelled && edit.scope === "following"
-        ? { ...edit, otherOverrides: { action: "keep", series: "current" } as const }
-        : edit;
+    const applied = cancelled
+      ? { ...edit, otherOverrides: { action: "keep", series: "current" } as const }
+      : edit;
     // The series that now shows the override: the new one, or the whole series.
     const shown = edit.newSeries === undefined ? seriesId : range.id;
-    const rest = events.filter((_, position) => position !== index);
     const written = applyRecurrenceEdit(rest, applied, { createId: () => range.id }).map(
       (event) => {
         if (event.override !== undefined || (event.id !== seriesId && event.id !== range.id)) {
           return event;
         }
-        return tidy(
-          !cancelled && event.id === shown
-            ? { ...event, data: range.data, title: range.title }
-            : event,
-        );
+        if (cancelled || event.id !== shown) return tidy(event);
+        const recurrence = writtenStartOf(event, range.data);
+        return tidy({ ...event, data: range.data, recurrence, title: range.title });
       },
     );
     // The new series, which the edit adds last, comes from the override's VEVENT, so it takes the

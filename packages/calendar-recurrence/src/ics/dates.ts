@@ -39,7 +39,10 @@ export function isMidnight(wall: Temporal.PlainDateTime): boolean {
 }
 
 /** A date-time's date, when it is a midnight a flagged all-day series means as a date. */
-function midnightDate(value: IcsDateValue, series: FeedSeries): Temporal.PlainDate | undefined {
+export function midnightDate(
+  value: IcsDateValue,
+  series: FeedSeries,
+): Temporal.PlainDate | undefined {
   if (series.midnights !== true || value.kind === "date") return undefined;
   const wall =
     value.kind === "utc"

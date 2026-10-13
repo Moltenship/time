@@ -543,12 +543,13 @@ const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEv
 - Masters and one-off events keep their UID as their ID. An override gets the ID of the occurrence
   it replaces, `occurrenceId(uid, recurrenceId)`, with or without its master.
 - A UTC DTSTART repeats in UTC, and a zoned one in its zone. A DTSTART in a DST gap keeps its
-  written time as `recurrence.wallStart`, and the event keeps the length written between DTSTART
-  and DTEND. DURATION without DTEND becomes `recurrence.duration`.
-- With `X-MICROSOFT-CDO-ALLDAYEVENT:TRUE`, an event written from midnight to a later midnight, as
-  older Outlook and Exchange exports write all-day events, is all-day on the dates written, even
-  when its TZID resolves to no zone. Its series' midnight EXDATE, UNTIL and RECURRENCE-ID values are
-  those dates, and UTC ones read in its DTSTART's zone.
+  written time as `recurrence.wallStart`. It moves forward by the gap, as RFC 5545 says; a series
+  with DTEND in the same zone keeps the length written between them, and a single event its exact
+  length, unless the gap leaves it none. DURATION without DTEND becomes `recurrence.duration`.
+- With `X-MICROSOFT-CDO-ALLDAYEVENT:TRUE`, an event written from midnight to a later midnight, or
+  from midnight without an end, as older Outlook and Exchange exports write all-day events, is
+  all-day on the dates written, even when its TZID resolves to no zone. Its series' midnight
+  EXDATE, UNTIL and RECURRENCE-ID values are those dates, and UTC ones read in its DTSTART's zone.
 - EXDATE, RDATE, UNTIL and RECURRENCE-ID take the series' kind through `coerceRecurrenceDate`.
 - A cancelled master or one-off event is left out, with the master's overrides. A cancelled
   override comes out with `override.cancelled`, which hides its occurrence.
@@ -559,9 +560,11 @@ const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEv
   splits it: it ends before the occurrence, and a new series, with the override's ID, VEVENT and
   title, starts where the override is, the rest of the rule moved by the same difference. Later
   EXDATEs, RDATEs and overrides move to it, and overrides take the IDs of the occurrences they then
-  replace. On the first occurrence the whole series changes instead. A cancelled one ends the
-  series there. When the rule can't follow, as a BYSETPOS rule moved to another day can't, the
-  override replaces only the occurrence it names, with an `unsupported-rule` issue.
+  replace. Later occurrences are keyed by their new starts, so their `recurrenceId`s aren't the
+  feed's RECURRENCE-IDs. On the first occurrence the whole series changes instead. A cancelled one
+  ends the series there, and later overrides stay. When the rule can't follow, as a BYSETPOS rule
+  moved to another day can't, the override replaces only the occurrence it names, with an
+  `unsupported-rule` issue.
 
 `options` is an `IcsRecurringEventsOptions`:
 
@@ -574,7 +577,8 @@ const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEv
           The feed's time zone: <code>calendar.timeZone</code> (X-WR-TIMEZONE), or one you choose.
           UTC times on all-day and floating series, such as an UNTIL, are read in it, so they keep
           the feed's dates. Floating DTSTARTs stay floating. Without it, the zone most of the
-          events' TZIDs resolve to, as feeds without X-WR-TIMEZONE, such as Exchange's, need.
+          events' TZIDs resolve to, as feeds without X-WR-TIMEZONE, such as Exchange's, need. Pass{" "}
+          <code>"UTC"</code> for the reading before that default.
         </>
       ),
       default: "the feed's most used TZID, else UTC",

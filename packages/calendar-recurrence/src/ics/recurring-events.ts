@@ -19,6 +19,7 @@ import type {
 import {
   instantOf,
   isMidnight,
+  midnightDate,
   ownRecurrenceId,
   toSeriesDate,
   toSeriesPeriod,
@@ -78,9 +79,10 @@ export interface IcsRecurringEventsOptions {
   /**
    * The feed's time zone: its X-WR-TIMEZONE (`IcsCalendar.timeZone`), or one the application
    * chose. UTC times on all-day and floating series, such as an UNTIL, are read in it, so they keep
-   * the feed's dates. Floating DTSTARTs stay floating. Defaults to the zone most of the events'
-   * TZIDs resolve to, as feeds without X-WR-TIMEZONE, such as Exchange's, need, and to UTC when
-   * none has one.
+   * the feed's dates; on an all-day series Outlook flags with `X-MICROSOFT-CDO-ALLDAYEVENT`, they
+   * are read in the zone of its DTSTART instead. Floating DTSTARTs stay floating. Defaults to the
+   * zone most of the events' TZIDs resolve to, as feeds without X-WR-TIMEZONE, such as Exchange's,
+   * need, and to UTC when none has one. Pass `"UTC"` for the reading before that default.
    */
   readonly timeZone?: string;
 }
@@ -122,6 +124,11 @@ type IcsEventTimes = Pick<IcsEvent, "duration" | "end" | "otherProperties" | "st
 
 const allDayProperty = "X-MICROSOFT-CDO-ALLDAYEVENT";
 
+/** The zone a value was written in: its TZID's, UTC for a UTC time, else none. */
+function zoneOf(value: IcsDateValue): string | undefined {
+  return value.kind === "zoned" ? value.zoned.timeZoneId : value.kind === "utc" ? "UTC" : undefined;
+}
+
 /** Outlook's all-day flag, which older exports pair with midnight-to-midnight date-times. */
 function flaggedAllDay(event: Pick<IcsEvent, "otherProperties">): boolean {
   return event.otherProperties.some(
@@ -146,10 +153,14 @@ function flaggedDays(event: IcsEventTimes): CalendarEventInterval | undefined {
     : undefined;
 }
 
-// DTSTART to the effective end; `undefined` when DTSTART's time zone didn't resolve.
+/**
+ * DTSTART to the effective end; `undefined` when DTSTART's time zone didn't resolve. `repeats` is
+ * for a series, whose later occurrences repeat at DTSTART's written time.
+ */
 function intervalOf(
   event: IcsEventTimes,
   minimumDuration: Temporal.DurationLike,
+  repeats: boolean,
 ): CalendarEventInterval | undefined {
   const days = flaggedDays(event);
   if (days !== undefined) return days;
@@ -185,14 +196,21 @@ function intervalOf(
       const zone = start.kind === "zoned" ? start.zoned.timeZoneId : "UTC";
       const startInstant = instantOf(start)!;
       let endInstant = instantOf(end) ?? startInstant;
-      // A DTSTART in a DST gap moves forward by the gap (RFC 5545 §3.3.5). The event keeps the
-      // length written from DTSTART to DTEND, as its later occurrences on gap days do, rather than
-      // losing the gap: 02:30–03:30 on the night 02:00 becomes 03:00 is 03:30–04:30, not empty.
-      if (start.kind === "zoned" && event.end !== undefined && end.kind === "zoned") {
-        const written = start.wallTime.until(end.wallTime, { largestUnit: "hours" });
-        if (!start.wallTime.equals(start.zoned.toPlainDateTime()) && written.sign > 0) {
-          endInstant = startInstant.add(written);
-        }
+      // A DTSTART in a DST gap moves forward by the gap (RFC 5545 §3.3.5), and DTEND stays. A
+      // series repeats at the written time on later weeks, so it keeps the length written from
+      // DTSTART to a DTEND in its zone: 02:30–03:30 on the night 02:00 becomes 03:00 is
+      // 03:30–04:30, and 02:30–03:30 later. A single event keeps its exact length, unless the gap
+      // leaves it none.
+      const written = event.end;
+      if (
+        start.kind === "zoned" &&
+        written?.kind === "zoned" &&
+        written.zoned.timeZoneId === zone &&
+        !start.wallTime.equals(start.zoned.toPlainDateTime())
+      ) {
+        const length = start.wallTime.until(written.wallTime, { largestUnit: "hours" });
+        const empty = Temporal.Instant.compare(endInstant, startInstant) <= 0;
+        if (length.sign > 0 && (repeats || empty)) endInstant = startInstant.add(length);
       }
       return {
         end:
@@ -262,13 +280,16 @@ function unique<TDate extends RecurrenceDate | RecurrencePeriod>(
  * - Intervals: a UTC DTSTART repeats in UTC (`sourceTimeZone: "UTC"`), a zoned one in its zone.
  * - Masters: an event with RRULE, RDATE or EXDATE, or one an override names by UID. DURATION
  *   without DTEND on a timed or floating master becomes `recurrence.duration`, and a DTSTART in a
- *   DST gap keeps its written time as `recurrence.wallStart`. An event with a DTSTART in a gap
- *   moves forward by the gap and keeps the length written between DTSTART and DTEND.
+ *   DST gap keeps its written time as `recurrence.wallStart`. A DTSTART in a gap moves forward by
+ *   the gap, as RFC 5545 §3.3.5 says; a series with DTEND in the same zone keeps the length written
+ *   between them, so later occurrences keep it, and a single event its exact length, unless the gap
+ *   leaves it none.
  * - Outlook's all-day events: with `X-MICROSOFT-CDO-ALLDAYEVENT:TRUE` (unless an extension claims
- *   it), an event written from midnight to a later midnight, as older Outlook and Exchange exports
- *   write all-day events, is all-day on the dates written, even when its TZID resolves to no zone.
- *   Its series' EXDATE, UNTIL and RECURRENCE-ID values at midnight are those dates, without an
- *   issue, and UTC ones read in the zone of its DTSTART.
+ *   it), an event written from midnight to a later midnight, or from midnight without DTEND or
+ *   DURATION, as older Outlook and Exchange exports write all-day events, is all-day on the dates
+ *   written, even when its TZID resolves to no zone. Its series' EXDATE, UNTIL and RECURRENCE-ID
+ *   values at midnight are those dates, without an issue, and UTC ones read in the zone of its
+ *   DTSTART, or UTC.
  * - Dates: EXDATE, RDATE, UNTIL and RECURRENCE-ID take the kind of the series' first occurrence
  *   through `coerceRecurrenceDate`. A date-only EXDATE excludes the whole day, a date-only UNTIL
  *   lasts through that day, and a date-only RDATE or RECURRENCE-ID on a timed or floating series
@@ -289,10 +310,12 @@ function unique<TDate extends RecurrenceDate | RecurrencePeriod>(
  *   override's ID, VEVENT and title starts where the override is, with the rest of the rule moved
  *   by the same difference and the override's length. Later EXDATEs, RDATEs and overrides move to
  *   it and keep their own placements, and overrides take the IDs of the occurrences they then
- *   replace. On the first occurrence the whole series changes instead. A cancelled one ends the
- *   series there, or leaves it out with its overrides when nothing before is left. One the series
- *   can't take, such as a BYSETPOS rule moved to another day, replaces only the occurrence it
- *   names, with an `unsupported-rule` issue.
+ *   replace: later occurrences are keyed by their new starts, not the feed's RECURRENCE-IDs. On
+ *   the first occurrence the whole series changes instead. A cancelled one ends the series there;
+ *   when nothing before it is left, the series keeps no occurrence. Either way later overrides
+ *   stay, since RFC 5545 leaves instances in separate components alone. One the series can't take,
+ *   such as a BYSETPOS rule moved to another day, replaces only the occurrence it names, with an
+ *   `unsupported-rule` issue.
  *
  * Bad data becomes `issues`; only invalid options throw, as a `RangeError`.
  */
@@ -341,7 +364,11 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
   const masterIndexes = new Map<string, number>();
   events.forEach((event, index) => {
     if (event.recurrenceId !== undefined) return;
-    const interval = intervalOf(event, minimumDuration);
+    const repeats =
+      event.recurrenceRule !== undefined ||
+      event.recurrenceDates.length > 0 ||
+      event.exceptionDates.length > 0;
+    const interval = intervalOf(event, minimumDuration, repeats);
     if (interval === undefined) {
       unresolved(index, "DTSTART", event.start, "the event is skipped");
       return;
@@ -364,7 +391,7 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
     } else if (first.kind === "all-day" && flaggedAllDay(event)) {
       // Outlook's all-day series write their dates as midnights, and UTC ones at the midnight of
       // the zone DTSTART was written in.
-      const own = event.start.kind === "zoned" ? event.start.zoned.timeZoneId : timeZone;
+      const own = zoneOf(event.start) ?? timeZone;
       series.set(uid, { first, midnights: true, ...(own === undefined ? {} : { timeZone: own }) });
     } else {
       series.set(uid, { first, ...(timeZone === undefined ? {} : { timeZone }) });
@@ -377,7 +404,8 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
   events.forEach((event, index) => {
     const value = event.recurrenceId;
     if (value === undefined || cancelledUids.has(event.uid)) return;
-    const interval = intervalOf(event, minimumDuration);
+    // One with RANGE=THISANDFUTURE starts a series.
+    const interval = intervalOf(event, minimumDuration, event.recurrenceRange === "THISANDFUTURE");
     if (interval === undefined) {
       unresolved(index, "DTSTART", event.start, "the override is skipped");
       return;
@@ -390,7 +418,11 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
         unresolved(index, "RECURRENCE-ID", value, "the override, which has no series, is skipped");
         return;
       }
-      recurrenceId = ownRecurrenceId(value, interval);
+      // A flagged all-day override names its occurrence by a midnight, as its series would.
+      recurrenceId =
+        (interval.kind === "all-day" && flaggedAllDay(event)
+          ? midnightDate(value, { first: interval, midnights: true, timeZone: zoneOf(event.start) })
+          : undefined) ?? ownRecurrenceId(value, interval);
     } else {
       const { date, mismatch } = toSeriesDate(value, time, "start", "RECURRENCE-ID");
       if (mismatch !== undefined) report(index, "date-kind-mismatch", mismatch, "RECURRENCE-ID");

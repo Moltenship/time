@@ -39,5 +39,5 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   a "this and following" edit does, so Apple's "this and future" changes reach later occurrences.
   It reads Outlook's `X-MICROSOFT-CDO-ALLDAYEVENT:TRUE` midnight-to-midnight events as all-day, and,
   without `timeZone`, reads UTC dates on all-day and floating series in the zone most of the feed's
-  TZIDs name rather than UTC. An event whose DTSTART falls in a DST gap keeps the length written up
-  to DTEND (#160).
+  TZIDs name rather than UTC; pass `timeZone: "UTC"` for the old reading. A series whose DTSTART
+  falls in a DST gap keeps the length written up to DTEND (#160).
