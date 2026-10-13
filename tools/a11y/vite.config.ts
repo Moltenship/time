@@ -32,6 +32,8 @@ export default defineConfig(({ mode }) => {
   const maxWorkers = Math.max(1, Math.ceil(availableParallelism() / 2 / browsers));
 
   return {
+    // A GitHub runner is the speed `--mode ci-speed` simulates: there it runs unthrottled.
+    define: { __ON_GITHUB_RUNNER__: JSON.stringify(process.env.GITHUB_ACTIONS === "true") },
     // Each mode optimizes dependencies in a cache of its own, so two runs at once don't rewrite
     // each other's. Vitest's mode is `test`.
     cacheDir: mode === "test" ? undefined : `node_modules/.vite-${mode}`,

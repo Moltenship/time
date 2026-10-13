@@ -95,3 +95,37 @@ jobs:
       - name: Name the step that failed
         if: failure()
         run: vp run --last-details
+
+  release-gate:
+    name: Release gate
+    # What the release workflow's verify job runs before it publishes, on a fresh runner, without
+    # publishing anything: the whole full tier with a strict dry run. On demand only, as a
+    # rehearsal on any branch: `gh workflow run ci.yml --ref <branch>`. Without RELEASE_VERSION,
+    # the dry run checks the version the manifests have.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: "26"
+          cache: true
+
+      - name: Install locked dependencies
+        run: vp install --frozen-lockfile
+
+      - name: Install Chromium, Firefox and WebKit
+        run: vp exec --filter a11y playwright install --with-deps --only-shell chromium firefox webkit
+
+      - name: Release gate and dry run
+        run: vp run release:gate
+
+      - name: Name the step that failed
+        if: failure()
+        run: vp run --last-details

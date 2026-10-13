@@ -51,22 +51,23 @@ export default defineConfig({
         cache: false,
         dependsOn: ["registry:smoke", "gate:serial"],
       },
-      // The release gate: everything `ready` runs, the a11y suite at CI's speed and in Firefox and
-      // WebKit, the release dry run, the docs site's types and search, and the dry run's tarballs
-      // in the SSR fixture, the docs site and the registry's clean apps.
+      // The full tier, which runs for releases only (AGENTS.md): everything `ready` runs, the a11y
+      // suite at CI's speed and in Firefox and WebKit, the release dry run, the docs site's types and
+      // search, and the dry run's tarballs in the SSR fixture, the docs site and the registry's
+      // clean apps.
       "ready:full": {
         command: "echo ready:full: the release gate passed",
         cache: false,
         dependsOn: ["registry:smoke", "gate:browsers", "gate:serial:full"],
       },
-      // The release workflow's gate on a GitHub runner: ready:full without the browser runs. The
-      // workflow runs a11y alone first, as CI does; a11y:ci-speed only simulates a runner, and
-      // browsers runs on demand in CI (#192). Its dry run is strict. A full-only check joins
+      // The release workflow's gate before it publishes: the whole full tier, with a strict dry
+      // run of RELEASE_VERSION in its own lane. `RELEASE_VERSION=<version> vp run release:gate`
+      // reproduces it, and CI's on-demand release-gate job rehearses it. A full-only check joins
       // gate:serial:release too.
       "release:gate": {
         command: "echo release:gate passed",
         cache: false,
-        dependsOn: ["registry:smoke", "gate:serial:release"],
+        dependsOn: ["registry:smoke", "gate:browsers", "gate:serial:release"],
       },
       // The full gate's browser runs, one at a time beside its serial lane. Each takes half the
       // cores, and a watchdog fails a run that stops making progress (tools/a11y/vite.config.ts).

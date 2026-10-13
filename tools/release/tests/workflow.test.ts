@@ -61,13 +61,24 @@ describe("release workflow contract", () => {
     expect(verify?.if).toBe("github.ref == 'refs/heads/main'");
     expect(runs(verify)).toEqual([
       "vp install --frozen-lockfile",
-      "vp exec --filter a11y playwright install --with-deps --only-shell chromium",
-      "vp run a11y",
+      "vp exec --filter a11y playwright install --with-deps --only-shell chromium firefox webkit",
       "vp run release:gate",
       "vp run --last-details",
     ]);
     const gate = verify?.steps.find(({ run }) => run === "vp run release:gate");
     expect(gate?.env).toEqual({ RELEASE_VERSION: "${{ inputs.version }}" });
+  });
+
+  test("CI's on-demand release-gate job rehearses the same steps, and never publishes", async () => {
+    const ci = parse(
+      await readFile(resolve(import.meta.dirname, "../../../.github/workflows/ci.yml"), "utf8"),
+    ) as Workflow;
+    const rehearsal = ci.jobs["release-gate"];
+
+    expect(rehearsal?.if).toBe("github.event_name == 'workflow_dispatch'");
+    expect(runs(rehearsal)).toEqual(runs((await readWorkflow()).jobs.verify));
+    expect(rehearsal?.environment).toBeUndefined();
+    expect(JSON.stringify(rehearsal)).not.toContain("release:publish");
   });
 
   test("publishes the dry run's tarballs from a separate job that alone can sign provenance", async () => {

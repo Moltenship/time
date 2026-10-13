@@ -7,7 +7,7 @@ import { build } from "vite-plus";
 import { parse, stringify } from "yaml";
 
 import { facadePackage, pointerAdapterPackage } from "./config";
-import { installOffline } from "./isolated";
+import { installFromStore, lockfileEntries, lockfileProblems } from "./isolated";
 import { withPackedPackages, type PackedTarball } from "./pack";
 import { parseArguments, readJson, run, runMain, runOrThrow, workspaceRoot } from "./workspace";
 
@@ -17,10 +17,29 @@ const require = createRequire(import.meta.url);
 const consumerPeers = ["react", "react-dom", "@types/react", "@types/react-dom"] as const;
 
 /**
- * Installs the tarballs into a new project outside the workspace, offline, from the pnpm store
- * that `vp install` filled. Outside the workspace, Node and TypeScript can't fall back on the
+ * Every third-party package the workspace's lockfile has at a single version, by name. Pinned in
+ * the consumer, they make it resolve what the workspace locks, so a new patch on npm can't move it.
+ */
+export function lockedVersions(workspaceLockfile: string): Record<string, string> {
+  const versions = new Map<string, Set<string>>();
+  for (const key of lockfileEntries(workspaceLockfile).keys()) {
+    const match = /^(@?[^@]+)@(\d[^(]*)$/u.exec(key);
+    if (match === null || match[1]!.startsWith("@moltenship/")) continue;
+    versions.set(match[1]!, (versions.get(match[1]!) ?? new Set()).add(match[2]!));
+  }
+  return Object.fromEntries(
+    [...versions].flatMap(([name, found]) => (found.size === 1 ? [[name, [...found][0]!]] : [])),
+  );
+}
+
+/**
+ * Installs the tarballs into a new project outside the workspace, from the pnpm store that
+ * `vp install` filled. Outside the workspace, Node and TypeScript can't fall back on the
  * workspace's node_modules. Overrides make every `@moltenship/*` dependency, direct or not,
- * resolve to its tarball.
+ * resolve to its tarball, and every third-party package to the version the workspace locks. The
+ * install is offline unless pnpm's metadata cache is cold, as on a fresh CI runner: then it reads
+ * the metadata from npm, says so, and the lockfile check still holds it to the workspace's
+ * packages.
  */
 export async function installConsumer(tarballs: readonly PackedTarball[]): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), "moltenship-consumer-"));
@@ -50,8 +69,28 @@ export async function installConsumer(tarballs: readonly PackedTarball[]): Promi
       2,
     )}\n`,
   );
-  await writeFile(join(directory, "pnpm-workspace.yaml"), stringify({ overrides: files }));
-  await installOffline(directory);
+  const workspaceLockfile = await readFile(join(workspaceRoot, "pnpm-lock.yaml"), "utf8");
+  await writeFile(
+    join(directory, "pnpm-workspace.yaml"),
+    stringify({ overrides: { ...lockedVersions(workspaceLockfile), ...files } }),
+  );
+  const { online } = await installFromStore(directory);
+  if (online) {
+    console.log(
+      "The pnpm cache lacked some package metadata, so the consumer's install read it from npm.",
+    );
+  }
+  const problems = lockfileProblems({
+    lockfile: await readFile(join(directory, "pnpm-lock.yaml"), "utf8"),
+    packages: tarballs,
+    expected: tarballs.map(({ name }) => name),
+    workspaceLockfile,
+  });
+  if (problems.length > 0) {
+    throw new Error(
+      `The clean consumer in ${directory} didn't install what the workspace locks:\n${problems.map((problem) => `- ${problem}`).join("\n")}`,
+    );
+  }
   return directory;
 }
 
@@ -258,7 +297,7 @@ export async function checkConsumer(
   if (keep) console.log(`Kept the consumer project at ${directory}`);
   else await rm(directory, { force: true, recursive: true });
   console.log(
-    `Clean consumer passed: ${names.length} packages installed offline, imported, type-checked and bundled.`,
+    `Clean consumer passed: ${names.length} packages installed from the pnpm store, imported, type-checked and bundled.`,
   );
 }
 

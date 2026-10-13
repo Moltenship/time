@@ -4,7 +4,9 @@ import { dirname, join } from "node:path";
 
 import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 
-import { adapterBundleProblems, runtimeProblems } from "../src/consumer";
+import { stringify } from "yaml";
+
+import { adapterBundleProblems, lockedVersions, runtimeProblems } from "../src/consumer";
 
 let consumer: string;
 
@@ -107,4 +109,27 @@ describe("clean-consumer checks", () => {
       /^@x\/leaky-facade without its pointer exports still bundles \d+ bytes of @x\/adapter$/,
     );
   }, 30_000);
+});
+
+describe("the clean consumer's pinned versions", () => {
+  const workspaceLockfile = stringify({
+    lockfileVersion: "9.0",
+    packages: {
+      "@moltenship/calendar@file:packages/calendar": {
+        resolution: { directory: "packages/calendar" },
+      },
+      "@types/react@19.3.0": { resolution: { integrity: "sha512-types" } },
+      "csstype@3.2.3": { resolution: { integrity: "sha512-csstype" } },
+      "semver@6.3.1": { resolution: { integrity: "sha512-six" } },
+      "semver@7.8.0": { resolution: { integrity: "sha512-seven" } },
+      "some-tool@https://codeload.github.com/x/y/tar.gz/abc": { resolution: { tarball: "x" } },
+    },
+  });
+
+  test("pins each third-party package the workspace locks at one version", () => {
+    expect(lockedVersions(workspaceLockfile)).toEqual({
+      "@types/react": "19.3.0",
+      csstype: "3.2.3",
+    });
+  });
 });

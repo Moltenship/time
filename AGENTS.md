@@ -28,24 +28,25 @@ release. Add a tool name to select part of the graph. For example, run
 
 # Quality gate
 
-Check locally; don't wait on CI to learn whether a change passes. There are three tiers. Run the
-smallest one that covers the change.
+Check locally; don't wait on CI to learn whether a change passes. There are three tiers.
 
 | Tier  | Command              | What it runs                                                                                                                                                         |
 | ----- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Quick | `vp run ready:quick` | The docs site's link check, which compiles every page, then `vp check` and `vp test`                                                                                |
-| PR    | `vp run ready`       | Quick, plus production builds, the release checks (size budgets, API reports, package exports), the React, SSR, registry and package-graph gates, and the a11y suite in Chromium. CI runs the same tasks: `ready:checks` and `a11y`. |
+| PR    | `vp run ready`       | Quick, plus production builds, the release checks (size budgets, API reports, package exports), the React, SSR, registry and package-graph gates, and the a11y suite in Chromium. CI runs the same tasks on every PR: `ready:checks` and `a11y`. |
 | Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and in Firefox and WebKit (`browsers`), the release dry run (a fresh build, the packed tarballs installed offline into a clean project, the registry built for that version), the docs site's types and search, and the dry run's tarballs in use (`release:artifacts`): the SSR fixture's tests and the docs site's build in copies outside the workspace, and `shadcn add` into clean Vite and Next.js apps, which needs the network. It's the release gate. |
 
-- **Quick:** docs content (MDX), README, ADRs and `docs/internal` notes. Don't run the full gate
-  for a typo.
-- **PR:** every other change that ships, before you ask for review and again before merge.
-- **Full:** changes to published package source or public API; `package.json`, dependencies or the
-  lockfile; build, bundler or tsconfig config; registry items; release tooling; SSR or hydration;
-  UI that affects accessibility; CI config. Also before a release candidate or a release, and
-  whenever CI and local disagree.
+When each tier runs:
 
-On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 100 from a cold cache.
+- **Quick, after every change.** Docs content (MDX), README, ADRs and `docs/internal` notes may
+  stop here.
+- **PR, before every merge**, whatever the change touches. CI runs the same on every PR.
+- **Full, for releases only:** the release workflow runs it before publishing, and you run it by
+  hand right before cutting a release candidate or a release. A PR doesn't run it, with one
+  exception: a PR that changes the full gate itself or the release tooling runs it once, to show
+  the gate still works.
+
+On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 120 from a cold cache.
 Steps run in parallel where they're independent. Steps that write or read generated files
 (`dist`, `.next`, `.source`, packed tarballs) run one after another in a `gate:serial` lane. The
 full gate's browser runs (`a11y`, `browsers`, `a11y:ci-speed`) run one after another in a
@@ -56,19 +57,21 @@ only redoes what changed; `a11y:ci-speed` never replays, since a timing race can
 When a tier fails, `vp run --last-details` names the step; rerun it alone with `vp run <step>`.
 
 The browser runs need Playwright's browsers once: `vp exec --filter a11y playwright install chromium
-firefox webkit` (add `--with-deps` on Linux). Playwright's Firefox doesn't start on macOS 27 (#182); there `browsers` runs WebKit
-alone, and CI runs both on demand: `gh workflow run ci.yml --ref <branch>`. Before a release candidate
-or a release, link a green run of that job too.
+firefox webkit` (add `--with-deps` on Linux). Playwright's Firefox doesn't start on macOS 27 (#182);
+there `browsers` runs WebKit alone. CI runs both on demand: `gh workflow run ci.yml --ref <branch>`.
 
 A new check joins a tier in `vite.config.ts`: `ready:checks` or `gate:serial` for the PR tier,
 `ready:full` or `gate:serial:full` for the full gate only. Put it in a `gate:serial` lane if it
-writes or reads generated files, and a new browser run in `gate:browsers`.
-`tests/quality-gates.test.ts` fails if the full gate misses a PR step.
+writes or reads generated files, and a new browser run in `gate:browsers`. A full-gate-only check
+also joins `release:gate`, in its `gate:serial:release` lane or its `dependsOn`.
+`tests/quality-gates.test.ts` fails if the full gate misses a PR step, or the release gate a full
+one.
 
-The release workflow runs `vp run a11y`, then `RELEASE_VERSION=<version> vp run release:gate`:
-`ready:full` without the browser runs, with a strict release dry run (`docs/internal/releasing.md`).
-The same two commands reproduce it locally. A full-gate-only check also joins `release:gate` (its
-`gate:serial:release` lane, or its `dependsOn`), or the contract test's list of what it leaves out.
+The release workflow runs the whole full tier on a GitHub runner, with a strict dry run of the
+version it publishes: `RELEASE_VERSION=<version> vp run release:gate`, the one command that
+reproduces it locally. To rehearse it without the release workflow, dispatch CI
+(`gh workflow run ci.yml --ref <branch>`): its `release-gate` job runs the same steps
+(`docs/internal/releasing.md`).
 
 # Pull requests
 
