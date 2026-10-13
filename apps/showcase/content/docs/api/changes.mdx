@@ -184,7 +184,9 @@ React and returns a cleanup function. Both come from `@moltenship/calendar-dnd`,
       description: (
         <>
           Turns gestures off. Pass the Renderer's <code>isReadOnly</code>, so a calendar without{" "}
-          <code>onEventChange</code> starts none.
+          <code>onEventChange</code> starts none. <code>attachCalendarPointer</code> also reads it
+          when it attaches, to listen for touch moves only when enabled, so attach again when it
+          changes; <code>useCalendarPointer</code> does.
         </>
       ),
       default: "false",

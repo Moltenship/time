@@ -110,6 +110,7 @@ beforeEach(() => {
 
 afterEach(() => {
   act(() => root.unmount());
+  vi.useRealTimers();
 });
 
 describe("useCalendarPointer", () => {
@@ -169,7 +170,6 @@ describe("useCalendarPointer", () => {
     // Added once, while enabled, and removed again.
     expect(touchMoves(added)).toHaveLength(1);
     expect(touchMoves(removed)).toContain(touchMoves(added)[0]);
-    vi.useRealTimers();
   });
 
   test("removes the preview when the view unmounts mid-drag", () => {

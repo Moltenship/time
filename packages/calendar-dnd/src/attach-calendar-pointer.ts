@@ -64,6 +64,11 @@ export interface CalendarPointerOptions<
    * renders more days while a drag scrolls it needs.
    */
   readonly columns?: readonly TimeGridColumn[];
+  /**
+   * Turns gestures off. It's also read when the layer attaches: a region disabled then doesn't
+   * listen for touch moves, which a drag needs on iOS, so attach again when it changes, as
+   * `useCalendarPointer` does.
+   */
   readonly disabled?: boolean;
   /**
    * Hears the draft as the preview moves: once per change of where a drop would land, and `null`
@@ -535,7 +540,8 @@ export function attachCalendarPointer<
     region.addEventListener("touchmove", onTouchMove, { passive: false });
   }
   return () => {
-    end();
+    // A drag in progress is announced as cancelled, as when the view goes read-only mid-drag.
+    cancel();
     region.removeEventListener("pointerdown", onPointerDown);
     region.removeEventListener("touchmove", onTouchMove);
   };
