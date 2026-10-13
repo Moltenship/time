@@ -203,8 +203,8 @@ function installFailure(directory: string, result: { stdout: string; stderr: str
  * field makes a config dependency (`ERR_PNPM_BAD_CONFIG_DEP` in the package mirror).
  */
 export function lacksMetadata(output: string): boolean {
-  // pnpm wraps its messages to the terminal's width.
-  const text = output.replace(/\s+/g, " ");
+  // pnpm wraps its messages to the terminal's width, and frames the causes it lists.
+  const text = output.replace(/[│╰─▶×]/g, " ").replace(/\s+/g, " ");
   return (
     text.includes("ERR_PNPM_NO_OFFLINE_META") ||
     (text.includes("ERR_PNPM_BAD_CONFIG_DEP") && text.includes("package mirror"))
@@ -248,7 +248,7 @@ export function temporaryRoot(name: string): Promise<string> {
 
 /**
  * Copies workspace folders into a new pnpm workspace in `root`, outside this one, and installs it
- * offline, with every published package from the dry run's tarballs instead of linked from source.
+ * from the pnpm store (`installFromStore`), with every published package from the dry run's tarballs instead of linked from source.
  * The folders keep their paths, so relative imports between them still resolve. The copy has no
  * package source and no `paths` into it, so `@moltenship` imports can only reach the tarballs; its
  * lockfile starts from the workspace's, so third-party packages keep their versions.

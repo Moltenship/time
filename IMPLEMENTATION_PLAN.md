@@ -35,7 +35,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | Next.js recipe | #164             | A live App Router example at `/examples/nextjs` and a guide through its source: the view and date in the URL, a Server Component fetching that range, Server Actions saving changes with `useOptimistic`, a time zone cookie; `withAsciiSpaces`, so ranges formatted in Node hydrate in browsers |
 | Quality gate   | #47              | The local gate in three tiers, the same tasks CI runs: `vp run ready:quick`, `ready` and `ready:full` (#179); the a11y suite fixed at the causes of CI's flakes, and run at CI's speed in the full gate (#178); the a11y suite and real mouse and keyboard interactions in Firefox and WebKit, WebKit on `temporal-polyfill` (`vp run browsers`, #183) |
 | Release audit  | #47 (phase 1)    | `docs/internal/release-audit.md`: each invariant in `architecture.md` linked to its proof, the gaps filed (#180–#182, #184–#192), the open p0 and p1 issues triaged |
-| Release tooling | #46             | One version for the seven published packages, `CHANGELOG.md` and `release:version`; size budgets, API reports, publint and are-the-types-wrong checks, an offline clean-consumer install and a dry run that writes a manifest; a manual publish step, local or from a `workflow_dispatch` workflow with provenance, that refuses without a passing dry run. Runbook in `docs/internal/releasing.md`. MIT `LICENSE` in every tarball (#175) |
+| Release tooling | #46             | One version for the seven published packages, `CHANGELOG.md` and `release:version`; size budgets, API reports, publint and are-the-types-wrong checks, a clean-consumer install from the pnpm store and a dry run that writes a manifest; a manual publish step, local or from a `workflow_dispatch` workflow with provenance, that refuses without a passing dry run. Runbook in `docs/internal/releasing.md`. MIT `LICENSE` in every tarball (#175) |
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
 0.4 — Availability, layout & scale are closed. Epic #2, recurrence, closes with #155.
@@ -108,8 +108,9 @@ issue's "Later" section when work starts.
   Actions; CI runs the same tasks as a backstop. A red CI run on `main` gets fixed right away, and
   CI red with local green is a gate bug: the local gate must reproduce it. Release work is the
   exception: the release job's gate must pass, and a change to it shows a green CI rehearsal.
-- Every PR gets a code review, from Claude Opus 5.5 (xhigh). Fix each finding, or reply with the
-  reason you didn't. Post the local gate's result on the PR.
+- Every PR gets a code review. Fix each finding, or reply with the reason you didn't. Get the
+  review from Claude Opus 5.5 (xhigh) instead of Pullfrog, and post the local gate's result on
+  the PR.
 - Merge with squash once the review has no open blocker or should-fix findings and the local gate
   passes. The Vercel checks don't gate merges. When Vercel's daily deploy
   limit is hit, production catches up with the next deploy after it resets. Rebase on `main` first

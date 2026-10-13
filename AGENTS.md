@@ -48,8 +48,8 @@ When each tier runs:
   hand right before cutting a release candidate or a release. A PR doesn't run it, with one
   exception: a PR that changes the full gate itself or the release tooling runs it once, to show
   the gate still works. Release work is the exception to merging on the local gate: the release
-  job's gate must pass, and a change to the release job shows a green run of CI's `release-gate`
-  job on a fresh runner.
+  job's gate must pass, and a change to the release job, or a version PR, links a green run of
+  CI's `release-gate` job on a fresh runner.
 
 On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 120 from a cold cache.
 Steps run in parallel where they're independent. Steps that write or read generated files

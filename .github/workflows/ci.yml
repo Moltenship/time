@@ -68,8 +68,8 @@ jobs:
   browsers:
     name: Firefox and WebKit
     # The full gate's Firefox and WebKit run, on Linux, where Playwright's Firefox starts (#182).
-    # On demand only, while its timing tests vary from run to run there (#192):
-    # `gh workflow run ci.yml --ref <branch>`. Pull requests and main run the PR tier.
+    # On demand, as the full tier runs for releases (AGENTS.md): `gh workflow run ci.yml --ref
+    # <branch>`. Pull requests and main run the PR tier. The release-gate job runs it too.
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15

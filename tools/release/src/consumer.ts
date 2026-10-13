@@ -43,11 +43,13 @@ export function lockedVersions(workspaceLockfile: string): Record<string, string
  */
 export async function installConsumer(tarballs: readonly PackedTarball[]): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), "moltenship-consumer-"));
-  const { catalog } = parse(await readFile(join(workspaceRoot, "pnpm-workspace.yaml"), "utf8")) as {
+  const settings = parse(await readFile(join(workspaceRoot, "pnpm-workspace.yaml"), "utf8")) as {
     readonly catalog: Record<string, string>;
+    readonly minimumReleaseAgeExclude?: readonly string[];
   };
-  // The workspace's pnpm, which vp has already downloaded. Through devEngines, pnpm would look
-  // the version up in the registry, which an offline install can't do.
+  const { catalog } = settings;
+  // The workspace's pnpm, pinned. A cold cache lacks its metadata too, which `installFromStore`
+  // then reads from npm.
   const { devEngines } = await readJson<{
     devEngines: { packageManager: { name: string; version: string } };
   }>(join(workspaceRoot, "package.json"));
@@ -69,24 +71,16 @@ export async function installConsumer(tarballs: readonly PackedTarball[]): Promi
       2,
     )}\n`,
   );
-  const workspace = await readFile(join(workspaceRoot, "pnpm-workspace.yaml"), "utf8")
-    .then((text) => parse(text) as Record<string, unknown>)
-    .then(async (settings) => ({
-      lockfile: await readFile(join(workspaceRoot, "pnpm-lock.yaml"), "utf8"),
-      settings,
-    }));
-  // The workspace's rules for what it installs, as #203's copies carry them: a package it allows
-  // younger than the release-age limit, its extensions and peer rules.
-  const rules = Object.fromEntries(
-    ["packageExtensions", "peerDependencyRules", "allowBuilds", "minimumReleaseAgeExclude"]
-      .filter((key) => key in workspace.settings)
-      .map((key) => [key, workspace.settings[key]]),
-  );
+  const workspaceLockfile = await readFile(join(workspaceRoot, "pnpm-lock.yaml"), "utf8");
   await writeFile(
     join(directory, "pnpm-workspace.yaml"),
     stringify({
-      ...rules,
-      overrides: { ...lockedVersions(workspace.lockfile), ...files },
+      // The young versions the workspace allows, so pnpm takes the same ones. Not its package
+      // extensions or peer rules: users get the manifests as published.
+      ...(settings.minimumReleaseAgeExclude === undefined
+        ? {}
+        : { minimumReleaseAgeExclude: settings.minimumReleaseAgeExclude }),
+      overrides: { ...lockedVersions(workspaceLockfile), ...files },
     }),
   );
   const { online } = await installFromStore(directory);
@@ -99,7 +93,7 @@ export async function installConsumer(tarballs: readonly PackedTarball[]): Promi
     lockfile: await readFile(join(directory, "pnpm-lock.yaml"), "utf8"),
     packages: tarballs,
     expected: tarballs.map(({ name }) => name),
-    workspaceLockfile: workspace.lockfile,
+    workspaceLockfile,
   });
   if (problems.length > 0) {
     throw new Error(

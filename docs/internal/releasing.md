@@ -1,7 +1,7 @@
 # Releasing
 
 How the packages get to npm. Only the owner publishes. Everything before the publish step runs
-locally, and nothing installs our packages from npm. The dry run installs from the pnpm store,
+locally or in CI, and nothing installs our packages from npm. The dry run installs from the pnpm store,
 reading package metadata from npm only when a cold cache lacks it, as on a fresh runner; the
 checks on its tarballs reach the network only for third-party packages, shadcn's components and the
 docs site's fonts.
@@ -15,7 +15,8 @@ Seven packages publish under `@moltenship`, listed in
 
 Each check is a `vp run` task. The same tasks run locally, in CI and in the release workflow. The
 tier says where a check belongs in the local gate: PR checks are cheap enough for every PR, and the
-full tier is the release gate, which runs for releases only. `vp run release:check` runs the three PR checks in about two seconds.
+full tier is the release gate, which runs for releases, and once in a PR that changes it or the
+release tooling. `vp run release:check` runs the three PR checks in about two seconds.
 It sits in the `gate:serial` lane right after `ci:build`, so `vp run ready` and CI run it. The full
 tier, `vp run ready:full`, also runs `vp run release:dry-run` and then `vp run release:artifacts`
 on what the dry run packed.
@@ -51,16 +52,18 @@ packs nothing, and refuses a manifest from another commit or a file whose hash c
    Open a PR and review it.
 3. **Link a green rehearsal** before merging: `gh workflow run ci.yml --ref <version-branch>`
    runs CI's on-demand `release-gate` job, which runs what the release workflow's gate runs, and
-   the `browsers` job. Link the green run in the version PR, then merge. From then on, the docs site's registry asks for that version,
-   which npm doesn't have until step 4, so publish soon after merging.
+   the `browsers` job. Link the green run in the version PR, then merge. From then on, the docs
+   site's registry asks for that version, which npm doesn't have until step 4, so publish soon
+   after merging.
 4. **Publish from `main`**, one of two ways:
    - **GitHub Actions.** Actions → Release → Run workflow, on `main`, with the version. Leave
      "Publish to npm" off for a rehearsal, and rehearse at least once before the first real
      release. The `verify` job installs Chromium, Firefox and WebKit, then runs
      `vp run release:gate` with `RELEASE_VERSION` set to the input: the whole full tier, its three
      browser runs included, with `release:dry-run --require-clean` for that version and
-     `release:artifacts` on the dry run's tarballs, its lanes one after the other. CI's on-demand `release-gate` job runs the same
-     steps on any branch, without publishing, for a rehearsal before the version PR. The job keeps
+     `release:artifacts` on the dry run's tarballs, its lanes one after the other. CI's
+     on-demand `release-gate` job runs the same steps on any branch without publishing: on the
+     version PR's branch, as step 3 says, or before it. The job keeps
      `.release/` as the `release` artifact for seven days. A rehearsal of the release workflow
      itself before the version PR uses version `0.0.0`.
      With publishing on, the `publish` job downloads the artifact and runs

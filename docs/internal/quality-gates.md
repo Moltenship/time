@@ -7,9 +7,10 @@ a V8 feature flag or bundled polyfill.
 
 ## Tiers
 
-Three tasks group the gates below. Quick runs after every change and PR before every merge. Full
-runs for releases: in the release workflow, and by hand right before a release candidate or a
-release, plus once in a PR that changes the full gate or the release tooling (`AGENTS.md`).
+Three tasks group the gates below. Quick runs after every change, and is enough to merge a change
+to docs or notes alone. PR runs before every other merge. Full runs for releases: in the release
+workflow, and by hand right before a release candidate or a release, plus once in a PR that
+changes the full gate or the release tooling (`AGENTS.md`).
 
 | Tier  | Task                 | Steps                                                                                        |
 | ----- | -------------------- | -------------------------------------------------------------------------------------------- |
@@ -18,7 +19,8 @@ release, plus once in a PR that changes the full gate or the release tooling (`A
 | Full  | `vp run ready:full`  | Every PR step, plus `browsers` and `a11y:ci-speed`. The three browser runs go one at a time in `gate:browsers`, beside `registry:smoke` and `gate:serial:full`, which adds `release:dry-run`, `showcase:types`, search and `release:artifacts` to the serial lane |
 
 On a 15-core Apple-silicon laptop, quick takes about 13 seconds, PR 37 seconds from a cold cache
-and 24 warm, and full about 120 seconds cold (119.4, release artifacts and dry run included). Beside six threads of CPU load, full took 101 to 127 seconds before #203 (#47).
+and 24 warm, and full about 120 seconds cold (119.4, release
+artifacts and dry run included). Beside six threads of CPU load, full took 101 to 127 seconds before #203 (#47).
 The warm floor is the steps that pack packages, build the docs site or install the registry into
 clean apps, which never replay: they rewrite their own inputs, or reach the network.
 
@@ -133,8 +135,8 @@ installs the polyfill before any test imports, as an app would, and a test check
   until #181 the agenda's end, the 10,000-event agenda scroll (too slow on the polyfill in CI), a
   day swipe's and a month step's snap points, and a drag against the edge.
 - Playwright's Firefox doesn't start on macOS 27 (#182). There the run leaves it out and says so;
-  CI's `browsers` job runs it on Linux, on demand, where its timing tests still vary from run to
-  run (#192).
+  CI runs it on Linux in the on-demand `browsers` job and in the release gate, green since #204
+  (#192).
 
 ## Passing gates
 

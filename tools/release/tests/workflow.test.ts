@@ -87,6 +87,7 @@ describe("release workflow contract", () => {
       job?.steps.find(({ uses }) => uses?.startsWith("voidzero-dev/setup-vp@"));
     expect(setup(rehearsal)).toEqual(setup(verify));
     expect(rehearsal?.environment).toBeUndefined();
+    expect(rehearsal?.permissions).toBeUndefined();
     expect(JSON.stringify(rehearsal)).not.toContain("release:publish");
   });
 
