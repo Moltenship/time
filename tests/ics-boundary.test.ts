@@ -61,6 +61,11 @@ describe("ics runtime boundary", () => {
       expect(packedDeclarations).toContain("Temporal.ZonedDateTime");
       expect(packedDeclarations).not.toContain("@standard-schema/spec");
       expect(packedDeclarations).not.toContain("temporal-spec");
+      // The CLDR data's license goes with the built code, as a legal comment bundlers keep.
+      const packedCode = await readFile(join(packDestination, "package/dist/index.mjs"), "utf8");
+      expect(packedCode).toMatch(
+        /\/\*![^]*?UNICODE LICENSE V3[^]*?SPDX-License-Identifier: Unicode-3\.0/,
+      );
 
       const consumerPath = join(packDestination, "consumer.mts");
       await writeFile(

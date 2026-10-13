@@ -28,7 +28,9 @@ export const publishedPackages: readonly PublishedPackage[] = [
   { directory: "calendar-react", budgets: { ".": { raw: 76 * KiB, gzip: 20 * KiB } } },
   { directory: "calendar-recurrence", budgets: { ".": { raw: 144 * KiB, gzip: 36 * KiB } } },
   { directory: "calendar-temporal", budgets: { ".": { raw: 30 * KiB, gzip: 7 * KiB } } },
-  { directory: "ics", budgets: { ".": { raw: 88 * KiB, gzip: 25 * KiB } } },
+  // ics keeps the Unicode License v3 of its CLDR data in its build: 1.2 KiB gzip, which took it
+  // to 25,267 of 25,600 bytes. 26 KiB leaves the usual headroom.
+  { directory: "ics", budgets: { ".": { raw: 88 * KiB, gzip: 26 * KiB } } },
 ];
 
 /** Optional adapters. Base packages never import them, and the facade's other exports tree-shake them away. */

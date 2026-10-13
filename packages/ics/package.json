@@ -6,7 +6,7 @@
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },
-  "license": "MIT",
+  "license": "MIT AND Unicode-3.0",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Moltenship/time.git",

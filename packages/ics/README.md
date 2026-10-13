@@ -10,7 +10,11 @@ every deviation from the RFC reported as an issue with its line.
 - **Standard Schema.** A parser is a [Standard Schema](https://standardschema.dev), and extension
   properties take any Standard Schema validator (Zod, Valibot, ArkType…).
 
-> **Status:** pre-1.0, not yet published to npm. The API will change before 1.0.
+## Install
+
+```bash
+pnpm add @moltenship/ics
+```
 
 ## Parse a feed
 
@@ -166,7 +170,14 @@ and `otherComponents`.
 - Byte input. Decode the text as UTF-8 first; a fold that splits a multi-byte character can't be
   repaired after decoding.
 
+## Documentation
+
+- [ICS reference](https://moltenship-time.vercel.app/docs/api/ics)
+- [Repository](https://github.com/Moltenship/time)
+
 ## License
 
-MIT. The Windows time zone data comes from Unicode CLDR under the Unicode License v3; see
-[THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md).
+`MIT AND Unicode-3.0`. The code is MIT. The Windows time zone data is derived from Unicode CLDR and
+is under the Unicode License v3; see
+[THIRD-PARTY-NOTICES.md](https://github.com/Moltenship/time/blob/main/packages/ics/THIRD-PARTY-NOTICES.md).
+The built code carries the same notice as a legal comment, which bundlers keep.

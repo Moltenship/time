@@ -13,8 +13,8 @@ import { plainDateInterval, zonedDayRange } from "@moltenship/calendar";
 The package on its own has no dependencies and no React, so it also works where React isn't
 loaded.
 
-Every function takes and returns native Temporal values. None of them read the clock or the host
-time zone.
+Dates and times go in and out as native Temporal values. Apart from `createSystemClock`, nothing
+reads the clock, and nothing reads the host time zone.
 
 ## Ranges
 

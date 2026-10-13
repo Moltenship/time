@@ -12,6 +12,16 @@ const execFileAsync = promisify(execFile);
 // Directories under packages/ that publish to npm. calendar-testing stays private until after 1.0 (#45).
 const publishedPackageDirectories = publishedPackages.map(({ directory }) => directory);
 
+/**
+ * Packages that bundle third-party data, with the license that adds, and the generated source
+ * whose `/*!` comment carries it into the build. The others are MIT alone.
+ */
+const bundledData: Readonly<Record<string, { readonly license: string; readonly source: string }>> =
+  {
+    // Unicode CLDR's Windows time zone mapping.
+    ics: { license: "Unicode-3.0", source: "src/time-zones/windows-zones.ts" },
+  };
+
 interface PackageManifest {
   readonly bugs?: { readonly url?: string };
   readonly homepage?: string;
@@ -83,7 +93,8 @@ describe("published package metadata", () => {
     async (directory) => {
       const manifest = await readManifest(directory);
 
-      expect(manifest.license).toBe("MIT");
+      const data = bundledData[directory];
+      expect(manifest.license).toBe(data === undefined ? "MIT" : `MIT AND ${data.license}`);
       expect(manifest.repository).toEqual({
         type: "git",
         url: "git+https://github.com/Moltenship/time.git",
@@ -108,7 +119,7 @@ describe("published package metadata", () => {
 
   // pnpm adds the workspace root LICENSE to a tarball when no packed file's path contains "license"
   // or "licence", in any case.
-  test("every published tarball contains LICENSE", async () => {
+  test("every published tarball has its README and LICENSE, and the notices for data it bundles", async () => {
     const tarballs = await Promise.all(
       publishedPackageDirectories.map(
         async (directory) => [directory, await packedFiles(directory)] as const,
@@ -117,6 +128,31 @@ describe("published package metadata", () => {
 
     for (const [directory, files] of tarballs) {
       expect(files, directory).toContain("LICENSE");
+      expect(files, directory).toContain("README.md");
+      if (directory in bundledData) expect(files, directory).toContain("THIRD-PARTY-NOTICES.md");
     }
   }, 30_000);
+
+  test.each(Object.entries(bundledData))(
+    "%s's notices and its generated source carry the same license text",
+    async (directory, { license, source }) => {
+      const notices = await readFile(join("packages", directory, "THIRD-PARTY-NOTICES.md"), "utf8");
+      const generated = await readFile(join("packages", directory, source), "utf8");
+      const noticeText = /```text\n([\s\S]*?)\n```/.exec(notices)?.[1];
+      // A legal comment, which bundlers keep, one ` * ` line at a time.
+      const commentText = /\/\*!\n([\s\S]*?)\n \*\//
+        .exec(generated)?.[1]
+        ?.split("\n")
+        .map((line) => line.replace(/^ \*( |$)/, ""))
+        .join("\n");
+
+      expect(noticeText).toContain(`SPDX-License-Identifier: ${license}`);
+      expect(commentText).toBe(noticeText);
+      // Both name the same data release: "release-48-2" is "release 48.2", "release-49" "release 49".
+      const tag = /CLDR release-(\d+)(?:-(\d+))?/.exec(generated);
+      expect(tag).not.toBeNull();
+      const release = tag![2] === undefined ? tag![1]! : `${tag![1]}.${tag![2]}`;
+      expect(notices).toMatch(new RegExp(`release ${release.replace(".", "\\.")}(?!\\.?\\d)`));
+    },
+  );
 });
