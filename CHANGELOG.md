@@ -20,3 +20,9 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
 - `Root`'s `events` takes a `CalendarEventSource<TEvent>` as well as an array: events in an
   external store, read through `useSyncExternalStore`, with `getServerSnapshot` for server rendering
   and hydration. Its getters return event arrays (#200).
+- `Root`'s `onEventChangeResult` hears how each proposal ended, from a pointer, the keyboard or
+  `proposeEventChange`, with the `input` that made it. Your calendar's
+  `useCalendarPendingChanges(selector?)` lists the changes still validating, saving, or waiting for
+  `events`. `proposeEventChange` takes an optional `{ input }`, and the pointer layer's `onPropose`
+  gets `{ input: "pointer" }`. A `Root` without `onEventChange` rejects with the change, as a
+  policy does (#199).

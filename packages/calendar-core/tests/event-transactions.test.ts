@@ -123,6 +123,20 @@ function createHarness(
   return harness;
 }
 
+/** Pending changes as `<change ID> <event ID or "new"> <phase>`, in the map's order. */
+function phases(transactions: { getPendingChanges(): ReadonlyMap<string, unknown> }): string[] {
+  return Array.from(
+    transactions.getPendingChanges() as ReadonlyMap<
+      string,
+      { readonly change: Change; readonly phase: string }
+    >,
+    ([id, { change, phase }]) => {
+      expect(change.id).toBe(id);
+      return `${id} ${change.eventId ?? "new"} ${phase}`;
+    },
+  );
+}
+
 const move = (
   eventId: string,
   start: string,
@@ -526,5 +540,262 @@ describe("event transactions", () => {
     await app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), async () => {});
     expect(app.transactions.getPending()).not.toBe(empty);
     expect(listener).not.toHaveBeenCalled();
+  });
+});
+
+describe("pending changes", () => {
+  test("follow a change from validation through saving to the events that show it", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const decision = Promise.withResolvers<{ readonly type: "accept" }>();
+    const saving = Promise.withResolvers<void>();
+    let received: Change | undefined;
+
+    const result = app.propose(
+      move("a", "2026-08-15T11:00", "2026-08-15T12:00"),
+      (change) => {
+        received = change;
+        return saving.promise;
+      },
+      [() => decision.promise, snapPolicy({ minutes: 15 })],
+    );
+    expect(phases(app.transactions)).toEqual(["change-1 a validating"]);
+
+    decision.resolve({ type: "accept" });
+    await vi.waitFor(() => expect(received).toBeDefined());
+    expect(phases(app.transactions)).toEqual(["change-1 a saving"]);
+    expect(app.transactions.getPendingChanges().get("change-1")?.change).toBe(received);
+
+    const placements = app.transactions.getPending();
+    saving.resolve();
+    await expect(result).resolves.toMatchObject({ status: "committed" });
+    expect(phases(app.transactions)).toEqual(["change-1 a awaiting-events"]);
+    // A change of phase alone keeps the placements, so views don't project again.
+    expect(app.transactions.getPending()).toBe(placements);
+
+    app.apply(received!);
+    expect(phases(app.transactions)).toEqual([]);
+    expect(app.transactions.getPendingChanges().size).toBe(0);
+  });
+
+  test("never show an all-synchronous proposal, and keep the map's identity until it changes", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const empty = app.transactions.getPendingChanges();
+    const listener = vi.fn();
+    app.transactions.subscribe(listener);
+
+    await app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), (change) =>
+      app.apply(change),
+    );
+    await app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), vi.fn<Handler>(), [
+      () => ({ reason: "closed", type: "reject" }),
+    ]);
+
+    expect(app.transactions.getPendingChanges()).toBe(empty);
+    expect(Object.isFrozen(empty)).toBe(true);
+    expect(listener).not.toHaveBeenCalled();
+  });
+
+  test("end a change that the events already show when its save resolves", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const saving = Promise.withResolvers<void>();
+
+    const result = app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), (change) => {
+      app.apply(change);
+      return saving.promise;
+    });
+    expect(phases(app.transactions)).toEqual(["change-1 a saving"]);
+
+    saving.resolve();
+    await result;
+    expect(phases(app.transactions)).toEqual([]);
+  });
+
+  test("end a rejected or failed proposal at once", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const saving = Promise.withResolvers<void>();
+
+    const failed = app.propose(
+      move("a", "2026-08-15T11:00", "2026-08-15T12:00"),
+      () => saving.promise,
+    );
+    const rejected = app.propose(move("a", "2026-08-15T13:00", "2026-08-15T14:00"), vi.fn(), [
+      async () => ({ reason: "busy", type: "reject" }),
+    ]);
+    expect(phases(app.transactions)).toEqual(["change-1 a saving", "change-2 a validating"]);
+
+    await expect(rejected).resolves.toMatchObject({ reason: "busy" });
+    expect(phases(app.transactions)).toEqual(["change-1 a saving"]);
+    saving.reject(new Error("offline"));
+    await expect(failed).resolves.toMatchObject({ reason: "handler-error" });
+    expect(phases(app.transactions)).toEqual([]);
+  });
+
+  test("include creates while they validate and save", async () => {
+    const app = createHarness([]);
+    const decision = Promise.withResolvers<{ readonly type: "accept" }>();
+    const saving = Promise.withResolvers<void>();
+    const handler = vi.fn<Handler>(() => saving.promise);
+
+    const result = app.propose(
+      { cause: "create", proposed: placement("2026-08-15T11:00", "2026-08-15T12:00") },
+      handler,
+      [() => decision.promise],
+    );
+    expect(phases(app.transactions)).toEqual(["change-1 new validating"]);
+    decision.resolve({ type: "accept" });
+    await vi.waitFor(() => expect(handler).toHaveBeenCalled());
+    expect(phases(app.transactions)).toEqual(["change-1 new saving"]);
+    expect(app.transactions.getPending().size).toBe(0);
+
+    saving.resolve();
+    await result;
+    expect(phases(app.transactions)).toEqual([]);
+  });
+
+  test("keep a superseded proposal until its validation ends", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const decision = Promise.withResolvers<{ readonly type: "accept" }>();
+    const saving = Promise.withResolvers<void>();
+
+    const slow = app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), vi.fn(), [
+      () => decision.promise,
+    ]);
+    void app.propose(move("a", "2026-08-15T14:00", "2026-08-15T15:00"), () => saving.promise);
+    expect(phases(app.transactions)).toEqual(["change-1 a validating", "change-2 a saving"]);
+
+    decision.resolve({ type: "accept" });
+    await expect(slow).resolves.toMatchObject({ reason: "superseded" });
+    expect(phases(app.transactions)).toEqual(["change-2 a saving"]);
+  });
+
+  test("keep an older change saving when a synchronous commit replaces it on screen", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const first = Promise.withResolvers<void>();
+
+    const firstResult = app.propose(
+      move("a", "2026-08-15T11:00", "2026-08-15T12:00"),
+      () => first.promise,
+    );
+    await app.propose(move("a", "2026-08-15T14:00", "2026-08-15T15:00"), (change) =>
+      app.apply(change),
+    );
+    expect(app.transactions.getPending().size).toBe(0);
+    expect(phases(app.transactions)).toEqual(["change-1 a saving"]);
+
+    // Its save resolves after the newer change took over, so it doesn't wait for the events.
+    first.resolve();
+    await expect(firstResult).resolves.toMatchObject({ status: "committed" });
+    expect(phases(app.transactions)).toEqual([]);
+  });
+
+  test("end a saved change that waits for events when a newer proposal replaces it", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const second = Promise.withResolvers<void>();
+
+    await app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), async () => {});
+    expect(phases(app.transactions)).toEqual(["change-1 a awaiting-events"]);
+
+    void app.propose(move("a", "2026-08-15T14:00", "2026-08-15T15:00"), () => second.promise);
+    expect(phases(app.transactions)).toEqual(["change-2 a saving"]);
+
+    await app.propose(move("a", "2026-08-15T16:00", "2026-08-15T17:00"), (change) =>
+      app.apply(change),
+    );
+    expect(phases(app.transactions)).toEqual(["change-2 a saving"]);
+    second.resolve();
+    await vi.waitFor(() => expect(phases(app.transactions)).toEqual([]));
+  });
+
+  test("end a saved change that waits for events when events without it arrive", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+
+    await app.propose({ cause: "delete", eventId: "a" }, async () => {});
+    expect(phases(app.transactions)).toEqual(["change-1 a awaiting-events"]);
+
+    app.setEvents([event("b", "2026-08-15T13:00", "2026-08-15T14:00")]);
+    expect(phases(app.transactions)).toEqual([]);
+  });
+
+  test("keep the placements while an unadjusted change moves from validating to saving", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const decision = Promise.withResolvers<{ readonly type: "accept" }>();
+    const handler = vi.fn<Handler>(() => new Promise<void>(() => undefined));
+    const listener = vi.fn();
+    app.transactions.subscribe(listener);
+
+    void app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), handler, [
+      () => decision.promise,
+    ]);
+    const placements = app.transactions.getPending();
+    listener.mockClear();
+    decision.resolve({ type: "accept" });
+    await vi.waitFor(() => expect(handler).toHaveBeenCalled());
+
+    expect(phases(app.transactions)).toEqual(["change-1 a saving"]);
+    expect(app.transactions.getPending()).toBe(placements);
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
+  test("show a placement an async policy adjusted when the change moves on to saving", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const handler = vi.fn<Handler>(() => new Promise<void>(() => undefined));
+
+    void app.propose(move("a", "2026-08-15T11:10", "2026-08-15T12:10"), handler, [
+      async () => ({ type: "accept" }),
+      snapPolicy({ minutes: 30 }),
+    ]);
+    expect(app.visible("a")).toBe("11:10 (pending)");
+    await vi.waitFor(() => expect(handler).toHaveBeenCalled());
+
+    expect(phases(app.transactions)).toEqual(["change-1 a saving"]);
+    expect(app.visible("a")).toBe("11:00 (pending)");
+  });
+
+  test("end an async policy's failure or empty adjustment at once, telling listeners once", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const listener = vi.fn();
+    app.transactions.subscribe(listener);
+    const failure = new Error("policy bug");
+
+    const failed = app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), vi.fn(), [
+      () => Promise.reject(failure),
+    ]);
+    expect(phases(app.transactions)).toEqual(["change-1 a validating"]);
+    listener.mockClear();
+    await expect(failed).resolves.toMatchObject({ error: failure, reason: "policy-error" });
+    expect(phases(app.transactions)).toEqual([]);
+    expect(app.visible("a")).toBe("09:00");
+    expect(listener).toHaveBeenCalledOnce();
+
+    const emptied = app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), vi.fn(), [
+      async (change) =>
+        change.proposed?.kind === "timed"
+          ? { proposed: { ...change.proposed, end: change.proposed.start }, type: "adjust" }
+          : { type: "accept" },
+    ]);
+    expect(phases(app.transactions)).toEqual(["change-2 a validating"]);
+    listener.mockClear();
+    await expect(emptied).resolves.toMatchObject({ reason: "invalid-placement" });
+    expect(phases(app.transactions)).toEqual([]);
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
+  test("end a saved change that the events already show in one update", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const saving = Promise.withResolvers<void>();
+    const listener = vi.fn();
+    app.transactions.subscribe(listener);
+
+    const result = app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), (change) => {
+      app.apply(change);
+      return saving.promise;
+    });
+    listener.mockClear();
+    saving.resolve();
+    await result;
+
+    expect(phases(app.transactions)).toEqual([]);
+    expect(app.transactions.getPending().size).toBe(0);
+    expect(listener).toHaveBeenCalledOnce();
   });
 });

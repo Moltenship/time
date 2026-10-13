@@ -65,6 +65,47 @@ only if no newer change to that event has been applied yet. So a slow save never
 saved edit, and if the newer save fails, the older one that succeeded is still shown. Your server
 needs the same care, for example by rejecting writes that carry an outdated version.
 
+### Across the calendar
+
+`Calendar.useCalendarPendingChanges()` lists every change still on its way, for a calendar-wide
+"Saving…" or a question before the page closes. It returns a read-only `Map` from change ID to
+`{ change, phase }`, in the order the changes were proposed:
+
+| `phase`           | Meaning                                                                                        |
+| ----------------- | ---------------------------------------------------------------------------------------------- |
+| `validating`      | An async policy is still deciding; your handler hasn't seen the change yet                     |
+| `saving`          | Your handler's promise is still running                                                        |
+| `awaiting-events` | The promise resolved, but your `events` don't show the change yet; it ends with your next ones |
+
+The map includes creates, and an older change to an event that is still saving after a newer one
+replaced it on screen. A change that never waits, with policies that answer at once and a handler
+that returns no promise, never shows. Neither does a keyboard gesture's preview: it isn't a change yet.
+
+Pass a selector, and the component re-renders only when what it picks changes; `{ isEqual }`
+compares another way than `Object.is`. Without one, it re-renders whenever a change starts, moves to
+its next phase, or ends.
+
+<include meta='title="saving-status.tsx"'>../examples/editing.tsx#saving</include>
+
+## How changes end
+
+`onEventChangeResult` on `Root` hears how every proposal ended: drags, keyboard moves and creates,
+and your own `proposeEventChange` calls. It gets the result `proposeEventChange` resolves with, and
+`{ input }`: `"pointer"`, `"keyboard"`, or `"api"`. Use it for a toast when a drop is refused or a
+save fails, or to log what happens:
+
+<include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#outcomes</include>
+
+- It's called once per proposal, after the proposal settles, before code that awaits
+  `proposeEventChange` goes on. A cancelled drag or keyboard gesture proposes nothing, so it isn't
+  called. It's read from the latest render, so it can be inline.
+- `committed` means your handler finished. After an async save the change can still wait for your
+  `events`, as `awaiting-events` above.
+- Each result belongs to its own proposal. When a newer change to an event replaced an older one,
+  the older one's late failure is still reported, though the newer change stays on screen.
+- A rejected result has a [reason](#changing-events-from-your-own-ui). If the callback throws, the
+  error is reported with `reportError`, as an uncaught error is, and the result stays as it was.
+
 ## Policies
 
 Policies decide which changes are allowed. Each one looks at a change and accepts it, adjusts it,
@@ -91,11 +132,13 @@ Policies can also be `async`, for example to check availability on your server.
 Buttons, forms, and dialogs can propose changes too, with `proposeEventChange` from
 `useCalendarActions()` (or the `actions` prop inside a view). The change goes through the same
 policies, pending state, and handler as a drag. The returned promise tells you how it ended; it
-never rejects.
+never rejects. `onEventChangeResult` hears it with the input `"api"`; a gesture layer of your own
+can name its input as the second argument, as in `proposeEventChange(proposal, { input: "pointer" })`.
 
 <include meta='title="push-back-button.tsx"'>../examples/editing.tsx#propose</include>
 
-A rejected result has a `reason`:
+A rejected result has a `reason`, and the `change` it would have made, except for
+`unknown-event`:
 
 | `reason`            | Meaning                                                           |
 | ------------------- | ----------------------------------------------------------------- |

@@ -316,7 +316,12 @@ test("read-only events and calendars without a handler reject changes", async ()
   // Views hear it, so they start no gestures.
   expect(rendererReadOnly).toBe(true);
   const { result: unhandled } = await propose(move("2026-08-15T11:00:00Z", "2026-08-15T12:00:00Z"));
-  await expect(unhandled).resolves.toEqual({ reason: "read-only", status: "rejected" });
+  // A root without a handler rejects through the read-only check, so the change comes along.
+  await expect(unhandled).resolves.toMatchObject({
+    change: { cause: "move", eventId: "standup" },
+    reason: "read-only",
+    status: "rejected",
+  });
   expect(visible(harness)[0]).toBe("Standup 2026-08-15T09:00:00Z");
 });
 

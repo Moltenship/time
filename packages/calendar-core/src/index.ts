@@ -219,7 +219,12 @@ export type {
   CalendarDraft,
   CalendarEventProposal,
   CalendarEventUpdateChange,
+  CalendarInputMethod,
+  CalendarPendingChange,
+  CalendarPendingChangePhase,
+  CalendarPendingChanges,
   CalendarPendingPlacements,
+  CalendarProposalDetail,
   CalendarTransactionContext,
   CalendarTransactionResult,
 } from "./transactions/types";

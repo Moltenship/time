@@ -2,6 +2,7 @@ import type {
   CalendarEnvironmentBase,
   CalendarEventProposal,
   CalendarPolicyResult,
+  CalendarProposalDetail,
   CalendarFocus,
   CalendarSelection,
   CalendarTransactionResult,
@@ -26,11 +27,13 @@ export interface CalendarViewActions {
   navigatePrevious(): void;
   navigateToday(): void;
   /**
-   * Proposes a move, resize, create, or delete, such as the result of a pointer drag. A plain
-   * function, so it can be passed on as a callback.
+   * Proposes a move, resize, create, or delete, such as the result of a pointer drag; the pointer
+   * layer passes `{ input: "pointer" }` as `detail`. A plain function, so it can be passed on as a
+   * callback.
    */
   readonly proposeEventChange: (
     proposal: CalendarEventProposal<EventId, ResourceId>,
+    detail?: CalendarProposalDetail,
   ) => Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
   setAnchorDate(anchorDate: Temporal.PlainDate): void;
   /** Moves the calendar's focus; `useRovingFocus` and `useCalendarKeyboard` call it for you. */

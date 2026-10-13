@@ -5,6 +5,8 @@ import {
   createCanonicalEventAdapter,
   type CalendarEvent,
   type CalendarEventChange,
+  type CalendarProposalDetail,
+  type CalendarTransactionResult,
 } from "@moltenship/calendar";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
@@ -33,6 +35,10 @@ const Calendar = createCalendar<Meeting, never>()({
 function Application(props: {
   readonly events?: readonly Meeting[];
   readonly onEventChange: (change: Change) => void;
+  readonly onEventChangeResult?: (
+    result: CalendarTransactionResult<Meeting, string, string>,
+    detail: CalendarProposalDetail,
+  ) => void;
   readonly view: "month" | "week";
 }) {
   return (
@@ -44,6 +50,7 @@ function Application(props: {
       locale="en-US"
       now={Temporal.Instant.from("2026-10-08T12:00:00Z")}
       onEventChange={props.onEventChange}
+      onEventChangeResult={props.onEventChangeResult}
       weekRules={{ firstDay: 1, minimalDays: 1, weekend: [6, 7] }}
     >
       <Calendar.ActiveView />
@@ -107,7 +114,14 @@ test("the week view moves, resizes, and creates timed events through onEventChan
 
 test("the month view moves events across days and creates all-day ranges", async () => {
   const onEventChange = vi.fn<(change: Change) => void>();
-  const view = await render(<Application onEventChange={onEventChange} view="month" />);
+  const onEventChangeResult = vi.fn();
+  const view = await render(
+    <Application
+      onEventChange={onEventChange}
+      onEventChangeResult={onEventChangeResult}
+      view="month"
+    />,
+  );
   cleanup = view.unmount;
 
   // 100×100 cells; the month grid starts on Monday 2026-09-28.
@@ -139,6 +153,12 @@ test("the month view moves events across days and creates all-day ranges", async
   expect(onEventChange.mock.calls.map(([change]) => [change.cause, interval(change)])).toEqual([
     ["move", "2026-10-15T09:00:00Z/2026-10-15T10:00:00Z"],
     ["create", "2026-10-20/2026-10-23"],
+  ]);
+  // Each drag's outcome reaches the application, marked as the pointer's.
+  await vi.waitFor(() => expect(onEventChangeResult).toHaveBeenCalledTimes(2));
+  expect(onEventChangeResult.mock.calls.map(([result, detail]) => [result, detail])).toEqual([
+    [{ change: onEventChange.mock.calls[0]![0], status: "committed" }, { input: "pointer" }],
+    [{ change: onEventChange.mock.calls[1]![0], status: "committed" }, { input: "pointer" }],
   ]);
 });
 

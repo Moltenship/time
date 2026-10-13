@@ -1,5 +1,6 @@
 import type {
   CalendarFocus,
+  CalendarPendingChanges,
   CalendarSelection,
   EventId,
   ResourceId,
@@ -31,6 +32,9 @@ import type {
 } from "./types";
 import type { AnyCalendarView, CalendarActiveView } from "./views";
 
+/** `useCalendarPendingChanges` without a selector: the map itself. */
+const allChanges = (changes: unknown) => changes;
+
 /**
  * Creates a typed calendar. The first call fixes the application's record types; the second infers
  * the view-name union and identifier types from `views` and `eventAdapter`.
@@ -56,6 +60,7 @@ export function createCalendar<
     type State = CalendarPublicState<View, TSelection, TFocus, TResourceId>;
     type Meta = CalendarMeta<TEvent, TResource, TViewDef, TEventId, TResourceId>;
     type Actions = CalendarSemanticActions<View, TSelection, TFocus, TResourceId, TEvent, TEventId>;
+    type PendingChanges = CalendarPendingChanges<TEvent, TEventId, TResourceId>;
 
     const views = Object.freeze([...(options.views ?? [])]);
     const names = new Set<string>();
@@ -109,6 +114,17 @@ export function createCalendar<
       },
       useCalendarActions,
       useCalendarMeta,
+      useCalendarPendingChanges<TSelected>(
+        selector?: CalendarStateSelector<PendingChanges, TSelected>,
+        selectorOptions?: CalendarStateSelectorOptions<TSelected>,
+      ) {
+        const source = useRootContext(contexts.changes) as CalendarStateSource<PendingChanges>;
+        return useStateSelector(
+          source,
+          selector ?? (allChanges as CalendarStateSelector<PendingChanges, TSelected>),
+          selectorOptions,
+        );
+      },
       useCalendarSelector<TSelected>(
         selector: CalendarStateSelector<State, TSelected>,
         selectorOptions?: CalendarStateSelectorOptions<TSelected>,

@@ -8,6 +8,7 @@ import {
   type CalendarInteractionCheck,
   type CalendarInteractionUpdate,
   type CalendarPolicyResult,
+  type CalendarProposalDetail,
   type CalendarTransactionResult,
   type EventId,
   type EventSnapshot,
@@ -37,11 +38,13 @@ export interface CalendarPointerOptions<
   /** Events as rendered, pending changes included; resolves `data-event-id`. */
   readonly events: EventSnapshot<TEvent, TEventId, TResourceId>;
   /**
-   * Receives one proposal per completed drag. Clicks and cancelled drags propose nothing. Return
-   * the transaction's result, as `proposeEventChange` does, to announce whether it was saved.
+   * Receives one proposal per completed drag, with `{ input: "pointer" }`. Clicks and cancelled
+   * drags propose nothing. Return the transaction's result, as `proposeEventChange` does, to
+   * announce whether it was saved.
    */
   readonly onPropose: (
     proposal: CalendarEventProposal<TEventId, TResourceId>,
+    detail: CalendarProposalDetail,
   ) => void | PromiseLike<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
   /** The display time zone. */
   readonly timeZone: string;
@@ -136,6 +139,7 @@ const DRAG_DISTANCE = 4;
  */
 const LONG_PRESS_MS = 450;
 const TOUCH_TOLERANCE = 8;
+const pointerInput: CalendarProposalDetail = Object.freeze({ input: "pointer" });
 
 function preventDefault(event: Event): void {
   event.preventDefault();
@@ -423,7 +427,7 @@ export function attachCalendarPointer<
       announce(current, { phase: "cancel" });
       return;
     }
-    const outcome = getOptions().onPropose(proposed);
+    const outcome = getOptions().onPropose(proposed, pointerInput);
     if (outcome === undefined) {
       announce(current, { phase: "commit", proposed: current.placement! });
       return;

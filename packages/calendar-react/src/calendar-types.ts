@@ -12,8 +12,10 @@ import type {
   CalendarEventInput,
   CalendarEventProposal,
   CalendarNowSource,
+  CalendarPendingChanges,
   CalendarPolicy,
   CalendarPolicyResult,
+  CalendarProposalDetail,
   CalendarSecondaryTimeZone,
   CalendarTransactionResult,
   CalendarWeekRules,
@@ -60,11 +62,13 @@ export type CalendarSemanticActions<
   ) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
   /**
    * Validates a change against the root's policies, shows it while `onEventChange` persists it,
-   * and resolves with the outcome. Read-only events and roots without `onEventChange` reject. A
-   * plain function, so it can be passed on as a callback.
+   * and resolves with the outcome, which `onEventChangeResult` hears first. Read-only events and
+   * roots without `onEventChange` reject. `detail.input` names the input that made the proposal,
+   * `"api"` by default. A plain function, so it can be passed on as a callback.
    */
   readonly proposeEventChange: (
     proposal: CalendarEventProposal<TEventId, TResourceId>,
+    detail?: CalendarProposalDetail,
   ) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
 };
 
@@ -214,6 +218,16 @@ interface CalendarRootBaseProps<
    * rolls it back. Without a handler the calendar is read-only.
    */
   readonly onEventChange?: CalendarEventChangeHandler<TEvent, TEventId, TResourceId>;
+  /**
+   * Hears how each proposal ended, from a pointer, the keyboard or `proposeEventChange`: once per
+   * proposal, after it settles, with the result its promise resolves with and the input that made
+   * it. Read from the latest render. A committed change may still wait for `events`; see
+   * `useCalendarPendingChanges`.
+   */
+  readonly onEventChangeResult?: (
+    result: CalendarTransactionResult<TEvent, TEventId, TResourceId>,
+    detail: CalendarProposalDetail,
+  ) => void;
   readonly onExpandedResourceIdsChange?: CalendarStateChangeHandler<
     readonly TResourceId[],
     "expandedResourceIds"
@@ -375,6 +389,19 @@ export interface CalendarFactory<
     TEventId
   >;
   useCalendarMeta(): CalendarMeta<TEvent, TResource, TViewDef, TEventId, TResourceId>;
+  /**
+   * Proposals still validating or saving, and saved changes `events` don't show yet, by change ID
+   * in the order they were proposed. Re-renders when they change; with a selector, only when its
+   * result does, by `isEqual` (`Object.is` by default).
+   */
+  useCalendarPendingChanges(): CalendarPendingChanges<TEvent, TEventId, TResourceId>;
+  useCalendarPendingChanges<TSelected>(
+    selector: CalendarStateSelector<
+      CalendarPendingChanges<TEvent, TEventId, TResourceId>,
+      TSelected
+    >,
+    options?: CalendarStateSelectorOptions<TSelected>,
+  ): TSelected;
   useCalendarSelector<TSelected>(
     selector: CalendarStateSelector<
       CalendarPublicState<TViewDef["name"], TSelection, TFocus, TResourceId>,

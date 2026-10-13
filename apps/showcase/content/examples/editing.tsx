@@ -8,8 +8,10 @@ import {
   snapPolicy,
   type CalendarEventChange,
   type CalendarPolicy,
+  type CalendarProposalDetail,
+  type CalendarTransactionResult,
 } from "@moltenship/calendar";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Calendar, meetings as initialMeetings, weekRules, type Meeting } from "./quick-start";
 
@@ -111,6 +113,39 @@ export function PushBackButton({ meeting }: { readonly meeting: Meeting }) {
   );
 }
 // #endregion propose
+
+// #region outcomes
+// <Calendar.Root onEventChangeResult={reportOutcome} … />
+export function reportOutcome(
+  result: CalendarTransactionResult<Meeting, string, never>,
+  { input }: CalendarProposalDetail,
+) {
+  if (result.status === "committed") return;
+  // An AbortError is your own handler cancelling the change, not a failed save.
+  if (result.error instanceof DOMException && result.error.name === "AbortError") return;
+  console.warn(`A ${input} change wasn't saved: ${result.reason}`, result.error);
+}
+// #endregion outcomes
+
+// #region saving
+// Anywhere inside Root, such as in the toolbar.
+export function SavingStatus() {
+  // Saved changes that only wait for your events don't count.
+  const saving = Calendar.useCalendarPendingChanges((changes) =>
+    [...changes.values()].some(({ phase }) => phase !== "awaiting-events"),
+  );
+
+  useEffect(() => {
+    if (!saving) return;
+    // Ask before the page closes while a change is still on its way.
+    const warn = (event: BeforeUnloadEvent) => event.preventDefault();
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [saving]);
+
+  return <output>{saving ? "Saving…" : "All changes saved"}</output>;
+}
+// #endregion saving
 
 // #region placement
 export function useMoveToTomorrow() {

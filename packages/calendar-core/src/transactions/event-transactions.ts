@@ -11,6 +11,9 @@ import type {
   CalendarEventDeleteChange,
   CalendarEventProposal,
   CalendarEventUpdateChange,
+  CalendarPendingChange,
+  CalendarPendingChangePhase,
+  CalendarPendingChanges,
   CalendarPendingPlacements,
   CalendarTransactionContext,
   CalendarTransactionResult,
@@ -24,6 +27,12 @@ export interface EventTransactions<
 > {
   /** Pending placements for `applyEventOverlay`. The map identity changes only on updates. */
   readonly getPending: () => CalendarPendingPlacements<TEventId, TResourceId>;
+  /**
+   * Proposals still validating or saving, and saved changes the application's events don't show
+   * yet, by change ID in the order they were proposed. The map identity changes only on updates;
+   * a change of phase alone leaves `getPending`'s map as it is.
+   */
+  readonly getPendingChanges: () => CalendarPendingChanges<TEvent, TEventId, TResourceId>;
   /**
    * Validates a proposal, shows it optimistically, and hands it to `onEventChange`. The promise
    * settles with the outcome and never rejects.
@@ -100,33 +109,94 @@ export function createEventTransactions<
   type Snapshot = EventSnapshot<TEvent, TEventId, TResourceId>;
 
   const entries = new Map<TEventId, Entry>();
+  /** Every proposal not yet settled, and the saved ones waiting for events, by change ID. */
+  const records = new Map<string, CalendarPendingChange<TEvent, TEventId, TResourceId>>();
   /** The newest proposal per event; older proposals still being validated are superseded. */
   const latest = new Map<TEventId, string>();
   const listeners = new Set<() => void>();
   let pending: CalendarPendingPlacements<TEventId, TResourceId> = noPending;
+  let changes: CalendarPendingChanges<TEvent, TEventId, TResourceId> = noPending;
   let base: Snapshot | undefined;
   let sequence = 0;
 
-  function publish(): void {
-    pending =
-      entries.size === 0
-        ? noPending
-        : new ReadonlyMapView(
-            new Map(Array.from(entries, ([eventId, entry]) => [eventId, entry.change.proposed])),
-          );
+  /**
+   * Rebuilds the pending placements, the pending changes, or both, and tells the listeners once. A
+   * change of phase alone keeps the placements, so views don't project again.
+   */
+  function publish(placements = true, phases = false): void {
+    if (placements) {
+      pending =
+        entries.size === 0
+          ? noPending
+          : new ReadonlyMapView(
+              new Map(Array.from(entries, ([eventId, entry]) => [eventId, entry.change.proposed])),
+            );
+    }
+    if (phases) {
+      changes = records.size === 0 ? noPending : new ReadonlyMapView(new Map(records));
+    }
     for (const listener of listeners) listener();
   }
 
-  function show(change: Entry["change"], entry: Omit<Entry, "change">): void {
-    entries.set(change.eventId, { ...entry, change });
-    publish();
+  function track(change: Change, phase: CalendarPendingChangePhase): void {
+    records.set(change.id, Object.freeze({ change, phase }));
+    publish(false, true);
   }
 
-  /** Removes a change unless a newer proposal for the same event has replaced it. */
+  /** Ends a proposal's pending record, unless it saved and waits for the events. */
+  function finish(result: Result): Result {
+    const record = result.change === undefined ? undefined : records.get(result.change.id);
+    if (record !== undefined && record.phase !== "awaiting-events") {
+      records.delete(record.change.id);
+      publish(false, true);
+    }
+    return result;
+  }
+
+  /**
+   * Removes an event's entry. A saved change it held for the events is replaced, so it is no longer
+   * pending either.
+   */
+  function drop(eventId: TEventId, replacement?: Entry, phases = false): void {
+    const entry = entries.get(eventId);
+    if (replacement === undefined) entries.delete(eventId);
+    else entries.set(eventId, replacement);
+    const ended = entry?.settledAgainst !== undefined && records.delete(entry.change.id);
+    if (entry !== undefined || replacement !== undefined) publish(true, phases || ended);
+    else if (phases) publish(false, true);
+  }
+
+  /**
+   * Shows a change over its event and records its phase, in one update. The same change moving on
+   * with the same placement, as from validating to saving, keeps the placements.
+   */
+  function show(
+    change: Entry["change"],
+    entry: Omit<Entry, "change">,
+    phase: CalendarPendingChangePhase,
+  ): void {
+    records.set(change.id, Object.freeze({ change, phase }));
+    const previous = entries.get(change.eventId);
+    if (previous?.change.id === change.id && previous.change.proposed === change.proposed) {
+      entries.set(change.eventId, { ...entry, change });
+      publish(false, true);
+    } else {
+      drop(change.eventId, { ...entry, change }, true);
+    }
+  }
+
+  /**
+   * Ends a proposal that won't be saved: its record goes, and so does its change on screen unless a
+   * newer proposal for the same event has replaced it.
+   */
   function hide(change: Change): void {
-    if (change.eventId === null || entries.get(change.eventId)?.change.id !== change.id) return;
-    entries.delete(change.eventId);
-    publish();
+    const ended = records.delete(change.id);
+    if (change.eventId !== null && entries.get(change.eventId)?.change.id === change.id) {
+      entries.delete(change.eventId);
+      publish(true, ended);
+    } else if (ended) {
+      publish(false, true);
+    }
   }
 
   function reflects(entry: Entry, snapshot: Snapshot): boolean {
@@ -145,9 +215,10 @@ export function createEventTransactions<
     if (entry?.change.id !== change.id) return;
     if (base === undefined || reflects(entry, base)) {
       entries.delete(change.eventId);
-      publish();
+      publish(true, records.delete(change.id));
     } else {
       entries.set(change.eventId, { ...entry, settledAgainst: base });
+      track(change, "awaiting-events");
     }
   }
 
@@ -177,10 +248,11 @@ export function createEventTransactions<
     for (const [eventId, entry] of entries) {
       if (entry.settledAgainst !== undefined) {
         entries.delete(eventId);
+        records.delete(entry.change.id);
         changed = true;
       }
     }
-    if (changed) publish();
+    if (changed) publish(true, true);
   }
 
   function commit(
@@ -208,6 +280,7 @@ export function createEventTransactions<
     }
 
     if (change.cause === "create") {
+      if (isPromiseLike(returned)) track(change, "saving");
       return isPromiseLike(returned)
         ? Promise.resolve(returned).then(
             (): Result => ({ change, status: "committed" }),
@@ -223,11 +296,11 @@ export function createEventTransactions<
     if (!isPromiseLike(returned)) {
       // A synchronous handler has already updated the application's events, which supersedes
       // any older change for this event.
-      if (entries.delete(change.eventId)) publish();
+      drop(change.eventId, undefined, records.delete(change.id));
       return { change, status: "committed" };
     }
 
-    show(change, { revision });
+    show(change, { revision }, "saving");
     return Promise.resolve(returned).then(
       (): Result => {
         settle(change);
@@ -272,14 +345,20 @@ export function createEventTransactions<
         timeZone: context.timeZone,
       });
       // Commit only throws before the handler runs, on a malformed policy adjustment.
-      if (!isPromiseLike(outcome)) return Promise.resolve(commit(outcome, revision, context));
+      if (!isPromiseLike(outcome)) {
+        return Promise.resolve(commit(outcome, revision, context)).then(finish);
+      }
     } catch (error) {
       return Promise.resolve(policyError(error));
     }
 
     // Keep the proposal visible while asynchronous policies decide.
-    if (change.cause !== "create") show(change, { revision, validating: true });
-    return outcome.then((result) => commit(result, revision, context)).catch(policyError);
+    if (change.cause === "create") track(change, "validating");
+    else show(change, { revision, validating: true }, "validating");
+    return outcome
+      .then((result) => commit(result, revision, context))
+      .catch(policyError)
+      .then(finish);
   }
 
   function check(
@@ -319,6 +398,7 @@ export function createEventTransactions<
   return Object.freeze({
     check,
     getPending: () => pending,
+    getPendingChanges: () => changes,
     propose,
     reconcile,
     subscribe(listener: () => void) {

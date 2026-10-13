@@ -14,6 +14,7 @@ import {
   type CalendarInteractionUpdate,
   type CalendarKeyboardSession,
   type CalendarNavigationCommand,
+  type CalendarProposalDetail,
   type CalendarSpatialNavigation,
   type ResourceTree,
 } from "@moltenship/calendar-core";
@@ -56,6 +57,7 @@ export interface CalendarKeyboardOptions {
 }
 
 const DEFAULT_CREATE_DURATION: Temporal.DurationLike = { hours: 1 };
+const keyboardInput: CalendarProposalDetail = Object.freeze({ input: "keyboard" });
 
 /** Handlers for the element that holds a view's focusable cells and events. */
 export interface CalendarKeyboardHandlers {
@@ -297,7 +299,7 @@ function createKeyboardHandlers(
       getView()?.definition === definition &&
       sameFocus(read().focus as CalendarFocus | null, focused);
 
-    void actions.proposeEventChange(proposal).then((result) => {
+    void actions.proposeEventChange(proposal, keyboardInput).then((result) => {
       if (result.status === "committed") {
         const { eventId, proposed } = result.change;
         // A policy may have moved the event off the date focus is on.

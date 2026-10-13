@@ -100,10 +100,11 @@ export function useStateSelector<TState, TSelected>(
   { isEqual = Object.is }: CalendarStateSelectorOptions<TSelected> = {},
 ): TSelected {
   const committed = useRef<{ readonly selected: TSelected } | null>(null);
-  const getSelection = useMemo(() => {
+  const [getSelection, getServerSelection] = useMemo(() => {
+    // One memo for both reads, so the same state selects the same value on the server snapshot
+    // and the client's, and hydration doesn't render again for a new but equal selection.
     let memo: { readonly selected: TSelected; readonly state: TState } | undefined;
-    return () => {
-      const state = source.getSnapshot();
+    const select = (state: TState) => {
       if (memo !== undefined && memo.state === state) return memo.selected;
       const next = selector(state);
       const previous = memo ?? committed.current;
@@ -112,8 +113,11 @@ export function useStateSelector<TState, TSelected>(
       memo = { selected, state };
       return selected;
     };
+    const client = () => select(source.getSnapshot());
+    const server = source.getServerSnapshot;
+    return [client, server === undefined ? client : () => select(server())];
   }, [isEqual, selector, source]);
-  const selected = useSyncExternalStore(source.subscribe, getSelection, getSelection);
+  const selected = useSyncExternalStore(source.subscribe, getSelection, getServerSelection);
   useInsertionEffect(() => {
     committed.current = { selected };
   });
