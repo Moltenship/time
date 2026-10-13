@@ -108,13 +108,17 @@ issue's "Later" section when work starts.
   CI red with local green is a gate bug: the local gate must reproduce it. Release work is the
   exception: the release job's gate must pass, and a change to it, or a version PR, links a green
   CI rehearsal.
-- Every PR gets a code review. Fix each finding, or reply with the reason you didn't. Get the
-  review from Claude Opus 5.5 (xhigh) instead of Pullfrog, and post the local gate's result on
-  the PR.
-- Merge with squash once the review has no open blocker or should-fix findings and the local gate
-  passes. The Vercel checks don't gate merges. When Vercel's daily deploy
-  limit is hit, production catches up with the next deploy after it resets. Rebase on `main` first
-  if behind.
+- Non-trivial PRs get a code review from Claude Opus 5.5 (xhigh), instead of Pullfrog. Simple
+  ones may skip it: docs or notes only, mechanical changes, or small fixes their tests cover. Fix
+  each finding, or reply with the reason you didn't. Post the local gate's result on the PR.
+- One reviewer per PR, kept for every round. Spawn it once; after fixing its findings, continue
+  the same reviewer with what changed and the new commit or diff, and ask for a re-review. Start a
+  new one only when the old one can't be continued, because its context ran out or it's gone, and
+  give it the earlier rounds' findings and your replies.
+- Merge with squash once the local gate passes and, when the PR had a review, the review has no
+  open blocker or should-fix findings. The Vercel checks don't gate merges. When Vercel's daily
+  deploy limit is hit, production catches up with the next deploy after it resets. Rebase on
+  `main` first if behind.
 - UI changes include screenshots attached with `gh pr create/edit --attach`, as described in
   `AGENTS.md`: a before/after table for fixes, light/dark or demo screenshots for new UI. Docs show
   live, theme-aware UI, not screenshots.
