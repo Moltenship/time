@@ -16,7 +16,14 @@ import {
   type MonthProjection,
   type ResourceId,
 } from "@moltenship/calendar";
-import { useLayoutEffect, useMemo, useState, type CSSProperties, type RefObject } from "react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from "react";
 
 import { useEventLabel } from "@registry/calendar/event-label";
 import { epochDay, ScrollSnapPoints, useScrollingAxis } from "@registry/calendar/scrolling-axis";
@@ -27,8 +34,9 @@ import {
   type MonthViewOptions,
 } from "@registry/month-view/month-view";
 import {
-  DATE_ROW_HEIGHT,
-  laneHeight,
+  LaneProbe,
+  laneHeightOf,
+  lanesIn,
   MonthWeekRow,
   weekHeight,
 } from "@registry/month-view/month-week";
@@ -58,9 +66,13 @@ function weekNumber(date: Temporal.PlainDate): number {
 
 /**
  * Measures how many event lanes fit in a week row of `track`, which holds `count` of them, again
- * only when the rows resize.
+ * only when the rows or the lane height change: `probe` is a `LaneProbe`.
  */
-function useLaneCapacity(track: RefObject<HTMLElement | null>, count: number): number {
+function useLaneCapacity(
+  track: RefObject<HTMLElement | null>,
+  probe: RefObject<HTMLElement | null>,
+  count: number,
+): number {
   const [lanes, setLanes] = useState(INITIAL_LANES);
 
   useLayoutEffect(() => {
@@ -68,16 +80,15 @@ function useLaneCapacity(track: RefObject<HTMLElement | null>, count: number): n
     if (element === null) return;
     const measure = () => {
       const height = element.getBoundingClientRect().height / count;
-      // One pixel for the row's bottom border.
-      if (height > 0)
-        setLanes(Math.max(1, Math.floor((height - 1 - DATE_ROW_HEIGHT) / laneHeight(element))));
+      if (height > 0) setLanes(lanesIn(height, laneHeightOf(probe.current)));
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
+    if (probe.current !== null) observer.observe(probe.current);
     return () => observer.disconnect();
-  }, [count, track]);
+  }, [count, probe, track]);
 
   return lanes;
 }
@@ -139,7 +150,8 @@ function ScrollingMonthView<TEvent>({
     timeZone,
   });
   const keyboard = useViewKeyboard();
-  const maxLanes = useLaneCapacity(axis.trackRef, axis.count);
+  const laneProbe = useRef<HTMLDivElement>(null);
+  const maxLanes = useLaneCapacity(axis.trackRef, laneProbe, axis.count);
   const formats = useMonthFormats(locale);
   const labelEvent = useEventLabel(environment, options.describeEvent);
   const overflows = useMemo(
@@ -169,6 +181,7 @@ function ScrollingMonthView<TEvent>({
         !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
       )}
     >
+      <LaneProbe ref={laneProbe} />
       <div role="row" className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
         {projection.weeks[0]?.days.map(({ date }) => (
           <div

@@ -38,13 +38,13 @@ export const Calendar = createCalendar<Meeting>()({
 });
 ```
 
-The views are named `week` and `day`, and `3-day` for `createThreeDayView`. Pass your event type,
-as in `createWeekView<Meeting>`, so `getEventColor` receives your records.
+The views are named `week`, `day` and `3-day`. Pass your event type, as in
+`createWeekView<Meeting>`, so `getEventColor` receives your records.
 
 ## Anatomy
 
-Both views render `TimeGridView` from `registry/time-grid-view`, with seven day columns for the week
-and one for the day. The view builds these parts itself, so they're not parts you compose: to change
+All three views render `TimeGridView` from `registry/time-grid-view`, with seven day columns for the
+week, three for the 3-day view and one for the day. The view builds these parts itself, so they're not parts you compose: to change
 one, edit its file. The tree shows where each part lives.
 
 <TimeGridAnatomy />

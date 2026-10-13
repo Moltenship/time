@@ -14,7 +14,7 @@ import {
   type MonthWeek,
   type ResourceId,
 } from "@moltenship/calendar";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, Ref } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import {
@@ -37,10 +37,32 @@ import { MonthEvent } from "./month-event";
 export const DATE_ROW_HEIGHT = 28;
 export const LANE_HEIGHT = 22;
 
-/** The lane height `element` lays out with, from `--calendar-month-lane`. */
-export function laneHeight(element: Element): number {
-  const value = parseFloat(getComputedStyle(element).getPropertyValue("--calendar-month-lane"));
-  return Number.isFinite(value) && value > 0 ? value : LANE_HEIGHT;
+/**
+ * How many lanes fit in a week row `rowHeight` px tall, with lanes `laneHeight` px apart. A lane's
+ * event ends 2 px before the next lane, and the row has a 1 px bottom border, so the last lane
+ * needs `laneHeight` px less the 1 px left over.
+ */
+export function lanesIn(rowHeight: number, laneHeight: number): number {
+  return Math.max(1, Math.floor((rowHeight - DATE_ROW_HEIGHT) / laneHeight));
+}
+
+/**
+ * An invisible element one lane tall, for measuring `--calendar-month-lane` in any unit. Observe
+ * it with the rows: it resizes when the pointer changes, and the lanes with it.
+ */
+export function LaneProbe({ ref }: { readonly ref: Ref<HTMLDivElement> }) {
+  return (
+    <div
+      ref={ref}
+      aria-hidden
+      className="pointer-events-none invisible absolute h-(--calendar-month-lane) w-0"
+    />
+  );
+}
+
+/** The lane height a probe measures; 0 where nothing lays out, as on the server. */
+export function laneHeightOf(probe: HTMLElement | null): number {
+  return probe?.offsetHeight || LANE_HEIGHT;
 }
 
 /** The height a week needs to show `laneCount` lanes, as a CSS length. */

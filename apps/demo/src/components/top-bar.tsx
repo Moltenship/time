@@ -27,7 +27,7 @@ const selectView = (state: { readonly view: DemoView }) => state.view;
 export interface TopBarProps {
   readonly onOpenSidebar: () => void;
   readonly onShowShortcuts: () => void;
-  /** Whether day, week, and month are their scrolling versions. */
+  /** Whether day, 3 days, week, month, and agenda are their scrolling versions. */
   readonly scrolling: boolean;
 }
 

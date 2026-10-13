@@ -173,7 +173,7 @@ export function SettingsPanel({
           checked={settings.scrolling}
           onCheckedChange={(checked) => onChange({ ...settings, scrolling: checked === true })}
         />
-        Scroll day, week, month and agenda
+        Scroll days, weeks, months and agenda
       </Label>
       <Label className="font-normal">
         <Checkbox

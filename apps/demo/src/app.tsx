@@ -117,7 +117,8 @@ export function App() {
   const { workingHours } = settings;
   const today = (useNow() ?? Temporal.Now.instant()).toZonedDateTimeISO(timeZone).toPlainDate();
   const [location, setLocation] = useCalendarLocation(today);
-  // The settings choose between paged and scrolling day, week, and month, even for a shared URL.
+  // The settings choose between paged and scrolling day, 3 days, week, month, and agenda, even for
+  // a shared URL.
   const view = viewFor(location.view, scrolling);
   const changeSettings = useCallback(
     (next: typeof settings) => {

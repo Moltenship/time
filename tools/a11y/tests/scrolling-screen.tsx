@@ -1,8 +1,6 @@
 import {
   createCalendar,
   createCanonicalEventAdapter,
-  defineCalendarView,
-  scrollingTimeGridStrategy,
   type CalendarEvent,
   type CalendarEventChange,
   type CalendarVisibleRange,
@@ -13,10 +11,9 @@ import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
 import {
   createScrollingDayView,
+  createScrollingThreeDayView,
   createScrollingWeekView,
-  ScrollingTimeGridView,
 } from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
-import type { TimeGridViewOptions } from "@registry/time-grid-view/time-grid-view";
 
 type Fixture = CalendarEvent<null, string>;
 
@@ -24,15 +21,7 @@ const Calendar = createCalendar<Fixture>()({
   eventAdapter: createCanonicalEventAdapter<null, string>(),
   views: [
     createScrollingWeekView(),
-    defineCalendarView({
-      defaultOptions: {},
-      name: "scrolling-3-day",
-      strategy: scrollingTimeGridStrategy<TimeGridViewOptions<Fixture>, Fixture>({
-        count: 3,
-        kind: "days",
-      }),
-      Renderer: ScrollingTimeGridView<Fixture>,
-    }),
+    createScrollingThreeDayView(),
     createScrollingDayView(),
     createScrollingMonthView(),
   ],
