@@ -49,6 +49,57 @@ test("leaves keyboard hints out of pointer gestures", () => {
   );
 });
 
+test("names an item dragged in from outside, with no keyboard hints of the calendar's", () => {
+  const dropped = {
+    ...update,
+    cause: "create",
+    event: null,
+    input: "keyboard",
+    original: null,
+    outside: { title: "Write report" },
+  } as const;
+  expect(say({ ...dropped, phase: "start" })).toBe(
+    "Write report, Thursday, October 8, 9:00 – 9:30 AM.",
+  );
+  expect(say({ ...dropped, phase: "commit" })).toBe(
+    "Added Write report for Thursday, October 8, 9:00 – 9:30 AM.",
+  );
+  expect(say({ ...dropped, phase: "cancel" })).toBe("Cancelled. Write report wasn't added.");
+  expect(say({ ...dropped, phase: "reject", reason: "handler-error" })).toBe(
+    "Couldn't save Write report, so it's back where it was.",
+  );
+  // Without a title it's a new event, and an event of the calendar's keeps its own name.
+  expect(say({ ...dropped, outside: {}, phase: "start" })).toBe(
+    "New event, Thursday, October 8, 9:00 – 9:30 AM.",
+  );
+  expect(say({ ...update, input: "keyboard", outside: {}, phase: "start" })).toBe(
+    "standup, Thursday, October 8, 9:00 – 9:30 AM.",
+  );
+});
+
+test("names the resource an item dragged in moves to, and not again until it changes", () => {
+  const titles: Readonly<Record<string, string>> = { lotus: "Lotus", orchid: "Orchid" };
+  const rooms = { ...where, resourceTitle: (id: ResourceId) => titles[String(id)] };
+  const at = (resourceIds: readonly string[]) => ({ ...standup!, resourceIds });
+  const dropped = {
+    cause: "create",
+    event: null,
+    input: "pointer",
+    original: null,
+    outside: { title: "Write report" },
+  } as const;
+
+  expect(say({ ...dropped, phase: "start", proposed: at(["lotus"]) }, rooms)).toBe(
+    "Write report, Thursday, October 8, 9:00 – 9:30 AM, Lotus.",
+  );
+  expect(say({ ...dropped, phase: "step", proposed: at(["lotus"]) }, rooms)).toBe(
+    "Thursday, October 8, 9:00 – 9:30 AM",
+  );
+  expect(say({ ...dropped, phase: "step", proposed: at(["orchid"]) }, rooms)).toBe(
+    "Thursday, October 8, 9:00 – 9:30 AM, Orchid",
+  );
+});
+
 test("explains rejections, and says nothing when a newer change replaced this one", () => {
   expect(say({ ...update, phase: "reject", reason: "read-only" })).toBe(
     "standup is read-only and can't be changed.",

@@ -18,17 +18,28 @@ import {
 } from "@moltenship/calendar-core";
 import type { WallTimeSnapOptions } from "@moltenship/calendar-temporal";
 
-import { autoScroll, scrollableAncestor } from "./auto-scroll";
+import { autoScroll, clearOfEdges, scrollableAncestor } from "./auto-scroll";
+import {
+  claimed,
+  followersOf,
+  tellFollowers,
+  type CalendarDragFollower,
+  type CalendarEventDrag,
+  type CalendarPoint,
+} from "./drags";
 import { eventIdOf } from "./event-id";
 import {
   createdPlacement,
   movedPlacement,
   resizedPlacement,
+  samePlacement,
   type GestureOptions,
   type PointerTarget,
 } from "./gestures";
-import { ghostLayout, GhostLayer, type GhostValidity } from "./ghost";
-import { targetAt, type TargetSurface } from "./targets";
+import { ghostLayout, GhostLayer, ghostValidity, type GhostRect } from "./ghost";
+import { settleProposal, type ProposalOutcome } from "./outcome";
+import { registerRegion, type PointerRegion } from "./regions";
+import { columnsByDate, targetAt, type TargetSurface } from "./targets";
 
 export interface CalendarPointerOptions<
   TEvent,
@@ -39,11 +50,13 @@ export interface CalendarPointerOptions<
   readonly events: EventSnapshot<TEvent, TEventId, TResourceId>;
   /**
    * Receives one proposal per completed drag, with `{ input: "pointer" }`. Clicks and cancelled
-   * drags propose nothing. Return the transaction's result, as `proposeEventChange` does, to
-   * announce whether it was saved.
+   * drags propose nothing. An item dragged in from outside the calendar (`startCalendarDrop`)
+   * proposes here too, a create carrying its record as `event`, with the input that drove it.
+   * Return the transaction's result, as `proposeEventChange` does, to announce whether it was
+   * saved.
    */
   readonly onPropose: (
-    proposal: CalendarEventProposal<TEventId, TResourceId>,
+    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
     detail: CalendarProposalDetail,
   ) => void | PromiseLike<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
   /** The display time zone. */
@@ -59,7 +72,7 @@ export interface CalendarPointerOptions<
    * a policy rejects it and `data-warning` when one flags it.
    */
   readonly check?: (
-    proposal: CalendarEventProposal<TEventId, TResourceId>,
+    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
   ) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
   /**
    * Day columns of the time axis, matched to `[data-date]` elements without `data-all-day`: a
@@ -97,6 +110,13 @@ interface EventGesture<TEvent, TEventId extends EventId, TResourceId extends Res
   readonly original: CalendarEventPlacement<TResourceId>;
 }
 
+/** The copy of a moved event that follows the pointer outside the view: its size, and the press within it. */
+interface Floating {
+  readonly height: number;
+  readonly offset: CalendarPoint;
+  readonly width: number;
+}
+
 type Gesture<TEvent, TEventId extends EventId, TResourceId extends ResourceId> =
   | { readonly anchor: PointerTarget; readonly kind: "create" }
   | (EventGesture<TEvent, TEventId, TResourceId> & { readonly kind: "move" })
@@ -110,6 +130,18 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
   readonly announcer: CalendarAnnouncer | undefined;
   /** What the policies say about the drop the preview shows. */
   check: CalendarInteractionCheck;
+  /** Whether a follower claimed the pointer at the last preview. */
+  claimed: boolean;
+  /**
+   * Whether the edges may scroll the view. A drag that drop zones follow loses this when it leaves
+   * the view and gets it back once the pointer is clear of the edges, so coming back in across one
+   * doesn't scroll.
+   */
+  edgesScroll: boolean;
+  /** Where a moved event's copy follows the pointer outside the view, once it has followers. */
+  floating?: Floating;
+  /** Drop zones outside the calendar following a move (`monitorCalendarDrags`). */
+  followers: readonly CalendarDragFollower[];
   frame?: number;
   readonly gesture: Gesture<TEvent, TEventId, TResourceId>;
   readonly ghost: GhostLayer;
@@ -139,6 +171,9 @@ const DRAG_DISTANCE = 4;
  */
 const LONG_PRESS_MS = 450;
 const TOUCH_TOLERANCE = 8;
+/** The most of a long or wide event the copy that follows the pointer outside the view shows. */
+const FLOATING_MAXIMUM = { height: 120, width: 320 } as const;
+const noFollowers: readonly CalendarDragFollower[] = Object.freeze([]);
 const pointerInput: CalendarProposalDetail = Object.freeze({ input: "pointer" });
 
 function preventDefault(event: Event): void {
@@ -155,27 +190,27 @@ function suppressNextClick(): void {
   setTimeout(() => window.removeEventListener("click", swallow, { capture: true }));
 }
 
-/** How a preview shows what the policies say: rejected, flagged, or fine. */
-function validity(check: CalendarInteractionCheck): GhostValidity {
-  if (check === null) return null;
-  if (check.status === "rejected") return "invalid";
-  return check.change.warnings !== undefined && check.change.warnings.length > 0 ? "warning" : null;
+/** The size and press offset of the copy that follows a moved event outside the view. */
+function floatingOf(element: HTMLElement, origin: CalendarPoint): Floating {
+  const rect = element.getBoundingClientRect();
+  const width = Math.min(rect.width, FLOATING_MAXIMUM.width);
+  const height = Math.min(rect.height, FLOATING_MAXIMUM.height);
+  const offset = {
+    x: Math.min(Math.max(origin.x - rect.left, 0), width),
+    y: Math.min(Math.max(origin.y - rect.top, 0), height),
+  };
+  return { height, offset, width };
 }
 
-function columnsByDate(
-  columns: readonly TimeGridColumn[] | undefined,
-): ReadonlyMap<string, TimeGridColumn> {
-  return new Map((columns ?? []).map((column) => [column.date.toString(), column]));
-}
-
-function samePlacement(left: CalendarEventPlacement, right: CalendarEventPlacement): boolean {
-  return (
-    left.kind === right.kind &&
-    left.start.toString() === right.start.toString() &&
-    left.end.toString() === right.end.toString() &&
-    left.resourceIds.length === right.resourceIds.length &&
-    left.resourceIds.every((resourceId) => right.resourceIds.includes(resourceId))
-  );
+/** Where the copy sits under the pointer, anywhere in the viewport. */
+function floatingRect({ height, offset, width }: Floating, point: CalendarPoint): GhostRect {
+  return {
+    height,
+    left: point.x - offset.x,
+    top: point.y - offset.y,
+    visible: { bottom: innerHeight, left: 0, right: innerWidth, top: 0 },
+    width,
+  };
 }
 
 /**
@@ -244,14 +279,7 @@ export function attachCalendarPointer<
 
   function announce(
     current: Session<TEvent, TEventId, TResourceId>,
-    detail:
-      | { readonly phase: "cancel" | "start" | "step" }
-      | {
-          readonly phase: "commit";
-          readonly proposed: CalendarEventPlacement;
-          readonly warnings?: readonly string[];
-        }
-      | { readonly error?: unknown; readonly phase: "reject"; readonly reason: string },
+    detail: { readonly phase: "cancel" | "start" | "step" } | ProposalOutcome,
   ): void {
     const { check, gesture } = current;
     current.announcer?.announce({
@@ -281,17 +309,53 @@ export function attachCalendarPointer<
     current.surface = { ...current.surface, columns: columnsByDate(columns) };
   }
 
+  /**
+   * Whether the view is the topmost thing under the pointer: anything over it, such as a sheet
+   * holding drop zones, hides it, as it does for drags in (`regionAt`).
+   */
+  function overView({ x, y }: CalendarPoint): boolean {
+    const [top] = document.elementsFromPoint(x, y);
+    return top !== undefined && region.contains(top);
+  }
+
+  /**
+   * Off the view, or over a drop zone that claims it, a moved event that someone follows shows as
+   * a copy under the pointer; elsewhere, such as over a header, nothing shows.
+   */
+  function showOutside(current: Session<TEvent, TEventId, TResourceId>): void {
+    const { floating, gesture } = current;
+    if (
+      floating === undefined ||
+      gesture.kind !== "move" ||
+      (!current.claimed && overView(current.point))
+    ) {
+      current.ghost.clear();
+      return;
+    }
+    current.ghost.render(
+      [floatingRect(floating, current.point)],
+      gesture.element,
+      null,
+      null,
+      true,
+    );
+  }
+
   /** Shows where a drop would land; returns whether that changed. */
   function preview(current: Session<TEvent, TEventId, TResourceId>, scrolled = false): boolean {
     refreshColumns(current);
-    const target = targetAt(current.surface, current.point.x, current.point.y);
+    current.claimed = claimed(current.followers);
+    // A drag that drop zones follow lands only where the view is on top, so a release over a
+    // sheet of zones above the calendar, between its zones, doesn't move the event beneath.
+    const hidden = current.claimed || (current.followers.length > 0 && !overView(current.point));
+    const target = hidden ? null : targetAt(current.surface, current.point.x, current.point.y);
     const placement = target === null ? null : placementAt(current, target);
     if (placement === null) {
       // Nothing to drop here, so show nothing rather than the last valid spot.
       const changed = current.placement !== null;
       current.placement = null;
       current.check = null;
-      current.ghost.clear();
+      showOutside(current);
       if (changed) getOptions().onPreview?.(null);
       return changed;
     }
@@ -315,14 +379,30 @@ export function attachCalendarPointer<
         ? null
         : (current.announcer?.formatRange(placement) ??
           formatPlacementRange(placement, { timeZone: current.options.timeZone }));
-    current.ghost.render(layout.rects, template, label, validity(current.check));
+    current.ghost.render(layout.rects, template, label, ghostValidity(current.check));
     return changed;
+  }
+
+  /**
+   * A drag that drop zones follow scrolls the view only over it, and once back in, only after
+   * the pointer has been clear of its edges, so one on its way to a sidebar or back from it leaves
+   * the view be.
+   */
+  function trackEdges(current: Session<TEvent, TEventId, TResourceId>): void {
+    if (current.followers.length === 0) return;
+    const { x, y } = current.point;
+    if (!overView(current.point)) current.edgesScroll = false;
+    else current.edgesScroll ||= clearOfEdges(current.scrollContainer, x, y);
   }
 
   function scrollFrame(): void {
     const current = session;
     if (current === null) return;
+    // Over a drop zone outside the calendar, the calendar holds still.
+    trackEdges(current);
+    const holds = current.claimed || !current.edgesScroll;
     if (
+      !holds &&
       autoScroll(current.scrollContainer, current.point.x, current.point.y) &&
       preview(current, true)
     ) {
@@ -339,12 +419,36 @@ export function attachCalendarPointer<
       current.gesture.element.setAttribute("data-dragging", "");
     }
     getSelection()?.removeAllRanges();
+    if (current.gesture.kind === "move") follow(current, current.gesture);
+    trackEdges(current);
     current.frame = requestAnimationFrame(scrollFrame);
     preview(current);
     announce(current, { phase: "start" });
   }
 
-  function end(): void {
+  /** Offers a move to the monitors, for drop zones outside the calendar. */
+  function follow(
+    current: Session<TEvent, TEventId, TResourceId>,
+    { element, event }: EventGesture<TEvent, TEventId, TResourceId>,
+  ): void {
+    const drag: CalendarEventDrag<TEvent, TEventId, TResourceId> = {
+      element,
+      event,
+      origin: current.origin,
+      refresh: () => {
+        if (session === current && current.active && preview(current)) {
+          announce(current, { phase: "step" });
+        }
+      },
+    };
+    current.followers = followersOf(drag as CalendarEventDrag);
+    if (current.followers.length === 0) return;
+    current.floating = floatingOf(element, current.origin);
+    tellFollowers(current.followers, (follower) => follower.move?.(current.point));
+  }
+
+  /** Ends the gesture; `dropped` tells its followers a drop zone of theirs took it. */
+  function end(dropped = false): void {
     const current = session;
     if (current === null) return;
     session = null;
@@ -364,6 +468,7 @@ export function attachCalendarPointer<
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.removeEventListener(type, preventDefault);
     }
+    tellFollowers(current.followers, (follower) => follower.end?.(dropped));
   }
 
   /** Ends the gesture without proposing anything. */
@@ -397,6 +502,8 @@ export function attachCalendarPointer<
     if (current === null || event.pointerId !== current.pointerId) return;
     current.point = { x: event.clientX, y: event.clientY };
     if (current.active) {
+      tellFollowers(current.followers, (follower) => follower.move?.(current.point));
+      trackEdges(current);
       if (preview(current)) announce(current, { phase: "step" });
       return;
     }
@@ -419,7 +526,14 @@ export function attachCalendarPointer<
     }
 
     current.point = { x: event.clientX, y: event.clientY };
+    tellFollowers(current.followers, (follower) => follower.move?.(current.point));
     preview(current);
+    if (current.claimed) {
+      // A drop zone outside the calendar took it: the zone's owner handles and announces it.
+      end(true);
+      suppressNextClick();
+      return;
+    }
     const proposed = proposal(current);
     end();
     suppressNextClick();
@@ -427,26 +541,10 @@ export function attachCalendarPointer<
       announce(current, { phase: "cancel" });
       return;
     }
-    const outcome = getOptions().onPropose(proposed, pointerInput);
-    if (outcome === undefined) {
-      announce(current, { phase: "commit", proposed: current.placement! });
-      return;
-    }
-    void Promise.resolve(outcome).then((result) =>
-      announce(
-        current,
-        result.status === "committed"
-          ? {
-              phase: "commit",
-              proposed: result.change.proposed!,
-              warnings: result.change.warnings,
-            }
-          : {
-              phase: "reject",
-              reason: result.reason,
-              ...(result.error === undefined ? {} : { error: result.error }),
-            },
-      ),
+    void settleProposal(
+      getOptions().onPropose(proposed, pointerInput),
+      current.placement!,
+      (outcome) => announce(current, outcome),
     );
   }
 
@@ -497,6 +595,9 @@ export function attachCalendarPointer<
       active: false,
       announcer: options.announcer,
       check: null,
+      claimed: false,
+      edgesScroll: true,
+      followers: noFollowers,
       gesture,
       ghost: new GhostLayer(region, options.ghostClassName),
       options: { snap: options.snap ?? DEFAULT_SNAP, timeZone: options.timeZone },
@@ -543,10 +644,13 @@ export function attachCalendarPointer<
   if (getOptions().disabled !== true) {
     region.addEventListener("touchmove", onTouchMove, { passive: false });
   }
+  // Listed while attached, so items dragged in from outside the calendar find the view.
+  const unregister = registerRegion({ element: region, getOptions } as unknown as PointerRegion);
   return () => {
     // A drag in progress is announced as cancelled, as when the view goes read-only mid-drag.
     cancel();
     region.removeEventListener("pointerdown", onPointerDown);
     region.removeEventListener("touchmove", onTouchMove);
+    unregister();
   };
 }

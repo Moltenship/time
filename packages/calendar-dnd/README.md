@@ -4,6 +4,11 @@ The pointer layer of Moltenship Time: drag to move, resize and create events ins
 native Pointer Events. Drags become change proposals for your app to save. `useCalendarPointer`
 does this in a view's Renderer, and `attachCalendarPointer` outside a React component.
 
+It also takes drags across the calendar's edge: `startCalendarDrop` drops items dragged in from
+the rest of the page, such as unscheduled tasks, into the view under them, and
+`monitorCalendarDrags` lets drop zones outside the calendar take events dragged out of it. A drag
+library's binding drives them.
+
 It's a layer of `@moltenship/calendar`, which re-exports all of it. Most apps install
 `@moltenship/calendar` only and import `useCalendarPointer` from there.
 

@@ -79,3 +79,16 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   and Shift+Mod+Z or Ctrl+Y, rebindable, never in text fields or dialogs. The registry's
   `calendar-history-toast` offers Undo after each change and Redo after an undo, with the keys,
   and the demo uses it (#227).
+- Drags from outside the calendar: `startCalendarDrop(source, { input })` follows an item dragged
+  in from a list over every view that uses `useCalendarPointer`, previews and checks where it would
+  land, scrolls the view near its edges, and proposes once on drop: a create carrying the item's
+  record as `event`, `duration` long over a time column or `days` long over day cells, in the
+  resource it's dropped in, or with `eventId` a move. Read-only views take no part.
+  `monitorCalendarDrags(monitor)` offers each event a view starts to move to drop zones outside
+  the calendar, which can claim the pointer and take the drop; while one follows, a copy of the
+  event follows the pointer outside the view. `observeCalendarRegions` lists the views on the
+  page. Announcement updates carry `outside: { title? }` for such drags, which the registry's
+  English messages name.
+  The pointer layer's `onPropose` and `check` take `CalendarEventProposal<TEventId, TResourceId,
+  TEvent>`, and a view's `actions` a create with `event`, so a dropped item's record reaches
+  `onEventChange` (#237).

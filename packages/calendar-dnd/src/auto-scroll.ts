@@ -20,16 +20,33 @@ export function scrollableAncestor(element: Element): Element {
   return document.scrollingElement ?? document.documentElement;
 }
 
+function bounds(container: Element) {
+  const viewport =
+    container === document.scrollingElement || container === document.documentElement;
+  return viewport
+    ? { bottom: innerHeight, left: 0, right: innerWidth, top: 0 }
+    : container.getBoundingClientRect();
+}
+
+/** Whether a viewport point is inside `container` and clear of the bands that scroll it. */
+export function clearOfEdges(container: Element, x: number, y: number): boolean {
+  const rect = bounds(container);
+  return (
+    x >= rect.left &&
+    x <= rect.right &&
+    y >= rect.top &&
+    y <= rect.bottom &&
+    step(x, rect.left, rect.right) === 0 &&
+    step(y, rect.top, rect.bottom) === 0
+  );
+}
+
 /**
  * Scrolls `container` when a viewport point sits near its edges. Returns whether it moved, so the
  * caller re-reads geometry only after a scroll.
  */
 export function autoScroll(container: Element, x: number, y: number): boolean {
-  const viewport =
-    container === document.scrollingElement || container === document.documentElement;
-  const rect = viewport
-    ? { bottom: innerHeight, left: 0, right: innerWidth, top: 0 }
-    : container.getBoundingClientRect();
+  const rect = bounds(container);
   const { scrollLeft, scrollTop } = container;
   container.scrollTop += step(y, rect.top, rect.bottom);
   container.scrollLeft += step(x, rect.left, rect.right);

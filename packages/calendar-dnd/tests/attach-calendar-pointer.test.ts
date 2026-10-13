@@ -26,7 +26,7 @@ import {
   type TestEvent,
 } from "./dom-fixture";
 
-type Proposal = CalendarEventProposal<string | number, string>;
+type Proposal = CalendarEventProposal<string | number, string, TestEvent>;
 type Options = CalendarPointerOptions<TestEvent, string | number, string>;
 
 const meeting = timedEvent("a", "2026-08-17T09:00Z", "2026-08-17T10:00Z");

@@ -1,5 +1,6 @@
 import {
   belongsInTimeGridAllDayRow,
+  type CalendarInteractionCheck,
   splitEventsByDay,
   timedFragmentBox,
   timelineExtent,
@@ -280,16 +281,25 @@ export function ghostLayout(
 /** `invalid` when a policy would reject the drop, `warning` when one would flag it. */
 export type GhostValidity = "invalid" | "warning" | null;
 
+/** How a preview shows what the policies say: rejected, flagged, or fine. */
+export function ghostValidity(check: CalendarInteractionCheck): GhostValidity {
+  if (check === null) return null;
+  if (check.status === "rejected") return "invalid";
+  return check.change.warnings !== undefined && check.change.warnings.length > 0 ? "warning" : null;
+}
+
 /**
  * Fixed-position preview segments, moved with transforms so a drag never re-renders the view, and
  * clipped to their cells' scroll viewports. Segments are translucent clones of the dragged event,
  * or range boxes for creates and day cells; style them through `[data-calendar-ghost]` or the
  * `--calendar-ghost-*` custom properties. A clone's `[data-event-time]` shows `label`, and
- * `data-invalid` or `data-warning` marks a drop the policies would reject or flag.
+ * `data-invalid` or `data-warning` marks a drop the policies would reject or flag. A clone that
+ * follows the pointer outside the view, toward a drop zone of the app's, has `data-outside`.
  */
 export class GhostLayer {
   readonly #className: string | undefined;
   #origin: HTMLElement | null = null;
+  #outside = false;
   readonly #region: HTMLElement;
   readonly #segments: HTMLElement[] = [];
   #template: HTMLElement | null = null;
@@ -299,15 +309,22 @@ export class GhostLayer {
     this.#region = region;
   }
 
+  /**
+   * Shows `rects`: copies of `template`, or range boxes without one. `outside` marks a copy that
+   * follows the pointer outside the view (`data-outside`).
+   */
   render(
     rects: readonly GhostRect[],
     template: HTMLElement | null,
     label: string | null,
     validity: GhostValidity = null,
+    outside = false,
   ): void {
-    if (template !== this.#template) {
+    // A copy that leaves the view starts over, so it shows the event's own time again.
+    if (template !== this.#template || outside !== this.#outside) {
       this.clear();
       this.#template = template;
+      this.#outside = outside;
     }
     while (this.#segments.length < rects.length) this.#segments.push(this.#createSegment());
     while (this.#segments.length > rects.length) this.#segments.pop()!.remove();
@@ -333,6 +350,7 @@ export class GhostLayer {
         : "";
       segment.toggleAttribute("data-invalid", validity === "invalid");
       segment.toggleAttribute("data-warning", validity === "warning");
+      segment.toggleAttribute("data-outside", outside);
       if (label === null) return;
       for (const time of segment.querySelectorAll("[data-event-time]")) {
         time.textContent = label;

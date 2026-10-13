@@ -6,11 +6,24 @@ export {
   attachCalendarPointer,
   eventIdAttributes,
   eventIdOf,
+  monitorCalendarDrags,
+  observeCalendarRegions,
   resourceIdAttributes,
   resourceIdOf,
+  startCalendarDrop,
   useCalendarPointer,
 } from "@moltenship/calendar-dnd";
-export type { CalendarPointerOptions } from "@moltenship/calendar-dnd";
+export type {
+  CalendarDragFollower,
+  CalendarDragMonitor,
+  CalendarDropOptions,
+  CalendarDropSession,
+  CalendarDropSource,
+  CalendarEventDrag,
+  CalendarPoint,
+  CalendarPointerOptions,
+  CalendarRegion,
+} from "@moltenship/calendar-dnd";
 export {
   createCalendar,
   createCalendarStore,

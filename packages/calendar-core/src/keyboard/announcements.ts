@@ -13,6 +13,11 @@ interface CalendarInteractionUpdateBase {
   readonly input: "keyboard" | "pointer";
   /** The event's placement before the interaction; `null` when creating. */
   readonly original: CalendarEventPlacement | null;
+  /**
+   * Set when the drag started outside the calendar, as an item dragged in from a list, with the
+   * name its source gives it. Such a drag moves by its own library's keys, not the calendar's.
+   */
+  readonly outside?: { readonly title?: string };
   /** Where the change would land; `null` while the pointer is over nowhere it can drop. */
   readonly proposed: CalendarEventPlacement | null;
 }

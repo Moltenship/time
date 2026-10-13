@@ -31,7 +31,7 @@ declare global {
 }
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 
-type Propose = (proposal: CalendarEventProposal<string | number, string>) => void;
+type Propose = (proposal: CalendarEventProposal<string | number, string, TestEvent>) => void;
 
 const columns = timeGridColumns(
   plainDateInterval(Temporal.PlainDate.from("2026-08-17"), Temporal.PlainDate.from("2026-08-18")),

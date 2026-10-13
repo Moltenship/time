@@ -21,18 +21,19 @@ export interface CalendarViewActions {
    * the pointer layer's `check`. A plain function, so it can be passed on as a callback.
    */
   readonly checkEventChange: (
-    proposal: CalendarEventProposal<EventId, ResourceId>,
+    proposal: CalendarEventProposal<EventId, ResourceId, unknown>,
   ) => CalendarPolicyResult<unknown, EventId, ResourceId> | null;
   navigateNext(): void;
   navigatePrevious(): void;
   navigateToday(): void;
   /**
    * Proposes a move, resize, create, or delete, such as the result of a pointer drag; the pointer
-   * layer passes `{ input: "pointer" }` as `detail`. A plain function, so it can be passed on as a
-   * callback.
+   * layer passes `{ input: "pointer" }` as `detail`. A create may carry the application's record
+   * as `event`, as an item dropped in from outside the calendar does. A plain function, so it can
+   * be passed on as a callback.
    */
   readonly proposeEventChange: (
-    proposal: CalendarEventProposal<EventId, ResourceId>,
+    proposal: CalendarEventProposal<EventId, ResourceId, unknown>,
     detail?: CalendarProposalDetail,
   ) => Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
   setAnchorDate(anchorDate: Temporal.PlainDate): void;

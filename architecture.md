@@ -134,7 +134,7 @@ carries no documentation.
 | `@moltenship/calendar-temporal`   | Type-specific ranges, grids, timezone projection, slots, rounding, keys, and interval helpers.                                | None                                                                                      | Stable, standalone                                |
 | `@moltenship/calendar-core`       | Event adapters, normalized snapshots, interval indexes, view strategies, fragments, layout engines, policies, transactions.   | `calendar-temporal`; provisional `@flatten-js/interval-tree` behind an internal interface | Stable                                            |
 | `@moltenship/calendar-react`      | Per-instance provider, controlled state bridge, selectors, actions, meta, headless primitives, custom-view renderer contract. | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable                                            |
-| `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements.                                          | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable adapter; no DOM event types in callbacks   |
+| `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements; drags in from and out to the rest of the page. | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable adapter; no DOM event types in callbacks   |
 | `@moltenship/calendar`            | The ergonomic entry point used by most consumers. Re-exports core, the Temporal utilities, the React bindings and the pointer adapter. | `calendar-core`, `calendar-temporal`, `calendar-react`, `calendar-dnd`; React 19 peer | Stable facade                                     |
 | `@moltenship/calendar-testing`    | Not built yet (#45): deterministic clocks, event builders, keyboard drivers, view harnesses, assertions. Exports nothing today. | Public calendar packages                                                                  | Private until after 1.0 (#45)                     |
 | `@moltenship/calendar-recurrence` | Range-bounded RRULE expansion, occurrence identity, exceptions and overrides, explicit series edits (ADR 0048).            | `calendar-core`, `calendar-temporal`, `ics`                                               | Publishes with 1.0, in lockstep                   |
@@ -969,7 +969,7 @@ bundle of the facade's other exports keeps none of the history's modules.
 
 ## 11. Drag, resize, selection, and creation
 
-`@moltenship/calendar-dnd` uses native Pointer Events ([ADR 0037](./docs/adr/0037-native-pointer-events.md)). Core packages know only semantic interaction contracts. A dnd-kit adapter can return later as an option behind the same contracts.
+`@moltenship/calendar-dnd` uses native Pointer Events ([ADR 0037](./docs/adr/0037-native-pointer-events.md)). Core packages know only semantic interaction contracts. Items dragged in from the rest of the page, and events dragged out to it, go through the same layer (below); a dnd-kit adapter can bind it as an option behind the same contracts.
 
 ### Performance model
 
@@ -1011,6 +1011,40 @@ that drops it mid-drag. The cost is that a touch on the region waits for the mai
 it scrolls, so a disabled region, as on a read-only root, doesn't listen. While the root is
 editable, the built-in views also turn off text selection and the iOS touch callout on a coarse
 pointer. DOM event types do not leak into calendar callbacks.
+
+### Drags across the calendar's edge
+
+Apps drag their own items into the calendar, such as unscheduled tasks, and calendar events out to
+their own drop zones (#237). `calendar-dnd` does both without a drag-and-drop library, so a
+library's binding, or native HTML drag and drop, only feeds it points:
+
+- **Regions.** `attachCalendarPointer` lists its region in a module-level registry while it's
+  attached; `observeCalendarRegions` hears the list, with each region's `disabled`. A disabled
+  region, as on a read-only root, takes no drops.
+- **In: `startCalendarDrop(source, { input })`.** Its `move(point)` hit-tests whichever region is
+  under the point with the same `targetAt` an in-view drag uses, and previews through that region's
+  own options: range boxes, its `check`, `onPreview` and announcer. `drop()` proposes once through
+  its `onPropose`. Over a time column the item starts at the slot under the point (floor snapping,
+  as drag-to-create) and lasts `duration`, an hour by default; over day cells it is all-day for
+  `days`. It books the resource it's dropped in. The proposal is a create carrying the item's record
+  as `event`, or with `eventId` a move of an event the view shows and may change. `move(null)`
+  means "over a drop zone of the library's own". The topmost element under the point picks the
+  region, so a sheet or dialog over a view hides it; drag images must be `pointer-events: none`,
+  as dnd-kit's are. Auto-scroll runs only over a region, once the point has been clear of its
+  edges, so a drag still in a sidebar, or crossing an edge on its way in, leaves the calendar
+  still. Announcements carry `outside: { title? }`; the registry's messages name the item and give
+  no keyboard hints, as its library has its own keys.
+- **Out: `monitorCalendarDrags(monitor)`.** Each move a view starts is offered to the monitors. A
+  follower hears the pointer, and while its `claims()` says a drop zone of its own is under it, the
+  calendar shows no preview, holds its auto-scroll, and a release there proposes and announces
+  nothing: `end(true)` hands it over. Outside the view, or claimed, a copy of the event follows the
+  pointer (`data-outside`). Such a drag counts as over the view only where the view is the topmost
+  thing under the pointer, so a sheet of drop zones over it hides it, and its edges scroll it only
+  once the pointer has been clear of them since it came back in. `refresh()` re-reads a claim
+  that changed without a pointer move. Resizes and creates aren't offered.
+- **Input.** Proposals keep #199's `input`: `"pointer"`, or `"keyboard"` for a library's keyboard
+  sensor. It names the modality; that the item came from outside shows in the change itself, a
+  create with `event`.
 
 ### Policy pipeline
 
