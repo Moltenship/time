@@ -94,7 +94,9 @@ const bookingSource: CalendarEventSource<Booking> = {
 
 Everything else works as with an array: records are compared item by item and read through your
 adapter, a saved change stays [pending](/docs/interactions#pending-changes) until the source's
-events next change, and you can switch between an array and a source. React renders a source's
+events next change, and you can switch between an array and a source. A busy source changes
+often, so write a saved change into the store before your handler's promise resolves: otherwise
+the source's next update, even one about other events, decides where the event is. React renders a source's
 updates right away, as it does for any external store; to update in a transition, keep the events
 in state and pass the array.
 

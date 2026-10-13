@@ -140,9 +140,11 @@ export interface EventSnapshotCache<
  * component that renders `Root`. Both getters return the same array until the events change.
  */
 export interface CalendarEventSource<TEvent> {
-  /** The events the server rendered with, read on the server and while hydrating. */
+  /**
+   * The events the server rendered with, as an array, read on the server and while hydrating.
+   */
   getServerSnapshot(): readonly TEvent[];
-  /** The current events. */
+  /** The current events, as an array: `Root` builds the `EventSnapshot` itself. */
   getSnapshot(): readonly TEvent[];
   /** Calls `listener` after the events change, and returns a function that stops it. */
   subscribe(listener: () => void): () => void;

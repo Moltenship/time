@@ -1,8 +1,8 @@
 import type { CalendarEventInput, CalendarEventSource } from "@moltenship/calendar-core";
-import { useCallback, useSyncExternalStore } from "react";
+import { useMemo, useSyncExternalStore } from "react";
 
 const readNothing = () => null;
-const stayUnsubscribed = () => undefined;
+const subscribeToNothing = () => () => undefined;
 
 function isEventSource<TEvent>(
   input: CalendarEventInput<TEvent>,
@@ -18,16 +18,19 @@ function isEventSource<TEvent>(
 export function useEventInput<TEvent>(input: CalendarEventInput<TEvent>): readonly TEvent[] {
   const source = isEventSource(input) ? input : undefined;
   // The source's members are called as methods, so a class instance works too. A new source
-  // subscribes again; an array subscribes to nothing.
-  const subscribe = useCallback(
-    (listener: () => void) =>
-      source === undefined ? stayUnsubscribed : source.subscribe(listener),
+  // subscribes again; an array subscribes to nothing. Stable getters spare React a second read
+  // after every render.
+  const { read, readServer, subscribe } = useMemo(
+    () =>
+      source === undefined
+        ? { read: readNothing, readServer: readNothing, subscribe: subscribeToNothing }
+        : {
+            read: () => source.getSnapshot(),
+            readServer: () => source.getServerSnapshot(),
+            subscribe: (listener: () => void) => source.subscribe(listener),
+          },
     [source],
   );
-  const sourced = useSyncExternalStore(
-    subscribe,
-    source === undefined ? readNothing : () => source.getSnapshot(),
-    source === undefined ? readNothing : () => source.getServerSnapshot(),
-  );
+  const sourced = useSyncExternalStore(subscribe, read, readServer);
   return source === undefined ? (input as readonly TEvent[]) : (sourced as readonly TEvent[]);
 }
