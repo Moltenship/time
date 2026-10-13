@@ -155,8 +155,8 @@ and registry file's sha512 against it before and after. Nothing packs again.
 
 | Consumer | What it runs | Network |
 | --- | --- | --- |
-| `ssr-fixture` | The fixture's tests: render, hydrate, interact and unmount, and the known-bad cases fail | None |
-| `showcase` | `next build` of the docs site; every route through `next start` (`scripts/verify-production.mjs`), with the dry run's registry at `/r`; then the docs tests, which render the live examples | The build fetches the site's Google fonts, as `ci:build` does |
+| `ssr-fixture` | The fixture's tests: render, hydrate, interact and unmount, and the known-bad cases fail | None, unless pnpm's cache lacks metadata (below) |
+| `showcase` | `next build` of the docs site; every route through `next start` (`scripts/verify-production.mjs`), with the dry run's registry at `/r`; then the docs tests, which render the live examples | The build fetches the site's Google fonts, as `ci:build` does; metadata as for the fixture |
 | `registry` | `vp run registry:e2e` on the dry run's tarballs: `shadcn add` into clean Vite and Next.js apps, then a typecheck and a build of each | npm and shadcn's own components |
 
 The SSR fixture and the docs site run in a copy outside the workspace: `apps/ssr-fixture`, or
@@ -180,11 +180,11 @@ compiles, type-checks and prerenders every page, live examples included. A small
 leave pages out. Two docs tests, `anatomy-source` and `recurrence-api-reference`, compare the docs
 with package source, which the copy doesn't have, so this run leaves them out; `ci:test` runs them.
 
-The consumers run side by side, one per four cores: all three on a laptop, one after another on a
-4-core CI runner. None opens a browser, so the browser runs keep their lanes. A failure doesn't stop
-the others. The summary gives each consumer's time and its steps', and a failure names the consumer
-and the step, shows the end of the command's output and keeps the copy. The registry's failures
-name the app and its step:
+The consumers run side by side, one per four cores: all three with 12 cores or more, one after
+another on a 4-core CI runner. None opens a browser, so the browser runs keep their lanes. A failure
+doesn't stop the others. The summary gives each consumer's time and its steps', and a failure names
+the consumer and the step, shows the end of the command's output and keeps the copy. The registry's
+failures also name each app and its step, such as `vite at "typecheck"`. A docs build that failed:
 
 ```text
 ✓ ssr-fixture   4.0s  install 0.8s · render and hydrate 2.7s
@@ -197,7 +197,8 @@ showcase failed at "build": next build exited with 1 in /var/folders/…/moltens
 
 On the 15-core laptop, quiet, `release:artifacts` takes about 22 seconds: the registry's install
 test, which the full tier ran on its own before (about 20 seconds, packing its own tarballs), is
-the longest, and the other two finish beside it. Its cost to the full tier is a second or two.
+the longest, and the other two finish beside it. Its cost to the full tier is a second or two. One
+after another, as on a 4-core runner, the three take their sum: about 45 seconds on the laptop.
 
 ## Registry
 

@@ -75,8 +75,10 @@ Items reach each other through URLs under `https://moltenship-time.vercel.app/r`
   from the workspace and serves them from a local npm registry for the `@moltenship` scope, and
   each app's lockfile must have them with the served tarballs' hashes;
   `REGISTRY_E2E_PACKAGES=npm` uses the published ones instead, `REGISTRY_E2E_TARBALLS=<dir>` serves
-  tarballs made elsewhere, and `REGISTRY_E2E_KEEP=1` keeps the apps. The full tier runs it through
-  `vp run release:artifacts`, on the release dry run's tarballs.
+  tarballs made elsewhere, and `REGISTRY_E2E_KEEP=1` keeps the apps (`failed`: only when one fails).
+  It prints `REGISTRY_E2E <json>` when both apps pass, with the hash of each tarball it served, or
+  `REGISTRY_E2E_FAILED <json>` naming each app that failed and its step. The full tier runs it
+  through `vp run release:artifacts`, on the release dry run's tarballs.
 
 ## Conventions
 

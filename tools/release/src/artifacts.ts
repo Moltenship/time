@@ -66,10 +66,15 @@ export function servedProblems(
   return problems;
 }
 
-/** The JSON after `<label> ` on a line of a command's output. */
+/** The JSON after `<label> ` on a line of a command's output; undefined when there's none. */
 function report<T>(output: string, label: string): T | undefined {
   const line = new RegExp(`^${label} (.*)$`, "mu").exec(output)?.[1];
-  return line === undefined ? undefined : (JSON.parse(line) as T);
+  if (line === undefined) return undefined;
+  try {
+    return JSON.parse(line) as T;
+  } catch {
+    return undefined;
+  }
 }
 
 async function freePort(): Promise<number> {
@@ -157,7 +162,7 @@ export const consumers: readonly Consumer[] = [
           const failed = apps?.map(({ app, step }) => `${app} at "${step}"`).join(", ");
           const output = failed ? result.stderr : `${result.stdout}\n${result.stderr}`;
           throw new Error(
-            `${failed ? `${failed} failed` : `vp run registry:e2e exited with ${result.code}`}\n${lastLines(output, 150)}${kept ? `\n${kept}` : ""}`,
+            `${failed ? `${failed} failed` : `vp run registry:e2e exited with ${result.code}`}\n${lastLines(output, 300)}${kept ? `\n${kept}` : ""}`,
           );
         }
         const passed = report<{
