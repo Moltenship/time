@@ -77,6 +77,19 @@ into another week, and days with `inMonth: false` are muted.
         </>
       ),
     },
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: "Extra words for each event's accessible name, such as its calendar.",
+    },
+    renderUnavailable: {
+      type: "UnavailableTimeRender",
+      description: (
+        <>
+          Replaces the shading of closed days: an element, or a function of its props. See{" "}
+          <a href="/docs/availability#customize-the-shading">customize the shading</a>.
+        </>
+      ),
+    },
   }}
 />
 

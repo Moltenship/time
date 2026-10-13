@@ -133,19 +133,19 @@ The packages ship no text. `calendarAnnouncements` lives in `components/calendar
 in your app once you add the UI source, so you can edit it in place. To translate it, write a
 `CalendarAnnouncementMessages` object of your own, with one builder per phase:
 
-| Phase    | When                                                           | The update also has             |
-| -------- | -------------------------------------------------------------- | ------------------------------- |
-| `start`  | An event is picked up, or a create starts                      |                                 |
-| `step`   | Each arrow key, or each new slot under the pointer             |                                 |
-| `commit` | Your handler saved the change                                  | `proposed`: the change as saved |
-| `reject` | A policy or your handler refused it, or the event is read-only | `reason`, such as `"read-only"` |
-| `cancel` | Escape, Tab, leaving the view, or a drag dropped outside it    |                                 |
+| Phase    | When                                                           | The update also has                                                                                                                                       |
+| -------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `start`  | An event is picked up, or a create starts                      | `check`: what the policies say about `proposed`                                                                                                           |
+| `step`   | Each arrow key, or each new slot under the pointer             | `check`, as for `start`                                                                                                                                   |
+| `commit` | Your handler saved the change                                  | `proposed`: the change as saved, and `warnings`                                                                                                           |
+| `reject` | A policy or your handler refused it, or the event is read-only | `reason`, such as `"read-only"`, and `error`: what your handler or a policy threw, if one did (an `AbortError` from your handler means the app cancelled) |
+| `cancel` | Escape, Tab, leaving the view, or a drag dropped outside it    |                                                                                                                                                           |
 
 Each builder receives the update and a context, and returns the text to speak or `null` to stay
 silent. The update has `cause` (`"move"`, `"resize-start"`, `"resize-end"`, or `"create"`),
 `input` (`"keyboard"` or `"pointer"`), `event` (`null` while creating), and the `original` and
-`proposed` placements. The context has `locale`, `timeZone`, and `formatRange(placement)`, which
-formats a placement as the drag preview labels it ("9:30 – 10:00 AM").
+`proposed` placements. The context has `locale`, `timeZone`, `resourceTitle(resourceId)`, and
+`formatRange(placement)`, which formats a placement as the drag preview labels it ("9:30 – 10:00 AM").
 
 ```tsx title="announcements-de.ts"
 import type { CalendarAnnouncementMessages } from "@moltenship/calendar";
@@ -221,7 +221,8 @@ day or a week, and Page Up and Page Down by a month.
 
 `vp run a11y` runs [axe-core](https://github.com/dequelabs/axe-core) in Chromium over every built-in
 view, the toolbar and mini month, and the demo's main screens, in light and dark, and fails on any
-serious or critical WCAG 2.2 A/AA violation. It exempts three rules, each only on specific elements:
+serious or critical WCAG 2.2 A/AA or best-practice violation. It exempts four rules, each only on
+specific elements:
 
 - **Label in name**, for events and day cells: a chip shows an abbreviated subset of its name
   ("9:30 AM Standup"), and a day cell is named by its date and event count because its events are
@@ -229,6 +230,10 @@ serious or critical WCAG 2.2 A/AA violation. It exempts three rules, each only o
 - **Target size**, inside the month and time grids, where an event's box is its time span (WCAG
   2.5.8's "essential" exception).
 - **Hidden focusable elements**, for Base UI's focus guards, which pass focus straight on.
+- **Command name**, for the same focus guards in WebKit, where Base UI makes them unnamed buttons
+  on purpose, so its focus trap catches VoiceOver's cursor instead of letting it leave a popup.
+
+`vp run browsers` runs the same checks in Firefox and WebKit.
 
 A separate test checks the [theme](/docs/theming) against WCAG AA in both color schemes: event text
 on every event color, the today marker, the now line, and the focus ring. If you override `--ring`,

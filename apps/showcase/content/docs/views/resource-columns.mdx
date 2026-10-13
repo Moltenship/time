@@ -1,6 +1,6 @@
 ---
 title: Resource columns
-description: A day of rooms or people side by side, grouped by team, with hundreds of columns.
+description: A day or a few days of rooms or people side by side, grouped by team, with hundreds of columns.
 ---
 
 <CalendarPreview view="resources" />
@@ -224,6 +224,24 @@ ResourceColumnsView              resource-columns-view.tsx
         <>
           Events that book no resources: hidden, or shown in an "Unassigned" column after the
           resources.
+        </>
+      ),
+    },
+    renderUnavailable: {
+      type: "UnavailableTimeRender",
+      description: (
+        <>
+          Replaces the shading of closed time: an element, or a function of its props. See{" "}
+          <a href="/docs/availability#customize-the-shading">customize the shading</a>.
+        </>
+      ),
+    },
+    resourceStatus: {
+      type: "boolean | ResourceStatusOptions",
+      description: (
+        <>
+          Shows each resource's status, such as "Busy until 3:00 PM". See{" "}
+          <a href="/docs/availability#busy-badge-in-resource-views">busy badge</a>.
         </>
       ),
     },

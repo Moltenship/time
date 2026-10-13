@@ -108,7 +108,7 @@ Temporal.PlainDate.from("2026-10-25").toZonedDateTime("Europe/Berlin").hoursInDa
 ```
 
 So some wall-clock times never happen (02:30 on March 29) and some happen twice (02:30 on
-October 25). The `disambiguation` prop on `Root` decides which moment such a time means:
+October 25). Temporal's `disambiguation` option decides which moment such a time means:
 
 | Value                    | Skipped time (gap)       | Repeated time (fold)  |
 | ------------------------ | ------------------------ | --------------------- |
@@ -123,7 +123,10 @@ Temporal.PlainDateTime.from("2026-03-29T02:30")
   .toString(); // "2026-03-29T03:30:00+02:00[Europe/Berlin]"
 ```
 
-Views get the setting as `environment.disambiguation`. When you build a view, these helpers from
+`Root`'s `disambiguation` prop takes the same values (default `"compatible"`) and gives the setting
+to views as `environment.disambiguation`. The built-in views and interactions don't read it; use it
+in your own view when you turn a wall-clock time into an instant. When you build a view, these
+helpers from
 `@moltenship/calendar` already account for these days:
 
 - `zonedDayRange(date, timeZone)` returns the real start and end of a day, 23 or 25 hours long when

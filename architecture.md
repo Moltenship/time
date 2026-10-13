@@ -5,7 +5,7 @@ Time is a Temporal-native, React 19 calendar system built on five principles: ap
 > **Status:** Target design. Parts of it are built; the documentation site (`apps/showcase`) describes only what exists today.
 > **Repository:** `github.com/Moltenship/time`
 > **Primary package:** `@moltenship/calendar`
-> **Registry item:** `@moltenship/calendar`
+> **Registry:** `moltenship-time` (namespace `@moltenship`), served at `/r/<item>.json`; `calendar-full` installs every item
 > **Runtime target:** React 19+, modern ESM, native `Temporal`, Node.js 26+, any React-capable SSR framework
 > **TypeScript target:** current TypeScript with `compilerOptions.lib: ["ESNext"]`
 > **Date policy:** no `Date`, no bundled polyfill, ISO-8601 chronology in v1
@@ -23,7 +23,7 @@ This document is the normative architecture contract.
 | Time model         | Timed events use `Temporal.Instant`; all-day events use `Temporal.PlainDate`; floating events use `Temporal.PlainDateTime`.                          |
 | Interval semantics | Every core interval is half-open: `[start, end)`.                                                                                                    |
 | Timezones          | Timed events are projected into one display timezone. DST gaps/folds use an explicit, configurable disambiguation policy.                            |
-| State              | Per-calendar store; independently controlled/uncontrolled state slices; Jotai is private implementation detail.                                      |
+| State              | Per-calendar store, the React package's own, read through `useSyncExternalStore`; independently controlled/uncontrolled state slices.                 |
 | Views              | Day, week, month, year, list/agenda, resource columns, and resource timeline ship as explicit view definitions. Custom views use a stable plugin contract. |
 | Resources          | An event can have zero-to-many resources. Both day-by-resource columns and horizontal resource timelines are first-class.                            |
 | Interaction        | Native Pointer Events live behind a semantic adapter (ADR 0037). Pointer, touch, keyboard, and explicit edit actions produce the same typed transaction. |
@@ -36,7 +36,7 @@ This document is the normative architecture contract.
 
 ## 2. Architectural shape
 
-The system is deliberately split into four planes. A plane may depend only on planes above it.
+The system is deliberately split into four planes. A plane may depend only on planes below it.
 
 ```text
 Application plane
@@ -61,23 +61,25 @@ The application owns facts. The engine derives render models. React binds those 
 
 1. Temporal utilities never import React, Jotai, dnd-kit, DOM types, CSS, or application types.
 2. Core never imports React, Jotai, dnd-kit, DOM types, or registry source.
-3. React bindings may import core and Jotai, but not default view source.
-4. The pointer adapter may import the React bindings and core interaction contracts. It uses native Pointer Events, not a drag-and-drop library (ADR 0037).
-5. Registry source may import all public packages and ordinary shadcn components.
-6. The showcase consumes packages and registry output exactly as an end user would.
+3. React bindings may import core, the Temporal utilities and React, but not default view source.
+4. The pointer adapter may import core, the Temporal utilities and React, but not the React bindings. It uses native Pointer Events, not a drag-and-drop library (ADR 0037). Of the published packages, only the facade imports it.
+5. Registry source imports only the `@moltenship/calendar` facade, other registry items, the npm packages `registry/package.json` declares, and stock shadcn components. It never imports a drag-and-drop library or `calendar-dnd`.
+6. The showcase and the demo import packages only through their public entry points, and registry source in place. Running the showcase and fixtures on the packed packages instead of workspace source is release-audit phase 2 (#47). The release dry run already installs the packed tarballs into a clean project, and `vp run registry:e2e` installs the built registry into clean Vite and Next.js apps.
 7. No package may deep-import another package's `src/` directory.
 8. The iCalendar package imports no other workspace, so applications can use it without the calendar (ADR 0151).
+9. The recurrence package depends on core, the Temporal utilities and `ics`. No other published package and no registry source imports it (ADR 0048).
 
 ## 3. Repository and package topology
 
 ```text
 time/
 ├── apps/
-│   ├── showcase/                 # Fumadocs documentation, examples, stress and DST labs
+│   ├── showcase/                 # Fumadocs documentation, live examples, the Next.js example, the registry at /r
 │   │   ├── app/                  # Next.js routes, layouts, static search endpoint
 │   │   ├── content/docs/         # authored MDX library documentation
 │   │   ├── lib/source.ts         # sole runtime content loader
 │   │   └── source.config.ts      # collection schemas and MDX configuration
+│   ├── demo/                     # Google Calendar-style demo app (Vite), built from registry source
 │   └── ssr-fixture/              # render/hydrate verification in a real SSR boundary
 ├── packages/
 │   ├── calendar-temporal/        # standalone Temporal calendar utilities
@@ -85,11 +87,11 @@ time/
 │   ├── calendar-react/           # React provider, store bridge, hooks, primitives
 │   ├── calendar-dnd/             # pointer interaction adapter (native Pointer Events)
 │   ├── calendar/                 # DX-first public facade
-│   ├── calendar-testing/         # fixtures, harnesses and semantic test helpers
+│   ├── calendar-testing/         # empty until #45; private until after 1.0
 │   ├── calendar-recurrence/      # range-bounded recurrence (RRULE, exceptions, series edits)
 │   └── ics/                      # standalone iCalendar parsing (RFC 5545)
 ├── registry/
-│   ├── calendar/                 # root, toolbar, shared renderers
+│   ├── calendar/                 # toolbar, view switcher, event chip, mini month, shared renderers
 │   ├── month-view/
 │   ├── year-view/                # twelve month grids and a day popover
 │   ├── time-grid-view/           # day + week
@@ -99,21 +101,30 @@ time/
 │   ├── resource-timeline-view/
 │   ├── recurrence-scope-dialog/  # "which events?" for edits to a recurring event
 │   ├── calendar-theme/
-│   └── calendar-full/            # installs every item; owns no files
+│   ├── calendar-full/            # installs every item; owns no files
+│   └── ui/                       # stock shadcn components (Base UI) the source compiles against
 ├── benchmarks/
 │   ├── core/                     # indexes, projection, overlap layout
-│   └── react/                    # commits, DOM bounds, pointer and scroll frames
+│   ├── react/                    # reference render and pointer-frame stages (#188)
+│   ├── recurrence/               # series expansion for the year view
+│   └── shared/                   # protocol, CLI, reference engine
 ├── docs/
 │   ├── adr/                      # one consequential decision per record
-│   └── internal/                 # contributor notes: quality gates, topology, benchmarks, evidence
+│   └── internal/                 # contributor notes: quality gates, topology, releasing, release audit, benchmarks, evidence
 ├── tools/
 │   ├── registry/                 # shadcn build, registry checks, clean-app install test
-│   └── fixtures/                 # deterministic event/resource generators
+│   ├── release/                  # versions, size budgets, API reports, export checks, dry run, publish
+│   ├── a11y/                     # axe and real interactions in Chromium, Firefox and WebKit
+│   ├── fixtures/                 # deterministic event/resource generators
+│   ├── recurrence-oracle/        # RRULE reference fixtures (not a workspace)
+│   └── *-spike/                  # dnd-adapter, interval-dst, react-store and resource-virtualization spikes
+├── tests/                        # repository contracts: dependency boundaries, package metadata, quality gates
 └── architecture.md
 ```
 
-`apps/showcase` is the only public documentation/vitrine application. It runs on Fumadocs; there is
-no second docs content tree.
+`apps/showcase` is the only documentation application. It runs on Fumadocs; there is no second docs
+content tree. `apps/demo` is a public Google Calendar-style demo built from the registry views; it
+carries no documentation.
 
 ### Published packages
 
@@ -121,31 +132,34 @@ no second docs content tree.
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | `@moltenship/calendar-temporal`   | Type-specific ranges, grids, timezone projection, slots, rounding, keys, and interval helpers.                                | None                                                                                      | Stable, standalone                                |
 | `@moltenship/calendar-core`       | Event adapters, normalized snapshots, interval indexes, view strategies, fragments, layout engines, policies, transactions.   | `calendar-temporal`; provisional `@flatten-js/interval-tree` behind an internal interface | Stable                                            |
-| `@moltenship/calendar-react`      | Per-instance provider, controlled state bridge, selectors, actions, meta, headless primitives, custom-view renderer contract. | `calendar-core`, Jotai; React 19 peer                                                     | Stable                                            |
-| `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements.                                          | `calendar-core`, `calendar-temporal`                                                      | Stable adapter; no DOM event types in callbacks   |
-| `@moltenship/calendar`            | The ergonomic entry point used by most consumers. Re-exports supported React and core contracts.                              | `calendar-react`, `calendar-core`                                                         | Stable facade                                     |
-| `@moltenship/calendar-testing`    | Deterministic clocks, event builders, keyboard drivers, view harnesses, assertions.                                           | Public calendar packages                                                                  | Private until after 1.0 (#45)                     |
-| `@moltenship/calendar-recurrence` | Range-bounded RRULE expansion, occurrence identity, exceptions and overrides, explicit series edits (ADR 0048).            | `calendar-core`, `calendar-temporal`, `ics`                                               | Post-foundation                                   |
+| `@moltenship/calendar-react`      | Per-instance provider, controlled state bridge, selectors, actions, meta, headless primitives, custom-view renderer contract. | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable                                            |
+| `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements.                                          | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable adapter; no DOM event types in callbacks   |
+| `@moltenship/calendar`            | The ergonomic entry point used by most consumers. Re-exports core, the Temporal utilities, the React bindings and the pointer adapter. | `calendar-core`, `calendar-temporal`, `calendar-react`, `calendar-dnd`; React 19 peer | Stable facade                                     |
+| `@moltenship/calendar-testing`    | Not built yet (#45): deterministic clocks, event builders, keyboard drivers, view harnesses, assertions. Exports nothing today. | Public calendar packages                                                                  | Private until after 1.0 (#45)                     |
+| `@moltenship/calendar-recurrence` | Range-bounded RRULE expansion, occurrence identity, exceptions and overrides, explicit series edits (ADR 0048).            | `calendar-core`, `calendar-temporal`, `ics`                                               | Publishes with 1.0, in lockstep                   |
 | `@moltenship/ics`                 | iCalendar syntax tree, typed values and components, TZID resolution, Standard Schema parser. Parses RRULEs; doesn't expand them. | None                                                                                      | Pre-1.0                                           |
 
-All of these publish except `calendar-testing`, which stays private until after 1.0 (#45). Package versions move in lockstep until after `1.0`. The repository lockfile pins exact implementation dependencies; published packages expose narrow peer ranges for React and optional adapters.
+All of these publish except `calendar-testing`, which stays private until after 1.0 (#45). Package versions move in lockstep until after `1.0`. The lockfile pins every implementation dependency; the `pnpm-workspace.yaml` catalog sets most exactly and a few as caret ranges. The published packages that use React (`calendar-react`, `calendar-dnd` and `calendar`) declare a `^19.0.0` peer; there are no other peers.
 
 ### External dependency ledger
 
 | Dependency line                       | Used by                            | Why it exists                                                     | Containment rule                                                  |
 | ------------------------------------- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
-| React 19                              | `calendar-react`, facade, registry | Rendering, context, refs, SSR, external-store subscription        | Peer dependency; absent from core and Temporal utilities          |
-| Jotai 2                               | `calendar-react`                   | Per-instance vanilla store and fine-grained derived subscriptions | Private atoms; no Jotai type in the public calendar API           |
+| React 19                              | `calendar-react`, `calendar-dnd`, facade, registry | Rendering, context, refs, SSR, external-store subscription | Peer dependency; absent from core, Temporal utilities, recurrence and `ics` |
+| Jotai 3                               | `tools/react-store-spike` only     | Spike history (ADR 0018); `calendar-react` dropped it in #70 (#184) | Not a production dependency                                      |
 | `@dnd-kit/react` + `@dnd-kit/dom` 0.x | `tools/dnd-adapter-spike` only     | Spike history; not a production dependency since ADR 0037          | Optional future adapter behind the same semantic contracts       |
 | TanStack Virtual 3                    | List and resource registry views   | Maintained vertical/horizontal windowing and measurement          | Hidden behind view adapters; not required by core                 |
 | `@flatten-js/interval-tree` 2         | `calendar-core` provisionally      | Established interval-query baseline                               | Hidden behind `IntervalIndex`; retained only if benchmarks pass   |
 | Tailwind CSS 4 + shadcn registry      | Consumer-owned registry source     | Theme-token compatibility and source distribution                 | No runtime import in headless packages                            |
 | `fast-check` 4                        | Test workspace                     | Property-based interval, range, and index verification            | Development only                                                  |
 | CLDR `windowsZones` data              | `ics`                              | Windows TZIDs from Outlook and Exchange to IANA time zone ids     | Generated by script; its license comment survives the build       |
-| Playwright + axe-core                 | Browser and SSR fixtures           | Browser, hydration, interaction, visual, and accessibility proof  | Development only                                                  |
+| Playwright + axe-core                 | `tools/a11y`                       | axe's WCAG 2.2 A/AA and best-practice rules (serious and critical), and real mouse and keyboard interactions in Chromium, Firefox and WebKit | Development only                                |
+| jsdom                                 | Package, registry, demo, showcase and SSR-fixture tests | DOM and hydration tests outside a browser                    | Development only                                                  |
+| `@base-ui/react` 1, `lucide-react`, `cn`, `class-variance-authority` | Registry source | shadcn's Base UI primitives, icons, class merging and variants | Installed into the app by `shadcn add`; never imported by packages |
+| `temporal-polyfill`                   | `apps/demo`, `apps/showcase`, `tools/a11y` | Browsers without native `Temporal`                        | Installs itself only where `Temporal` is missing; the demo and the docs islands also import it only then, and `tools/a11y` swaps it in for WebKit's; never imported by packages or registry source |
 | Next.js 16 + Fumadocs           | `apps/showcase`                    | App Router SSG, typed MDX content, documentation layouts, navigation, and search | Application-only; absent from published package manifests and declarations |
 
-Exact patch versions are chosen and pinned when implementation begins. The architecture commits to the boundary and major line, not to an untested floating dependency.
+The lockfile pins every version; the `pnpm-workspace.yaml` catalog sets most exactly and a few as caret ranges. The architecture commits to the boundary and major line, not to an untested floating dependency.
 
 ### Registry composition
 
@@ -161,7 +175,8 @@ The registry is not a second package manager. It distributes the source users ar
 - `meta.compatibility` records the `@moltenship/calendar` range an item's install needs. The build
   takes it from the version the workspace builds and tests with.
 - No item depends on a drag-and-drop library. Views edit through the native pointer layer in
-  `@moltenship/calendar`, which stays off until the app passes `onEventChange`.
+  `@moltenship/calendar`. Without `onEventChange` on `Root`, every change it proposes is rejected
+  as read-only, though drags still start (#201).
 - `shadcn build` builds it, and the docs site serves it at `/r/<item>.json`.
 - No custom CLI is introduced in v1; the maintained shadcn CLI is the installer.
 
@@ -193,45 +208,52 @@ export interface CalendarEventBase<
   TEventId extends EventId,
   TResourceId extends ResourceId,
 > {
-  id: TEventId;
-  title: string;
-  resourceIds?: readonly TResourceId[];
-  data: TData;
+  readonly id: TEventId;
+  readonly title: string;
+  readonly resourceIds?: readonly TResourceId[];
+  readonly data: TData;
 }
 
-export interface TimedCalendarEvent<
+export interface TimedCalendarEventInterval {
+  readonly kind: "timed";
+  readonly start: Temporal.Instant;
+  readonly end: Temporal.Instant;
+  readonly sourceTimeZone?: string;
+}
+
+export interface AllDayCalendarEventInterval {
+  readonly kind: "all-day";
+  readonly start: Temporal.PlainDate;
+  readonly end: Temporal.PlainDate;
+}
+
+export interface FloatingCalendarEventInterval {
+  readonly kind: "floating";
+  readonly start: Temporal.PlainDateTime;
+  readonly end: Temporal.PlainDateTime;
+}
+
+export type CalendarEventInterval =
+  | TimedCalendarEventInterval
+  | AllDayCalendarEventInterval
+  | FloatingCalendarEventInterval;
+
+export type TimedCalendarEvent<
   TData = unknown,
   TEventId extends EventId = string,
   TResourceId extends ResourceId = string,
-> extends CalendarEventBase<TData, TEventId, TResourceId> {
-  kind: "timed";
-  start: Temporal.Instant;
-  end: Temporal.Instant;
-  sourceTimeZone?: string;
-}
+> = CalendarEventBase<TData, TEventId, TResourceId> & TimedCalendarEventInterval;
 
-export interface AllDayCalendarEvent<
+// AllDayCalendarEvent and FloatingCalendarEvent follow the same pattern.
+
+export type CalendarEvent<
   TData = unknown,
   TEventId extends EventId = string,
   TResourceId extends ResourceId = string,
-> extends CalendarEventBase<TData, TEventId, TResourceId> {
-  kind: "all-day";
-  start: Temporal.PlainDate;
-  end: Temporal.PlainDate;
-}
-
-export interface FloatingCalendarEvent<
-  TData = unknown,
-  TEventId extends EventId = string,
-  TResourceId extends ResourceId = string,
-> extends CalendarEventBase<TData, TEventId, TResourceId> {
-  kind: "floating";
-  start: Temporal.PlainDateTime;
-  end: Temporal.PlainDateTime;
-}
-
-export type CalendarEvent<TData = unknown> =
-  TimedCalendarEvent<TData> | AllDayCalendarEvent<TData> | FloatingCalendarEvent<TData>;
+> =
+  | TimedCalendarEvent<TData, TEventId, TResourceId>
+  | AllDayCalendarEvent<TData, TEventId, TResourceId>
+  | FloatingCalendarEvent<TData, TEventId, TResourceId>;
 ```
 
 Color, permissions, avatars, status, room capacity, and application-specific fields live in `data` or the application event itself. The engine does not grow a universal event schema.
@@ -248,6 +270,8 @@ interface EventAdapter<TEvent, TEventId extends EventId, TResourceId extends Res
   getResourceIds(event: TEvent): readonly TResourceId[];
   isReadOnly?(event: TEvent): boolean;
   getRevision?(event: TEvent): string | number;
+  /** Without it, timed and floating events are busy and all-day ones free. */
+  isBusy?(event: TEvent): boolean;
 }
 
 const eventAdapter = defineEventAdapter<ApiEvent>()({
@@ -263,7 +287,7 @@ const eventAdapter = defineEventAdapter<ApiEvent>()({
 });
 ```
 
-The default adapter is an identity adapter for `CalendarEvent<TData>`. Normalization occurs once per input snapshot, never inside a cell renderer or pointer frame.
+There is no default adapter: `createCalendar` requires `eventAdapter`. Records already in the canonical shape use `createCanonicalEventAdapter()`, which reads `CalendarEvent<TData, TEventId, TResourceId>` fields directly. Normalization occurs once per input snapshot, never inside a cell renderer or pointer frame.
 
 ### 4.4 Half-open intervals
 
@@ -285,8 +309,9 @@ Day and week views use wall-clock axes. DST behavior is explicit:
 
 - Spring gaps are represented as unavailable wall-time segments.
 - Fall folds can represent both offsets; event fragments retain instant identity so the repeated hour is not conflated.
-- Creating or moving into a gap uses a configurable `TemporalDisambiguation` policy.
-- The default is `"compatible"`, and any automatic shift is included in the transaction and announced to assistive technology.
+- The time grid resolves a pointer position by snapping on the wall grid, so a drop or create target is never inside a skipped hour: a snapped time in a gap resolves to the transition instant (ADR 0016).
+- Moves apply whole days on the wall clock, then the rest as exact time. A wall time that lands in a gap moves later by the gap's length, as Temporal's `"compatible"` does.
+- `Root` takes `disambiguation` (default `"compatible"`) and passes it to views as `environment.disambiguation`, for views and helpers that resolve wall times themselves. The built-in interaction path doesn't read it, and no change carries or announces a shift yet (#187).
 - Policies may reject the proposal instead.
 
 `Calendar.Root` can also take `secondaryTimeZones`, other zones time grids label their hours in (ADR 0165). They're an environment input beside `timeZone`, not a display zone: events still project into one zone. Each hour line is read on its own date, in both zones' rules, never through a fixed offset; a skipped wall time has no time in the other zone and a repeated one has both. One gutter serves all columns, so it follows the first visible day on which neither zone changes its clocks; the runs of lines on other days that read differently are listed as shifts.
@@ -303,13 +328,15 @@ V1 promises ISO-8601/Gregorian arithmetic with arbitrary locale, numbering syste
 
 ```text
 src/
-├── intervals/       # compare, intersect, contains, split
-├── plain-date/      # week/month grids, iteration, date keys
-├── plain-time/      # slot generation and snapping
-├── instant/         # instant ranges and duration-safe comparisons
-├── zoned/           # day boundaries, projection, DST gaps/folds
-├── grids/           # month/week visible ranges
+├── intervals/       # half-open constructors, compare, contains, intersect, split
+├── plain-date/      # lazy date iteration
+├── plain-time/      # PlainTime rounding and wall-grid snapping
+├── instant/         # lazy instant iteration and epoch rounding
+├── zoned/           # day ranges and splits, wall-time projection, DST gaps/folds,
+│                    # slots, zoned snapping, machine keys
+├── grids/           # week ranges and month grids
 ├── clock/           # deterministic clock interface
+├── internal/        # shared validation helpers, not exported
 └── index.ts         # intentional public exports only
 ```
 
@@ -320,17 +347,22 @@ Rules:
 3. Parsing is limited to Temporal-supported machine formats; no fuzzy natural-language parser.
 4. Week functions require explicit week rules or locale-derived rules at the boundary.
 5. Iterators are lazy where ranges may be large.
-6. Every helper that resolves a nominal wall time requires a timezone and disambiguation policy.
-   Day-boundary and instant-splitting helpers require a timezone and use Temporal's unique
+6. Every helper that resolves a nominal wall time requires a timezone and says how gaps and folds
+   resolve. `resolveZonedWallTime` and `slotsInZonedDay` take a `disambiguation` policy;
+   `snapZonedWallTime` takes a `fold` choice (`"earlier"` by default) and resolves a skipped time
+   to the transition instant. Day-boundary and instant-splitting helpers require a timezone and use Temporal's unique
    start-of-day semantics, including the first real instant after a midnight gap. Boundary-day
    ownership remains authoritative when a historical cross-midnight fold projects an instant onto
    an adjacent wall date; slot results expose such physical pieces as explicit carryover metadata.
-7. Each module has property tests for ordering, adjacency, boundaries, and round trips.
+7. Property tests cover interval operations, date and instant iteration, month grids, PlainTime
+   and zoned snapping, and zoned slots. Day ranges and splits, wall-time projection, keys and
+   instant rounding have example tests; the zoned ones cover DST gaps, folds and midnight
+   transitions.
 
 Representative API:
 
 ```ts
-plainDateRange(start, end);
+plainDateInterval(start, end);
 iteratePlainDates(range);
 monthGrid(date, { weekStartsOn, fixedWeeks });
 weekRange(date, { weekStartsOn });
@@ -349,23 +381,27 @@ intersectPlainDateIntervals(left, right);
 
 ### 6.1 Input forms
 
-The normal React API accepts an immutable array snapshot:
+The normal React API accepts an immutable array snapshot. The adapter is fixed once, on the
+factory:
 
 ```tsx
-<TeamCalendar.Root events={events} eventAdapter={eventAdapter} />
+const TeamCalendar = createCalendar<ApiEvent, Room>()({ eventAdapter, views });
+
+<TeamCalendar.Root events={events} {...environmentAndState} />
 ```
 
-For high-frequency external stores, an advanced source avoids rebuilding from full arrays:
+For high-frequency external stores, core exports the shape of an advanced source. Nothing accepts
+one yet: `Root` takes the array form only (#200).
 
 ```ts
-interface CalendarEventSource<TEvent> {
-  getSnapshot(): EventSnapshot<TEvent>;
-  getServerSnapshot(): EventSnapshot<TEvent>;
+interface CalendarEventSource<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  getSnapshot(): EventSnapshot<TEvent, TEventId, TResourceId>;
+  getServerSnapshot(): EventSnapshot<TEvent, TEventId, TResourceId>;
   subscribe(listener: () => void): () => void;
 }
 ```
 
-Both forms preserve external ownership. The calendar never fetches data or mutates backend records.
+The calendar never fetches data or mutates backend records.
 
 ### 6.2 Normalized snapshot
 
@@ -373,22 +409,32 @@ A snapshot contains:
 
 - `byId`: stable identity lookup;
 - timed interval index keyed by epoch time;
-- all-day interval index keyed by ISO epoch day;
+- all-day interval index keyed by packed ISO year, month and day fields;
 - floating interval index keyed by local ISO fields;
 - resource-to-event indexes;
-- per-event revision and validation status;
+- per-event revision;
+- `issues`: the records left out as invalid, with their codes;
 - a monotonic snapshot version;
-- memoized query/projection caches bounded by LRU limits.
+- a query cache for range and resource queries, bounded by an LRU limit (`queryCacheSize`, 128 by
+  default; `Root` always uses the default). Projections aren't cached in the snapshot; `Root` memoizes the active view's
+  projection on its inputs.
 
 The interval-tree implementation is wrapped behind an internal `IntervalIndex` interface. Its types never escape the core package, so it can be replaced only after benchmark evidence and an ADR.
 
 ### 6.3 Snapshot lifecycle
 
-- Stable `events` and adapter identities reuse the complete snapshot.
-- A new array identity triggers one normalization/index pass, not work per rendered component.
-- Development diagnostics identify duplicate IDs, invalid intervals, mutable snapshots, and unstable adapters.
+- The adapter is fixed when `createCalendar` runs, so it never changes under a `Root`.
+- `Root` compares `events` item by item. A new array with the same records reuses the complete
+  snapshot.
+- A changed array triggers one normalization pass, not work per rendered component. The interval
+  indexes are rebuilt only when records were added, removed or reordered, or a record's normalized
+  fields changed (with a revision accessor, only when its revision changed).
+- Duplicate IDs, invalid intervals, IDs and revisions, and adapter failures are reported in every build,
+  as `snapshot.issues` and as `invalid-event` diagnostics through `meta.diagnostics` and
+  `onDiagnosticsChange`. Nothing detects a mutated array or record yet.
 - A revision accessor permits structural reuse when event objects are recreated but unchanged.
-- Production invalid-event behavior is configurable: report and skip by default; strict mode throws.
+- Invalid-event behavior is set by `invalidEventPolicy` on `createCalendar`: `"report-and-skip"`
+  (the default) or `"throw"`, which throws `InvalidCalendarEventSnapshotError` during render.
 - Async/worker indexing can implement the same snapshot interface later without changing view APIs.
 
 ### 6.4 Projection pipeline
@@ -397,6 +443,7 @@ The interval-tree implementation is wrapped behind an internal `IntervalIndex` i
 external events
   → adapter normalization
   → immutable indexed snapshot
+  → pending-change and keyboard-preview overlay (indexes reused)
   → visible interval/resource query
   → timezone projection
   → event fragments split by day/resource
@@ -406,7 +453,7 @@ external events
   → registry components
 ```
 
-Each stage is a pure function or a versioned cache. A selection change does not rebuild indexes. A pointer move does not rerun projection. A color change does not recalculate layout unless its geometry changes.
+Each stage is a pure function or a versioned cache. A selection change does not rebuild indexes or rerun projection. A pointer move does not rerun projection. A record replaced with the same normalized fields (interval, title, resources, read-only and busy flags, revision), such as a color change in `data` that keeps its revision, reuses its normalized structure and the interval indexes, but the active view's projection and layout run again.
 
 ## 7. View system
 
@@ -415,57 +462,61 @@ Each stage is a pure function or a versioned cache. A selection change does not 
 Core defines a framework-independent view strategy:
 
 ```ts
-interface CalendarViewStrategy<TName extends string, TOptions> {
-  name: TName;
+interface CalendarViewStrategy<TProjection, TOptions = undefined, TEvent = unknown> {
   getRange(
     anchor: Temporal.PlainDate,
-    environment: CalendarEnvironment,
+    environment: CalendarEnvironmentBase,
     options: TOptions,
-  ): DateRange;
+  ): PlainDateInterval;
   /** Dates projected and loaded around the visible range; defaults to it. */
   getLoadRange?(
     anchor: Temporal.PlainDate,
-    environment: CalendarEnvironment,
+    environment: CalendarEnvironmentBase,
     options: TOptions,
-  ): DateRange;
-  navigate(
-    anchor: Temporal.PlainDate,
-    direction: -1 | 1,
-    options: TOptions,
-    environment?: CalendarEnvironment,
-  ): Temporal.PlainDate;
-  getTitle(range: DateRange, environment: CalendarEnvironment, options: TOptions): string;
-  project(input: ViewProjectionInput, options: TOptions): ViewProjection;
-  getSpatialNavigation(input: SpatialNavigationInput): SpatialNavigationResult;
-  getInteractionGeometry(input: InteractionGeometryInput): InteractionGeometry;
+  ): PlainDateInterval;
+  navigate(anchor: Temporal.PlainDate, delta: number, options: TOptions): Temporal.PlainDate;
+  getTitle(range: PlainDateInterval, environment: CalendarEnvironmentBase, options: TOptions): string;
+  project(input: CalendarViewProjectionInput<TOptions, TEvent>): TProjection;
+  /** Where a navigation key moves focus; a view without it has no keyboard navigation. */
+  getSpatialNavigation?(
+    input: CalendarSpatialNavigationInput<TProjection, TOptions>,
+  ): CalendarSpatialNavigation | null;
 }
 ```
+
+The strategy has no name; the view does. Pointer geometry is not part of it: views mark their DOM
+(`data-date`, `data-all-day`, `data-event-id`, `data-resize`, `data-resource-id`) and pass time-grid `columns` to
+`useCalendarPointer`.
 
 React binds a strategy to a renderer:
 
 ```ts
-interface CalendarViewDefinition<TEvent, TResource, TOptions> {
-  strategy: CalendarViewStrategy<string, TOptions>;
-  Renderer: React.ComponentType<CalendarViewRendererProps<TEvent, TResource, TOptions>>;
+interface CalendarView<TName extends string, TProjection, TOptions, TEvent = unknown> {
+  name: TName;
+  strategy: CalendarViewStrategy<TProjection, TOptions, TEvent>;
+  Renderer: React.ComponentType<CalendarViewRendererProps<TProjection, TOptions>>;
   defaultOptions: TOptions;
 }
 ```
 
-This is a semver-protected plugin contract. Custom views do not import internal atoms or layout files.
+`defineCalendarView({ name, strategy, Renderer, defaultOptions })` makes one; `defaultOptions` may
+be left out when the options can be `undefined`.
+
+This is a semver-protected plugin contract. Custom views do not import the store's internals or private layout files.
 
 ### 7.2 Built-in views
 
 | View              | Range/layout                                                     | Virtualization                                                  | Important behavior                                                   |
 | ----------------- | ---------------------------------------------------------------- | --------------------------------------------------------------- | -------------------------------------------------------------------- |
-| Month             | Padded week grid; multi-day segments packed across each week row | Months may virtualize; one month grid remains bounded           | All-day/timed summary, overflow, fixed or natural week count         |
+| Month             | Padded week grid; multi-day segments packed across each week row | None: one grid of four to six weeks, bounded                    | All-day/timed summary, overflow into "+N more", natural week count (four to six rows) |
 | Year              | The anchor's calendar year as twelve month grids, each date once | None: 365 cells, bounded                                        | Event dots per day, a day's events in one shared popover, read-only  |
-| Week              | 1–7 day time grid plus all-day lanes                             | Event fragments bounded; vertical time canvas may use windowing | Wall-clock slots, overlaps, current-time marker, business hours      |
+| Week              | 1–7 day time grid plus all-day lanes                             | Event fragments bounded; no windowing: the 24-hour canvas renders whole, with only the focused slot as an element | Wall-clock slots, overlaps, current-time marker, business hours |
 | Day               | Single-day time grid plus all-day lanes                          | Same projection as week                                         | Full event detail and precise create/resize                          |
 | List/agenda       | Chronological grouped occurrences/fragments                      | Vertical TanStack Virtual                                       | Keyboard-first equivalent and dense-data fallback                    |
-| Resource columns  | One day with horizontal resource columns and vertical time       | Horizontal resource virtualization                              | Sticky time axis, resource headers, zero-to-many resource projection |
+| Resource columns  | One day, or N days per resource, with horizontal resource columns and vertical time | Horizontal resource virtualization                              | Sticky time axis, resource headers, zero-to-many resource projection |
 | Resource timeline | Resource rows with horizontal time                               | Composed row/time virtualizers                                  | Sticky resource axis, configurable range and resolution              |
 | Scrolling week/day | The anchor's week or 1–7 days from it, swiping sideways by pages | Anchored day axis; a page of days rendered either side          | Snaps a page at a time; anchor follows the scroll; load range for prefetching |
-| Scrolling month   | Six week rows from the week of the anchor month's first day       | Anchored week axis; a page of weeks rendered either side        | Snaps a month at a time; named by the anchor's month                 |
+| Scrolling month   | Six to twelve week rows (six by default), from the week of the anchor month's first day | Anchored week axis; a page of weeks rendered either side        | Snaps a month at a time; named by the anchor's month                 |
 | Scrolling agenda  | Days with events, `weeks` from the anchor date                   | Vertical TanStack Virtual over a page of weeks either side      | Rests on any day; anchor follows the day on top; load range for prefetching |
 
 Day and week share the time-grid strategy and primitives; they are explicit view variants, not one component controlled by boolean flags.
@@ -503,17 +554,21 @@ interface CalendarResource<TData = unknown, TResourceId extends ResourceId = str
   title: string;
   parentId?: TResourceId;
   data: TData;
+  /** The IANA time zone the resource keeps; its working hours follow it. */
+  timeZone?: string;
+  /** When it can be booked; the calendar's `availability` by default. */
+  availability?: ResourceAvailability;
 }
 ```
 
-An event with multiple resources creates one render fragment per visible resource while retaining one canonical event identity. Grouping, collapse state, order, and visibility are view state. Capacity and booking rules remain application policies.
+An event with multiple resources creates one render fragment per visible resource while retaining one canonical event identity. Grouping follows `parentId` and order follows the `resources` array, both the application's. Which groups are open is the controllable `expandedResourceIds` slice; a view's `unassigned` option shows events without resources in a bucket. Capacity and booking rules remain application policies.
 
 ### 7.4 Annotations
 
 Annotations are time-based information shown beside events without being events: listening sessions, sleep, workouts, focus blocks (#119).
 
 ```ts
-interface CalendarAnnotation<TData = unknown, TResourceId extends ResourceId = ResourceId> {
+interface CalendarAnnotation<TData = unknown, TResourceId extends ResourceId = never> {
   id: AnnotationId;
   sourceId: string;
   start: Temporal.Instant;
@@ -552,18 +607,29 @@ const eventAdapter = defineEventAdapter<ApiEvent>()({
   getResourceIds: (event) => event.roomIds,
 });
 
-export const TeamCalendar = createCalendar<ApiEvent, Room>({
+export const TeamCalendar = createCalendar<ApiEvent, Room>()({
   eventAdapter,
-  views: [monthView, weekView, dayView, listView, resourceColumnsView, resourceTimelineView],
+  views: [
+    createMonthView<ApiEvent>(),
+    createWeekView<ApiEvent>(),
+    createDayView<ApiEvent>(),
+    createAgendaView<ApiEvent>(),
+    createResourceColumnsView<ApiEvent>(),
+    createTimelineWeekView<ApiEvent>(),
+  ],
 });
 ```
 
-The factory carries `TEvent`, `TResource`, and the complete view-name union through hooks,
-callbacks, transactions, renderers, and custom views without repeating generics in JSX. A view
-definition's literal strategy name remains distinct from that runtime union, so its renderer can
-navigate to sibling views without an unsound narrowed context. Standalone definitions use a
-view-agnostic context until a factory supplies the complete union, so they remain assignable
-without pretending that their literal registration name is the only runtime view.
+The first call fixes the record, resource, selection and focus types; the second infers the
+view-name union and ID types from `views` and `eventAdapter`. Duplicate view names throw.
+
+The factory carries those types through hooks, `Root`'s props and callbacks, and event changes,
+without repeating generics in JSX. Renderers stay view-agnostic: they get
+`CalendarViewRendererProps<TProjection, TOptions>`, whose events are `unknown` records and whose
+`actions.setView` takes any name, so one view definition fits any calendar. A view's literal
+`name` is distinct from the runtime union; an unregistered active view surfaces as an
+`unregistered-active-view` diagnostic. A view that reads its own record fields types its `project`
+input as `CalendarViewProjectionInput<TOptions, TEvent>`.
 
 ### 8.2 Compound components
 
@@ -573,6 +639,7 @@ without pretending that their literal registration name is the only runtime view
   resources={rooms}
   timeZone="Asia/Tbilisi"
   locale="en-GB"
+  weekRules={weekRules}
   view={view}
   onViewChange={setView}
   defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
@@ -580,38 +647,36 @@ without pretending that their literal registration name is the only runtime view
 >
   <TeamCalendar.Frame>
     <TeamCalendar.Toolbar>
-      <TeamCalendar.PreviousTrigger />
+      <TeamCalendar.PreviousTrigger aria-label="Previous" />
       <TeamCalendar.Title />
-      <TeamCalendar.TodayTrigger />
-      <TeamCalendar.NextTrigger />
-      <TeamCalendar.ViewSwitcher />
+      <TeamCalendar.TodayTrigger>Today</TeamCalendar.TodayTrigger>
+      <TeamCalendar.NextTrigger aria-label="Next" />
+      <TeamCalendar.ViewSwitcher getViewLabel={(name) => viewLabels[name]} />
     </TeamCalendar.Toolbar>
 
     <TeamCalendar.Viewport>
-      <TeamCalendar.ActiveView>
-        <TeamCalendar.Event>
-          {({ event, fragment, interaction }) => (
-            <EventCard event={event} fragment={fragment} interaction={interaction} />
-          )}
-        </TeamCalendar.Event>
-      </TeamCalendar.ActiveView>
+      <TeamCalendar.ActiveView />
     </TeamCalendar.Viewport>
 
-    <TeamCalendar.DragOverlay />
-    <TeamCalendar.Announcer />
+    <TeamCalendar.Announcer messages={calendarAnnouncements} />
   </TeamCalendar.Frame>
 </TeamCalendar.Root>
 ```
+
+Each view's Renderer draws its events. The month, time-grid and resource views, and the scrolling
+week, day and month, attach the pointer layer, which draws drag previews itself; the year and agenda
+views don't. `TeamCalendar.Event eventId={id}` looks up one event anywhere inside `Root` and calls its
+children with `{ event, normalized }`.
 
 API rules:
 
 1. `Root` receives data, environment, policies, and state control—not visual mode booleans.
 2. Structural customization uses children and compound components.
-3. Render callbacks exist only when a parent must supply typed event/fragment data.
+3. Render callbacks exist only when a parent must supply typed event data.
 4. Day, week, month, year, list, and resource variants are explicit definitions.
 5. In React 19, DOM refs are ordinary props; composed callbacks preserve returned detach cleanup
    functions, and registry source does not add `forwardRef` wrappers.
-6. UI components consume a generic `{ state, actions, meta }` context contract. Only the provider knows Jotai exists.
+6. UI components read the calendar through the factory's hooks: `TeamCalendar.useCalendar()` returns a generic `{ state, actions, meta }`, and parts subscribe to the slices they need. Only `Root` knows how the store works.
 7. Custom controls may live anywhere inside `Root`, not only inside `Frame`.
 8. `Root.id` is the authoritative instance/part ID seed. Individual identified primitives do not
    accept an `id` override, so `meta.ids` and default ARIA relationships cannot diverge from the DOM.
@@ -622,24 +687,38 @@ State is divided by ownership and update frequency.
 
 | Class                 | Examples                                                       | Owner                             | Storage                                                |
 | --------------------- | -------------------------------------------------------------- | --------------------------------- | ------------------------------------------------------ |
-| External facts        | events, resources, permissions, business policies              | Application                       | Props or `CalendarEventSource`                         |
+| External facts        | events, resources, permissions, business policies              | Application                       | Props (`events`, `resources`, `policies`, `availability`, `annotations`) |
 | Controllable UI       | view, anchor date, selection, focus, timezone, expanded groups | Application or calendar           | Independently controlled slices in per-instance store  |
 | Derived               | visible range, queried IDs, fragments, overlap lanes           | Engine                            | Versioned memoized projections                         |
-| Ephemeral interaction | pointer coordinates, resize edge, auto-scroll velocity         | Interaction session               | Mutable adapter-local session; never broad React state |
-| Pending transaction   | optimistic proposed interval/resource assignment               | Calendar until confirmed/rejected | Small indexed overlay keyed by transaction ID          |
+| Ephemeral interaction | pointer coordinates, resize edge, auto-scroll velocity         | Interaction session               | Mutable adapter-local session for pointer gestures, never React state; a keyboard gesture's preview is a small store `Root` reads |
+| Pending change        | optimistic proposed interval/resource assignment               | Calendar until confirmed/rejected | Small overlay of proposed placements keyed by event ID; the newest change per event wins |
 
 ### 9.1 Per-instance store
 
-- Every `Root` creates or receives one calendar store.
-- There is no provider-less global state.
-- Jotai vanilla stores own primitive uncontrolled state and derived controlled readers.
-- React bindings use `useAtomValue`/`useSetAtom`; semantic selectors use `selectAtom`.
-- Stable semantic actions read only commit-published state, view strategy, environment, source, and
-  handlers; that publication completes before descendant layout effects run.
-- Atoms are not exported; public hooks select semantic state.
-- An advanced `createCalendarStore()` supports external orchestration and testing.
-- Components subscribe only to the slices they render.
-- Event records are not represented as one atom per event.
+- Every `Root` creates or receives one calendar store. `Root` creates it on its first render, from
+  the `default*` props (or the controlled value, or the first registered view). Pass `store` to
+  use one made with `createCalendarStore()`, for external orchestration and testing.
+- There is no provider-less global state. Each factory (`createCalendar<…>()({…})`) makes its own
+  React contexts, so a calendar inside another reads its own root. Module-level hooks such as
+  `useCalendarFocus`, `useCalendarKeyboard` and `useNow` read the nearest root of any factory.
+- The store is the React package's own (`store.ts`): a frozen snapshot of the six slices
+  (only uncontrolled ones change), a listener set, `getSnapshot()`, `subscribe()`, and six `set*` actions. It has no runtime
+  dependency. `calendar-react` dropped Jotai in #70 (#184).
+- `Root` reads state through `useSyncExternalStore`. `useCalendarStateBinding` (`state-binding.ts`)
+  overlays the controlled props on the store's snapshot during render and caches the merged object
+  per snapshot.
+- Each mounted `Root` binds to the store with its controlled props and handlers. It publishes them
+  in an insertion effect, so commands, which run only after a commit, see the latest. `store.actions`
+  go through the most recently mounted root.
+- Stable semantic actions read the last commit's inputs (view options, environment, event snapshot,
+  policies, handlers) and the latest requested state: the committed state plus requests made since,
+  so commands in one handler compose. Both are published in insertion effects, before descendant
+  layout effects run.
+- The store's internals are not exported; public hooks select semantic state.
+- `useCalendarSelector`, `useCalendarFocus` and `useCalendarSelection` re-render a component only
+  when its selection changes. A change to a controlled prop replaces the state source, so each of
+  them renders once then. `useCalendarState()` and `useCalendar()` re-render on any state change.
+- Event records live in the event snapshot, not in the store.
 
 ### 9.2 Controlled/uncontrolled contract
 
@@ -648,59 +727,152 @@ Each controllable slice follows the same contract:
 ```ts
 view?: ViewName
 defaultView?: ViewName
-onViewChange?: (next: ViewName, detail: StateChangeDetail) => void
+onViewChange?: (next: ViewName, detail: CalendarStateChangeDetail<ViewName, "view">) => void
+// detail: { previous, controlled, slice }
 ```
 
-The same pattern applies to anchor date, selection, timezone, focus, and resource expansion. A render-scoped derived reader atom closes over the current controlled inputs and reads primitive atoms only for uncontrolled branches. Controlled inputs are not copied into the store with `useEffect`. Uncontrolled defaults are read exactly once. A command asking for a controlled slice's current value still reaches its handler while the owner holds another change it was told about and hasn't committed, so a deferring owner can drop that change.
+The same pattern applies to anchor date, selection, timezone, focus, and resource expansion. `anchorDate` or `defaultAnchorDate`, and `timeZone` or `defaultTimeZone`, are required, one of each. `useCalendarStateBinding` keeps controlled props stable while they stay equal (dates by value, resource IDs by elements, selection and focus by identity) and overlays them on the store's snapshot during render, so a controlled value is current in the first render that receives it. A command for a controlled slice records a pending request, so the next command in the same handler builds on it, and calls the handler; the store itself changes only for uncontrolled slices. Controlled inputs are not copied into the store with `useEffect`. Uncontrolled defaults are read exactly once. A command asking for a controlled slice's current value still reaches its handler while the owner holds another change it was told about and hasn't committed, so a deferring owner can drop that change.
 
-Jotai's React bindings own reversible subscription cleanup for unmount and React `Activity` hide/reveal cycles. Permanent logical store destruction is an explicit orchestration action, never an Effect cleanup, because hidden Activities preserve hook state. `selectAtom` owns selector equality and avoids unrelated React commits. The public `getSnapshot` and `getServerSnapshot` methods read the same cached derived atom for orchestration and SSR assertions; explicit defaults and controlled inputs make server and first-client output deterministic.
+`useSyncExternalStore` owns subscription cleanup, for unmount and for React `Activity` hide and reveal. A root's binding attaches in an insertion effect and detaches when the root unmounts. There is no store destruction: a store `Root` created is dropped with it, and a caller-owned store keeps its state and stays usable after its roots unmount. `useStateSelector` keeps a selector's previous result while `isEqual` (`Object.is` by default) says it is unchanged, so a state change it doesn't select doesn't re-render that component (`Root` itself renders on every state change). `CalendarStore` has `getSnapshot` and `subscribe` and no `getServerSnapshot`; its `getSnapshot` returns the store's six values, in which a controlled slice keeps its initial value, since the current one lives in the application's state. Inside `Root`, server and client read the same merged getter, and explicit defaults and controlled inputs make server and first-client output deterministic.
 
 ### 9.3 Public state interface
 
 ```ts
-interface CalendarContextValue<TEvent, TResource> {
-  state: CalendarPublicState;
-  actions: CalendarActions<TEvent, TResource>;
-  meta: CalendarMeta<TEvent, TResource>;
+interface CalendarContextValue<
+  TEvent,
+  TResource,
+  TViewDef extends AnyCalendarView = AnyCalendarView,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
+  TEventId extends EventId = EventId,
+  TResourceId extends ResourceId = ResourceId,
+> {
+  state: CalendarPublicState<TViewDef["name"], TSelection, TFocus, TResourceId>;
+  actions: CalendarSemanticActions<TViewDef["name"], TSelection, TFocus, TResourceId, TEvent, TEventId>;
+  meta: CalendarMeta<TEvent, TResource, TViewDef, TEventId, TResourceId>;
 }
 ```
 
-- `state` is immutable and selector-friendly.
-- `actions` are stable commands, not setters for derived values.
-- `meta` holds adapters, environment, element refs, view registry, and feature capabilities.
+- `state` holds the six slices, frozen, and is selector-friendly.
+- `actions` are stable commands: the six setters, `navigatePrevious`, `navigateNext`,
+  `navigateToday`, `proposeEventChange` and `checkEventChange`; not setters for derived values.
+- `meta` holds the event snapshot with pending changes and a keyboard preview applied, resources, the environment, the
+  active view's definition and the registered views, diagnostics, and the part IDs and refs
+  (`ids`, `refs`, `instanceId`).
 
 ## 10. Change transactions and optimistic rendering
 
-All interaction methods produce the same semantic change type:
+Every way of changing an event makes a proposal, and the engine turns it into one change type
+(`calendar-core/src/transactions/types.ts`):
 
 ```ts
-interface CalendarEventChange<TEvent, TResourceId extends ResourceId> {
-  id: string;
-  cause:
-    "create" | "move" | "resize-start" | "resize-end" | "resource-change" | "keyboard" | "editor";
-  event: TEvent | null;
-  original: CalendarEventPlacement | null;
-  proposed: CalendarEventPlacement;
-  validation: CalendarValidationResult;
-  sourceView: string;
-}
+type CalendarChangeCause = "create" | "move" | "resize-start" | "resize-end" | "update" | "delete";
 
-type EventChangeHandler<TEvent> = (
-  change: CalendarEventChange<TEvent, ResourceId>,
-) => void | boolean | Promise<void | boolean>;
+type CalendarEventPlacement<TResourceId extends ResourceId> = CalendarEventInterval & {
+  resourceIds: readonly TResourceId[];
+};
+
+type CalendarEventProposal<TEventId extends EventId, TResourceId extends ResourceId> =
+  | { cause: "create"; proposed: CalendarEventPlacementInput<TResourceId> }
+  | {
+      cause: "move" | "resize-start" | "resize-end" | "update";
+      eventId: TEventId;
+      proposed: CalendarEventPlacementInput<TResourceId>; // omitted resourceIds are kept
+    }
+  | { cause: "delete"; eventId: TEventId };
+
+type CalendarEventChange<TEvent, TEventId extends EventId, TResourceId extends ResourceId> =
+  | {
+      cause: "create";
+      id: string;
+      eventId: null;
+      event: null;
+      original: null;
+      proposed: CalendarEventPlacement<TResourceId>;
+      warnings?: readonly string[];
+    }
+  | {
+      cause: "move" | "resize-start" | "resize-end" | "update";
+      id: string;
+      eventId: TEventId;
+      event: TEvent;
+      original: CalendarEventPlacement<TResourceId>; // as the user saw it, pending change included
+      proposed: CalendarEventPlacement<TResourceId>;
+      warnings?: readonly string[];
+    }
+  | {
+      cause: "delete";
+      id: string;
+      eventId: TEventId;
+      event: TEvent;
+      original: CalendarEventPlacement<TResourceId>;
+      proposed: null;
+      warnings?: readonly string[];
+    };
+
+type CalendarEventChangeHandler<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = (
+  change: CalendarEventChange<TEvent, TEventId, TResourceId>,
+) => void | Promise<void>;
+
+type CalendarTransactionResult<TEvent, TEventId extends EventId, TResourceId extends ResourceId> =
+  | { status: "committed"; change: CalendarEventChange<TEvent, TEventId, TResourceId> }
+  | {
+      status: "rejected";
+      reason: string;
+      change?: CalendarEventChange<TEvent, TEventId, TResourceId>;
+      error?: unknown;
+    };
 ```
+
+Pointer and keyboard gestures make `create`, `move`, `resize-start` and `resize-end`. A move to
+another resource is a `move` with new `resourceIds`. `update` and `delete` come only from
+`actions.proposeEventChange()`, as an event form sends them. The change doesn't say which input
+made it; gestures tell only the announcer (`input: "pointer" | "keyboard"`). `id` names the change
+within one calendar, such as `change-3`. `warnings` holds the reasons policies flagged the change
+with while letting it through. There are no recurrence fields: `resolveRecurrenceEdit` in
+`@moltenship/calendar-recurrence` turns a change to an occurrence into a this, following or all
+edit.
 
 Lifecycle:
 
-1. Interaction session calculates a proposed placement without mutating the external event.
-2. Policy pipeline returns valid, invalid, or transformed placement.
-3. The view renders a transient preview.
-4. Drop/commit emits one typed transaction.
-5. Optimistic mode keeps a small patch visible while the handler settles.
-6. A matching external snapshot confirms it; rejection or error rolls it back.
-7. `onTransactionStateChange` exposes pending/confirmed/rejected state for advanced apps.
+1. A gesture works out a proposal without touching the application's event. The pointer preview is
+   fixed-position segments moved by transforms: a copy of the event for a move or resize on a time
+   axis, range boxes otherwise. A keyboard gesture previews through the overlay pending changes
+   use.
+2. Each time the target changes, the preview asks `actions.checkEventChange()`. It runs the
+   policies without showing or saving anything, and the preview gets `data-invalid` or
+   `data-warning`. An async policy can't answer a preview.
+3. A drop, a keyboard commit, or `actions.proposeEventChange()` proposes once. The engine builds the
+   change against the events the user sees, pending changes included.
+4. Policies run in order: `readOnlyPolicy`, then the root's `policies`. Each one accepts, adjusts,
+   rejects, or warns. A rejection, a policy that throws, or an empty placement ends the change
+   before the handler runs. While async policies decide, a change to an existing event already
+   shows as pending.
+5. `onEventChange` gets the accepted change. A handler that returns nothing has already updated
+   `events`, so the change commits at once and nothing stays pending.
+6. A handler that returns a promise keeps an update shown, and a delete hidden, at least until
+   the promise settles (step 7). Those events carry `isPending: true`. Creates get no overlay; they appear when `events`
+   include them.
+7. When the promise resolves, the overlay goes if `events` already reflect the change: the event's
+   `revision` changed, its placement matches, or it is gone. Otherwise the next new `events` decide,
+   whether they include the change or not. New `events` that arrive while the handler still runs
+   don't end it.
+8. A rejection or a throw rolls the change back. The latest proposal for an event wins: an older
+   one still in validation resolves as rejected with the reason `superseded`, a late result from an older one leaves the
+   newer change alone, and a synchronous commit replaces an older change still saving.
+9. `proposeEventChange` resolves with the result and never rejects. The built-in views announce a
+   gesture's outcome through the root's `Announcer`; the registry's messages read an `AbortError`
+   from the handler as a cancel, not a failed save. Proposals from application code aren't
+   announced.
 
-The promise return is the DX path. An explicit transaction controller is available for applications whose persistence lifecycle cannot be represented by one promise.
+Optimistic rendering is not a mode: the handler's return value decides it. A handler can't refuse a
+change by returning `false`; it throws or rejects. The engine is `createEventTransactions()` in
+`calendar-core`, with `propose`, `check`, `reconcile`, `getPending` and `subscribe`, for use outside
+React. `Root` keeps one per calendar and doesn't expose it. Pending changes are keyed by event ID,
+so an event has at most one. In React, pending state shows per event (`isPending`) and per proposal
+(the promise). There is no calendar-wide pending reader, no `onTransactionStateChange` and no
+transaction controller. #199 proposes a public outcome callback and a pending-changes hook. A
+keyboard gesture's preview also marks the grabbed event `isPending` (#198).
 
 ## 11. Drag, resize, selection, and creation
 
@@ -709,41 +881,60 @@ The promise return is the DX path. An explicit transaction controller is availab
 ### Performance model
 
 - One geometric droppable surface per view region, not one droppable per time slot.
-- Pointer coordinates map through precomputed view geometry to date, time, and resource.
+- Each pointer move hit-tests the DOM (`elementsFromPoint`) for a day cell or time column. The
+  cell's `data-date` gives the date and its `data-resource-id` the resource. A time column maps the
+  position along its rectangle to a snapped time through the projection's column model.
 - Drag movement updates a transform/overlay directly; it does not commit React on every pointer event.
-- Collision validation reads indexes and policy snapshots prepared before the interaction.
-- Auto-scroll is requestAnimationFrame-driven and capped to one geometry read per frame.
-- Layout measurement is invalidated only by viewport, zoom/slot size, resource order, or range changes.
+- Previews run the root's policies once per new placement (`actions.checkEventChange`), against the
+  event snapshot's indexes and the root's availability schedules, both built before the gesture.
+- Auto-scroll runs in a requestAnimationFrame loop while a gesture is active. It reads the
+  scroller's rectangle each frame and re-reads target and preview geometry only in frames where it
+  scrolled.
+- Nothing is measured ahead of a gesture, so there is no measurement cache to invalidate. A gesture
+  caches each cell's clipping ancestors, reads preview rectangles once per new placement, and picks
+  up new day columns when a scrolling view renders more days.
 
 ### Equivalent input paths
 
 Pointer dragging is never the only path. The same commands are available through:
 
-- keyboard grab/move/resize mode (0.2, #36);
-- explicit move and resize controls;
-- an editable event details surface installed from registry source;
+- keyboard grab mode for move, resize, and create (#36);
+- an application's own form or dialog: it can check a change with `actions.checkEventChange()`
+  and save it itself, as the demo's event dialog does, or propose it through
+  `actions.proposeEventChange()`, as the demo's delete does;
 - programmatic `actions.proposeEventChange()`.
 
-Activation distance, touch delay, snapping, and announcement options are configured through a narrow adapter configuration. DOM event types do not leak into calendar callbacks.
+Explicit move and resize buttons and an event details surface in the registry are not built yet.
+
+`useCalendarPointer` takes the rendered `events`, `onPropose` and `timeZone`, and optionally `snap`
+(15 minutes by default), `announcer`, `check`, `columns`, `scrollContainer` (the nearest scrollable
+ancestor by default), `onPreview`, `disabled` and `ghostClassName`. Activation is fixed: more than
+4 px of travel for mouse and pen; for touch, a 250 ms press that moves no more than 8 px. DOM event types do not leak into
+calendar callbacks.
 
 ### Policy pipeline
 
 ```text
-proposed placement
-  → bounds and minimum duration
-  → snap policy
-  → business-hours policy
-  → resource availability/capacity policy
-  → overlap policy
-  → application policy
-  → valid | invalid with reasons | transformed proposal
+proposal (a pointer or keyboard gesture snaps it to the view's slots; an app's own arrives as given)
+  → readOnlyPolicy (Root runs it first; without onEventChange everything is rejected)
+  → the root's `policies`, in the order given
+  → accepted (perhaps adjusted, perhaps with `warnings`) | rejected with one `reason`
 ```
 
-Invalid targets remain visible and clearly marked by default. A policy may instead block or clamp them.
+Each policy accepts, adjusts, rejects, or warns. The built-in ones are `boundsPolicy`,
+`minimumDurationPolicy`, `snapPolicy`, `availabilityPolicy`, `conflictPolicy`, `readOnlyPolicy` and
+`readOnlyResourcesPolicy`. `conflictPolicy` checks only resources the event books. Capacity rules
+aren't built yet (#129).
+
+Previews follow the raw target. One the policies would reject is marked `data-invalid`, and a drop
+there is rejected; one they would flag is marked `data-warning`, and a drop there saves with the
+warning. An async policy leaves the preview unmarked. `availabilityPolicy` and `conflictPolicy` take
+`mode`: `"block"` (reject, the default) or `"warn"` (save with a warning). An adjusting policy
+changes what is saved, not the preview.
 
 ## 12. Layout engines
 
-Layout is pure, deterministic, and separately benchmarked.
+Layout is pure and deterministic. The benchmark's layout stage still times a reference implementation (#188).
 
 ### Timed overlaps
 
@@ -752,21 +943,27 @@ Layout is pure, deterministic, and separately benchmarked.
 3. Partition fragments into collision groups.
 4. Assign the lowest available lane.
 5. Compute group lane count and expansion opportunity.
-6. Emit logical coordinates; the renderer converts them to CSS variables.
+6. Emit fractions of the column (top, height, inline start, width); the renderer sets them as inline percentage styles.
 
-The policy can render equal columns, compact expansion, or stacked overlap without changing event queries.
+The `overlapLayout` option of the time-grid and resource-columns views chooses `"columns"` (the default: lanes, each event widening into free lanes beside it), `"equal"` (equal-width lanes), or `"stack"` (each event indented by `stackIndent` past the deepest earlier event it overlaps, with the indent capped in deep stacks). Event queries stay the same.
 
 ### All-day and month segments
 
-- Split multi-day events only at visible week/resource boundaries.
-- Pack segments into stable lanes using prior-lane affinity to reduce visual jumping.
+- Split multi-day events at row boundaries (a week, the visible range, or a resource's row), and at
+  any date the event skips in the display time zone.
+- Pack each row's segments into the lowest free lane in a fixed order: earlier column, longer span,
+  then day display order. Lanes depend only on the row's own events.
 - Continuation metadata controls clipped-start/end affordances.
-- Overflow is a projection (`visible segments + hidden count`), not DOM measurement.
-- Expanding overflow changes only the affected row projection.
+- Overflow is a projection from a lane limit: visible `segments` plus per-day `hiddenCounts`. Month
+  views measure the limit from the row height; events are never measured. The time grid's all-day
+  row shows three lanes.
+- In month views a day's "+N more" opens a popover of its events; in the time grid it expands the
+  all-day rows. Keyboard focus on a hidden event shows every
+  lane of its week. The time grid's all-day rows expand together.
 
 ### Business hours and backgrounds
 
-Business hours and availability are interval providers, not special events. They create background segments queried for the current view. Multiple rules may coexist per weekday, date, timezone, and resource.
+Business hours are availability data, not events: weekly rules and dated exceptions for the calendar and each resource, each on one time zone. A schedule answers open and closed intervals for a range, and views shade the closed parts they show. A weekday can have several rules; a date has at most one exception. A resource's own weekly hours replace the calendar's; its exceptions add to them.
 
 ## 13. Virtualization and bounded rendering
 
@@ -777,12 +974,18 @@ TanStack Virtual is the maintained virtualization primitive for list and resourc
   while focus is in the list.
 - Resource columns use a horizontal virtualizer with stable resource keys.
 - Resource timeline composes vertical resource and horizontal time virtualizers.
-- Sticky headers/axes render outside the virtual item container.
-- Overscan is velocity-aware within bounded limits.
+- Resource columns render their headers, all-day row and hour gutter outside the scrolling body
+  and move them by transform. The timeline and the agenda use `position: sticky` inside the
+  scroller.
+- Overscan is a small fixed count per axis: 3 agenda rows, 2 resource columns, 4 timeline rows and
+  2 timeline slots.
 - SSR supplies deterministic initial rectangles and ranges where practical.
-- Direct DOM positioning may be enabled for scroll-only position updates, while semantic range changes still enter React.
-- Scrolling views follow the same rule: scroll offsets never enter React; the anchor date, and
-  with it the projected load range, changes at most every half page.
+- Virtual items render in React; TanStack Virtual re-renders when the rendered range, a
+  measurement, or the scrolling state changes, not on every scroll offset.
+- Scrolling views follow the same rule: scroll offsets never enter React. The scrolling week and
+  month move the anchor date, and with it the projected load range, a page at a time, once a
+  scroll passes halfway. The scrolling agenda moves it to the day on top when a scroll comes to
+  rest, and during a scroll whenever that day is half the range away.
 
 Time-grid event rendering is bounded by the queried visible interval and fragment count. The library never creates a droppable DOM node for every possible slot.
 
@@ -803,21 +1006,27 @@ The performance claim is enforced by production-build benchmarks on a recorded r
 | Selection change           | Does not rebuild event index or unrelated view fragments                                   |
 | Bundle                     | Each package has a checked ESM size budget; optional adapters do not enter the base bundle |
 
+Measured now, by hand on reference hardware (`vp run engine:gate`, `vp run recurrence:gate`), not in
+CI: the 10k snapshot build, the warm queries and the recurrence year view. The layout and
+pointer-frame rows still time reference code, and nothing measures scrolling yet (#188). Zero React
+commits on pointer moves, the 500-resource DOM bound and the 10,000-event agenda are tests in
+`vp test` and the a11y suite. The bundle budgets run in `vp run release:check`.
+
 ### Required techniques
 
 - Stable normalized IDs and immutable snapshot versions.
 - Interval/resource indexes instead of repeated `.filter()` scans.
-- Projection caches keyed by snapshot, view range, timezone, resources, and geometry version.
+- Projection memoized on the event snapshot (pending changes and a keyboard preview applied), the visible and load ranges, view options, resources and expanded IDs, the environment (time zone, secondary zones, locale, week rules, direction, disambiguation) and today's date; snapshot queries cached in a bounded LRU.
 - Selector-level subscriptions; event components subscribe by render-model identity.
-- Precomputed slot and hit-test geometry.
+- Slot geometry from the projection's column model; hit-testing reads the DOM once per pointer move.
 - CSS transforms/variables for high-frequency visual updates.
 - Virtualization of unbounded axes.
 - No layout reads in render and no DOM measurement per event.
 - No `useEffect` bridge that renders stale controlled props before synchronizing.
 
-### Development diagnostics
+### Development diagnostics (not built yet)
 
-The showcase performance lab reports:
+A showcase performance lab is planned (§20). It would report:
 
 - normalization/index/projection/layout timings;
 - React commit count and affected component count;
@@ -826,7 +1035,10 @@ The showcase performance lab reports:
 - drag frame duration and dropped-frame count;
 - current snapshot and geometry versions.
 
-Diagnostics are tree-shaken from production builds.
+None of it exists yet, and lab-only counters must not enter production bundles. Today
+`onDiagnosticsChange` reports invalid events, annotations, availability and secondary zones and an
+unregistered view, in production too, and `snapshot.getQueryCacheStatistics()` gives the query
+cache's hits and misses.
 
 ## 15. SSR and framework compatibility
 
@@ -835,13 +1047,13 @@ SSR-compatible means the calendar can produce useful, deterministic server marku
 ### Requirements
 
 1. No `window`, `document`, `ResizeObserver`, or element measurement at module scope.
-2. `getServerSnapshot` is stable and serializable enough to reproduce the first client tree.
+2. Inside `Root`, the server and the first client render read the same merged state getter, stable enough to reproduce the first client tree.
 3. `timeZone`, `secondaryTimeZones`, `locale`, and week rules are explicit environment inputs.
-4. `now` is injectable as `Temporal.Instant` or a `CalendarClock`.
+4. `Root` takes `now` (a `Temporal.Instant`) or `clock` (a `CalendarClock`), never both.
 5. If `now` is omitted, transient today/current-time decoration appears after hydration rather than risking mismatch.
 6. IDs use React `useId` or deterministic entity keys, never random values.
 7. The core and Temporal packages are safe in React Server Components.
-8. Interactive React/registry entry points declare their client boundary where a framework requires it.
+8. Interactive React/registry entry points declare their client boundary where a framework requires it. `calendar-react` and `calendar-dnd` do; registry views don't yet (#190).
 9. Measurements enhance a CSS-valid initial layout; they do not replace it.
 
 The SSR fixture runs render, hydrate, interaction, and unmount tests. A Vite client example and at least one full-stack React SSR example prove packaging boundaries without adding framework-specific runtime code.
@@ -866,24 +1078,30 @@ Headless packages ship no mandatory stylesheet. Registry source uses Tailwind CS
 Calendar-specific tokens add semantic structure without hard-coded palettes:
 
 ```text
+--calendar-surface
 --calendar-grid
 --calendar-axis
---calendar-today
+--calendar-today              --calendar-today-foreground
 --calendar-now
 --calendar-selection
---calendar-business-hours
---calendar-non-business-hours
---calendar-event
---calendar-event-foreground
+--calendar-weekend
+--calendar-unavailable        --calendar-closed
+--calendar-busy               --calendar-free
+--calendar-invalid            --calendar-warning
+--calendar-event              --calendar-event-foreground
 --calendar-event-border
---calendar-invalid
+--calendar-hour-height
+--calendar-event-padding-x    --calendar-event-padding-y
 ```
+
+Closed time is `--calendar-unavailable`, closed days `--calendar-closed`. A `data-color` palette sets
+`--calendar-event-hue` and `--calendar-event-chroma`, and the three event tokens derive from them.
 
 Rules:
 
 - CSS variables are the theme API; class names are implementation details in copied source.
 - Event-specific colors come from typed consumer data and the event renderer.
-- `data-slot`, `data-view`, `data-state`, `data-kind`, and `data-interaction` attributes support plain CSS customization.
+- `data-calendar-part` on the React parts, `data-slot` on registry parts, `data-interaction` on a view during a pointer gesture, and state attributes such as `data-today`, `data-color`, `data-pending`, `data-dragging`, `data-invalid` and `data-closed` support plain CSS customization.
 - No runtime Tailwind import enters npm engine packages.
 - Motion respects `prefers-reduced-motion` and never obscures state changes.
 - Default source follows shadcn's existing token names instead of introducing a parallel design system.
@@ -908,23 +1126,23 @@ WCAG 2.2 AA is a release gate, not an example-app enhancement.
 - Home/End and Page Up/Page Down move within the active view strategy.
 - Enter/Space activates or begins a move mode where appropriate.
 - Escape cancels a preview or interaction.
-- Configurable shortcuts move and resize by the current snap duration.
-- Explicit edit controls remain available when spatial dragging is unsuitable.
+- Space picks up the focused event to move it, or the focused cell to create one; Shift+Space picks up an event's end to resize it, and again switches to its start. Navigation keys then step the gesture, by a slot (`useCalendarKeyboard({ snap })`) or a day. Enter or Space commits it; Escape, Tab or leaving the view cancels it. The keys are fixed.
+- An app's own edit controls, through `actions.proposeEventChange()`, cover cases where spatial dragging is unsuitable; the registry has none yet.
 
 ### Announcements
 
-The announcer describes event title, proposed start/end, timezone, resource, validation result, DST adjustment, commit, and rollback. Applications may localize or replace message builders.
+The announcer describes event title, proposed start and end (with each end's zone when they cross a clock change), resource, validation result, commit, and rollback. Applications localize or replace the builders: `CalendarAnnouncementMessages`, passed to `Announcer`'s `messages`. Announcing a DST shift waits on #187.
 A rollback carries what `onEventChange` threw: the registry's English messages read an `AbortError`
 as the user cancelling, as when they dismiss the recurrence scope question, not as a failed save.
 
-Automated axe checks, keyboard integration tests, reduced-motion tests, and manual VoiceOver/NVDA scenarios are required before release.
+Automated axe checks, keyboard integration tests, reduced-motion tests, and manual VoiceOver/NVDA scenarios are required before release. The manual passes haven't run yet (#186).
 
 ## 18. Internationalization
 
-- All labels and announcements come from a typed messages contract.
+- Announcements come from the typed `CalendarAnnouncementMessages`. The packages emit no text of their own: labels are props (`aria-label`, `getViewLabel`) or registry source, which the app owns and edits to localize.
 - Defaults use `Intl.DateTimeFormat`, `Intl.Locale`, and supplied locale/timezone.
-- Week start and weekend rules are explicit or locale-derived, then frozen in the environment snapshot.
-- RTL changes logical axes, keyboard direction, drag geometry, sticky positioning, and continuation indicators together.
+- Week start and weekend rules are explicit (`Root`'s required `weekRules`), then frozen in the environment snapshot. Deriving them from the locale isn't built yet (#202).
+- RTL takes two settings that must agree: `dir="rtl"` on an ancestor flips logical axes, drag geometry, sticky positioning and continuation indicators; `direction="rtl"` on `Root` flips keyboard direction. The registry's resource timeline and scrolling time grid also set `dir` from it, and the resource views' horizontal virtualizers read it.
 - No English text is emitted by core.
 - Message interpolation receives Temporal values and semantic fields, not preformatted concatenated strings.
 
@@ -946,17 +1164,21 @@ Automated axe checks, keyboard integration tests, reduced-motion tests, and manu
 - Strict Mode and concurrent rendering.
 - SSR render/hydrate equality.
 - Selector invalidation and React commit budgets.
-- Keyboard/pointer/touch parity.
+- Keyboard/pointer parity for the month and time grid; the resource views have none yet (#189), and touch is covered only by the long-press start.
 - Optimistic confirm/reject races.
 - Custom view installed without internal imports.
 
 ### Browser verification
 
-- Chromium, Firefox, and WebKit production builds.
-- Playwright visual and interaction tests.
-- Accessibility scans plus manual screen-reader scripts.
-- ResizeObserver, zoom, high-DPI, RTL, reduced motion, and touch scenarios.
-- Long task and frame timing captured in the performance lab.
+- Chromium on every PR (`vp run a11y`); Firefox and WebKit in `vp run browsers` (the full gate, and
+  CI on demand), WebKit on `temporal-polyfill`. The suites run source through Vite, not production
+  builds.
+- Vitest browser-mode tests on Playwright: real mouse and keyboard interactions, and layout checked
+  by measured boxes. No screenshot comparisons.
+- Accessibility scans; the manual screen-reader scripts are #186.
+- RTL and reduced-motion scenarios (reduced motion in Chromium only). On macOS 27, `browsers` runs
+  WebKit alone (#182). Not built yet: zoom, high-DPI, ResizeObserver and touch
+  scenarios, and frame timing (there is no performance lab).
 
 ### Repository checks
 
@@ -1025,25 +1247,33 @@ One application owns both explanation and proof:
 | SSR lab           | Server snapshot, hydration identity, client enhancement                     |
 | Registry/source   | Install commands, generated file list, ownership and upgrade story          |
 
+Built so far: the overview, the view gallery, custom views and registry/source; the accessibility
+page has the keyboard map and live announcements. Not built yet: the composition, event,
+timezone/DST, interaction, performance and SSR labs (phase 7).
+
 Examples import the public facade or install registry source. They may not reach into workspace internals.
 
 ## 21. File and module discipline
 
-No view is implemented as a god file. Each view follows the same seams:
+No view is implemented as a god file. Each view splits engine from rendering; the time grid:
 
 ```text
-views/time-grid/
-├── strategy.ts          # range/navigation and public definition
-├── projection.ts        # events → fragments
-├── layout.ts            # fragments → logical geometry
-├── geometry.ts          # pointer/keyboard coordinate conversion
-├── model.ts             # stable render-model types
-├── renderer.tsx         # composition of source-owned primitives
-├── event.tsx            # default event source component
-├── axis.tsx             # time/day/resource axes
-├── accessibility.ts     # labels and spatial semantics
-└── *.test.ts(x)
+packages/calendar-core/src/views/time-grid/
+├── range.ts              # visible range, navigation and title
+├── projection.ts         # events → fragments
+├── layout.ts             # fragments → logical geometry
+├── geometry.ts           # pointer/keyboard coordinate conversion
+└── columns.ts, zones.ts, scrolling.ts
+packages/calendar-core/src/navigation/time-grid.ts   # spatial keyboard navigation
+registry/time-grid-view/
+├── time-grid-view.tsx    # view definition and Renderer
+├── time-grid-event.tsx   # default event source component
+├── time-grid-header.tsx, time-grid-body.tsx, time-grid-column.tsx, time-grid-all-day.tsx
+├── time-grid-zones.tsx   # hour axes
+└── time-grid-annotations.tsx, time-grid-availability.tsx, annotation-label.ts
 ```
+
+Tests live in each package's `tests/` directory.
 
 Rules:
 
@@ -1084,9 +1314,9 @@ Gate: 10k build/query budgets pass; randomized indexed queries equal the referen
 Deliver:
 
 - typed factory and `{ state, actions, meta }` context;
-- isolated Jotai store and independent controlled slices;
+- an isolated per-instance store and independent controlled slices (Jotai at first; `calendar-react` dropped it in #70);
 - SSR snapshots;
-- view registry, selector hooks, and testing harness.
+- view registry, selector hooks, and an internal render/hydrate test harness (the public `calendar-testing` package follows after 1.0, #45).
 
 Gate: two calendars remain isolated; controlled values never lag a render; a third-party test view uses public contracts only.
 
@@ -1115,7 +1345,7 @@ Deliver:
 
 Gate: DST matrix, 1k-fragment layout budget, responsive layout, and hydration tests pass.
 
-### Phase 5 — semantic interaction and dnd-kit adapter
+### Phase 5 — semantic interaction and native pointer input
 
 Deliver:
 
@@ -1161,11 +1391,11 @@ Deliver only after the base transaction, timezone, and occurrence identity contr
 Gate: timezone/DST recurrence matrix and interop fixtures pass without changing base event semantics.
 
 Shipped: #48 and #49 through #156 (contracts and ADR 0048), #159 (the RFC 5545 rule engine and
-RRULE text, checked against 318 python-dateutil and ical.js fixtures), #157 (`createOccurrenceExpander`
+RRULE text, checked against 315 python-dateutil and ical.js fixtures), #157 (`createOccurrenceExpander`
 over `loadRange`, `createOccurrenceAdapter` and the `recurringEventsFromIcs` bridge) and #158 (`"this"`,
 `"following"` and `"all"` edits through `resolveRecurrenceEdit`, and the registry's
-`recurrence-scope-dialog`). #155 closes epic #2 with the demo and docs, in a PR of their own, and
-the gate:
+`recurrence-scope-dialog`). #155 closed epic #2 with the demo and docs (#162) and the gate
+(#161):
 
 - a DST matrix through core's view projections: series in Berlin, New York, Lord Howe, Santiago and
   Sydney, shown in each of those zones and in Kolkata, with positions, counts and occurrence IDs
@@ -1182,12 +1412,12 @@ left open are in #160.
 
 ## 23. Prototype risks to retire early
 
-1. **React controlled bridge:** prove synchronous controlled state plus fine-grained Jotai subscriptions under SSR/Strict Mode.
+1. **React controlled bridge:** prove synchronous controlled state plus fine-grained selector subscriptions under SSR/Strict Mode. Retired by the #18 spike (ADR 0018) and `vp run react:gate`; the store is `calendar-react`'s own since #70.
 2. **dnd-kit adapter:** pin the current 0.x line in the lockfile and prove pointer, touch, keyboard, auto-scroll, and announcements behind semantic types. Superseded in 0.1 by native Pointer Events (ADR 0037).
-3. **Two-axis resource timeline:** prove TanStack Virtual composition, sticky axes, focus retention, and SSR initial geometry.
-4. **DST wall-time geometry:** prove gaps and folds in day/week drag, resize, slots, and announcements.
-5. **Index implementation:** compare the selected interval-tree adapter with a simple reference and retain it only if build/query/memory budgets pass.
-6. **Typed calendar factory:** prove generics flow through compound components and custom views without casts in consumer code.
+3. **Two-axis resource timeline:** prove TanStack Virtual composition, sticky axes, focus retention, and SSR initial geometry. Retired by the #20 spike (ADR 0020).
+4. **DST wall-time geometry:** prove gaps and folds in day/week drag, resize, slots, and announcements. Retired by the #16 spike (ADR 0016) and the DST parity tests; announcing a shift is #187.
+5. **Index implementation:** compare the selected interval-tree adapter with a simple reference and retain it only if build/query/memory budgets pass. Retired by #16 (ADR 0016) and the #24 engine gate.
+6. **Typed calendar factory:** prove generics flow through compound components and custom views without casts in consumer code. Retired by the #18 spike and #26 (`vp run react:factory`).
 
 None of these risks waits until the final polishing phase.
 
@@ -1195,11 +1425,11 @@ None of these risks waits until the final polishing phase.
 
 - Packages follow semantic versioning and lockstep releases through 1.0.
 - Public package exports, event semantics, view strategies, transactions, and CSS variable names are compatibility contracts.
-- Internal Jotai atoms, dnd-kit types, interval-tree types, layout caches, and DOM structure are not contracts.
-- Registry source is user-owned after installation. Updates are explicit diffs, never silent overwrites.
-- Each registry release declares compatible runtime package ranges.
+- The React store's internals, interval-tree types, layout caches, and DOM structure are not contracts. The data attributes the pointer layer reads (`data-event-id`, `data-date`, `data-resize`, …) are.
+- Registry source is user-owned after installation. Running `shadcn add` again asks before it replaces a file; `--overwrite` replaces them all. The theme's CSS block is written again on each add, so apps change tokens in their own rules.
+- The registry isn't versioned on its own: the docs site serves it from `main`. Each item's `meta.compatibility`, and `compatibility.json`, record the `@moltenship/calendar` range it needs.
 - Deprecations include codemod or mechanical migration guidance where feasible.
-- Package provenance, changelog, and release checks are generated from the monorepo; publishing remains an explicit maintainer action.
+- Release checks run from the monorepo (`release:check`, `release:dry-run`). PRs that change a published package add a line to `CHANGELOG.md`; `release:version` sets the shared version and dates those lines. Publishing is an explicit, guarded maintainer step (`release:publish`); it adds npm provenance when it runs in the release workflow.
 
 ## 25. Explicit non-goals for v1
 
@@ -1209,7 +1439,7 @@ None of these risks waits until the final polishing phase.
 - Owning event fetching, persistence, authentication, or authorization.
 - Becoming a full date utility replacement.
 - Non-Gregorian layout guarantees.
-- Recurrence expansion in the foundational release.
+- Recurrence in the base packages: it's a separate layer, and series expand only inside a date range (ADR 0048).
 - Built-in application-specific event editors or dialogs in headless packages.
 - A custom installer when the shadcn registry already supplies one.
 - Private or undocumented framework hooks.
@@ -1223,7 +1453,7 @@ Before merging any feature, verify:
 - [ ] No host timezone or current time is read implicitly during render.
 - [ ] Core imports no React, DOM, Jotai, dnd-kit, Tailwind, or application code.
 - [ ] The change does not add work proportional to all events/resources inside a render or frame.
-- [ ] Pointer interaction has explicit-action equivalents now and keyboard equivalents from 0.2 (#36).
+- [ ] Pointer interaction has explicit-action and keyboard equivalents (#36).
 - [ ] Controlled state is not mirrored through an effect.
 - [ ] A custom view can use the capability without internal imports.
 - [ ] Registry source uses semantic tokens and remains editable.

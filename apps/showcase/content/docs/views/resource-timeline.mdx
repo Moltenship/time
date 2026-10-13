@@ -144,6 +144,24 @@ ResourceTimelineView             resource-timeline-view.tsx
         </>
       ),
     },
+    renderUnavailable: {
+      type: "UnavailableTimeRender",
+      description: (
+        <>
+          Replaces the shading of closed time and closed days: an element, or a function of its
+          props. See <a href="/docs/availability#customize-the-shading">customize the shading</a>.
+        </>
+      ),
+    },
+    resourceStatus: {
+      type: "boolean | ResourceStatusOptions",
+      description: (
+        <>
+          Shows each resource's status, such as "Busy until 3:00 PM". See{" "}
+          <a href="/docs/availability#busy-badge-in-resource-views">busy badge</a>.
+        </>
+      ),
+    },
   }}
 />
 

@@ -13,7 +13,7 @@ to.
 and the second infers the ID types from your accessors. Here `booking-${number}` stays
 `booking-${number}` everywhere Time hands an ID back to you, so you never cast.
 
-`getRevision` and `isReadOnly` are optional. The [adapter reference](/docs/api/events#adapter)
+`getRevision`, `isReadOnly` and `isBusy` are optional. The [adapter reference](/docs/api/events#adapter)
 lists every field.
 
 ## Time ranges
@@ -59,8 +59,9 @@ pass a new array. To fetch only the dates on screen, load the `loadRange` that
 
 Treat your records as immutable: change a record by replacing it with a new object. Time compares
 the array item by item, so a new array with the same records in the same order counts as unchanged,
-even if you build it inline with `filter` or `map`. When records do change, Time re-reads only the ones that are new objects, and skips
-those whose `getRevision` value is unchanged. The [performance guide](/docs/guides/performance)
+even if you build it inline with `filter` or `map`. When the array does change, Time reads every record again
+through the adapter; if every record comes out the same, it keeps its interval indexes. With
+`getRevision`, a record whose revision is unchanged is skipped after `getId` and `getRevision`. The [performance guide](/docs/guides/performance)
 explains how to make the most of that.
 
 ## Invalid records

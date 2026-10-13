@@ -75,7 +75,8 @@ for (const day of iteratePlainDates(grid.range)) {
 - `monthGrid(date, options)` returns the month's first day (`month`), the full visible `range`, and
   one range per week (`weeks`). It has four to six weeks; pass `fixedWeeks: true` for always six.
 - `iteratePlainDates(range, { stepDays })` and `iterateInstants(range, { step })` step through a
-  range lazily. They stop after 10,000 values unless you raise `limit`.
+  range lazily. They throw a `RangeError` rather than yield more than 10,000 values; raise `limit` for
+  longer ranges.
 
 ## Rounding and snapping
 
@@ -154,8 +155,8 @@ goes the other way.
 
 `slotsInZonedDay(date, { timeZone, disambiguation, slotDuration })` splits a day into wall-clock
 slots, such as 30-minute rows for a day view. Slots in a skipped hour have no instant. Slots in a
-repeated hour have two. A slot that a DST change cuts through is split at the change. It stops after
-10,000 slots unless you raise `limit`.
+repeated hour have two. A slot that a DST change cuts through is split at the change. It throws a
+`RangeError` when the day would have more than 10,000 slots; raise `limit` for finer grids.
 
 ## Keys
 

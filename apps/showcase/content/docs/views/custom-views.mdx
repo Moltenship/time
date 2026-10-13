@@ -6,7 +6,7 @@ description: Define a view with a pure strategy and a Renderer component.
 A view has two halves:
 
 - a **strategy**: four plain functions that pick the visible dates, move them, title them, and turn
-  the events into whatever the view needs to draw (its **projection**);
+  the events into whatever the view needs to draw (its **projection**), plus two optional ones;
 - a **Renderer**: a React component that receives that projection.
 
 `Root` runs the strategy and passes the result to the Renderer, so the Renderer only draws.
@@ -44,7 +44,7 @@ The title reads "Oct 5 – 9", and the list has five days.
       required: true,
     },
     navigate: {
-      type: "(anchor, delta, options, environment) => Temporal.PlainDate",
+      type: "(anchor, delta, options) => Temporal.PlainDate",
       description: (
         <>
           The anchor date after moving <code>delta</code> steps. Previous and Next pass -1 and 1.
@@ -76,6 +76,16 @@ The title reads "Oct 5 – 9", and the list has five days.
       description: "Turns the events into what the Renderer draws. See the input below.",
       required: true,
     },
+    getSpatialNavigation: {
+      type: "(input) => CalendarSpatialNavigation | null",
+      description: (
+        <>
+          Where the arrows, Home, End, Page Up and Page Down move focus, and where Enter and Escape
+          go into and out of a cell&apos;s events. A view without it has no keyboard navigation. See{" "}
+          <a href="/docs/accessibility#in-your-own-views">in your own views</a>.
+        </>
+      ),
+    },
   }}
 />
 
@@ -85,16 +95,17 @@ The title reads "Oct 5 – 9", and the list has five days.
 
 `project` receives:
 
-| Field          | Contents                                                                            |
-| -------------- | ----------------------------------------------------------------------------------- |
-| `snapshot`     | The validated, indexed events. Query it with `queryTimed` and friends.              |
-| `range`        | The visible dates, from `getRange`                                                  |
-| `instantRange` | The same dates as instants in the calendar's time zone, ready for `queryTimed`      |
-| `loadRange`    | The dates to project: `getLoadRange`'s, or `range` without it. Always set by `Root` |
-| `environment`  | Locale, time zone, secondary time zones, week rules, direction, disambiguation      |
-| `resources`    | The `resources` prop                                                                |
-| `options`      | The view's options after `viewOptions` overrides                                    |
-| `today`        | Today's date in the calendar's time zone, or `null` before a clock is known         |
+| Field                 | Contents                                                                            |
+| --------------------- | ----------------------------------------------------------------------------------- |
+| `snapshot`            | The validated, indexed events. Query it with `queryTimed` and friends.              |
+| `range`               | The visible dates, from `getRange`                                                  |
+| `instantRange`        | The same dates as instants in the calendar's time zone, ready for `queryTimed`      |
+| `loadRange`           | The dates to project: `getLoadRange`'s, or `range` without it. Always set by `Root` |
+| `environment`         | Locale, time zone, secondary time zones, week rules, direction, disambiguation      |
+| `resources`           | The `resources` prop as a tree by `parentId` (`roots`, `byId`)                      |
+| `expandedResourceIds` | The groups whose children show; pass it to `visibleResources`                       |
+| `options`             | The view's options after `viewOptions` overrides                                    |
+| `today`               | Today's date in the calendar's time zone, or `null` before a clock is known         |
 
 `today` is fixed when `Root` has `now`, so server and browser agree. Without `now` it's `null`
 during server rendering and fills in after hydration.
@@ -115,15 +126,15 @@ project: ({ snapshot, instantRange }: CalendarViewProjectionInput<DaysOptions, M
 
 The Renderer is a regular component, so it can use hooks. It receives:
 
-| Prop          | Contents                                                                                              |
-| ------------- | ----------------------------------------------------------------------------------------------------- |
-| `projection`  | What `project` returned                                                                               |
-| `range`       | The visible dates                                                                                     |
-| `loadRange`   | The dates `project` covered: `range`, or the strategy's wider `getLoadRange`                          |
-| `options`     | The view's options                                                                                    |
-| `environment` | Locale, time zone, secondary time zones, week rules, direction, disambiguation                        |
-| `events`      | The snapshot `project` received, with [pending changes](/docs/interactions#pending-changes) applied   |
-| `actions`     | `setAnchorDate`, `setView`, `navigateNext`, `navigatePrevious`, `navigateToday`, `proposeEventChange` |
+| Prop          | Contents                                                                                                                                              |
+| ------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `projection`  | What `project` returned                                                                                                                               |
+| `range`       | The visible dates                                                                                                                                     |
+| `loadRange`   | The dates `project` covered: `range`, or the strategy's wider `getLoadRange`                                                                          |
+| `options`     | The view's options                                                                                                                                    |
+| `environment` | Locale, time zone, secondary time zones, week rules, direction, disambiguation                                                                        |
+| `events`      | The snapshot `project` received, with [pending changes](/docs/interactions#pending-changes) applied                                                   |
+| `actions`     | `setAnchorDate`, `setView`, `setSelection`, `setFocus`, `navigateNext`, `navigatePrevious`, `navigateToday`, `proposeEventChange`, `checkEventChange` |
 
 `actions` never changes identity. `setView` takes any registered view name; an unknown name shows up
 as an `unregistered-active-view` diagnostic. `proposeEventChange` and `events` are what a view needs

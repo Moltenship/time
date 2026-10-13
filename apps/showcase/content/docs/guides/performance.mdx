@@ -19,8 +19,9 @@ Everything else is a normal React render. These habits keep both steps rare and 
 counts as unchanged, so you can filter or map inline, as in
 `events={meetings.filter((meeting) => !meeting.cancelled)}`.
 
-When some records change, Time reads only the new objects. So update records immutably: replace the
-changed record and keep the others as they are.
+When some records change, Time reads every record again through the adapter. Update records
+immutably: replace the changed record and keep the others as they are. A record changed in place
+keeps its identity, so the item-by-item comparison sees no change and the calendar doesn't update.
 
 ## Add a revision to your adapter
 
@@ -59,7 +60,8 @@ array.
 
 ## Keep functions in options stable
 
-`Root` compares `locale`, `weekRules`, `now`, controlled values, and each view's options by value,
+`Root` compares `locale`, `weekRules`, `now`, a controlled `anchorDate`, `timeZone` or `view`, and
+each view's options by value,
 so inline objects are fine. Functions are different: a new function is a new value. A
 `getEventColor` written inline in `viewOptions` makes the view project again on every render of the
 component that renders `Root`. Define it once instead:

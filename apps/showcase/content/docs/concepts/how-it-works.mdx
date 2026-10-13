@@ -16,18 +16,25 @@ description: The packages, and how your events become a rendered view.
 `calendar-react` and `calendar-dnd` build on `calendar-core`, which builds on `calendar-temporal`. `calendar-core` and
 `calendar-temporal` don't use React or the DOM, so they also run on a server or in a worker.
 
-| Package                         | Use it when                                                          |
-| ------------------------------- | -------------------------------------------------------------------- |
-| `@moltenship/calendar`          | Almost always. It includes the packages below.                       |
-| `@moltenship/calendar-core`     | You want to validate or query events in code that never loads React. |
-| `@moltenship/calendar-temporal` | You only need the date and time zone helpers.                        |
-| `@moltenship/calendar-react`    | Rarely. `@moltenship/calendar` already includes everything in it.    |
+Two more packages stand apart from `@moltenship/calendar`: `@moltenship/calendar-recurrence` expands
+recurring events into ordinary events (it builds on core, Temporal and `ics`), and `@moltenship/ics`
+parses iCalendar text with no dependencies.
+
+| Package                           | Use it when                                                                                           |
+| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `@moltenship/calendar`            | Almost always. It includes `calendar-core`, `calendar-temporal`, `calendar-react` and `calendar-dnd`. |
+| `@moltenship/calendar-core`       | You want to validate or query events in code that never loads React.                                  |
+| `@moltenship/calendar-temporal`   | You only need the date and time zone helpers.                                                         |
+| `@moltenship/calendar-react`      | Rarely. `@moltenship/calendar` already includes everything in it.                                     |
+| `@moltenship/calendar-recurrence` | Your events repeat. See [Recurring events](/docs/concepts/recurrence).                                |
+| `@moltenship/ics`                 | You read iCalendar feeds or files. See [ICS](/docs/api/ics).                                          |
 
 `@moltenship/calendar` has no `"use client"` directive of its own, so a Server Component can import
 its core and Temporal helpers. The React parts and the pointer layer keep their client boundary.
 
-Import from the package name only. Files inside a package, such as
-`@moltenship/calendar-core/src/events`, aren't part of the API and can change at any time.
+Import from the package name only. The packages export nothing else besides `./package.json`, so a
+path such as
+`@moltenship/calendar-core/src/events` doesn't resolve.
 
 ## From events to the screen
 
@@ -43,8 +50,8 @@ Import from the package name only. Files inside a package, such as
    view means a new range and a new projection.
 
 Steps 2 and 3 only run again when their inputs change. A new array with the same records in the same
-order reuses the snapshot, and records that are the same objects as before, or have an unchanged
-`getRevision` value, reuse their earlier result.
+order reuses the snapshot. A changed array is read again through the adapter, except records with an
+unchanged `getRevision` value; if every record comes out the same, the interval indexes are kept.
 
 ## Using the engine without React
 
