@@ -513,7 +513,7 @@ test("a source's update that arrives while the save runs keeps the change pendin
 
 test("a change pending across a switch from one source to another, or to an array, reconciles", async () => {
   const first = createMeetingStore([standup]);
-  const second = createMeetingStore([standup]);
+  const second = createMeetingStore([standup, lunch]);
   const saving = Promise.withResolvers<void>();
   let received: Change | undefined;
   const handler: Handler = (change) => {
@@ -523,20 +523,40 @@ test("a change pending across a switch from one source to another, or to an arra
   const harness = await render(<Application events={first.source} onEventChange={handler} />);
 
   await propose(move("11:00", "12:00"));
+  // New events while the save runs leave the change pending, and the old source is dropped.
   await harness.render(<Application events={second.source} onEventChange={handler} />);
-  expect(visible(harness.container)).toEqual(["Standup 2026-08-15T11:00:00Z (pending)", "saving"]);
+  expect(visible(harness.container)).toEqual([
+    "Standup 2026-08-15T11:00:00Z (pending)",
+    "Lunch 2026-08-15T12:00:00Z",
+    "saving",
+  ]);
+  expect(first.listeners.size).toBe(0);
+  await act(async () => first.set([review]));
+  expect(visible(harness.container)).toEqual([
+    "Standup 2026-08-15T11:00:00Z (pending)",
+    "Lunch 2026-08-15T12:00:00Z",
+    "saving",
+  ]);
 
   await act(async () => saving.resolve());
   // The second store confirms it.
   await act(async () => second.update((events) => applyChange(events, received!)));
-  expect(visible(harness.container)).toEqual(["Standup 2026-08-15T11:00:00Z", "saved"]);
+  expect(visible(harness.container)).toEqual([
+    "Standup 2026-08-15T11:00:00Z",
+    "Lunch 2026-08-15T12:00:00Z",
+    "saved",
+  ]);
 
   // A later change pending when the events become an array ends with the array's events.
   const later = Promise.withResolvers<void>();
   await harness.render(<Application events={second.source} onEventChange={() => later.promise} />);
   await propose(move("13:00", "14:00"));
   await act(async () => later.resolve());
-  expect(visible(harness.container)).toEqual(["Standup 2026-08-15T13:00:00Z (pending)", "saving"]);
+  expect(visible(harness.container)).toEqual([
+    "Standup 2026-08-15T13:00:00Z (pending)",
+    "Lunch 2026-08-15T12:00:00Z",
+    "saving",
+  ]);
   await harness.render(<Application events={[standup, lunch]} />);
   expect(visible(harness.container)).toEqual([
     "Standup 2026-08-15T09:00:00Z",

@@ -25,7 +25,7 @@ export const publishedPackages: readonly PublishedPackage[] = [
   { directory: "calendar", budgets: { ".": { raw: 4 * KiB, gzip: 1.5 * KiB } } },
   { directory: "calendar-core", budgets: { ".": { raw: 180 * KiB, gzip: 46 * KiB } } },
   { directory: "calendar-dnd", budgets: { ".": { raw: 36 * KiB, gzip: 10 * KiB } } },
-  // Root's event source (#200), read through useSyncExternalStore, took calendar-react to 78,053 of
+  // Root's event source (#200), read through useSyncExternalStore, took calendar-react to 78,147 of
   // 77,824 raw bytes. 78 KiB leaves the usual headroom.
   { directory: "calendar-react", budgets: { ".": { raw: 78 * KiB, gzip: 20 * KiB } } },
   { directory: "calendar-recurrence", budgets: { ".": { raw: 144 * KiB, gzip: 36 * KiB } } },
