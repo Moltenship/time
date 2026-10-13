@@ -12,6 +12,13 @@ const execFileAsync = promisify(execFile);
 // Directories under packages/ that publish to npm. calendar-testing stays private until after 1.0 (#45).
 const publishedPackageDirectories = publishedPackages.map(({ directory }) => directory);
 
+/**
+ * ics bundles data from Unicode CLDR, under the Unicode License v3, whose text ships in its
+ * THIRD-PARTY-NOTICES.md. The other packages are MIT alone.
+ */
+const licenses: Readonly<Record<string, string>> = { ics: "MIT AND Unicode-3.0" };
+const thirdPartyNotices: Readonly<Record<string, string>> = { ics: "Unicode-3.0" };
+
 interface PackageManifest {
   readonly bugs?: { readonly url?: string };
   readonly homepage?: string;
@@ -83,7 +90,7 @@ describe("published package metadata", () => {
     async (directory) => {
       const manifest = await readManifest(directory);
 
-      expect(manifest.license).toBe("MIT");
+      expect(manifest.license).toBe(licenses[directory] ?? "MIT");
       expect(manifest.repository).toEqual({
         type: "git",
         url: "git+https://github.com/Moltenship/time.git",
@@ -117,6 +124,18 @@ describe("published package metadata", () => {
 
     for (const [directory, files] of tarballs) {
       expect(files, directory).toContain("LICENSE");
+      if (directory in thirdPartyNotices)
+        expect(files, directory).toContain("THIRD-PARTY-NOTICES.md");
     }
   }, 30_000);
+
+  test.each(Object.entries(thirdPartyNotices))(
+    "%s ships the full text of the %s license it bundles data under",
+    async (directory, license) => {
+      const notices = await readFile(join("packages", directory, "THIRD-PARTY-NOTICES.md"), "utf8");
+
+      expect(notices).toContain(`SPDX-License-Identifier: ${license}`);
+      expect(notices).toContain("COPYRIGHT AND PERMISSION NOTICE");
+    },
+  );
 });

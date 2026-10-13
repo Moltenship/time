@@ -8,3 +8,5 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
 
 - First public release of `@moltenship/calendar`, `calendar-core`, `calendar-dnd`,
   `calendar-react`, `calendar-recurrence`, `calendar-temporal` and `ics`.
+- `@moltenship/ics` is licensed `MIT AND Unicode-3.0`: its Windows time zone names come from
+  Unicode CLDR, whose license text ships in the package's `THIRD-PARTY-NOTICES.md`.

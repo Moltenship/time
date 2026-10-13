@@ -10,7 +10,11 @@ every deviation from the RFC reported as an issue with its line.
 - **Standard Schema.** A parser is a [Standard Schema](https://standardschema.dev), and extension
   properties take any Standard Schema validator (Zod, Valibot, ArkType…).
 
-> **Status:** pre-1.0, not yet published to npm. The API will change before 1.0.
+## Install
+
+```bash
+pnpm add @moltenship/ics
+```
 
 ## Parse a feed
 
@@ -168,5 +172,5 @@ and `otherComponents`.
 
 ## License
 
-MIT. The Windows time zone data comes from Unicode CLDR under the Unicode License v3; see
-[THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md).
+`MIT AND Unicode-3.0`. The code is MIT. The Windows time zone data is derived from Unicode CLDR and
+is under the Unicode License v3; see [THIRD-PARTY-NOTICES.md](./THIRD-PARTY-NOTICES.md).
