@@ -163,23 +163,40 @@ export function createEventTransactions<
     else entries.set(eventId, replacement);
     const ended = entry?.settledAgainst !== undefined && records.delete(entry.change.id);
     if (entry !== undefined || replacement !== undefined) publish(true, phases || ended);
+    else if (phases) publish(false, true);
   }
 
-  /** Shows a change over its event and records its phase, in one update. */
+  /**
+   * Shows a change over its event and records its phase, in one update. The same change moving on
+   * with the same placement, as from validating to saving, keeps the placements.
+   */
   function show(
     change: Entry["change"],
     entry: Omit<Entry, "change">,
     phase: CalendarPendingChangePhase,
   ): void {
     records.set(change.id, Object.freeze({ change, phase }));
-    drop(change.eventId, { ...entry, change }, true);
+    const previous = entries.get(change.eventId);
+    if (previous?.change.id === change.id && previous.change.proposed === change.proposed) {
+      entries.set(change.eventId, { ...entry, change });
+      publish(false, true);
+    } else {
+      drop(change.eventId, { ...entry, change }, true);
+    }
   }
 
-  /** Removes a change unless a newer proposal for the same event has replaced it. */
+  /**
+   * Ends a proposal that won't be saved: its record goes, and so does its change on screen unless a
+   * newer proposal for the same event has replaced it.
+   */
   function hide(change: Change): void {
-    if (change.eventId === null || entries.get(change.eventId)?.change.id !== change.id) return;
-    entries.delete(change.eventId);
-    publish();
+    const ended = records.delete(change.id);
+    if (change.eventId !== null && entries.get(change.eventId)?.change.id === change.id) {
+      entries.delete(change.eventId);
+      publish(true, ended);
+    } else if (ended) {
+      publish(false, true);
+    }
   }
 
   function reflects(entry: Entry, snapshot: Snapshot): boolean {
@@ -198,7 +215,7 @@ export function createEventTransactions<
     if (entry?.change.id !== change.id) return;
     if (base === undefined || reflects(entry, base)) {
       entries.delete(change.eventId);
-      publish();
+      publish(true, records.delete(change.id));
     } else {
       entries.set(change.eventId, { ...entry, settledAgainst: base });
       track(change, "awaiting-events");
@@ -279,7 +296,7 @@ export function createEventTransactions<
     if (!isPromiseLike(returned)) {
       // A synchronous handler has already updated the application's events, which supersedes
       // any older change for this event.
-      drop(change.eventId);
+      drop(change.eventId, undefined, records.delete(change.id));
       return { change, status: "committed" };
     }
 

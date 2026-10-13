@@ -24,6 +24,7 @@ import {
   type EventSnapshotIssue,
   type EventTransactions,
   type InvalidCalendarEventPolicy,
+  type CalendarInputMethod,
   type CalendarPendingPlacements,
   type CalendarProposalDetail,
   type CalendarTransactionResult,
@@ -130,7 +131,11 @@ const readOnlyRoot = () => ({ reason: "read-only", type: "reject" }) as const;
 const noHandler = () => {
   throw new TypeError("calendar-root-is-read-only");
 };
-const apiInput: CalendarProposalDetail = Object.freeze({ input: "api" });
+const inputs: Readonly<Record<CalendarInputMethod, CalendarProposalDetail>> = Object.freeze({
+  api: Object.freeze({ input: "api" }),
+  keyboard: Object.freeze({ input: "keyboard" }),
+  pointer: Object.freeze({ input: "pointer" }),
+});
 
 /** Reports an application callback's error without failing the proposal it heard about. */
 function reportCallbackError(error: unknown): void {
@@ -277,9 +282,11 @@ function createSemanticActions<
       const instant = environment.now ?? (environment.clock ?? systemClock).instant();
       actions.setAnchorDate(instant.toZonedDateTimeISO(read().timeZone).toPlainDate());
     },
-    proposeEventChange(proposal, detail = apiInput) {
+    proposeEventChange(proposal, detail) {
       const { availability, eventSnapshot, onEventChange } = committed.current;
-      const reported = Object.freeze({ input: detail.input });
+      // Anything but a known input, as from a caller that passes on an index, is the app's own.
+      const input = detail?.input;
+      const reported = input === "pointer" || input === "keyboard" ? inputs[input] : inputs.api;
       return transactions
         .propose(proposal, {
           availability,
@@ -441,12 +448,16 @@ export function createCalendarRoot<
       transactions.getPending,
       transactions.getPending,
     );
-    const [pendingChanges] = useState(() =>
-      Object.freeze({
+    // The server and hydration read the empty map, also when part of the tree hydrates after a
+    // change started.
+    const [pendingChanges] = useState(() => {
+      const none = transactions.getPendingChanges();
+      return Object.freeze({
+        getServerSnapshot: () => none,
         getSnapshot: transactions.getPendingChanges,
         subscribe: transactions.subscribe,
-      }),
-    );
+      });
+    });
     const [keyboard] = useState(createKeyboardSessionStore);
     const [pointerDraft] = useState(createDraftStore);
     const preview = useSyncExternalStore(

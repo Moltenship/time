@@ -848,9 +848,9 @@ Pointer and keyboard gestures make `create`, `move`, `resize-start` and `resize-
 another resource is a `move` with new `resourceIds`. `update` and `delete` come only from
 `actions.proposeEventChange()`, as an event form sends them. The change doesn't say which input
 made it; the proposal's detail does, `proposeEventChange(proposal, { input })` with
-`CalendarChangeInput = "pointer" | "keyboard" | "api"`: the pointer layer passes
+`CalendarInputMethod = "pointer" | "keyboard" | "api"`: the pointer layer passes
 `{ input: "pointer" }` to `onPropose`, `useCalendarKeyboard` proposes as `"keyboard"`, and anything
-else is `"api"`. The announcer and `onEventChangeResult` hear it. `id` names the change
+else is `"api"`. `onEventChangeResult` hears it; the announcer hears a gesture's own input. `id` names the change
 within one calendar, such as `change-3`. `warnings` holds the reasons policies flagged the change
 with while letting it through. There are no recurrence fields: `resolveRecurrenceEdit` in
 `@moltenship/calendar-recurrence` turns a change to an occurrence into a this, following or all
@@ -893,9 +893,10 @@ Lifecycle:
    propose nothing, so they have no result.
 
 Optimistic rendering is not a mode: the handler's return value decides it. A handler can't refuse a
-change by returning `false`; it throws or rejects. A root without `onEventChange` rejects every
-proposal in its read-only check, so its results carry the change like any policy's rejection;
-only `unknown-event` has none. The engine is `createEventTransactions()` in `calendar-core`, with
+change by returning `false`; it throws or rejects. A root without `onEventChange` rejects
+a proposal in its read-only check, after the unknown-event and empty-placement checks every
+proposal goes through, so its results carry the change like any policy's rejection; only
+`unknown-event` has none. The engine is `createEventTransactions()` in `calendar-core`, with
 `propose`, `check`, `reconcile`, `getPending`, `getPendingChanges` and `subscribe`, for use outside
 React. `Root` keeps one per calendar and doesn't expose it. The overlay is keyed by event ID, so an
 event shows at most one pending change.

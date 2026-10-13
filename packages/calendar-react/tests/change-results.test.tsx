@@ -14,7 +14,7 @@ import {
   type ResourceId,
 } from "@moltenship/calendar-core";
 import { plainDateInterval } from "@moltenship/calendar-temporal";
-import { act, memo, useState, type ReactNode } from "react";
+import { act, memo, Suspense, useState, type ReactNode } from "react";
 import { renderToString } from "react-dom/server";
 import { afterEach, describe, expect, expectTypeOf, test, vi } from "vite-plus/test";
 
@@ -27,9 +27,11 @@ import {
 import { gateWeekRules } from "./harness/builders";
 import { allDay, KeyboardFixture } from "./harness/keyboard-fixture";
 import {
+  createSuspensionGate,
   hydrateWithHarness,
   renderWithHarness,
   type ReactRootHarness,
+  type SuspensionGate,
 } from "./harness/render-harness";
 import "./setup";
 
@@ -464,10 +466,13 @@ describe("useCalendarPendingChanges", () => {
     const { result } = await propose(move("11:00", "12:00"));
     expect(pendingText(harness)).toBe("change-1 standup validating");
 
+    // The policy accepted the change as it was, so only the phase changes: the view doesn't render.
+    let rendersBefore = viewRenders;
     await act(async () => decision.resolve({ type: "accept" }));
     expect(pendingText(harness)).toBe("change-1 standup saving");
+    expect(viewRenders).toBe(rendersBefore);
 
-    const rendersBefore = viewRenders;
+    rendersBefore = viewRenders;
     await act(async () => saving.resolve());
     await settle(result);
     expect(pendingText(harness)).toBe("change-1 standup awaiting-events");
@@ -636,5 +641,71 @@ describe("useCalendarPendingChanges", () => {
     harnesses.push(harness);
     expect(harness.hydratedWithoutMutation).toBe(true);
     expect(harness.recoverableErrors).toEqual([]);
+  });
+
+  test("a part that hydrates after a change started reads the empty map, as the server did", async () => {
+    const serverGate = createSuspensionGate();
+    serverGate.release();
+    const clientGate = createSuspensionGate();
+    function Late({ gate }: { readonly gate: SuspensionGate }) {
+      gate.read();
+      const changes = MeetingCalendar.useCalendarPendingChanges();
+      return <output data-late="">{[...changes.keys()].join(", ") || "none"}</output>;
+    }
+    const tree = (gate: SuspensionGate) => (
+      <Application onEventChange={() => new Promise<void>(() => undefined)}>
+        <Suspense fallback={null}>
+          <Late gate={gate} />
+        </Suspense>
+      </Application>
+    );
+
+    const harness = await hydrateWithHarness(tree(serverGate), {
+      clientElement: tree(clientGate),
+    });
+    harnesses.push(harness);
+    // The view hydrated, and a change starts saving before the late part hydrates.
+    await propose(move("11:00", "12:00"));
+    await act(async () => clientGate.release());
+
+    const late = () => harness.container.querySelector("[data-late]")?.textContent;
+    await vi.waitFor(() => expect(late()).toBe("change-1"));
+    expect(harness.recoverableErrors).toEqual([]);
+  });
+
+  test("resolves its own root inside another calendar's root", async () => {
+    const OtherCalendar = createCalendar<Meeting>()({
+      eventAdapter: defineEventAdapter<Meeting>()({
+        getId: (record) => record.id,
+        getInterval: (record) => ({ end: record.end, kind: "timed", start: record.start }),
+        getResourceIds: (): readonly string[] => [],
+        getTitle: (record) => record.title,
+      }),
+      views: [agendaView],
+    });
+    function Sizes() {
+      const own = MeetingCalendar.useCalendarPendingChanges((changes) => changes.size);
+      const other = OtherCalendar.useCalendarPendingChanges((changes) => changes.size);
+      return <output data-sizes="">{`${own}/${other}`}</output>;
+    }
+    const harness = await render(
+      <Application onEventChange={() => new Promise<void>(() => undefined)}>
+        <OtherCalendar.Root
+          defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
+          defaultTimeZone="UTC"
+          events={[]}
+          locale="en-GB"
+          weekRules={gateWeekRules}
+        >
+          <Sizes />
+        </OtherCalendar.Root>
+      </Application>,
+    );
+    const outerActions = viewActions!;
+
+    await act(async () => {
+      void outerActions.proposeEventChange(move("11:00", "12:00"));
+    });
+    expect(harness.container.querySelector("[data-sizes]")?.textContent).toBe("1/0");
   });
 });

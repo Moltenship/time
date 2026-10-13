@@ -715,4 +715,87 @@ describe("pending changes", () => {
     app.setEvents([event("b", "2026-08-15T13:00", "2026-08-15T14:00")]);
     expect(phases(app.transactions)).toEqual([]);
   });
+
+  test("keep the placements while an unadjusted change moves from validating to saving", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const decision = Promise.withResolvers<{ readonly type: "accept" }>();
+    const handler = vi.fn<Handler>(() => new Promise<void>(() => undefined));
+    const listener = vi.fn();
+    app.transactions.subscribe(listener);
+
+    void app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), handler, [
+      () => decision.promise,
+    ]);
+    const placements = app.transactions.getPending();
+    listener.mockClear();
+    decision.resolve({ type: "accept" });
+    await vi.waitFor(() => expect(handler).toHaveBeenCalled());
+
+    expect(phases(app.transactions)).toEqual(["change-1 a saving"]);
+    expect(app.transactions.getPending()).toBe(placements);
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
+  test("show a placement an async policy adjusted when the change moves on to saving", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const handler = vi.fn<Handler>(() => new Promise<void>(() => undefined));
+
+    void app.propose(move("a", "2026-08-15T11:10", "2026-08-15T12:10"), handler, [
+      async () => ({ type: "accept" }),
+      snapPolicy({ minutes: 30 }),
+    ]);
+    expect(app.visible("a")).toBe("11:10 (pending)");
+    await vi.waitFor(() => expect(handler).toHaveBeenCalled());
+
+    expect(phases(app.transactions)).toEqual(["change-1 a saving"]);
+    expect(app.visible("a")).toBe("11:00 (pending)");
+  });
+
+  test("end an async policy's failure or empty adjustment at once, telling listeners once", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const listener = vi.fn();
+    app.transactions.subscribe(listener);
+    const failure = new Error("policy bug");
+
+    const failed = app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), vi.fn(), [
+      () => Promise.reject(failure),
+    ]);
+    expect(phases(app.transactions)).toEqual(["change-1 a validating"]);
+    listener.mockClear();
+    await expect(failed).resolves.toMatchObject({ error: failure, reason: "policy-error" });
+    expect(phases(app.transactions)).toEqual([]);
+    expect(app.visible("a")).toBe("09:00");
+    expect(listener).toHaveBeenCalledOnce();
+
+    const emptied = app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), vi.fn(), [
+      async (change) =>
+        change.proposed?.kind === "timed"
+          ? { proposed: { ...change.proposed, end: change.proposed.start }, type: "adjust" }
+          : { type: "accept" },
+    ]);
+    expect(phases(app.transactions)).toEqual(["change-2 a validating"]);
+    listener.mockClear();
+    await expect(emptied).resolves.toMatchObject({ reason: "invalid-placement" });
+    expect(phases(app.transactions)).toEqual([]);
+    expect(listener).toHaveBeenCalledOnce();
+  });
+
+  test("end a saved change that the events already show in one update", async () => {
+    const app = createHarness([event("a", "2026-08-15T09:00", "2026-08-15T10:00")]);
+    const saving = Promise.withResolvers<void>();
+    const listener = vi.fn();
+    app.transactions.subscribe(listener);
+
+    const result = app.propose(move("a", "2026-08-15T11:00", "2026-08-15T12:00"), (change) => {
+      app.apply(change);
+      return saving.promise;
+    });
+    listener.mockClear();
+    saving.resolve();
+    await result;
+
+    expect(phases(app.transactions)).toEqual([]);
+    expect(app.transactions.getPending().size).toBe(0);
+    expect(listener).toHaveBeenCalledOnce();
+  });
 });

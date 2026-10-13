@@ -144,7 +144,6 @@ interface CalendarAvailability extends ResourceAvailability {
 }
 type CalendarCellFocus = CalendarDayFocus | CalendarSlotFocus;
 type CalendarChangeCause = "create" | "move" | "resize-start" | "resize-end" | "update" | "delete";
-type CalendarChangeInput = "pointer" | "keyboard" | "api";
 interface CalendarDayFocus extends CalendarResourceFocus {
   readonly date: Temporal.PlainDate;
   readonly kind: "day";
@@ -261,6 +260,7 @@ interface CalendarEventValidationIssue {
   readonly kind?: CalendarEventInterval["kind"];
 }
 type CalendarFocus<TEventId extends EventId = EventId> = CalendarCellFocus | CalendarEventFocus<TEventId>;
+type CalendarInputMethod = "pointer" | "keyboard" | "api";
 type CalendarInteractionCause = "create" | "move" | "resize-end" | "resize-start";
 type CalendarInteractionCheck = CalendarPolicyResult<unknown, EventId, ResourceId> | null;
 interface CalendarInteractionOptions {
@@ -362,7 +362,7 @@ type CalendarPolicyResult<TEvent, TEventId extends EventId, TResourceId extends 
   readonly status: "rejected";
 };
 interface CalendarProposalDetail {
-  readonly input: CalendarChangeInput;
+  readonly input: CalendarInputMethod;
 }
 interface CalendarResource<TData = unknown, TResourceId extends ResourceId = string> {
   readonly availability?: ResourceAvailability;
@@ -994,7 +994,6 @@ export {
   type CalendarAvailability,
   type CalendarCellFocus,
   type CalendarChangeCause,
-  type CalendarChangeInput,
   type CalendarDayFocus,
   type CalendarDirection,
   type CalendarDraft,
@@ -1020,6 +1019,7 @@ export {
   type CalendarEventUpdateChange,
   type CalendarEventValidationIssue,
   type CalendarFocus,
+  type CalendarInputMethod,
   type CalendarInteractionCause,
   type CalendarInteractionCheck,
   type CalendarInteractionOptions,

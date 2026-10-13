@@ -210,7 +210,6 @@ export {
 } from "./transactions/placement";
 export type {
   CalendarChangeCause,
-  CalendarChangeInput,
   CalendarEventChange,
   CalendarEventChangeHandler,
   CalendarEventCreateChange,
@@ -220,6 +219,7 @@ export type {
   CalendarDraft,
   CalendarEventProposal,
   CalendarEventUpdateChange,
+  CalendarInputMethod,
   CalendarPendingChange,
   CalendarPendingChangePhase,
   CalendarPendingChanges,

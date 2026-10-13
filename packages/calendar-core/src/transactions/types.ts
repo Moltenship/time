@@ -105,11 +105,11 @@ export type CalendarEventChangeHandler<
 > = (change: CalendarEventChange<TEvent, TEventId, TResourceId>) => void | Promise<void>;
 
 /** Which input made a proposal: a pointer or keyboard gesture, or the application's own code. */
-export type CalendarChangeInput = "pointer" | "keyboard" | "api";
+export type CalendarInputMethod = "pointer" | "keyboard" | "api";
 
 /** What a proposal says beside the change itself; `onEventChangeResult` gets it back. */
 export interface CalendarProposalDetail {
-  readonly input: CalendarChangeInput;
+  readonly input: CalendarInputMethod;
 }
 
 export type CalendarTransactionResult<

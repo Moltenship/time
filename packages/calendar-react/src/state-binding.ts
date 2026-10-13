@@ -100,20 +100,27 @@ export function useStateSelector<TState, TSelected>(
   { isEqual = Object.is }: CalendarStateSelectorOptions<TSelected> = {},
 ): TSelected {
   const committed = useRef<{ readonly selected: TSelected } | null>(null);
-  const getSelection = useMemo(() => {
-    let memo: { readonly selected: TSelected; readonly state: TState } | undefined;
-    return () => {
-      const state = source.getSnapshot();
-      if (memo !== undefined && memo.state === state) return memo.selected;
-      const next = selector(state);
-      const previous = memo ?? committed.current;
-      const selected =
-        previous !== null && isEqual(previous.selected, next) ? previous.selected : next;
-      memo = { selected, state };
-      return selected;
+  const [getSelection, getServerSelection] = useMemo(() => {
+    const selecting = (read: () => TState) => {
+      let memo: { readonly selected: TSelected; readonly state: TState } | undefined;
+      return () => {
+        const state = read();
+        if (memo !== undefined && memo.state === state) return memo.selected;
+        const next = selector(state);
+        const previous = memo ?? committed.current;
+        const selected =
+          previous !== null && isEqual(previous.selected, next) ? previous.selected : next;
+        memo = { selected, state };
+        return selected;
+      };
     };
+    const client = selecting(source.getSnapshot);
+    return [
+      client,
+      source.getServerSnapshot === undefined ? client : selecting(source.getServerSnapshot),
+    ];
   }, [isEqual, selector, source]);
-  const selected = useSyncExternalStore(source.subscribe, getSelection, getSelection);
+  const selected = useSyncExternalStore(source.subscribe, getSelection, getServerSelection);
   useInsertionEffect(() => {
     committed.current = { selected };
   });

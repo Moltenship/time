@@ -14,6 +14,8 @@ export type AnyCalendarState = CalendarPublicState<string, unknown, unknown>;
 export type AnyPendingChanges = CalendarPendingChanges<unknown, EventId, ResourceId>;
 
 export interface CalendarStateSource<TState = AnyCalendarState> {
+  /** What the server and hydration read, when it differs from `getSnapshot`. */
+  readonly getServerSnapshot?: () => TState;
   readonly getSnapshot: () => TState;
   readonly subscribe: (listener: () => void) => () => void;
 }
