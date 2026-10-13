@@ -444,6 +444,58 @@ describe("time grid", () => {
     expect(interval(proposals[0])).toBe("timed 2026-08-17T10:00:00Z/2026-08-17T11:00:00Z");
   });
 
+  test("listens for touch moves on the region from the start, so Safari lets a drag cancel scrolling", () => {
+    const grid = mountTimeGrid([meeting]);
+    const regionListens = vi.spyOn(grid.region, "addEventListener");
+    const windowListens = vi.spyOn(window, "addEventListener");
+    setup(grid, { columns: grid.columns });
+
+    expect(regionListens).toHaveBeenCalledWith("touchmove", expect.any(Function), {
+      passive: false,
+    });
+    vi.useFakeTimers();
+    const element = grid.elements.get("a")!;
+    pointer("pointerdown", element, 50, yAt("09:30"), { pointerType: "touch" });
+    vi.advanceTimersByTime(450);
+    expect(grid.region.getAttribute("data-interaction")).toBe("move");
+    expect(windowListens.mock.calls.map(([type]) => type)).not.toContain("touchmove");
+  });
+
+  test("holds the page still under a drag whose pressed element leaves the page", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    setup(grid, { columns: grid.columns });
+    const element = grid.elements.get("a")!;
+
+    pointer("pointerdown", element, 50, yAt("09:30"), { pointerType: "touch" });
+    vi.advanceTimersByTime(450);
+    // A scrolling view drops the element; the finger's moves still go to it.
+    element.remove();
+    const scroll = new Event("touchmove", { bubbles: true, cancelable: true });
+    element.dispatchEvent(scroll);
+    expect(scroll.defaultPrevented).toBe(true);
+  });
+
+  test("keeps a drag going when the browser takes over another finger", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    const proposals = setup(grid, { columns: grid.columns });
+    const element = grid.elements.get("a")!;
+    const touch = { pointerType: "touch" };
+
+    pointer("pointerdown", element, 50, yAt("09:30"), touch);
+    vi.advanceTimersByTime(450);
+    // A second finger, which the browser takes for a pinch.
+    window.dispatchEvent(
+      Object.defineProperty(new MouseEvent("pointercancel"), "pointerId", { value: 2 }),
+    );
+    expect(grid.region.getAttribute("data-interaction")).toBe("move");
+    pointer("pointermove", element, 50, yAt("10:30"), touch);
+    pointer("pointerup", element, 50, yAt("10:30"), touch);
+
+    expect(proposals).toHaveLength(1);
+  });
+
   test("scrolls the container while the pointer rests near its edge", () => {
     vi.useFakeTimers();
     const grid = mountTimeGrid([meeting]);

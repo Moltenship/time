@@ -3,45 +3,69 @@ import {
   createCanonicalEventAdapter,
   type CalendarEvent,
   type CalendarEventChange,
+  type CalendarResource,
 } from "@moltenship/calendar";
 import { act } from "react";
-import { beforeAll, describe, expect, test, vi } from "vite-plus/test";
+import { afterAll, beforeAll, describe, expect, test, vi } from "vite-plus/test";
 import { cdp, page, server } from "vite-plus/test/browser";
 
+import { createMonthView } from "@registry/month-view/month-view";
+import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
+import { createTimelineDayView } from "@registry/resource-timeline-view/resource-timeline-view";
+import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
+import { createScrollingDayView } from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
 import { createDayView } from "@registry/time-grid-view/time-grid-view";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { render, until } from "./render";
 
-type Fixture = CalendarEvent<null, string>;
+type Fixture = CalendarEvent<null, string, string>;
 type Change = CalendarEventChange<Fixture, string, string>;
 
-const Calendar = createCalendar<Fixture>()({
-  eventAdapter: createCanonicalEventAdapter<null, string>(),
-  views: [createDayView<Fixture>()],
+/** Every registry view with a pointer layer. */
+const Calendar = createCalendar<Fixture, CalendarResource<null>>()({
+  eventAdapter: createCanonicalEventAdapter<null, string, string>(),
+  views: [
+    createDayView<Fixture>(),
+    createScrollingDayView<Fixture>(),
+    createMonthView<Fixture>(),
+    createScrollingMonthView<Fixture>(),
+    createResourceColumnsView<Fixture>(),
+    createTimelineDayView<Fixture>(),
+  ],
 });
+type View = (typeof Calendar.views)[number]["name"];
 
 const review: Fixture = {
   data: null,
   end: Temporal.Instant.from("2026-10-08T11:00:00Z"),
   id: "review",
   kind: "timed",
+  resourceIds: ["ada"],
   start: Temporal.Instant.from("2026-10-08T10:00:00Z"),
   title: "Review",
 };
+const resources: readonly CalendarResource<null>[] = [{ data: null, id: "ada", title: "Ada" }];
 
-/** A phone's day view; without `onEventChange` it's read-only. */
-function Day({ onEventChange }: { readonly onEventChange?: (change: Change) => void }) {
+/** A phone's calendar, on the day view by default; without `onEventChange` it's read-only. */
+function Day({
+  onEventChange,
+  view = "day",
+}: {
+  readonly onEventChange?: (change: Change) => void;
+  readonly view?: View;
+}) {
   return (
     <TooltipProvider>
       <Calendar.Root
         defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
         defaultTimeZone="UTC"
-        defaultView="day"
+        defaultView={view}
         events={[review]}
         locale="en-US"
         now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
         onEventChange={onEventChange}
+        resources={resources}
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >
         <Calendar.Frame className="flex h-dvh flex-col">
@@ -97,8 +121,19 @@ function prevented(type: string, target: Element = event()) {
   return sent.defaultPrevented;
 }
 
-/** Longer than the long-press, so a gesture that was going to start has. */
-const pastLongPress = () => new Promise((resolve) => setTimeout(resolve, 700));
+/**
+ * Runs `steps` on fake timers, then lets far more time pass than any long-press takes, so a
+ * gesture that was going to start has, without waiting for it.
+ */
+async function longAfter(steps: () => Promise<void>) {
+  vi.useFakeTimers({ toFake: ["clearTimeout", "setTimeout"] });
+  try {
+    await steps();
+    await act(async () => vi.advanceTimersByTime(10_000));
+  } finally {
+    vi.useRealTimers();
+  }
+}
 
 /** The middle of an element. */
 function middle(element: Element): [number, number] {
@@ -118,10 +153,11 @@ describe(`touch gestures in ${server.browser}`, () => {
     await render(<Day onEventChange={onEventChange} />);
     const [x, y] = middle(event());
 
-    await finger("pointerdown", event(), [x, y]);
-    await finger("pointermove", event(), [x, y - 30]);
-    expect(prevented("touchmove")).toBe(false);
-    await pastLongPress();
+    await longAfter(async () => {
+      await finger("pointerdown", event(), [x, y]);
+      await finger("pointermove", event(), [x, y - 30]);
+      expect(prevented("touchmove")).toBe(false);
+    });
 
     expect(region().hasAttribute("data-interaction")).toBe(false);
     expect(document.querySelector("[data-calendar-ghost]")).toBeNull();
@@ -202,8 +238,7 @@ describe(`touch gestures in ${server.browser}`, () => {
     await render(<Day />);
     const [x, y] = middle(event());
 
-    await finger("pointerdown", event(), [x, y]);
-    await pastLongPress();
+    await longAfter(() => finger("pointerdown", event(), [x, y]));
 
     expect(region().hasAttribute("data-interaction")).toBe(false);
     expect(prevented("touchmove")).toBe(false);
@@ -246,12 +281,28 @@ describe.runIf(server.browser === "chromium")("a finger on Chromium's touch scre
   beforeAll(async () => {
     await cdp().send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
   });
+  // The page outlives this file: the next file in it gets a mouse again, and hover with it.
+  afterAll(async () => {
+    await cdp().send("Emulation.setTouchEmulationEnabled", { enabled: false });
+  });
 
-  test("a long-press selects no text in the view", async () => {
+  test.each<[View, string]>([
+    ["day", "time-grid"],
+    ["scrolling-day", "scrolling-time-grid"],
+    ["month", "month-view"],
+    ["scrolling-month", "scrolling-month"],
+    ["resources", "resource-columns"],
+    ["timeline-day", "resource-timeline"],
+  ])("the %s view selects no text on a touch screen, unless it's read-only", async (view, slot) => {
     // Emulated touch makes the pointer coarse, as on a phone.
-    expect(matchMedia("(any-pointer: coarse)").matches).toBe(true);
-    await render(<Day onEventChange={() => {}} />);
-    expect(getComputedStyle(region()).userSelect).toBe("none");
+    expect(matchMedia("(pointer: coarse)").matches).toBe(true);
+    const selection = () =>
+      getComputedStyle(document.querySelector(`[data-slot="${slot}"]`)!).userSelect;
+
+    await render(<Day onEventChange={() => {}} view={view} />);
+    expect(selection()).toBe("none");
+    await render(<Day view={view} />);
+    expect(selection()).not.toBe("none");
   });
 
   test("a swipe over an event scrolls the grid and starts nothing", async () => {

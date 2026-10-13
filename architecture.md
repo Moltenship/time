@@ -931,11 +931,13 @@ Explicit move and resize buttons and an event details surface in the registry ar
 (15 minutes by default), `announcer`, `check`, `columns`, `scrollContainer` (the nearest scrollable
 ancestor by default), `onPreview`, `disabled` (views pass their `isReadOnly` prop) and
 `ghostClassName`. Activation is fixed: more than 4 px of travel for mouse and pen; for touch, a
-450 ms press that moves no more than 8 px, as long as the platforms' own long-press, so a finger
-that rests before it scrolls still scrolls. A non-passive `touchmove` listener on the region, there
-from the start because iOS Safari decides at the touch's start whether it can cancel scrolling,
-holds the page still under an active drag. On coarse pointers the built-in views also turn off text
-selection and the iOS touch callout. DOM event types do not leak into calendar callbacks.
+450 ms press that moves no more than 8 px, about as long as the platforms' own long-press, so a
+finger that rests before it scrolls still scrolls. A non-passive `touchmove` listener on the
+region, there from the start because iOS Safari decides at the touch's start whether it can cancel
+scrolling, holds the page still under an active drag; the pressed element gets one too, for a view
+that drops it mid-drag. The cost is that a swipe's first move waits for the main thread. While the
+root is editable, the built-in views also turn off text selection and the iOS touch callout on a
+coarse pointer. DOM event types do not leak into calendar callbacks.
 
 ### Policy pipeline
 

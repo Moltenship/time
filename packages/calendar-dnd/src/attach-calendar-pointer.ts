@@ -114,6 +114,8 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
   readonly pointerId: number;
   readonly pointerType: string;
   readonly scrollContainer: Element;
+  /** Where a touch started, which keeps its `touchmove`s even after a re-render removes it. */
+  readonly touchTarget: EventTarget | null;
   /** Rebuilt when the view renders new columns mid-gesture, as a scrolling view does. */
   surface: TargetSurface;
   /** The `columns` option `surface` was built from. */
@@ -124,7 +126,7 @@ const DEFAULT_SNAP: WallTimeSnapOptions = { increment: 15, smallestUnit: "minute
 /** Pointer travel that turns a mouse or pen press into a drag; anything less is a click. */
 const DRAG_DISTANCE = 4;
 /**
- * Touch drags start after a still long-press, as long as the platforms' own, so a swipe keeps
+ * Touch drags start after a still long-press, about as long as the platforms' own, so a swipe keeps
  * scrolling even when the finger rests a moment first.
  */
 const LONG_PRESS_MS = 450;
@@ -347,8 +349,9 @@ export function attachCalendarPointer<
 
     window.removeEventListener("pointermove", onPointerMove);
     window.removeEventListener("pointerup", onPointerUp);
-    window.removeEventListener("pointercancel", cancel);
+    window.removeEventListener("pointercancel", onPointerCancel);
     window.removeEventListener("keydown", onKeyDown, true);
+    current.touchTarget?.removeEventListener("touchmove", onTouchMove);
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.removeEventListener(type, preventDefault);
     }
@@ -358,6 +361,11 @@ export function attachCalendarPointer<
   function cancel(): void {
     if (session?.active === true) announce(session, { phase: "cancel" });
     end();
+  }
+
+  /** Cancels when the browser takes over the gesture's own pointer, not another finger. */
+  function onPointerCancel(event: PointerEvent): void {
+    if (event.pointerId === session?.pointerId) cancel();
   }
 
   function proposal(
@@ -491,26 +499,31 @@ export function attachCalendarPointer<
       scrollContainer: options.scrollContainer?.current ?? scrollableAncestor(event.target),
       surface,
       surfaceColumns: options.columns,
+      touchTarget: event.pointerType === "touch" ? event.target : null,
     };
     session = current;
 
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
-    window.addEventListener("pointercancel", cancel);
+    window.addEventListener("pointercancel", onPointerCancel);
     window.addEventListener("keydown", onKeyDown, true);
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.addEventListener(type, preventDefault);
     }
     if (event.pointerType === "touch") {
+      // A scrolling view can drop the pressed element as a drag scrolls it; its touch moves still
+      // go to it, off the page, where the region doesn't hear them.
+      event.target.addEventListener("touchmove", onTouchMove, { passive: false });
       current.longPress = setTimeout(() => activate(current), LONG_PRESS_MS);
     }
   }
 
   /**
-   * Holds the page still under a drag that has started. It listens from the start, not from the
-   * long-press: Safari on iOS decides whether a touch can cancel scrolling when the touch begins.
+   * Holds the page still under a drag that has started. The region listens from the start, not
+   * from the long-press: Safari on iOS decides whether a touch can cancel scrolling when the touch
+   * begins. A non-passive listener makes a swipe's first move wait for the main thread.
    */
-  function onTouchMove(event: TouchEvent): void {
+  function onTouchMove(event: Event): void {
     if (session?.active === true) event.preventDefault();
   }
 
