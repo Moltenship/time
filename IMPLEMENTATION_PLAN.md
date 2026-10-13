@@ -30,6 +30,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | iCalendar      | #151, #153       | Standalone `@moltenship/ics`: ICS text to typed Temporal values, TZID resolution, a Standard Schema parser with typed extensions; a docs reference with a playground and a guide to showing a feed |
 | Time zones     | #165             | Secondary time zones (ADR 0165): `secondaryTimeZones` on `Root`, each hour line read in another zone on its own date (`timeGridZoneAxis`), an hour column per zone in the day, week, scrolling and resource columns views, notes on days a zone shifts, slot names with the time in each zone |
 | Recurrence     | #48, #49, #155   | `@moltenship/calendar-recurrence` (ADR 0048), shipped through #156–#159: an RFC 5545 rule engine and RRULE text; range-bounded expansion with stable occurrence IDs, EXDATE, RDATE, overrides and an ICS bridge; "this / following / all" edits and the registry scope dialog. #155 closes epic #2 with the demo and docs, in a PR of their own, and a gate: a DST matrix, Google/Outlook/iCloud interop fixtures and a year-view expansion benchmark (`vp run recurrence:gate`) |
+| Recurrence follow-ups | #160 | The #155 gate's follow-ups: year-view expansion about 18% faster under a 40 ms budget; rules whose INTERVAL never meets their BY values end at once; the ICS bridge applies RANGE=THISANDFUTURE, Outlook's all-day flag and a feed's own zone; edits replay a change on the series' clock, keep the later of two equal wall times and see cancelled overrides; a DST matrix of edits in four zones |
 | Theme builder  | #166             | A docs page that edits every token of `calendar-theme.css` live, light and dark apart, over a scoped preview, with presets, contrast checks and CSS to copy; `--calendar-event-padding-x` and `-y` for time-grid events |
 | shadcn registry | #43             | Every view, the shared parts, the theme, the recurrence scope dialog and `calendar-full`, built with `shadcn build` and served by the docs site at `/r/<item>.json`; `npx shadcn add <url>` tested in clean Vite and Next.js apps against packed packages (`vp run registry:e2e`); `compatibility.json` lists each item's runtime range for release tooling |
 | Next.js recipe | #164             | A live App Router example at `/examples/nextjs` and a guide through its source: the view and date in the URL, a Server Component fetching that range, Server Actions saving changes with `useOptimistic`, a time zone cookie; `withAsciiSpaces`, so ranges formatted in Node hydrate in browsers |
@@ -90,8 +91,8 @@ issue's "Later" section when work starts.
 - Release follow-ups from #46: changesets or per-package changelogs if versions stop moving
   together, git tags and GitHub releases from the publish step, npm staged publishing, budgets for
   minified bundles with dependencies, the benchmark gate in the release run
-- Recurrence follow-ups from the #155 gate: DST folds and cancelled first occurrences in edits, ICS
-  bridge quirks, expansion speed-ups (#160)
+- Recurrence edge cases left after #160: Outlook's all-day flag at a UTC midnight and its MSN
+  variant, overrides in a third zone, an override's own placement at the later 02:30 (#234)
 
 ## How we work
 
