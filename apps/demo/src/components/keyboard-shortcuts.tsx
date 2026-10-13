@@ -7,11 +7,11 @@ import { shortcutCommand } from "../shortcuts";
 export interface KeyboardShortcutsProps {
   readonly onCreate: () => void;
   readonly onHelp: () => void;
-  /** Whether d, w, m, and a open the scrolling day, week, month, and agenda. */
+  /** Whether d, x, w, m, and a open the scrolling day, 3 days, week, month, and agenda. */
   readonly scrolling: boolean;
 }
 
-/** Global shortcuts: t today, d/w/m/y/a views, j/k or ←/→ to step, c to create, ? for help. */
+/** Global shortcuts: t today, d/x/w/m/y/a views, j/k or ←/→ to step, c to create, ? for help. */
 export function KeyboardShortcuts({ onCreate, onHelp, scrolling }: KeyboardShortcutsProps) {
   const actions = DemoCalendar.useCalendarActions();
 

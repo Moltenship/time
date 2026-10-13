@@ -17,6 +17,9 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   scrolls still scrolls. The pointer layer listens for `touchmove` from the touch's start, so iOS
   Safari lets a drag hold the page still. On touch screens, editable built-in views select no text
   and show no callout (#217).
+- The registry has 3-day views, `createThreeDayView` and `createScrollingThreeDayView`. On touch
+  screens month events and "+N more" are 24 px tall, and the toolbar's title wraps on a phone
+  instead of being cut (#217).
 - `Root`'s `events` takes a `CalendarEventSource<TEvent>` as well as an array: events in an
   external store, read through `useSyncExternalStore`, with `getServerSnapshot` for server rendering
   and hydration. Its getters return event arrays (#200).

@@ -16,7 +16,14 @@ import {
   type MonthProjection,
   type ResourceId,
 } from "@moltenship/calendar";
-import { useLayoutEffect, useMemo, useState, type CSSProperties, type RefObject } from "react";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type RefObject,
+} from "react";
 
 import { useEventLabel } from "@registry/calendar/event-label";
 import { epochDay, ScrollSnapPoints, useScrollingAxis } from "@registry/calendar/scrolling-axis";
@@ -26,7 +33,13 @@ import {
   weekHidingFocus,
   type MonthViewOptions,
 } from "@registry/month-view/month-view";
-import { DATE_ROW_HEIGHT, LANE_HEIGHT, MonthWeekRow } from "@registry/month-view/month-week";
+import {
+  LaneProbe,
+  laneHeightOf,
+  lanesIn,
+  MonthWeekRow,
+  weekHeight,
+} from "@registry/month-view/month-week";
 import { cn } from "cn";
 
 export interface ScrollingMonthViewOptions<TEvent> extends MonthViewOptions<TEvent> {
@@ -53,9 +66,13 @@ function weekNumber(date: Temporal.PlainDate): number {
 
 /**
  * Measures how many event lanes fit in a week row of `track`, which holds `count` of them, again
- * only when the rows resize.
+ * only when the rows or the lane height change: `probe` is a `LaneProbe`.
  */
-function useLaneCapacity(track: RefObject<HTMLElement | null>, count: number): number {
+function useLaneCapacity(
+  track: RefObject<HTMLElement | null>,
+  probe: RefObject<HTMLElement | null>,
+  count: number,
+): number {
   const [lanes, setLanes] = useState(INITIAL_LANES);
 
   useLayoutEffect(() => {
@@ -63,16 +80,15 @@ function useLaneCapacity(track: RefObject<HTMLElement | null>, count: number): n
     if (element === null) return;
     const measure = () => {
       const height = element.getBoundingClientRect().height / count;
-      // One pixel for the row's bottom border.
-      if (height > 0)
-        setLanes(Math.max(1, Math.floor((height - 1 - DATE_ROW_HEIGHT) / LANE_HEIGHT)));
+      if (height > 0) setLanes(lanesIn(height, laneHeightOf(probe.current)));
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
+    if (probe.current !== null) observer.observe(probe.current);
     return () => observer.disconnect();
-  }, [count, track]);
+  }, [count, probe, track]);
 
   return lanes;
 }
@@ -134,7 +150,8 @@ function ScrollingMonthView<TEvent>({
     timeZone,
   });
   const keyboard = useViewKeyboard();
-  const maxLanes = useLaneCapacity(axis.trackRef, axis.count);
+  const laneProbe = useRef<HTMLDivElement>(null);
+  const maxLanes = useLaneCapacity(axis.trackRef, laneProbe, axis.count);
   const formats = useMonthFormats(locale);
   const labelEvent = useEventLabel(environment, options.describeEvent);
   const overflows = useMemo(
@@ -159,11 +176,12 @@ function ScrollingMonthView<TEvent>({
       {...keyboard}
       data-slot="scrolling-month"
       className={cn(
-        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
+        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-month-lane:22px] pointer-coarse:[--calendar-month-lane:26px] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
         // A long-press on a touch screen picks events up: it selects no text and opens no callout.
         !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
       )}
     >
+      <LaneProbe ref={laneProbe} />
       <div role="row" className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
         {projection.weeks[0]?.days.map(({ date }) => (
           <div
@@ -225,7 +243,7 @@ function ScrollingMonthView<TEvent>({
                   style={
                     expanded
                       ? {
-                          height: `max(100%, ${DATE_ROW_HEIGHT + week.laneCount * LANE_HEIGHT + 1}px)`,
+                          height: `max(100%, ${weekHeight(week.laneCount)})`,
                         }
                       : undefined
                   }

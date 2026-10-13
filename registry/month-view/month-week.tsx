@@ -14,7 +14,7 @@ import {
   type MonthWeek,
   type ResourceId,
 } from "@moltenship/calendar";
-import type { CSSProperties, ReactNode } from "react";
+import type { CSSProperties, ReactNode, Ref } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import {
@@ -29,9 +29,47 @@ import { Popover, PopoverContent, PopoverTrigger } from "@registry/ui/popover";
 
 import { MonthEvent } from "./month-event";
 
-/** Pixel height of a cell's date row and of one event lane; lanes are derived from these. */
+/**
+ * Pixel height of a cell's date row and of one event lane; lanes are derived from these. A view
+ * sets the lane's height as `--calendar-month-lane` on its root: 22 px, and 26 px where the pointer
+ * is coarse, so on a touch screen events and "+N more" are 24 px tall, as WCAG 2.5.8 asks.
+ */
 export const DATE_ROW_HEIGHT = 28;
 export const LANE_HEIGHT = 22;
+
+/**
+ * How many lanes fit in a week row `rowHeight` px tall, with lanes `laneHeight` px apart. Lanes
+ * start 1 px below the date row and each event ends 1 px before its lane does, so the last lane's
+ * spare pixel holds the row's bottom border.
+ */
+export function lanesIn(rowHeight: number, laneHeight: number): number {
+  return Math.max(1, Math.floor((rowHeight - DATE_ROW_HEIGHT) / laneHeight));
+}
+
+/**
+ * An invisible element one lane tall, for measuring `--calendar-month-lane` in any unit. Observe
+ * it with the rows: it resizes when the pointer changes, and the lanes with it.
+ */
+export function LaneProbe({ ref }: { readonly ref: Ref<HTMLDivElement> }) {
+  return (
+    <div
+      ref={ref}
+      aria-hidden
+      className="pointer-events-none invisible absolute h-(--calendar-month-lane) w-0"
+    />
+  );
+}
+
+/** The lane height a probe measures; 0 where nothing lays out, as on the server. */
+export function laneHeightOf(probe: HTMLElement | null): number {
+  return probe?.offsetHeight || LANE_HEIGHT;
+}
+
+/** The height a week needs to show `laneCount` lanes, as a CSS length. */
+export function weekHeight(laneCount: number): string {
+  // One pixel for the row's bottom border.
+  return `calc(${DATE_ROW_HEIGHT + 1}px + ${laneCount} * var(--calendar-month-lane, ${LANE_HEIGHT}px))`;
+}
 
 export interface MonthFormats {
   readonly date: Intl.DateTimeFormat;
@@ -73,10 +111,11 @@ type Segment<TEvent> = DayGridSegment<TEvent, EventId, ResourceId>;
  * `100%` is one cell without its 1px grid line.
  */
 function laneStyle(lane: number, span = 1): CSSProperties {
+  const height = `var(--calendar-month-lane, ${LANE_HEIGHT}px)`;
   return {
-    height: LANE_HEIGHT - 2,
+    height: `calc(${height} - 2px)`,
     insetInlineEnd: `calc(${1 - span} * (100% + 1px))`,
-    top: DATE_ROW_HEIGHT + lane * LANE_HEIGHT + 1,
+    top: `calc(${DATE_ROW_HEIGHT + 1}px + ${lane} * ${height})`,
   };
 }
 

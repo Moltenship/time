@@ -9,7 +9,8 @@ Try both views in the [live demo](https://moltenship-time-demo.vercel.app).
 
 `createWeekView` and `createDayView` show the hours of the day down the side and one column per day.
 The week view has seven columns, starting on `weekRules.firstDay`. The day view has one column for
-the anchor date.
+the anchor date. `createThreeDayView` has three, from the anchor date: on a phone, where a week's
+seven columns are too narrow to read, it shows more than a day.
 
 ## Add them
 
@@ -37,14 +38,14 @@ export const Calendar = createCalendar<Meeting>()({
 });
 ```
 
-The views are named `week` and `day`. Pass your event type, as in `createWeekView<Meeting>`, so
-`getEventColor` receives your records.
+The views are named `week`, `day` and `3-day`. Pass your event type, as in
+`createWeekView<Meeting>`, so `getEventColor` receives your records.
 
 ## Anatomy
 
-Both views render `TimeGridView` from `registry/time-grid-view`, with seven day columns for the week
-and one for the day. The view builds these parts itself, so they're not parts you compose: to change
-one, edit its file. The tree shows where each part lives.
+All three views render `TimeGridView` from `registry/time-grid-view`, with seven day columns for the
+week, three for the 3-day view and one for the day. The view builds these parts itself, so they're
+not parts you compose: to change one, edit its file. The tree shows where each part lives.
 
 <TimeGridAnatomy />
 

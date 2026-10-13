@@ -17,10 +17,11 @@ const views = [
 ```
 
 - The views are named `scrolling-week` and `scrolling-day` and take the week and day views'
-  options. Register them beside `week` and `day` or instead of them.
+  options. Register them beside `week` and `day` or instead of them. `createScrollingThreeDayView`
+  adds `scrolling-3-day`, which swipes three days at a time.
 - For another number of days, define a view with
   `scrollingTimeGridStrategy({ count, kind: "days" })` and `ScrollingTimeGridView`, as
-  `scrolling-3-day` does in the docs; it swipes that many days at a time.
+  `createScrollingThreeDayView` does; it swipes that many days at a time.
 - The week is the anchor's calendar week, starting on `weekRules.firstDay`; the day and other
   spans start at the anchor. A swipe comes to rest on the next page, or back on this one if it
   went less than halfway, and moves the anchor there; Previous and Next scroll a whole page, and

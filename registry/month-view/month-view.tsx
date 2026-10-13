@@ -28,7 +28,14 @@ import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
-import { DATE_ROW_HEIGHT, LANE_HEIGHT, MonthWeekRow, type MonthFormats } from "./month-week";
+import {
+  LaneProbe,
+  laneHeightOf,
+  lanesIn,
+  MonthWeekRow,
+  weekHeight,
+  type MonthFormats,
+} from "./month-week";
 
 export interface MonthViewOptions<TEvent> {
   /** Extra words for each event's accessible name, such as its calendar. */
@@ -58,8 +65,15 @@ const MIN_ROW_HEIGHT = 80;
 /** Lane count before the first measurement, e.g. while rendering on the server. */
 const INITIAL_LANES = 3;
 
-/** Measures how many event lanes fit in a week row, again only when the grid resizes. */
-function useLaneCapacity(body: RefObject<HTMLElement | null>, weekCount: number): number {
+/**
+ * Measures how many event lanes fit in a week row, again only when the grid or the lane height
+ * changes: `probe` is a `LaneProbe`.
+ */
+function useLaneCapacity(
+  body: RefObject<HTMLElement | null>,
+  probe: RefObject<HTMLElement | null>,
+  weekCount: number,
+): number {
   const [lanes, setLanes] = useState(INITIAL_LANES);
 
   useLayoutEffect(() => {
@@ -67,15 +81,15 @@ function useLaneCapacity(body: RefObject<HTMLElement | null>, weekCount: number)
     if (element === null) return;
     const measure = () => {
       const rowHeight = Math.max(MIN_ROW_HEIGHT, element.clientHeight / weekCount);
-      // One pixel for the row's bottom border.
-      setLanes(Math.max(1, Math.floor((rowHeight - 1 - DATE_ROW_HEIGHT) / LANE_HEIGHT)));
+      setLanes(lanesIn(rowHeight, laneHeightOf(probe.current)));
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
     const observer = new ResizeObserver(measure);
     observer.observe(element);
+    if (probe.current !== null) observer.observe(probe.current);
     return () => observer.disconnect();
-  }, [body, weekCount]);
+  }, [body, probe, weekCount]);
 
   return lanes;
 }
@@ -111,10 +125,7 @@ function rowSizes(weeks: readonly { readonly laneCount: number }[], expandedWeek
   const share = `max(${MIN_ROW_HEIGHT}px, ${100 / weeks.length}%)`;
   return weeks
     .map(({ laneCount }, index) =>
-      index === expandedWeek
-        ? // One pixel for the row's bottom border.
-          `max(${share}, ${DATE_ROW_HEIGHT + laneCount * LANE_HEIGHT + 1}px)`
-        : share,
+      index === expandedWeek ? `max(${share}, ${weekHeight(laneCount)})` : share,
     )
     .join(" ");
 }
@@ -160,7 +171,8 @@ function MonthView<TEvent>({
     scrollContainer: body,
     timeZone: environment.timeZone,
   });
-  const maxLanes = useLaneCapacity(body, projection.weeks.length);
+  const laneProbe = useRef<HTMLDivElement>(null);
+  const maxLanes = useLaneCapacity(body, laneProbe, projection.weeks.length);
   const formats = useMonthFormats(environment.locale);
   const labelEvent = useEventLabel(environment, options.describeEvent);
   const keyboard = useViewKeyboard();
@@ -184,11 +196,12 @@ function MonthView<TEvent>({
       {...keyboard}
       data-slot="month-view"
       className={cn(
-        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
+        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-month-lane:22px] pointer-coarse:[--calendar-month-lane:26px] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
         // A long-press on a touch screen picks events up: it selects no text and opens no callout.
         !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
       )}
     >
+      <LaneProbe ref={laneProbe} />
       <div role="row" className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
         {projection.weeks[0]?.days.map(({ date }) => (
           <div

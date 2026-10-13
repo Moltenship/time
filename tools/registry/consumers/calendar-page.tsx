@@ -21,9 +21,14 @@ import { createScrollingAgendaView } from "@/components/calendar/scrolling-list-
 import { createScrollingMonthView } from "@/components/calendar/scrolling-month-view/scrolling-month-view";
 import {
   createScrollingDayView,
+  createScrollingThreeDayView,
   createScrollingWeekView,
 } from "@/components/calendar/scrolling-time-grid-view/scrolling-time-grid-view";
-import { createDayView, createWeekView } from "@/components/calendar/time-grid-view/time-grid-view";
+import {
+  createDayView,
+  createThreeDayView,
+  createWeekView,
+} from "@/components/calendar/time-grid-view/time-grid-view";
 import { ViewSwitcher } from "@/components/calendar/view-switcher";
 import { createYearView } from "@/components/calendar/year-view/year-view";
 
@@ -52,6 +57,7 @@ const Calendar = createCalendar<Meeting, Room>()({
   views: [
     createWeekView<Meeting>({ ...options, dayView: "day" }),
     createDayView<Meeting>(options),
+    createThreeDayView<Meeting>({ ...options, dayView: "day" }),
     createMonthView<Meeting>(options),
     createYearView<Meeting>(options),
     createAgendaView<Meeting>(options),
@@ -59,6 +65,7 @@ const Calendar = createCalendar<Meeting, Room>()({
     createTimelineWeekView<Meeting>(options),
     createScrollingWeekView<Meeting>({ ...options, dayView: "scrolling-day" }),
     createScrollingDayView<Meeting>(options),
+    createScrollingThreeDayView<Meeting>({ ...options, dayView: "scrolling-day" }),
     createScrollingMonthView<Meeting>(options),
     createScrollingAgendaView<Meeting>(options),
   ],

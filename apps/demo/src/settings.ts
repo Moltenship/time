@@ -6,7 +6,9 @@ export interface DemoSettings {
   readonly locale: string;
   /** How overlapping events share a column in the day, week and resource views. */
   readonly overlapLayout: OverlapLayout;
-  /** Whether day, week, month, and agenda are the scrolling views, which scroll without end. */
+  /**
+   * Whether day, 3 days, week, month, and agenda are the scrolling views, which scroll without end.
+   */
   readonly scrolling: boolean;
   /** Another zone the day, week and resource views label their hours in; `null` for none. */
   readonly secondaryTimeZone: string | null;

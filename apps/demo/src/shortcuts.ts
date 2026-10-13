@@ -17,6 +17,7 @@ export const shortcuts: readonly Shortcut[] = [
   { command: { type: "previous" }, keys: ["k", "ArrowLeft"], label: "Previous period" },
   { command: { type: "next" }, keys: ["j", "ArrowRight"], label: "Next period" },
   { command: { type: "view", view: "day" }, keys: ["d"], label: "Day view" },
+  { command: { type: "view", view: "3-day" }, keys: ["x"], label: "3-day view" },
   { command: { type: "view", view: "week" }, keys: ["w"], label: "Week view" },
   { command: { type: "view", view: "month" }, keys: ["m"], label: "Month view" },
   { command: { type: "view", view: "year" }, keys: ["y"], label: "Year view" },

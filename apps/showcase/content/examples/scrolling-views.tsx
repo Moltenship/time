@@ -1,44 +1,25 @@
 "use client";
 
 // #region views
-import {
-  createCalendar,
-  defineCalendarView,
-  iteratePlainDates,
-  scrollingTimeGridStrategy,
-  type CalendarVisibleRange,
-} from "@moltenship/calendar";
+import { createCalendar, iteratePlainDates, type CalendarVisibleRange } from "@moltenship/calendar";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { createScrollingMonthView } from "@/components/calendar/scrolling-month-view/scrolling-month-view";
 import {
   createScrollingDayView,
+  createScrollingThreeDayView,
   createScrollingWeekView,
-  ScrollingTimeGridView,
 } from "@/components/calendar/scrolling-time-grid-view/scrolling-time-grid-view";
-import type { TimeGridViewOptions } from "@/components/calendar/time-grid-view/time-grid-view";
 
 import { eventAdapter, weekRules, type Meeting } from "./quick-start";
 
 const getEventColor = (meeting: Meeting) => meeting.color;
 
-// Any number of days, swiping that many at a time: the strategy places them, and the week's
-// renderer draws them.
-const scrollingThreeDayView = defineCalendarView({
-  defaultOptions: { dayView: "scrolling-day", getEventColor },
-  name: "scrolling-3-day",
-  strategy: scrollingTimeGridStrategy<TimeGridViewOptions<Meeting>, Meeting>({
-    count: 3,
-    kind: "days",
-  }),
-  Renderer: ScrollingTimeGridView<Meeting>,
-});
-
 export const Calendar = createCalendar<Meeting>()({
   eventAdapter,
   views: [
     createScrollingWeekView<Meeting>({ dayView: "scrolling-day", getEventColor }),
-    scrollingThreeDayView,
+    createScrollingThreeDayView<Meeting>({ dayView: "scrolling-day", getEventColor }),
     createScrollingDayView<Meeting>({ getEventColor }),
     createScrollingMonthView<Meeting>({ dayView: "scrolling-day", getEventColor }),
   ],
