@@ -1,3 +1,5 @@
+"use client";
+
 import { useRender } from "@base-ui/react/use-render";
 import type { CalendarResource, ClosedTime, ResourceId } from "@moltenship/calendar";
 import type { CSSProperties } from "react";

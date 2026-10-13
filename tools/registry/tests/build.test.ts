@@ -5,7 +5,7 @@ import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 
 import { buildRegistry } from "../src/build";
-import { checkBuiltRegistry, fullItemName } from "../src/check";
+import { checkBuiltRegistry, clientBoundaryIssue, fullItemName } from "../src/check";
 import {
   describeIncompatibility,
   findIncompatibleItems,
@@ -92,6 +92,13 @@ describe("registry build", () => {
     expect(monthView.files!.map(({ target }) => target)).toContain(
       "@components/calendar/month-view/month-view.tsx",
     );
+  });
+
+  test("components keep their client boundary in the built JSON", async () => {
+    const monthView = await readItem("month-view");
+    const view = monthView.files!.find(({ target }) => target.endsWith("/month-view.tsx"));
+
+    expect(view!.content).toMatch(/^"use client";\n/u);
   });
 
   test("dependencies carry the ranges the workspace builds and tests with", async () => {
@@ -236,9 +243,10 @@ describe("built registry checks", () => {
     });
   }
 
+  /** Adds source to the end of the item's first file, so its `"use client"` stays first. */
   function withSource(item: BuiltItem, extra: string): BuiltItem {
     const [first, ...rest] = item.files!;
-    return { ...item, files: [{ ...first!, content: `${extra}\n${first!.content}` }, ...rest] };
+    return { ...item, files: [{ ...first!, content: `${first!.content}\n${extra}` }, ...rest] };
   }
 
   test("an import of a file no item in the install ships", async () => {
@@ -272,6 +280,17 @@ describe("built registry checks", () => {
       withSource(item, 'import { x } from "@registry/calendar/event-chip";'),
     );
     expect(issues).toContainEqual(expect.stringContaining("an alias consumers don't have"));
+  });
+
+  test("a component with hooks but no client boundary", async () => {
+    const issues = await tamper("month-view", (item) => {
+      const [first, ...rest] = item.files!;
+      const content = first!.content.replace(/^"use client";\n/u, "");
+      return { ...item, files: [{ ...first!, content }, ...rest] };
+    });
+    expect(issues).toEqual([
+      'month-view: @components/calendar/month-view/month-view.tsx uses hooks or event handlers but doesn\'t start with "use client"',
+    ]);
   });
 
   test("a file written by two items", async () => {
@@ -334,6 +353,38 @@ describe("built registry checks", () => {
       "month-view: @moltenship/calendar has no version range",
       "month-view: cn@^0.4.0 pins a third-party package; list it bare",
     ]);
+  });
+});
+
+describe("client boundary", () => {
+  const target = "@components/calendar/example.tsx";
+
+  test("components that call hooks, create a context or set handlers declare it first", () => {
+    for (const source of [
+      "export function A() { const [a] = useState(0); return a; }",
+      "export function B() { return use(promise); }",
+      "export const C = createContext(null);",
+      "export function D() { return <button onClick={() => {}} />; }",
+    ]) {
+      expect(clientBoundaryIssue(target, source), source).toContain('"use client"');
+      expect(clientBoundaryIssue(target, `"use client";\n\n${source}`)).toBeNull();
+      expect(
+        clientBoundaryIssue(target, `// A licence header.\n'use client';\n${source}`),
+      ).toBeNull();
+    }
+  });
+
+  test("components without them, hook modules and comments need nothing", () => {
+    expect(clientBoundaryIssue(target, "export const A = () => <p>{format(date)}</p>;")).toBeNull();
+    expect(
+      clientBoundaryIssue(
+        "@components/calendar/use-a.ts",
+        "export const useA = () => useState(0);",
+      ),
+    ).toBeNull();
+    expect(
+      clientBoundaryIssue(target, "// Calls useState(0) on the client.\nexport {};"),
+    ).toBeNull();
   });
 });
 

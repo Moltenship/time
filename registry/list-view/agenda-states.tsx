@@ -1,3 +1,5 @@
+"use client";
+
 import { useRovingFocus, type PlainDateInterval } from "@moltenship/calendar";
 import { CalendarX2Icon, LoaderCircleIcon } from "lucide-react";
 import { useId } from "react";

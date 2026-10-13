@@ -1,3 +1,5 @@
+"use client";
+
 import type { ResourceId } from "@moltenship/calendar";
 import type { ReactNode } from "react";
 

@@ -1,3 +1,5 @@
+"use client";
+
 import { useInsertionEffect, useLayoutEffect, useRef } from "react";
 
 import { Button } from "@registry/ui/button";

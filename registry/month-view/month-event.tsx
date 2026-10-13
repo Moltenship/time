@@ -1,3 +1,5 @@
+"use client";
+
 import type { EventId, NormalizedCalendarEvent, ResourceId } from "@moltenship/calendar";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type { CSSProperties, ReactNode } from "react";

@@ -1,3 +1,5 @@
+"use client";
+
 import {
   useCalendarFocus,
   type CalendarEnvironmentBase,

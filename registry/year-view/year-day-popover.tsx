@@ -1,3 +1,5 @@
+"use client";
+
 import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import type { EventDayFragment, EventId, ResourceId, YearDay } from "@moltenship/calendar";
 import { useRef, type ReactNode, type RefObject } from "react";

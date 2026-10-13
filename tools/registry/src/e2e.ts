@@ -62,6 +62,26 @@ async function edit(path: string, change: (source: string) => string): Promise<v
   await writeFile(path, changed);
 }
 
+/**
+ * The Next.js app's page, a Server Component. Besides mounting the client page, it imports every
+ * registry module that page does, straight from the server, as an app may. Next.js fails the
+ * build on a component's hooks unless it declares its client boundary (#190).
+ */
+async function serverPage(): Promise<string> {
+  const modules = importsOf(await readFile(fixture, "utf8")).filter((specifier) =>
+    specifier.startsWith("@/components/calendar/"),
+  );
+  return [
+    ...modules.map((specifier) => `import "${specifier}";`),
+    'import CalendarPage from "./calendar-page";',
+    "",
+    "export default function Page() {",
+    "  return <CalendarPage />;",
+    "}",
+    "",
+  ].join("\n");
+}
+
 /** Temporal's types ship in TypeScript's `ESNext` library, as the Installation docs say. */
 function withEsNextLib(tsconfig: string): string {
   return tsconfig.replace(/"lib":\s*\[[^\]]*\]/u, '"lib": ["ESNext", "DOM", "DOM.Iterable"]');
@@ -93,10 +113,7 @@ const apps: readonly App[] = [
       // The Next.js template ships TypeScript 5, whose ESNext library has no Temporal types. The
       // Installation docs ask for TypeScript 6 or later.
       await run("pnpm", ["add", "--save-dev", "typescript@^6"], root);
-      await writeFile(
-        join(root, "app/page.tsx"),
-        'import CalendarPage from "./calendar-page";\n\nexport default function Page() {\n  return <CalendarPage />;\n}\n',
-      );
+      await writeFile(join(root, "app/page.tsx"), await serverPage());
     },
     typecheck: [
       ["exec", "next", "typegen"],
