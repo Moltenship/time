@@ -82,6 +82,13 @@ locally. To rehearse it without the release workflow, dispatch CI
 
 # Pull requests
 
+## Code review
+
+- Non-trivial PRs get a review from Claude Opus 5.5 (xhigh). Simple ones skip it: docs or notes only, mechanical changes, or small fixes their tests cover.
+- One reviewer per PR, for every round: spawn it once, then continue the same agent (SendMessage) with what you changed and the new commit, instead of spawning a fresh one.
+- Start a new reviewer only if the old one can't be continued (its context ran out, or it's gone), and give it the earlier rounds' findings and your replies.
+- Merge once the local gate passes and the review, if there was one, has no open blocker or should-fix findings. Details: `IMPLEMENTATION_PLAN.md`, "How we work".
+
 ## Screenshots
 
 PRs that change what users see carry screenshots in the PR description.
