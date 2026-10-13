@@ -18,12 +18,16 @@ import type {
 } from "../types";
 import {
   instantOf,
+  isMidnight,
+  midnightDate,
   ownRecurrenceId,
   toSeriesDate,
   toSeriesPeriod,
+  writtenWall,
   type FeedSeries,
   type SeriesDate,
 } from "./dates";
+import { applyThisAndFuture } from "./this-and-future";
 
 export type IcsRecurrenceIssueCode =
   /**
@@ -49,7 +53,11 @@ export type IcsRecurrenceIssueCode =
    * no time zone. The event is skipped.
    */
   | "unresolved-time-zone"
-  /** RANGE=THISANDFUTURE, which isn't supported: the override replaces only the occurrence it names. */
+  /**
+   * RANGE=THISANDFUTURE whose change the series can't take, such as a BYSETPOS rule moved to
+   * another day, or whose series or occurrence isn't in the feed: the override replaces only the
+   * occurrence it names.
+   */
   | "unsupported-rule";
 
 export interface IcsRecurrenceIssue<TExtensions extends IcsExtensionsConfig = {}> {
@@ -71,7 +79,10 @@ export interface IcsRecurringEventsOptions {
   /**
    * The feed's time zone: its X-WR-TIMEZONE (`IcsCalendar.timeZone`), or one the application
    * chose. UTC times on all-day and floating series, such as an UNTIL, are read in it, so they keep
-   * the feed's dates. Defaults to UTC. Floating DTSTARTs stay floating.
+   * the feed's dates; on an all-day series Outlook flags with `X-MICROSOFT-CDO-ALLDAYEVENT`, they
+   * are read in the zone its DTSTART was written in instead (UTC for a UTC one), when it has one. Floating DTSTARTs stay floating. Defaults to the
+   * zone most of the events' TZIDs resolve to, as feeds without X-WR-TIMEZONE, such as Exchange's,
+   * need, and to UTC when none has one. Pass `"UTC"` for the reading before that default.
    */
   readonly timeZone?: string;
 }
@@ -109,13 +120,52 @@ function timeZoneOf(timeZone: string | undefined): string | undefined {
   }
 }
 
-type IcsEventTimes = Pick<IcsEvent, "duration" | "end" | "start">;
+type IcsEventTimes = Pick<IcsEvent, "duration" | "end" | "otherProperties" | "start">;
 
-// DTSTART to the effective end; `undefined` when DTSTART's time zone didn't resolve.
+const allDayProperty = "X-MICROSOFT-CDO-ALLDAYEVENT";
+
+const withZone = (timeZone: string | undefined) => (timeZone === undefined ? {} : { timeZone });
+
+/** The zone a value was written in: its TZID's, UTC for a UTC time, else none. */
+function zoneOf(value: IcsDateValue): string | undefined {
+  return value.kind === "zoned" ? value.zoned.timeZoneId : value.kind === "utc" ? "UTC" : undefined;
+}
+
+/** Outlook's all-day flag, which older exports pair with midnight-to-midnight date-times. */
+function flaggedAllDay(event: Pick<IcsEvent, "otherProperties">): boolean {
+  return event.otherProperties.some(
+    ({ name, value }) => name === allDayProperty && value.trim().toUpperCase() === "TRUE",
+  );
+}
+
+/**
+ * The days of an event Outlook flags all-day and writes from midnight to a later midnight, on the
+ * wall clock written, whatever its TZID resolved to. `undefined` for anything else.
+ */
+function flaggedDays(event: IcsEventTimes): CalendarEventInterval | undefined {
+  const { duration, end, start } = event;
+  if (start.kind === "date" || !flaggedAllDay(event)) return undefined;
+  const from = writtenWall(start);
+  const to =
+    end !== undefined ? writtenWall(getEventEnd(event)) : from.add(duration ?? { days: 1 });
+  if (!isMidnight(from) || !isMidnight(to)) return undefined;
+  const [startDate, endDate] = [from.toPlainDate(), to.toPlainDate()];
+  return Temporal.PlainDate.compare(endDate, startDate) > 0
+    ? { end: endDate, kind: "all-day", start: startDate }
+    : undefined;
+}
+
+/**
+ * DTSTART to the effective end; `undefined` when DTSTART's time zone didn't resolve. `repeats` is
+ * for a series, whose later occurrences repeat at DTSTART's written time.
+ */
 function intervalOf(
   event: IcsEventTimes,
   minimumDuration: Temporal.DurationLike,
+  repeats: boolean,
 ): CalendarEventInterval | undefined {
+  const days = flaggedDays(event);
+  if (days !== undefined) return days;
   const { start } = event;
   const end = getEventEnd(event);
   switch (start.kind) {
@@ -147,7 +197,23 @@ function intervalOf(
       // A UTC DTSTART repeats in UTC, whatever the expander's `defaultTimeZone`.
       const zone = start.kind === "zoned" ? start.zoned.timeZoneId : "UTC";
       const startInstant = instantOf(start)!;
-      const endInstant = instantOf(end) ?? startInstant;
+      let endInstant = instantOf(end) ?? startInstant;
+      // A DTSTART in a DST gap moves forward by the gap (RFC 5545 §3.3.5), and DTEND stays. A
+      // series repeats at the written time on later weeks, so it keeps the length written from
+      // DTSTART to a DTEND in its zone: 02:30–03:30 on the night 02:00 becomes 03:00 is
+      // 03:30–04:30, and 02:30–03:30 later. A single event keeps its exact length, unless the gap
+      // leaves it none.
+      const written = event.end;
+      if (
+        start.kind === "zoned" &&
+        written?.kind === "zoned" &&
+        written.zoned.timeZoneId === zone &&
+        !start.wallTime.equals(start.zoned.toPlainDateTime())
+      ) {
+        const length = start.wallTime.until(written.wallTime, { largestUnit: "hours" });
+        const empty = Temporal.Instant.compare(endInstant, startInstant) <= 0;
+        if (length.sign > 0 && (repeats || empty)) endInstant = startInstant.add(length);
+      }
       return {
         end:
           Temporal.Instant.compare(endInstant, startInstant) > 0
@@ -159,6 +225,31 @@ function intervalOf(
       };
     }
   }
+}
+
+/** The zone most events have a TZID that resolves to, each event counted once per zone. */
+function feedTimeZoneOf(events: readonly IcsEvent<IcsExtensionsConfig>[]): string | undefined {
+  const counts = new Map<string, number>();
+  for (const event of events) {
+    const values = [
+      event.start,
+      event.end,
+      event.recurrenceId,
+      ...event.exceptionDates,
+      ...event.recurrenceDates.flatMap((value) =>
+        "kind" in value ? [value] : [value.start, "end" in value ? value.end : undefined],
+      ),
+    ];
+    const zones = new Set(
+      values.flatMap((value) => (value?.kind === "zoned" ? [value.zoned.timeZoneId] : [])),
+    );
+    for (const zone of zones) counts.set(zone, (counts.get(zone) ?? 0) + 1);
+  }
+  let most: string | undefined;
+  for (const [zone, count] of counts) {
+    if (most === undefined || count > counts.get(most)!) most = zone;
+  }
+  return most;
 }
 
 function keyOf(date: RecurrenceDate | RecurrencePeriod): string {
@@ -191,13 +282,22 @@ function unique<TDate extends RecurrenceDate | RecurrencePeriod>(
  * - Intervals: a UTC DTSTART repeats in UTC (`sourceTimeZone: "UTC"`), a zoned one in its zone.
  * - Masters: an event with RRULE, RDATE or EXDATE, or one an override names by UID. DURATION
  *   without DTEND on a timed or floating master becomes `recurrence.duration`, and a DTSTART in a
- *   DST gap keeps its written time as `recurrence.wallStart`.
+ *   DST gap keeps its written time as `recurrence.wallStart`. A DTSTART in a gap moves forward by
+ *   the gap, as RFC 5545 §3.3.5 says; a series with DTEND in the same zone keeps the length written
+ *   between them, so later occurrences keep it, and a single event its exact length, unless the gap
+ *   leaves it none.
+ * - Outlook's all-day events: with `X-MICROSOFT-CDO-ALLDAYEVENT:TRUE` (unless an extension claims
+ *   it), an event written from midnight to a later midnight, or from midnight without DTEND or
+ *   DURATION, as older Outlook and Exchange exports write all-day events, is all-day on the dates
+ *   written, even when its TZID resolves to no zone. Its series' EXDATE, UNTIL and RECURRENCE-ID
+ *   values at midnight are those dates, without an issue. UTC ones read in the zone its DTSTART was
+ *   written in (UTC for a UTC one), else in `timeZone`.
  * - Dates: EXDATE, RDATE, UNTIL and RECURRENCE-ID take the kind of the series' first occurrence
  *   through `coerceRecurrenceDate`. A date-only EXDATE excludes the whole day, a date-only UNTIL
  *   lasts through that day, and a date-only RDATE or RECURRENCE-ID on a timed or floating series
- *   is dropped with an issue. On all-day and floating series, UTC times are read in `timeZone` and
- *   zoned ones keep their written wall time. An RDATE PERIOD stays a period, with both ends
- *   converted.
+ *   is dropped with an issue. On all-day and floating series, UTC times are read in `timeZone`,
+ *   which defaults to the zone most of the events' TZIDs resolve to, and zoned ones keep their
+ *   written wall time. An RDATE PERIOD stays a period, with both ends converted.
  * - Lengths: an event that DTEND or DURATION make zero-length or negative lasts `minimumDuration`,
  *   30 minutes by default, or one day when all-day.
  * - STATUS:CANCELLED: a cancelled one-off event or master is left out, with the master's
@@ -206,7 +306,18 @@ function unique<TDate extends RecurrenceDate | RecurrencePeriod>(
  * - Duplicates: of usable VEVENTs with the same UID, or UID and RECURRENCE-ID, the highest
  *   SEQUENCE wins, then the later one. An event whose DTSTART or RECURRENCE-ID can't be read is
  *   left out with its issue first, so it can't replace a usable one.
- * - RANGE=THISANDFUTURE isn't supported: the override replaces only the occurrence it names.
+ * - RANGE=THISANDFUTURE (RFC 5545 §3.8.4.4): the occurrence it names and every later one change by
+ *   the same difference, as Apple's "this and future" changes mean. The series is split as a
+ *   `"following"` edit splits it: it ends before the occurrence, and a new series with the
+ *   override's ID, VEVENT and title starts where the override is, with the rest of the rule moved
+ *   by the same difference and the override's length. Later EXDATEs, RDATEs and overrides move to
+ *   it and keep their own placements, and overrides take the IDs of the occurrences they then
+ *   replace: later occurrences are keyed by their new starts, not the feed's RECURRENCE-IDs. On
+ *   the first occurrence the whole series changes instead. A cancelled one ends the series there;
+ *   when nothing before it is left, the series keeps no occurrence. Either way later overrides
+ *   stay, since RFC 5545 leaves instances in separate components alone. One the series can't take,
+ *   such as a BYSETPOS rule moved to another day, replaces only the occurrence it names, with an
+ *   `unsupported-rule` issue.
  *
  * Bad data becomes `issues`; only invalid options throw, as a `RangeError`.
  */
@@ -215,7 +326,7 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
   options: IcsRecurringEventsOptions = {},
 ): IcsRecurringEvents<TExtensions> {
   const minimumDuration = minimumDurationOf(options.minimumDuration);
-  const timeZone = timeZoneOf(options.timeZone);
+  const timeZone = timeZoneOf(options.timeZone) ?? feedTimeZoneOf(events);
   const issues: IcsRecurrenceIssue<TExtensions>[] = [];
   const report = (
     index: number,
@@ -255,7 +366,11 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
   const masterIndexes = new Map<string, number>();
   events.forEach((event, index) => {
     if (event.recurrenceId !== undefined) return;
-    const interval = intervalOf(event, minimumDuration);
+    const repeats =
+      event.recurrenceRule !== undefined ||
+      event.recurrenceDates.length > 0 ||
+      event.exceptionDates.length > 0;
+    const interval = intervalOf(event, minimumDuration, repeats);
     if (interval === undefined) {
       unresolved(index, "DTSTART", event.start, "the event is skipped");
       return;
@@ -271,8 +386,17 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
   const series = new Map<string, FeedSeries>();
   const cancelledUids = new Set<string>();
   for (const [uid, index] of masterIndexes) {
-    if (events[index]!.status === "CANCELLED") cancelledUids.add(uid);
-    else series.set(uid, { first: intervals.get(index)!, timeZone });
+    const event = events[index]!;
+    const first = intervals.get(index)!;
+    if (event.status === "CANCELLED") {
+      cancelledUids.add(uid);
+    } else if (first.kind === "all-day" && flaggedAllDay(event)) {
+      // Outlook's all-day series write their dates as midnights, and UTC ones at the midnight of
+      // the zone DTSTART was written in.
+      series.set(uid, { first, midnights: true, ...withZone(zoneOf(event.start) ?? timeZone) });
+    } else {
+      series.set(uid, { first, ...withZone(timeZone) });
+    }
   }
 
   // Overrides: only those with a usable DTSTART and RECURRENCE-ID compete, one per occurrence.
@@ -281,7 +405,8 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
   events.forEach((event, index) => {
     const value = event.recurrenceId;
     if (value === undefined || cancelledUids.has(event.uid)) return;
-    const interval = intervalOf(event, minimumDuration);
+    // One with RANGE=THISANDFUTURE starts a series.
+    const interval = intervalOf(event, minimumDuration, event.recurrenceRange === "THISANDFUTURE");
     if (interval === undefined) {
       unresolved(index, "DTSTART", event.start, "the override is skipped");
       return;
@@ -294,7 +419,15 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
         unresolved(index, "RECURRENCE-ID", value, "the override, which has no series, is skipped");
         return;
       }
-      recurrenceId = ownRecurrenceId(value, interval);
+      // A flagged all-day override names its occurrence by a midnight, as its series would.
+      recurrenceId =
+        (interval.kind === "all-day" && flaggedAllDay(event)
+          ? midnightDate(value, {
+              first: interval,
+              midnights: true,
+              ...withZone(zoneOf(event.start) ?? timeZone),
+            })
+          : undefined) ?? ownRecurrenceId(value, interval);
     } else {
       const { date, mismatch } = toSeriesDate(value, time, "start", "RECURRENCE-ID");
       if (mismatch !== undefined) report(index, "date-kind-mismatch", mismatch, "RECURRENCE-ID");
@@ -361,19 +494,13 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
   };
 
   const output: RecurringCalendarEvent<IcsEvent<TExtensions>>[] = [];
+  const ranges = new Map<IcsEvent<TExtensions>, number>();
   events.forEach((event, index) => {
     const title = event.summary ?? "";
     if (event.recurrenceId !== undefined) {
       if (!keptOverrides.has(index)) return;
       const interval = intervals.get(index)!;
-      if (event.recurrenceRange === "THISANDFUTURE") {
-        report(
-          index,
-          "unsupported-rule",
-          "RANGE=THISANDFUTURE isn't supported; the override replaces only the occurrence it names.",
-          "RECURRENCE-ID",
-        );
-      }
+      if (event.recurrenceRange === "THISANDFUTURE") ranges.set(event, index);
       const recurrenceId = recurrenceIds.get(index)!;
       const override: RecurrenceOverride<string> = {
         ...(event.status === "CANCELLED" ? { cancelled: true } : {}),
@@ -401,5 +528,17 @@ export function recurringEventsFromIcs<TExtensions extends IcsExtensionsConfig =
     });
   });
 
-  return { events: output, issues: issues.sort((left, right) => left.index - right.index) };
+  const { events: bridged, failures } =
+    ranges.size === 0
+      ? { events: output, failures: new Map<IcsEvent<TExtensions>, string>() }
+      : applyThisAndFuture(output, [...ranges.keys()], timeZone ?? "UTC");
+  for (const [event, reason] of failures) {
+    report(
+      ranges.get(event)!,
+      "unsupported-rule",
+      `RANGE=THISANDFUTURE can't apply: ${reason}. The override replaces only the occurrence it names.`,
+      "RECURRENCE-ID",
+    );
+  }
+  return { events: bridged, issues: issues.sort((left, right) => left.index - right.index) };
 }

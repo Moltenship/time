@@ -1468,7 +1468,10 @@ over `loadRange`, `createOccurrenceAdapter` and the `recurringEventsFromIcs` bri
 Base event and transaction semantics are unchanged: occurrences reach the calendar through an
 ordinary `EventAdapter`. The one change to a base package is additive: reject announcements carry
 what `onEventChange` threw, so a cancelled scope question isn't announced as a failed save. Limits
-left open are in #160.
+left open are in #160. From it, the ICS bridge splits a series at a RANGE=THISANDFUTURE override as
+a `"following"` edit does, reads Outlook's `X-MICROSOFT-CDO-ALLDAYEVENT` midnights as all-day dates,
+reads UTC dates on all-day and floating series in the zone a feed's TZIDs name when it has no
+X-WR-TIMEZONE, and keeps the written length of a DTSTART in a DST gap.
 
 ## 23. Prototype risks to retire early
 

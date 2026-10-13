@@ -155,7 +155,7 @@ export interface RecurrenceIssue<TEvent, TEventId extends EventId = EventId> {
     | "invalid-time-zone"
     | "iteration-limit"
     | "missing-series"
-    /** A valid RFC 5545 construct the package doesn't handle, such as RANGE=THISANDFUTURE. */
+    /** A valid RFC 5545 construct the engine doesn't handle, such as a sub-daily all-day rule. */
     | "unsupported-rule";
   readonly event: TEvent;
   readonly eventId?: TEventId;

@@ -1,7 +1,13 @@
 import { parseIcs, type IcsEvent } from "@moltenship/ics";
 import { describe, expect, test } from "vite-plus/test";
 
-import { occurrenceId, recurringEventsFromIcs, type IcsRecurringEventsOptions } from "../../src";
+import {
+  createCanonicalRecurrenceAdapter,
+  createOccurrenceExpander,
+  occurrenceId,
+  recurringEventsFromIcs,
+  type IcsRecurringEventsOptions,
+} from "../../src";
 
 function parse(...events: readonly (readonly string[])[]): readonly IcsEvent[] {
   const lines = [
@@ -226,25 +232,37 @@ describe("recurringEventsFromIcs: series and overrides", () => {
     });
   });
 
-  test("treats RANGE=THISANDFUTURE as an override of one occurrence, with an issue", () => {
+  test("splits a series at a RANGE=THISANDFUTURE override, which the later occurrences follow", () => {
     const events = parse(weeklySync, [
       "UID:sync",
+      "SUMMARY:Sync (new time)",
       "RECURRENCE-ID;RANGE=THISANDFUTURE;TZID=Europe/Berlin:20260119T100000",
       "DTSTART;TZID=Europe/Berlin:20260119T110000",
+      "DTEND;TZID=Europe/Berlin:20260119T120000",
     ]);
     const result = recurringEventsFromIcs(events);
-    expect(plain(result.events[1]!.override)).toStrictEqual({
-      recurrenceId: "2026-01-19T09:00:00Z",
-      seriesId: "sync",
-    });
-    expect(result.issues).toEqual([
+    expect(result.issues).toEqual([]);
+    expect(result.events.map((event) => event.data)).toEqual(events);
+    expect(bridge(events).events).toStrictEqual([
       {
-        code: "unsupported-rule",
-        event: events[1],
-        index: 1,
-        message:
-          "RANGE=THISANDFUTURE isn't supported; the override replaces only the occurrence it names.",
-        property: "RECURRENCE-ID",
+        data: "sync",
+        end: "2026-01-12T09:30:00Z",
+        id: "sync",
+        kind: "timed",
+        recurrence: { rule: { frequency: "WEEKLY", until: "2026-01-12T09:00:00Z" } },
+        sourceTimeZone: "Europe/Berlin",
+        start: "2026-01-12T09:00:00Z",
+        title: "Sync",
+      },
+      {
+        data: "sync",
+        end: "2026-01-19T11:00:00Z",
+        id: "sync::2026-01-19T09:00:00Z",
+        kind: "timed",
+        recurrence: { rule: { frequency: "WEEKLY" } },
+        sourceTimeZone: "Europe/Berlin",
+        start: "2026-01-19T10:00:00Z",
+        title: "Sync (new time)",
       },
     ]);
   });
@@ -426,7 +444,7 @@ describe("recurringEventsFromIcs: dates in the series' kind", () => {
       "EXDATE;TZID=Europe/Berlin:20260115T100000",
       "RDATE;VALUE=DATE:20260120",
     ]);
-    expect(bridge(events)).toStrictEqual({
+    expect(bridge(events, { timeZone: "UTC" })).toStrictEqual({
       events: [
         expect.objectContaining({
           recurrence: {
@@ -595,7 +613,12 @@ describe("recurringEventsFromIcs: dates in the series' kind", () => {
       { exceptionDates: ["2026-01-15", "2026-01-16"], kind: "all-day", until: "2026-03-31" },
       { exceptionDates: ["2026-01-14T10:00:00"], kind: "floating" },
     ]);
+    // Without X-WR-TIMEZONE, the zone the feed's TZIDs name: Berlin, from the zoned EXDATE.
     expect(read()).toEqual([
+      { exceptionDates: ["2026-01-14", "2026-01-16"], kind: "all-day", until: "2026-03-30" },
+      { exceptionDates: ["2026-01-14T00:00:00"], kind: "floating" },
+    ]);
+    expect(read({ timeZone: "UTC" })).toEqual([
       { exceptionDates: ["2026-01-14", "2026-01-16"], kind: "all-day", until: "2026-03-30" },
       { exceptionDates: ["2026-01-13T23:00:00"], kind: "floating" },
     ]);
@@ -845,5 +868,675 @@ describe("recurringEventsFromIcs: options", () => {
     expect(() =>
       recurringEventsFromIcs(events, { minimumDuration: Temporal.Duration.from("PT1H") }),
     ).not.toThrow();
+  });
+});
+
+describe("recurringEventsFromIcs: a DTSTART in a DST gap", () => {
+  // Sydney moves from 02:00 to 03:00 on 4 October 2026, Lord Howe from 02:00 to 02:30.
+  const shown = (events: readonly IcsEvent[]) => {
+    const [master] = recurringEventsFromIcs(events).events;
+    const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEvent>());
+    const zone = master!.kind === "timed" ? master!.sourceTimeZone! : "UTC";
+    const { occurrences } = expander.expand([master!], {
+      range: {
+        end: Temporal.PlainDate.from("2026-10-19"),
+        start: Temporal.PlainDate.from("2026-10-01"),
+      },
+      timeZone: zone,
+    });
+    const wall = (date: unknown) =>
+      (date as Temporal.Instant)
+        .toZonedDateTimeISO(zone)
+        .toPlainTime()
+        .toString({ smallestUnit: "minute" });
+    return occurrences.map(({ interval }) => `${wall(interval.start)}–${wall(interval.end)}`);
+  };
+
+  test("keeps the length written between DTSTART and DTEND, for every occurrence", () => {
+    // 02:30 moves forward to 03:30, where DTEND is: without the written length the first
+    // occurrence would have none, and every occurrence would last the 30-minute minimum.
+    const sydney = parse([
+      "UID:batch",
+      "DTSTART;TZID=Australia/Sydney:20261004T023000",
+      "DTEND;TZID=Australia/Sydney:20261004T033000",
+      "RRULE:FREQ=WEEKLY;COUNT=3",
+    ]);
+    expect(bridge(sydney).events[0]).toMatchObject({
+      end: "2026-10-03T17:30:00Z",
+      recurrence: { wallStart: "2026-10-04T02:30:00" },
+      start: "2026-10-03T16:30:00Z",
+    });
+    expect(shown(sydney)).toEqual(["03:30–04:30", "02:30–03:30", "02:30–03:30"]);
+
+    const lordHowe = parse([
+      "UID:batch",
+      "DTSTART;TZID=Australia/Lord_Howe:20261004T021500",
+      "DTEND;TZID=Australia/Lord_Howe:20261004T031500",
+      "RRULE:FREQ=WEEKLY;COUNT=3",
+    ]);
+    expect(shown(lordHowe)).toEqual(["02:45–03:45", "02:15–03:15", "02:15–03:15"]);
+  });
+
+  test("keeps a single event's exact length, unless the gap leaves it none", () => {
+    const events = parse(
+      // RFC 5545 moves only DTSTART: 03:30–05:00.
+      [
+        "UID:long",
+        "DTSTART;TZID=Australia/Sydney:20261004T023000",
+        "DTEND;TZID=Australia/Sydney:20261004T050000",
+      ],
+      // Moved to DTEND, it would have no length: 03:30–04:30.
+      [
+        "UID:short",
+        "DTSTART;TZID=Australia/Sydney:20261004T023000",
+        "DTEND;TZID=Australia/Sydney:20261004T033000",
+      ],
+      // A series keeps the length written: 03:30–06:00, and 02:30–05:00 later.
+      [
+        "UID:series",
+        "DTSTART;TZID=Australia/Sydney:20261004T023000",
+        "DTEND;TZID=Australia/Sydney:20261004T050000",
+        "RRULE:FREQ=WEEKLY",
+      ],
+      // With DTEND written in UTC or another zone, it keeps its exact length: 03:30–05:00, and
+      // 03:30–06:00 (08:00 in Auckland), without the gap on top.
+      [
+        "UID:utc",
+        "DTSTART;TZID=Australia/Sydney:20261004T023000",
+        "DTEND:20261003T180000Z",
+        "RRULE:FREQ=WEEKLY",
+      ],
+      [
+        "UID:auckland",
+        "DTSTART;TZID=Australia/Sydney:20261004T023000",
+        "DTEND;TZID=Pacific/Auckland:20261004T080000",
+        "RRULE:FREQ=WEEKLY",
+      ],
+    );
+    expect(bridge(events).events).toMatchObject([
+      { end: "2026-10-03T18:00:00Z", id: "long", start: "2026-10-03T16:30:00Z" },
+      { end: "2026-10-03T17:30:00Z", id: "short", start: "2026-10-03T16:30:00Z" },
+      { end: "2026-10-03T19:00:00Z", id: "series", start: "2026-10-03T16:30:00Z" },
+      { end: "2026-10-03T18:00:00Z", id: "utc", start: "2026-10-03T16:30:00Z" },
+      { end: "2026-10-03T19:00:00Z", id: "auckland", start: "2026-10-03T16:30:00Z" },
+    ]);
+  });
+
+  test("keeps the exact length of a DTSTART outside the gap, and of a DTEND in it too", () => {
+    const events = parse(
+      [
+        "UID:across",
+        "DTSTART;TZID=Australia/Sydney:20261004T010000",
+        "DTEND;TZID=Australia/Sydney:20261004T040000",
+      ],
+      [
+        "UID:inside",
+        "DTSTART;TZID=Australia/Sydney:20261004T021500",
+        "DTEND;TZID=Australia/Sydney:20261004T024500",
+      ],
+    );
+    expect(bridge(events).events).toMatchObject([
+      // 01:00 AEST to 04:00 AEDT is two hours.
+      { end: "2026-10-03T17:00:00Z", start: "2026-10-03T15:00:00Z" },
+      // Both move forward by the gap: 03:15–03:45.
+      { end: "2026-10-03T16:45:00Z", start: "2026-10-03T16:15:00Z" },
+    ]);
+  });
+});
+
+describe("recurringEventsFromIcs: Outlook's X-MICROSOFT-CDO-ALLDAYEVENT", () => {
+  const flagged = "X-MICROSOFT-CDO-ALLDAYEVENT:TRUE";
+
+  test("makes a flagged event from midnight to a later midnight all-day on its written dates", () => {
+    const events = parse(
+      [
+        "UID:offsite",
+        "DTSTART;TZID=Europe/Berlin:20261012T000000",
+        "DTEND;TZID=Europe/Berlin:20261014T000000",
+        flagged,
+      ],
+      ["UID:duration", "DTSTART;TZID=Europe/Berlin:20261012T000000", "DURATION:P1D", flagged],
+      // Its TZID resolves to no zone, but midnight is midnight on any clock.
+      [
+        "UID:office",
+        "DTSTART;TZID=Our Office:20261012T000000",
+        "DTEND;TZID=Our Office:20261013T000000",
+        flagged,
+      ],
+      ["UID:floating", "DTSTART:20261012T000000", "DTEND:20261013T000000", flagged],
+    );
+    expect(bridge(events)).toStrictEqual({
+      events: [
+        {
+          data: "offsite",
+          end: "2026-10-14",
+          id: "offsite",
+          kind: "all-day",
+          start: "2026-10-12",
+          title: "",
+        },
+        {
+          data: "duration",
+          end: "2026-10-13",
+          id: "duration",
+          kind: "all-day",
+          start: "2026-10-12",
+          title: "",
+        },
+        {
+          data: "office",
+          end: "2026-10-13",
+          id: "office",
+          kind: "all-day",
+          start: "2026-10-12",
+          title: "",
+        },
+        {
+          data: "floating",
+          end: "2026-10-13",
+          id: "floating",
+          kind: "all-day",
+          start: "2026-10-12",
+          title: "",
+        },
+      ],
+      issues: [],
+    });
+  });
+
+  test("leaves timed a flagged event that isn't midnight to midnight, and an unflagged one", () => {
+    const events = parse(
+      [
+        "UID:day",
+        "DTSTART;TZID=Europe/Berlin:20261012T090000",
+        "DTEND;TZID=Europe/Berlin:20261012T170000",
+        flagged,
+      ],
+      [
+        "UID:false",
+        "DTSTART;TZID=Europe/Berlin:20261012T000000",
+        "DTEND;TZID=Europe/Berlin:20261013T000000",
+        "X-MICROSOFT-CDO-ALLDAYEVENT:FALSE",
+      ],
+      [
+        "UID:unflagged",
+        "DTSTART;TZID=Europe/Berlin:20261012T000000",
+        "DTEND;TZID=Europe/Berlin:20261013T000000",
+      ],
+    );
+    expect(bridge(events).events.map((event) => (event as { kind: string }).kind)).toEqual([
+      "timed",
+      "timed",
+      "timed",
+    ]);
+  });
+
+  test("reads a flagged series with a UTC DTSTART's UTC dates in UTC", () => {
+    const events = parse(
+      [
+        "UID:leave",
+        "DTSTART:20260601T000000Z",
+        "DTEND:20260602T000000Z",
+        "RRULE:FREQ=DAILY;UNTIL=20260605T000000Z",
+        "EXDATE:20260603T000000Z",
+        flagged,
+      ],
+      // The feed's TZIDs name New York, where these midnights are the evening before.
+      ["UID:meeting", "DTSTART;TZID=America/New_York:20260601T100000"],
+    );
+    expect(bridge(events)).toMatchObject({
+      events: [
+        {
+          kind: "all-day",
+          recurrence: {
+            exceptionDates: ["2026-06-03"],
+            rule: { frequency: "DAILY", until: "2026-06-05" },
+          },
+          start: "2026-06-01",
+        },
+        { id: "meeting" },
+      ],
+      issues: [],
+    });
+  });
+
+  test("gives a flagged override without its series the ID it has with it", () => {
+    const override = [
+      "UID:wfh",
+      "RECURRENCE-ID;TZID=Europe/Berlin:20261211T000000",
+      "DTSTART;TZID=Europe/Berlin:20261210T000000",
+      "DTEND;TZID=Europe/Berlin:20261211T000000",
+      flagged,
+    ];
+    const master = [
+      "UID:wfh",
+      "DTSTART;TZID=Europe/Berlin:20260904T000000",
+      "DTEND;TZID=Europe/Berlin:20260905T000000",
+      "RRULE:FREQ=WEEKLY;BYDAY=FR",
+      flagged,
+    ];
+    const idOf = (events: readonly IcsEvent[]) =>
+      recurringEventsFromIcs(events).events.find((event) => event.override !== undefined)?.id;
+    expect(idOf(parse(override))).toBe("wfh::2026-12-11");
+    expect(idOf(parse(master, override))).toBe("wfh::2026-12-11");
+    // Exchange 2010 writes a DATE DTSTART and a UTC RECURRENCE-ID at the owner's midnight, read in
+    // the feed's zone either way.
+    const dateOverride = [
+      "UID:office",
+      "RECURRENCE-ID:20260729T220000Z",
+      "DTSTART;VALUE=DATE:20260731",
+      flagged,
+    ];
+    const dateMaster = [
+      "UID:office",
+      "DTSTART;VALUE=DATE:20260714",
+      "RRULE:FREQ=WEEKLY;BYDAY=TU,TH",
+      flagged,
+    ];
+    const options = { timeZone: "Europe/Berlin" };
+    const dateIdOf = (events: readonly IcsEvent[]) =>
+      recurringEventsFromIcs(events, options).events.find((event) => event.override !== undefined)
+        ?.id;
+    expect(dateIdOf(parse(dateOverride))).toBe("office::2026-07-30");
+    expect(dateIdOf(parse(dateMaster, dateOverride))).toBe("office::2026-07-30");
+  });
+
+  test("reads a flagged series' midnights as its dates, and its UTC dates in its zone", () => {
+    const events = parse(
+      [
+        "UID:wfh",
+        "DTSTART;TZID=Europe/Berlin:20260904T000000",
+        "DTEND;TZID=Europe/Berlin:20260905T000000",
+        "RRULE:FREQ=WEEKLY;UNTIL=20261217T230000Z;BYDAY=FR",
+        "EXDATE;TZID=Europe/Berlin:20261127T000000",
+        "EXDATE:20261203T230000Z",
+        "EXDATE;TZID=Europe/Berlin:20261120T120000",
+        flagged,
+      ],
+      [
+        "UID:wfh",
+        "RECURRENCE-ID;TZID=Europe/Berlin:20261211T000000",
+        "DTSTART;TZID=Europe/Berlin:20261210T000000",
+        "DTEND;TZID=Europe/Berlin:20261211T000000",
+        flagged,
+      ],
+    );
+    expect(bridge(events, { timeZone: "UTC" })).toStrictEqual({
+      events: [
+        {
+          data: "wfh",
+          end: "2026-09-05",
+          id: "wfh",
+          kind: "all-day",
+          recurrence: {
+            exceptionDates: ["2026-11-27", "2026-12-04", "2026-11-20"],
+            rule: { byDay: [{ weekday: "FR" }], frequency: "WEEKLY", until: "2026-12-18" },
+          },
+          start: "2026-09-04",
+          title: "",
+        },
+        {
+          data: "wfh",
+          end: "2026-12-11",
+          id: "wfh::2026-12-11",
+          kind: "all-day",
+          override: { recurrenceId: "2026-12-11", seriesId: "wfh" },
+          start: "2026-12-10",
+          title: "",
+        },
+      ],
+      // Only the EXDATE at noon isn't a midnight.
+      issues: [{ code: "date-kind-mismatch", property: "EXDATE", uid: "wfh" }],
+    });
+  });
+});
+
+describe("recurringEventsFromIcs: the feed's time zone", () => {
+  const leave = [
+    "UID:leave",
+    "DTSTART;VALUE=DATE:20260112",
+    "RRULE:FREQ=DAILY;UNTIL=20260130T230000Z",
+  ];
+  const untilOf = (events: readonly IcsEvent[]) =>
+    String(recurringEventsFromIcs(events).events[0]!.recurrence?.rule?.until);
+
+  test("is the zone most events' TZIDs name, without X-WR-TIMEZONE", () => {
+    const meeting = (uid: string, zone: string) => [
+      `UID:${uid}`,
+      `DTSTART;TZID=${zone}:20260112T100000`,
+    ];
+    // 23:00 UTC on 30 January is 31 January in Berlin, and still 30 January in UTC.
+    expect(
+      untilOf(
+        parse(
+          leave,
+          meeting("a", "America/New_York"),
+          meeting("b", "Europe/Berlin"),
+          meeting("c", "Europe/Berlin"),
+        ),
+      ),
+    ).toBe("2026-01-31");
+    expect(untilOf(parse(leave))).toBe("2026-01-30");
+    // A tie goes to the zone that comes first. 02:00 UTC on 31 January is still 30 January in New
+    // York, and 31 January in Berlin and in UTC.
+    const early = [
+      "UID:leave",
+      "DTSTART;VALUE=DATE:20260112",
+      "RRULE:FREQ=DAILY;UNTIL=20260131T020000Z",
+    ];
+    expect(
+      untilOf(parse(early, meeting("a", "America/New_York"), meeting("b", "Europe/Berlin"))),
+    ).toBe("2026-01-30");
+  });
+});
+
+describe("recurringEventsFromIcs: RANGE=THISANDFUTURE", () => {
+  const range = (date: string, ...lines: readonly string[]) => [
+    "UID:sync",
+    `RECURRENCE-ID;RANGE=THISANDFUTURE;TZID=Europe/Berlin:${date}T100000`,
+    ...lines,
+  ];
+  test("counts a COUNT rule's occurrences on both sides of the split", () => {
+    const events = parse(
+      [...weeklySync.slice(0, -1), "RRULE:FREQ=WEEKLY;COUNT=5"],
+      range(
+        "20260126",
+        "DTSTART;TZID=Europe/Berlin:20260126T110000",
+        "DTEND;TZID=Europe/Berlin:20260126T113000",
+      ),
+    );
+    expect(bridge(events).events).toMatchObject([
+      { id: "sync", recurrence: { rule: { count: 2, frequency: "WEEKLY" } } },
+      {
+        id: "sync::2026-01-26T09:00:00Z",
+        recurrence: { rule: { count: 3, frequency: "WEEKLY" } },
+        start: "2026-01-26T10:00:00Z",
+      },
+    ]);
+  });
+
+  test("moves later EXDATEs and overrides to the new series, keeping the overrides' placements", () => {
+    const events = parse(
+      [...weeklySync, "EXDATE;TZID=Europe/Berlin:20260209T100000"],
+      // A day later, on Tuesdays, from 26 January.
+      range(
+        "20260126",
+        "SUMMARY:Sync (Tuesdays)",
+        "DTSTART;TZID=Europe/Berlin:20260127T100000",
+        "DTEND;TZID=Europe/Berlin:20260127T103000",
+      ),
+      [
+        "UID:sync",
+        "RECURRENCE-ID;TZID=Europe/Berlin:20260216T100000",
+        "DTSTART;TZID=Europe/Berlin:20260216T150000",
+        "DTEND;TZID=Europe/Berlin:20260216T153000",
+      ],
+    );
+    expect(bridge(events)).toStrictEqual({
+      events: [
+        {
+          data: "sync",
+          end: "2026-01-12T09:30:00Z",
+          id: "sync",
+          kind: "timed",
+          recurrence: { rule: { frequency: "WEEKLY", until: "2026-01-19T09:00:00Z" } },
+          sourceTimeZone: "Europe/Berlin",
+          start: "2026-01-12T09:00:00Z",
+          title: "Sync",
+        },
+        {
+          data: "sync",
+          end: "2026-01-27T09:30:00Z",
+          id: "sync::2026-01-26T09:00:00Z",
+          kind: "timed",
+          recurrence: {
+            exceptionDates: ["2026-02-10T09:00:00Z"],
+            rule: { frequency: "WEEKLY" },
+          },
+          sourceTimeZone: "Europe/Berlin",
+          start: "2026-01-27T09:00:00Z",
+          title: "Sync (Tuesdays)",
+        },
+        {
+          data: "sync",
+          end: "2026-02-16T14:30:00Z",
+          id: "sync::2026-01-26T09:00:00Z::2026-02-17T09:00:00Z",
+          kind: "timed",
+          override: {
+            recurrenceId: "2026-02-17T09:00:00Z",
+            seriesId: "sync::2026-01-26T09:00:00Z",
+          },
+          sourceTimeZone: "Europe/Berlin",
+          start: "2026-02-16T14:00:00Z",
+          title: "",
+        },
+      ],
+      issues: [],
+    });
+  });
+
+  test("changes the whole series from its first occurrence", () => {
+    const events = parse(
+      weeklySync,
+      range(
+        "20260112",
+        "SUMMARY:Sync (later)",
+        "DTSTART;TZID=Europe/Berlin:20260112T110000",
+        "DTEND;TZID=Europe/Berlin:20260112T113000",
+      ),
+    );
+    expect(bridge(events).events).toStrictEqual([
+      {
+        data: "sync",
+        end: "2026-01-12T10:30:00Z",
+        id: "sync",
+        kind: "timed",
+        recurrence: { rule: { frequency: "WEEKLY" } },
+        sourceTimeZone: "Europe/Berlin",
+        start: "2026-01-12T10:00:00Z",
+        title: "Sync (later)",
+      },
+    ]);
+  });
+
+  test("applies two in order, each to the occurrences after it", () => {
+    const events = parse(
+      weeklySync,
+      range("20260209", "DTSTART;TZID=Europe/Berlin:20260209T120000"),
+      range("20260126", "DTSTART;TZID=Europe/Berlin:20260126T110000"),
+    );
+    const bridged = recurringEventsFromIcs(events).events;
+    expect(
+      bridged.map(({ id, recurrence, start }) =>
+        plain({ id, start, until: recurrence?.rule?.until }),
+      ),
+    ).toEqual([
+      { id: "sync", start: "2026-01-12T09:00:00Z", until: "2026-01-19T09:00:00Z" },
+      { id: "sync::2026-02-09T09:00:00Z", start: "2026-02-09T11:00:00Z", until: undefined },
+      {
+        id: "sync::2026-01-26T09:00:00Z",
+        start: "2026-01-26T10:00:00Z",
+        until: "2026-02-02T10:00:00Z",
+      },
+    ]);
+  });
+
+  test("ends the series at a cancelled one, which leaves later overrides as they are", () => {
+    const later = [
+      "UID:sync",
+      "RECURRENCE-ID;TZID=Europe/Berlin:20260216T100000",
+      "DTSTART;TZID=Europe/Berlin:20260216T150000",
+    ];
+    const events = parse(
+      weeklySync,
+      range("20260126", "STATUS:CANCELLED", "DTSTART;TZID=Europe/Berlin:20260126T100000"),
+      later,
+    );
+    expect(bridge(events).events).toMatchObject([
+      { id: "sync", recurrence: { rule: { frequency: "WEEKLY", until: "2026-01-19T09:00:00Z" } } },
+      { id: "sync::2026-02-16T09:00:00Z", override: { seriesId: "sync" } },
+    ]);
+    // On the first occurrence nothing is left: the series keeps no occurrence, and the later
+    // override still shows. A later range has no occurrence left to change.
+    const first = parse(
+      weeklySync,
+      range("20260112", "STATUS:CANCELLED", "DTSTART;TZID=Europe/Berlin:20260112T100000"),
+      later,
+      range("20260209", "DTSTART;TZID=Europe/Berlin:20260209T120000"),
+    );
+    const result = recurringEventsFromIcs(first);
+    expect(bridge(first).events).toMatchObject([
+      { id: "sync", recurrence: { exceptionDates: ["2026-01-12T09:00:00Z"] } },
+      { id: "sync::2026-02-16T09:00:00Z", override: { seriesId: "sync" } },
+      { id: "sync::2026-02-09T09:00:00Z", override: { seriesId: "sync" } },
+    ]);
+    expect(result.events[0]!.recurrence).toEqual({
+      exceptionDates: [Temporal.Instant.from("2026-01-12T09:00:00Z")],
+    });
+    expect(result.issues.map(({ code, index, message }) => ({ code, index, message }))).toEqual([
+      {
+        code: "unsupported-rule",
+        index: 3,
+        message:
+          "RANGE=THISANDFUTURE can't apply: an earlier cancelled RANGE=THISANDFUTURE ended its series. The override replaces only the occurrence it names.",
+      },
+    ]);
+    const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEvent>());
+    const { issues, occurrences } = expander.expand(result.events, {
+      range: {
+        end: Temporal.PlainDate.from("2026-03-01"),
+        start: Temporal.PlainDate.from("2026-01-01"),
+      },
+      timeZone: "Europe/Berlin",
+    });
+    expect(issues).toEqual([]);
+    expect(occurrences.map(({ id }) => id)).toEqual([
+      "sync::2026-02-16T09:00:00Z",
+      "sync::2026-02-09T09:00:00Z",
+    ]);
+  });
+
+  test("keeps UNTIL on both sides, and moves later RDATEs", () => {
+    const events = parse(
+      [
+        ...weeklySync.slice(0, -1),
+        "RRULE:FREQ=WEEKLY;UNTIL=20260216T090000Z",
+        "RDATE;TZID=Europe/Berlin:20260211T100000",
+      ],
+      // A day later, from 26 January.
+      range("20260126", "DTSTART;TZID=Europe/Berlin:20260127T100000"),
+    );
+    expect(bridge(events).events).toMatchObject([
+      { id: "sync", recurrence: { rule: { frequency: "WEEKLY", until: "2026-01-19T09:00:00Z" } } },
+      {
+        id: "sync::2026-01-26T09:00:00Z",
+        recurrence: {
+          recurrenceDates: ["2026-02-12T09:00:00Z"],
+          rule: { frequency: "WEEKLY", until: "2026-02-17T09:00:00Z" },
+        },
+        start: "2026-01-27T09:00:00Z",
+      },
+    ]);
+  });
+
+  test("splits an all-day series", () => {
+    const events = parse(
+      ["UID:sync", "DTSTART;VALUE=DATE:20260112", "RRULE:FREQ=WEEKLY;COUNT=4"],
+      [
+        "UID:sync",
+        "RECURRENCE-ID;RANGE=THISANDFUTURE;VALUE=DATE:20260126",
+        "DTSTART;VALUE=DATE:20260127",
+      ],
+    );
+    expect(bridge(events).events).toMatchObject([
+      { id: "sync", recurrence: { rule: { count: 2, frequency: "WEEKLY" } } },
+      {
+        end: "2026-01-28",
+        id: "sync::2026-01-26",
+        kind: "all-day",
+        recurrence: { rule: { count: 2, frequency: "WEEKLY" } },
+        start: "2026-01-27",
+      },
+    ]);
+  });
+
+  test("repeats a new series that starts in a DST gap at the time written", () => {
+    // Berlin skips 02:00–03:00 on Sunday 29 March: an override written at 02:30–03:30 there.
+    const events = parse(
+      [
+        "UID:sunday",
+        "DTSTART;TZID=Europe/Berlin:20260315T090000",
+        "DTEND;TZID=Europe/Berlin:20260315T100000",
+        "RRULE:FREQ=WEEKLY;COUNT=5",
+      ],
+      [
+        "UID:sunday",
+        "RECURRENCE-ID;RANGE=THISANDFUTURE;TZID=Europe/Berlin:20260329T090000",
+        "DTSTART;TZID=Europe/Berlin:20260329T023000",
+        "DTEND;TZID=Europe/Berlin:20260329T033000",
+      ],
+    );
+    const result = recurringEventsFromIcs(events);
+    expect(plain(result.events[1]!.recurrence)).toEqual({
+      rule: { count: 3, frequency: "WEEKLY" },
+      wallStart: "2026-03-29T02:30:00",
+    });
+    const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEvent>());
+    const { occurrences } = expander.expand(result.events, {
+      range: {
+        end: Temporal.PlainDate.from("2026-04-20"),
+        start: Temporal.PlainDate.from("2026-03-28"),
+      },
+      timeZone: "Europe/Berlin",
+    });
+    const wall = (date: unknown) =>
+      (date as Temporal.Instant)
+        .toZonedDateTimeISO("Europe/Berlin")
+        .toPlainDateTime()
+        .toString({ smallestUnit: "minute" });
+    expect(
+      occurrences.map(({ interval }) => `${wall(interval.start)}–${wall(interval.end).slice(11)}`),
+    ).toEqual(["2026-03-29T03:30–04:30", "2026-04-05T02:30–03:30", "2026-04-12T02:30–03:30"]);
+  });
+
+  test("replaces only the occurrence it names when the series can't take it, with an issue", () => {
+    const firstMonday = [
+      "UID:sync",
+      "DTSTART;TZID=Europe/Berlin:20260105T100000",
+      "DTEND;TZID=Europe/Berlin:20260105T103000",
+      "RRULE:FREQ=MONTHLY;BYDAY=MO;BYSETPOS=1",
+    ];
+    const events = parse(
+      firstMonday,
+      range("20260202", "DTSTART;TZID=Europe/Berlin:20260203T100000"),
+      [
+        "UID:lone",
+        "RECURRENCE-ID;RANGE=THISANDFUTURE;TZID=Europe/Berlin:20260202T100000",
+        "DTSTART;TZID=Europe/Berlin:20260203T100000",
+      ],
+    );
+    const result = recurringEventsFromIcs(events);
+    expect(result.events.map((event) => event.id)).toEqual([
+      "sync",
+      "sync::2026-02-02T09:00:00Z",
+      "lone::2026-02-02T09:00:00Z",
+    ]);
+    expect(result.events[0]!.recurrence).toEqual({
+      rule: { byDay: [{ weekday: "MO" }], bySetPosition: [1], frequency: "MONTHLY" },
+    });
+    expect(result.issues.map(({ code, index, message }) => ({ code, index, message }))).toEqual([
+      {
+        code: "unsupported-rule",
+        index: 1,
+        message:
+          "RANGE=THISANDFUTURE can't apply: A BYSETPOS rule can't move to another day. The override replaces only the occurrence it names.",
+      },
+      {
+        code: "unsupported-rule",
+        index: 2,
+        message:
+          "RANGE=THISANDFUTURE can't apply: its series isn't in the feed. The override replaces only the occurrence it names.",
+      },
+    ]);
   });
 });
