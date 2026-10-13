@@ -602,7 +602,7 @@ The recommended API creates a typed calendar namespace once:
 ```tsx
 import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
 // View factories are registry source, installed with `shadcn add`.
-import { createMonthView } from "@/components/calendar/month-view";
+import { createMonthView } from "@/components/calendar/month-view/month-view";
 
 const eventAdapter = defineEventAdapter<ApiEvent>()({
   getId: (event) => event.id,

@@ -468,8 +468,8 @@ TimeGridColumn                   time-grid-column.tsx
   closed days along day rows, whose cells also get `data-closed`.
 - **Month.** A closed day gets a `month-closed` band in `--calendar-closed`, light enough that its
   date and events stay readable, and its cell gets `data-closed`.
-- **Year.** A shaded closed day gets a `year-closed` band in `--calendar-closed`, joined with the
-  shaded days beside it in its row, and its cell gets `data-closed`. By default only dates an
+- **Year.** Every closed day's cell gets `data-closed`; a shaded one also gets a `year-closed` band
+  in `--calendar-closed`, joined with the shaded days beside it in its row. By default only dates an
   exception closes are shaded; `closedDays: "all"` adds the weekly closed days.
 - **Resource headers.** `ResourceHeaderTime` shows a resource's local time and
   `ResourceHeaderStatus` its status; add them to your own `ResourceHeader` composition.
