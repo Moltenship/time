@@ -162,7 +162,7 @@ export function ResourceTimelineGrid<TEvent>({
       {...keyboard}
       data-slot="resource-timeline"
       dir={direction}
-      className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ew-resize"
+      className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] any-pointer-coarse:select-none any-pointer-coarse:[-webkit-touch-callout:none] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ew-resize"
       style={
         {
           "--calendar-resource-column": `${columnWidth}px`,

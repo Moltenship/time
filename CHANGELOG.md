@@ -13,6 +13,9 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   comment that bundlers keep, in its built code.
 - A `Root` without `onEventChange` is read-only in its views too: they start no drags or keyboard
   grabs and draw no resize handles. Renderers get `isReadOnly` to tell (#201).
+- Touch drags start after a 450 ms press instead of 250 ms, so a finger that rests before it
+  scrolls still scrolls, and the page holds still under a drag from a listener that's there from
+  the touch's start. The built-in views select no text and show no iOS callout on touch (#217).
 - `Root`'s `events` takes a `CalendarEventSource<TEvent>` as well as an array: events in an
   external store, read through `useSyncExternalStore`, with `getServerSnapshot` for server rendering
   and hydration. Its getters return event arrays (#200).

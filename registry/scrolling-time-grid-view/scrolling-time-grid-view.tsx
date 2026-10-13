@@ -289,7 +289,7 @@ export function ScrollingTimeGridView<TEvent>({
         data-slot="scrolling-time-grid"
         dir={direction}
         className={cn(
-          "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize",
+          "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] any-pointer-coarse:select-none any-pointer-coarse:[-webkit-touch-callout:none] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize",
           timeGridGutterClassName,
         )}
         style={gutterStyle(zones)}

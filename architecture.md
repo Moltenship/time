@@ -931,7 +931,11 @@ Explicit move and resize buttons and an event details surface in the registry ar
 (15 minutes by default), `announcer`, `check`, `columns`, `scrollContainer` (the nearest scrollable
 ancestor by default), `onPreview`, `disabled` (views pass their `isReadOnly` prop) and
 `ghostClassName`. Activation is fixed: more than 4 px of travel for mouse and pen; for touch, a
-250 ms press that moves no more than 8 px. DOM event types do not leak into calendar callbacks.
+450 ms press that moves no more than 8 px, as long as the platforms' own long-press, so a finger
+that rests before it scrolls still scrolls. A non-passive `touchmove` listener on the region, there
+from the start because iOS Safari decides at the touch's start whether it can cancel scrolling,
+holds the page still under an active drag. On coarse pointers the built-in views also turn off text
+selection and the iOS touch callout. DOM event types do not leak into calendar callbacks.
 
 ### Policy pipeline
 
@@ -1188,7 +1192,9 @@ Automated axe checks, keyboard integration tests, reduced-motion tests, and manu
 - Strict Mode and concurrent rendering.
 - SSR render/hydrate equality.
 - Selector invalidation and React commit budgets.
-- Keyboard/pointer parity for the month and time grid; the resource views have none yet (#189), and touch is covered only by the long-press start.
+- Keyboard/pointer parity for the month and time grid; the resource views have none yet (#189).
+  Touch has browser tests of the long-press move, resize and create, auto-scroll and read-only
+  roots, and, in Chromium, real touches through CDP: a swipe scrolls, a long-press drag doesn't.
 - Optimistic confirm/reject races.
 - Custom view installed without internal imports.
 
@@ -1201,8 +1207,9 @@ Automated axe checks, keyboard integration tests, reduced-motion tests, and manu
   by measured boxes. No screenshot comparisons.
 - Accessibility scans; the manual screen-reader scripts are #186.
 - RTL and reduced-motion scenarios (reduced motion in Chromium only). On macOS 27, `browsers` runs
-  WebKit alone (#182). Not built yet: zoom, high-DPI, ResizeObserver and touch
-  scenarios, and frame timing (there is no performance lab).
+  WebKit alone (#182). Touch runs as touch pointer events everywhere and as real touches in
+  Chromium; iOS Safari itself needs a device (#217). Not built yet: zoom, high-DPI and
+  ResizeObserver scenarios, and frame timing (there is no performance lab).
 
 ### Repository checks
 

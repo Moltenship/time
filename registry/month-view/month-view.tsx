@@ -182,7 +182,7 @@ function MonthView<TEvent>({
       aria-label={getMonthTitle(range, environment)}
       {...keyboard}
       data-slot="month-view"
-      className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing"
+      className="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] any-pointer-coarse:select-none any-pointer-coarse:[-webkit-touch-callout:none] data-interaction:select-none data-[interaction=move]:cursor-grabbing"
     >
       <div role="row" className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
         {projection.weeks[0]?.days.map(({ date }) => (

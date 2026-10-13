@@ -132,7 +132,9 @@ apply. A few details:
 - A movement under 4px is a click, so clicking an event still works. The click that ends a drag
   doesn't count as a click.
 - Escape cancels a drag, and so does dropping outside the view.
-- On touch screens, press and hold for a moment to start a drag, so swiping still scrolls.
+- On touch screens, press and hold for about half a second to start a drag; a finger that moves
+  sooner scrolls. Once a drag starts, the page holds still under it, and the built-in views select
+  no text and show no touch callout.
 - The view scrolls when you drag near any edge of its scroll container.
 - Read-only events (your adapter's `isReadOnly`) can't be dragged and have no resize handles.
 - While dragging, the original event dims (it has `data-dragging`) and a preview follows the
@@ -165,6 +167,10 @@ grid or a day timeline finds days by their `data-date`. The hook reads these att
 | The element inside an event that shows its time             | `data-event-time`                                           |
 | A part over the cells, such as a sticky header              | `data-occludes`                                             |
 | A timeline's time strip for one date, its date in `columns` | `data-date="…" data-axis="inline"`                          |
+
+On touch screens, a long-press should pick an event up rather than select its text: give the element
+`user-select: none` and `-webkit-touch-callout: none` for coarse pointers, as the built-in views do
+with `any-pointer-coarse:select-none any-pointer-coarse:[-webkit-touch-callout:none]`.
 
 The [pointer layer reference](/docs/api/changes#pointer-layer) lists the hook's options and styling
 hooks.

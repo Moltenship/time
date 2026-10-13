@@ -407,27 +407,38 @@ describe("time grid", () => {
     expect(proposals).toMatchObject([{ cause: "move", eventId: 7 }]);
   });
 
-  test("starts touch drags with a long-press and lets quick swipes scroll", () => {
+  test("starts touch drags after a still 450 ms press, and lets a finger that moves sooner scroll", () => {
     vi.useFakeTimers();
     const grid = mountTimeGrid([meeting]);
     const proposals = setup(grid, { columns: grid.columns });
     const element = grid.elements.get("a")!;
     const touch = { pointerType: "touch" };
+    /** Whether the page would hold still under a finger moving now. */
+    const holdsStill = () => {
+      const scroll = new Event("touchmove", { bubbles: true, cancelable: true });
+      element.dispatchEvent(scroll);
+      return scroll.defaultPrevented;
+    };
 
+    // A finger that rests a moment before it moves still scrolls.
     pointer("pointerdown", element, 50, yAt("09:30"), touch);
+    vi.advanceTimersByTime(300);
+    expect(holdsStill()).toBe(false);
     pointer("pointermove", element, 50, yAt("09:30") + 20, touch);
     vi.advanceTimersByTime(300);
     expect(grid.region.hasAttribute("data-interaction")).toBe(false);
     pointer("pointerup", element, 50, yAt("09:30") + 20, touch);
 
+    // One that rests 450 ms picks the event up, and the page holds still under it.
     pointer("pointerdown", element, 50, yAt("09:30"), touch);
-    vi.advanceTimersByTime(300);
+    vi.advanceTimersByTime(449);
+    expect(grid.region.hasAttribute("data-interaction")).toBe(false);
+    vi.advanceTimersByTime(1);
     expect(grid.region.getAttribute("data-interaction")).toBe("move");
-    const scroll = new Event("touchmove", { cancelable: true });
-    window.dispatchEvent(scroll);
-    expect(scroll.defaultPrevented).toBe(true);
+    expect(holdsStill()).toBe(true);
     pointer("pointermove", element, 50, yAt("10:30"), touch);
     pointer("pointerup", element, 50, yAt("10:30"), touch);
+    expect(holdsStill()).toBe(false);
 
     expect(proposals).toHaveLength(1);
     expect(interval(proposals[0])).toBe("timed 2026-08-17T10:00:00Z/2026-08-17T11:00:00Z");

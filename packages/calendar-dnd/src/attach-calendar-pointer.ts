@@ -123,8 +123,11 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
 const DEFAULT_SNAP: WallTimeSnapOptions = { increment: 15, smallestUnit: "minute" };
 /** Pointer travel that turns a mouse or pen press into a drag; anything less is a click. */
 const DRAG_DISTANCE = 4;
-/** Touch drags start after a still long-press, so a swipe keeps scrolling. */
-const LONG_PRESS_MS = 250;
+/**
+ * Touch drags start after a still long-press, as long as the platforms' own, so a swipe keeps
+ * scrolling even when the finger rests a moment first.
+ */
+const LONG_PRESS_MS = 450;
 const TOUCH_TOLERANCE = 8;
 
 function preventDefault(event: Event): void {
@@ -203,8 +206,9 @@ function resolveEvent<TEvent, TEventId extends EventId, TResourceId extends Reso
  *   marks, so pressing them never starts a drag.
  *
  * The preview moves without re-rendering. `onPropose` runs once per drop; a click (less than a few
- * pixels of travel) is left alone, and Escape cancels. Touch drags start with a long-press.
- * Returns a function that detaches everything.
+ * pixels of travel) is left alone, and Escape cancels. Touch drags start after a finger rests still
+ * for 450 ms, so a swipe scrolls; once one starts, the page holds still under it. Returns a function
+ * that detaches everything.
  */
 export function attachCalendarPointer<
   TEvent,
@@ -324,7 +328,6 @@ export function attachCalendarPointer<
       current.gesture.element.setAttribute("data-dragging", "");
     }
     getSelection()?.removeAllRanges();
-    window.addEventListener("touchmove", preventDefault, { passive: false });
     current.frame = requestAnimationFrame(scrollFrame);
     preview(current);
     announce(current, { phase: "start" });
@@ -346,7 +349,6 @@ export function attachCalendarPointer<
     window.removeEventListener("pointerup", onPointerUp);
     window.removeEventListener("pointercancel", cancel);
     window.removeEventListener("keydown", onKeyDown, true);
-    window.removeEventListener("touchmove", preventDefault);
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.removeEventListener(type, preventDefault);
     }
@@ -504,9 +506,19 @@ export function attachCalendarPointer<
     }
   }
 
+  /**
+   * Holds the page still under a drag that has started. It listens from the start, not from the
+   * long-press: Safari on iOS decides whether a touch can cancel scrolling when the touch begins.
+   */
+  function onTouchMove(event: TouchEvent): void {
+    if (session?.active === true) event.preventDefault();
+  }
+
   region.addEventListener("pointerdown", onPointerDown);
+  region.addEventListener("touchmove", onTouchMove, { passive: false });
   return () => {
     end();
     region.removeEventListener("pointerdown", onPointerDown);
+    region.removeEventListener("touchmove", onTouchMove);
   };
 }
