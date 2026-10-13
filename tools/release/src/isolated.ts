@@ -204,6 +204,18 @@ export async function installOffline(directory: string): Promise<void> {
 }
 
 /**
+ * Whether an offline install failed only for package metadata a cold cache lacks: a package's
+ * (`ERR_PNPM_NO_OFFLINE_META`), or that of the pinned pnpm itself, which the `packageManager`
+ * field makes a config dependency (`ERR_PNPM_BAD_CONFIG_DEP` in the package mirror).
+ */
+export function lacksMetadata(output: string): boolean {
+  return (
+    output.includes("ERR_PNPM_NO_OFFLINE_META") ||
+    (output.includes("ERR_PNPM_BAD_CONFIG_DEP") && output.includes("package mirror"))
+  );
+}
+
+/**
  * Installs a project from the pnpm store, offline when pnpm's metadata cache has what resolving
  * it needs. A fresh machine's cache may not: `vp install --frozen-lockfile` skips resolution, and
  * keeps only part of the metadata. Then pnpm reads the missing metadata from npm, and still takes
@@ -212,7 +224,7 @@ export async function installOffline(directory: string): Promise<void> {
 export async function installFromStore(directory: string): Promise<{ readonly online: boolean }> {
   const offline = await install(directory, "--offline");
   if (offline.code === 0) return { online: false };
-  if (!`${offline.stdout}${offline.stderr}`.includes("ERR_PNPM_NO_OFFLINE_META")) {
+  if (!lacksMetadata(`${offline.stdout}${offline.stderr}`)) {
     throw installFailure(directory, offline);
   }
   const online = await install(directory, "--prefer-offline");
