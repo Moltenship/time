@@ -133,12 +133,24 @@ cached function return `await response.text()`, and pass it as `text`:
 - **Time zones.** A zoned series repeats on its zone's wall clock, so a 09:00 meeting stays at 09:00
   across daylight saving time. Floating and all-day series stay floating and all-day, and the
   calendar shows them that way. Pass the feed's `X-WR-TIMEZONE` as `timeZone`, so UTC dates on them,
-  such as an UNTIL, keep the feed's dates.
+  such as an UNTIL, keep the feed's dates. Feeds without one, such as Exchange's, write the UNTIL of
+  an all-day series at the owner's midnight in UTC; without `timeZone`, the bridge reads such dates
+  in the zone most of the feed's TZIDs name, so the last day isn't lost.
+- **Daylight saving time.** A DTSTART in the hour a zone skips moves forward by the gap and keeps
+  the length written up to DTEND: a Sydney 02:30–03:30 meeting on the night clocks go forward shows
+  03:30–04:30, and 02:30–03:30 on later weeks.
+- **Outlook's all-day events.** Older Outlook and Exchange exports write an all-day event from
+  midnight to midnight in a zone, with `X-MICROSOFT-CDO-ALLDAYEVENT:TRUE`. The bridge reads it as
+  all-day on the dates written, and its series' midnight dates as dates.
+- **This and future.** Apple writes a change to an occurrence and every later one as an override
+  with `RANGE=THISANDFUTURE`. The bridge splits the series there, as Google Calendar does: the new
+  part starts at the override, with its title, and the rest of the rule moved the same way.
 - **Cancelled events.** A cancelled override, with `STATUS:CANCELLED`, hides its occurrence. A
   cancelled master is left out with its overrides.
 - **Issues.** `recurringEventsFromIcs` reports what it changed or left out, such as an RDATE with a
-  date where the series has times, or `RANGE=THISANDFUTURE`, which it reads as a change to one
-  occurrence. The expander reports its own issues, such as a rule it can't expand.
+  date where the series has times, or a `RANGE=THISANDFUTURE` change the rule can't follow, which
+  then replaces one occurrence. The expander reports its own issues, such as a rule it can't
+  expand.
 
 To expand on the server instead, call the expander there for a range you choose, and map each
 occurrence's `interval` to JSON as `toFeedEvent` maps an event's times. The calendar then shows only

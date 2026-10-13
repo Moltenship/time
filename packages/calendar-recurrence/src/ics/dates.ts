@@ -8,6 +8,11 @@ import type { RecurrenceDate, RecurrencePeriod } from "../types";
 /** A series in a feed: its first occurrence, and where the feed's dates for it are read. */
 export interface FeedSeries {
   readonly first: CalendarEventInterval;
+  /**
+   * An all-day series Outlook flags all-day, whose date-times at midnight, on their own wall clock
+   * or a UTC one's in `timeZone`, are its dates.
+   */
+  readonly midnights?: boolean;
   /** The feed's zone, which instants on all-day and floating series are read in; else UTC. */
   readonly timeZone?: string;
 }
@@ -15,6 +20,32 @@ export interface FeedSeries {
 export function instantOf(value: IcsDateValue): Temporal.Instant | undefined {
   if (value.kind === "utc") return value.instant;
   return value.kind === "zoned" ? value.zoned.toInstant() : undefined;
+}
+
+/** The wall time a value was written at: a date's midnight, a UTC time's in UTC. */
+export function writtenWall(value: IcsDateValue): Temporal.PlainDateTime {
+  switch (value.kind) {
+    case "date":
+      return value.date.toPlainDateTime();
+    case "utc":
+      return value.instant.toZonedDateTimeISO("UTC").toPlainDateTime();
+    default:
+      return value.wallTime;
+  }
+}
+
+export function isMidnight(wall: Temporal.PlainDateTime): boolean {
+  return wall.toPlainTime().equals(Temporal.PlainTime.from("00:00"));
+}
+
+/** A date-time's date, when it is a midnight a flagged all-day series means as a date. */
+function midnightDate(value: IcsDateValue, series: FeedSeries): Temporal.PlainDate | undefined {
+  if (series.midnights !== true || value.kind === "date") return undefined;
+  const wall =
+    value.kind === "utc"
+      ? value.instant.toZonedDateTimeISO(series.timeZone ?? "UTC").toPlainDateTime()
+      : value.wallTime;
+  return isMidnight(wall) ? wall.toPlainDate().withCalendar("iso8601") : undefined;
 }
 
 /**
@@ -68,6 +99,8 @@ export function toSeriesDate(
   label: string,
 ): SeriesDate {
   const { first } = series;
+  const midnight = midnightDate(value, series);
+  if (midnight !== undefined) return { date: midnight };
   const date = coerce(value, series, role);
   const isDate = value.kind === "date";
   const differs = isDate !== (first.kind === "all-day") && !(isDate && role === "exception");

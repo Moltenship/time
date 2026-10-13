@@ -543,13 +543,25 @@ const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEv
 - Masters and one-off events keep their UID as their ID. An override gets the ID of the occurrence
   it replaces, `occurrenceId(uid, recurrenceId)`, with or without its master.
 - A UTC DTSTART repeats in UTC, and a zoned one in its zone. A DTSTART in a DST gap keeps its
-  written time as `recurrence.wallStart`, and DURATION without DTEND becomes `recurrence.duration`.
+  written time as `recurrence.wallStart`, and the event keeps the length written between DTSTART
+  and DTEND. DURATION without DTEND becomes `recurrence.duration`.
+- With `X-MICROSOFT-CDO-ALLDAYEVENT:TRUE`, an event written from midnight to a later midnight, as
+  older Outlook and Exchange exports write all-day events, is all-day on the dates written, even
+  when its TZID resolves to no zone. Its series' midnight EXDATE, UNTIL and RECURRENCE-ID values are
+  those dates, and UTC ones read in its DTSTART's zone.
 - EXDATE, RDATE, UNTIL and RECURRENCE-ID take the series' kind through `coerceRecurrenceDate`.
 - A cancelled master or one-off event is left out, with the master's overrides. A cancelled
   override comes out with `override.cancelled`, which hides its occurrence.
 - Of events with the same UID, or UID and RECURRENCE-ID, the highest SEQUENCE wins, then the later
   one.
-- RANGE=THISANDFUTURE isn't supported: the override replaces only the occurrence it names.
+- RANGE=THISANDFUTURE, as Apple's "this and future" changes write it, applies to the occurrence it
+  names and every later one (RFC 5545 §3.8.4.4). The series splits as a "this and following" edit
+  splits it: it ends before the occurrence, and a new series, with the override's ID, VEVENT and
+  title, starts where the override is, the rest of the rule moved by the same difference. Later
+  EXDATEs, RDATEs and overrides move to it, and overrides take the IDs of the occurrences they then
+  replace. On the first occurrence the whole series changes instead. A cancelled one ends the
+  series there. When the rule can't follow, as a BYSETPOS rule moved to another day can't, the
+  override replaces only the occurrence it names, with an `unsupported-rule` issue.
 
 `options` is an `IcsRecurringEventsOptions`:
 
@@ -561,10 +573,11 @@ const expander = createOccurrenceExpander(createCanonicalRecurrenceAdapter<IcsEv
         <>
           The feed's time zone: <code>calendar.timeZone</code> (X-WR-TIMEZONE), or one you choose.
           UTC times on all-day and floating series, such as an UNTIL, are read in it, so they keep
-          the feed's dates. Floating DTSTARTs stay floating.
+          the feed's dates. Floating DTSTARTs stay floating. Without it, the zone most of the
+          events' TZIDs resolve to, as feeds without X-WR-TIMEZONE, such as Exchange's, need.
         </>
       ),
-      default: '"UTC"',
+      default: "the feed's most used TZID, else UTC",
     },
     minimumDuration: {
       type: "Temporal.DurationLike",
@@ -585,7 +598,7 @@ issue; only invalid options throw, as a `RangeError`. Each `IcsRecurrenceIssue` 
 | `duplicate-event`                 | Another VEVENT has the same UID, or the same UID and RECURRENCE-ID. The higher SEQUENCE wins, then the later one.                |
 | `invalid-period`                  | An RDATE PERIOD that doesn't end after it starts. Only its start is kept.                                                        |
 | `unresolved-time-zone`            | DTSTART, or the RECURRENCE-ID of an override without its master, has a TZID that resolved to no time zone. The event is skipped. |
-| `unsupported-rule`                | RANGE=THISANDFUTURE. The override replaces only the occurrence it names.                                                         |
+| `unsupported-rule`                | RANGE=THISANDFUTURE the series can't take, or whose series or occurrence isn't in the feed. The override replaces only that one. |
 
 The expander reports its own issues on top, such as a rule it can't expand.
 

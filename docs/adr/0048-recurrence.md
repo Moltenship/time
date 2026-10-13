@@ -30,8 +30,9 @@ RDATE and RECURRENCE-ID into Temporal values (ADR 0151).
    `recurrenceId` takes the series' kind, so its ID is the same before and after its master loads.
    Cancelled overrides, which Google's API and ICS feeds use for deleted occurrences, hide the
    occurrence. An event that is both master and override is an override, with a
-   `conflicting-recurrence` issue. RANGE=THISANDFUTURE isn't supported: Google and Outlook
-   split the series instead, and the ICS bridge reports it and treats the override as a single one.
+   `conflicting-recurrence` issue. RANGE=THISANDFUTURE isn't part of the model: Google and Outlook
+   split the series instead, and since #160 the ICS bridge splits it the same way, or, when the
+   rule can't follow the change, reports it and treats the override as a single one.
    `RecurringCalendarEvent` and `createCanonicalRecurrenceAdapter` cover applications without their
    own event type, as `createCanonicalEventAdapter` does in core.
 3. **Rules come from `@moltenship/ics`.** `RecurrenceRule` is `IcsRecurrenceRule` with UNTIL as a

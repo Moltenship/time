@@ -408,9 +408,9 @@ event.exceptionDates;
 This package parses rules but doesn't list a series' occurrences.
 [`@moltenship/calendar-recurrence`](/docs/api/recurrence) does: `recurringEventsFromIcs` groups
 parsed events into series masters, overrides and one-off events, and its expander lists the
-occurrences for a range of dates. It reads an override with `RANGE=THISANDFUTURE` as a change to
-its own occurrence only, and reports it. See [Recurring events](/docs/guides/ics#recurring-events)
-in the ICS guide.
+occurrences for a range of dates. It applies an override with `RANGE=THISANDFUTURE` to the
+occurrences after it too, by splitting the series. See
+[Recurring events](/docs/guides/ics#recurring-events) in the ICS guide.
 
 ## Issues and strict mode
 

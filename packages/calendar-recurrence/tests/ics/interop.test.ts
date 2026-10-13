@@ -422,7 +422,6 @@ describe("iCloud export", () => {
     expect(parseIssues).toEqual([]);
     expect(calendar.timeZone).toBe("America/New_York");
     expect(bridged.issues.map(({ code, event, property }) => [code, event.uid, property])).toEqual([
-      ["unsupported-rule", uid.bookClub, "RECURRENCE-ID"],
       ["date-kind-mismatch", uid.advent, "RRULE"],
     ]);
     expect(expansion.issues).toEqual([]);
@@ -474,16 +473,23 @@ describe("iCloud export", () => {
     expect(keys("2026-10-04", "2026-10-05", "Australia/Sydney")).toEqual(["2026-10-03T23:00:00Z"]);
   });
 
-  test("moves only the occurrence a RANGE=THISANDFUTURE override names, as ADR 0048 decides", () => {
+  test("moves the occurrence a RANGE=THISANDFUTURE override names and every later one", () => {
     const { expansion } = expandFixture(icloud, "2026-04-01", "2026-08-01", "America/New_York");
-    // Apple meant 18:30 from 29 May on; the bridge reports unsupported-rule and later last
-    // Fridays keep 19:00.
+    // Apple moved the book club to 18:30 from 29 May on. The series ends before it, and a new one,
+    // with the override's ID and title, keeps 18:30 on later last Fridays.
     expect(occurrencesOf(expansion, uid.bookClub, "America/New_York")).toEqual([
       ["2026-04-24T23:00:00Z", "2026-04-24T19:00", "2026-04-24T21:00"],
-      ["2026-05-29T23:00:00Z", "2026-05-29T18:30", "2026-05-29T20:30"],
-      ["2026-06-26T23:00:00Z", "2026-06-26T19:00", "2026-06-26T21:00"],
-      ["2026-07-31T23:00:00Z", "2026-07-31T19:00", "2026-07-31T21:00"],
     ]);
+    const later = `${uid.bookClub}::2026-05-29T23:00:00Z`;
+    expect(occurrencesOf(expansion, later, "America/New_York")).toEqual([
+      ["2026-05-29T22:30:00Z", "2026-05-29T18:30", "2026-05-29T20:30"],
+      ["2026-06-26T22:30:00Z", "2026-06-26T18:30", "2026-06-26T20:30"],
+      ["2026-07-31T22:30:00Z", "2026-07-31T18:30", "2026-07-31T20:30"],
+    ]);
+    const titles = expansion.occurrences
+      .filter((occurrence) => occurrence.recurrence?.seriesId === later)
+      .map((occurrence) => occurrence.event.title);
+    expect(new Set(titles)).toEqual(new Set(["Book club (new time)"]));
   });
 
   test("repeats birthdays every year, one on 29 February only in leap years", () => {
@@ -521,5 +527,113 @@ describe("iCloud export", () => {
       until: "2026-12-24",
     });
     expect(days({ timeZone: "UTC" })).toMatchObject({ until: "2026-12-25" });
+  });
+});
+
+describe("Exchange 2003 (CDO) export", () => {
+  // Exchange's CDO wrote all-day events as midnight-to-midnight times in the owner's zone, with
+  // X-MICROSOFT-CDO-ALLDAYEVENT:TRUE, and an old-style TZID that names Berlin.
+  const cdo = "exchange-cdo-recurring.ics";
+  const prefix = "CD0000008B9511D182D800C04FB1625D";
+  const uid = {
+    christmas: `${prefix}9E4C1B7A3F8D2E6C0B5A9F4E1D7C3B8A`,
+    maintenance: `${prefix}1B8F3E6A0C4D9B2E7F1A5C8D3B6E0F4A`,
+    offsite: `${prefix}3A6E1F0C2B7D4E8A9F0B1C2D3E4F5A6B`,
+    wfh: `${prefix}7C2A9E4B1F6D3C8A5E2B9F7D4A1C6E3B`,
+  };
+
+  test("reads the flagged events as all-day on their written dates, without issues", () => {
+    const { bridged, calendar, expansion, parseIssues, snapshot } = expandFixture(
+      cdo,
+      "2026-09-01",
+      "2027-01-01",
+      "Europe/Berlin",
+    );
+    expect(parseIssues).toEqual([]);
+    expect(calendar.timeZone).toBeUndefined();
+    expect(bridged.issues).toEqual([]);
+    expect(expansion.issues).toEqual([]);
+    expect(snapshot.issues).toEqual([]);
+    const placed = (id: string) => {
+      const event = bridged.events.find((item) => item.id === id)!;
+      return [event.kind, String(event.start), String(event.end)];
+    };
+    expect(placed(uid.offsite)).toEqual(["all-day", "2026-10-12", "2026-10-14"]);
+    expect(placed(uid.christmas)).toEqual(["all-day", "2025-12-24", "2025-12-25"]);
+    // X-MICROSOFT-CDO-ALLDAYEVENT:FALSE: a timed day from midnight to midnight.
+    expect(placed(uid.maintenance)).toEqual([
+      "timed",
+      "2026-10-16T22:00:00Z",
+      "2026-10-17T22:00:00Z",
+    ]);
+  });
+
+  test("keeps an all-day series' midnight EXDATE, RECURRENCE-ID and UTC UNTIL on their dates", () => {
+    const { expansion } = expandFixture(cdo, "2026-11-01", "2027-01-01", "Europe/Berlin");
+    // UNTIL=20261217T230000Z is midnight on 18 December in Berlin, so that Friday is the last.
+    // 27 November is excluded, and 11 December moved to Thursday 10 December.
+    expect(occurrencesOf(expansion, uid.wfh, "Europe/Berlin")).toEqual([
+      ["2026-11-06", "2026-11-06", "2026-11-07"],
+      ["2026-11-13", "2026-11-13", "2026-11-14"],
+      ["2026-11-20", "2026-11-20", "2026-11-21"],
+      ["2026-12-04", "2026-12-04", "2026-12-05"],
+      ["2026-12-11", "2026-12-10", "2026-12-11"],
+      ["2026-12-18", "2026-12-18", "2026-12-19"],
+    ]);
+    expect(overridesOf(expansion, uid.wfh)).toEqual([
+      ["2026-12-11", "Working from home (Thursday this week)"],
+    ]);
+    expect(occurrencesOf(expansion, uid.christmas, "Europe/Berlin").map(([key]) => key)).toEqual([
+      "2026-12-24",
+    ]);
+  });
+});
+
+describe("Exchange 2010 published calendar", () => {
+  // A published Exchange calendar has no X-WR-TIMEZONE. Its all-day series end with a UTC UNTIL at
+  // the owner's midnight, and its overrides name them by a zoned midnight.
+  const published = "exchange-published.ics";
+  const prefix = "040000008200E00074C5B7101A82E00800000000";
+  const uid = {
+    office: `${prefix}A1B2C3D4E5F6DC0100000000000000001000000011223344556677889900AABB`,
+    sync: `${prefix}B2C3D4E5F6A7DC01000000000000000010000000223344556677889900AABBCC`,
+  };
+
+  test("reads the UTC UNTIL in the zone its TZIDs name, and bridges without issues", () => {
+    const { bridged, calendar, expansion, snapshot } = expandFixture(
+      published,
+      "2026-07-01",
+      "2026-09-01",
+      "Europe/Berlin",
+    );
+    expect(calendar.timeZone).toBeUndefined();
+    expect(bridged.issues).toEqual([]);
+    expect(expansion.issues).toEqual([]);
+    expect(snapshot.issues).toEqual([]);
+    // UNTIL=20260817T220000Z is midnight on Tuesday 18 August in Berlin; read in UTC it would be
+    // 17 August and lose that Tuesday.
+    expect(occurrencesOf(expansion, uid.office, "Europe/Berlin").map(([key]) => key)).toEqual([
+      "2026-07-14",
+      "2026-07-16",
+      "2026-07-21",
+      "2026-07-23",
+      "2026-07-28",
+      "2026-07-30",
+      "2026-08-04",
+      "2026-08-06",
+      "2026-08-11",
+      "2026-08-13",
+      "2026-08-18",
+    ]);
+    expect(overridesOf(expansion, uid.office)).toEqual([
+      ["2026-07-30", "Office days (Friday this week)"],
+    ]);
+    const utc = expandFixture(published, "2026-07-01", "2026-09-01", "Europe/Berlin", {
+      timeZone: "UTC",
+    });
+    expect(occurrencesOf(utc.expansion, uid.office, "Europe/Berlin").at(-1)?.[0]).toBe(
+      "2026-08-13",
+    );
+    expect(startsIn(expansion, uid.sync, "Europe/Berlin")).toHaveLength(6);
   });
 });

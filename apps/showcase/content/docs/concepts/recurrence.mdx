@@ -105,8 +105,11 @@ events change and the series is expanded again.
 
 ## Limits
 
-- **RANGE=THISANDFUTURE** isn't supported. Google Calendar and Outlook split series instead. The ICS
-  bridge reports it and treats the override as one that replaces only its own occurrence.
+- **RANGE=THISANDFUTURE** isn't part of the model. Google Calendar and Outlook split series
+  instead, and the ICS bridge splits a series at such an override the same way, so Apple's "this and
+  future" changes show on every later occurrence. When the rule can't follow the change, as a
+  BYSETPOS rule moved to another day can't, the bridge reports it and the override replaces only its
+  own occurrence.
 - **Drags use the calendar's clock.** In a time zone whose daylight saving time changes on other
   dates than the series' zone, dragging an occurrence by days with "All events" moves the series'
   time by an hour, unless the edit gets the calendar's `timeZone`, which
