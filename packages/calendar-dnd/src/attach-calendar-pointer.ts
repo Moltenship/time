@@ -499,7 +499,9 @@ export function attachCalendarPointer<
       scrollContainer: options.scrollContainer?.current ?? scrollableAncestor(event.target),
       surface,
       surfaceColumns: options.columns,
-      touchTarget: event.pointerType === "touch" ? event.target : null,
+      // The region listens already; adding its listener again would add nothing, and removing it
+      // when the gesture ends would leave the region deaf.
+      touchTarget: event.pointerType === "touch" && event.target !== region ? event.target : null,
     };
     session = current;
 
@@ -513,7 +515,7 @@ export function attachCalendarPointer<
     if (event.pointerType === "touch") {
       // A scrolling view can drop the pressed element as a drag scrolls it; its touch moves still
       // go to it, off the page, where the region doesn't hear them.
-      event.target.addEventListener("touchmove", onTouchMove, { passive: false });
+      current.touchTarget?.addEventListener("touchmove", onTouchMove, { passive: false });
       current.longPress = setTimeout(() => activate(current), LONG_PRESS_MS);
     }
   }
@@ -521,14 +523,17 @@ export function attachCalendarPointer<
   /**
    * Holds the page still under a drag that has started. The region listens from the start, not
    * from the long-press: Safari on iOS decides whether a touch can cancel scrolling when the touch
-   * begins. A non-passive listener makes a swipe's first move wait for the main thread.
+   * begins. A non-passive listener makes each touch on the region wait for the main thread before
+   * it scrolls, so a region disabled when it's attached doesn't listen.
    */
   function onTouchMove(event: Event): void {
     if (session?.active === true) event.preventDefault();
   }
 
   region.addEventListener("pointerdown", onPointerDown);
-  region.addEventListener("touchmove", onTouchMove, { passive: false });
+  if (getOptions().disabled !== true) {
+    region.addEventListener("touchmove", onTouchMove, { passive: false });
+  }
   return () => {
     end();
     region.removeEventListener("pointerdown", onPointerDown);

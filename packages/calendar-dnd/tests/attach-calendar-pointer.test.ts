@@ -15,6 +15,7 @@ import {
   mountTimelineRows,
   place,
   pointer,
+  resetLayout,
   timedEvent,
   timeZone,
   xAt,
@@ -459,6 +460,36 @@ describe("time grid", () => {
     vi.advanceTimersByTime(450);
     expect(grid.region.getAttribute("data-interaction")).toBe("move");
     expect(windowListens.mock.calls.map(([type]) => type)).not.toContain("touchmove");
+  });
+
+  test("doesn't listen for touch moves on a region disabled when it's attached", () => {
+    const grid = mountTimeGrid([meeting]);
+    const regionListens = vi.spyOn(grid.region, "addEventListener");
+    setup(grid, { disabled: true });
+
+    expect(regionListens.mock.calls.map(([type]) => type)).toEqual(["pointerdown"]);
+  });
+
+  test("keeps the region listening after a press on the region itself", () => {
+    vi.useFakeTimers();
+    const { snapshot } = mountTimeGrid([]);
+    resetLayout();
+    // A one-day view with its ref on the day's own cell.
+    const region = document.createElement("div");
+    region.setAttribute("data-date", "2026-08-17");
+    document.body.append(place(region, { height: 100, left: 0, top: 0, width: 100 }, 0));
+    setup({ region, snapshot });
+    const touch = { pointerType: "touch" };
+
+    for (let press = 0; press < 2; press++) {
+      pointer("pointerdown", region, 50, 50, touch);
+      vi.advanceTimersByTime(450);
+      expect(region.getAttribute("data-interaction")).toBe("create");
+      const scroll = new Event("touchmove", { bubbles: true, cancelable: true });
+      region.dispatchEvent(scroll);
+      expect(scroll.defaultPrevented).toBe(true);
+      pointer("pointerup", region, 50, 50, touch);
+    }
   });
 
   test("holds the page still under a drag whose pressed element leaves the page", () => {

@@ -935,9 +935,10 @@ ancestor by default), `onPreview`, `disabled` (views pass their `isReadOnly` pro
 finger that rests before it scrolls still scrolls. A non-passive `touchmove` listener on the
 region, there from the start because iOS Safari decides at the touch's start whether it can cancel
 scrolling, holds the page still under an active drag; the pressed element gets one too, for a view
-that drops it mid-drag. The cost is that a swipe's first move waits for the main thread. While the
-root is editable, the built-in views also turn off text selection and the iOS touch callout on a
-coarse pointer. DOM event types do not leak into calendar callbacks.
+that drops it mid-drag. The cost is that a touch on the region waits for the main thread before
+it scrolls, so a disabled region, as on a read-only root, doesn't listen. While the root is
+editable, the built-in views also turn off text selection and the iOS touch callout on a coarse
+pointer. DOM event types do not leak into calendar callbacks.
 
 ### Policy pipeline
 
@@ -1210,7 +1211,7 @@ Automated axe checks, keyboard integration tests, reduced-motion tests, and manu
 - Accessibility scans; the manual screen-reader scripts are #186.
 - RTL and reduced-motion scenarios (reduced motion in Chromium only). On macOS 27, `browsers` runs
   WebKit alone (#182). Touch runs as touch pointer events everywhere and as real touches in
-  Chromium; iOS Safari itself needs a device (#217). Not built yet: zoom, high-DPI and
+  Chromium; iOS Safari itself needs a device (#220). Not built yet: zoom, high-DPI and
   ResizeObserver scenarios, and frame timing (there is no performance lab).
 
 ### Repository checks

@@ -165,6 +165,16 @@ describe(`touch gestures in ${server.browser}`, () => {
     expect(onEventChange).not.toHaveBeenCalled();
   });
 
+  test("the long-press runs on the page's timers, which the checks above fake", async () => {
+    await render(<Day onEventChange={() => {}} />);
+    const [x, y] = middle(event());
+
+    await longAfter(() => finger("pointerdown", event(), [x, y]));
+
+    expect(region().getAttribute("data-interaction")).toBe("move");
+    await finger("pointerup", event(), [x, y]);
+  });
+
   test("a long-press picks an event up, and the page holds still while it moves", async () => {
     const onEventChange = vi.fn<(change: Change) => void>();
     await render(<Day onEventChange={onEventChange} />);
@@ -312,8 +322,11 @@ describe.runIf(server.browser === "chromium")("a finger on Chromium's touch scre
     const [x, y] = middle(event());
 
     await touch("touchStart", [x, y]);
-    await slide([x, y], [x, y - 200]);
-    await touch("touchEnd");
+    try {
+      await slide([x, y], [x, y - 200]);
+    } finally {
+      await touch("touchEnd");
+    }
 
     await until(() => expect(body().scrollTop).toBeGreaterThan(start + 50));
     expect(region().hasAttribute("data-interaction")).toBe(false);
@@ -327,11 +340,15 @@ describe.runIf(server.browser === "chromium")("a finger on Chromium's touch scre
     const start = body().scrollTop;
     const [x, y] = middle(event());
 
+    // A failed check lifts the finger too, so the next test starts with none down.
     await touch("touchStart", [x, y]);
-    await until(() => expect(region().getAttribute("data-interaction")).toBe("move"));
-    await slide([x, y], [x, y + hour]);
-    expect(body().scrollTop).toBe(start);
-    await touch("touchEnd");
+    try {
+      await until(() => expect(region().getAttribute("data-interaction")).toBe("move"));
+      await slide([x, y], [x, y + hour]);
+      expect(body().scrollTop).toBe(start);
+    } finally {
+      await touch("touchEnd");
+    }
 
     await until(() =>
       expect(placed(onEventChange)).toBe("move 2026-10-08T11:00:00Z/2026-10-08T12:00:00Z"),
