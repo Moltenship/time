@@ -28,7 +28,13 @@ import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
 
-import { DATE_ROW_HEIGHT, LANE_HEIGHT, MonthWeekRow, type MonthFormats } from "./month-week";
+import {
+  DATE_ROW_HEIGHT,
+  laneHeight,
+  MonthWeekRow,
+  weekHeight,
+  type MonthFormats,
+} from "./month-week";
 
 export interface MonthViewOptions<TEvent> {
   /** Extra words for each event's accessible name, such as its calendar. */
@@ -68,7 +74,7 @@ function useLaneCapacity(body: RefObject<HTMLElement | null>, weekCount: number)
     const measure = () => {
       const rowHeight = Math.max(MIN_ROW_HEIGHT, element.clientHeight / weekCount);
       // One pixel for the row's bottom border.
-      setLanes(Math.max(1, Math.floor((rowHeight - 1 - DATE_ROW_HEIGHT) / LANE_HEIGHT)));
+      setLanes(Math.max(1, Math.floor((rowHeight - 1 - DATE_ROW_HEIGHT) / laneHeight(element))));
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
@@ -111,10 +117,7 @@ function rowSizes(weeks: readonly { readonly laneCount: number }[], expandedWeek
   const share = `max(${MIN_ROW_HEIGHT}px, ${100 / weeks.length}%)`;
   return weeks
     .map(({ laneCount }, index) =>
-      index === expandedWeek
-        ? // One pixel for the row's bottom border.
-          `max(${share}, ${DATE_ROW_HEIGHT + laneCount * LANE_HEIGHT + 1}px)`
-        : share,
+      index === expandedWeek ? `max(${share}, ${weekHeight(laneCount)})` : share,
     )
     .join(" ");
 }
@@ -184,7 +187,7 @@ function MonthView<TEvent>({
       {...keyboard}
       data-slot="month-view"
       className={cn(
-        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
+        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-month-lane:22px] any-pointer-coarse:[--calendar-month-lane:26px] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
         // A long-press on a touch screen picks events up: it selects no text and opens no callout.
         !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
       )}

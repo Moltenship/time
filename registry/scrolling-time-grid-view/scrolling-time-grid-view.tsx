@@ -471,3 +471,10 @@ export function createScrollingDayView<TEvent = unknown>(
 ) {
   return scrollingTimeGridView("scrolling-day", { count: 1, kind: "days" }, defaultOptions);
 }
+
+/** Three days from the anchor date, swiping three at a time, named `scrolling-3-day`. */
+export function createScrollingThreeDayView<TEvent = unknown>(
+  defaultOptions: TimeGridViewOptions<TEvent> = {},
+) {
+  return scrollingTimeGridView("scrolling-3-day", { count: 3, kind: "days" }, defaultOptions);
+}

@@ -21,6 +21,7 @@ describe("keyboard shortcuts", () => {
   test.each([
     ["t", { type: "today" }],
     ["d", { type: "view", view: "day" }],
+    ["x", { type: "view", view: "3-day" }],
     ["w", { type: "view", view: "week" }],
     ["m", { type: "view", view: "month" }],
     ["y", { type: "view", view: "year" }],
@@ -42,7 +43,7 @@ describe("keyboard shortcuts", () => {
   test("ignores modified keys, unknown keys, and inherited object keys", () => {
     expect(press("t", document.body, { metaKey: true })).toBeUndefined();
     expect(press("T", document.body, { shiftKey: true })).toBeUndefined();
-    expect(press("x")).toBeUndefined();
+    expect(press("q")).toBeUndefined();
     expect(press("constructor")).toBeUndefined();
   });
 

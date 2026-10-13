@@ -218,3 +218,13 @@ export function createWeekView<TEvent = unknown>(defaultOptions: TimeGridViewOpt
 export function createDayView<TEvent = unknown>(defaultOptions: TimeGridViewOptions<TEvent> = {}) {
   return timeGridView("day", { count: 1, kind: "days" }, defaultOptions);
 }
+
+/**
+ * Three columns from the anchor date, named `3-day`: more than a day where a week's seven columns
+ * don't fit, as on a phone. Previous and Next move three days.
+ */
+export function createThreeDayView<TEvent = unknown>(
+  defaultOptions: TimeGridViewOptions<TEvent> = {},
+) {
+  return timeGridView("3-day", { count: 3, kind: "days" }, defaultOptions);
+}

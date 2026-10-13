@@ -9,9 +9,14 @@ import { createScrollingAgendaView } from "@registry/scrolling-list-view/scrolli
 import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
 import {
   createScrollingDayView,
+  createScrollingThreeDayView,
   createScrollingWeekView,
 } from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
-import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
+import {
+  createDayView,
+  createThreeDayView,
+  createWeekView,
+} from "@registry/time-grid-view/time-grid-view";
 import { createYearView } from "@registry/year-view/year-view";
 
 import type { DemoOccurrence } from "./calendar";
@@ -37,14 +42,17 @@ const options = {
 export const demoViews = [
   createWeekView<DemoOccurrence>({ ...options, dayView: "day" }),
   createDayView<DemoOccurrence>(options),
+  createThreeDayView<DemoOccurrence>({ ...options, dayView: "day" }),
   createMonthView<DemoOccurrence>(options),
   createYearView<DemoOccurrence>(options),
   createAgendaView<DemoOccurrence>(options),
   createResourceColumnsView<DemoOccurrence>({ ...options, resourceStatus: true }),
   createTimelineWeekView<DemoOccurrence>({ ...options, resourceStatus: true }),
-  // The same day, week, month, and agenda, scrolling continuously; settings switch between the sets.
+  // The same day, 3 days, week, month, and agenda, scrolling continuously; settings switch between
+  // the sets.
   createScrollingWeekView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
   createScrollingDayView<DemoOccurrence>(options),
+  createScrollingThreeDayView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
   createScrollingMonthView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
   createScrollingAgendaView<DemoOccurrence>({ ...options, dayView: "scrolling-day" }),
 ] as const;

@@ -2,8 +2,10 @@ import { expect, test } from "vite-plus/test";
 
 import { viewFor } from "../src/scrolling";
 
-test("day, week, month, and agenda follow the scrolling setting both ways", () => {
+test("day, 3 days, week, month, and agenda follow the scrolling setting both ways", () => {
   expect(viewFor("week", true)).toBe("scrolling-week");
+  expect(viewFor("3-day", true)).toBe("scrolling-3-day");
+  expect(viewFor("scrolling-3-day", false)).toBe("3-day");
   expect(viewFor("agenda", true)).toBe("scrolling-agenda");
   expect(viewFor("scrolling-agenda", false)).toBe("agenda");
   expect(viewFor("day", true)).toBe("scrolling-day");

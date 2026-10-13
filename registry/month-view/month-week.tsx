@@ -29,9 +29,25 @@ import { Popover, PopoverContent, PopoverTrigger } from "@registry/ui/popover";
 
 import { MonthEvent } from "./month-event";
 
-/** Pixel height of a cell's date row and of one event lane; lanes are derived from these. */
+/**
+ * Pixel height of a cell's date row and of one event lane; lanes are derived from these. A view
+ * sets the lane's height as `--calendar-month-lane` on its root: 22 px, and 26 px where a pointer
+ * is coarse, so on a touch screen events and "+N more" are 24 px tall, as WCAG 2.5.8 asks.
+ */
 export const DATE_ROW_HEIGHT = 28;
 export const LANE_HEIGHT = 22;
+
+/** The lane height `element` lays out with, from `--calendar-month-lane`. */
+export function laneHeight(element: Element): number {
+  const value = parseFloat(getComputedStyle(element).getPropertyValue("--calendar-month-lane"));
+  return Number.isFinite(value) && value > 0 ? value : LANE_HEIGHT;
+}
+
+/** The height a week needs to show `laneCount` lanes, as a CSS length. */
+export function weekHeight(laneCount: number): string {
+  // One pixel for the row's bottom border.
+  return `calc(${DATE_ROW_HEIGHT + 1}px + ${laneCount} * var(--calendar-month-lane, ${LANE_HEIGHT}px))`;
+}
 
 export interface MonthFormats {
   readonly date: Intl.DateTimeFormat;
@@ -73,10 +89,11 @@ type Segment<TEvent> = DayGridSegment<TEvent, EventId, ResourceId>;
  * `100%` is one cell without its 1px grid line.
  */
 function laneStyle(lane: number, span = 1): CSSProperties {
+  const height = `var(--calendar-month-lane, ${LANE_HEIGHT}px)`;
   return {
-    height: LANE_HEIGHT - 2,
+    height: `calc(${height} - 2px)`,
     insetInlineEnd: `calc(${1 - span} * (100% + 1px))`,
-    top: DATE_ROW_HEIGHT + lane * LANE_HEIGHT + 1,
+    top: `calc(${DATE_ROW_HEIGHT + 1}px + ${lane} * ${height})`,
   };
 }
 

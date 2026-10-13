@@ -26,7 +26,12 @@ import {
   weekHidingFocus,
   type MonthViewOptions,
 } from "@registry/month-view/month-view";
-import { DATE_ROW_HEIGHT, LANE_HEIGHT, MonthWeekRow } from "@registry/month-view/month-week";
+import {
+  DATE_ROW_HEIGHT,
+  laneHeight,
+  MonthWeekRow,
+  weekHeight,
+} from "@registry/month-view/month-week";
 import { cn } from "cn";
 
 export interface ScrollingMonthViewOptions<TEvent> extends MonthViewOptions<TEvent> {
@@ -65,7 +70,7 @@ function useLaneCapacity(track: RefObject<HTMLElement | null>, count: number): n
       const height = element.getBoundingClientRect().height / count;
       // One pixel for the row's bottom border.
       if (height > 0)
-        setLanes(Math.max(1, Math.floor((height - 1 - DATE_ROW_HEIGHT) / LANE_HEIGHT)));
+        setLanes(Math.max(1, Math.floor((height - 1 - DATE_ROW_HEIGHT) / laneHeight(element))));
     };
     measure();
     if (typeof ResizeObserver === "undefined") return;
@@ -159,7 +164,7 @@ function ScrollingMonthView<TEvent>({
       {...keyboard}
       data-slot="scrolling-month"
       className={cn(
-        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
+        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-month-lane:22px] any-pointer-coarse:[--calendar-month-lane:26px] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
         // A long-press on a touch screen picks events up: it selects no text and opens no callout.
         !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
       )}
@@ -225,7 +230,7 @@ function ScrollingMonthView<TEvent>({
                   style={
                     expanded
                       ? {
-                          height: `max(100%, ${DATE_ROW_HEIGHT + week.laneCount * LANE_HEIGHT + 1}px)`,
+                          height: `max(100%, ${weekHeight(week.laneCount)})`,
                         }
                       : undefined
                   }

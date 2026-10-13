@@ -453,7 +453,8 @@ export function App() {
           </div>
           <Button
             aria-label="Create event"
-            className="fixed right-4 bottom-4 size-14 rounded-2xl shadow-lg lg:hidden"
+            // Above the views' events, which stack in their own layers.
+            className="fixed right-4 bottom-4 z-30 size-14 rounded-2xl shadow-lg lg:hidden"
             onClick={openCreate}
           >
             <PlusIcon className="size-6" />

@@ -13,6 +13,7 @@ import { ThemeToggle } from "./theme-toggle";
 
 const viewOptions: readonly ViewSwitcherOption<DemoView>[] = [
   { label: "Day", shortcut: "D", value: "day" },
+  { label: "3 days", shortcut: "X", value: "3-day" },
   { label: "Week", shortcut: "W", value: "week" },
   { label: "Month", shortcut: "M", value: "month" },
   { label: "Year", shortcut: "Y", value: "year" },

@@ -42,11 +42,11 @@ Then register the views:
 
 <include meta='title="calendar.tsx"'>../../examples/scrolling-views.tsx#views</include>
 
-The views are named `scrolling-week`, `scrolling-day`, and `scrolling-month`, and take the same
-options as their paged versions. `dayView` names the view a date opens; it defaults to `"day"` in
-the month. For another number of days, define a view with
+The views are named `scrolling-week`, `scrolling-3-day`, `scrolling-day`, and `scrolling-month`,
+and take the same options as their paged versions. `dayView` names the view a date opens; it
+defaults to `"day"` in the month. For another number of days, define a view with
 `scrollingTimeGridStrategy({ count, kind: "days" })` and `ScrollingTimeGridView`, as
-`scrolling-3-day` does above; it swipes that many days at a time.
+`createScrollingThreeDayView` does; it swipes that many days at a time.
 
 ## How they move
 

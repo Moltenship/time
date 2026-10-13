@@ -76,7 +76,8 @@ export function CalendarToolbar({ calendar, children, className, start }: Calend
           <ChevronRightIcon className="rtl:rotate-180" />
         </StepTrigger>
       </div>
-      <Title className="min-w-0 truncate text-base sm:text-xl" />
+      {/* On a phone a long title, such as a week across two years, wraps onto a second line. */}
+      <Title className="min-w-0 text-base max-sm:line-clamp-2 max-sm:leading-tight max-sm:text-balance sm:truncate sm:text-xl" />
       <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">{children}</div>
     </Toolbar>
   );

@@ -12,6 +12,8 @@ const views = [
 ] as const;
 ```
 
+- `createThreeDayView` shows three days from the anchor date, named `3-day`, for screens too narrow
+  for a week, such as a phone's.
 - The header shows the weekday and date and highlights today. Pass `dayView: "day"` to the week
   view to make each date open that registered view.
 - Overlapping events sit side by side, each widening into free lanes. Set `overlapLayout:

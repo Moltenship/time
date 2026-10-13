@@ -1,11 +1,4 @@
-import {
-  availabilityPolicy,
-  createCalendar,
-  defineCalendarView,
-  defineEventAdapter,
-  scrollingTimeGridStrategy,
-  timeGridStrategy,
-} from "@moltenship/calendar";
+import { availabilityPolicy, createCalendar, defineEventAdapter } from "@moltenship/calendar";
 import { useState, useSyncExternalStore, type CSSProperties } from "react";
 
 import { calendarAnnouncements } from "@registry/calendar/announcements";
@@ -18,13 +11,13 @@ import { createScrollingAgendaView } from "@registry/scrolling-list-view/scrolli
 import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
 import {
   createScrollingDayView,
+  createScrollingThreeDayView,
   createScrollingWeekView,
-  ScrollingTimeGridView,
 } from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
 import {
   createDayView,
+  createThreeDayView,
   createWeekView,
-  TimeGridView,
   type TimeGridViewOptions,
 } from "@registry/time-grid-view/time-grid-view";
 import { Button } from "@registry/ui/button";
@@ -80,28 +73,6 @@ const timeGridOptions: TimeGridViewOptions<PreviewEvent> = { dayView: "day", get
 /** Changes outside working hours are saved, flagged, and announced as outside them. */
 const availabilityPolicies = [availabilityPolicy<PreviewEvent, string, never>({ mode: "warn" })];
 
-// Narrow screens show the week as three columns; the registry renderer draws any time-grid span.
-const threeDayView = defineCalendarView({
-  defaultOptions: timeGridOptions,
-  name: "3-day",
-  strategy: timeGridStrategy<TimeGridViewOptions<PreviewEvent>, PreviewEvent>({
-    count: 3,
-    kind: "days",
-  }),
-  Renderer: TimeGridView<PreviewEvent>,
-});
-
-// Three days at a time, swiping to the next three.
-const scrollingThreeDayView = defineCalendarView({
-  defaultOptions: { dayView: "scrolling-day", getEventColor },
-  name: "scrolling-3-day",
-  strategy: scrollingTimeGridStrategy<TimeGridViewOptions<PreviewEvent>, PreviewEvent>({
-    count: 3,
-    kind: "days",
-  }),
-  Renderer: ScrollingTimeGridView<PreviewEvent>,
-});
-
 const Calendar = createCalendar<PreviewEvent, never>()({
   eventAdapter: defineEventAdapter<PreviewEvent>()({
     getId: (event) => event.id,
@@ -111,13 +82,14 @@ const Calendar = createCalendar<PreviewEvent, never>()({
   }),
   views: [
     createWeekView<PreviewEvent>(timeGridOptions),
-    threeDayView,
+    // Narrow screens show the week as three columns.
+    createThreeDayView<PreviewEvent>(timeGridOptions),
     createDayView<PreviewEvent>({ getEventColor }),
     createMonthView<PreviewEvent>({ getEventColor }),
     createYearView<PreviewEvent>({ getEventColor }),
     createAgendaView<PreviewEvent>({ getEventColor }),
     createScrollingWeekView<PreviewEvent>({ dayView: "scrolling-day", getEventColor }),
-    scrollingThreeDayView,
+    createScrollingThreeDayView<PreviewEvent>({ dayView: "scrolling-day", getEventColor }),
     createScrollingDayView<PreviewEvent>({ getEventColor }),
     createScrollingMonthView<PreviewEvent>({ dayView: "scrolling-day", getEventColor }),
     createScrollingAgendaView<PreviewEvent>({ dayView: "scrolling-day", getEventColor }),

@@ -237,6 +237,11 @@ specific elements:
 `vp run browsers` runs the same checks in Firefox and WebKit (WebKit alone on macOS 27, where
 Playwright's Firefox doesn't start), except the reduced-motion tests, which run in Chromium.
 
+On touch screens, month events and "+N more" are 24 px tall. A test emulates a 375 px touch screen
+in Chromium and checks that every target in the day, 3-day, month, year, agenda and resource views
+is at least 24 px, or spaced as WCAG 2.5.8 allows. The week view isn't among them: on a phone its
+seven columns are too narrow for its events, so offer the 3-day view there.
+
 A separate test checks the [theme](/docs/theming) against WCAG AA in both color schemes: event text
 on every event color, the today marker, the now line, and the focus ring. If you override `--ring`,
 keep it at 3:1 or more against your background, even at 50% opacity. shadcn's default light ring is
