@@ -94,7 +94,7 @@ Open:
 14. **Registry labels are English literals**, not a messages contract: they're source the app owns and edits. Since #205, §18 says so: registry source is where apps localize. *Owner:* confirm, or ask for a contract (#207).
 15. **`tools/a11y` sits outside the package graph.** It isn't in `tests/dependency-boundaries.test.ts`'s matrix, and it imports the demo's `App` by a relative path. #209.
 16. **The year view's popover renders all 365 day triggers on each open and close.** Performance on slow devices; the tests no longer feel it since #204 dropped React's act warning (Firefox's whole year-view file takes under 8 s on a runner). #197.
-17. **Found by #205:** a keyboard preview marks the event `isPending` (#198); a `Root` without `onEventChange` still starts drags and keyboard grabs (#201); `CalendarEventSource` is exported but nothing accepts it (#200, to decide before rc.1). Post-1.0: a public read of pending changes (#199), locale week rules (#202). #198, #200 and #201 are p2 without a milestone; #207 proposes the 1.0 milestone for them.
+17. **Found by #205:** a keyboard preview marks the event `isPending` (#198); a `Root` without `onEventChange` still started drags and keyboard grabs (#201, fixed in #214); `CalendarEventSource` is exported but nothing accepts it (#200, to decide before rc.1). Post-1.0: a public read of pending changes (#199), locale week rules (#202). #198 and #200 are p2 without a milestone; #207 proposes the 1.0 milestone for them.
 18. **Extreme load.** Under 15 spinning threads on 15 cores, before #195 and #204, `ready:full` failed 3 of 3, once after a 26-minute stall; no run at that load has been made since. The watchdog fails a page that stops making progress in two minutes, shown on a page that spins its main thread, not under that load. The cause of the stalls inside the browsers wasn't chased. No issue: a known limit.
 
 ## Browsers
@@ -137,8 +137,8 @@ Each open finding, and whether it blocks the release candidate. The owner's step
 | The npm scope, the `npm` environment, the publish path, rc.1 or 1.0.0, and a `release.yml` rehearsal | Yes | Owner setup and decisions, in #207. |
 | #1 and #5, the p0 epics | Relabel | Trackers, not work; they keep "no p0/p1 left" from being true. |
 | #180, an empty week's scroll area | No; the owner decides for 1.0 | Tagged WCAG 2.1.1 (Level A) by axe, though arrow keys reach the slots. |
-| #201, read-only roots still start drags and grabs | No, fix before 1.0 | A behaviour bug, not an API change. If rc.1 goes out first, `latest` points at it, so default installs get it until 1.0. |
-| #198, keyboard previews mark the event `isPending` | No, fix before 1.0 | A wrong state during a keyboard gesture; the same `latest` caveat. |
+| #201, read-only roots still start drags and grabs | No, resolved | Fixed in #214: views get `isReadOnly`, and a root without `onEventChange` starts no drags, grabs or resize handles. |
+| #198, keyboard previews mark the event `isPending` | No, fix before 1.0 | A wrong state during a keyboard gesture. If rc.1 goes out first, `latest` points at it, so default installs get it until 1.0. |
 | #197, the year view renders 365 triggers per popover | No | Performance on slow devices. |
 | #187, whole-day moves shift silently in a DST gap | No | The docs are now accurate; the behaviour is the owner's call. |
 | #181, #182, #184, #188, #189, #209, gaps 6, 8, 14, 18 | No | p2 or docs, tracked in their issues; gaps 6, 8 and 14 are owner decisions in #207. |
