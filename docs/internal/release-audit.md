@@ -60,7 +60,7 @@ Closed by the audit's PRs:
 
 Open:
 
-1. **§10 described transaction APIs the code doesn't have**: `onTransactionStateChange`, a transaction controller, and other `cause` values. Closed by #191's PR: §10 describes the code, and a public transaction-state API is #199.
+1. **§10 described transaction APIs the code doesn't have**: `onTransactionStateChange`, a transaction controller, and other `cause` values. Closed by #205: §10 describes the code, and a public transaction-state API is #199.
 2. **§4.5 promises announced DST gap shifts.** Views get `environment.disambiguation` and the helpers honour it, but the time grid can't place a drop in a gap, and nothing carries or announces a shift. #187.
 3. **The performance contract.** Its numbers are local reference-hardware benchmarks, not run in CI or `ready:full`, by design. The layout and pointer-frame rows time reference code, and nothing measures scrolling; the scrolling agenda re-projects its whole load range on each anchor move. #188.
 4. **Parity in the resource views**: no pointer-versus-keyboard equality check for resource columns or the resource timeline. #189.

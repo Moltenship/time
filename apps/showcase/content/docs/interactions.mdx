@@ -12,7 +12,8 @@ This page uses the `Calendar` and `Meeting` from the [Quick start](/docs/quick-s
 
 ## Saving changes
 
-Pass `onEventChange` to `Root`. Without it, the calendar is read-only.
+Pass `onEventChange` to `Root`. Without it, every change is rejected as `read-only`: drags and
+keyboard grabs still start and their previews show as invalid, but nothing is saved.
 
 <include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#root</include>
 
@@ -29,8 +30,7 @@ The handler receives a change object:
 | `warnings` | Reasons policies flagged the change with but let through, such as `"outside-availability"`. Absent when there are none |
 
 `applyChange` turns a change into new state. A created event needs an ID of your own, usually from
-your server; this example makes one up. Records you don't touch stay the same objects, which keeps
-re-rendering cheap:
+your server; this example makes one up. Records you don't touch stay the same objects:
 
 <include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#apply</include>
 
@@ -58,7 +58,7 @@ reads `isPending: true` until the gesture ends; the built-in views don't show it
 
 If the same event changes again before the first change finishes saving, the calendar shows the
 newer change. Your handler still receives both, unless an async policy was still deciding on the
-first; that one resolves as `superseded` without reaching it. Their saves can finish in either
+first; that one is rejected with the reason `superseded` and never reaches your handler. Their saves can finish in either
 order, or one can fail. The example numbers each change as it starts. When a save succeeds, it updates the state
 only if no newer change to that event has been applied yet. So a slow save never replaces a newer
 saved edit, and if the newer save fails, the older one that succeeded is still shown. Your server
@@ -70,15 +70,15 @@ Policies decide which changes are allowed. Each one looks at a change and accept
 rejects it, or accepts it with a warning in `change.warnings`. They run in order, and each sees the change as adjusted by the ones before it. Pass
 them to `Root` as `policies`, as in the example above.
 
-| Policy                                   | What it does                                                                                                               |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `snapPolicy({ minutes: 15 })`            | Rounds timed and floating changes to a grid in the calendar's time zone                                                    |
-| `minimumDurationPolicy({ minutes: 15 })` | Lengthens timed and floating events that would be shorter than the minimum                                                 |
-| `boundsPolicy({ start, end })`           | Rejects changes that end up outside the given instants                                                                     |
-| `availabilityPolicy({ mode })`           | Blocks changes outside [working hours](/docs/availability), or saves them with a warning in `change.warnings`              |
-| `conflictPolicy({ mode })`               | Blocks changes that double-book a resource with another busy event, or saves them with a warning. Deletes always pass      |
-| `readOnlyResourcesPolicy(isReadOnly)`    | Rejects changes to the schedule of the resources `isReadOnly(resourceId)` marks                                            |
-| `readOnlyPolicy()`                       | Rejects changes to events your adapter marks with `isReadOnly`. `Root` always runs it first, so you don't need to pass it. |
+| Policy                                   | What it does                                                                                                                                |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `snapPolicy({ minutes: 15 })`            | Rounds timed and floating changes to a grid in the calendar's time zone                                                                     |
+| `minimumDurationPolicy({ minutes: 15 })` | Lengthens timed and floating events that would be shorter than the minimum                                                                  |
+| `boundsPolicy({ start, end })`           | Rejects changes that end up outside the given instants                                                                                      |
+| `availabilityPolicy({ mode })`           | Blocks changes outside [working hours](/docs/availability), or saves them with a warning in `change.warnings`                               |
+| `conflictPolicy({ mode })`               | Blocks a change that makes a busy event overlap another busy event on one of its resources, or saves it with a warning. Deletes always pass |
+| `readOnlyResourcesPolicy(isReadOnly)`    | Rejects changes to the schedule of the resources `isReadOnly(resourceId)` marks                                                             |
+| `readOnlyPolicy()`                       | Rejects changes to events your adapter marks with `isReadOnly`. `Root` always runs it first, so you don't need to pass it.                  |
 
 A policy is a function, so you can write your own. This one keeps meetings out of the all-day row.
 Policies can also be `async`, for example to check availability on your server.
@@ -146,8 +146,8 @@ the props the Renderer receives, and put the returned ref on the element that co
 
 <include meta='title="my-week-view.tsx"'>../examples/pointer-view.tsx#view</include>
 
-Pass `columns` in views with a time axis, a time grid or an hour timeline; a month grid finds days by
-their `data-date`. The hook reads these attributes from your markup:
+Pass `columns` in views with a time axis: a time grid, resource columns or an hour timeline. A month
+grid or a day timeline finds days by their `data-date`. The hook reads these attributes from your markup:
 
 | Element                                                     | Attribute                                                   |
 | ----------------------------------------------------------- | ----------------------------------------------------------- |

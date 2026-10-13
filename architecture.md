@@ -159,7 +159,7 @@ All of these publish except `calendar-testing`, which stays private until after 
 | `temporal-polyfill`                   | `apps/demo`, `apps/showcase`, `tools/a11y` | Browsers without native `Temporal`                        | Installs itself only where `Temporal` is missing; the demo and the docs islands also import it only then, and `tools/a11y` swaps it in for WebKit's; never imported by packages or registry source |
 | Next.js 16 + Fumadocs           | `apps/showcase`                    | App Router SSG, typed MDX content, documentation layouts, navigation, and search | Application-only; absent from published package manifests and declarations |
 
-The lockfile pins every version; the `pnpm-workspace.yaml` catalog sets most exactly and a few as caret ranges. The architecture commits to the boundary and major line, not to an untested floating dependency.
+Versions live in the catalog and the lockfile, as above. The architecture commits to the boundary and major line, not to an untested floating dependency.
 
 ### Registry composition
 
@@ -312,7 +312,7 @@ Day and week views use wall-clock axes. DST behavior is explicit:
 - The time grid resolves a pointer position by snapping on the wall grid, so a drop or create target is never inside a skipped hour: a snapped time in a gap resolves to the transition instant (ADR 0016).
 - Moves apply whole days on the wall clock, then the rest as exact time. A wall time that lands in a gap moves later by the gap's length, as Temporal's `"compatible"` does.
 - `Root` takes `disambiguation` (default `"compatible"`) and passes it to views as `environment.disambiguation`, for views and helpers that resolve wall times themselves. The built-in interaction path doesn't read it, and no change carries or announces a shift yet (#187).
-- Policies may reject the proposal instead.
+- A policy can still reject a change whose time lands in or beside a gap.
 
 `Calendar.Root` can also take `secondaryTimeZones`, other zones time grids label their hours in (ADR 0165). They're an environment input beside `timeZone`, not a display zone: events still project into one zone. Each hour line is read on its own date, in both zones' rules, never through a fixed offset; a skipped wall time has no time in the other zone and a repeated one has both. One gutter serves all columns, so it follows the first visible day on which neither zone changes its clocks; the runs of lines on other days that read differently are listed as shifts.
 
@@ -349,11 +349,12 @@ Rules:
 5. Iterators are lazy where ranges may be large.
 6. Every helper that resolves a nominal wall time requires a timezone and says how gaps and folds
    resolve. `resolveZonedWallTime` and `slotsInZonedDay` take a `disambiguation` policy;
-   `snapZonedWallTime` takes a `fold` choice (`"earlier"` by default) and resolves a skipped time
-   to the transition instant. Day-boundary and instant-splitting helpers require a timezone and use Temporal's unique
-   start-of-day semantics, including the first real instant after a midnight gap. Boundary-day
-   ownership remains authoritative when a historical cross-midnight fold projects an instant onto
-   an adjacent wall date; slot results expose such physical pieces as explicit carryover metadata.
+   `snapZonedWallTime` takes a `fold` choice (`"earlier"` by default) and resolves a skipped time to
+   the transition instant. Day-boundary and instant-splitting helpers require a timezone and use
+   Temporal's unique start-of-day semantics, including the first real instant after a midnight gap.
+   Boundary-day ownership remains authoritative when a historical cross-midnight fold projects an
+   instant onto an adjacent wall date; slot results expose such physical pieces as explicit
+   carryover metadata.
 7. Property tests cover interval operations, date and instant iteration, month grids, PlainTime
    and zoned snapping, and zoned slots. Day ranges and splits, wall-time projection, keys and
    instant rounding have example tests; the zoned ones cover DST gaps, folds and midnight
@@ -416,8 +417,8 @@ A snapshot contains:
 - `issues`: the records left out as invalid, with their codes;
 - a monotonic snapshot version;
 - a query cache for range and resource queries, bounded by an LRU limit (`queryCacheSize`, 128 by
-  default; `Root` always uses the default). Projections aren't cached in the snapshot; `Root` memoizes the active view's
-  projection on its inputs.
+  default; `Root` always uses the default). Projections aren't cached in the snapshot; `Root`
+  memoizes the active view's projection on its inputs.
 
 The interval-tree implementation is wrapped behind an internal `IntervalIndex` interface. Its types never escape the core package, so it can be replaced only after benchmark evidence and an ADR.
 
@@ -429,8 +430,8 @@ The interval-tree implementation is wrapped behind an internal `IntervalIndex` i
 - A changed array triggers one normalization pass, not work per rendered component. The interval
   indexes are rebuilt only when records were added, removed or reordered, or a record's normalized
   fields changed (with a revision accessor, only when its revision changed).
-- Duplicate IDs, invalid intervals, IDs and revisions, and adapter failures are reported in every build,
-  as `snapshot.issues` and as `invalid-event` diagnostics through `meta.diagnostics` and
+- Duplicate IDs, invalid intervals, IDs and revisions, and adapter failures are reported in every
+  build, as `snapshot.issues` and as `invalid-event` diagnostics through `meta.diagnostics` and
   `onDiagnosticsChange`. Nothing detects a mutated array or record yet.
 - A revision accessor permits structural reuse when event objects are recreated but unchanged.
 - Invalid-event behavior is set by `invalidEventPolicy` on `createCalendar`: `"report-and-skip"`
@@ -485,8 +486,9 @@ interface CalendarViewStrategy<TProjection, TOptions = undefined, TEvent = unkno
 ```
 
 The strategy has no name; the view does. Pointer geometry is not part of it: views mark their DOM
-(`data-date`, `data-all-day`, `data-event-id`, `data-resize`, `data-resource-id`) and pass time-grid `columns` to
-`useCalendarPointer`.
+(`data-date`, `data-all-day`, `data-event-id`, `data-resize`, `data-resource-id`, and others listed
+in the interactions docs) and pass the projection's time `columns` to `useCalendarPointer` in time
+grids, resource columns and hour timelines.
 
 React binds a strategy to a renderer:
 
@@ -550,14 +552,14 @@ places the visible range at the axis start, and the axis extends before it in a 
 
 ```ts
 interface CalendarResource<TData = unknown, TResourceId extends ResourceId = string> {
-  id: TResourceId;
-  title: string;
-  parentId?: TResourceId;
-  data: TData;
+  readonly id: TResourceId;
+  readonly title: string;
+  readonly parentId?: TResourceId;
+  readonly data: TData;
   /** The IANA time zone the resource keeps; its working hours follow it. */
-  timeZone?: string;
+  readonly timeZone?: string;
   /** When it can be booked; the calendar's `availability` by default. */
-  availability?: ResourceAvailability;
+  readonly availability?: ResourceAvailability;
 }
 ```
 
@@ -569,19 +571,19 @@ Annotations are time-based information shown beside events without being events:
 
 ```ts
 interface CalendarAnnotation<TData = unknown, TResourceId extends ResourceId = never> {
-  id: AnnotationId;
-  sourceId: string;
-  start: Temporal.Instant;
-  end: Temporal.Instant;
-  title: string;
-  resourceIds?: readonly TResourceId[];
-  data?: TData;
+  readonly id: AnnotationId;
+  readonly sourceId: string;
+  readonly start: Temporal.Instant;
+  readonly end: Temporal.Instant;
+  readonly title: string;
+  readonly resourceIds?: readonly TResourceId[];
+  readonly data?: TData;
 }
 
 interface CalendarAnnotationSource {
-  id: string;
-  label: string;
-  mergeGap?: Temporal.Duration;
+  readonly id: string;
+  readonly label: string;
+  readonly mergeGap?: Temporal.Duration;
 }
 ```
 
@@ -599,6 +601,8 @@ The recommended API creates a typed calendar namespace once:
 
 ```tsx
 import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
+// View factories are registry source, installed with `shadcn add`.
+import { createMonthView } from "@/components/calendar/month-view";
 
 const eventAdapter = defineEventAdapter<ApiEvent>()({
   getId: (event) => event.id,
@@ -664,9 +668,9 @@ input as `CalendarViewProjectionInput<TOptions, TEvent>`.
 ```
 
 Each view's Renderer draws its events. The month, time-grid and resource views, and the scrolling
-week, day and month, attach the pointer layer, which draws drag previews itself; the year and agenda
-views don't. `TeamCalendar.Event eventId={id}` looks up one event anywhere inside `Root` and calls its
-children with `{ event, normalized }`.
+week, day and month, attach the pointer layer, which draws drag previews itself; the year view and
+both agendas don't. `TeamCalendar.Event eventId={id}` looks up one event anywhere inside `Root` and
+calls its children with `{ event, normalized }`.
 
 API rules:
 
@@ -701,15 +705,15 @@ State is divided by ownership and update frequency.
 - There is no provider-less global state. Each factory (`createCalendar<…>()({…})`) makes its own
   React contexts, so a calendar inside another reads its own root. Module-level hooks such as
   `useCalendarFocus`, `useCalendarKeyboard` and `useNow` read the nearest root of any factory.
-- The store is the React package's own (`store.ts`): a frozen snapshot of the six slices
-  (only uncontrolled ones change), a listener set, `getSnapshot()`, `subscribe()`, and six `set*` actions. It has no runtime
-  dependency. `calendar-react` dropped Jotai in #70 (#184).
+- The store is the React package's own (`store.ts`): a frozen snapshot of the six slices (only
+  uncontrolled ones change), a listener set, `getSnapshot()`, `subscribe()`, and six `set*` actions.
+  It has no runtime dependency. `calendar-react` dropped Jotai in #70 (#184).
 - `Root` reads state through `useSyncExternalStore`. `useCalendarStateBinding` (`state-binding.ts`)
   overlays the controlled props on the store's snapshot during render and caches the merged object
   per snapshot.
 - Each mounted `Root` binds to the store with its controlled props and handlers. It publishes them
-  in an insertion effect, so commands, which run only after a commit, see the latest. `store.actions`
-  go through the most recently mounted root.
+  in an insertion effect, so commands, which run only after a commit, see the latest.
+  `store.actions` go through the most recently mounted root.
 - Stable semantic actions read the last commit's inputs (view options, environment, event snapshot,
   policies, handlers) and the latest requested state: the committed state plus requests made since,
   so commands in one handler compose. Both are published in insertion effects, before descendant
@@ -850,16 +854,17 @@ Lifecycle:
    shows as pending.
 5. `onEventChange` gets the accepted change. A handler that returns nothing has already updated
    `events`, so the change commits at once and nothing stays pending.
-6. A handler that returns a promise keeps an update shown, and a delete hidden, at least until
-   the promise settles (step 7). Those events carry `isPending: true`. Creates get no overlay; they appear when `events`
-   include them.
+6. A handler that returns a promise keeps an update shown, and a delete hidden, at least until the
+   promise settles (step 7). Those events carry `isPending: true`. Creates get no overlay; they
+   appear when `events` include them.
 7. When the promise resolves, the overlay goes if `events` already reflect the change: the event's
    `revision` changed, its placement matches, or it is gone. Otherwise the next new `events` decide,
    whether they include the change or not. New `events` that arrive while the handler still runs
    don't end it.
-8. A rejection or a throw rolls the change back. The latest proposal for an event wins: an older
-   one still in validation resolves as rejected with the reason `superseded`, a late result from an older one leaves the
-   newer change alone, and a synchronous commit replaces an older change still saving.
+8. A rejection or a throw rolls the change back. The latest proposal for an event wins: an older one
+   still in validation resolves as rejected with the reason `superseded`, a late result from an
+   older one leaves the newer change alone, and a synchronous commit replaces an older change still
+   saving.
 9. `proposeEventChange` resolves with the result and never rejects. The built-in views announce a
    gesture's outcome through the root's `Announcer`; the registry's messages read an `AbortError`
    from the handler as a cancel, not a failed save. Proposals from application code aren't
@@ -908,9 +913,9 @@ Explicit move and resize buttons and an event details surface in the registry ar
 
 `useCalendarPointer` takes the rendered `events`, `onPropose` and `timeZone`, and optionally `snap`
 (15 minutes by default), `announcer`, `check`, `columns`, `scrollContainer` (the nearest scrollable
-ancestor by default), `onPreview`, `disabled` and `ghostClassName`. Activation is fixed: more than
-4 px of travel for mouse and pen; for touch, a 250 ms press that moves no more than 8 px. DOM event types do not leak into
-calendar callbacks.
+ancestor by default), `onPreview`, `disabled` and `ghostClassName`. Activation is fixed: more than 4
+px of travel for mouse and pen; for touch, a 250 ms press that moves no more than 8 px. DOM event
+types do not leak into calendar callbacks.
 
 ### Policy pipeline
 
@@ -924,7 +929,7 @@ proposal (a pointer or keyboard gesture snaps it to the view's slots; an app's o
 Each policy accepts, adjusts, rejects, or warns. The built-in ones are `boundsPolicy`,
 `minimumDurationPolicy`, `snapPolicy`, `availabilityPolicy`, `conflictPolicy`, `readOnlyPolicy` and
 `readOnlyResourcesPolicy`. `conflictPolicy` checks only resources the event books. Capacity rules
-aren't built yet (#129).
+aren't built yet (#146).
 
 Previews follow the raw target. One the policies would reject is marked `data-invalid`, and a drop
 there is rejected; one they would flag is marked `data-warning`, and a drop there saves with the
@@ -1049,7 +1054,7 @@ SSR-compatible means the calendar can produce useful, deterministic server marku
 1. No `window`, `document`, `ResizeObserver`, or element measurement at module scope.
 2. Inside `Root`, the server and the first client render read the same merged state getter, stable enough to reproduce the first client tree.
 3. `timeZone`, `secondaryTimeZones`, `locale`, and week rules are explicit environment inputs.
-4. `Root` takes `now` (a `Temporal.Instant`) or `clock` (a `CalendarClock`), never both.
+4. `Root` takes `now` (a `Temporal.Instant`) or `clock` (a `CalendarClock`); the types allow one, and `now` wins if both arrive.
 5. If `now` is omitted, transient today/current-time decoration appears after hydration rather than risking mismatch.
 6. IDs use React `useId` or deterministic entity keys, never random values.
 7. The core and Temporal packages are safe in React Server Components.
@@ -1094,8 +1099,11 @@ Calendar-specific tokens add semantic structure without hard-coded palettes:
 --calendar-event-padding-x    --calendar-event-padding-y
 ```
 
-Closed time is `--calendar-unavailable`, closed days `--calendar-closed`. A `data-color` palette sets
-`--calendar-event-hue` and `--calendar-event-chroma`, and the three event tokens derive from them.
+Closed time is `--calendar-unavailable`, closed days `--calendar-closed`. A `data-color` palette
+sets `--calendar-event-hue` and `--calendar-event-chroma`, and the three event tokens derive from
+them. Drag previews read `--calendar-ghost-background`, `--calendar-ghost-radius`,
+`--calendar-ghost-shadow`, `--calendar-ghost-opacity` and `--calendar-ghost-z-index`, with
+fallbacks, in `calendar-dnd`.
 
 Rules:
 
@@ -1131,7 +1139,7 @@ WCAG 2.2 AA is a release gate, not an example-app enhancement.
 
 ### Announcements
 
-The announcer describes event title, proposed start and end (with each end's zone when they cross a clock change), resource, validation result, commit, and rollback. Applications localize or replace the builders: `CalendarAnnouncementMessages`, passed to `Announcer`'s `messages`. Announcing a DST shift waits on #187.
+The announcer describes event title, proposed start and end (the registry's messages name each end's zone when their offsets differ), resource, validation result, commit, and rollback. Applications localize or replace the builders: `CalendarAnnouncementMessages`, passed to `Announcer`'s `messages`. Announcing a DST shift waits on #187.
 A rollback carries what `onEventChange` threw: the registry's English messages read an `AbortError`
 as the user cancelling, as when they dismiss the recurrence scope question, not as a failed save.
 
@@ -1247,9 +1255,9 @@ One application owns both explanation and proof:
 | SSR lab           | Server snapshot, hydration identity, client enhancement                     |
 | Registry/source   | Install commands, generated file list, ownership and upgrade story          |
 
-Built so far: the overview, the view gallery, custom views and registry/source; the accessibility
-page has the keyboard map and live announcements. Not built yet: the composition, event,
-timezone/DST, interaction, performance and SSR labs (phase 7).
+Built so far: the overview, the view gallery, custom views, the theme builder and registry/source;
+the accessibility page has the keyboard map and live announcements. Not built yet: the composition,
+event, timezone/DST, interaction, performance and SSR labs (phase 7).
 
 Examples import the public facade or install registry source. They may not reach into workspace internals.
 

@@ -51,7 +51,7 @@ path such as
 
 Steps 2 and 3 only run again when their inputs change. A new array with the same records in the same
 order reuses the snapshot. A changed array is read again through the adapter, except records with an
-unchanged `getRevision` value; if every record comes out the same, the interval indexes are kept.
+unchanged `getRevision` value; if every record comes out the same, in the same order, the interval indexes are kept.
 
 ## Using the engine without React
 

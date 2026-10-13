@@ -13,15 +13,17 @@ Time does its work in two steps, and caches each one:
 
 Everything else is a normal React render. These habits keep both steps rare and cheap.
 
-## Replace records, don't recreate them
+## Replace records, don't mutate them
 
 `Root` compares `events` item by item. A new array with the same record objects in the same order
 counts as unchanged, so you can filter or map inline, as in
 `events={meetings.filter((meeting) => !meeting.cancelled)}`.
 
-When some records change, Time reads every record again through the adapter. Update records
-immutably: replace the changed record and keep the others as they are. A record changed in place
-keeps its identity, so the item-by-item comparison sees no change and the calendar doesn't update.
+When the array changes, Time reads every record through the adapter again, except those with an
+unchanged [revision](#add-a-revision-to-your-adapter); if every record comes out the same, in the
+same order, it keeps its interval indexes. Update records immutably: replace the changed record with
+a new object. A record changed in place keeps its identity, so if nothing else in the array changed,
+the item-by-item comparison sees no change and the calendar doesn't update.
 
 ## Add a revision to your adapter
 
@@ -60,11 +62,11 @@ array.
 
 ## Keep functions in options stable
 
-`Root` compares `locale`, `weekRules`, `now`, a controlled `anchorDate`, `timeZone` or `view`, and
-each view's options by value,
-so inline objects are fine. Functions are different: a new function is a new value. A
-`getEventColor` written inline in `viewOptions` makes the view project again on every render of the
-component that renders `Root`. Define it once instead:
+`Root` compares `locale`, `weekRules`, `now` and a controlled `anchorDate`, `timeZone` or `view` by
+value, and each view's options key by key, so an inline options object is fine. Its values are
+compared by identity, though: a new function or nested object, such as a time grid's `annotations`,
+is a new value. A `getEventColor` written inline in `viewOptions` makes the view project again on
+every render of the component that renders `Root`. Define it once instead:
 
 ```tsx
 // At module scope, outside the component that renders Root:

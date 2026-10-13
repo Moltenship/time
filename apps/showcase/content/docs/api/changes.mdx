@@ -74,8 +74,8 @@ that throws rejects the change with the reason `policy-error`.
 | `boundsPolicy({ start, end })`        | Rejects changes that reach outside `[start, end)`, with the reason `out-of-bounds`. Both bounds are optional instants.                                                                                                                                       |
 | `readOnlyPolicy()`                    | Rejects changes to events whose adapter `isReadOnly` returns `true`, with the reason `read-only`. `Root` runs it before your policies.                                                                                                                       |
 | `availabilityPolicy({ mode })`        | Rejects a change outside working hours, with the reason `outside-availability`, or with `mode: "warn"` saves it with that warning. See [Availability](/docs/availability#keep-changes-inside).                                                               |
-| `conflictPolicy({ mode })`            | Rejects a change that double-books a resource with another busy event, with the reason `resource-conflict`, or with `mode: "warn"` saves it with that warning. Deletes always pass.                                                                          |
-| `readOnlyResourcesPolicy(isReadOnly)` | Rejects creating, deleting, or moving in time an event on a resource `isReadOnly(resourceId)` marks, and adding or removing that resource, with the reason `read-only-resource`.                                                                             |
+| `conflictPolicy({ mode })`            | Rejects a change that makes a busy event overlap another busy event on one of its resources, with the reason `resource-conflict`, or with `mode: "warn"` saves it with that warning. Deletes always pass.                                                    |
+| `readOnlyResourcesPolicy(isReadOnly)` | Rejects creating, deleting, or changing the time of an event on a resource `isReadOnly(resourceId)` marks, and adding or removing that resource, with the reason `read-only-resource`.                                                                       |
 
 ## Placement helpers
 
@@ -151,8 +151,8 @@ React and returns a cleanup function. Both come from `@moltenship/calendar-dnd`,
         <>
           The day columns of a time axis, a time grid&apos;s or an hour timeline&apos;s:{" "}
           <code>projection.days.map((day) =&gt; day.column)</code> in a time grid,{" "}
-          <code>projection.columns</code> in an hour timeline. Leave it out in a month grid or a day
-          timeline.
+          <code>projection.columns</code> in resource columns or an hour timeline. Leave it out in a
+          month grid or a day timeline.
         </>
       ),
     },

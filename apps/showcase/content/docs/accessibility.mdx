@@ -135,7 +135,7 @@ in your app once you add the UI source, so you can edit it in place. To translat
 
 | Phase    | When                                                           | The update also has                                                                                                                                       |
 | -------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `start`  | An event is picked up, or a create starts                      | `check`: what the policies say about `proposed`                                                                                                           |
+| `start`  | An event is picked up, or a create starts                      | `check`: what the policies say about `proposed`, or `null` with no answer yet (a keyboard move or resize that hasn't stepped, or an async policy)         |
 | `step`   | Each arrow key, or each new slot under the pointer             | `check`, as for `start`                                                                                                                                   |
 | `commit` | Your handler saved the change                                  | `proposed`: the change as saved, and `warnings`                                                                                                           |
 | `reject` | A policy or your handler refused it, or the event is read-only | `reason`, such as `"read-only"`, and `error`: what your handler or a policy threw, if one did (an `AbortError` from your handler means the app cancelled) |
@@ -233,7 +233,8 @@ specific elements:
 - **Command name**, for the same focus guards in WebKit, where Base UI makes them unnamed buttons
   on purpose, so its focus trap catches VoiceOver's cursor instead of letting it leave a popup.
 
-`vp run browsers` runs the same checks in Firefox and WebKit.
+`vp run browsers` runs the same checks in Firefox and WebKit (WebKit alone on macOS 27, where
+Playwright's Firefox doesn't start), except the reduced-motion tests, which run in Chromium.
 
 A separate test checks the [theme](/docs/theming) against WCAG AA in both color schemes: event text
 on every event color, the today marker, the now line, and the focus ring. If you override `--ring`,

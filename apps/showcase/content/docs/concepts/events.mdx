@@ -60,7 +60,7 @@ pass a new array. To fetch only the dates on screen, load the `loadRange` that
 Treat your records as immutable: change a record by replacing it with a new object. Time compares
 the array item by item, so a new array with the same records in the same order counts as unchanged,
 even if you build it inline with `filter` or `map`. When the array does change, Time reads every record again
-through the adapter; if every record comes out the same, it keeps its interval indexes. With
+through the adapter; if every record comes out the same, in the same order, it keeps its interval indexes. With
 `getRevision`, a record whose revision is unchanged is skipped after `getId` and `getRevision`. The [performance guide](/docs/guides/performance)
 explains how to make the most of that.
 

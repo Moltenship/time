@@ -232,8 +232,10 @@ own.
       type: '"ltr" | "rtl"',
       description: (
         <>
-          Which way the arrow keys move. Set <code>dir</code> on an ancestor to match; see{" "}
-          <a href="/docs/accessibility#right-to-left">right-to-left</a>.
+          Which way the arrow keys move, and which way the resource and scrolling views scroll
+          sideways; the resource timeline and scrolling week and day also set <code>dir</code> on
+          their grid from it. <code>Root</code> doesn&apos;t set <code>dir</code> itself: set it on
+          an ancestor to match; see <a href="/docs/accessibility#right-to-left">right-to-left</a>.
         </>
       ),
       default: '"ltr"',
@@ -293,7 +295,9 @@ own.
 You can write most props inline. `locale`, `weekRules`, `secondaryTimeZones`, `availability`, `now`,
 and a controlled `anchorDate`, `timeZone` or `view` are compared by value; `events`, `resources`,
 `annotations`, `annotationSources` and a controlled `expandedResourceIds` are compared item by item;
-`viewOptions`, `policies`, `onDiagnosticsChange`, and the change handlers are read from the latest render. A
+`policies`, `onDiagnosticsChange`, and the change handlers are read from the latest render.
+`viewOptions` is too, but the active view's options are compared one option at a time, so keep
+functions and objects in them stable. A
 `clock` object and a controlled `selection` or `focus` are compared by identity: keep them stable,
 for example in state or at module scope.
 

@@ -48,7 +48,7 @@ them.
   `end` at or before `start` runs past midnight, so `22:00` to `06:00` is a night and `00:00` to
   `00:00` a whole day. Leave `weekly` out to open every day all day.
 - **Exceptions.** An exception replaces one date's hours. Without `hours` it closes the date; its
-  `label`, such as "Christmas", names the closed day in the month.
+  `label`, such as "Christmas", names the closed day in the month and year views.
 - **Time zones.** The hours are on the display time zone's clock unless `availability.timeZone`
   says otherwise, such as the office's.
 - **Daylight saving time.** Hours are half-open, `[start, end)`, and read on the wall clock. On a
@@ -468,6 +468,9 @@ TimeGridColumn                   time-grid-column.tsx
   closed days along day rows, whose cells also get `data-closed`.
 - **Month.** A closed day gets a `month-closed` band in `--calendar-closed`, light enough that its
   date and events stay readable, and its cell gets `data-closed`.
+- **Year.** A shaded closed day gets a `year-closed` band in `--calendar-closed`, joined with the
+  shaded days beside it in its row, and its cell gets `data-closed`. By default only dates an
+  exception closes are shaded; `closedDays: "all"` adds the weekly closed days.
 - **Resource headers.** `ResourceHeaderTime` shows a resource's local time and
   `ResourceHeaderStatus` its status; add them to your own `ResourceHeader` composition.
 

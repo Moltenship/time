@@ -159,7 +159,7 @@ and builds a new one, reusing what it can, for a new array. For a one-off snapsh
 
 A normalized event has your record as `event`, plus `id`, `title`, `resourceIds`, `isReadOnly`,
 `revision`, `inputIndex`, `isBusy` when the adapter has `isBusy`, and the range fields (`kind`, `start`,
-`end`, and `sourceTimeZone` on timed events). Inside a calendar, an event
+`end`, and, on timed events, `sourceTimeZone` when the range has one). Inside a calendar, an event
 with a change that is still saving also has `isPending: true` and shows its proposed range; see
 [pending changes](/docs/interactions#pending-changes).
 
@@ -191,15 +191,15 @@ Each issue has the `event`, its `index` in your array, a `code`, and when known 
 adapter function that failed (`accessor`), the position of a bad resource ID (`resourceIndex`), and a
 `message`.
 
-| `code`                   | Cause                                                                                                                               |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------- |
-| `adapter-error`          | An adapter function threw, or `isReadOnly` or `isBusy` returned something other than a boolean                                      |
-| `invalid-event-id`       | `getId` returned an empty string, `NaN`, or another non-ID value                                                                    |
-| `duplicate-event-id`     | Another record already has this ID                                                                                                  |
-| `invalid-resource-id`    | `getResourceIds` returned a non-ID value                                                                                            |
-| `invalid-revision`       | `getRevision` returned something other than a string or a finite number                                                             |
-| `invalid-event-interval` | The range has an unknown `kind`, the wrong Temporal type, a `sourceTimeZone` that isn't a string, or endpoints that throw when read |
-| `start-not-before-end`   | The range is empty or reversed                                                                                                      |
+| `code`                   | Cause                                                                                                                                                                                    |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `adapter-error`          | An adapter function threw, `getTitle` returned something other than a string, `getResourceIds` something other than an array, or `isReadOnly` or `isBusy` something other than a boolean |
+| `invalid-event-id`       | `getId` returned an empty string, `NaN`, or another non-ID value                                                                                                                         |
+| `duplicate-event-id`     | Another record already has this ID                                                                                                                                                       |
+| `invalid-resource-id`    | `getResourceIds` returned an array with a non-ID value (its position is `resourceIndex`)                                                                                                 |
+| `invalid-revision`       | `getRevision` returned something other than a string or a finite number                                                                                                                  |
+| `invalid-event-interval` | The range has an unknown `kind`, the wrong Temporal type, a `sourceTimeZone` that isn't a string, or fields that throw when read                                                         |
+| `start-not-before-end`   | The range is empty or reversed                                                                                                                                                           |
 
 With `invalidEventPolicy: "throw"`, building the snapshot throws an
 `InvalidCalendarEventSnapshotError` with every issue on its `issues` property instead.
