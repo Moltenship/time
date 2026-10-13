@@ -8,5 +8,5 @@
     },
     "types": ["vite-plus/client"]
   },
-  "include": ["tests", "vite.config.ts"]
+  "include": ["tests", "vite.config.ts", "watchdog.ts", "watchdog.test.ts"]
 }

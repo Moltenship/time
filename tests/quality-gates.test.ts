@@ -171,6 +171,16 @@ describe("CI quality gate contract", () => {
     expect(work("ready:full")).not.toContain("registry:e2e");
   });
 
+  test("the full gate's browser runs go one at a time, fastest first", () => {
+    expect(commandsOf(tasks["gate:browsers"]!)).toEqual([
+      "vp run a11y && vp run browsers && vp run a11y:ci-speed",
+    ]);
+    expect(dependenciesOf(tasks["ready:full"]!)).toEqual(
+      expect.arrayContaining(["gate:browsers", "gate:serial:full"]),
+    );
+    expect(dependenciesOf(tasks["ready:full"]!)).not.toContain("a11y");
+  });
+
   test("the release checks run right after the build, in the lane CI runs", () => {
     const lane = commandsOf(tasks["gate:serial"]!)[0]!
       .split("&&")
@@ -190,7 +200,7 @@ describe("CI quality gate contract", () => {
       work("ready:full")
         .filter((step) => !release.has(step))
         .sort(),
-    ).toEqual([...dropped, "gate:serial:full"].sort());
+    ).toEqual([...dropped, "gate:browsers", "gate:serial:full"].sort());
     expect(release.has("release:artifacts")).toBe(true);
     expect(commandsOf(tasks["gate:serial:release"]!)[0]).toContain(
       "vp run release:dry-run --require-clean",

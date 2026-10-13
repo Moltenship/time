@@ -1,3 +1,5 @@
+import { availableParallelism } from "node:os";
+
 import { defineConfig } from "vite-plus";
 
 const staticCheckIgnorePatterns = [".github/**", "*.md", "**/*.md"];
@@ -7,6 +9,16 @@ const invalidBoundaryFixturePattern = "tests/fixtures/dependency-boundaries/**";
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
+  },
+  test: {
+    // Half the cores, for `vp test` from the root: `ci:test`, the quick tier and the engine tasks.
+    // In the PR and full tiers it shares the machine with a browser run, and Vitest's default, a
+    // worker per core but one, oversubscribed it (quality-gates.md).
+    maxWorkers: Math.ceil(availableParallelism() / 2),
+    // Some tests do real work: a registry build, a child Vitest run, a 10,000-event agenda in
+    // jsdom. They take under a second alone and wait on no clock, but a busy machine made them
+    // six to nine times slower, past Vitest's 5 s default. They get 15 s, as the browser tests do.
+    testTimeout: 15_000,
   },
   staged: {
     "*": "vp check --fix",
@@ -45,7 +57,7 @@ export default defineConfig({
       "ready:full": {
         command: "echo ready:full: the release gate passed",
         cache: false,
-        dependsOn: ["registry:smoke", "a11y", "a11y:ci-speed", "browsers", "gate:serial:full"],
+        dependsOn: ["registry:smoke", "gate:browsers", "gate:serial:full"],
       },
       // The release workflow's gate on a GitHub runner: ready:full without the browser runs. The
       // workflow runs a11y alone first, as CI does; a11y:ci-speed only simulates a runner, and
@@ -56,6 +68,9 @@ export default defineConfig({
         cache: false,
         dependsOn: ["registry:smoke", "gate:serial:release"],
       },
+      // The full gate's browser runs, one at a time beside its serial lane. Each takes half the
+      // cores, and a watchdog fails a run that stops making progress (tools/a11y/vite.config.ts).
+      "gate:browsers": "vp run a11y && vp run browsers && vp run a11y:ci-speed",
       // release:check reads the packages ci:build wrote and packs them, so it runs right after.
       "gate:serial":
         "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
