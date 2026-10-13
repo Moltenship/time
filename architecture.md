@@ -1058,6 +1058,8 @@ A collision group can mix calendars and is drawn one way. It takes its events' o
 
 Placements come in one order under every layout, by top, then longer first, then key. The views draw them in that order, and keyboard navigation reads the drawn boxes. So z-order, focus order and what's drawn agree in mixed columns too. Keyboard previews and pending changes patch the snapshot, so a moved event is laid out by its destination column's layout and its own, as it will be once saved. The overlay keeps the stored event, so `getEventOverlapLayout` should read what a move doesn't change, such as the calendar. The pointer's ghost is drawn outside the layout. `stackIndent` is view-wide, and an invalid one throws whatever the layout, since any group may stack.
 
+The resource timeline's hour rows take the same options, except `stackIndent`. `"columns"` and `"equal"` both give a bar a lane per level of overlap, since a row grows rather than sharing a fixed height. `"stack"` cascades a group: each bar sits one level below the deepest earlier bar it overlaps, a third of a lane lower, and a deep stack steps less, so a stacked row is at most two lanes tall. Bars carry `top` in lanes and rows `height`; `lane` and `laneCount` keep their meaning, since bars at one level of a stack never overlap. Day rows are laid out like month rows under every layout.
+
 ### All-day and month segments
 
 - Split multi-day events at row boundaries (a week, the visible range, or a resource's row), and at

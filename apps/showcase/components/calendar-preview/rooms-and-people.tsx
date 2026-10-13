@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { calendarAnnouncements } from "@registry/calendar/announcements";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
+import { createTimelineDayView } from "@registry/resource-timeline-view/resource-timeline-view";
 import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { applyPreviewChange, type PreviewEvent } from "./events";
@@ -26,6 +27,12 @@ const spaces: readonly Space[] = [
   { data: { kind: "person" }, id: "sam", title: "Sam" },
 ];
 const rooms = new Set(spaces.filter(({ data }) => data.kind === "room").map(({ id }) => id));
+
+/** In a timeline, `"columns"` and `"equal"` are the same lanes. */
+const timelineLayouts = [
+  { label: "Lanes", value: "columns" },
+  { label: "Stack", value: "stack" },
+] as const satisfies readonly { readonly label: string; readonly value: OverlapLayout }[];
 
 const conflictModes = [
   { label: "Block", value: "block" },
@@ -43,7 +50,10 @@ const Calendar = createCalendar<PreviewEvent, Space>()({
     getResourceIds: (event) => event.resourceIds ?? noResourceIds,
     getTitle: (event) => event.title,
   }),
-  views: [createResourceColumnsView<PreviewEvent, Space>({ getEventColor })],
+  views: [
+    createResourceColumnsView<PreviewEvent, Space>({ getEventColor }),
+    createTimelineDayView<PreviewEvent, Space>({ getEventColor }),
+  ],
 });
 
 type Booking = readonly [
@@ -96,14 +106,17 @@ function describeResult(result: CalendarTransactionResult<PreviewEvent, string, 
 }
 
 /**
- * Two rooms and two people over tomorrow, so it opens at 08:00. With `rules="layout"`, a toggle
- * picks each kind's overlap layout; with `rules="conflicts"`, rooms stack and people sit side by
- * side, and a toggle picks what double-booking each kind does. Edits stay in memory.
+ * Two rooms and two people over tomorrow, so it opens at 08:00, as resource columns or a timeline
+ * of the day. With `rules="layout"`, a toggle picks each kind's overlap layout; with
+ * `rules="conflicts"`, rooms stack and people sit side by side, and a toggle picks what
+ * double-booking each kind does. Edits stay in memory.
  */
 export default function RoomsAndPeopleCalendar({
   rules = "layout",
+  view = "resources",
 }: {
   readonly rules?: "conflicts" | "layout";
+  readonly view?: "resources" | "timeline-day";
 }) {
   const [day] = useState(() => Temporal.Now.zonedDateTimeISO().add({ days: 1 }).startOfDay());
   const [events, setEvents] = useState(() => createRoomBookings(day));
@@ -136,6 +149,7 @@ export default function RoomsAndPeopleCalendar({
       <Calendar.Root
         defaultAnchorDate={day.toPlainDate()}
         defaultTimeZone={day.timeZoneId}
+        defaultView={view}
         events={events}
         locale="en-US"
         onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}
@@ -144,7 +158,7 @@ export default function RoomsAndPeopleCalendar({
         }
         policies={policies}
         resources={spaces}
-        viewOptions={{ resources: resourceOptions }}
+        viewOptions={{ resources: resourceOptions, "timeline-day": resourceOptions }}
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >
         <Calendar.Frame className="flex h-full flex-col">
@@ -154,13 +168,13 @@ export default function RoomsAndPeopleCalendar({
                 <ChoiceToggle
                   label="Rooms"
                   onChange={setRoomLayout}
-                  options={overlapLayouts}
+                  options={view === "resources" ? overlapLayouts : timelineLayouts}
                   value={roomLayout}
                 />
                 <ChoiceToggle
                   label="People"
                   onChange={setPeopleLayout}
-                  options={overlapLayouts}
+                  options={view === "resources" ? overlapLayouts : timelineLayouts}
                   value={peopleLayout}
                 />
               </>

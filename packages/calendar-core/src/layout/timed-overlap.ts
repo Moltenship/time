@@ -110,7 +110,7 @@ function compareEntries<TItem extends TimedOverlapItem>(
 }
 
 /** Whether something ending at `bottom` is clear of `edge`, so an item starting there misses it. */
-function endsBy(bottom: number, edge: number): boolean {
+export function endsBy(bottom: number, edge: number): boolean {
   return bottom <= edge + EDGE_TOLERANCE;
 }
 
@@ -181,7 +181,8 @@ function placeStack<TItem>(
   for (const entry of group) place(entry, entry.lane * step, 1 - entry.lane * step);
 }
 
-function checkLayout(layout: OverlapLayout): OverlapLayout {
+/** `layout`, or a `RangeError` when it isn't one of the overlap layouts. */
+export function checkLayout(layout: OverlapLayout): OverlapLayout {
   if (layout !== "columns" && layout !== "equal" && layout !== "stack") {
     throw new RangeError("invalid-overlap-layout");
   }

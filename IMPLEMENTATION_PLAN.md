@@ -23,6 +23,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | 0.3 resources  | #39–#41          | Resource model and hierarchy, multi-resource fragments, resource columns and resource timeline views with virtualization, keyboard and pointer moves across resources |
 | 0.4 availability | #129           | Working hours and exceptions, `block`/`warn` availability policy, closed-time shading in the time grid, resource columns, timeline and month, per-resource time zones with local time in headers |
 | 0.4 layout     | #130             | `columns`, `equal` and `stack` overlap policies in the time grid and resource columns                        |
+| Overlap policies per resource | #230 | Overlap layouts per resource (`getResourceOverlapLayout`) and per calendar (`getEventOverlapLayout`, a group takes its events' layout when they all agree) in the time grid, resource columns and the timeline's hour rows, which can stack; `conflictPolicy` modes per resource (`getResourceMode`, `"allow"`) |
 | 0.4 agenda     | #131             | Virtualized agenda with sticky date headers and focus kept by key; a scrolling agenda over months or years that lets apps load events by range |
 | Scrolling views | #105            | Week, day and month views that scroll without end; `getLoadRange` on strategies and `onVisibleRangeChange` on `Root` |
 | Annotations    | #119             | Timeline annotations: core model and snapshot, `annotations` / `annotationSources` on `Root`, a rail in the time grid |
@@ -76,7 +77,7 @@ issue's "Later" section when work starts.
   read-only roots' gestures (#201), week rules from the locale (#202)
 - Agenda follow-ups from #136 (#138)
 - Capacity rules, buffers between bookings, free-slot search (#129)
-- Per-calendar or per-resource overlap policy overrides (#130), in progress in #230
+- [x] Per-calendar or per-resource overlap policy overrides (#130), done in #230; follow-ups in #241
 - Agenda grouping by calendar or resource, search and filter (#131)
 - Optional dnd-kit adapter (#37)
 - Layout and frame budgets

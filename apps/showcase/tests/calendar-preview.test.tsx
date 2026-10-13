@@ -22,6 +22,14 @@ beforeAll(() => {
     matches: true,
     removeEventListener() {},
   }));
+  // jsdom lays nothing out; the timeline's virtualizers only need the observer to exist.
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      disconnect() {}
+      observe() {}
+    },
+  );
 });
 
 afterEach(async () => {
@@ -184,4 +192,16 @@ test("the double booking preview blocks or allows a room by its toggle and says 
   await moveInterviewUp();
   // Orchid allows it now; Maya, also in the review then, still warns.
   expect(status()).toBe("Interview was saved, flagged as double-booked.");
+});
+
+test("the rooms and people timeline stacks the rooms' rows and keeps lanes for people", async () => {
+  const container = await render(<RoomsAndPeopleCalendar view="timeline-day" />);
+  // The standup starts inside a longer meeting in Orchid's row and in Sam's.
+  const top = (resourceId: string) =>
+    container.querySelector<HTMLElement>(
+      `[role="row"][data-resource-id="${resourceId}"] [data-event-id="booking-3"]`,
+    )?.style.top;
+
+  // 6px of padding, then 26px lanes: Orchid's standup a third of a lane down, Sam's two lanes.
+  expect([top("orchid"), top("sam")]).toEqual([`${6 + 26 / 3}px`, `${6 + 2 * 26}px`]);
 });

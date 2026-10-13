@@ -19,6 +19,8 @@ export interface TimelineBar<TEvent> {
   readonly startsBefore: boolean;
   /** A timed event's start, shown when its bar fits in one day slot. */
   readonly time?: string;
+  /** How far below the row's first lane the bar sits, in lanes: `lane`, or a fraction of it in a stack. */
+  readonly top: number;
 }
 
 /** A bar placed in the first visible cell it covers. */
@@ -53,15 +55,17 @@ export function rowBars<TEvent>(
       startsBefore,
       time:
         event.kind === "timed" && span === 1 && !startsBefore ? formatTime(event.start) : undefined,
+      top: lane,
     }));
   }
-  return row.bars.map(({ end, endsAfter, event, lane, start, startsBefore }) => ({
+  return row.bars.map(({ end, endsAfter, event, lane, start, startsBefore, top }) => ({
     end: end * slotCount,
     endsAfter,
     event,
     lane,
     start: start * slotCount,
     startsBefore,
+    top,
   }));
 }
 

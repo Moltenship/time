@@ -30,6 +30,7 @@ function bar(
     lane: 0,
     start,
     startsBefore: false,
+    top: 0,
     ...extra,
   };
 }

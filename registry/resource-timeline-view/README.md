@@ -23,7 +23,9 @@ const views = [
   (`aria-expanded`) expands or collapses it through `useResourceExpansion`, which updates the
   root's `expandedResourceIds`. `unassigned: "bucket"` adds an "Unassigned" row for events with no
   resources; by default they are hidden.
-- Events are bars packed into lanes, and rows grow to fit them. Over days they're laid out like a
+- Events are bars packed into lanes, and rows grow to fit them. Over hours, `overlapLayout:
+  "stack"`, or `getResourceOverlapLayout` for one resource, cascades a row's overlapping bars
+  instead, a third of a lane apart and never more than two lanes tall. Over days they're laid out like a
   month row: a timed event within one day shows its title and then, if there's room, its start
   time; longer events span their days. Over hours a bar spans its exact times. Ends cut off by the
   range are squared. An event with several resources shows in each of their rows, and its

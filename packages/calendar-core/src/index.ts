@@ -194,6 +194,7 @@ export type {
   ResourceTimelineBar,
   ResourceTimelineDayRow,
   ResourceTimelineHourRow,
+  ResourceTimelineLayoutOptions,
   ResourceTimelineOptions,
   ResourceTimelineProjection,
   ResourceTimelineProjectionInput,
