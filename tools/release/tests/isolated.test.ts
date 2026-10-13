@@ -5,6 +5,7 @@ import { parse } from "yaml";
 
 import {
   isolatedEnvironment,
+  lacksMetadata,
   lockfileProblems,
   withTarballs,
   workspaceSettings,
@@ -153,5 +154,29 @@ describe("a copy on the dry run's tarballs", () => {
       [join("/tmp/copy/apps/showcase", "node_modules", ".bin"), "/usr/bin"].join(delimiter),
     );
     expect(environment).toMatchObject({ HOME: "/home/me", NEXT_TELEMETRY_DISABLED: "1" });
+  });
+});
+
+describe("an offline install that a cold cache can't do", () => {
+  test("lacks a package's metadata, or the pinned pnpm's, and nothing else", () => {
+    expect(lacksMetadata("ERR_PNPM_NO_OFFLINE_META  Failed to resolve react@19.3.0 offline")).toBe(
+      true,
+    );
+    // From CI's release-gate job on a fresh runner, run 38359030353.
+    expect(
+      lacksMetadata(
+        "Error: ERR_PNPM_BAD_CONFIG_DEP\n  × resolve package manager dependencies\n  ╰─▶ Failed to resolve config dependency pnpm@12.10.1: Failed to resolve\n      pnpm@12.10.1 in package mirror",
+      ),
+    ).toBe(true);
+    // A cause pnpm frames with box-drawing characters, split across lines.
+    expect(
+      lacksMetadata(
+        "ERR_PNPM_BAD_CONFIG_DEP\n  ├─▶ Failed to resolve pnpm@12.10.1 in package\n  │   mirror",
+      ),
+    ).toBe(true);
+    expect(lacksMetadata("ERR_PNPM_BAD_CONFIG_DEP  a config dependency has no integrity")).toBe(
+      false,
+    );
+    expect(lacksMetadata("ERR_PNPM_FETCH_404  Not Found")).toBe(false);
   });
 });

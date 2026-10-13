@@ -102,6 +102,7 @@ describe("CI quality gate contract", () => {
       "quality-gates",
       "accessibility",
       "browsers",
+      "release-gate",
     ]);
     expect(workflow.permissions).toEqual({ contents: "read" });
     expect(workflow.concurrency).toMatchObject({
@@ -190,20 +191,22 @@ describe("CI quality gate contract", () => {
     expect(stepsOf("ready:checks").has("release:check")).toBe(true);
   });
 
-  test("the release workflow's gate is the full gate without the browser runs", () => {
+  test("the release workflow's gate is the whole full tier, with a strict dry run", () => {
+    const full = new Set(work("ready:full"));
     const release = new Set(work("release:gate"));
-    // The workflow runs a11y in a step of its own; CI runs browsers on demand; and release:gate
-    // has its own lane.
-    const dropped = ["a11y", "a11y:ci-speed", "browsers"].flatMap((name) => [name, ...work(name)]);
 
-    expect(
-      work("ready:full")
-        .filter((step) => !release.has(step))
-        .sort(),
-    ).toEqual([...dropped, "gate:browsers", "gate:serial:full"].sort());
-    expect(release.has("release:artifacts")).toBe(true);
+    // They differ only in their lanes, and the release lane's dry run is strict.
+    expect([...full].filter((step) => !release.has(step))).toEqual(["gate:serial:full"]);
+    expect([...release].filter((step) => !full.has(step))).toEqual(["gate:serial:release"]);
+    // One lane after the other, as a 4-core runner needs: the serial lane, then the browser runs.
+    expect(commandsOf(tasks["release:gate"]!)).toEqual([
+      "vp run registry:smoke && vp run gate:serial:release && vp run gate:browsers",
+    ]);
     expect(commandsOf(tasks["gate:serial:release"]!)[0]).toContain(
       "vp run release:dry-run --require-clean",
+    );
+    expect(commandsOf(tasks["gate:serial:release"]!)[0]!.replace(" --require-clean", "")).toBe(
+      commandsOf(tasks["gate:serial:full"]!)[0],
     );
   });
 
@@ -217,7 +220,7 @@ describe("CI quality gate contract", () => {
   });
 
   test("groups only gather steps, so the comparison sees every one", () => {
-    for (const name of ["ready", "ready:checks", "ready:full", "release:gate"]) {
+    for (const name of ["ready", "ready:checks", "ready:full"]) {
       expect(isGroup(tasks[name]!)).toBe(true);
     }
   });

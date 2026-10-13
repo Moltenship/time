@@ -197,10 +197,18 @@ function installFailure(directory: string, result: { stdout: string; stderr: str
   );
 }
 
-/** Installs a project offline from the pnpm store and metadata cache that `vp install` filled. */
-export async function installOffline(directory: string): Promise<void> {
-  const result = await install(directory, "--offline");
-  if (result.code !== 0) throw installFailure(directory, result);
+/**
+ * Whether an offline install failed only for package metadata a cold cache lacks: a package's
+ * (`ERR_PNPM_NO_OFFLINE_META`), or that of the pinned pnpm itself, which the `packageManager`
+ * field makes a config dependency (`ERR_PNPM_BAD_CONFIG_DEP` in the package mirror).
+ */
+export function lacksMetadata(output: string): boolean {
+  // pnpm wraps its messages to the terminal's width, and frames the causes it lists.
+  const text = output.replace(/[│├╰─▶×]/g, " ").replace(/\s+/g, " ");
+  return (
+    text.includes("ERR_PNPM_NO_OFFLINE_META") ||
+    (text.includes("ERR_PNPM_BAD_CONFIG_DEP") && text.includes("package mirror"))
+  );
 }
 
 /**
@@ -212,7 +220,7 @@ export async function installOffline(directory: string): Promise<void> {
 export async function installFromStore(directory: string): Promise<{ readonly online: boolean }> {
   const offline = await install(directory, "--offline");
   if (offline.code === 0) return { online: false };
-  if (!`${offline.stdout}${offline.stderr}`.includes("ERR_PNPM_NO_OFFLINE_META")) {
+  if (!lacksMetadata(`${offline.stdout}${offline.stderr}`)) {
     throw installFailure(directory, offline);
   }
   const online = await install(directory, "--prefer-offline");
@@ -240,7 +248,8 @@ export function temporaryRoot(name: string): Promise<string> {
 
 /**
  * Copies workspace folders into a new pnpm workspace in `root`, outside this one, and installs it
- * offline, with every published package from the dry run's tarballs instead of linked from source.
+ * from the pnpm store (`installFromStore`), with every published package from the dry run's
+ * tarballs instead of linked from source.
  * The folders keep their paths, so relative imports between them still resolve. The copy has no
  * package source and no `paths` into it, so `@moltenship` imports can only reach the tarballs; its
  * lockfile starts from the workspace's, so third-party packages keep their versions.

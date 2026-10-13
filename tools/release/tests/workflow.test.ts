@@ -14,6 +14,8 @@ interface Step {
 
 interface Job {
   readonly if?: string;
+  readonly "runs-on"?: string;
+  readonly "timeout-minutes"?: number;
   readonly needs?: string;
   readonly environment?: string;
   readonly permissions?: Record<string, string>;
@@ -61,13 +63,33 @@ describe("release workflow contract", () => {
     expect(verify?.if).toBe("github.ref == 'refs/heads/main'");
     expect(runs(verify)).toEqual([
       "vp install --frozen-lockfile",
-      "vp exec --filter a11y playwright install --with-deps --only-shell chromium",
-      "vp run a11y",
+      "vp exec --filter a11y playwright install --with-deps --only-shell chromium firefox webkit",
       "vp run release:gate",
       "vp run --last-details",
     ]);
     const gate = verify?.steps.find(({ run }) => run === "vp run release:gate");
     expect(gate?.env).toEqual({ RELEASE_VERSION: "${{ inputs.version }}" });
+  });
+
+  test("CI's on-demand release-gate job rehearses the same steps, and never publishes", async () => {
+    const ci = parse(
+      await readFile(resolve(import.meta.dirname, "../../../.github/workflows/ci.yml"), "utf8"),
+    ) as Workflow;
+    const rehearsal = ci.jobs["release-gate"];
+
+    expect(rehearsal?.if).toBe("github.event_name == 'workflow_dispatch'");
+    const verify = (await readWorkflow()).jobs.verify;
+    expect(runs(rehearsal)).toEqual(runs(verify));
+    // The same machine, time limit and setup.
+    expect(rehearsal?.["runs-on"]).toBe(verify?.["runs-on"]);
+    expect(rehearsal?.["timeout-minutes"]).toBe(verify?.["timeout-minutes"]);
+    const setup = (job: Job | undefined) =>
+      job?.steps.find(({ uses }) => uses?.startsWith("voidzero-dev/setup-vp@"));
+    expect(setup(rehearsal)).toEqual(setup(verify));
+    expect(rehearsal?.environment).toBeUndefined();
+    expect(rehearsal?.permissions).toBeUndefined();
+    expect(ci.permissions).toEqual({ contents: "read" });
+    expect(JSON.stringify(rehearsal)).not.toContain("release:publish");
   });
 
   test("publishes the dry run's tarballs from a separate job that alone can sign provenance", async () => {

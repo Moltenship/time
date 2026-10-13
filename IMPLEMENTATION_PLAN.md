@@ -35,7 +35,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | Next.js recipe | #164             | A live App Router example at `/examples/nextjs` and a guide through its source: the view and date in the URL, a Server Component fetching that range, Server Actions saving changes with `useOptimistic`, a time zone cookie; `withAsciiSpaces`, so ranges formatted in Node hydrate in browsers |
 | Quality gate   | #47              | The local gate in three tiers, the same tasks CI runs: `vp run ready:quick`, `ready` and `ready:full` (#179); the a11y suite fixed at the causes of CI's flakes, and run at CI's speed in the full gate (#178); the a11y suite and real mouse and keyboard interactions in Firefox and WebKit, WebKit on `temporal-polyfill` (`vp run browsers`, #183) |
 | Release audit  | #47 (phase 1)    | `docs/internal/release-audit.md`: each invariant in `architecture.md` linked to its proof, the gaps filed (#180–#182, #184–#192), the open p0 and p1 issues triaged |
-| Release tooling | #46             | One version for the seven published packages, `CHANGELOG.md` and `release:version`; size budgets, API reports, publint and are-the-types-wrong checks, an offline clean-consumer install and a dry run that writes a manifest; a manual publish step, local or from a `workflow_dispatch` workflow with provenance, that refuses without a passing dry run. Runbook in `docs/internal/releasing.md`. MIT `LICENSE` in every tarball (#175) |
+| Release tooling | #46             | One version for the seven published packages, `CHANGELOG.md` and `release:version`; size budgets, API reports, publint and are-the-types-wrong checks, a clean-consumer install from the pnpm store and a dry run that writes a manifest; a manual publish step, local or from a `workflow_dispatch` workflow with provenance, that refuses without a passing dry run. Runbook in `docs/internal/releasing.md`. MIT `LICENSE` in every tarball (#175) |
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
 0.4 — Availability, layout & scale are closed. Epic #2, recurrence, closes with #155.
@@ -99,17 +99,21 @@ issue's "Later" section when work starts.
   phase; the last one closes the issue.
 - The issue's "Done when" list is the acceptance check. There are no separate gate issues and no
   evidence attachments.
-- Run the quality gate tier the change needs before pushing (`AGENTS.md`, "Quality gate"):
-  `vp run ready:quick` for docs and notes, `vp run ready` for other changes that ship, and
-  `vp run ready:full` for package source, public API, dependencies, build config, registry items,
-  release tooling, SSR, a11y-relevant UI and CI, before a release candidate or a release, and
-  whenever CI and local disagree. Add any focused `vp run` gate the change touches.
-- Every PR gets a code review. Fix each finding, or reply with the reason you didn't. While GitHub
-  Actions is capped on this account, CI and Pullfrog don't run: run the tier the change needs
-  locally and post the result on the PR, and get the review from Claude Opus 5.5 (xhigh) instead of
-  Pullfrog.
-- Merge with squash once the review has no open blocker or should-fix findings and the checks pass
-  (locally while Actions is capped). The Vercel checks don't gate merges. When Vercel's daily deploy
+- Run the quality gate's tiers as `AGENTS.md` ("Quality gate") says: `vp run ready:quick` after
+  every change, which is enough to merge a change to docs or notes alone, and `vp run ready`
+  before every other merge. `vp run ready:full` runs for releases: in the release workflow, and by
+  hand right before a release candidate or a release. A PR runs it only when it changes the full
+  gate itself or the release tooling. Add any focused `vp run` gate or lane the change touches.
+- The local `vp run ready` is the merge gate. Once it's green, merge without waiting for GitHub
+  Actions; CI runs the same tasks as a backstop. A red CI run on `main` gets fixed right away, and
+  CI red with local green is a gate bug: the local gate must reproduce it. Release work is the
+  exception: the release job's gate must pass, and a change to it, or a version PR, links a green
+  CI rehearsal.
+- Every PR gets a code review. Fix each finding, or reply with the reason you didn't. Get the
+  review from Claude Opus 5.5 (xhigh) instead of Pullfrog, and post the local gate's result on
+  the PR.
+- Merge with squash once the review has no open blocker or should-fix findings and the local gate
+  passes. The Vercel checks don't gate merges. When Vercel's daily deploy
   limit is hit, production catches up with the next deploy after it resets. Rebase on `main` first
   if behind.
 - UI changes include screenshots attached with `gh pr create/edit --attach`, as described in

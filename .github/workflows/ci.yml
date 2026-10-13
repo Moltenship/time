@@ -68,8 +68,8 @@ jobs:
   browsers:
     name: Firefox and WebKit
     # The full gate's Firefox and WebKit run, on Linux, where Playwright's Firefox starts (#182).
-    # On demand only, while its timing tests vary from run to run there (#192):
-    # `gh workflow run ci.yml --ref <branch>`. Pull requests and main run the PR tier.
+    # On demand, as the full tier runs for releases (AGENTS.md): `gh workflow run ci.yml --ref
+    # <branch>`. Pull requests and main run the PR tier. The release-gate job runs it too.
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -91,6 +91,41 @@ jobs:
 
       - name: The a11y suite and interactions in Firefox and WebKit
         run: vp run browsers
+
+      - name: Name the step that failed
+        if: failure()
+        run: vp run --last-details
+
+  release-gate:
+    name: Release gate
+    # What the release workflow's verify job runs before it publishes, on a fresh runner, without
+    # publishing anything: the whole full tier with a strict dry run. On demand only, as a
+    # rehearsal on any branch: `gh workflow run ci.yml --ref <branch>`. Without RELEASE_VERSION,
+    # the dry run checks the version the manifests have.
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    # About 11 minutes on a runner; the browser runs' watchdog catches a stuck page sooner.
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: "26"
+          cache: true
+
+      - name: Install locked dependencies
+        run: vp install --frozen-lockfile
+
+      - name: Install Chromium, Firefox and WebKit
+        run: vp exec --filter a11y playwright install --with-deps --only-shell chromium firefox webkit
+
+      - name: Release gate and dry run
+        run: vp run release:gate
 
       - name: Name the step that failed
         if: failure()

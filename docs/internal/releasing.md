@@ -1,9 +1,10 @@
 # Releasing
 
 How the packages get to npm. Only the owner publishes. Everything before the publish step runs
-locally, and nothing installs our packages from npm. The dry run is offline; the checks on its
-tarballs reach the network only for third-party packages, shadcn's components and the docs site's
-fonts.
+locally or in CI, and nothing installs our packages from npm. The dry run installs from the pnpm
+store, reading package metadata from npm only when a cold cache lacks it, as on a fresh runner;
+the checks on its tarballs reach the network only for third-party packages, shadcn's components
+and the docs site's fonts.
 
 Seven packages publish under `@moltenship`, listed in
 [`tools/release/src/config.ts`](../../tools/release/src/config.ts) and
@@ -14,7 +15,8 @@ Seven packages publish under `@moltenship`, listed in
 
 Each check is a `vp run` task. The same tasks run locally, in CI and in the release workflow. The
 tier says where a check belongs in the local gate: PR checks are cheap enough for every PR, and the
-full tier is the release gate. `vp run release:check` runs the three PR checks in about two seconds.
+full tier is the release gate, which runs for releases, and once in a PR that changes it or the
+release tooling. `vp run release:check` runs the three PR checks in about two seconds.
 It sits in the `gate:serial` lane right after `ci:build`, so `vp run ready` and CI run it. The full
 tier, `vp run ready:full`, also runs `vp run release:dry-run` and then `vp run release:artifacts`
 on what the dry run packed.
@@ -24,7 +26,7 @@ on what the dry run packed.
 | `vp run release:size` | Each published entry point's emitted ESM, raw and gzip, against its budget in `tools/release/src/config.ts` | PR |
 | `vp run release:api` | Each package's built declarations against its committed `api-report.md` | PR |
 | `vp run release:exports` | Packs every package into a temporary folder, then runs publint and are-the-types-wrong (ESM-only), checks for `LICENSE`, and checks that base packages don't import the dnd adapter | PR |
-| `vp run release:consumer` | Installs the tarballs into a new project outside the workspace, offline from the pnpm store; imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away | Full |
+| `vp run release:consumer` | Installs the tarballs into a new project outside the workspace, from the pnpm store, with every third-party package at the version the workspace locks (offline, unless a cold cache needs metadata from npm, which it says); imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away | Full |
 | `vp run release:dry-run` | A fresh build of every published package, then all of the above, the registry smoke, and a registry build into `.release/registry` that must ask for the packed version. Writes `.release/manifest.json` | Full |
 | `vp run release:artifacts` | What uses the release, on the dry run's tarballs and registry, with their hashes checked: the SSR fixture's render and hydration tests and the docs site's build, routes and example tests, each in a copy outside the workspace, installed offline from the pnpm store (a cold cache reads metadata from npm); and #43's install test, `shadcn add` into clean Vite and Next.js apps, which needs the network for npm and shadcn's own components. See [quality-gates.md](./quality-gates.md#release-artifacts) | Full |
 
@@ -48,20 +50,22 @@ packs nothing, and refuses a manifest from another commit or a file whose hash c
 2. **Version PR.** On a branch, run `vp run release:version 1.0.0-rc.1` (or whichever version).
    It sets the version in all seven manifests and turns "Unreleased" into `## 1.0.0-rc.1 (date)`.
    Open a PR and review it.
-3. **Link a green `browsers` run** before merging. Firefox and WebKit run on demand in CI:
-   `gh workflow run ci.yml --ref <version-branch>`. Link the green run in the version PR, as
-   `AGENTS.md` asks, then merge. From then on, the docs site's registry asks for that version,
-   which npm doesn't have until step 4, so publish soon after merging.
+3. **Link a green rehearsal** before merging: `gh workflow run ci.yml --ref <version-branch>`
+   runs CI's on-demand `release-gate` job, which runs what the release workflow's gate runs, and
+   the `browsers` job. Link the green run in the version PR, then merge. From then on, the docs
+   site's registry asks for that version, which npm doesn't have until step 4, so publish soon
+   after merging.
 4. **Publish from `main`**, one of two ways:
    - **GitHub Actions.** Actions → Release → Run workflow, on `main`, with the version. Leave
      "Publish to npm" off for a rehearsal, and rehearse at least once before the first real
-     release: the clean-consumer and registry install tests haven't run on GitHub's runners yet.
-     The `verify` job runs `vp run a11y` alone, as CI does, then `vp run release:gate` with
-     `RELEASE_VERSION` set to the input. `release:gate` is `ready:full` without the browser runs
-     (a runner is what `a11y:ci-speed` simulates, and `browsers` runs on demand), with
-     `release:dry-run --require-clean` for that version and `release:artifacts` on the dry run's
-     tarballs. The job keeps `.release/` as the
-     `release` artifact for seven days. A rehearsal before the version PR uses version `0.0.0`.
+     release. The `verify` job installs Chromium, Firefox and WebKit, then runs
+     `vp run release:gate` with `RELEASE_VERSION` set to the input: the whole full tier, its three
+     browser runs included, with `release:dry-run --require-clean` for that version and
+     `release:artifacts` on the dry run's tarballs, its lanes one after the other. CI's
+     on-demand `release-gate` job runs the same steps on any branch without publishing: on the
+     version PR's branch, as step 3 says, or before it. The job keeps
+     `.release/` as the `release` artifact for seven days. A rehearsal of the release workflow
+     itself before the version PR uses version `0.0.0`.
      With publishing on, the `publish` job downloads the artifact and runs
      `vp run release:publish --version <v> --provenance --yes` on the same commit. Only that job
      can mint the OIDC token that signs npm provenance.
@@ -79,9 +83,8 @@ packs nothing, and refuses a manifest from another commit or a file whose hash c
      ```sh
      vp install --frozen-lockfile
      vp exec --filter a11y playwright install chromium firefox webkit   # once, for the browser runs
-     vp run ready:full                # the release gate; needs the network
-     vp run release:dry-run --version 1.0.0-rc.1 --require-clean
-     vp run release:artifacts         # needs the network
+     RELEASE_VERSION=1.0.0-rc.1 vp run release:gate   # the full tier, strict; needs the network
+     # On macOS 27 its browser run is WebKit alone (#182): rehearse on CI for Firefox.
      export NODE_AUTH_TOKEN=<token>   # or npm login
      vp run release:publish --version 1.0.0-rc.1
      ```

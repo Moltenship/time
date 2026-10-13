@@ -7,7 +7,10 @@ a V8 feature flag or bundled polyfill.
 
 ## Tiers
 
-Three tasks group the gates below. `AGENTS.md` says which one a change runs.
+Three tasks group the gates below. Quick runs after every change, and is enough to merge a change
+to docs or notes alone. PR runs before every other merge. Full runs for releases: in the release
+workflow, and by hand right before a release candidate or a release, plus once in a PR that
+changes the full gate or the release tooling (`AGENTS.md`).
 
 | Tier  | Task                 | Steps                                                                                        |
 | ----- | -------------------- | -------------------------------------------------------------------------------------------- |
@@ -16,8 +19,8 @@ Three tasks group the gates below. `AGENTS.md` says which one a change runs.
 | Full  | `vp run ready:full`  | Every PR step, plus `browsers` and `a11y:ci-speed`. The three browser runs go one at a time in `gate:browsers`, beside `registry:smoke` and `gate:serial:full`, which adds `release:dry-run`, `showcase:types`, search and `release:artifacts` to the serial lane |
 
 On a 15-core Apple-silicon laptop, quick takes about 13 seconds, PR 37 seconds from a cold cache
-and 24 warm, and full 90 to 112 seconds, the release dry run included. Beside six threads of CPU
-load, full took 101 to 127 seconds (#47).
+and 24 warm, and full about 120 seconds cold (119.4, release artifacts and dry run included).
+Beside six threads of CPU load, full took 101 to 127 seconds before #203 (#47).
 The warm floor is the steps that pack packages, build the docs site or install the registry into
 clean apps, which never replay: they rewrite their own inputs, or reach the network.
 
@@ -27,17 +30,23 @@ files: packages' `dist`, packed tarballs, the docs site's `.next` and `.source`.
 read only source, so they run at the same time. The full gate runs its three browser runs one
 after another in a lane of their own, `gate:browsers`, beside the serial lane: see [Load](#load).
 Each browser mode keeps its own Vite dependency cache. CI's `quality-gates` job runs
-`vp run ready:checks` and its `accessibility` job runs `vp run a11y`: together, `vp run ready`. On demand (`gh workflow run ci.yml --ref <branch>`), a `browsers` job runs
-`vp run browsers` on Linux. When a job fails, its last step names the failed task. The contract test
-`tests/quality-gates.test.ts` holds the workflow to those task names and fails if `ready:full`
-misses a step of `ready`.
+`vp run ready:checks` and its `accessibility` job runs `vp run a11y`: together, `vp run ready`, on
+every PR. On demand (`gh workflow run ci.yml --ref <branch>`), two more jobs run: `browsers` runs
+`vp run browsers` on Linux, and `release-gate` runs what the release workflow's gate runs. When a
+job fails, its last step names the failed task. The contract test `tests/quality-gates.test.ts`
+holds the workflows to those task names and fails if `ready:full` misses a step of `ready`.
 
-The release workflow runs `vp run a11y` on its own and then `vp run release:gate`: `ready:full`
-without the browser runs (a GitHub runner is what `a11y:ci-speed` simulates, and `browsers` runs on
-demand in CI), with a strict dry run.
-A check that joins only the full gate joins `release:gate` too: its lane, `gate:serial:release`,
-for a serial step, or its `dependsOn` for a parallel one. The contract test lists what
-`release:gate` may leave out. See [releasing.md](./releasing.md).
+The release workflow runs `vp run release:gate` before it publishes: the whole full tier, with a
+strict dry run of the version it publishes (`--require-clean`, `RELEASE_VERSION`) in its own lane,
+`gate:serial:release`. It runs its lanes one after the other, the serial lane and then the browser
+runs: on a 4-core runner the serial lane's builds take every core, and beside them the year view's
+popover test ran out of its 15 s (#197). On a runner it takes about 11 minutes.
+`RELEASE_VERSION=<version> vp run release:gate` reproduces it locally (WebKit alone on macOS 27,
+#182), and CI's on-demand `release-gate` job runs the same steps on a fresh runner without
+publishing. A check that joins only the full gate joins `release:gate` too: a serial step in its
+`gate:serial:release` lane, a browser run in `gate:browsers`, and any other step in its command.
+The contract test fails if the two differ in anything but their serial lanes. See
+[releasing.md](./releasing.md).
 
 ## CI and local runs
 
@@ -48,9 +57,11 @@ covers it:
   and that is what made its flakes: focus, scroll and save races that a fast machine always wins.
   `vp run a11y:ci-speed` runs the suite with Chromium's CPU throttled 6 times
   (`Emulation.setCPUThrottlingRate`, set in `tools/a11y/tests/setup.ts` for `--mode ci-speed`), and
-  the full gate runs it, never from cache. It runs beside the serial lane, which loads the machine
-  further: stricter, and a little less repeatable, so rerun it alone before calling a failure a
-  flake.
+  the full gate runs it, never from cache. In `ready:full` it runs beside the serial lane, which
+  loads the machine further: stricter, and a little less repeatable, so rerun it alone before
+  calling a failure a flake. On a GitHub runner, which is the speed it simulates, it runs
+  unthrottled: there the release gate's `a11y:ci-speed` is a second, identical Chromium run, after
+  the serial lane.
 - **Fonts.** CI's Ubuntu image has other system fonts, so text wraps and positions differ. Tests
   compare layouts with each other and with ratios, not with fixed pixels, and a test that hovers
   does so on purpose instead of trusting where the mouse was left.
@@ -124,8 +135,8 @@ installs the polyfill before any test imports, as an app would, and a test check
   until #181 the agenda's end, the 10,000-event agenda scroll (too slow on the polyfill in CI), a
   day swipe's and a month step's snap points, and a drag against the edge.
 - Playwright's Firefox doesn't start on macOS 27 (#182). There the run leaves it out and says so;
-  CI's `browsers` job runs it on Linux, on demand, where its timing tests still vary from run to
-  run (#192).
+  CI runs it on Linux in the on-demand `browsers` job and in the release gate, green since #204
+  (#192).
 
 ## Passing gates
 

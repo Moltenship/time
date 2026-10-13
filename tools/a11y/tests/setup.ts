@@ -5,6 +5,8 @@ import "./styles.css";
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+  /** Set by `vite.config.ts` when the run is on a GitHub runner. */
+  const __ON_GITHUB_RUNNER__: boolean;
 }
 
 /**
@@ -27,8 +29,9 @@ console.error = (...args: unknown[]) => {
 document.documentElement.lang = "en";
 
 // `vp run a11y:ci-speed` slows Chromium down to a CI runner's speed, so a test that only fails on
-// a slow machine fails here too.
-if (import.meta.env.MODE === "ci-speed" && server.browser === "chromium") {
+// a slow machine fails here too. On a runner, which is that speed, it runs as it is: the release
+// workflow runs the full tier there.
+if (import.meta.env.MODE === "ci-speed" && server.browser === "chromium" && !__ON_GITHUB_RUNNER__) {
   await cdp().send("Emulation.setCPUThrottlingRate", { rate: CI_SLOWDOWN });
 }
 

@@ -34,7 +34,8 @@ jobs:
     # rule is the real limit (docs/internal/releasing.md).
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    # About 11 minutes on a runner; the browser runs' watchdog catches a stuck page sooner.
+    timeout-minutes: 30
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -50,15 +51,12 @@ jobs:
       - name: Install locked dependencies
         run: vp install --frozen-lockfile
 
-      - name: Install Chromium
-        run: vp exec --filter a11y playwright install --with-deps --only-shell chromium
+      - name: Install Chromium, Firefox and WebKit
+        run: vp exec --filter a11y playwright install --with-deps --only-shell chromium firefox webkit
 
-      # Alone, as CI runs it: beside the other steps, a runner's four cores make it flaky.
-      - name: Accessibility checks
-        run: vp run a11y
-
-      # Everything else in ready:full, with a strict dry run for this version, then the SSR
-      # fixture, the docs site and the shadcn install test on the dry run's tarballs.
+      # The whole full tier: the serial lane, with a strict dry run for this version and the SSR
+      # fixture, the docs site and the shadcn install test on its tarballs, then the browser runs.
+      # CI's on-demand release-gate job runs these same steps without publishing.
       - name: Release gate and dry run
         env:
           RELEASE_VERSION: ${{ inputs.version }}
