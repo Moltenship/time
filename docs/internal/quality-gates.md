@@ -13,19 +13,21 @@ Three tasks group the gates below. `AGENTS.md` says which one a change runs.
 | ----- | -------------------- | -------------------------------------------------------------------------------------------- |
 | Quick | `vp run ready:quick` | `showcase:links`, `vp check`, `vp test`                                                      |
 | PR    | `vp run ready`       | `ready:checks` (`registry:smoke` beside the `gate:serial` lane) and `a11y`                   |
-| Full  | `vp run ready:full`  | Every PR step, `a11y:ci-speed`, `browsers`, then `release:dry-run`, `showcase:types`, search and `release:artifacts` in `gate:serial:full` |
+| Full  | `vp run ready:full`  | Every PR step, plus `browsers` and `a11y:ci-speed`. The three browser runs go one at a time in `gate:browsers`, beside `registry:smoke` and `gate:serial:full`, which adds `release:dry-run`, `showcase:types`, search and `release:artifacts` to the serial lane |
 
 On a 15-core Apple-silicon laptop, quick takes about 13 seconds, PR 37 seconds from a cold cache
-and 24 warm, and full 112 seconds cold and 103 warm, plus about 6 seconds for the release dry run.
+and 24 warm, and full 90 to 112 seconds, the release dry run included. Beside six threads of CPU
+load, full took 101 to 127 seconds (#47).
 The warm floor is the steps that pack packages, build the docs site or install the registry into
 clean apps, which never replay: they rewrite their own inputs, or reach the network.
 
 `gate:serial` runs `showcase:links`, `ci:check`, `ci:build`, `release:check`, `ci:test`,
 `react:gate`, `ssr:smoke` and `package:graph` in that order, because each writes or reads generated
 files: packages' `dist`, packed tarballs, the docs site's `.next` and `.source`. Steps outside it
-read only source, so they run at the same time; `a11y` and `a11y:ci-speed` keep their Vite
-dependency caches apart. CI's `quality-gates` job runs `vp run ready:checks` and its `accessibility` job runs `vp run a11y`:
-together, `vp run ready`. On demand (`gh workflow run ci.yml --ref <branch>`), a `browsers` job runs
+read only source, so they run at the same time. The full gate runs its three browser runs one
+after another in a lane of their own, `gate:browsers`, beside the serial lane: see [Load](#load).
+Each browser mode keeps its own Vite dependency cache. CI's `quality-gates` job runs
+`vp run ready:checks` and its `accessibility` job runs `vp run a11y`: together, `vp run ready`. On demand (`gh workflow run ci.yml --ref <branch>`), a `browsers` job runs
 `vp run browsers` on Linux. When a job fails, its last step names the failed task. The contract test
 `tests/quality-gates.test.ts` holds the workflow to those task names and fails if `ready:full`
 misses a step of `ready`.
@@ -46,7 +48,7 @@ covers it:
   and that is what made its flakes: focus, scroll and save races that a fast machine always wins.
   `vp run a11y:ci-speed` runs the suite with Chromium's CPU throttled 6 times
   (`Emulation.setCPUThrottlingRate`, set in `tools/a11y/tests/setup.ts` for `--mode ci-speed`), and
-  the full gate runs it, never from cache. Running beside the other steps loads the machine
+  the full gate runs it, never from cache. It runs beside the serial lane, which loads the machine
   further: stricter, and a little less repeatable, so rerun it alone before calling a failure a
   flake.
 - **Fonts.** CI's Ubuntu image has other system fonts, so text wraps and positions differ. Tests
@@ -64,6 +66,37 @@ covers it:
   environment, so `REGISTRY_E2E_*` switches and proxy settings reach them through `vp run`.
 - **Time zone and locale.** CI runs in UTC; laptops run in their own zone. Tests pass explicit
   `timeZone`, `locale` and `now`, so passing in both is also a check that nothing reads the host's.
+
+## Load
+
+A gate that fails when the machine is busy is a flaky gate, so the full gate holds its load down
+and fails fast when a browser run stalls:
+
+- **Half the cores per browser run.** By default Vitest gives each browser up to 12 pages, one
+  per core but one. Three browser runs at once, beside the build and the unit tests, put up to 38
+  pages on 15 cores: input and frames came late, tests ran out of time, and some runs stalled for
+  20 minutes and more. Now `tools/a11y/vite.config.ts` gives a run half the cores, split between
+  its browsers (Firefox and WebKit get a quarter each), and the full gate's `gate:browsers` lane
+  runs `a11y`, `browsers` and `a11y:ci-speed` one at a time, beside the serial lane. The lane stops
+  at the first run that fails. Reduced motion runs its one file in a page of its own, beside the
+  Chromium pages of `a11y`.
+  In CI's 4-core runner the `accessibility` job gets 2 pages and the `browsers` job 1 per browser.
+- **Half the cores for the unit tests.** `vp test` from the root (`ci:test`, the quick tier, the
+  engine tasks) takes half the cores too, in the root `vite.config.ts`, since in the PR and full
+  tiers it runs beside a browser run. Its timeout is 15 seconds, as in the browser suite: a few
+  tests do real work, such as a registry build, that takes under a second alone and passed 5
+  seconds on a busy machine. They wait on no clock.
+- **A watchdog.** A page whose main thread is stuck can't time its own tests out, so a run could
+  wait for hours. `tools/a11y/watchdog.ts` is a Vitest reporter that watches from a Node worker
+  thread of its own. When no test finishes for two minutes, or a run passes ten, it names the
+  files and tests still running and cancels the run; if that doesn't stop it within 20 seconds, it
+  kills the run and the processes under it, the browsers included. Either way the step fails. It
+  doesn't watch in watch mode, a headed browser or under a debugger, and `--reporter` on the
+  command line replaces it. `tools/a11y/watchdog.test.ts` tests it.
+
+To check the gate under load, run it beside a CPU load, such as a few threads spinning in a loop.
+Rerun a failing file alone before calling it a flake: `vp run a11y#test tests/<file>`, or
+`cd tools/a11y && vp test --mode ci-speed tests/<file>` (or `--mode browsers`).
 
 ## Browsers
 

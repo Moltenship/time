@@ -45,12 +45,15 @@ smallest one that covers the change.
   UI that affects accessibility; CI config. Also before a release candidate or a release, and
   whenever CI and local disagree.
 
-On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 110 from a cold cache.
+On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 100 from a cold cache.
 Steps run in parallel where they're independent. Steps that write or read generated files
-(`dist`, `.next`, `.source`, packed tarballs) run one after another in a `gate:serial` lane. Vite Task
-caches each step, so a rerun only redoes what changed; `a11y:ci-speed` never replays, since a timing
-race can pass once by luck. When a tier fails, `vp run --last-details` names the step; rerun it
-alone with `vp run <step>`.
+(`dist`, `.next`, `.source`, packed tarballs) run one after another in a `gate:serial` lane. The
+full gate's browser runs (`a11y`, `browsers`, `a11y:ci-speed`) run one after another in a
+`gate:browsers` lane beside it, each on half the cores, and the unit tests take half the cores too.
+A browser run that stops making progress fails: a watchdog names the files and tests still running
+when no test finishes for two minutes, or the run passes ten. Vite Task caches each step, so a rerun
+only redoes what changed; `a11y:ci-speed` never replays, since a timing race can pass once by luck.
+When a tier fails, `vp run --last-details` names the step; rerun it alone with `vp run <step>`.
 
 The browser runs need Playwright's browsers once: `vp exec --filter a11y playwright install chromium
 firefox webkit` (add `--with-deps` on Linux). Playwright's Firefox doesn't start on macOS 27 (#182); there `browsers` runs WebKit
@@ -59,8 +62,8 @@ or a release, link a green run of that job too.
 
 A new check joins a tier in `vite.config.ts`: `ready:checks` or `gate:serial` for the PR tier,
 `ready:full` or `gate:serial:full` for the full gate only. Put it in a `gate:serial` lane if it
-writes or reads generated files. `tests/quality-gates.test.ts` fails if the full gate misses a PR
-step.
+writes or reads generated files, and a new browser run in `gate:browsers`.
+`tests/quality-gates.test.ts` fails if the full gate misses a PR step.
 
 The release workflow runs `vp run a11y`, then `RELEASE_VERSION=<version> vp run release:gate`:
 `ready:full` without the browser runs, with a strict release dry run (`docs/internal/releasing.md`).
