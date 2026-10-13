@@ -28,6 +28,8 @@ export interface TimeGridEventProps<TEvent> {
   readonly formats: TimeGridEventFormats;
   /** Shown before the title, from the view's `getEventIcon`. */
   readonly icon?: ReactNode;
+  /** The root takes no changes, so the event has no resize handles. */
+  readonly isReadOnly?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly layout: TimeGridEventLayout<EventDayFragment<TEvent, EventId, ResourceId>>;
   /** Rendered beside the visible dates of a scrolling grid: not a focus target. */
@@ -108,13 +110,15 @@ export function eventTimeRange(
 /**
  * A positioned event: title and time range, or one compact line when short. Render a column's
  * events in layout order, so stacked events draw over the ones they overlap. Resize handles mark
- * the edges that belong to this day; continued edges are squared off instead. A short block keeps
- * one handle, and handles take at most a third of the height, so the rest still grabs to move.
+ * the edges that belong to this day, unless the event or the root is read-only; continued edges
+ * are squared off instead. A short block keeps one handle, and handles take at most a third of the
+ * height, so the rest still grabs to move.
  */
 export function TimeGridEvent<TEvent>({
   color,
   formats,
   icon,
+  isReadOnly = false,
   labelEvent,
   layout,
   offscreen,
@@ -125,7 +129,7 @@ export function TimeGridEvent<TEvent>({
   const { event, endsAfterDay, startsBeforeDay } = fragment;
   const [start, end] = wallTimes(fragment, timeZone);
   const compact = height * 24 * 60 < COMPACT_MINUTES;
-  const resizable = !event.isReadOnly;
+  const resizable = !isReadOnly && !event.isReadOnly;
   const chip = useEventChip(event, { date: fragment.date, labelEvent, offscreen, resourceId });
   const titleRef = useRef<HTMLSpanElement>(null);
   const [titleShown, setTitleShown] = useState(false);

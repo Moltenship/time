@@ -78,6 +78,7 @@ export function TimeGridView<TEvent>({
   actions,
   environment,
   events,
+  isReadOnly,
   options,
   projection,
   range,
@@ -93,6 +94,7 @@ export function TimeGridView<TEvent>({
     announcer,
     check: actions.checkEventChange,
     columns,
+    disabled: isReadOnly,
     events,
     onPropose: actions.proposeEventChange,
     scrollContainer: scrollRef,
@@ -172,6 +174,7 @@ export function TimeGridView<TEvent>({
           environment={environment}
           getEventColor={options.getEventColor}
           getEventIcon={options.getEventIcon}
+          isReadOnly={isReadOnly}
           labelEvent={labelEvent}
           onColumnHeightChange={setColumnHeight}
           onOpenDay={openDay}

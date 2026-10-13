@@ -175,8 +175,9 @@ The registry is not a second package manager. It distributes the source users ar
 - `meta.compatibility` records the `@moltenship/calendar` range an item's install needs. The build
   takes it from the version the workspace builds and tests with.
 - No item depends on a drag-and-drop library. Views edit through the native pointer layer in
-  `@moltenship/calendar`. Without `onEventChange` on `Root`, every change it proposes is rejected
-  as read-only, though drags still start (#201).
+  `@moltenship/calendar`, which stays off until the app passes `onEventChange`: without it, `Root`
+  passes views `isReadOnly`, so they start no drags or keyboard grabs and draw no resize handles,
+  and every change proposed through `actions` is rejected as read-only.
 - `shadcn build` builds it, and the docs site serves it at `/r/<item>.json`.
 - No custom CLI is introduced in v1; the maintained shadcn CLI is the installer.
 
@@ -913,9 +914,9 @@ Explicit move and resize buttons and an event details surface in the registry ar
 
 `useCalendarPointer` takes the rendered `events`, `onPropose` and `timeZone`, and optionally `snap`
 (15 minutes by default), `announcer`, `check`, `columns`, `scrollContainer` (the nearest scrollable
-ancestor by default), `onPreview`, `disabled` and `ghostClassName`. Activation is fixed: more than 4
-px of travel for mouse and pen; for touch, a 250 ms press that moves no more than 8 px. DOM event
-types do not leak into calendar callbacks.
+ancestor by default), `onPreview`, `disabled` (views pass their `isReadOnly` prop) and
+`ghostClassName`. Activation is fixed: more than 4 px of travel for mouse and pen; for touch, a
+250 ms press that moves no more than 8 px. DOM event types do not leak into calendar callbacks.
 
 ### Policy pipeline
 

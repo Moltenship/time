@@ -130,6 +130,8 @@ test("bars span their days and stack in lanes, and the row grows to fit them", a
         allDay("Audit", ["site-1-room-1"], "2026-09-29", "2026-10-03"),
         allDay("Move", ["site-1-room-1"], "2026-10-02", "2026-10-05"),
       ]}
+      // Editable, so bars have resize handles.
+      onEventChange={() => {}}
     />,
   );
   const audit = container.querySelector<HTMLElement>('[data-event-id="Audit"]')!;

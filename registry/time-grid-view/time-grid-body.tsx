@@ -20,6 +20,8 @@ export interface TimeGridBodyProps<TEvent> {
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly getEventIcon?: (event: TEvent) => ReactNode;
+  /** The root takes no changes: events have no resize handles. */
+  readonly isReadOnly?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
   /** Reports the 24-hour row's height in px when it changes, as zooming the hours does. */
   readonly onColumnHeightChange?: (height: number) => void;
@@ -127,6 +129,7 @@ export function TimeGridBody<TEvent>({
   environment,
   getEventColor,
   getEventIcon,
+  isReadOnly,
   labelEvent,
   onColumnHeightChange,
   onOpenDay,
@@ -177,6 +180,7 @@ export function TimeGridBody<TEvent>({
               day={day}
               getEventColor={getEventColor}
               getEventIcon={getEventIcon}
+              isReadOnly={isReadOnly}
               labelEvent={labelEvent}
               onOpenDay={onOpenDay}
               renderUnavailable={renderUnavailable}

@@ -38,6 +38,8 @@ export interface ResourceTimelineGridProps<TEvent> {
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   /** An icon before an event's title, or nothing. */
   readonly getEventIcon?: (event: TEvent) => ReactNode;
+  /** The root takes no changes: events have no resize handles. */
+  readonly isReadOnly?: boolean;
   /** The view's keyboard handlers; the grid is its one tab stop. */
   readonly keyboard: CalendarKeyboardHandlers;
   /** The grid's accessible name, such as the visible range. */
@@ -81,6 +83,7 @@ export function ResourceTimelineGrid<TEvent>({
   environment,
   getEventColor,
   getEventIcon,
+  isReadOnly,
   keyboard,
   label,
   labelEvent,
@@ -189,6 +192,7 @@ export function ResourceTimelineGrid<TEvent>({
               formatTime={formatTime}
               getEventColor={getEventColor}
               getEventIcon={getEventIcon}
+              isReadOnly={isReadOnly}
               labelEvent={labelEvent}
               labels={labels}
               range={range}

@@ -72,7 +72,8 @@ the layout (see [Right-to-left](#right-to-left)).
 ### Changing events
 
 With `onEventChange` on `Root`, the month, week, day, resource columns, and resource timeline views
-can change events from the keyboard, just as a drag does. The year view shows events without
+can change events from the keyboard, just as a drag does; without it, Space picks nothing up and
+is left to the focused element. The year view shows events without
 changing them, so Space there opens a day's events. Moving a picked-up event into another
 resource's column or row swaps that resource, as dropping it there would.
 

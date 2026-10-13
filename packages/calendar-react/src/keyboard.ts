@@ -89,7 +89,7 @@ type CalendarCommitPlacement = Extract<
 >["proposed"];
 
 function createKeyboardHandlers(
-  { actions, announcements, keyboard, read }: CalendarInteractionRuntime,
+  { actions, announcements, isReadOnly, keyboard, read }: CalendarInteractionRuntime,
   { getView, roving }: CalendarViewRuntime,
   getOptions: () => CalendarKeyboardOptions,
   getResources: () => ResourceTree | null,
@@ -400,10 +400,11 @@ function createKeyboardHandlers(
         return focus.kind !== "event" && !event.shiftKey && apply(navigate("enter", focus));
       case "Escape":
         return focus.kind === "event" && apply(navigate("exit", focus));
+      // A read-only root takes no changes, so Space is left to the element, as Enter is.
       case " ":
-        return grab(
-          focus,
-          focus.kind !== "event" ? "create" : event.shiftKey ? "resize-end" : "move",
+        return (
+          !isReadOnly &&
+          grab(focus, focus.kind !== "event" ? "create" : event.shiftKey ? "resize-end" : "move")
         );
       default:
         return false;
@@ -447,7 +448,8 @@ function createKeyboardHandlers(
  * - Space grabs the focused event to move it, or the focused cell to create an event there;
  *   Shift+Space grabs an event's end to resize it, and again switches to its start. Navigation
  *   keys then step the gesture, Enter or Space commits it through `proposeEventChange`, and
- *   Escape, Tab, or leaving the view cancels it.
+ *   Escape, Tab, or leaving the view cancels it. On a root without `onEventChange`, Space grabs
+ *   nothing.
  *
  * Every phase is announced through the root's `Announcer`.
  */

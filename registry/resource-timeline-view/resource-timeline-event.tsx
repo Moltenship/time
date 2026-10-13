@@ -18,6 +18,8 @@ export interface ResourceTimelineEventProps<TEvent> {
   readonly color?: CalendarEventColor;
   /** Shown before the title, from the view's `getEventIcon`. */
   readonly icon?: ReactNode;
+  /** The root takes no changes, so the bar has no resize handles. */
+  readonly isReadOnly?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
   /** The row's resource; an event with several resources shows once in each of their rows. */
   readonly resourceId: ResourceId | null;
@@ -25,17 +27,18 @@ export interface ResourceTimelineEventProps<TEvent> {
 
 /**
  * An event's bar in its lane, across the time it covers. Ends cut off by the range are squared;
- * the others carry resize handles.
+ * the others carry resize handles, unless the event or the root is read-only.
  */
 export function ResourceTimelineEvent<TEvent>({
   bar: { date, days, endsAfter, event, lane, offset, startsBefore, time, width },
   color,
   icon,
+  isReadOnly = false,
   labelEvent,
   resourceId,
 }: ResourceTimelineEventProps<TEvent>) {
   const chip = useEventChip(event, { date, days, labelEvent, resourceId });
-  const resizable = !event.isReadOnly;
+  const resizable = !isReadOnly && !event.isReadOnly;
 
   return (
     <EventChip

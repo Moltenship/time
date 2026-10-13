@@ -28,6 +28,8 @@ export interface ResourceColumnsBodyProps<TEvent> {
   readonly followY: RefCallback<HTMLElement>;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly getEventIcon?: (event: TEvent) => ReactNode;
+  /** The root takes no changes: events have no resize handles. */
+  readonly isReadOnly?: boolean;
   /** The rendered columns, from the column virtualizer. */
   readonly items: readonly VirtualItem[];
   readonly labelEvent: EventLabeler<TEvent>;
@@ -53,6 +55,7 @@ function ResourceDays<TEvent>({
   formats,
   getEventColor,
   getEventIcon,
+  isReadOnly,
   labelEvent,
   now,
   renderUnavailable,
@@ -67,6 +70,7 @@ function ResourceDays<TEvent>({
   readonly formats: TimeGridColumnFormats;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   readonly getEventIcon?: (event: TEvent) => ReactNode;
+  readonly isReadOnly: boolean | undefined;
   readonly labelEvent: EventLabeler<TEvent>;
   readonly now: TimeGridPosition | null;
   readonly renderUnavailable?: UnavailableTimeRender;
@@ -100,6 +104,7 @@ function ResourceDays<TEvent>({
           formats={formats}
           getEventColor={getEventColor}
           getEventIcon={getEventIcon}
+          isReadOnly={isReadOnly}
           labelEvent={labelEvent}
           nowTop={now?.column === index ? now.top : null}
           renderUnavailable={renderUnavailable}
@@ -123,6 +128,7 @@ export function ResourceColumnsBody<TEvent>({
   followY,
   getEventColor,
   getEventIcon,
+  isReadOnly,
   items,
   labelEvent,
   onScroll,
@@ -179,6 +185,7 @@ export function ResourceColumnsBody<TEvent>({
               formats={formats}
               getEventColor={getEventColor}
               getEventIcon={getEventIcon}
+              isReadOnly={isReadOnly}
               labelEvent={labelEvent}
               now={nowPosition}
               renderUnavailable={renderUnavailable}

@@ -106,6 +106,7 @@ export function ResourceColumnsView<
   actions,
   environment,
   events,
+  isReadOnly,
   options,
   projection: { columns, resources },
   range,
@@ -133,6 +134,7 @@ export function ResourceColumnsView<
     announcer,
     check: actions.checkEventChange,
     columns,
+    disabled: isReadOnly,
     events,
     onPreview: reportDraft,
     onPropose: actions.proposeEventChange,
@@ -206,6 +208,7 @@ export function ResourceColumnsView<
         followY={followY}
         getEventColor={options.getEventColor}
         getEventIcon={options.getEventIcon}
+        isReadOnly={isReadOnly}
         labelEvent={labelEvent}
         onScroll={sync}
         renderUnavailable={options.renderUnavailable}

@@ -578,11 +578,13 @@ export function createCalendarRoot<
         () => committed.current.resourceTree,
       ),
     );
+    const isReadOnly = onEventChange === undefined;
     const interaction = useMemo<CalendarInteractionRuntime>(
       () =>
         Object.freeze({
           actions,
           announcements,
+          isReadOnly,
           keyboard,
           pointerDraft,
           rangeOf: (anchor: Temporal.PlainDate) => {
@@ -597,7 +599,7 @@ export function createCalendarRoot<
           requests: binding.subscribeRequests,
           source,
         }),
-      [actions, announcements, binding, keyboard, pointerDraft, source],
+      [actions, announcements, binding, isReadOnly, keyboard, pointerDraft, source],
     );
 
     const [refs] = useState(() =>

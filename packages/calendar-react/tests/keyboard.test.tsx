@@ -46,7 +46,10 @@ afterEach(async () => {
 async function mount(
   events: readonly FixtureEvent[] = [],
   onChange?: (change: Change) => void,
-  props: Pick<Parameters<typeof KeyboardFixture>[0], "controlFocus" | "persist" | "policies"> = {},
+  props: Pick<
+    Parameters<typeof KeyboardFixture>[0],
+    "controlFocus" | "persist" | "policies" | "readOnly"
+  > = {},
 ) {
   harness = await renderWithHarness(
     <KeyboardFixture initialEvents={events} onChange={onChange} {...props} />,
@@ -217,6 +220,31 @@ describe("keyboard move, resize, and create", () => {
     expect(spoken(container)).toBe("reject move Locked read-only");
     await press("ArrowRight");
     expect(document.activeElement).toBe(cell(container, "2026-10-08"));
+  });
+
+  test("a calendar without onEventChange leaves Space to the focused element", async () => {
+    const container = await mount([allDay("trip", "2026-10-07", "2026-10-09", "Trip")], undefined, {
+      readOnly: true,
+    });
+    const space = (init: KeyboardEventInit = {}) => {
+      const event = new KeyboardEvent("keydown", {
+        bubbles: true,
+        cancelable: true,
+        key: " ",
+        ...init,
+      });
+      act(() => void document.activeElement!.dispatchEvent(event));
+      return event.defaultPrevented;
+    };
+
+    await focus(segment(container, "trip"));
+    expect([space(), space({ shiftKey: true })]).toEqual([false, false]);
+    await focus(cell(container, "2026-10-08"));
+    expect(space()).toBe(false);
+    expect(spoken(container)).toBe("");
+    // Arrow keys still move focus.
+    await press("ArrowRight");
+    expect(document.activeElement).toBe(cell(container, "2026-10-09"));
   });
 
   test("Shift+Space resizes the end, and again the start", async () => {

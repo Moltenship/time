@@ -171,6 +171,7 @@ export function ScrollingTimeGridView<TEvent>({
   actions,
   environment,
   events,
+  isReadOnly,
   loadRange,
   options,
   projection,
@@ -205,6 +206,7 @@ export function ScrollingTimeGridView<TEvent>({
     announcer,
     check: actions.checkEventChange,
     columns,
+    disabled: isReadOnly,
     events,
     onPropose: actions.proposeEventChange,
     scrollContainer: axis.scrollRef,
@@ -411,6 +413,7 @@ export function ScrollingTimeGridView<TEvent>({
                       formats={columnFormats}
                       getEventColor={options.getEventColor}
                       getEventIcon={options.getEventIcon}
+                      isReadOnly={isReadOnly}
                       labelEvent={labelEvent}
                       nowTop={nowPosition?.column === index ? nowPosition.top : null}
                       offscreen={!plainDateIntervalContains(range, day.column.date)}

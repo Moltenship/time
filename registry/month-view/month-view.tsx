@@ -140,6 +140,7 @@ function MonthView<TEvent>({
   actions,
   environment,
   events,
+  isReadOnly,
   options,
   projection,
   range,
@@ -150,6 +151,7 @@ function MonthView<TEvent>({
   const pointerRef = useCalendarPointer({
     announcer,
     check: actions.checkEventChange,
+    disabled: isReadOnly,
     events,
     onPropose: actions.proposeEventChange,
     scrollContainer: body,

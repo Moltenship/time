@@ -56,6 +56,7 @@ const meetings: readonly Meeting[] = Object.freeze([
 
 let viewActions: CalendarViewActions | undefined;
 let rendererEvents: EventSnapshot<unknown, EventId, ResourceId> | undefined;
+let rendererReadOnly: boolean | undefined;
 
 const agendaView = defineCalendarView({
   name: "agenda",
@@ -65,9 +66,10 @@ const agendaView = defineCalendarView({
     navigate: (anchor, delta) => anchor.add({ days: delta }),
     project: ({ instantRange, snapshot }) => snapshot.queryTimed(instantRange),
   },
-  Renderer({ actions, events, projection }) {
+  Renderer({ actions, events, isReadOnly, projection }) {
     viewActions = actions;
     rendererEvents = events;
+    rendererReadOnly = isReadOnly;
     return (
       <ol>
         {projection.map((event) => (
@@ -308,8 +310,11 @@ test("read-only events and calendars without a handler reject changes", async ()
   );
   await expect(locked).resolves.toMatchObject({ reason: "read-only", status: "rejected" });
   expect(handler).not.toHaveBeenCalled();
+  expect(rendererReadOnly).toBe(false);
 
   await harness.render(<Application />);
+  // Views hear it, so they start no gestures.
+  expect(rendererReadOnly).toBe(true);
   const { result: unhandled } = await propose(move("2026-08-15T11:00:00Z", "2026-08-15T12:00:00Z"));
   await expect(unhandled).resolves.toEqual({ reason: "read-only", status: "rejected" });
   expect(visible(harness)[0]).toBe("Standup 2026-08-15T09:00:00Z");
