@@ -792,8 +792,8 @@ type CalendarEventPlacement<TResourceId extends ResourceId> = CalendarEventInter
   resourceIds: readonly TResourceId[];
 };
 
-type CalendarEventProposal<TEventId extends EventId, TResourceId extends ResourceId> =
-  | { cause: "create"; proposed: CalendarEventPlacementInput<TResourceId> }
+type CalendarEventProposal<TEventId extends EventId, TResourceId extends ResourceId, TEvent = never> =
+  | { cause: "create"; proposed: CalendarEventPlacementInput<TResourceId>; event?: TEvent }
   | {
       cause: "move" | "resize-start" | "resize-end" | "update";
       eventId: TEventId;
@@ -806,7 +806,7 @@ type CalendarEventChange<TEvent, TEventId extends EventId, TResourceId extends R
       cause: "create";
       id: string;
       eventId: null;
-      event: null;
+      event: TEvent | null; // the record the proposal carried, such as a deleted event an undo restores
       original: null;
       proposed: CalendarEventPlacement<TResourceId>;
       warnings?: readonly string[];
@@ -850,7 +850,9 @@ another resource is a `move` with new `resourceIds`. `update` and `delete` come 
 made it; the proposal's detail does, `proposeEventChange(proposal, { input })` with
 `CalendarInputMethod = "pointer" | "keyboard" | "api"`: the pointer layer passes
 `{ input: "pointer" }` to `onPropose`, `useCalendarKeyboard` proposes as `"keyboard"`, and anything
-else is `"api"`. `onEventChangeResult` hears it; the announcer hears a gesture's own input. `id` names the change
+else is `"api"`. `onEventChangeResult` hears the detail as given, or `{ input: "api" }` when it names
+no input; an event history's inverses add `history: "undo" | "redo"`. The announcer hears a
+gesture's own input. `id` names the change
 within one calendar, such as `change-3`. `warnings` holds the reasons policies flagged the change
 with while letting it through. There are no recurrence fields: `resolveRecurrenceEdit` in
 `@moltenship/calendar-recurrence` turns a change to an occurrence into a this, following or all
@@ -920,6 +922,38 @@ hydration read the empty map. There is no `onTransactionStateChange` and no tran
 a promise plus reconciling against `events` covers queued and server-pushed confirmation, and a
 source's push confirms a change by itself. A keyboard gesture's preview marks the grabbed event
 `isPending` (#198), but it isn't a proposal, so it isn't in the map.
+
+### Undo and redo
+
+Undo is opt-in (#227). `createEventHistory(options?)` in `calendar-core` is a pure store of steps;
+`Root` knows nothing of it. An app passes `history.record` as `onEventChangeResult`, and
+`useCalendarHistory(history, { messages? })` in `calendar-react` binds it to the nearest root. A root
+without one records nothing and listens for nothing, and `tests/history-bundle.test.ts` shows that a
+bundle of the facade's other exports keeps none of the history's modules.
+
+- **Recording.** Only committed results record, never the history's own inverses (their detail has
+  `history`). Options: `limit` (100), `inputs` (all), `filter`, `coalesce` (into the top step, same
+  event only) and `createdEventId`. A new step clears redo. A step is one event's placement
+  `before` and `after`, `null` where there is no event.
+- **Applying.** Undo and redo propose the inverse through `proposeEventChange`, so policies,
+  optimistic rendering and `onEventChange` apply: a move, resize or update proposes the other
+  placement with the same cause; an undone delete proposes a create carrying the deleted record as
+  `event`; an undone create deletes the event it became. Calls queue, and each waits until no
+  change in the calendar is validating or saving (`whenSettled`, from the root's pending changes),
+  so a drop still saving is recorded and undone first. A committed inverse moves the step to the
+  other stack with the placement saved, and a redo goes back on top of undo even after a new step;
+  a rejected one leaves both stacks alone, as does a create `createdEventId` can't name yet.
+- **Identity.** A restored event is looked for under the ID it had; `createdEventId(change,
+  events)` names the event a create became, and creates are recorded only with it. Steps naming an
+  old ID follow a new one.
+- **Stale steps.** Before proposing, the history compares the step with the events the user sees
+  (pending changes included, and its own saves the events don't show yet). An event moved,
+  deleted or restored elsewhere makes the step stale: it is dropped and nothing is proposed. A
+  revision check would flag the app's own saves; trying anyway would undo another user's change.
+- **Recurring events** aren't supported: the app leaves occurrences out with `filter` and
+  `isRecurringChange`, since an edit to "this and following" or "all" isn't one placement change.
+- **Announcements.** With `messages`, the hook speaks each outcome through the root's `Announcer`;
+  the registry has an English set.
 
 ## 11. Drag, resize, selection, and creation
 

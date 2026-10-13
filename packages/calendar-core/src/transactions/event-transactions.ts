@@ -38,7 +38,7 @@ export interface EventTransactions<
    * settles with the outcome and never rejects.
    */
   readonly propose: (
-    proposal: CalendarEventProposal<TEventId, TResourceId>,
+    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
     context: CalendarTransactionContext<TEvent, TEventId, TResourceId>,
   ) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
   /**
@@ -47,7 +47,7 @@ export interface EventTransactions<
    * policy answers asynchronously.
    */
   readonly check: (
-    proposal: CalendarEventProposal<TEventId, TResourceId>,
+    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
     context: Omit<CalendarTransactionContext<TEvent, TEventId, TResourceId>, "onEventChange">,
   ) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
   /** Reports new application events, which confirm or supersede resolved changes. */
@@ -70,13 +70,14 @@ interface PendingEntry<TEvent, TEventId extends EventId, TResourceId extends Res
 const noPending = new ReadonlyMapView(new Map<never, never>());
 
 function createChange<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
-  proposal: CalendarEventProposal<TEventId, TResourceId>,
+  proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
   id: string,
   events: EventSnapshot<TEvent, TEventId, TResourceId>,
 ): CalendarEventChange<TEvent, TEventId, TResourceId> | undefined {
   if (proposal.cause === "create") {
     const proposed = { ...proposal.proposed, resourceIds: proposal.proposed.resourceIds ?? [] };
-    return { cause: "create", event: null, eventId: null, id, original: null, proposed };
+    const event = proposal.event ?? null;
+    return { cause: "create", event, eventId: null, id, original: null, proposed };
   }
 
   const current = events.get(proposal.eventId);
@@ -314,7 +315,7 @@ export function createEventTransactions<
   }
 
   function propose(
-    proposal: CalendarEventProposal<TEventId, TResourceId>,
+    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
     context: Context,
   ): Promise<Result> {
     reconcile(context.snapshot);
@@ -362,7 +363,7 @@ export function createEventTransactions<
   }
 
   function check(
-    proposal: CalendarEventProposal<TEventId, TResourceId>,
+    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
     context: Omit<Context, "onEventChange">,
   ): CalendarPolicyResult<TEvent, TEventId, TResourceId> | null {
     reconcile(context.snapshot);

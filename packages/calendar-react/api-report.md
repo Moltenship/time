@@ -14,6 +14,7 @@ import {
   AvailabilitySnapshot,
   CalendarAnnotation,
   CalendarAnnotationSource,
+  CalendarAnnouncementContext,
   CalendarAnnouncementMessages,
   CalendarAnnouncer,
   CalendarAvailability,
@@ -25,6 +26,7 @@ import {
   CalendarEventInterval,
   CalendarEventProposal,
   CalendarFocus,
+  CalendarInputMethod,
   CalendarInteractionCheck,
   CalendarKeyboardSession,
   CalendarNowSource,
@@ -39,6 +41,9 @@ import {
   CalendarWeekRules,
   ClosedDate,
   EventAdapter,
+  EventHistory,
+  EventHistoryOutcome,
+  EventHistorySnapshot,
   EventId,
   EventSnapshot,
   EventSnapshotIssue,
@@ -166,6 +171,26 @@ interface CalendarFactory<TEvent, TResource, TViewDef extends AnyCalendarView = 
   useVisibleRange(): PlainDateInterval | null;
 }
 type CalendarFrameProps = Omit<ComponentPropsWithRef<"section">, "id">;
+interface CalendarHistory<TEvent, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> extends EventHistorySnapshot<TEvent, TEventId, TResourceId> {
+  readonly canRedo: boolean;
+  readonly canUndo: boolean;
+  readonly redo: (options?: CalendarHistoryCommandOptions) => Promise<EventHistoryOutcome<TEvent, TEventId, TResourceId>>;
+  readonly undo: (options?: CalendarHistoryCommandOptions) => Promise<EventHistoryOutcome<TEvent, TEventId, TResourceId>>;
+}
+type CalendarHistoryAnnouncementBuilder<TEvent = unknown, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> = (outcome: EventHistoryOutcome<TEvent, TEventId, TResourceId>, context: CalendarHistoryAnnouncementContext<TEvent, TEventId, TResourceId>) => string | null;
+interface CalendarHistoryAnnouncementContext<TEvent = unknown, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> extends CalendarAnnouncementContext {
+  readonly event: NormalizedCalendarEvent<TEvent, TEventId, TResourceId> | undefined;
+}
+interface CalendarHistoryCommandOptions {
+  readonly input?: CalendarInputMethod;
+}
+interface CalendarHistoryMessages<TEvent = unknown, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
+  readonly redo: CalendarHistoryAnnouncementBuilder<TEvent, TEventId, TResourceId>;
+  readonly undo: CalendarHistoryAnnouncementBuilder<TEvent, TEventId, TResourceId>;
+}
+interface CalendarHistoryOptions<TEvent, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
+  readonly messages?: CalendarHistoryMessages<TEvent, TEventId, TResourceId>;
+}
 interface CalendarKeyboardHandlers {
   readonly onBlur: (event: FocusEvent<HTMLElement>) => void;
   readonly onKeyDown: (event: KeyboardEvent<HTMLElement>) => void;
@@ -274,8 +299,8 @@ type CalendarSemanticActions<TView extends string = string, TSelection = Calenda
   navigateNext(): void;
   navigatePrevious(): void;
   navigateToday(): void;
-  readonly checkEventChange: (proposal: CalendarEventProposal<TEventId, TResourceId>) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
-  readonly proposeEventChange: (proposal: CalendarEventProposal<TEventId, TResourceId>, detail?: CalendarProposalDetail) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  readonly checkEventChange: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
+  readonly proposeEventChange: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>, detail?: CalendarProposalDetail) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
 };
 interface CalendarStateChangeDetail<TValue, TSlice extends CalendarStateSlice = CalendarStateSlice> {
   readonly controlled: boolean;
@@ -378,6 +403,7 @@ export declare function useCalendarAvailability(): AvailabilitySnapshot;
 export declare function useCalendarDraft(): AnyDraft | null;
 export declare function useCalendarDraftReporter(): (draft: AnyDraft | null) => void;
 export declare function useCalendarFocus<TSelected>(selector: (focus: CalendarFocus | null) => TSelected, options?: CalendarStateSelectorOptions<TSelected>): TSelected;
+export declare function useCalendarHistory<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(history: EventHistory<TEvent, TEventId, TResourceId>, options?: CalendarHistoryOptions<NoInfer<TEvent>, NoInfer<TEventId>, NoInfer<TResourceId>>): CalendarHistory<TEvent, TEventId, TResourceId>;
 export declare function useCalendarInteraction(): CalendarKeyboardSession | null;
 export declare function useCalendarInteraction<TSelected>(selector: (session: CalendarKeyboardSession | null, check: CalendarInteractionCheck) => TSelected, options?: CalendarStateSelectorOptions<TSelected>): TSelected;
 export declare function useCalendarKeyboard(options?: CalendarKeyboardOptions): CalendarKeyboardHandlers;
@@ -409,6 +435,12 @@ export {
   type CalendarEventRenderValue,
   type CalendarFactory,
   type CalendarFrameProps,
+  type CalendarHistory,
+  type CalendarHistoryAnnouncementBuilder,
+  type CalendarHistoryAnnouncementContext,
+  type CalendarHistoryCommandOptions,
+  type CalendarHistoryMessages,
+  type CalendarHistoryOptions,
   type CalendarKeyboardHandlers,
   type CalendarKeyboardOptions,
   type CalendarMeta,

@@ -34,6 +34,8 @@ catalog:
   vite-plus: 1.1.0
   yaml: 2.9.1
   tsx: ^4.23.15
+  # Bundles the built packages the way an app's bundler does, for the tree-shaking check.
+  esbuild: 0.28.2
   fumadocs-core: 16.16.2
   fumadocs-mdx: 15.4.6
   fumadocs-ui: 16.16.2

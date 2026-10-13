@@ -1,13 +1,17 @@
 import {
   createCanonicalEventAdapter,
   createEventSnapshot,
+  eventPlacement,
   type CalendarAnnouncementContext,
   type CalendarInteractionUpdate,
+  type EventHistoryOutcome,
+  type EventHistoryStep,
+  type EventId,
   type ResourceId,
 } from "@moltenship/calendar";
 import { expect, test } from "vite-plus/test";
 
-import { calendarAnnouncements } from "../calendar/announcements";
+import { calendarAnnouncements, calendarHistoryAnnouncements } from "../calendar/announcements";
 import { timed } from "./view-fixtures";
 
 const [standup] = createEventSnapshot(
@@ -173,4 +177,76 @@ test("says when the policies would reject or flag a placement for falling outsid
       reason: "outside-availability",
     }),
   ).toBe("Can't create an event outside working hours.");
+});
+
+test("says how an undo or redo went, and where the event is now", () => {
+  type Outcome = EventHistoryOutcome<unknown, EventId, ResourceId>;
+  const placement = eventPlacement(standup!);
+  const step = (
+    cause: EventHistoryStep<unknown, EventId, ResourceId>["cause"],
+    before = placement,
+    after = placement,
+  ) =>
+    ({
+      after,
+      before,
+      cause,
+      changes: [],
+      event: null,
+      eventId: "standup",
+      id: "step-1",
+      input: "pointer",
+    }) as EventHistoryStep<unknown, EventId, ResourceId>;
+  const committed = (
+    direction: "undo" | "redo",
+    cause: Parameters<typeof step>[0],
+    before = placement,
+    after = placement,
+  ): Outcome => ({
+    direction,
+    result: { change: null as never, status: "committed" },
+    status: "committed",
+    step: step(cause, before, after),
+  });
+  // `shown` is false for an event the calendar doesn't show, such as one restored a moment ago.
+  const say = (outcome: Outcome, shown = true) =>
+    calendarHistoryAnnouncements[outcome.direction](outcome, {
+      ...where,
+      event: shown ? standup : undefined,
+    })?.replace(/\s/g, " ") ?? null;
+
+  expect(say(committed("undo", "move"))).toBe(
+    "Undid the move: standup is back at Thursday, October 8, 9:00 – 9:30 AM.",
+  );
+  expect(say(committed("redo", "move"))).toBe(
+    "Moved standup to Thursday, October 8, 9:00 – 9:30 AM again.",
+  );
+  expect(say(committed("undo", "resize-end"))).toBe(
+    "Undid the resize: standup runs Thursday, October 8, 9:00 – 9:30 AM.",
+  );
+  // A restored event the calendar doesn't show yet is "the event".
+  expect(say(committed("undo", "delete", placement, null as never), false)).toBe(
+    "Restored the event, Thursday, October 8, 9:00 – 9:30 AM.",
+  );
+  expect(say(committed("redo", "delete", placement, null as never))).toBe("Deleted standup again.");
+  expect(say(committed("undo", "create", null as never))).toBe("Undid creating standup.");
+
+  expect(say({ direction: "undo", status: "empty" })).toBe("Nothing to undo.");
+  expect(say({ direction: "redo", status: "stale", step: step("move") })).toBe(
+    "Can't redo that: standup has changed since.",
+  );
+  const rejected = (reason: string, error?: unknown): Outcome => ({
+    direction: "undo",
+    result: { error, reason, status: "rejected" },
+    status: "rejected",
+    step: step("move"),
+  });
+  expect(say(rejected("resource-conflict"))).toBe(
+    "Couldn't undo: standup would double-book someone.",
+  );
+  expect(say(rejected("handler-error"))).toBe("Couldn't undo the change to standup.");
+  expect(say(rejected("handler-error", new DOMException("Cancelled", "AbortError")))).toBe(
+    "Cancelled the undo.",
+  );
+  expect(say(rejected("superseded"))).toBeNull();
 });

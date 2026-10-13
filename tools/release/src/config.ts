@@ -24,13 +24,16 @@ export interface PublishedPackage {
 export const publishedPackages: readonly PublishedPackage[] = [
   { directory: "calendar", budgets: { ".": { raw: 4 * KiB, gzip: 1.5 * KiB } } },
   // The engine's pending changes and their phases (#199) took calendar-core to 184,065 of 184,320
-  // raw and 47,477 of 47,104 gzip bytes. 188 and 48 KiB leave the usual headroom.
-  { directory: "calendar-core", budgets: { ".": { raw: 188 * KiB, gzip: 48 * KiB } } },
+  // raw and 47,477 of 47,104 gzip bytes; the event history (#227) and per-resource overlap layouts
+  // (#233) to 197,523 raw and 51,097 gzip bytes. Apps that don't import the history bundle none of
+  // it (`vp run release:treeshake`). 200 and 52 KiB leave the usual headroom.
+  { directory: "calendar-core", budgets: { ".": { raw: 200 * KiB, gzip: 52 * KiB } } },
   { directory: "calendar-dnd", budgets: { ".": { raw: 36 * KiB, gzip: 10 * KiB } } },
   // Root's event source (#200), read through useSyncExternalStore, took calendar-react to 78,147 of
-  // 77,824 raw bytes, and onEventChangeResult with useCalendarPendingChanges (#199) to 79,597 raw
-  // and 20,740 of 20,480 gzip bytes. 80 and 21 KiB leave the usual headroom.
-  { directory: "calendar-react", budgets: { ".": { raw: 80 * KiB, gzip: 21 * KiB } } },
+  // 77,824 raw bytes, onEventChangeResult with useCalendarPendingChanges (#199) to 79,597 raw
+  // and 20,740 of 20,480 gzip bytes, and useCalendarHistory (#227) to 83,691 raw and 21,947 gzip
+  // bytes; apps that don't import it bundle none of it. 84 and 22 KiB leave the usual headroom.
+  { directory: "calendar-react", budgets: { ".": { raw: 84 * KiB, gzip: 22 * KiB } } },
   // The ICS bridge's RANGE=THISANDFUTURE split, Outlook's all-day flag and the feed's zone, then
   // edits replayed on the series' clock (#160), took calendar-recurrence from 130,708 raw and
   // 35,063 gzip bytes to 148,799 and 39,899. 152 and 42 KiB leave the usual headroom.
@@ -43,6 +46,34 @@ export const publishedPackages: readonly PublishedPackage[] = [
 
 /** Optional adapters. Base packages never import them, and the facade's other exports tree-shake them away. */
 export const optionalAdapters: readonly string[] = ["@moltenship/calendar-dnd", "@dnd-kit/"];
+
+export interface OptionalFeature {
+  readonly name: string;
+  /** The facade's exports that bring the feature in. */
+  readonly exports: readonly string[];
+  /** Property names or strings only the feature's code has, which minifiers keep. */
+  readonly markers: readonly string[];
+  /** The feature's source files, from the repository root. */
+  readonly files: readonly string[];
+}
+
+/**
+ * Opt-in features the facade re-exports. A bundle of the facade's other exports must keep none of
+ * their code: built from the packages' built ESM as an app's bundler sees it, by their markers,
+ * and from source with side effects assumed everywhere, by their files' bytes.
+ */
+export const optionalFeatures: readonly OptionalFeature[] = [
+  {
+    name: "the event history (#227)",
+    exports: ["createEventHistory", "useCalendarHistory"],
+    markers: ["createdEventId", "whenSettled", "canRedo"],
+    files: [
+      "packages/calendar-core/src/history/event-history.ts",
+      "packages/calendar-core/src/history/types.ts",
+      "packages/calendar-react/src/history.ts",
+    ],
+  },
+];
 
 /** The facade re-exports the pointer adapter, so it is the one package allowed to import it. */
 export const facadePackage = "@moltenship/calendar";

@@ -30,6 +30,16 @@ export interface AnnouncerChannel {
     getMessages: () => CalendarAnnouncementMessages,
     speak: (text: string) => void,
   ) => () => void;
+  /**
+   * Speaks what `build` returns through the mounted `Announcer`, if any, with the context and
+   * messages an interaction's announcement gets; an undo's text is built this way.
+   */
+  readonly say: (
+    build: (
+      context: CalendarAnnouncementContext,
+      messages: CalendarAnnouncementMessages,
+    ) => string | null,
+  ) => void;
 }
 
 interface MountedAnnouncer {
@@ -67,20 +77,23 @@ export function createAnnouncerChannel(
     return getResources().byId.get(resourceId)?.resource.title;
   }
 
+  function say(
+    build: (
+      context: CalendarAnnouncementContext,
+      messages: CalendarAnnouncementMessages,
+    ) => string | null,
+  ): void {
+    const current = mounted.at(-1);
+    if (current === undefined) return;
+    const { locale, timeZone } = getEnvironment();
+    const text = build({ formatRange, locale, resourceTitle, timeZone }, current.getMessages());
+    if (text !== null && text !== "") current.speak(text);
+  }
+
   return Object.freeze({
     announcer: Object.freeze({
-      announce(update: CalendarInteractionUpdate) {
-        const current = mounted.at(-1);
-        if (current === undefined) return;
-        const { locale, timeZone } = getEnvironment();
-        const text = buildMessage(current.getMessages(), update, {
-          formatRange,
-          locale,
-          resourceTitle,
-          timeZone,
-        });
-        if (text !== null && text !== "") current.speak(text);
-      },
+      announce: (update: CalendarInteractionUpdate) =>
+        say((context, messages) => buildMessage(messages, update, context)),
       formatRange,
     }),
     mount(getMessages: () => CalendarAnnouncementMessages, speak: (text: string) => void) {
@@ -91,6 +104,7 @@ export function createAnnouncerChannel(
         if (index !== -1) mounted.splice(index, 1);
       };
     },
+    say,
   });
 }
 

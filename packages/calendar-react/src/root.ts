@@ -24,7 +24,6 @@ import {
   type EventSnapshotIssue,
   type EventTransactions,
   type InvalidCalendarEventPolicy,
-  type CalendarInputMethod,
   type CalendarPendingPlacements,
   type CalendarProposalDetail,
   type CalendarTransactionResult,
@@ -75,6 +74,7 @@ import { CalendarInteractionContext, type CalendarInteractionRuntime } from "./i
 import { createDraftStore } from "./draft";
 import { useEventInput } from "./event-input";
 import { createKeyboardSessionStore } from "./keyboard-store";
+import { reportCallbackError } from "./report-error";
 import { CalendarResourcesContext } from "./resources";
 import { useCalendarStateBinding } from "./state-binding";
 import type { CalendarRootStoreBinding } from "./store";
@@ -131,17 +131,8 @@ const readOnlyRoot = () => ({ reason: "read-only", type: "reject" }) as const;
 const noHandler = () => {
   throw new TypeError("calendar-root-is-read-only");
 };
-const inputs: Readonly<Record<CalendarInputMethod, CalendarProposalDetail>> = Object.freeze({
-  api: Object.freeze({ input: "api" }),
-  keyboard: Object.freeze({ input: "keyboard" }),
-  pointer: Object.freeze({ input: "pointer" }),
-});
-
-/** Reports an application callback's error without failing the proposal it heard about. */
-function reportCallbackError(error: unknown): void {
-  if (typeof reportError === "function") reportError(error);
-  else console.error(error);
-}
+/** The detail of a proposal made without one, or with something that names no input. */
+const apiInput: CalendarProposalDetail = Object.freeze({ input: "api" });
 
 function sameLocale(left: Intl.Locale | string, right: Intl.Locale | string): boolean {
   return String(left) === String(right);
@@ -284,9 +275,11 @@ function createSemanticActions<
     },
     proposeEventChange(proposal, detail) {
       const { availability, eventSnapshot, onEventChange } = committed.current;
-      // Anything but a known input, as from a caller that passes on an index, is the app's own.
+      // The detail as given, so a history knows its own proposals by `history`. Anything that
+      // names no known input, as from a caller that passes on an index, is the app's own.
       const input = detail?.input;
-      const reported = input === "pointer" || input === "keyboard" ? inputs[input] : inputs.api;
+      const reported =
+        input === "pointer" || input === "keyboard" || input === "api" ? detail! : apiInput;
       return transactions
         .propose(proposal, {
           availability,
@@ -638,6 +631,7 @@ export function createCalendarRoot<
         Object.freeze({
           actions,
           announcements,
+          changes: pendingChanges as CalendarStateSource<AnyPendingChanges>,
           isReadOnly,
           keyboard,
           pointerDraft,
@@ -653,7 +647,7 @@ export function createCalendarRoot<
           requests: binding.subscribeRequests,
           source,
         }),
-      [actions, announcements, binding, isReadOnly, keyboard, pointerDraft, source],
+      [actions, announcements, binding, isReadOnly, keyboard, pendingChanges, pointerDraft, source],
     );
 
     const [refs] = useState(() =>

@@ -12,7 +12,7 @@ explains how the pieces fit together.
 
 ```ts
 type CalendarEventProposal =
-  | { cause: "create"; proposed: Placement }
+  | { cause: "create"; proposed: Placement; event?: TEvent }
   | {
       cause: "move" | "resize-start" | "resize-end" | "update";
       eventId: EventId;
@@ -22,21 +22,23 @@ type CalendarEventProposal =
 ```
 
 A placement is a [range](/docs/api/events#ranges) (`kind`, `start`, `end`) plus optional
-`resourceIds`. Leaving out `resourceIds` keeps the event's current resources.
+`resourceIds`. Leaving out `resourceIds` keeps the event's current resources. A create may carry
+one of your records as `event`, such as a deleted event an
+[undo](/docs/undo-redo#creates-and-deletes) restores; the change hands it on.
 
 ## Changes
 
 `onEventChange` and policies receive a `CalendarEventChange`:
 
-| Field      | `create`                                | `move`, `resize-*`, `update` | `delete`             |
-| ---------- | --------------------------------------- | ---------------------------- | -------------------- |
-| `cause`    | `"create"`                              | the cause                    | `"delete"`           |
-| `id`       | a change ID                             | a change ID                  | a change ID          |
-| `eventId`  | `null`                                  | the event's ID               | the event's ID       |
-| `event`    | `null`                                  | your record                  | your record          |
-| `original` | `null`                                  | the placement before         | the placement before |
-| `proposed` | the new placement                       | the new placement            | `null`               |
-| `warnings` | reasons `warn` policies flagged, if any | the same                     | the same             |
+| Field      | `create`                                 | `move`, `resize-*`, `update` | `delete`             |
+| ---------- | ---------------------------------------- | ---------------------------- | -------------------- |
+| `cause`    | `"create"`                               | the cause                    | `"delete"`           |
+| `id`       | a change ID                              | a change ID                  | a change ID          |
+| `eventId`  | `null`                                   | the event's ID               | the event's ID       |
+| `event`    | `null`, or the record the create carries | your record                  | your record          |
+| `original` | `null`                                   | the placement before         | the placement before |
+| `proposed` | the new placement                        | the new placement            | `null`               |
+| `warnings` | reasons `warn` policies flagged, if any  | the same                     | the same             |
 
 Placements in a change always include `resourceIds`. `original` is what the user saw, including any
 change still pending for the same event. `warnings` is absent when no policy flagged the change.
@@ -46,12 +48,23 @@ change still pending for the same event. `warnings` is absent when no policy fla
 `proposeEventChange` resolves with `{ status: "committed", change }` or
 `{ status: "rejected", reason, change?, error? }`. It never rejects. The
 [reasons](/docs/interactions#changing-events-from-your-own-ui) are listed on the Interactions page.
-`Root`'s `onEventChangeResult` gets the same result for every proposal, with
-`{ input: "pointer" | "keyboard" | "api" }` (`CalendarProposalDetail`).
+`Root`'s `onEventChangeResult` gets the same result for every proposal, with the detail it was
+proposed with (`CalendarProposalDetail`): `{ input: "pointer" | "keyboard" | "api" }`, and
+`history: "undo" | "redo"` on an event history's inverse. A detail that names no input reads
+`{ input: "api" }`.
 
 While a proposal is on its way, `useCalendarPendingChanges` lists it as a `CalendarPendingChange`,
 `{ change, phase }`, with `phase` one of `"validating"`, `"saving"` and `"awaiting-events"`. See
 [pending changes](/docs/interactions#across-the-calendar).
+
+## Event history
+
+`createEventHistory(options?)` records committed changes and undoes and redoes them through the
+pipeline. Its members are plain functions: `record(result, detail)` for `onEventChangeResult`,
+`undo(context)` and `redo(context)`, `clear()`, `getSnapshot()` and `subscribe(listener)`. The
+context is `{ getEvents, propose, input?, whenSettled? }`. See [Undo and redo](/docs/undo-redo)
+for the options, the steps (`EventHistoryStep`), the outcomes (`EventHistoryOutcome`) and the
+snapshot (`EventHistorySnapshot`), and `useCalendarHistory` binds a history to a `Root`.
 
 ## Policies
 

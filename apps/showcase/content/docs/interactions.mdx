@@ -24,7 +24,7 @@ The handler receives a change object:
 | ---------- | ---------------------------------------------------------------------------------------------------------------------- |
 | `cause`    | `"move"`, `"resize-start"`, `"resize-end"`, `"create"`, `"delete"`, or `"update"`                                      |
 | `eventId`  | The event's ID, or `null` for `"create"`                                                                               |
-| `event`    | Your record, or `null` for `"create"`                                                                                  |
+| `event`    | Your record. For `"create"`, `null`, or the record an [undo](/docs/undo-redo#creates-and-deletes) restores             |
 | `original` | Where the event was, as the user saw it, or `null` for `"create"`                                                      |
 | `proposed` | Where it should go: a range with `kind`, `start`, `end`, and `resourceIds`, or `null` for `"delete"`                   |
 | `id`       | Identifies the change within this calendar, such as `change-3`. It isn't an event ID                                   |
@@ -91,8 +91,9 @@ its next phase, or ends.
 
 `onEventChangeResult` on `Root` hears how every proposal ended: drags, keyboard moves and creates,
 and your own `proposeEventChange` calls. It gets the result `proposeEventChange` resolves with, and
-`{ input }`: `"pointer"`, `"keyboard"`, or `"api"`. Use it for a toast when a drop is refused or a
-save fails, or to log what happens:
+the detail it was proposed with, `{ input }`: `"pointer"`, `"keyboard"`, or `"api"`. Use it for a
+toast when a drop is refused or a save fails, to log what happens, or to record changes to
+[undo](/docs/undo-redo):
 
 <include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#outcomes</include>
 

@@ -16,7 +16,7 @@ Seven packages publish under `@moltenship`, listed in
 Each check is a `vp run` task. The same tasks run locally, in CI and in the release workflow. The
 tier says where a check belongs in the local gate: PR checks are cheap enough for every PR, and the
 full tier is the release gate, which runs for releases, and once in a PR that changes it or the
-release tooling. `vp run release:check` runs the three PR checks in about two seconds.
+release tooling. `vp run release:check` runs the four PR checks in about two seconds.
 It sits in the `gate:serial` lane right after `ci:build`, so `vp run ready` and CI run it. The full
 tier, `vp run ready:full`, also runs `vp run release:dry-run` and then `vp run release:artifacts`
 on what the dry run packed.
@@ -26,6 +26,7 @@ on what the dry run packed.
 | `vp run release:size` | Each published entry point's emitted ESM, raw and gzip, against its budget in `tools/release/src/config.ts` | PR |
 | `vp run release:api` | Each package's built declarations against its committed `api-report.md` | PR |
 | `vp run release:exports` | Packs every package into a temporary folder, then runs publint and are-the-types-wrong (ESM-only), checks for `LICENSE`, and checks that base packages don't import the dnd adapter | PR |
+| `vp run release:treeshake` | Bundles the facade's exports with esbuild, minified, with and without each opt-in feature's exports (`optionalFeatures` in `tools/release/src/config.ts`; today the event history, #227). From the built packages, as an app's bundler sees them, the bundle without the feature must have none of its markers. From source, with every module's side effects kept, it must have no bytes from the feature's files, so a statement left at a module's top level fails. With the feature, both must find it | PR |
 | `vp run release:consumer` | Installs the tarballs into a new project outside the workspace, from the pnpm store, with every third-party package at the version the workspace locks (offline, unless a cold cache needs metadata from npm, which it says); imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away | Full |
 | `vp run release:dry-run` | A fresh build of every published package, then all of the above, the registry smoke, and a registry build into `.release/registry` that must ask for the packed version. Writes `.release/manifest.json` | Full |
 | `vp run release:artifacts` | What uses the release, on the dry run's tarballs and registry, with their hashes checked: the SSR fixture's render and hydration tests and the docs site's build, routes and example tests, each in a copy outside the workspace, installed offline from the pnpm store (a cold cache reads metadata from npm); and #43's install test, `shadcn add` into clean Vite and Next.js apps, which needs the network for npm and shadcn's own components. See [quality-gates.md](./quality-gates.md#release-artifacts) | Full |
