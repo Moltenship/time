@@ -35,8 +35,9 @@ bundlers keep.
 
 `tests/package-metadata.test.ts` checks the published set and the `license`, `repository`,
 `homepage` and `bugs` fields. It checks that each tarball lists `README.md` and `LICENSE`, and that
-`ics`'s also lists `THIRD-PARTY-NOTICES.md`, whose license text and CLDR release match the comment in
-the generated source. `tests/ics-boundary.test.ts` checks that the packed code carries it.
+`ics`'s also lists `THIRD-PARTY-NOTICES.md`, whose license text matches the generated source's `/*!`
+comment and whose CLDR release matches its header. `tests/ics-boundary.test.ts` checks that the
+packed code carries the `/*!` notice.
 
 ## Workspace ownership
 

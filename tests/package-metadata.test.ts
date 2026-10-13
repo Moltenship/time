@@ -152,7 +152,7 @@ describe("published package metadata", () => {
       const tag = /CLDR release-(\d+)(?:-(\d+))?/.exec(generated);
       expect(tag).not.toBeNull();
       const release = tag![2] === undefined ? tag![1]! : `${tag![1]}.${tag![2]}`;
-      expect(notices).toMatch(new RegExp(`release ${release.replace(".", "\\.")}(?![.\\d])`));
+      expect(notices).toMatch(new RegExp(`release ${release.replace(".", "\\.")}(?!\\.?\\d)`));
     },
   );
 });
