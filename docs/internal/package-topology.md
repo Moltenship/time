@@ -29,7 +29,8 @@ packed file's path contains `license` or `licence`, in any case (`THIRD-PARTY-LI
 `dist/licenses.mjs` would count), so don't give a packed file such a name. `npm pack` doesn't do
 this: pack with pnpm. `tests/package-metadata.test.ts` checks the
 published set, the `repository`, `homepage` and `bugs` fields, and that each tarball lists
-`LICENSE`.
+`LICENSE`. `ics` is `MIT AND Unicode-3.0`: it bundles Unicode CLDR's Windows time zone mapping,
+whose license ships in its `THIRD-PARTY-NOTICES.md` and as a `/*!` comment in its built code.
 
 ## Workspace ownership
 

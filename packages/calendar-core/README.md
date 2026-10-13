@@ -4,9 +4,10 @@ The event engine of Moltenship Time: event adapters, validation, snapshots, quer
 projections, layouts and event changes. It doesn't use React or the DOM, so it also runs on a
 server or in a worker.
 
-It's an internal layer of `@moltenship/calendar`, which re-exports all of it. Most apps install
+It's a layer of `@moltenship/calendar`, which re-exports all of it. Most apps install
 `@moltenship/calendar` only and import from there. Install this package directly when you want to
-validate or query events in code that never loads React.
+validate or query events in code that never loads React. Next to `@moltenship/calendar`, use the
+same version of both, so there's one copy of each.
 
 ## Install
 

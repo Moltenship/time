@@ -1,8 +1,9 @@
 # @moltenship/calendar-temporal
 
 The date math of Moltenship Time: half-open ranges, month and week grids, rounding and snapping,
-day boundaries, time slots and DST handling. Every function takes and returns native Temporal
-values, and none of them read the clock or the host time zone.
+day boundaries, time slots and DST handling. Dates and times go in and out as native Temporal
+values. Apart from `createSystemClock`, nothing reads the clock, and nothing reads the host time
+zone.
 
 `@moltenship/calendar` re-exports all of it, so apps that use the calendar import these functions
 from there. The package on its own has no dependencies and no React: install it directly when you
