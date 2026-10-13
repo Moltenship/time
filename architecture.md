@@ -1058,7 +1058,7 @@ SSR-compatible means the calendar can produce useful, deterministic server marku
 5. If `now` is omitted, transient today/current-time decoration appears after hydration rather than risking mismatch.
 6. IDs use React `useId` or deterministic entity keys, never random values.
 7. The core and Temporal packages are safe in React Server Components.
-8. Interactive React/registry entry points declare their client boundary where a framework requires it. `calendar-react` and `calendar-dnd` do; registry views don't yet (#190).
+8. Interactive React/registry entry points declare their client boundary where a framework requires it. `calendar-react` and `calendar-dnd` do, and so does every registry component file that calls hooks, creates a context or sets event handlers: `registry:smoke` checks the built registry for it, and the install test's Next.js page imports each item from a Server Component (#190).
 9. Measurements enhance a CSS-valid initial layout; they do not replace it.
 
 The SSR fixture runs render, hydrate, interaction, and unmount tests. A Vite client example and at least one full-stack React SSR example prove packaging boundaries without adding framework-specific runtime code.

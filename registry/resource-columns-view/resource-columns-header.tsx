@@ -1,3 +1,5 @@
+"use client";
+
 import type {
   CalendarEnvironmentBase,
   ResourceColumn,

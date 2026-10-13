@@ -1,3 +1,5 @@
+"use client";
+
 import { resourceIdAttributes, type ResourceColumn } from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type ReactNode, type RefCallback } from "react";

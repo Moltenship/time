@@ -66,12 +66,14 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
 
 - `vp run registry:smoke`, part of `vp run ready`: checks the manifests and a contract fixture,
   builds the registry offline into a temporary folder, and checks what it built. Every import must
-  resolve to a file, component or package the item's install provides; `calendar-full` must
-  install every item and own no file; ranges must hold for the workspace versions.
+  resolve to a file, component or package the item's install provides; component files that need
+  the client must start with `"use client"`; `calendar-full` must install every item and own no
+  file; ranges must hold for the workspace versions.
 - `vp run registry:e2e`, slow and online: makes clean Vite and Next.js apps with `shadcn init`, runs
   `shadcn add <url>/calendar-full.json` against the registry served locally, checks where the
   files landed and what the app installed, then typechecks and builds both apps. The Vite app uses
-  a non-default `components` alias. The runtime packages aren't on npm yet, so the test packs them
+  a non-default `components` alias. The Next.js app's page, a Server Component, imports every item
+  the client page uses straight from the server. The runtime packages aren't on npm yet, so the test packs them
   from the workspace and serves them from a local npm registry for the `@moltenship` scope, and
   each app's lockfile must have them with the served tarballs' hashes;
   `REGISTRY_E2E_PACKAGES=npm` uses the published ones instead, `REGISTRY_E2E_TARBALLS=<dir>` serves
@@ -112,6 +114,9 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
   `useRovingFocus`, and events with `useEventChip`, which also marks a grabbed event. Apps
   render `<Calendar.Announcer messages={calendarAnnouncements} />` from
   `@registry/calendar/announcements`, the English messages for moves, resizes and creates.
+- A component file that calls hooks, creates a context or sets event handlers starts with
+  `"use client"`, so a Server Component can import it (#190). Hook and helper modules (`.ts`) render
+  nothing and don't need it, as in shadcn's own registry.
 - Copy is English and lives in the source; consumers own and translate it. Dates are formatted
   with `Intl` from the calendar locale.
 

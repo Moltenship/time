@@ -69,8 +69,7 @@ issue's "Later" section when work starts.
   follow-ups: WebKit failures (#181), Playwright's Firefox on macOS 27 (#182)
 - Release audit findings for after 1.0 unless the owner says otherwise: an empty week's focus
   target (#180), the store's records (#184), DST shifts (#187), performance benchmarks (#188),
-  resource-view parity (#189), the registry's client boundary (#190), a public transaction-state
-  API (#199)
+  resource-view parity (#189), a public transaction-state API (#199)
 - Architecture drift follow-ups from #191: keyboard previews and `isPending` (#198),
   read-only roots' gestures (#201), week rules from the locale (#202)
 - Agenda follow-ups from #136 (#138)

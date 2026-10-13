@@ -260,8 +260,9 @@ after another, as on a 4-core runner, the three take their sum: about 45 seconds
 `vp run registry:smoke` runs in `ready`. It validates every `registry-item.json` under `registry/`
 and a committed contract fixture, so an empty source registry can't make it vacuous, then builds the
 registry with `shadcn build` into a temporary folder, offline, and checks the output: every import
-resolves to a file, component or package the item's install provides, `calendar-full` installs
-every other item and owns no files, no two items write the same file, nothing depends on a
+resolves to a file, component or package the item's install provides, every component file that
+calls hooks, creates a context or sets event handlers starts with `"use client"`, `calendar-full`
+installs every other item and owns no files, no two items write the same file, nothing depends on a
 drag-and-drop library, and each range holds for the workspace versions. `vp run registry#fixture:known-bad`
 must fail.
 
@@ -269,7 +270,9 @@ must fail.
 components, takes 15 to 35 seconds once the pnpm store is warm, and isn't part of `ready`. It
 makes clean Vite and Next.js apps with `shadcn init`, runs `shadcn add <url>/calendar-full.json`
 against the registry served from a local server, checks the files, aliases, package.json and
-installed runtime, then typechecks and builds both apps. The runtime packages are packed from the
+installed runtime, then typechecks and builds both apps. The Next.js app's page is a Server
+Component that also imports every item the client page uses, so a component without its client
+boundary fails the build. The runtime packages are packed from the
 workspace and served from a local npm registry for the `@moltenship` scope, and each app's lockfile
 must have them with the served tarballs' hashes. The full tier runs it through
 `release:artifacts`, with the dry run's tarballs instead of packing again. `REGISTRY_E2E_PACKAGES=npm`

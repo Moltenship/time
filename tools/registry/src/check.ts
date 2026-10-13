@@ -27,6 +27,22 @@ export function importsOf(source: string): string[] {
   return [...withoutComments(source).matchAll(importSpecifier)].map(([, specifier]) => specifier!);
 }
 
+/** A hook call, a new context or an event handler: what only a Client Component can do. */
+const clientOnly = /\buse(?:[A-Z]\w*)?\(|\bcreateContext\(|\bon[A-Z]\w*=\{/u;
+
+/**
+ * Whether a file must declare its client boundary (architecture.md §15.8): a component file that
+ * calls hooks, creates a context or sets event handlers, which a Server Component can import
+ * directly. Hook and helper modules render nothing and need no directive, as in shadcn's own.
+ */
+export function clientBoundaryIssue(target: string, source: string): string | null {
+  const code = withoutComments(source);
+  if (!target.endsWith(".tsx") || !clientOnly.test(code)) return null;
+  return /^\s*["']use client["']/u.test(code)
+    ? null
+    : `${target} uses hooks or event handlers but doesn't start with "use client"`;
+}
+
 function packageName(specifier: string): string {
   const parts = specifier.split("/");
   return specifier.startsWith("@") ? parts.slice(0, 2).join("/") : parts[0]!;
@@ -75,9 +91,10 @@ function importIssue(
 
 /**
  * Checks a built registry the way a consumer would meet it: every item parses with shadcn's
- * schema, every import resolves to a file, component, or package its install provides, the full
- * item composes the others without owning files, no two items write the same file, nothing turns
- * on drag and drop, and the runtime ranges hold for the workspace versions.
+ * schema, every import resolves to a file, component, or package its install provides, components
+ * that need the client say so, the full item composes the others without owning files, no two
+ * items write the same file, nothing turns on drag and drop, and the runtime ranges hold for the
+ * workspace versions.
  */
 export async function checkBuiltRegistry({
   outDir,
@@ -169,6 +186,8 @@ export async function checkBuiltRegistry({
       owners.set(target, item.name);
       const content = file.content ?? "";
       if (content.length === 0) issues.push(`${item.name}: ${target} is empty`);
+      const boundary = clientBoundaryIssue(target, content);
+      if (boundary) issues.push(`${item.name}: ${boundary}`);
       for (const specifier of importsOf(content)) {
         const problem = importIssue(specifier, target, item, closure);
         if (problem) issues.push(problem);

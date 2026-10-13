@@ -1,3 +1,5 @@
+"use client";
+
 import type { TimeGridDay } from "@moltenship/calendar";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type RefCallback } from "react";

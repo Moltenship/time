@@ -1,3 +1,5 @@
+"use client";
+
 import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
 
 import { cn } from "cn";

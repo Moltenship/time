@@ -1,3 +1,5 @@
+"use client";
+
 import { memo, type ComponentProps, type ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";

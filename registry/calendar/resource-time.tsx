@@ -1,3 +1,5 @@
+"use client";
+
 import { useNow, type CalendarEnvironmentBase } from "@moltenship/calendar";
 import { useMemo, type ComponentProps } from "react";
 
