@@ -240,9 +240,13 @@ export interface RecurrenceRuleExpansion {
   readonly dates: readonly RecurrenceDate[];
   /**
    * `maxIterations` ran out before the end of the window, while the rule may still have had
-   * occurrences to give. Some rules turn out impossible only after the cap, such as
-   * `FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1` from an even minute, so a truncated rule may have had
-   * none left.
+   * occurrences to give. Rules that can never match again end after their first occurrence
+   * instead, when the engine can tell up front: day parts that meet on no date, such as
+   * `BYMONTH=2;BYMONTHDAY=30`, and an INTERVAL whose steps never reach the BY values of a fixed
+   * cycle (the second, minute or hour of the day, the weekday of a DAILY rule, the month of a
+   * MONTHLY one), such as `FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1` from an even minute. Others show
+   * only over time, such as a BYSETPOS past the size of every period's set, so a truncated rule
+   * may have had none left.
    */
   readonly truncated: boolean;
 }

@@ -486,7 +486,15 @@ are skipped and don't count. `window` is a `RecurrenceRuleWindow`:
 
 It returns a `RecurrenceRuleExpansion`: `dates`, strictly increasing in the kind of the first
 occurrence and the ISO calendar, and `truncated`, which is `true` when `maxIterations` ran out while
-the rule still had starts to give. `DEFAULT_MAX_ITERATIONS` is 100,000.
+the rule may still have had starts to give. `DEFAULT_MAX_ITERATIONS` is 100,000.
+
+A rule that can never match again ends after its first occurrence, without `truncated`, when the
+engine can tell up front: day parts that meet on no date, such as `BYMONTH=2;BYMONTHDAY=30`, and an
+INTERVAL whose steps never reach the BY values of a fixed cycle, such as
+`FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1` from an even minute. The cycles are the second, minute and
+hour of the day, the weekday of a DAILY rule and the month of a MONTHLY one. Other impossible
+rules, such as `FREQ=MONTHLY;BYDAY=MO;BYSETPOS=6`, show only over time: they run to
+`maxIterations` and report `truncated`.
 
 For a rule it can't expand, or a `sourceTimeZone` that isn't a time zone, it throws a
 `RecurrenceRuleError`, a `RangeError` whose `code` is a `RecurrenceRuleErrorCode`:

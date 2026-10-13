@@ -585,9 +585,10 @@ describe("the window", () => {
   });
 
   test("one step visits one period, so a sub-daily rule that never matches stops soon", () => {
-    // Every other second from an even one never reaches second 1: 100,000 one-period steps.
+    // A one-second period holds one start at most, so BYSETPOS=2 never picks one, which isn't
+    // checked up front: 100,000 one-period steps.
     const { dates, truncated } = expandRecurrenceRule(
-      rule("FREQ=SECONDLY;INTERVAL=2;BYSECOND=1"),
+      rule("FREQ=SECONDLY;BYMINUTE=0;BYSETPOS=2"),
       timed("2026-01-01T09:00"),
     );
     expect(dates).toHaveLength(1);
@@ -601,13 +602,16 @@ describe("the window", () => {
     expect(expand("FREQ=MONTHLY;BYDAY=6MO", allDay("2026-01-01"))).toEqual(["2026-01-01"]);
   });
 
-  test("a rule that never matches stops at maxIterations, or at the window's end", () => {
-    // Every other minute from an even one never reaches minute 1.
-    const never = rule("FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1");
-    const first = timed("2026-01-01T09:00");
-    expect(expandRecurrenceRule(never, first, { maxIterations: 50 }).truncated).toBe(true);
+  test("a rule that never matches undetected stops at maxIterations, or at the window's end", () => {
+    // No month has a sixth Monday, but BYSETPOS isn't checked up front.
+    const never = rule("FREQ=MONTHLY;BYDAY=MO;BYSETPOS=6");
+    const first = allDay("2026-01-05");
+    expect(expandRecurrenceRule(never, first, { maxIterations: 50 })).toEqual({
+      dates: [first.start],
+      truncated: true,
+    });
     expect(
-      expandRecurrenceRule(never, first, { before: Temporal.Instant.from("2026-01-03T00:00:00Z") }),
+      expandRecurrenceRule(never, first, { before: Temporal.PlainDate.from("2026-04-01") }),
     ).toEqual({ dates: [first.start], truncated: false });
   });
 
@@ -617,6 +621,64 @@ describe("the window", () => {
       "+102026-01-01",
       "+202026-01-01",
     ]);
+  });
+});
+
+describe("an INTERVAL whose steps never reach the BY values", () => {
+  test.each([
+    ["FREQ=SECONDLY;INTERVAL=2;BYSECOND=1", "2026-01-01T09:00:00"],
+    ["FREQ=SECONDLY;INTERVAL=3600;BYMINUTE=30", "2026-01-01T09:00:00"],
+    ["FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1", "2026-01-01T09:00"],
+    ["FREQ=MINUTELY;INTERVAL=120;BYHOUR=10", "2026-01-01T09:00"],
+    ["FREQ=HOURLY;INTERVAL=2;BYHOUR=9", "2026-01-01T10:00"],
+    ["FREQ=DAILY;INTERVAL=7;BYDAY=TU", "2026-01-05T09:00"],
+    ["FREQ=MONTHLY;INTERVAL=2;BYMONTH=2", "2026-01-01T09:00"],
+    ["FREQ=MONTHLY;INTERVAL=3;BYMONTH=1,4", "2026-03-01T09:00"],
+  ])("%s from %s ends after its first occurrence", (text, start) => {
+    const first = timed(start, "Europe/Berlin");
+    expect(expandRecurrenceRule(rule(text), first)).toEqual({
+      dates: [first.start],
+      truncated: false,
+    });
+  });
+
+  test.each([
+    ["FREQ=SECONDLY;INTERVAL=2;BYSECOND=1", "2026-01-01T09:00:01", "2026-01-01T09:01:01+01:00"],
+    ["FREQ=MINUTELY;INTERVAL=2;BYMINUTE=1", "2026-01-01T09:01", "2026-01-01T10:01:00+01:00"],
+    // Every 90 minutes from midnight reaches hour 1 at 01:30.
+    ["FREQ=MINUTELY;INTERVAL=90;BYHOUR=1", "2026-01-01T00:00", "2026-01-01T01:30:00+01:00"],
+    ["FREQ=HOURLY;INTERVAL=2;BYHOUR=9", "2026-01-01T11:00", "2026-01-02T09:00:00+01:00"],
+    ["FREQ=DAILY;INTERVAL=14;BYDAY=MO", "2026-01-05T09:00", "2026-01-19T09:00:00+01:00"],
+    ["FREQ=MONTHLY;INTERVAL=2;BYMONTH=2", "2026-02-01T09:00", "2027-02-01T09:00:00+01:00"],
+  ])("%s from %s still repeats", (text, start, second) => {
+    const first = timed(start, "Europe/Berlin");
+    const { dates } = expandRecurrenceRule(rule(`${text};COUNT=2`), first);
+    expect(show(dates, first)).toEqual([show([first.start], first)[0], second]);
+  });
+
+  test("agrees with stepping through a whole cycle by hand", () => {
+    // Minute positions repeat after lcm(interval, 1440) minutes, at most 8 days for these.
+    const intervals = [2, 3, 4, 5, 6, 7, 8, 9, 10, 12, 15, 16, 45, 90, 120, 720];
+    const byMinutes = [[1], [0, 30], [59], [7, 23]];
+    for (const interval of intervals) {
+      for (let minute = 0; minute < 60; minute += 7) {
+        for (const byMinute of byMinutes) {
+          let reached = false;
+          for (let step = 1; step * interval <= 8 * 1440 && !reached; step += 1) {
+            reached = byMinute.includes((minute + step * interval) % 60);
+          }
+          const first = timed(`2026-01-01T09:${String(minute).padStart(2, "0")}`, "Europe/Berlin");
+          const text = `FREQ=MINUTELY;INTERVAL=${interval};BYMINUTE=${byMinute.join(",")};COUNT=2`;
+          const { dates, truncated } = expandRecurrenceRule(rule(text), first);
+          expect([text, minute, dates.length, truncated]).toEqual([
+            text,
+            minute,
+            reached ? 2 : 1,
+            false,
+          ]);
+        }
+      }
+    }
   });
 });
 
