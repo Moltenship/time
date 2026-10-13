@@ -16,6 +16,13 @@ export interface TargetSurface {
   readonly region: HTMLElement;
 }
 
+/** A view's time columns by ISO date, for matching `[data-date]` elements to them. */
+export function columnsByDate(
+  columns: readonly TimeGridColumn[] | undefined,
+): ReadonlyMap<string, TimeGridColumn> {
+  return new Map((columns ?? []).map((column) => [column.date.toString(), column]));
+}
+
 /** The cell's resource, left out in views without resources. */
 function resourceOf(cell: Element): { readonly resourceId?: ResourceId | null } {
   const resourceId = resourceIdOf(cell);

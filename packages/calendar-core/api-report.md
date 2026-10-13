@@ -300,6 +300,9 @@ interface CalendarInteractionUpdateBase {
   readonly event: NormalizedCalendarEvent<unknown, EventId, ResourceId> | null;
   readonly input: "keyboard" | "pointer";
   readonly original: CalendarEventPlacement | null;
+  readonly outside?: {
+    readonly title?: string;
+  };
   readonly proposed: CalendarEventPlacement | null;
 }
 interface CalendarKeyboardSession<TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {

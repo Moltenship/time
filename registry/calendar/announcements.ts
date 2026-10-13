@@ -47,8 +47,10 @@ function checkConcern(check: CalendarInteractionCheck | undefined): string {
     : concern(check.change.warnings);
 }
 
-function subject({ event }: Pick<CalendarInteractionUpdate, "event">): string {
-  return event === null ? "the new event" : eventTitle(event);
+/** The event's title, or for a new one the name of the item dragged in, if it has one. */
+function subject({ event, outside }: Pick<CalendarInteractionUpdate, "event" | "outside">): string {
+  if (event !== null) return eventTitle(event);
+  return outside?.title ?? "the new event";
 }
 
 /**
@@ -63,10 +65,11 @@ function isAbort(error: unknown): boolean {
   );
 }
 
-function cancelled(update: Pick<CalendarInteractionUpdate, "cause" | "event">): string {
-  return update.cause === "create"
+function cancelled(update: Pick<CalendarInteractionUpdate, "cause" | "event" | "outside">): string {
+  if (update.cause !== "create") return `Cancelled. ${subject(update)} is back where it was.`;
+  return update.outside?.title === undefined
     ? "Cancelled the new event."
-    : `Cancelled. ${subject(update)} is back where it was.`;
+    : `Cancelled. ${update.outside.title} wasn't added.`;
 }
 
 function sameResources(left: readonly ResourceId[], right: readonly ResourceId[]): boolean {
@@ -77,19 +80,27 @@ function sameResources(left: readonly ResourceId[], right: readonly ResourceId[]
  * The resources each move last announced, by the placement it started from, which keyboard and
  * pointer updates carry unchanged through a gesture. A step names the resources when they differ
  * from the last announcement, so moving out to another resource and back names both, even when a
- * drag starts over another resource.
+ * drag starts over another resource. An item dragged in from outside the calendar is tracked by
+ * its `outside`, one object for the whole drag.
  */
-const announcedResources = new WeakMap<CalendarEventPlacement, readonly ResourceId[]>();
+const announcedResources = new WeakMap<object, readonly ResourceId[]>();
 
 /**
- * Remembers the resources a move announces, and returns whether they differ from the ones it
- * announced before. A move that hasn't named any yet, as a drag that starts off the view, names
- * them on its first placement. Resizes and creates keep their resources, so they never track them.
+ * Remembers the resources a move, or an item dragged in, announces, and returns whether they
+ * differ from the ones it announced before. One that hasn't named any yet, as a drag that starts
+ * off the view, names them on its first placement. Resizes and creates in a view keep their
+ * resources, so they never track them.
  */
-function announceResources({ cause, original, proposed }: CalendarInteractionUpdate): boolean {
-  if (cause !== "move" || original === null || proposed === null) return false;
-  const announced = announcedResources.get(original);
-  announcedResources.set(original, proposed.resourceIds);
+function announceResources({
+  cause,
+  original,
+  outside,
+  proposed,
+}: CalendarInteractionUpdate): boolean {
+  const gesture = cause === "move" ? original : cause === "create" ? outside : undefined;
+  if (gesture == null || proposed === null) return false;
+  const announced = announcedResources.get(gesture);
+  announcedResources.set(gesture, proposed.resourceIds);
   return announced === undefined || !sameResources(announced, proposed.resourceIds);
 }
 
@@ -124,6 +135,13 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
       update.proposed === null
         ? ""
         : `, ${describePlacement(update.proposed, where, resources)}${checkConcern(update.check)}`;
+    // An item dragged in from outside the calendar: its name and where it would go, with no
+    // keyboard hints, since its own drag library has its own keys.
+    if (update.outside !== undefined) {
+      return update.event === null && update.outside.title === undefined
+        ? `New event${when}.`
+        : `${subject(update)}${when}.`;
+    }
     const opening = {
       create: `New event${when}.`,
       move: `Picked up ${subject(update)}${when}.`,
@@ -140,7 +158,9 @@ export const calendarAnnouncements: CalendarAnnouncementMessages = {
     const flagged = concern(update.warnings);
     switch (update.cause) {
       case "create":
-        return `New event for ${describePlacement(update.proposed, where, true)}${flagged}.`;
+        return update.outside?.title === undefined
+          ? `New event for ${describePlacement(update.proposed, where, true)}${flagged}.`
+          : `Added ${update.outside.title} for ${describePlacement(update.proposed, where, true)}${flagged}.`;
       case "move":
         return `Moved ${subject(update)} to ${describePlacement(update.proposed, where, true)}${flagged}.`;
       case "resize-end":

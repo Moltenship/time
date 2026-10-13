@@ -347,11 +347,11 @@ interface CalendarView<TName extends string = string, TProjection = unknown, TOp
   readonly strategy: CalendarViewStrategy<TProjection, TOptions, TEvent>;
 }
 interface CalendarViewActions {
-  readonly checkEventChange: (proposal: CalendarEventProposal<EventId, ResourceId>) => CalendarPolicyResult<unknown, EventId, ResourceId> | null;
+  readonly checkEventChange: (proposal: CalendarEventProposal<EventId, ResourceId, unknown>) => CalendarPolicyResult<unknown, EventId, ResourceId> | null;
   navigateNext(): void;
   navigatePrevious(): void;
   navigateToday(): void;
-  readonly proposeEventChange: (proposal: CalendarEventProposal<EventId, ResourceId>, detail?: CalendarProposalDetail) => Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
+  readonly proposeEventChange: (proposal: CalendarEventProposal<EventId, ResourceId, unknown>, detail?: CalendarProposalDetail) => Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
   setAnchorDate(anchorDate: Temporal.PlainDate): void;
   setFocus(focus: CalendarFocus | null): void;
   setSelection(selection: CalendarSelection | null): void;

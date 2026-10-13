@@ -43,6 +43,20 @@ function interactionTarget(
       };
 }
 
+/** Whether two placements are the same range, kind and resources. */
+export function samePlacement(
+  left: CalendarEventPlacement,
+  right: CalendarEventPlacement,
+): boolean {
+  return (
+    left.kind === right.kind &&
+    left.start.toString() === right.start.toString() &&
+    left.end.toString() === right.end.toString() &&
+    left.resourceIds.length === right.resourceIds.length &&
+    left.resourceIds.every((resourceId) => right.resourceIds.includes(resourceId))
+  );
+}
+
 /**
  * Where a dragged event lands. Moves within one axis keep the event's kind; dropping a timed event
  * on a day cell makes it all-day, and dropping an all-day event on a time column makes it a
@@ -97,4 +111,50 @@ export function createdPlacement<TResourceId extends ResourceId>(
       snap,
     },
   );
+}
+
+/** What an item dragged in from outside the calendar becomes: a new event, or a move of one. */
+export type DroppedItem<TResourceId extends ResourceId> =
+  | { readonly days: number; readonly duration: Temporal.Duration; readonly kind: "create" }
+  | { readonly kind: "move"; readonly original: CalendarEventPlacement<TResourceId> };
+
+/**
+ * Where an item dragged in from outside lands, starting at the slot or day under the pointer. A
+ * new event is `duration` long over a time column and `days` long over day cells, in the resource
+ * it is dropped in. A moved event's start lands there, and its kind changes as an in-view drag's
+ * would; in another resource, that resource takes the place of its first.
+ */
+export function droppedPlacement<TResourceId extends ResourceId>(
+  item: DroppedItem<TResourceId>,
+  target: PointerTarget,
+  { snap, timeZone }: GestureOptions,
+): CalendarEventPlacement<TResourceId> {
+  // An item starts at the slot it is over, wherever in it the pointer is, as a created range does.
+  const at = interactionTarget(target, { ...snap, mode: "floor" });
+  if (item.kind === "move") {
+    const { original } = item;
+    const resourceId =
+      target.resourceId === undefined ? undefined : (original.resourceIds[0] ?? null);
+    const grab: CalendarInteractionTarget =
+      original.kind === "all-day"
+        ? { date: original.start, kind: "day", resourceId }
+        : {
+            at:
+              original.kind === "timed"
+                ? original.start.toZonedDateTimeISO(timeZone)
+                : original.start.toZonedDateTime(timeZone),
+            kind: "time",
+            resourceId,
+          };
+    return movePlacementToTarget(original, grab, at, { timeZone });
+  }
+  const resourceIds = (target.resourceId == null ? [] : [target.resourceId]) as TResourceId[];
+  return at.kind === "day"
+    ? { end: at.date.add({ days: item.days }), kind: "all-day", resourceIds, start: at.date }
+    : {
+        end: at.at.add(item.duration).toInstant(),
+        kind: "timed",
+        resourceIds,
+        start: at.at.toInstant(),
+      };
 }
