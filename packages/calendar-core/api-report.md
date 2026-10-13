@@ -615,7 +615,8 @@ interface NormalizedCalendarEventBase<TEvent, TEventId extends EventId, TResourc
 type NormalizedFloatingCalendarEvent<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = NormalizedCalendarEventBase<TEvent, TEventId, TResourceId> & FloatingCalendarEventInterval;
 type NormalizedTimedCalendarEvent<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = NormalizedCalendarEventBase<TEvent, TEventId, TResourceId> & TimedCalendarEventInterval;
 type OverlapLayout = "columns" | "equal" | "stack";
-interface OverlapLayoutOptions {
+interface OverlapLayoutOptions<TEvent = unknown> {
+  readonly getEventOverlapLayout?: (event: TEvent) => OverlapLayout | undefined;
   readonly overlapLayout?: OverlapLayout;
   readonly stackIndent?: number;
 }
@@ -636,8 +637,11 @@ interface ResourceColumnsProjection<TEvent> {
   readonly columns: readonly TimeGridColumn[];
   readonly resources: readonly ResourceColumn<TEvent>[];
 }
-type ResourceColumnsProjectionInput<TEvent> = Pick<CalendarViewProjectionInput<unknown, TEvent>, "environment" | "expandedResourceIds" | "range" | "resources" | "snapshot" | "today"> & OverlapLayoutOptions & ResourceVisibilityOptions;
+type ResourceColumnsProjectionInput<TEvent> = Pick<CalendarViewProjectionInput<unknown, TEvent>, "environment" | "expandedResourceIds" | "range" | "resources" | "snapshot" | "today"> & ResourceOverlapLayoutOptions<TEvent> & ResourceVisibilityOptions;
 type ResourceId = CalendarEntityId;
+interface ResourceOverlapLayoutOptions<TEvent = unknown, TResource = CalendarResource<unknown, ResourceId>> extends OverlapLayoutOptions<TEvent> {
+  readonly getResourceOverlapLayout?: (resource: TResource) => OverlapLayout | undefined;
+}
 interface ResourceStatus<TEvent> {
   readonly availability: AvailabilityStatus;
   readonly busy: BusyStatus<TEvent>;
@@ -738,6 +742,7 @@ interface TimeGridEventLayout<TFragment> extends TimeGridBand {
   readonly left: number;
   readonly width: number;
 }
+interface TimeGridLayoutOptions<TEvent = unknown> extends TimedOverlapOptions, Pick<OverlapLayoutOptions<TEvent>, "getEventOverlapLayout"> {}
 interface TimeGridPointOptions {
   readonly fold?: "earlier" | "later";
   readonly snap?: WallTimeSnapOptions;
@@ -750,7 +755,7 @@ interface TimeGridProjection<TEvent> {
   readonly allDay: DayGridRow<TEvent, EventId, ResourceId>;
   readonly days: readonly TimeGridDay<TEvent>[];
 }
-type TimeGridProjectionInput<TEvent> = Pick<CalendarViewProjectionInput<unknown, TEvent>, "environment" | "range" | "snapshot" | "today"> & OverlapLayoutOptions;
+type TimeGridProjectionInput<TEvent> = Pick<CalendarViewProjectionInput<unknown, TEvent>, "environment" | "range" | "snapshot" | "today"> & OverlapLayoutOptions<TEvent>;
 type TimeGridSpan = {
   readonly kind: "week";
 } | {
@@ -791,7 +796,7 @@ interface TimedCalendarEventInterval {
   readonly sourceTimeZone?: string;
   readonly start: Temporal.Instant;
 }
-interface TimedOverlapOptions extends OverlapLayoutOptions {
+interface TimedOverlapOptions extends Pick<OverlapLayoutOptions, "overlapLayout" | "stackIndent"> {
   readonly minHeight?: number;
 }
 interface TimelineExtent {
@@ -881,7 +886,7 @@ export declare function isEventId(value: unknown): value is EventId;
 export declare function isResourceId(value: unknown): value is ResourceId;
 export declare function keyboardSessionProposal<TEventId extends EventId, TResourceId extends ResourceId>(session: CalendarKeyboardSession<TEventId, TResourceId>): CalendarEventProposal<TEventId, TResourceId> | null;
 export declare function layoutDayGridRow<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(range: PlainDateInterval, fragments: readonly EventDayFragment<TEvent, TEventId, TResourceId>[]): DayGridRow<TEvent, TEventId, TResourceId>;
-export declare function layoutTimeGrid<TFragment extends DayFragment>(columns: readonly TimeGridColumn[], fragments: readonly TFragment[], options?: TimedOverlapOptions): readonly (readonly TimeGridEventLayout<TFragment>[])[];
+export declare function layoutTimeGrid<TFragment extends DayFragment>(columns: readonly TimeGridColumn[], fragments: readonly TFragment[], options?: TimeGridLayoutOptions<TFragment["event"]["event"]>): readonly (readonly TimeGridEventLayout<TFragment>[])[];
 export declare function limitDayGridLanes<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(row: DayGridRow<TEvent, TEventId, TResourceId>, maxLanes: number): DayGridOverflow<TEvent, TEventId, TResourceId>;
 export declare function listSpatialNavigation({ command, focus, projection }: CalendarSpatialNavigationInput<ListProjection<unknown, EventId, ResourceId>, unknown>): CalendarSpatialNavigation | null;
 export declare function minimumDurationPolicy<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(minimum: DurationInput): CalendarPolicy<TEvent, TEventId, TResourceId>;
@@ -899,9 +904,9 @@ export declare function navigateYear(anchor: Temporal.PlainDate, delta: number):
 export declare function projectList<TEvent>(input: CalendarViewProjectionInput<unknown, TEvent>): ListProjection<TEvent, EventId, ResourceId>;
 export declare function projectMonth<TEvent>(input: CalendarViewProjectionInput<unknown, TEvent>): MonthProjection<TEvent, EventId, ResourceId>;
 export declare function projectMonthWeeks<TEvent>({ environment, snapshot, today }: Pick<CalendarViewProjectionInput<unknown, TEvent>, "environment" | "snapshot" | "today">, range: PlainDateInterval, month: Temporal.PlainDate): MonthProjection<TEvent, EventId, ResourceId>;
-export declare function projectResourceColumns<TEvent>({ environment, expandedResourceIds, overlapLayout, range, resources, snapshot, stackIndent, today, unassigned }: ResourceColumnsProjectionInput<TEvent>): ResourceColumnsProjection<TEvent>;
+export declare function projectResourceColumns<TEvent>({ environment, expandedResourceIds, getEventOverlapLayout, getResourceOverlapLayout, overlapLayout, range, resources, snapshot, stackIndent, today, unassigned }: ResourceColumnsProjectionInput<TEvent>): ResourceColumnsProjection<TEvent>;
 export declare function projectResourceTimeline<TEvent>({ environment, expandedResourceIds, instantRange, range, resources, snapshot, slotUnit, today, unassigned }: ResourceTimelineProjectionInput<TEvent>): ResourceTimelineProjection<TEvent>;
-export declare function projectTimeGrid<TEvent>({ environment, overlapLayout, range, snapshot, stackIndent, today }: TimeGridProjectionInput<TEvent>): TimeGridProjection<TEvent>;
+export declare function projectTimeGrid<TEvent>({ environment, getEventOverlapLayout, overlapLayout, range, snapshot, stackIndent, today }: TimeGridProjectionInput<TEvent>): TimeGridProjection<TEvent>;
 export declare function projectTimeGridAnnotations<TSource extends CalendarAnnotationSource, TData>(columns: readonly TimeGridColumn[], snapshot: AnnotationSnapshot<TData>, sources: readonly TSource[], geometry?: TimeGridAnnotationGeometry): readonly (readonly TimeGridAnnotationMark<TSource, TData>[])[];
 export declare function projectTimeGridAvailability(columns: readonly TimeGridColumn[], schedule: AvailabilitySchedule | null): readonly (readonly AvailabilityBand[])[];
 export declare function projectTimelineAvailability(columns: readonly TimeGridColumn[], schedule: AvailabilitySchedule | null): readonly AvailabilityExtent[];
@@ -1092,6 +1097,7 @@ export {
   type ResourceColumnsProjection,
   type ResourceColumnsProjectionInput,
   type ResourceId,
+  type ResourceOverlapLayoutOptions,
   type ResourceStatus,
   type ResourceTimelineBar,
   type ResourceTimelineDayRow,
@@ -1111,6 +1117,7 @@ export {
   type TimeGridColumn,
   type TimeGridDay,
   type TimeGridEventLayout,
+  type TimeGridLayoutOptions,
   type TimeGridPointOptions,
   type TimeGridPosition,
   type TimeGridProjection,

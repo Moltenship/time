@@ -1,12 +1,20 @@
 import { instantInterval } from "@moltenship/calendar-temporal";
 
 import type { EventId, ResourceId } from "../../ids";
-import { layoutTimedOverlaps, type TimedOverlapOptions } from "../../layout/timed-overlap";
+import {
+  layoutTimedOverlaps,
+  type OverlapLayoutOptions,
+  type TimedOverlapOptions,
+} from "../../layout/timed-overlap";
 import type { EventDayFragment } from "../../projection/day-fragments";
 import type { TimeGridBand, TimeGridColumn } from "./columns";
 import { timedFragmentBox, wallRangeBox } from "./geometry";
 
 type DayFragment = EventDayFragment<unknown, EventId, ResourceId>;
+
+/** `layoutTimeGrid`'s options: the layout, each event's own, and the smallest height. */
+export interface TimeGridLayoutOptions<TEvent = unknown>
+  extends TimedOverlapOptions, Pick<OverlapLayoutOptions<TEvent>, "getEventOverlapLayout"> {}
 
 export interface TimeGridEventLayout<TFragment> extends TimeGridBand {
   readonly fragment: TFragment;
@@ -26,13 +34,15 @@ function fragmentBox(column: TimeGridColumn, fragment: DayFragment): TimeGridBan
 function layoutColumn<TFragment extends DayFragment>(
   column: TimeGridColumn,
   fragments: readonly TFragment[],
-  options: TimedOverlapOptions | undefined,
+  options: TimeGridLayoutOptions<TFragment["event"]["event"]> | undefined,
 ): readonly TimeGridEventLayout<TFragment>[] {
+  const own = options?.getEventOverlapLayout;
   const items = fragments.map((fragment) => ({
     ...fragmentBox(column, fragment),
     fragment,
     // `1` and `"1"` are distinct event IDs, so the type is part of the tie-breaking key.
     key: `${typeof fragment.event.id}:${fragment.event.id}`,
+    overlapLayout: own?.(fragment.event.event),
   }));
 
   return Object.freeze(
@@ -47,11 +57,13 @@ function layoutColumn<TFragment extends DayFragment>(
  * Timed fragments are measured by their instants and floating ones by wall time. Pass timed and
  * floating fragments only: an all-day fragment would fill its column. Collisions are measured on
  * the rendered wall axis, so the two occurrences of a repeated fall-back hour sit side by side.
+ * Overlapping events share a column as `options.overlapLayout` and each event's own
+ * `getEventOverlapLayout` choose; see `OverlapLayoutOptions`.
  */
 export function layoutTimeGrid<TFragment extends DayFragment>(
   columns: readonly TimeGridColumn[],
   fragments: readonly TFragment[],
-  options?: TimedOverlapOptions,
+  options?: TimeGridLayoutOptions<TFragment["event"]["event"]>,
 ): readonly (readonly TimeGridEventLayout<TFragment>[])[] {
   const byDate = Map.groupBy(fragments, (fragment) => fragment.date.toString());
 

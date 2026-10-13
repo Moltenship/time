@@ -35,8 +35,10 @@ import { gutterStyle, timeGridGutterClassName, useTimeGridZones } from "./time-g
 /**
  * Overlapping events sit side by side in lanes (`overlapLayout: "columns"`, the default), in lanes
  * of equal width (`"equal"`), or cascade (`"stack"`, indented by `stackIndent`).
+ * `getEventOverlapLayout` gives events their own layout, such as their calendar's: a group of
+ * overlapping events that all agree takes it, and any other group `overlapLayout`.
  */
-export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions {
+export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions<TEvent> {
   /**
    * How the root's annotations draw: the rail's size and side, or your own composition of the
    * annotation parts. Without annotation sources on the root, no rail is reserved.

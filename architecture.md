@@ -995,11 +995,26 @@ Layout is pure and deterministic. The benchmark's layout stage still times a ref
 1. Sort visible fragments by start, then longer duration, then stable ID.
 2. Sweep active intervals using half-open comparison.
 3. Partition fragments into collision groups.
-4. Assign the lowest available lane.
-5. Compute group lane count and expansion opportunity.
-6. Emit fractions of the column (top, height, inline start, width); the renderer sets them as inline percentage styles.
+4. Pick each group's layout: its fragments' own layout when they all agree, otherwise the column's.
+5. Assign the lowest available lane.
+6. Compute group lane count and expansion opportunity.
+7. Emit fractions of the column (top, height, inline start, width); the renderer sets them as inline percentage styles.
 
 The `overlapLayout` option of the time-grid and resource-columns views chooses `"columns"` (the default: lanes, each event widening into free lanes beside it), `"equal"` (equal-width lanes), or `"stack"` (each event indented by `stackIndent` past the deepest earlier event it overlaps, with the indent capped in deep stacks). Event queries stay the same.
+
+Layouts vary per resource and per calendar (#230), from the most specific level down:
+
+- **Event:** `getEventOverlapLayout(event)`, such as the event's calendar's.
+- **Column:** in resource columns, `getResourceOverlapLayout(resource)`. The Unassigned column isn't a resource and keeps `overlapLayout`.
+- **View:** `overlapLayout`, then `"columns"`.
+
+A collision group can mix calendars and is drawn one way. It takes its events' own layout only when they all resolve to the same one, counting an event without one as the column's. Otherwise it takes the column's.
+
+- **Stable.** A group's layout depends only on its own events, so an event that overlaps none of them never redraws them. A rule per column would break this: an unrelated event at 08:00 would redraw the 15:00 group.
+- **Order-free.** Agreement doesn't depend on input order, and grouping is the same under every layout.
+- **No ranking.** A precedence among the layouts would let one event impose its calendar's layout on the others.
+
+Placements come in one order under every layout, by top, then longer first, then key. The views draw them in that order, and keyboard navigation reads the drawn boxes. So z-order, focus order and what's drawn agree in mixed columns too. Keyboard previews and pending changes patch the snapshot, so a moved event is laid out by its destination column's layout and its own, as it will be once saved. The overlay keeps the stored event, so `getEventOverlapLayout` should read what a move doesn't change, such as the calendar. The pointer's ghost is drawn outside the layout. `stackIndent` is view-wide, and an invalid one throws whatever the layout, since any group may stack.
 
 ### All-day and month segments
 

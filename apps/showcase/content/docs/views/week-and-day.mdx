@@ -104,6 +104,15 @@ TimeGridView                     time-grid-view.tsx
         </>
       ),
     },
+    getEventOverlapLayout: {
+      type: '(event: TEvent) => "columns" | "equal" | "stack" | undefined',
+      description: (
+        <>
+          An event's own layout, such as its calendar's. A group of overlapping events takes it when
+          they all agree. See <a href="#by-calendar">by calendar</a>.
+        </>
+      ),
+    },
     overlapLayout: {
       type: '"columns" | "equal" | "stack"',
       default: '"columns"',
@@ -119,8 +128,8 @@ TimeGridView                     time-grid-view.tsx
       default: "0.15",
       description: (
         <>
-          Under <code>"stack"</code>, how far each level is indented, as a fraction of the column
-          width.
+          How far each level of a stack is indented, as a fraction of the column width, the same for
+          every stacked group. A value that isn't positive throws, whatever the layout.
         </>
       ),
     },
@@ -184,7 +193,8 @@ The day view works on narrow screens:
 ## Overlapping events
 
 `overlapLayout` sets how events that overlap share a day column. Switch between the layouts here,
-and drag an event to see the others make room:
+and drag an event to see the others make room. "Stack focus time" gives the purple focus time
+calendar a layout of its own, as [by calendar](#by-calendar) describes:
 
 <OverlapLayoutPreview />
 
@@ -216,8 +226,36 @@ Every layout keeps the same rules:
 - An event picked up with the keyboard, and changes still being saved, are laid out the same way,
   so an event lands where it will stay.
 
-The resource columns view takes the same options, for each resource's column. The
-[scrolling](/docs/views/scrolling) week and day views do too.
+The resource columns view takes the same options, for each resource's column, and can give each
+resource a layout of its own: see [rooms and people](/docs/views/resource-columns#rooms-and-people).
+The [scrolling](/docs/views/scrolling) week and day views take them too.
+
+### By calendar
+
+`getEventOverlapLayout` gives events a layout of their own, usually their calendar's. Return
+`undefined` for events that should follow the view's `overlapLayout`:
+
+```tsx
+const layouts: Partial<Record<CalendarId, OverlapLayout>> = { focus: "stack" };
+
+createWeekView<Meeting>({
+  getEventOverlapLayout: (meeting) => layouts[meeting.calendarId],
+});
+```
+
+One column can hold a group of overlapping events from several calendars, and a group is drawn
+one way. So a group takes its events' own layout only when they all agree, and otherwise the
+view's `overlapLayout`. An event without a layout of its own counts as the view's.
+
+- An afternoon of focus time stacks, while a focus block that overlaps a meeting stays in lanes
+  beside it.
+- A group's layout depends only on its own events, so an event that overlaps none of them never
+  changes how they're drawn. An event that joins a group from another calendar can switch the
+  group back to the view's layout, as joining a group already redraws it.
+- Agreement doesn't depend on order, and `stackIndent` is the same for every stacked group.
+- While an event is being moved or saved, `getEventOverlapLayout` still gets the event as you
+  stored it, not its new time or resources. Base it on what a move doesn't change, such as the
+  calendar.
 
 ## Secondary time zones
 

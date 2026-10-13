@@ -11,9 +11,9 @@ import {
   type CalendarFocus,
   type CalendarResource,
   type CalendarViewRendererProps,
-  type OverlapLayoutOptions,
   type ResourceColumnsProjection,
   type ResourceId,
+  type ResourceOverlapLayoutOptions,
   type ResourceVisibilityOptions,
 } from "@moltenship/calendar";
 import { useMemo, type ComponentType, type ReactNode } from "react";
@@ -45,12 +45,16 @@ import { ResourceColumnsHeader } from "./resource-columns-header";
 import type { ResourceHeaderProps } from "./resource-header";
 import { useFocusedColumnInView } from "./focused-column";
 
-/** Overlapping events in a resource's column follow `overlapLayout`, as in the week view. */
+/**
+ * Overlapping events in a resource's column follow `getResourceOverlapLayout`, such as `"stack"`
+ * for rooms, or else `overlapLayout`, as in the week view; `getEventOverlapLayout` refines it per
+ * event, such as by calendar.
+ */
 export interface ResourceColumnsViewOptions<
   TEvent,
   TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
 >
-  extends OverlapLayoutOptions, ResourceVisibilityOptions {
+  extends ResourceOverlapLayoutOptions<TEvent, TResource>, ResourceVisibilityOptions {
   /** Extra words for each event's accessible name, such as its calendar. */
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Colour for an event; sets `data-color` on every element that renders it. */

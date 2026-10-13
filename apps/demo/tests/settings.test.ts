@@ -5,6 +5,7 @@ import { parseSettings, timeZoneOptions } from "../src/settings";
 const defaults = {
   locale: "en-US",
   overlapLayout: "columns",
+  resourceRules: "same",
   scrolling: false,
   secondaryTimeZone: null,
   timeZone: "Europe/Berlin",
@@ -15,12 +16,13 @@ const defaults = {
 test("keeps valid stored settings and replaces each invalid field with its default", () => {
   expect(
     parseSettings(
-      '{"locale":"de-DE","overlapLayout":"stack","scrolling":true,"secondaryTimeZone":"Asia/Kolkata","timeZone":"Asia/Tokyo","weekStartsOn":1,"workingHours":"block"}',
+      '{"locale":"de-DE","overlapLayout":"stack","resourceRules":"by-kind","scrolling":true,"secondaryTimeZone":"Asia/Kolkata","timeZone":"Asia/Tokyo","weekStartsOn":1,"workingHours":"block"}',
       defaults,
     ),
   ).toEqual({
     locale: "de-DE",
     overlapLayout: "stack",
+    resourceRules: "by-kind",
     scrolling: true,
     secondaryTimeZone: "Asia/Kolkata",
     timeZone: "Asia/Tokyo",
@@ -29,7 +31,7 @@ test("keeps valid stored settings and replaces each invalid field with its defau
   });
   expect(
     parseSettings(
-      '{"locale":"xx","overlapLayout":"grid","scrolling":"yes","secondaryTimeZone":"Moon/Base","timeZone":"Mars/Base","weekStartsOn":3,"workingHours":"later"}',
+      '{"locale":"xx","overlapLayout":"grid","resourceRules":"rooms","scrolling":"yes","secondaryTimeZone":"Moon/Base","timeZone":"Mars/Base","weekStartsOn":3,"workingHours":"later"}',
       defaults,
     ),
   ).toEqual(defaults);

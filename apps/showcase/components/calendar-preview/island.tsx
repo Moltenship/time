@@ -40,6 +40,12 @@ export const OverlapPreviewIsland = dynamic(() => withTemporal(() => import("./o
   ssr: false,
 });
 
+/** Rooms and people over a day, with a layout for each kind of resource. */
+export const RoomsAndPeoplePreviewIsland = dynamic(
+  () => withTemporal(() => import("./rooms-and-people")),
+  { loading: PreviewSkeleton, ssr: false },
+);
+
 /** This week with a toggle between sets of secondary time zones. */
 export const TimeZonesPreviewIsland = dynamic(() => withTemporal(() => import("./time-zones")), {
   loading: PreviewSkeleton,

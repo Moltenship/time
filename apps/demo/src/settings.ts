@@ -6,6 +6,8 @@ export interface DemoSettings {
   readonly locale: string;
   /** How overlapping events share a column in the day, week and resource views. */
   readonly overlapLayout: OverlapLayout;
+  /** Whether rooms and people have layouts of their own in resource columns; see `resource-rules.ts`. */
+  readonly resourceRules: ResourceRules;
   /**
    * Whether day, 3 days, week, month, and agenda are the scrolling views, which scroll without end.
    */
@@ -19,6 +21,7 @@ export interface DemoSettings {
 }
 
 export type WorkingHours = (typeof workingHoursOptions)[number]["value"];
+export type ResourceRules = (typeof resourceRulesOptions)[number]["value"];
 
 export const workingHoursOptions = [
   { label: "Hidden", value: "off" },
@@ -41,6 +44,11 @@ export const overlapLayoutOptions = [
   { label: "Equal columns", value: "equal" },
   { label: "Stacked", value: "stack" },
 ] as const satisfies readonly { readonly label: string; readonly value: OverlapLayout }[];
+
+export const resourceRulesOptions = [
+  { label: "Same rules", value: "same" },
+  { label: "Rooms stacked, people side by side", value: "by-kind" },
+] as const;
 
 export const weekStartOptions = [
   { label: "Sunday", value: 7 },
@@ -80,12 +88,15 @@ export function parseSettings(stored: string | null, defaults: DemoSettings): De
     const value: unknown = JSON.parse(stored ?? "{}");
     if (!isRecord(value)) return defaults;
     const { locale, overlapLayout, scrolling, secondaryTimeZone, timeZone, weekStartsOn } = value;
-    const { workingHours } = value;
+    const { resourceRules, workingHours } = value;
     return {
       locale: localeOptions.find((option) => option.value === locale)?.value ?? defaults.locale,
       overlapLayout:
         overlapLayoutOptions.find((option) => option.value === overlapLayout)?.value ??
         defaults.overlapLayout,
+      resourceRules:
+        resourceRulesOptions.find((option) => option.value === resourceRules)?.value ??
+        defaults.resourceRules,
       scrolling: typeof scrolling === "boolean" ? scrolling : defaults.scrolling,
       secondaryTimeZone:
         secondaryTimeZone === null || isSupportedTimeZone(secondaryTimeZone)
@@ -113,6 +124,7 @@ export function useDemoSettings() {
       parseSettings(stored, {
         locale: "en-US",
         overlapLayout: "columns",
+        resourceRules: "same",
         scrolling: false,
         secondaryTimeZone: null,
         timeZone: Temporal.Now.timeZoneId(),

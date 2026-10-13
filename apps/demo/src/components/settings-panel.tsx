@@ -16,6 +16,7 @@ import {
 import {
   localeOptions,
   overlapLayoutOptions,
+  resourceRulesOptions,
   timeZoneOptions,
   weekStartOptions,
   workingHoursOptions,
@@ -158,6 +159,15 @@ export function SettingsPanel({
           if (option !== undefined) onChange({ ...settings, overlapLayout: option.value });
         }}
         value={settings.overlapLayout}
+      />
+      <Setting
+        items={resourceRulesOptions}
+        label="Rooms and people"
+        onValueChange={(value) => {
+          const option = resourceRulesOptions.find((candidate) => candidate.value === value);
+          if (option !== undefined) onChange({ ...settings, resourceRules: option.value });
+        }}
+        value={settings.resourceRules}
       />
       <Setting
         items={workingHoursOptions}

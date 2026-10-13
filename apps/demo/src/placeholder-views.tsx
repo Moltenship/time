@@ -21,6 +21,7 @@ import { createYearView } from "@registry/year-view/year-view";
 
 import type { DemoOccurrence } from "./calendar";
 import { demoCalendars, getCalendarColor } from "./calendars";
+import type { DemoResource } from "./resources";
 
 /** One element for every repeating event's chip; the views hide it from assistive technology. */
 const repeatIcon = <RepeatIcon />;
@@ -46,7 +47,7 @@ export const demoViews = [
   createMonthView<DemoOccurrence>(options),
   createYearView<DemoOccurrence>(options),
   createAgendaView<DemoOccurrence>(options),
-  createResourceColumnsView<DemoOccurrence>({ ...options, resourceStatus: true }),
+  createResourceColumnsView<DemoOccurrence, DemoResource>({ ...options, resourceStatus: true }),
   createTimelineWeekView<DemoOccurrence>({ ...options, resourceStatus: true }),
   // The same day, 3 days, week, month, and agenda, scrolling continuously; settings switch between
   // the sets.

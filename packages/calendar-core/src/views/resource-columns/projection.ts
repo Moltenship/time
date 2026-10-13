@@ -1,4 +1,4 @@
-import type { OverlapLayoutOptions } from "../../layout/timed-overlap";
+import type { ResourceOverlapLayoutOptions } from "../../layout/timed-overlap";
 import { resourceColumnsSpatialNavigation } from "../../navigation/resource-columns";
 import { splitEventsByDay } from "../../projection/day-fragments";
 import { queryVisibleEvents } from "../../projection/visible-events";
@@ -37,18 +37,21 @@ export type ResourceColumnsProjectionInput<TEvent> = Pick<
   CalendarViewProjectionInput<unknown, TEvent>,
   "environment" | "expandedResourceIds" | "range" | "resources" | "snapshot" | "today"
 > &
-  OverlapLayoutOptions &
+  ResourceOverlapLayoutOptions<TEvent> &
   ResourceVisibilityOptions;
 
 /**
  * A time grid per visible resource, laid out like `projectTimeGrid`: fragments, overlapping
- * events as `overlapLayout` chooses, and the all-day row, over one or more days. An event with
- * several resources shows in each of their columns. The events are queried and split by day once,
- * and the day columns, with their DST bands, are shared.
+ * events as the resource's `getResourceOverlapLayout` or else `overlapLayout` chooses, refined by
+ * each event's own `getEventOverlapLayout`, and the all-day row, over one or more days. An event
+ * with several resources shows in each of their columns, each laid out by its own resource. The
+ * events are queried and split by day once, and the day columns, with their DST bands, are shared.
  */
 export function projectResourceColumns<TEvent>({
   environment,
   expandedResourceIds,
+  getEventOverlapLayout,
+  getResourceOverlapLayout,
   overlapLayout,
   range,
   resources,
@@ -66,14 +69,20 @@ export function projectResourceColumns<TEvent>({
   );
   const columns = timeGridColumns(range, timeZone);
   const byResource = groupByResource(fragments, visible);
-  const layout = { overlapLayout, stackIndent };
+  // The unassigned bucket isn't a resource, so it keeps the view's layout.
+  const layoutOf = ({ resource }: VisibleResource) => ({
+    getEventOverlapLayout,
+    overlapLayout:
+      (resource === null ? undefined : getResourceOverlapLayout?.(resource)) ?? overlapLayout,
+    stackIndent,
+  });
 
   return Object.freeze({
     columns,
     resources: Object.freeze(
       visible.map((resource, index) =>
         Object.freeze({
-          ...timeGridOf(byResource[index]!, columns, range, today, layout),
+          ...timeGridOf(byResource[index]!, columns, range, today, layoutOf(resource)),
           resource,
         }),
       ),
@@ -84,8 +93,9 @@ export function projectResourceColumns<TEvent>({
 /**
  * Range, navigation, keyboard navigation, title, and projection for resource columns over a day,
  * a week, or N days.
- * `options.unassigned` decides where events without resources go, and `options.overlapLayout`
- * and `options.stackIndent` how overlapping events share a column.
+ * `options.unassigned` decides where events without resources go, and the `overlapLayout`,
+ * `getResourceOverlapLayout`, `getEventOverlapLayout` and `stackIndent` options how overlapping
+ * events share a column.
  */
 export function resourceColumnsStrategy<
   TOptions extends ResourceVisibilityOptions = ResourceVisibilityOptions,
@@ -99,7 +109,9 @@ export function resourceColumnsStrategy<
     project: (input) =>
       projectResourceColumns({
         ...input,
-        ...overlapLayoutOf(input.options),
+        ...overlapLayoutOf<TEvent>(input.options),
+        getResourceOverlapLayout: (input.options as ResourceOverlapLayoutOptions<TEvent>)
+          .getResourceOverlapLayout,
         unassigned: input.options.unassigned,
       }),
   };

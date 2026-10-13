@@ -56,6 +56,7 @@ import {
 } from "./event-draft";
 import { useHiddenCalendars } from "./hidden-calendars";
 import { useOccurrences } from "./occurrences";
+import { demoResourceOverlapLayout } from "./resource-rules";
 import { demoResourceGroups, demoResources, type DemoResourceId } from "./resources";
 import { useDemoSettings } from "./settings";
 import { viewFor } from "./scrolling";
@@ -114,7 +115,7 @@ export function App() {
   const [systemTimeZone] = useState(() => Temporal.Now.timeZoneId());
   const [settings, setSettings] = useDemoSettings();
   const { locale, overlapLayout, scrolling, secondaryTimeZone, timeZone, weekStartsOn } = settings;
-  const { workingHours } = settings;
+  const { resourceRules, workingHours } = settings;
   const today = (useNow() ?? Temporal.Now.instant()).toZonedDateTimeISO(timeZone).toPlainDate();
   const [location, setLocation] = useCalendarLocation(today);
   // The settings choose between paged and scrolling day, 3 days, week, month, and agenda, even for
@@ -205,17 +206,21 @@ export function App() {
   );
   // Busy-now meetings open too, read-only; they are shown but never stored.
   const shownEvent = occurrences.find(({ id }) => id === openEvent?.eventId);
-  // Every view that lays out timed events in columns follows the overlap setting.
+  // Every view that lays out timed events in columns follows the overlap setting, and the resource
+  // columns the "Rooms and people" setting before it.
   const viewOptions = useMemo(() => {
     const layout = { overlapLayout };
     return {
       day: layout,
-      resources: layout,
+      resources:
+        resourceRules === "by-kind"
+          ? { ...layout, getResourceOverlapLayout: demoResourceOverlapLayout }
+          : layout,
       "scrolling-day": layout,
       "scrolling-week": layout,
       week: layout,
     };
-  }, [overlapLayout]);
+  }, [overlapLayout, resourceRules]);
 
   // Counts resets, so a save that was still in flight when the data was reset is dropped instead
   // of editing the fresh seed, whose event IDs repeat.

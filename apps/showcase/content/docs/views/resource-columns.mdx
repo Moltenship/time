@@ -129,6 +129,40 @@ bands, the row heights and the group names screen readers hear. A row is 2rem ta
 icons at 24px (`size-6`) or smaller. `Avatar` is shadcn's: `npx shadcn@latest add avatar`. It
 shows the fallback, here the person's initial, until the image loads.
 
+## Rooms and people
+
+Rooms and people often want different layouts. A room's bookings can stack, so a busy room reads
+at a glance, while a person's meetings sit side by side. `getResourceOverlapLayout` gives each
+resource's columns a layout of its own; it takes the resource with your `data` type, so it can read
+what kind it is:
+
+<RoomsAndPeoplePreview />
+
+```tsx
+const view = createResourceColumnsView<Meeting, Resource>({
+  getResourceOverlapLayout: (resource) => (resource.data.kind === "room" ? "stack" : undefined),
+  overlapLayout: "columns",
+});
+```
+
+The most specific layout wins, and each `undefined` falls through to the next:
+
+1. An event's own layout, from `getEventOverlapLayout`, such as its calendar's. A group of
+   overlapping events takes it only when they all agree, as in the
+   [week and day views](/docs/views/week-and-day#by-calendar).
+2. The column's resource, from `getResourceOverlapLayout`.
+3. The view's `overlapLayout`, then `"columns"`.
+
+A group whose events disagree takes its column's layout, from 2 or 3. The Unassigned column isn't
+a resource, so it follows `overlapLayout`. An event that books a room and a person is laid out in
+each column by that column's layout, and a move to another resource redraws it there by the new
+one's, also while the change is still saving. Keyboard focus and the drawing order follow what's
+drawn in each column: ↑ and ↓ walk its events top to bottom, and ← and → step to the overlapping
+event drawn beside.
+
+Whether a room may be double-booked at all is a separate rule, `conflictPolicy`: see
+[scheduling](/docs/availability#scheduling-whos-busy).
+
 ## Anatomy
 
 `ResourceColumnsView` renders the parts below. The view builds them itself from its projection, so
@@ -187,13 +221,34 @@ ResourceColumnsView              resource-columns-view.tsx
         </>
       ),
     },
+    getEventOverlapLayout: {
+      type: '(event: TEvent) => "columns" | "equal" | "stack" | undefined',
+      description: (
+        <>
+          An event's own layout, such as its calendar's, as in the{" "}
+          <a href="/docs/views/week-and-day#by-calendar">week and day views</a>. A group that
+          disagrees takes its column's.
+        </>
+      ),
+    },
+    getResourceOverlapLayout: {
+      type: '(resource: TResource) => "columns" | "equal" | "stack" | undefined',
+      description: (
+        <>
+          A resource's layout in its columns, such as <code>"stack"</code> for rooms;{" "}
+          <code>undefined</code> keeps <code>overlapLayout</code>. See{" "}
+          <a href="#rooms-and-people">rooms and people</a>.
+        </>
+      ),
+    },
     overlapLayout: {
       type: '"columns" | "equal" | "stack"',
       default: '"columns"',
       description: (
         <>
           How overlapping events share a resource's column, as in the{" "}
-          <a href="/docs/views/week-and-day#overlapping-events">week and day views</a>.
+          <a href="/docs/views/week-and-day#overlapping-events">week and day views</a>, unless{" "}
+          <code>getResourceOverlapLayout</code> gives the resource its own.
         </>
       ),
     },
@@ -212,8 +267,8 @@ ResourceColumnsView              resource-columns-view.tsx
       default: "0.15",
       description: (
         <>
-          Under <code>"stack"</code>, how far each level is indented, as a fraction of the column
-          width.
+          How far each level of a stack is indented, as a fraction of the column width, the same for
+          every stacked group. A value that isn't positive throws, whatever the layout.
         </>
       ),
     },

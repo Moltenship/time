@@ -29,6 +29,7 @@ const resourceAssignments: Readonly<Record<string, readonly DemoResourceId[]>> =
   "Paris sync": ["person-ines", "person-ravi", "person-cleo"],
   "Pairing: payments": ["room-aspen", "person-mia", "person-omar"],
   "Pipeline review": ["room-willow", "person-ana", "person-ben", "person-cleo", "person-leo"],
+  "Portfolio review": ["room-orchid", "person-maya", "person-zoe"],
   "1:1 with Ivy": ["room-birch", "person-ivy", "person-yuki"],
   "Hiring panel": ["room-lotus", "person-kai", "person-mia", "person-leo"],
 };
@@ -174,6 +175,10 @@ export function createSeedEvents(today: Temporal.PlainDate, timeZone: string): D
       }
     }
   }
+
+  // Orchid and Maya booked twice at once, as when two teams grab the same room: resource columns
+  // draw them by the "Rooms and people" setting.
+  timed("work", "Portfolio review", [0, 2], "10:30", { hours: 1 });
 
   return events;
 }
