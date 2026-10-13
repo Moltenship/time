@@ -1,6 +1,7 @@
 import {
   availabilityPolicy,
   conflictPolicy,
+  createEventHistory,
   eventIdOf,
   useNow,
   type CalendarEventUpdateChange,
@@ -20,6 +21,7 @@ import { PlusIcon } from "lucide-react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
 import { calendarAnnouncements } from "@registry/calendar/announcements";
+import { CalendarHistoryToast } from "@registry/calendar-history-toast/calendar-history-toast";
 import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-recurrence-scope-prompt";
 import { Button } from "@registry/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@registry/ui/sheet";
@@ -127,6 +129,13 @@ export function App() {
     [setLocation, setSettings],
   );
   const { applyChange, events, resetEvents, saveEvent, setEvents } = useDemoEvents(timeZone);
+  // Moves, resizes and deletes can be undone. A change to a recurring event becomes an edit of its
+  // series, which a history can't take back, so those are left out.
+  const [history] = useState(() =>
+    createEventHistory<DemoOccurrence, string, DemoResourceId>({
+      filter: (change) => !isRecurringChange(change),
+    }),
+  );
   const [failSaves, setFailSaves] = useState(false);
   const [notice, showNotice] = useNotice();
   const [hiddenCalendars, toggleCalendar] = useHiddenCalendars();
@@ -227,7 +236,8 @@ export function App() {
   const resetDemoData = useCallback(() => {
     resets.current += 1;
     resetEvents();
-  }, [resetEvents]);
+    history.clear();
+  }, [history, resetEvents]);
 
   // After a series edit renames occurrences, the open popover's anchor is replaced by the renamed
   // occurrence's element once it renders. The calendar moves keyboard focus itself.
@@ -306,11 +316,12 @@ export function App() {
 
   // Moves, resizes and deletes arrive here after the calendar has shown them optimistically.
   // Rejecting rolls the calendar back to the stored events. A range dragged out in a view opens
-  // the event dialog, which names and saves the new event. A change to an occurrence of a series
-  // first asks which occurrences it applies to, while the calendar keeps showing it pending.
+  // the event dialog, which names and saves the new event. An undone delete proposes a create with
+  // the deleted event, which is saved as it was. A change to an occurrence of a series first asks
+  // which occurrences it applies to, while the calendar keeps showing it pending.
   const persistChange = useCallback(
     async (change: DemoEventChange) => {
-      if (change.cause === "create") {
+      if (change.cause === "create" && change.event === null) {
         setOpenEvent(null);
         const focused = document.activeElement;
         setCreatedFrom(
@@ -424,6 +435,7 @@ export function App() {
         locale={locale}
         onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
         onEventChange={persistChange}
+        onEventChangeResult={history.record}
         onFocusChange={setFocus}
         onSelectionChange={setSelection}
         onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
@@ -505,6 +517,11 @@ export function App() {
           {/* Speaks keyboard and pointer moves, resizes and creates. */}
           <DemoCalendar.Announcer messages={calendarAnnouncements} />
           <Notice text={notice} />
+          <CalendarHistoryToast
+            calendar={DemoCalendar}
+            className="bottom-24 lg:bottom-6"
+            history={history}
+          />
         </DemoCalendar.Frame>
       </DemoCalendar.Root>
     </TooltipProvider>

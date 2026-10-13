@@ -383,7 +383,8 @@ outside `Root` throws `calendar-hook-outside-root`.
 `{ isEqual }` to compare another way. The selector can be an inline function.
 
 `useCalendarHistory(history, { messages? })` is exported on its own too. It binds an event history
-to the nearest `Root`, with `undo`, `redo`, `canUndo` and `canRedo`; see
+to the nearest `Root`, with `undo`, `redo`, `canUndo` and `canRedo`, and
+`useCalendarHistoryShortcuts(history, { scope, undo?, redo?, disabled? })` adds its keys; see
 [Undo and redo](/docs/undo-redo).
 
 `Announcer`'s messages, and the keyboard hooks for your own views (`useCalendarKeyboard`,

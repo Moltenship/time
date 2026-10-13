@@ -75,3 +75,7 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   take a second lane at some times of day, such as 10:00. Bars get `top` and rows `height`, both
   in lanes; `ResourceTimelineLayoutOptions` is new, and the timeline views take the root's resource
   type as `TResource` (#230).
+- `useCalendarHistoryShortcuts(history, { scope })` adds undo and redo keys to a calendar: Mod+Z,
+  and Shift+Mod+Z or Ctrl+Y, rebindable, never in text fields or dialogs. The registry's
+  `calendar-history-toast` offers Undo after each change and Redo after an undo, with the keys,
+  and the demo uses it (#227).

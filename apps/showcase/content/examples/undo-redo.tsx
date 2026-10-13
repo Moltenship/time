@@ -13,6 +13,7 @@ import {
   calendarAnnouncements,
   calendarHistoryAnnouncements,
 } from "@/components/calendar/announcements";
+import { CalendarHistoryToast } from "@/components/calendar/calendar-history-toast/calendar-history-toast";
 import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
 import { Button } from "@/components/ui/button";
 
@@ -93,6 +94,8 @@ export function UndoableCalendar() {
         </Calendar.Viewport>
       </Calendar.Frame>
       <Calendar.Announcer messages={calendarAnnouncements} />
+      {/* An Undo toast after each change, with Mod+Z and Shift+Mod+Z in the frame. */}
+      <CalendarHistoryToast calendar={Calendar} history={history} />
     </Calendar.Root>
   );
 }

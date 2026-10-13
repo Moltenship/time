@@ -48,16 +48,21 @@ export function withPlacement(
 }
 
 /**
- * The events after a move, resize or delete of a one-off event that passed `demoEventPolicy`.
- * Changes to occurrences of a series go through `applySeriesEdit` instead.
+ * The events after a move, resize or delete of a one-off event that passed `demoEventPolicy`, or
+ * after an undone delete brings one back. Changes to occurrences of a series go through
+ * `applySeriesEdit` instead.
  */
 export function applyEventChange(
   events: readonly DemoEvent[],
   change: DemoEventChange,
 ): readonly DemoEvent[] {
   if (change.cause === "delete") return events.filter(({ id }) => id !== change.eventId);
-  // A dragged-out range opens the event dialog instead, which saves the named event.
-  if (change.cause === "create") return events;
+  if (change.cause === "create") {
+    // A dragged-out range opens the event dialog instead, which saves the named event.
+    if (change.event === null) return events;
+    const restored = withPlacement(change.event.event, change.proposed);
+    return [...events.filter(({ id }) => id !== restored.id), restored];
+  }
   return events.map((event) =>
     event.id === change.eventId ? withPlacement(event, change.proposed) : event,
   );

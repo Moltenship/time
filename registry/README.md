@@ -12,6 +12,7 @@ registry/
   calendar/         toolbar, view switcher, event chip, mini month   registry item "calendar"
   month-view/ …     one folder per view, each its own registry item
   recurrence-scope-dialog/   asks which events of a recurring series a change applies to
+  calendar-history-toast/    an Undo toast and keys for a calendar's event history
   calendar-full/    installs every item above, owns no files         registry item "calendar-full"
   ui/               stock shadcn components (Base UI, base-nova style): button, dialog, popover, …
   tests/            focused tests for the source above

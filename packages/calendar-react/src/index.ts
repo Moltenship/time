@@ -18,6 +18,11 @@ export {
 } from "./draft";
 export type { CalendarBusyResources, CalendarDraftBusy } from "./draft";
 export { useCalendarHistory } from "./history";
+export { useCalendarHistoryShortcuts } from "./history-shortcuts";
+export type {
+  CalendarHistoryShortcutsTarget,
+  CalendarHistoryShortcutsOptions,
+} from "./history-shortcuts";
 export type {
   CalendarHistory,
   CalendarHistoryAnnouncementBuilder,

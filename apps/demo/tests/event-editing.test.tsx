@@ -71,6 +71,7 @@ beforeEach(() => {
 afterEach(async () => {
   await act(async () => root.render(null));
   vi.unstubAllGlobals();
+  vi.restoreAllMocks();
 });
 
 // Radix restores focus on a zero-delay timer after a layer unmounts.
@@ -222,6 +223,41 @@ test("deletes persist after the save delay and roll back when saves fail", async
   await pastSaveDelay();
   expect(eventButton("lunch")).toBeNull();
   expect(stored.get(eventsStorageKey)).not.toContain('"lunch"');
+});
+
+/** The undo toast's text and buttons, or `null` while none shows. */
+const undoToast = () =>
+  document.querySelector('[aria-label="Notifications"] [role="dialog"]')?.textContent ?? null;
+
+test("a deleted event can be undone from the toast, and a keyboard move with Ctrl+Z", async () => {
+  vi.spyOn(navigator, "platform", "get").mockReturnValue("Win32");
+  await act(async () => root.render(<App />));
+  await deleteFromPopover("lunch");
+  await pastSaveDelay();
+  expect(eventButton("lunch")).toBeNull();
+  expect(undoToast()).toBe("Event deletedUndo");
+
+  const undo = [...document.querySelectorAll('[aria-label="Notifications"] button')].find(
+    (button) => button.textContent === "Undo",
+  );
+  await act(async () => (undo as HTMLButtonElement).click());
+  await pastSaveDelay();
+  expect(eventButton("lunch")).not.toBeNull();
+  expect(
+    parseEvents(stored.get(eventsStorageKey) ?? null)?.find(({ id }) => id === "lunch"),
+  ).toEqual(lunch);
+  expect(undoToast()).toBe("Undid the deleteRedo");
+  expect(announced()).toBe("Restored Lunch, Thursday, October 8, 12:30 – 1:30 PM.");
+
+  await act(async () => eventButton("focus-time")?.focus());
+  await pressKey(" ");
+  await pressKey("ArrowDown");
+  await pressKey("Enter");
+  await pastSaveDelay();
+  expect(eventButton("focus-time")?.getAttribute("aria-label")).toContain("10:15");
+  await pressKey("z", { ctrlKey: true });
+  await pastSaveDelay();
+  expect(eventButton("focus-time")?.getAttribute("aria-label")).toContain("10:00");
 });
 
 test("a reset during an in-flight delete keeps the fresh seed intact", async () => {

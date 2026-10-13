@@ -4,11 +4,17 @@
 // every item the way the docs do, so the apps' typecheck and build cover all of them. Imports
 // from `@/components/calendar/` follow the app's own `components` alias.
 
-import { createCalendar, defineEventAdapter, type CalendarResource } from "@moltenship/calendar";
+import {
+  createCalendar,
+  createEventHistory,
+  defineEventAdapter,
+  type CalendarResource,
+} from "@moltenship/calendar";
 import { useState } from "react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { calendarAnnouncements } from "@/components/calendar/announcements";
+import { CalendarHistoryToast } from "@/components/calendar/calendar-history-toast/calendar-history-toast";
 import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
 import type { CalendarEventColor } from "@/components/calendar/event-colors";
 import { createAgendaView } from "@/components/calendar/list-view/agenda-view";
@@ -108,6 +114,7 @@ function CalendarViewSwitcher() {
 export default function CalendarPage() {
   const [selectedDate, setSelectedDate] = useState(anchorDate);
   const { ask, dialog } = useRecurrenceScopePrompt();
+  const [history] = useState(() => createEventHistory<Meeting, string, string>());
 
   return (
     <TooltipProvider>
@@ -127,6 +134,7 @@ export default function CalendarPage() {
         defaultTimeZone="Europe/Berlin"
         locale="en-US"
         weekRules={weekRules}
+        onEventChangeResult={history.record}
         onEventChange={async () => {
           if ((await ask({ eventTitle: "Standup" })) === null) {
             throw new DOMException("Cancelled", "AbortError");
@@ -142,6 +150,7 @@ export default function CalendarPage() {
           </Calendar.Viewport>
         </Calendar.Frame>
         <Calendar.Announcer messages={calendarAnnouncements} />
+        <CalendarHistoryToast calendar={Calendar} history={history} />
       </Calendar.Root>
       {dialog}
     </TooltipProvider>
