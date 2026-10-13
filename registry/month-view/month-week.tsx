@@ -38,9 +38,9 @@ export const DATE_ROW_HEIGHT = 28;
 export const LANE_HEIGHT = 22;
 
 /**
- * How many lanes fit in a week row `rowHeight` px tall, with lanes `laneHeight` px apart. A lane's
- * event ends 2 px before the next lane, and the row has a 1 px bottom border, so the last lane
- * needs `laneHeight` px less the 1 px left over.
+ * How many lanes fit in a week row `rowHeight` px tall, with lanes `laneHeight` px apart. Lanes
+ * start 1 px below the date row and each event ends 1 px before its lane does, so the last lane's
+ * spare pixel holds the row's bottom border.
  */
 export function lanesIn(rowHeight: number, laneHeight: number): number {
   return Math.max(1, Math.floor((rowHeight - DATE_ROW_HEIGHT) / laneHeight));

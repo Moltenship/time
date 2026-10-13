@@ -173,8 +173,9 @@ function undersizedTargets(): string[] {
         box.right > 0 &&
         box.left < innerWidth,
     );
+  // A time span excuses an event's height, not its width.
   const small = targets.filter(
-    ({ box, element }) => (box.width < 24 || box.height < 24) && !spansTime(element),
+    ({ box, element }) => box.width < 24 || (box.height < 24 && !spansTime(element)),
   );
   const centre = ({ box }: (typeof targets)[number]) =>
     [box.left + box.width / 2, box.top + box.height / 2] as const;
