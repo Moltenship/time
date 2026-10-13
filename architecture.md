@@ -64,7 +64,7 @@ The application owns facts. The engine derives render models. React binds those 
 3. React bindings may import core, the Temporal utilities and React, but not default view source.
 4. The pointer adapter may import core, the Temporal utilities and React, but not the React bindings. It uses native Pointer Events, not a drag-and-drop library (ADR 0037). Of the published packages, only the facade imports it.
 5. Registry source imports only the `@moltenship/calendar` facade, other registry items, the npm packages `registry/package.json` declares, and stock shadcn components. It never imports a drag-and-drop library or `calendar-dnd`.
-6. The showcase and the demo import packages only through their public entry points, and registry source in place. Running the showcase and fixtures on the packed packages instead of workspace source is release-audit phase 2 (#47). The release dry run already installs the packed tarballs into a clean project, and `vp run registry:e2e` installs the built registry into clean Vite and Next.js apps.
+6. The showcase and the demo import packages only through their public entry points, and registry source in place. In the full tier and the release gate, `vp run release:artifacts` runs the SSR fixture's tests and builds and serves the docs site in copies outside the workspace, installed from the dry run's packed tarballs as an end user would, and installs the built registry into clean Vite and Next.js apps on the same tarballs (#203).
 7. No package may deep-import another package's `src/` directory.
 8. The iCalendar package imports no other workspace, so applications can use it without the calendar (ADR 0151).
 9. The recurrence package depends on core, the Temporal utilities and `ics`. No other published package and no registry source imports it (ADR 0048).
@@ -113,7 +113,7 @@ time/
 │   └── internal/                 # contributor notes: quality gates, topology, releasing, release audit, benchmarks, evidence
 ├── tools/
 │   ├── registry/                 # shadcn build, registry checks, clean-app install test
-│   ├── release/                  # versions, size budgets, API reports, export checks, dry run, publish
+│   ├── release/                  # versions, size budgets, API reports, export checks, dry run, artifact runs, publish
 │   ├── a11y/                     # axe and real interactions in Chromium, Firefox and WebKit
 │   ├── fixtures/                 # deterministic event/resource generators
 │   ├── recurrence-oracle/        # RRULE reference fixtures (not a workspace)
