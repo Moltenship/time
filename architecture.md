@@ -146,7 +146,7 @@ All of these publish except `calendar-testing`, which stays private until after 
 | Dependency line                       | Used by                            | Why it exists                                                     | Containment rule                                                  |
 | ------------------------------------- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
 | React 19                              | `calendar-react`, `calendar-dnd`, facade, registry | Rendering, context, refs, SSR, external-store subscription | Peer dependency; absent from core, Temporal utilities, recurrence and `ics` |
-| Jotai 3                               | `tools/react-store-spike` only     | Spike history (ADR 0018); `calendar-react` dropped it in #70 (#184) | Not a production dependency                                      |
+| Jotai 3                               | `tools/react-store-spike` only     | Spike history (ADR 0018); `calendar-react` dropped it in #70 (ADR 0070) | Not a production dependency                                      |
 | `@dnd-kit/react` + `@dnd-kit/dom` 0.x | `tools/dnd-adapter-spike` only     | Spike history; not a production dependency since ADR 0037          | Optional future adapter behind the same semantic contracts       |
 | TanStack Virtual 3                    | List and resource registry views   | Maintained vertical/horizontal windowing and measurement          | Hidden behind view adapters; not required by core                 |
 | `@flatten-js/interval-tree` 2         | `calendar-core` provisionally      | Established interval-query baseline                               | Hidden behind `IntervalIndex`; retained only if benchmarks pass   |
@@ -708,7 +708,7 @@ State is divided by ownership and update frequency.
   `useCalendarFocus`, `useCalendarKeyboard` and `useNow` read the nearest root of any factory.
 - The store is the React package's own (`store.ts`): a frozen snapshot of the six slices (only
   uncontrolled ones change), a listener set, `getSnapshot()`, `subscribe()`, and six `set*` actions.
-  It has no runtime dependency. `calendar-react` dropped Jotai in #70 (#184).
+  It has no runtime dependency. `calendar-react` dropped Jotai in #70 (ADR 0070).
 - `Root` reads state through `useSyncExternalStore`. `useCalendarStateBinding` (`state-binding.ts`)
   overlays the controlled props on the store's snapshot during render and caches the merged object
   per snapshot.
@@ -1421,7 +1421,7 @@ left open are in #160.
 
 ## 23. Prototype risks to retire early
 
-1. **React controlled bridge:** prove synchronous controlled state plus fine-grained selector subscriptions under SSR/Strict Mode. Retired by the #18 spike (ADR 0018) and `vp run react:gate`; the store is `calendar-react`'s own since #70.
+1. **React controlled bridge:** prove synchronous controlled state plus fine-grained selector subscriptions under SSR/Strict Mode. Retired by the #18 spike (ADR 0018) and `vp run react:gate`; the store is `calendar-react`'s own since #70 (ADR 0070).
 2. **dnd-kit adapter:** pin the current 0.x line in the lockfile and prove pointer, touch, keyboard, auto-scroll, and announcements behind semantic types. Superseded in 0.1 by native Pointer Events (ADR 0037).
 3. **Two-axis resource timeline:** prove TanStack Virtual composition, sticky axes, focus retention, and SSR initial geometry. Retired by the #20 spike (ADR 0020).
 4. **DST wall-time geometry:** prove gaps and folds in day/week drag, resize, slots, and announcements. Retired by the #16 spike (ADR 0016) and the DST parity tests; announcing a shift is #187.
