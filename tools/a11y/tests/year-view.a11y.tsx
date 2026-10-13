@@ -123,31 +123,26 @@ async function closed(popup: Element) {
   expect(document.activeElement).toBe(day());
 }
 
-// Opening the popover renders every day's trigger again, which takes seconds at CI's speed: each
-// test opens it once or twice.
-test("a clicked day's popover hands focus back to the day", async () => {
-  await render(<PhoneYear />);
-
-  await userEvent.click(day().querySelector("button")!);
-  await closed(await opened());
-});
-
-test("Space on the day the popover handed focus back to opens it again", async () => {
+// Opening the popover renders every day's trigger again, which takes seconds at CI's speed (#197):
+// each test opens it twice and closes it once.
+test("a clicked day's popover hands focus back to the day, where Space opens it again", async () => {
   const onEventChange = vi.fn();
   await render(<PhoneYear onEventChange={onEventChange} />);
+
   await userEvent.click(day().querySelector("button")!);
   await closed(await opened());
-
   await userEvent.keyboard(" ");
   await opened();
   expect(onEventChange).not.toHaveBeenCalled();
 });
 
-test("Enter on a focused day opens its popover", async () => {
+test("a popover opened from the keyboard hands focus back to the day, where Enter opens it again", async () => {
   const onEventChange = vi.fn();
   await render(<PhoneYear onEventChange={onEventChange} />);
   await act(async () => day().focus());
 
+  await userEvent.keyboard("{Enter}");
+  await closed(await opened());
   await userEvent.keyboard("{Enter}");
   await opened();
   expect(onEventChange).not.toHaveBeenCalled();

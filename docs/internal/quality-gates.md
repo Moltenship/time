@@ -93,14 +93,14 @@ and fails fast when a browser run stalls:
   kills the run and the processes under it, the browsers included. Either way the step fails. It
   doesn't watch in watch mode, a headed browser or under a debugger, and `--reporter` on the
   command line replaces it. `tools/a11y/watchdog.test.ts` tests it.
-
 - **Waits on conditions.** A browser test waits for what it checks, with the helpers in
   `tools/a11y/tests/render.tsx`: `until` tries a check once a frame, `removed` waits for an element
   to leave the page, as a popup does after its exit animation, and `atRest` for a scroll to end and
   stay still for a few frames. None sets a deadline of its own: the test's timeout bounds them, and
-  the watchdog a stuck page. Tests don't sleep for a fixed time, or give a step a one-second
-  deadline, which a slow machine misses. A unit test that compares durations measures CPU time
-  (`process.threadCpuUsage()`), which a busy machine doesn't stretch.
+  the watchdog a stuck page. When a test times out, each wait still pending says what it was
+  waiting for, then stops. The browser tests don't sleep for a fixed time, or give a step a
+  one-second deadline, which a slow machine misses. A unit test that compares durations measures
+  CPU time (`process.threadCpuUsage()`), which a busy machine stretches far less than wall time.
 
 To check the gate under load, run it beside a CPU load, such as a few threads spinning in a loop.
 Rerun a failing file alone before calling it a flake: `vp run a11y#test tests/<file>`, or
