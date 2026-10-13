@@ -97,8 +97,10 @@ and fails fast when a browser run stalls:
   `tools/a11y/tests/render.tsx`: `until` tries a check once a frame, `removed` waits for an element
   to leave the page, as a popup does after its exit animation, and `atRest` for a scroll to end and
   stay still for a few frames. None sets a deadline of its own: the test's timeout bounds them, and
-  the watchdog a stuck page. When a test times out, each wait still pending says what it was
-  waiting for, then stops. The browser tests don't sleep for a fixed time, or give a step a
+  the watchdog a stuck page. When a test times out, each wait pending at that moment says what it
+  was waiting for, then stops. `setup.ts` drops React's "not wrapped in act" warning: real input
+  from Playwright lands outside `act()` by design, and thousands of the warnings a file, each sent
+  to Node, made a popover test slower than its popover. The browser tests don't sleep for a fixed time, or give a step a
   one-second deadline, which a slow machine misses. A unit test that compares durations measures
   CPU time (`process.threadCpuUsage()`), which a busy machine stretches far less than wall time.
 

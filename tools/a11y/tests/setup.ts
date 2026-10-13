@@ -14,6 +14,14 @@ declare global {
 const CI_SLOWDOWN = 6;
 
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+// React warns about each update outside `act()`. Real input from Playwright lands outside it by
+// design, so here the warning says nothing, and it came thousands of times a file: each one went
+// to Node through Vitest's console, which cost a popover test more time than the popover did.
+const consoleError = console.error.bind(console);
+console.error = (...args: unknown[]) => {
+  if (typeof args[0] === "string" && args[0].includes("not wrapped in act(")) return;
+  consoleError(...args);
+};
 // The demo's page declares its language; axe checks the test page the same way.
 document.documentElement.lang = "en";
 

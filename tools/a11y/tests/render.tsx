@@ -44,26 +44,30 @@ export const nextFrame = () =>
 
 /**
  * The running test's signal. Vitest aborts it when the test times out, before the `afterEach`
- * hooks clean the page up, so a wait the test left behind can say what it was waiting for, and
- * then stop instead of acting on the next test's page.
+ * hooks clean the page up, so a wait still pending then can say what it was waiting for, and stop
+ * instead of acting on the next test's page. A signal already aborted, as a retry inherits, is
+ * left alone. `done` ends the watch when the wait ends.
  */
-function timedOut(what: () => unknown): { readonly aborted: boolean } {
-  const signal = TestRunner.getCurrentTest()?.context.signal;
-  signal?.addEventListener(
-    "abort",
-    () => {
-      // `undefined` once the wait is over.
-      const waiting = what();
-      if (waiting !== undefined) console.error("Still waiting for:", waiting);
-    },
-    { once: true },
-  );
+function timedOut(what: () => unknown): { readonly aborted: boolean; readonly done: () => void } {
+  const found = TestRunner.getCurrentTest()?.context.signal;
+  const signal = found?.aborted ? undefined : found;
+  const onAbort = () => {
+    // `undefined` once there's nothing left to say.
+    const waiting = what();
+    if (waiting !== undefined) console.error("Still waiting for:", waiting);
+  };
+  signal?.addEventListener("abort", onAbort, { once: true });
   return {
     get aborted() {
       return signal?.aborted ?? false;
     },
+    done: () => signal?.removeEventListener("abort", onAbort),
   };
 }
+
+/** Up to `length` characters of `text`, with an ellipsis only where it was cut. */
+const clip = (text: string, length: number) =>
+  text.length > length ? `${text.slice(0, length)}…` : text;
 
 /** A wait the test has left behind: it never resolves, so nothing after it runs. */
 const abandoned = () => new Promise<never>(() => {});
@@ -75,56 +79,65 @@ const abandoned = () => new Promise<never>(() => {});
 export async function until(check: () => void): Promise<void> {
   let last: unknown = "the check to pass";
   const test = timedOut(() => last);
-  for (;;) {
-    if (test.aborted) return abandoned();
-    let result: unknown;
-    try {
-      result = check();
-    } catch (error) {
-      last = error;
-      await nextFrame();
-      continue;
+  try {
+    for (;;) {
+      if (test.aborted) return abandoned();
+      let result: unknown;
+      try {
+        result = check();
+      } catch (error) {
+        last = error;
+        await nextFrame();
+        continue;
+      }
+      last = undefined;
+      if (typeof (result as { then?: unknown } | undefined)?.then === "function") {
+        throw new TypeError("until() takes a check that passes or throws, not a promise");
+      }
+      return;
     }
-    last = undefined;
-    if (typeof (result as { then?: unknown } | undefined)?.then === "function") {
-      throw new TypeError("until() takes a check that passes or throws, not a promise");
-    }
-    return;
+  } finally {
+    test.done();
   }
 }
 
 /** Resolves once `element` has left the page, as a popup does after its exit animation. */
 export async function removed(element: Element): Promise<void> {
-  if (element.isConnected) {
-    const test = timedOut(() =>
-      element.isConnected ? `${element.outerHTML.slice(0, 120)}… to leave the page` : undefined,
-    );
-    // Its root: the document, or a shadow root it was portalled into.
-    const root = element.getRootNode();
-    const left = await new Promise<boolean>((resolve) => {
-      const observer = new MutationObserver(() => {
-        if (test.aborted) resolve(false);
-        else if (!element.isConnected) resolve(true);
-        else return;
-        observer.disconnect();
+  let gone = !element.isConnected;
+  const test = timedOut(() =>
+    gone ? undefined : `${clip(element.outerHTML, 120)} to leave the page`,
+  );
+  try {
+    if (!gone) {
+      const left = await new Promise<boolean>((resolve) => {
+        const observer = new MutationObserver(() => {
+          if (test.aborted) resolve(false);
+          else if (!element.isConnected) resolve(true);
+          else return;
+          observer.disconnect();
+        });
+        // The document, and the shadow root it was portalled into if any, which can leave the
+        // document with its host.
+        const root = element.getRootNode();
+        observer.observe(document.documentElement, { childList: true, subtree: true });
+        if (root instanceof ShadowRoot) observer.observe(root, { childList: true, subtree: true });
       });
-      observer.observe(root instanceof Document ? root.documentElement : root, {
-        childList: true,
-        subtree: true,
-      });
-    });
-    if (!left) return abandoned();
+      if (!left) return abandoned();
+    }
+    // What the unmount set off, such as focus going back, runs in a microtask and React work.
+    await act(async () => {});
+    gone = true;
+  } finally {
+    test.done();
   }
-  // What the unmount set off, such as focus going back, runs in a microtask and React work.
-  await act(async () => {});
 }
 
 /**
  * Resolves once `element` has come to rest: its last scroll has ended, and it hasn't moved for
  * `frames` frames in a row, so a snap or a correction the view starts at the end has run too.
- * Frames, not milliseconds, so a slow machine waits longer instead of looking too early. It
- * compares the scroll position each frame too, so a scroll that ended before it started
- * listening still counts.
+ * Frames, not milliseconds, so a slow machine waits longer instead of looking too early. It also
+ * compares the scroll position each frame, which catches movement that comes without a scroll
+ * event.
  */
 export async function atRest(element: HTMLElement, frames = 5): Promise<void> {
   let resting = false;
@@ -153,10 +166,11 @@ export async function atRest(element: HTMLElement, frames = 5): Promise<void> {
       quiet = now === position ? quiet + 1 : 0;
       position = now;
     }
+    await act(async () => {});
+    resting = true;
   } finally {
     element.removeEventListener("scroll", onScroll);
     element.removeEventListener("scrollend", onEnd);
+    test.done();
   }
-  resting = true;
-  await act(async () => {});
 }
