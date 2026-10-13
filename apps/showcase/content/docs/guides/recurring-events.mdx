@@ -144,8 +144,11 @@ dialog and resolves with the scope picked, and `dialog`, to render once:
    does. Throw an `AbortError`, as the handler does, and the calendar's announcements say the
    change was cancelled rather than that it couldn't be saved.
 4. **`resolveRecurrenceEdit`** turns the change into an edit: what to save for that scope. Pass
-   the calendar's `timeZone` to it and to `recurrenceEditScopes`, so a series dragged by days
-   keeps its time of day when the calendar's zone and the series' change DST on different dates. A
+   the calendar's `timeZone` to it and to `recurrenceEditScopes`, so the change is replayed on the
+   series' own clock: a series dragged by days keeps its time of day when the calendar's zone and
+   the series' change DST on different dates, and one dragged an hour later moves an hour. If you
+   keep deleted occurrences as cancelled overrides, as Google's API does, pass them as `overrides`
+   too. A
    change that needs no scope comes back as `type: "event"`, with your event unwrapped from the
    occurrence, to apply as you would without recurrence. A scope that can't apply comes back as
    `type: "rejected"`, with a `reason` and a `message`.

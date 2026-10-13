@@ -213,6 +213,11 @@ export function applyThisAndFuture<TExtensions extends IcsExtensionsConfig>(
     const shown = edit.newSeries === undefined ? seriesId : range.id;
     const written = applyRecurrenceEdit(rest, applied, { createId: () => range.id }).map(
       (event) => {
+        // An override the edit creates for the occurrence, as at the later of two equal wall
+        // times, shows the override's VEVENT too.
+        if (event.override !== undefined && event.id === range.id && !cancelled) {
+          return { ...event, data: range.data, title: range.title };
+        }
         if (event.override !== undefined || (event.id !== seriesId && event.id !== range.id)) {
           return event;
         }

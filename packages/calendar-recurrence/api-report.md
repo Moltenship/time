@@ -254,6 +254,7 @@ interface ResolveRecurrenceEditOptions<TEvent, TEventId extends EventId = EventI
   readonly maxIterations?: number;
   readonly newSeriesId?: TEventId;
   readonly occurrences?: readonly RecurrenceOccurrence<TEvent, TEventId>[];
+  readonly overrides?: readonly TEvent[];
   readonly timeZone?: string;
 }
 export declare function applyRecurrenceEdit<TData, TEventId extends EventId, TResourceId extends ResourceId>(events: readonly Event<TData, TEventId, TResourceId>[], edit: RecurrenceSeriesEdit<Event<TData, TEventId, TResourceId>, TEventId, TResourceId>, options: ApplyRecurrenceEditOptions<TData, TEventId, TResourceId>): Event<TData, TEventId, TResourceId>[];

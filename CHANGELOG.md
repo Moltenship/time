@@ -41,3 +41,10 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   without `timeZone`, reads UTC dates on all-day and floating series in the zone most of the feed's
   TZIDs name rather than UTC; pass `timeZone: "UTC"` for the old reading. A series whose DTSTART
   falls in a DST gap keeps the length written up to DTEND (#160).
+- `resolveRecurrenceEdit` replays a change on the series' own clock when it gets the calendar's
+  `timeZone`, for drags that also change the time of day, resizes and editor updates as well as
+  drags by days, and for `"following"` as well as `"all"`. An occurrence a DST gap moved forward,
+  dragged by days, keeps the series' written time. With `"all"`, an occurrence dropped on the later
+  of two equal wall times at DST's end gets an override there. A new `overrides` option takes the
+  series' overrides, so cancelled ones count as hiding occurrences and `"following"` from the first
+  one left to show is `"all"` (#160).

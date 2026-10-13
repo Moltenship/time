@@ -1471,7 +1471,10 @@ what `onEventChange` threw, so a cancelled scope question isn't announced as a f
 left open are in #160. From it, the ICS bridge splits a series at a RANGE=THISANDFUTURE override as
 a `"following"` edit does, reads Outlook's `X-MICROSOFT-CDO-ALLDAYEVENT` midnights as all-day dates,
 reads UTC dates on all-day and floating series in the zone a feed's TZIDs name when it has no
-X-WR-TIMEZONE, and keeps the written length of a DTSTART in a DST gap.
+X-WR-TIMEZONE, and keeps the written length of a DTSTART in a DST gap. Edits replay a change on the
+series' clock when given the calendar's zone, write an override for a start dropped on the later of
+two equal wall times, and count cancelled overrides the application passes as hiding occurrences;
+the DST matrix covers edits in New York, Sydney and Lord Howe as well as Berlin.
 
 ## 23. Prototype risks to retire early
 

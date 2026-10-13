@@ -12,6 +12,7 @@ import {
   measureMove,
   noIds,
   occurrenceIds,
+  onSeriesClock,
   overrideOf,
   reject,
   rekeyExceptions,
@@ -54,7 +55,10 @@ export function resolveAll<TEvent, TEventId extends EventId, TResourceId extends
   }
 
   const { proposed } = change;
-  const move = measureMove(series, change, options);
+  // The change on the series' clock, which the series takes; the edited override keeps `proposed`.
+  const measured = onSeriesClock(series, change, options);
+  if ("type" in measured) return measured;
+  const move = measureMove(series, measured, options);
   if ("type" in move) return move;
   const unchanged = isUnchanged(series, move);
   const toAllDay = move.to.kind === "all-day" && series.time.kind !== "all-day";
@@ -85,8 +89,8 @@ export function resolveAll<TEvent, TEventId extends EventId, TResourceId extends
     const firstWall = targetWall(shift, series.first.start);
     // The first occurrence dropped as it is keeps its exact start, as a second 02:30 of DST's end.
     firstStart =
-      datesEqual(series.recurrenceId, series.first.start) && override === undefined && move.dropped
-        ? proposed.start
+      datesEqual(series.recurrenceId, series.first.start) && override === undefined
+        ? measured.proposed.start
         : fromWall(firstWall, move.to);
     wallStart =
       move.to.kind === "timed" && !toWall(firstStart, move.to).equals(firstWall)
@@ -102,7 +106,7 @@ export function resolveAll<TEvent, TEventId extends EventId, TResourceId extends
     firstStart,
     series,
     move,
-    change,
+    measured,
     override !== undefined,
   );
   const problem = checkRule(rule, {
@@ -124,6 +128,15 @@ export function resolveAll<TEvent, TEventId extends EventId, TResourceId extends
   });
 
   const editedKey = unchanged ? series.recurrenceId : rekey(shift, series.recurrenceId, "start")!;
+  // A rule can't say "the later of two equal wall times", as DST's end repeats an hour, so an
+  // occurrence dropped on the later one gets an override there; the rest of the series takes the
+  // earlier one.
+  const later =
+    override === undefined &&
+    move.to.kind === "timed" &&
+    measured.proposed.start instanceof Temporal.Instant &&
+    !datesEqual(editedKey, measured.proposed.start) &&
+    toWall(editedKey, move.to).equals(toWall(measured.proposed.start, move.to));
   return {
     ...base,
     occurrenceIds: unchanged
@@ -134,9 +147,8 @@ export function resolveAll<TEvent, TEventId extends EventId, TResourceId extends
     otherOverrides: unchanged
       ? { action: "keep", series: "current" }
       : { action: "rekey", series: "current", shift },
-    ...(override === undefined
-      ? {}
-      : {
+    ...(override !== undefined
+      ? {
           override: {
             action: "update",
             ...override,
@@ -144,7 +156,18 @@ export function resolveAll<TEvent, TEventId extends EventId, TResourceId extends
             recurrenceId: editedKey,
             series: "current",
           },
-        }),
+        }
+      : later
+        ? {
+            override: {
+              action: "create",
+              from: series.event,
+              placement: proposed,
+              recurrenceId: editedKey,
+              seriesId: series.id,
+            },
+          }
+        : {}),
     series: { action: "update", event: series.event, eventId: series.id, placement, recurrence },
   };
 }

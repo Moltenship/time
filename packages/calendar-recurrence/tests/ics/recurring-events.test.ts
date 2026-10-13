@@ -1499,6 +1499,61 @@ describe("recurringEventsFromIcs: RANGE=THISANDFUTURE", () => {
     ).toEqual(["2026-03-29T03:30–04:30", "2026-04-05T02:30–03:30", "2026-04-12T02:30–03:30"]);
   });
 
+  test("gives an override at the later of two equal wall times the override's VEVENT", () => {
+    // 24 October is excluded, so the range on 25 October changes the whole series. Its DTSTART,
+    // written in UTC, is the later 02:30 of the night Berlin repeats 02:00–03:00, which a rule
+    // can't give: an override keeps it.
+    const events = parse(
+      [
+        "UID:night",
+        "SUMMARY:Backup",
+        "DTSTART;TZID=Europe/Berlin:20261024T023000",
+        "DTEND;TZID=Europe/Berlin:20261024T030000",
+        "RRULE:FREQ=DAILY;COUNT=4",
+        "EXDATE;TZID=Europe/Berlin:20261024T023000",
+      ],
+      [
+        "UID:night",
+        "SUMMARY:Backup (after the change)",
+        "RECURRENCE-ID;RANGE=THISANDFUTURE;TZID=Europe/Berlin:20261025T023000",
+        "DTSTART:20261025T013000Z",
+        "DTEND:20261025T020000Z",
+      ],
+    );
+    expect(bridge(events).events).toMatchObject([
+      { id: "night", title: "Backup (after the change)" },
+      {
+        id: "night::2026-10-25T00:30:00Z",
+        override: { recurrenceId: "2026-10-25T00:30:00Z", seriesId: "night" },
+        start: "2026-10-25T01:30:00Z",
+        title: "Backup (after the change)",
+      },
+    ]);
+  });
+
+  test("starts the new series at the override's DTSTART when the occurrence it names was in a gap", () => {
+    // 02:30 doesn't exist in Berlin on 29 March, so that occurrence shows 03:30. The override moves
+    // it, and the rest, to 03:30 the next day.
+    const events = parse(
+      [
+        "UID:night",
+        "DTSTART;TZID=Europe/Berlin:20260327T023000",
+        "DTEND;TZID=Europe/Berlin:20260327T030000",
+        "RRULE:FREQ=DAILY;COUNT=5",
+      ],
+      [
+        "UID:night",
+        "RECURRENCE-ID;RANGE=THISANDFUTURE;TZID=Europe/Berlin:20260329T023000",
+        "DTSTART;TZID=Europe/Berlin:20260330T033000",
+        "DTEND;TZID=Europe/Berlin:20260330T040000",
+      ],
+    );
+    expect(bridge(events).events).toMatchObject([
+      { id: "night", recurrence: { rule: { count: 2, frequency: "DAILY" } } },
+      { id: "night::2026-03-29T01:30:00Z", start: "2026-03-30T01:30:00Z" },
+    ]);
+  });
+
   test("replaces only the occurrence it names when the series can't take it, with an issue", () => {
     const firstMonday = [
       "UID:sync",

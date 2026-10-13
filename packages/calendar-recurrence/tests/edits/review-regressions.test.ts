@@ -373,6 +373,131 @@ describe(`time zones and excluded first occurrences`, () => {
     // The old master has COUNT=1 and its only occurrence excluded: a zero-occurrence event.
     expect(visibleFromOld.length > 0 || edit.series.action === "delete").toBe(true);
   });
+
+  test(`"following" after occurrences cancelled overrides hide is "all", given the overrides`, () => {
+    const s = timed("s", "2026-10-19T09:00", "2026-10-19T09:30", {
+      recurrence: { rule: { count: 4, frequency: "WEEKLY" } },
+    });
+    const cancel = (id: string, start: string) =>
+      overrideOf(
+        s,
+        id,
+        at(start),
+        { end: at(start).add({ minutes: 30 }), kind: "timed", start: at(start) },
+        { cancelled: true },
+      );
+    const first = cancel("first", "2026-10-19T09:00");
+    const second = cancel("second", "2026-10-26T09:00");
+    // Another series' cancelled override, and an override that still shows, change nothing.
+    const other = {
+      ...cancel("other", "2026-10-26T09:00"),
+      override: { cancelled: true as const, recurrenceId: at("2026-10-26T09:00"), seriesId: "t" },
+    };
+    const moved = overrideOf(s, "moved", at("2026-10-19T09:00"), {
+      end: at("2026-10-19T12:30"),
+      kind: "timed",
+      start: at("2026-10-19T12:00"),
+    });
+    const third = move(find(expand([s, first, second]), "2026-11-02T08:00:00Z"), { hours: 1 });
+
+    expect(series(resolveRecurrenceEdit(third, "following", adapters)).scope).toBe("following");
+    // Another series' cancelled override doesn't hide this series' second occurrence.
+    expect(
+      series(resolveRecurrenceEdit(third, "following", adapters, { overrides: [first, other] }))
+        .scope,
+    ).toBe("following");
+    // Of two overrides for one occurrence the later wins, as in the expander.
+    expect(
+      series(
+        resolveRecurrenceEdit(third, "following", adapters, {
+          overrides: [
+            first,
+            second,
+            { ...second, override: { recurrenceId: at("2026-10-26T09:00"), seriesId: "s" } },
+          ],
+        }),
+      ).scope,
+    ).toBe("following");
+    const overrides = [s, first, second, other];
+    const edit = series(resolveRecurrenceEdit(third, "following", adapters, { overrides }));
+    expect(edit.scope).toBe("all");
+    expect(recurrenceEditScopes(third, adapters, { overrides })).toEqual(["this", "all"]);
+    // With the first occurrence moved rather than cancelled, something before still shows.
+    expect(
+      series(resolveRecurrenceEdit(third, "following", adapters, { overrides: [moved, second] }))
+        .scope,
+    ).toBe("following");
+  });
+});
+
+describe(`the later of two equal wall times`, () => {
+  test(`"all" moving an occurrence to the later 02:30 of its own night writes an override`, () => {
+    // Berlin repeats 02:00–03:00 on 25 October: 02:30 is 00:30Z, then 01:30Z.
+    const nightly = timed("nightly", "2026-10-23T02:30", "2026-10-23T03:00", {
+      recurrence: { rule: { count: 5, frequency: "DAILY" } },
+    });
+    const occurrence = find(expand([nightly]), "2026-10-25T00:30:00Z");
+    const moved = change(occurrence, "update", {
+      end: Temporal.Instant.from("2026-10-25T02:00:00Z"),
+      kind: "timed",
+      sourceTimeZone: berlin,
+      start: Temporal.Instant.from("2026-10-25T01:30:00Z"),
+    });
+    const edit = series(resolveRecurrenceEdit(moved, "all", adapters));
+    expect(edit.override).toMatchObject({
+      action: "create",
+      recurrenceId: Temporal.Instant.from("2026-10-25T00:30:00Z"),
+    });
+    expect(edit.otherOverrides).toEqual({ action: "keep", series: "current" });
+    const after = apply([nightly], edit);
+    expect(
+      expand(after)
+        .filter(({ interval }) => wall(interval.start).startsWith("2026-10-25"))
+        .map(({ interval }) => String(interval.start)),
+    ).toEqual(["2026-10-25T01:30:00Z"]);
+  });
+});
+
+describe(`editor updates name the times they show`, () => {
+  const edited = (occurrence: Occurrence, start: string, end: string) =>
+    change(occurrence, "update", {
+      end: Temporal.Instant.from(end),
+      kind: "timed",
+      sourceTimeZone: berlin,
+      start: Temporal.Instant.from(start),
+    });
+  const startOf = (edit: RecurrenceEdit<Event, string, string>) => {
+    const { series: write } = series(edit);
+    return write.action === "update" ? wall(write.placement.start) : write.action;
+  };
+
+  test(`a gap night's occurrence set to 05:00 the next day lands at 05:00`, () => {
+    const nightly = timed("nightly", "2026-03-27T02:30", "2026-03-27T03:00", {
+      recurrence: { rule: { count: 5, frequency: "DAILY" } },
+    });
+    // 29 March's occurrence shows 03:30; the editor sets 30 March, 05:00–05:30.
+    const gapNight = find(expand([nightly]), "2026-03-29T01:30:00Z");
+    const update = edited(gapNight, "2026-03-30T03:00:00Z", "2026-03-30T03:30:00Z");
+    expect(startOf(resolveRecurrenceEdit(update, "all", adapters))).toBe("2026-03-28T05:00:00");
+    const following = series(resolveRecurrenceEdit(update, "following", adapters));
+    expect(following.newSeries && wall(following.newSeries.placement.start)).toBe(
+      "2026-03-30T05:00:00",
+    );
+  });
+
+  test(`an occurrence at the later 02:30 set to 03:30 moves the series to 03:30`, () => {
+    // The first occurrence is written at the later 02:30 of 25 October, in UTC.
+    const nightly = {
+      ...timed("nightly", "2026-10-25T02:30", "2026-10-25T03:00", {
+        recurrence: { rule: { count: 3, frequency: "DAILY" } },
+      }),
+      end: Temporal.Instant.from("2026-10-25T02:00:00Z"),
+      start: Temporal.Instant.from("2026-10-25T01:30:00Z"),
+    } as Event;
+    const first = find(expand([nightly]), "2026-10-25T01:30:00Z");
+    const update = edited(first, "2026-10-25T02:30:00Z", "2026-10-25T03:00:00Z");
+    expect(startOf(resolveRecurrenceEdit(update, "all", adapters))).toBe("2026-10-25T03:30:00");
+  });
 });
 
 describe(`round trips`, () => {
