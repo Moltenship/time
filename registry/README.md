@@ -59,7 +59,7 @@ The build:
    runtime range, packages, items, components and targets, and the workspace versions they were
    built against. Release tooling reads it instead of parsing shadcn items.
 
-Items reach each other through URLs under `https://moltenship-time.vercel.app/r`. Set
+Items reach each other through URLs under `https://time.molten.sh/r`. Set
 `REGISTRY_BASE_URL`, or pass `--base-url`, to build for another host.
 
 ## Checks

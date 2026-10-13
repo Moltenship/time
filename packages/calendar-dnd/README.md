@@ -21,7 +21,7 @@ pnpm add @moltenship/calendar-dnd react
 
 ## Documentation
 
-- [Interactions](https://moltenship-time.vercel.app/docs/interactions)
+- [Interactions](https://time.molten.sh/docs/interactions)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

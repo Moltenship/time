@@ -2,7 +2,7 @@
   "name": "@moltenship/calendar-temporal",
   "version": "0.0.0",
   "description": "Framework-independent Temporal utilities for Moltenship Time.",
-  "homepage": "https://moltenship-time.vercel.app/docs/api/temporal",
+  "homepage": "https://time.molten.sh/docs/api/temporal",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

@@ -130,7 +130,7 @@ Each open finding, and whether it blocks the release candidate. The owner's step
 
 | Finding | Blocks rc.1? | Why |
 | --- | --- | --- |
-| The docs site in production returns `DEPLOYMENT_NOT_FOUND` | Yes | Every package's `homepage` and `shadcn add` point at it. The project's production deployments succeed (the latest is `2eebe97`) behind Vercel's login, but the `moltenship-time.vercel.app` domain answers none of them: an owner action in Vercel's settings. A local production build serves the registry (`release:artifacts`). |
+| The docs site in production | No, resolved | It serves at `https://time.molten.sh`, with the registry at `/r/registry.json`. Every package's `homepage`, the registry's URLs and the `shadcn add` lines point there (#210); the old Vercel domain is gone. |
 | #185, focus out of view in the scrolling agenda in WebKit | Yes, unless the owner accepts it | WCAG 2.2 AA is the release gate (§17), and it's p1. The evidence is Playwright's WebKit 27.2 on `temporal-polyfill`; a check in Safari would help that call. |
 | #186, the screen-reader passes | Yes | §17 asks for them before release; its title says before the RC. |
 | #200, `CalendarEventSource` exported but unused | Decide first | An RC should freeze the API; removing it after rc.1 breaks it. A small decision. |

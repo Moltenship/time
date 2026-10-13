@@ -172,7 +172,7 @@ and `otherComponents`.
 
 ## Documentation
 
-- [ICS reference](https://moltenship-time.vercel.app/docs/api/ics)
+- [ICS reference](https://time.molten.sh/docs/api/ics)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

@@ -23,7 +23,7 @@ Import from the package name only. Files inside the package aren't part of the A
 
 ## Documentation
 
-- [API reference](https://moltenship-time.vercel.app/docs/api)
+- [API reference](https://time.molten.sh/docs/api)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

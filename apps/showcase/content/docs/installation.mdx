@@ -115,7 +115,7 @@ calendar's files don't compile against primitives from other styles.
 Add the calendar. `calendar-full` installs every view, the theme and the parts they share:
 
 ```bash
-npx shadcn@latest add https://moltenship-time.vercel.app/r/calendar-full.json
+npx shadcn@latest add https://time.molten.sh/r/calendar-full.json
 ```
 
 Or add only the views you use. Each one brings what it builds on: the theme, the shared
@@ -137,10 +137,10 @@ Or add only the views you use. Each one brings what it builds on: the theme, the
 | `resource-timeline-view`   | The [resource timeline](/docs/views/resource-timeline) views                 |
 | `recurrence-scope-dialog`  | The [recurrence scope dialog](/docs/guides/recurring-events)                 |
 
-Each item's address is `https://moltenship-time.vercel.app/r/<item>.json`:
+Each item's address is `https://time.molten.sh/r/<item>.json`:
 
 ```bash
-npx shadcn@latest add https://moltenship-time.vercel.app/r/month-view.json
+npx shadcn@latest add https://time.molten.sh/r/month-view.json
 ```
 
 The files land in `calendar/` under the `components` alias in your `components.json`, such as
@@ -153,7 +153,7 @@ To add items by name, add the registry to `components.json` once:
 ```json title="components.json"
 {
   "registries": {
-    "@moltenship": "https://moltenship-time.vercel.app/r/{name}.json"
+    "@moltenship": "https://time.molten.sh/r/{name}.json"
   }
 }
 ```

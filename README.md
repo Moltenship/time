@@ -5,7 +5,7 @@ state, fast event lookups, and saving changes. Your events stay in the shape you
 Week, day, month, year, and agenda views come as shadcn/ui-style source that you copy into your app
 and own.
 
-**[Documentation](https://moltenship-time.vercel.app/docs)** ·
+**[Documentation](https://time.molten.sh/docs)** ·
 **[Live demo](https://moltenship-time-demo.vercel.app)**
 
 > **Status: pre-1.0.** The packages aren't published to npm yet, and the API will change before 1.0.
@@ -24,7 +24,7 @@ TypeScript 6+ with `"lib": ["ESNext"]`.
 ## Example
 
 The smallest calendar, with a hand-written view. The
-[Quick start](https://moltenship-time.vercel.app/docs/quick-start) uses the built-in views instead.
+[Quick start](https://time.molten.sh/docs/quick-start) uses the built-in views instead.
 
 ```tsx
 import {
@@ -88,12 +88,12 @@ export function MeetingCalendar({ meetings }: { meetings: readonly Meeting[] }) 
 
 ## Documentation
 
-Read the docs at **[moltenship-time.vercel.app](https://moltenship-time.vercel.app/docs)**. Good
+Read the docs at **[time.molten.sh](https://time.molten.sh/docs)**. Good
 places to start:
 
-- [Quick start](https://moltenship-time.vercel.app/docs/quick-start)
-- [Events and adapters](https://moltenship-time.vercel.app/docs/concepts/events)
-- [Interactions](https://moltenship-time.vercel.app/docs/interactions)
+- [Quick start](https://time.molten.sh/docs/quick-start)
+- [Events and adapters](https://time.molten.sh/docs/concepts/events)
+- [Interactions](https://time.molten.sh/docs/interactions)
 
 The [live demo](https://moltenship-time-demo.vercel.app) is a Google Calendar-style app built from
 the same views. Its source is in [`apps/demo`](./apps/demo).
