@@ -106,7 +106,8 @@ for (const field of zones.flat()) {
 }
 
 if (license.includes("*/")) throw new Error("the license text would end its comment");
-// A legal comment (`/*!`), which bundlers keep, so the notice goes wherever the data goes.
+// A legal comment (`/*!`), which bundlers keep: an app that bundles any of ics carries the notice,
+// about 1.2 KiB gzip.
 const licenseComment = [
   "/*!",
   ...license

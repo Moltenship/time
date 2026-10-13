@@ -148,10 +148,11 @@ describe("published package metadata", () => {
 
       expect(noticeText).toContain(`SPDX-License-Identifier: ${license}`);
       expect(commentText).toBe(noticeText);
-      // Both name the same data release, as "release 48.2" and "release-48-2".
-      const release = /CLDR release-(\d+)-(\d+)/.exec(generated);
-      expect(release).not.toBeNull();
-      expect(notices).toContain(`release ${release![1]}.${release![2]}`);
+      // Both name the same data release: "release-48-2" is "release 48.2", "release-49" "release 49".
+      const tag = /CLDR release-(\d+)(?:-(\d+))?/.exec(generated);
+      expect(tag).not.toBeNull();
+      const release = tag![2] === undefined ? tag![1]! : `${tag![1]}.${tag![2]}`;
+      expect(notices).toMatch(new RegExp(`release ${release.replace(".", "\\.")}(?![.\\d])`));
     },
   );
 });

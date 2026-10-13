@@ -27,11 +27,16 @@ entry point's size budget, is in [`tools/release/src/config.ts`](../../tools/rel
 Every published package ships the root MIT `LICENSE`. pnpm adds it to a package's tarball when no
 packed file's path contains `license` or `licence`, in any case (`THIRD-PARTY-LICENSES.md` or
 `dist/licenses.mjs` would count), so don't give a packed file such a name. `npm pack` doesn't do
-this: pack with pnpm. `tests/package-metadata.test.ts` checks the
-published set, the `license`, `repository`, `homepage` and `bugs` fields, and that each tarball
-lists `README.md` and `LICENSE`, and that `ics`'s notices match the license comment in its
-generated source. `ics` is `MIT AND Unicode-3.0`: it bundles Unicode CLDR's Windows time zone mapping,
-whose license ships in its `THIRD-PARTY-NOTICES.md` and as a `/*!` comment in its built code.
+this: pack with pnpm.
+
+`ics` is `MIT AND Unicode-3.0`: it bundles Unicode CLDR's Windows time zone mapping. The Unicode
+License v3 ships in its `THIRD-PARTY-NOTICES.md`, and as a `/*!` comment in its built code, which
+bundlers keep.
+
+`tests/package-metadata.test.ts` checks the published set and the `license`, `repository`,
+`homepage` and `bugs` fields. It checks that each tarball lists `README.md` and `LICENSE`, and that
+`ics`'s also lists `THIRD-PARTY-NOTICES.md`, whose license text and CLDR release match the comment in
+the generated source. `tests/ics-boundary.test.ts` checks that the packed code carries it.
 
 ## Workspace ownership
 
