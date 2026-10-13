@@ -14,6 +14,8 @@ interface Step {
 
 interface Job {
   readonly if?: string;
+  readonly "runs-on"?: string;
+  readonly "timeout-minutes"?: number;
   readonly needs?: string;
   readonly environment?: string;
   readonly permissions?: Record<string, string>;
@@ -76,7 +78,14 @@ describe("release workflow contract", () => {
     const rehearsal = ci.jobs["release-gate"];
 
     expect(rehearsal?.if).toBe("github.event_name == 'workflow_dispatch'");
-    expect(runs(rehearsal)).toEqual(runs((await readWorkflow()).jobs.verify));
+    const verify = (await readWorkflow()).jobs.verify;
+    expect(runs(rehearsal)).toEqual(runs(verify));
+    // The same machine, time limit and setup.
+    expect(rehearsal?.["runs-on"]).toBe(verify?.["runs-on"]);
+    expect(rehearsal?.["timeout-minutes"]).toBe(verify?.["timeout-minutes"]);
+    const setup = (job: Job | undefined) =>
+      job?.steps.find(({ uses }) => uses?.startsWith("voidzero-dev/setup-vp@"));
+    expect(setup(rehearsal)).toEqual(setup(verify));
     expect(rehearsal?.environment).toBeUndefined();
     expect(JSON.stringify(rehearsal)).not.toContain("release:publish");
   });

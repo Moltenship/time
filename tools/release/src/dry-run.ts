@@ -28,7 +28,8 @@ async function step<T>(name: string, action: () => Promise<T>): Promise<T> {
 
 /**
  * Builds every published artifact from scratch, runs every release check on it, and writes a
- * manifest the publish step requires. Offline: nothing here talks to the npm registry.
+ * manifest the publish step requires. Nothing here publishes; the clean consumer installs from
+ * the pnpm store, and reads package metadata from npm only when a cold cache lacks it.
  */
 export async function dryRun({
   version: requested,

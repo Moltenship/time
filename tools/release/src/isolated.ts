@@ -197,21 +197,17 @@ function installFailure(directory: string, result: { stdout: string; stderr: str
   );
 }
 
-/** Installs a project offline from the pnpm store and metadata cache that `vp install` filled. */
-export async function installOffline(directory: string): Promise<void> {
-  const result = await install(directory, "--offline");
-  if (result.code !== 0) throw installFailure(directory, result);
-}
-
 /**
  * Whether an offline install failed only for package metadata a cold cache lacks: a package's
  * (`ERR_PNPM_NO_OFFLINE_META`), or that of the pinned pnpm itself, which the `packageManager`
  * field makes a config dependency (`ERR_PNPM_BAD_CONFIG_DEP` in the package mirror).
  */
 export function lacksMetadata(output: string): boolean {
+  // pnpm wraps its messages to the terminal's width.
+  const text = output.replace(/\s+/g, " ");
   return (
-    output.includes("ERR_PNPM_NO_OFFLINE_META") ||
-    (output.includes("ERR_PNPM_BAD_CONFIG_DEP") && output.includes("package mirror"))
+    text.includes("ERR_PNPM_NO_OFFLINE_META") ||
+    (text.includes("ERR_PNPM_BAD_CONFIG_DEP") && text.includes("package mirror"))
   );
 }
 

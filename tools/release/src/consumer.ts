@@ -69,10 +69,25 @@ export async function installConsumer(tarballs: readonly PackedTarball[]): Promi
       2,
     )}\n`,
   );
-  const workspaceLockfile = await readFile(join(workspaceRoot, "pnpm-lock.yaml"), "utf8");
+  const workspace = await readFile(join(workspaceRoot, "pnpm-workspace.yaml"), "utf8")
+    .then((text) => parse(text) as Record<string, unknown>)
+    .then(async (settings) => ({
+      lockfile: await readFile(join(workspaceRoot, "pnpm-lock.yaml"), "utf8"),
+      settings,
+    }));
+  // The workspace's rules for what it installs, as #203's copies carry them: a package it allows
+  // younger than the release-age limit, its extensions and peer rules.
+  const rules = Object.fromEntries(
+    ["packageExtensions", "peerDependencyRules", "allowBuilds", "minimumReleaseAgeExclude"]
+      .filter((key) => key in workspace.settings)
+      .map((key) => [key, workspace.settings[key]]),
+  );
   await writeFile(
     join(directory, "pnpm-workspace.yaml"),
-    stringify({ overrides: { ...lockedVersions(workspaceLockfile), ...files } }),
+    stringify({
+      ...rules,
+      overrides: { ...lockedVersions(workspace.lockfile), ...files },
+    }),
   );
   const { online } = await installFromStore(directory);
   if (online) {
@@ -84,7 +99,7 @@ export async function installConsumer(tarballs: readonly PackedTarball[]): Promi
     lockfile: await readFile(join(directory, "pnpm-lock.yaml"), "utf8"),
     packages: tarballs,
     expected: tarballs.map(({ name }) => name),
-    workspaceLockfile,
+    workspaceLockfile: workspace.lockfile,
   });
   if (problems.length > 0) {
     throw new Error(

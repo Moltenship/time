@@ -100,20 +100,18 @@ issue's "Later" section when work starts.
 - The issue's "Done when" list is the acceptance check. There are no separate gate issues and no
   evidence attachments.
 - Run the quality gate's tiers as `AGENTS.md` ("Quality gate") says: `vp run ready:quick` after
-  every change, where docs and notes may stop, and `vp run ready` before every merge. `vp run
-  ready:full` runs for releases: in the release workflow, and by hand right before a release
-  candidate or a release. A PR runs it only when it changes the full gate itself or the release
-  tooling. Add any focused `vp run` gate or lane the change touches.
+  every change, which is enough to merge a change to docs or notes alone, and `vp run ready`
+  before every other merge. `vp run ready:full` runs for releases: in the release workflow, and by
+  hand right before a release candidate or a release. A PR runs it only when it changes the full
+  gate itself or the release tooling. Add any focused `vp run` gate or lane the change touches.
 - The local `vp run ready` is the merge gate. Once it's green, merge without waiting for GitHub
   Actions; CI runs the same tasks as a backstop. A red CI run on `main` gets fixed right away, and
   CI red with local green is a gate bug: the local gate must reproduce it. Release work is the
   exception: the release job's gate must pass, and a change to it shows a green CI rehearsal.
-- Every PR gets a code review. Fix each finding, or reply with the reason you didn't. While GitHub
-  Actions is capped on this account, CI and Pullfrog don't run: run the tier the change needs
-  locally and post the result on the PR, and get the review from Claude Opus 5.5 (xhigh) instead of
-  Pullfrog.
-- Merge with squash once the review has no open blocker or should-fix findings and the checks pass
-  (locally while Actions is capped). The Vercel checks don't gate merges. When Vercel's daily deploy
+- Every PR gets a code review, from Claude Opus 5.5 (xhigh). Fix each finding, or reply with the
+  reason you didn't. Post the local gate's result on the PR.
+- Merge with squash once the review has no open blocker or should-fix findings and the local gate
+  passes. The Vercel checks don't gate merges. When Vercel's daily deploy
   limit is hit, production catches up with the next deploy after it resets. Rebase on `main` first
   if behind.
 - UI changes include screenshots attached with `gh pr create/edit --attach`, as described in

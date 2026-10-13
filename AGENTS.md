@@ -34,21 +34,22 @@ Check locally; don't wait on CI to learn whether a change passes. There are thre
 | ----- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Quick | `vp run ready:quick` | The docs site's link check, which compiles every page, then `vp check` and `vp test`                                                                                |
 | PR    | `vp run ready`       | Quick, plus production builds, the release checks (size budgets, API reports, package exports), the React, SSR, registry and package-graph gates, and the a11y suite in Chromium. CI runs the same tasks on every PR: `ready:checks` and `a11y`. |
-| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and in Firefox and WebKit (`browsers`), the release dry run (a fresh build, the packed tarballs installed offline into a clean project, the registry built for that version), the docs site's types and search, and the dry run's tarballs in use (`release:artifacts`): the SSR fixture's tests and the docs site's build in copies outside the workspace, and `shadcn add` into clean Vite and Next.js apps, which needs the network. It's the release gate. |
+| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and in Firefox and WebKit (`browsers`), the release dry run (a fresh build, the packed tarballs installed from the pnpm store into a clean project, the registry built for that version), the docs site's types and search, and the dry run's tarballs in use (`release:artifacts`): the SSR fixture's tests and the docs site's build in copies outside the workspace, and `shadcn add` into clean Vite and Next.js apps, which needs the network. It's the release gate. |
 
 When each tier runs:
 
-- **Quick, after every change.** Docs content (MDX), README, ADRs and `docs/internal` notes may
-  stop here.
-- **PR, before every merge**, whatever the change touches. The local `vp run ready` is the merge
-  gate: once it's green, merge without waiting for the GitHub Actions run. CI runs the same tasks
-  as a backstop. If CI goes red on `main`, fix it right away. CI red with local green is a gate
-  bug: fix the local gate until it reproduces the failure.
+- **Quick, after every change.** A change to docs content (MDX), READMEs, ADRs or
+  `docs/internal` notes alone may merge on it.
+- **PR, before every other merge**, whatever the change touches. The local `vp run ready` is the
+  merge gate: once it's green, merge without waiting for the GitHub Actions run. CI runs the same
+  tasks as a backstop. If CI goes red on `main`, fix it right away. CI red with local green is a
+  gate bug: fix the local gate until it reproduces the failure.
 - **Full, for releases only:** the release workflow runs it before publishing, and you run it by
   hand right before cutting a release candidate or a release. A PR doesn't run it, with one
   exception: a PR that changes the full gate itself or the release tooling runs it once, to show
-  the gate still works. Release work is where CI does gate: the release job's gate must pass, and a
-  change to the release job shows a green run of CI's `release-gate` job on a fresh runner.
+  the gate still works. Release work is the exception to merging on the local gate: the release
+  job's gate must pass, and a change to the release job shows a green run of CI's `release-gate`
+  job on a fresh runner.
 
 On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 120 from a cold cache.
 Steps run in parallel where they're independent. Steps that write or read generated files
@@ -67,7 +68,8 @@ there `browsers` runs WebKit alone. CI runs both on demand: `gh workflow run ci.
 A new check joins a tier in `vite.config.ts`: `ready:checks` or `gate:serial` for the PR tier,
 `ready:full` or `gate:serial:full` for the full gate only. Put it in a `gate:serial` lane if it
 writes or reads generated files, and a new browser run in `gate:browsers`. A full-gate-only check
-also joins `release:gate`, in its `gate:serial:release` lane or its `dependsOn`.
+also joins `release:gate`: a serial step in its `gate:serial:release` lane, any other in its
+command.
 `tests/quality-gates.test.ts` fails if the full gate misses a PR step, or the release gate a full
 one.
 

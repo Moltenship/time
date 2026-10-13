@@ -18,8 +18,7 @@ release, plus once in a PR that changes the full gate or the release tooling (`A
 | Full  | `vp run ready:full`  | Every PR step, plus `browsers` and `a11y:ci-speed`. The three browser runs go one at a time in `gate:browsers`, beside `registry:smoke` and `gate:serial:full`, which adds `release:dry-run`, `showcase:types`, search and `release:artifacts` to the serial lane |
 
 On a 15-core Apple-silicon laptop, quick takes about 13 seconds, PR 37 seconds from a cold cache
-and 24 warm, and full about 120 seconds cold (119.4 with #203's release artifacts), the release dry
-run included. Beside six threads of CPU load, full took 101 to 127 seconds before #203 (#47).
+and 24 warm, and full about 120 seconds cold (119.4, release artifacts and dry run included). Beside six threads of CPU load, full took 101 to 127 seconds before #203 (#47).
 The warm floor is the steps that pack packages, build the docs site or install the registry into
 clean apps, which never replay: they rewrite their own inputs, or reach the network.
 
@@ -38,12 +37,14 @@ holds the workflows to those task names and fails if `ready:full` misses a step 
 The release workflow runs `vp run release:gate` before it publishes: the whole full tier, with a
 strict dry run of the version it publishes (`--require-clean`, `RELEASE_VERSION`) in its own lane,
 `gate:serial:release`. It runs its lanes one after the other, the serial lane and then the browser
-runs: on a 4-core runner the serial lane's builds take every core, and beside them the year
-view's popover test ran out of its 15 s (#197). `RELEASE_VERSION=<version> vp run release:gate` reproduces it locally, and
-CI's on-demand `release-gate` job runs the same steps on a fresh runner without publishing. A check
-that joins only the full gate joins `release:gate` too: its lane for a serial step, or its
-`dependsOn` for a parallel one. The contract test fails if the two differ in anything but their
-lanes. See [releasing.md](./releasing.md).
+runs: on a 4-core runner the serial lane's builds take every core, and beside them the year view's
+popover test ran out of its 15 s (#197). On a runner it takes about 11 minutes.
+`RELEASE_VERSION=<version> vp run release:gate` reproduces it locally (WebKit alone on macOS 27,
+#182), and CI's on-demand `release-gate` job runs the same steps on a fresh runner without
+publishing. A check that joins only the full gate joins `release:gate` too: a serial step in its
+`gate:serial:release` lane, a browser run in `gate:browsers`, and any other step in its command.
+The contract test fails if the two differ in anything but their serial lanes. See
+[releasing.md](./releasing.md).
 
 ## CI and local runs
 
@@ -54,11 +55,11 @@ covers it:
   and that is what made its flakes: focus, scroll and save races that a fast machine always wins.
   `vp run a11y:ci-speed` runs the suite with Chromium's CPU throttled 6 times
   (`Emulation.setCPUThrottlingRate`, set in `tools/a11y/tests/setup.ts` for `--mode ci-speed`), and
-  the full gate runs it, never from cache. It runs beside the serial lane, which loads the machine
-  further: stricter, and a little less repeatable, so rerun it alone before calling a failure a
-  flake. On a GitHub runner, which is the speed it simulates, it runs unthrottled: the release
-  workflow's full tier runs the suite there twice, once as `a11y` and once as `a11y:ci-speed`
-  beside the serial lane.
+  the full gate runs it, never from cache. In `ready:full` it runs beside the serial lane, which
+  loads the machine further: stricter, and a little less repeatable, so rerun it alone before
+  calling a failure a flake. On a GitHub runner, which is the speed it simulates, it runs
+  unthrottled: there the release gate's `a11y:ci-speed` is a second, identical Chromium run, after
+  the serial lane.
 - **Fonts.** CI's Ubuntu image has other system fonts, so text wraps and positions differ. Tests
   compare layouts with each other and with ratios, not with fixed pixels, and a test that hovers
   does so on purpose instead of trusting where the mouse was left.

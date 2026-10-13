@@ -1,9 +1,10 @@
 # Releasing
 
 How the packages get to npm. Only the owner publishes. Everything before the publish step runs
-locally, and nothing installs our packages from npm. The dry run is offline; the checks on its
-tarballs reach the network only for third-party packages, shadcn's components and the docs site's
-fonts.
+locally, and nothing installs our packages from npm. The dry run installs from the pnpm store,
+reading package metadata from npm only when a cold cache lacks it, as on a fresh runner; the
+checks on its tarballs reach the network only for third-party packages, shadcn's components and the
+docs site's fonts.
 
 Seven packages publish under `@moltenship`, listed in
 [`tools/release/src/config.ts`](../../tools/release/src/config.ts) and
@@ -80,6 +81,7 @@ packs nothing, and refuses a manifest from another commit or a file whose hash c
      vp install --frozen-lockfile
      vp exec --filter a11y playwright install chromium firefox webkit   # once, for the browser runs
      RELEASE_VERSION=1.0.0-rc.1 vp run release:gate   # the full tier, strict; needs the network
+     # On macOS 27 its browser run is WebKit alone (#182): rehearse on CI for Firefox.
      export NODE_AUTH_TOKEN=<token>   # or npm login
      vp run release:publish --version 1.0.0-rc.1
      ```
