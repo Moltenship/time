@@ -57,12 +57,11 @@ latest releases.
 ## Next: 1.0 — Public release
 
 The shadcn registry shipped (#43), and `calendar-testing`, the test harness for apps, publishes with
-1.0 (#45). Release
-tooling (#46) is done, and the full tier runs the SSR fixture, the docs site and the registry's
-clean apps on the dry run's tarballs (`vp run release:artifacts`). Next in the second phase of the
-release audit (#47): the full release dry run, the screen-reader passes (#186) and the release
-candidate report, with a green CI `browsers` run (#192). `CalendarEventSource` was built, not
-removed, before the API reports freeze (#200). The audit's proposed 1.0 blocker: #186. #185,
+1.0 (#45). Release tooling (#46) is done, and the full tier runs the SSR fixture, the docs site and
+the registry's clean apps on the dry run's tarballs (`vp run release:artifacts`). Next in the second
+phase of the release audit (#47): the full release dry run, the screen-reader passes (#186) and the
+release candidate report, with a green CI `browsers` run (#192). `CalendarEventSource` was built,
+not removed, before the API reports freeze (#200). The audit's proposed 1.0 blocker: #186. #185,
 focus left out of view in Safari's scrolling agenda, isn't one: the owner accepted it for rc.1 as a
 known issue (14 October 2026).
 

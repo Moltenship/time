@@ -49,7 +49,7 @@ packed code carries the `/*!` notice.
 | `@moltenship/calendar-dnd` | Pointer interaction adapter (native Pointer Events) | `calendar-core`, `calendar-temporal` |
 | `@moltenship/calendar-dnd-kit` | Optional dnd-kit adapter: items dragged into the calendar, events dragged out (#237) | `calendar-core`, `calendar-dnd` |
 | `@moltenship/calendar` | Supported public facade | `calendar-core`, `calendar-dnd`, `calendar-react`, `calendar-temporal` |
-| `@moltenship/calendar-testing` | Test helpers for apps: environment, builders, render and hydration harness (#45) | Public facade and `calendar-recurrence` |
+| `@moltenship/calendar-testing` | Test helpers for apps: environment, builders, fixtures, render and hydration harness, queries, drivers and assertions (#45) | Public facade and `calendar-recurrence` |
 | `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `calendar-temporal`, `ics` |
 | `@moltenship/ics` | Standalone iCalendar parsing (ADR 0151) | None |
 | `showcase` | Consumer-equivalent documentation and examples | Public facade, `calendar-recurrence`, `calendar-dnd-kit`, `calendar-testing` and `@moltenship/ics` |

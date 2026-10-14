@@ -55,4 +55,11 @@ export {
   multiZoneSeriesFixture,
   resourceDayFixture,
 } from "./fixtures";
-export type { CalendarFixture, FixtureEvent, FixtureResource } from "./fixtures";
+export type {
+  CalendarFixture,
+  DstWeekOptions,
+  FixtureEvent,
+  FixtureResource,
+  FixtureSeriesEvent,
+  SeriesFixture,
+} from "./fixtures";

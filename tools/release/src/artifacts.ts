@@ -91,7 +91,8 @@ async function freePort(): Promise<number> {
  */
 export const consumers: readonly Consumer[] = [
   {
-    // The fixture's own tests: render, hydrate, interact and unmount, and its known-bad cases fail.
+    // The fixture's own tests: render, hydrate, interact and unmount, its known-bad cases fail, and
+    // its calendar hydrates through calendar-testing.
     name: "ssr-fixture",
     run: async ({ step, note, isolate }) => {
       const fixture = await step("install", () => isolate(["apps/ssr-fixture"]));

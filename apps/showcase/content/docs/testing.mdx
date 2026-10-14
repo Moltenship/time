@@ -96,25 +96,6 @@ event's `timeZone`, UTC by default, and `timeZone` becomes the event's `sourceTi
 An event's `id` defaults to its title and its title to its ID, so `buildEvent({ title: "Standup" })`
 is the event `"Standup"`.
 
-## Fixtures
-
-Fixtures are ready datasets for contract tests: tests that every view, or your custom one, should
-pass on the same data. Each is a function that builds new records, with the environment,
-resources and `Root` props it's meant for, so spreading it into the harness's options renders it.
-Merge `rootProps` when you pass your own.
-
-| Fixture                    | Data                                                                                                                                                                                                           |
-| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `denseDayFixture()`        | Thursday 8 October 2026 in UTC: 30 overlapping timed events, from back-to-back half hours to four at once, two across midnight, and three all-day events                                                       |
-| `dstWeekFixture("fall")`   | New York's week to Sunday 1 November 2026, when the clocks go back: a 09:00 standup a day, an event in the repeated hour, one across the change. `"spring"` gives the week to 8 March, when an hour is skipped |
-| `multiZoneSeriesFixture()` | Series in Berlin, Los Angeles and Tokyo, shown in UTC from 19 October 2026, across Berlin's and Los Angeles' DST changes a week apart. Expand them with `@moltenship/calendar-recurrence`                      |
-| `resourceDayFixture()`     | A team in three zones, one with hours of its own, and rooms under a parent; events on one resource, on several, and on none; working hours as `rootProps.availability`                                         |
-
-Their events are canonical, with `data: { group }`, so type your calendar with `FixtureEvent` and
-`FixtureResource`.
-
-<include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#fixtures</include>
-
 ## Render a calendar
 
 Create your calendar as the app does, then render it with `renderCalendar`. Clean up after each
@@ -327,6 +308,31 @@ nothing scrolls. So in them:
 - CSS doesn't apply: hidden, clipped and focus-visible states are classes, not what's shown.
 
 Keyboard drivers, queries, the harness, saves and announcements work in all three.
+
+## Fixtures
+
+Fixtures are ready datasets for contract tests: tests that every view, or your custom one, should
+pass on the same data. Each is a function that builds new records, with the environment,
+resources and `Root` props it's meant for, so spreading it into the harness's options renders it.
+Merge `rootProps` when you pass your own. Their events are canonical, with `data: { group }`, so
+type your calendar with `FixtureEvent` and `FixtureResource`.
+
+<include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#fixtures</include>
+
+| Fixture                       | Data                                                                                                                                                                                                         |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `denseDayFixture()`           | Thursday 8 October 2026 in UTC: 30 timed events, from back-to-back half hours that overlap nothing to five at once at 13:00 and a staircase, two across midnight, and 3 all-day events                       |
+| `dstWeekFixture({ change? })` | New York's week to Sunday 1 November 2026, when the clocks go back, or with `change: "spring"` to 8 March, when they go forward: a 09:00 standup a day, an event in the changing hour, one across the change |
+| `resourceDayFixture()`        | A team in three zones, one with hours of its own, and rooms under a parent that opens expanded; events on one resource, on several, and on none; working hours from 9 to 6                                   |
+| `multiZoneSeriesFixture()`    | Series in Berlin, Los Angeles and Tokyo from 19 October 2026, across Berlin's and Los Angeles' DST changes a week apart                                                                                      |
+
+Each fixture's JSDoc lists its events and resources by ID, title and time. Those, and the counts,
+are part of the API: they change only in a major version, so tests can name them.
+
+`multiZoneSeriesFixture` gives series masters, `series`, not events: a calendar shows a series
+once it's expanded into occurrences, as your app does with `@moltenship/calendar-recurrence`.
+
+<include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#series</include>
 
 ## Server rendering and hydration
 

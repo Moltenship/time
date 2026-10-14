@@ -16,10 +16,8 @@ import {
   buildEvent,
   cleanup,
   createTestEnvironment,
-  dstWeekFixture,
   hydrateCalendar,
   renderCalendar,
-  type FixtureEvent,
 } from "@moltenship/calendar-testing";
 
 import { calendarAnnouncements } from "@/components/calendar/announcements";
@@ -122,6 +120,13 @@ test("queries find events by title, and cells by date", async () => {
 // #endregion queries
 
 // #region fixtures
+import {
+  dstWeekFixture,
+  multiZoneSeriesFixture,
+  type FixtureEvent,
+  type FixtureSeriesEvent,
+} from "@moltenship/calendar-testing";
+
 const FixtureCalendar = createCalendar<FixtureEvent>()({
   eventAdapter: createCanonicalEventAdapter<{ readonly group: string }>(),
   views: [createWeekView<FixtureEvent>()],
@@ -131,12 +136,55 @@ test("a move a day on keeps an event's wall time across the clocks going back", 
   // New York's week of Sunday 1 November 2026, with a 09:00 standup every day.
   const calendar = await renderCalendar(FixtureCalendar, { ...dstWeekFixture(), view: "week" });
 
+  // `d6` is Saturday's standup; a day on is Sunday, after the change.
   await calendar.keyboard.moveEvent("d6", { across: 1 });
   await calendar.settled();
 
   expect(calendar.placementOf("d6").wallRange).toBe("2026-11-01T09:00/2026-11-01T09:30");
 });
 // #endregion fixtures
+
+// #region series
+import {
+  createCanonicalRecurrenceAdapter,
+  createOccurrenceAdapter,
+  createOccurrenceExpander,
+  type RecurrenceOccurrence,
+} from "@moltenship/calendar-recurrence";
+
+type Occurrence = RecurrenceOccurrence<FixtureSeriesEvent, string>;
+
+const SeriesCalendar = createCalendar<Occurrence>()({
+  eventAdapter: createOccurrenceAdapter(createCanonicalEventAdapter<{ readonly group: string }>()),
+  views: [createWeekView<Occurrence>()],
+});
+
+test("Berlin's standup is an hour later in UTC once its clocks go back; Los Angeles' isn't yet", async () => {
+  const { environment, series } = multiZoneSeriesFixture();
+  const week = {
+    end: Temporal.PlainDate.from("2026-11-02"),
+    start: Temporal.PlainDate.from("2026-10-26"),
+  };
+  const { occurrences } = createOccurrenceExpander(
+    createCanonicalRecurrenceAdapter<{ readonly group: string }>(),
+  ).expand(series, { range: week, timeZone: environment.timeZone });
+
+  const calendar = await renderCalendar(SeriesCalendar, {
+    environment,
+    events: occurrences,
+    // Occurrences are views of their series: save changes through the recurrence edits instead.
+    readOnly: true,
+    rootProps: { defaultAnchorDate: week.start },
+    view: "week",
+  });
+
+  expect(calendar.placementOf({ start: "2026-10-26T08:00:00Z" }).title).toBe("Standup (Berlin)");
+  expect(calendar.placementOf({ start: "2026-10-27T17:00:00Z" }).title).toBe(
+    "Review (Los Angeles)",
+  );
+  expect(calendar.queryEvent({ start: "2026-10-27T17:00:00Z" })).not.toBeNull();
+});
+// #endregion series
 
 // #region hydrate
 test("the week renders on the server and hydrates without a mismatch", async () => {

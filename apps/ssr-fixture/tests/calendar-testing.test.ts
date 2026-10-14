@@ -8,7 +8,7 @@ import {
   normalizeText,
 } from "@moltenship/calendar-testing";
 import { Fragment, createElement } from "react";
-import { afterEach, expect, test } from "vite-plus/test";
+import { afterEach, expect, test, vi } from "vite-plus/test";
 
 import {
   FixtureCalendar,
@@ -57,22 +57,24 @@ test("the fixture's calendar renders on the server and hydrates without a mismat
   ).toBe("Saturday, 15 August 2026");
 });
 
-test("a client that renders another day than the server fails with a HydrationMismatchError", async () => {
+test("a client that renders other text than the server fails with a HydrationMismatchError", async () => {
   let onClient = false;
-  function Day() {
+  function Side() {
     return createElement("p", null, onClient ? "client" : "server");
   }
-  const original = console.error;
-  console.error = () => {};
+  // React logs the mismatch too; keep it out of the run's output.
+  const logged = vi.spyOn(console, "error").mockImplementation(() => {});
   try {
+    // hydrateCalendar renders on the server before its first await, and hydrates after it.
     const hydrated = hydrateCalendar(FixtureCalendar, {
-      children: createElement(Day),
+      children: createElement(Side),
       environment,
       events: fixtureEvents,
     });
     onClient = true;
     await expect(hydrated).rejects.toBeInstanceOf(HydrationMismatchError);
+    await expect(hydrated).rejects.toThrow(/Hydration/);
   } finally {
-    console.error = original;
+    logged.mockRestore();
   }
 });

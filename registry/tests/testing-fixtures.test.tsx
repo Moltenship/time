@@ -33,8 +33,9 @@ test("the week view shows every timed event of the dense day, and no diagnostics
     expect(calendar.queryEvent(event.id), event.id).not.toBeNull();
   }
   expect(calendar.diagnostics).toEqual([]);
-  // The overnight event shows on both days it covers.
+  // The overnight event shows on both days it covers; one that ends at midnight, on one.
   expect(calendar.getAllEvents("n1")).toHaveLength(2);
+  expect(calendar.getAllEvents("e1")).toHaveLength(1);
 });
 
 test("in the fall DST week, the 09:00 standups stay at 09:00 and the changing hour shows", async () => {
@@ -48,7 +49,7 @@ test("in the fall DST week, the 09:00 standups stay at 09:00 and the changing ho
 });
 
 test("the spring DST week's moves keep the wall clock across the change", async () => {
-  const fixture = dstWeekFixture("spring");
+  const fixture = dstWeekFixture({ change: "spring" });
   const calendar = await renderCalendar(Calendar, { ...fixture, view: "week" });
 
   // Saturday's 09:00 standup a day on is Sunday's 09:00, an hour less in UTC.
@@ -60,23 +61,21 @@ test("the spring DST week's moves keep the wall clock across the change", async 
 });
 
 test("resource columns show a meeting in each of its resources, rooms under their parent too", async () => {
-  const fixture = resourceDayFixture();
-  // The rooms sit under a parent, collapsed until it's expanded.
-  const calendar = await renderCalendar(Calendar, {
-    ...fixture,
-    rootProps: { ...fixture.rootProps, defaultExpandedResourceIds: ["rooms"] },
-    view: "resources",
-  });
+  // The fixture opens the rooms' parent, so the rooms show.
+  const calendar = await renderCalendar(Calendar, { ...resourceDayFixture(), view: "resources" });
+  const resourcesOf = (id: string) =>
+    calendar
+      .getAllEvents(id)
+      .map((element) => element.closest("[data-resource-id]")?.getAttribute("data-resource-id"));
 
   for (const title of ["Ana", "Ben", "Chen"]) {
     expect(calendar.getResource({ title }).getAttribute("data-resource-id")).toBe(
       title.toLowerCase(),
     );
   }
-  expect(
-    calendar
-      .getAllEvents("meet-1")
-      .map((element) => element.closest("[data-resource-id]")?.getAttribute("data-resource-id")),
-  ).toEqual(["ana", "orchid"]);
+  expect(resourcesOf("meet-1")).toEqual(["ana", "orchid"]);
+  expect(resourcesOf("meet-2")).toEqual(["ben", "chen", "lotus"]);
+  // The view leaves out the unassigned row unless it's asked for.
+  expect(calendar.queryEvent("open-1")).toBeNull();
   expect(calendar.diagnostics).toEqual([]);
 });

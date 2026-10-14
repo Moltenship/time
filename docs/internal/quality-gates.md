@@ -210,7 +210,7 @@ and registry file's sha512 against it before and after. Nothing packs again.
 
 | Consumer | What it runs | Network |
 | --- | --- | --- |
-| `ssr-fixture` | The fixture's tests: render, hydrate, interact and unmount, and the known-bad cases fail | None, unless pnpm's cache lacks metadata (below) |
+| `ssr-fixture` | The fixture's tests: render, hydrate, interact and unmount, the known-bad cases fail, and its calendar hydrates through `@moltenship/calendar-testing`'s tarball | None, unless pnpm's cache lacks metadata (below) |
 | `showcase` | `next build` of the docs site; every route through `next start` (`scripts/verify-production.mjs`), with the dry run's registry at `/r`; then the docs tests, which render the live examples | The build fetches the site's Google fonts, as `ci:build` does; metadata as for the fixture |
 | `registry` | `vp run registry:e2e` on the dry run's tarballs: `shadcn add` into clean Vite and Next.js apps, then a typecheck and a build of each | npm and shadcn's own components |
 
