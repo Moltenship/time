@@ -61,6 +61,8 @@ environment.at("2026-10-26T09:00"); // a wall time in Berlin, after the clocks g
 environment.rootProps; // { now, defaultTimeZone, locale, weekRules, direction, defaultAnchorDate }
 ```
 
+`at` reads a time alone on the environment's own date, `today`, however far the calendar has moved.
+
 | Option       | Default                                                                    |
 | ------------ | -------------------------------------------------------------------------- |
 | `now`        | `"2026-10-08T12:00:00Z"`; text without a zone is a wall time on `timeZone` |
@@ -145,10 +147,11 @@ The harness it returns:
 | `unmount()`                       | Unmounts it; `cleanup()` unmounts every one                                          |
 
 `setNow` takes exact text, a wall time on the environment's zone, or a time such as `"10:00"` on
-the date the calendar is at. `rerender` changes the events, the handlers, `children`, `messages`,
+the calendar's current date. `rerender` changes the events, the handlers, `children`, `messages`,
 `resources`, `readOnly` and `rootProps`; the view, the environment, the wrapper and the container
 set up the first render. Change the view or date through `act`, as a person would:
-`await calendar.act((actions) => actions.setView("day"))`.
+`await calendar.act((actions) => actions.setView("day"))`. Change the locale, week rules or
+direction through `rootProps`: `await calendar.rerender({ rootProps: { locale: "de-DE" } })`.
 
 Name the harness type with `CalendarHarnessFor<typeof Calendar>`.
 

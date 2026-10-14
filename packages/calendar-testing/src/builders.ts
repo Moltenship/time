@@ -270,16 +270,23 @@ function parseRule(rule: string | RecurrenceRule): RecurrenceRule {
  * Makes `event` the master of a series. Dates given as text take the event's kind: instants (wall
  * times on its `sourceTimeZone`, or UTC) for a timed event, date-times for a floating one, dates
  * for an all-day one. A date alone on a timed or floating series, such as `"2026-10-28"`, stays a
- * date: as an exception it drops every occurrence that day.
+ * date in `exceptionDates`, which drops every occurrence that day; in `recurrenceDates` it throws,
+ * as an extra occurrence of such a series needs a time.
  */
 export function withRecurrence<TData, TEventId extends EventId, TResourceId extends ResourceId>(
   event: CalendarEvent<TData, TEventId, TResourceId>,
   recurrence: RecurrenceInput,
 ): RecurringCalendarEvent<TData, TEventId, TResourceId> {
   const zone = event.kind === "timed" ? (event.sourceTimeZone ?? "UTC") : "UTC";
-  const toDate = (value: RecurrenceDate | string): RecurrenceDate => {
+  const toDate = (value: RecurrenceDate | string, role: "exception" | "extra"): RecurrenceDate => {
     if (typeof value !== "string") return value;
-    if (event.kind === "all-day" || !/[Tt ]/u.test(value)) return Temporal.PlainDate.from(value);
+    if (event.kind === "all-day") return Temporal.PlainDate.from(value);
+    if (!/[Tt ]/u.test(value)) {
+      if (role === "exception") return Temporal.PlainDate.from(value);
+      throw new RangeError(
+        `An extra occurrence of a ${event.kind} series needs a time, not just the date ${JSON.stringify(value)}.`,
+      );
+    }
     if (event.kind === "floating") return Temporal.PlainDateTime.from(value);
     return toInstant(value, zone);
   };
@@ -289,13 +296,17 @@ export function withRecurrence<TData, TEventId extends EventId, TResourceId exte
       : { duration: Temporal.Duration.from(recurrence.duration) }),
     ...(recurrence.exceptionDates === undefined
       ? {}
-      : { exceptionDates: Object.freeze(recurrence.exceptionDates.map(toDate)) }),
+      : {
+          exceptionDates: Object.freeze(
+            recurrence.exceptionDates.map((value) => toDate(value, "exception")),
+          ),
+        }),
     ...(recurrence.recurrenceDates === undefined
       ? {}
       : {
           recurrenceDates: Object.freeze(
             recurrence.recurrenceDates.map((value) =>
-              typeof value === "string" || !("start" in value) ? toDate(value) : value,
+              typeof value === "string" || !("start" in value) ? toDate(value, "extra") : value,
             ),
           ),
         }),

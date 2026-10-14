@@ -164,6 +164,9 @@ test("a date alone excludes every occurrence that day, on a timed series too", (
   );
 
   expect(String(series.recurrence?.exceptionDates?.[0])).toBe("2026-10-28");
+  expect(() =>
+    buildRecurringEvent({ recurrenceDates: ["2026-10-30"], rule: "FREQ=WEEKLY", timeZone: "UTC" }),
+  ).toThrow(/needs a time/);
   expect(occurrences.map(({ interval }) => String(interval.start))).toEqual([
     "2026-10-21T07:00:00Z",
     "2026-11-04T08:00:00Z",

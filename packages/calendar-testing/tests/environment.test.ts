@@ -42,6 +42,11 @@ test("at() reads times as today's, wall times on the zone and exact text as it i
   expect(environment.at("2026-11-02T09:00[Europe/Berlin]").toString()).toBe("2026-11-02T08:00:00Z");
   // A date with a zone is midnight there, not on the environment's clock.
   expect(environment.at("2026-11-02[Europe/Berlin]").toString()).toBe("2026-11-01T23:00:00Z");
+  expect(environment.at("2026-11-02T09:00[!Europe/Berlin][u-ca=iso8601]").toString()).toBe(
+    "2026-11-02T08:00:00Z",
+  );
+  // A calendar annotation alone names no zone: the wall time is New York's.
+  expect(environment.at("2026-11-02T09:00[u-ca=iso8601]").toString()).toBe("2026-11-02T14:00:00Z");
 });
 
 test("a wall time in a DST gap resolves later, as Root does", () => {

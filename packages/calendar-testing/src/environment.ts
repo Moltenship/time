@@ -32,8 +32,11 @@ export function requireTemporal(): void {
   }
 }
 
-/** A bracketed time zone, such as `[Europe/Berlin]`; `[u-ca=…]` names a calendar instead. */
-const zoneAnnotation = /\[(?!u-)[^\]]+\]/u;
+/**
+ * A bracketed time zone, such as `[Europe/Berlin]` or `[!Europe/Berlin]`; annotations with a `=`,
+ * such as `[u-ca=iso8601]`, name something else.
+ */
+const zoneAnnotation = /\[!?[^\]=]+\]/u;
 
 /** Whether ISO text names an exact time: a `Z` or an offset after the time, or a time zone. */
 function isExact(text: string): boolean {
