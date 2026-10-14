@@ -53,7 +53,7 @@ packed code carries the `/*!` notice.
 | `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `calendar-temporal`, `ics` |
 | `@moltenship/ics` | Standalone iCalendar parsing (ADR 0151) | None |
 | `showcase` | Consumer-equivalent documentation and examples | Public facade, `calendar-recurrence`, `calendar-dnd-kit`, `calendar-testing` and `@moltenship/ics` |
-| `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade only |
+| `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade; its tests also use `calendar-testing` |
 | `fixtures` | Internal deterministic fixture generation | `calendar-core` |
 | `benchmark` | Internal core, React and recurrence benchmark runners | Core, React bindings, recurrence, Temporal utilities, and fixture tooling |
 | `demo` | The Google Calendar-style demo app | Public facade, `calendar-recurrence` and `calendar-dnd-kit` |

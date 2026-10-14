@@ -47,9 +47,10 @@ export const publishedPackages: readonly PublishedPackage[] = [
   { directory: "calendar-recurrence", budgets: { ".": { raw: 152 * KiB, gzip: 42 * KiB } } },
   { directory: "calendar-temporal", budgets: { ".": { raw: 30 * KiB, gzip: 7 * KiB } } },
   // The test harness (#45): the environment, builders and harness were 22,207 raw and 6,954 gzip
-  // bytes; queries, keyboard and pointer drivers and assertions took it to 53,086 and 15,291, with
-  // the calendar, recurrence and React left as imports. 56 and 16 KiB leave the usual headroom.
-  { directory: "calendar-testing", budgets: { ".": { raw: 56 * KiB, gzip: 16 * KiB } } },
+  // bytes; queries, drivers and assertions took it to 53,086 and 15,291, and the fixtures to 61,378
+  // and 17,717, with the calendar, recurrence and React left as imports. 64 and 19 KiB leave the
+  // usual headroom.
+  { directory: "calendar-testing", budgets: { ".": { raw: 64 * KiB, gzip: 19 * KiB } } },
   // ics keeps the Unicode License v3 of its CLDR data in its build: 1.2 KiB gzip, which took it
   // to 25,267 of 25,600 bytes. 26 KiB leaves the usual headroom.
   { directory: "ics", budgets: { ".": { raw: 88 * KiB, gzip: 26 * KiB } } },

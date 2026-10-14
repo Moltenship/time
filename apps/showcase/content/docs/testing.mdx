@@ -40,7 +40,8 @@ throw an error that says so when `Temporal` is missing.
 if (!("Temporal" in globalThis)) await import("temporal-polyfill/global");
 ```
 
-The harness sets React's `IS_REACT_ACT_ENVIRONMENT` flag when it first renders, and leaves it on.
+The harness turns on React's `IS_REACT_ACT_ENVIRONMENT` flag when it first renders, unless your
+setup set it already.
 
 ## A fixed clock and zone
 
@@ -94,6 +95,25 @@ event's `timeZone`, UTC by default, and `timeZone` becomes the event's `sourceTi
 
 An event's `id` defaults to its title and its title to its ID, so `buildEvent({ title: "Standup" })`
 is the event `"Standup"`.
+
+## Fixtures
+
+Fixtures are ready datasets for contract tests: tests that every view, or your custom one, should
+pass on the same data. Each is a function that builds new records, with the environment,
+resources and `Root` props it's meant for, so spreading it into the harness's options renders it.
+Merge `rootProps` when you pass your own.
+
+| Fixture                    | Data                                                                                                                                                                                                           |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `denseDayFixture()`        | Thursday 8 October 2026 in UTC: 30 overlapping timed events, from back-to-back half hours to four at once, two across midnight, and three all-day events                                                       |
+| `dstWeekFixture("fall")`   | New York's week to Sunday 1 November 2026, when the clocks go back: a 09:00 standup a day, an event in the repeated hour, one across the change. `"spring"` gives the week to 8 March, when an hour is skipped |
+| `multiZoneSeriesFixture()` | Series in Berlin, Los Angeles and Tokyo, shown in UTC from 19 October 2026, across Berlin's and Los Angeles' DST changes a week apart. Expand them with `@moltenship/calendar-recurrence`                      |
+| `resourceDayFixture()`     | A team in three zones, one with hours of its own, and rooms under a parent; events on one resource, on several, and on none; working hours as `rootProps.availability`                                         |
+
+Their events are canonical, with `data: { group }`, so type your calendar with `FixtureEvent` and
+`FixtureResource`.
+
+<include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#fixtures</include>
 
 ## Render a calendar
 

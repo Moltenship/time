@@ -6,8 +6,10 @@ the registry views, your policies and your save logic.
 - **A deterministic environment.** `createTestEnvironment()` fixes `now`, the time zone, the locale,
   the week rules and the direction, and passes them to `Root` as props. The calendar reads the
   current time only from `now` or `clock`, so nothing global is patched.
-- **Builders.** `buildEvent`, `buildAllDayEvent`, `buildResource`, `buildRecurringEvent` and
-  `buildAvailability` make typed records with defaults you override.
+- **Builders and fixtures.** `buildEvent`, `buildAllDayEvent`, `buildResource`,
+  `buildRecurringEvent` and `buildAvailability` make typed records with defaults you override.
+  `denseDayFixture`, `dstWeekFixture`, `multiZoneSeriesFixture` and `resourceDayFixture` are ready
+  datasets for contract tests.
 - **A render harness.** `renderCalendar(Calendar, options)` renders your calendar's `Root` with
   controlled events inside React's `act`, applies the changes it saves, and records every
   `onEventChange` and `onEventChangeResult` call. `hydrateCalendar` renders on the server first and

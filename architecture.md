@@ -90,7 +90,7 @@ time/
 │   ├── calendar-dnd/             # pointer interaction adapter (native Pointer Events)
 │   ├── calendar-dnd-kit/         # optional dnd-kit adapter: items dragged in, events dragged out
 │   ├── calendar/                 # DX-first public facade
-│   ├── calendar-testing/         # test harness for apps: environment, builders, render harness
+│   ├── calendar-testing/         # test harness for apps: environment, builders, fixtures, harness, drivers
 │   ├── calendar-recurrence/      # range-bounded recurrence (RRULE, exceptions, series edits)
 │   └── ics/                      # standalone iCalendar parsing (RFC 5545)
 ├── registry/
@@ -1374,9 +1374,11 @@ time grids' events inside their columns. Its keyboard driver moves focus through
 roving tab stop and presses keys on the focused element inside `act`, through the grab mode; its
 pointer driver dispatches Pointer Events at measured points, a long press for touch, re-measuring
 the drop each frame, and needs layout and real timers, so it runs in a browser and throws in jsdom.
-No test runner dependency: `tools/a11y` runs the drivers on the registry's views in Chromium on
-every PR and in Firefox and WebKit in the full gate, and `registry/tests` uses the harness in
-jsdom.
+Fixtures give contract tests ready datasets: a dense day, a DST week, series in three zones and a
+resource day. No test runner dependency: `tools/a11y` runs the drivers on the registry's views in
+Chromium on every PR and in Firefox and WebKit in the full gate, `registry/tests` uses the harness
+and the fixtures in jsdom, and the SSR fixture hydrates through it, on the dry run's tarballs in
+`release:artifacts`.
 
 ### Browser verification
 

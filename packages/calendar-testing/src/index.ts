@@ -49,3 +49,10 @@ export { PointerLayoutError } from "./pointer";
 export type { Point, PointerDriver, PointerOptions } from "./pointer";
 export { CalendarQueryError, normalizeText } from "./queries";
 export type { CellQuery, EventQuery } from "./queries";
+export {
+  denseDayFixture,
+  dstWeekFixture,
+  multiZoneSeriesFixture,
+  resourceDayFixture,
+} from "./fixtures";
+export type { CalendarFixture, FixtureEvent, FixtureResource } from "./fixtures";

@@ -16,8 +16,10 @@ import {
   buildEvent,
   cleanup,
   createTestEnvironment,
+  dstWeekFixture,
   hydrateCalendar,
   renderCalendar,
+  type FixtureEvent,
 } from "@moltenship/calendar-testing";
 
 import { calendarAnnouncements } from "@/components/calendar/announcements";
@@ -118,6 +120,23 @@ test("queries find events by title, and cells by date", async () => {
   expect(document.activeElement?.getAttribute("aria-label")).toBe("Thursday, October 8 at 2:00 PM");
 });
 // #endregion queries
+
+// #region fixtures
+const FixtureCalendar = createCalendar<FixtureEvent>()({
+  eventAdapter: createCanonicalEventAdapter<{ readonly group: string }>(),
+  views: [createWeekView<FixtureEvent>()],
+});
+
+test("a move a day on keeps an event's wall time across the clocks going back", async () => {
+  // New York's week of Sunday 1 November 2026, with a 09:00 standup every day.
+  const calendar = await renderCalendar(FixtureCalendar, { ...dstWeekFixture(), view: "week" });
+
+  await calendar.keyboard.moveEvent("d6", { across: 1 });
+  await calendar.settled();
+
+  expect(calendar.placementOf("d6").wallRange).toBe("2026-11-01T09:00/2026-11-01T09:30");
+});
+// #endregion fixtures
 
 // #region hydrate
 test("the week renders on the server and hydrates without a mismatch", async () => {

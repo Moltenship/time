@@ -4,6 +4,7 @@ import {
   createCalendar,
   defineCalendarView,
   defineEventAdapter,
+  eventIdAttributes,
   plainDateInterval,
 } from "@moltenship/calendar";
 
@@ -31,7 +32,7 @@ export interface DeterministicCalendarFixtureProps {
   readonly environment: CalendarFixtureEnvironment;
 }
 
-interface FixtureEvent {
+export interface FixtureEvent {
   readonly end: Temporal.Instant;
   readonly id: string;
   readonly resourceIds: readonly string[];
@@ -39,7 +40,7 @@ interface FixtureEvent {
   readonly title: string;
 }
 
-interface FixtureResource {
+export interface FixtureResource {
   readonly id: string;
   readonly title: string;
 }
@@ -62,14 +63,16 @@ const fixtureView = defineCalendarView({
     createElement(
       "ol",
       { "data-calendar-view": true },
-      projection.map((event) => createElement("li", { key: event.id }, event.title)),
+      projection.map((event) =>
+        createElement("li", { key: event.id, ...eventIdAttributes(event.id) }, event.title),
+      ),
     ),
 });
-const FixtureCalendar = createCalendar<FixtureEvent, FixtureResource>()({
+export const FixtureCalendar = createCalendar<FixtureEvent, FixtureResource>()({
   eventAdapter: fixtureEventAdapter,
   views: [fixtureView],
 });
-const fixtureEvents: readonly FixtureEvent[] = Object.freeze([
+export const fixtureEvents: readonly FixtureEvent[] = Object.freeze([
   Object.freeze({
     end: Temporal.Instant.from("2026-08-15T10:00:00Z"),
     id: "fixture-event",
@@ -78,7 +81,7 @@ const fixtureEvents: readonly FixtureEvent[] = Object.freeze([
     title: "Fixture event",
   }),
 ]);
-const fixtureResources: readonly FixtureResource[] = Object.freeze([
+export const fixtureResources: readonly FixtureResource[] = Object.freeze([
   Object.freeze({ id: "fixture-resource", title: "Fixture resource" }),
 ]);
 

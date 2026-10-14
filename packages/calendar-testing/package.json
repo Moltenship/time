@@ -1,7 +1,7 @@
 {
   "name": "@moltenship/calendar-testing",
   "version": "0.0.0",
-  "description": "Test helpers for apps built on Moltenship Time: a deterministic environment, typed builders, a render and hydration harness, queries, and keyboard and pointer drivers.",
+  "description": "Test helpers for apps built on Moltenship Time: a deterministic environment, typed builders and fixtures, a render and hydration harness, queries, and keyboard and pointer drivers.",
   "homepage": "https://time.molten.sh/docs/testing",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
