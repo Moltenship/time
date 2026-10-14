@@ -14,9 +14,9 @@ import { useUnschedule } from "../unschedule";
 export interface UnscheduledTasksProps {
   /**
    * Opens the event editor for a task, the way to schedule it without dragging. Focus goes back
-   * to `list` when the editor closes, as the task's own button may be gone by then.
+   * to `opener` when the editor is cancelled, and to `list` once the task is saved away.
    */
-  readonly onSchedule: (task: DemoTask, list: HTMLElement | null) => void;
+  readonly onSchedule: (task: DemoTask, opener: HTMLElement, list: HTMLElement | null) => void;
   readonly taskList: DemoTaskList;
 }
 
@@ -87,7 +87,7 @@ export function UnscheduledTasks({ onSchedule, taskList }: UnscheduledTasksProps
           <TaskItem
             key={task.id}
             id={`${task.id}${listId}`}
-            onSchedule={(scheduled) => onSchedule(scheduled, listRef.current)}
+            onSchedule={(scheduled, opener) => onSchedule(scheduled, opener, listRef.current)}
             task={task}
           />
         ))}
@@ -102,7 +102,7 @@ function TaskItem({
   task,
 }: {
   readonly id: string;
-  readonly onSchedule: (task: DemoTask) => void;
+  readonly onSchedule: (task: DemoTask, opener: HTMLElement) => void;
   readonly task: DemoTask;
 }) {
   // What the calendar makes of the task when it's dropped there: an event under the task's ID,
@@ -118,10 +118,13 @@ function TaskItem({
     }),
     [task],
   );
-  // A dropped task waits for its event to save; it can't be dragged again meanwhile.
+  // A dropped task waits for its event to save, and an unscheduled one for its event's delete; it
+  // can't be dragged or scheduled again meanwhile.
   const saving = DemoCalendar.useCalendarPendingChanges((changes) =>
     [...changes.values()].some(
-      ({ change }) => change.cause === "create" && change.event?.id === task.id,
+      ({ change }) =>
+        (change.cause === "create" && change.event?.id === task.id) ||
+        (change.cause === "delete" && change.eventId === task.id),
     ),
   );
   const { isDragSource, ref } = useDraggable({ data, disabled: saving, id });
@@ -138,6 +141,7 @@ function TaskItem({
         data-color={getCalendarColor(task.calendarId)}
         aria-busy={saving || undefined}
         data-dragging={isDragSource || undefined}
+        data-task-id={task.id}
         data-over-calendar={overCalendar || undefined}
       >
         <GripVerticalIcon aria-hidden className="mt-0.5 size-3.5 shrink-0 opacity-50" />
@@ -150,7 +154,8 @@ function TaskItem({
       </button>
       <Button
         aria-label={`Schedule ${task.title}`}
-        onClick={() => onSchedule(task)}
+        disabled={saving}
+        onClick={(click) => onSchedule(task, click.currentTarget)}
         size="icon-sm"
         variant="ghost"
       >
@@ -158,4 +163,14 @@ function TaskItem({
       </Button>
     </li>
   );
+}
+
+/**
+ * Moves focus to a task's card, as after its event was unscheduled from the popover, once the card
+ * has rendered. Nothing happens where the list isn't shown, as on a phone.
+ */
+export function focusTask(id: string): void {
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLElement>(`aside [data-task-id="${CSS.escape(id)}"]`)?.focus();
+  });
 }

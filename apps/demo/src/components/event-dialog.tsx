@@ -265,6 +265,8 @@ function EventForm({
       <Label className="w-fit">
         <Checkbox
           checked={draft.allDay}
+          // A task goes on a time slot, so it can go back to the unscheduled tasks.
+          disabled={initial.newId !== undefined}
           onCheckedChange={(checked) => update({ allDay: checked === true })}
         />
         All day

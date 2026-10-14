@@ -69,7 +69,7 @@ import { viewFor } from "./scrolling";
 import { applySeriesEdit, type DemoSeriesEdit, type SeriesEditExtras } from "./series-edits";
 import { useDemoTasks, type DemoTask } from "./tasks";
 import { isUnscheduling } from "./unschedule";
-import { UnscheduledTasks } from "./components/unscheduled-tasks";
+import { focusTask, UnscheduledTasks } from "./components/unscheduled-tasks";
 import { useCalendarLocation } from "./url-state";
 
 /** How long a simulated save takes, so the pending state is visible. */
@@ -197,8 +197,10 @@ export function App() {
     followOpenEvent,
   );
   const [draft, setDraft] = useState<EventDraft | null>(null);
-  // The task the editor is scheduling, which leaves the list once the event is saved.
+  // The task the editor is scheduling, which leaves the list once the event is saved, and the list
+  // focus goes back to then, as the task's button goes with it.
   const [draftTask, setDraftTask] = useState<string | null>(null);
+  const scheduleList = useRef<HTMLElement | null>(null);
   // Where focus goes back to when a range created in a view closes its dialog: the day or slot
   // a keyboard create ended on. Base UI's default covers the Create button and the "c" key.
   const [createdFrom, setCreatedFrom] = useState<HTMLElement | null>(null);
@@ -394,7 +396,10 @@ export function App() {
         saveSeriesEdit(edit, renamedIds(edit, change, rule), extras);
       }
       setDraft(null);
-      if (draftTask !== null) removeTask(draftTask);
+      if (draftTask !== null) {
+        setCreatedFrom(scheduleList.current);
+        removeTask(draftTask);
+      }
       setDraftTask(null);
       const notice = warningNotice(save.warnings);
       if (notice !== null) showNotice(notice);
@@ -405,10 +410,11 @@ export function App() {
 
   // Schedules a task without dragging it: the editor opens on it, for the shown date.
   const scheduleTask = useCallback(
-    (task: DemoTask, list: HTMLElement | null) => {
+    (task: DemoTask, opener: HTMLElement, list: HTMLElement | null) => {
       setSidebarOpen(false);
       setOpenEvent(null);
-      setCreatedFrom(list);
+      setCreatedFrom(opener);
+      scheduleList.current = list;
       setDraft(draftForTask(task, location.date, Temporal.Now.zonedDateTimeISO(timeZone)));
       setDraftTask(task.id);
     },
@@ -537,6 +543,11 @@ export function App() {
               occurrence={shownEvent}
               onClose={() => setOpenEvent((current) => current && { ...current, eventId: null })}
               onEdit={openEdit}
+              onUnscheduled={({ event, id }) => {
+                // The calendar speaks only for gestures; a button's unschedule needs a voice.
+                showNotice(`Moved “${event.title}” to Unscheduled.`);
+                focusTask(id);
+              }}
               taskList={tasks}
               timeZone={timeZone}
             />

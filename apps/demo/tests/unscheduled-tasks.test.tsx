@@ -112,6 +112,19 @@ test("the popover unschedules a one-off event into a task, which no undo takes b
   expect(undoToast()).toBeNull();
 });
 
+test("the popover's Unschedule says what it did and moves focus to the task", async () => {
+  await act(async () => root.render(<App />));
+
+  await unscheduleFromPopover("focus-time");
+  await settle();
+
+  expect(
+    document.querySelector('[role="status"]:not([data-calendar-part])')?.textContent,
+  ).toContain("Moved “Focus time” to Unscheduled.");
+  expect(document.activeElement?.getAttribute("data-task-id")).toBe("focus-time");
+  await pastSaveDelay();
+});
+
 test("an unschedule that fails to save brings the event back and takes the task away", async () => {
   await act(async () => root.render(<App />));
   const failSaves = [...container.querySelectorAll('[role="checkbox"]')].find((checkbox) =>
@@ -147,6 +160,8 @@ test("the editor schedules a task under its own ID, and keeps it when cancelled"
   });
   await settle();
   expect(taskTitles()).toEqual(["Call the dentist"]);
+  // Cancelled, focus goes back to the button that opened the editor.
+  expect(document.activeElement).toBe(schedule());
 
   await act(async () => schedule()?.click());
   await settle();

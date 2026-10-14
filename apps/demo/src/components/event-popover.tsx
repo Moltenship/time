@@ -27,6 +27,8 @@ export interface EventPopoverProps {
   readonly occurrence: DemoOccurrence | undefined;
   readonly onClose: () => void;
   readonly onEdit: (occurrence: DemoOccurrence) => void;
+  /** Hears an event the popover unscheduled, to say so and move focus to its task. */
+  readonly onUnscheduled: (occurrence: DemoOccurrence) => void;
   /** The unscheduled tasks, which "Unschedule" moves a timed one-off event into. */
   readonly taskList: Pick<DemoTaskList, "addTask" | "removeTask" | "resets">;
   readonly timeZone: string;
@@ -38,13 +40,14 @@ export function EventPopover({
   occurrence,
   onClose,
   onEdit,
+  onUnscheduled,
   taskList,
   timeZone,
 }: EventPopoverProps) {
   const onUnschedule = useUnschedule(taskList);
   const titleId = useId();
   const actions = DemoCalendar.useCalendarActions();
-  const handingOffToEditor = useRef(false);
+  const handingOffFocus = useRef(false);
   const event = occurrence?.event;
   const calendar = demoCalendars.find(({ id }) => id === event?.calendarId);
   const repeats =
@@ -74,12 +77,11 @@ export function EventPopover({
             <PopoverPrimitive.Popup
               aria-labelledby={titleId}
               className="z-50 flex w-80 origin-(--transform-origin) flex-col gap-2.5 rounded-lg bg-popover p-3 text-sm text-popover-foreground shadow-md ring-1 ring-foreground/10 outline-hidden duration-100 data-[side=bottom]:slide-in-from-top-2 data-[side=top]:slide-in-from-bottom-2 data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95"
-              // Opening the editor hands focus to its dialog; a plain dismissal returns it to the
-              // event the popover was opened from.
+              // Opening the editor hands focus to its dialog, and unscheduling to the event's task; a
+              // plain dismissal returns it to the event the popover was opened from.
               finalFocus={() => {
-                if (!handingOffToEditor.current)
-                  return anchor?.isConnected === true ? anchor : true;
-                handingOffToEditor.current = false;
+                if (!handingOffFocus.current) return anchor?.isConnected === true ? anchor : true;
+                handingOffFocus.current = false;
                 return false;
               }}
             >
@@ -89,7 +91,7 @@ export function EventPopover({
                   <Button
                     aria-label="Edit event"
                     onClick={() => {
-                      handingOffToEditor.current = true;
+                      handingOffFocus.current = true;
                       onEdit(occurrence);
                     }}
                     size="icon-sm"
@@ -102,8 +104,11 @@ export function EventPopover({
                   <Button
                     aria-label="Unschedule event"
                     onClick={() => {
+                      // The event goes once its delete saves, so focus moves to its task instead.
+                      handingOffFocus.current = true;
                       onClose();
                       onUnschedule(occurrence);
+                      onUnscheduled(occurrence);
                     }}
                     size="icon-sm"
                     variant="ghost"
