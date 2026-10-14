@@ -87,7 +87,7 @@ Open:
 7. ~~**Registry views don't declare `"use client"`**: a Server Component that imports a view directly fails.~~ Closed by #213 (#190).
 8. **God files**: no check. The largest: `calendar-recurrence/src/series/expander.ts` (815 lines), `calendar-core/src/snapshots/event-snapshot.ts` (708), `calendar-react/src/root.ts` (687), `ics/src/types.ts` (621), `calendar-recurrence/src/edits/series.ts` (528), `registry/time-grid-view/time-grid-annotations.tsx` (520). *Owner decision:* a `max-lines` warning, or review.
 9. **No manual screen-reader passes**, which §17 requires before release. #186, a 1.0 blocker. It needs a person at VoiceOver and NVDA.
-10. **Focus out of view in WebKit's scrolling agenda** after some keys, about half the time (WCAG 2.4.11). #185, a 1.0 blocker. With #204's waits the tests check the list at rest, and it still fails in 1 to 3 of 4 cases a run: a product bug, not the tests.
+10. **Focus out of view in WebKit's scrolling agenda** after some keys, about half the time (WCAG 2.4.11). #185, not a blocker: the owner accepted it for rc.1 as a known issue (14 October 2026), and it's p2. With #204's waits the tests check the list at rest, and it still fails in 1 to 3 of 4 cases a run: a product bug, not the tests.
 11. **An empty week's scroll area has nothing to focus** (axe `scrollable-region-focusable`, serious, tagged WCAG 2.1.1, Level A). Arrow keys do reach the slots from the grid. #180. *Owner decision:* a 1.0 blocker or not (#207).
 12. **Other browser findings.** WebKit tests skipped there until they're fixed, or rewritten if the test is at fault: the agenda's end, the 10,000-event agenda on the polyfill in CI, a day swipe's and a month step's snap points, a drag against the edge (#181). Playwright's Firefox doesn't start on macOS 27 (#182), so a local full run there is WebKit alone. CI's `browsers` job is stable now (#192, closed).
 13. ~~**Release tooling.**~~ Closed by #177.
@@ -111,13 +111,13 @@ Base UI makes its focus guards unnamed buttons in WebKit on purpose, for VoiceOv
 
 ## Open issues: p0 and p1
 
-The only p0 issues are the two epics that track the release. The p1s are this audit's findings, and #207, the owner's checklist for the release itself, which closes after publishing.
+The only p0 issues were the two epics that track the release; since 14 October 2026 they have no priority. The p1s are this audit's findings, and #207, the owner's checklist for the release itself, which closes after publishing. #185 is p2 since the owner accepted it for rc.1 as a known issue.
 
 | Issue | Remaining | Proposal for the owner |
 | --- | --- | --- |
-| #1 Calendar roadmap (p0 epic) | Its open sub-issue is #5; its body also lists #45. | Close it with the 1.0 release, or drop its priority: it tracks, it doesn't block. |
-| #5 Epic 7: demo, docs, registry, release (p0) | #45 and #47; #43 and #46 closed. | Move #45, now post-1.0, under a post-1.0 parent; then close #5 with #47. |
-| #185 Safari: focus left out of view in the scrolling agenda (p1) | A product bug, confirmed after #204's waits. | Fix before the RC, or ship rc.1 with it as a known issue. |
+| #1 Calendar roadmap (was p0, epic) | Its open sub-issue is #5; its body also lists #45. | Done: its priority is dropped (14 October 2026). It tracks, it doesn't block. |
+| #5 Epic 7: demo, docs, registry, release (was p0) | #45 and #47; #43 and #46 closed. | Its priority is dropped (14 October 2026). Move #45, now post-1.0, under a post-1.0 parent; then close #5 with #47. |
+| #185 Safari: focus left out of view in the scrolling agenda (p2, was p1) | A product bug, confirmed after #204's waits. | Decided: rc.1 ships with it as a known issue (owner, 14 October 2026). |
 | #186 Manual VoiceOver and NVDA passes (p1) | Needs a person at each screen reader. | Run before the RC, as its title says. |
 
 Done in this triage: #45 (publish `calendar-testing`) left the 1.0 milestone. #146 and the owner's comment on it keep the package private for 1.0 (#175). #192 (a stable CI `browsers` job) closed: seven green dispatched runs in a row since #204's first version.
@@ -131,11 +131,11 @@ Each open finding, and whether it blocks the release candidate. The owner's step
 | Finding | Blocks rc.1? | Why |
 | --- | --- | --- |
 | The docs site in production | No, resolved | It serves at `https://time.molten.sh`, with the registry at `/r/registry.json`. Every package's `homepage`, the registry's URLs and the `shadcn add` lines point there (#210); the old Vercel domain is gone. |
-| #185, focus out of view in the scrolling agenda in WebKit | Yes, unless the owner accepts it | WCAG 2.2 AA is the release gate (§17), and it's p1. The evidence is Playwright's WebKit 27.2 on `temporal-polyfill`; a check in Safari would help that call. |
+| #185, focus out of view in the scrolling agenda in WebKit | No: a known issue | The owner accepted it for rc.1 as a known issue (14 October 2026), and it's p2 now. It fails WCAG 2.4.11 in Playwright's WebKit 27.2 on `temporal-polyfill`; a check in Safari would still help. |
 | #186, the screen-reader passes | Yes | §17 asks for them before release; its title says before the RC. |
 | #200, `CalendarEventSource` exported but unused | No: done | Built, not removed: `Root` takes a source, so the API reports can freeze with it. |
 | The npm scope, the `npm` environment, the publish path, rc.1 or 1.0.0, and a `release.yml` rehearsal | Yes | Owner setup and decisions, in #207. |
-| #1 and #5, the p0 epics | Relabel | Trackers, not work; they keep "no p0/p1 left" from being true. |
+| #1 and #5, the p0 epics | No: relabeled | Trackers, not work. Their priority labels are gone (14 October 2026), so they no longer keep "no p0/p1 left" from being true. |
 | #180, an empty week's scroll area | No; the owner decides for 1.0 | Tagged WCAG 2.1.1 (Level A) by axe, though arrow keys reach the slots. |
 | #201, read-only roots still start drags and grabs | No, resolved | Fixed in #214: views get `isReadOnly`, and a root without `onEventChange` starts no drags, grabs or resize handles. |
 | #198, keyboard previews mark the event `isPending` | No, fix before 1.0 | A wrong state during a keyboard gesture. If rc.1 goes out first, `latest` points at it, so default installs get it until 1.0. |

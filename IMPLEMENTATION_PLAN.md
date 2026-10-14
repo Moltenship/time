@@ -59,8 +59,9 @@ tooling (#46) is done, and the full tier runs the SSR fixture, the docs site and
 clean apps on the dry run's tarballs (`vp run release:artifacts`). Next in the second phase of the
 release audit (#47): the full release dry run, the screen-reader passes (#186) and the release
 candidate report, with a green CI `browsers` run (#192). `CalendarEventSource` was built, not
-removed, before the API reports freeze (#200). The audit's proposed 1.0 blockers:
-#185, #186.
+removed, before the API reports freeze (#200). The audit's proposed 1.0 blocker: #186. #185,
+focus left out of view in Safari's scrolling agenda, isn't one: the owner accepted it for rc.1 as a
+known issue (14 October 2026).
 
 ## Later
 
@@ -68,8 +69,8 @@ Deferred work. Use the linked open issue where one exists; otherwise open a new 
 issue's "Later" section when work starts.
 
 - Annotations in month, agenda and resource views (#132)
-- Cross-browser test matrix: Chromium, Firefox, WebKit (#133); the first Firefox and WebKit run's
-  follow-ups: WebKit failures (#181), Playwright's Firefox on macOS 27 (#182)
+- [x] Cross-browser test matrix: Chromium, Firefox, WebKit (#133), done in #183; its follow-ups:
+  WebKit failures (#181), Playwright's Firefox on macOS 27 (#182)
 - Release audit findings for after 1.0 unless the owner says otherwise: an empty week's focus
   target (#180), DST shifts (#187), performance benchmarks (#188),
   resource-view parity (#189). The owner moved a public read of pending changes (#199) before 1.0,

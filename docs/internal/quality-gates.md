@@ -131,9 +131,9 @@ installs the polyfill before any test imports, as an app would, and a test check
 - Reduced motion stays in its own Chromium context.
 - Base UI's focus guards are unnamed buttons in WebKit, on purpose, for VoiceOver; `axe.ts` exempts
   them as it already does for `aria-hidden-focus`.
-- Some tests skip in WebKit: focus kept in view in the scrolling agenda (#185, a 1.0 blocker), and
-  until #181 the agenda's end, the 10,000-event agenda scroll (too slow on the polyfill in CI), a
-  day swipe's and a month step's snap points, and a drag against the edge.
+- Some tests skip in WebKit: focus kept in view in the scrolling agenda (#185, a known issue for
+  rc.1), and until #181 the agenda's end, the 10,000-event agenda scroll (too slow on the polyfill
+  in CI), a day swipe's and a month step's snap points, and a drag against the edge.
 - Playwright's Firefox doesn't start on macOS 27 (#182). There the run leaves it out and says so;
   CI runs it on Linux in the on-demand `browsers` job and in the release gate, green since #204
   (#192).
