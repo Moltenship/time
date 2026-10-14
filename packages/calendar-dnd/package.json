@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-dnd",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.1",
   "description": "Pointer drag, resize, and create interactions for Moltenship Time views.",
   "homepage": "https://time.molten.sh/docs/interactions",
   "bugs": {

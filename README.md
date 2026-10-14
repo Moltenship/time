@@ -8,11 +8,10 @@ and own.
 **[Documentation](https://time.molten.sh/docs)** ·
 **[Live demo](https://moltenship-time-demo.vercel.app)**
 
-> **Status: pre-1.0.** The packages aren't published to npm yet, and the API will change before 1.0.
+> **Status: release candidate.** The packages are on npm as a release candidate for 1.0.0. The API
+> can still change before 1.0.0 if the release candidate turns up problems.
 
 ## Install
-
-After the first release:
 
 ```bash
 pnpm add @moltenship/calendar react react-dom

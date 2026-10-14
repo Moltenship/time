@@ -6,9 +6,21 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
 
 ## Unreleased
 
-- First public release of `@moltenship/calendar`, `calendar-core`, `calendar-dnd`,
-  `calendar-dnd-kit`, `calendar-react`, `calendar-recurrence`, `calendar-temporal`,
-  `calendar-testing` and `ics`.
+## 1.0.0-rc.1 (2026-10-14)
+
+The first public release, a release candidate for 1.0.0, of `@moltenship/calendar`,
+`calendar-core`, `calendar-dnd`, `calendar-dnd-kit`, `calendar-react`, `calendar-recurrence`,
+`calendar-temporal`, `calendar-testing` and `ics`. Time is a React 19 calendar built on the Temporal
+API. It reads timed, all-day and floating events from your own records through an adapter, handles
+time zones and daylight saving time, and turns moves, resizes and creates, by pointer, touch or
+keyboard, into changes you save, through policies such as working hours and conflicts. The week,
+day, month, year, agenda, resource column and resource timeline views, and views that scroll
+without end, are shadcn/ui-style source you copy from the registry and own. Recurring series, with
+edits to one occurrence, the following ones or all, and iCalendar parsing are separate packages.
+The API can still change before 1.0.0 if the release candidate turns up problems. The notes below
+cover the work since this changelog started (#46), so some of them describe changes to code that
+was never released.
+
 - Hooks for animating the calendar from the app, as the new "Animate with Motion" guide does. A
   `monitorCalendarDrags` follower hears `preview(preview)` whenever the view's preview changes,
   with its boxes in viewport coordinates, the time range it shows and what the policies would say,
@@ -36,6 +48,9 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   comment that bundlers keep, in its built code.
 - A `Root` without `onEventChange` is read-only in its views too: they start no drags or keyboard
   grabs and draw no resize handles. Renderers get `isReadOnly` to tell (#201).
+- Registry components that call hooks, create a context or set event handlers start with
+  `"use client"`, so a Server Component, such as a page in Next.js's App Router, can import them
+  (#190).
 - Touch drags start after a 450 ms press instead of 250 ms, so a finger that rests before it
   scrolls still scrolls. The pointer layer listens for `touchmove` from the touch's start, so iOS
   Safari lets a drag hold the page still. On touch screens, editable built-in views select no text

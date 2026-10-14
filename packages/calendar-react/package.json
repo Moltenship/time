@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-react",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.1",
   "description": "Headless React integration for Moltenship Time.",
   "homepage": "https://time.molten.sh/docs/api/react",
   "bugs": {

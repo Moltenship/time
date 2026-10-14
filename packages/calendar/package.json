@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar",
-  "version": "0.0.0",
+  "version": "1.0.0-rc.1",
   "description": "DX-first supported facade for Moltenship Time.",
   "homepage": "https://time.molten.sh/docs",
   "bugs": {

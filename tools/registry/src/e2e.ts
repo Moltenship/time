@@ -23,9 +23,9 @@ import { startLocalRegistryServer, type LocalRegistryServer } from "./server";
  * `shadcn add <url>/calendar-full.json` against a registry built and served locally, then
  * typecheck and build. Needs the network for npm and shadcn's own components.
  *
- * - `REGISTRY_E2E_PACKAGES=local` (default): the runtime packages aren't on npm yet, so they are
- *   packed from the workspace and served from a local npm registry for the `@moltenship` scope.
- *   `npm` installs the published packages instead, once they exist.
+ * - `REGISTRY_E2E_PACKAGES=local` (default): the runtime packages are packed from the workspace,
+ *   so the test checks the registry against the code beside it, and served from a local npm
+ *   registry for the `@moltenship` scope. `npm` installs the published packages instead.
  * - `REGISTRY_E2E_TARBALLS=<dir>`: serve these tarballs instead of packing, such as a release dry
  *   run's. Either way, each app's lockfile must have our packages with the served tarballs' hashes.
  * - `REGISTRY_E2E_APPS=vite,next`: which apps to make.
