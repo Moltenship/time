@@ -27,6 +27,10 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   keyboard grab mode; `calendar.pointer` drags with a mouse, pen or finger in a browser and throws a
   `PointerLayoutError` in jsdom; `settled()`, `announcements()` and `placementOf()` wait for saves
   and read what the calendar said and shows (#45).
+- `@moltenship/calendar-testing` has fixtures for contract tests: `denseDayFixture`,
+  `dstWeekFixture({ change })` and `resourceDayFixture`, each with the environment, resources and
+  `Root` props it's meant for, and `multiZoneSeriesFixture`'s series to expand. Their IDs, times
+  and counts change only in a major version (#45).
 - `@moltenship/ics` is licensed `MIT AND Unicode-3.0`: its Windows time zone mapping comes from
   Unicode CLDR. The license text ships in the package's `THIRD-PARTY-NOTICES.md` and, as a legal
   comment that bundlers keep, in its built code.

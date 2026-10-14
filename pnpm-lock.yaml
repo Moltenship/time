@@ -537,6 +537,9 @@ importers:
         specifier: 'catalog:'
         version: 19.3.0(react@19.3.0)
     devDependencies:
+      '@moltenship/calendar-testing':
+        specifier: workspace:*
+        version: link:../../packages/calendar-testing
       '@types/jsdom':
         specifier: 'catalog:'
         version: 30.0.0

@@ -77,6 +77,15 @@ interface CalendarChangeResult<TEvent, TEventId extends EventId = EventId, TReso
   readonly detail: CalendarProposalDetail;
   readonly result: CalendarTransactionResult<TEvent, TEventId, TResourceId>;
 }
+interface CalendarFixture<TEvent, TResource = never> {
+  readonly environment: TestEnvironment;
+  readonly events: readonly TEvent[];
+  readonly resources?: readonly TResource[];
+  readonly rootProps?: {
+    readonly availability?: CalendarAvailability;
+    readonly defaultExpandedResourceIds?: readonly string[];
+  };
+}
 interface CalendarHarness<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> extends CalendarInspection<TEventId, TResourceId> {
   readonly container: HTMLElement;
   readonly environment: TestEnvironment;
@@ -127,6 +136,9 @@ interface CellQuery<TResourceId extends ResourceId = ResourceId> {
 }
 type DateInput = Temporal.PlainDate | string;
 type DateTimeInput = Temporal.Instant | Temporal.ZonedDateTime | string;
+interface DstWeekOptions {
+  readonly change?: "fall" | "spring";
+}
 interface EventBaseInput<TData, TEventId extends EventId, TResourceId extends ResourceId> {
   readonly id?: TEventId;
   readonly title?: string;
@@ -155,6 +167,15 @@ type EventQuery<TEventId extends EventId = EventId> = string | number | {
 } | {
   readonly start: DateTimeInput | Temporal.PlainDate | Temporal.PlainDateTime;
 };
+type FixtureEvent = CalendarEvent<{
+  readonly group: string;
+}>;
+type FixtureResource = CalendarResource<{
+  readonly group: string;
+}>;
+type FixtureSeriesEvent = RecurringCalendarEvent<{
+  readonly group: string;
+}>;
 type HarnessOwnedProp = "children" | "clock" | "events" | "now" | "onEventChange" | "onEventChangeResult";
 type HoursInput = string | {
   readonly start: Temporal.PlainTime | string;
@@ -251,6 +272,10 @@ interface ResourceInput<TData = null, TResourceId extends ResourceId = string> {
 type ResourceQuery<TResourceId extends ResourceId = ResourceId> = TResourceId | null | {
   readonly title: string;
 };
+interface SeriesFixture<TEvent> {
+  readonly environment: TestEnvironment;
+  readonly series: readonly TEvent[];
+}
 interface SettleOptions {
   readonly timeout?: number;
 }
@@ -300,9 +325,13 @@ export declare function buildResource<TData = null, TResourceId extends Resource
 export declare function cleanup(): Promise<void>;
 export declare function createTestClock(start?: DateTimeInput): TestClock;
 export declare function createTestEnvironment(options?: TestEnvironmentOptions): TestEnvironment;
+export declare function denseDayFixture(): CalendarFixture<FixtureEvent>;
+export declare function dstWeekFixture(options?: DstWeekOptions): CalendarFixture<FixtureEvent>;
 export declare function hydrateCalendar<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId>(Calendar: CalendarFactory<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, options?: RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>): Promise<HydratedCalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>>;
+export declare function multiZoneSeriesFixture(): SeriesFixture<FixtureSeriesEvent>;
 export declare function normalizeText(text: string | null | undefined): string;
 export declare function renderCalendar<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId>(Calendar: CalendarFactory<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, options?: RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>): Promise<CalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>>;
+export declare function resourceDayFixture(): CalendarFixture<FixtureEvent, FixtureResource>;
 export declare function withRecurrence<TData, TEventId extends EventId, TResourceId extends ResourceId>(event: CalendarEvent<TData, TEventId, TResourceId>, recurrence: RecurrenceInput): RecurringCalendarEvent<TData, TEventId, TResourceId>;
 
 export {
@@ -312,6 +341,7 @@ export {
   type AvailabilityExceptionInput,
   type AvailabilityInput,
   type CalendarChangeResult,
+  type CalendarFixture,
   type CalendarHarness,
   type CalendarHarnessFor,
   type CalendarHarnessRootProps,
@@ -320,9 +350,13 @@ export {
   type CellQuery,
   type DateInput,
   type DateTimeInput,
+  type DstWeekOptions,
   type EventFocusOptions,
   type EventPlacementSummary,
   type EventQuery,
+  type FixtureEvent,
+  type FixtureResource,
+  type FixtureSeriesEvent,
   type HoursInput,
   type HydratedCalendarHarness,
   type KeyModifiers,
@@ -335,6 +369,7 @@ export {
   type RenderCalendarOptions,
   type ResourceInput,
   type ResourceQuery,
+  type SeriesFixture,
   type SettleOptions,
   type TestClock,
   type TestEnvironment,

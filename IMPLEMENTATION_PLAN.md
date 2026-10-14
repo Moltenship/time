@@ -39,6 +39,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | Undo and redo  | #227             | Opt-in: `createEventHistory` records committed changes from `onEventChangeResult` and undoes them by proposing the inverse through the pipeline, dropping steps changed elsewhere; `useCalendarHistory` with announcements, `useCalendarHistoryShortcuts`, the registry's undo toast, the demo and a docs page. A bundle without it keeps none of it. Recurring events aren't supported yet |
 | Quality gate   | #47              | The local gate in three tiers, the same tasks CI runs: `vp run ready:quick`, `ready` and `ready:full` (#179); the a11y suite fixed at the causes of CI's flakes, and run at CI's speed in the full gate (#178); the a11y suite and real mouse and keyboard interactions in Firefox and WebKit, WebKit on `temporal-polyfill` (`vp run browsers`, #183) |
 | Release audit  | #47 (phase 1)    | `docs/internal/release-audit.md`: each invariant in `architecture.md` linked to its proof, the gaps filed (#180–#182, #184–#192), the open p0 and p1 issues triaged |
+| Test harness   | #45              | `@moltenship/calendar-testing`, published with the others: a fixed `now`, zone and locale through `Root`'s props; builders and fixtures (a dense day, a DST week, series in three zones, a resource day); `renderCalendar` and `hydrateCalendar` with controlled events and recorded changes and results; queries by the calendar's own events and the pointer layer's attributes; keyboard drivers through the grab mode, pointer and touch drivers in browser mode; `settled`, announcements and placements. Used by registry tests, browser tests in `tools/a11y`, the SSR fixture on the dry run's tarballs, and the Testing docs page |
 | Release tooling | #46             | One version for the nine published packages, `CHANGELOG.md` and `release:version`; size budgets, API reports, publint and are-the-types-wrong checks, a clean-consumer install from the pnpm store and a dry run that writes a manifest; a manual publish step, local or from a `workflow_dispatch` workflow with provenance, that refuses without a passing dry run. Runbook in `docs/internal/releasing.md`. MIT `LICENSE` in every tarball (#175) |
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
@@ -56,12 +57,11 @@ latest releases.
 ## Next: 1.0 — Public release
 
 The shadcn registry shipped (#43), and `calendar-testing`, the test harness for apps, publishes with
-1.0 (#45: its environment, builders, harness, queries and drivers are in; fixtures next). Release
-tooling (#46) is done, and the full tier runs the SSR fixture, the docs site and the registry's
-clean apps on the dry run's tarballs (`vp run release:artifacts`). Next in the second phase of the
-release audit (#47): the full release dry run, the screen-reader passes (#186) and the release
-candidate report, with a green CI `browsers` run (#192). `CalendarEventSource` was built, not
-removed, before the API reports freeze (#200). The audit's proposed 1.0 blocker: #186. #185,
+1.0 (#45). Release tooling (#46) is done, and the full tier runs the SSR fixture, the docs site and
+the registry's clean apps on the dry run's tarballs (`vp run release:artifacts`). Next in the second
+phase of the release audit (#47): the full release dry run, the screen-reader passes (#186) and the
+release candidate report, with a green CI `browsers` run (#192). `CalendarEventSource` was built,
+not removed, before the API reports freeze (#200). The audit's proposed 1.0 blocker: #186. #185,
 focus left out of view in Safari's scrolling agenda, isn't one: the owner accepted it for rc.1 as a
 known issue (14 October 2026).
 
