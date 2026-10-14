@@ -62,18 +62,21 @@ re-export either. It turns series into occurrences that the calendar shows as or
 `@moltenship/calendar-dnd-kit` connects the calendar to dnd-kit, for apps that drag their own items
 into it. It's optional and not re-exported, so the calendar's install carries no dnd-kit.
 
+Tests use `@moltenship/calendar-testing`, a development dependency: see [Testing](/docs/testing).
+
 ## Packages
 
-| Package                           | Contents                                                                                                 | Dependencies                                                   |
-| --------------------------------- | -------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `@moltenship/calendar`            | Re-exports `calendar-react`, `-core`, `-temporal` and `-dnd`                                             | Those four; React 19 (peer)                                    |
-| `@moltenship/calendar-react`      | `createCalendar`, `defineCalendarView`, components, hooks, store                                         | `calendar-core`, `calendar-temporal`; React 19 (peer)          |
-| `@moltenship/calendar-core`       | Adapters, validation, snapshots, queries, changes and policies, view strategies, availability. No React. | `calendar-temporal`, `@flatten-js/interval-tree`               |
-| `@moltenship/calendar-temporal`   | Ranges, grids, rounding, zoned days, DST                                                                 | None                                                           |
-| `@moltenship/calendar-dnd`        | Pointer drag, resize, and create for views                                                               | `calendar-core`, `calendar-temporal`; React 19 (peer)          |
-| `@moltenship/ics`                 | iCalendar parsing into Temporal values. Not re-exported.                                                 | None                                                           |
-| `@moltenship/calendar-recurrence` | Series expansion, occurrence IDs, series edits. Not re-exported.                                         | `calendar-core`, `calendar-temporal`, `ics`                    |
-| `@moltenship/calendar-dnd-kit`    | dnd-kit items dragged in, events dragged out. Not re-exported.                                           | `calendar-dnd`, `calendar-core`; React 19, dnd-kit 0.5 (peers) |
+| Package                           | Contents                                                                                                     | Dependencies                                                      |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
+| `@moltenship/calendar`            | Re-exports `calendar-react`, `-core`, `-temporal` and `-dnd`                                                 | Those four; React 19 (peer)                                       |
+| `@moltenship/calendar-react`      | `createCalendar`, `defineCalendarView`, components, hooks, store                                             | `calendar-core`, `calendar-temporal`; React 19 (peer)             |
+| `@moltenship/calendar-core`       | Adapters, validation, snapshots, queries, changes and policies, view strategies, availability. No React.     | `calendar-temporal`, `@flatten-js/interval-tree`                  |
+| `@moltenship/calendar-temporal`   | Ranges, grids, rounding, zoned days, DST                                                                     | None                                                              |
+| `@moltenship/calendar-dnd`        | Pointer drag, resize, and create for views                                                                   | `calendar-core`, `calendar-temporal`; React 19 (peer)             |
+| `@moltenship/ics`                 | iCalendar parsing into Temporal values. Not re-exported.                                                     | None                                                              |
+| `@moltenship/calendar-recurrence` | Series expansion, occurrence IDs, series edits. Not re-exported.                                             | `calendar-core`, `calendar-temporal`, `ics`                       |
+| `@moltenship/calendar-dnd-kit`    | dnd-kit items dragged in, events dragged out. Not re-exported.                                               | `calendar-dnd`, `calendar-core`; React 19, dnd-kit 0.5 (peers)    |
+| `@moltenship/calendar-testing`    | A test harness for your calendar: fixed clock, builders, render and hydration. See [Testing](/docs/testing). | `calendar`, `calendar-recurrence`; React and React DOM 19 (peers) |
 
 Every package is ESM only. Import from the package name: paths inside a package aren't part of the
 API.

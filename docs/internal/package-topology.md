@@ -7,8 +7,8 @@ ownership. A workspace may import only the public entry points of workspaces lis
 Entry points expose only contracts approved by their owning implementation issues. Calendar core
 and Temporal expose the canonical engine contracts. Calendar React exposes its state/SSR layer and
 the issue #26 factory, compound context, and custom-view surface. The internal fixtures and
-benchmark workspaces own reproducible data and performance protocol code. Every package except
-`calendar-testing` is implemented; `calendar-testing` exports nothing until #45.
+benchmark workspaces own reproducible data and performance protocol code. `calendar-testing`
+exposes the test harness apps use (#45), built on the facade's and recurrence's public API only.
 
 Publishable workspaces expose `src/index.ts` inside the checkout so declared package imports work
 before any ignored build output exists. pnpm applies each package's `publishConfig.exports` while
@@ -18,10 +18,9 @@ packing, replacing that development entry with `dist/index.mjs` and `dist/index.
 
 ## Published packages
 
-Eight packages will publish to npm under `@moltenship`: `calendar`, `calendar-core`,
-`calendar-dnd`, `calendar-dnd-kit`, `calendar-react`, `calendar-recurrence`, `calendar-temporal`
-and `ics`.
-`calendar-testing` is an empty stub and stays `private` until after 1.0 (#45). The list, with each
+Nine packages will publish to npm under `@moltenship`: `calendar`, `calendar-core`,
+`calendar-dnd`, `calendar-dnd-kit`, `calendar-react`, `calendar-recurrence`, `calendar-temporal`,
+`calendar-testing` and `ics`. The list, with each
 entry point's size budget, is in [`tools/release/src/config.ts`](../../tools/release/src/config.ts);
 [releasing.md](./releasing.md) covers versions, release checks and publishing.
 
@@ -50,10 +49,10 @@ packed code carries the `/*!` notice.
 | `@moltenship/calendar-dnd` | Pointer interaction adapter (native Pointer Events) | `calendar-core`, `calendar-temporal` |
 | `@moltenship/calendar-dnd-kit` | Optional dnd-kit adapter: items dragged into the calendar, events dragged out (#237) | `calendar-core`, `calendar-dnd` |
 | `@moltenship/calendar` | Supported public facade | `calendar-core`, `calendar-dnd`, `calendar-react`, `calendar-temporal` |
-| `@moltenship/calendar-testing` | Consumer test helpers; private until after 1.0 (#45) | Public facade, dnd adapter, and Temporal utilities |
+| `@moltenship/calendar-testing` | Test helpers for apps: environment, builders, render and hydration harness (#45) | Public facade and `calendar-recurrence` |
 | `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `calendar-temporal`, `ics` |
 | `@moltenship/ics` | Standalone iCalendar parsing (ADR 0151) | None |
-| `showcase` | Consumer-equivalent documentation and examples | Public facade, `calendar-recurrence`, `calendar-dnd-kit` and `@moltenship/ics` |
+| `showcase` | Consumer-equivalent documentation and examples | Public facade, `calendar-recurrence`, `calendar-dnd-kit`, `calendar-testing` and `@moltenship/ics` |
 | `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade only |
 | `fixtures` | Internal deterministic fixture generation | `calendar-core` |
 | `benchmark` | Internal core, React and recurrence benchmark runners | Core, React bindings, recurrence, Temporal utilities, and fixture tooling |
@@ -64,12 +63,12 @@ packed code carries the `/*!` notice.
 | `release` | Internal release tooling: size budgets, API reports, export checks, clean-consumer install, dry run, publish | None; it reads built and packed packages from disk |
 
 External dependencies are added by the issue that validates their contract. React 19 is a peer of
-`calendar-react`, `calendar-dnd`, `calendar-dnd-kit` and `calendar`. `calendar-react` has no
-runtime dependency outside the workspace; it dropped Jotai in #70 (ADR 0070). `calendar-core`
-depends on `@flatten-js/interval-tree` behind its internal `IntervalIndex` (ADR 0016). dnd-kit
-(`@dnd-kit/react` and `@dnd-kit/dom` 0.5) is a peer of `calendar-dnd-kit` alone, which no other
-package depends on; the `a11y` tests use it with the adapter, and `tools/dnd-adapter-spike` keeps
-the old spike (ADR 0037). TanStack Virtual is a registry-source dependency, not a
+`calendar-react`, `calendar-dnd`, `calendar-dnd-kit`, `calendar` and `calendar-testing`, and React
+DOM 19 of `calendar-testing`. `calendar-react` has no runtime dependency outside the workspace; it
+dropped Jotai in #70 (ADR 0070). `calendar-core` depends on `@flatten-js/interval-tree` behind its
+internal `IntervalIndex` (ADR 0016). dnd-kit (`@dnd-kit/react` and `@dnd-kit/dom` 0.5) is a peer
+of `calendar-dnd-kit` alone, which no other package depends on; the `a11y` tests use it with the
+adapter, and `tools/dnd-adapter-spike` keeps the old spike (ADR 0037). TanStack Virtual is a registry-source dependency, not a
 package one. Playwright and axe-core are `tools/a11y` development dependencies. The `*-spike`
 workspaces under `tools/` import no workspace.
 
@@ -93,7 +92,7 @@ calendar-core + calendar-dnd + calendar-react + calendar-temporal
        ↓
 calendar (facade) ─────→ showcase / ssr-fixture / demo / registry-source / a11y
        ↓
-calendar-testing ← calendar-dnd / calendar-temporal
+calendar-testing (also imports calendar-recurrence) ─────→ showcase
 
 calendar-core + calendar-temporal + ics ─────→ calendar-recurrence ─────→ showcase / demo / benchmark / a11y
 

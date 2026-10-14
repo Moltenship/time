@@ -38,6 +38,7 @@
     "tw-animate-css": "catalog:"
   },
   "devDependencies": {
+    "@moltenship/calendar-testing": "workspace:*",
     "@tailwindcss/postcss": "catalog:",
     "@types/mdx": "catalog:",
     "@types/node": "catalog:",

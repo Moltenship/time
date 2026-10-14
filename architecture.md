@@ -67,8 +67,9 @@ The application owns facts. The engine derives render models. React binds those 
 6. The showcase and the demo import packages only through their public entry points, and registry source in place. In the full tier and the release gate, `vp run release:artifacts` runs the SSR fixture's tests and builds and serves the docs site in copies outside the workspace, installed from the dry run's packed tarballs as an end user would, and installs the built registry into clean Vite and Next.js apps on the same tarballs (#203).
 7. No package may deep-import another package's `src/` directory.
 8. The iCalendar package imports no other workspace, so applications can use it without the calendar (ADR 0151).
-9. The recurrence package depends on core, the Temporal utilities and `ics`. No other published package and no registry source imports it (ADR 0048).
+9. The recurrence package depends on core, the Temporal utilities and `ics`. No other published package but the test harness, and no registry source, imports it (ADR 0048).
 10. The dnd-kit adapter (`calendar-dnd-kit`) imports `calendar-dnd`, core, React and dnd-kit, which is its peer, and nothing else of ours: not the React bindings or the facade. It is the only package that imports dnd-kit, and no other package, the facade included, or registry source imports it (#237).
+11. The test harness, `calendar-testing`, imports only what apps import: the `@moltenship/calendar` facade and `@moltenship/calendar-recurrence`, never the packages behind the facade (#45).
 
 ## 3. Repository and package topology
 
@@ -89,7 +90,7 @@ time/
 │   ├── calendar-dnd/             # pointer interaction adapter (native Pointer Events)
 │   ├── calendar-dnd-kit/         # optional dnd-kit adapter: items dragged in, events dragged out
 │   ├── calendar/                 # DX-first public facade
-│   ├── calendar-testing/         # empty until #45; private until after 1.0
+│   ├── calendar-testing/         # test harness for apps: environment, builders, render harness
 │   ├── calendar-recurrence/      # range-bounded recurrence (RRULE, exceptions, series edits)
 │   └── ics/                      # standalone iCalendar parsing (RFC 5545)
 ├── registry/
@@ -139,11 +140,11 @@ carries no documentation.
 | `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements; drags in from and out to the rest of the page. | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable adapter; no DOM event types in callbacks   |
 | `@moltenship/calendar-dnd-kit`    | Optional dnd-kit adapter: a draggable carrying `calendarDropData` drops into the views; events a view moves become dnd-kit drags for the app's droppables. | `calendar-dnd`, `calendar-core`; React 19, `@dnd-kit/react` and `@dnd-kit/dom` 0.5 peers | Optional adapter; pre-1.0 like dnd-kit's own 0.x |
 | `@moltenship/calendar`            | The ergonomic entry point used by most consumers. Re-exports core, the Temporal utilities, the React bindings and the pointer adapter. | `calendar-core`, `calendar-temporal`, `calendar-react`, `calendar-dnd`; React 19 peer | Stable facade                                     |
-| `@moltenship/calendar-testing`    | Not built yet (#45): deterministic clocks, event builders, keyboard drivers, view harnesses, assertions. Exports nothing today. | Public calendar packages                                                                  | Private until after 1.0 (#45)                     |
+| `@moltenship/calendar-testing`    | Test helpers for apps (#45): a deterministic environment, typed builders, a render and hydration harness that records `onEventChange` and `onEventChangeResult`. Built only on public entry points. | `calendar` (the facade), `calendar-recurrence`; React 19 and React DOM 19 peers           | Publishes with 1.0, in lockstep                   |
 | `@moltenship/calendar-recurrence` | Range-bounded RRULE expansion, occurrence identity, exceptions and overrides, explicit series edits (ADR 0048).            | `calendar-core`, `calendar-temporal`, `ics`                                               | Publishes with 1.0, in lockstep                   |
 | `@moltenship/ics`                 | iCalendar syntax tree, typed values and components, TZID resolution, Standard Schema parser. Parses RRULEs; doesn't expand them. | None                                                                                      | Pre-1.0                                           |
 
-All of these publish except `calendar-testing`, which stays private until after 1.0 (#45). Package versions move in lockstep until after `1.0`. The lockfile pins every implementation dependency; the `pnpm-workspace.yaml` catalog sets most exactly and a few as caret ranges. The published packages that use React (`calendar-react`, `calendar-dnd`, `calendar-dnd-kit` and `calendar`) declare a `^19.0.0` peer. `calendar-dnd-kit` also declares `@dnd-kit/react` and `@dnd-kit/dom` `^0.5.0`, which for 0.x means 0.5 only; there are no other peers.
+All of these publish. Package versions move in lockstep until after `1.0`. The lockfile pins every implementation dependency; the `pnpm-workspace.yaml` catalog sets most exactly and a few as caret ranges. The published packages that use React (`calendar-react`, `calendar-dnd`, `calendar-dnd-kit`, `calendar` and `calendar-testing`) declare a `^19.0.0` peer. `calendar-dnd-kit` also declares `@dnd-kit/react` and `@dnd-kit/dom` `^0.5.0`, which for 0.x means 0.5 only, and `calendar-testing` React DOM `^19.0.0`, which it renders and hydrates with; there are no other peers.
 
 ### External dependency ledger
 
@@ -1352,6 +1353,15 @@ Automated axe checks, keyboard integration tests, reduced-motion tests, and manu
 - Optimistic confirm/reject races.
 - Custom view installed without internal imports.
 
+### Apps' tests
+
+`@moltenship/calendar-testing` (#45) gives apps a harness for their calendars, built only on public
+entry points: `createTestEnvironment` fixes `now`, the zone, the locale, week rules and direction
+through `Root`'s props, as §15 requires, so nothing global is patched; builders make canonical
+events, resources, series and availability; `renderCalendar` renders an app's `Root` with
+controlled events and records `onEventChange` and `onEventChangeResult`; and `hydrateCalendar`
+fails on a hydration mismatch. It runs in jsdom and happy-dom, with no test runner dependency.
+
 ### Browser verification
 
 - Chromium on every PR (`vp run a11y`); Firefox and WebKit in `vp run browsers` (the full gate, and
@@ -1501,7 +1511,7 @@ Deliver:
 - typed factory and `{ state, actions, meta }` context;
 - an isolated per-instance store and independent controlled slices (Jotai at first; `calendar-react` dropped it in #70);
 - SSR snapshots;
-- view registry, selector hooks, and an internal render/hydrate test harness (the public `calendar-testing` package follows after 1.0, #45).
+- view registry, selector hooks, and an internal render/hydrate test harness (apps get theirs from `calendar-testing`, #45).
 
 Gate: two calendars remain isolated; controlled values never lag a render; a third-party test view uses public contracts only.
 
@@ -1557,7 +1567,8 @@ Deliver:
 
 - complete Fumadocs content and showcase labs on the phase 3 platform;
 - granular/full registry items;
-- migration/diff and ownership workflows (the testing package follows after 1.0, #45);
+- migration/diff and ownership workflows;
+- the `calendar-testing` harness apps test their calendars with (#45);
 - browser compatibility and package-size reports.
 
 Gate: every public claim links to a passing automated or recorded manual check; navigation, search,
