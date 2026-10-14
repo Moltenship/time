@@ -2,9 +2,10 @@ name: Release
 
 # Manual only: the owner starts it from the Actions tab on main. The first job runs the release
 # gate and the dry run; the second publishes the tarballs the dry run checked, with npm provenance.
-# After publishing, the third waits for npm to serve the release, checks it against the dry run,
-# and tags the commit with a GitHub release; the fourth installs the release from npm into clean
-# apps. Every step is a `vp run` task that also runs locally; see docs/internal/releasing.md.
+# After publishing, one job waits for npm to serve the release and checks it against the dry run;
+# then one tags the commit with a GitHub release, the only job that can write to the repository,
+# and one installs the release from npm into clean apps. Every step is a `vp run` task that also
+# runs locally; see docs/internal/releasing.md.
 on:
   workflow_dispatch:
     inputs:
@@ -119,16 +120,13 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: vp run release:publish --version "$VERSION" ${TAG:+--tag "$TAG"} --provenance --yes
 
-  release:
-    name: Check npm and write the GitHub release
+  published:
+    name: Check what npm serves
     needs: publish
     if: inputs.publish && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     # npm can take minutes to list a new package; release:published waits up to 15.
-    timeout-minutes: 30
-    permissions:
-      # The tag and the GitHub release.
-      contents: write
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -141,7 +139,6 @@ jobs:
           node-version: "26"
           cache: true
 
-      # No install scripts while this job can write to the repository. The checks need none.
       - name: Install locked dependencies
         run: vp install --frozen-lockfile --ignore-scripts
 
@@ -157,6 +154,37 @@ jobs:
           TAG: ${{ inputs.tag }}
         run: vp run release:published --version "$VERSION" ${TAG:+--tag "$TAG"} --provenance
 
+  github:
+    name: Tag the commit and write the GitHub release
+    needs: published
+    if: inputs.publish && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      # The tag and the GitHub release.
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@v1.21.1
+        with:
+          node-version: "26"
+          cache: true
+
+      # No install scripts while this job can write to the repository. The task needs none.
+      - name: Install locked dependencies
+        run: vp install --frozen-lockfile --ignore-scripts
+
+      - name: Get the checked tarballs and manifest
+        uses: actions/download-artifact@v8
+        with:
+          name: release
+          path: .release
+
       - name: Tag the commit and write the GitHub release
         env:
           VERSION: ${{ inputs.version }}
@@ -166,7 +194,7 @@ jobs:
 
   install:
     name: Install the release from npm
-    needs: release
+    needs: published
     if: inputs.publish && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 20

@@ -30,7 +30,7 @@ on what the dry run packed.
 | `vp run release:consumer` | Installs the tarballs into a new project outside the workspace, from the pnpm store, with every third-party package at the version the workspace locks (offline, unless a cold cache needs metadata from npm, which it says); imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away | Full |
 | `vp run release:dry-run` | A fresh build of every published package, then all of the above, the registry smoke, and a registry build into `.release/registry` that must ask for the packed version. Writes `.release/manifest.json` | Full |
 | `vp run release:artifacts` | What uses the release, on the dry run's tarballs and registry, with their hashes checked: the SSR fixture's render and hydration tests and the docs site's build, routes and example tests, each in a copy outside the workspace, installed offline from the pnpm store (a cold cache reads metadata from npm); and #43's install test, `shadcn add` into clean Vite and Next.js apps, which needs the network for npm and shadcn's own components. See [quality-gates.md](./quality-gates.md#release-artifacts) | Full |
-| `vp run release:published` | After publishing: waits up to 15 minutes for npm to list every package the dry run packed, then checks each one's integrity against the dry run's tarball, its dist-tag, and with `--provenance` its provenance. Reads `.release/manifest.json`, or `--manifest <path>` | After publishing |
+| `vp run release:published` | After publishing: waits up to 15 minutes for npm to list every package the dry run packed, and fails as soon as a listed one differs: its integrity from the dry run's tarball, its dist-tag from the version (unless a newer release has taken it), or with `--provenance` its provenance. Reads `.release/manifest.json`, or `--manifest <path>` | After publishing |
 | `REGISTRY_E2E_PACKAGES=npm vp run registry:e2e` | After publishing: #43's install test with the packages from npm, into clean Vite and Next.js apps | After publishing |
 
 The PR checks read the built packages, so on their own they run after `vp run ci:build`. Only the
@@ -73,11 +73,11 @@ packs nothing, and refuses a manifest from another commit or a file whose hash c
      `vp run release:publish --version <v> --provenance --yes` on the same commit. Only that job
      can mint the OIDC token that signs npm provenance.
 
-     Step 5 then runs by itself. The `release` job runs `vp run release:published` and
-     `vp run release:github` with the same artifact and a token that can write tags and releases.
-     The `install` job runs `REGISTRY_E2E_PACKAGES=npm vp run registry:e2e` with read access only,
-     since it runs shadcn and the apps' installs and builds. If a job fails, re-run it: every step
-     is safe to repeat.
+     Step 5 then runs by itself. The `published` job runs `vp run release:published` on the same
+     artifact. Once it passes, the `github` job runs `vp run release:github`, the only job with a
+     token that can write tags and releases, and the `install` job runs
+     `REGISTRY_E2E_PACKAGES=npm vp run registry:e2e` with read access only, since it runs shadcn
+     and the apps' installs and builds. If a job fails, re-run it: every step is safe to repeat.
 
      Before the first run, set up the `npm` environment in the repository settings:
      - deployment branches: `main` only;
@@ -107,14 +107,15 @@ packs nothing, and refuses a manifest from another commit or a file whose hash c
 5. **After publishing.** The release workflow does these; after a local publish, run the commands
    above.
    - **Check what npm serves.** `vp run release:published --version <v>` waits for npm, which can
-     take minutes to list a new package, then checks that each package's `dist.integrity` matches
-     its `integrity` in `.release/manifest.json`, that the dist-tag points at the version, and with
-     `--provenance` that the package has provenance. If a package differs, deprecate the release
-     and release a new version (Rollback).
+     take minutes to list a new package. Each package it lists must have the `dist.integrity` of
+     its `integrity` in `.release/manifest.json`, its dist-tag at the version, and with
+     `--provenance` provenance; the first that doesn't fails the check at once. If a package
+     differs, deprecate the release and release a new version (Rollback).
    - **Tag and release.** `vp run release:github --version <v>` tags the commit the dry run checked
      `v<version>` and writes the GitHub release from the changelog section, one line per paragraph
-     and list item. A prerelease is marked as one. A release that's already there is left alone,
-     and a tag on another commit stops it.
+     and list item. A prerelease is marked as one. Like the publish step, it refuses a commit that
+     isn't on `origin/main`. A published release is left alone; a draft, or a tag on another
+     commit, stops it.
    - **Install it as a user would.** `REGISTRY_E2E_PACKAGES=npm vp run registry:e2e` builds the
      registry from the commit and runs #43's install test with the packages from npm: `shadcn add`
      into clean Vite and Next.js apps, then a typecheck and a build.

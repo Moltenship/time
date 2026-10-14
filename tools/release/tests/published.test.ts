@@ -34,24 +34,29 @@ const options = { version: "1.0.0-rc.1", tag: "next", provenance: true };
 
 describe("what npm serves after publishing", () => {
   test("accepts the dry run's tarballs under their tag, with provenance", () => {
-    expect(checkPublished(manifest, options, both)).toEqual({ problems: [], pending: [] });
+    expect(checkPublished(manifest, options, both)).toEqual({
+      problems: [],
+      pending: [],
+      notes: [],
+    });
   });
 
-  test("waits for a version npm doesn't list yet, or a tag it hasn't moved yet", () => {
+  test("waits for a version npm doesn't list yet", () => {
+    const check = checkPublished(manifest, options, new Map([...both, ["@x/a", undefined]]));
+
+    expect(check.problems).toEqual([]);
+    expect(check.pending).toEqual(["npm doesn't list @x/a@1.0.0-rc.1 yet"]);
+  });
+
+  test("says when a newer release has taken the tag since, as on a late re-run", () => {
     const check = checkPublished(
       manifest,
       options,
-      new Map([
-        ["@x/a", undefined],
-        ["@x/b", served("sha512-b", "1.0.0-rc.0")],
-      ]),
+      new Map([...both, ["@x/b", served("sha512-b", "1.0.0-rc.2")]]),
     );
 
     expect(check.problems).toEqual([]);
-    expect(check.pending).toEqual([
-      "npm doesn't list @x/a@1.0.0-rc.1 yet",
-      '@x/b\'s "next" tag points at 1.0.0-rc.0 yet',
-    ]);
+    expect(check.notes).toEqual(['@x/b\'s "next" tag has moved on to 1.0.0-rc.2']);
   });
 
   test.each<[string, ReadonlyMap<string, Packument | undefined>, typeof options, string]>([
@@ -68,6 +73,12 @@ describe("what npm serves after publishing", () => {
       "@x/a@1.0.0-rc.1 has no provenance on npm",
     ],
     ["another version", both, { ...options, version: "1.0.0" }, "checked 1.0.0-rc.1, not 1.0.0"],
+    [
+      "a tag left on an older version",
+      new Map([...both, ["@x/b", served("sha512-b", "1.0.0-rc.0")]]),
+      options,
+      '@x/b\'s "next" tag points at 1.0.0-rc.0, not 1.0.0-rc.1',
+    ],
   ])("fails for good on %s", (_, packuments, checked, message) => {
     expect(checkPublished(manifest, checked, packuments).problems).toEqual(
       expect.arrayContaining([expect.stringContaining(message)]),
