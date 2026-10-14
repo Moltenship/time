@@ -4,6 +4,7 @@ const packageNames = [
   "calendar",
   "calendar-core",
   "calendar-dnd",
+  "calendar-dnd-kit",
   "calendar-react",
   "calendar-recurrence",
   "calendar-temporal",
@@ -66,6 +67,25 @@ export default {
       severity: "error",
       from: { path: "(?:^|/)packages/ics/src(?:/|$)" },
       to: { path: ["^@moltenship/", "(?:^|/)packages/(?!ics/)[^/]+/"] },
+    },
+    {
+      name: "only-the-dnd-kit-adapter-imports-dnd-kit",
+      comment:
+        "dnd-kit stays an optional peer of @moltenship/calendar-dnd-kit; no other package imports it.",
+      severity: "error",
+      from: {
+        path: "(?:^|/)packages/[^/]+/src(?:/|$)",
+        pathNot: "(?:^|/)packages/calendar-dnd-kit/src(?:/|$)",
+      },
+      to: { path: "^@dnd-kit/" },
+    },
+    {
+      name: "dnd-kit-adapter-binds-the-pointer-layer",
+      comment:
+        "The dnd-kit adapter binds calendar-dnd and core, never the React bindings or the facade.",
+      severity: "error",
+      from: { path: "(?:^|/)packages/calendar-dnd-kit/src(?:/|$)" },
+      to: { path: ["^@moltenship/calendar-react$", "^@moltenship/calendar$"] },
     },
     {
       name: "engine-has-no-ui-runtime-imports",

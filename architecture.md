@@ -68,6 +68,7 @@ The application owns facts. The engine derives render models. React binds those 
 7. No package may deep-import another package's `src/` directory.
 8. The iCalendar package imports no other workspace, so applications can use it without the calendar (ADR 0151).
 9. The recurrence package depends on core, the Temporal utilities and `ics`. No other published package and no registry source imports it (ADR 0048).
+10. The dnd-kit adapter (`calendar-dnd-kit`) imports `calendar-dnd`, core, React and dnd-kit, which is its peer, and nothing else of ours: not the React bindings or the facade. It is the only package that imports dnd-kit, and no other package, the facade included, or registry source imports it (#237).
 
 ## 3. Repository and package topology
 
@@ -86,6 +87,7 @@ time/
 │   ├── calendar-core/            # data/index/layout/view/transaction engine
 │   ├── calendar-react/           # React provider, store bridge, hooks, primitives
 │   ├── calendar-dnd/             # pointer interaction adapter (native Pointer Events)
+│   ├── calendar-dnd-kit/         # optional dnd-kit adapter: items dragged in, events dragged out
 │   ├── calendar/                 # DX-first public facade
 │   ├── calendar-testing/         # empty until #45; private until after 1.0
 │   ├── calendar-recurrence/      # range-bounded recurrence (RRULE, exceptions, series edits)
@@ -135,12 +137,13 @@ carries no documentation.
 | `@moltenship/calendar-core`       | Event adapters, normalized snapshots, interval indexes, view strategies, fragments, layout engines, policies, transactions.   | `calendar-temporal`; provisional `@flatten-js/interval-tree` behind an internal interface | Stable                                            |
 | `@moltenship/calendar-react`      | Per-instance provider, controlled state bridge, selectors, actions, meta, headless primitives, custom-view renderer contract. | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable                                            |
 | `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements; drags in from and out to the rest of the page. | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable adapter; no DOM event types in callbacks   |
+| `@moltenship/calendar-dnd-kit`    | Optional dnd-kit adapter: a draggable carrying `calendarDropData` drops into the views; events a view moves become dnd-kit drags for the app's droppables. | `calendar-dnd`, `calendar-core`; React 19, `@dnd-kit/react` and `@dnd-kit/dom` 0.5 peers | Optional adapter; pre-1.0 like dnd-kit's own 0.x |
 | `@moltenship/calendar`            | The ergonomic entry point used by most consumers. Re-exports core, the Temporal utilities, the React bindings and the pointer adapter. | `calendar-core`, `calendar-temporal`, `calendar-react`, `calendar-dnd`; React 19 peer | Stable facade                                     |
 | `@moltenship/calendar-testing`    | Not built yet (#45): deterministic clocks, event builders, keyboard drivers, view harnesses, assertions. Exports nothing today. | Public calendar packages                                                                  | Private until after 1.0 (#45)                     |
 | `@moltenship/calendar-recurrence` | Range-bounded RRULE expansion, occurrence identity, exceptions and overrides, explicit series edits (ADR 0048).            | `calendar-core`, `calendar-temporal`, `ics`                                               | Publishes with 1.0, in lockstep                   |
 | `@moltenship/ics`                 | iCalendar syntax tree, typed values and components, TZID resolution, Standard Schema parser. Parses RRULEs; doesn't expand them. | None                                                                                      | Pre-1.0                                           |
 
-All of these publish except `calendar-testing`, which stays private until after 1.0 (#45). Package versions move in lockstep until after `1.0`. The lockfile pins every implementation dependency; the `pnpm-workspace.yaml` catalog sets most exactly and a few as caret ranges. The published packages that use React (`calendar-react`, `calendar-dnd` and `calendar`) declare a `^19.0.0` peer; there are no other peers.
+All of these publish except `calendar-testing`, which stays private until after 1.0 (#45). Package versions move in lockstep until after `1.0`. The lockfile pins every implementation dependency; the `pnpm-workspace.yaml` catalog sets most exactly and a few as caret ranges. The published packages that use React (`calendar-react`, `calendar-dnd`, `calendar-dnd-kit` and `calendar`) declare a `^19.0.0` peer. `calendar-dnd-kit` also declares `@dnd-kit/react` and `@dnd-kit/dom` `^0.5.0`, which for 0.x means 0.5 only; there are no other peers.
 
 ### External dependency ledger
 
@@ -148,7 +151,7 @@ All of these publish except `calendar-testing`, which stays private until after 
 | ------------------------------------- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
 | React 19                              | `calendar-react`, `calendar-dnd`, facade, registry | Rendering, context, refs, SSR, external-store subscription | Peer dependency; absent from core, Temporal utilities, recurrence and `ics` |
 | Jotai 3                               | `tools/react-store-spike` only     | Spike history (ADR 0018); `calendar-react` dropped it in #70 (ADR 0070) | Not a production dependency                                      |
-| `@dnd-kit/react` + `@dnd-kit/dom` 0.x | `tools/dnd-adapter-spike` only     | Spike history; not a production dependency since ADR 0037          | Optional future adapter behind the same semantic contracts       |
+| `@dnd-kit/react` + `@dnd-kit/dom` 0.5 | `calendar-dnd-kit` (peer), `tools/a11y`, `tools/dnd-adapter-spike` | Apps that already use dnd-kit drag their items into the calendar and events out (#237); the spike is history (ADR 0037) | A peer of the optional adapter only; a minor upgrade is a PR to that package alone |
 | TanStack Virtual 3                    | List and resource registry views   | Maintained vertical/horizontal windowing and measurement          | Hidden behind view adapters; not required by core                 |
 | `@flatten-js/interval-tree` 2         | `calendar-core` provisionally      | Established interval-query baseline                               | Hidden behind `IntervalIndex`; retained only if benchmarks pass   |
 | Tailwind CSS 4 + shadcn registry      | Consumer-owned registry source     | Theme-token compatibility and source distribution                 | No runtime import in headless packages                            |
@@ -969,7 +972,7 @@ bundle of the facade's other exports keeps none of the history's modules.
 
 ## 11. Drag, resize, selection, and creation
 
-`@moltenship/calendar-dnd` uses native Pointer Events ([ADR 0037](./docs/adr/0037-native-pointer-events.md)). Core packages know only semantic interaction contracts. Items dragged in from the rest of the page, and events dragged out to it, go through the same layer (below); a dnd-kit adapter can bind it as an option behind the same contracts.
+`@moltenship/calendar-dnd` uses native Pointer Events ([ADR 0037](./docs/adr/0037-native-pointer-events.md)). Core packages know only semantic interaction contracts. Items dragged in from the rest of the page, and events dragged out to it, go through the same layer (below). The optional `@moltenship/calendar-dnd-kit` binds it to dnd-kit; the calendar's own drags stay on native Pointer Events.
 
 ### Performance model
 
@@ -1031,20 +1034,37 @@ library's binding, or native HTML drag and drop, only feeds it points:
   means "over a drop zone of the library's own". The topmost element under the point picks the
   region, so a sheet or dialog over a view hides it; drag images must be `pointer-events: none`,
   as dnd-kit's are. Auto-scroll runs only over a region, once the point has been clear of its
-  edges, so a drag still in a sidebar, or crossing an edge on its way in, leaves the calendar
-  still. Announcements carry `outside: { title? }`; the registry's messages name the item and give
-  no keyboard hints, as its library has its own keys.
+  edges or rested in one of its bands for 250 ms, so a drag still in a sidebar, or crossing an
+  edge on its way in, leaves the calendar still, and one held at an edge scrolls it. Announcements
+  carry `outside: { title? }`; the registry's messages name the item and give no keyboard hints,
+  as its library has its own keys.
 - **Out: `monitorCalendarDrags(monitor)`.** Each move a view starts is offered to the monitors. A
   follower hears the pointer, and while its `claims()` says a drop zone of its own is under it, the
   calendar shows no preview, holds its auto-scroll, and a release there proposes and announces
   nothing: `end(true)` hands it over. Outside the view, or claimed, a copy of the event follows the
   pointer (`data-outside`). Such a drag counts as over the view only where the view is the topmost
   thing under the pointer, so a sheet of drop zones over it hides it, and its edges scroll it only
-  once the pointer has been clear of them since it came back in. `refresh()` re-reads a claim
-  that changed without a pointer move. Resizes and creates aren't offered.
+  once the pointer has been clear of them, or rested at one, since it came back in. `refresh()`
+  re-reads a claim that changed without a pointer move. Resizes and creates aren't offered.
 - **Input.** Proposals keep #199's `input`: `"pointer"`, or `"keyboard"` for a library's keyboard
   sensor. It names the modality; that the item came from outside shows in the change itself, a
   create with `event`.
+- **dnd-kit: `@moltenship/calendar-dnd-kit`.** `<CalendarDndKit />` inside a `DragDropProvider`
+  (or `connectCalendarDragDrop(manager)`, shared by every call for a manager) registers one
+  droppable per region on the manager, under an opaque ID. Its detector claims dnd-kit's highest
+  priority only where the view is the topmost thing under the pointer: an app droppable around or
+  under the calendar loses there, and one over it wins. A draggable whose `data` carries
+  `calendarDropData(source)` starts a `startCalendarDrop` session on `dragstart`, follows
+  `dragmove`'s `to` (or `by`, from the keyboard sensor) and drops or cancels on `dragend`.
+  Calendar events have no dnd-kit sensor. A move the pointer layer starts reaches dnd-kit only once
+  the pointer leaves the view: then it's mirrored into the manager with `actions.start`/`move`/
+  `stop`, from a draggable of type `calendarEventType` whose element is an invisible stand-in,
+  since dnd-kit measures the drag's shape, which collision detection needs, from its source's
+  element through its Feedback plugin. The stand-in's Feedback options are set after it registers,
+  so the app's own stay. The follower claims the point while the target is an app droppable.
+  dnd-kit's `AutoScroller` is off while the point is over a view, checked before dnd-kit applies
+  each move. dnd-kit 0.5 is pre-1.0, so the peer range is `^0.5.0` and an upgrade touches this
+  package alone.
 
 ### Policy pipeline
 

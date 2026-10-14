@@ -27,6 +27,7 @@ const expectedWorkspaceDependencies = {
   ],
   "@moltenship/calendar-core": ["@moltenship/calendar-temporal"],
   "@moltenship/calendar-dnd": ["@moltenship/calendar-core", "@moltenship/calendar-temporal"],
+  "@moltenship/calendar-dnd-kit": ["@moltenship/calendar-core", "@moltenship/calendar-dnd"],
   "@moltenship/calendar-react": ["@moltenship/calendar-core", "@moltenship/calendar-temporal"],
   "@moltenship/calendar-recurrence": [
     "@moltenship/calendar-core",
@@ -63,6 +64,7 @@ const workspaceManifestPaths = [
   "packages/calendar/package.json",
   "packages/calendar-core/package.json",
   "packages/calendar-dnd/package.json",
+  "packages/calendar-dnd-kit/package.json",
   "packages/calendar-react/package.json",
   "packages/calendar-recurrence/package.json",
   "packages/calendar-temporal/package.json",
@@ -79,6 +81,7 @@ const publishableManifestPaths = [
   "packages/calendar/package.json",
   "packages/calendar-core/package.json",
   "packages/calendar-dnd/package.json",
+  "packages/calendar-dnd-kit/package.json",
   "packages/calendar-react/package.json",
   "packages/calendar-recurrence/package.json",
   "packages/calendar-temporal/package.json",

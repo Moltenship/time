@@ -124,7 +124,7 @@ export async function publish(options: {
       }
     }
 
-    // Look at all seven before publishing any. A re-run after a partial publish skips what is out,
+    // Look at all eight before publishing any. A re-run after a partial publish skips what is out,
     // but only if it is the tarball this dry run checked; otherwise npm would mix two builds.
     const published = new Map<string, string | undefined>();
     for (const { name, integrity } of manifest.packages) {

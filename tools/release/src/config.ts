@@ -28,10 +28,12 @@ export const publishedPackages: readonly PublishedPackage[] = [
   // (#233) to 197,523 raw and 51,097 gzip bytes. Apps that don't import the history bundle none of
   // it (`vp run release:treeshake`). 200 and 52 KiB leave the usual headroom.
   { directory: "calendar-core", budgets: { ".": { raw: 200 * KiB, gzip: 52 * KiB } } },
-  // Drags in from and out to the rest of the page (#237): startCalendarDrop, monitorCalendarDrags
-  // and the region registry took calendar-dnd from 33,255 raw and 9,868 gzip bytes to 50,473 and
-  // 14,189. 52 and 15 KiB leave the usual headroom.
-  { directory: "calendar-dnd", budgets: { ".": { raw: 52 * KiB, gzip: 15 * KiB } } },
+  // Drags in from and out to the rest of the page (#237): startCalendarDrop, monitorCalendarDrags,
+  // the region registry and edge arming took calendar-dnd from 33,255 raw and 9,868 gzip bytes to
+  // 53,008 and 14,920. 54 and 15 KiB leave the usual headroom.
+  { directory: "calendar-dnd", budgets: { ".": { raw: 54 * KiB, gzip: 15 * KiB } } },
+  // The dnd-kit adapter (#237): 14,526 raw and 4,945 gzip bytes, with dnd-kit left as imports.
+  { directory: "calendar-dnd-kit", budgets: { ".": { raw: 15 * KiB, gzip: 5 * KiB } } },
   // Root's event source (#200), read through useSyncExternalStore, took calendar-react to 78,147 of
   // 77,824 raw bytes, onEventChangeResult with useCalendarPendingChanges (#199) to 79,597 raw
   // and 20,740 of 20,480 gzip bytes, and useCalendarHistory with useCalendarHistoryShortcuts (#227)
@@ -49,7 +51,11 @@ export const publishedPackages: readonly PublishedPackage[] = [
 ];
 
 /** Optional adapters. Base packages never import them, and the facade's other exports tree-shake them away. */
-export const optionalAdapters: readonly string[] = ["@moltenship/calendar-dnd", "@dnd-kit/"];
+export const optionalAdapters: readonly string[] = [
+  "@moltenship/calendar-dnd-kit",
+  "@moltenship/calendar-dnd",
+  "@dnd-kit/",
+];
 
 export interface OptionalFeature {
   readonly name: string;

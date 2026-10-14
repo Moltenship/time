@@ -1,4 +1,14 @@
 {
   "title": "API reference",
-  "pages": ["index", "react", "events", "changes", "store", "temporal", "ics", "recurrence"]
+  "pages": [
+    "index",
+    "react",
+    "events",
+    "changes",
+    "store",
+    "temporal",
+    "ics",
+    "recurrence",
+    "dnd-kit"
+  ]
 }

@@ -49,7 +49,7 @@ packs nothing, and refuses a manifest from another commit or a file whose hash c
 1. **Changelog.** PRs that change a published package add a line under "Unreleased" in
    [`CHANGELOG.md`](../../CHANGELOG.md).
 2. **Version PR.** On a branch, run `vp run release:version 1.0.0-rc.1` (or whichever version).
-   It sets the version in all seven manifests and turns "Unreleased" into `## 1.0.0-rc.1 (date)`.
+   It sets the version in all eight manifests and turns "Unreleased" into `## 1.0.0-rc.1 (date)`.
    Open a PR and review it.
 3. **Link a green rehearsal** before merging: `gh workflow run ci.yml --ref <version-branch>`
    runs CI's on-demand `release-gate` job, which runs what the release workflow's gate runs, and
@@ -92,7 +92,7 @@ packs nothing, and refuses a manifest from another commit or a file whose hash c
 
      The publish step asks you to type the version. Local publishes have no provenance. Use a
      granular access token that can publish to `@moltenship`: with two-factor authentication on
-     writes, a one-time password can expire before all seven packages are out.
+     writes, a one-time password can expire before all eight packages are out.
 5. **After publishing.** Tag the commit (`v1.0.0-rc.1`), push the tag, and write a GitHub release
    from the changelog section. These steps aren't automated yet. After the first publish, check
    that `vp pm view @moltenship/calendar-core@<v> dist.integrity` matches the package's
@@ -110,8 +110,8 @@ packs nothing, and refuses a manifest from another commit or a file whose hash c
 - the dry run checked the version you asked for, and it isn't `0.0.0`;
 - every published package was packed, and each tarball's sha512 still matches.
 
-Before publishing anything, it asks npm about all seven. A version npm already has is skipped only
-when npm's integrity matches the tarball the dry run checked; otherwise the step stops, so the seven
+Before publishing anything, it asks npm about all eight. A version npm already has is skipped only
+when npm's integrity matches the tarball the dry run checked; otherwise the step stops, so the eight
 packages on npm never mix two builds. Running it again after a partial failure is safe. Skipped
 packages keep the tag they went out with, so re-run with the same `--tag`.
 
@@ -131,7 +131,7 @@ tag. If the first release is `1.0.0-rc.1`, `latest` points at it until `1.0.0` s
 
 A published version can't be changed or reused, even after an unpublish. Fix forward.
 
-1. **Stop new installs.** For each of the seven packages, move `latest` (or `next`) back to the
+1. **Stop new installs.** For each of the eight packages, move `latest` (or `next`) back to the
    previous version and deprecate the bad one:
 
    ```sh
@@ -144,7 +144,7 @@ A published version can't be changed or reused, even after an unpublish. Fix for
 3. **Partial publish.** If some packages published and the rest failed, run the publish step again
    on the same commit. npm can take a minute to list a version it just took; until then, a re-run
    fails on that package with "cannot publish over", which is safe. If the fix needs a code change,
-   deprecate what went out and release a new version of all seven.
+   deprecate what went out and release a new version of all eight.
 
 Unpublish only for something that must disappear, such as a leaked secret. npm allows it within
 72 hours, and it breaks lockfiles that already reference the version.

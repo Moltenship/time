@@ -13,8 +13,18 @@ import { parseArguments, readJson, run, runMain, runOrThrow, workspaceRoot } fro
 
 const require = createRequire(import.meta.url);
 
-/** React and its types come from the workspace catalog, so they are already in the pnpm store. */
-const consumerPeers = ["react", "react-dom", "@types/react", "@types/react-dom"] as const;
+/**
+ * React and its types, and dnd-kit for the dnd-kit adapter, come from the workspace catalog, so
+ * they are already in the pnpm store.
+ */
+const consumerPeers = [
+  "react",
+  "react-dom",
+  "@types/react",
+  "@types/react-dom",
+  "@dnd-kit/dom",
+  "@dnd-kit/react",
+] as const;
 
 /**
  * Every third-party package the workspace's lockfile has at a single version, by name. Pinned in

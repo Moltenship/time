@@ -4,6 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { configDefaults, defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 
+import { mouse } from "./mouse";
 import { Watchdog } from "./watchdog";
 
 /**
@@ -74,6 +75,8 @@ export default defineConfig(({ mode }) => {
             ],
         provider: playwright(),
         viewport: { height: 800, width: 1280 },
+        // Real mouse input at page points, step by step, for drags a test watches as they go.
+        commands: { mouse },
       },
     },
   };

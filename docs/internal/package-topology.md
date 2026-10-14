@@ -18,8 +18,9 @@ packing, replacing that development entry with `dist/index.mjs` and `dist/index.
 
 ## Published packages
 
-Seven packages will publish to npm under `@moltenship`: `calendar`, `calendar-core`,
-`calendar-dnd`, `calendar-react`, `calendar-recurrence`, `calendar-temporal` and `ics`.
+Eight packages will publish to npm under `@moltenship`: `calendar`, `calendar-core`,
+`calendar-dnd`, `calendar-dnd-kit`, `calendar-react`, `calendar-recurrence`, `calendar-temporal`
+and `ics`.
 `calendar-testing` is an empty stub and stays `private` until after 1.0 (#45). The list, with each
 entry point's size budget, is in [`tools/release/src/config.ts`](../../tools/release/src/config.ts);
 [releasing.md](./releasing.md) covers versions, release checks and publishing.
@@ -47,6 +48,7 @@ packed code carries the `/*!` notice.
 | `@moltenship/calendar-core` | Engine: snapshots, indexes, projections, layouts, and transactions | `calendar-temporal` |
 | `@moltenship/calendar-react` | React integration: provider, selectors, actions, and headless primitives | `calendar-core`, `calendar-temporal` |
 | `@moltenship/calendar-dnd` | Pointer interaction adapter (native Pointer Events) | `calendar-core`, `calendar-temporal` |
+| `@moltenship/calendar-dnd-kit` | Optional dnd-kit adapter: items dragged into the calendar, events dragged out (#237) | `calendar-core`, `calendar-dnd` |
 | `@moltenship/calendar` | Supported public facade | `calendar-core`, `calendar-dnd`, `calendar-react`, `calendar-temporal` |
 | `@moltenship/calendar-testing` | Consumer test helpers; private until after 1.0 (#45) | Public facade, dnd adapter, and Temporal utilities |
 | `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `calendar-temporal`, `ics` |
@@ -57,15 +59,17 @@ packed code carries the `/*!` notice.
 | `benchmark` | Internal core, React and recurrence benchmark runners | Core, React bindings, recurrence, Temporal utilities, and fixture tooling |
 | `demo` | The Google Calendar-style demo app | Public facade and `calendar-recurrence` |
 | `registry-source` | Registry source, type-checked and tested in place | Public facade only |
-| `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, registry source in place (`@registry/*`), and the demo's `App` by path (`apps/demo/src/app`); not in the manifest check yet |
+| `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, the dnd-kit adapter, registry source in place (`@registry/*`), and the demo's `App` by path (`apps/demo/src/app`); not in the manifest check yet |
 | `registry` | Internal shadcn build, validation and install test (`tools/registry`) | None |
 | `release` | Internal release tooling: size budgets, API reports, export checks, clean-consumer install, dry run, publish | None; it reads built and packed packages from disk |
 
 External dependencies are added by the issue that validates their contract. React 19 is a peer of
-`calendar-react`, `calendar-dnd` and `calendar`. `calendar-react` has no runtime dependency outside
-the workspace; it dropped Jotai in #70 (ADR 0070). `calendar-core` depends on
-`@flatten-js/interval-tree` behind its internal `IntervalIndex` (ADR 0016). dnd-kit is only in
-`tools/dnd-adapter-spike` (ADR 0037). TanStack Virtual is a registry-source dependency, not a
+`calendar-react`, `calendar-dnd`, `calendar-dnd-kit` and `calendar`. `calendar-react` has no
+runtime dependency outside the workspace; it dropped Jotai in #70 (ADR 0070). `calendar-core`
+depends on `@flatten-js/interval-tree` behind its internal `IntervalIndex` (ADR 0016). dnd-kit
+(`@dnd-kit/react` and `@dnd-kit/dom` 0.5) is a peer of `calendar-dnd-kit` alone, which no other
+package depends on; the `a11y` tests use it with the adapter, and `tools/dnd-adapter-spike` keeps
+the old spike (ADR 0037). TanStack Virtual is a registry-source dependency, not a
 package one. Playwright and axe-core are `tools/a11y` development dependencies. The `*-spike`
 workspaces under `tools/` import no workspace.
 
@@ -83,6 +87,7 @@ calendar-core ───────────────→ fixtures ──�
        ↓                                           ↑
 calendar-core + calendar-temporal → calendar-react ┘
 calendar-core + calendar-temporal → calendar-dnd
+calendar-core + calendar-dnd → calendar-dnd-kit (optional; dnd-kit peer) ─────→ a11y
 
 calendar-core + calendar-dnd + calendar-react + calendar-temporal
        ↓

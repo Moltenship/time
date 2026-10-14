@@ -1,0 +1,62 @@
+{
+  "name": "@moltenship/calendar-dnd-kit",
+  "version": "0.0.0",
+  "description": "Optional dnd-kit adapter for Moltenship Time: drag your items into the calendar and events out.",
+  "homepage": "https://time.molten.sh/docs/api/dnd-kit",
+  "bugs": {
+    "url": "https://github.com/Moltenship/time/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moltenship/time.git",
+    "directory": "packages/calendar-dnd-kit"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "check": "vp check",
+    "dev": "vp pack --watch",
+    "prepublishOnly": "echo \"Publish with vp run release:publish, after vp run release:dry-run. See docs/internal/releasing.md.\" && exit 1",
+    "test": "vp test --passWithNoTests"
+  },
+  "dependencies": {
+    "@moltenship/calendar-core": "workspace:*",
+    "@moltenship/calendar-dnd": "workspace:*"
+  },
+  "devDependencies": {
+    "@dnd-kit/dom": "catalog:",
+    "@dnd-kit/react": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "@dnd-kit/dom": "^0.5.0",
+    "@dnd-kit/react": "^0.5.0",
+    "react": "^19.0.0"
+  }
+}
