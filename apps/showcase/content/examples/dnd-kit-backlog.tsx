@@ -7,7 +7,9 @@ import {
   calendarDropData,
   calendarEventOf,
   calendarEventType,
+  isCalendarTarget,
 } from "@moltenship/calendar-dnd-kit";
+import { Accessibility } from "@dnd-kit/dom";
 import { DragDropProvider, useDragDropMonitor, useDraggable, useDroppable } from "@dnd-kit/react";
 import { useCallback, useMemo, useState } from "react";
 
@@ -129,6 +131,48 @@ function Backlog({
 }
 // #endregion backlog
 
+// #region announcements
+type Entity = { readonly data?: unknown; readonly id: string | number } | null;
+type Announced = { readonly operation: { readonly source: Entity; readonly target: Entity } };
+
+const taskOf = (source: Entity) => (source?.data as { task?: Task } | undefined)?.task;
+const meetingOf = (source: Entity) => calendarEventOf<Meeting>(source)?.event;
+
+/**
+ * What dnd-kit says, by name rather than its default IDs. Over the week, and for meetings until
+ * they reach the backlog, the calendar's own Announcer speaks instead.
+ */
+const announcements = {
+  dragstart: ({ operation }: Announced) => {
+    const task = taskOf(operation.source);
+    return task && `Picked up ${task.title}.`;
+  },
+  dragover: ({ operation }: Announced) =>
+    operation.target === null || isCalendarTarget(operation.target)
+      ? undefined
+      : meetingOf(operation.source) && "Over the backlog.",
+  dragend: ({ canceled, operation }: Announced & { readonly canceled: boolean }) => {
+    const task = taskOf(operation.source);
+    if (task)
+      return canceled || operation.target === null
+        ? `${task.title} stays in the backlog.`
+        : undefined;
+    const meeting = meetingOf(operation.source);
+    return meeting === undefined || canceled
+      ? undefined
+      : `${meeting.title} is back in the backlog.`;
+  },
+};
+
+/** dnd-kit's default plugins, with these announcements. */
+function plugins<TPlugin>(defaults: readonly TPlugin[]) {
+  return [
+    ...defaults.filter((plugin) => plugin !== (Accessibility as unknown)),
+    Accessibility.configure({ announcements }),
+  ];
+}
+// #endregion announcements
+
 // #region root
 const weekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] } as const;
 
@@ -184,7 +228,7 @@ export function BacklogCalendar({
       weekRules={weekRules}
     >
       {/* One provider around the backlog and the calendar; CalendarDndKit connects them. */}
-      <DragDropProvider>
+      <DragDropProvider plugins={plugins}>
         <CalendarDndKit />
         <Calendar.Frame className="flex h-full min-h-0">
           <aside className="flex w-44 shrink-0 flex-col gap-2 overflow-y-auto border-e p-2">

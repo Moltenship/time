@@ -180,7 +180,7 @@ function EventForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = eventFromDraft(draft, timeZone, draft.id ?? crypto.randomUUID());
+    const result = eventFromDraft(draft, timeZone, draft.id ?? draft.newId ?? crypto.randomUUID());
     if ("error" in result) {
       setError(result.error);
       return;

@@ -1,16 +1,21 @@
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
 
 import type { DemoEvent, DemoOccurrence } from "./calendar";
 import { isDemoCalendarId, type DemoCalendarId } from "./calendars";
+import { isDemoResourceId, type DemoResourceId } from "./resources";
 import { isRecord, usePersistentState } from "./storage";
 
 /** Something to do that isn't on the calendar yet: dragged onto it, it becomes an event. */
 export interface DemoTask {
   readonly calendarId: DemoCalendarId;
+  /** Kept from an event unscheduled into a task, for the event it becomes again. */
+  readonly description?: string;
   /** Also the ID of the event it becomes, so an event unscheduled again is the same task. */
   readonly id: string;
   /** How long it takes, which the event it becomes lasts. */
   readonly minutes: number;
+  /** Kept from an event unscheduled into a task, for the event it becomes again. */
+  readonly resourceIds?: readonly DemoResourceId[];
   readonly title: string;
 }
 
@@ -31,7 +36,10 @@ function isTask(value: unknown): value is DemoTask {
     typeof value.title === "string" &&
     Number.isInteger(value.minutes) &&
     (value.minutes as number) > 0 &&
-    isDemoCalendarId(value.calendarId)
+    isDemoCalendarId(value.calendarId) &&
+    (value.description === undefined || typeof value.description === "string") &&
+    (value.resourceIds === undefined ||
+      (Array.isArray(value.resourceIds) && value.resourceIds.every(isDemoResourceId)))
   );
 }
 
@@ -54,6 +62,8 @@ export type DemoTaskList = ReturnType<typeof useDemoTasks>;
 /** The unscheduled tasks, persisted to localStorage. */
 export function useDemoTasks() {
   const [tasks, setTasks] = usePersistentState(tasksStorageKey, loadTasks, serializeTasks);
+  /** Counts resets, so an unschedule still saving when the data was reset leaves the seed alone. */
+  const resets = useRef(0);
   const addTask = useCallback(
     (task: DemoTask) =>
       setTasks((current) => [task, ...current.filter(({ id }) => id !== task.id)]),
@@ -63,8 +73,19 @@ export function useDemoTasks() {
     (id: string) => setTasks((current) => current.filter((task) => task.id !== id)),
     [setTasks],
   );
-  const resetTasks = useCallback(() => setTasks(seedTasks), [setTasks]);
-  return { addTask, removeTask, resetTasks, tasks };
+  const resetTasks = useCallback(() => {
+    resets.current += 1;
+    setTasks(seedTasks);
+  }, [setTasks]);
+  return { addTask, removeTask, resets, resetTasks, tasks };
+}
+
+/** The records tasks become, which a create carries when a task is dropped on the calendar. */
+const taskRecords = new WeakSet<DemoOccurrence>();
+
+/** Whether a create's record is a task dropped on the calendar, rather than an event restored. */
+export function isTaskRecord(record: DemoOccurrence | null): boolean {
+  return record !== null && taskRecords.has(record);
 }
 
 /**
@@ -74,15 +95,20 @@ export function useDemoTasks() {
 export function taskOccurrence(task: DemoTask): DemoOccurrence {
   const start = Temporal.Instant.fromEpochMilliseconds(0);
   const end = start.add({ minutes: task.minutes });
+  const { calendarId, description, id, resourceIds, title } = task;
   const event: DemoEvent = {
-    calendarId: task.calendarId,
+    calendarId,
+    ...(description === undefined ? {} : { description }),
     end,
-    id: task.id,
+    id,
     kind: "timed",
+    ...(resourceIds === undefined ? {} : { resourceIds }),
     start,
-    title: task.title,
+    title,
   };
-  return { event, id: task.id, interval: { end, kind: "timed", start } };
+  const occurrence: DemoOccurrence = { event, id, interval: { end, kind: "timed", start } };
+  taskRecords.add(occurrence);
+  return occurrence;
 }
 
 /**
@@ -94,5 +120,13 @@ export function taskFromOccurrence(occurrence: DemoOccurrence): DemoTask | null 
   const { event, interval, recurrence } = occurrence;
   if (recurrence !== undefined || event.live === true || interval.kind !== "timed") return null;
   const minutes = Math.round(interval.start.until(interval.end).total({ unit: "minutes" }));
-  return { calendarId: event.calendarId, id: event.id, minutes, title: event.title };
+  const { calendarId, description, id, resourceIds, title } = event;
+  return {
+    calendarId,
+    ...(description === undefined ? {} : { description }),
+    id,
+    minutes,
+    ...(resourceIds === undefined ? {} : { resourceIds }),
+    title,
+  };
 }

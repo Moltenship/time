@@ -5,15 +5,22 @@ import type {
 } from "@moltenship/calendar";
 
 import type { DemoEvent, DemoOccurrence } from "./calendar";
+import { isTaskRecord } from "./tasks";
 import type { DemoResourceId } from "./resources";
 
 /** A change from the calendar, which shows occurrences: one-off events keep their own IDs. */
 export type DemoEventChange = CalendarEventChange<DemoOccurrence, string, DemoResourceId>;
 
-/** A calendar policy: demo events are timed or all-day. */
+/**
+ * A calendar policy: demo events are timed or all-day, and a task dropped on the calendar goes on
+ * a time slot, so it keeps its length and can go back to the unscheduled tasks.
+ */
 export function demoEventPolicy(change: DemoEventChange): CalendarPolicyDecision<DemoResourceId> {
   if (change.proposed?.kind === "floating") {
     return { reason: "Demo events are timed or all-day.", type: "reject" };
+  }
+  if (change.cause === "create" && isTaskRecord(change.event) && change.proposed.kind !== "timed") {
+    return { reason: "Tasks go on a time slot.", type: "reject" };
   }
   return { type: "accept" };
 }

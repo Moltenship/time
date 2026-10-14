@@ -96,6 +96,10 @@ Any other end of that drag, a drop in the week or Escape, ends it as `canceled`.
   own too, as the [demo](https://moltenship-time-demo.vercel.app) does: "Schedule" on a task opens
   the event editor, and "Unschedule" in a meeting's popover moves it back.
 - On a touch screen, cards use dnd-kit's touch activation and meetings the calendar's long-press.
-- dnd-kit's own announcements name draggables by ID. Give its `Accessibility` plugin
-  announcements that name your tasks and stay quiet where the calendar speaks for itself, as the
-  [API reference's example](/docs/api/dnd-kit#how-it-behaves) does.
+- dnd-kit's own announcements name draggables by ID. The example gives its `Accessibility` plugin
+  announcements that name tasks and meetings, and stay quiet where the calendar's `Announcer`
+  speaks for itself:
+
+<include meta='title="backlog-calendar.tsx"'>
+  ../../examples/dnd-kit-backlog.tsx#announcements
+</include>

@@ -28,7 +28,7 @@ export interface EventPopoverProps {
   readonly onClose: () => void;
   readonly onEdit: (occurrence: DemoOccurrence) => void;
   /** The unscheduled tasks, which "Unschedule" moves a timed one-off event into. */
-  readonly taskList: Pick<DemoTaskList, "addTask" | "removeTask">;
+  readonly taskList: Pick<DemoTaskList, "addTask" | "removeTask" | "resets">;
   readonly timeZone: string;
 }
 

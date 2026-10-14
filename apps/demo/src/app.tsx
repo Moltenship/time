@@ -68,6 +68,7 @@ import { useDemoSettings } from "./settings";
 import { viewFor } from "./scrolling";
 import { applySeriesEdit, type DemoSeriesEdit, type SeriesEditExtras } from "./series-edits";
 import { useDemoTasks, type DemoTask } from "./tasks";
+import { isUnscheduling } from "./unschedule";
 import { UnscheduledTasks } from "./components/unscheduled-tasks";
 import { useCalendarLocation } from "./url-state";
 
@@ -138,10 +139,13 @@ export function App() {
   const tasks = useDemoTasks();
   const { removeTask, resetTasks } = tasks;
   // Moves, resizes and deletes can be undone. A change to a recurring event becomes an edit of its
-  // series, which a history can't take back, so those are left out.
+  // series, which a history can't take back, so those are left out, and so is an event taken back
+  // to the unscheduled tasks, whose task a redo wouldn't bring back.
   const [history] = useState(() =>
     createEventHistory<DemoOccurrence, string, DemoResourceId>({
-      filter: (change) => !isRecurringChange(change),
+      filter: (change) =>
+        !isRecurringChange(change) &&
+        !(change.cause === "delete" && isUnscheduling(change.eventId)),
     }),
   );
   const [failSaves, setFailSaves] = useState(false);
@@ -401,10 +405,10 @@ export function App() {
 
   // Schedules a task without dragging it: the editor opens on it, for the shown date.
   const scheduleTask = useCallback(
-    (task: DemoTask) => {
+    (task: DemoTask, list: HTMLElement | null) => {
       setSidebarOpen(false);
       setOpenEvent(null);
-      setCreatedFrom(null);
+      setCreatedFrom(list);
       setDraft(draftForTask(task, location.date, Temporal.Now.zonedDateTimeISO(timeZone)));
       setDraftTask(task.id);
     },

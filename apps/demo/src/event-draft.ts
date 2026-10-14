@@ -4,6 +4,7 @@ import type { DemoEvent, DemoOccurrence } from "./calendar";
 import type { DemoCalendarId } from "./calendars";
 import { noRepeat, repeatFromRule, ruleFromRepeat, seriesDate, type RepeatDraft } from "./repeat";
 import type { DemoResourceId } from "./resources";
+import type { DemoTask } from "./tasks";
 
 /**
  * The editable form of an event, in wall-clock fields of the display time zone. All-day end dates
@@ -20,6 +21,8 @@ export interface EventDraft {
   readonly endTime: Temporal.PlainTime;
   /** Set when editing an existing event: its ID in the calendar, an occurrence's for a series. */
   readonly id?: string;
+  /** The ID a new event takes, such as the task's it schedules; a fresh one without. */
+  readonly newId?: string;
   /** The first day of the series an occurrence belongs to: the earliest it can stop repeating. */
   readonly firstDate?: Temporal.PlainDate;
   /** Set when editing an occurrence of a series, which saves through the scope dialog. */
@@ -172,13 +175,22 @@ export function draftForNewEvent(
 
 /** A new event for a task: its title, calendar and length, from the next half hour or 09:00. */
 export function draftForTask(
-  task: { readonly calendarId: DemoCalendarId; readonly minutes: number; readonly title: string },
+  task: Pick<DemoTask, "calendarId" | "description" | "id" | "minutes" | "resourceIds" | "title">,
   date: Temporal.PlainDate,
   now: Temporal.ZonedDateTime,
 ): EventDraft {
   const draft = draftForNewEvent(date, now, task.calendarId);
   const end = draft.startDate.toPlainDateTime(draft.startTime).add({ minutes: task.minutes });
-  return { ...draft, endDate: end.toPlainDate(), endTime: end.toPlainTime(), title: task.title };
+  return {
+    ...draft,
+    description: task.description ?? "",
+    endDate: end.toPlainDate(),
+    endTime: end.toPlainTime(),
+    // The task's ID, as a dropped task's event has, so it can go back to the list as the same task.
+    newId: task.id,
+    ...(task.resourceIds === undefined ? {} : { resourceIds: task.resourceIds }),
+    title: task.title,
+  };
 }
 
 /** Moves the start and keeps the event's length, the way calendar apps do. */

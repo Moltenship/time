@@ -1,19 +1,22 @@
 import { calendarDropData, calendarEventOf, isCalendarTarget } from "@moltenship/calendar-dnd-kit";
 import { useDragDropMonitor, useDraggable, useDragOperation, useDroppable } from "@dnd-kit/react";
 import { CalendarPlusIcon, GripVerticalIcon } from "lucide-react";
-import { useId, useMemo } from "react";
+import { useId, useMemo, useRef } from "react";
 
 import { Button } from "@registry/ui/button";
 import { cn } from "cn";
 
-import type { DemoOccurrence } from "../calendar";
+import { DemoCalendar, type DemoOccurrence } from "../calendar";
 import { getCalendarColor } from "../calendars";
 import { taskFromOccurrence, taskOccurrence, type DemoTask, type DemoTaskList } from "../tasks";
 import { useUnschedule } from "../unschedule";
 
 export interface UnscheduledTasksProps {
-  /** Opens the event editor for a task, the way to schedule it without dragging. */
-  readonly onSchedule: (task: DemoTask) => void;
+  /**
+   * Opens the event editor for a task, the way to schedule it without dragging. Focus goes back
+   * to `list` when the editor closes, as the task's own button may be gone by then.
+   */
+  readonly onSchedule: (task: DemoTask, list: HTMLElement | null) => void;
   readonly taskList: DemoTaskList;
 }
 
@@ -44,6 +47,7 @@ export function UnscheduledTasks({ onSchedule, taskList }: UnscheduledTasksProps
   const listId = useId();
   const dropId = `unscheduled${listId}`;
   const { isDropTarget, ref } = useDroppable({ accept: takesEvent, id: dropId });
+  const listRef = useRef<HTMLUListElement>(null);
   useDragDropMonitor(
     useMemo(
       () => ({
@@ -66,8 +70,13 @@ export function UnscheduledTasks({ onSchedule, taskList }: UnscheduledTasksProps
         Drag a task onto the calendar, or an event here to unschedule it.
       </p>
       <ul
-        ref={ref}
+        ref={(node) => {
+          ref(node);
+          listRef.current = node;
+        }}
         aria-describedby={hintId}
+        // Where focus goes back to after a task's editor saves it away.
+        tabIndex={-1}
         className={cn(
           "flex min-h-12 flex-col gap-1 rounded-lg p-1 transition-colors",
           isDropTarget && "bg-accent ring-2 ring-ring",
@@ -75,7 +84,12 @@ export function UnscheduledTasks({ onSchedule, taskList }: UnscheduledTasksProps
         data-over={isDropTarget || undefined}
       >
         {tasks.map((task) => (
-          <TaskItem key={task.id} id={`${task.id}${listId}`} onSchedule={onSchedule} task={task} />
+          <TaskItem
+            key={task.id}
+            id={`${task.id}${listId}`}
+            onSchedule={(scheduled) => onSchedule(scheduled, listRef.current)}
+            task={task}
+          />
         ))}
       </ul>
     </section>
@@ -104,7 +118,13 @@ function TaskItem({
     }),
     [task],
   );
-  const { isDragSource, ref } = useDraggable({ data, id });
+  // A dropped task waits for its event to save; it can't be dragged again meanwhile.
+  const saving = DemoCalendar.useCalendarPendingChanges((changes) =>
+    [...changes.values()].some(
+      ({ change }) => change.cause === "create" && change.event?.id === task.id,
+    ),
+  );
+  const { isDragSource, ref } = useDraggable({ data, disabled: saving, id });
   // Over the calendar the card fades, so the slots it would take show through.
   const { target } = useDragOperation();
   const overCalendar = isDragSource && isCalendarTarget(target);
@@ -114,8 +134,9 @@ function TaskItem({
       <button
         ref={ref}
         type="button"
-        className="flex min-w-0 flex-1 cursor-grab items-start gap-1.5 rounded-md border-s-3 border-calendar-event-border bg-calendar-event py-1.5 ps-1.5 pe-2 text-start text-calendar-event-foreground transition-opacity hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-60 data-over-calendar:opacity-30 dark:hover:brightness-110"
+        className="flex min-w-0 flex-1 cursor-grab items-start gap-1.5 rounded-md border-s-3 border-calendar-event-border bg-calendar-event py-1.5 ps-1.5 pe-2 text-start text-calendar-event-foreground transition-opacity hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring aria-busy:opacity-50 data-dragging:opacity-60 data-over-calendar:opacity-30 dark:hover:brightness-110"
         data-color={getCalendarColor(task.calendarId)}
+        aria-busy={saving || undefined}
         data-dragging={isDragSource || undefined}
         data-over-calendar={overCalendar || undefined}
       >
