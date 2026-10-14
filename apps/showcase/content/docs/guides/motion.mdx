@@ -1,0 +1,169 @@
+---
+title: Animate with Motion
+description: Grow a clicked meeting into its card and let a card follow each drag, with Motion and the calendar's own hooks.
+---
+
+<MotionPreview />
+
+Click a meeting: its chip grows into a card, and its title flies into the card's heading. Close
+the card and it shrinks back into the meeting. Drag a meeting: a copy of it trails the pointer on a
+spring, tilting with its speed, shows the time it would land at, and settles into the slot when
+you let go, or flies back after Escape.
+
+The calendar doesn't animate any of this itself. [Motion](https://motion.dev) does, through hooks
+the calendar keeps for it:
+
+- Every event is a `[data-event-id]` button, and its title is marked
+  `data-slot="calendar-event-title"` in every view, so a transition can find both.
+- `monitorCalendarDrags` tells a follower where the pointer is, what the preview shows, and where
+  the drop landed.
+
+You don't edit the calendar's code, and the calendar's packages don't depend on Motion.
+
+## Install
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add motion
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install motion
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add motion
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add motion
+```
+
+</Tab>
+</Tabs>
+
+## A meeting grows into its card
+
+Motion's [`animateView`](https://motion.dev/docs/animate-view) runs a state update inside a view
+transition, and `.add(from, to)` morphs one element into another. `grow` morphs the clicked chip
+into the card and the chip's title into the card's heading, and `shrink` morphs them back:
+
+<include meta='title="motion-calendar.tsx"'>../../examples/motion-calendar.tsx#morph</include>
+
+- The update runs in `flushSync`, so React has rendered the card when the browser captures the new
+  state, and then waits a task, because Base UI places a popover just after it mounts.
+- The box grows on a spring while what's inside it swaps with a short fade: early when it opens,
+  late when it closes, so neither the chip's text nor the card's is ever stretched.
+- In a browser without view transitions, `animateView` only runs the update, and the card opens
+  at once.
+
+A view transition draws each side of a morph as a picture stretched to the moving box. That suits
+the card, whose insides swap while it's small, but would blow the title's text up as its box
+widens. The title's morph gets the class `morph-text`, and one rule in your CSS keeps each side of
+it at its own size:
+
+```css title="app.css"
+::view-transition-old(.morph-text),
+::view-transition-new(.morph-text) {
+  width: auto;
+  height: auto;
+}
+```
+
+The card is an ordinary Base UI popover. Its `data-slot`s are what `grow` looks for, and closing it
+calls `shrink`:
+
+<include meta='title="motion-calendar.tsx"'>../../examples/motion-calendar.tsx#details</include>
+
+Open the card from a click on the viewport. Every view renders events as `[data-event-id]`
+buttons, so one listener opens any of them, and `eventIdOf` reads the meeting's ID:
+
+<include meta='title="motion-calendar.tsx"'>../../examples/motion-calendar.tsx#root</include>
+
+While a view transition runs, about half a second, the page takes no clicks. That suits
+opening a card. It doesn't suit the calendar's own navigation, which you click through quickly, so
+leave paging and view switches without transitions.
+
+## A card follows each drag
+
+`monitorCalendarDrags` hears each meeting a view starts to move, and the follower you return
+hears the rest of the drag:
+
+| Follower method         | Called                                                                                                                                                                                                          |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `move(point)`           | On every pointer move, with the pointer in viewport coordinates                                                                                                                                                 |
+| `preview(preview)`      | Whenever the view's preview changes, or moves as the view scrolls: its boxes (`rects`), the time it shows (`label`), and whether a policy would reject or flag it (`validity`). `null` when the view shows none |
+| `end(dropped, landing)` | When the drag ends. `landing` is the preview the release proposed the move at, or `null` when it proposed nothing, as after Escape. No `preview(null)` comes first                                              |
+
+The follower here has no `claims`, so it only watches: the drag works as it would without it. The
+card is a Motion element whose position follows the pointer through a spring, and whose rotation
+follows the spring's speed. When the drag ends, it flies to the landing's first box, or back to
+the meeting when nothing was dropped or a policy would reject the drop. It follows only drags in
+its own calendar, should the page have another:
+
+<include meta='title="motion-calendar.tsx"'>../../examples/motion-calendar.tsx#drag</include>
+
+The calendar's own preview still marks the slot under the card. The viewport above makes it faint
+and drops its shadow, through the preview's custom properties.
+
+## Without JavaScript
+
+The preview itself takes CSS. The pointer layer moves it with `transform`, so the independent
+`scale`, `rotate` and `translate` properties add to that rather than replace it. This lifts and
+tilts it as it's picked up, with no Motion at all:
+
+```css title="app.css"
+@media (prefers-reduced-motion: no-preference) {
+  [data-calendar-ghost="event"] {
+    rotate: -2deg;
+    scale: 1.05;
+    transition:
+      rotate 150ms ease-out,
+      scale 150ms ease-out;
+
+    @starting-style {
+      rotate: 0deg;
+      scale: 1;
+    }
+  }
+}
+```
+
+The media query keeps the preview still for people who ask for less motion.
+`--calendar-ghost-opacity`, `--calendar-ghost-shadow`, `--calendar-ghost-background` and
+`--calendar-ghost-radius` restyle it, and `data-invalid` and `data-warning` mark a drop the
+policies would reject or flag.
+
+## Reduced motion and accessibility
+
+- `morph` checks `prefers-reduced-motion` and only runs the update when it's set. `DragCard`
+  follows no drag then, and the calendar's preview does the job alone.
+- Focus never waits on an animation. Base UI moves focus into the card as it opens and back to the
+  meeting as it closes, and the calendar's `Announcer` speaks each drag as it happens.
+- The drag card is `aria-hidden`: it repeats what the preview and the announcements already say.
+
+## Cost
+
+Motion is your app's dependency, not the calendar's. What this page's code bundles, minified and
+gzipped:
+
+| Code                                                     | Size     |
+| -------------------------------------------------------- | -------- |
+| `grow` and `shrink`: `animateView` from `motion`         | 6.6 KiB  |
+| `DragCard`: `motion.div` and springs from `motion/react` | 45.8 KiB |
+| Both                                                     | 49.6 KiB |
+
+If your app already uses Motion, they cost nothing more. With
+[`LazyMotion`](https://motion.dev/docs/react-lazy-motion), `m.div` and `domAnimation`, the drag card
+takes 31.8 KiB.

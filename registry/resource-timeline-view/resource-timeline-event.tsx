@@ -64,7 +64,7 @@ export function ResourceTimelineEvent<TEvent>({
       }}
     >
       {/* The title keeps the room it needs; the time takes what's left, or none. */}
-      <span className="max-w-full shrink-0 truncate">
+      <span data-slot="calendar-event-title" className="max-w-full shrink-0 truncate">
         <EventIcon>{icon}</EventIcon>
         {event.title}
       </span>

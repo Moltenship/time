@@ -28,10 +28,16 @@ import {
 
 interface CalendarDragFollower {
   readonly claims?: () => boolean;
-  readonly end?: (dropped: boolean) => void;
+  readonly end?: (dropped: boolean, landing: CalendarDragPreview | null) => void;
   readonly move?: (point: CalendarPoint) => void;
+  readonly preview?: (preview: CalendarDragPreview | null) => void;
 }
 type CalendarDragMonitor = (drag: CalendarEventDrag) => CalendarDragFollower | void;
+interface CalendarDragPreview {
+  readonly label: string | null;
+  readonly rects: readonly CalendarRect[];
+  readonly validity: "invalid" | "warning" | null;
+}
 interface CalendarDropOptions {
   readonly input?: "keyboard" | "pointer";
 }
@@ -73,6 +79,12 @@ interface CalendarPointerOptions<TEvent, TEventId extends EventId, TResourceId e
   };
   readonly snap?: WallTimeSnapOptions;
 }
+interface CalendarRect {
+  readonly height: number;
+  readonly width: number;
+  readonly x: number;
+  readonly y: number;
+}
 interface CalendarRegion {
   readonly disabled: boolean;
   readonly element: HTMLElement;
@@ -96,12 +108,14 @@ export declare function useCalendarPointer<TEvent, TEventId extends EventId, TRe
 export {
   type CalendarDragFollower,
   type CalendarDragMonitor,
+  type CalendarDragPreview,
   type CalendarDropOptions,
   type CalendarDropSession,
   type CalendarDropSource,
   type CalendarEventDrag,
   type CalendarPoint,
   type CalendarPointerOptions,
+  type CalendarRect,
   type CalendarRegion,
 };
 ```

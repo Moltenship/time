@@ -6,8 +6,10 @@ export { monitorCalendarDrags } from "./drags";
 export type {
   CalendarDragFollower,
   CalendarDragMonitor,
+  CalendarDragPreview,
   CalendarEventDrag,
   CalendarPoint,
+  CalendarRect,
 } from "./drags";
 export { startCalendarDrop } from "./drop";
 export type { CalendarDropOptions, CalendarDropSession, CalendarDropSource } from "./drop";

@@ -115,3 +115,10 @@
 [data-recipe="brand"] {
   --calendar-unavailable: color-mix(in oklch, var(--brand) 12%, transparent);
 }
+
+/* The Motion guide's text morph: each snapshot keeps its own size while the box between them grows. */
+::view-transition-old(.morph-text),
+::view-transition-new(.morph-text) {
+  width: auto;
+  height: auto;
+}

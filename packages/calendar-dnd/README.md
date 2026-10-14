@@ -6,8 +6,8 @@ does this in a view's Renderer, and `attachCalendarPointer` outside a React comp
 
 It also takes drags across the calendar's edge: `startCalendarDrop` drops items dragged in from
 the rest of the page, such as unscheduled tasks, into the view under them, and
-`monitorCalendarDrags` lets drop zones outside the calendar take events dragged out of it. A drag
-library's binding drives them.
+`monitorCalendarDrags` lets drop zones outside the calendar take events dragged out of it, and
+lets an animation follow each drag. A drag library's binding drives them.
 
 It's a layer of `@moltenship/calendar`, which re-exports all of it. Most apps install
 `@moltenship/calendar` only and import `useCalendarPointer` from there.

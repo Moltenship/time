@@ -60,7 +60,7 @@ function YearEvent<TEvent>({ color, formats, fragment, icon, labelEvent }: YearE
           {time}
         </span>
       )}
-      <span className="min-w-0 flex-1 truncate font-medium">
+      <span data-slot="calendar-event-title" className="min-w-0 flex-1 truncate font-medium">
         <EventIcon>{icon}</EventIcon>
         {event.title}
       </span>

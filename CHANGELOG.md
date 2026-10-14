@@ -9,6 +9,12 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
 - First public release of `@moltenship/calendar`, `calendar-core`, `calendar-dnd`,
   `calendar-dnd-kit`, `calendar-react`, `calendar-recurrence`, `calendar-temporal`,
   `calendar-testing` and `ics`.
+- Hooks for animating the calendar from the app, as the new "Animate with Motion" guide does. A
+  `monitorCalendarDrags` follower hears `preview(preview)` whenever the view's preview changes,
+  with its boxes in viewport coordinates, the time range it shows and what the policies would say,
+  and `end(dropped, landing)` gets the preview a release proposed the move at, or `null`. A follower
+  without `claims` only watches: the drag behaves as if no one followed, with no copy off the view
+  and the usual auto-scroll. Every view marks an event's title `data-slot="calendar-event-title"`.
 - `@moltenship/calendar-testing` tests apps' calendars: `createTestEnvironment` fixes `now`, the
   time zone, locale and week rules through `Root`'s props; `buildEvent`, `buildAllDayEvent`,
   `buildResource`, `buildRecurringEvent` and `buildAvailability` make typed records;

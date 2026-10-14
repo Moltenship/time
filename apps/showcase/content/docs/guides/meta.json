@@ -9,6 +9,7 @@
     "google-calendar-sync",
     "tanstack-query",
     "dnd-kit",
+    "motion",
     "performance"
   ]
 }

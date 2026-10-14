@@ -93,7 +93,10 @@ export function MonthEvent<TEvent>({
           {time}
         </span>
       )}
-      <span className={cn("min-w-0 flex-1 truncate max-sm:text-clip", !bar && "font-medium")}>
+      <span
+        data-slot="calendar-event-title"
+        className={cn("min-w-0 flex-1 truncate max-sm:text-clip", !bar && "font-medium")}
+      >
         <EventIcon className="max-sm:size-2.5 max-sm:[&_svg]:size-2.5">{icon}</EventIcon>
         {event.title}
       </span>
