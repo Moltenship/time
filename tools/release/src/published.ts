@@ -112,16 +112,19 @@ export async function waitForPublished(options: {
   const deadline = Date.now() + timeoutMs;
   let notes: readonly string[] = [];
   for (;;) {
+    // All at once, so a round takes one request's timeout at most, well within the job's limit.
+    const answers = await Promise.allSettled(manifest.packages.map(({ name }) => fetch(name)));
     const packuments = new Map<string, Packument | undefined>();
     const unreachable: string[] = [];
-    for (const { name } of manifest.packages) {
-      try {
-        packuments.set(name, await fetch(name));
-      } catch (error) {
-        // A registry hiccup is one more reason to wait, not a verdict.
-        unreachable.push(error instanceof Error ? error.message : String(error));
-      }
-    }
+    answers.forEach((answer, index) => {
+      if (answer.status === "fulfilled")
+        packuments.set(manifest.packages[index]!.name, answer.value);
+      // A registry hiccup is one more reason to wait, not a verdict.
+      else
+        unreachable.push(
+          answer.reason instanceof Error ? answer.reason.message : String(answer.reason),
+        );
+    });
     const check = checkPublished(
       manifest,
       { version: options.version, tag, provenance: options.provenance },

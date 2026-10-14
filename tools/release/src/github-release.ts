@@ -10,7 +10,7 @@ import { parseArguments, run, runMain, type RunResult } from "./workspace";
 
 export const releaseTag = (version: string) => `v${version}`;
 
-const fence = /^\s*(?:```|~~~)/;
+const fence = /^\s*(```|~~~)/;
 /** Lines that stand alone: headings, rules, setext underlines, tables, quotes and HTML. */
 const standalone = /^\s*(?:#{1,6} |(?:[-*_]\s*){3,}$|=+\s*$|[|><])/;
 const listItem = /^\s*(?:[-*+]|\d+[.)]) /;
@@ -23,10 +23,12 @@ const listItem = /^\s*(?:[-*+]|\d+[.)]) /;
 export function releaseNotes(section: string): string {
   const lines: string[] = [];
   let open = false;
-  let fenced = false;
+  // The marker that opened the fence we're in: only the same one closes it.
+  let fenced: string | undefined;
   for (const line of section.trim().split("\n")) {
-    const isFence = fence.test(line);
-    if (isFence) fenced = !fenced;
+    const marker = fence.exec(line)?.[1];
+    const isFence = marker !== undefined && (fenced === undefined || fenced === marker);
+    if (isFence) fenced = fenced === undefined ? marker : undefined;
     const plain = !fenced && !isFence && line.trim() !== "" && !standalone.test(line);
     if (open && plain && !listItem.test(line)) lines[lines.length - 1] += ` ${line.trim()}`;
     else lines.push(line);

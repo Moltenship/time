@@ -42,6 +42,9 @@ const fail = (stderr: string) => ({ code: 1, stdout: "", stderr });
 /** What GitHub and git answer, as `gh` and `git` print it. */
 interface Remote {
   readonly onMain?: boolean;
+  /** What `gh` prints when GitHub can't answer, for the tag lookup or the release lookup. */
+  readonly tagError?: string;
+  readonly releaseError?: string;
   /** The tag's ref object: a commit, or an annotated tag that points at one. */
   readonly tag?: { readonly sha: string; readonly type: "commit" | "tag" };
   readonly release?: { readonly isDraft: boolean };
@@ -58,6 +61,7 @@ function fake(remote: Remote) {
       return remote.onMain === false ? fail("") : ok();
     if (command === "git" && first === "show") return ok(changelog);
     if (command === "gh" && first === "api" && second?.includes("/git/ref/tags/")) {
+      if (remote.tagError) return fail(remote.tagError);
       if (!remote.tag) return fail("gh: Not Found (HTTP 404)");
       return ok(JSON.stringify({ object: remote.tag }));
     }
@@ -65,6 +69,7 @@ function fake(remote: Remote) {
       return ok(JSON.stringify({ object: { sha: commit, type: "commit" } }));
     }
     if (command === "gh" && first === "release" && second === "view") {
+      if (remote.releaseError) return fail(remote.releaseError);
       return remote.release ? ok(JSON.stringify(remote.release)) : fail("release not found");
     }
     if (command === "gh" && first === "release" && second === "create") {
@@ -162,6 +167,18 @@ describe("the GitHub release", () => {
     ["a draft", "1.0.0-rc.1", { release: { isDraft: true } }, "A draft v1.0.0-rc.1 release"],
     ["a commit that isn't on main", "1.0.0-rc.1", { onMain: false }, "isn't on origin/main"],
     ["a version without notes", "1.0.1", {}, "has no notes for 1.0.1"],
+    [
+      "a tag lookup GitHub can't answer",
+      "1.0.0-rc.1",
+      { tagError: "gh: Server Error (HTTP 502)" },
+      "Can't tell whether v1.0.0-rc.1 exists",
+    ],
+    [
+      "a release lookup GitHub can't answer",
+      "1.0.0-rc.1",
+      { releaseError: "HTTP 401: Bad credentials" },
+      "Can't tell whether the v1.0.0-rc.1 release exists",
+    ],
   ])("stops on %s, before it writes anything", async (_, version, remote, message) => {
     const manifestFile = join(directory, "manifest.json");
     await writeManifest(manifest(version), manifestFile);
@@ -199,7 +216,9 @@ After the fence.
 
 ~~~
 tilde fence
-  stays
+\`\`\`
+stays on
+its own line
 ~~~
 
 | a | b |
@@ -235,7 +254,9 @@ After the fence.
 
 ~~~
 tilde fence
-  stays
+\`\`\`
+stays on
+its own line
 ~~~
 
 | a | b |
