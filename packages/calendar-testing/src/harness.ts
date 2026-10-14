@@ -18,6 +18,7 @@ import type {
   CalendarSemanticActions,
   CalendarTransactionResult,
   EventId,
+  PlainDateInterval,
   ResourceId,
 } from "@moltenship/calendar";
 import {
@@ -192,6 +193,7 @@ interface Observed<
     TResourceId
   >;
   readonly pending: CalendarPendingChanges<TEvent, TEventId, TResourceId>;
+  readonly visibleRange: PlainDateInterval | null;
 }
 
 /** A rendered calendar, with what it reported and ways to drive it. */
@@ -433,8 +435,9 @@ function setUp<
   function Observer(): null {
     const context = Calendar.useCalendar();
     const pending = Calendar.useCalendarPendingChanges();
+    const visibleRange = Calendar.useVisibleRange();
     useLayoutEffect(() => {
-      observed = { context, pending };
+      observed = { context, pending, visibleRange };
     });
     return null;
   }
@@ -501,6 +504,7 @@ function setUp<
         >,
       pending: () => seen().pending as CalendarPendingChanges<unknown, TEventId, TResourceId>,
       setFocus: (focus) => seen().context.actions.setFocus(focus as TFocus),
+      visibleRange: () => seen().visibleRange,
     });
     const entry: Mounted = {
       async unmount() {

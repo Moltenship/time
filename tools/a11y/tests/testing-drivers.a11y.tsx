@@ -14,7 +14,7 @@ import {
 } from "@moltenship/calendar-testing";
 import type { ReactNode } from "react";
 import { afterEach, describe, expect, test } from "vite-plus/test";
-import { server } from "vite-plus/test/browser";
+import { page, server } from "vite-plus/test/browser";
 
 import { createMonthView } from "@registry/month-view/month-view";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
@@ -219,6 +219,39 @@ describe(`calendar-testing's drivers in ${server.browser}`, () => {
       range: "2026-10-08T12:00:00Z/2026-10-08T13:00:00Z",
       resourceIds: ["Ben"],
     });
+  });
+
+  test("a move that would take the press past midnight presses near the start instead", async () => {
+    const long = buildEvent({
+      duration: { hours: 2 },
+      start: "2026-10-08T09:00:00Z",
+      title: "Long",
+    });
+    // Tall enough for the whole day, so 09:00 and 23:00 are both on screen.
+    await page.viewport(1280, 2400);
+    try {
+      const calendar = await renderView("week", { events: [long] });
+
+      await calendar.pointer.moveEvent("Long", { date: "2026-10-08", time: "23:00" });
+      await calendar.settled();
+
+      expect(calendar.placementOf("Long").range).toBe("2026-10-08T23:00:00Z/2026-10-09T01:00:00Z");
+    } finally {
+      await page.viewport(1280, 800);
+    }
+  });
+
+  test("a time in a month, or a resize without one in a week, says what's wrong", async () => {
+    const month = await renderView("month");
+    await expect(
+      month.pointer.moveEvent("Review", { date: "2026-10-14", time: "15:00" }),
+    ).rejects.toThrow(/no times to drop on/);
+    await month.unmount();
+
+    const week = await renderView("week");
+    await expect(week.pointer.resizeEvent("Review", { date: "2026-10-09" })).rejects.toThrow(
+      /resizes by time/,
+    );
   });
 
   test("a drag moves an event in an editable calendar and nothing in a read-only one", async () => {

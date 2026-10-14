@@ -3,6 +3,7 @@ import type {
   CalendarMeta,
   CalendarPendingChanges,
   EventId,
+  PlainDateInterval,
   ResourceId,
 } from "@moltenship/calendar";
 import { act } from "react";
@@ -63,7 +64,8 @@ export interface CalendarInspection<
   getDayCell(date: DateInput, options?: { readonly resourceId?: TResourceId | null }): HTMLElement;
   /**
    * The column of a date's hours in a time grid, a `data-date` element without `data-all-day`, or
-   * its strip along a timeline row (`data-axis="inline"`).
+   * its strip along a timeline row (`data-axis="inline"`). In a month, which has no hours, that's
+   * the day itself.
    */
   getTimeColumn(
     date: DateInput,
@@ -93,6 +95,8 @@ export interface InspectionContext<TEventId extends EventId, TResourceId extends
   readonly meta: () => CalendarMeta<unknown, unknown, never, TEventId, TResourceId>;
   readonly pending: () => CalendarPendingChanges<unknown, TEventId, TResourceId>;
   readonly setFocus: (focus: CalendarFocus | null) => void;
+  /** The active view's visible dates; `null` when it's unregistered. */
+  readonly visibleRange: () => PlainDateInterval | null;
 }
 
 /** A macrotask that fake timers don't hold back where `MessageChannel` exists. */
@@ -151,6 +155,7 @@ export function createInspection<TEventId extends EventId, TResourceId extends R
     focus: context.focus,
     setFocus: context.setFocus,
     timeZone,
+    visibleRange: context.visibleRange,
   });
   const pointer = createPointerDriver<TEventId, TResourceId>({ container, event: find, timeZone });
 

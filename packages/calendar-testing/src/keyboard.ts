@@ -3,6 +3,7 @@ import {
   type CalendarFocus,
   type EventId,
   type NormalizedCalendarEvent,
+  type PlainDateInterval,
   type ResourceId,
 } from "@moltenship/calendar";
 import { act } from "react";
@@ -44,7 +45,7 @@ export interface ArrowPresses {
 
 /** Which part of an event to focus: the one on `date`, in `resourceId`. */
 export interface EventFocusOptions<TResourceId extends ResourceId = ResourceId> {
-  /** The day whose part takes focus; the day the event starts by default. */
+  /** The day whose part takes focus; by default the day it starts, or the first day shown. */
   readonly date?: DateInput;
   /** The resource whose copy takes focus, in a resource view. */
   readonly resourceId?: TResourceId | null;
@@ -108,6 +109,7 @@ interface KeyboardContext<TEventId extends EventId> {
   readonly timeZone: () => string;
   readonly focus: () => CalendarFocus | null;
   readonly setFocus: (focus: CalendarFocus | null) => void;
+  readonly visibleRange: () => PlainDateInterval | null;
   readonly event: (
     query: EventQuery<TEventId>,
   ) => NormalizedCalendarEvent<unknown, TEventId, ResourceId>;
@@ -183,8 +185,10 @@ export function createKeyboardDriver<TEventId extends EventId, TResourceId exten
     describeTarget: () => string,
   ): Promise<HTMLElement> {
     const before = context.focus();
+    const beforeElement = document.activeElement;
     const tried = new Set<HTMLElement>();
-    for (;;) {
+    // A view has a tab stop or two; the cap only guards against one that keeps making new ones.
+    for (let attempt = 0; attempt < 20; attempt += 1) {
       await act(async () => context.setFocus(focus));
       const stop = [...container.querySelectorAll<HTMLElement>('[tabindex="0"]')].find(
         (element) =>
@@ -198,18 +202,40 @@ export function createKeyboardDriver<TEventId extends EventId, TResourceId exten
       if (matches(context.focus())) return stop;
     }
     await act(async () => context.setFocus(before));
+    // DOM focus goes back too: to the element that had it, or the one showing the restored focus,
+    // as a slot renders anew.
+    const restored =
+      beforeElement instanceof HTMLElement && beforeElement.isConnected
+        ? beforeElement
+        : before === null
+          ? undefined
+          : [...container.querySelectorAll<HTMLElement>('[tabindex="0"]')].find(
+              (element) => element.closest('[data-calendar-part="toolbar"]') === null,
+            );
+    await act(async () => {
+      if (restored !== undefined) restored.focus();
+      else if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    });
     throw new CalendarQueryError(`The view shows no ${describeTarget()}.`);
   }
 
-  function startDate(event: NormalizedCalendarEvent<unknown, TEventId, ResourceId>) {
-    if (event.kind === "all-day") return event.start;
-    if (event.kind === "floating") return event.start.toPlainDate();
-    return event.start.toZonedDateTimeISO(context.timeZone()).toPlainDate();
+  /** The day an event starts, or the first day shown when it started earlier. */
+  function firstShownDate(event: NormalizedCalendarEvent<unknown, TEventId, ResourceId>) {
+    const start =
+      event.kind === "all-day"
+        ? event.start
+        : event.kind === "floating"
+          ? event.start.toPlainDate()
+          : event.start.toZonedDateTimeISO(context.timeZone()).toPlainDate();
+    const range = context.visibleRange();
+    return range !== null && Temporal.PlainDate.compare(start, range.start) < 0
+      ? range.start
+      : start;
   }
 
   function focusEvent(query: EventQuery<TEventId>, options: EventFocusOptions<TResourceId> = {}) {
     const event = context.event(query);
-    const date = options.date === undefined ? startDate(event) : toPlainDate(options.date);
+    const date = options.date === undefined ? firstShownDate(event) : toPlainDate(options.date);
     const focus = withResource({ date, eventId: event.id, kind: "event" }, options.resourceId);
     return focusThrough(
       focus,

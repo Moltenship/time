@@ -37,7 +37,8 @@ export function recordAnnouncements(container: HTMLElement) {
     /** What the announcer that spoke last says now; `undefined` when it's silent or there's none. */
     current(): string | undefined {
       read();
-      const text = latest?.isConnected ? normalizeText(latest.textContent) : "";
+      const text =
+        latest !== undefined && container.contains(latest) ? normalizeText(latest.textContent) : "";
       return text === "" ? undefined : text;
     },
     stop: () => observer?.disconnect(),

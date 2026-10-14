@@ -149,6 +149,18 @@ test("a cell or event part the view doesn't show can't take focus, and focus sta
     /no focusable part of event "Standup" on 2026-10-09/,
   );
   expect(calendar.state().focus).toEqual(before);
+  // DOM focus is back on the 9:00 slot too, so keys go on from there.
+  await calendar.keyboard.arrows({ down: 1 });
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Thursday, October 8 at 9:15 AM");
+});
+
+test("an event that began before the week takes focus on the week's first day", async () => {
+  const long = buildAllDayEvent({ end: "2026-10-07", start: "2026-09-28", title: "Long" });
+  const calendar = await renderCalendar(Calendar, { environment, events: [long], view: "week" });
+
+  await calendar.keyboard.focusEvent("Long");
+
+  expect(String((calendar.state().focus as { date: unknown }).date)).toBe("2026-10-05");
 });
 
 test("a message said twice is recorded twice, from whichever announcer speaks", async () => {

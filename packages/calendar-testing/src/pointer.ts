@@ -275,6 +275,30 @@ export function createPointerDriver<TEventId extends EventId, TResourceId extend
     return found;
   }
 
+  /**
+   * A point just past an event's start, along its time column's axis, below or beside its start
+   * handle, which would resize instead.
+   */
+  function nearStart(element: HTMLElement, column: HTMLElement): Point {
+    const box = boxOf(element, "The event");
+    const handle = element.querySelector('[data-resize="start"]')?.getBoundingClientRect();
+    let point: Point;
+    if (!isInline(column)) {
+      point = { x: box.left + box.width / 2, y: (handle?.bottom ?? box.top) + 2 };
+    } else if (isRightToLeft(column)) {
+      point = { x: (handle?.left ?? box.right) - 2, y: box.top + box.height / 2 };
+    } else {
+      point = { x: (handle?.right ?? box.left) + 2, y: box.top + box.height / 2 };
+    }
+    const hit = document.elementFromPoint(point.x, point.y);
+    if (hit === null || !element.contains(hit) || hit.closest("[data-resize]") !== null) {
+      throw new CalendarQueryError(
+        "The event is too short to press past its start: move it a shorter way, or make it taller.",
+      );
+    }
+    return point;
+  }
+
   /** The `data-date` cell under a point, beneath anything inside `inside`. */
   function cellAt(point: Point, inside: Element): HTMLElement {
     const cell = document
@@ -416,14 +440,23 @@ export function createPointerDriver<TEventId extends EventId, TResourceId extend
       const daysIn = dateOf(event.start).until(pressed).days;
 
       if (isTimeColumn(from, element)) {
-        // How far into the event the press is, in days: the drop keeps it.
-        const into = daysIn + fractionAt(from, grab) - dayFraction(wallTime(event.start));
-        const at =
-          to.time === undefined
-            ? dayFraction(wallTime(event.start))
-            : dayFraction(Temporal.PlainTime.from(to.time));
-        await dropAt(grab, inColumn(to, at + into), element, "the event", options);
+        const start = dayFraction(wallTime(event.start));
+        const at = to.time === undefined ? start : dayFraction(Temporal.PlainTime.from(to.time));
+        // How far into the event the press is, in days: the drop keeps it. Where that would put
+        // the drop in another day's column, press just past the event's start instead.
+        let press = grab;
+        let into = daysIn + fractionAt(from, grab) - start;
+        if (Math.floor(at + into) !== Math.floor(at)) {
+          press = nearStart(element, from);
+          into = daysIn + fractionAt(from, press) - start;
+        }
+        await dropAt(press, inColumn(to, at + into), element, "the event", options);
         return;
+      }
+      if (to.time !== undefined && !from.hasAttribute("data-all-day")) {
+        throw new CalendarQueryError(
+          "This view has no times to drop on: move the event by its date alone.",
+        );
       }
       if (to.time !== undefined) {
         // From a day to a time: the event takes the slot it's dropped in.
@@ -467,6 +500,11 @@ export function createPointerDriver<TEventId extends EventId, TResourceId extend
       const pressed = toPlainDate(from.getAttribute("data-date")!);
       const edgeValue = edge === "end" ? event.end : event.start;
 
+      if (isTimeColumn(from, element) && to.time === undefined) {
+        throw new CalendarQueryError(
+          `This view resizes by time: give the ${edge} a \`time\` as well as a date.`,
+        );
+      }
       if (isTimeColumn(from, element) && to.time !== undefined) {
         // How far the press is from the edge, in days: the drop keeps it.
         const into =
@@ -478,8 +516,11 @@ export function createPointerDriver<TEventId extends EventId, TResourceId extend
         return;
       }
       // Whole days: the day under the handle moves as far as the edge does.
+      // An end is exclusive: an all-day event's, or a timed one's at midnight, is in the day before.
+      const endsOnTheDayBefore =
+        event.kind === "all-day" || wallTime(edgeValue).equals(Temporal.PlainTime.from("00:00"));
       const edgeDay =
-        edge === "end" && event.kind === "all-day"
+        edge === "end" && endsOnTheDayBefore
           ? dateOf(edgeValue).subtract({ days: 1 })
           : dateOf(edgeValue);
       const days = edgeDay.until(toPlainDate(to.date)).days;
