@@ -1,0 +1,101 @@
+---
+title: Drag tasks in with dnd-kit
+description: Drag a backlog of your own into the calendar, and meetings back out, with dnd-kit and @moltenship/calendar-dnd-kit.
+---
+
+<DndKitPreview />
+
+Drag a task from the backlog onto the week: the week shows the slots it would take, from the slot
+under the pointer, and it becomes a meeting there when you let go. Drag a meeting onto the backlog
+and it becomes a task again. The all-day row turns red under a task, because a policy only takes
+timed meetings.
+
+Your app already uses [dnd-kit](https://dndkit.com) for its own lists, so the backlog's cards are
+ordinary dnd-kit draggables. `@moltenship/calendar-dnd-kit` connects them to the calendar: a drop
+goes through the calendar's slots, policies and `onEventChange` like any drag. The calendar's own
+drags, moving and resizing meetings inside the week, stay on its own pointer layer. The
+[API reference](/docs/api/dnd-kit) lists every export and option.
+
+## Install
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/calendar-dnd-kit @dnd-kit/react @dnd-kit/dom
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/calendar-dnd-kit @dnd-kit/react @dnd-kit/dom
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/calendar-dnd-kit @dnd-kit/react @dnd-kit/dom
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar-dnd-kit @dnd-kit/react @dnd-kit/dom
+```
+
+</Tab>
+</Tabs>
+
+The adapter takes dnd-kit 0.5, its current packages. It isn't on npm yet: to try it now,
+[run Time from source](/docs/installation#run-from-source).
+
+## The calendar
+
+The example's meetings are timed. A policy rejects any change that would make one all-day, so the
+week's all-day row takes no task, and its preview shows that:
+
+<include meta='title="backlog-calendar.tsx"'>../../examples/dnd-kit-backlog.tsx#calendar</include>
+
+## A task becomes a meeting
+
+Each card spreads `calendarDropData` into its `data`: the record the task becomes, how long it
+takes, and a title for screen readers. The record's times are placeholders; the drop decides when
+the meeting is.
+
+<include meta='title="backlog-calendar.tsx"'>../../examples/dnd-kit-backlog.tsx#task</include>
+
+Put one `DragDropProvider` around both the backlog and the calendar, and `CalendarDndKit` inside
+it. `onEventChange` gets a dropped task as a create whose `event` is the record. A range dragged
+out in the week is a create without one, which this example leaves alone:
+
+<include meta='title="backlog-calendar.tsx"'>../../examples/dnd-kit-backlog.tsx#root</include>
+
+The create runs through the root's policies first, so the drop on the all-day row is rejected and
+the task stays in the backlog. The calendar's `Announcer` names the task as it moves over the week
+and says where it was added.
+
+## A meeting goes back to the backlog
+
+While a meeting is dragged out of the week, it's a dnd-kit drag of type `calendarEventType`, so the
+backlog takes it with `accept`, and lights up with `isDropTarget`. Dropped there, the drag ends on
+the backlog and the calendar proposes nothing. The backlog proposes the delete itself, so the
+policies run and the meeting hides while it saves, and turns it into a task once it's saved:
+
+<include meta='title="backlog-calendar.tsx"'>../../examples/dnd-kit-backlog.tsx#backlog</include>
+
+Any other end of that drag, a drop in the week or Escape, ends it as `canceled`.
+
+## Keyboard and touch
+
+- dnd-kit's keyboard sensor drags tasks in: focus a card, press Space, move it with the arrow
+  keys, Shift for bigger steps, and press Space again to drop it. The week previews and announces
+  each step. Meetings can't be dragged out by keyboard, so give tasks and meetings a button of their
+  own too, as the [demo](https://moltenship-time-demo.vercel.app) does: "Schedule" on a task opens
+  the event editor, and "Unschedule" in a meeting's popover moves it back.
+- On a touch screen, cards use dnd-kit's touch activation and meetings the calendar's long-press.
+- dnd-kit's own announcements name draggables by ID. Give its `Accessibility` plugin
+  announcements that name your tasks and stay quiet where the calendar speaks for itself, as the
+  [API reference's example](/docs/api/dnd-kit#how-it-behaves) does.

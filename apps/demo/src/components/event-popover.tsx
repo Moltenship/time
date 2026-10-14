@@ -2,6 +2,7 @@ import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import {
   AlignLeftIcon,
   CalendarIcon,
+  CalendarMinusIcon,
   PencilIcon,
   RepeatIcon,
   Trash2Icon,
@@ -15,6 +16,8 @@ import { DemoCalendar, type DemoOccurrence } from "../calendar";
 import { demoCalendars } from "../calendars";
 import { formatEventWhen } from "../event-format";
 import { describeOccurrenceRecurrence } from "../event-recurrence";
+import { taskFromOccurrence, type DemoTaskList } from "../tasks";
+import { useUnschedule } from "../unschedule";
 
 export interface EventPopoverProps {
   /** The clicked event element the popover points at; kept after closing to restore focus. */
@@ -24,6 +27,8 @@ export interface EventPopoverProps {
   readonly occurrence: DemoOccurrence | undefined;
   readonly onClose: () => void;
   readonly onEdit: (occurrence: DemoOccurrence) => void;
+  /** The unscheduled tasks, which "Unschedule" moves a timed one-off event into. */
+  readonly taskList: Pick<DemoTaskList, "addTask" | "removeTask">;
   readonly timeZone: string;
 }
 
@@ -33,8 +38,10 @@ export function EventPopover({
   occurrence,
   onClose,
   onEdit,
+  taskList,
   timeZone,
 }: EventPopoverProps) {
+  const onUnschedule = useUnschedule(taskList);
   const titleId = useId();
   const actions = DemoCalendar.useCalendarActions();
   const handingOffToEditor = useRef(false);
@@ -89,6 +96,19 @@ export function EventPopover({
                     variant="ghost"
                   >
                     <PencilIcon />
+                  </Button>
+                )}
+                {taskFromOccurrence(occurrence) !== null && (
+                  <Button
+                    aria-label="Unschedule event"
+                    onClick={() => {
+                      onClose();
+                      onUnschedule(occurrence);
+                    }}
+                    size="icon-sm"
+                    variant="ghost"
+                  >
+                    <CalendarMinusIcon />
                   </Button>
                 )}
                 {event.live !== true && (

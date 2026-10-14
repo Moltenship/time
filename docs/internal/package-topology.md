@@ -53,11 +53,11 @@ packed code carries the `/*!` notice.
 | `@moltenship/calendar-testing` | Consumer test helpers; private until after 1.0 (#45) | Public facade, dnd adapter, and Temporal utilities |
 | `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `calendar-temporal`, `ics` |
 | `@moltenship/ics` | Standalone iCalendar parsing (ADR 0151) | None |
-| `showcase` | Consumer-equivalent documentation and examples | Public facade, `calendar-recurrence` and `@moltenship/ics` |
+| `showcase` | Consumer-equivalent documentation and examples | Public facade, `calendar-recurrence`, `calendar-dnd-kit` and `@moltenship/ics` |
 | `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade only |
 | `fixtures` | Internal deterministic fixture generation | `calendar-core` |
 | `benchmark` | Internal core, React and recurrence benchmark runners | Core, React bindings, recurrence, Temporal utilities, and fixture tooling |
-| `demo` | The Google Calendar-style demo app | Public facade and `calendar-recurrence` |
+| `demo` | The Google Calendar-style demo app | Public facade, `calendar-recurrence` and `calendar-dnd-kit` |
 | `registry-source` | Registry source, type-checked and tested in place | Public facade only |
 | `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, the dnd-kit adapter, registry source in place (`@registry/*`), and the demo's `App` by path (`apps/demo/src/app`); not in the manifest check yet |
 | `registry` | Internal shadcn build, validation and install test (`tools/registry`) | None |
@@ -87,7 +87,7 @@ calendar-core ───────────────→ fixtures ──�
        ↓                                           ↑
 calendar-core + calendar-temporal → calendar-react ┘
 calendar-core + calendar-temporal → calendar-dnd
-calendar-core + calendar-dnd → calendar-dnd-kit (optional; dnd-kit peer) ─────→ a11y
+calendar-core + calendar-dnd → calendar-dnd-kit (optional; dnd-kit peer) ─────→ showcase / demo / a11y
 
 calendar-core + calendar-dnd + calendar-react + calendar-temporal
        ↓

@@ -13,6 +13,7 @@ that already use it:
 
 Drops go through the calendar like any drag: its hit-testing, snapping, policies, `onEventChange`
 and `onEventChangeResult`. The calendar's own drags stay on its native pointer layer.
+[Drag tasks in with dnd-kit](/docs/guides/dnd-kit) builds a backlog beside a week, live.
 
 It's a separate package. `@moltenship/calendar` doesn't re-export it, so a calendar without it
 installs and bundles no dnd-kit. It works with dnd-kit's current packages, `@dnd-kit/react` and

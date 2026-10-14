@@ -8,6 +8,7 @@
     "google-calendar",
     "google-calendar-sync",
     "tanstack-query",
+    "dnd-kit",
     "performance"
   ]
 }

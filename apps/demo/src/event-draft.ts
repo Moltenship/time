@@ -170,6 +170,17 @@ export function draftForNewEvent(
   };
 }
 
+/** A new event for a task: its title, calendar and length, from the next half hour or 09:00. */
+export function draftForTask(
+  task: { readonly calendarId: DemoCalendarId; readonly minutes: number; readonly title: string },
+  date: Temporal.PlainDate,
+  now: Temporal.ZonedDateTime,
+): EventDraft {
+  const draft = draftForNewEvent(date, now, task.calendarId);
+  const end = draft.startDate.toPlainDateTime(draft.startTime).add({ minutes: task.minutes });
+  return { ...draft, endDate: end.toPlainDate(), endTime: end.toPlainTime(), title: task.title };
+}
+
 /** Moves the start and keeps the event's length, the way calendar apps do. */
 export function moveDraftStart(
   draft: EventDraft,
