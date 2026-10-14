@@ -138,7 +138,7 @@ gzip -9, React external:
 Items 1, 3 (the preview and the drop) and 5 shipped with the "Animate with Motion" guide
 (`apps/showcase/content/docs/guides/motion.mdx`): every view marks the title
 `data-slot="calendar-event-title"`, a `monitorCalendarDrags` follower hears `preview(preview)` and
-`end(dropped, drop)`, and a follower without `claims` only watches. The guide's morph uses Motion's
+`end(dropped, landing)`, and a follower without `claims` only watches. The guide's morph uses Motion's
 `animateView` over view transitions, which needs no Motion chip at all, so item 2 isn't needed for
 it.
 

@@ -142,7 +142,10 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
    * the view, so coming back in across an edge doesn't scroll; see `EdgeArming`.
    */
   readonly edges: EdgeArming;
-  /** Where a moved event's copy follows the pointer outside the view, once it has followers. */
+  /**
+   * Where a moved event's copy follows the pointer outside the view, once a follower with `claims`
+   * is on it.
+   */
   floating?: Floating;
   /** Drop zones and watchers following a move (`monitorCalendarDrags`). */
   followers: readonly CalendarDragFollower[];
@@ -210,12 +213,12 @@ function floatingOf(element: HTMLElement, origin: CalendarPoint): Floating {
   return { height, offset, width };
 }
 
-/** Where the copy sits under the pointer, anywhere in the viewport. */
 /** A preview segment's box, for followers. */
 function viewportRect({ height, left, top, width }: GhostRect): CalendarRect {
   return { height, width, x: left, y: top };
 }
 
+/** Where the copy sits under the pointer, anywhere in the viewport. */
 function floatingRect({ height, offset, width }: Floating, point: CalendarPoint): GhostRect {
   return {
     height,
@@ -332,8 +335,8 @@ export function attachCalendarPointer<
   }
 
   /**
-   * Off the view, or over a drop zone that claims it, a moved event that someone follows shows as
-   * a copy under the pointer; elsewhere, such as over a header, nothing shows.
+   * Off the view, or over a drop zone that claims it, a moved event that a follower with `claims`
+   * follows shows as a copy under the pointer; elsewhere, such as over a header, nothing shows.
    */
   function showOutside(current: Session<TEvent, TEventId, TResourceId>): void {
     const { floating, gesture } = current;
@@ -371,7 +374,7 @@ export function attachCalendarPointer<
       showOutside(current);
       if (changed) {
         getOptions().onPreview?.(null);
-        show(current, null);
+        show(current, () => null);
       }
       return changed;
     }
@@ -397,17 +400,20 @@ export function attachCalendarPointer<
           formatPlacementRange(placement, { timeZone: current.options.timeZone }));
     const validity = ghostValidity(current.check);
     current.ghost.render(layout.rects, template, label, validity);
-    show(current, { label, rects: layout.rects.map(viewportRect), validity });
+    show(current, () => ({ label, rects: layout.rects.map(viewportRect), validity }));
     return changed;
   }
 
   /** Tells the followers what the preview shows now. */
   function show(
     current: Session<TEvent, TEventId, TResourceId>,
-    shown: CalendarDragPreview | null,
+    shown: () => CalendarDragPreview | null,
   ): void {
-    current.shown = shown;
-    tellFollowers(current.followers, (follower) => follower.preview?.(shown));
+    // Creates, resizes and drags no one follows build nothing.
+    if (current.followers.length === 0) return;
+    const preview = shown();
+    current.shown = preview;
+    tellFollowers(current.followers, (follower) => follower.preview?.(preview));
   }
 
   /**
@@ -475,10 +481,10 @@ export function attachCalendarPointer<
   }
 
   /**
-   * Ends the gesture; `dropped` tells its followers a drop zone of theirs took it, and `drop` what
-   * the preview showed where a release in the view proposed the move.
+   * Ends the gesture; `dropped` tells its followers a drop zone of theirs took it, and `landing`
+   * what the preview showed where a release in the view proposed the move.
    */
-  function end(dropped = false, drop: CalendarDragPreview | null = null): void {
+  function end(dropped = false, landing: CalendarDragPreview | null = null): void {
     const current = session;
     if (current === null) return;
     session = null;
@@ -498,7 +504,7 @@ export function attachCalendarPointer<
     for (const type of ["contextmenu", "dragstart", "selectstart"]) {
       window.removeEventListener(type, preventDefault);
     }
-    tellFollowers(current.followers, (follower) => follower.end?.(dropped, drop));
+    tellFollowers(current.followers, (follower) => follower.end?.(dropped, landing));
   }
 
   /** Ends the gesture without proposing anything. */
@@ -557,7 +563,9 @@ export function attachCalendarPointer<
 
     current.point = { x: event.clientX, y: event.clientY };
     tellFollowers(current.followers, (follower) => follower.move?.(current.point));
-    preview(current);
+    // As if scrolled, so followers land on the preview's boxes as they are now, after a wheel
+    // scroll that moved them less than a slot.
+    preview(current, true);
     if (current.claimed) {
       // A drop zone outside the calendar took it: the zone's owner handles and announces it.
       end(true);

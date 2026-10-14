@@ -22,8 +22,8 @@ export interface CalendarDragPreview {
    */
   readonly label: string | null;
   /**
-   * The preview's boxes, in order: one per day, week row or resource the event would cover, at
-   * their full size even where a scroller clips them.
+   * The preview's boxes at least partly in view, in order, each at its full size even where a
+   * scroller clips it: a day, week row or resource the event would cover. Empty when none is.
    */
   readonly rects: readonly CalendarRect[];
   /** `invalid` when a policy would reject the drop, `warning` when one would flag it. */
@@ -63,12 +63,12 @@ export interface CalendarDragFollower {
   readonly claims?: () => boolean;
   /**
    * The drag ended. `dropped` is true when it was released while `claims` said so, false after a
-   * drop in the calendar, a release over nowhere, Escape, or a lost pointer. `drop` is the
+   * drop in the calendar, a release over nowhere, Escape, or a lost pointer. `landing` is the
    * preview a release in the view proposed the move at, policies still to run; `null` when it
    * proposed nothing: Escape, a lost pointer, or a release where the event already was, over
-   * nowhere or over a zone.
+   * nowhere or over a zone. No `preview(null)` comes before it.
    */
-  readonly end?: (dropped: boolean, drop: CalendarDragPreview | null) => void;
+  readonly end?: (dropped: boolean, landing: CalendarDragPreview | null) => void;
   /** The pointer moved. */
   readonly move?: (point: CalendarPoint) => void;
   /**

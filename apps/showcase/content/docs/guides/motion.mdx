@@ -18,7 +18,7 @@ the calendar keeps for it:
 - `monitorCalendarDrags` tells a follower where the pointer is, what the preview shows, and where
   the drop landed.
 
-Nothing in the calendar's source changes, and the calendar's packages don't depend on Motion.
+You don't edit the calendar's code, and the calendar's packages don't depend on Motion.
 
 ## Install
 
@@ -91,7 +91,7 @@ buttons, so one listener opens any of them, and `eventIdOf` reads the meeting's 
 
 <include meta='title="motion-calendar.tsx"'>../../examples/motion-calendar.tsx#root</include>
 
-While a view transition runs, about a third of a second, the page takes no clicks. That suits
+While a view transition runs, about half a second, the page takes no clicks. That suits
 opening a card. It doesn't suit the calendar's own navigation, which you click through quickly, so
 leave paging and view switches without transitions.
 
@@ -100,16 +100,17 @@ leave paging and view switches without transitions.
 `monitorCalendarDrags` hears each meeting a view starts to move, and the follower you return
 hears the rest of the drag:
 
-| Follower method      | Called                                                                                                                                                                            |
-| -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `move(point)`        | On every pointer move, with the pointer in viewport coordinates                                                                                                                   |
-| `preview(preview)`   | Whenever the view's preview changes: its boxes (`rects`), the time it shows (`label`), and whether a policy would reject or flag it (`validity`). `null` when the view shows none |
-| `end(dropped, drop)` | When the drag ends. `drop` is the preview the release proposed the move at, or `null` when it proposed nothing, as after Escape                                                   |
+| Follower method         | Called                                                                                                                                                                                                          |
+| ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `move(point)`           | On every pointer move, with the pointer in viewport coordinates                                                                                                                                                 |
+| `preview(preview)`      | Whenever the view's preview changes, or moves as the view scrolls: its boxes (`rects`), the time it shows (`label`), and whether a policy would reject or flag it (`validity`). `null` when the view shows none |
+| `end(dropped, landing)` | When the drag ends. `landing` is the preview the release proposed the move at, or `null` when it proposed nothing, as after Escape. No `preview(null)` comes first                                              |
 
 The follower here has no `claims`, so it only watches: the drag works as it would without it. The
 card is a Motion element whose position follows the pointer through a spring, and whose rotation
-follows the spring's speed. When the drag ends, it flies to the drop's first box, or back to the
-meeting when nothing was dropped or a policy would reject the drop:
+follows the spring's speed. When the drag ends, it flies to the landing's first box, or back to
+the meeting when nothing was dropped or a policy would reject the drop. It follows only drags in
+its own calendar, should the page have another:
 
 <include meta='title="motion-calendar.tsx"'>../../examples/motion-calendar.tsx#drag</include>
 
@@ -123,24 +124,25 @@ The preview itself takes CSS. The pointer layer moves it with `transform`, so th
 tilts it as it's picked up, with no Motion at all:
 
 ```css title="app.css"
-[data-calendar-ghost="event"] {
-  rotate: -2deg;
-  scale: 1.05;
-  transition:
-    rotate 150ms ease-out,
-    scale 150ms ease-out;
+@media (prefers-reduced-motion: no-preference) {
+  [data-calendar-ghost="event"] {
+    rotate: -2deg;
+    scale: 1.05;
+    transition:
+      rotate 150ms ease-out,
+      scale 150ms ease-out;
 
-  @starting-style {
-    rotate: 0deg;
-    scale: 1;
+    @starting-style {
+      rotate: 0deg;
+      scale: 1;
+    }
   }
 }
 ```
 
-`--calendar-ghost-opacity`, `--calendar-ghost-shadow`, `--calendar-ghost-background` and
-`--calendar-ghost-radius` restyle it, and `data-invalid` and `data-warning` mark a drop the policies
-would reject or flag. The [theme](/docs/theming)'s reduced-motion rules already stop transitions on
-the preview.
+The media query keeps the preview still for people who ask for less motion. `--calendar-ghost-opacity`,
+`--calendar-ghost-shadow`, `--calendar-ghost-background` and `--calendar-ghost-radius` restyle it,
+and `data-invalid` and `data-warning` mark a drop the policies would reject or flag.
 
 ## Reduced motion and accessibility
 

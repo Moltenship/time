@@ -159,7 +159,7 @@ function expectIcons(elements: readonly HTMLElement[]) {
     const id = chip.getAttribute("data-event-id")!;
     const titles = chip.querySelectorAll('[data-slot="calendar-event-title"]');
     expect(titles, id).toHaveLength(1);
-    expect(titles[0]!.textContent, id).toMatch(new RegExp(`^${id}`));
+    expect(titles[0]!.textContent, id).toBe(id);
     if (!repeating.includes(id)) {
       expect(icons(chip), id).toHaveLength(0);
       continue;
@@ -199,9 +199,10 @@ test.each<View>(["week", "scrolling-week"])(
         .find((chip) => chip.getAttribute("data-event-id") === id)!
         .querySelector('[data-slot="calendar-event-icon"]')!.parentElement!;
 
-    // The two-line block's clamped title, the one-line block's title, and the all-day bar's.
+    // The two-line block's clamped title, the one-line block's title on its line with the time,
+    // and the all-day bar's.
     expect(titleOf("planning").className).toContain("line-clamp-2");
-    expect(titleOf("standup").className).toContain("truncate");
+    expect(titleOf("standup").parentElement!.className).toContain("truncate");
     expect(titleOf("trip").className).toContain("truncate");
     expect(
       ariaLabel(elements.find((chip) => chip.getAttribute("data-event-id") === "standup")),

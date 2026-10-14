@@ -28,7 +28,7 @@ import {
 
 interface CalendarDragFollower {
   readonly claims?: () => boolean;
-  readonly end?: (dropped: boolean, drop: CalendarDragPreview | null) => void;
+  readonly end?: (dropped: boolean, landing: CalendarDragPreview | null) => void;
   readonly move?: (point: CalendarPoint) => void;
   readonly preview?: (preview: CalendarDragPreview | null) => void;
 }

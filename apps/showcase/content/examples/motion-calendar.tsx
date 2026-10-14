@@ -9,7 +9,7 @@ import {
 } from "@moltenship/calendar";
 import { animateView } from "motion";
 import { motion, useMotionValue, useSpring, useTransform, useVelocity } from "motion/react";
-import { useEffect, useState, type MouseEvent } from "react";
+import { useEffect, useRef, useState, type MouseEvent, type RefObject } from "react";
 import { createPortal, flushSync } from "react-dom";
 
 import { calendarAnnouncements } from "@/components/calendar/announcements";
@@ -19,7 +19,8 @@ import { Button } from "@/components/ui/button";
 import { Calendar, meetings as initialMeetings, weekRules, type Meeting } from "./quick-start";
 
 // #region morph
-const spring = { bounce: 0.15, type: "spring", visualDuration: 0.35 } as const;
+// Settles in about half a second.
+const spring = { bounce: 0.1, type: "spring", visualDuration: 0.3 } as const;
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const chipTitle = '[data-slot="calendar-event-title"]';
@@ -37,11 +38,15 @@ type Pair = readonly [from: Element | null, to: Element | string | null];
  */
 function morph(update: () => void, [box, title]: readonly [Pair, Pair], swapAt: number) {
   if (reducedMotion()) return update();
-  const view = animateView(async () => {
-    flushSync(update);
-    // Base UI places a popover a task after it mounts.
-    await new Promise((resolve) => setTimeout(resolve));
-  });
+  const view = animateView(
+    async () => {
+      flushSync(update);
+      // Base UI places a popover a task after it mounts.
+      await new Promise((resolve) => setTimeout(resolve));
+    },
+    // A new morph, such as opening again right after Escape, cuts the last one short.
+    { interrupt: "immediate" },
+  );
   const swap = { delay: swapAt, duration: 0.15 };
   if (box[0] !== null && box[1] !== null) {
     view
@@ -132,10 +137,11 @@ interface Held {
 const follow = { damping: 30, stiffness: 400 } as const;
 
 /**
- * A copy of each moved meeting that trails the pointer on a spring and tilts with its speed, over
- * the calendar's own preview, which marks the slot. It lands where the drop is, or flies back.
+ * A copy of each meeting moved in `within` that trails the pointer on a spring and tilts with its
+ * speed, over the calendar's own preview, which marks the slot. It lands where the drop is, or
+ * flies back.
  */
-function DragCard() {
+function DragCard({ within }: { readonly within: RefObject<HTMLElement | null> }) {
   const [held, setHeld] = useState<Held | null>(null);
   const [time, setTime] = useState<string | null>(null);
   const [landed, setLanded] = useState(false);
@@ -150,8 +156,9 @@ function DragCard() {
   useEffect(
     () =>
       monitorCalendarDrags(({ element, event, origin }) => {
-        // Under reduced motion the calendar's preview alone follows the pointer.
-        if (reducedMotion()) return;
+        // Drags in other calendars on the page are theirs. Under reduced motion the calendar's
+        // preview alone follows the pointer.
+        if (within.current?.contains(element) !== true || reducedMotion()) return;
         const box = element.getBoundingClientRect();
         const grab = { x: origin.x - box.x, y: origin.y - box.y };
         const moveTo = ({ x: left, y: top }: Pick<CalendarRect, "x" | "y">) => {
@@ -178,19 +185,15 @@ function DragCard() {
         return {
           move: (point) => moveTo({ x: point.x - grab.x, y: point.y - grab.y }),
           preview: (preview) => setTime(preview?.label ?? null),
-          end: (_dropped, drop) => {
+          end: (_dropped, landing) => {
             // Into the slot it was dropped in, or back to where it started.
-            const landing =
-              drop === null || drop.validity === "invalid"
-                ? element.getBoundingClientRect()
-                : drop.rects[0]!;
-            moveTo(landing);
+            const slot = landing?.validity === "invalid" ? undefined : landing?.rects[0];
+            moveTo(slot ?? element.getBoundingClientRect());
             setLanded(true);
-            setTimeout(() => setHeld(null), 300);
           },
         };
       }),
-    [springX, springY, x, y],
+    [springX, springY, within, x, y],
   );
 
   if (held === null) return null;
@@ -206,6 +209,8 @@ function DragCard() {
           : { boxShadow: "0 16px 32px rgb(0 0 0 / 0.25)", opacity: 1, scale: 1.05 }
       }
       transition={spring}
+      // Gone once it has landed, unless another drag picked it up again.
+      onAnimationComplete={() => landed && setHeld(null)}
     >
       <span className="line-clamp-2">{held.title}</span>
       {time !== null && <span className="truncate font-normal opacity-80">{time}</span>}
@@ -230,6 +235,7 @@ function moveMeeting(meetings: readonly Meeting[], change: MeetingChange): reado
 export function MotionCalendar() {
   const [meetings, setMeetings] = useState(initialMeetings);
   const [opened, setOpened] = useState<Opened | null>(null);
+  const viewport = useRef<HTMLDivElement>(null);
 
   // Views render each meeting as a `[data-event-id]` button, so one listener opens any of them.
   const openClicked = (click: MouseEvent) => {
@@ -255,12 +261,13 @@ export function MotionCalendar() {
           // The calendar's preview stays as the slot the card lands in: faint, without a shadow.
           className="min-h-0 flex-1 [&_[data-calendar-ghost=event]]:[--calendar-ghost-opacity:0.35] [&_[data-calendar-ghost=event]]:[--calendar-ghost-shadow:none]"
           onClick={openClicked}
+          ref={viewport}
         >
           <Calendar.ActiveView />
         </Calendar.Viewport>
       </Calendar.Frame>
       <MeetingCard opened={opened} onClose={() => setOpened(null)} />
-      <DragCard />
+      <DragCard within={viewport} />
       <Calendar.Announcer messages={calendarAnnouncements} />
     </Calendar.Root>
   );

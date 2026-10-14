@@ -179,10 +179,12 @@ export function TimeGridEvent<TEvent>({
         }
       >
         {compact ? (
-          <span ref={titleRef} data-slot="calendar-event-title" className="truncate">
-            {/* Smaller, to fit the compact line without making it taller. */}
-            <EventIcon className="size-2.5 [&_svg]:size-2.5">{icon}</EventIcon>
-            {event.title}
+          <span ref={titleRef} className="truncate">
+            <span data-slot="calendar-event-title">
+              {/* Smaller, to fit the compact line without making it taller. */}
+              <EventIcon className="size-2.5 [&_svg]:size-2.5">{icon}</EventIcon>
+              {event.title}
+            </span>
             <span className="font-normal opacity-80">
               , <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
             </span>

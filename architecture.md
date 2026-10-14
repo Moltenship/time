@@ -1040,13 +1040,20 @@ library's binding, or native HTML drag and drop, only feeds it points:
   carry `outside: { title? }`; the registry's messages name the item and give no keyboard hints,
   as its library has its own keys.
 - **Out: `monitorCalendarDrags(monitor)`.** Each move a view starts is offered to the monitors. A
-  follower hears the pointer, and while its `claims()` says a drop zone of its own is under it, the
-  calendar shows no preview, holds its auto-scroll, and a release there proposes and announces
-  nothing: `end(true)` hands it over. Outside the view, or claimed, a copy of the event follows the
-  pointer (`data-outside`). Such a drag counts as over the view only where the view is the topmost
-  thing under the pointer, so a sheet of drop zones over it hides it, and its edges scroll it only
-  once the pointer has been clear of them, or rested at one, since it came back in. `refresh()`
-  re-reads a claim that changed without a pointer move. Resizes and creates aren't offered.
+  follower hears the pointer, and `preview(preview)` whenever the view's preview changes or moves
+  as the view scrolls: its boxes in viewport coordinates, the time range it shows and what the
+  policies would say, or `null`. While its `claims()` says a drop zone of its own is under the
+  pointer, the calendar shows no preview, holds its auto-scroll, and a release there proposes and
+  announces nothing: `end(true, null)` hands it over. A release in the view ends with
+  `end(false, landing)`, the preview it proposed the move at, or `null` when it proposed nothing.
+  While a follower with `claims` is on a drag, a copy of the event follows the pointer outside the
+  view, or claimed (`data-outside`); the drag counts as over the view only where the view is the
+  topmost thing under the pointer, so a sheet of drop zones over it hides it; and its edges scroll
+  it only once the pointer has been clear of them, or rested at one, since it came back in. A
+  follower without `claims` only watches, as an animation that follows drags does, and changes
+  none of that. `refresh()` re-reads a claim that changed without a pointer move. Resizes and
+  creates aren't offered. Registry views mark an event's title `data-slot="calendar-event-title"`,
+  so the app can animate from the event and its title; the docs' Motion guide does both.
 - **Input.** Proposals keep #199's `input`: `"pointer"`, or `"keyboard"` for a library's keyboard
   sensor. It names the modality; that the item came from outside shows in the change itself, a
   create with `event`.
