@@ -45,6 +45,8 @@ test("in the fall DST week, the 09:00 standups stay at 09:00 and the changing ho
   expect(calendar.placementOf("d7").wallRange).toBe("2026-11-01T09:00/2026-11-01T09:30");
   expect(calendar.placementOf("d1").wallRange).toBe("2026-10-26T09:00/2026-10-26T09:30");
   expect(calendar.getTimeColumn("2026-11-01").contains(calendar.getEvent("t1"))).toBe(true);
+  // The first 01:30, to 01:00 when the clocks go back.
+  expect(calendar.placementOf("t1").wallRange).toBe("2026-11-01T01:30/2026-11-01T01:00");
   expect(calendar.diagnostics).toEqual([]);
 });
 
@@ -75,7 +77,7 @@ test("resource columns show a meeting in each of its resources, rooms under thei
   }
   expect(resourcesOf("meet-1")).toEqual(["ana", "orchid"]);
   expect(resourcesOf("meet-2")).toEqual(["ben", "chen", "lotus"]);
-  // The view leaves out the unassigned row unless it's asked for.
+  // The view leaves out the unassigned column unless it's asked for.
   expect(calendar.queryEvent("open-1")).toBeNull();
   expect(calendar.diagnostics).toEqual([]);
 });

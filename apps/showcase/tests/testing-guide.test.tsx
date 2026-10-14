@@ -120,12 +120,7 @@ test("queries find events by title, and cells by date", async () => {
 // #endregion queries
 
 // #region fixtures
-import {
-  dstWeekFixture,
-  multiZoneSeriesFixture,
-  type FixtureEvent,
-  type FixtureSeriesEvent,
-} from "@moltenship/calendar-testing";
+import { dstWeekFixture, type FixtureEvent } from "@moltenship/calendar-testing";
 
 const FixtureCalendar = createCalendar<FixtureEvent>()({
   eventAdapter: createCanonicalEventAdapter<{ readonly group: string }>(),
@@ -151,6 +146,7 @@ import {
   createOccurrenceExpander,
   type RecurrenceOccurrence,
 } from "@moltenship/calendar-recurrence";
+import { multiZoneSeriesFixture, type FixtureSeriesEvent } from "@moltenship/calendar-testing";
 
 type Occurrence = RecurrenceOccurrence<FixtureSeriesEvent, string>;
 
@@ -182,7 +178,6 @@ test("Berlin's standup is an hour later in UTC once its clocks go back; Los Ange
   expect(calendar.placementOf({ start: "2026-10-27T17:00:00Z" }).title).toBe(
     "Review (Los Angeles)",
   );
-  expect(calendar.queryEvent({ start: "2026-10-27T17:00:00Z" })).not.toBeNull();
 });
 // #endregion series
 

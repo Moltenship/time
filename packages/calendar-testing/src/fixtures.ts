@@ -142,8 +142,9 @@ export interface DstWeekOptions {
  *
  * - `d1`–`d7` ("Daily", "Standup <date>"): 09:00–09:30 every day, the same on the wall clock
  *   before and after the change.
- * - `t1` ("Change", "In the changing hour"): in the fall, 01:30–02:00, the first of the two 01:30s;
- *   in the spring, 02:30, a time that doesn't exist, which starts at 03:30.
+ * - `t1` ("Change", "In the changing hour"): in the fall, 30 minutes from the first 01:30, EDT,
+ *   to 01:00 EST, when the clocks go back (05:30Z–06:00Z); in the spring, 02:30, a time that
+ *   doesn't exist, so 03:30–04:00 EDT (07:30Z–08:00Z).
  * - `t2` ("Change", "Across the change"): 00:30–04:00 on the wall clock, 4½ hours in the fall and
  *   2½ in the spring.
  * - `a1` ("All day", "Weekend away"): Saturday to Monday.
