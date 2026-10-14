@@ -1355,13 +1355,12 @@ Automated axe checks, keyboard integration tests, reduced-motion tests, and manu
 
 ### Apps' tests
 
-`@moltenship/calendar-testing` (#45) gives apps the harness the repository's own React tests use,
-built only on public entry points: `createTestEnvironment` fixes `now`, the zone, the locale, week
-rules and direction through `Root`'s props, as §15 requires, so nothing global is patched; builders
-make canonical events, resources, series and availability; `renderCalendar` renders an app's
-`Root` with controlled events and records `onEventChange` and `onEventChangeResult`; and
-`hydrateCalendar` fails on a hydration mismatch. It runs in jsdom, happy-dom and Vitest browser
-mode, with no test runner dependency.
+`@moltenship/calendar-testing` (#45) gives apps a harness for their calendars, built only on public
+entry points: `createTestEnvironment` fixes `now`, the zone, the locale, week rules and direction
+through `Root`'s props, as §15 requires, so nothing global is patched; builders make canonical
+events, resources, series and availability; `renderCalendar` renders an app's `Root` with
+controlled events and records `onEventChange` and `onEventChangeResult`; and `hydrateCalendar`
+fails on a hydration mismatch. It runs in jsdom and happy-dom, with no test runner dependency.
 
 ### Browser verification
 

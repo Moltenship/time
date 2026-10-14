@@ -92,7 +92,7 @@ calendar-core + calendar-dnd + calendar-react + calendar-temporal
        ↓
 calendar (facade) ─────→ showcase / ssr-fixture / demo / registry-source / a11y
        ↓
-calendar-testing ← calendar-recurrence ─────→ showcase
+calendar-testing (also imports calendar-recurrence) ─────→ showcase
 
 calendar-core + calendar-temporal + ics ─────→ calendar-recurrence ─────→ showcase / demo / benchmark / a11y
 

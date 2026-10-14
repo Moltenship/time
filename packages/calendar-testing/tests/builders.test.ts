@@ -1,6 +1,7 @@
 import {
   createCanonicalEventAdapter,
   createEventSnapshot,
+  type CalendarEvent,
   type CalendarEventChange,
 } from "@moltenship/calendar";
 import {
@@ -34,6 +35,20 @@ test("an event without input is an hour at 09:00 UTC on the default date, titled
 test("the ID defaults to the title and the title to the ID", () => {
   expect(buildEvent({ title: "Standup" })).toMatchObject({ id: "Standup", title: "Standup" });
   expect(buildEvent({ id: 7 })).toMatchObject({ id: 7, title: "7" });
+});
+
+test("builders take data and ID types from their input, not from what they're assigned to", () => {
+  // @ts-expect-error: data defaults to null, so it holds no room.
+  const withRoom: CalendarEvent<{ readonly room: string }> = buildEvent({ title: "x" });
+  // @ts-expect-error: an ID left out is the title, a string.
+  const numbered: CalendarEvent<null, number> = buildEvent({ title: "x" });
+  const given: CalendarEvent<{ readonly room: string }, number> = buildEvent({
+    data: { room: "4.1" },
+    id: 4,
+  });
+
+  expect([withRoom.data, numbered.id, given.data.room]).toEqual([null, "x", "4.1"]);
+  expect(buildEvent({ data: undefined }).data).toBeUndefined();
 });
 
 test("wall times are read on the event's zone, which becomes its source zone", () => {
@@ -130,6 +145,31 @@ test("a recurring series repeats on its zone's wall clock across DST", () => {
   ]);
 });
 
+test("a date alone excludes every occurrence that day, on a timed series too", () => {
+  const series = buildRecurringEvent({
+    exceptionDates: ["2026-10-28"],
+    rule: "FREQ=WEEKLY;COUNT=3",
+    start: "2026-10-21T09:00",
+    timeZone: "Europe/Berlin",
+  });
+  const { occurrences } = createOccurrenceExpander(createCanonicalRecurrenceAdapter<null>()).expand(
+    [series],
+    {
+      range: {
+        end: Temporal.PlainDate.from("2026-12-01"),
+        start: Temporal.PlainDate.from("2026-10-01"),
+      },
+      timeZone: "UTC",
+    },
+  );
+
+  expect(String(series.recurrence?.exceptionDates?.[0])).toBe("2026-10-28");
+  expect(occurrences.map(({ interval }) => String(interval.start))).toEqual([
+    "2026-10-21T07:00:00Z",
+    "2026-11-04T08:00:00Z",
+  ]);
+});
+
 test("withRecurrence makes an all-day event a series, and bad rules throw", () => {
   const series = withRecurrence(buildAllDayEvent({ start: "2026-10-05" }), {
     exceptionDates: ["2026-10-12"],
@@ -171,7 +211,7 @@ test("applyCanonicalChange applies moves, creates and deletes like an app that s
   expect(range(moved[0]!)).toBe("2026-10-09/2026-10-10");
   expect(created[1]).toMatchObject({
     data: null,
-    id: "new-2",
+    id: "new-1",
     resourceIds: ["ada"],
     title: "New event",
   });
@@ -195,4 +235,32 @@ test("applyCanonicalChange applies moves, creates and deletes like an app that s
       proposed: null,
     }),
   ).toThrow(/applyChange/);
+});
+
+test("created events take the first new-<n> ID no event has", () => {
+  const create = (id: string): CalendarEventChange<CalendarEvent<null>, string, string> => ({
+    cause: "create",
+    event: null,
+    eventId: null,
+    id,
+    original: null,
+    proposed: { ...buildEvent(), resourceIds: [] },
+  });
+  const first = applyCanonicalChange([], create("change-1"));
+  const second = applyCanonicalChange(first, create("change-2"));
+  const removed = second.filter(({ id }) => id !== "new-1");
+  const third = applyCanonicalChange(removed, create("change-3"), {
+    createEvent: (change, id) => ({
+      ...change.proposed,
+      data: null,
+      id,
+      title: `Made by ${change.id}`,
+    }),
+  });
+
+  expect(second.map(({ id }) => id)).toEqual(["new-1", "new-2"]);
+  expect(third.map(({ id, title }) => `${id} ${title}`)).toEqual([
+    "new-2 New event",
+    "new-1 Made by change-3",
+  ]);
 });

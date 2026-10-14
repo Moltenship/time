@@ -7,18 +7,8 @@ export type DateTimeInput = Temporal.Instant | Temporal.ZonedDateTime | string;
 export type DateInput = Temporal.PlainDate | string;
 
 /** What `createTestEnvironment` uses for each option left out. */
-export interface TestDefaults {
-  readonly direction: CalendarDirection;
-  readonly locale: string;
-  /** An exact instant, as ISO text. */
-  readonly now: string;
-  readonly timeZone: string;
-  readonly weekRules: CalendarWeekRules;
-}
-
-/** The environment's defaults: Thursday 8 October 2026 at noon UTC, in US English, weeks from Monday. */
-export const testDefaults: TestDefaults = Object.freeze({
-  direction: "ltr",
+const testDefaults = Object.freeze({
+  direction: "ltr" as CalendarDirection,
   locale: "en-US",
   now: "2026-10-08T12:00:00Z",
   timeZone: "UTC",
@@ -26,7 +16,7 @@ export const testDefaults: TestDefaults = Object.freeze({
     firstDay: 1,
     minimalDays: 4,
     weekend: Object.freeze([6, 7] as const),
-  }),
+  }) as CalendarWeekRules,
 });
 
 /**
@@ -42,15 +32,20 @@ export function requireTemporal(): void {
   }
 }
 
-/** Whether ISO text names an exact time: a `Z`, an offset, or a bracketed time zone. */
+/** A bracketed time zone, such as `[Europe/Berlin]`; `[u-ca=…]` names a calendar instead. */
+const zoneAnnotation = /\[(?!u-)[^\]]+\]/u;
+
+/** Whether ISO text names an exact time: a `Z` or an offset after the time, or a time zone. */
 function isExact(text: string): boolean {
+  if (zoneAnnotation.test(text)) return true;
   const time = text.trim().split(/[Tt ]/u)[1] ?? "";
-  return /[zZ+\-[]/u.test(time);
+  return /[zZ+-]/u.test(time.replace(/\[.*$/u, ""));
 }
 
 /**
- * An instant from `value`. Text with `Z`, an offset or a time zone is exact; text without is a
- * wall time on `timeZone`'s clock, where a time in a DST gap resolves later, as `Root` does.
+ * An instant from `value`. Text with `Z`, an offset or a time zone is exact, such as
+ * `"2026-10-08T09:00Z"` or `"2026-10-08[Europe/Berlin]"` (midnight there); text without is a wall
+ * time on `timeZone`'s clock, where a time in a DST gap resolves later, as `Root` does.
  */
 export function toInstant(value: DateTimeInput, timeZone: string): Temporal.Instant {
   requireTemporal();
@@ -60,7 +55,7 @@ export function toInstant(value: DateTimeInput, timeZone: string): Temporal.Inst
   if (!isExact(value)) {
     return Temporal.PlainDateTime.from(value).toZonedDateTime(timeZone).toInstant();
   }
-  return value.trim().endsWith("]")
+  return zoneAnnotation.test(value)
     ? Temporal.ZonedDateTime.from(value).toInstant()
     : Temporal.Instant.from(value);
 }
@@ -72,7 +67,7 @@ export function toPlainDate(value: DateInput): Temporal.PlainDate {
 }
 
 export interface TestEnvironmentOptions {
-  /** The current instant: exact, or a wall time on `timeZone`. Defaults to `testDefaults.now`. */
+  /** The current instant: exact, or a wall time on `timeZone`. Defaults to 8 October 2026, noon UTC. */
   readonly now?: DateTimeInput;
   /** The display time zone. Defaults to `"UTC"`. */
   readonly timeZone?: string;
@@ -115,7 +110,11 @@ export interface TestEnvironment {
   at(value: DateTimeInput): Temporal.Instant;
 }
 
-/** Builds a deterministic environment; every option has a default from `testDefaults`. */
+/**
+ * Builds a deterministic environment. Every option has a default: Thursday 8 October 2026 at noon
+ * UTC, `"en-US"`, weeks from Monday (`{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }`), left to
+ * right.
+ */
 export function createTestEnvironment(options: TestEnvironmentOptions = {}): TestEnvironment {
   requireTemporal();
   const timeZone = options.timeZone ?? testDefaults.timeZone;
@@ -162,9 +161,10 @@ export interface TestClock extends CalendarClock {
 }
 
 /**
- * A clock for `Root`'s `clock` prop, starting at `start` (`testDefaults.now` by default). `Root`
+ * A clock for `Root`'s `clock` prop, or the harness's `clock` option, starting at `start`
+ * (8 October 2026 at noon UTC by default). Text without a zone or offset is a UTC wall time. `Root`
  * and `useNow` sample a clock on an interval, a minute by default, so a test that moves it also
- * advances fake timers; to show a new time at once, pass `now` instead.
+ * advances fake timers; to show a new time at once, use a fixed `now` and the harness's `setNow`.
  */
 export function createTestClock(start: DateTimeInput = testDefaults.now): TestClock {
   let current = toInstant(start, "UTC");

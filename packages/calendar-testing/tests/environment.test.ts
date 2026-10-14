@@ -1,12 +1,7 @@
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import {
-  createTestClock,
-  createTestEnvironment,
-  requireTemporal,
-  testDefaults,
-  toInstant,
-} from "../src/index";
+import { requireTemporal, toInstant } from "../src/environment";
+import { createTestClock, createTestEnvironment } from "../src/index";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -22,7 +17,7 @@ test("the default environment is Thursday 8 October 2026 at noon UTC, in US Engl
     defaultTimeZone: "UTC",
     direction: "ltr",
     locale: "en-US",
-    weekRules: testDefaults.weekRules,
+    weekRules: { firstDay: 1, minimalDays: 4, weekend: [6, 7] },
   });
   expect(environment.rootProps.now.toString()).toBe("2026-10-08T12:00:00Z");
 });
@@ -45,6 +40,8 @@ test("at() reads times as today's, wall times on the zone and exact text as it i
   expect(environment.at("2026-11-02T09:00Z").toString()).toBe("2026-11-02T09:00:00Z");
   expect(environment.at("2026-11-02T09:00+01:00").toString()).toBe("2026-11-02T08:00:00Z");
   expect(environment.at("2026-11-02T09:00[Europe/Berlin]").toString()).toBe("2026-11-02T08:00:00Z");
+  // A date with a zone is midnight there, not on the environment's clock.
+  expect(environment.at("2026-11-02[Europe/Berlin]").toString()).toBe("2026-11-01T23:00:00Z");
 });
 
 test("a wall time in a DST gap resolves later, as Root does", () => {
@@ -59,6 +56,9 @@ test("a test clock moves only when told to", () => {
   expect(clock.instant().toString()).toBe("2026-10-08T10:30:00Z");
   clock.set("2026-12-31T23:59:00Z");
   expect(clock.instant().toString()).toBe("2026-12-31T23:59:00Z");
+  // Text without a zone is a UTC wall time.
+  clock.set("2027-01-01T08:00");
+  expect(clock.instant().toString()).toBe("2027-01-01T08:00:00Z");
 });
 
 test("without Temporal, the error says how to install the polyfill", () => {

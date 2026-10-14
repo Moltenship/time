@@ -93,9 +93,13 @@ export default {
         "The test harness builds on what apps import: the calendar facade and recurrence, never the packages behind the facade.",
       severity: "error",
       from: { path: "(?:^|/)packages/calendar-testing/src(?:/|$)" },
+      // Specifiers as written, and the packages' source should they resolve to it.
       to: {
-        path: "^@moltenship/",
-        pathNot: "^@moltenship/(?:calendar|calendar-recurrence)$",
+        path: ["^@moltenship/", "(?:^|/)packages/"],
+        pathNot: [
+          "^@moltenship/(?:calendar|calendar-recurrence)$",
+          "(?:^|/)packages/(?:calendar|calendar-recurrence|calendar-testing)/",
+        ],
       },
     },
     {

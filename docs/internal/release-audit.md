@@ -116,13 +116,13 @@ The only p0 issues were the two epics that track the release; since 14 October 2
 | Issue | Remaining | Proposal for the owner |
 | --- | --- | --- |
 | #1 Calendar roadmap (was p0, epic) | Its open sub-issue is #5; its body also lists #45. | Done: its priority is dropped (14 October 2026). It tracks, it doesn't block. |
-| #5 Epic 7: demo, docs, registry, release (was p0) | #45 and #47; #43 and #46 closed. | Its priority is dropped (14 October 2026). Move #45, now post-1.0, under a post-1.0 parent; then close #5 with #47. |
+| #5 Epic 7: demo, docs, registry, release (was p0) | #45 and #47; #43 and #46 closed. | Its priority is dropped (14 October 2026). #45 publishes `calendar-testing` with 1.0 after all (14 October 2026); close #5 with #45 and #47. |
 | #185 Safari: focus left out of view in the scrolling agenda (p2, was p1) | A product bug, confirmed after #204's waits. | Decided: rc.1 ships with it as a known issue (owner, 14 October 2026). |
 | #186 Manual VoiceOver and NVDA passes (p1) | Needs a person at each screen reader. | Run before the RC, as its title says. |
 
-Done in this triage: #45 (publish `calendar-testing`) left the 1.0 milestone. #146 and the owner's comment on it keep the package private for 1.0 (#175). #192 (a stable CI `browsers` job) closed: seven green dispatched runs in a row since #204's first version.
+Done in this triage: #45 (publish `calendar-testing`) left the 1.0 milestone. #146 and the owner's comment on it keep the package private for 1.0 (#175). Since then the owner asked for it to be built, and it publishes with 1.0 (#45, 14 October 2026). #192 (a stable CI `browsers` job) closed: seven green dispatched runs in a row since #204's first version.
 
-Not for 1.0: #45 (post-1.0 by #146), #132, #133 (the full browser matrix), #138 and #143 (#146's small follow-ups, all four), and #160 (the Post-1.0 milestone).
+Not for 1.0: #132, #133 (the full browser matrix), #138 and #143 (#146's small follow-ups, all four), and #160 (the Post-1.0 milestone).
 
 ## Before 1.0.0-rc.1
 

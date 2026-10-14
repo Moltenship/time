@@ -14,8 +14,7 @@ the registry views, your policies and your save logic.
   fails on a hydration mismatch.
 
 It uses only the public API of `@moltenship/calendar` and `@moltenship/calendar-recurrence`, and
-needs no test runner of its own: it works in Vitest with jsdom or happy-dom, and in Vitest browser
-mode.
+depends on no test runner: it works in Vitest with jsdom or happy-dom.
 
 ```tsx
 import { buildEvent, cleanup, renderCalendar } from "@moltenship/calendar-testing";

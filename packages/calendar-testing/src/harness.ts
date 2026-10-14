@@ -1,6 +1,7 @@
 import type {
   AnyCalendarView,
   CalendarAnnouncementMessages,
+  CalendarClock,
   CalendarContextValue,
   CalendarDiagnostic,
   CalendarEventChange,
@@ -33,14 +34,27 @@ import { createRoot, hydrateRoot, type Root } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 
 import { applyCanonicalChange, type ApplyChangeOptions } from "./changes";
-import { createTestEnvironment, type DateTimeInput, type TestEnvironment } from "./environment";
+import {
+  createTestEnvironment,
+  toInstant,
+  type DateTimeInput,
+  type TestEnvironment,
+} from "./environment";
 
-declare global {
-  var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
-}
+/** React's flag for test environments, which tells it to expect `act`. */
+const reactGlobals = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
 
-/** Root props the harness owns; set the others through `rootProps`. */
-type HarnessOwnedProp = "children" | "events" | "onEventChange" | "onEventChangeResult";
+/**
+ * Root props the harness owns; set the others through `rootProps`. The environment's `now`, or
+ * the `clock` option, gives the time.
+ */
+type HarnessOwnedProp =
+  | "children"
+  | "clock"
+  | "events"
+  | "now"
+  | "onEventChange"
+  | "onEventChangeResult";
 
 /** Any other `Root` prop, such as `policies`, `availability` or a controlled `timeZone`. */
 export type CalendarHarnessRootProps<
@@ -76,13 +90,18 @@ export interface RenderCalendarOptions<
   TFocus = CalendarFocus,
   TEventId extends EventId = EventId,
   TResourceId extends ResourceId = ResourceId,
-> extends ApplyChangeOptions<TEvent> {
+> extends ApplyChangeOptions<TEvent, TEventId, TResourceId> {
   /** The events the calendar starts with. The harness owns them and applies saved changes. */
   readonly events?: readonly TEvent[];
   /** The view to open; the first registered one by default. */
   readonly view?: TViewDef["name"];
   /** `createTestEnvironment()` by default. */
   readonly environment?: TestEnvironment;
+  /**
+   * A clock `Root` reads the time from instead of the environment's fixed `now`, such as
+   * `createTestClock()`. `setNow` doesn't work with one: move the clock.
+   */
+  readonly clock?: CalendarClock;
   readonly resources?: readonly TResource[];
   /** Renders `Root` without `onEventChange`, so the calendar is read-only. */
   readonly readOnly?: boolean;
@@ -126,6 +145,31 @@ export interface RenderCalendarOptions<
   /** Where to render; a new `div` in `document.body` by default, removed on unmount. */
   readonly container?: HTMLElement;
 }
+
+/** Options `rerender` changes; the others apply only to the first render. */
+export type CalendarHarnessUpdate<
+  TEvent,
+  TResource,
+  TViewDef extends AnyCalendarView,
+  TSelection = CalendarSelection,
+  TFocus = CalendarFocus,
+  TEventId extends EventId = EventId,
+  TResourceId extends ResourceId = ResourceId,
+> = Partial<
+  Pick<
+    RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>,
+    | "applyChange"
+    | "children"
+    | "createEvent"
+    | "events"
+    | "messages"
+    | "onEventChange"
+    | "onEventChangeResult"
+    | "readOnly"
+    | "resources"
+    | "rootProps"
+  >
+>;
 
 /** What the calendar shows, read from inside `Root` after each render. */
 interface Observed<
@@ -206,16 +250,46 @@ export interface CalendarHarness<
   ): Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
   /** Replaces the events, as an app's store would. */
   setEvents(events: readonly TEvent[]): Promise<void>;
-  /** Moves the fixed `now`, so today and the current time move with it. */
+  /**
+   * Moves the fixed `now`, so today and the current time move with it: exact text, a wall time on
+   * the environment's zone, or a time such as `"10:00"` on the current date. Throws for a
+   * calendar on a `clock`.
+   */
   setNow(now: DateTimeInput): Promise<void>;
-  /** Renders again with some options changed; `events` replaces the events. */
+  /**
+   * Renders again with some options changed; `events` replaces the events. `view` and the
+   * environment set where the calendar starts, so change those through `act` and its actions.
+   */
   rerender(
-    options: Partial<
-      RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>
+    options: CalendarHarnessUpdate<
+      TEvent,
+      TResource,
+      TViewDef,
+      TSelection,
+      TFocus,
+      TEventId,
+      TResourceId
     >,
   ): Promise<void>;
   unmount(): Promise<void>;
 }
+
+/**
+ * The harness type for a calendar factory, so tests can name it without its type parameters:
+ * `let calendar: CalendarHarnessFor<typeof Calendar>`.
+ */
+export type CalendarHarnessFor<TCalendar> =
+  TCalendar extends CalendarFactory<
+    infer TEvent,
+    infer TResource,
+    infer TViewDef,
+    infer TSelection,
+    infer TFocus,
+    infer TEventId,
+    infer TResourceId
+  >
+    ? CalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>
+    : never;
 
 /** The server markup and hydration of `hydrateCalendar`. */
 export interface HydratedCalendarHarness<
@@ -318,7 +392,7 @@ function setUp<
   type Result = CalendarTransactionResult<TEvent, TEventId, TResourceId>;
   type Seen = Observed<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>;
 
-  globalThis.IS_REACT_ACT_ENVIRONMENT ??= true;
+  reactGlobals.IS_REACT_ACT_ENVIRONMENT ??= true;
 
   const environment = initialOptions.environment ?? createTestEnvironment();
   const initialEvents = initialOptions.events ?? [];
@@ -329,21 +403,12 @@ function setUp<
   const results: CalendarChangeResult<TEvent, TEventId, TResourceId>[] = [];
   let diagnostics: readonly CalendarDiagnostic<TEvent, TEventId>[] = [];
   let observed: Seen | undefined;
-  let created = 0;
 
   function apply(change: Change) {
     const { applyChange, createEvent } = options.get();
-    created += change.cause === "create" ? 1 : 0;
     events.set(
       applyChange === undefined
-        ? (applyCanonicalChange(
-            events.get(),
-            change as CalendarEventChange<TEvent, EventId, ResourceId>,
-            {
-              createEvent,
-              sequence: created,
-            },
-          ) as readonly TEvent[])
+        ? applyCanonicalChange(events.get(), change, { createEvent })
         : applyChange(events.get(), change),
     );
   }
@@ -377,12 +442,13 @@ function setUp<
     const current = useSyncExternalStore(options.subscribe, options.get, options.get);
     const shown = useSyncExternalStore(events.subscribe, events.get, () => initialEvents);
     const instant = useSyncExternalStore(now.subscribe, now.get, now.get);
-    const { children, messages, readOnly, resources, rootProps, view } = current;
+    const { children, clock, messages, readOnly, resources, rootProps, view } = current;
+    const { now: _now, ...fixed } = environment.rootProps;
     const props = {
-      ...environment.rootProps,
+      ...fixed,
       defaultView: view ?? Calendar.views[0]?.name,
       ...(resources === undefined ? {} : { resources }),
-      now: instant,
+      ...(clock === undefined ? { now: instant } : { clock }),
       ...rootProps,
       events: shown,
       onDiagnosticsChange,
@@ -481,7 +547,21 @@ function setUp<
       },
       async setNow(next: DateTimeInput) {
         ensureMounted();
-        await act(async () => now.set(environment.at(next)));
+        if (options.get().clock !== undefined) {
+          throw new Error("This calendar reads a clock: move the clock instead of calling setNow.");
+        }
+        const { timeZone } = environment;
+        const instant =
+          typeof next === "string" && /^\d{2}:\d{2}/u.test(next.trim())
+            ? now
+                .get()
+                .toZonedDateTimeISO(timeZone)
+                .toPlainDate()
+                .toPlainDateTime(Temporal.PlainTime.from(next))
+                .toZonedDateTime(timeZone)
+                .toInstant()
+            : toInstant(next, timeZone);
+        await act(async () => now.set(instant));
       },
       state: () => seen().context.state,
       unmount: () => entry.unmount(),
@@ -546,9 +626,10 @@ function isHydrationWarning(args: readonly unknown[]): boolean {
  * Renders the calendar with `renderToString`, puts that markup in a container and hydrates it,
  * as a server-rendered page does. Throws a `HydrationMismatchError` when React reports a
  * mismatch: a recoverable error, or a hydration warning such as a differing attribute, which
- * React only logs. The console is watched for those warnings while hydration runs, then restored.
- * The server render runs in the test's own environment, so code that checks for `window` takes
- * its browser branch there too.
+ * React only logs. The console is watched while hydration runs, then restored; any `console.error`
+ * then that mentions hydration counts. React's development build logs those warnings and its
+ * production build doesn't, so test with the development build. The server render runs in the
+ * test's own environment, so code that checks for `window` takes its browser branch there too.
  */
 export async function hydrateCalendar<
   TEvent,
@@ -594,6 +675,15 @@ export async function hydrateCalendar<
         },
       });
     });
+  } catch (error) {
+    // A component threw while hydrating: leave nothing mounted behind.
+    try {
+      await act(async () => root?.unmount());
+    } catch {
+      // The root may already be gone with its error.
+    }
+    if (owns) container.remove();
+    throw error;
   } finally {
     console.error = consoleError;
   }

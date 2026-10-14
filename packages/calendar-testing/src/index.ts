@@ -15,21 +15,13 @@ export type {
   ResourceInput,
   TimedEventInput,
 } from "./builders";
-export { applyCanonicalChange, isCanonicalEvent } from "./changes";
+export { applyCanonicalChange } from "./changes";
 export type { ApplyChangeOptions } from "./changes";
-export {
-  createTestClock,
-  createTestEnvironment,
-  requireTemporal,
-  testDefaults,
-  toInstant,
-  toPlainDate,
-} from "./environment";
+export { createTestClock, createTestEnvironment } from "./environment";
 export type {
   DateInput,
   DateTimeInput,
   TestClock,
-  TestDefaults,
   TestEnvironment,
   TestEnvironmentOptions,
   TestEnvironmentRootProps,
@@ -38,7 +30,9 @@ export { HydrationMismatchError, cleanup, hydrateCalendar, renderCalendar } from
 export type {
   CalendarChangeResult,
   CalendarHarness,
+  CalendarHarnessFor,
   CalendarHarnessRootProps,
+  CalendarHarnessUpdate,
   HydratedCalendarHarness,
   RenderCalendarOptions,
 } from "./harness";

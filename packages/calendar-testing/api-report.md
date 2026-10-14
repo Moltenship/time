@@ -51,10 +51,10 @@ interface AllDayEventInput<TData = null, TEventId extends EventId = string, TRes
   readonly end?: DateInput;
   readonly days?: number;
 }
-interface ApplyChangeOptions<TEvent> {
-  readonly createEvent?: (change: Extract<CalendarEventChange<TEvent, EventId, ResourceId>, {
+interface ApplyChangeOptions<TEvent, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
+  readonly createEvent?: (change: Extract<CalendarEventChange<TEvent, TEventId, TResourceId>, {
     cause: "create";
-  }>, sequence: number) => TEvent;
+  }>, id: string) => TEvent;
 }
 interface AvailabilityExceptionInput {
   readonly date: DateInput;
@@ -87,10 +87,12 @@ interface CalendarHarness<TEvent, TResource, TViewDef extends AnyCalendarView, T
   propose(proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>, detail?: CalendarProposalDetail): Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
   setEvents(events: readonly TEvent[]): Promise<void>;
   setNow(now: DateTimeInput): Promise<void>;
-  rerender(options: Partial<RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>>): Promise<void>;
+  rerender(options: CalendarHarnessUpdate<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>): Promise<void>;
   unmount(): Promise<void>;
 }
+type CalendarHarnessFor<TCalendar> = TCalendar extends CalendarFactory<infer TEvent, infer TResource, infer TViewDef, infer TSelection, infer TFocus, infer TEventId, infer TResourceId> ? CalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId> : never;
 type CalendarHarnessRootProps<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId> = Partial<Omit<CalendarRootProps<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, HarnessOwnedProp>>;
+type CalendarHarnessUpdate<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> = Partial<Pick<RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, "applyChange" | "children" | "createEvent" | "events" | "messages" | "onEventChange" | "onEventChangeResult" | "readOnly" | "resources" | "rootProps">>;
 type DateInput = Temporal.PlainDate | string;
 type DateTimeInput = Temporal.Instant | Temporal.ZonedDateTime | string;
 interface EventBaseInput<TData, TEventId extends EventId, TResourceId extends ResourceId> {
@@ -99,7 +101,7 @@ interface EventBaseInput<TData, TEventId extends EventId, TResourceId extends Re
   readonly resourceIds?: readonly TResourceId[];
   readonly data?: TData;
 }
-type HarnessOwnedProp = "children" | "events" | "onEventChange" | "onEventChangeResult";
+type HarnessOwnedProp = "children" | "clock" | "events" | "now" | "onEventChange" | "onEventChangeResult";
 type HoursInput = string | {
   readonly start: Temporal.PlainTime | string;
   readonly end: Temporal.PlainTime | string;
@@ -118,10 +120,11 @@ interface RecurrenceInput {
   readonly recurrenceDates?: readonly (RecurrenceDate | RecurrencePeriod | string)[];
   readonly duration?: Temporal.Duration | string;
 }
-interface RenderCalendarOptions<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> extends ApplyChangeOptions<TEvent> {
+interface RenderCalendarOptions<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> extends ApplyChangeOptions<TEvent, TEventId, TResourceId> {
   readonly events?: readonly TEvent[];
   readonly view?: TViewDef["name"];
   readonly environment?: TestEnvironment;
+  readonly clock?: CalendarClock;
   readonly resources?: readonly TResource[];
   readonly readOnly?: boolean;
   readonly onEventChange?: CalendarEventChangeHandler<TEvent, TEventId, TResourceId>;
@@ -148,13 +151,6 @@ interface ResourceInput<TData = null, TResourceId extends ResourceId = string> {
 interface TestClock extends CalendarClock {
   advance(duration: Temporal.DurationLike | string): Temporal.Instant;
   set(instant: DateTimeInput): void;
-}
-interface TestDefaults {
-  readonly direction: CalendarDirection;
-  readonly locale: string;
-  readonly now: string;
-  readonly timeZone: string;
-  readonly weekRules: CalendarWeekRules;
 }
 interface TestEnvironment {
   readonly anchorDate: Temporal.PlainDate;
@@ -189,27 +185,17 @@ interface TimedEventInput<TData = null, TEventId extends EventId = string, TReso
   readonly duration?: Temporal.DurationLike | string;
   readonly timeZone?: string;
 }
-export declare function applyCanonicalChange<TEvent>(events: readonly TEvent[], change: CalendarEventChange<TEvent, EventId, ResourceId>, options?: ApplyChangeOptions<TEvent> & {
-  readonly sequence?: number;
-}): readonly TEvent[];
-export declare function buildAllDayEvent<TData = null, TEventId extends EventId = string, TResourceId extends ResourceId = string>(input?: AllDayEventInput<TData, TEventId, TResourceId>): AllDayCalendarEvent<TData, TEventId, TResourceId>;
+export declare function applyCanonicalChange<TEvent, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId>(events: readonly TEvent[], change: CalendarEventChange<TEvent, TEventId, TResourceId>, options?: ApplyChangeOptions<TEvent, TEventId, TResourceId>): readonly TEvent[];
+export declare function buildAllDayEvent<TData = null, TEventId extends EventId = string, TResourceId extends ResourceId = string>(input?: AllDayEventInput<TData, TEventId, TResourceId>): AllDayCalendarEvent<NoInfer<TData>, NoInfer<TEventId>, NoInfer<TResourceId>>;
 export declare function buildAvailability(input?: AvailabilityInput): CalendarAvailability;
-export declare function buildEvent<TData = null, TEventId extends EventId = string, TResourceId extends ResourceId = string>(input?: TimedEventInput<TData, TEventId, TResourceId>): TimedCalendarEvent<TData, TEventId, TResourceId>;
-export declare function buildRecurringEvent<TData = null, TEventId extends EventId = string, TResourceId extends ResourceId = string>(input: TimedEventInput<TData, TEventId, TResourceId> & Omit<RecurrenceInput, "duration">): RecurringCalendarEvent<TData, TEventId, TResourceId>;
-export declare function buildResource<TData = null, TResourceId extends ResourceId = string>(input?: ResourceInput<TData, TResourceId>): CalendarResource<TData, TResourceId>;
+export declare function buildEvent<TData = null, TEventId extends EventId = string, TResourceId extends ResourceId = string>(input?: TimedEventInput<TData, TEventId, TResourceId>): TimedCalendarEvent<NoInfer<TData>, NoInfer<TEventId>, NoInfer<TResourceId>>;
+export declare function buildRecurringEvent<TData = null, TEventId extends EventId = string, TResourceId extends ResourceId = string>(input: TimedEventInput<TData, TEventId, TResourceId> & Omit<RecurrenceInput, "duration">): RecurringCalendarEvent<NoInfer<TData>, NoInfer<TEventId>, NoInfer<TResourceId>>;
+export declare function buildResource<TData = null, TResourceId extends ResourceId = string>(input?: ResourceInput<TData, TResourceId>): CalendarResource<NoInfer<TData>, NoInfer<TResourceId>>;
 export declare function cleanup(): Promise<void>;
 export declare function createTestClock(start?: DateTimeInput): TestClock;
 export declare function createTestEnvironment(options?: TestEnvironmentOptions): TestEnvironment;
-declare global {
-  var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
-}
 export declare function hydrateCalendar<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId>(Calendar: CalendarFactory<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, options?: RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>): Promise<HydratedCalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>>;
-export declare function isCanonicalEvent(record: unknown): record is CalendarEvent;
 export declare function renderCalendar<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId>(Calendar: CalendarFactory<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, options?: RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>): Promise<CalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>>;
-export declare function requireTemporal(): void;
-export declare const testDefaults: TestDefaults;
-export declare function toInstant(value: DateTimeInput, timeZone: string): Temporal.Instant;
-export declare function toPlainDate(value: DateInput): Temporal.PlainDate;
 export declare function withRecurrence<TData, TEventId extends EventId, TResourceId extends ResourceId>(event: CalendarEvent<TData, TEventId, TResourceId>, recurrence: RecurrenceInput): RecurringCalendarEvent<TData, TEventId, TResourceId>;
 
 export {
@@ -219,7 +205,9 @@ export {
   type AvailabilityInput,
   type CalendarChangeResult,
   type CalendarHarness,
+  type CalendarHarnessFor,
   type CalendarHarnessRootProps,
+  type CalendarHarnessUpdate,
   type DateInput,
   type DateTimeInput,
   type HoursInput,
@@ -228,7 +216,6 @@ export {
   type RenderCalendarOptions,
   type ResourceInput,
   type TestClock,
-  type TestDefaults,
   type TestEnvironment,
   type TestEnvironmentOptions,
   type TestEnvironmentRootProps,

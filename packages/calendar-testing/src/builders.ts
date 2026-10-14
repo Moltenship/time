@@ -37,6 +37,11 @@ interface EventBaseInput<TData, TEventId extends EventId, TResourceId extends Re
   readonly data?: TData;
 }
 
+/** `data` as given, `null` when left out. */
+function dataOf<TData>(input: { readonly data?: TData }): TData {
+  return ("data" in input ? input.data : null) as TData;
+}
+
 /** A timed event: `start` and `end`, or `start` and `duration`. */
 export interface TimedEventInput<
   TData = null,
@@ -86,7 +91,7 @@ export function buildEvent<
   TResourceId extends ResourceId = string,
 >(
   input: TimedEventInput<TData, TEventId, TResourceId> = {},
-): TimedCalendarEvent<TData, TEventId, TResourceId> {
+): TimedCalendarEvent<NoInfer<TData>, NoInfer<TEventId>, NoInfer<TResourceId>> {
   const timeZone = input.timeZone ?? "UTC";
   const start = toInstant(input.start ?? defaultStart, timeZone);
   const end =
@@ -99,7 +104,7 @@ export function buildEvent<
 
   return Object.freeze({
     ...identity(input.id, input.title, "Event"),
-    data: (input.data ?? null) as TData,
+    data: dataOf(input),
     end,
     kind: "timed",
     ...(input.resourceIds === undefined
@@ -117,14 +122,14 @@ export function buildAllDayEvent<
   TResourceId extends ResourceId = string,
 >(
   input: AllDayEventInput<TData, TEventId, TResourceId> = {},
-): AllDayCalendarEvent<TData, TEventId, TResourceId> {
+): AllDayCalendarEvent<NoInfer<TData>, NoInfer<TEventId>, NoInfer<TResourceId>> {
   const start = toPlainDate(input.start ?? defaultDate);
   const end =
     input.end === undefined ? start.add({ days: input.days ?? 1 }) : toPlainDate(input.end);
 
   return Object.freeze({
     ...identity(input.id, input.title, "Event"),
-    data: (input.data ?? null) as TData,
+    data: dataOf(input),
     end,
     kind: "all-day",
     ...(input.resourceIds === undefined
@@ -149,11 +154,11 @@ export interface ResourceInput<TData = null, TResourceId extends ResourceId = st
 /** A resource in the canonical `CalendarResource` shape. */
 export function buildResource<TData = null, TResourceId extends ResourceId = string>(
   input: ResourceInput<TData, TResourceId> = {},
-): CalendarResource<TData, TResourceId> {
+): CalendarResource<NoInfer<TData>, NoInfer<TResourceId>> {
   const { id, title } = identity(input.id, input.title, "Resource");
   return Object.freeze({
     ...(input.availability === undefined ? {} : { availability: input.availability }),
-    data: (input.data ?? null) as TData,
+    data: dataOf(input),
     id: id as TResourceId,
     ...(input.parentId === undefined ? {} : { parentId: input.parentId }),
     ...(input.timeZone === undefined ? {} : { timeZone: input.timeZone }),
@@ -263,7 +268,9 @@ function parseRule(rule: string | RecurrenceRule): RecurrenceRule {
 
 /**
  * Makes `event` the master of a series. Dates given as text take the event's kind: instants (wall
- * times on its `sourceTimeZone`, or UTC) for a timed event, dates for an all-day one.
+ * times on its `sourceTimeZone`, or UTC) for a timed event, date-times for a floating one, dates
+ * for an all-day one. A date alone on a timed or floating series, such as `"2026-10-28"`, stays a
+ * date: as an exception it drops every occurrence that day.
  */
 export function withRecurrence<TData, TEventId extends EventId, TResourceId extends ResourceId>(
   event: CalendarEvent<TData, TEventId, TResourceId>,
@@ -272,7 +279,7 @@ export function withRecurrence<TData, TEventId extends EventId, TResourceId exte
   const zone = event.kind === "timed" ? (event.sourceTimeZone ?? "UTC") : "UTC";
   const toDate = (value: RecurrenceDate | string): RecurrenceDate => {
     if (typeof value !== "string") return value;
-    if (event.kind === "all-day") return Temporal.PlainDate.from(value);
+    if (event.kind === "all-day" || !/[Tt ]/u.test(value)) return Temporal.PlainDate.from(value);
     if (event.kind === "floating") return Temporal.PlainDateTime.from(value);
     return toInstant(value, zone);
   };
@@ -307,7 +314,7 @@ export function buildRecurringEvent<
   TResourceId extends ResourceId = string,
 >(
   input: TimedEventInput<TData, TEventId, TResourceId> & Omit<RecurrenceInput, "duration">,
-): RecurringCalendarEvent<TData, TEventId, TResourceId> {
+): RecurringCalendarEvent<NoInfer<TData>, NoInfer<TEventId>, NoInfer<TResourceId>> {
   const { exceptionDates, recurrenceDates, rule, ...event } = input;
   return withRecurrence(buildEvent(event), { exceptionDates, recurrenceDates, rule });
 }

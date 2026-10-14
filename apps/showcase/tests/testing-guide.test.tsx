@@ -3,6 +3,9 @@
 // The Testing guide's examples (content/docs/testing.mdx), run as a consumer runs them: the
 // registry's views through their app paths, and `@moltenship/calendar-testing` as published.
 
+// An app imports these from "vitest"; this repository's toolchain serves them as "vite-plus/test".
+import { afterEach, expect, test } from "vite-plus/test";
+
 // #region calendar
 import {
   createCalendar,
@@ -16,7 +19,6 @@ import {
   hydrateCalendar,
   renderCalendar,
 } from "@moltenship/calendar-testing";
-import { afterEach, expect, test } from "vite-plus/test";
 
 import { calendarAnnouncements } from "@/components/calendar/announcements";
 import { createWeekView } from "@/components/calendar/time-grid-view/time-grid-view";

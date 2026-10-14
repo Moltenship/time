@@ -16,6 +16,8 @@ const calendarReactDeepImportFixture =
   "tests/fixtures/dependency-boundaries/consumer/calendar-react-deep-import.ts";
 const registryCoreImportFixture =
   "tests/fixtures/dependency-boundaries/registry/calendar/core-import.ts";
+const testingInternalsFixture =
+  "tests/fixtures/dependency-boundaries/packages/calendar-testing/src/internals-import.ts";
 const execFileAsync = promisify(execFile);
 
 const expectedWorkspaceDependencies = {
@@ -123,6 +125,13 @@ describe("workspace boundaries", { concurrent: false }, () => {
     const violatedRules = result.summary.violations.map(({ rule }) => rule.name);
 
     expect(violatedRules).toEqual(["registry-source-uses-calendar-facade"]);
+  });
+
+  test("the test harness imports only the facade and recurrence", async () => {
+    const result = await cruiseWithArchitectureRules([testingInternalsFixture]);
+    const violations = result.summary.violations.map(({ rule, to }) => `${rule.name} ${to}`);
+
+    expect(violations).toEqual(["testing-uses-public-entry-points @moltenship/calendar-core"]);
   });
 
   test("a calendar React source import fails static and packed-package boundaries", async () => {

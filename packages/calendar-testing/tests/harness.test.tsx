@@ -1,18 +1,67 @@
 // @vitest-environment jsdom
 
+import {
+  createCalendar,
+  defineCalendarView,
+  defineEventAdapter,
+  eventIdAttributes,
+  plainDateInterval,
+} from "@moltenship/calendar";
+import type { ReactNode } from "react";
 import { afterEach, expect, test } from "vite-plus/test";
 
 import {
   HydrationMismatchError,
   buildEvent,
   cleanup,
+  createTestClock,
   createTestEnvironment,
   hydrateCalendar,
   renderCalendar,
+  type CalendarHarnessFor,
 } from "../src/index";
 import { Calendar } from "./list-view";
 
 afterEach(cleanup);
+
+interface Meeting {
+  readonly code: string;
+  readonly from: string;
+  readonly name: string;
+}
+
+/** A calendar over an app's own records, not canonical events. */
+const MeetingCalendar = createCalendar<Meeting>()({
+  eventAdapter: defineEventAdapter<Meeting>()({
+    getId: ({ code }) => code,
+    getInterval: ({ from }) => {
+      const start = Temporal.Instant.from(from);
+      return { end: start.add({ hours: 1 }), kind: "timed", start };
+    },
+    getResourceIds: () => [],
+    getTitle: ({ name }) => name,
+  }),
+  views: [
+    defineCalendarView({
+      name: "list",
+      strategy: {
+        getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 7 })),
+        getTitle: () => "Meetings",
+        navigate: (anchor, delta) => anchor.add({ days: delta * 7 }),
+        project: ({ instantRange, snapshot }) => snapshot.queryTimed(instantRange),
+      },
+      Renderer: ({ projection }) => (
+        <ol>
+          {projection.map((event) => (
+            <li key={event.id} {...eventIdAttributes(event.id)}>
+              {event.title} {event.start.toString()}
+            </li>
+          ))}
+        </ol>
+      ),
+    }),
+  ],
+});
 
 const standup = buildEvent({ start: "2026-10-08T09:00:00Z", title: "Standup" });
 const review = buildEvent({ start: "2026-10-09T14:00:00Z", title: "Review" });
@@ -32,7 +81,9 @@ const moveStandup = {
 } as const;
 
 test("renders the first view in the default environment, inside Root", async () => {
-  const calendar = await renderCalendar(Calendar, { events: [standup, review] });
+  const calendar: CalendarHarnessFor<typeof Calendar> = await renderCalendar(Calendar, {
+    events: [standup, review],
+  });
 
   expect(today(calendar.container)).toBe("2026-10-08");
   expect(items(calendar.container)).toEqual([
@@ -115,23 +166,67 @@ test("a read-only calendar has no onEventChange, so proposals are rejected", asy
 });
 
 test("app records take an applyChange of their own", async () => {
-  interface Meeting {
-    readonly id: string;
-    readonly name: string;
-    readonly from: string;
-  }
-  const calendar = await renderCalendar(Calendar, {
-    events: [standup],
-    applyChange: (events, change) =>
-      change.cause === "delete" ? events.filter(({ id }) => id !== change.eventId) : events,
+  const calendar = await renderCalendar(MeetingCalendar, {
+    applyChange: (meetings, change) =>
+      change.cause === "move" && change.proposed.kind === "timed"
+        ? meetings.map((meeting) =>
+            meeting.code === change.eventId
+              ? { ...meeting, from: change.proposed.start.toString() }
+              : meeting,
+          )
+        : meetings,
+    events: [{ code: "M1", from: "2026-10-08T09:00:00Z", name: "Standup" }],
   });
 
-  await calendar.propose({ cause: "delete", eventId: "Standup" });
+  await calendar.propose({ ...moveStandup, eventId: "M1" });
 
-  expect(calendar.events()).toEqual([]);
-  expect(items(calendar.container)).toEqual([]);
-  // Unused: the type above is what an app's own records look like.
-  expect(({} as Partial<Meeting>).name).toBeUndefined();
+  expect(calendar.events()).toEqual([
+    { code: "M1", from: "2026-10-08T10:00:00Z", name: "Standup" },
+  ]);
+  expect(items(calendar.container)).toEqual(["Standup 2026-10-08T10:00:00Z"]);
+});
+
+test("rootProps reach Root, a wrapper wraps it, and createEvent makes new events", async () => {
+  function Provider({ children }: { readonly children: ReactNode }) {
+    return <div data-provider>{children}</div>;
+  }
+  const calendar = await renderCalendar(Calendar, {
+    createEvent: (change, id) => ({ ...change.proposed, data: null, id, title: "Lunch" }),
+    events: [standup],
+    rootProps: {
+      policies: [
+        ({ cause }) =>
+          cause === "delete" ? { reason: "keep-it", type: "reject" } : { type: "accept" },
+      ],
+    },
+    wrapper: Provider,
+  });
+
+  const deleted = await calendar.propose({ cause: "delete", eventId: "Standup" });
+  await calendar.propose({
+    cause: "create",
+    proposed: {
+      end: Temporal.Instant.from("2026-10-08T13:00:00Z"),
+      kind: "timed",
+      start: Temporal.Instant.from("2026-10-08T12:00:00Z"),
+    },
+  });
+
+  expect(deleted).toMatchObject({ reason: "keep-it", status: "rejected" });
+  expect(calendar.container.querySelector("[data-provider] [data-event-id]")).not.toBeNull();
+  expect(calendar.events().map(({ id, title }) => `${id} ${title}`)).toEqual([
+    "Standup Standup",
+    "new-1 Lunch",
+  ]);
+});
+
+test("a clock gives the time instead of now, and setNow says to move it", async () => {
+  const clock = createTestClock("2026-12-01T12:00:00Z");
+  const calendar = await renderCalendar(Calendar, { clock, events: [standup] });
+
+  expect(today(calendar.container)).toBe("2026-12-01");
+  expect(calendar.meta().environment.clock).toBe(clock);
+  await expect(calendar.setNow("2026-12-02T12:00:00Z")).rejects.toThrow(/move the clock/);
 });
 
 test("setNow, setEvents and rerender change what the calendar shows", async () => {
@@ -139,9 +234,12 @@ test("setNow, setEvents and rerender change what the calendar shows", async () =
   const calendar = await renderCalendar(Calendar, { environment, events: [standup] });
 
   expect(today(calendar.container)).toBe("2026-10-08");
-  await calendar.setNow("2026-10-09T08:00");
-  expect(today(calendar.container)).toBe("2026-10-09");
-  expect(calendar.meta().environment.now?.toString()).toBe("2026-10-08T23:00:00Z");
+  await calendar.setNow("2026-10-20T08:00");
+  expect(today(calendar.container)).toBe("2026-10-20");
+  expect(calendar.meta().environment.now?.toString()).toBe("2026-10-19T23:00:00Z");
+  // A time alone is on the date the calendar is at now.
+  await calendar.setNow("10:00");
+  expect(calendar.meta().environment.now?.toString()).toBe("2026-10-20T01:00:00Z");
 
   await calendar.setEvents([review]);
   expect(items(calendar.container)).toEqual(["Review 2026-10-09T14:00:00Z"]);
@@ -188,5 +286,28 @@ test("hydrateCalendar throws when the client renders something else", async () =
 
   await expect(hydrated).rejects.toBeInstanceOf(HydrationMismatchError);
   await expect(hydrated).rejects.toThrow(/Hydration/);
+  expect(document.body.innerHTML).toBe("");
+});
+
+test("a component that throws while hydrating leaves nothing mounted", async () => {
+  let onClient = false;
+  function ClientOnlyFailure(): ReactNode {
+    if (onClient) throw new Error("broken on the client");
+    return null;
+  }
+  const original = console.error;
+  console.error = () => {};
+  try {
+    // The server render runs before the first await; hydration runs after.
+    const hydrated = hydrateCalendar(Calendar, {
+      children: <ClientOnlyFailure />,
+      events: [standup],
+    });
+    onClient = true;
+    await expect(hydrated).rejects.toThrow("broken on the client");
+  } finally {
+    console.error = original;
+  }
+
   expect(document.body.innerHTML).toBe("");
 });

@@ -6,19 +6,23 @@ import type {
   ResourceId,
 } from "@moltenship/calendar";
 
-export interface ApplyChangeOptions<TEvent> {
+export interface ApplyChangeOptions<
+  TEvent,
+  TEventId extends EventId = EventId,
+  TResourceId extends ResourceId = ResourceId,
+> {
   /**
-   * The record a new event gets, from its change; its placement is applied over it. Defaults to
-   * `{ id: "new-<n>", title: "New event", data: null }`, numbered by `sequence`.
+   * The record a new event gets, from its change and the first `new-<n>` ID no event has; the
+   * proposed placement is applied over it. Defaults to `{ id, title: "New event", data: null }`.
    */
   readonly createEvent?: (
-    change: Extract<CalendarEventChange<TEvent, EventId, ResourceId>, { cause: "create" }>,
-    sequence: number,
+    change: Extract<CalendarEventChange<TEvent, TEventId, TResourceId>, { cause: "create" }>,
+    id: string,
   ) => TEvent;
 }
 
 /** Whether a record has the canonical event shape: a kind and ends of its own. */
-export function isCanonicalEvent(record: unknown): record is CalendarEvent {
+function isCanonicalEvent(record: unknown): record is CalendarEvent {
   return (
     typeof record === "object" &&
     record !== null &&
@@ -51,10 +55,14 @@ function placed<TEvent>(event: TEvent, placement: CalendarEventPlacement): TEven
  * event, and a create adds `createEvent`'s record placed where it was proposed, or the record the
  * change carries, as an undone delete does. Returns a new array.
  */
-export function applyCanonicalChange<TEvent>(
+export function applyCanonicalChange<
+  TEvent,
+  TEventId extends EventId = EventId,
+  TResourceId extends ResourceId = ResourceId,
+>(
   events: readonly TEvent[],
-  change: CalendarEventChange<TEvent, EventId, ResourceId>,
-  options: ApplyChangeOptions<TEvent> & { readonly sequence?: number } = {},
+  change: CalendarEventChange<TEvent, TEventId, TResourceId>,
+  options: ApplyChangeOptions<TEvent, TEventId, TResourceId> = {},
 ): readonly TEvent[] {
   const record = events.find((event) => !isCanonicalEvent(event));
   if (record !== undefined) {
@@ -66,11 +74,14 @@ export function applyCanonicalChange<TEvent>(
     return events.filter((event) => (event as CalendarEvent).id !== change.eventId);
   }
   if (change.cause === "create") {
-    const sequence = options.sequence ?? events.length + 1;
+    const taken = new Set(events.map((event) => (event as CalendarEvent).id));
+    let sequence = 1;
+    while (taken.has(`new-${sequence}`)) sequence += 1;
+    const id = `new-${sequence}`;
     const base =
       change.event ??
-      options.createEvent?.(change, sequence) ??
-      ({ data: null, id: `new-${sequence}`, title: "New event" } as TEvent);
+      options.createEvent?.(change, id) ??
+      ({ data: null, id, title: "New event" } as TEvent);
     return [...events, placed(base, change.proposed)];
   }
   return events.map((event) =>

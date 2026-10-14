@@ -18,7 +18,7 @@ works too.
 pnpm add -D @moltenship/calendar-testing vitest jsdom
 ```
 
-React 19 and React DOM 19 are peer dependencies, as for the calendar.
+React 19 and React DOM 19 are peer dependencies: the harness renders and hydrates with React DOM.
 
 ## Set up Vitest
 
@@ -70,9 +70,10 @@ environment.rootProps; // { now, defaultTimeZone, locale, weekRules, direction, 
 | `direction`  | `"ltr"`                                                                    |
 | `anchorDate` | `today`                                                                    |
 
-To let time pass in a test of your own components, pass `createTestClock(start)` as `Root`'s
-`clock`, and move it with `set` or `advance`. The calendar samples a clock once a minute, so move
-fake timers with it; the harness's `setNow` shows a new time at once.
+To show a later time, call the harness's `setNow`: the calendar re-renders with it at once. To let
+time pass as an app's clock does, pass `createTestClock(start)` as the harness's `clock` option, or
+`Root`'s `clock` in your own render, and move it with `set` or `advance`. The calendar samples a
+clock once a minute, so move fake timers with it. A clock reads text without a zone as UTC.
 
 ## Builders
 
@@ -99,42 +100,57 @@ test.
 
 <include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#calendar</include>
 
+`afterEach`, `expect` and `test` come from `vitest`.
+
 `renderCalendar(Calendar, options)` renders `Root` with the environment's props inside `act`, and
 `<Calendar.ActiveView />` inside it. It owns the events: a change your calendar saves is applied to
 them, so the next render shows it, as your app's state would.
 
 <include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#render</include>
 
-| Option          | Effect                                                                                                                                   |
-| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `events`        | The events the calendar starts with                                                                                                      |
-| `view`          | The view it opens on; the first registered one by default                                                                                |
-| `environment`   | `createTestEnvironment()` by default                                                                                                     |
-| `resources`     | `Root`'s `resources`                                                                                                                     |
-| `onEventChange` | Called with each change before the harness applies it. Return a promise to keep the change pending; throw or reject to roll it back      |
-| `applyChange`   | Applies a saved change to your events. The default, `applyCanonicalChange`, needs canonical events; pass your own for your app's records |
-| `readOnly`      | Renders `Root` without `onEventChange`                                                                                                   |
-| `messages`      | Renders `<Calendar.Announcer messages={messages} />`                                                                                     |
-| `rootProps`     | Any other `Root` prop, such as `policies` or `availability`                                                                              |
-| `children`      | What `Root` renders instead of `<Calendar.ActiveView />`                                                                                 |
-| `wrapper`       | A component around the calendar, such as a provider                                                                                      |
-| `strictMode`    | Renders in `StrictMode`                                                                                                                  |
+| Option                | Effect                                                                                                                                                             |
+| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `events`              | The events the calendar starts with                                                                                                                                |
+| `view`                | The view it opens on; the first registered one by default                                                                                                          |
+| `environment`         | `createTestEnvironment()` by default                                                                                                                               |
+| `clock`               | A clock to read the time from instead of the environment's fixed `now`                                                                                             |
+| `resources`           | `Root`'s `resources`                                                                                                                                               |
+| `onEventChange`       | Called with each change before the harness applies it. Return a promise to keep the change pending; throw or reject to roll it back                                |
+| `onEventChangeResult` | Called with each result after the harness records it                                                                                                               |
+| `applyChange`         | Applies a saved change to your events. The default, `applyCanonicalChange`, needs canonical events; pass your own for your app's records                           |
+| `createEvent`         | The record a created event gets, from the change and a free `new-<n>` ID; the proposed placement goes over it. `{ id, title: "New event", data: null }` by default |
+| `readOnly`            | Renders `Root` without `onEventChange`                                                                                                                             |
+| `messages`            | Renders `<Calendar.Announcer messages={messages} />`                                                                                                               |
+| `rootProps`           | Any other `Root` prop, such as `policies` or `availability`                                                                                                        |
+| `children`            | What `Root` renders instead of `<Calendar.ActiveView />`                                                                                                           |
+| `wrapper`             | A component around the calendar, such as a provider                                                                                                                |
+| `strictMode`          | Renders in `StrictMode`                                                                                                                                            |
+| `container`           | Where to render; a new element in `document.body` by default, which unmounting removes                                                                             |
+| `identifierPrefix`    | `useId`'s prefix                                                                                                                                                   |
 
 The harness it returns:
 
-| Member                            | Contents                                                                           |
-| --------------------------------- | ---------------------------------------------------------------------------------- |
-| `container`                       | The element the calendar rendered into                                             |
-| `changes`                         | Every change `onEventChange` received, in order                                    |
-| `results`                         | Every `onEventChangeResult` call: `{ result, detail }`                             |
-| `diagnostics`                     | What `onDiagnosticsChange` last reported                                           |
-| `events()`                        | The events now, with every saved change applied                                    |
-| `state()`, `meta()`               | `useCalendarState()` and `useCalendarMeta()`, read from inside `Root`              |
-| `pendingChanges()`                | `useCalendarPendingChanges()`: changes still validating, saving or awaiting events |
-| `actions`, `act(callback)`        | The calendar's actions, and a way to call them inside `act`                        |
-| `propose(proposal)`               | `proposeEventChange` inside `act`; resolves with its result once it settles        |
-| `setEvents`, `setNow`, `rerender` | Change the events, the fixed `now`, or any option                                  |
-| `unmount()`                       | Unmounts it; `cleanup()` unmounts every one                                        |
+| Member                            | Contents                                                                             |
+| --------------------------------- | ------------------------------------------------------------------------------------ |
+| `container`                       | The element the calendar rendered into                                               |
+| `changes`                         | Every change `onEventChange` received, in order                                      |
+| `results`                         | Every `onEventChangeResult` call: `{ result, detail }`                               |
+| `diagnostics`                     | What `onDiagnosticsChange` last reported                                             |
+| `events()`                        | The events now, with every saved change applied                                      |
+| `state()`, `meta()`               | `useCalendarState()` and `useCalendarMeta()`, read from inside `Root`                |
+| `pendingChanges()`                | `useCalendarPendingChanges()`: changes still validating, saving or awaiting events   |
+| `actions`, `act(callback)`        | The calendar's actions, and a way to call them inside `act`                          |
+| `propose(proposal)`               | `proposeEventChange` inside `act`; resolves with its result once it settles          |
+| `setEvents`, `setNow`, `rerender` | Change the events, the fixed `now`, or the options that apply after the first render |
+| `unmount()`                       | Unmounts it; `cleanup()` unmounts every one                                          |
+
+`setNow` takes exact text, a wall time on the environment's zone, or a time such as `"10:00"` on
+the date the calendar is at. `rerender` changes the events, the handlers, `children`, `messages`,
+`resources`, `readOnly` and `rootProps`; the view, the environment, the wrapper and the container
+set up the first render. Change the view or date through `act`, as a person would:
+`await calendar.act((actions) => actions.setView("day"))`.
+
+Name the harness type with `CalendarHarnessFor<typeof Calendar>`.
 
 ## Saves that take time
 
@@ -149,8 +165,10 @@ Hold the promise in the test to check what the calendar shows meanwhile.
 markup in a container and hydrates it, then returns the same harness, with the markup as
 `serverMarkup`. When the client renders something else, it throws a `HydrationMismatchError` with
 React's reasons: a recoverable error, or a warning such as an attribute that differs, which React
-only logs. A fixed `now` renders today's date on the server too, so a calendar with one hydrates
-with nothing to patch.
+only logs. It watches the console for those while hydration runs, so test with React's development
+build, which logs them. A component that throws on the client fails the test with its error, and
+nothing stays mounted. A fixed `now` renders today's date on the server too, so a calendar with
+one hydrates with nothing to patch.
 
 <include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#hydrate</include>
 

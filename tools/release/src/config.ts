@@ -44,8 +44,8 @@ export const publishedPackages: readonly PublishedPackage[] = [
   // 35,063 gzip bytes to 148,799 and 39,899. 152 and 42 KiB leave the usual headroom.
   { directory: "calendar-recurrence", budgets: { ".": { raw: 152 * KiB, gzip: 42 * KiB } } },
   { directory: "calendar-temporal", budgets: { ".": { raw: 30 * KiB, gzip: 7 * KiB } } },
-  // The test harness (#45): its environment, builders and render and hydration harness are 20,204
-  // raw and 6,271 gzip bytes, with the calendar, recurrence and React left as imports.
+  // The test harness (#45): its environment, builders and render and hydration harness are 21,801
+  // raw and 6,839 gzip bytes, with the calendar, recurrence and React left as imports.
   { directory: "calendar-testing", budgets: { ".": { raw: 22 * KiB, gzip: 7 * KiB } } },
   // ics keeps the Unicode License v3 of its CLDR data in its build: 1.2 KiB gzip, which took it
   // to 25,267 of 25,600 bytes. 26 KiB leaves the usual headroom.
