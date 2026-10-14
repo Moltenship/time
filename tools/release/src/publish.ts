@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createInterface } from "node:readline/promises";
 
+import { npmRegistry as registry } from "./config";
 import { distTag, manifestPath, publishProblems, readManifest, tarballIntegrity } from "./manifest";
 import { tarballDirectory } from "./pack";
 import {
@@ -14,8 +15,6 @@ import {
   runMain,
   runOrThrow,
 } from "./workspace";
-
-const registry = "https://registry.npmjs.org/";
 
 /**
  * The integrity npm records for this version, or undefined when npm doesn't have it. Throws when

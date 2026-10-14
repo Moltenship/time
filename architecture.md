@@ -1649,7 +1649,7 @@ None of these risks waits until the final polishing phase.
 - Registry source is user-owned after installation. Running `shadcn add` again asks before it replaces a file; `--overwrite` replaces them all. The theme's CSS block is written again on each add, so apps change tokens in their own rules.
 - The registry isn't versioned on its own: the docs site serves it from `main`. Each item's `meta.compatibility`, and `compatibility.json`, record the `@moltenship/calendar` range it needs.
 - Deprecations include codemod or mechanical migration guidance where feasible.
-- Release checks run from the monorepo (`release:check`, `release:dry-run`). PRs that change a published package add a line to `CHANGELOG.md`; `release:version` sets the shared version and dates those lines. Publishing is an explicit, guarded maintainer step (`release:publish`); it adds npm provenance when it runs in the release workflow.
+- Release checks run from the monorepo (`release:check`, `release:dry-run`). PRs that change a published package add a line to `CHANGELOG.md`; `release:version` sets the shared version and dates those lines. Publishing is an explicit, guarded maintainer step (`release:publish`); it adds npm provenance when it runs in the release workflow. After it, the workflow checks what npm serves against the dry run (`release:published`), tags the commit and writes the GitHub release (`release:github`), and installs the release from npm into clean apps.
 
 ## 25. Explicit non-goals for v1
 

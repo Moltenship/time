@@ -96,7 +96,7 @@ describe("release workflow contract", () => {
     const { jobs } = await readWorkflow();
     const publish = jobs.publish;
 
-    expect(Object.keys(jobs)).toEqual(["verify", "publish"]);
+    expect(Object.keys(jobs)).toEqual(["verify", "publish", "release", "install"]);
     expect(publish?.needs).toBe("verify");
     expect(publish?.if).toBe("inputs.publish && github.ref == 'refs/heads/main'");
     expect(publish?.environment).toBe("npm");
@@ -117,6 +117,40 @@ describe("release workflow contract", () => {
       "include-hidden-files": true,
     });
     expect(download?.with).toMatchObject({ name: "release", path: ".release" });
+  });
+
+  test("after publishing, checks npm and writes the GitHub release, then installs from npm", async () => {
+    const { jobs } = await readWorkflow();
+    const { release, install } = jobs;
+    const download = (job: Job | undefined) =>
+      job?.steps.find(({ uses }) => uses?.startsWith("actions/download-artifact@"));
+
+    for (const job of [release, install]) {
+      expect(job?.if).toBe("inputs.publish && github.ref == 'refs/heads/main'");
+      expect(job?.environment).toBeUndefined();
+    }
+    expect(release?.needs).toBe("publish");
+    // Only the tag and the release write; nothing here can sign or publish.
+    expect(release?.permissions).toEqual({ contents: "write" });
+    expect(runs(release)).toEqual([
+      "vp install --frozen-lockfile --ignore-scripts",
+      'vp run release:published --version "$VERSION" ${TAG:+--tag "$TAG"} --provenance',
+      'vp run release:github --version "$VERSION"',
+    ]);
+    expect(download(release)?.with).toMatchObject({ name: "release", path: ".release" });
+    const github = release?.steps.find(({ run }) => run?.startsWith("vp run release:github"));
+    expect(github?.env).toEqual({
+      VERSION: "${{ inputs.version }}",
+      GH_TOKEN: "${{ github.token }}",
+      GH_REPO: "${{ github.repository }}",
+    });
+
+    // Third-party code runs here (shadcn, the apps' installs and builds), so with read access only.
+    expect(install?.needs).toBe("release");
+    expect(install?.permissions).toBeUndefined();
+    expect(runs(install)).toEqual(["vp install --frozen-lockfile", "vp run registry:e2e"]);
+    const e2e = install?.steps.find(({ run }) => run === "vp run registry:e2e");
+    expect(e2e?.env).toEqual({ REGISTRY_E2E_PACKAGES: "npm" });
   });
 
   test("passes inputs through the environment, never into the script text", async () => {
