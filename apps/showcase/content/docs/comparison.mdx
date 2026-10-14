@@ -1,0 +1,276 @@
+---
+title: Comparison
+description: How Time compares with FullCalendar and react-big-calendar, as of October 2026.
+---
+
+This page compares Time with two React calendars that many teams already use:
+[FullCalendar](https://fullcalendar.io) 7.1, through `@fullcalendar/react` and its premium
+plugins, and [react-big-calendar](https://github.com/bigcalendar/react-big-calendar) 1.20. It's
+accurate as of **October 2026**. Claims about Time come from these docs and the code on `main`.
+Claims about the other two link their sources in the notes at the end of the page; a ✗ without a
+note means we found no such feature in their docs or code. If something here is wrong or out of
+date, [open an issue](https://github.com/Moltenship/time/issues).
+
+<Callout type="warn" title="Time is new, pre-1.0, and not on npm yet">
+  Time started in August 2026 and has one maintainer. Its packages haven't been published, so until
+  the first release you [run it from source](/docs/installation#run-from-source), and its API will
+  change before 1.0. FullCalendar has been developed since 2009 and react-big-calendar since 2015.
+  Both are downloaded more than a million times a week and run in production in many apps. Read the
+  rows below with that in mind.
+</Callout>
+
+**✓** means built in. **Partial** means it's there, with the limit the note gives. **✗** means
+it isn't built in: you'd write it yourself or add another library.
+
+## License and pricing
+
+|                             | Time                                                        | FullCalendar                                                                                                                                                                                                                                                                             | react-big-calendar                                     |
+| --------------------------- | ----------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| License                     | ✓ MIT. `@moltenship/ics` adds Unicode-3.0 for its CLDR data | Partial. The standard views are MIT. The premium plugins have a commercial license[^fc-license]                                                                                                                                                                                          | ✓ MIT[^rbc-license]                                    |
+| Resource and timeline views | Free, MIT                                                   | Premium. $480 for one developer, less per seat for more, down to $240 a seat for ten. A one-time payment for perpetual use, with a year of upgrades and email support. Free for registered non-profits (CC BY-NC-ND) and for projects that are open source under the AGPLv3[^fc-license] | Resource columns are free. No timeline[^rbc-resources] |
+
+## Views
+
+|                       | Time                                                                                            | FullCalendar                                                                                                                                                               | react-big-calendar                                                                |
+| --------------------- | ----------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Month                 | ✓ [Month](/docs/views/month)                                                                    | ✓ `dayGridMonth`[^fc-views]                                                                                                                                                | ✓ `month`[^rbc-views]                                                             |
+| Week and day          | ✓ [Week and day](/docs/views/week-and-day)                                                      | ✓ `timeGridWeek`, `timeGridDay`[^fc-views]                                                                                                                                 | ✓ `week`, `work_week`, `day`[^rbc-views]                                          |
+| Agenda or list        | ✓ [Agenda](/docs/views/agenda), also as a scrolling list                                        | ✓ `list` views, from a day to a year[^fc-views]                                                                                                                            | ✓ `agenda`[^rbc-views]                                                            |
+| Year                  | ✓ [Year](/docs/views/year). Read-only: a day's events open in a popover                         | ✓ `multiMonthYear`[^fc-views]                                                                                                                                              | ✗ Not built in[^rbc-year]                                                         |
+| 3-day and other spans | ✓ `createThreeDayView`. Other spans as a [custom view](/docs/views/custom-views)                | ✓ Any day count, set with `duration`[^fc-custom]                                                                                                                           | ✓ As a custom view. The docs' example is a 3-day view[^rbc-custom]                |
+| Scrolling without end | ✓ [Week, 3-day, day, month and agenda](/docs/views/scrolling), as Apple's Calendar does on iPad | ✗ An open request since 2015[^fc-scrolling]                                                                                                                                | ✗ Not among its views[^rbc-views]                                                 |
+| Resource columns      | ✓ [Resource columns](/docs/views/resource-columns), with groups that collapse                   | ✓ Premium: `resourceTimeGrid` and `resourceDayGrid`[^fc-resource]                                                                                                          | Partial. In the day and week time grids only, not month or agenda[^rbc-resources] |
+| Resource timeline     | ✓ [Resource timeline](/docs/views/resource-timeline) for a day, a week or a month               | ✓ Premium, also as a timeline without resources[^fc-resource]                                                                                                              | ✗ Not built in[^rbc-timeline]                                                     |
+| Custom views          | ✓ A strategy and a Renderer                                                                     | Partial. New spans for the built-in types, or a view from scratch as a function or a React component. Its props aren't documented, and dragging is left to you[^fc-custom] | ✓ A component with `range`, `navigate` and `title`[^rbc-custom]                   |
+
+## Interaction
+
+|                          | Time                                                                                                                                                                                                                                                                                                                                        | FullCalendar                                                                   | react-big-calendar                                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| Drag to move             | ✓ In the month, time grid and resource views ([Interactions](/docs/interactions#drag-resize-and-create))                                                                                                                                                                                                                                    | ✓ With the `interaction` plugin[^fc-dnd]                                       | ✓ With the `withDragAndDrop` addon[^rbc-dnd]                                                                                                |
+| Resize                   | Partial. Timed events in the time grids and resource columns, and bars in the timeline. All-day events, the month's included, from the keyboard only                                                                                                                                                                                        | ✓[^fc-dnd]                                                                     | ✓[^rbc-dnd]                                                                                                                                 |
+| Create                   | ✓ Drag across empty time or days, or press Space on a slot or a day. A click doesn't create                                                                                                                                                                                                                                                 | ✓ Select a range, or handle a date click[^fc-dnd]                              | ✓ Select slots with a click or a drag[^rbc-dnd]                                                                                             |
+| Touch                    | ✓ Press and hold for 450 ms to drag                                                                                                                                                                                                                                                                                                         | ✓ Press and hold, 1 second by default, configurable[^fc-dnd]                   | Partial. Press and hold to select slots, 250 ms by default. Dragging an event by touch takes a tap first, and has reported bugs[^rbc-touch] |
+| Keyboard move and resize | ✓ Space picks an event up and Shift+Space its edge, the arrow keys move or resize it, Enter saves it ([keyboard](/docs/accessibility#changing-events))                                                                                                                                                                                      | ✗ An open request since 2015[^fc-keyboard]                                     | ✗ The addon handles no keys[^rbc-keyboard]                                                                                                  |
+| Drops from outside       | Partial. With dnd-kit, the [dnd-kit adapter](/docs/api/dnd-kit) turns your items dragged in into events and sends events dragged out to your drop zones. Other libraries call [`startCalendarDrop` and `monitorCalendarDrags`](/docs/api/changes#drags-from-and-to-the-rest-of-the-page) through a binding you write. No HTML drag and drop | ✓ `Draggable`, or any drag library through `ThirdPartyDraggable`[^fc-external] | ✓ `onDropFromOutside`, with HTML drag and drop[^rbc-external]                                                                               |
+| Undo and redo            | ✓ An opt-in [history](/docs/undo-redo) with keyboard shortcuts and an undo toast                                                                                                                                                                                                                                                            | ✗ Each change has a `revert()`, but there's no history[^fc-revert]             | ✗                                                                                                                                           |
+
+## Accessibility
+
+|                             | Time                                                                                                                                                                                                                                                | FullCalendar                                                                                                                                                              | react-big-calendar                                                                               |
+| --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| Keyboard navigation         | ✓ Each view is one tab stop. Arrow, Home, End and Page keys move between days, slots and events ([Accessibility](/docs/accessibility#keyboard))                                                                                                     | Partial. Tab reaches every interactive element. Events are focusable when they have a URL or an `eventClick` handler, or with `eventInteractive`. No arrow keys[^fc-a11y] | Partial. Time grid events are focusable; month events aren't. No arrow-key navigation[^rbc-a11y] |
+| Screen reader announcements | ✓ A live region announces moves, resizes and creates, from the keyboard and the pointer. Events are named in full                                                                                                                                   | Partial. ARIA attributes, and labels you can change. No announcements of changes found[^fc-a11y]                                                                          | ✗ No live region. Open issues about the month view's roles and "+N more"[^rbc-a11y]              |
+| Automated checks            | ✓ axe-core over every built-in view but the 3-day ones, in Chromium on every PR and in Firefox and WebKit before each release. Serious and critical issues fail. Contrast and target-size tests too. No WCAG conformance claim or third-party audit | Partial. The 7.0 notes say every view passes axe. We found no automated accessibility run in its public CI[^fc-a11y]                                                      | ✗ No axe tests[^rbc-a11y]                                                                        |
+| Right-to-left               | ✓ Month, week, day and agenda mirror, and so do the arrow keys ([right-to-left](/docs/accessibility#right-to-left))                                                                                                                                 | ✓ `direction: "rtl"`[^fc-rtl]                                                                                                                                             | ✓ `rtl`[^rbc-rtl]                                                                                |
+
+## Time
+
+|                     | Time                                                                                                                                                       | FullCalendar                                                                                                                      | react-big-calendar                                                                                                |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| Date values         | Native Temporal: `Instant`, `PlainDate` and `PlainDateTime`. No `Date` ([Time](/docs/concepts/time))                                                       | `Date` in its API. Temporal inside, through the functions of `temporal-polyfill`, a peer dependency you install[^fc-time]         | `Date`, with a localizer for moment, Luxon, Globalize, date-fns or Day.js[^rbc-time]                              |
+| Temporal required   | A global `Temporal`. In browsers without it, load a polyfill ([Installation](/docs/installation#temporal)), which adds 20.5 kB gzipped                     | No global `Temporal`, but the `temporal-polyfill` package as a peer dependency[^fc-time]                                          | No[^rbc-time]                                                                                                     |
+| Named time zones    | ✓ Any IANA zone, changeable at runtime                                                                                                                     | ✓ Without a plugin since 7.0. The `Date`s it hands you are in local time or UTC, so its docs convert them with Temporal[^fc-time] | Partial. Through the localizer's default zone with moment-timezone, Luxon or Day.js. Not with date-fns[^rbc-time] |
+| Daylight saving     | ✓ 23- and 25-hour days, and skipped and repeated hours ([DST](/docs/concepts/time#daylight-saving-time))                                                   | No docs page. 7.1.0 fixed timeline slots across a change[^fc-dst]                                                                 | Partial. The localizers adjust time slots for DST, but a bug remains open[^rbc-dst]                               |
+| Secondary time zone | ✓ [Extra hour columns](/docs/views/week-and-day#secondary-time-zones), which account for either zone's clock changes                                       | ✗ An open request since 2017[^fc-secondary]                                                                                       | ✗ A request closed by a bot[^rbc-secondary]                                                                       |
+| Localization        | Partial. Dates and times follow any `locale` through `Intl`. The views' own words are English in source you edit, and announcements take messages you pass | ✓ 79 locales for its words, screen reader labels, date formats and the first day of the week[^fc-locale]                          | ✓ `culture` from the localizer, and `messages` for its words[^rbc-locale]                                         |
+
+## Data
+
+|                                     | Time                                                                                                                                                                                                                                       | FullCalendar                                                                                                         | react-big-calendar                                                                                                                                                  |
+| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Recurring events                    | ✓ `@moltenship/calendar-recurrence`: RRULE, EXDATE and RDATE, overrides, and cancelled occurrences ([Recurring events](/docs/concepts/recurrence))                                                                                         | ✓ Simple daily or weekly recurrence built in. RRULE with `exdate` and `exrule` through the `rrule` plugin[^fc-rrule] | ✗ Declined by its creator in 2017[^rbc-recurrence]                                                                                                                  |
+| Edit this, following or all         | ✓ A scope dialog, and `resolveRecurrenceEdit` works out what to save ([guide](/docs/guides/recurring-events))                                                                                                                              | ✗ Not in the docs. `groupId` moves occurrences together[^fc-rrule]                                                   | ✗                                                                                                                                                                   |
+| ICS import                          | ✓ `@moltenship/ics` parses RFC 5545 into Temporal values, with Windows zone names and line-numbered issues ([ICS](/docs/api/ics))                                                                                                          | ✓ The `icalendar` plugin loads a feed URL when the calendar loads, and again on `refetchEvents`[^fc-ics]             | ✗                                                                                                                                                                   |
+| ICS export                          | Partial. `stringifyIcsComponents` writes a syntax tree you build. No writer from typed events yet                                                                                                                                          | ✗ Not in the docs[^fc-ics]                                                                                           | ✗                                                                                                                                                                   |
+| Working hours                       | ✓ For the calendar and per resource, each in its own time zone, with closed days and holidays ([Availability](/docs/availability))                                                                                                         | ✓ `businessHours`. Per resource in premium[^fc-hours]                                                                | Partial. No working hours setting. Shade time with `backgroundEvents` or `slotPropGetter`, per resource, and limit the hours shown with `min` and `max`[^rbc-hours] |
+| Busy status                         | ✓ Busy and unavailable kept apart, with `busyAt`, `resourceStatusAt` and a busy badge                                                                                                                                                      | ✗                                                                                                                    | ✗                                                                                                                                                                   |
+| Conflict rules                      | ✓ Policies block, warn about or allow double-booking per resource, and keep changes inside working hours. Previews show the verdict while you drag                                                                                         | ✓ `eventOverlap`, `eventConstraint`, `eventAllow` and their `select` twins[^fc-hours]                                | ✗ `no-overlap` only changes the layout[^rbc-hours]                                                                                                                  |
+| Pending changes, optimistic updates | ✓ An async `onEventChange` keeps the change on screen as pending and rolls it back if saving fails. Of racing changes, the newest shows; the docs show how to apply saves in order ([pending changes](/docs/interactions#pending-changes)) | Partial. Callbacks get `revert()` to undo a failed save. No pending state[^fc-revert]                                | ✗ You update your state in `onEventDrop`[^rbc-state]                                                                                                                |
+
+## Architecture and integration
+
+|                           | Time                                                                                                                                                                                                                                      | FullCalendar                                                                                                                                                       | react-big-calendar                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
+| Headless core             | ✓ The event engine and Temporal helpers use no React or DOM. The React parts render plain elements ([How it works](/docs/concepts/how-it-works))                                                                                          | Partial. `@full-ui/headless-calendar`, MIT, is its internal core; its readme calls it a beta[^fc-headless]                                                         | ✗                                                                                                                  |
+| Frameworks                | React only                                                                                                                                                                                                                                | ✓ React, Vue 3, Angular, Preact, plain JavaScript and a web component[^fc-frameworks]                                                                              | React only[^rbc-react]                                                                                             |
+| React versions            | 19                                                                                                                                                                                                                                        | 17 to 19[^fc-frameworks]                                                                                                                                           | 16.14 to 19[^rbc-react]                                                                                            |
+| Server rendering, Next.js | ✓ Renders the same markup on the server and in the browser. Calendars are Client Components. A full [App Router example](/docs/guides/nextjs-app-router) with Server Actions                                                              | ✓ The React package is written in React since 7.0, with server rendering and StrictMode. A Next.js example project[^fc-react]                                      | Partial. Its docs don't cover server rendering or Next.js. App Router users put it in a Client Component[^rbc-ssr] |
+| Own the code              | ✓ Every view's components, the toolbar and the theme are source files you add with the shadcn CLI ([UI source](/docs/installation#ui-source-optional)). Date math, layout, and the drag and keyboard logic stay in `@moltenship/calendar` | Partial. A shadcn registry adds a wrapper, a toolbar and Tailwind classes for each part. The views' markup and behaviour stay in `@fullcalendar/react`[^fc-shadcn] | ✗                                                                                                                  |
+| Theming                   | ✓ CSS tokens for light and dark, an event palette, and a [theme builder](/docs/theme-builder)                                                                                                                                             | ✓ Five themes with dark mode, CSS variables, class names for Tailwind, and MUI and Bootstrap 5 themes[^fc-themes]                                                  | Partial. One stylesheet, with Sass variables to override[^rbc-theme]                                               |
+| TypeScript                | ✓ Written in strict TypeScript. Your event and ID types carry through                                                                                                                                                                     | ✓ Written in TypeScript, types included[^fc-frameworks]                                                                                                            | Partial. Written in JavaScript. `@types/react-big-calendar` is at 1.16[^rbc-types]                                 |
+
+## Performance and size
+
+|                               | Time                                                                                                                                                                                                                                                                  | FullCalendar                                                                                      | react-big-calendar                                                                                    |
+| ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| Virtualization and large data | ✓ Resource columns, the resource timeline, the agenda and the scrolling views render only what's in view. Month and time grids render the visible range. Events sit in an interval index, so each view reads only its range ([Performance](/docs/guides/performance)) | Partial. Opt-in and premium, for the resource timeline only. Other views are planned[^fc-virtual] | ✗ No virtualization. Reports about large data were closed by a bot, and a fix isn't merged[^rbc-perf] |
+| Bundle size, gzipped          | 143 kB. 67 kB if your app already ships Base UI's select, popover and tooltip, `cn` and lucide-react                                                                                                                                                                  | 84 kB. 118 kB with the premium resource views                                                     | 99 kB with Luxon and a time zone. 85 kB with date-fns, without time zones                             |
+
+### How the sizes were measured
+
+Each library rendered the same calendar from one entry file: month, week, day and agenda (or list)
+views, the library's toolbar, and dragging, resizing and creating turned on, in the Europe/Berlin
+time zone. For Time, that's the [Quick start](/docs/quick-start)'s calendar with `onEventChange` and
+the `Announcer` added, built from the registry source that `shadcn add` copies, at commit
+`ed3f9a1b`. FullCalendar used its classic theme. react-big-calendar used its Luxon localizer, since
+its date-fns localizer can't take a time zone, and its drag-and-drop addon, imported from
+`react-big-calendar/lib/addons/dragAndDrop` as its docs show; that path is CommonJS and brings a
+second copy of some modules. Each entry was bundled with esbuild 0.28.2
+(`--bundle --minify --format=esm --target=es2022`), with React and React DOM left out and CSS not
+counted, then compressed with `gzip -9`. A kB is 1,000 bytes.
+
+| Bundle                                                                                   | Minified | Minified and gzipped |
+| ---------------------------------------------------------------------------------------- | -------- | -------------------- |
+| Time: week, day, month and agenda, with the toolbar and the shadcn components they use   | 430 kB   | 142.6 kB             |
+| The same, without the shadcn stack: Base UI, Floating UI, `cn`, lucide-react and helpers | 218 kB   | 67.3 kB              |
+| Time with resource columns and the resource timeline added                               | 481 kB   | 157.6 kB             |
+| The same, without the shadcn stack: Base UI, Floating UI, `cn`, lucide-react and helpers | 269 kB   | 82.1 kB              |
+| `temporal-polyfill/global` 1.0.6, for browsers without Temporal                          | 59 kB    | 20.5 kB              |
+| FullCalendar 7.1.2: month, week, day and list, with interaction                          | 301 kB   | 84.3 kB              |
+| FullCalendar 7.1.2 with premium resource timeline and resource time grid                 | 429 kB   | 118.0 kB             |
+| react-big-calendar 1.20.0 with drag and drop and Luxon 3.7                               | 323 kB   | 98.6 kB              |
+| react-big-calendar 1.20.0 with drag and drop and date-fns 4.4, without time zones        | 288 kB   | 84.9 kB              |
+
+Time's views are the largest of the three. About half of their minified size is the shadcn
+components they're built on: Base UI's select, popover and tooltip, with Floating UI. An app that
+already uses those through shadcn/ui ships that code already, which is what the "without" rows show.
+FullCalendar's numbers include the parts of `temporal-polyfill` it imports. Time's don't include a
+polyfill, which only browsers without Temporal need.
+
+## Maturity
+
+|                                | Time                        | FullCalendar                                                             | react-big-calendar                                |
+| ------------------------------ | --------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
+| Since                          | August 2026. No release yet | 2009[^fc-maturity]                                                       | 2015[^rbc-maturity]                               |
+| Latest release                 | None                        | 7.1.2, October 12, 2026[^fc-maturity]                                    | 1.20.0, June 1, 2026[^rbc-maturity]               |
+| Releases in the last 12 months | None                        | 8[^fc-maturity]                                                          | 2[^rbc-maturity]                                  |
+| Weekly npm downloads           | None, it isn't published    | 1.8 million for `@fullcalendar/react`[^fc-downloads]                     | 1.17 million[^rbc-downloads]                      |
+| GitHub                         | 1 contributor               | 20.7k stars, about 130 contributors[^fc-maturity]                        | 8.8k stars, about 240 contributors[^rbc-maturity] |
+| Support                        | GitHub issues               | Community support, and email support with a premium license[^fc-license] | GitHub issues[^rbc-maturity]                      |
+
+FullCalendar and react-big-calendar have years of bug reports behind them, answers on Stack
+Overflow, example projects and people who know them. Time has none of that yet.
+
+## When to choose which
+
+**FullCalendar** if you need a calendar you can rely on in production today, if your app uses Vue,
+Angular or no framework, if you need many locales out of the box, or if you want a vendor with paid
+support. Its premium views cost money, but less than building a scheduler. Its React package has
+been written in React since 7.0, renders on the server, handles named time zones through Temporal
+and has shadcn themes, so none of those set Time apart.
+
+**react-big-calendar** if you want a free MIT calendar with month, week, day and agenda views and
+drag and drop, and you don't need a year view, a timeline, keyboard editing, recurring events or
+time zones beyond a localizer's default. It had two releases in the last twelve months, so expect
+fixes to come slowly.
+
+**Time** if you're on React 19 and can start on a pre-1.0 library run from source, and you want
+Temporal from end to end, view components you own as source, editing by keyboard with screen reader
+announcements, edits to recurring series, availability and conflict rules, or resource views under
+the MIT license. Don't choose it yet if you need a stable API, a published package, or a framework
+other than React.
+
+[^fc-license]: FullCalendar's [pricing](https://fullcalendar.io/pricing), [purchase](https://fullcalendar.io/purchase) and [license](https://fullcalendar.io/license) pages, its [premium](https://fullcalendar.io/docs/premium) docs, and the [plugin index](https://fullcalendar.io/docs/plugin-index), which marks the premium plugins.
+
+[^rbc-license]: react-big-calendar's [LICENSE](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/LICENSE).
+
+[^fc-views]: FullCalendar's [month](https://fullcalendar.io/docs/month-view), [time grid](https://fullcalendar.io/docs/timegrid-view), [list](https://fullcalendar.io/docs/list-view) and [multi-month](https://fullcalendar.io/docs/multimonth-grid) views.
+
+[^rbc-views]: react-big-calendar's [`src/Views.js`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Views.js#L8-L14).
+
+[^rbc-year]: [#2375](https://github.com/bigcalendar/react-big-calendar/issues/2375), "Need a year view", closed by a bot in May 2026.
+
+[^fc-custom]: FullCalendar's [custom view with settings](https://fullcalendar.io/docs/custom-view-with-settings) and [custom view with JS](https://fullcalendar.io/docs/custom-view-with-js).
+
+[^fc-scrolling]: [fullcalendar#2276](https://github.com/fullcalendar/fullcalendar/issues/2276), "Continuous scrolling of months".
+
+[^rbc-custom]: react-big-calendar's [Creating custom views](https://bigcalendar.github.io/react-big-calendar/?path=/docs/guides-creating-custom-views--docs) and its [3-day example](https://bigcalendar.github.io/react-big-calendar/?path=/story/examples--example-9).
+
+[^fc-resource]: FullCalendar's [vertical resource view](https://fullcalendar.io/docs/vertical-resource-view) and [timeline view](https://fullcalendar.io/docs/timeline-view), both premium.
+
+[^rbc-resources]: Only the time grid reads `resources`: [`src/TimeGrid.js`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/TimeGrid.js#L256-L258). See the [resource scheduling example](https://bigcalendar.github.io/react-big-calendar/?path=/story/examples--example-11).
+
+[^rbc-timeline]: [#1844](https://github.com/bigcalendar/react-big-calendar/issues/1844), "Resource Timeline component", closed by a bot in May 2026.
+
+[^fc-dnd]: FullCalendar's [dragging and resizing](https://fullcalendar.io/docs/event-dragging-resizing), [`selectable`](https://fullcalendar.io/docs/selectable), [touch](https://fullcalendar.io/docs/touch) and [`eventLongPressDelay`](https://fullcalendar.io/docs/eventLongPressDelay).
+
+[^rbc-dnd]: react-big-calendar's [`withDragAndDrop`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/addons/dragAndDrop/withDragAndDrop.js#L17-L29), [`selectable`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Calendar.js#L527-L534) and [`onSelectSlot`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Calendar.js#L331-L359).
+
+[^rbc-touch]: react-big-calendar's [`longPressThreshold`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Calendar.js#L537-L544), the addon's [`EventWrapper.js`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/addons/dragAndDrop/EventWrapper.js#L41-L61), and [#2413](https://github.com/bigcalendar/react-big-calendar/issues/2413), "Drag and drop on touch".
+
+[^fc-keyboard]: [fullcalendar#2535](https://github.com/fullcalendar/fullcalendar/issues/2535), "Event drag-n-drop / resize with keyboard", open since 2015.
+
+[^rbc-keyboard]: The addon's [`withDragAndDrop.js`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/addons/dragAndDrop/withDragAndDrop.js) has no key handling, and [`src/Selection.js`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Selection.js#L360) uses Escape only to cancel.
+
+[^fc-external]: FullCalendar's [external dragging](https://fullcalendar.io/docs/external-dragging) and [third-party dragging](https://fullcalendar.io/docs/third-party-dragging).
+
+[^rbc-external]: react-big-calendar's [drag from outside example](https://bigcalendar.github.io/react-big-calendar/?path=/story/addons-drag-and-drop--example-3).
+
+[^fc-revert]: FullCalendar's [`eventDrop`](https://fullcalendar.io/docs/eventDrop), whose `revert()` is "useful if an ajax call should fail".
+
+[^fc-a11y]: FullCalendar's [accessibility](https://fullcalendar.io/docs/accessibility), [`eventInteractive`](https://fullcalendar.io/docs/eventInteractive) and [hints](https://fullcalendar.io/docs/hints) docs, [fullcalendar#6527](https://github.com/fullcalendar/fullcalendar/issues/6527), "ARIA grid, roving tabindex", the [upgrade notes for 7.0](https://fullcalendar.io/docs/upgrading-from-v6), and its [CI workflows](https://github.com/fullcalendar/fullcalendar/tree/main/.github/workflows).
+
+[^rbc-a11y]: react-big-calendar's [`TimeGridEvent.js`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/TimeGridEvent.js#L55-L61) gives time grid events a `tabIndex`, and [`EventCell.js`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/EventCell.js#L62-L74) doesn't. Open issues [#2538](https://github.com/bigcalendar/react-big-calendar/issues/2538) and [#2045](https://github.com/bigcalendar/react-big-calendar/issues/2045). Its [`package.json`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/package.json) has no axe.
+
+[^fc-rtl]: FullCalendar's [`direction`](https://fullcalendar.io/docs/direction).
+
+[^rbc-rtl]: react-big-calendar's [`rtl`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Calendar.js#L560) prop.
+
+[^fc-time]: FullCalendar's [date library](https://fullcalendar.io/docs/date-library), [temporal-polyfill](https://fullcalendar.io/docs/temporal-polyfill) and [`timeZone`](https://fullcalendar.io/docs/timeZone) docs.
+
+[^rbc-time]: react-big-calendar's [dates guide](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/stories/guides/Dates.mdx#L8-L10), its [localizers](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/index.js#L11-L16), its [time zones guide](https://bigcalendar.github.io/react-big-calendar/?path=/docs/guides-timezones--docs), and the [date-fns localizer](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/localizers/date-fns.js).
+
+[^fc-dst]: FullCalendar's [7.1.0 release notes](https://github.com/fullcalendar/fullcalendar/releases/tag/v7.1.0): "Timeline view, account for DST in timeslots".
+
+[^rbc-dst]: react-big-calendar's [`localizer.js`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/localizer.js) and [`TimeGutter.js`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/TimeGutter.js), and [#2534](https://github.com/bigcalendar/react-big-calendar/issues/2534), a date missing from the month view in March 2024.
+
+[^fc-secondary]: [fullcalendar#3964](https://github.com/fullcalendar/fullcalendar/issues/3964), "multiple timeGrid/timeline axis, each with different time zone".
+
+[^rbc-secondary]: [#2306](https://github.com/bigcalendar/react-big-calendar/issues/2306), "Support for Displaying Multiple Timezones", closed by a bot in May 2026.
+
+[^fc-locale]: FullCalendar's [`locale`](https://fullcalendar.io/docs/locale). `@fullcalendar/react` 7.1.2 ships 79 locale files.
+
+[^rbc-locale]: react-big-calendar's [`culture`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Calendar.js#L658) and [`messages`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Calendar.js#L861) props.
+
+[^fc-rrule]: FullCalendar's [recurring events](https://fullcalendar.io/docs/recurring-events) and [RRule plugin](https://fullcalendar.io/docs/rrule-plugin).
+
+[^rbc-recurrence]: [#355](https://github.com/bigcalendar/react-big-calendar/issues/355): "I don't want to provide such functionality in the library".
+
+[^fc-ics]: FullCalendar's [iCalendar plugin](https://fullcalendar.io/docs/icalendar).
+
+[^fc-hours]: FullCalendar's [`businessHours`](https://fullcalendar.io/docs/businessHours), [business hours per resource](https://fullcalendar.io/docs/businessHours-per-resource), [`eventConstraint`](https://fullcalendar.io/docs/eventConstraint), [`eventOverlap`](https://fullcalendar.io/docs/eventOverlap) and [`selectAllow`](https://fullcalendar.io/docs/selectAllow).
+
+[^rbc-hours]: react-big-calendar's [`backgroundEvents`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Calendar.js#L148-L168), [`slotPropGetter`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Calendar.js#L577-L586), [`min` and `max`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/Calendar.js#L627-L634), its [time grid](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/src/TimeGrid.js#L256-L258), and [`dayLayoutAlgorithm`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/stories/props/dayLayoutAlgorithm.mdx#L9-L13).
+
+[^rbc-state]: react-big-calendar's [drag and drop example](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/stories/demos/exampleCode/dnd.js#L14-L43).
+
+[^fc-headless]: [`@full-ui/headless-calendar`](https://www.npmjs.com/package/@full-ui/headless-calendar) on npm.
+
+[^fc-frameworks]: FullCalendar's [React](https://fullcalendar.io/docs/react), [Vue](https://fullcalendar.io/docs/vue), [Angular](https://fullcalendar.io/docs/angular) and [web component](https://fullcalendar.io/docs/web-component) docs, and the [upgrade notes for 7.0](https://fullcalendar.io/docs/upgrading-from-v6).
+
+[^rbc-react]: react-big-calendar's [`package.json`](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/package.json).
+
+[^fc-react]: FullCalendar's [React docs](https://fullcalendar.io/docs/react): "server-side rendering and StrictMode work".
+
+[^rbc-ssr]: [#2436](https://github.com/bigcalendar/react-big-calendar/issues/2436) and [#2631](https://github.com/bigcalendar/react-big-calendar/issues/2631).
+
+[^fc-shadcn]: FullCalendar's [shadcn/ui docs](https://fullcalendar.io/docs/shadcn) and its registry item [`monarch-event-calendar`](https://shadcn-registry.fullcalendar.io/monarch-event-calendar.json).
+
+[^fc-themes]: FullCalendar's [stock themes](https://fullcalendar.io/docs/stock-themes) and [custom themes](https://fullcalendar.io/docs/custom-themes).
+
+[^rbc-theme]: react-big-calendar's [readme](https://github.com/bigcalendar/react-big-calendar/blob/v1.20.0/README.md#L153-L165).
+
+[^rbc-types]: [`@types/react-big-calendar`](https://www.npmjs.com/package/@types/react-big-calendar) on npm.
+
+[^fc-virtual]: FullCalendar's [virtual rendering](https://fullcalendar.io/docs/virtual-rendering) and [`virtualization`](https://fullcalendar.io/docs/virtualization).
+
+[^rbc-perf]: [#2752](https://github.com/bigcalendar/react-big-calendar/issues/2752) and [#2068](https://github.com/bigcalendar/react-big-calendar/issues/2068), closed by a bot in May 2026, and the open fix [#2753](https://github.com/bigcalendar/react-big-calendar/pull/2753).
+
+[^fc-maturity]: FullCalendar's [GitHub repository](https://github.com/fullcalendar/fullcalendar), [contributors](https://github.com/fullcalendar/fullcalendar/graphs/contributors) and [releases](https://github.com/fullcalendar/fullcalendar/releases).
+
+[^rbc-maturity]: react-big-calendar's [GitHub repository](https://github.com/bigcalendar/react-big-calendar), [contributors](https://github.com/bigcalendar/react-big-calendar/graphs/contributors), [releases](https://github.com/bigcalendar/react-big-calendar/releases) and [npm versions](https://www.npmjs.com/package/react-big-calendar?activeTab=versions).
+
+[^fc-downloads]: npm's [download counts](https://api.npmjs.org/downloads/point/2026-10-06:2026-10-12/@fullcalendar/react) for October 6 to 12, 2026.
+
+[^rbc-downloads]: npm's [download counts](https://api.npmjs.org/downloads/point/2026-10-06:2026-10-12/react-big-calendar) for October 6 to 12, 2026.
