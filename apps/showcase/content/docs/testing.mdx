@@ -166,76 +166,83 @@ Hold the promise in the test to check what the calendar shows meanwhile.
 
 Queries find events through the calendar's own events, by ID, title or start, so they don't
 depend on the text a view renders or its language. Cells are found by the attributes every
-registry view carries for the pointer layer: `data-date` on day cells and time columns,
-`data-all-day` on a time grid's all-day row, `data-resource-id` on a resource's column or row, and
-`data-event-id` on events. A view of your own that follows the
-[pointer layer's contract](/docs/api/changes) works the same way.
+registry view carries for the pointer layer: `data-event-id` on events, `data-date` on day cells
+and time columns, `data-all-day` on a time grid's all-day cells, `data-axis="inline"` on a
+timeline's time strips, and `data-resource-id` on a resource's column or row. A view of your own
+that follows the [same contract](/docs/interactions#in-your-own-views) works the same way: a
+`data-date` element without `data-all-day` counts as a time column, and in a time grid, events sit
+inside their column.
 
 <include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#queries</include>
 
-| Query                                  | Returns                                                                                      |
-| -------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `getEvent(event, { date? })`           | The element showing an event; with `date`, the part on that day                              |
-| `getAllEvents(event)`                  | Every element showing it: one per day it spans and per resource it's in                      |
-| `queryEvent(event)`                    | The element, or `null` when the view doesn't show it                                         |
-| `getDayCell(date, { resourceId? })`    | A time grid's all-day cell, or a month's day                                                 |
-| `getTimeColumn(date, { resourceId? })` | The column of a date's hours, or its strip along a timeline row                              |
-| `getResource(resource)`                | The element a resource's column or row carries its ID on; `resource` is an ID or `{ title }` |
-| `placementOf(event)`                   | Where it shows now, pending changes included, as text: `range`, `wallRange`, `isPending`     |
+| Query                                  | Returns                                                                                                                      |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `getEvent(event)`                      | The first element showing an event                                                                                           |
+| `getAllEvents(event)`                  | Every element showing it: one per part the view draws, such as a time grid's day, a month's week row, a resource's column    |
+| `queryEvent(event)`                    | The first element, or `null` when the view doesn't show it                                                                   |
+| `getDayCell(date, { resourceId? })`    | A time grid's all-day cell, or else a month's day                                                                            |
+| `getTimeColumn(date, { resourceId? })` | The column of a date's hours, or its strip along a timeline row                                                              |
+| `getResource(resource)`                | The element a resource's column or row carries its ID on; `resource` is an ID, `null` for the unassigned row, or `{ title }` |
+| `placementOf(event)`                   | Where it shows now, pending changes included, as text: `range`, `wallRange`, `isPending`                                     |
 
 `event` is an ID or a title as text (an ID wins), or `{ id }`, `{ title }` or `{ start }`. A
-`start` is a date for an all-day event, or a time, exact or on the calendar's wall clock. The
-`get` queries throw a `CalendarQueryError` that lists the calendar's events when they find nothing,
-and every query throws when it finds several events. `placementOf` gives text, such as
-`"2026-10-09T08:30:00Z/2026-10-09T09:30:00Z"`, because Temporal values compare equal in
-`toEqual` whatever they hold. `wallRange` gives the same ends on the display zone's clock, to the
-minute.
+`start` is a date for an all-day event, a date and time for a floating one, or a time for a timed
+one, exact or on the calendar's wall clock. The `get` queries throw a `CalendarQueryError` that
+lists the calendar's events when they find nothing, and every query throws when it finds several
+events. `placementOf` gives text, such as `"2026-10-09T08:30:00Z/2026-10-09T09:30:00Z"`, which
+reads plainly in a failing assertion; `wallRange` gives the same ends on the display zone's clock,
+to the minute.
 
 ## Keyboard
 
 `calendar.keyboard` presses keys on the focused element inside `act`, as a person would, so it
-works in jsdom, happy-dom and a browser alike, and through every check your views make.
+works in jsdom, happy-dom and a browser alike, and through every check your views make. Focus
+goes through the calendar's own focus, as arrow keys move it, so a slot, which renders only while
+it has focus, can take it too.
 
 <include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#keyboard</include>
 
 | Method                                                        | Keys                                                                                                   |
 | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `focusEvent(event, { date? })`                                | Focuses the event's element                                                                            |
-| `focusCell({ date, time?, resourceId? })`                     | Focuses a day, or a slot with `time`, through the calendar's focus; slots render only then             |
-| `press(key, modifiers?)`, `arrows({ up, down, left, right })` | Any key, or arrow keys by count                                                                        |
+| `focusEvent(event, { date?, resourceId? })`                   | Focuses the event's part on `date`, the day it starts by default, in `resourceId`                      |
+| `focusCell({ date, time?, resourceId? })`                     | Focuses a day, or a slot with `time`                                                                   |
+| `press(key, modifiers?)`, `arrows({ up, down, left, right })` | Any key on whatever has focus, or arrow keys by count                                                  |
 | `step({ across, down })`                                      | Arrow keys by direction                                                                                |
 | `grab()`, `grabEdge()`                                        | Space picks up the focused event or starts a create; Shift+Space picks up its end, and again its start |
 | `drop()`, `cancel()`                                          | Enter and Escape                                                                                       |
-| `moveEvent(event, steps)`                                     | Focus, Space, the steps, Enter                                                                         |
-| `resizeEvent(event, { edge?, ...steps })`                     | Focus, Shift+Space (twice for the start), the steps, Enter                                             |
+| `moveEvent(event, { across?, down?, date?, resourceId? })`    | Focus, Space, the steps, Enter                                                                         |
+| `resizeEvent(event, { edge?, across?, down? })`               | Focus, Shift+Space (twice for the start), the steps, Enter                                             |
 | `createEvent(cell, steps?)`                                   | Focus the cell, Space, the steps, Enter                                                                |
 
-A step `across` goes toward the end of the line: Arrow Right in a left-to-right calendar, Arrow
-Left in a right-to-left one, from `Root`'s `direction`. A step `down` is Arrow Down; negative
-steps go back and up. What a step is depends on the view:
+The focus methods throw when the view doesn't show what they name, and leave the calendar's focus
+as it was. A step `across` goes toward the end of the line: Arrow Right in a left-to-right
+calendar, Arrow Left in a right-to-left one, from `Root`'s `direction`. A step `down` is Arrow
+Down; negative steps go back and up. What a step is depends on the view:
 
-| View              | `across`                                       | `down`             |
-| ----------------- | ---------------------------------------------- | ------------------ |
-| Week, day         | A day                                          | A slot, 15 minutes |
-| Month             | A day                                          | A week             |
-| Resource columns  | A column: the next resource, then the next day | A slot             |
-| Resource timeline | A slot, or a day over days                     | The next resource  |
+| View              | `across`                                       | `down`                        |
+| ----------------- | ---------------------------------------------- | ----------------------------- |
+| Week, day         | A day                                          | A slot, 15 minutes by default |
+| Month             | A day                                          | A week                        |
+| Resource columns  | A column: the next resource, then the next day | A slot                        |
+| Resource timeline | A slot, or a day over days                     | The next resource             |
 
 ## Wait for saves
 
 Drivers return once their keys or moves are handled, not when the change is saved. `settled()`
 waits until no change is pending: every proposal validated, saved, and in the events. It gives up
-after five seconds, and says which changes are still pending. It waits on a `MessageChannel`, so
-fake timers don't hold it back.
+after five seconds of real time, and says which changes are still pending. It doesn't advance fake
+timers, so a save that waits on one needs them advanced first.
 
-`announcements()` lists what the `Announcer` said, oldest first, and `lastAnnouncement()` what it
-says now, with `Intl`'s thin and no-break spaces made plain. Render it with the `messages` option.
-`normalizeText(text)` does the same to text of your own.
+`announcements()` lists what the `Announcer` said, oldest first, a message said twice included,
+and `lastAnnouncement()` what it says now, with `Intl`'s thin and no-break spaces made plain.
+Render one with the `messages` option, or your own in `children`: only the one mounted last
+speaks, and the harness follows whichever does. `normalizeText(text)` makes your own text plain
+the same way.
 
 ## Pointer and touch
 
 `calendar.pointer` drags with Pointer Events at measured points, as a mouse, a pen or a finger
-would. It needs a page that's laid out, so it runs in a browser:
+would. It needs a page that's laid out and real timers, so it runs in a browser:
 
 ```ts title="vitest.config.ts"
 import { defineConfig } from "vitest/config";
@@ -273,16 +280,20 @@ test("a mouse moves the standup to Friday at 11:00", async () => {
 });
 ```
 
-| Method                                           | Drag                                                                                   |
-| ------------------------------------------------ | -------------------------------------------------------------------------------------- |
-| `moveEvent(event, { date, time?, resourceId? })` | By the event's middle, so it starts at `time` on `date`; without `time`, by whole days |
-| `resizeEvent(event, { date, time?, edge? })`     | Its end (or start) handle to `time`, or to a day in a month                            |
-| `createEvent(from, to)`                          | Across empty slots or days, both included                                              |
-| `drag(from, to)`                                 | From one element or point to another                                                   |
+| Method                                           | Drag                                                                                                                                                                 |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `moveEvent(event, { date, time?, resourceId? })` | By the event's middle, so it starts at `time` on `date`; without `time`, by whole days, keeping its time. It stays in its resource unless `resourceId` names another |
+| `resizeEvent(event, { date, time?, edge? })`     | Its end (or start) handle to `time`, or to `date` in a view that resizes by days, as a timeline over days does                                                       |
+| `createEvent(from, to)`                          | Across empty slots or days, both included                                                                                                                            |
+| `drag(from, to)`                                 | From one element or point to another                                                                                                                                 |
 
 Each takes `{ pointerType }`: `"mouse"` by default, `"pen"`, or `"touch"`, which holds still
-until the long press starts a drag. The repository runs these drivers on its views in Chromium,
-Firefox and WebKit, WebKit on `temporal-polyfill`.
+until the long press starts a drag. The press and the drop must be on screen: the drivers scroll
+the event into view, and throw when its middle is covered or when the drop point isn't on its cell,
+so make the calendar tall enough. Where they let go is measured again after each frame, so a view
+that auto-scrolls under the pointer still gets the drop where it was meant. The repository runs
+these drivers on its views in Chromium on every pull request, and in Firefox and WebKit, WebKit on
+`temporal-polyfill`, in the full gate.
 
 ### What jsdom can't do
 

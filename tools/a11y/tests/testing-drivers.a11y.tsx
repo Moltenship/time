@@ -5,6 +5,7 @@ import {
   type CalendarResource,
 } from "@moltenship/calendar";
 import {
+  buildAllDayEvent,
   buildEvent,
   buildResource,
   cleanup,
@@ -50,7 +51,10 @@ afterEach(cleanup);
 
 function renderView(
   view: "week" | "month" | "resources",
-  { readOnly = false }: { readonly readOnly?: boolean } = {},
+  {
+    events = [review],
+    readOnly = false,
+  }: { readonly events?: readonly Meeting[]; readonly readOnly?: boolean } = {},
 ) {
   return renderCalendar(Calendar, {
     children: (
@@ -61,10 +65,10 @@ function renderView(
       </Calendar.Frame>
     ),
     environment,
-    events: [review],
+    events,
+    readOnly,
     resources: team,
     view,
-    readOnly,
     wrapper: Providers,
   });
 }
@@ -153,13 +157,82 @@ describe(`calendar-testing's drivers in ${server.browser}`, () => {
     expect(calendar.results[0]?.detail.input).toBe("keyboard");
   });
 
-  test("a read-only calendar takes no drag", async () => {
-    const calendar = await renderView("week", { readOnly: true });
+  test("without a time, a mouse moves an event by whole days and keeps its time", async () => {
+    const calendar = await renderView("week");
 
-    await calendar.pointer.drag(calendar.getEvent("Review"), calendar.getTimeColumn("2026-10-09"));
+    await calendar.pointer.moveEvent("Review", { date: "2026-10-10" });
     await calendar.settled();
 
-    expect(calendar.changes).toEqual([]);
-    expect(calendar.placementOf("Review").range).toBe("2026-10-08T10:00:00Z/2026-10-08T11:00:00Z");
+    expect(calendar.placementOf("Review").range).toBe("2026-10-10T10:00:00Z/2026-10-10T11:00:00Z");
+  });
+
+  test("a mouse drags an event's start handle to an earlier time", async () => {
+    const calendar = await renderView("week");
+
+    await calendar.pointer.resizeEvent("Review", {
+      date: "2026-10-08",
+      edge: "start",
+      time: "09:15",
+    });
+    await calendar.settled();
+
+    expect(calendar.changes[0]?.cause).toBe("resize-start");
+    expect(calendar.placementOf("Review").range).toBe("2026-10-08T09:15:00Z/2026-10-08T11:00:00Z");
+  });
+
+  test("an overnight event's end handle is on its last day, and the end moves there", async () => {
+    const late = buildEvent({
+      end: "2026-10-09T02:00:00Z",
+      start: "2026-10-08T22:00:00Z",
+      title: "Late",
+    });
+    const calendar = await renderView("week", { events: [late] });
+
+    await calendar.pointer.resizeEvent("Late", { date: "2026-10-09", time: "03:00" });
+    await calendar.settled();
+
+    expect(calendar.placementOf("Late").range).toBe("2026-10-08T22:00:00Z/2026-10-09T03:00:00Z");
+  });
+
+  test("an all-day event dropped on a slot starts there", async () => {
+    const trip = buildAllDayEvent({ start: "2026-10-08", title: "Trip" });
+    const calendar = await renderView("week", { events: [trip] });
+
+    await calendar.pointer.moveEvent("Trip", { date: "2026-10-09", time: "14:00" });
+    await calendar.settled();
+
+    expect(calendar.placementOf("Trip")).toMatchObject({
+      kind: "timed",
+      start: "2026-10-09T14:00:00Z",
+    });
+  });
+
+  test("in resource columns, a move without a resource stays in the event's", async () => {
+    const calendar = await renderView("resources", {
+      events: [buildEvent({ resourceIds: ["Ben"], start: "2026-10-08T10:00:00Z", title: "Sync" })],
+    });
+
+    await calendar.pointer.moveEvent("Sync", { date: "2026-10-08", time: "12:00" });
+    await calendar.settled();
+
+    expect(calendar.placementOf("Sync")).toMatchObject({
+      range: "2026-10-08T12:00:00Z/2026-10-08T13:00:00Z",
+      resourceIds: ["Ben"],
+    });
+  });
+
+  test("a drag moves an event in an editable calendar and nothing in a read-only one", async () => {
+    for (const readOnly of [false, true]) {
+      const calendar = await renderView("week", { readOnly });
+
+      await calendar.pointer.drag(
+        calendar.getEvent("Review"),
+        calendar.getTimeColumn("2026-10-09"),
+      );
+      await calendar.settled();
+
+      expect(calendar.changes.length).toBe(readOnly ? 0 : 1);
+      await calendar.unmount();
+    }
   });
 });

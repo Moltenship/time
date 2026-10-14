@@ -11,15 +11,15 @@ import { toInstant, toPlainDate, type DateInput, type DateTimeInput } from "./en
 
 /**
  * Names an event: its ID or title as text (an ID wins), its ID as a number, or `{ id }`,
- * `{ title }` or `{ start }`. A `start` is a date for all-day events, or a time: exact, or a wall
- * time on the calendar's time zone.
+ * `{ title }` or `{ start }`. A `start` is a date for an all-day event, a date and time for a
+ * floating one, or a time for a timed one: exact, or a wall time on the calendar's time zone.
  */
-export type EventQuery =
+export type EventQuery<TEventId extends EventId = EventId> =
   | string
   | number
-  | { readonly id: EventId }
+  | { readonly id: TEventId }
   | { readonly title: string }
-  | { readonly start: DateTimeInput | Temporal.PlainDate };
+  | { readonly start: DateTimeInput | Temporal.PlainDate | Temporal.PlainDateTime };
 
 /** A day, or a slot when `time` is given, in a resource when the view has them. */
 export interface CellQuery<TResourceId extends ResourceId = ResourceId> {
@@ -50,25 +50,40 @@ function describe(query: EventQuery): string {
   return `{ start: ${String(query.start)} }`;
 }
 
+/** ISO text without its bracketed annotations, such as `[America/Toronto]`. */
+const withoutAnnotations = (text: string) => text.replace(/\[[^\]]*\]/gu, "");
+
 function startsAt(
   event: NormalizedCalendarEvent<unknown, EventId, ResourceId>,
-  start: DateTimeInput | Temporal.PlainDate,
+  start: DateTimeInput | Temporal.PlainDate | Temporal.PlainDateTime,
   timeZone: string,
 ): boolean {
-  const text = typeof start === "string" ? start : undefined;
-  const dateOnly =
-    (text !== undefined && !/[Tt ]/u.test(text)) ||
-    (typeof start === "object" && !("toInstant" in start) && !("epochNanoseconds" in start));
-  if (dateOnly) {
-    return event.kind === "all-day" && event.start.equals(toPlainDate(start as DateInput));
+  if (typeof start === "string") {
+    const text = withoutAnnotations(start);
+    if (!/[Tt ]/u.test(text)) {
+      return event.kind === "all-day" && event.start.equals(toPlainDate(start));
+    }
+    if (event.kind === "floating") {
+      return (
+        !/[zZ+-]/u.test(text.split(/[Tt ]/u)[1] ?? "") &&
+        event.start.equals(Temporal.PlainDateTime.from(start))
+      );
+    }
+    return event.kind === "timed" && event.start.equals(toInstant(start, timeZone));
   }
-  return event.kind === "timed" && event.start.equals(toInstant(start as DateTimeInput, timeZone));
+  if (start instanceof Temporal.PlainDate) {
+    return event.kind === "all-day" && event.start.equals(start);
+  }
+  if (start instanceof Temporal.PlainDateTime) {
+    return event.kind === "floating" && event.start.equals(start);
+  }
+  return event.kind === "timed" && event.start.equals(toInstant(start, timeZone));
 }
 
 /** The events of `snapshot` a query names, as the calendar shows them, pending changes included. */
 export function findEvents<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
   snapshot: EventSnapshot<TEvent, TEventId, TResourceId>,
-  query: EventQuery,
+  query: EventQuery<TEventId>,
   timeZone: string,
 ): NormalizedCalendarEvent<TEvent, TEventId, TResourceId>[] {
   const events = snapshot.events.map((event) => snapshot.get(event.id) ?? event);
@@ -87,19 +102,21 @@ export function findEvents<TEvent, TEventId extends EventId, TResourceId extends
 /** The one event a query names; throws when it names none or several. */
 export function findEvent<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
   snapshot: EventSnapshot<TEvent, TEventId, TResourceId>,
-  query: EventQuery,
+  query: EventQuery<TEventId>,
   timeZone: string,
 ): NormalizedCalendarEvent<TEvent, TEventId, TResourceId> {
   const found = findEvents(snapshot, query, timeZone);
   if (found.length === 1) return found[0]!;
-  const titles = snapshot.events.map(({ id, title }) => `${JSON.stringify(title)} (${String(id)})`);
+  const titles = snapshot.events.map(
+    ({ id, title }) => `${JSON.stringify(title)} (${JSON.stringify(id)})`,
+  );
   if (found.length === 0) {
     throw new CalendarQueryError(
       `No event matches ${describe(query)}. The calendar has ${titles.length === 0 ? "no events" : titles.join(", ")}.`,
     );
   }
   throw new CalendarQueryError(
-    `${found.length} events match ${describe(query)}: ${found.map(({ id }) => String(id)).join(", ")}. Name one by its ID.`,
+    `${found.length} events match ${describe(query)}: ${found.map(({ id }) => JSON.stringify(id)).join(", ")}. Name one by its ID.`,
   );
 }
 
@@ -115,7 +132,7 @@ export function inResource(element: Element, resourceId: ResourceId | null | und
   return resourceId === undefined || resourceIdOf(element) === resourceId;
 }
 
-/** `[data-date]` elements for a date, outermost first, in a resource. */
+/** `[data-date]` elements for a date, in a resource. */
 function dated(container: ParentNode, date: DateInput, resourceId: ResourceId | null | undefined) {
   const key = toPlainDate(date).toString();
   return [...container.querySelectorAll<HTMLElement>(`[data-date="${key}"]`)].filter((element) =>
@@ -124,8 +141,8 @@ function dated(container: ParentNode, date: DateInput, resourceId: ResourceId | 
 }
 
 /**
- * The cell for a day: a time grid's all-day cell, or a month's day. Views mark them for the
- * pointer layer with `data-date`, the all-day row also with `data-all-day`.
+ * The cell for a day: a time grid's all-day cell (`data-all-day`), else a month's day, the first
+ * `data-date` element that isn't a timeline's strip.
  */
 export function dayCell(
   container: ParentNode,
@@ -135,16 +152,14 @@ export function dayCell(
   const cells = dated(container, date, resourceId);
   return (
     cells.find((cell) => cell.hasAttribute("data-all-day")) ??
-    (container.querySelector("[data-all-day]") === null
-      ? (cells.find((cell) => !cell.hasAttribute("data-axis")) ?? null)
-      : null)
+    cells.find((cell) => cell.getAttribute("data-axis") !== "inline") ??
+    null
   );
 }
 
 /**
- * The column holding a day's time, in a time grid or along a timeline's row (`data-axis="inline"`):
- * a `data-date` element without `data-all-day`, in a view that has an all-day row or an inline
- * axis.
+ * The column holding a day's time: a `data-date` element without `data-all-day`, a timeline's
+ * strip (`data-axis="inline"`) first. In a month, the day itself, which has no time to point at.
  */
 export function timeColumn(
   container: ParentNode,
@@ -154,9 +169,7 @@ export function timeColumn(
   const cells = dated(container, date, resourceId).filter(
     (cell) => !cell.hasAttribute("data-all-day"),
   );
-  const inline = cells.find((cell) => cell.getAttribute("data-axis") === "inline");
-  if (inline !== undefined) return inline;
-  return container.querySelector("[data-all-day]") === null ? null : (cells[0] ?? null);
+  return cells.find((cell) => cell.getAttribute("data-axis") === "inline") ?? cells[0] ?? null;
 }
 
 /** Elements carrying a resource's `resourceIdAttributes`, in document order. */

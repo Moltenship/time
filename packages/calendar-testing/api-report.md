@@ -100,11 +100,9 @@ type CalendarHarnessFor<TCalendar> = TCalendar extends CalendarFactory<infer TEv
 type CalendarHarnessRootProps<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId> = Partial<Omit<CalendarRootProps<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, HarnessOwnedProp>>;
 type CalendarHarnessUpdate<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> = Partial<Pick<RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, "applyChange" | "children" | "createEvent" | "events" | "messages" | "onEventChange" | "onEventChangeResult" | "readOnly" | "resources" | "rootProps">>;
 interface CalendarInspection<TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
-  getEvent(event: EventQuery, options?: {
-    readonly date?: DateInput;
-  }): HTMLElement;
-  getAllEvents(event: EventQuery): HTMLElement[];
-  queryEvent(event: EventQuery): HTMLElement | null;
+  getEvent(event: EventQuery<TEventId>): HTMLElement;
+  getAllEvents(event: EventQuery<TEventId>): HTMLElement[];
+  queryEvent(event: EventQuery<TEventId>): HTMLElement | null;
   getDayCell(date: DateInput, options?: {
     readonly resourceId?: TResourceId | null;
   }): HTMLElement;
@@ -112,12 +110,12 @@ interface CalendarInspection<TEventId extends EventId = EventId, TResourceId ext
     readonly resourceId?: TResourceId | null;
   }): HTMLElement;
   getResource(resource: ResourceQuery<TResourceId>): HTMLElement;
-  placementOf(event: EventQuery): EventPlacementSummary<TEventId, TResourceId>;
+  placementOf(event: EventQuery<TEventId>): EventPlacementSummary<TEventId, TResourceId>;
   settled(options?: SettleOptions): Promise<void>;
   announcements(): readonly string[];
   lastAnnouncement(): string | undefined;
-  readonly keyboard: KeyboardDriver<TResourceId>;
-  readonly pointer: PointerDriver<TResourceId>;
+  readonly keyboard: KeyboardDriver<TEventId, TResourceId>;
+  readonly pointer: PointerDriver<TEventId, TResourceId>;
 }
 export declare class CalendarQueryError extends Error {
   constructor(message: string);
@@ -135,6 +133,10 @@ interface EventBaseInput<TData, TEventId extends EventId, TResourceId extends Re
   readonly resourceIds?: readonly TResourceId[];
   readonly data?: TData;
 }
+interface EventFocusOptions<TResourceId extends ResourceId = ResourceId> {
+  readonly date?: DateInput;
+  readonly resourceId?: TResourceId | null;
+}
 interface EventPlacementSummary<TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
   readonly id: TEventId;
   readonly title: string;
@@ -146,12 +148,12 @@ interface EventPlacementSummary<TEventId extends EventId = EventId, TResourceId 
   readonly resourceIds: readonly TResourceId[];
   readonly isPending: boolean;
 }
-type EventQuery = string | number | {
-  readonly id: EventId;
+type EventQuery<TEventId extends EventId = EventId> = string | number | {
+  readonly id: TEventId;
 } | {
   readonly title: string;
 } | {
-  readonly start: DateTimeInput | Temporal.PlainDate;
+  readonly start: DateTimeInput | Temporal.PlainDate | Temporal.PlainDateTime;
 };
 type HarnessOwnedProp = "children" | "clock" | "events" | "now" | "onEventChange" | "onEventChangeResult";
 type HoursInput = string | {
@@ -172,10 +174,8 @@ interface KeyModifiers {
   readonly metaKey?: boolean;
   readonly shiftKey?: boolean;
 }
-interface KeyboardDriver<TResourceId extends ResourceId = ResourceId> {
-  focusEvent(event: EventQuery, options?: {
-    readonly date?: string | Temporal.PlainDate;
-  }): Promise<HTMLElement>;
+interface KeyboardDriver<TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
+  focusEvent(event: EventQuery<TEventId>, options?: EventFocusOptions<TResourceId>): Promise<HTMLElement>;
   focusCell(cell: CellQuery<TResourceId>): Promise<HTMLElement>;
   press(key: string, modifiers?: KeyModifiers): Promise<void>;
   arrows(presses: ArrowPresses): Promise<void>;
@@ -184,8 +184,8 @@ interface KeyboardDriver<TResourceId extends ResourceId = ResourceId> {
   grabEdge(): Promise<void>;
   drop(): Promise<void>;
   cancel(): Promise<void>;
-  moveEvent(event: EventQuery, steps: KeyboardSteps): Promise<void>;
-  resizeEvent(event: EventQuery, steps: KeyboardSteps & {
+  moveEvent(event: EventQuery<TEventId>, steps: KeyboardSteps & EventFocusOptions<TResourceId>): Promise<void>;
+  resizeEvent(event: EventQuery<TEventId>, steps: KeyboardSteps & EventFocusOptions<TResourceId> & {
     readonly edge?: "end" | "start";
   }): Promise<void>;
   createEvent(cell: CellQuery<TResourceId>, steps?: KeyboardSteps): Promise<void>;
@@ -198,10 +198,10 @@ interface Point {
   readonly x: number;
   readonly y: number;
 }
-interface PointerDriver<TResourceId extends ResourceId = ResourceId> {
+interface PointerDriver<TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
   drag(from: Element | Point, to: Element | Point, options?: PointerOptions): Promise<void>;
-  moveEvent(event: EventQuery, to: CellQuery<TResourceId>, options?: PointerOptions): Promise<void>;
-  resizeEvent(event: EventQuery, to: CellQuery<TResourceId> & {
+  moveEvent(event: EventQuery<TEventId>, to: CellQuery<TResourceId>, options?: PointerOptions): Promise<void>;
+  resizeEvent(event: EventQuery<TEventId>, to: CellQuery<TResourceId> & {
     readonly edge?: "end" | "start";
   }, options?: PointerOptions): Promise<void>;
   createEvent(from: CellQuery<TResourceId>, to: CellQuery<TResourceId>, options?: PointerOptions): Promise<void>;
@@ -248,7 +248,7 @@ interface ResourceInput<TData = null, TResourceId extends ResourceId = string> {
   readonly availability?: ResourceAvailability;
   readonly data?: TData;
 }
-type ResourceQuery<TResourceId extends ResourceId = ResourceId> = TResourceId | {
+type ResourceQuery<TResourceId extends ResourceId = ResourceId> = TResourceId | null | {
   readonly title: string;
 };
 interface SettleOptions {
@@ -320,6 +320,7 @@ export {
   type CellQuery,
   type DateInput,
   type DateTimeInput,
+  type EventFocusOptions,
   type EventPlacementSummary,
   type EventQuery,
   type HoursInput,

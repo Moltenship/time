@@ -51,10 +51,11 @@ function renderView(view: "month" | "week" | "resources", direction: "ltr" | "rt
   });
 }
 
-test("queries find a multi-day event's part on each day, and the cells under them", async () => {
+test("queries find an event's parts and the cells under them", async () => {
   const calendar = await renderView("week");
 
-  expect(calendar.getAllEvents("Trip").length).toBeGreaterThan(0);
+  // The all-day row draws the three-day trip as one bar.
+  expect(calendar.getAllEvents("Trip")).toHaveLength(1);
   expect(calendar.getDayCell("2026-10-07").hasAttribute("data-all-day")).toBe(true);
   expect(calendar.getTimeColumn("2026-10-08").hasAttribute("data-all-day")).toBe(false);
   expect(calendar.getTimeColumn("2026-10-08").contains(calendar.getEvent("Standup"))).toBe(true);
@@ -122,14 +123,68 @@ test("in a right-to-left calendar, a step across still moves forward", async () 
   expect(calendar.placementOf("Standup").range).toBe("2026-10-09T09:00:00Z/2026-10-09T10:00:00Z");
 });
 
-test("a cell the view doesn't show can't take focus", async () => {
+test("focusEvent focuses a multi-day event's part on a date, in a month and a week's all-day row", async () => {
+  for (const view of ["month", "week"] as const) {
+    const calendar = await renderView(view);
+
+    const element = await calendar.keyboard.focusEvent("Trip", { date: "2026-10-07" });
+
+    expect(document.activeElement).toBe(element);
+    expect(element.getAttribute("data-event-id")).toBe("Trip");
+    expect(calendar.state().focus).toMatchObject({ eventId: "Trip", kind: "event" });
+    expect(String((calendar.state().focus as { date: unknown }).date)).toBe("2026-10-07");
+    await calendar.unmount();
+  }
+});
+
+test("a cell or event part the view doesn't show can't take focus, and focus stays put", async () => {
   const calendar = await renderView("week");
+  await calendar.keyboard.focusCell({ date: "2026-10-08", time: "09:00" });
+  const before = calendar.state().focus;
 
   await expect(calendar.keyboard.focusCell({ date: "2026-12-01", time: "09:00" })).rejects.toThrow(
     /no cell for 2026-12-01 at 09:00/,
   );
   await expect(calendar.keyboard.focusEvent("Standup", { date: "2026-10-09" })).rejects.toThrow(
-    /no focusable element for event Standup on 2026-10-09/,
+    /no focusable part of event "Standup" on 2026-10-09/,
   );
-  expect(environment.today.toString()).toBe("2026-10-08");
+  expect(calendar.state().focus).toEqual(before);
+});
+
+test("a message said twice is recorded twice, from whichever announcer speaks", async () => {
+  // The app's own Announcer comes first in the page; the harness's, mounted last, speaks.
+  const calendar = await renderCalendar(Calendar, {
+    children: (
+      <>
+        <Calendar.Announcer messages={calendarAnnouncements} />
+        <Calendar.ActiveView />
+      </>
+    ),
+    environment,
+    events: [standup],
+    messages: calendarAnnouncements,
+    view: "week",
+  });
+  await calendar.keyboard.focusEvent("Standup");
+  await calendar.keyboard.grab();
+
+  await calendar.keyboard.step({ down: 1 });
+  await calendar.keyboard.step({ down: -1 });
+  await calendar.keyboard.step({ down: 1 });
+  await calendar.keyboard.cancel();
+
+  const steps = calendar.announcements().slice(1, 4);
+  expect(steps).toHaveLength(3);
+  expect(steps[0]).toBe(steps[2]);
+  expect(calendar.lastAnnouncement()).toMatch(/^Cancelled/);
+});
+
+test("Shift+Space twice resizes the start", async () => {
+  const calendar = await renderView("week");
+
+  await calendar.keyboard.resizeEvent("Standup", { down: -2, edge: "start" });
+  await calendar.settled();
+
+  expect(calendar.changes[0]?.cause).toBe("resize-start");
+  expect(calendar.placementOf("Standup").range).toBe("2026-10-08T08:30:00Z/2026-10-08T10:00:00Z");
 });

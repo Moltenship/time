@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { afterEach, expect, test } from "vite-plus/test";
+import { afterEach, expect, test, vi } from "vite-plus/test";
 
 import {
   CalendarQueryError,
@@ -59,9 +59,9 @@ test("a query that names several events, or none, says which events there are", 
   const calendar = await renderCalendar(Calendar, { environment, events: [standup, again] });
 
   expect(() => calendar.getEvent("Standup")).toThrow(CalendarQueryError);
-  expect(() => calendar.getEvent("Standup")).toThrow(/2 events match "Standup": s-1, s-2/);
+  expect(() => calendar.getEvent("Standup")).toThrow(/2 events match "Standup": "s-1", "s-2"/);
   expect(() => calendar.getEvent("Lunch")).toThrow(
-    /No event matches "Lunch". The calendar has "Standup" \(s-1\), "Standup" \(s-2\)/,
+    /No event matches "Lunch". The calendar has "Standup" \("s-1"\), "Standup" \("s-2"\)/,
   );
   expect(calendar.queryEvent("Lunch")).toBeNull();
 });
@@ -72,7 +72,7 @@ test("an event the view doesn't show is found but has no element", async () => {
 
   expect(calendar.placementOf("later").range).toBe("2026-11-20T09:00:00Z/2026-11-20T10:00:00Z");
   expect(calendar.queryEvent("later")).toBeNull();
-  expect(() => calendar.getEvent("later")).toThrow(/doesn't show event later/);
+  expect(() => calendar.getEvent("later")).toThrow(/doesn't show event "later"/);
 });
 
 test("placementOf gives comparable text, on the wall clock too, and says when it's pending", async () => {
@@ -122,13 +122,31 @@ test("settled waits for a save, and says what's still pending when it runs out o
   });
 
   await expect(calendar.settled({ timeout: 50 })).rejects.toThrow(
-    /still pending after 50 ms: move r-1 \(saving\)/,
+    /still pending after 50 ms: move "r-1" \(saving\)/,
   );
   setTimeout(finish, 20);
   await calendar.settled();
 
   expect(calendar.pendingChanges().size).toBe(0);
   expect(calendar.results.map(({ result }) => result.status)).toEqual(["committed"]);
+});
+
+test("settled times out on real time, even with fake timers", async () => {
+  const calendar = await renderCalendar(Calendar, {
+    environment,
+    events: [review],
+    onEventChange: () => new Promise<void>(() => {}),
+  });
+  await calendar.act((actions) => {
+    void actions.proposeEventChange(moveReview);
+  });
+
+  vi.useFakeTimers();
+  try {
+    await expect(calendar.settled({ timeout: 50 })).rejects.toThrow(/still pending after 50 ms/);
+  } finally {
+    vi.useRealTimers();
+  }
 });
 
 test("cells and resources the view doesn't render throw a query error", async () => {
@@ -153,11 +171,30 @@ test("the pointer driver needs layout, which jsdom doesn't have", async () => {
 test("keys go to the focused element in the calendar, and nowhere else", async () => {
   const calendar = await renderCalendar(Calendar, { environment, events: [standup] });
 
-  await expect(calendar.keyboard.press("ArrowDown")).rejects.toThrow(
-    /Nothing in the calendar has focus/,
-  );
+  await expect(calendar.keyboard.press("ArrowDown")).rejects.toThrow(/Nothing has focus/);
   expect(calendar.announcements()).toEqual([]);
   expect(calendar.lastAnnouncement()).toBeUndefined();
+});
+
+test("a start is a date for all-day events and a date-time for floating ones", async () => {
+  const floating = {
+    data: null,
+    end: Temporal.PlainDateTime.from("2026-10-09T10:00"),
+    id: "f-1",
+    kind: "floating",
+    start: Temporal.PlainDateTime.from("2026-10-09T09:00"),
+    title: "Floating",
+  } as const;
+  const calendar = await renderCalendar(Calendar, {
+    environment,
+    events: [trip, floating as unknown as typeof trip],
+  });
+
+  expect(calendar.placementOf({ start: "2026-10-09[America/Toronto]" }).id).toBe(trip.id);
+  expect(calendar.placementOf({ start: "2026-10-09T09:00" }).id).toBe("f-1");
+  expect(
+    calendar.placementOf({ start: Temporal.PlainDateTime.from("2026-10-09T09:00") }).range,
+  ).toBe("2026-10-09T09:00:00/2026-10-09T10:00:00");
 });
 
 test("normalizeText makes Intl's thin and no-break spaces plain", () => {

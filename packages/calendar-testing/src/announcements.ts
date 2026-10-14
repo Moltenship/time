@@ -3,20 +3,26 @@ import { normalizeText } from "./queries";
 const announcer = '[data-calendar-part="announcer"]';
 
 /**
- * Records what each `Announcer` in a container says, in order: the live region's text after
- * every change, as a screen reader would read it. A message that repeats the last gets a
- * trailing no-break space so the region changes; it counts again.
+ * Records what every `Announcer` in a container says, in order: a live region's text after each
+ * change, as a screen reader reads it. Only the `Announcer` mounted last speaks, so the record
+ * follows whichever one changed. A message that repeats the last gets a trailing no-break space,
+ * so its region changes; it counts again.
  */
 export function recordAnnouncements(container: HTMLElement) {
   const spoken: string[] = [];
-  let last = "";
+  const lastText = new WeakMap<Element, string>();
+  let latest: Element | undefined;
 
   function read() {
-    const text = container.querySelector(announcer)?.textContent ?? "";
-    if (text === last) return;
-    last = text;
-    const message = normalizeText(text);
-    if (message !== "") spoken.push(message);
+    for (const region of container.querySelectorAll(announcer)) {
+      const text = region.textContent ?? "";
+      if (text === (lastText.get(region) ?? "")) continue;
+      lastText.set(region, text);
+      const message = normalizeText(text);
+      if (message === "") continue;
+      spoken.push(message);
+      latest = region;
+    }
   }
 
   const observer = typeof MutationObserver === "function" ? new MutationObserver(read) : undefined;
@@ -28,10 +34,10 @@ export function recordAnnouncements(container: HTMLElement) {
       read();
       return [...spoken];
     },
-    /** What the announcer says now; `undefined` when there's none or it's silent. */
+    /** What the announcer that spoke last says now; `undefined` when it's silent or there's none. */
     current(): string | undefined {
       read();
-      const text = normalizeText(container.querySelector(announcer)?.textContent);
+      const text = latest?.isConnected ? normalizeText(latest.textContent) : "";
       return text === "" ? undefined : text;
     },
     stop: () => observer?.disconnect(),

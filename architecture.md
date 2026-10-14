@@ -1362,11 +1362,13 @@ events, resources, series and availability; `renderCalendar` renders an app's `R
 controlled events and records `onEventChange` and `onEventChangeResult`; and `hydrateCalendar`
 fails on a hydration mismatch. Queries find events through the calendar's own snapshot and cells
 through the pointer layer's attributes (`data-date`, `data-all-day`, `data-resource-id`,
-`data-event-id`), so they hold in any language and for custom views that keep that contract. Its
-keyboard driver presses keys on the focused element inside `act`, through the grab mode; its pointer
-driver dispatches Pointer Events at measured points, a long press for touch, and needs layout, so
-it runs in a browser and throws in jsdom. No test runner dependency: `tools/a11y` runs the drivers
-on the registry's views in Chromium, Firefox and WebKit, and `registry/tests` uses the harness in
+`data-event-id`), so they hold in any language and for custom views that keep that contract, with
+time grids' events inside their columns. Its keyboard driver moves focus through `setFocus` and the
+roving tab stop and presses keys on the focused element inside `act`, through the grab mode; its
+pointer driver dispatches Pointer Events at measured points, a long press for touch, re-measuring
+the drop each frame, and needs layout and real timers, so it runs in a browser and throws in jsdom.
+No test runner dependency: `tools/a11y` runs the drivers on the registry's views in Chromium on
+every PR and in Firefox and WebKit in the full gate, and `registry/tests` uses the harness in
 jsdom.
 
 ### Browser verification

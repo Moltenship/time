@@ -16,6 +16,10 @@ const calendarReactDeepImportFixture =
   "tests/fixtures/dependency-boundaries/consumer/calendar-react-deep-import.ts";
 const registryCoreImportFixture =
   "tests/fixtures/dependency-boundaries/registry/calendar/core-import.ts";
+const registryTestsFixture =
+  "tests/fixtures/dependency-boundaries/registry/tests/harness-import.ts";
+const registrySourceTestingFixture =
+  "tests/fixtures/dependency-boundaries/registry/calendar/testing-import.ts";
 const testingInternalsFixture =
   "tests/fixtures/dependency-boundaries/packages/calendar-testing/src/internals-import.ts";
 const execFileAsync = promisify(execFile);
@@ -125,6 +129,20 @@ describe("workspace boundaries", { concurrent: false }, () => {
     const violatedRules = result.summary.violations.map(({ rule }) => rule.name);
 
     expect(violatedRules).toEqual(["registry-source-uses-calendar-facade"]);
+  });
+
+  test("registry tests may also use the test harness, and registry source may not", async () => {
+    const tests = await cruiseWithArchitectureRules([registryTestsFixture]);
+    const source = await cruiseWithArchitectureRules([registrySourceTestingFixture]);
+    const violations = (result: ICruiseResult) =>
+      result.summary.violations.map(({ rule, to }) => `${rule.name} ${to}`);
+
+    expect(violations(tests)).toEqual([
+      "registry-tests-use-the-facade-and-the-harness @moltenship/calendar-core",
+    ]);
+    expect(violations(source)).toEqual([
+      "registry-source-uses-calendar-facade @moltenship/calendar-testing",
+    ]);
   });
 
   test("the test harness imports only the facade and recurrence", async () => {
