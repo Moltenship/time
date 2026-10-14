@@ -16,12 +16,14 @@ export {
 export type {
   CalendarDragFollower,
   CalendarDragMonitor,
+  CalendarDragPreview,
   CalendarDropOptions,
   CalendarDropSession,
   CalendarDropSource,
   CalendarEventDrag,
   CalendarPoint,
   CalendarPointerOptions,
+  CalendarRect,
   CalendarRegion,
 } from "@moltenship/calendar-dnd";
 export {

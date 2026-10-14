@@ -12,6 +12,7 @@ import {
   monitorCalendarDrags,
   observeCalendarRegions,
   type CalendarDragFollower,
+  type CalendarDragPreview,
   type CalendarEventDrag,
   type CalendarPointerOptions,
   type CalendarPoint,
@@ -86,6 +87,33 @@ function follow(claims: (point: CalendarPoint) => boolean = () => false) {
     }),
   );
   return { drags, ends, moves };
+}
+
+/** A monitor whose followers only watch: they have no `claims`. */
+function watch() {
+  const previews: (CalendarDragPreview | null)[] = [];
+  const ends: [boolean, CalendarDragPreview | null][] = [];
+  cleanups.push(
+    monitorCalendarDrags(
+      () =>
+        ({
+          end: (dropped, drop) => ends.push([dropped, drop]),
+          preview: (preview) => previews.push(preview),
+        }) satisfies CalendarDragFollower,
+    ),
+  );
+  return { ends, previews };
+}
+
+/** Where a preview segment sits, as its inline styles place it in jsdom's viewport. */
+function boxOf(segment: HTMLElement) {
+  const [x, y] = /translate3d\(([-\d.]+)px, ([-\d.]+)px/.exec(segment.style.transform)!.slice(1);
+  return {
+    height: Number.parseFloat(segment.style.height),
+    width: Number.parseFloat(segment.style.width),
+    x: Number(x),
+    y: Number(y),
+  };
 }
 
 function ghosts(region: HTMLElement) {
@@ -405,6 +433,72 @@ describe("monitorCalendarDrags", () => {
     pointer("pointerup", element, xAt("2026-08-17"), yAt("11:30"));
 
     expect(drags).toHaveLength(0);
+  });
+});
+
+describe("followers that watch", () => {
+  test("hear where the preview lands as it moves, and where the move was dropped", () => {
+    const { element, grid, proposals } = setup();
+    const { ends, previews } = watch();
+
+    pointer("pointerdown", element, xAt("2026-08-17"), yAt("09:30"));
+    pointer("pointermove", element, xAt("2026-08-18"), yAt("11:30"));
+    const [segment] = ghosts(grid.region);
+    const shown = { label: "range", rects: [boxOf(segment!)], validity: null };
+    expect(previews.at(-1)).toEqual(shown);
+
+    pointer("pointerup", element, xAt("2026-08-18"), yAt("11:30"));
+    expect(proposals).toHaveLength(1);
+    expect(ends).toEqual([[false, shown]]);
+  });
+
+  test("hear what the policies would say about the drop", () => {
+    const { element } = setup({
+      check: () => ({ reason: "overlap", status: "rejected" }) as never,
+    });
+    const { ends, previews } = watch();
+
+    pointer("pointerdown", element, xAt("2026-08-17"), yAt("09:30"));
+    pointer("pointermove", element, xAt("2026-08-18"), yAt("11:30"));
+    expect(previews.at(-1)?.validity).toBe("invalid");
+
+    // The release proposes all the same; the root's policies reject it.
+    pointer("pointerup", element, xAt("2026-08-18"), yAt("11:30"));
+    expect(ends[0]![1]?.validity).toBe("invalid");
+  });
+
+  test("end with no drop after Escape, or a release where the event already was", () => {
+    const { element, proposals } = setup();
+    const { ends } = watch();
+
+    pointer("pointerdown", element, xAt("2026-08-17"), yAt("09:30"));
+    pointer("pointermove", element, xAt("2026-08-18"), yAt("11:30"));
+    window.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" }));
+    pointer("pointerup", element, xAt("2026-08-18"), yAt("11:30"));
+
+    pointer("pointerdown", element, xAt("2026-08-17"), yAt("09:30"));
+    pointer("pointermove", element, xAt("2026-08-18"), yAt("11:30"));
+    pointer("pointermove", element, xAt("2026-08-17"), yAt("09:30"));
+    pointer("pointerup", element, xAt("2026-08-17"), yAt("09:30"));
+
+    expect(ends).toEqual([
+      [false, null],
+      [false, null],
+    ]);
+    expect(proposals).toHaveLength(0);
+  });
+
+  test("change nothing about the drag: no copy follows the pointer off the view", () => {
+    const { element, grid } = setup();
+    const { previews } = watch();
+
+    pointer("pointerdown", element, xAt("2026-08-17"), yAt("09:30"));
+    pointer("pointermove", element, xAt("2026-08-17"), yAt("11:30"));
+    pointer("pointermove", element, beside.x, beside.y);
+
+    expect(ghosts(grid.region)).toHaveLength(0);
+    expect(previews.at(-1)).toBeNull();
+    pointer("pointerup", element, beside.x, beside.y);
   });
 });
 

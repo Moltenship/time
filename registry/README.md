@@ -104,8 +104,10 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
   the result with `EventIcon` from `@registry/calendar/event-chip`, inline at the start of the
   event's title, in the chip's text colour. It is `aria-hidden`, so what it means belongs in the
   view's `describeEvent`. Without an icon nothing renders, and the chip's layout is unchanged.
-- Render each event as a `<button data-event-id={id}>` (the pointer layer's contract). Apps open
-  event details by delegating clicks on `[data-event-id]`, so views need no click callback.
+- Render each event as a `<button data-event-id={id}>` (the pointer layer's contract), with its
+  title in an element marked `data-slot="calendar-event-title"`. Apps open event details by
+  delegating clicks on `[data-event-id]`, so views need no click callback, and animate from the
+  event and its title, as the Motion guide does.
 - Name each event with `useEventLabel` from `@registry/calendar/event-label`: title, when, the
   view's `describeEvent` detail (such as the event's calendar), and "saving" while a change is
   pending. Focus rings are a 2px `outline-ring` outline on `:focus-visible`.

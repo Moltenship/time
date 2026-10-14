@@ -147,13 +147,19 @@ async function chips(
   };
 }
 
-/** Each chip of a repeating event shows one hidden icon right before its title; others none. */
+/**
+ * Each chip of a repeating event shows one hidden icon right before its title; others none. Every
+ * chip marks its title `data-slot="calendar-event-title"`, which an animation can target.
+ */
 function expectIcons(elements: readonly HTMLElement[]) {
   const ids = new Set(elements.map((chip) => chip.getAttribute("data-event-id")));
   expect([...ids].filter((id) => repeating.includes(id!))).not.toEqual([]);
   expect([...ids].filter((id) => !repeating.includes(id!))).not.toEqual([]);
   for (const chip of elements) {
     const id = chip.getAttribute("data-event-id")!;
+    const titles = chip.querySelectorAll('[data-slot="calendar-event-title"]');
+    expect(titles, id).toHaveLength(1);
+    expect(titles[0]!.textContent, id).toMatch(new RegExp(`^${id}`));
     if (!repeating.includes(id)) {
       expect(icons(chip), id).toHaveLength(0);
       continue;
@@ -163,6 +169,7 @@ function expectIcons(elements: readonly HTMLElement[]) {
     expect(icon.getAttribute("aria-hidden")).toBe("true");
     expect(icon.querySelector("svg")).not.toBeNull();
     // Inline at the start of the title.
+    expect(icon.parentElement).toBe(titles[0]);
     expect(icon.previousSibling).toBeNull();
     expect(icon.nextSibling?.textContent).toBe(id);
   }

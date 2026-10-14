@@ -20,6 +20,7 @@ import { HistoryPreview } from "@/components/history-preview";
 import { IcsFeedPreview } from "@/components/ics-feed-preview";
 import { IcsPlayground } from "@/components/ics-playground";
 import { DndKitPreview } from "@/components/dnd-kit-preview";
+import { MotionPreview } from "@/components/motion-preview";
 import { QueryPreview } from "@/components/query-preview";
 import { RecurrencePreview } from "@/components/recurrence-preview";
 import { ThemeBuilder } from "@/components/theme-builder";
@@ -41,6 +42,7 @@ export function getMDXComponents(components?: MDXComponents): MDXComponents {
     IcsFeedPreview,
     IcsPlayground,
     MonthAnatomy,
+    MotionPreview,
     OverlapLayoutPreview,
     DndKitPreview,
     QueryPreview,

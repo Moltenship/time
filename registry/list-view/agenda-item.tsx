@@ -72,7 +72,7 @@ export function AgendaItem<TEvent>({
         )}
       </span>
       <span className="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
-        <span className="truncate font-medium">
+        <span data-slot="calendar-event-title" className="truncate font-medium">
           {/* Sized for the row's larger text. */}
           <EventIcon className="size-3.5 [&_svg]:size-3.5">{icon}</EventIcon>
           {item.event.title}

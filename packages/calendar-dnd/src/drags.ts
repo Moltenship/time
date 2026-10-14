@@ -6,6 +6,30 @@ export interface CalendarPoint {
   readonly y: number;
 }
 
+/** A rectangle in viewport (client) coordinates. */
+export interface CalendarRect {
+  readonly height: number;
+  readonly width: number;
+  readonly x: number;
+  readonly y: number;
+}
+
+/** Where a view's preview shows that a moved event would land. */
+export interface CalendarDragPreview {
+  /**
+   * The time range the preview's copy of the event shows, as the view's announcer formats it, or
+   * `null` where the preview is a plain box, as in a month.
+   */
+  readonly label: string | null;
+  /**
+   * The preview's boxes, in order: one per day, week row or resource the event would cover, at
+   * their full size even where a scroller clips them.
+   */
+  readonly rects: readonly CalendarRect[];
+  /** `invalid` when a policy would reject the drop, `warning` when one would flag it. */
+  readonly validity: "invalid" | "warning" | null;
+}
+
 /** An event the pointer layer is moving, offered to `monitorCalendarDrags`. */
 export interface CalendarEventDrag<
   TEvent = unknown,
@@ -25,7 +49,11 @@ export interface CalendarEventDrag<
   readonly refresh: () => void;
 }
 
-/** Follows one drag that a monitor took on. */
+/**
+ * Follows one drag that a monitor took on. A follower with `claims` stands for drop zones outside
+ * the calendar, which changes how the view treats the drag; one without only watches it, as an
+ * animation that decorates drags does, and the drag goes on as if no one followed.
+ */
 export interface CalendarDragFollower {
   /**
    * Whether a drop zone of the follower's is under the pointer. While one is, the calendar shows
@@ -35,11 +63,19 @@ export interface CalendarDragFollower {
   readonly claims?: () => boolean;
   /**
    * The drag ended. `dropped` is true when it was released while `claims` said so, false after a
-   * drop in the calendar, a release over nowhere, Escape, or a lost pointer.
+   * drop in the calendar, a release over nowhere, Escape, or a lost pointer. `drop` is the
+   * preview a release in the view proposed the move at, policies still to run; `null` when it
+   * proposed nothing: Escape, a lost pointer, or a release where the event already was, over
+   * nowhere or over a zone.
    */
-  readonly end?: (dropped: boolean) => void;
+  readonly end?: (dropped: boolean, drop: CalendarDragPreview | null) => void;
   /** The pointer moved. */
   readonly move?: (point: CalendarPoint) => void;
+  /**
+   * The view's preview changed, or moved as the view scrolled under it: where a drop would land
+   * now, or `null` when the view shows none, off it or under a claimed zone.
+   */
+  readonly preview?: (preview: CalendarDragPreview | null) => void;
 }
 
 /** Hears a move as it starts; returns a follower to take it on, or nothing to leave it. */
@@ -55,12 +91,13 @@ export function reportCallbackError(error: unknown): void {
 
 /**
  * Hears every event a calendar view starts to move by pointer, on the page, so a drop zone
- * outside the calendar can take it: a list of unscheduled items, a bin. Resizes and creates aren't
- * offered. While a follower is on a drag, the view counts only where it's the topmost thing under
- * the pointer, so a sheet of zones over it hides it; off the view, covered or claimed, a copy of
- * the event follows the pointer. The view scrolls only while the pointer is over it, and after the
- * pointer has left, only once it has been clear of the edges again or rested at one. Returns a
- * function that stops listening.
+ * outside the calendar can take it, such as a list of unscheduled items or a bin, or an animation
+ * can follow it. Resizes and creates aren't offered. While a follower with `claims` is on a drag,
+ * the view counts only where it's the topmost thing under the pointer, so a sheet of zones over it
+ * hides it; off the view, covered or claimed, a copy of the event follows the pointer. The view
+ * scrolls only while the pointer is over it, and after the pointer has left, only once it has
+ * been clear of the edges again or rested at one. Followers without `claims` change none of that.
+ * Returns a function that stops listening.
  */
 export function monitorCalendarDrags(monitor: CalendarDragMonitor): () => void {
   monitors.add(monitor);

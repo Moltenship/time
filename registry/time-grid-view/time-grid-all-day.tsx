@@ -201,6 +201,7 @@ function AllDayEvent<TEvent>({
       style={laneStyle(lane, span, offset)}
     >
       <span
+        data-slot="calendar-event-title"
         className={cn(
           "truncate",
           stickyLabel && "sticky start-[calc(var(--calendar-gutter-width)+0.5rem)]",
