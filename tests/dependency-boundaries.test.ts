@@ -35,11 +35,7 @@ const expectedWorkspaceDependencies = {
     "@moltenship/ics",
   ],
   "@moltenship/calendar-temporal": [],
-  "@moltenship/calendar-testing": [
-    "@moltenship/calendar",
-    "@moltenship/calendar-dnd",
-    "@moltenship/calendar-temporal",
-  ],
+  "@moltenship/calendar-testing": ["@moltenship/calendar", "@moltenship/calendar-recurrence"],
   "@moltenship/ics": [],
   benchmark: [
     "@moltenship/calendar-core",
@@ -80,8 +76,8 @@ const workspaceManifestPaths = [
   "tools/registry/package.json",
 ] as const;
 
-// Every package workspace has the publishable shape, including calendar-testing, which stays private
-// until after 1.0. tests/package-metadata.test.ts owns the list of packages that publish.
+// Every package workspace has the publishable shape. tests/package-metadata.test.ts owns the list of
+// packages that publish.
 const publishableManifestPaths = [
   "packages/calendar/package.json",
   "packages/calendar-core/package.json",

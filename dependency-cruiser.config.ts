@@ -88,6 +88,17 @@ export default {
       to: { path: ["^@moltenship/calendar-react$", "^@moltenship/calendar$"] },
     },
     {
+      name: "testing-uses-public-entry-points",
+      comment:
+        "The test harness builds on what apps import: the calendar facade and recurrence, never the packages behind the facade.",
+      severity: "error",
+      from: { path: "(?:^|/)packages/calendar-testing/src(?:/|$)" },
+      to: {
+        path: "^@moltenship/",
+        pathNot: "^@moltenship/(?:calendar|calendar-recurrence)$",
+      },
+    },
+    {
       name: "engine-has-no-ui-runtime-imports",
       comment:
         "Temporal, core, and ICS stay independent from React, Jotai, dnd-kit, DOM helpers, and CSS.",

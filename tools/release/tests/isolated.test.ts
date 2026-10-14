@@ -108,14 +108,14 @@ describe("a copy on the dry run's tarballs", () => {
   test("a package with another hash, one the dry run didn't pack, or one missing fails", () => {
     const installed = lockfile({
       "@moltenship/calendar-core@1.0.0": "sha512-npm",
-      "@moltenship/calendar-testing@1.0.0": "sha512-c",
+      "@moltenship/calendar-extra@1.0.0": "sha512-c",
     });
 
     expect(
       lockfileProblems({ lockfile: installed, packages: packed, expected, workspaceLockfile }),
     ).toEqual([
       "@moltenship/calendar-core is installed with sha512-npm, not the dry run's sha512-b",
-      "@moltenship/calendar-testing is installed, but the dry run didn't pack it",
+      "@moltenship/calendar-extra is installed, but the dry run didn't pack it",
       "@moltenship/calendar isn't installed from the dry run's tarball",
     ]);
   });

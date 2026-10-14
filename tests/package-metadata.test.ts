@@ -9,7 +9,7 @@ import { publishedPackages } from "../tools/release/src/config";
 
 const execFileAsync = promisify(execFile);
 
-// Directories under packages/ that publish to npm. calendar-testing stays private until after 1.0 (#45).
+// Directories under packages/ that publish to npm.
 const publishedPackageDirectories = publishedPackages.map(({ directory }) => directory);
 
 /**

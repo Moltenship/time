@@ -37,14 +37,14 @@ describe("the release artifacts' consumers", () => {
       servedProblems(
         {
           "@moltenship/calendar": "sha512-packed-again",
-          "@moltenship/calendar-testing": "sha512-c",
+          "@moltenship/calendar-extra": "sha512-c",
         },
         packed,
       ),
     ).toEqual([
       "it served @moltenship/calendar with sha512-packed-again, not the dry run's sha512-a",
       "it didn't serve @moltenship/ics",
-      "it served @moltenship/calendar-testing, which the dry run didn't pack",
+      "it served @moltenship/calendar-extra, which the dry run didn't pack",
     ]);
     expect(servedProblems(undefined, packed)).toEqual([
       "the install test didn't report the tarballs it served",

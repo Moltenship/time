@@ -1,9 +1,8 @@
 {
   "name": "@moltenship/calendar-testing",
   "version": "0.0.0",
-  "private": true,
-  "description": "Consumer-facing fixtures, harnesses, and semantic assertions for Moltenship Time.",
-  "homepage": "https://time.molten.sh/docs",
+  "description": "Test helpers for apps built on Moltenship Time: a deterministic environment, builders, a render and hydration harness, drivers and assertions.",
+  "homepage": "https://time.molten.sh/docs/testing",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },
@@ -36,17 +35,26 @@
     "build": "vp pack",
     "check": "vp check",
     "dev": "vp pack --watch",
-    "prepublishOnly": "vp run build",
-    "test": "vp test --passWithNoTests"
+    "prepublishOnly": "echo \"Publish with vp run release:publish, after vp run release:dry-run. See docs/internal/releasing.md.\" && exit 1",
+    "test": "vp test"
   },
   "dependencies": {
     "@moltenship/calendar": "workspace:*",
-    "@moltenship/calendar-dnd": "workspace:*",
-    "@moltenship/calendar-temporal": "workspace:*"
+    "@moltenship/calendar-recurrence": "workspace:*"
   },
   "devDependencies": {
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "happy-dom": "catalog:",
+    "jsdom": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
   }
 }

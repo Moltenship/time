@@ -7,7 +7,14 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
 ## Unreleased
 
 - First public release of `@moltenship/calendar`, `calendar-core`, `calendar-dnd`,
-  `calendar-dnd-kit`, `calendar-react`, `calendar-recurrence`, `calendar-temporal` and `ics`.
+  `calendar-dnd-kit`, `calendar-react`, `calendar-recurrence`, `calendar-temporal`,
+  `calendar-testing` and `ics`.
+- `@moltenship/calendar-testing` tests apps' calendars: `createTestEnvironment` fixes `now`, the
+  time zone, locale and week rules through `Root`'s props; `buildEvent`, `buildAllDayEvent`,
+  `buildResource`, `buildRecurringEvent` and `buildAvailability` make typed records;
+  `renderCalendar` renders a `Root` with controlled events and records every `onEventChange` and
+  `onEventChangeResult`; `hydrateCalendar` renders on the server, hydrates and fails on a mismatch.
+  React DOM 19 is a peer (#45).
 - `@moltenship/ics` is licensed `MIT AND Unicode-3.0`: its Windows time zone mapping comes from
   Unicode CLDR. The license text ships in the package's `THIRD-PARTY-NOTICES.md` and, as a legal
   comment that bundlers keep, in its built code.

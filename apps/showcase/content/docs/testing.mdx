@@ -1,0 +1,159 @@
+---
+title: Testing
+description: Test the calendar you built with a fixed clock, typed builders and a render harness.
+---
+
+`@moltenship/calendar-testing` tests the calendar your app builds: your copies of the registry
+views, your policies and the code that saves changes. It renders your `Root` with a fixed clock,
+time zone and locale, owns the events the way your app's state would, and records what the
+calendar tells your app.
+
+It uses only the public API of `@moltenship/calendar` and `@moltenship/calendar-recurrence`, and
+depends on no test runner. The examples here use [Vitest](https://vitest.dev) with jsdom; happy-dom
+works too.
+
+## Install
+
+```bash
+pnpm add -D @moltenship/calendar-testing vitest jsdom
+```
+
+React 19 and React DOM 19 are peer dependencies, as for the calendar.
+
+## Set up Vitest
+
+Run the tests in a DOM environment:
+
+```ts title="vitest.config.ts"
+import { defineConfig } from "vitest/config";
+
+export default defineConfig({
+  test: { environment: "jsdom", setupFiles: ["./tests/setup.ts"] },
+});
+```
+
+Node.js 26 and later have `Temporal`. On an older runtime, or a browser without it, install the
+polyfill in the setup file, as the app does. The package never installs one itself, and its helpers
+throw an error that says so when `Temporal` is missing.
+
+```ts title="tests/setup.ts"
+if (!("Temporal" in globalThis)) await import("temporal-polyfill/global");
+```
+
+The harness sets React's `IS_REACT_ACT_ENVIRONMENT` flag when it first renders, and leaves it on.
+
+## A fixed clock and zone
+
+The calendar reads the current time only from `Root`'s `now` or `clock`, and the time zone from
+`timeZone` or `defaultTimeZone`; `locale` and `weekRules` are required props. So a test makes it
+deterministic through props, without faking timers or patching `Temporal.Now`.
+
+`createTestEnvironment(options?)` fixes all of them. Its defaults are Thursday, 8 October 2026 at
+noon UTC, US English, weeks from Monday, and left to right.
+
+```ts
+const environment = createTestEnvironment({ timeZone: "Europe/Berlin" });
+
+environment.now; // 2026-10-08T12:00:00Z, a Temporal.Instant
+environment.today; // 2026-10-08, now's date in the zone
+environment.at("09:00"); // 09:00 today in Berlin: 2026-10-08T07:00:00Z
+environment.at("2026-10-26T09:00"); // a wall time in Berlin, after the clocks go back
+environment.rootProps; // { now, defaultTimeZone, locale, weekRules, direction, defaultAnchorDate }
+```
+
+| Option       | Default                                                                    |
+| ------------ | -------------------------------------------------------------------------- |
+| `now`        | `"2026-10-08T12:00:00Z"`; text without a zone is a wall time on `timeZone` |
+| `timeZone`   | `"UTC"`                                                                    |
+| `locale`     | `"en-US"`                                                                  |
+| `weekRules`  | `{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }`                         |
+| `direction`  | `"ltr"`                                                                    |
+| `anchorDate` | `today`                                                                    |
+
+To let time pass in a test of your own components, pass `createTestClock(start)` as `Root`'s
+`clock`, and move it with `set` or `advance`. The calendar samples a clock once a minute, so move
+fake timers with it; the harness's `setNow` shows a new time at once.
+
+## Builders
+
+Builders make records in the canonical shape `createCanonicalEventAdapter` reads. Every field has
+a default, so a test names only what it's about. Text times without a zone are wall times on the
+event's `timeZone`, UTC by default, and `timeZone` becomes the event's `sourceTimeZone`.
+
+| Builder                        | Makes                                                                                        |
+| ------------------------------ | -------------------------------------------------------------------------------------------- |
+| `buildEvent(input?)`           | A timed event: an hour at 09:00 on the default date. `start` with `end` or `duration`        |
+| `buildAllDayEvent(input?)`     | An all-day event: `start` with `end` (exclusive) or `days`                                   |
+| `buildResource(input?)`        | A `CalendarResource`, with `timeZone`, `parentId` and `availability`                         |
+| `buildRecurringEvent(input)`   | A timed series for `@moltenship/calendar-recurrence`: `rule` as RRULE text, `exceptionDates` |
+| `withRecurrence(event, input)` | Makes any event, all-day ones too, the master of a series                                    |
+| `buildAvailability(input?)`    | Working hours: `days`, `hours` such as `"09:00-17:00"`, `exceptions`; 9 to 5 on weekdays     |
+
+An event's `id` defaults to its title and its title to its ID, so `buildEvent({ title: "Standup" })`
+is the event `"Standup"`.
+
+## Render a calendar
+
+Create your calendar as the app does, then render it with `renderCalendar`. Clean up after each
+test.
+
+<include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#calendar</include>
+
+`renderCalendar(Calendar, options)` renders `Root` with the environment's props inside `act`, and
+`<Calendar.ActiveView />` inside it. It owns the events: a change your calendar saves is applied to
+them, so the next render shows it, as your app's state would.
+
+<include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#render</include>
+
+| Option          | Effect                                                                                                                                   |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `events`        | The events the calendar starts with                                                                                                      |
+| `view`          | The view it opens on; the first registered one by default                                                                                |
+| `environment`   | `createTestEnvironment()` by default                                                                                                     |
+| `resources`     | `Root`'s `resources`                                                                                                                     |
+| `onEventChange` | Called with each change before the harness applies it. Return a promise to keep the change pending; throw or reject to roll it back      |
+| `applyChange`   | Applies a saved change to your events. The default, `applyCanonicalChange`, needs canonical events; pass your own for your app's records |
+| `readOnly`      | Renders `Root` without `onEventChange`                                                                                                   |
+| `messages`      | Renders `<Calendar.Announcer messages={messages} />`                                                                                     |
+| `rootProps`     | Any other `Root` prop, such as `policies` or `availability`                                                                              |
+| `children`      | What `Root` renders instead of `<Calendar.ActiveView />`                                                                                 |
+| `wrapper`       | A component around the calendar, such as a provider                                                                                      |
+| `strictMode`    | Renders in `StrictMode`                                                                                                                  |
+
+The harness it returns:
+
+| Member                            | Contents                                                                           |
+| --------------------------------- | ---------------------------------------------------------------------------------- |
+| `container`                       | The element the calendar rendered into                                             |
+| `changes`                         | Every change `onEventChange` received, in order                                    |
+| `results`                         | Every `onEventChangeResult` call: `{ result, detail }`                             |
+| `diagnostics`                     | What `onDiagnosticsChange` last reported                                           |
+| `events()`                        | The events now, with every saved change applied                                    |
+| `state()`, `meta()`               | `useCalendarState()` and `useCalendarMeta()`, read from inside `Root`              |
+| `pendingChanges()`                | `useCalendarPendingChanges()`: changes still validating, saving or awaiting events |
+| `actions`, `act(callback)`        | The calendar's actions, and a way to call them inside `act`                        |
+| `propose(proposal)`               | `proposeEventChange` inside `act`; resolves with its result once it settles        |
+| `setEvents`, `setNow`, `rerender` | Change the events, the fixed `now`, or any option                                  |
+| `unmount()`                       | Unmounts it; `cleanup()` unmounts every one                                        |
+
+## Saves that take time
+
+When `onEventChange` returns a promise, the calendar shows the change as pending until it settles.
+Hold the promise in the test to check what the calendar shows meanwhile.
+
+<include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#pending</include>
+
+## Server rendering and hydration
+
+`hydrateCalendar` takes the same options. It renders the calendar with `renderToString`, puts the
+markup in a container and hydrates it, then returns the same harness, with the markup as
+`serverMarkup`. When the client renders something else, it throws a `HydrationMismatchError` with
+React's reasons: a recoverable error, or a warning such as an attribute that differs, which React
+only logs. A fixed `now` renders today's date on the server too, so a calendar with one hydrates
+with nothing to patch.
+
+<include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#hydrate</include>
+
+The server render runs in the test's DOM environment, so code that checks for `window` takes its
+browser branch there too. To test a real server boundary, render with `react-dom/server` in a
+Node environment and hydrate in another, as the repository's SSR fixture does.
