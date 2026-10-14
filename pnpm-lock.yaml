@@ -345,9 +345,18 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@dnd-kit/dom':
+        specifier: 'catalog:'
+        version: 0.5.0
+      '@dnd-kit/react':
+        specifier: 'catalog:'
+        version: 0.5.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@moltenship/calendar':
         specifier: workspace:*
         version: link:../../packages/calendar
+      '@moltenship/calendar-dnd-kit':
+        specifier: workspace:*
+        version: link:../../packages/calendar-dnd-kit
       '@moltenship/calendar-recurrence':
         specifier: workspace:*
         version: link:../../packages/calendar-recurrence
@@ -412,9 +421,18 @@ importers:
       '@base-ui/react':
         specifier: 'catalog:'
         version: 1.8.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      '@dnd-kit/dom':
+        specifier: 'catalog:'
+        version: 0.5.0
+      '@dnd-kit/react':
+        specifier: 'catalog:'
+        version: 0.5.0(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@moltenship/calendar':
         specifier: workspace:*
         version: link:../../packages/calendar
+      '@moltenship/calendar-dnd-kit':
+        specifier: workspace:*
+        version: link:../../packages/calendar-dnd-kit
       '@moltenship/calendar-recurrence':
         specifier: workspace:*
         version: link:../../packages/calendar-recurrence

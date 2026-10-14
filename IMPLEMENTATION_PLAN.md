@@ -35,6 +35,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | Theme builder  | #166             | A docs page that edits every token of `calendar-theme.css` live, light and dark apart, over a scoped preview, with presets, contrast checks and CSS to copy; `--calendar-event-padding-x` and `-y` for time-grid events |
 | shadcn registry | #43             | Every view, the shared parts, the theme, the recurrence scope dialog and `calendar-full`, built with `shadcn build` and served by the docs site at `/r/<item>.json`; `npx shadcn add <url>` tested in clean Vite and Next.js apps against packed packages (`vp run registry:e2e`); `compatibility.json` lists each item's runtime range for release tooling |
 | Next.js recipe | #164             | A live App Router example at `/examples/nextjs` and a guide through its source: the view and date in the URL, a Server Component fetching that range, Server Actions saving changes with `useOptimistic`, a time zone cookie; `withAsciiSpaces`, so ranges formatted in Node hydrate in browsers |
+| dnd-kit adapter | #237             | Drags across the calendar's edge in `calendar-dnd` (`startCalendarDrop`, `monitorCalendarDrags`, `observeCalendarRegions`); the optional `@moltenship/calendar-dnd-kit` for dnd-kit 0.5: draggables carrying `calendarDropData` drop into any view, and events a view moves drag out to the app's droppables; real-mouse tests in Chromium and WebKit; the demo's unscheduled tasks and a docs guide with a live backlog |
 | Undo and redo  | #227             | Opt-in: `createEventHistory` records committed changes from `onEventChangeResult` and undoes them by proposing the inverse through the pipeline, dropping steps changed elsewhere; `useCalendarHistory` with announcements, `useCalendarHistoryShortcuts`, the registry's undo toast, the demo and a docs page. A bundle without it keeps none of it. Recurring events aren't supported yet |
 | Quality gate   | #47              | The local gate in three tiers, the same tasks CI runs: `vp run ready:quick`, `ready` and `ready:full` (#179); the a11y suite fixed at the causes of CI's flakes, and run at CI's speed in the full gate (#178); the a11y suite and real mouse and keyboard interactions in Firefox and WebKit, WebKit on `temporal-polyfill` (`vp run browsers`, #183) |
 | Release audit  | #47 (phase 1)    | `docs/internal/release-audit.md`: each invariant in `architecture.md` linked to its proof, the gaps filed (#180–#182, #184–#192), the open p0 and p1 issues triaged |
@@ -81,7 +82,6 @@ issue's "Later" section when work starts.
 - Capacity rules, buffers between bookings, free-slot search (#129)
 - [x] Per-calendar or per-resource overlap policy overrides (#130), done in #230; follow-ups in #241
 - Agenda grouping by calendar or resource, search and filter (#131)
-- Optional dnd-kit adapter (#37)
 - Layout and frame budgets
 - Secondary time zone follow-ups from #165: a "swap zones" action, the now-line's time in each zone,
   the resource timeline's time header, and a label for the display zone
@@ -143,8 +143,9 @@ issue's "Later" section when work starts.
 `architecture.md` is the design reference. Three decisions changed in 0.1 and are reflected there:
 
 - Pointer input uses native Pointer Events ([ADR 0037](./docs/adr/0037-native-pointer-events.md),
-  superseding [ADR 0019](./docs/adr/0019-semantic-dnd-kit-adapter.md)). dnd-kit can return later as
-  an optional adapter; the #19 spike stays as history.
+  superseding [ADR 0019](./docs/adr/0019-semantic-dnd-kit-adapter.md)). dnd-kit came back as the
+  optional `@moltenship/calendar-dnd-kit` for drags across the calendar's edge (#237); the
+  calendar's own drags stay native, and the #19 spike stays as history.
 - Keyboard grab / move / resize shipped in 0.2 (#36, #97) on the same transaction pipeline as
   pointer input.
 - Each issue's "Done when" list replaces the "performance, accessibility, and browser evidence"

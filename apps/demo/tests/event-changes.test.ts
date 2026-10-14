@@ -4,6 +4,7 @@ import { describe, expect, test } from "vite-plus/test";
 import { applyEventChange, demoEventPolicy } from "../src/event-changes";
 import type { DemoResourceId } from "../src/resources";
 import { createSeedEvents } from "../src/seed";
+import { taskOccurrence } from "../src/tasks";
 
 const events = createSeedEvents(Temporal.PlainDate.from("2026-10-08"), "UTC");
 function timedSeedEvent(title: string) {
@@ -104,5 +105,46 @@ describe("event changes", () => {
     expect(demoEventPolicy(update(original))).toEqual({ type: "accept" });
     expect(demoEventPolicy(create)).toEqual({ type: "accept" });
     expect(applyEventChange(events, create)).toBe(events);
+  });
+
+  test("a dropped task goes on a time slot, booking the rooms and people it kept", () => {
+    const task = taskOccurrence({
+      calendarId: "work",
+      id: "task-1",
+      minutes: 60,
+      resourceIds: ["room-orchid"],
+      title: "Review",
+    });
+    const dropped = (proposed: CalendarEventPlacement<DemoResourceId>, record = task) =>
+      ({
+        cause: "create",
+        event: record,
+        eventId: null,
+        id: "create",
+        original: null,
+        proposed,
+      }) as const;
+    const day = Temporal.PlainDate.from("2026-10-09");
+    const allDay = {
+      end: day.add({ days: 1 }),
+      kind: "all-day",
+      resourceIds: [],
+      start: day,
+    } as const;
+
+    expect(demoEventPolicy(dropped(allDay))).toEqual({
+      reason: "Tasks go on a time slot.",
+      type: "reject",
+    });
+    // Outside a resource view it books what it kept; in one, the resource it was dropped in.
+    expect(demoEventPolicy(dropped(original))).toEqual({
+      proposed: { ...original, resourceIds: ["room-orchid"] },
+      type: "adjust",
+    });
+    expect(demoEventPolicy(dropped({ ...original, resourceIds: ["person-maya"] }))).toEqual({
+      type: "accept",
+    });
+    // A restored event isn't a task: an undone delete may be all-day.
+    expect(demoEventPolicy(dropped(allDay, occurrence))).toEqual({ type: "accept" });
   });
 });

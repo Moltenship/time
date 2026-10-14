@@ -180,7 +180,7 @@ function EventForm({
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const result = eventFromDraft(draft, timeZone, draft.id ?? crypto.randomUUID());
+    const result = eventFromDraft(draft, timeZone, draft.id ?? draft.newId ?? crypto.randomUUID());
     if ("error" in result) {
       setError(result.error);
       return;
@@ -265,6 +265,8 @@ function EventForm({
       <Label className="w-fit">
         <Checkbox
           checked={draft.allDay}
+          // A task goes on a time slot, so it can go back to the unscheduled tasks.
+          disabled={initial.newId !== undefined}
           onCheckedChange={(checked) => update({ allDay: checked === true })}
         />
         All day

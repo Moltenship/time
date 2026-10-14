@@ -17,6 +17,8 @@ import {
   resolveRecurrenceEdit,
   type RecurrenceRule,
 } from "@moltenship/calendar-recurrence";
+import { DragDropProvider } from "@dnd-kit/react";
+import { CalendarDndKit } from "@moltenship/calendar-dnd-kit";
 import { PlusIcon } from "lucide-react";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
@@ -50,8 +52,10 @@ import { busyNowEvents } from "./busy-now";
 import { useDemoEvents } from "./demo-events";
 import { demoEventPolicy, type DemoEventChange } from "./event-changes";
 import { findEventElement, useFollowEventElement } from "./event-anchor";
+import { withDragAnnouncements } from "./drag-announcements";
 import {
   draftForNewEvent,
+  draftForTask,
   draftFromOccurrence,
   draftFromPlacement,
   type EventDraft,
@@ -63,6 +67,9 @@ import { demoResourceGroups, demoResources, type DemoResourceId } from "./resour
 import { useDemoSettings } from "./settings";
 import { viewFor } from "./scrolling";
 import { applySeriesEdit, type DemoSeriesEdit, type SeriesEditExtras } from "./series-edits";
+import { useDemoTasks, type DemoTask } from "./tasks";
+import { isUnscheduling } from "./unschedule";
+import { focusTask, UnscheduledTasks } from "./components/unscheduled-tasks";
 import { useCalendarLocation } from "./url-state";
 
 /** How long a simulated save takes, so the pending state is visible. */
@@ -129,11 +136,16 @@ export function App() {
     [setLocation, setSettings],
   );
   const { applyChange, events, resetEvents, saveEvent, setEvents } = useDemoEvents(timeZone);
+  const tasks = useDemoTasks();
+  const { removeTask, resetTasks } = tasks;
   // Moves, resizes and deletes can be undone. A change to a recurring event becomes an edit of its
-  // series, which a history can't take back, so those are left out.
+  // series, which a history can't take back, so those are left out, and so is an event taken back
+  // to the unscheduled tasks, whose task a redo wouldn't bring back.
   const [history] = useState(() =>
     createEventHistory<DemoOccurrence, string, DemoResourceId>({
-      filter: (change) => !isRecurringChange(change),
+      filter: (change) =>
+        !isRecurringChange(change) &&
+        !(change.cause === "delete" && isUnscheduling(change.eventId)),
     }),
   );
   const [failSaves, setFailSaves] = useState(false);
@@ -185,6 +197,10 @@ export function App() {
     followOpenEvent,
   );
   const [draft, setDraft] = useState<EventDraft | null>(null);
+  // The task the editor is scheduling, which leaves the list once the event is saved, and the list
+  // focus goes back to then, as the task's button goes with it.
+  const [draftTask, setDraftTask] = useState<string | null>(null);
+  const scheduleList = useRef<HTMLElement | null>(null);
   // Where focus goes back to when a range created in a view closes its dialog: the day or slot
   // a keyboard create ended on. Base UI's default covers the Create button and the "c" key.
   const [createdFrom, setCreatedFrom] = useState<HTMLElement | null>(null);
@@ -236,8 +252,9 @@ export function App() {
   const resetDemoData = useCallback(() => {
     resets.current += 1;
     resetEvents();
+    resetTasks();
     history.clear();
-  }, [history, resetEvents]);
+  }, [history, resetEvents, resetTasks]);
 
   // After a series edit renames occurrences, the open popover's anchor is replaced by the renamed
   // occurrence's element once it renders. The calendar moves keyboard focus itself.
@@ -353,10 +370,13 @@ export function App() {
       }
       if (edit === undefined) applyChange(change);
       else saveSeriesEdit(edit, edit.occurrenceIds);
+      // A task dropped on the calendar, or an unscheduled event an undo brings back, comes off
+      // the unscheduled list: the event has the task's ID.
+      if (change.cause === "create" && change.event !== null) removeTask(change.event.id);
       const notice = warningNotice(change.warnings);
       if (notice !== null) showNotice(notice);
     },
-    [applyChange, askAndResolve, failSaves, saveSeriesEdit, showNotice, timeZone],
+    [applyChange, askAndResolve, failSaves, removeTask, saveSeriesEdit, showNotice, timeZone],
   );
 
   // The editor saves an event as it is, or a change to an occurrence of a series, which asks for
@@ -376,11 +396,29 @@ export function App() {
         saveSeriesEdit(edit, renamedIds(edit, change, rule), extras);
       }
       setDraft(null);
+      if (draftTask !== null) {
+        setCreatedFrom(scheduleList.current);
+        removeTask(draftTask);
+      }
+      setDraftTask(null);
       const notice = warningNotice(save.warnings);
       if (notice !== null) showNotice(notice);
       return undefined;
     },
-    [askAndResolve, saveEvent, saveSeriesEdit, showNotice, timeZone],
+    [askAndResolve, draftTask, removeTask, saveEvent, saveSeriesEdit, showNotice, timeZone],
+  );
+
+  // Schedules a task without dragging it: the editor opens on it, for the shown date.
+  const scheduleTask = useCallback(
+    (task: DemoTask, opener: HTMLElement, list: HTMLElement | null) => {
+      setSidebarOpen(false);
+      setOpenEvent(null);
+      setCreatedFrom(opener);
+      scheduleList.current = list;
+      setDraft(draftForTask(task, location.date, Temporal.Now.zonedDateTimeISO(timeZone)));
+      setDraftTask(task.id);
+    },
+    [location.date, timeZone],
   );
 
   const openCreate = useCallback(() => {
@@ -410,6 +448,7 @@ export function App() {
       onToggleCalendar={toggleCalendar}
       today={today}
     >
+      <UnscheduledTasks onSchedule={scheduleTask} taskList={tasks} />
       <ActivityList hidden={hiddenSources} onToggle={toggleSource} />
       <SettingsPanel
         failSaves={failSaves}
@@ -450,79 +489,93 @@ export function App() {
         weekRules={weekRules}
       >
         <KeyboardShortcuts onCreate={openCreate} onHelp={showShortcuts} scrolling={scrolling} />
-        <DemoCalendar.Frame className="flex h-dvh flex-col">
-          <TopBar
-            onOpenSidebar={() => setSidebarOpen(true)}
-            onShowShortcuts={showShortcuts}
-            scrolling={scrolling}
-          />
-          <div className="flex min-h-0 flex-1">
-            <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
-            <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:overflow-clip lg:rounded-xl lg:border lg:bg-card lg:[--calendar-surface:var(--card)]">
-              <DemoCalendar.Viewport
-                ref={viewportRef}
-                className="h-full"
-                onClick={openClickedEvent}
-              >
-                <DemoCalendar.ActiveView />
-              </DemoCalendar.Viewport>
-            </main>
-          </div>
-          <Button
-            aria-label="Create event"
-            // Above the views' events, which stack in their own layers.
-            className="fixed right-4 bottom-4 z-30 size-14 rounded-2xl shadow-lg lg:hidden"
-            onClick={openCreate}
-          >
-            <PlusIcon className="size-6" />
-          </Button>
-          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <SheetContent
-              ref={sheetRef}
-              className="gap-2 outline-none data-[side=left]:w-72"
-              // Focus the sheet itself so the first control's tooltip does not pop open.
-              initialFocus={sheetRef}
-              side="left"
+        {/* Tasks drag into the calendar, and one-off events out to the tasks, through dnd-kit. */}
+        <DragDropProvider plugins={withDragAnnouncements}>
+          <CalendarDndKit />
+          <DemoCalendar.Frame className="flex h-dvh flex-col">
+            <TopBar
+              onOpenSidebar={() => setSidebarOpen(true)}
+              onShowShortcuts={showShortcuts}
+              scrolling={scrolling}
+            />
+            <div className="flex min-h-0 flex-1">
+              <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
+              <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:overflow-clip lg:rounded-xl lg:border lg:bg-card lg:[--calendar-surface:var(--card)]">
+                <DemoCalendar.Viewport
+                  ref={viewportRef}
+                  className="h-full"
+                  onClick={openClickedEvent}
+                >
+                  <DemoCalendar.ActiveView />
+                </DemoCalendar.Viewport>
+              </main>
+            </div>
+            <Button
+              aria-label="Create event"
+              // Above the views' events, which stack in their own layers.
+              className="fixed right-4 bottom-4 z-30 size-14 rounded-2xl shadow-lg lg:hidden"
+              onClick={openCreate}
             >
-              <div className="flex h-14 shrink-0 items-center gap-2 pr-12 pl-4">
-                <BrandMark />
-                <SheetTitle className="text-lg font-medium">Calendar</SheetTitle>
-                <DocsLink className="ml-auto" />
-                <ThemeToggle className="rounded-full" />
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {sidebar(() => setSidebarOpen(false))}
-              </div>
-            </SheetContent>
-          </Sheet>
-          <EventPopover
-            anchor={openEvent?.anchor ?? null}
-            locale={locale}
-            occurrence={shownEvent}
-            onClose={() => setOpenEvent((current) => current && { ...current, eventId: null })}
-            onEdit={openEdit}
-            timeZone={timeZone}
-          />
-          <EventDialog
-            draft={draft}
-            locale={locale}
-            onOpenChange={(open) => !open && setDraft(null)}
-            onSave={saveFromDialog}
-            returnFocus={openEvent?.anchor ?? createdFrom}
-            timeZone={timeZone}
-          />
-          {/* Asks "this, this and following, or all" for changes to a repeating event. */}
-          {scopeDialog}
-          <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-          {/* Speaks keyboard and pointer moves, resizes and creates. */}
-          <DemoCalendar.Announcer messages={calendarAnnouncements} />
-          <Notice text={notice} />
-          <CalendarHistoryToast
-            calendar={DemoCalendar}
-            className="bottom-24 lg:bottom-6"
-            history={history}
-          />
-        </DemoCalendar.Frame>
+              <PlusIcon className="size-6" />
+            </Button>
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetContent
+                ref={sheetRef}
+                className="gap-2 outline-none data-[side=left]:w-72"
+                // Focus the sheet itself so the first control's tooltip does not pop open.
+                initialFocus={sheetRef}
+                side="left"
+              >
+                <div className="flex h-14 shrink-0 items-center gap-2 pr-12 pl-4">
+                  <BrandMark />
+                  <SheetTitle className="text-lg font-medium">Calendar</SheetTitle>
+                  <DocsLink className="ml-auto" />
+                  <ThemeToggle className="rounded-full" />
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {sidebar(() => setSidebarOpen(false))}
+                </div>
+              </SheetContent>
+            </Sheet>
+            <EventPopover
+              anchor={openEvent?.anchor ?? null}
+              locale={locale}
+              occurrence={shownEvent}
+              onClose={() => setOpenEvent((current) => current && { ...current, eventId: null })}
+              onEdit={openEdit}
+              onUnscheduled={({ event, id }) => {
+                // The calendar speaks only for gestures; a button's unschedule needs a voice.
+                showNotice(`Moved “${event.title}” to Unscheduled.`);
+                focusTask(id);
+              }}
+              taskList={tasks}
+              timeZone={timeZone}
+            />
+            <EventDialog
+              draft={draft}
+              locale={locale}
+              onOpenChange={(open) => {
+                if (open) return;
+                setDraft(null);
+                setDraftTask(null);
+              }}
+              onSave={saveFromDialog}
+              returnFocus={openEvent?.anchor ?? createdFrom}
+              timeZone={timeZone}
+            />
+            {/* Asks "this, this and following, or all" for changes to a repeating event. */}
+            {scopeDialog}
+            <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+            {/* Speaks keyboard and pointer moves, resizes and creates. */}
+            <DemoCalendar.Announcer messages={calendarAnnouncements} />
+            <Notice text={notice} />
+            <CalendarHistoryToast
+              calendar={DemoCalendar}
+              className="bottom-24 lg:bottom-6"
+              history={history}
+            />
+          </DemoCalendar.Frame>
+        </DragDropProvider>
       </DemoCalendar.Root>
     </TooltipProvider>
   );
