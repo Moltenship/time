@@ -8,6 +8,7 @@ import {
   type NormalizedCalendarEvent,
   type ResourceId,
 } from "@moltenship/calendar";
+import { motion } from "motion/react";
 import type { ComponentProps, ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
@@ -22,16 +23,37 @@ export interface EventChipProps extends ComponentProps<"button"> {
   readonly pending?: boolean;
 }
 
+// SPIKE (motion customization research, not for merge): `?spike=card-layoutid` makes every chip
+// a Motion button, so a chip given a `layoutId` can morph into the event's popover.
+export const spikeLayoutId =
+  typeof window !== "undefined" &&
+  ["card-layoutid", "card-dialog"].includes(
+    new URLSearchParams(window.location.search).get("spike") ?? "",
+  );
+const spikeSlow =
+  typeof window === "undefined"
+    ? 1
+    : Number(new URLSearchParams(window.location.search).get("slow") ?? 1);
+export const spikeLayoutTransition = {
+  bounce: 0.12,
+  duration: 0.45 * spikeSlow,
+  type: "spring",
+} as const;
+
 /** Base event surface shared by every view: tinted fill, accent edge, readable text. */
 export function EventChip({
   className,
   color,
+  layoutId,
   pending = false,
   type = "button",
   ...props
-}: EventChipProps) {
+}: EventChipProps & { readonly layoutId?: string }) {
+  const Button = spikeLayoutId ? motion.button : "button";
+  const motionProps = spikeLayoutId ? { layoutId, transition: spikeLayoutTransition } : {};
   return (
-    <button
+    <Button
+      {...(motionProps as object)}
       aria-busy={pending || undefined}
       data-slot="calendar-event"
       data-color={color}
@@ -44,7 +66,7 @@ export function EventChip({
         "flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event px-2 py-1 text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110",
         className,
       )}
-      {...props}
+      {...(props as object)}
     />
   );
 }

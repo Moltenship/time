@@ -15,6 +15,7 @@
     "class-variance-authority": "catalog:",
     "cn": "catalog:",
     "lucide-react": "catalog:",
+    "motion": "catalog:",
     "react": "catalog:"
   },
   "devDependencies": {

@@ -10,7 +10,15 @@ import {
 } from "@moltenship/calendar";
 import { useRef, useState, type ReactNode } from "react";
 
-import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
+import { motion } from "motion/react";
+
+import {
+  EventChip,
+  EventIcon,
+  spikeLayoutId,
+  spikeLayoutTransition,
+  useEventChip,
+} from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { TooltipContent } from "@registry/ui/tooltip";
@@ -156,6 +164,9 @@ export function TimeGridEvent<TEvent>({
       <TooltipPrimitive.Trigger
         render={
           <EventChip
+            layoutId={
+              spikeLayoutId && !startsBeforeDay ? `spike-card-${String(event.id)}` : undefined
+            }
             color={color}
             {...chip}
             className={cn(
@@ -189,10 +200,17 @@ export function TimeGridEvent<TEvent>({
           </span>
         ) : (
           <>
-            <span ref={titleRef} className="line-clamp-2">
+            <motion.span
+              ref={titleRef}
+              className="line-clamp-2"
+              layoutId={
+                spikeLayoutId && !startsBeforeDay ? `spike-title-${String(event.id)}` : undefined
+              }
+              transition={spikeLayoutTransition}
+            >
               <EventIcon>{icon}</EventIcon>
               {event.title}
-            </span>
+            </motion.span>
             <span data-event-time className="truncate font-normal tabular-nums opacity-80">
               {eventTimeRange(start, end, formats)}
             </span>

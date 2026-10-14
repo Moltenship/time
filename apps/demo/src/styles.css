@@ -40,3 +40,52 @@
   background: none;
   color: white;
 }
+
+/* SPIKE (motion customization research, not for merge). */
+html[data-spike="card-vt"]::view-transition-group(spike-card),
+html[data-spike="card-vt"]::view-transition-group(spike-title) {
+  animation-duration: calc(450ms * var(--spike-slow, 1));
+  animation-timing-function: cubic-bezier(0.2, 0, 0, 1);
+}
+html[data-spike="card-vt"]::view-transition-old(root),
+html[data-spike="card-vt"]::view-transition-new(root) {
+  animation-duration: calc(200ms * var(--spike-slow, 1));
+}
+html[data-spike="card-layoutid"] [data-spike-content] {
+  animation: spike-fade calc(200ms * var(--spike-slow, 1)) calc(150ms * var(--spike-slow, 1)) both;
+}
+@keyframes spike-fade {
+  from {
+    opacity: 0;
+  }
+}
+
+/* `drag-css`: the preview lifts and tilts when it's picked up, through the theme's hooks alone. */
+html[data-spike="drag-css"] [data-calendar-ghost="event"] {
+  --calendar-ghost-opacity: 0.95;
+  --calendar-ghost-shadow: 0 18px 36px rgb(0 0 0 / 0.28);
+  rotate: -2deg;
+  scale: 1.05;
+  transition:
+    rotate calc(180ms * var(--spike-slow, 1)) cubic-bezier(0.2, 0, 0, 1),
+    scale calc(180ms * var(--spike-slow, 1)) cubic-bezier(0.2, 0, 0, 1);
+
+  @starting-style {
+    rotate: 0deg;
+    scale: 1;
+  }
+}
+
+/* `drag-motion`: the calendar's own preview becomes the landing slot under the Motion card. */
+html[data-spike="drag-motion"] [data-calendar-ghost="event"] {
+  --calendar-ghost-opacity: 0.35;
+  --calendar-ghost-shadow: none;
+  outline: 2px dashed var(--calendar-event-border);
+  outline-offset: -2px;
+}
+html[data-spike="drag-motion"] [data-calendar-ghost][data-outside] {
+  visibility: hidden;
+}
+html[data-spike="card-dialog"] [data-spike-content] {
+  animation: spike-fade calc(200ms * var(--spike-slow, 1)) calc(200ms * var(--spike-slow, 1)) both;
+}

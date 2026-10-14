@@ -18,7 +18,16 @@ import {
   type RecurrenceRule,
 } from "@moltenship/calendar-recurrence";
 import { PlusIcon } from "lucide-react";
-import { useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import {
+  Fragment,
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
+import { flushSync } from "react-dom";
 
 import { calendarAnnouncements } from "@registry/calendar/announcements";
 import { CalendarHistoryToast } from "@registry/calendar-history-toast/calendar-history-toast";
@@ -63,6 +72,9 @@ import { demoResourceGroups, demoResources, type DemoResourceId } from "./resour
 import { useDemoSettings } from "./settings";
 import { viewFor } from "./scrolling";
 import { applySeriesEdit, type DemoSeriesEdit, type SeriesEditExtras } from "./series-edits";
+import { LayoutGroup } from "motion/react";
+
+import { SpikeDragCard, spikeMode } from "./spike";
 import { useCalendarLocation } from "./url-state";
 
 /** How long a simulated save takes, so the pending state is visible. */
@@ -400,7 +412,23 @@ export function App() {
     const anchor =
       click.target instanceof Element ? click.target.closest<HTMLElement>("[data-event-id]") : null;
     const eventId = anchor === null ? null : eventIdOf(anchor);
-    if (anchor !== null && eventId !== null) setOpenEvent({ anchor, eventId });
+    if (anchor === null || eventId === null) return;
+    // SPIKE `card-vt`: the clicked event and the popover share a view transition name, so the
+    // browser morphs one into the other. The title does the same.
+    if (spikeMode === "card-vt" && typeof document.startViewTransition === "function") {
+      const title = anchor.querySelector<HTMLElement>(".line-clamp-2, .truncate");
+      anchor.style.viewTransitionName = "spike-card";
+      if (title !== null) title.style.viewTransitionName = "spike-title";
+      document.startViewTransition(async () => {
+        anchor.style.viewTransitionName = "";
+        if (title !== null) title.style.viewTransitionName = "";
+        flushSync(() => setOpenEvent({ anchor, eventId }));
+        // Base UI positions the popup a moment after it mounts.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+      return;
+    }
+    setOpenEvent({ anchor, eventId });
   };
   const sidebar = (onNavigate?: () => void) => (
     <Sidebar
@@ -422,108 +450,115 @@ export function App() {
     </Sidebar>
   );
 
+  // SPIKE `card-layoutid`: the chip doesn't re-render when the popover opens, so Motion has no
+  // snapshot of it unless a LayoutGroup re-measures the group's members.
+  const Group =
+    spikeMode === "card-layoutid" || spikeMode === "card-dialog" ? LayoutGroup : Fragment;
   return (
-    <TooltipProvider delay={400}>
-      <DemoCalendar.Root
-        anchorDate={location.date}
-        defaultExpandedResourceIds={demoResourceGroups}
-        annotationSources={annotationSources}
-        annotations={annotations}
-        availability={availability}
-        events={occurrences}
-        focus={focus}
-        locale={locale}
-        onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
-        onEventChange={persistChange}
-        onEventChangeResult={history.record}
-        onFocusChange={setFocus}
-        onSelectionChange={setSelection}
-        onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
-        onVisibleRangeChange={onVisibleRangeChange}
-        policies={policies}
-        resources={workingHours === "off" ? demoResources : demoResourcesWithHours}
-        secondaryTimeZones={secondaryTimeZone === null ? undefined : [secondaryTimeZone]}
-        selection={selection}
-        timeZone={timeZone}
-        view={view}
-        viewOptions={viewOptions}
-        weekRules={weekRules}
-      >
-        <KeyboardShortcuts onCreate={openCreate} onHelp={showShortcuts} scrolling={scrolling} />
-        <DemoCalendar.Frame className="flex h-dvh flex-col">
-          <TopBar
-            onOpenSidebar={() => setSidebarOpen(true)}
-            onShowShortcuts={showShortcuts}
-            scrolling={scrolling}
-          />
-          <div className="flex min-h-0 flex-1">
-            <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
-            <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:overflow-clip lg:rounded-xl lg:border lg:bg-card lg:[--calendar-surface:var(--card)]">
-              <DemoCalendar.Viewport
-                ref={viewportRef}
-                className="h-full"
-                onClick={openClickedEvent}
-              >
-                <DemoCalendar.ActiveView />
-              </DemoCalendar.Viewport>
-            </main>
-          </div>
-          <Button
-            aria-label="Create event"
-            // Above the views' events, which stack in their own layers.
-            className="fixed right-4 bottom-4 z-30 size-14 rounded-2xl shadow-lg lg:hidden"
-            onClick={openCreate}
-          >
-            <PlusIcon className="size-6" />
-          </Button>
-          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <SheetContent
-              ref={sheetRef}
-              className="gap-2 outline-none data-[side=left]:w-72"
-              // Focus the sheet itself so the first control's tooltip does not pop open.
-              initialFocus={sheetRef}
-              side="left"
+    <Group>
+      <TooltipProvider delay={400}>
+        <DemoCalendar.Root
+          anchorDate={location.date}
+          defaultExpandedResourceIds={demoResourceGroups}
+          annotationSources={annotationSources}
+          annotations={annotations}
+          availability={availability}
+          events={occurrences}
+          focus={focus}
+          locale={locale}
+          onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
+          onEventChange={persistChange}
+          onEventChangeResult={history.record}
+          onFocusChange={setFocus}
+          onSelectionChange={setSelection}
+          onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
+          onVisibleRangeChange={onVisibleRangeChange}
+          policies={policies}
+          resources={workingHours === "off" ? demoResources : demoResourcesWithHours}
+          secondaryTimeZones={secondaryTimeZone === null ? undefined : [secondaryTimeZone]}
+          selection={selection}
+          timeZone={timeZone}
+          view={view}
+          viewOptions={viewOptions}
+          weekRules={weekRules}
+        >
+          <KeyboardShortcuts onCreate={openCreate} onHelp={showShortcuts} scrolling={scrolling} />
+          <DemoCalendar.Frame className="flex h-dvh flex-col">
+            <TopBar
+              onOpenSidebar={() => setSidebarOpen(true)}
+              onShowShortcuts={showShortcuts}
+              scrolling={scrolling}
+            />
+            <div className="flex min-h-0 flex-1">
+              <aside className="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
+              <main className="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:overflow-clip lg:rounded-xl lg:border lg:bg-card lg:[--calendar-surface:var(--card)]">
+                <DemoCalendar.Viewport
+                  ref={viewportRef}
+                  className="h-full"
+                  onClick={openClickedEvent}
+                >
+                  <DemoCalendar.ActiveView />
+                </DemoCalendar.Viewport>
+              </main>
+            </div>
+            <Button
+              aria-label="Create event"
+              // Above the views' events, which stack in their own layers.
+              className="fixed right-4 bottom-4 z-30 size-14 rounded-2xl shadow-lg lg:hidden"
+              onClick={openCreate}
             >
-              <div className="flex h-14 shrink-0 items-center gap-2 pr-12 pl-4">
-                <BrandMark />
-                <SheetTitle className="text-lg font-medium">Calendar</SheetTitle>
-                <DocsLink className="ml-auto" />
-                <ThemeToggle className="rounded-full" />
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
-                {sidebar(() => setSidebarOpen(false))}
-              </div>
-            </SheetContent>
-          </Sheet>
-          <EventPopover
-            anchor={openEvent?.anchor ?? null}
-            locale={locale}
-            occurrence={shownEvent}
-            onClose={() => setOpenEvent((current) => current && { ...current, eventId: null })}
-            onEdit={openEdit}
-            timeZone={timeZone}
-          />
-          <EventDialog
-            draft={draft}
-            locale={locale}
-            onOpenChange={(open) => !open && setDraft(null)}
-            onSave={saveFromDialog}
-            returnFocus={openEvent?.anchor ?? createdFrom}
-            timeZone={timeZone}
-          />
-          {/* Asks "this, this and following, or all" for changes to a repeating event. */}
-          {scopeDialog}
-          <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
-          {/* Speaks keyboard and pointer moves, resizes and creates. */}
-          <DemoCalendar.Announcer messages={calendarAnnouncements} />
-          <Notice text={notice} />
-          <CalendarHistoryToast
-            calendar={DemoCalendar}
-            className="bottom-24 lg:bottom-6"
-            history={history}
-          />
-        </DemoCalendar.Frame>
-      </DemoCalendar.Root>
-    </TooltipProvider>
+              <PlusIcon className="size-6" />
+            </Button>
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <SheetContent
+                ref={sheetRef}
+                className="gap-2 outline-none data-[side=left]:w-72"
+                // Focus the sheet itself so the first control's tooltip does not pop open.
+                initialFocus={sheetRef}
+                side="left"
+              >
+                <div className="flex h-14 shrink-0 items-center gap-2 pr-12 pl-4">
+                  <BrandMark />
+                  <SheetTitle className="text-lg font-medium">Calendar</SheetTitle>
+                  <DocsLink className="ml-auto" />
+                  <ThemeToggle className="rounded-full" />
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  {sidebar(() => setSidebarOpen(false))}
+                </div>
+              </SheetContent>
+            </Sheet>
+            <SpikeDragCard />
+            <EventPopover
+              anchor={openEvent?.anchor ?? null}
+              locale={locale}
+              occurrence={shownEvent}
+              onClose={() => setOpenEvent((current) => current && { ...current, eventId: null })}
+              onEdit={openEdit}
+              timeZone={timeZone}
+            />
+            <EventDialog
+              draft={draft}
+              locale={locale}
+              onOpenChange={(open) => !open && setDraft(null)}
+              onSave={saveFromDialog}
+              returnFocus={openEvent?.anchor ?? createdFrom}
+              timeZone={timeZone}
+            />
+            {/* Asks "this, this and following, or all" for changes to a repeating event. */}
+            {scopeDialog}
+            <ShortcutsDialog open={shortcutsOpen} onOpenChange={setShortcutsOpen} />
+            {/* Speaks keyboard and pointer moves, resizes and creates. */}
+            <DemoCalendar.Announcer messages={calendarAnnouncements} />
+            <Notice text={notice} />
+            <CalendarHistoryToast
+              calendar={DemoCalendar}
+              className="bottom-24 lg:bottom-6"
+              history={history}
+            />
+          </DemoCalendar.Frame>
+        </DemoCalendar.Root>
+      </TooltipProvider>
+    </Group>
   );
 }

@@ -59,6 +59,7 @@ catalog:
   axe-core: 4.14.0
   playwright: 1.64.0
   publint: 0.3.25
+  motion: 14.2.0
 overrides:
   vite@*: "catalog:"
 packageExtensions:
