@@ -461,6 +461,38 @@ describe("startCalendarDrop", () => {
     expect(scroller.top()).toBe(settled);
   });
 
+  test("scrolls a view a drag came into at an edge once it rests there", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([]);
+    const scroller = scrollable();
+    setup(grid, { columns: grid.columns, scrollContainer: { current: scroller.element } });
+    const drop = start({});
+
+    drop.move({ x: 50, y: 590 });
+    vi.advanceTimersToNextFrame();
+    vi.advanceTimersToNextFrame();
+    expect(scroller.top()).toBe(0);
+    // A quarter of a second at the edge: the drag means it.
+    for (let frame = 0; frame < 20; frame += 1) vi.advanceTimersToNextFrame();
+    expect(scroller.top()).toBeGreaterThan(0);
+  });
+
+  test("doesn't scroll while the point rests over a part of the view outside its scroller", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([]);
+    const scroller = scrollable();
+    // The scroller starts below the all-day row, which the point rests on.
+    scroller.element.getBoundingClientRect = () =>
+      ({ bottom: 600, height: 560, left: 0, right: 200, top: 40, width: 200 }) as DOMRect;
+    scroller.element.scrollTop = 200;
+    setup(grid, { columns: grid.columns, scrollContainer: { current: scroller.element } });
+    const drop = start({});
+
+    drop.move({ x: 50, y: 20 });
+    for (let frame = 0; frame < 30; frame += 1) vi.advanceTimersToNextFrame();
+    expect(scroller.top()).toBe(200);
+  });
+
   test("picks up the columns a scrolling view renders mid-drag", async () => {
     const grid = mountTimeGrid([]);
     let columns: readonly TimeGridColumn[] = grid.columns.slice(0, 1);

@@ -59,8 +59,8 @@ export function reportCallbackError(error: unknown): void {
  * offered. While a follower is on a drag, the view counts only where it's the topmost thing under
  * the pointer, so a sheet of zones over it hides it; off the view, covered or claimed, a copy of
  * the event follows the pointer. The view scrolls only while the pointer is over it, and after the
- * pointer has left, only once it has been clear of the edges again. Returns a function that stops
- * listening.
+ * pointer has left, only once it has been clear of the edges again or rested at one. Returns a
+ * function that stops listening.
  */
 export function monitorCalendarDrags(monitor: CalendarDragMonitor): () => void {
   monitors.add(monitor);

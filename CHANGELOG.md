@@ -7,7 +7,7 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
 ## Unreleased
 
 - First public release of `@moltenship/calendar`, `calendar-core`, `calendar-dnd`,
-  `calendar-react`, `calendar-recurrence`, `calendar-temporal` and `ics`.
+  `calendar-dnd-kit`, `calendar-react`, `calendar-recurrence`, `calendar-temporal` and `ics`.
 - `@moltenship/ics` is licensed `MIT AND Unicode-3.0`: its Windows time zone mapping comes from
   Unicode CLDR. The license text ships in the package's `THIRD-PARTY-NOTICES.md` and, as a legal
   comment that bundlers keep, in its built code.
@@ -92,3 +92,14 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   The pointer layer's `onPropose` and `check` take `CalendarEventProposal<TEventId, TResourceId,
   TEvent>`, and a view's `actions` a create with `event`, so a dropped item's record reaches
   `onEventChange` (#237).
+- `@moltenship/calendar-dnd-kit`, an optional dnd-kit adapter for `@dnd-kit/react` and
+  `@dnd-kit/dom` 0.5. `<CalendarDndKit />` inside a `DragDropProvider` makes each view a droppable
+  with an opaque ID (`isCalendarTarget`), which wins where the view is on top: a draggable whose
+  `data` carries `calendarDropData(source)` previews in the view under it and becomes an event when
+  dropped. An event a view moves becomes a dnd-kit drag of type `calendarEventType` once it leaves
+  the view, which your droppables can take, read with `calendarEventOf`; moves that stay in the
+  view never reach dnd-kit. `connectCalendarDragDrop(manager)` does the same without React, and
+  every connection to a manager shares one. `@moltenship/calendar` doesn't re-export it. A drag
+  from outside, or an event dragged back in, scrolls a view's edges once the pointer has been clear
+  of them or rested near one for a quarter of a second, so crossing an edge on the way in doesn't
+  scroll the view (#237).

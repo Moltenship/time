@@ -8,7 +8,10 @@
     "test": "vp test"
   },
   "dependencies": {
+    "@dnd-kit/dom": "catalog:",
+    "@dnd-kit/react": "catalog:",
     "@moltenship/calendar": "workspace:*",
+    "@moltenship/calendar-dnd-kit": "workspace:*",
     "@moltenship/calendar-recurrence": "workspace:*",
     "react": "catalog:",
     "react-dom": "catalog:"

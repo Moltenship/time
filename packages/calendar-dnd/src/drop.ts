@@ -12,7 +12,7 @@ import {
 } from "@moltenship/calendar-core";
 import type { WallTimeSnapOptions } from "@moltenship/calendar-temporal";
 
-import { autoScroll, clearOfEdges, scrollableAncestor } from "./auto-scroll";
+import { autoScroll, EdgeArming, scrollableAncestor } from "./auto-scroll";
 import type { CalendarPoint } from "./drags";
 import { droppedPlacement, samePlacement, type DroppedItem, type GestureOptions } from "./gestures";
 import { ghostLayout, GhostLayer, ghostValidity } from "./ghost";
@@ -22,7 +22,10 @@ import { columnsByDate, targetAt, type TargetSurface } from "./targets";
 
 /** What an item dragged in from outside the calendar becomes when it's dropped on a view. */
 export interface CalendarDropSource<TEvent = unknown, TEventId extends EventId = EventId> {
-  /** How many days it covers when dropped on day cells: a month cell, the all-day row. 1 by default. */
+  /**
+   * How many days it covers when dropped on day cells: a month cell, the all-day row. 1 by
+   * default.
+   */
   readonly days?: number;
   /** How long it is when dropped on a time column. An hour by default. */
   readonly duration?: Temporal.Duration | Temporal.DurationLike;
@@ -82,11 +85,8 @@ interface Moved {
 
 /** A region the drag is over, with what the drag worked out for it. */
 interface Over {
-  /**
-   * Whether the point has been inside the scroll container clear of its edges since it came
-   * over the region. Only then do the edges scroll it, so crossing one on the way in doesn't.
-   */
-  armed: boolean;
+  /** When the edges may scroll the region, since the drag came over it. */
+  readonly edges: EdgeArming;
   readonly ghost: GhostLayer;
   /**
    * For a move, the event as this view has it, or `null` when the view lacks it or it's
@@ -113,7 +113,7 @@ function regionOver(region: PointerRegion, hit: Element, eventId: EventId | unde
   const options = region.getOptions();
   const event = eventId === undefined ? undefined : options.events.get(eventId);
   return {
-    armed: false,
+    edges: new EdgeArming(false),
     ghost: new GhostLayer(region.element, options.ghostClassName),
     moved:
       eventId === undefined
@@ -149,7 +149,8 @@ function regionOver(region: PointerRegion, hit: Element, eventId: EventId | unde
  * The topmost element under the point decides: anything over a view, such as a sheet or a
  * dialog, hides it. So the library's drag image must let the pointer through
  * (`pointer-events: none`), as dnd-kit's does. From the first `move` until `drop` or `cancel`, a
- * frame loop scrolls the view under the point near its edges.
+ * frame loop scrolls the view under the point near its edges, once the point has been clear of
+ * them or rested at one for a moment, so crossing an edge on the way in doesn't scroll it.
  */
 export function startCalendarDrop<
   TEvent = unknown,
@@ -285,10 +286,10 @@ export function startCalendarDrop<
     }
   }
 
-  /** Arms the view's auto-scroll once the point has been clear of its edges. */
-  function arm(): void {
-    if (over === null || point === null || over.armed) return;
-    over.armed = clearOfEdges(over.scrollContainer, point.x, point.y);
+  /** Whether the view's edges may scroll it yet; see `EdgeArming`. */
+  function arm(): boolean {
+    if (over === null || point === null) return false;
+    return over.edges.update(over.scrollContainer, point.x, point.y, performance.now());
   }
 
   function scrollFrame(): void {
@@ -296,10 +297,9 @@ export function startCalendarDrop<
     if (ended) return;
     // A view that went read-only or away since the last move lets go of the drag.
     if (over !== null && !takesDrops(over.region)) update();
-    // Only over a view, once the point has been clear of its edges: a drag still in a sidebar,
-    // or one crossing an edge on its way in, leaves the calendar where it is.
-    arm();
-    if (over?.armed === true && point !== null) {
+    // Only over a view, once the point has been clear of its edges or rested at one: a drag
+    // still in a sidebar, or one crossing an edge on its way in, leaves the calendar where it is.
+    if (arm() && over !== null && point !== null) {
       if (autoScroll(over.scrollContainer, point.x, point.y)) update(true);
     }
     frame = requestAnimationFrame(scrollFrame);

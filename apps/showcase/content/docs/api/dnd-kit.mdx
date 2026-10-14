@@ -1,0 +1,275 @@
+---
+title: dnd-kit adapter
+description: Drag your own dnd-kit items into the calendar, and calendar events out to your droppables, with @moltenship/calendar-dnd-kit.
+---
+
+`@moltenship/calendar-dnd-kit` connects the calendar to [dnd-kit](https://dndkit.com), for apps
+that already use it:
+
+- **Drag your items in.** A task, or anything else you make draggable, becomes an event when it's
+  dropped on a time slot, a day, the all-day row or a resource.
+- **Drag events out.** A calendar event dragged onto one of your droppables, such as an
+  "unscheduled" list or a bin, goes to it.
+
+Drops go through the calendar like any drag: its hit-testing, snapping, policies, `onEventChange`
+and `onEventChangeResult`. The calendar's own drags stay on its native pointer layer.
+
+It's a separate package. `@moltenship/calendar` doesn't re-export it, so a calendar without it
+installs and bundles no dnd-kit. It works with dnd-kit's current packages, `@dnd-kit/react` and
+`@dnd-kit/dom` 0.5, not the older `@dnd-kit/core`. Without dnd-kit, the same calls it makes are in
+the pointer layer: see [drags from and to the rest of the page](/docs/api/changes#drags-from-and-to-the-rest-of-the-page).
+
+## Install
+
+<Callout type="warn" title="Not on npm yet">
+  The package hasn't been published. The commands below are what you'll run after the first release.
+  To try it now, [run Time from source](/docs/installation#run-from-source).
+</Callout>
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/calendar-dnd-kit @dnd-kit/react @dnd-kit/dom
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/calendar-dnd-kit @dnd-kit/react @dnd-kit/dom
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/calendar-dnd-kit @dnd-kit/react @dnd-kit/dom
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar-dnd-kit @dnd-kit/react @dnd-kit/dom
+```
+
+</Tab>
+</Tabs>
+
+dnd-kit 0.5 is still pre-1.0, and its minor versions change its API, so the adapter takes 0.5
+only. It needs React 19, like the calendar.
+
+## Connect it
+
+Render `<CalendarDndKit />` anywhere inside your `DragDropProvider`. It renders nothing, and
+connects every calendar view on the page to that provider:
+
+```tsx
+import { DragDropProvider } from "@dnd-kit/react";
+import { CalendarDndKit } from "@moltenship/calendar-dnd-kit";
+
+<DragDropProvider>
+  <CalendarDndKit />
+  <TaskList />
+  <Calendar.Root events={meetings} onEventChange={save} timeZone={timeZone}>
+    …
+  </Calendar.Root>
+</DragDropProvider>;
+```
+
+Each view becomes one droppable that takes only calendar items and calendar events. Its ID is
+opaque, so tell it by `isCalendarTarget(droppable)`. It wins where the view is the topmost thing
+under the pointer, over a droppable of yours around or under the calendar, and a droppable of
+yours over the view, such as a floating bin, wins there. A read-only view's droppable is disabled.
+
+`connectCalendarDragDrop(manager)` does the same for a `DragDropManager` of `@dnd-kit/dom` without
+React, and returns a function that disconnects. Connecting a manager again, or rendering a second
+`CalendarDndKit` in the same provider, shares the first connection.
+
+## Drag your items in
+
+Spread `calendarDropData(source)` into a draggable's `data`, next to your own:
+
+```tsx
+import { useDraggable } from "@dnd-kit/react";
+import { calendarDropData } from "@moltenship/calendar-dnd-kit";
+
+function TaskCard({ task }: { task: Task }) {
+  const { ref } = useDraggable({
+    id: task.id,
+    data: {
+      task,
+      ...calendarDropData({
+        event: meetingFromTask(task),
+        duration: { minutes: task.minutes },
+        title: task.title,
+      }),
+    },
+  });
+  return <li ref={ref}>{task.title}</li>;
+}
+```
+
+| Field      | Meaning                                                                                                               |
+| ---------- | --------------------------------------------------------------------------------------------------------------------- |
+| `event`    | Your record the new event copies. Your `onEventChange` gets it as `change.event`, so it knows which task was dropped  |
+| `duration` | How long the event is when it's dropped on a time slot. An hour by default                                            |
+| `days`     | How many days it covers when it's dropped on a day, such as a month cell or the all-day row. 1 by default             |
+| `eventId`  | An event the calendar shows, to move instead of creating one: its start lands where it's dropped. Not a read-only one |
+| `title`    | What the calendar's announcements call it                                                                             |
+
+While the item is over a view, the view previews the slots it would take, from the slot under the
+pointer, and marks them `data-invalid` or `data-warning` when your policies would reject or flag
+them. Over a resource view it books the resource under the pointer. Dropped, it proposes a create
+through the view, as dragging out a range does:
+
+```ts
+function save(change: CalendarEventChange<Meeting, string, string>) {
+  if (change.cause === "create" && change.event !== null) {
+    // A task dropped on the calendar: its record, where it was dropped.
+    addMeeting({ ...change.event, id: newId(), ...placementFields(change.proposed) });
+    removeTask(change.event.taskId);
+    return;
+  }
+  // …moves, resizes, deletes and ranges dragged out in a view.
+}
+```
+
+Your own `onDragEnd` still hears the drop. `isCalendarTarget(operation.target)` says it landed on
+a view, which handled it already.
+
+## Drag events out
+
+A calendar event a view moves becomes a dnd-kit drag once the pointer leaves the view, of type
+`calendarEventType`, until the move ends. Moves that stay in the view never reach dnd-kit. Your
+droppables see it like any drag: list the type in `accept`, and `isDropTarget` lights up. Released
+over one of them, the drag ends as a drop and the calendar proposes nothing. Any other end, a drop
+back in the calendar or Escape, ends it as `canceled`.
+
+```tsx
+import { useDragDropMonitor, useDroppable } from "@dnd-kit/react";
+import { calendarEventOf, calendarEventType } from "@moltenship/calendar-dnd-kit";
+
+function Unscheduled() {
+  const actions = Calendar.useCalendarActions();
+  const { isDropTarget, ref } = useDroppable({ id: "unscheduled", accept: calendarEventType });
+  useDragDropMonitor({
+    onDragEnd({ canceled, operation }) {
+      const dragged = calendarEventOf<Meeting, string, string>(operation.source);
+      if (canceled || dragged === null || operation.target?.id !== "unscheduled") return;
+      // Through the pipeline, so policies run and the event hides while it saves.
+      void actions.proposeEventChange(
+        { cause: "delete", eventId: dragged.eventId },
+        { input: "pointer" },
+      );
+    },
+  });
+  return (
+    <ul ref={ref} data-over={isDropTarget || undefined}>
+      …
+    </ul>
+  );
+}
+```
+
+`calendarEventOf(source)` gives `{ eventId, event, placement }`: the ID, your record and where it
+was, or `null` for any other draggable. Off the view, a copy of the event follows the pointer, with
+`data-outside`. Only moves drag out: resizes and creating a range stay in the view.
+
+Once it has left the view, the drag is one of your provider's, so mind what else hears it:
+
+- **Droppables without `accept`**, such as `useSortable` items, take calendar events too, and a
+  release over one proposes nothing in the calendar. Give your droppables an `accept` that leaves
+  calendar events out, or handles them.
+- **Your `onDragStart` and `onDragEnd`** hear it. Leave alone what
+  `calendarEventOf(operation.source)` names when it isn't for you; a drag that came back and
+  dropped in the calendar ends `canceled`. A very short trip out can end before it starts, with a
+  `dragend` and no `dragstart`.
+- **A `DragOverlay`** renders for it. Turn it off for calendar events, which the calendar draws:
+  `<DragOverlay disabled={(source) => calendarEventOf(source) !== null}>`.
+- **The Feedback plugin**, one of dnd-kit's defaults, measures the drag's shape, which collision
+  detection needs. Without it, drags out reach no droppable. The adapter sets the stand-in's own
+  Feedback options and leaves yours alone. The Cursor plugin shows its grabbing cursor too.
+
+## How it behaves
+
+- **Auto-scroll.** A view scrolls itself near its edges, once the pointer has been inside it clear
+  of them or has rested near one for a quarter of a second, so a drag that crosses an edge on its
+  way in doesn't scroll it, and one held there does. dnd-kit's `AutoScroller` is off while the
+  pointer is over a view that takes drops, and works as before elsewhere.
+- **Cancel.** Escape, or a lost pointer, cancels: the preview goes and nothing is proposed.
+- **Read-only.** A view of a `Root` without `onEventChange` previews nothing and takes no drop, and
+  starts no drags out.
+- **Layers.** The topmost element under the pointer decides. A sheet, dialog or droppable of yours
+  over a view hides it, and one around or under the calendar doesn't.
+- **Touch.** Your items use dnd-kit's sensors and their activation, and calendar events keep the
+  calendar's long-press. A gesture belongs to one of them: calendar events have no dnd-kit sensor,
+  and the calendar never sees a press that began outside it. Don't make dnd-kit draggables of your
+  own inside a view.
+- **Keyboard.** dnd-kit's keyboard sensor drags your items in: Space picks one up, the arrow keys
+  move it, by 10 pixels or 50 with Shift, with the calendar previewing and announcing where it
+  would land, and Space, Enter or Tab drops it. Its steps are pixels, not slots, so it's slow
+  across a long way. Calendar events can't be dragged out by keyboard. Give both an explicit
+  action too, such as a button that schedules a task and one that unschedules an event.
+- **Server rendering.** The package is a client module. It connects in an effect and reads no DOM
+  until then.
+- **Announcements.** The calendar's `Announcer` speaks where an item would land and what came of
+  the drop, with its `title`, and proposes with `input: "keyboard"` when the keyboard sensor drove
+  it, `"pointer"` otherwise. dnd-kit's own announcements speak too, and their default text names
+  draggables and droppables by ID. Give its `Accessibility` plugin announcements that name your
+  items, and stay quiet where the calendar speaks: over a view, and for calendar events, which the
+  calendar announces until they reach one of your droppables. For example:
+
+```ts
+import { Accessibility } from "@dnd-kit/dom";
+import { calendarEventOf, isCalendarTarget } from "@moltenship/calendar-dnd-kit";
+
+type Entity = { readonly data?: unknown; readonly id: string | number } | null;
+type Announced = { readonly operation: { readonly source: Entity; readonly target: Entity } };
+
+const taskOf = (source: Entity) => (source?.data as { task?: Task } | undefined)?.task;
+const eventTitle = (source: Entity) => calendarEventOf<Meeting>(source)?.event.title;
+
+const announcements = {
+  dragstart: ({ operation }: Announced) => {
+    const task = taskOf(operation.source);
+    return task && `Picked up ${task.title}.`;
+  },
+  dragover: ({ operation }: Announced) =>
+    operation.target === null || isCalendarTarget(operation.target)
+      ? undefined
+      : eventTitle(operation.source) && "Over the unscheduled tasks.",
+  dragend: ({ canceled, operation }: Announced & { readonly canceled: boolean }) => {
+    const task = taskOf(operation.source);
+    if (task) {
+      if (canceled) return `Cancelled. ${task.title} is still unscheduled.`;
+      return operation.target === null ? `${task.title} is still unscheduled.` : undefined;
+    }
+    const title = eventTitle(operation.source);
+    return title === undefined || canceled ? undefined : `${title} is unscheduled.`;
+  },
+};
+
+<DragDropProvider
+  plugins={(defaults) => [
+    ...defaults.filter((plugin) => plugin !== Accessibility),
+    Accessibility.configure({ announcements }),
+  ]}
+>
+  …
+</DragDropProvider>;
+```
+
+## API
+
+| Export                             | What it is                                                                        |
+| ---------------------------------- | --------------------------------------------------------------------------------- |
+| `CalendarDndKit`                   | A component that connects the views on the page to the `DragDropProvider` it's in |
+| `connectCalendarDragDrop(manager)` | The same for a `DragDropManager`; returns a function that disconnects             |
+| `calendarDropData(source)`         | `data` that makes a draggable an item the calendar takes                          |
+| `calendarDropOf(source)`           | The calendar drop a draggable carries, or `null`                                  |
+| `calendarEventType`                | The `type` of a calendar event dragged out, for `accept`                          |
+| `calendarEventOf(source)`          | `{ eventId, event, placement }` of a calendar event dragged out, or `null`        |
+| `isCalendarTarget(target)`         | Whether a droppable is a calendar view's                                          |
+| `CalendarEventDragData`            | The type `calendarEventOf` returns                                                |

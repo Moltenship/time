@@ -229,7 +229,7 @@ previews `--calendar-ghost-shadow` and `--calendar-ghost-opacity`, and both
 
 These connect the views to drags that start or end outside the calendar, such as tasks dragged in
 from a list or events dragged out to a bin. A drag-and-drop library's binding calls them with the
-points it tracks; [dnd-kit's](https://dndkit.com) binding is planned. Every view that uses
+points it tracks; [dnd-kit's](/docs/api/dnd-kit) is `@moltenship/calendar-dnd-kit`. Every view that uses
 `useCalendarPointer` takes part, through the options it passes, and read-only views take none.
 
 `startCalendarDrop(source, { input? })` follows one item dragged in:
@@ -259,8 +259,8 @@ three methods and a property:
 The topmost element under the point decides which view it's over, so anything over a view, such
 as a sheet or a dialog, hides it. Give a drag image of your own `pointer-events: none`, as
 dnd-kit's has. From the first `move()` until `drop()` or `cancel()`, a frame loop scrolls the view
-under the point near its edges, once the point has been clear of them, so a drag that crosses an
-edge on its way in doesn't scroll the view.
+under the point near its edges, once the point has been clear of them or has rested at one for a
+quarter of a second, so a drag that crosses an edge on its way in doesn't scroll the view.
 
 `monitorCalendarDrags(monitor)` offers each event a view starts to move to your drop zones, and
 returns a function that stops. The monitor gets `{ event, element, origin, refresh }` and returns a
@@ -277,7 +277,7 @@ follower is on a drag, the view counts only where it's the topmost thing under t
 drags in: over a sheet of your zones that covers it, it shows no preview and a release proposes
 nothing. Off the view, covered or claimed, a copy of the event follows the pointer, with
 `data-outside`. The view scrolls only while the pointer is over it, and once the pointer has left,
-only after it has been clear of the edges again. Without a follower, nothing changes: nothing shows
+only after it has been clear of the edges again or rested at one. Without a follower, nothing changes: nothing shows
 off the view, as before. Resizes and creates aren't offered.
 
 `observeCalendarRegions(observer)` hears the views on the page, `{ element, disabled }` each, now

@@ -187,6 +187,14 @@ apply. A few details:
 
 Clicking an empty slot doesn't create an event; creating needs a drag.
 
+### From the rest of the page
+
+Items of your own, such as unscheduled tasks, can be dragged into the calendar, and events dragged
+out to your own drop zones. With dnd-kit, [`@moltenship/calendar-dnd-kit`](/docs/api/dnd-kit) does
+both; without it, the pointer layer's [drags from and to the rest of the page](/docs/api/changes#drags-from-and-to-the-rest-of-the-page)
+take the points of any drag library. A dropped item is a create carrying your record as
+`change.event`, through the same policies and handler.
+
 ### In your own views
 
 The built-in views use `useCalendarPointer`, and your views can too. Call it in the Renderer with

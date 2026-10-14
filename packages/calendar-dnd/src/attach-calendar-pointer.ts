@@ -18,7 +18,7 @@ import {
 } from "@moltenship/calendar-core";
 import type { WallTimeSnapOptions } from "@moltenship/calendar-temporal";
 
-import { autoScroll, clearOfEdges, scrollableAncestor } from "./auto-scroll";
+import { autoScroll, EdgeArming, scrollableAncestor } from "./auto-scroll";
 import {
   claimed,
   followersOf,
@@ -110,7 +110,10 @@ interface EventGesture<TEvent, TEventId extends EventId, TResourceId extends Res
   readonly original: CalendarEventPlacement<TResourceId>;
 }
 
-/** The copy of a moved event that follows the pointer outside the view: its size, and the press within it. */
+/**
+ * The copy of a moved event that follows the pointer outside the view: its size, and the press
+ * within it.
+ */
 interface Floating {
   readonly height: number;
   readonly offset: CalendarPoint;
@@ -133,11 +136,10 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
   /** Whether a follower claimed the pointer at the last preview. */
   claimed: boolean;
   /**
-   * Whether the edges may scroll the view. A drag that drop zones follow loses this when it leaves
-   * the view and gets it back once the pointer is clear of the edges, so coming back in across one
-   * doesn't scroll.
+   * When the edges may scroll the view. A drag that drop zones follow waits again when it leaves
+   * the view, so coming back in across an edge doesn't scroll; see `EdgeArming`.
    */
-  edgesScroll: boolean;
+  readonly edges: EdgeArming;
   /** Where a moved event's copy follows the pointer outside the view, once it has followers. */
   floating?: Floating;
   /** Drop zones outside the calendar following a move (`monitorCalendarDrags`). */
@@ -384,15 +386,15 @@ export function attachCalendarPointer<
   }
 
   /**
-   * A drag that drop zones follow scrolls the view only over it, and once back in, only after
-   * the pointer has been clear of its edges, so one on its way to a sidebar or back from it leaves
-   * the view be.
+   * A drag that drop zones follow scrolls the view only over it, and once back in, only after the
+   * pointer has been clear of its edges or rested at one, so one on its way to a sidebar or back
+   * from it leaves the view be.
    */
   function trackEdges(current: Session<TEvent, TEventId, TResourceId>): void {
     if (current.followers.length === 0) return;
     const { x, y } = current.point;
-    if (!overView(current.point)) current.edgesScroll = false;
-    else current.edgesScroll ||= clearOfEdges(current.scrollContainer, x, y);
+    if (!overView(current.point)) current.edges.disarm();
+    else current.edges.update(current.scrollContainer, x, y, performance.now());
   }
 
   function scrollFrame(): void {
@@ -400,7 +402,7 @@ export function attachCalendarPointer<
     if (current === null) return;
     // Over a drop zone outside the calendar, the calendar holds still.
     trackEdges(current);
-    const holds = current.claimed || !current.edgesScroll;
+    const holds = current.claimed || !current.edges.armed;
     if (
       !holds &&
       autoScroll(current.scrollContainer, current.point.x, current.point.y) &&
@@ -596,7 +598,7 @@ export function attachCalendarPointer<
       announcer: options.announcer,
       check: null,
       claimed: false,
-      edgesScroll: true,
+      edges: new EdgeArming(true),
       followers: noFollowers,
       gesture,
       ghost: new GhostLayer(region, options.ghostClassName),
