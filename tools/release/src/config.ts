@@ -30,9 +30,9 @@ export const publishedPackages: readonly PublishedPackage[] = [
   // Drags in from and out to the rest of the page (#237): startCalendarDrop, monitorCalendarDrags,
   // the region registry and edge arming took calendar-dnd from 33,255 raw and 9,868 gzip bytes to
   // 53,008 and 14,920. Followers that hear the preview and where a drop lands, and followers that
-  // only watch, for animations (the Motion guide), took it to 53,968 raw and 15,191 gzip bytes, 99%
-  // of the gzip budget. 16 KiB gzip leaves the usual headroom; raw is still under 54 KiB.
-  { directory: "calendar-dnd", budgets: { ".": { raw: 54 * KiB, gzip: 16 * KiB } } },
+  // only watch, for animations (the Motion guide), took it to 54,473 raw and 15,338 gzip bytes, 99%
+  // of both budgets. 56 and 16 KiB leave the usual headroom.
+  { directory: "calendar-dnd", budgets: { ".": { raw: 56 * KiB, gzip: 16 * KiB } } },
   // The dnd-kit adapter (#237): 14,526 raw and 4,945 gzip bytes, with dnd-kit left as imports.
   { directory: "calendar-dnd-kit", budgets: { ".": { raw: 15 * KiB, gzip: 5 * KiB } } },
   // Root's event source (#200), read through useSyncExternalStore, took calendar-react to 78,147 of

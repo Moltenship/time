@@ -447,7 +447,10 @@ describe("followers that watch", () => {
     const shown = { label: "range", rects: [boxOf(segment!)], validity: null };
     expect(previews.at(-1)).toEqual(shown);
 
+    // The release refreshes the landing without telling followers the same preview again.
+    const heard = previews.length;
     pointer("pointerup", element, xAt("2026-08-18"), yAt("11:30"));
+    expect(previews).toHaveLength(heard);
     expect(proposals).toHaveLength(1);
     expect(ends).toEqual([[false, shown]]);
   });
@@ -547,8 +550,23 @@ describe("followers that watch", () => {
       get: () => scrollTop,
       set: (value: number) => (scrollTop = Math.max(0, value)),
     });
-    const { element } = setup({ scrollContainer: { current: container } });
+    const { element, grid } = setup({ scrollContainer: { current: container } });
     const { previews } = watch();
+    // The columns move up as the container scrolls, as they would in a browser.
+    for (const column of grid.region.querySelectorAll<HTMLElement>("[data-date]")) {
+      const at = column.getBoundingClientRect();
+      column.getBoundingClientRect = () =>
+        ({
+          bottom: at.bottom - scrollTop,
+          height: at.height,
+          left: at.left,
+          right: at.right,
+          top: at.top - scrollTop,
+          width: at.width,
+          x: at.left,
+          y: at.top - scrollTop,
+        }) as DOMRect;
+    }
 
     pointer("pointerdown", element, 50, yAt("09:30"));
     pointer("pointermove", element, 300, 300);

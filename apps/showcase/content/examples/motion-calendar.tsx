@@ -44,7 +44,8 @@ function morph(update: () => void, [box, title]: readonly [Pair, Pair], swapAt: 
       // Base UI places a popover a task after it mounts.
       await new Promise((resolve) => setTimeout(resolve));
     },
-    // A new morph, such as opening again right after Escape, cuts the last one short.
+    // A new morph, such as opening again right after Escape, cuts the last one short. Start one
+    // per event: Motion runs morphs started in the same task as one, without the wait above.
     { interrupt: "immediate" },
   );
   const swap = { delay: swapAt, duration: 0.15 };
@@ -210,7 +211,9 @@ function DragCard({ within }: { readonly within: RefObject<HTMLElement | null> }
       }
       transition={spring}
       // Gone once it has landed, unless another drag picked it up again.
-      onAnimationComplete={() => landed && setHeld(null)}
+      onAnimationComplete={() => {
+        if (landed) setHeld((current) => (current === held ? null : current));
+      }}
     >
       <span className="line-clamp-2">{held.title}</span>
       {time !== null && <span className="truncate font-normal opacity-80">{time}</span>}

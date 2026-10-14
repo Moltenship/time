@@ -213,6 +213,23 @@ function floatingOf(element: HTMLElement, origin: CalendarPoint): Floating {
   return { height, offset, width };
 }
 
+/** Whether followers would hear nothing new: the same boxes, time range and policy answer. */
+function samePreview(a: CalendarDragPreview | null, b: CalendarDragPreview | null): boolean {
+  if (a === null || b === null) return a === b;
+  return (
+    a.label === b.label &&
+    a.validity === b.validity &&
+    a.rects.length === b.rects.length &&
+    a.rects.every(
+      (rect, index) =>
+        rect.x === b.rects[index]!.x &&
+        rect.y === b.rects[index]!.y &&
+        rect.width === b.rects[index]!.width &&
+        rect.height === b.rects[index]!.height,
+    )
+  );
+}
+
 /** A preview segment's box, for followers. */
 function viewportRect({ height, left, top, width }: GhostRect): CalendarRect {
   return { height, width, x: left, y: top };
@@ -412,8 +429,9 @@ export function attachCalendarPointer<
     // Creates, resizes and drags no one follows build nothing.
     if (current.followers.length === 0) return;
     const preview = shown();
+    const same = samePreview(current.shown, preview);
     current.shown = preview;
-    tellFollowers(current.followers, (follower) => follower.preview?.(preview));
+    if (!same) tellFollowers(current.followers, (follower) => follower.preview?.(preview));
   }
 
   /**
