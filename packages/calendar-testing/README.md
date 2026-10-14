@@ -12,9 +12,16 @@ the registry views, your policies and your save logic.
   controlled events inside React's `act`, applies the changes it saves, and records every
   `onEventChange` and `onEventChangeResult` call. `hydrateCalendar` renders on the server first and
   fails on a hydration mismatch.
+- **Queries and drivers.** Find events by title, ID or start, and day cells, time columns and
+  resources by the attributes views carry for the pointer layer. `calendar.keyboard` grabs, steps,
+  resizes, creates, drops and cancels through the keyboard grab mode; `calendar.pointer` drags with
+  a mouse, a pen or a finger where the page is laid out.
+- **Assertions.** `settled()` waits for pending changes; `announcements()` and `lastAnnouncement()`
+  read the `Announcer`; `placementOf(event)` says where an event shows, as comparable text.
 
 It uses only the public API of `@moltenship/calendar` and `@moltenship/calendar-recurrence`, and
-depends on no test runner: it works in Vitest with jsdom or happy-dom.
+depends on no test runner: it works in Vitest with jsdom or happy-dom, and in Vitest's browser
+mode, which the pointer drivers need: jsdom and happy-dom don't lay pages out.
 
 ```tsx
 import { buildEvent, cleanup, renderCalendar } from "@moltenship/calendar-testing";
@@ -29,17 +36,12 @@ test("a saved move reaches onEventChange", async () => {
     events: [buildEvent({ title: "Standup", start: "2026-10-08T09:00" })],
   });
 
-  await calendar.propose({
-    cause: "move",
-    eventId: "Standup",
-    proposed: {
-      kind: "timed",
-      start: Temporal.Instant.from("2026-10-08T10:00:00Z"),
-      end: Temporal.Instant.from("2026-10-08T11:00:00Z"),
-    },
-  });
+  // Focus the event, Space, four slots down, Enter.
+  await calendar.keyboard.moveEvent("Standup", { down: 4 });
+  await calendar.settled();
 
   expect(calendar.changes.map((change) => change.cause)).toEqual(["move"]);
+  expect(calendar.placementOf("Standup").range).toBe("2026-10-08T10:00:00Z/2026-10-08T11:00:00Z");
 });
 ```
 

@@ -36,3 +36,16 @@ export type {
   HydratedCalendarHarness,
   RenderCalendarOptions,
 } from "./harness";
+export type { CalendarInspection, ResourceQuery, SettleOptions } from "./inspect";
+export type {
+  ArrowPresses,
+  EventFocusOptions,
+  KeyModifiers,
+  KeyboardDriver,
+  KeyboardSteps,
+} from "./keyboard";
+export type { EventPlacementSummary } from "./placement";
+export { PointerLayoutError } from "./pointer";
+export type { Point, PointerDriver, PointerOptions } from "./pointer";
+export { CalendarQueryError, normalizeText } from "./queries";
+export type { CellQuery, EventQuery } from "./queries";

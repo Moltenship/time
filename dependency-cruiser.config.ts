@@ -54,10 +54,24 @@ export default {
       comment:
         "Copied registry source depends only on the calendar facade and its declared UI deps.",
       severity: "error",
-      from: { path: "(?:^|/)registry/", pathNot: "(?:^|/)tools/registry/" },
+      from: {
+        path: "(?:^|/)registry/",
+        pathNot: ["(?:^|/)tools/registry/", "(?:^|/)registry/tests/"],
+      },
       to: {
         path: ["^@moltenship/", "(?:^|/)(?:apps|benchmarks|packages|tools)/"],
         pathNot: "^@moltenship/calendar$",
+      },
+    },
+    {
+      name: "registry-tests-use-the-facade-and-the-harness",
+      comment:
+        "The registry's tests, which aren't copied, also use the test harness, as an app's tests would.",
+      severity: "error",
+      from: { path: "(?:^|/)registry/tests/", pathNot: "(?:^|/)tools/registry/" },
+      to: {
+        path: ["^@moltenship/", "(?:^|/)(?:apps|benchmarks|packages|tools)/"],
+        pathNot: "^@moltenship/calendar(?:-testing)?$",
       },
     },
     {

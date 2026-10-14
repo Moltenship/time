@@ -17,6 +17,7 @@
     "react-dom": "catalog:"
   },
   "devDependencies": {
+    "@moltenship/calendar-testing": "workspace:*",
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

@@ -63,7 +63,7 @@ The application owns facts. The engine derives render models. React binds those 
 2. Core never imports React, Jotai, dnd-kit, DOM types, or registry source.
 3. React bindings may import core, the Temporal utilities and React, but not default view source.
 4. The pointer adapter may import core, the Temporal utilities and React, but not the React bindings. It uses native Pointer Events, not a drag-and-drop library (ADR 0037). Of the published packages, only the facade imports it.
-5. Registry source imports only the `@moltenship/calendar` facade, other registry items, the npm packages `registry/package.json` declares, and stock shadcn components. It never imports a drag-and-drop library or `calendar-dnd`.
+5. Registry source imports only the `@moltenship/calendar` facade, other registry items, the npm packages `registry/package.json` declares, and stock shadcn components. It never imports a drag-and-drop library or `calendar-dnd`. Its tests, which aren't installed, may also use `calendar-testing`, as an app's tests would.
 6. The showcase and the demo import packages only through their public entry points, and registry source in place. In the full tier and the release gate, `vp run release:artifacts` runs the SSR fixture's tests and builds and serves the docs site in copies outside the workspace, installed from the dry run's packed tarballs as an end user would, and installs the built registry into clean Vite and Next.js apps on the same tarballs (#203).
 7. No package may deep-import another package's `src/` directory.
 8. The iCalendar package imports no other workspace, so applications can use it without the calendar (ADR 0151).
@@ -1360,7 +1360,16 @@ entry points: `createTestEnvironment` fixes `now`, the zone, the locale, week ru
 through `Root`'s props, as §15 requires, so nothing global is patched; builders make canonical
 events, resources, series and availability; `renderCalendar` renders an app's `Root` with
 controlled events and records `onEventChange` and `onEventChangeResult`; and `hydrateCalendar`
-fails on a hydration mismatch. It runs in jsdom and happy-dom, with no test runner dependency.
+fails on a hydration mismatch. Queries find events through the calendar's own snapshot and cells
+through the pointer layer's attributes (`data-date`, `data-all-day`, `data-resource-id`,
+`data-event-id`), so they hold in any language and for custom views that keep that contract, with
+time grids' events inside their columns. Its keyboard driver moves focus through `setFocus` and the
+roving tab stop and presses keys on the focused element inside `act`, through the grab mode; its
+pointer driver dispatches Pointer Events at measured points, a long press for touch, re-measuring
+the drop each frame, and needs layout and real timers, so it runs in a browser and throws in jsdom.
+No test runner dependency: `tools/a11y` runs the drivers on the registry's views in Chromium on
+every PR and in Firefox and WebKit in the full gate, and `registry/tests` uses the harness in
+jsdom.
 
 ### Browser verification
 

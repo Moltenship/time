@@ -18,6 +18,7 @@ import type {
   CalendarSemanticActions,
   CalendarTransactionResult,
   EventId,
+  PlainDateInterval,
   ResourceId,
 } from "@moltenship/calendar";
 import {
@@ -40,6 +41,7 @@ import {
   type DateTimeInput,
   type TestEnvironment,
 } from "./environment";
+import { createInspection, type CalendarInspection } from "./inspect";
 
 /** React's flag for test environments, which tells it to expect `act`. */
 const reactGlobals = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean };
@@ -191,6 +193,7 @@ interface Observed<
     TResourceId
   >;
   readonly pending: CalendarPendingChanges<TEvent, TEventId, TResourceId>;
+  readonly visibleRange: PlainDateInterval | null;
 }
 
 /** A rendered calendar, with what it reported and ways to drive it. */
@@ -202,7 +205,7 @@ export interface CalendarHarness<
   TFocus = CalendarFocus,
   TEventId extends EventId = EventId,
   TResourceId extends ResourceId = ResourceId,
-> {
+> extends CalendarInspection<TEventId, TResourceId> {
   readonly container: HTMLElement;
   readonly environment: TestEnvironment;
   /** Every change `onEventChange` received, in order, applied or not. */
@@ -432,8 +435,9 @@ function setUp<
   function Observer(): null {
     const context = Calendar.useCalendar();
     const pending = Calendar.useCalendarPendingChanges();
+    const visibleRange = Calendar.useVisibleRange();
     useLayoutEffect(() => {
-      observed = { context, pending };
+      observed = { context, pending, visibleRange };
     });
     return null;
   }
@@ -483,22 +487,40 @@ function setUp<
     ownsContainer: boolean,
   ): CalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId> {
     let active = true;
+    const ensureMounted = () => {
+      if (!active) throw new Error("The calendar was unmounted.");
+    };
+    const inspection = createInspection<TEventId, TResourceId>({
+      container,
+      ensureMounted,
+      focus: () => seen().context.state.focus as CalendarFocus | null,
+      meta: () =>
+        seen().context.meta as unknown as CalendarMeta<
+          unknown,
+          unknown,
+          never,
+          TEventId,
+          TResourceId
+        >,
+      pending: () => seen().pending as CalendarPendingChanges<unknown, TEventId, TResourceId>,
+      setFocus: (focus) => seen().context.actions.setFocus(focus as TFocus),
+      visibleRange: () => seen().visibleRange,
+    });
     const entry: Mounted = {
       async unmount() {
         if (!active) return;
         active = false;
+        inspection.dispose();
         mounted.delete(entry);
         await act(async () => root.unmount());
         if (ownsContainer) container.remove();
       },
     };
     mounted.add(entry);
-
-    const ensureMounted = () => {
-      if (!active) throw new Error("The calendar was unmounted.");
-    };
+    const { dispose: _dispose, ...inspect } = inspection;
 
     return Object.freeze({
+      ...inspect,
       get actions() {
         return seen().context.actions;
       },
