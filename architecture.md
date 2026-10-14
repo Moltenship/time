@@ -1325,7 +1325,7 @@ The announcer describes event title, proposed start and end (the registry's mess
 A rollback carries what `onEventChange` threw: the registry's English messages read an `AbortError`
 as the user cancelling, as when they dismiss the recurrence scope question, not as a failed save.
 
-Automated axe checks, keyboard integration tests, reduced-motion tests, and manual VoiceOver/NVDA scenarios are required before release. The manual passes haven't run yet (#186).
+Automated axe checks, keyboard integration tests, reduced-motion tests, and manual VoiceOver/NVDA scenarios are required before release. The manual passes haven't run yet (#186), and they don't block rc.1: the owner decided they can follow the release (14 October 2026).
 
 ## 18. Internationalization
 
