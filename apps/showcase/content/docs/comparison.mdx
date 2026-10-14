@@ -11,10 +11,10 @@ Claims about the other two link their sources in the notes at the end of the pag
 note means we found no such feature in their docs or code. If something here is wrong or out of
 date, [open an issue](https://github.com/Moltenship/time/issues).
 
-<Callout type="warn" title="Time is new, pre-1.0, and not on npm yet">
-  Time started in August 2026 and has one maintainer. Its packages haven't been published, so until
-  the first release you [run it from source](/docs/installation#run-from-source), and its API will
-  change before 1.0. FullCalendar has been developed since 2009 and react-big-calendar since 2015.
+<Callout type="warn" title="Time is new, and on npm as a release candidate">
+  Time started in August 2026 and has one maintainer. Its packages are on npm as a release candidate
+  for 1.0.0, its first release, and its API can still change before 1.0.0 if the release candidate
+  turns up problems. FullCalendar has been developed since 2009 and react-big-calendar since 2015.
   Both are downloaded more than a million times a week and run in production in many apps. Read the
   rows below with that in mind.
 </Callout>
@@ -140,14 +140,14 @@ polyfill, which only browsers without Temporal need.
 
 ## Maturity
 
-|                                | Time                        | FullCalendar                                                             | react-big-calendar                                |
-| ------------------------------ | --------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
-| Since                          | August 2026. No release yet | 2009[^fc-maturity]                                                       | 2015[^rbc-maturity]                               |
-| Latest release                 | None                        | 7.1.2, October 12, 2026[^fc-maturity]                                    | 1.20.0, June 1, 2026[^rbc-maturity]               |
-| Releases in the last 12 months | None                        | 8[^fc-maturity]                                                          | 2[^rbc-maturity]                                  |
-| Weekly npm downloads           | None, it isn't published    | 1.8 million for `@fullcalendar/react`[^fc-downloads]                     | 1.17 million[^rbc-downloads]                      |
-| GitHub                         | 1 contributor               | 20.7k stars, about 130 contributors[^fc-maturity]                        | 8.8k stars, about 240 contributors[^rbc-maturity] |
-| Support                        | GitHub issues               | Community support, and email support with a premium license[^fc-license] | GitHub issues[^rbc-maturity]                      |
+|                                | Time                                          | FullCalendar                                                             | react-big-calendar                                |
+| ------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
+| Since                          | August 2026                                   | 2009[^fc-maturity]                                                       | 2015[^rbc-maturity]                               |
+| Latest release                 | 1.0.0-rc.1, a release candidate, October 2026 | 7.1.2, October 12, 2026[^fc-maturity]                                    | 1.20.0, June 1, 2026[^rbc-maturity]               |
+| Releases in the last 12 months | 1, a release candidate                        | 8[^fc-maturity]                                                          | 2[^rbc-maturity]                                  |
+| Weekly npm downloads           | None yet, first published in October 2026     | 1.8 million for `@fullcalendar/react`[^fc-downloads]                     | 1.17 million[^rbc-downloads]                      |
+| GitHub                         | 1 contributor                                 | 20.7k stars, about 130 contributors[^fc-maturity]                        | 8.8k stars, about 240 contributors[^rbc-maturity] |
+| Support                        | GitHub issues                                 | Community support, and email support with a premium license[^fc-license] | GitHub issues[^rbc-maturity]                      |
 
 FullCalendar and react-big-calendar have years of bug reports behind them, answers on Stack
 Overflow, example projects and people who know them. Time has none of that yet.
@@ -165,11 +165,11 @@ drag and drop, and you don't need a year view, a timeline, keyboard editing, rec
 time zones beyond a localizer's default. It had two releases in the last twelve months, so expect
 fixes to come slowly.
 
-**Time** if you're on React 19 and can start on a pre-1.0 library run from source, and you want
-Temporal from end to end, view components you own as source, editing by keyboard with screen reader
+**Time** if you're on React 19 and can start on a release candidate, and you want Temporal from
+end to end, view components you own as source, editing by keyboard with screen reader
 announcements, edits to recurring series, availability and conflict rules, or resource views under
-the MIT license. Don't choose it yet if you need a stable API, a published package, or a framework
-other than React.
+the MIT license. Don't choose it yet if you need a stable release with a track record, or a
+framework other than React.
 
 [^fc-license]: FullCalendar's [pricing](https://fullcalendar.io/pricing), [purchase](https://fullcalendar.io/purchase) and [license](https://fullcalendar.io/license) pages, its [premium](https://fullcalendar.io/docs/premium) docs, and the [plugin index](https://fullcalendar.io/docs/plugin-index), which marks the premium plugins.
 

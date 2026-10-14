@@ -15,9 +15,9 @@ description: Requirements, packages, and Temporal setup.
 
 ## Install
 
-<Callout type="warn" title="Not on npm yet">
-  The packages haven't been published. The commands below are what you'll run after the first
-  release. To try Time now, [run it from source](#run-from-source).
+<Callout type="warn" title="Release candidate">
+  The packages are on npm as a release candidate for 1.0.0. The API can still change before 1.0.0 if
+  the release candidate turns up problems.
 </Callout>
 
 <Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
@@ -89,11 +89,6 @@ Make sure your `tsconfig.json` includes the `ESNext` library so `Temporal` is ty
 The packages render plain, unstyled elements. The styled views, toolbar and theme are source files
 that you add to your app and then own, the way shadcn/ui works. They install with the shadcn CLI
 from this site's registry. There's no other installer.
-
-<Callout title="After the first release">
-  `shadcn add` installs `@moltenship/calendar` from npm, so these commands work once the packages
-  are published. Until then, [run Time from source](#run-from-source).
-</Callout>
 
 <Steps>
 <Step>
@@ -180,8 +175,8 @@ changes you made.
 
 ## Run from source
 
-Until the first release, you can run Time and this documentation site from the repository. You need
-Node.js 26 and the [Vite+ CLI](https://viteplus.dev/guide/) (`vp`).
+To work on Time, or to try changes that aren't released yet, run it and this documentation site
+from the repository. You need Node.js 26 and the [Vite+ CLI](https://viteplus.dev/guide/) (`vp`).
 
 ```bash
 git clone https://github.com/Moltenship/time.git
