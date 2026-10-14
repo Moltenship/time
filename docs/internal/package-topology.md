@@ -57,8 +57,8 @@ packed code carries the `/*!` notice.
 | `fixtures` | Internal deterministic fixture generation | `calendar-core` |
 | `benchmark` | Internal core, React and recurrence benchmark runners | Core, React bindings, recurrence, Temporal utilities, and fixture tooling |
 | `demo` | The Google Calendar-style demo app | Public facade, `calendar-recurrence` and `calendar-dnd-kit` |
-| `registry-source` | Registry source, type-checked and tested in place | Public facade only |
-| `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, the dnd-kit adapter, registry source in place (`@registry/*`), and the demo's `App` by path (`apps/demo/src/app`); not in the manifest check yet |
+| `registry-source` | Registry source, type-checked and tested in place | Public facade only; its tests also use `calendar-testing` |
+| `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, the dnd-kit adapter, `calendar-testing`, registry source in place (`@registry/*`), and the demo's `App` by path (`apps/demo/src/app`); not in the manifest check yet |
 | `registry` | Internal shadcn build, validation and install test (`tools/registry`) | None |
 | `release` | Internal release tooling: size budgets, API reports, export checks, clean-consumer install, dry run, publish | None; it reads built and packed packages from disk |
 
@@ -101,7 +101,9 @@ ics (standalone: no workspace imports, no runtime dependencies) ─────�
 
 Registry item directories are consumer-owned source boundaries, not npm packages. Of our packages,
 they import only the `@moltenship/calendar` facade, which the `registry-source-uses-calendar-facade` rule enforces,
-and published packages must never import registry, application, benchmark, or tool source.
+and published packages must never import registry, application, benchmark, or tool source. The
+registry's tests aren't installed: they may also use `@moltenship/calendar-testing`, as an app's
+tests would (`registry-tests-use-the-facade-and-the-harness`).
 
 ## Enforcement
 

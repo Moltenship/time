@@ -18,6 +18,7 @@
     "react": "catalog:"
   },
   "devDependencies": {
+    "@moltenship/calendar-testing": "workspace:*",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "jsdom": "catalog:",

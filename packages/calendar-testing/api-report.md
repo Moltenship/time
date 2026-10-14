@@ -56,6 +56,12 @@ interface ApplyChangeOptions<TEvent, TEventId extends EventId = EventId, TResour
     cause: "create";
   }>, id: string) => TEvent;
 }
+interface ArrowPresses {
+  readonly up?: number;
+  readonly down?: number;
+  readonly left?: number;
+  readonly right?: number;
+}
 interface AvailabilityExceptionInput {
   readonly date: DateInput;
   readonly hours?: HoursInput | readonly HoursInput[];
@@ -71,7 +77,7 @@ interface CalendarChangeResult<TEvent, TEventId extends EventId = EventId, TReso
   readonly detail: CalendarProposalDetail;
   readonly result: CalendarTransactionResult<TEvent, TEventId, TResourceId>;
 }
-interface CalendarHarness<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
+interface CalendarHarness<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> extends CalendarInspection<TEventId, TResourceId> {
   readonly container: HTMLElement;
   readonly environment: TestEnvironment;
   readonly changes: readonly CalendarEventChange<TEvent, TEventId, TResourceId>[];
@@ -93,6 +99,34 @@ interface CalendarHarness<TEvent, TResource, TViewDef extends AnyCalendarView, T
 type CalendarHarnessFor<TCalendar> = TCalendar extends CalendarFactory<infer TEvent, infer TResource, infer TViewDef, infer TSelection, infer TFocus, infer TEventId, infer TResourceId> ? CalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId> : never;
 type CalendarHarnessRootProps<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId> = Partial<Omit<CalendarRootProps<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, HarnessOwnedProp>>;
 type CalendarHarnessUpdate<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> = Partial<Pick<RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, "applyChange" | "children" | "createEvent" | "events" | "messages" | "onEventChange" | "onEventChangeResult" | "readOnly" | "resources" | "rootProps">>;
+interface CalendarInspection<TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
+  getEvent(event: EventQuery, options?: {
+    readonly date?: DateInput;
+  }): HTMLElement;
+  getAllEvents(event: EventQuery): HTMLElement[];
+  queryEvent(event: EventQuery): HTMLElement | null;
+  getDayCell(date: DateInput, options?: {
+    readonly resourceId?: TResourceId | null;
+  }): HTMLElement;
+  getTimeColumn(date: DateInput, options?: {
+    readonly resourceId?: TResourceId | null;
+  }): HTMLElement;
+  getResource(resource: ResourceQuery<TResourceId>): HTMLElement;
+  placementOf(event: EventQuery): EventPlacementSummary<TEventId, TResourceId>;
+  settled(options?: SettleOptions): Promise<void>;
+  announcements(): readonly string[];
+  lastAnnouncement(): string | undefined;
+  readonly keyboard: KeyboardDriver<TResourceId>;
+  readonly pointer: PointerDriver<TResourceId>;
+}
+export declare class CalendarQueryError extends Error {
+  constructor(message: string);
+}
+interface CellQuery<TResourceId extends ResourceId = ResourceId> {
+  readonly date: DateInput;
+  readonly time?: Temporal.PlainTime | string;
+  readonly resourceId?: TResourceId | null;
+}
 type DateInput = Temporal.PlainDate | string;
 type DateTimeInput = Temporal.Instant | Temporal.ZonedDateTime | string;
 interface EventBaseInput<TData, TEventId extends EventId, TResourceId extends ResourceId> {
@@ -101,6 +135,24 @@ interface EventBaseInput<TData, TEventId extends EventId, TResourceId extends Re
   readonly resourceIds?: readonly TResourceId[];
   readonly data?: TData;
 }
+interface EventPlacementSummary<TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
+  readonly id: TEventId;
+  readonly title: string;
+  readonly kind: "timed" | "all-day" | "floating";
+  readonly start: string;
+  readonly end: string;
+  readonly range: string;
+  readonly wallRange: string;
+  readonly resourceIds: readonly TResourceId[];
+  readonly isPending: boolean;
+}
+type EventQuery = string | number | {
+  readonly id: EventId;
+} | {
+  readonly title: string;
+} | {
+  readonly start: DateTimeInput | Temporal.PlainDate;
+};
 type HarnessOwnedProp = "children" | "clock" | "events" | "now" | "onEventChange" | "onEventChangeResult";
 type HoursInput = string | {
   readonly start: Temporal.PlainTime | string;
@@ -113,6 +165,54 @@ export declare class HydrationMismatchError extends Error {
   readonly errors: readonly unknown[];
   readonly serverMarkup: string;
   constructor(errors: readonly unknown[], serverMarkup: string);
+}
+interface KeyModifiers {
+  readonly altKey?: boolean;
+  readonly ctrlKey?: boolean;
+  readonly metaKey?: boolean;
+  readonly shiftKey?: boolean;
+}
+interface KeyboardDriver<TResourceId extends ResourceId = ResourceId> {
+  focusEvent(event: EventQuery, options?: {
+    readonly date?: string | Temporal.PlainDate;
+  }): Promise<HTMLElement>;
+  focusCell(cell: CellQuery<TResourceId>): Promise<HTMLElement>;
+  press(key: string, modifiers?: KeyModifiers): Promise<void>;
+  arrows(presses: ArrowPresses): Promise<void>;
+  step(steps: KeyboardSteps): Promise<void>;
+  grab(): Promise<void>;
+  grabEdge(): Promise<void>;
+  drop(): Promise<void>;
+  cancel(): Promise<void>;
+  moveEvent(event: EventQuery, steps: KeyboardSteps): Promise<void>;
+  resizeEvent(event: EventQuery, steps: KeyboardSteps & {
+    readonly edge?: "end" | "start";
+  }): Promise<void>;
+  createEvent(cell: CellQuery<TResourceId>, steps?: KeyboardSteps): Promise<void>;
+}
+interface KeyboardSteps {
+  readonly across?: number;
+  readonly down?: number;
+}
+interface Point {
+  readonly x: number;
+  readonly y: number;
+}
+interface PointerDriver<TResourceId extends ResourceId = ResourceId> {
+  drag(from: Element | Point, to: Element | Point, options?: PointerOptions): Promise<void>;
+  moveEvent(event: EventQuery, to: CellQuery<TResourceId>, options?: PointerOptions): Promise<void>;
+  resizeEvent(event: EventQuery, to: CellQuery<TResourceId> & {
+    readonly edge?: "end" | "start";
+  }, options?: PointerOptions): Promise<void>;
+  createEvent(from: CellQuery<TResourceId>, to: CellQuery<TResourceId>, options?: PointerOptions): Promise<void>;
+}
+export declare class PointerLayoutError extends Error {
+  constructor(what: string);
+}
+interface PointerOptions {
+  readonly pointerType?: "mouse" | "pen" | "touch";
+  readonly steps?: number;
+  readonly timeout?: number;
 }
 interface RecurrenceInput {
   readonly rule?: string | RecurrenceRule;
@@ -147,6 +247,12 @@ interface ResourceInput<TData = null, TResourceId extends ResourceId = string> {
   readonly timeZone?: string;
   readonly availability?: ResourceAvailability;
   readonly data?: TData;
+}
+type ResourceQuery<TResourceId extends ResourceId = ResourceId> = TResourceId | {
+  readonly title: string;
+};
+interface SettleOptions {
+  readonly timeout?: number;
 }
 interface TestClock extends CalendarClock {
   advance(duration: Temporal.DurationLike | string): Temporal.Instant;
@@ -195,12 +301,14 @@ export declare function cleanup(): Promise<void>;
 export declare function createTestClock(start?: DateTimeInput): TestClock;
 export declare function createTestEnvironment(options?: TestEnvironmentOptions): TestEnvironment;
 export declare function hydrateCalendar<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId>(Calendar: CalendarFactory<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, options?: RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>): Promise<HydratedCalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>>;
+export declare function normalizeText(text: string | null | undefined): string;
 export declare function renderCalendar<TEvent, TResource, TViewDef extends AnyCalendarView, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId>(Calendar: CalendarFactory<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, options?: RenderCalendarOptions<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>): Promise<CalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>>;
 export declare function withRecurrence<TData, TEventId extends EventId, TResourceId extends ResourceId>(event: CalendarEvent<TData, TEventId, TResourceId>, recurrence: RecurrenceInput): RecurringCalendarEvent<TData, TEventId, TResourceId>;
 
 export {
   type AllDayEventInput,
   type ApplyChangeOptions,
+  type ArrowPresses,
   type AvailabilityExceptionInput,
   type AvailabilityInput,
   type CalendarChangeResult,
@@ -208,13 +316,25 @@ export {
   type CalendarHarnessFor,
   type CalendarHarnessRootProps,
   type CalendarHarnessUpdate,
+  type CalendarInspection,
+  type CellQuery,
   type DateInput,
   type DateTimeInput,
+  type EventPlacementSummary,
+  type EventQuery,
   type HoursInput,
   type HydratedCalendarHarness,
+  type KeyModifiers,
+  type KeyboardDriver,
+  type KeyboardSteps,
+  type Point,
+  type PointerDriver,
+  type PointerOptions,
   type RecurrenceInput,
   type RenderCalendarOptions,
   type ResourceInput,
+  type ResourceQuery,
+  type SettleOptions,
   type TestClock,
   type TestEnvironment,
   type TestEnvironmentOptions,

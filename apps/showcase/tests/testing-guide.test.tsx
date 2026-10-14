@@ -87,6 +87,38 @@ test("a slow save stays pending, then settles", async () => {
 });
 // #endregion pending
 
+// #region keyboard
+test("Space, arrow keys and Enter move the standup a day on and half an hour later", async () => {
+  const calendar = await renderCalendar(Calendar, {
+    environment,
+    events: [standup],
+    messages: calendarAnnouncements,
+  });
+
+  // Focus the event, Space, two slots down and a day across, then Enter.
+  await calendar.keyboard.moveEvent("Standup", { across: 1, down: 2 });
+  await calendar.settled();
+
+  expect(calendar.placementOf("Standup").wallRange).toBe("2026-10-09T09:30/2026-10-09T10:30");
+  expect(calendar.lastAnnouncement()).toBe("Moved Standup to Friday, October 9, 9:30 – 10:30 AM.");
+  expect(calendar.results[0]?.detail.input).toBe("keyboard");
+});
+// #endregion keyboard
+
+// #region queries
+test("queries find events by title, and cells by date", async () => {
+  const calendar = await renderCalendar(Calendar, { environment, events: [standup] });
+
+  const event = calendar.getEvent("Standup");
+  expect(calendar.getTimeColumn("2026-10-08").contains(event)).toBe(true);
+  expect(calendar.queryEvent("Lunch")).toBeNull();
+
+  // A slot exists only while it has focus, so the keyboard driver focuses it.
+  await calendar.keyboard.focusCell({ date: "2026-10-08", time: "14:00" });
+  expect(document.activeElement?.getAttribute("aria-label")).toBe("Thursday, October 8 at 2:00 PM");
+});
+// #endregion queries
+
 // #region hydrate
 test("the week renders on the server and hydrates without a mismatch", async () => {
   // Throws a HydrationMismatchError when the client renders something else.

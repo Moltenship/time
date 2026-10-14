@@ -15,6 +15,12 @@ section into the release's. See [docs/internal/releasing.md](./docs/internal/rel
   `renderCalendar` renders a `Root` with controlled events and records every `onEventChange` and
   `onEventChangeResult`; `hydrateCalendar` renders on the server, hydrates and fails on a mismatch.
   React DOM 19 is a peer (#45).
+- `@moltenship/calendar-testing` finds and drives what a calendar shows: `getEvent`, `getDayCell`,
+  `getTimeColumn` and `getResource` query by the calendar's own events and the pointer layer's
+  attributes; `calendar.keyboard` grabs, steps, resizes, creates, drops and cancels through the
+  keyboard grab mode; `calendar.pointer` drags with a mouse, pen or finger in a browser and throws a
+  `PointerLayoutError` in jsdom; `settled()`, `announcements()` and `placementOf()` wait for saves
+  and read what the calendar said and shows (#45).
 - `@moltenship/ics` is licensed `MIT AND Unicode-3.0`: its Windows time zone mapping comes from
   Unicode CLDR. The license text ships in the package's `THIRD-PARTY-NOTICES.md` and, as a legal
   comment that bundlers keep, in its built code.
