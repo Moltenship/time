@@ -202,17 +202,17 @@ it has focus, can take it too.
 
 <include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#keyboard</include>
 
-| Method                                                              | Keys                                                                                                   |
-| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `focusEvent(event, { date?, resourceId? })`                         | Focuses the event's part on `date`, the day it starts by default, in `resourceId`                      |
-| `focusCell({ date, time?, resourceId? })`                           | Focuses a day, or a slot with `time`                                                                   |
-| `press(key, modifiers?)`, `arrows({ up, down, left, right })`       | Any key on whatever has focus, or arrow keys by count                                                  |
-| `step({ across, down })`                                            | Arrow keys by direction                                                                                |
-| `grab()`, `grabEdge()`                                              | Space picks up the focused event or starts a create; Shift+Space picks up its end, and again its start |
-| `drop()`, `cancel()`                                                | Enter and Escape                                                                                       |
-| `moveEvent(event, { across?, down?, date?, resourceId? })`          | Focus, Space, the steps, Enter                                                                         |
-| `resizeEvent(event, { edge?, across?, down?, date?, resourceId? })` | Focus, Shift+Space (twice for the start), the steps, Enter                                             |
-| `createEvent(cell, steps?)`                                         | Focus the cell, Space, the steps, Enter                                                                |
+| Method                                                              | Keys                                                                                                     |
+| ------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| `focusEvent(event, { date?, resourceId? })`                         | Focuses the event's part on `date`, by default the day it starts or the first day shown, in `resourceId` |
+| `focusCell({ date, time?, resourceId? })`                           | Focuses a day, or a slot with `time`                                                                     |
+| `press(key, modifiers?)`, `arrows({ up, down, left, right })`       | Any key on whatever has focus, or arrow keys by count                                                    |
+| `step({ across, down })`                                            | Arrow keys by direction                                                                                  |
+| `grab()`, `grabEdge()`                                              | Space picks up the focused event or starts a create; Shift+Space picks up its end, and again its start   |
+| `drop()`, `cancel()`                                                | Enter and Escape                                                                                         |
+| `moveEvent(event, { across?, down?, date?, resourceId? })`          | Focus, Space, the steps, Enter                                                                           |
+| `resizeEvent(event, { edge?, across?, down?, date?, resourceId? })` | Focus, Shift+Space (twice for the start), the steps, Enter                                               |
+| `createEvent(cell, steps?)`                                         | Focus the cell, Space, the steps, Enter                                                                  |
 
 The focus methods throw when the view doesn't show what they name, and leave the calendar's focus
 as it was. A step `across` goes toward the end of the line: Arrow Right in a left-to-right
