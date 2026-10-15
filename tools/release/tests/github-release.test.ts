@@ -4,27 +4,12 @@ import { join } from "node:path";
 
 import { afterEach, beforeEach, describe, expect, test } from "vite-plus/test";
 
-import { createGitHubRelease, releaseNotes, releaseTag, type Exec } from "../src/github-release";
+import { createGitHubRelease, releaseTag, type Exec } from "../src/github-release";
 import { writeManifest, type ReleaseManifest } from "../src/manifest";
 
 const commit = "e5272cdbff099a2c0d8e06e3415f154eee2a22c5";
 
-const changelog = `# Changelog
-
-## Unreleased
-
-## 1.0.0 (2026-11-01)
-
-- Stable at last, with a note
-  that wraps.
-
-## 1.0.0-rc.1 (2026-10-14)
-
-The first release, wrapped at
-a hundred characters.
-
-- An item.
-`;
+const notes = "### Features\n\n- **react:** add a hook in #1\n";
 
 const manifest = (version: string): ReleaseManifest => ({
   status: "passed",
@@ -59,7 +44,6 @@ function fake(remote: Remote) {
     const [first, second] = args;
     if (command === "git" && first === "merge-base")
       return remote.onMain === false ? fail("") : ok();
-    if (command === "git" && first === "show") return ok(changelog);
     if (command === "gh" && first === "api" && second?.includes("/git/ref/tags/")) {
       if (remote.tagError) return fail(remote.tagError);
       if (!remote.tag) return fail("gh: Not Found (HTTP 404)");
@@ -99,6 +83,7 @@ describe("the GitHub release", () => {
     const lines: string[] = [];
     await createGitHubRelease({
       version,
+      notes,
       manifestFile,
       exec: gh.exec,
       log: (line) => lines.push(line),
@@ -110,8 +95,8 @@ describe("the GitHub release", () => {
     expect(releaseTag("1.0.0-rc.1")).toBe("v1.0.0-rc.1");
   });
 
-  test("tags the dry run's commit and marks a prerelease, with the changelog as notes", async () => {
-    const { created, notes, lines } = await release("1.0.0-rc.1", {});
+  test("tags the dry run's commit and marks a prerelease, with the notes it's given", async () => {
+    const { created, notes: written, lines } = await release("1.0.0-rc.1", {});
 
     expect(created()?.slice(3)).toEqual([
       "v1.0.0-rc.1",
@@ -123,15 +108,14 @@ describe("the GitHub release", () => {
       commit,
       "--prerelease",
     ]);
-    expect(notes()).toBe("The first release, wrapped at a hundred characters.\n\n- An item.\n");
+    expect(written()).toBe(notes);
     expect(lines.at(-1)).toContain(`Tagged ${commit} v1.0.0-rc.1`);
   });
 
   test("writes a stable release without the prerelease mark", async () => {
-    const { created, notes } = await release("1.0.0", {});
+    const { created } = await release("1.0.0", {});
 
     expect(created()).not.toContain("--prerelease");
-    expect(notes()).toBe("- Stable at last, with a note that wraps.\n");
   });
 
   test("keeps a tag already at the commit, through an annotated tag", async () => {
@@ -166,7 +150,7 @@ describe("the GitHub release", () => {
     ],
     ["a draft", "1.0.0-rc.1", { release: { isDraft: true } }, "A draft v1.0.0-rc.1 release"],
     ["a commit that isn't on main", "1.0.0-rc.1", { onMain: false }, "isn't on origin/main"],
-    ["a version without notes", "1.0.1", {}, "has no notes for 1.0.1"],
+    ["a version the dry run didn't check", "1.0.1", {}, "checked 1.0.0-rc.1, not 1.0.1"],
     [
       "a tag lookup GitHub can't answer",
       "1.0.0-rc.1",
@@ -181,96 +165,12 @@ describe("the GitHub release", () => {
     ],
   ])("stops on %s, before it writes anything", async (_, version, remote, message) => {
     const manifestFile = join(directory, "manifest.json");
-    await writeManifest(manifest(version), manifestFile);
+    await writeManifest(manifest("1.0.0-rc.1"), manifestFile);
     const gh = fake(remote);
 
     await expect(
-      createGitHubRelease({ version, manifestFile, exec: gh.exec, log: () => {} }),
+      createGitHubRelease({ version, notes, manifestFile, exec: gh.exec, log: () => {} }),
     ).rejects.toThrow(message);
     expect(gh.created()).toBeUndefined();
-  });
-
-  test("notes put each paragraph and list item on one line, since GitHub shows line breaks", () => {
-    const section = `The first release, wrapped at
-a hundred characters.
-
-- An item that
-  goes on, with \`code
-  across lines\`.
-  - A nested item
-    that wraps.
-- Another item.
-+ A plus item
-  that wraps.
-1. A numbered item
-   that wraps.
-
-### A heading
-A paragraph under it.
-
-\`\`\`sh
-vp run release:publish
-  --version 1.0.0
-\`\`\`
-After the fence.
-
-~~~
-tilde fence
-\`\`\`
-stays on
-its own line
-~~~
-
-| a | b |
-| - | - |
-| 1 | 2 |
-
-> A quote
-> on two lines.
-
-A setext heading
----
-<details>
-<summary>More</summary>
-</details>
-`;
-
-    expect(releaseNotes(section)).toBe(`The first release, wrapped at a hundred characters.
-
-- An item that goes on, with \`code across lines\`.
-  - A nested item that wraps.
-- Another item.
-+ A plus item that wraps.
-1. A numbered item that wraps.
-
-### A heading
-A paragraph under it.
-
-\`\`\`sh
-vp run release:publish
-  --version 1.0.0
-\`\`\`
-After the fence.
-
-~~~
-tilde fence
-\`\`\`
-stays on
-its own line
-~~~
-
-| a | b |
-| - | - |
-| 1 | 2 |
-
-> A quote
-> on two lines.
-
-A setext heading
----
-<details>
-<summary>More</summary>
-</details>
-`);
   });
 });

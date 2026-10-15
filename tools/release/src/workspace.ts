@@ -196,6 +196,15 @@ export function parseArguments(
   return { flags, positionals };
 }
 
+/** Runs one named step of a longer task, printing its name and how long it took. */
+export async function step<T>(name: string, action: () => Promise<T>): Promise<T> {
+  console.log(`\n▶ ${name}`);
+  const started = performance.now();
+  const result = await action();
+  console.log(`✓ ${name} (${((performance.now() - started) / 1000).toFixed(1)}s)`);
+  return result;
+}
+
 /** Runs `main` when the file is the entry script, printing the error and exiting non-zero on failure. */
 export function runMain(meta: ImportMeta, main: () => Promise<void>) {
   if (process.argv[1] !== meta.filename) return;

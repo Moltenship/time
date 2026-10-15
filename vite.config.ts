@@ -60,11 +60,11 @@ export default defineConfig({
         cache: false,
         dependsOn: ["registry:smoke", "gate:browsers", "gate:serial:full"],
       },
-      // The release workflow's gate before it publishes: the whole full tier, with a strict dry
-      // run of RELEASE_VERSION, its lanes one after the other. On a 4-core runner both at once ran
-      // the browser tests out of time: the serial lane's builds take every core. Locally,
-      // `RELEASE_VERSION=<version> vp run release:gate` reproduces it, and CI's on-demand
-      // release-gate job rehearses it. A full-only check joins it too: a serial step in
+      // The release's gate before it publishes: the whole full tier, with a strict dry run of
+      // RELEASE_VERSION, its lanes one after the other. On a 4-core runner both at once ran the
+      // browser tests out of time: the serial lane's builds take every core. `vp run release`
+      // runs it on the release commit, and CI's on-demand release-gate job rehearses it on a
+      // fresh runner, with Firefox. A full-only check joins it too: a serial step in
       // gate:serial:release, a browser run in gate:browsers, any other in this command.
       "release:gate": {
         command: "vp run registry:smoke && vp run gate:serial:release && vp run gate:browsers",
@@ -105,13 +105,11 @@ export default defineConfig({
       "release:treeshake": "vp run release#treeshake",
       "release:consumer": { command: "vp run release#consumer", cache: false },
       "release:dry-run": { command: "vp run release#dry-run", cache: false },
-      "release:version": { command: "vp run release#version", cache: false },
-      "release:publish": { command: "vp run release#publish", cache: false },
-      // After publishing (docs/internal/releasing.md): what npm serves against the dry run, then
-      // the tag and the GitHub release. The release workflow runs both. Keep them uncached, here
-      // and in tools/release: a cached task doesn't pass GH_REPO through to gh.
-      "release:published": { command: "vp run release#published", cache: false },
-      "release:github": { command: "vp run release#github", cache: false },
+      // The one release command, from the owner's laptop: `vp run release [<version>]
+      // [--dry-run]`. It bumps the versions, runs `release:gate` on the release commit, publishes
+      // the tarballs the gate checked, pushes, and writes the GitHub release
+      // (docs/internal/releasing.md). `/release` drives it (.claude/skills/release/SKILL.md).
+      release: { command: "vp run release#release", cache: false },
       // What uses the dry run's tarballs: the SSR fixture, the docs site, and #43's shadcn install
       // test, which needs the network. `vp run release:artifacts showcase` runs one.
       "release:artifacts": { command: "vp run release#artifacts", cache: false },

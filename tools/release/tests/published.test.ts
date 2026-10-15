@@ -20,9 +20,9 @@ const manifest: ReleaseManifest = {
   ],
 };
 
-const served = (integrity: string, tag = "1.0.0-rc.1", attestations: unknown = {}): Packument => ({
+const served = (integrity: string, tag = "1.0.0-rc.1", approver: unknown = "owner"): Packument => ({
   "dist-tags": { latest: "1.0.0-rc.1", next: tag },
-  versions: { "1.0.0-rc.1": { dist: { integrity, attestations } } },
+  versions: { "1.0.0-rc.1": { dist: { integrity }, _npmUser: { approver } } },
 });
 
 const both = new Map([
@@ -30,10 +30,10 @@ const both = new Map([
   ["@x/b", served("sha512-b")],
 ]);
 
-const options = { version: "1.0.0-rc.1", tag: "next", provenance: true };
+const options = { version: "1.0.0-rc.1", tag: "next", staged: true };
 
 describe("what npm serves after publishing", () => {
-  test("accepts the dry run's tarballs under their tag, with provenance", () => {
+  test("accepts the dry run's tarballs under their tag, each approved", () => {
     expect(checkPublished(manifest, options, both)).toEqual({
       problems: [],
       pending: [],
@@ -67,10 +67,10 @@ describe("what npm serves after publishing", () => {
       "@x/b@1.0.0-rc.1 on npm is sha512-other, not the tarball the dry run checked (sha512-b)",
     ],
     [
-      "no provenance",
+      "no approver",
       new Map([...both, ["@x/a", served("sha512-a", "1.0.0-rc.1", null)]]),
       options,
-      "@x/a@1.0.0-rc.1 has no provenance on npm",
+      "@x/a@1.0.0-rc.1 has no approver on npm",
     ],
     ["another version", both, { ...options, version: "1.0.0" }, "checked 1.0.0-rc.1, not 1.0.0"],
     [
@@ -85,10 +85,10 @@ describe("what npm serves after publishing", () => {
     );
   });
 
-  test("needs no provenance from a local publish", () => {
-    const local = new Map([...both, ["@x/a", served("sha512-a", "1.0.0-rc.1", null)]]);
+  test("needs no approver from a version that didn't go out staged", () => {
+    const direct = new Map([...both, ["@x/a", served("sha512-a", "1.0.0-rc.1", null)]]);
 
-    expect(checkPublished(manifest, { ...options, provenance: false }, local).problems).toEqual([]);
+    expect(checkPublished(manifest, { ...options, staged: false }, direct).problems).toEqual([]);
   });
 });
 
@@ -137,7 +137,7 @@ describe("waiting for npm", () => {
   test("takes the prerelease's next tag unless told otherwise, and never latest", async () => {
     const fetch = async (name: string) => both.get(name);
     await expect(
-      waitForPublished({ ...quiet, version: "1.0.0-rc.1", provenance: true, manifestFile, fetch }),
+      waitForPublished({ ...quiet, version: "1.0.0-rc.1", staged: true, manifestFile, fetch }),
     ).resolves.toBeUndefined();
     await expect(
       waitForPublished({ ...quiet, ...options, tag: "latest", manifestFile, fetch }),

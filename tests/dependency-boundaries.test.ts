@@ -392,7 +392,7 @@ describe("workspace boundaries", { concurrent: false }, () => {
         types: "./dist/index.d.mts",
         import: "./dist/index.mjs",
       });
-      // pnpm swaps workspace:* for the exact version, which `vp run release:version` moves.
+      // pnpm swaps workspace:* for the exact version, which `vp run release` moves.
       const temporalManifest = JSON.parse(
         await readFile(join(process.cwd(), "packages/calendar-temporal/package.json"), "utf8"),
       ) as { readonly version: string };

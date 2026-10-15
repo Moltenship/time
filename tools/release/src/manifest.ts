@@ -53,7 +53,10 @@ export interface PublishState {
   readonly version: string;
   readonly head: string;
   readonly clean: boolean;
-  /** Whether HEAD is on `origin/main`. */
+  /**
+   * Whether HEAD is on `origin/main`, or right on top of it: the release commit, which
+   * `vp run release` pushes after publishing.
+   */
   readonly onMain: boolean;
   /** The packages that should publish, by name. */
   readonly expectedPackages: readonly string[];
@@ -67,10 +70,10 @@ export function publishProblems(state: PublishState): string[] {
   if (valid(state.version) !== state.version)
     problems.push(`"${state.version}" isn't a semver version`);
   if (state.version === "0.0.0")
-    problems.push("0.0.0 is the unreleased placeholder; run vp run release:version first");
+    problems.push("0.0.0 is the unreleased placeholder; vp run release <version> sets a version");
   const { manifest } = state;
   if (!manifest) {
-    problems.push("No dry-run manifest. Run vp run release:dry-run first.");
+    problems.push("No dry-run manifest. vp run release runs the gate, which writes one.");
     return problems;
   }
   if (manifest.status !== "passed") problems.push("The dry run didn't pass");
@@ -83,7 +86,7 @@ export function publishProblems(state: PublishState): string[] {
   if (!manifest.clean) problems.push("The dry run ran on a working tree with changes");
   if (!state.clean) problems.push("The working tree has changes");
   if (!state.onMain)
-    problems.push("HEAD isn't on origin/main. Publish from main, after git fetch.");
+    problems.push("HEAD isn't on origin/main or right on top of it. Release from main.");
   const names = manifest.packages.map(({ name }) => name);
   const missing = state.expectedPackages.filter((name) => !names.includes(name));
   const extra = names.filter((name) => !state.expectedPackages.includes(name));

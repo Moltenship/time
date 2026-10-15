@@ -34,6 +34,8 @@ catalog:
   vite-plus: 1.1.0
   yaml: 2.9.1
   tsx: ^4.23.15
+  # Release notes from Conventional Commits, for `vp run release`.
+  changelogithub: 15.0.5
   # Bundles the built packages the way an app's bundler does, for the tree-shaking check.
   esbuild: 0.28.2
   fumadocs-core: 16.16.2

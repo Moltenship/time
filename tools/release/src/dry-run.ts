@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { relative } from "node:path";
 
 import { checkApiReports } from "./api";
@@ -8,23 +7,16 @@ import { manifestPath, removeManifest, writeManifest } from "./manifest";
 import { packPublishedPackages, type PackedTarball } from "./pack";
 import { buildRegistry } from "./registry";
 import { checkSizes } from "./size";
-import { changelogPath, changelogSection, sharedVersion } from "./version";
+import { sharedVersion } from "./version";
 import {
   gitState,
   parseArguments,
   readPublishedPackages,
   runMain,
   runOrThrow,
+  step,
   workspaceRoot,
 } from "./workspace";
-
-async function step<T>(name: string, action: () => Promise<T>): Promise<T> {
-  console.log(`\n▶ ${name}`);
-  const started = performance.now();
-  const result = await action();
-  console.log(`✓ ${name} (${((performance.now() - started) / 1000).toFixed(1)}s)`);
-  return result;
-}
 
 /**
  * Builds every published artifact from scratch, runs every release check on it, and writes a
@@ -65,11 +57,8 @@ export async function dryRun({
     if (requested !== undefined && requested !== shared) {
       const source = requestedFrom === "env" ? " (from RELEASE_VERSION)" : "";
       throw new Error(
-        `The packages are at ${shared}, not ${requested}${source}. Run vp run release:version ${requested} first.`,
+        `The packages are at ${shared}, not ${requested}${source}. vp run release ${requested} sets the version, then runs this.`,
       );
-    }
-    if (shared !== "0.0.0" && !changelogSection(await readFile(changelogPath, "utf8"), shared)) {
-      throw new Error(`CHANGELOG.md has no notes for ${shared}`);
     }
     console.log(`${packages.length} packages at ${shared}`);
     return shared;

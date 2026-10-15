@@ -1,8 +1,10 @@
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
 import { parse } from "yaml";
+
+import { firefoxJob } from "../src/release";
 
 interface Step {
   readonly name?: string;
@@ -13,158 +15,67 @@ interface Step {
 }
 
 interface Job {
+  readonly name?: string;
   readonly if?: string;
   readonly "runs-on"?: string;
   readonly "timeout-minutes"?: number;
-  readonly needs?: string;
   readonly environment?: string;
   readonly permissions?: Record<string, string>;
   readonly steps: readonly Step[];
 }
 
 interface Workflow {
-  readonly on: Record<
-    string,
-    {
-      readonly inputs?: Record<string, { readonly required?: boolean; readonly default?: unknown }>;
-    }
-  >;
   readonly permissions: Record<string, string>;
-  readonly concurrency: { readonly group: string; readonly "cancel-in-progress": boolean };
   readonly jobs: Record<string, Job>;
 }
 
-const workflowPath = resolve(import.meta.dirname, "../../../.github/workflows/release.yml");
-
-async function readWorkflow(): Promise<Workflow> {
-  return parse(await readFile(workflowPath, "utf8")) as Workflow;
-}
+const workflows = resolve(import.meta.dirname, "../../../.github/workflows");
 
 const runs = (job: Job | undefined) => job?.steps.map(({ run }) => run).filter(Boolean);
 
 describe("release workflow contract", () => {
-  test("runs only when started by hand; publishing is an explicit input that defaults to off", async () => {
-    const workflow = await readWorkflow();
-    const inputs = workflow.on.workflow_dispatch?.inputs;
+  test("no workflow publishes: the owner releases from a laptop with vp run release", async () => {
+    const files = await readdir(workflows);
 
-    expect(Object.keys(workflow.on)).toEqual(["workflow_dispatch"]);
-    expect(inputs?.version?.required).toBe(true);
-    expect(inputs?.tag?.required).toBe(false);
-    expect(inputs?.publish?.default).toBe(false);
-    expect(workflow.concurrency).toEqual({ group: "release", "cancel-in-progress": false });
+    expect(files).not.toContain("release.yml");
+    for (const file of files) {
+      const text = await readFile(resolve(workflows, file), "utf8");
+      // No npm credentials and no publish step. (Pullfrog's workflow mints an OIDC token of its
+      // own, so id-token alone says nothing.)
+      expect(text, file).not.toMatch(/NPM_TOKEN|NODE_AUTH_TOKEN|environment: npm/);
+      expect(text, file).not.toMatch(/\bpublish\b/);
+    }
   });
 
-  test("checks with read-only access, through the same tasks as a local release", async () => {
-    const workflow = await readWorkflow();
-    const verify = workflow.jobs.verify;
+  test("CI's on-demand release-gate job rehearses the gate on a fresh runner, read-only", async () => {
+    const ci = parse(await readFile(resolve(workflows, "ci.yml"), "utf8")) as Workflow;
+    const rehearsal = ci.jobs["release-gate"];
 
-    expect(workflow.permissions).toEqual({ contents: "read" });
-    expect(verify?.permissions).toBeUndefined();
-    expect(verify?.if).toBe("github.ref == 'refs/heads/main'");
-    expect(runs(verify)).toEqual([
+    expect(rehearsal?.if).toBe("github.event_name == 'workflow_dispatch'");
+    expect(rehearsal?.["runs-on"]).toBe("ubuntu-latest");
+    expect(rehearsal?.["timeout-minutes"]).toBe(30);
+    // Firefox and WebKit too: Playwright's Firefox doesn't start on macOS 27 (#182).
+    expect(runs(rehearsal)).toEqual([
       "vp install --frozen-lockfile",
       "vp exec --filter a11y playwright install --with-deps --only-shell chromium firefox webkit",
       "vp run release:gate",
       "vp run --last-details",
     ]);
-    const gate = verify?.steps.find(({ run }) => run === "vp run release:gate");
-    expect(gate?.env).toEqual({ RELEASE_VERSION: "${{ inputs.version }}" });
-  });
-
-  test("CI's on-demand release-gate job rehearses the same steps, and never publishes", async () => {
-    const ci = parse(
-      await readFile(resolve(import.meta.dirname, "../../../.github/workflows/ci.yml"), "utf8"),
-    ) as Workflow;
-    const rehearsal = ci.jobs["release-gate"];
-
-    expect(rehearsal?.if).toBe("github.event_name == 'workflow_dispatch'");
-    const verify = (await readWorkflow()).jobs.verify;
-    expect(runs(rehearsal)).toEqual(runs(verify));
-    // The same machine, time limit and setup.
-    expect(rehearsal?.["runs-on"]).toBe(verify?.["runs-on"]);
-    expect(rehearsal?.["timeout-minutes"]).toBe(verify?.["timeout-minutes"]);
-    const setup = (job: Job | undefined) =>
-      job?.steps.find(({ uses }) => uses?.startsWith("voidzero-dev/setup-vp@"));
-    expect(setup(rehearsal)).toEqual(setup(verify));
     expect(rehearsal?.environment).toBeUndefined();
     expect(rehearsal?.permissions).toBeUndefined();
     expect(ci.permissions).toEqual({ contents: "read" });
-    expect(JSON.stringify(rehearsal)).not.toContain("release:publish");
-  });
-
-  test("publishes the dry run's tarballs from a separate job that alone can sign provenance", async () => {
-    const { jobs } = await readWorkflow();
-    const publish = jobs.publish;
-
-    expect(Object.keys(jobs)).toEqual(["verify", "publish", "published", "github", "install"]);
-    expect(publish?.needs).toBe("verify");
-    expect(publish?.if).toBe("inputs.publish && github.ref == 'refs/heads/main'");
-    expect(publish?.environment).toBe("npm");
-    expect(publish?.permissions).toEqual({ contents: "read", "id-token": "write" });
-    expect(runs(publish)).toEqual([
-      "vp install --frozen-lockfile --ignore-scripts",
-      'vp run release:publish --version "$VERSION" ${TAG:+--tag "$TAG"} --provenance --yes',
-    ]);
-    const upload = jobs.verify?.steps.find(({ uses }) =>
-      uses?.startsWith("actions/upload-artifact@"),
-    );
-    const download = publish?.steps.find(({ uses }) =>
-      uses?.startsWith("actions/download-artifact@"),
-    );
-    expect(upload?.with).toMatchObject({
-      name: "release",
-      path: ".release/",
-      "include-hidden-files": true,
-    });
-    expect(download?.with).toMatchObject({ name: "release", path: ".release" });
-  });
-
-  test("after publishing, checks npm, then writes the GitHub release and installs from npm", async () => {
-    const { jobs } = await readWorkflow();
-    const { published, github, install } = jobs;
-    const download = (job: Job | undefined) =>
-      job?.steps.find(({ uses }) => uses?.startsWith("actions/download-artifact@"));
-
-    for (const job of [published, github, install]) {
-      expect(job?.if).toBe("inputs.publish && github.ref == 'refs/heads/main'");
-      expect(job?.environment).toBeUndefined();
-    }
-
-    expect(published?.needs).toBe("publish");
-    expect(published?.permissions).toBeUndefined();
-    expect(runs(published)).toEqual([
-      "vp install --frozen-lockfile --ignore-scripts",
-      'vp run release:published --version "$VERSION" ${TAG:+--tag "$TAG"} --provenance',
-    ]);
-    expect(download(published)?.with).toMatchObject({ name: "release", path: ".release" });
-
-    // The only job that writes: the tag and the release. Nothing in it can sign or publish.
-    expect(github?.needs).toBe("published");
-    expect(github?.permissions).toEqual({ contents: "write" });
-    expect(runs(github)).toEqual([
-      "vp install --frozen-lockfile --ignore-scripts",
-      'vp run release:github --version "$VERSION"',
-    ]);
-    expect(download(github)?.with).toMatchObject({ name: "release", path: ".release" });
-    expect(github?.steps.at(-1)?.env).toEqual({
-      VERSION: "${{ inputs.version }}",
-      GH_TOKEN: "${{ github.token }}",
-      GH_REPO: "${{ github.repository }}",
-    });
-
-    // Third-party code runs here (shadcn, the apps' installs and builds), so with read access only.
-    expect(install?.needs).toBe("published");
-    expect(install?.permissions).toBeUndefined();
-    expect(runs(install)).toEqual(["vp install --frozen-lockfile", "vp run registry:e2e"]);
-    expect(install?.steps.at(-1)?.env).toEqual({ REGISTRY_E2E_PACKAGES: "npm" });
-  });
-
-  test("passes inputs through the environment, never into the script text", async () => {
-    for (const step of Object.values((await readWorkflow()).jobs).flatMap(({ steps }) => steps)) {
+    for (const step of rehearsal?.steps ?? []) {
       expect(step.run ?? "").not.toContain("${{");
       if (step.uses?.startsWith("actions/checkout@")) {
         expect(step.with?.["persist-credentials"]).toBe(false);
       }
     }
+  });
+
+  test("the release command checks for CI's Firefox job by the name ci.yml gives it", async () => {
+    const ci = parse(await readFile(resolve(workflows, "ci.yml"), "utf8")) as Workflow;
+
+    expect(ci.jobs.browsers?.name).toBe(firefoxJob);
+    expect(runs(ci.jobs.browsers)).toContain("vp run browsers");
   });
 });

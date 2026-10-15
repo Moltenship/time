@@ -4,7 +4,6 @@ import { gt, valid } from "semver";
 
 import { npmRegistry } from "./config";
 import { distTag, manifestPath, readManifest, type ReleaseManifest } from "./manifest";
-import { parseArguments, runMain } from "./workspace";
 
 /** The parts of npm's package document this check reads. */
 export interface Packument {
@@ -12,13 +11,17 @@ export interface Packument {
   readonly versions?: Readonly<
     Record<
       string,
-      { readonly dist?: { readonly integrity?: string; readonly attestations?: unknown } }
+      {
+        readonly dist?: { readonly integrity?: string };
+        /** Who published it; `approver` is set when a staged version was approved. */
+        readonly _npmUser?: { readonly approver?: unknown };
+      }
     >
   >;
 }
 
 export interface PublishedCheck {
-  /** Wrong for good: other contents, no provenance, or the tag elsewhere. Waiting won't help. */
+  /** Wrong for good: other contents, no approver, or the tag elsewhere. Waiting won't help. */
   readonly problems: readonly string[];
   /** Not there yet: npm can take minutes to list a version it just took. */
   readonly pending: readonly string[];
@@ -28,14 +31,16 @@ export interface PublishedCheck {
 
 /**
  * Compares what npm serves with what the dry run checked: every package at the version, with the
- * tarball's integrity, under the dist-tag it went out with, and with provenance when it was signed.
+ * tarball's integrity, under the dist-tag it went out with, and with an approver when it went out
+ * through a staged approval, the trust evidence package managers rank highest (pnpm's
+ * `trustPolicy`).
  * `packuments` maps each package to npm's document, or undefined when npm doesn't list it yet.
  * npm writes a version and its tags in one document, so once it lists the version, a tag that
  * points elsewhere stays there, unless a newer release moved it on.
  */
 export function checkPublished(
   manifest: ReleaseManifest,
-  options: { readonly version: string; readonly tag: string; readonly provenance: boolean },
+  options: { readonly version: string; readonly tag: string; readonly staged: boolean },
   packuments: ReadonlyMap<string, Packument | undefined>,
 ): PublishedCheck {
   const problems: string[] = [];
@@ -48,17 +53,20 @@ export function checkPublished(
   for (const { name, integrity } of manifest.packages) {
     const id = `${name}@${options.version}`;
     const packument = packuments.get(name);
-    const dist = packument?.versions?.[options.version]?.dist;
-    if (!dist) {
+    const published = packument?.versions?.[options.version];
+    if (!packument || !published?.dist) {
       pending.push(`npm doesn't list ${id} yet`);
       continue;
     }
+    const { dist } = published;
     if (dist.integrity !== integrity) {
       problems.push(
         `${id} on npm is ${dist.integrity ?? "without an integrity"}, not the tarball the dry run checked (${integrity})`,
       );
     }
-    if (options.provenance && !dist.attestations) problems.push(`${id} has no provenance on npm`);
+    if (options.staged && !published._npmUser?.approver) {
+      problems.push(`${id} has no approver on npm, so it didn't go out through a staged approval`);
+    }
     const tagged = packument["dist-tags"]?.[options.tag];
     if (tagged === options.version) continue;
     if (tagged !== undefined && valid(tagged) && gt(tagged, options.version)) {
@@ -86,14 +94,13 @@ export async function fetchPackument(name: string): Promise<Packument | undefine
 
 /**
  * Waits until npm serves every package the dry run checked, and fails as soon as a package it
- * lists differs. Runs after the publish step, in the release workflow or by hand. A tarball npm
- * stored with other contents means the release must be deprecated and a new version released
- * (releasing.md).
+ * lists differs. `vp run release` runs it after publishing. A tarball npm stored with other
+ * contents means the release must be deprecated and a new version released (releasing.md).
  */
 export async function waitForPublished(options: {
   readonly version: string;
   readonly tag?: string;
-  readonly provenance: boolean;
+  readonly staged: boolean;
   readonly manifestFile?: string;
   readonly timeoutMs?: number;
   readonly intervalMs?: number;
@@ -107,7 +114,8 @@ export async function waitForPublished(options: {
     log = console.log,
   } = options;
   const manifest = await readManifest(options.manifestFile ?? manifestPath);
-  if (!manifest) throw new Error("No dry-run manifest. Get the release run's `release` artifact.");
+  if (!manifest)
+    throw new Error("No dry-run manifest. vp run release runs the gate, which writes one.");
   const tag = distTag(options.version, options.tag);
   const deadline = Date.now() + timeoutMs;
   let notes: readonly string[] = [];
@@ -127,7 +135,7 @@ export async function waitForPublished(options: {
     });
     const check = checkPublished(
       manifest,
-      { version: options.version, tag, provenance: options.provenance },
+      { version: options.version, tag, staged: options.staged },
       packuments,
     );
     if (check.problems.length > 0) {
@@ -148,29 +156,6 @@ export async function waitForPublished(options: {
   }
   for (const note of notes) log(note);
   log(
-    `npm serves ${manifest.packages.length} packages at ${options.version} as the dry run checked them, tagged ${tag}${options.provenance ? ", with provenance" : ""}.`,
+    `npm serves ${manifest.packages.length} packages at ${options.version} as the dry run checked them, tagged ${tag}${options.staged ? ", each approved" : ""}.`,
   );
 }
-
-runMain(import.meta, async () => {
-  const { flags } = parseArguments(
-    process.argv.slice(2),
-    ["provenance"],
-    ["version", "tag", "manifest"],
-  );
-  const value = (key: string) =>
-    typeof flags.get(key) === "string" ? (flags.get(key) as string) : undefined;
-  const version = value("version");
-  if (!version) {
-    throw new Error(
-      "Usage: vp run release:published --version <version> [--tag <tag>] [--provenance] [--manifest <path>]",
-    );
-  }
-  await waitForPublished({
-    version,
-    tag: value("tag"),
-    provenance: flags.has("provenance"),
-    // Another run's manifest, such as the `release` artifact of a release run.
-    manifestFile: value("manifest"),
-  });
-});
