@@ -93,8 +93,8 @@ issue's "Later" section when work starts.
 - Registry follow-ups from #43: a registry per release (`/r/<version>/…`) so `main` never asks for
   an unpublished runtime, `@moltenship` in shadcn's registry directory, installing from GitHub
 - Release follow-ups from #46: changesets or per-package changelogs if versions stop moving
-  together, git tags and GitHub releases from the publish step, npm staged publishing, budgets for
-  minified bundles with dependencies, the benchmark gate in the release run
+  together, npm staged publishing, budgets for minified bundles with dependencies, the benchmark
+  gate in the release run
 - Recurrence edge cases left after #160: Outlook's all-day flag at a UTC midnight and its MSN
   variant, overrides in a third zone, an override's own placement at the later 02:30 (#234)
 

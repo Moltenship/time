@@ -100,3 +100,6 @@ export const pointerAdapterPackage = "@moltenship/calendar-dnd";
 
 /** Where the dry run leaves its tarballs and manifest. Ignored by git. */
 export const releaseDirectory = ".release";
+
+/** The only registry the packages publish to, and the one the checks after publishing read. */
+export const npmRegistry = "https://registry.npmjs.org/";

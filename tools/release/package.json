@@ -2,7 +2,7 @@
   "name": "release",
   "version": "0.0.0",
   "private": true,
-  "description": "Release tooling: versions, size budgets, API reports, export checks, a clean-consumer install, the dry run and the publish step.",
+  "description": "Release tooling: versions, size budgets, API reports, export checks, a clean-consumer install, the dry run, the publish step, and the npm check and GitHub release after it.",
   "type": "module",
   "scripts": {
     "check": "vp check"

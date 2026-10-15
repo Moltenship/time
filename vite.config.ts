@@ -107,6 +107,11 @@ export default defineConfig({
       "release:dry-run": { command: "vp run release#dry-run", cache: false },
       "release:version": { command: "vp run release#version", cache: false },
       "release:publish": { command: "vp run release#publish", cache: false },
+      // After publishing (docs/internal/releasing.md): what npm serves against the dry run, then
+      // the tag and the GitHub release. The release workflow runs both. Keep them uncached, here
+      // and in tools/release: a cached task doesn't pass GH_REPO through to gh.
+      "release:published": { command: "vp run release#published", cache: false },
+      "release:github": { command: "vp run release#github", cache: false },
       // What uses the dry run's tarballs: the SSR fixture, the docs site, and #43's shadcn install
       // test, which needs the network. `vp run release:artifacts showcase` runs one.
       "release:artifacts": { command: "vp run release#artifacts", cache: false },
