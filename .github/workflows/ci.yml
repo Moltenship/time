@@ -9,8 +9,10 @@ on:
 permissions:
   contents: read
 
+# A dispatched run, such as the Firefox job `vp run release` waits for on macOS 27, has a group of
+# its own: a push to main doesn't cancel it, and it doesn't cancel the push's run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

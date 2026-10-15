@@ -84,8 +84,8 @@ The owner releases from their laptop with one command, `vp run release [<version
 or with the `/release` skill in Claude Code (`.claude/skills/release/SKILL.md`). It runs the
 command, relays npm's 2FA link and then rewrites the generated release notes. Only the owner can
 start the skill. Agents never publish, push tags, create GitHub releases or run `vp run release`
-on their own, though `vp run release --dry-run` is safe: it publishes and pushes nothing, and puts
-the checkout back. The runbook is `docs/internal/releasing.md`.
+on their own, though `vp run release --dry-run` is safe: it publishes and pushes nothing, commits
+on a detached HEAD and puts the checkout back. The runbook is `docs/internal/releasing.md`.
 
 The release notes start from the Conventional Commits since the last tag: `feat`, `fix` and `perf`
 PR titles become their lines, and `!` and `BREAKING CHANGE:` their breaking changes. So write PR

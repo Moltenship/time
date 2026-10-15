@@ -1,4 +1,5 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
+import { readFile, rm, writeFile } from "node:fs/promises";
 import { release as osRelease } from "node:os";
 import { join, relative } from "node:path";
 import { createInterface } from "node:readline/promises";
@@ -8,7 +9,7 @@ import { gt, valid } from "semver";
 
 import { releaseDirectory } from "./config";
 import { createGitHubRelease, releaseTag } from "./github-release";
-import { changedArtifacts, distTag, readManifest } from "./manifest";
+import { changedArtifacts, distTag, manifestPath, readManifest } from "./manifest";
 import {
   commitsBetween,
   generateNotes,
@@ -21,6 +22,7 @@ import { checkPublished, fetchPackument, waitForPublished, type Packument } from
 import { assertVersion, setVersion, sharedVersion } from "./version";
 import {
   gitState,
+  isOnMain,
   parseArguments,
   readPublishedPackages,
   run,
@@ -28,6 +30,7 @@ import {
   runOrThrow,
   step,
   workspaceRoot,
+  type RunOptions,
 } from "./workspace";
 
 /** The release commit's subject, a Conventional Commit as AGENTS.md asks. */
@@ -43,6 +46,8 @@ export interface Checkout {
   readonly head: string;
   /** HEAD's subject line. */
   readonly subject: string;
+  /** Whether HEAD changes nothing but the nine manifests' `version` lines. */
+  readonly bumpsOnly: boolean;
   readonly originMain: string;
   /** Whether HEAD is origin/main or one of its ancestors. */
   readonly headOnMain: boolean;
@@ -60,7 +65,7 @@ export type Stage =
   | { readonly kind: "bump" }
   /** The packages are at the version in `commit`, which no tag names yet: a release commit a stopped run left, or a version bump that landed on main. */
   | { readonly kind: "bumped"; readonly commit: string }
-  /** `v<version>` names `commit`: a run published from it and stopped later. */
+  /** `v<version>` names `commit`: a run tagged it and stopped later. */
   | { readonly kind: "tagged"; readonly commit: string };
 
 export interface StagePlan {
@@ -91,15 +96,23 @@ export function releaseStage(checkout: Checkout, version: string): StagePlan {
   const tagged = remoteTag ?? localTag;
   if (tagged !== undefined) {
     if (checkout.current !== version || !checkout.tagInHistory) {
-      blockers.push(
-        `${tag} exists already, at ${short(tagged)}. Pick a version above ${checkout.current}.`,
-      );
+      const above =
+        valid(checkout.current) && gt(checkout.current, version) ? checkout.current : version;
+      blockers.push(`${tag} exists already, at ${short(tagged)}. Pick a version above ${above}.`);
     }
     return { stage: { kind: "tagged", commit: tagged }, blockers, problems };
   }
 
   if (checkout.current === version) {
-    if (checkout.subject === releaseSubject(version) || checkout.head === checkout.originMain) {
+    if (checkout.subject === releaseSubject(version)) {
+      if (!checkout.bumpsOnly) {
+        blockers.push(
+          `HEAD is titled ${releaseSubject(version)}, but it changes more than the nine versions.`,
+        );
+      }
+      return { stage: { kind: "bumped", commit: checkout.head }, blockers, problems };
+    }
+    if (checkout.head === checkout.originMain) {
       return { stage: { kind: "bumped", commit: checkout.head }, blockers, problems };
     }
     blockers.push(
@@ -181,7 +194,7 @@ export const firefoxJob = "Firefox and WebKit";
 
 /**
  * Playwright's Firefox doesn't start on macOS 27 (#182), so `vp run browsers` leaves it out there,
- * as tools/a11y/vite.config.ts says. Then the release needs CI's run of it.
+ * by the same test as tools/a11y/vite.config.ts. Then the release needs CI's run of it.
  */
 const firefoxStarts = !(process.platform === "darwin" && Number(osRelease().split(".")[0]) >= 27);
 
@@ -238,9 +251,9 @@ async function waitFor(
 }
 
 /**
- * CI on the commit the release builds on: the push run green, and, where Firefox can't start
- * here, a dispatched run's Firefox job. Returns what's wrong now, and a wait for what still runs.
- * A release starts the dispatched run when there is none; a dry run only says so.
+ * CI on the commit the release builds on: green, and, where Firefox can't start here, a dispatched
+ * run's Firefox job too. Returns what's wrong now, and a wait for what still runs. A release starts
+ * the dispatched run when there is none and CI hasn't failed; a dry run only says so.
  */
 async function checkCi(
   commit: string,
@@ -261,7 +274,7 @@ async function checkCi(
     });
   }
 
-  if (!firefoxStarts) {
+  if (!firefoxStarts && problems.length === 0) {
     const firefox = await firefoxState(commit);
     if (firefox.state === "passed") console.log(`CI's Firefox job passed on ${short(commit)}.`);
     else if (firefox.state === "failed") {
@@ -298,6 +311,18 @@ async function checkCi(
   };
 }
 
+/** git, never asking for credentials in the terminal: a prompt nobody answers would hang. */
+const gitNetwork = (args: readonly string[], options: RunOptions = {}) =>
+  run("git", args, { ...options, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
+
+async function gitNetworkOrThrow(args: readonly string[], options: RunOptions = {}) {
+  const result = await gitNetwork(args, options);
+  if (result.code !== 0) {
+    throw new Error(`git ${args.join(" ")} failed (exit ${result.code})\n${result.stderr.trim()}`);
+  }
+  return result;
+}
+
 const revParse = async (ref: string) => (await runOrThrow("git", ["rev-parse", ref])).stdout.trim();
 
 const isAncestor = async (commit: string, of: string) =>
@@ -311,7 +336,7 @@ async function localTagCommit(tag: string): Promise<string | undefined> {
 
 /** The commit a tag on GitHub names, through an annotated tag; undefined without one. */
 async function remoteTagCommit(tag: string): Promise<string | undefined> {
-  const { stdout } = await runOrThrow("git", [
+  const { stdout } = await gitNetworkOrThrow([
     "ls-remote",
     "origin",
     `refs/tags/${tag}`,
@@ -322,18 +347,45 @@ async function remoteTagCommit(tag: string): Promise<string | undefined> {
   return peeled?.split("\t")[0];
 }
 
-async function readCheckout(version: string, current: string): Promise<Checkout> {
+/** Whether HEAD changes only the `version` line of each published manifest, as a bump does. */
+export async function bumpsOnly(
+  manifests: readonly string[],
+  root = workspaceRoot,
+): Promise<boolean> {
+  const numstat = await run("git", ["diff", "--numstat", "HEAD^", "HEAD"], { cwd: root });
+  if (numstat.code !== 0) return false;
+  const changed = numstat.stdout.trim().split("\n").filter(Boolean);
+  if (changed.length !== manifests.length) return false;
+  if (
+    !changed.every((line) => manifests.includes(line.split("\t")[2]!) && line.startsWith("1	1	"))
+  ) {
+    return false;
+  }
+  const diff = await runOrThrow("git", ["diff", "--unified=0", "HEAD^", "HEAD"], { cwd: root });
+  return diff.stdout
+    .split("\n")
+    .filter((line) => /^[-+](?![-+])/.test(line))
+    .every((line) => /^[-+]\s*"version": "[^"]+",?$/.test(line));
+}
+
+async function readCheckout(
+  version: string,
+  current: string,
+  manifests: readonly string[],
+): Promise<Checkout> {
   const { head, clean } = await gitState();
   const originMain = await revParse("origin/main");
   const tag = releaseTag(version);
   const localTag = await localTagCommit(tag);
   const remoteTag = await remoteTagCommit(tag);
   const tagged = remoteTag ?? localTag;
+  const subject = (await runOrThrow("git", ["log", "-1", "--format=%s"])).stdout.trim();
   return {
     branch: (await runOrThrow("git", ["branch", "--show-current"])).stdout.trim(),
     clean,
     head,
-    subject: (await runOrThrow("git", ["log", "-1", "--format=%s"])).stdout.trim(),
+    subject,
+    bumpsOnly: subject === releaseSubject(version) && (await bumpsOnly(manifests)),
     originMain,
     headOnMain: await isAncestor(head, originMain),
     current,
@@ -343,20 +395,33 @@ async function readCheckout(version: string, current: string): Promise<Checkout>
   };
 }
 
-/** npm and GitHub logins: who publishes, and whether gh can push and write the release. */
-async function accountProblems(): Promise<string[]> {
+/**
+ * npm and GitHub logins: who publishes, and whether gh and git can push and write the release.
+ * `gh` says whether gh is logged in at all; without it, nothing else on GitHub can be checked.
+ */
+async function accountProblems(): Promise<{ problems: string[]; gh: boolean }> {
   const problems: string[] = [];
   const user = await npmUser();
   if (user) console.log(`npm: logged in as ${user}.`);
   else problems.push("npm: not logged in. Run `vp exec pnpm login`, which opens the browser.");
+  const push = await gitNetwork([
+    "push",
+    "--dry-run",
+    "--quiet",
+    "origin",
+    "origin/main:refs/heads/main",
+  ]);
+  if (push.code !== 0) {
+    problems.push(`git: can't push to origin. ${push.stderr.trim().split("\n").at(-1) ?? ""}`);
+  }
   if ((await run("gh", ["auth", "status"])).code !== 0) {
     problems.push("GitHub: gh isn't logged in. Run `gh auth login`.");
-    return problems;
+    return { problems, gh: false };
   }
-  const push = await run("gh", ["api", "repos/{owner}/{repo}", "--jq", ".permissions.push"]);
-  if (push.stdout.trim() === "true") console.log("GitHub: gh can push to the repository.");
+  const write = await run("gh", ["api", "repos/{owner}/{repo}", "--jq", ".permissions.push"]);
+  if (write.stdout.trim() === "true") console.log("GitHub: gh and git can push to the repository.");
   else problems.push("GitHub: your gh login can't push to the repository.");
-  return problems;
+  return { problems, gh: true };
 }
 
 /** Whether main's rules let the release commit land by a direct push. Reads; changes nothing. */
@@ -377,11 +442,11 @@ async function pushProblems(): Promise<string[]> {
   return problems;
 }
 
-async function githubReleaseExists(tag: string): Promise<boolean> {
+/** Whether `tag` has a GitHub release; undefined when GitHub can't say. */
+async function githubReleaseExists(tag: string): Promise<boolean | undefined> {
   const result = await run("gh", ["release", "view", tag, "--json", "tagName"]);
   if (result.code === 0) return true;
-  if (/release not found/i.test(result.stderr)) return false;
-  throw new Error(`Can't tell whether the ${tag} release exists:\n${result.stderr.trim()}`);
+  return /release not found/i.test(result.stderr) ? false : undefined;
 }
 
 /**
@@ -391,7 +456,7 @@ async function githubReleaseExists(tag: string): Promise<boolean> {
  */
 async function chooseVersion(current: string, dryRun: boolean): Promise<string> {
   let suggestion: VersionSuggestion;
-  if (current !== "0.0.0" && !(await githubReleaseExists(releaseTag(current)))) {
+  if (current !== "0.0.0" && (await githubReleaseExists(releaseTag(current))) === false) {
     suggestion = {
       version: current,
       reason: `${releaseTag(current)} has no GitHub release yet: finish it`,
@@ -404,8 +469,11 @@ async function chooseVersion(current: string, dryRun: boolean): Promise<string> 
   const choices = [suggestion.version, ...suggestion.alternatives];
   if (!interactive()) {
     if (!dryRun) {
+      const others = suggestion.alternatives.length
+        ? `; or ${suggestion.alternatives.join(", ")}`
+        : "";
       throw new Error(
-        `Say which version: vp run release <version>. Suggested: ${suggestion.version} (${suggestion.reason}).`,
+        `Say which version: vp run release <version>. Suggested: ${suggestion.version} (${suggestion.reason})${others}.`,
       );
     }
     console.log(
@@ -417,66 +485,107 @@ async function chooseVersion(current: string, dryRun: boolean): Promise<string> 
   choices.forEach((choice, index) =>
     console.log(`  ${index + 1}) ${choice}${index === 0 ? " (suggested)" : ""}`),
   );
+  const answer = await ask(`Version [${suggestion.version}]: `);
+  if (answer === "") return suggestion.version;
+  return choices[Number(answer) - 1] ?? answer;
+}
+
+async function ask(question: string): Promise<string> {
   const prompt = createInterface({ input: process.stdin, output: process.stdout });
   try {
-    const answer = (await prompt.question(`Version [${suggestion.version}]: `)).trim();
-    if (answer === "") return suggestion.version;
-    return choices[Number(answer) - 1] ?? answer;
+    return (await prompt.question(question)).trim();
   } finally {
     prompt.close();
   }
 }
 
-const gateMarker = join(workspaceRoot, releaseDirectory, "gate.json");
+/** What this checkout's release has done, in `.release/release.json`. */
+interface ReleaseState {
+  readonly version: string;
+  /** The release commit the gate passed on. */
+  readonly commit: string;
+  /** The sha256 of `.release/manifest.json` that gate wrote. */
+  readonly manifest: string;
+  /** Set right before the first request that changes anything on npm. */
+  readonly publishing?: boolean;
+}
 
-/** Whether the release gate passed on `commit` for `version`, with its tarballs untouched since. */
-async function gatePassed(version: string, commit: string): Promise<boolean> {
-  const marker = await readFile(gateMarker, "utf8")
-    .then((text) => JSON.parse(text) as { version?: string; commit?: string })
+const statePath = join(workspaceRoot, releaseDirectory, "release.json");
+
+async function readState(): Promise<ReleaseState | undefined> {
+  return readFile(statePath, "utf8")
+    .then((text) => JSON.parse(text) as ReleaseState)
     .catch(() => undefined);
+}
+
+const writeState = (state: ReleaseState) =>
+  writeFile(statePath, `${JSON.stringify(state, null, 2)}\n`);
+
+async function manifestHash(): Promise<string | undefined> {
+  const text = await readFile(manifestPath).catch(() => undefined);
+  return text && createHash("sha256").update(text).digest("hex");
+}
+
+/**
+ * Whether the release gate passed on `commit` for `version`, and its manifest and tarballs are
+ * still the ones it checked: not rewritten since by another dry run.
+ */
+async function gatePassed(version: string, commit: string): Promise<boolean> {
+  const state = await readState();
+  if (state?.version !== version || state.commit !== commit) return false;
+  if ((await manifestHash()) !== state.manifest) return false;
   const manifest = await readManifest();
-  if (marker?.version !== version || marker.commit !== commit) return false;
   if (manifest?.version !== version || manifest.commit !== commit) return false;
   return (await changedArtifacts(manifest)).length === 0;
+}
+
+/** npm's document for each published package. */
+async function packuments(names: readonly string[]): Promise<Map<string, Packument | undefined>> {
+  const found = new Map<string, Packument | undefined>();
+  for (const name of names) found.set(name, await fetchPackument(name));
+  return found;
 }
 
 /** Whether npm serves every package at the version, with the gate's tarballs, already. */
 async function servedAlready(version: string, tag: string): Promise<boolean> {
   const manifest = await readManifest();
   if (!manifest) return false;
-  const packuments = new Map<string, Packument | undefined>();
-  for (const { name } of manifest.packages) packuments.set(name, await fetchPackument(name));
-  const check = checkPublished(manifest, { version, tag, staged: false }, packuments);
+  const found = await packuments(manifest.packages.map(({ name }) => name));
+  const check = checkPublished(manifest, { version, tag, staged: false }, found);
   return check.problems.length === 0 && check.pending.length === 0;
 }
 
 /**
  * Pushes the release commit to main and its tag. If main moved while the release published, it
- * merges main into the release commit, so the tag stays on the commit the gate checked, and
- * pushes that. A merge that conflicts stops, with the steps to finish by hand.
+ * merges the release into main as a PR would, so main's history stays first and the tag stays on
+ * the commit the gate checked, and pushes that. A merge that conflicts stops, with the steps.
  */
 async function push(tag: string, version: string): Promise<void> {
   const refs = ["HEAD:refs/heads/main", `refs/tags/${tag}`];
-  if ((await run("git", ["push", "--atomic", "origin", ...refs], { inherit: true })).code === 0) {
+  if ((await gitNetwork(["push", "--atomic", "origin", ...refs], { inherit: true })).code === 0) {
     return;
   }
-  await runOrThrow("git", ["fetch", "--quiet", "origin", "main"]);
-  if (await isAncestor("HEAD", "origin/main")) {
-    await runOrThrow("git", ["push", "origin", `refs/tags/${tag}`], { inherit: true });
+  await gitNetworkOrThrow(["fetch", "--quiet", "origin", "main"]);
+  if (await isOnMain("HEAD")) {
+    await gitNetworkOrThrow(["push", "origin", `refs/tags/${tag}`], { inherit: true });
     return;
   }
-  console.log("main moved while the release published: merging it into the release commit.");
-  const message = `chore(release): merge main into v${version}`;
-  const merged = await run("git", ["merge", "--no-ff", "-m", message, "origin/main"], {
-    inherit: true,
-  });
+  console.log("main moved while the release published: merging the release into it.");
+  const release = await revParse("HEAD");
+  await runOrThrow("git", ["reset", "--quiet", "--keep", "origin/main"]);
+  const merged = await run(
+    "git",
+    ["merge", "--no-ff", "-m", `chore(release): merge v${version} into main`, tag],
+    { inherit: true },
+  );
   if (merged.code !== 0) {
     await run("git", ["merge", "--abort"]);
+    await run("git", ["reset", "--quiet", "--keep", release]);
     throw new Error(
-      `main conflicts with the release commit. Merge it by hand (git merge origin/main), push (git push --atomic origin HEAD:main ${tag}), then run vp run release ${version} again to finish.`,
+      `The release conflicts with what main has gained since. Merge it by hand: git reset --keep origin/main, git merge --no-ff ${tag}, resolve and commit, git push --atomic origin HEAD:main ${tag}. Then run vp run release ${version} again to finish.`,
     );
   }
-  await runOrThrow("git", ["push", "--atomic", "origin", ...refs], { inherit: true });
+  await gitNetworkOrThrow(["push", "--atomic", "origin", ...refs], { inherit: true });
 }
 
 export interface ReleaseOptions {
@@ -486,7 +595,7 @@ export interface ReleaseOptions {
   readonly tag?: string;
   /** Everything but publishing, pushing and the GitHub release; the checkout ends as it began. */
   readonly dryRun: boolean;
-  /** Publish without typing the version. */
+  /** Release without typing the version to confirm. */
   readonly yes: boolean;
 }
 
@@ -495,8 +604,8 @@ export interface ReleaseOptions {
  * versions in a release commit; runs the release gate on it; tags it; stages the tarballs the
  * gate checked and approves them with one 2FA; pushes the commit and tag; checks what npm serves;
  * writes the GitHub release from the Conventional Commits; and installs the release from npm into
- * clean apps. Before publishing, a failure leaves the checkout as it was. After, run it again: it
- * picks up where it stopped. See docs/internal/releasing.md.
+ * clean apps. Until it starts publishing, a failure or an interrupt leaves the checkout as it
+ * was. After, run it again: it picks up where it stopped. See docs/internal/releasing.md.
  */
 export async function release(options: ReleaseOptions): Promise<void> {
   const { dryRun } = options;
@@ -509,75 +618,154 @@ export async function release(options: ReleaseOptions): Promise<void> {
     wouldStop.push(...problems);
   };
 
-  await runOrThrow("git", ["fetch", "--quiet", "origin", "main"]);
-  const current = sharedVersion(await readPublishedPackages());
+  // origin/main, and the tags the notes start from.
+  await gitNetworkOrThrow(["fetch", "--quiet", "--tags", "origin", "main"]);
+  const packages = await readPublishedPackages();
+  const manifests = packages.map(({ directory }) => join("packages", directory, "package.json"));
+  const current = sharedVersion(packages);
   const version = options.version ?? (await chooseVersion(current, dryRun));
   assertVersion(version);
   const npmTag = distTag(version, options.tag);
   const tag = releaseTag(version);
 
-  const { stage, base, ci } = await step(`Check what releasing ${version} needs`, async () => {
-    const checkout = await readCheckout(version, current);
-    const plan = releaseStage(checkout, version);
-    if (plan.blockers.length > 0 || !plan.stage) {
-      throw new Error(`Not releasing ${version}:\n- ${plan.blockers.join("\n- ")}`);
-    }
-    const found = plan.stage;
-    console.log(
-      found.kind === "bump"
-        ? `${current} → ${version}, from ${short(checkout.head)}. Prereleases go to npm's "${npmTag}" tag.`
-        : `${version} is bumped at ${short(found.commit)}${found.kind === "tagged" ? `, tagged ${tag}` : ""}: picking up from there.`,
-    );
-    report(plan.problems);
-    report(await accountProblems());
-    report(await pushProblems());
-    // CI checks the newest commit of the release that's on GitHub.
-    const ciCommit =
-      found.kind === "bump"
-        ? checkout.head
-        : (await isAncestor(found.commit, "origin/main"))
-          ? found.commit
-          : await revParse(`${found.commit}^`);
-    const checked = await checkCi(ciCommit, dryRun);
-    report(checked.problems);
-    return { stage: found, base: checkout.head, ci: checked };
-  });
+  const { stage, checkout, publishing, ci } = await step(
+    `Check what releasing ${version} needs`,
+    async () => {
+      const read = await readCheckout(version, current, manifests);
+      const plan = releaseStage(read, version);
+      if (plan.blockers.length > 0 || !plan.stage) {
+        throw new Error(`Not releasing ${version}:\n- ${plan.blockers.join("\n- ")}`);
+      }
+      const found = plan.stage;
+      const commit = found.kind === "bump" ? read.head : found.commit;
+      const served = [
+        ...(await packuments(packages.map(({ manifest }) => manifest.name))).values(),
+      ].map((packument) => packument?.versions?.[version] !== undefined);
+      const state = await readState();
+      // Once anything may be on npm, a rerun only finishes: CI and the gate passed before.
+      const started =
+        read.remoteTag !== undefined ||
+        served.some(Boolean) ||
+        (state?.publishing === true && state.version === version && state.commit === commit);
+      console.log(
+        found.kind === "bump"
+          ? `${current} → ${version}, from ${short(read.head)}, to npm's "${npmTag}" tag.`
+          : `${version} is bumped at ${short(found.commit)}${found.kind === "tagged" ? `, tagged ${tag}` : ""}${started ? ", and publishing has started" : ""}: picking up from there.`,
+      );
+      report(plan.problems);
+      const accounts = await accountProblems();
+      report(accounts.problems);
+      if (!served.every(Boolean) && !interactive()) {
+        report([
+          "npm's 2FA needs a terminal: run this in one, or through .claude/skills/release/terminal.sh.",
+        ]);
+      }
+      if (!accounts.gh) {
+        report(["GitHub: main's rules and CI can't be checked without gh."]);
+        return { stage: found, checkout: read, publishing: started, ci: undefined };
+      }
+      report(await pushProblems());
+      if (started) {
+        return { stage: found, checkout: read, publishing: started, ci: undefined };
+      }
+      // CI checks the newest commit of the release that's on GitHub.
+      const ciCommit =
+        found.kind === "bump" || (await isOnMain(commit)) ? commit : await revParse(`${commit}^`);
+      const checked = await checkCi(ciCommit, dryRun);
+      report(checked.problems);
+      return { stage: found, checkout: read, publishing: started, ci: checked };
+    },
+  );
 
+  if (!dryRun && !options.yes && (await ask(`Type ${version} to release it: `)) !== version) {
+    throw new Error("Not confirmed. Nothing changed.");
+  }
+
+  const branch = checkout.branch;
   const created = { commit: false, tag: false };
-  let undo = true;
-  let commit: string;
+  let commit = stage.kind === "bump" ? "" : stage.commit;
   let notes: string;
+  // A dry run always ends as it began; a release, until it starts publishing.
+  let undo = dryRun || !publishing;
+  let restoring: Promise<void> | undefined;
+  /** Puts the checkout back as it was; nothing has left this machine. Runs once. */
+  const restore = () =>
+    (restoring ??= (async () => {
+      const done: string[] = [];
+      if (created.tag && (await run("git", ["tag", "-d", tag])).code === 0) done.push("tag");
+      if (created.commit) {
+        // A dry run committed on a detached HEAD; a release on the branch, which goes back only
+        // if nothing else landed on it meanwhile.
+        const back = dryRun
+          ? await run(
+              "git",
+              branch ? ["switch", "--quiet", branch] : ["checkout", "--quiet", checkout.head],
+            )
+          : (await revParse("HEAD")) === commit
+            ? await run("git", ["reset", "--quiet", "--keep", checkout.head])
+            : { code: 1, stdout: "", stderr: "HEAD moved past the release commit" };
+        if (back.code === 0) done.push("release commit");
+        else console.error(`Couldn't undo the release commit: ${back.stderr.trim()}`);
+      }
+      if (done.length > 0) console.log(`\nUndid the local ${done.join(" and ")}.`);
+    })());
+  const interrupted = (signal: NodeJS.Signals) => {
+    if (!undo) process.exit(signal === "SIGINT" ? 130 : 143);
+    void restore().finally(() => process.exit(signal === "SIGINT" ? 130 : 143));
+  };
+  process.on("SIGINT", interrupted);
+  process.on("SIGTERM", interrupted);
+
   try {
     if (stage.kind === "bump") {
       commit = await step(`Bump the packages to ${version}`, async () => {
-        const files = await setVersion(version);
-        await runOrThrow("git", ["add", "--", ...files]);
-        await runOrThrow("git", ["commit", "--quiet", "-m", releaseSubject(version)], {
-          inherit: true,
-        });
+        // A dry run leaves the branch where it is.
+        if (dryRun) await runOrThrow("git", ["switch", "--quiet", "--detach"]);
+        try {
+          await setVersion(version);
+          await runOrThrow("git", ["add", "--", ...manifests]);
+          await runOrThrow("git", ["commit", "--quiet", "-m", releaseSubject(version)], {
+            inherit: true,
+          });
+        } catch (error) {
+          await run("git", ["reset", "--quiet", "--", ...manifests]);
+          await run("git", ["checkout", "--", ...manifests]);
+          if (dryRun)
+            await run(
+              "git",
+              branch ? ["switch", "--quiet", branch] : ["checkout", "--quiet", checkout.head],
+            );
+          throw error;
+        }
         created.commit = true;
         return revParse("HEAD");
       });
-    } else commit = stage.commit;
+    }
 
     await step("Release gate", async () => {
       if (await gatePassed(version, commit)) {
         console.log(`The gate passed on ${short(commit)} already; its tarballs are unchanged.`);
         return;
       }
-      if (commit !== (await revParse("HEAD"))) {
+      if (publishing) {
         throw new Error(
-          `${tag} is at ${short(commit)}, and this checkout has no passing gate for it. Only the checkout that started that release can finish it; to release what's here, pick a version above ${current}.`,
+          `${version} is partly or fully published from ${short(commit)}, but this checkout's .release/ no longer holds what its gate checked, so npm can't be checked against it. Finish from the checkout that published it.`,
         );
       }
+      if (commit !== (await revParse("HEAD"))) {
+        throw new Error(
+          `${tag} is at ${short(commit)}, and this checkout has no passing gate for it. Only the checkout that started that release can finish it.`,
+        );
+      }
+      await rm(statePath, { force: true });
       await runOrThrow("vp", ["run", "release:gate"], {
         env: { ...process.env, RELEASE_VERSION: version },
         inherit: true,
       });
-      await writeFile(gateMarker, `${JSON.stringify({ version, commit }, null, 2)}\n`);
+      await writeState({ version, commit, manifest: (await manifestHash())! });
     });
 
-    if (!dryRun) await step("Wait for CI", ci.wait);
+    if (!dryRun && ci) await step("Wait for CI", ci.wait);
 
     await step(`Tag ${short(commit)} ${tag}`, async () => {
       if ((await localTagCommit(tag)) === commit) {
@@ -600,7 +788,7 @@ export async function release(options: ReleaseOptions): Promise<void> {
 
     if (dryRun) {
       await step("Check what publishing would do", async () => {
-        report(await publish({ version, tag: options.tag, yes: true, dryRun: true }));
+        report(await publish({ version, tag: options.tag, dryRun: true }));
       });
       console.log(`\nDry run of ${version} done. Nothing was published or pushed.`);
       console.log(
@@ -615,22 +803,24 @@ export async function release(options: ReleaseOptions): Promise<void> {
     if (await servedAlready(version, npmTag)) {
       console.log(`\nnpm serves all ${version} packages already; not publishing again.`);
     } else {
-      // From here on, a rerun picks up where this one stopped.
-      undo = false;
-      await step("Publish to npm", () => publish({ version, tag: options.tag, yes: options.yes }));
+      await step("Publish to npm", () =>
+        publish({
+          version,
+          tag: options.tag,
+          // From the first upload on, a rerun picks up where this one stopped.
+          onUpload: async () => {
+            undo = false;
+            const state = await readState();
+            if (state) await writeState({ ...state, publishing: true });
+          },
+        }),
+      );
     }
     undo = false;
   } finally {
-    if (undo) {
-      // Nothing has left this machine: put the checkout back as it was.
-      if (created.tag) await run("git", ["tag", "-d", tag]);
-      if (created.commit) await runOrThrow("git", ["reset", "--quiet", "--keep", base]);
-      if (created.tag || created.commit) {
-        console.log(
-          `\nUndid the local ${[created.commit && "release commit", created.tag && "tag"].filter(Boolean).join(" and ")}.`,
-        );
-      }
-    }
+    if (undo) await restore();
+    process.off("SIGINT", interrupted);
+    process.off("SIGTERM", interrupted);
   }
 
   await step(`Push main and ${tag}`, () => push(tag, version));

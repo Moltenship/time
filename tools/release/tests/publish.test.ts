@@ -13,7 +13,13 @@ import {
   type PublishState,
   type ReleaseManifest,
 } from "../src/manifest";
-import { planStage, publish, stagedFromSummary, type StagedVersion } from "../src/publish";
+import {
+  planStage,
+  printedJson,
+  publish,
+  stagedFromSummary,
+  type StagedVersion,
+} from "../src/publish";
 import { parseArguments } from "../src/workspace";
 
 const manifest: ReleaseManifest = {
@@ -128,7 +134,6 @@ describe("the publish guard", () => {
       const missing = join(resolve(import.meta.dirname, ".."), "tests/no-such-manifest.json");
       const attempt = publish({
         version: "1.0.0",
-        yes: true,
         manifestFile: missing,
         log: (line) => lines.push(line),
       });
@@ -192,6 +197,15 @@ describe("staged publishing", () => {
     });
     expect(planStage([item({ tag: "latest" })], wanted).action).toBe("conflict");
     expect(planStage([item({ shasum: undefined })], wanted).action).toBe("conflict");
+  });
+
+  test("reads the JSON pnpm printed, past anything its reporter printed first", () => {
+    expect(printedJson('Progress: resolved 1\n[\n  { "id": "a" }\n]\n', "x")).toEqual([
+      { id: "a" },
+    ]);
+    expect(() => printedJson("Staged.", "pnpm stage list")).toThrow(
+      "pnpm stage list didn't print JSON",
+    );
   });
 
   test("reads the stage id pnpm printed for the tarball", () => {

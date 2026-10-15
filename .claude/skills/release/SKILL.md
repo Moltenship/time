@@ -33,22 +33,25 @@ lists. A prerelease such as `1.0.0-rc.2` goes to npm's `next` tag and stays off 
 
 ## 3. A dry run, when asked
 
-With `--dry-run` in `$ARGUMENTS`, run `vp run release <version> --dry-run` (about 4 minutes; give
-it a 10-minute timeout) and report its last lines: what a release would have stopped at, and the
-generated notes in `.release/notes.md`. It bumps, gates, tags and writes the notes, then undoes the
-commit and tag; it publishes, pushes and releases nothing. Stop there.
+With `--dry-run` in `$ARGUMENTS`, run `vp run release <version> --dry-run` in the background
+(about 4 minutes; allow it two hours, as a timeout that kills it would cut the gate short) and
+watch it, as in step 4. Then report its last lines: what a release would have stopped at, and the
+generated notes in `.release/notes.md`. It bumps on a detached HEAD, gates, tags and writes the
+notes, then undoes the commit and tag; it publishes, pushes and releases nothing. Stop there.
 
 ## 4. The release
 
-Start it in the background, in a terminal, so pnpm can ask for npm's 2FA:
+Start it in the background, in a terminal, so pnpm can ask for npm's 2FA. Allow it two hours
+(the Bash tool's `timeout: 7200000`): a timeout that kills it mid-release leaves work to finish.
 
 ```sh
 mkdir -p .release && .claude/skills/release/terminal.sh vp run release <version> --yes > .release/release.log 2>&1
 ```
 
 `--yes` skips the prompt that asks to type the version, since you can't type into it. The command
-takes 5 to 10 minutes: the checks, the release gate (about 3 minutes), CI's Firefox job when it
-has to start one (macOS 27 can't run Firefox, #182), then publishing.
+takes 10 to 30 minutes: the checks, the release gate (about 3 minutes), CI's Firefox job when it
+has to start one (macOS 27 can't run Firefox, #182; about 10 minutes), publishing, npm listing the
+packages, and the install test.
 
 Watch `.release/release.log` until the command ends (a Monitor on its last lines, or a check
 every minute). While it runs:
@@ -58,13 +61,15 @@ every minute). While it runs:
   tell the owner right away: open the URL, sign in if asked, and approve with their passkey or
   security key. If npm asks again, relay each new URL the same way. pnpm waits a few minutes for
   an approval, then fails with `ERR_PNPM_WEBAUTH_TIMEOUT`; run the command again.
-- **A one-time password instead.** If the log asks for an OTP, ask the owner for it, then stop the
-  run and start it again with `PNPM_CONFIG_OTP=<code>` in front of `vp run release`: a rerun picks
-  up the staged packages.
-- **It failed.** Read the error. Before publishing, the command has put the checkout back as it
-  was: fix what it names (a login, red CI, a gate failure, which needs a PR on `main`) and run it
-  again. After publishing started, run the same command again: it picks up where it stopped. Don't
-  improvise git, npm or gh commands to finish a release by hand; tell the owner what's wrong.
+- **A one-time password instead.** If the log asks for a one-time password, you can't answer it:
+  the code expires before a rerun reaches the prompt. Stop the run and ask the owner to run
+  `vp run release <version>` in their own terminal and type the code there. It picks up the staged
+  packages; come back for step 5 once it says `Released`.
+- **It failed.** Read the error. Before its first upload to npm, the command has put the checkout
+  back as it was: fix what it names (a login, red CI, a gate failure, which needs a PR on `main`)
+  and run it again. After the upload started, run the same command again: it picks up where it
+  stopped, and skips the CI checks and the gate. Don't improvise git, npm or gh commands to finish
+  a release by hand; tell the owner what's wrong.
 
 It ends with `Released <version>.` By then npm serves all nine packages with the gate's tarballs,
 `main` and `v<version>` are pushed, the GitHub release has the generated notes, and the release

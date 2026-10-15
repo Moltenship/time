@@ -1,7 +1,13 @@
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { describe, expect, test } from "vite-plus/test";
 
 import { suggestVersion } from "../src/notes";
+import { runOrThrow } from "../src/workspace";
 import {
+  bumpsOnly,
   ciState,
   pushRuleProblems,
   releaseStage,
@@ -19,6 +25,7 @@ const fresh: Checkout = {
   clean: true,
   head: main,
   subject: "feat(react): add a hook (#260)",
+  bumpsOnly: false,
   originMain: main,
   headOnMain: true,
   current: "1.0.0-rc.1",
@@ -69,7 +76,7 @@ describe("where a release starts", () => {
     ).toEqual(["v1.0.0-rc.2 exists already, at bbbbbbb. Pick a version above 1.0.0-rc.2."]);
     expect(
       releaseStage({ ...fresh, remoteTag: bumped, tagInHistory: true }, "1.0.0-rc.2").blockers,
-    ).toEqual(["v1.0.0-rc.2 exists already, at bbbbbbb. Pick a version above 1.0.0-rc.1."]);
+    ).toEqual(["v1.0.0-rc.2 exists already, at bbbbbbb. Pick a version above 1.0.0-rc.2."]);
     expect(
       releaseStage(
         { ...fresh, current: "1.0.0-rc.2", localTag: main, remoteTag: bumped, tagInHistory: true },
@@ -83,6 +90,7 @@ describe("where a release starts", () => {
       ...fresh,
       head: bumped,
       subject: releaseSubject("1.0.0-rc.2"),
+      bumpsOnly: true,
       headOnMain: false,
       current: "1.0.0-rc.2",
     };
@@ -95,6 +103,20 @@ describe("where a release starts", () => {
     expect(
       releaseStage({ ...stopped, localTag: bumped, tagInHistory: true }, "1.0.0-rc.2"),
     ).toEqual({ stage: { kind: "tagged", commit: bumped }, blockers: [], problems: [] });
+  });
+
+  test("won't take a commit titled as the release that changes more than the versions", () => {
+    const titled = {
+      ...fresh,
+      head: bumped,
+      subject: releaseSubject("1.0.0-rc.2"),
+      headOnMain: false,
+      current: "1.0.0-rc.2",
+    };
+
+    expect(releaseStage(titled, "1.0.0-rc.2").blockers).toEqual([
+      "HEAD is titled chore(release): v1.0.0-rc.2, but it changes more than the nine versions.",
+    ]);
   });
 
   test("releases a version bump that landed on main through a PR", () => {
@@ -114,6 +136,49 @@ describe("where a release starts", () => {
 
   test("the release commit is a Conventional Commit", () => {
     expect(releaseSubject("1.0.0-rc.2")).toBe("chore(release): v1.0.0-rc.2");
+  });
+});
+
+describe("a release commit", () => {
+  test("changes only the versions of the published manifests", async () => {
+    const root = await mkdtemp(join(tmpdir(), "release-commit-"));
+    const git = (...args: string[]) => runOrThrow("git", args, { cwd: root });
+    const manifest = (version: string, extra = "") =>
+      `{\n  "name": "@x/a",\n  "version": "${version}",\n  "private": false${extra}\n}\n`;
+    const commit = async (subject: string) => {
+      await git("add", "-A");
+      await git(
+        "-c",
+        "user.name=t",
+        "-c",
+        "user.email=t@t",
+        "commit",
+        "--quiet",
+        "--no-verify",
+        "-m",
+        subject,
+      );
+    };
+    try {
+      await git("init", "--quiet");
+      await writeFile(join(root, "a.json"), manifest("1.0.0-rc.1"));
+      await writeFile(join(root, "b.json"), manifest("1.0.0-rc.1"));
+      await commit("feat: start");
+
+      await writeFile(join(root, "a.json"), manifest("1.0.0-rc.2"));
+      await writeFile(join(root, "b.json"), manifest("1.0.0-rc.2"));
+      await commit("chore(release): v1.0.0-rc.2");
+      expect(await bumpsOnly(["a.json", "b.json"], root)).toBe(true);
+      // Every manifest, and nothing else.
+      expect(await bumpsOnly(["a.json", "b.json", "c.json"], root)).toBe(false);
+
+      await writeFile(join(root, "a.json"), manifest("1.0.0-rc.3", ',\n  "main": "x.js"'));
+      await writeFile(join(root, "b.json"), manifest("1.0.0-rc.3"));
+      await commit("chore(release): v1.0.0-rc.3");
+      expect(await bumpsOnly(["a.json", "b.json"], root)).toBe(false);
+    } finally {
+      await rm(root, { force: true, recursive: true });
+    }
   });
 });
 

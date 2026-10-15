@@ -2,7 +2,6 @@ import { createHash } from "node:crypto";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createInterface } from "node:readline/promises";
 
 import { npmRegistry as registry } from "./config";
 import { distTag, manifestPath, publishProblems, readManifest, tarballIntegrity } from "./manifest";
@@ -54,17 +53,29 @@ export function planStage(
   return { action: "stage" };
 }
 
+/**
+ * The JSON a pnpm command printed with `--json`, from the first line that opens an object or an
+ * array, past anything its reporter printed before.
+ */
+export function printedJson<T>(stdout: string, command: string): T {
+  const start = stdout.search(/^[[{]/m);
+  try {
+    if (start === -1) throw new Error("no JSON");
+    return JSON.parse(stdout.slice(start)) as T;
+  } catch {
+    throw new Error(`${command} didn't print JSON:\n${stdout.trim()}`);
+  }
+}
+
 /** The stage id `pnpm stage publish --json` printed for one tarball, with its integrity. */
 export function stagedFromSummary(
   stdout: string,
   name: string,
 ): { readonly stageId: string; readonly integrity?: string } {
-  let summaries: Record<string, { stageId?: unknown; integrity?: unknown }>;
-  try {
-    summaries = JSON.parse(stdout) as typeof summaries;
-  } catch {
-    throw new Error(`pnpm stage publish didn't print JSON for ${name}:\n${stdout.trim()}`);
-  }
+  const summaries = printedJson<Record<string, { stageId?: unknown; integrity?: unknown }>>(
+    stdout,
+    `pnpm stage publish for ${name}`,
+  );
   const summary = summaries[name];
   if (typeof summary?.stageId !== "string" || summary.stageId === "") {
     throw new Error(`pnpm stage publish printed no stage id for ${name}:\n${stdout.trim()}`);
@@ -104,16 +115,6 @@ async function shasumOf(path: string): Promise<string> {
 
 /** Whether npm's 2FA can ask in this terminal: pnpm needs both ends to be one. */
 export const interactive = () => Boolean(process.stdin.isTTY && process.stdout.isTTY);
-
-async function confirm(question: string, expected: string): Promise<boolean> {
-  if (!process.stdin.isTTY) return false;
-  const prompt = createInterface({ input: process.stdin, output: process.stdout });
-  try {
-    return (await prompt.question(question)).trim() === expected;
-  } finally {
-    prompt.close();
-  }
-}
 
 /**
  * Runs `action` with an environment that always reaches the public registry, whatever a local
@@ -167,22 +168,45 @@ export function npmUser(): Promise<string | undefined> {
 const pnpm = (args: readonly string[]) => ["exec", "pnpm", ...args, "--registry", registry];
 
 /**
+ * npm's listing of the staged versions, with what it leaves out of one of `names` at `version`
+ * read from that version's own record, so a rerun can tell a version it staged from another.
+ */
+async function stagedVersions(
+  names: readonly string[],
+  version: string,
+  env: NodeJS.ProcessEnv,
+): Promise<StagedVersion[]> {
+  const { stdout } = await runOrThrow("vp", pnpm(["stage", "list", "--json"]), { env });
+  const listed = printedJson<StagedVersion[]>(stdout, "pnpm stage list");
+  return Promise.all(
+    listed.map(async (item) => {
+      const ours = item.id && item.packageName && names.includes(item.packageName);
+      if (!ours || item.version !== version || (item.shasum && item.tag)) return item;
+      const viewed = await runOrThrow("vp", pnpm(["stage", "view", item.id!, "--json"]), { env });
+      const record = printedJson<StagedVersion>(viewed.stdout, "pnpm stage view");
+      return { ...item, shasum: item.shasum ?? record.shasum, tag: item.tag ?? record.tag };
+    }),
+  );
+}
+
+/**
  * Publishes the tarballs a passing gate checked, and nothing else, through npm's staged
  * publishing: each tarball is staged, which needs no 2FA, then one `pnpm stage approve` publishes
  * them all with a single 2FA, in dependency order. A staged version can't be installed until it's
  * approved, so a failure before the approval exposes nothing. Safe to run again: versions npm
- * serves are skipped, and a version a run before staged with the same tarball is approved, not
+ * serves are skipped, and a version an earlier run staged with the same tarball is approved, not
  * staged twice.
  *
  * It refuses unless the dry-run manifest matches HEAD, the version and every tarball, on a clean
- * tree on main or right on top of it. With `dryRun`, it checks all of that and npm's state, stages
- * nothing, and returns what a real run would refuse instead of throwing.
+ * tree on main or right on top of it. `onUpload` runs once, right before the first request that
+ * changes anything on npm. With `dryRun`, it checks all of that and npm's state, stages nothing,
+ * and returns what a real run would refuse instead of throwing.
  */
 export async function publish(options: {
   readonly version: string;
   readonly tag?: string;
-  readonly yes: boolean;
   readonly dryRun?: boolean;
+  readonly onUpload?: () => Promise<void>;
   readonly manifestFile?: string;
   readonly log?: (line: string) => void;
 }): Promise<readonly string[]> {
@@ -222,16 +246,21 @@ export async function publish(options: {
       return problems;
     }
 
-    const listed = await run("vp", pnpm(["stage", "list", "--json"]), { env });
-    if (listed.code !== 0) {
-      const output = `${listed.stdout}\n${listed.stderr}`.trim();
+    let staged: StagedVersion[];
+    try {
+      staged = await stagedVersions(
+        manifest.packages.map(({ name }) => name),
+        version,
+        env,
+      );
+    } catch (error) {
+      const output = error instanceof Error ? error.message : String(error);
       const reason = /\b401\b/.test(output)
         ? "npm: not logged in, so the staged versions can't be listed."
         : `Can't list npm's staged versions:\n${output}`;
       if (!options.dryRun) throw new Error(reason);
       return [...problems, reason];
     }
-    const staged = JSON.parse(listed.stdout) as StagedVersion[];
     const plans = await Promise.all(
       pending.map(async (entry) => {
         const tarball = join(tarballDirectory, entry.file);
@@ -258,17 +287,13 @@ export async function publish(options: {
       log(`A release would stage ${toStage.length} and approve ${pending.length} with one 2FA.`);
       return problems;
     }
-    if (!interactive() && !process.env.PNPM_CONFIG_OTP) {
+    if (!interactive()) {
       throw new Error(
-        "Approving needs npm's 2FA, and pnpm asks for it only in a terminal. Run this in a terminal, or under `script -q /dev/null`, as /release does. Nothing was published.",
-      );
-    }
-    if (!options.yes && !(await confirm(`Type ${version} to publish: `, version))) {
-      throw new Error(
-        "Not confirmed. Nothing was published. (Pass --yes when there is no terminal.)",
+        "Approving needs npm's 2FA, and pnpm asks for it only in a terminal. Run this in a terminal, or through .claude/skills/release/terminal.sh, as /release does. Nothing was published.",
       );
     }
 
+    await options.onUpload?.();
     const ids: string[] = [];
     for (const { name, tarball, integrity, plan } of plans) {
       if (plan.action === "approve") {

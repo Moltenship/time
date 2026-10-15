@@ -28,36 +28,43 @@ log in again before each release), `gh auth login`, and the browsers for the gat
 
 The command, in order:
 
-1. **Checks.** The checkout is `main`, clean, and at `origin/main`. pnpm is logged in to npm
-   (`pnpm whoami`), and `gh` can push. Nothing in `main`'s rules or branch protection would refuse
-   a direct push of the release commit: it reads them and changes nothing. CI passed on `HEAD`; if
+1. **Checks.** The checkout is `main`, clean, and at `origin/main`, with the tags fetched. pnpm is
+   logged in to npm (`pnpm whoami`), it runs in a terminal (npm's 2FA needs one), and git and `gh`
+   can push (`git push --dry-run`; git never prompts for credentials). Nothing in `main`'s rules
+   or branch protection would refuse a direct push of the release commit: it reads them and changes
+   nothing. CI passed on `HEAD`; if
    it's still running, the command waits for it before publishing. Playwright's Firefox doesn't
    start on macOS 27 (#182), so there it also needs CI's Firefox job on `HEAD`: if no dispatched
    CI run has one, it starts one (`gh workflow run ci.yml --ref main`) and waits for it before
-   publishing.
+   publishing. Dispatched runs have a concurrency group of their own, so a push to `main` doesn't
+   cancel it.
 2. **Version.** The argument, or a prompt with a suggestion from the Conventional Commits since
    the last tag: after a prerelease, the next one (`1.0.0-rc.2`) or its stable version; after a
    stable one, major for a breaking change, minor for a feature and patch for the rest. Without a
    terminal it doesn't ask: it fails with the suggestion. A version that has no GitHub release
    yet is suggested again, to finish it. Prereleases go to npm's `next` tag, stable versions to
    `latest`, and `--tag` picks another, never `latest` for a prerelease.
-3. **Bump.** It sets the version in the nine manifests and commits `chore(release): v<version>`.
+3. **Bump.** It asks you to type the version to confirm (`--yes` skips that), sets the version in
+   the nine manifests and commits `chore(release): v<version>`.
 4. **Gate.** `RELEASE_VERSION=<version> vp run release:gate` on the release commit: the whole full
    tier, with a strict dry run that packs the tarballs and writes `.release/manifest.json`
-   ([Checks](#checks)). About three minutes on an Apple-silicon laptop.
+   ([Checks](#checks)). About three minutes on an Apple-silicon laptop. Then
+   `.release/release.json` records the commit and the manifest's hash, so a rerun can tell this
+   gate's tarballs from any a later dry run wrote.
 5. **Tag.** `v<version>`, annotated, on the release commit, locally.
 6. **Notes.** [changelogithub](https://github.com/antfu/changelogithub) writes the release's first
    notes from the Conventional Commits since the last tag into `.release/notes.md`: breaking
    changes, then `feat`, `fix` and `perf`, by scope, each with its PR and author. Other types stay
    out. PR titles are the notes, which is why they follow `AGENTS.md`'s format.
-7. **Publish.** It asks you to type the version (`--yes` skips that), then publishes the tarballs
-   the gate checked through npm's [staged publishing](https://docs.npmjs.com/staged-publishing):
+7. **Publish.** It publishes the tarballs the gate checked through npm's
+   [staged publishing](https://docs.npmjs.com/staged-publishing):
    `pnpm stage publish` uploads each one, which needs no 2FA, and one `pnpm stage approve`
    publishes all nine with a single 2FA, in dependency order. pnpm shows npm's link; approve it
    in the browser. A staged version can't be installed until it's approved.
 8. **Push.** `main` and the tag, in one atomic push. If `main` moved while it published, it merges
-   `main` into the release commit (`chore(release): merge main into v<version>`) and pushes that,
-   so the tag stays on the commit the gate checked. A merge that conflicts stops, with the steps.
+   the release into `main` as a PR would (`chore(release): merge v<version> into main`) and pushes
+   that, so `main`'s history comes first and the tag stays on the commit the gate checked. A merge
+   that conflicts stops, with the steps.
 9. **Check npm.** It waits up to 15 minutes for npm to serve every package the gate packed, and
    fails as soon as one differs: its `dist.integrity` from the tarball's, its dist-tag from the
    version (unless a newer release took it), or no approver on it.
@@ -72,20 +79,24 @@ Then rewrite the notes: `/release` does it from
 
 ### When it stops
 
-Before it publishes, nothing has left the laptop: a failure deletes the local tag and resets the
-release commit, so the checkout is as it was. Fix what it names and run it again. A red gate or CI
-needs a fix on `main` through a PR first.
+Until its first upload to npm, nothing has left the laptop: a failure, Ctrl-C or a `SIGTERM`
+deletes the local tag and resets the release commit, so the checkout is as it was. Fix what it
+names and run it again. A red gate or CI needs a fix on `main` through a PR first.
 
-From the publish on, run the same command again: it picks up where it stopped. It finds the release
-commit or the tag the stopped run left, skips the gate when `.release/gate.json` says it passed on
-that commit and the tarballs are unchanged, skips the packages npm serves with the gate's tarball,
-approves a version a run before staged with the same tarball and tag instead of staging it again,
+From the first upload on, run the same command again: it picks up where it stopped. Once the tag
+is on GitHub, npm serves any of the nine at the version, or `.release/release.json` says this
+checkout started publishing, it only finishes: it skips the CI checks and the gate, which passed
+before, and needs the gate's manifest and tarballs unchanged, by their hashes. It finds the release
+commit or the tag the stopped run left, skips the packages npm serves with the gate's tarball,
+approves a version an earlier run staged with the same tarball and tag instead of staging it again,
 and leaves a GitHub release that's already out. A version staged with another tarball or tag stops
-it: reject it (`vp pm stage reject <id>`) and run again.
+it: reject it (`vp pm stage reject <id>`) and run again. Only the checkout that published can
+finish a release: another one has no manifest to check npm against.
 
 `--dry-run` does everything up to the publish, checks what publishing would do, then undoes the
-commit and tag. It goes on past what a release would stop at (another branch, no npm login, CI
-that hasn't run) and lists it at the end. It doesn't wait for CI or start a run.
+commit and tag. It commits on a detached HEAD, so the branch never moves, even if it's killed. It
+goes on past what a release would stop at (another branch, no npm login, CI that hasn't run) and
+lists it at the end. It doesn't wait for CI or start a run.
 
 ### Why publish before pushing
 
@@ -103,8 +114,9 @@ which the push handles by merging it.
   ([pnpm 11.25](https://github.com/pnpm/pnpm/releases/tag/v11.25.0), and 12). Approving on
   npmjs.com works too, one package at a time.
 - pnpm asks for 2FA only in a terminal (`ERR_PNPM_OTP_NON_INTERACTIVE` otherwise), so an agent runs
-  the command through `.claude/skills/release/terminal.sh`. With a one-time password instead of a
-  passkey, `PNPM_CONFIG_OTP=<code>` passes it.
+  the command through `.claude/skills/release/terminal.sh`, and you open the link it relays. An
+  account that answers with a one-time password from an app instead of a passkey runs
+  `vp run release` in its own terminal and types the code there: an agent can't.
 - `NODE_AUTH_TOKEN` still works: the command reads the token from the environment and never writes
   it to disk. A granular token that bypasses 2FA can stage, but the approval needs the owner's 2FA
   anyway, and from January 2027 such tokens can only stage
@@ -113,7 +125,7 @@ which the push handles by merging it.
   `trustPolicy: no-downgrade` ranks highest, above trusted publishing and provenance, so releases
   after `1.0.0-rc.1`, which went out from Actions with provenance, don't read as a downgrade. From
   now on every release must be staged and approved, from the laptop or from CI: a direct publish
-  would be one.
+  would read as a downgrade.
 
 ### CI
 
@@ -211,7 +223,7 @@ Unpublish only for something that must disappear, such as a leaked secret. npm a
 - Public exports, event semantics, view strategies, transactions and CSS variable names are
   contracts (`architecture.md` §24).
 - To retire an API, deprecate it in a minor release: a `@deprecated` JSDoc tag naming the
-  replacement, a changelog line and a docs note. It keeps working.
+  replacement, a line in the release notes and a docs note. It keeps working.
 - Remove it in the next major, with migration notes, and a codemod when that's practical.
 - To retire a whole package, `vp pm deprecate @moltenship/<package> "<message>"` deprecates every
   version; say where to go instead.
