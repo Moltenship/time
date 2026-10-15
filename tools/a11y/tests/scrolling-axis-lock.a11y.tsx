@@ -265,14 +265,20 @@ describe.each([
       const start = position();
       expect(headerDrift()).toBeLessThan(1);
 
-      // Next scrolls smoothly; the header keeps up every frame of the way.
+      // Next scrolls smoothly; the header keeps up every frame of the way. A timeline moves it
+      // with the scroll itself; scroll events can arrive a frame late, as on CI's Linux runners,
+      // so there it may trail by as far as the days moved since the last frame.
       await act(async () =>
         document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click(),
       );
+      const offset = () => Math.abs(scroller.scrollLeft);
+      let last = offset();
       let frames = 0;
       while (Math.abs(position() - start - 3) >= 0.05) {
         await nextFrame();
-        expect(headerDrift()).toBeLessThan(1);
+        const moved = Math.abs(offset() - last);
+        last = offset();
+        expect(headerDrift()).toBeLessThan(fallback ? moved + 1 : 1);
         frames += 1;
         if (frames > 600) throw new Error("the page never came to rest");
       }
@@ -282,6 +288,7 @@ describe.each([
 
       // A scroll that stops between pages, before it settles back.
       await axis("scrolling-3-day").dragBy(0.4, dir);
+      await nextFrame();
       expect(headerDrift()).toBeLessThan(1);
       await atRest(scroller);
       expect(headerDrift()).toBeLessThan(1);
