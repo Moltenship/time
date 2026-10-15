@@ -288,9 +288,13 @@ async function touch(
   });
 }
 
-/** A finger's swipe from `from`, `by` along each axis, in small steps as a finger moves. */
+/**
+ * A finger's swipe from `from`, `by` along each axis, in steps as a finger moves. Each step is past
+ * the browser's touch slop, so the swipe scrolls from its first move: on a loaded machine, smaller
+ * steps can take the long-press's 450 ms to get there, and start a drag instead.
+ */
 async function swipe(from: readonly [number, number], by: readonly [number, number]) {
-  const steps = 30;
+  const steps = 12;
   await touch("touchStart", from);
   try {
     for (let step = 1; step <= steps; step++) {
@@ -336,8 +340,7 @@ describe.runIf(server.browser === "chromium")("a finger on a phone's 3-day view"
     expect(title()).toBe("Oct 7 – 9, 2026");
   });
 
-  // Well past half a page of three 125 px days, so a loaded machine's coarser touch steps still
-  // page.
+  // Past half a page of three 125 px days.
   test.each([
     [-260, 0, "Oct 10 – 12, 2026"],
     [-260, 60, "Oct 10 – 12, 2026"],
