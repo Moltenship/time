@@ -34,7 +34,7 @@ Check locally; don't wait on CI to learn whether a change passes. There are thre
 | ----- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Quick | `vp run ready:quick` | The docs site's link check, which compiles every page, then `vp check` and `vp test`                                                                                |
 | PR    | `vp run ready`       | Quick, plus production builds, the release checks (size budgets, API reports, package exports), the React, SSR, registry and package-graph gates, and the a11y suite in Chromium. CI runs the same tasks on every PR: `ready:checks` and `a11y`. |
-| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and in Firefox and WebKit (`browsers`), the release dry run (a fresh build, the packed tarballs installed from the pnpm store into a clean project, the registry built for that version), the docs site's types and search, and the dry run's tarballs in use (`release:artifacts`): the SSR fixture's tests and the docs site's build in copies outside the workspace, and `shadcn add` into clean Vite and Next.js apps, which needs the network. It's the release gate. |
+| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and in WebKit (`browsers`; Firefox is off until #263), the release dry run (a fresh build, the packed tarballs installed from the pnpm store into a clean project, the registry built for that version), the docs site's types and search, and the dry run's tarballs in use (`release:artifacts`): the SSR fixture's tests and the docs site's build in copies outside the workspace, and `shadcn add` into clean Vite and Next.js apps, which needs the network. It's the release gate. |
 
 When each tier runs:
 
@@ -47,7 +47,7 @@ When each tier runs:
 - **Full, for releases only:** the release workflow runs it on the release commit before it
   publishes. A PR doesn't run it, with one exception: a PR that changes the full gate itself or the
   release tooling runs it once, to show the gate still works, and links a green run of CI's
-  on-demand `release-gate` job on a fresh runner, which runs Firefox too. A PR that changes the
+  on-demand `release-gate` job on a fresh runner. A PR that changes the
   release tooling also links a green dry run of the release workflow (`vp run release --dry-run`
   from its branch).
 
@@ -62,8 +62,8 @@ only redoes what changed; `a11y:ci-speed` never replays, since a timing race can
 When a tier fails, `vp run --last-details` names the step; rerun it alone with `vp run <step>`.
 
 The browser runs need Playwright's browsers once: `vp exec --filter a11y playwright install chromium
-firefox webkit` (add `--with-deps` on Linux). Playwright's Firefox doesn't start on macOS 27 (#182);
-there `browsers` runs WebKit alone. CI runs both on demand: `gh workflow run ci.yml --ref <branch>`.
+firefox webkit` (add `--with-deps` on Linux). `browsers` runs WebKit alone until #263 brings Firefox
+back. CI runs it on demand: `gh workflow run ci.yml --ref <branch>`.
 
 A new check joins a tier in `vite.config.ts`: `ready:checks` or `gate:serial` for the PR tier,
 `ready:full` or `gate:serial:full` for the full gate only. Put it in a `gate:serial` lane if it
