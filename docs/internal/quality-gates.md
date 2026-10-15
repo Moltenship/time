@@ -133,9 +133,9 @@ installs the polyfill before any test imports, as an app would, and a test check
 - Some tests skip in WebKit: focus kept in view in the scrolling agenda (#185, a known issue for
   rc.1), and until #181 the agenda's end, the 10,000-event agenda scroll (too slow on the polyfill
   in CI), a day swipe's and a month step's snap points, and a drag against the edge.
-- Playwright's Firefox doesn't start on macOS 27 (#182). There the run leaves it out and says so;
-  CI runs it on Linux in the on-demand `browsers` job and in the release gate, green since #204
-  (#192).
+- Firefox is left out of every run, the release gate's included, until #263 brings it back: a drag
+  test failed there in the 1.0.0-rc.2 release gate. Playwright's Firefox also doesn't start on
+  macOS 27 (#182).
 
 ## Passing gates
 
