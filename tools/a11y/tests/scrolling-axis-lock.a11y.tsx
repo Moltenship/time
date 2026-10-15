@@ -103,13 +103,18 @@ describe.each([
   test("the header's days follow a scroll timeline where the browser has them", async () => {
     await render(<Screen view="scrolling-3-day" />);
     const header = document.querySelector('[data-slot="scrolling-time-grid-header"]')!;
-    const timelines = header
-      .getAnimations({ subtree: true })
-      .map(({ timeline }) => timeline?.constructor.name);
+    const animated = (selector: string) =>
+      [...header.querySelectorAll(selector)].flatMap((element) =>
+        element.getAnimations().map(({ timeline }) => timeline?.constructor.name),
+      );
+    const timelines = !fallback && typeof ScrollTimeline === "function";
 
-    // The day names and the all-day row.
-    expect(timelines).toEqual(
-      !fallback && typeof ScrollTimeline === "function" ? ["ScrollTimeline", "ScrollTimeline"] : [],
+    // The day names and the all-day row, and the title of the trip, whose start can scroll away.
+    expect(animated('[role="row"] > .overflow-clip > *')).toEqual(
+      timelines ? ["ScrollTimeline", "ScrollTimeline"] : [],
+    );
+    expect(animated('[data-event-id="trip"] [data-slot="calendar-event-title"]')).toEqual(
+      timelines ? ["ScrollTimeline"] : [],
     );
   });
 
@@ -133,6 +138,50 @@ describe.each([
   });
 
   describe.each(["ltr", "rtl"] as const)("%s", (dir) => {
+    test("an all-day bar's title stays on screen as its start scrolls away", async () => {
+      await render(<Screen dir={dir} view="scrolling-3-day" />);
+      const { scroller } = axis("scrolling-3-day");
+      await atRest(scroller);
+      // The trip runs from Monday the 12th to Thursday the 15th.
+      const trip = () =>
+        document.querySelector<HTMLElement>(
+          '[data-slot="scrolling-time-grid-header"] [data-event-id="trip"]',
+        )!;
+      const label = () =>
+        trip().querySelector('[data-slot="calendar-event-title"]')!.getBoundingClientRect();
+      /** How far the title is in from the start of the days on screen, along the inline axis. */
+      const inFromStart = () => {
+        const days = scroller.getBoundingClientRect();
+        return dir === "rtl" ? days.right - label().right : label().left - days.left;
+      };
+      const next = () =>
+        act(async () => document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click());
+
+      // October 10 to 12: the bar starts on the third day, and its title with it.
+      await next();
+      await atRest(scroller);
+      const start = trip().getBoundingClientRect();
+      expect(
+        Math.abs(
+          (dir === "rtl" ? start.right : start.left) -
+            (dir === "rtl" ? label().right : label().left),
+        ),
+      ).toBeLessThan(20);
+
+      // On to October 13: the bar's start scrolls away, and the title stays on screen every frame.
+      await next();
+      let frames = 0;
+      while (title() !== "Oct 13 – 15, 2026" || frames < 30) {
+        await nextFrame();
+        expect(inFromStart()).toBeGreaterThan(-1);
+        frames += 1;
+        if (frames > 600) throw new Error("the page never came to rest");
+      }
+      await atRest(scroller);
+      // Half a rem in from the start of the days.
+      expect(Math.abs(inFromStart() - 8)).toBeLessThan(1.5);
+    });
+
     test("the header stays on the days as they scroll a page", async () => {
       await render(<Screen dir={dir} view="scrolling-3-day" />);
       const { position, scroller } = axis("scrolling-3-day");

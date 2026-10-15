@@ -159,7 +159,6 @@ function AllDayEvent<TEvent>({
   offset,
   offscreen,
   resourceId,
-  scrolledDayWidth,
   segment: { endsAfter, event, lane, span, startsBefore },
 }: {
   /**
@@ -175,8 +174,6 @@ function AllDayEvent<TEvent>({
   /** All of it is beside the visible dates of a scrolling grid: not a focus target. */
   readonly offscreen: boolean;
   readonly resourceId?: ResourceId | null;
-  /** One day's width as CSS, in a grid that scrolls sideways; see `TimeGridAllDayCellsProps`. */
-  readonly scrolledDayWidth?: string;
   readonly segment: Segment<TEvent>;
 }) {
   const chip = useEventChip(event, {
@@ -198,16 +195,7 @@ function AllDayEvent<TEvent>({
       )}
       style={laneStyle(lane, span, offset)}
     >
-      <span
-        data-slot="calendar-event-title"
-        className="truncate"
-        // From the cell it renders in, as `laneStyle` reaches back from it to the bar's start.
-        style={
-          scrolledDayWidth === undefined || offset === 0
-            ? undefined
-            : { marginInlineStart: `calc(${offset} * ${scrolledDayWidth})` }
-        }
-      >
+      <span data-slot="calendar-event-title" className="truncate">
         <EventIcon>{getEventIcon?.(event.event)}</EventIcon>
         {event.title}
       </span>
@@ -320,11 +308,6 @@ export interface TimeGridAllDayCellsProps<TEvent> extends TimeGridAllDayProps<TE
    * hidden from assistive technology. All of `days` by default.
    */
   readonly shown?: PlainDateInterval;
-  /**
-   * One day's width as CSS, for a grid that scrolls sideways: a bar that starts in days scrolled
-   * away starts its title on the first day on screen, where it can be read.
-   */
-  readonly scrolledDayWidth?: string;
 }
 
 /**
@@ -343,7 +326,6 @@ export function TimeGridAllDayCells<TEvent>({
   overflow,
   resourceId,
   row,
-  scrolledDayWidth,
   shown,
 }: TimeGridAllDayCellsProps<TEvent>) {
   const segments = overflow?.segments ?? row.segments;
@@ -389,7 +371,6 @@ export function TimeGridAllDayCells<TEvent>({
                 offscreen={!isShown(column)}
                 resourceId={resourceId}
                 segment={segment}
-                scrolledDayWidth={scrolledDayWidth}
               />
             ))}
           {overflow !== null && overflow.hiddenCounts[column]! > 0 && (

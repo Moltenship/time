@@ -363,7 +363,6 @@ export function ScrollingTimeGridView<TEvent>({
                     onOpenDay={openDay}
                     overflow={collapse.overflows[0]!}
                     row={projection.allDay}
-                    scrolledDayWidth={DAY}
                     shown={range}
                   />
                 </Track>

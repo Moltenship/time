@@ -1170,8 +1170,10 @@ TanStack Virtual is the maintained virtualization primitive for list and resourc
   above the days, and their days move by a transform on a `ScrollTimeline` of the days' scroller,
   inside an `overflow: clip` parent. The browser runs the animation with the scroll, off the main
   thread where it can; scroll events, the fallback without scroll timelines, arrive a frame late,
-  and Safari runs them at no more than 60 Hz by default while it scrolls at 120. All-day titles start
-  on the first day shown instead of sticking. The pointer layer scrolls the days at the side edges
+  and Safari runs them at no more than 60 Hz by default while it scrolls at 120. `position: sticky`
+  doesn't work under the transform, so each all-day title has an animation on the same timeline
+  instead: still while its bar's start is on screen, then moving with the scroll until it reaches
+  the bar's end. The pointer layer scrolls the days at the side edges
   through `sidewaysScrollContainer`.
 - Overscan is a small fixed count per axis: 3 agenda rows, 2 resource columns, 4 timeline rows and
   2 timeline slots.

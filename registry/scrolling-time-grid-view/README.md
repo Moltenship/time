@@ -35,8 +35,9 @@ const views = [
   swipe down page the days too. The hour gutter scrolls with the hours. The header and all-day row
   are sticky above them, and their days follow the days' scroll by a transform on a scroll
   timeline, which the browser runs with the scroll itself, falling back to scroll events where
-  there are no scroll timelines. A swipe over the header scrolls nothing. An all-day bar that
-  starts in days scrolled away shows its title from the first day on screen. Days rendered around
+  there are no scroll timelines. All-day titles stay at the start of the days on screen while
+  their bars' starts are scrolled past, on the same timeline. A swipe over the header scrolls
+  nothing. Days rendered around
   the visible ones are hidden from assistive technology; keys move through the visible days and
   page past them, as in the week view.
 - Dragging works across the scroll: snapping pauses while a gesture is under way, and dragging

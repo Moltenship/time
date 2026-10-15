@@ -32,15 +32,32 @@ interface Reach {
 }
 
 /**
+ * A bar title held at the start of the days on screen while its bar's start is scrolled past, as
+ * `position: sticky` would hold it in a scrolling element. Offsets are along the days' scroll from
+ * their inline start.
+ */
+interface Pin {
+  /** The scroll offset where the title starts to move. */
+  readonly from: number;
+  /** How far it can move before it reaches its bar's end. */
+  readonly room: number;
+}
+
+/** Bar titles in a follower, which pin to the start of the days on screen. */
+const TITLES = '[data-slot="calendar-event-title"]';
+
+/**
  * Moves the header's days with the days scrolling below it, by a transform taken from their
- * scroll position. Where the browser has scroll timelines, the transform is an animation on one,
- * which the browser runs with the scroll itself, off the main thread where it can. Scroll events
- * reach the page later, and Safari renders the page no more than 60 times a second by default
- * while it scrolls at 120, so a header following them trails a swipe. Without scroll timelines it
- * follows the scroll events. Returns the ref for each element that follows the days.
+ * scroll position, and pins the all-day bars' titles to the start of the days on screen. Where the
+ * browser has scroll timelines, each transform is an animation on one, which the browser runs
+ * with the scroll itself, off the main thread where it can. Scroll events reach the page later,
+ * and Safari renders the page no more than 60 times a second by default while it scrolls at 120,
+ * so a header following them trails a swipe. Without scroll timelines it follows the scroll
+ * events. Returns the ref for each element that follows the days.
  */
 export function useDaysFollower(daysRef: RefObject<HTMLElement | null>, rtl: boolean) {
   const followers = useRef(new Map<HTMLElement, Animation | null>());
+  const pins = useRef(new Map<HTMLElement, { animation: Animation | null; pin: Pin }>());
   const laidOut = useRef<Reach | null>(null);
   const latestRtl = useRef(rtl);
 
@@ -56,24 +73,55 @@ export function useDaysFollower(daysRef: RefObject<HTMLElement | null>, rtl: boo
       laidOut.current?.distance !== reach.distance || laidOut.current.rtl !== reach.rtl;
     laidOut.current = reach;
     const view = days.ownerDocument.defaultView;
+    const timeline =
+      view !== null && typeof view.ScrollTimeline === "function"
+        ? () => new view.ScrollTimeline({ axis: "inline", source: days })
+        : undefined;
+    const offset = Math.abs(days.scrollLeft);
     for (const [element, animation] of followers.current) {
       // RTL `scrollLeft` is negative, so the same negation moves content the right way. A new
       // animation takes over from the next frame, so this places the follower until then.
       element.style.transform = `translateX(${-days.scrollLeft}px)`;
-      if (animation === null && view !== null && typeof view.ScrollTimeline === "function") {
-        // The timeline runs from the inline start, which is the right in right-to-left layouts.
-        const timeline = new view.ScrollTimeline({ axis: "inline", source: days });
+      if (animation === null && timeline !== undefined) {
         followers.current.set(
           element,
-          element.animate(keyframes(reach), { easing: "linear", fill: "both", timeline }),
+          element.animate(keyframes(reach), {
+            easing: "linear",
+            fill: "both",
+            timeline: timeline(),
+          }),
         );
       } else if (animation !== null && changed) {
         (animation.effect as KeyframeEffect | null)?.setKeyframes(keyframes(reach));
       }
     }
+
+    // The titles move with the bars a render places, so each render measures them again.
+    for (const [title, { animation }] of pins.current) {
+      animation?.cancel();
+      title.style.transform = "";
+    }
+    pins.current.clear();
+    for (const element of followers.current.keys()) {
+      for (const title of element.querySelectorAll<HTMLElement>(TITLES)) {
+        const pin = pinned(title, element, reach.rtl);
+        if (pin === null) continue;
+        const sign = reach.rtl ? -1 : 1;
+        title.style.transform = `translateX(${sign * shiftAt(pin, offset)}px)`;
+        const animation =
+          timeline === undefined || reach.distance <= 0
+            ? null
+            : title.animate(pinKeyframes(pin, reach), {
+                easing: "linear",
+                fill: "both",
+                timeline: timeline(),
+              });
+        pins.current.set(title, { animation, pin });
+      }
+    }
   }, [daysRef]);
 
-  // Each render: it can move the days' canvas, and the followers can be new.
+  // Each render: it can move the days' canvas and the bars, and the followers can be new.
   useLayoutEffect(() => {
     latestRtl.current = rtl;
     layout();
@@ -86,6 +134,11 @@ export function useDaysFollower(daysRef: RefObject<HTMLElement | null>, rtl: boo
     const scrolled = () => {
       for (const element of followers.current.keys()) {
         element.style.transform = `translateX(${-days.scrollLeft}px)`;
+      }
+      const offset = Math.abs(days.scrollLeft);
+      const sign = latestRtl.current ? -1 : 1;
+      for (const [title, { pin }] of pins.current) {
+        title.style.transform = `translateX(${sign * shiftAt(pin, offset)}px)`;
       }
     };
     days.addEventListener("scroll", scrolled, { passive: true });
@@ -109,6 +162,11 @@ export function useDaysFollower(daysRef: RefObject<HTMLElement | null>, rtl: boo
       followers.current.get(element)?.cancel();
       followers.current.delete(element);
       element.style.transform = "";
+      for (const [title, { animation }] of pins.current) {
+        if (!element.contains(title)) continue;
+        animation?.cancel();
+        pins.current.delete(title);
+      }
     };
   }, []);
 }
@@ -118,6 +176,53 @@ function keyframes({ distance, rtl }: Reach): Keyframe[] {
     { transform: "translateX(0px)" },
     { transform: `translateX(${rtl ? distance : -distance}px)` },
   ];
+}
+
+/**
+ * Where `title` starts to move along its bar, as a scroll offset from the days' inline start, and
+ * how far it can: it stays put while the bar's start is on screen, then moves with the scroll, half
+ * a rem in from the start of the days, until it reaches the bar's end. `null` for a title with no
+ * room to move. Positions are along the inline axis from the start of `track`, the follower the
+ * bar is in.
+ */
+function pinned(title: HTMLElement, track: HTMLElement, rtl: boolean): Pin | null {
+  const bar = title.parentElement;
+  if (bar === null) return null;
+  const box = track.getBoundingClientRect();
+  const along = (rect: DOMRect) =>
+    rtl
+      ? { end: box.right - rect.left, start: box.right - rect.right }
+      : { end: rect.right - box.left, start: rect.left - box.left };
+  const text = along(title.getBoundingClientRect());
+  const style = getComputedStyle(bar);
+  const barEnd =
+    along(bar.getBoundingClientRect()).end -
+    parseFloat(rtl ? style.paddingLeft : style.paddingRight);
+  const room = barEnd - text.end;
+  if (room <= 0) return null;
+  const inset = parseFloat(getComputedStyle(title.ownerDocument.documentElement).fontSize) / 2;
+  return { from: text.start - inset, room };
+}
+
+/** How far a pinned title has moved at a scroll offset. */
+function shiftAt({ from, room }: Pin, offset: number): number {
+  return Math.min(room, Math.max(0, offset - from));
+}
+
+/**
+ * A pin as keyframes over the days' scroll range. It's linear between the offsets where the title
+ * starts and stops moving, so keyframes at those offsets trace it exactly.
+ */
+function pinKeyframes(pin: Pin, { distance, rtl }: Reach): Keyframe[] {
+  const sign = rtl ? -1 : 1;
+  const clamp = (offset: number) => Math.min(distance, Math.max(0, offset));
+  const offsets = [0, clamp(pin.from), clamp(pin.from + pin.room), distance];
+  return offsets
+    .filter((offset, index) => index === 0 || offset > offsets[index - 1]!)
+    .map((offset) => ({
+      offset: offset / distance,
+      transform: `translateX(${sign * shiftAt(pin, offset)}px)`,
+    }));
 }
 
 export interface OpeningTimeOptions {
