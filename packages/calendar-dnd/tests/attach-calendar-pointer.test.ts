@@ -570,6 +570,44 @@ describe("time grid", () => {
     expect(scrollTop).toBe(settled);
   });
 
+  test("scrolls a nested element sideways at the container's side edges", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    /** An element that scrolls one axis, starting at 100 so it can go either way. */
+    const scroller = (axis: "scrollLeft" | "scrollTop") => {
+      const element = document.createElement("div");
+      element.getBoundingClientRect = () =>
+        ({ bottom: 600, left: 0, right: 200, top: 0 }) as DOMRect;
+      const position = { value: 100 };
+      Object.defineProperty(element, axis, {
+        get: () => position.value,
+        set: (value: number) => (position.value = Math.max(0, value)),
+      });
+      return { element, position };
+    };
+    const hours = scroller("scrollTop");
+    const days = scroller("scrollLeft");
+    setup(grid, {
+      columns: grid.columns,
+      scrollContainer: { current: hours.element },
+      sidewaysScrollContainer: { current: days.element },
+    });
+    const element = grid.elements.get("a")!;
+
+    pointer("pointerdown", element, 50, yAt("09:30"));
+    pointer("pointermove", element, 190, 300);
+    vi.advanceTimersToNextFrame();
+    vi.advanceTimersToNextFrame();
+    expect(days.position.value).toBeGreaterThan(100);
+    expect(hours.position.value).toBe(100);
+
+    pointer("pointermove", element, 100, 590);
+    const sideways = days.position.value;
+    vi.advanceTimersToNextFrame();
+    expect(hours.position.value).toBeGreaterThan(100);
+    expect(days.position.value).toBe(sideways);
+  });
+
   test("cleans up a drag in progress when detached", () => {
     const grid = mountTimeGrid([meeting]);
     const proposals = setup(grid, { columns: grid.columns });

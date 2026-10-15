@@ -30,11 +30,18 @@ const views = [
 - A page of days either side renders with its events, and the strategy's `getLoadRange` reports
   it through `onVisibleRangeChange`, so an app can fetch the next week before it scrolls in.
   During a long swipe the anchor follows every half page, keeping the loaded days ahead.
-- The header, all-day row, and hour gutter are sticky inside one scrolling element, so they move
-  with the days without lag. Days rendered around the visible ones are hidden from assistive
-  technology; keys move through the visible days and page past them, as in the week view.
+- The hours scroll in one element and the days sideways in another inside it, so a swipe moves
+  one of them, whichever way it starts; in an element that scrolls both ways, Safari on iOS lets a
+  swipe down page the days too. The hour gutter scrolls with the hours. The header and all-day row
+  are sticky above them, and their days follow the days' scroll by a transform on a scroll
+  timeline, which the browser runs with the scroll itself, falling back to scroll events where
+  there are no scroll timelines. All-day titles stay at the start of the days on screen while
+  their bars' starts are scrolled past, on the same timeline. A swipe over the header scrolls
+  nothing. Days rendered around
+  the visible ones are hidden from assistive technology; keys move through the visible days and
+  page past them, as in the week view.
 - Dragging works across the scroll: snapping pauses while a gesture is under way, and dragging
-  to an edge scrolls into the next days.
+  to an edge scrolls into the next days, or the hours at the top and bottom.
 
 The scroll position lives in `useScrollingAxis` from `registry/calendar/scrolling-axis.tsx`: an
 axis of numbered days thousands of days long, of which only the days near the range render.

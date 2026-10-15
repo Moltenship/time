@@ -40,12 +40,12 @@ describe.each(["ltr", "rtl"] as const)("scrolling week, %s", (dir) => {
 
   test("a long swipe keeps the days around the view rendered as it passes them", async () => {
     await render(<Screen dir={dir} view="scrolling-week" />);
-    const { scrollBy, viewport } = axis("scrolling-week");
+    const { scrollBy, scroller } = axis("scrolling-week");
 
     for (let step = 0; step < 5; step += 1) await scrollBy(7, dir);
 
     await until(() => expect(title()).toBe("Nov 9 – 15, 2026"));
-    const columns = [...viewport.querySelectorAll('[role="gridcell"][data-date]')];
+    const columns = [...scroller.querySelectorAll('[role="gridcell"][data-date]')];
     expect(columns.map((column) => column.getAttribute("data-date"))).toContain("2026-11-22");
     // Only the visible days reach assistive technology.
     expect(columns.filter((column) => !column.hasAttribute("aria-hidden"))).toHaveLength(7);
@@ -66,7 +66,7 @@ test("a 3-day view held at its anchor stays put for a date that starts another r
 
   // October 8 lies in the range the app kept, but starts another one, which the app declines too.
   await act(async () => screen.actions!.setAnchorDate(Temporal.PlainDate.from("2026-10-08")));
-  await atRest(axis("scrolling-3-day").viewport);
+  await atRest(axis("scrolling-3-day").scroller);
 
   expect(Math.abs(position() - start - 3)).toBeLessThan(0.1);
   expect(reported.anchors.map(String)).toEqual(["2026-10-10", "2026-10-08"]);
@@ -102,7 +102,7 @@ test("flipping the direction keeps the week in view", async () => {
   for (let turn = 0; turn < 2; turn += 1) {
     await act(async () => flip());
     // Let a reset scroll position report itself and settle.
-    await atRest(axis("scrolling-week").viewport);
+    await atRest(axis("scrolling-week").scroller);
 
     expect(title()).toBe("Oct 5 – 11, 2026");
     expect(Math.abs(position() - start)).toBeLessThan(0.1);
@@ -137,28 +137,28 @@ describe("scrolling views", () => {
       document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click();
     });
     await act(async () => screen.actions!.setAnchorDate(Temporal.PlainDate.from("2026-10-07")));
-    await atRest(axis("scrolling-week").viewport);
+    await atRest(axis("scrolling-week").scroller);
 
     expect(title()).toBe("Oct 5 – 11, 2026");
     expect(Math.abs(position() - start)).toBeLessThan(0.1);
     expect(reported.anchors.map(String)).toEqual(["2026-10-14", "2026-10-07"]);
   });
 
-  test("a viewport a pixel narrower keeps the leading day at the start", async () => {
+  test("a scroller a pixel narrower keeps the leading day at the start", async () => {
     await render(<Screen view="scrolling-week" />);
-    const { scrollBy, viewport } = axis("scrolling-week");
+    const { hours, scrollBy, scroller } = axis("scrolling-week");
     await scrollBy(7);
     await until(() => expect(title()).toBe("Oct 12 – 18, 2026"));
     const leading = () =>
-      viewport.querySelector('[role="gridcell"][data-date="2026-10-12"]')!.getBoundingClientRect()
+      scroller.querySelector('[role="gridcell"][data-date="2026-10-12"]')!.getBoundingClientRect()
         .left;
     const before = leading();
 
     // Each day narrows by a seventh of a pixel, a thousand days from the canvas start.
     await act(async () => {
-      viewport.style.width = `${viewport.getBoundingClientRect().width - 1}px`;
+      hours!.style.width = `${hours!.getBoundingClientRect().width - 1}px`;
     });
-    await atRest(viewport);
+    await atRest(scroller);
 
     expect(Math.abs(leading() - before)).toBeLessThan(1);
     expect(title()).toBe("Oct 12 – 18, 2026");
@@ -170,12 +170,12 @@ describe("scrolling views", () => {
 
     // The week starts on Monday the 5th; the day view shows the anchor, Wednesday the 7th.
     await act(async () => screen.actions!.setView("scrolling-day"));
-    await atRest(axis("scrolling-day").viewport);
+    await atRest(axis("scrolling-day").scroller);
     expect(title()).toBe("October 7, 2026");
     expect(Math.abs(axis("scrolling-day").position() - start - 2)).toBeLessThan(0.1);
 
     await act(async () => screen.actions!.setView("scrolling-week"));
-    await atRest(axis("scrolling-week").viewport);
+    await atRest(axis("scrolling-week").scroller);
     expect(title()).toBe("Oct 5 – 11, 2026");
     expect(Math.abs(axis("scrolling-week").position() - start)).toBeLessThan(0.1);
     expect(reported.anchors).toEqual([]);
@@ -230,7 +230,7 @@ describe("scrolling views", () => {
         .querySelector<HTMLElement>('[data-slot="scrolling-time-grid"]')!
         .style.setProperty("--calendar-gutter-width", "80px");
     });
-    await atRest(axis("scrolling-week").viewport);
+    await atRest(axis("scrolling-week").scroller);
     const { position, scrollBy } = axis("scrolling-week");
     const start = position();
 
@@ -245,12 +245,12 @@ describe("scrolling views", () => {
     "dragging an event against the edge carries it past the days rendered at first",
     async () => {
       await render(<Screen view="scrolling-week" />);
-      const { viewport } = axis("scrolling-week");
-      viewport.scrollTop = 400;
-      const event = viewport.querySelector<HTMLElement>('[data-event-id="planning"]')!;
+      const { hours, scroller } = axis("scrolling-week");
+      hours!.scrollTop = 400;
+      const event = scroller.querySelector<HTMLElement>('[data-event-id="planning"]')!;
       const box = event.getBoundingClientRect();
       // Deep in the auto-scroll band, clear of the scrollbar.
-      const edge = viewport.getBoundingClientRect().right - 20;
+      const edge = scroller.getBoundingClientRect().right - 20;
       const at = (x: number) => ({
         bubbles: true,
         button: 0,
@@ -292,14 +292,14 @@ describe("scrolling views", () => {
 
   test("asking for the anchor mid-drag doesn't stall the drag's scroll", async () => {
     await render(<Screen view="scrolling-week" />);
-    const { viewport } = axis("scrolling-week");
-    viewport.scrollTop = 400;
+    const { hours, scroller } = axis("scrolling-week");
+    hours!.scrollTop = 400;
     // A create from an empty slot, with focus outside the grid.
-    const column = viewport.querySelector<HTMLElement>(
+    const column = scroller.querySelector<HTMLElement>(
       '[role="gridcell"][data-date="2026-10-09"]',
     )!;
     const box = column.getBoundingClientRect();
-    const edge = viewport.getBoundingClientRect().right - 20;
+    const edge = scroller.getBoundingClientRect().right - 20;
     const at = (x: number) => ({
       bubbles: true,
       button: 0,
@@ -343,15 +343,15 @@ describe("scrolling views", () => {
     "a day view scrolled down to the evening still stops a swipe at the next day",
     async () => {
       await render(<Screen view="scrolling-day" />);
-      const { position, viewport } = axis("scrolling-day");
+      const { hours, position, scroller } = axis("scrolling-day");
       const start = position();
-      const day = viewport.getBoundingClientRect().width;
+      const day = scroller.getBoundingClientRect().width;
       await act(async () => {
-        viewport.scrollTop = viewport.scrollHeight;
+        hours!.scrollTop = hours!.scrollHeight;
       });
 
       // A swipe worth more than two days, which snapping stops at the next one.
-      await act(async () => viewport.scrollBy({ behavior: "instant", left: day * 2.6 }));
+      await act(async () => scroller.scrollBy({ behavior: "instant", left: day * 2.6 }));
 
       await until(() => expect(title()).toBe("October 8, 2026"));
       await until(() => expect(Math.abs(position() - start - 1)).toBeLessThan(0.02));
@@ -386,36 +386,36 @@ describe("scrolling views", () => {
 describe("scrolling month resizes", () => {
   test("resizing keeps the month on its page", async () => {
     await render(<Screen view="scrolling-month" />);
-    const { dragBy, viewport } = axis("scrolling-month");
+    const { dragBy, scroller } = axis("scrolling-month");
     const start = axis("scrolling-month").position();
     await dragBy(2.5);
     await until(() => expect(title()).toBe("November 2026"));
 
     // Taller rows, as when the window grows; a flexible height would ignore `height`.
-    const { height } = viewport.getBoundingClientRect();
+    const { height } = scroller.getBoundingClientRect();
     await act(async () => {
-      viewport.style.flex = "none";
-      viewport.style.height = `${height + 90}px`;
+      scroller.style.flex = "none";
+      scroller.style.height = `${height + 90}px`;
     });
-    expect(viewport.getBoundingClientRect().height).toBe(height + 90);
-    await atRest(viewport);
+    expect(scroller.getBoundingClientRect().height).toBe(height + 90);
+    await atRest(scroller);
 
     expect(Math.abs(axis("scrolling-month").position() - start - 4)).toBeLessThan(0.05);
     expect(title()).toBe("November 2026");
   });
 
-  test("a short viewport still shows every week of the month", async () => {
+  test("a short scroller still shows every week of the month", async () => {
     await render(<Screen view="scrolling-month" />);
-    const { viewport } = axis("scrolling-month");
+    const { scroller } = axis("scrolling-month");
     await act(async () => {
-      viewport.style.flex = "none";
-      viewport.style.height = "320px";
+      scroller.style.flex = "none";
+      scroller.style.height = "320px";
     });
-    await atRest(viewport);
+    await atRest(scroller);
     /** The month's own weeks, each wholly on screen. */
     const weeksOnScreen = () => {
-      const bounds = viewport.getBoundingClientRect();
-      const rows = [...viewport.querySelectorAll('[role="row"]')].filter(
+      const bounds = scroller.getBoundingClientRect();
+      const rows = [...scroller.querySelectorAll('[role="row"]')].filter(
         (row) => row.closest('[aria-hidden="true"]') === null,
       );
       return rows.filter((row) => {
@@ -432,14 +432,14 @@ describe("scrolling month resizes", () => {
 
   test("a resize before a jump's scroll reports keeps the month where it jumped", async () => {
     await render(<Screen view="scrolling-month" />);
-    const { viewport } = axis("scrolling-month");
-    const { height } = viewport.getBoundingClientRect();
+    const { scroller } = axis("scrolling-month");
+    const { height } = scroller.getBoundingClientRect();
 
     await act(async () => screen.actions!.setAnchorDate(Temporal.PlainDate.from("2027-03-07")));
     // In the same task, before the jump's scroll event: taller rows.
-    viewport.style.flex = "none";
-    viewport.style.height = `${height + 90}px`;
-    await atRest(viewport);
+    scroller.style.flex = "none";
+    scroller.style.height = `${height + 90}px`;
+    await atRest(scroller);
 
     expect(title()).toBe("March 2027");
     expect(reported.anchors.map(String)).toEqual(["2027-03-07"]);
@@ -447,13 +447,13 @@ describe("scrolling month resizes", () => {
 
   test("shrinking the month enough to clamp its old offset keeps it on its page", async () => {
     await render(<Screen view="scrolling-month" />);
-    const { viewport } = axis("scrolling-month");
+    const { scroller } = axis("scrolling-month");
     const resize = async (height: number) => {
       await act(async () => {
-        viewport.style.flex = "none";
-        viewport.style.height = `${height}px`;
+        scroller.style.flex = "none";
+        scroller.style.height = `${height}px`;
       });
-      await atRest(viewport);
+      await atRest(scroller);
     };
     await resize(1500);
     const start = axis("scrolling-month").position();

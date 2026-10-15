@@ -1005,7 +1005,8 @@ Explicit move and resize buttons and an event details surface in the registry ar
 
 `useCalendarPointer` takes the rendered `events`, `onPropose` and `timeZone`, and optionally `snap`
 (15 minutes by default), `announcer`, `check`, `columns`, `scrollContainer` (the nearest scrollable
-ancestor by default), `onPreview`, `disabled` (views pass their `isReadOnly` prop) and
+ancestor by default), `sidewaysScrollContainer` (a scroller nested in it that scrolls sideways in
+its place), `onPreview`, `disabled` (views pass their `isReadOnly` prop) and
 `ghostClassName`. Activation is fixed: more than 4 px of travel for mouse and pen; for touch, a
 450 ms press that moves no more than 8 px, about as long as the platforms' own long-press, so a
 finger that rests before it scrolls still scrolls. A non-passive `touchmove` listener on the
@@ -1164,6 +1165,16 @@ TanStack Virtual is the maintained virtualization primitive for list and resourc
 - Resource columns render their headers, all-day row and hour gutter outside the scrolling body
   and move them by transform. The timeline and the agenda use `position: sticky` inside the
   scroller.
+- The scrolling time grid scrolls its hours in one element and its days sideways in another
+  inside it, so iOS locks each swipe to one of them (#260). The header and all-day row are sticky
+  above the days, and their days move by a transform on a `ScrollTimeline` of the days' scroller,
+  inside an `overflow: clip` parent. The browser runs the animation with the scroll, off the main
+  thread where it can; scroll events, the fallback without scroll timelines, arrive a frame late,
+  and Safari runs them at no more than 60 Hz by default while it scrolls at 120. `position: sticky`
+  doesn't work under the transform, so each all-day title has an animation on the same timeline
+  instead: still while its bar's start is on screen, then moving with the scroll until it reaches
+  the bar's end. The pointer layer scrolls the days at the side edges
+  through `sidewaysScrollContainer`.
 - Overscan is a small fixed count per axis: 3 agenda rows, 2 resource columns, 4 timeline rows and
   2 timeline slots.
 - SSR supplies deterministic initial rectangles and ranges where practical.

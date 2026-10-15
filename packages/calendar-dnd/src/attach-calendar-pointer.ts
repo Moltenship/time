@@ -101,6 +101,12 @@ export interface CalendarPointerOptions<
    * ancestor of where the drag starts.
    */
   readonly scrollContainer?: { readonly current: Element | null };
+  /**
+   * A ref to an element inside `scrollContainer` that scrolls sideways in its place while dragging
+   * near its left and right edges: in a view that scrolls each axis in an element of its own, so a
+   * swipe moves one axis at a time. Defaults to `scrollContainer`.
+   */
+  readonly sidewaysScrollContainer?: { readonly current: Element | null };
   /** Wall-clock grid for time columns. Defaults to 15 minutes. */
   readonly snap?: WallTimeSnapOptions;
 }
@@ -161,6 +167,8 @@ interface Session<TEvent, TEventId extends EventId, TResourceId extends Resource
   readonly pointerId: number;
   readonly pointerType: string;
   readonly scrollContainer: Element;
+  /** What scrolls sideways in `scrollContainer`'s place, or it. */
+  readonly sideways: Element;
   /** What the preview shows, as the followers last heard it. */
   shown: CalendarDragPreview | null;
   /** Where a touch started, which keeps its `touchmove`s even after a re-render removes it. */
@@ -454,7 +462,7 @@ export function attachCalendarPointer<
     const holds = current.claimed || !current.edges.armed;
     if (
       !holds &&
-      autoScroll(current.scrollContainer, current.point.x, current.point.y) &&
+      autoScroll(current.scrollContainer, current.point.x, current.point.y, current.sideways) &&
       preview(current, true)
     ) {
       announce(current, { phase: "step" });
@@ -647,6 +655,7 @@ export function attachCalendarPointer<
     const gesture = target === null ? null : gestureFor(event.target, target, options.events);
     if (gesture === null) return;
 
+    const scrollContainer = options.scrollContainer?.current ?? scrollableAncestor(event.target);
     const current: Session<TEvent, TEventId, TResourceId> = {
       active: false,
       announcer: options.announcer,
@@ -662,8 +671,9 @@ export function attachCalendarPointer<
       point: { x: event.clientX, y: event.clientY },
       pointerId: event.pointerId,
       pointerType: event.pointerType,
-      scrollContainer: options.scrollContainer?.current ?? scrollableAncestor(event.target),
+      scrollContainer,
       shown: null,
+      sideways: options.sidewaysScrollContainer?.current ?? scrollContainer,
       surface,
       surfaceColumns: options.columns,
       // The region listens already; adding its listener again would add nothing, and removing it

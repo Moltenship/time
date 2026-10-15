@@ -40,8 +40,14 @@ const excused = (rule: string, element: Element | undefined) =>
 
 /** Serious and critical WCAG 2.2 A/AA and best-practice violations, one line per element. */
 export async function seriousViolations(context: axe.ElementContext = document) {
-  // Popups fade in; a half-transparent frame would fail contrast.
-  await Promise.allSettled(document.getAnimations().map(({ finished }) => finished));
+  // Popups fade in; a half-transparent frame would fail contrast. Animations a scroll drives, as
+  // the scrolling time grid's header, never finish.
+  await Promise.allSettled(
+    document
+      .getAnimations()
+      .filter(({ timeline }) => timeline === document.timeline)
+      .map(({ finished }) => finished),
+  );
   const { violations } = await axe.run(context, {
     elementRef: true,
     resultTypes: ["violations"],

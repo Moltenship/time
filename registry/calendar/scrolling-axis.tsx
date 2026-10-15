@@ -197,12 +197,15 @@ export function useScrollingAxis({
       return;
     }
     // Keys move focus as they scroll, so they jump; so does anything more than two pages away, and
-    // anything during a drag, whose auto-scroll would cut an animation short every frame.
+    // anything during a drag, whose auto-scroll would cut an animation short every frame. Focus
+    // can be outside the scrolling element but in the grid, as in a header that follows it.
     const smooth =
       from !== null &&
       Math.abs(first - from) <= 2 * page &&
       !prefersReducedMotion(element) &&
-      !element.contains(element.ownerDocument.activeElement) &&
+      !(element.closest('[role="grid"]') ?? element).contains(
+        element.ownerDocument.activeElement,
+      ) &&
       element.closest("[data-interaction]") === null;
     // A smooth scroll passes other items on its way, which must not move the calendar there.
     if (smooth) heading.current = first;
