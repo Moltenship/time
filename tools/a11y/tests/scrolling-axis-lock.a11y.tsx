@@ -208,9 +208,9 @@ describe.each([
         '[data-slot="scrolling-time-grid-header"] [data-event-id="trip"]',
       )!;
       const from = bar.getBoundingClientRect();
-      expect(
-        getComputedStyle(bar.querySelector('[data-slot="calendar-event-title"]')!).transform,
-      ).not.toBe("none");
+      // The title has moved along its bar, away from the bar's start out of view.
+      const pinned = getComputedStyle(bar.querySelector('[data-slot="calendar-event-title"]')!);
+      expect(pinned.transform === "none" ? 0 : new DOMMatrix(pinned.transform).m41).not.toBe(0);
       const column = scroller
         .querySelector('[role="gridcell"][data-date="2026-10-14"]')!
         .getBoundingClientRect();
