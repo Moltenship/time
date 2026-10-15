@@ -54,17 +54,18 @@ export function planStage(
 }
 
 /**
- * The JSON a pnpm command printed with `--json`, from the first line that opens an object or an
- * array, past anything its reporter printed before.
+ * The JSON a pnpm command printed with `--json`: from the first line that opens an object or an
+ * array and parses to the end, past anything its reporter printed before.
  */
 export function printedJson<T>(stdout: string, command: string): T {
-  const start = stdout.search(/^[[{]/m);
-  try {
-    if (start === -1) throw new Error("no JSON");
-    return JSON.parse(stdout.slice(start)) as T;
-  } catch {
-    throw new Error(`${command} didn't print JSON:\n${stdout.trim()}`);
+  for (const { index } of stdout.matchAll(/^[[{]/gm)) {
+    try {
+      return JSON.parse(stdout.slice(index)) as T;
+    } catch {
+      // A reporter line that only looks like JSON: try the next.
+    }
   }
+  throw new Error(`${command} didn't print JSON:\n${stdout.trim()}`);
 }
 
 /** The stage id `pnpm stage publish --json` printed for one tarball, with its integrity. */

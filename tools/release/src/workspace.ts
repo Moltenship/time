@@ -101,6 +101,8 @@ export interface RunOptions {
   readonly env?: NodeJS.ProcessEnv;
   /** Stream output to the terminal instead of capturing it. */
   readonly inherit?: boolean;
+  /** Stops the command when aborted. */
+  readonly signal?: AbortSignal;
 }
 
 /** Runs a command without a shell. Resolves with its exit code; never rejects on failure. */
@@ -110,6 +112,7 @@ export function run(command: string, args: readonly string[], options: RunOption
       cwd: options.cwd ?? workspaceRoot,
       env: options.env ?? process.env,
       stdio: options.inherit ? "inherit" : ["ignore", "pipe", "pipe"],
+      signal: options.signal,
     });
     let stdout = "";
     let stderr = "";

@@ -79,24 +79,29 @@ Then rewrite the notes: `/release` does it from
 
 ### When it stops
 
-Until its first upload to npm, nothing has left the laptop: a failure, Ctrl-C or a `SIGTERM`
-deletes the local tag and resets the release commit, so the checkout is as it was. Fix what it
-names and run it again. A red gate or CI needs a fix on `main` through a PR first.
+Until its first upload to npm, nothing has left the laptop: a failure, Ctrl-C, `SIGTERM` or
+`SIGHUP` stops the gate, deletes the local tag and resets the release commit or the bumped
+manifests, so the checkout is as it was. Only a `SIGKILL` can leave them behind. Fix what it names
+and run it again. A red gate or CI needs a fix on `main` through a PR first.
 
 From the first upload on, run the same command again: it picks up where it stopped. Once the tag
 is on GitHub, npm serves any of the nine at the version, or `.release/release.json` says this
-checkout started publishing, it only finishes: it skips the CI checks and the gate, which passed
-before, and needs the gate's manifest and tarballs unchanged, by their hashes. It finds the release
-commit or the tag the stopped run left, skips the packages npm serves with the gate's tarball,
-approves a version an earlier run staged with the same tarball and tag instead of staging it again,
-and leaves a GitHub release that's already out. A version staged with another tarball or tag stops
-it: reject it (`vp pm stage reject <id>`) and run again. Only the checkout that published can
-finish a release: another one has no manifest to check npm against.
+checkout started publishing, it only finishes. It skips the CI checks, which passed before, and
+the gate, as long as its manifest and tarballs are unchanged, by their hashes; if a later dry run
+rewrote them, it runs the gate again on the release commit, and npm's integrity check catches any
+difference. It finds the release commit or the tag the stopped run left, skips the packages npm
+serves with the gate's tarball, approves a version an earlier run staged with the same tarball and
+tag instead of staging it again, and leaves a GitHub release that's already out. Once npm serves
+all nine, it doesn't need an npm login. A version staged with another tarball or tag stops it:
+reject it (`vp pm stage reject <id>`) and run again. While a release is publishing, the checkout
+refuses to release another version. Only the checkout that published can finish a release: another
+one has no manifest to check npm against, and the command says so.
 
 `--dry-run` does everything up to the publish, checks what publishing would do, then undoes the
-commit and tag. It commits on a detached HEAD, so the branch never moves, even if it's killed. It
-goes on past what a release would stop at (another branch, no npm login, CI that hasn't run) and
-lists it at the end. It doesn't wait for CI or start a run.
+commit and tag. It commits on a detached HEAD, so the branch never moves, and goes back to the
+branch at the end or on Ctrl-C, `SIGTERM` or `SIGHUP`; after a `SIGKILL`, `git switch <branch>`
+and `git tag -d v<version>`. It goes on past what a release would stop at (another branch, no npm
+login, CI that hasn't run) and lists it at the end. It doesn't wait for CI or start a run.
 
 ### Why publish before pushing
 

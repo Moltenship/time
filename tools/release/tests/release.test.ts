@@ -29,6 +29,7 @@ const fresh: Checkout = {
   originMain: main,
   headOnMain: true,
   current: "1.0.0-rc.1",
+  served: "none",
   tagInHistory: false,
 };
 
@@ -119,6 +120,12 @@ describe("where a release starts", () => {
     ]);
   });
 
+  test("won't bump to a version npm serves, from a release this checkout didn't make", () => {
+    expect(releaseStage({ ...fresh, served: "some" }, "1.0.0-rc.2").blockers).toEqual([
+      "npm already serves 1.0.0-rc.2, from a release this checkout has no commit or tag for. Finish it from the checkout that published it, or pick a version above 1.0.0-rc.2.",
+    ]);
+  });
+
   test("releases a version bump that landed on main through a PR", () => {
     expect(releaseStage({ ...fresh, current: "1.0.0-rc.2" }, "1.0.0-rc.2").stage).toEqual({
       kind: "bumped",
@@ -152,6 +159,8 @@ describe("a release commit", () => {
         "user.name=t",
         "-c",
         "user.email=t@t",
+        "-c",
+        "commit.gpgsign=false",
         "commit",
         "--quiet",
         "--no-verify",
