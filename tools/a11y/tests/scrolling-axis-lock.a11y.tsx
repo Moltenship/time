@@ -324,10 +324,12 @@ describe.runIf(server.browser === "chromium")("a finger on a phone's 3-day view"
     expect(title()).toBe("Oct 7 – 9, 2026");
   });
 
+  // Well past half a page of three 125 px days, so a loaded machine's coarser touch steps still
+  // page.
   test.each([
-    [-200, 0, "Oct 10 – 12, 2026"],
-    [-200, 60, "Oct 10 – 12, 2026"],
-    [200, -60, "Oct 4 – 6, 2026"],
+    [-260, 0, "Oct 10 – 12, 2026"],
+    [-260, 60, "Oct 10 – 12, 2026"],
+    [260, -60, "Oct 4 – 6, 2026"],
   ])("a swipe by %i, %i pages the days, and the hours stay", async (dx, dy, page) => {
     await render(<Screen view="scrolling-3-day" />);
     const { hours, scroller } = axis("scrolling-3-day");
