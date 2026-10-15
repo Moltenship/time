@@ -8,7 +8,11 @@ name: Release
 # Nothing leaves the runners until the gate has passed on the release commit, and main gets the
 # new version only once npm serves it. A run that fails after it starts publishing finishes when
 # its failed jobs run again, on the same commit and tarballs: `vp run release <version>` does that.
-# A dry run does everything but publish, push and write the GitHub release.
+# A dry run does everything but publish, push and write the GitHub release, and its jobs after the
+# gate hold no credentials at all.
+#
+# The jobs that hold credentials pin their actions to commits and use no cache, and run the
+# release's own steps with node, not through Vite Task.
 run-name: Release v${{ inputs.version }}${{ inputs.dry-run && ' (dry run)' || '' }}
 
 on:
@@ -23,13 +27,18 @@ on:
         required: true
         type: boolean
         default: false
+      commit:
+        description: The commit vp run release checked. The run stops if it isn't the one it builds on.
+        required: false
+        type: string
 
 permissions:
   contents: read
 
-# One release at a time; a second waits for the first.
+# One release at a time; a second waits for the first. Dry runs queue apart, so one never displaces
+# a release waiting its turn.
 concurrency:
-  group: release
+  group: ${{ inputs.dry-run && 'release-dry-run' || 'release' }}
   cancel-in-progress: false
 
 jobs:
@@ -44,27 +53,29 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
 
       - name: Set up Vite+
-        uses: voidzero-dev/setup-vp@v1.21.1
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           node-version: "26"
-          cache: true
+          cache: false
 
       # No install scripts while this job can mint an OIDC token. The check needs none.
       - name: Install locked dependencies
         run: vp install --frozen-lockfile --ignore-scripts
 
-      # The version, its tag and npm, and a trusted publisher on every package, before the gate
-      # spends ten minutes. A real release runs from main only.
+      # The version, its tag and npm, main as the run found it, and a trusted publisher on every
+      # package, before the gate spends ten minutes. A real release runs from main only.
       - name: Check
+        working-directory: tools/release
         env:
           VERSION: ${{ inputs.version }}
           DRY_RUN: ${{ inputs.dry-run }}
-        run: vp run release:ci check
+          EXPECTED_COMMIT: ${{ inputs.commit }}
+        run: node --import tsx src/ci.ts check
 
   gate:
     name: Release gate
@@ -94,9 +105,10 @@ jobs:
 
       # chore(release): v<version> and its tag, in this runner only.
       - name: Bump the versions, commit and tag
+        working-directory: tools/release
         env:
           VERSION: ${{ inputs.version }}
-        run: vp run release:ci prepare
+        run: node --import tsx src/ci.ts prepare
 
       # The whole full tier on the release commit, with a strict dry run of the version: what
       # CI's on-demand release-gate job runs. It packs the tarballs and writes .release/.
@@ -110,10 +122,11 @@ jobs:
         run: vp run --last-details
 
       - name: Write the release notes and bundle the release commit
+        working-directory: tools/release
         env:
           VERSION: ${{ inputs.version }}
           GH_TOKEN: ${{ github.token }}
-        run: vp run release:ci package
+        run: node --import tsx src/ci.ts package
 
       # The tarballs, the manifest the publish step trusts, the notes and the release commit.
       - name: Keep the release for the jobs after this one
@@ -128,6 +141,7 @@ jobs:
   publish:
     name: Publish to npm
     needs: gate
+    if: ${{ !inputs.dry-run }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -136,74 +150,147 @@ jobs:
       id-token: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Set up Vite+
-        uses: voidzero-dev/setup-vp@v1.21.1
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           node-version: "26"
-          cache: true
+          cache: false
 
       # No install scripts while this job can mint an OIDC token. Publishing needs none.
       - name: Install locked dependencies
         run: vp install --frozen-lockfile --ignore-scripts
 
       - name: Get the release the gate checked
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: release
           path: .release
 
       # Each tarball the gate checked, unless npm serves it already.
       - name: Publish
+        working-directory: tools/release
         env:
           VERSION: ${{ inputs.version }}
-          DRY_RUN: ${{ inputs.dry-run }}
-        run: vp run release:ci publish
+        run: node --import tsx src/ci.ts publish
+
+  publish-dry-run:
+    name: Publish to npm (dry run)
+    needs: gate
+    if: ${{ inputs.dry-run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+        with:
+          node-version: "26"
+          cache: false
+
+      - name: Install locked dependencies
+        run: vp install --frozen-lockfile --ignore-scripts
+
+      - name: Get the release the gate checked
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: release
+          path: .release
+
+      # What the publish job would publish, from a job that can't.
+      - name: Check what publishing would do
+        working-directory: tools/release
+        env:
+          VERSION: ${{ inputs.version }}
+          DRY_RUN: "true"
+        run: node --import tsx src/ci.ts publish
 
   finish:
     name: Push and write the GitHub release
     needs: publish
+    if: ${{ !inputs.dry-run }}
     runs-on: ubuntu-latest
     # npm can take minutes to list a new package; the check waits up to 15.
     timeout-minutes: 30
     permissions:
-      # main, the tag and the GitHub release: the only job that writes to the repository.
+      # The tag, main and the GitHub release: the only job that writes to the repository.
       contents: write
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           fetch-depth: 0
-          # The push to main and the tag goes through this job's token.
+          # The push of the tag and main goes through this job's token.
           persist-credentials: true
 
       - name: Set up Vite+
-        uses: voidzero-dev/setup-vp@v1.21.1
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
         with:
           node-version: "26"
-          cache: true
+          cache: false
 
       # No install scripts while this job can write to the repository. The step needs none.
       - name: Install locked dependencies
         run: vp install --frozen-lockfile --ignore-scripts
 
       - name: Get the release the gate checked
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
         with:
           name: release
           path: .release
 
-      # npm first, then main and the tag (merged if main moved meanwhile), then the release.
-      - name: Check npm, push main and the tag, write the GitHub release
+      # npm first; then the tag, and main (merged if main moved meanwhile); then the release.
+      - name: Check npm, push the tag and main, write the GitHub release
+        working-directory: tools/release
         env:
           VERSION: ${{ inputs.version }}
-          DRY_RUN: ${{ inputs.dry-run }}
           GH_TOKEN: ${{ github.token }}
-        run: vp run release:ci finish
+        run: node --import tsx src/ci.ts finish
+
+  finish-dry-run:
+    name: Push and write the GitHub release (dry run)
+    needs: publish-dry-run
+    if: ${{ inputs.dry-run }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Vite+
+        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
+        with:
+          node-version: "26"
+          cache: false
+
+      - name: Install locked dependencies
+        run: vp install --frozen-lockfile --ignore-scripts
+
+      - name: Get the release the gate checked
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: release
+          path: .release
+
+      # How the push would go, and the notes the release would have, from a job that can't write.
+      - name: Check what pushing and releasing would do
+        working-directory: tools/release
+        env:
+          VERSION: ${{ inputs.version }}
+          DRY_RUN: "true"
+        run: node --import tsx src/ci.ts finish
 
   install:
     name: Install the release from npm

@@ -50,6 +50,9 @@ async function read(file: string): Promise<Workflow> {
 
 const runs = (job: Job | undefined) => job?.steps.map(({ run }) => run).filter(Boolean);
 
+/** The jobs that can mint an OIDC token or write to the repository. */
+const privileged = ["check", "publish", "finish"];
+
 describe("the release workflow", () => {
   test("is the file each package's trusted publisher names, started by hand, one at a time", async () => {
     const workflow = await read(trustedPublisher.workflow);
@@ -58,7 +61,12 @@ describe("the release workflow", () => {
     expect(Object.keys(workflow.on)).toEqual(["workflow_dispatch"]);
     expect(inputs?.version).toMatchObject({ required: true, type: "string" });
     expect(inputs?.["dry-run"]).toMatchObject({ type: "boolean", default: false });
-    expect(workflow.concurrency).toEqual({ group: "release", "cancel-in-progress": false });
+    expect(inputs?.commit).toMatchObject({ required: false, type: "string" });
+    // Releases queue one behind another; dry runs apart, so one never displaces a release.
+    expect(workflow.concurrency).toEqual({
+      group: "${{ inputs.dry-run && 'release-dry-run' || 'release' }}",
+      "cancel-in-progress": false,
+    });
     // `vp run release` finds a version's runs by this title.
     expect(workflow["run-name"]).toBe(
       "Release v${{ inputs.version }}${{ inputs.dry-run && ' (dry run)' || '' }}",
@@ -66,16 +74,37 @@ describe("the release workflow", () => {
     expect(runTitle("1.0.0", true)).toBe("Release v1.0.0 (dry run)");
   });
 
-  test("checks, gates, publishes, pushes, then installs, each job after the one before", async () => {
+  test("checks, gates, publishes, pushes, then installs; a dry run takes jobs without credentials", async () => {
     const { jobs } = await read("release.yml");
 
-    expect(Object.keys(jobs)).toEqual(["check", "gate", "publish", "finish", "install"]);
+    expect(Object.keys(jobs)).toEqual([
+      "check",
+      "gate",
+      "publish",
+      "publish-dry-run",
+      "finish",
+      "finish-dry-run",
+      "install",
+    ]);
     expect(jobs.gate?.needs).toBe("check");
     expect(jobs.publish?.needs).toBe("gate");
     expect(jobs.publish?.name).toBe(publishJob);
     expect(jobs.finish?.needs).toBe("publish");
     expect(jobs.install?.needs).toBe("finish");
-    expect(jobs.install?.if).toBe("${{ !inputs.dry-run }}");
+    expect(jobs["publish-dry-run"]?.needs).toBe("gate");
+    expect(jobs["finish-dry-run"]?.needs).toBe("publish-dry-run");
+    for (const name of ["publish", "finish", "install"]) {
+      expect(jobs[name]?.if, name).toBe("${{ !inputs.dry-run }}");
+    }
+    for (const name of ["publish-dry-run", "finish-dry-run"]) {
+      expect(jobs[name]?.if, name).toBe("${{ inputs.dry-run }}");
+      expect(jobs[name]?.permissions, name).toBeUndefined();
+      expect(jobs[name]?.steps.at(-1)?.env?.DRY_RUN, name).toBe("true");
+    }
+    // The jobs that publish and push never take the dry-run input: a dry run doesn't reach them.
+    for (const name of ["publish", "finish"]) {
+      expect(jobs[name]?.steps.at(-1)?.env?.DRY_RUN, name).toBeUndefined();
+    }
   });
 
   test("only the check and publish jobs can mint an OIDC token, and only finish can write", async () => {
@@ -84,11 +113,10 @@ describe("the release workflow", () => {
 
     expect(workflow.permissions).toEqual({ contents: "read" });
     expect(jobs.check?.permissions).toEqual({ contents: "read", "id-token": "write" });
-    expect(jobs.gate?.permissions).toBeUndefined();
     expect(jobs.publish?.permissions).toEqual({ contents: "read", "id-token": "write" });
     expect(jobs.finish?.permissions).toEqual({ contents: "write" });
-    expect(jobs.install?.permissions).toBeUndefined();
     for (const [name, job] of Object.entries(jobs)) {
+      if (!privileged.includes(name)) expect(job.permissions, name).toBeUndefined();
       // Trusted publishing needs no environment, and nothing waits for a reviewer.
       expect(job.environment, name).toBeUndefined();
       for (const step of job.steps) {
@@ -99,29 +127,54 @@ describe("the release workflow", () => {
         }
       }
     }
-    // No install scripts where a job can publish or push.
-    for (const name of ["check", "publish", "finish"]) {
-      expect(runs(jobs[name])?.[0], name).toBe("vp install --frozen-lockfile --ignore-scripts");
+  });
+
+  test("the jobs with credentials pin their actions, use no cache, and run no install scripts", async () => {
+    const { jobs } = await read("release.yml");
+
+    for (const name of [...privileged, "publish-dry-run", "finish-dry-run"]) {
+      const job = jobs[name]!;
+      for (const { uses } of job.steps) {
+        if (uses) expect(uses, name).toMatch(/@[0-9a-f]{40}$/);
+      }
+      expect(job.steps.find(({ uses }) => uses?.includes("setup-vp"))?.with?.cache, name).toBe(
+        false,
+      );
+      expect(runs(job)?.[0], name).toBe("vp install --frozen-lockfile --ignore-scripts");
     }
   });
 
-  test("runs the steps through the same tasks as anywhere else", async () => {
+  test("runs the release's own steps with node, and the gate through its task", async () => {
     const { jobs } = await read("release.yml");
+    const step = (name: string) => `node --import tsx src/ci.ts ${name}`;
 
-    expect(runs(jobs.check)).toContain("vp run release:ci check");
+    expect(runs(jobs.check)?.at(-1)).toBe(step("check"));
     expect(runs(jobs.gate)).toEqual([
       "vp install --frozen-lockfile",
       "vp exec --filter a11y playwright install --with-deps --only-shell chromium firefox webkit",
-      "vp run release:ci prepare",
+      step("prepare"),
       "vp run release:gate",
       "vp run --last-details",
-      "vp run release:ci package",
+      step("package"),
     ]);
     expect(jobs.gate?.steps.find(({ run }) => run === "vp run release:gate")?.env).toEqual({
       RELEASE_VERSION: "${{ inputs.version }}",
     });
-    expect(runs(jobs.publish)?.at(-1)).toBe("vp run release:ci publish");
-    expect(runs(jobs.finish)?.at(-1)).toBe("vp run release:ci finish");
+    for (const name of ["publish", "publish-dry-run"]) {
+      expect(runs(jobs[name])?.at(-1), name).toBe(step("publish"));
+    }
+    for (const name of ["finish", "finish-dry-run"]) {
+      expect(runs(jobs[name])?.at(-1), name).toBe(step("finish"));
+    }
+    for (const job of Object.values(jobs)) {
+      for (const { run, ...rest } of job.steps) {
+        if (run?.includes("src/ci.ts")) {
+          expect((rest as { "working-directory"?: string })["working-directory"]).toBe(
+            "tools/release",
+          );
+        }
+      }
+    }
     expect(runs(jobs.install)?.at(-1)).toBe("vp run registry:e2e");
     expect(jobs.install?.steps.at(-1)?.env).toEqual({ REGISTRY_E2E_PACKAGES: "npm" });
 
@@ -134,7 +187,7 @@ describe("the release workflow", () => {
       path: ".release/",
       "include-hidden-files": true,
     });
-    for (const name of ["publish", "finish"]) {
+    for (const name of ["publish", "publish-dry-run", "finish", "finish-dry-run"]) {
       const download = jobs[name]?.steps.find(({ uses }) =>
         uses?.startsWith("actions/download-artifact@"),
       );
@@ -149,9 +202,7 @@ describe("the release workflow", () => {
 
     expect(rehearsal?.if).toBe("github.event_name == 'workflow_dispatch'");
     // The release job's steps, but the bump, the notes and the bundle.
-    expect(runs(rehearsal)).toEqual(
-      runs(gate)?.filter((run) => !run?.startsWith("vp run release:ci")),
-    );
+    expect(runs(rehearsal)).toEqual(runs(gate)?.filter((run) => !run?.includes("src/ci.ts")));
     expect(rehearsal?.["runs-on"]).toBe(gate?.["runs-on"]);
     expect(rehearsal?.["timeout-minutes"]).toBe(gate?.["timeout-minutes"]);
     const setup = (job: Job | undefined) =>
@@ -165,7 +216,7 @@ describe("the release workflow", () => {
     for (const file of await readdir(workflows)) {
       const text = await readFile(resolve(workflows, file), "utf8");
       expect(text, file).not.toMatch(/NPM_TOKEN|NODE_AUTH_TOKEN|environment: npm/);
-      if (file !== "release.yml") expect(text, file).not.toMatch(/\bpublish\b|release:ci/);
+      if (file !== "release.yml") expect(text, file).not.toMatch(/\bpublish\b|src\/ci\.ts/);
     }
   });
 });

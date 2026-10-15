@@ -19,29 +19,37 @@ const run = (status: string, conclusion: string, databaseId = 1): WorkflowRun =>
 });
 
 describe("what a release does about a version's runs", () => {
-  test("starts a run when there's none", () => {
-    expect(nextStep([], false)).toEqual({ action: "dispatch" });
+  const release = (status: string, conclusion: string, publishStarted = false, databaseId = 1) => ({
+    ...run(status, conclusion, databaseId),
+    publishStarted,
+  });
+
+  test("starts a run when there's none, or none that reached npm", () => {
+    expect(nextStep([])).toEqual({ action: "dispatch" });
+    // Nothing reached npm: a new run starts from main as it is, with whatever fixed it.
+    expect(nextStep([release("completed", "failure")])).toEqual({ action: "dispatch" });
   });
 
   test("watches one that's going, and stops at one that released", () => {
-    expect(nextStep([run("in_progress", ""), run("completed", "failure", 2)], true)).toEqual({
+    expect(nextStep([release("queued", ""), release("completed", "failure", true, 2)])).toEqual({
       action: "watch",
-      run: run("in_progress", ""),
+      run: release("queued", ""),
     });
-    expect(nextStep([run("completed", "success")], false)).toEqual({
-      action: "released",
-      run: run("completed", "success"),
-    });
+    expect(
+      nextStep([release("completed", "failure", false, 2), release("completed", "success")]),
+    ).toEqual({ action: "released", run: release("completed", "success") });
   });
 
-  test("runs a failed run's jobs again once it started publishing, and starts afresh before", () => {
-    expect(nextStep([run("completed", "failure")], true)).toEqual({
+  test("runs the failed jobs again of the newest run that started publishing", () => {
+    const published = release("completed", "failure", true, 2);
+
+    expect(nextStep([published])).toEqual({ action: "rerun", run: published });
+    expect(nextStep([release("completed", "cancelled", true)]).action).toBe("rerun");
+    // A later run that stopped at the check, as on a version npm has, doesn't hide it.
+    expect(nextStep([release("completed", "failure", false, 3), published])).toEqual({
       action: "rerun",
-      run: run("completed", "failure"),
+      run: published,
     });
-    expect(nextStep([run("completed", "cancelled")], true).action).toBe("rerun");
-    // Nothing reached npm: a new run starts from main as it is, with whatever fixed it.
-    expect(nextStep([run("completed", "failure")], false)).toEqual({ action: "dispatch" });
   });
 
   test("a run started publishing once its publish job ran, whatever came of it", () => {

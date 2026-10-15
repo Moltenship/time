@@ -73,6 +73,11 @@ export interface CheckFacts {
   readonly current: string;
   /** The ref the run is on, such as `refs/heads/main`. */
   readonly ref: string;
+  /** The commit the run builds on, and the one `vp run release` checked, when it said. */
+  readonly sha: string;
+  readonly expected?: string;
+  /** The version main's manifests have now: another release may have landed while this queued. */
+  readonly mainVersion: string;
   /** The commit `v<version>` names on GitHub, or undefined without one. */
   readonly remoteTag?: string;
   /** The packages npm serves at the version already. */
@@ -96,6 +101,16 @@ export function checkProblems(facts: CheckFacts): {
   }
   if (facts.ref !== "refs/heads/main") {
     problems.push(`A release runs from main, not ${facts.ref}.`);
+  }
+  if (facts.expected && facts.expected !== facts.sha) {
+    problems.push(
+      `This run builds on ${facts.sha.slice(0, 7)}, not ${facts.expected.slice(0, 7)}, the commit vp run release checked: main moved in between. Run it again.`,
+    );
+  }
+  if (facts.mainVersion !== facts.current) {
+    problems.push(
+      `main is at ${facts.mainVersion} now, not ${facts.current} as when this run started: a release landed while it waited. Run it again from main as it is.`,
+    );
   }
   if (facts.remoteTag !== undefined) {
     problems.push(
@@ -136,6 +151,13 @@ async function check(version: string, dryRun: boolean): Promise<void> {
   for (const name of names) {
     if ((await fetchPackument(name))?.versions?.[version]) served.push(name);
   }
+  // main as GitHub has it now, which a release queued behind another may no longer build on.
+  await runOrThrow("git", ["fetch", "--quiet", "origin", "main"]);
+  const mainManifest = await runOrThrow("git", [
+    "show",
+    `origin/main:packages/${packages[0]!.directory}/package.json`,
+  ]);
+  const mainVersion = (JSON.parse(mainManifest.stdout) as { version: string }).version;
   const trust = await trustedPublishing(names);
   for (const [name, verdict] of trust) {
     console.log(
@@ -146,6 +168,9 @@ async function check(version: string, dryRun: boolean): Promise<void> {
     version,
     current: sharedVersion(packages),
     ref: process.env.GITHUB_REF ?? "",
+    sha: process.env.GITHUB_SHA ?? "",
+    expected: process.env.EXPECTED_COMMIT || undefined,
+    mainVersion,
     remoteTag,
     served,
     trust,
@@ -214,21 +239,21 @@ async function importRelease(version: string): Promise<string> {
 }
 
 /**
- * Pushes the release commit to main and its tag, in one atomic push. If main moved while the
- * release ran, it merges the release into main as a PR would, so main's history comes first and
- * the tag stays on the commit the gate checked, and pushes that. A conflict stops it, with the
- * steps to finish by hand.
+ * Pushes the tag, then the release commit to main. The tag goes first, so the commit npm has is on
+ * GitHub whatever happens to main. If main moved while the release ran, it merges the release into
+ * main as a PR would, so main's history comes first and the tag stays on the commit the gate
+ * checked, and pushes that. A conflict stops it, with the steps to finish by hand.
  */
 async function push(tag: string, version: string): Promise<void> {
-  const refs = ["HEAD:refs/heads/main", `refs/tags/${tag}`];
-  if ((await run("git", ["push", "--atomic", "origin", ...refs], { inherit: true })).code === 0) {
+  await runOrThrow("git", ["push", "origin", `refs/tags/${tag}`], { inherit: true });
+  if (
+    (await run("git", ["push", "origin", "HEAD:refs/heads/main"], { inherit: true })).code === 0
+  ) {
     return;
   }
   await runOrThrow("git", ["fetch", "--quiet", "origin", "main"]);
-  if (await isOnMain("HEAD")) {
-    await runOrThrow("git", ["push", "origin", `refs/tags/${tag}`], { inherit: true });
-    return;
-  }
+  // A run before this one pushed it, or the owner merged it by hand.
+  if (await isOnMain("HEAD")) return;
   if (await isAncestor("origin/main", "HEAD")) {
     throw new Error("git push failed, though main hasn't moved (see above).");
   }
@@ -242,10 +267,10 @@ async function push(tag: string, version: string): Promise<void> {
   if (merged.code !== 0) {
     await run("git", ["merge", "--abort"]);
     throw new Error(
-      `The release conflicts with what main has gained since. Merge ${tag} into main by hand (git fetch origin ${tag}, git merge --no-ff ${tag}, push main and the tag), then vp run release ${version} runs this job again to finish.`,
+      `The release conflicts with what main has gained since. ${tag} is on GitHub: merge it into main by hand (git switch main, git pull, git fetch origin tag ${tag}, git merge --no-ff ${tag}, resolve, git push), then vp run release ${version} runs this job again to finish.`,
     );
   }
-  await runOrThrow("git", ["push", "--atomic", "origin", ...refs], { inherit: true });
+  await runOrThrow("git", ["push", "origin", "HEAD:refs/heads/main"], { inherit: true });
 }
 
 async function publishRelease(version: string, dryRun: boolean): Promise<void> {
@@ -262,24 +287,27 @@ async function finish(version: string, dryRun: boolean): Promise<void> {
     // npm serves it.
     await waitForPublished({ version, trusted: true });
     await push(tag, version);
+    // The release checks its commit is on origin/main, as GitHub has it now.
+    await runOrThrow("git", ["fetch", "--quiet", "origin", "main"]);
     await createGitHubRelease({ version, notes });
     return;
   }
   await runOrThrow("git", ["fetch", "--quiet", "origin", "main"]);
   console.log(
     (await isAncestor("origin/main", commit))
-      ? "A release would fast-forward main to the release commit and push the tag."
-      : "main has moved past the release commit's parent: a release would merge the release into main, then push it and the tag.",
+      ? `A release would push ${tag} and fast-forward main to the release commit.`
+      : `main has moved past the release commit's parent: a release would push ${tag}, then merge the release into main and push that.`,
   );
-  const pushed = await run("git", ["push", "--dry-run", "origin", `refs/tags/${tag}`]);
-  if (pushed.code === 0) console.log(`This job can push ${tag}: git push --dry-run passed.`);
-  else await report([`This job can't push ${tag}:\n${pushed.stderr.trim()}`], true);
   console.log(
     `A release would then write the ${tag} GitHub release${version.includes("-") ? ", as a prerelease" : ""}, with these notes:\n\n${notes}`,
   );
 }
 
 runMain(import.meta, async () => {
+  // It commits, tags and pushes as GitHub Actions' bot: only the release workflow runs it.
+  if (process.env.GITHUB_ACTIONS !== "true") {
+    throw new Error("These are the release workflow's steps. To release, run vp run release.");
+  }
   const { positionals } = parseArguments(process.argv.slice(2), [], [], { positionals: true });
   const version = process.env.VERSION ?? "";
   const dryRun = process.env.DRY_RUN === "true";
@@ -292,7 +320,7 @@ runMain(import.meta, async () => {
   else if (command === "finish") await finish(version, dryRun);
   else {
     throw new Error(
-      "Usage: VERSION=<version> DRY_RUN=<true|false> vp run release:ci <check|prepare|package|publish|finish>",
+      "Usage: VERSION=<version> DRY_RUN=<true|false> node --import tsx src/ci.ts <check|prepare|package|publish|finish>",
     );
   }
 });

@@ -15,6 +15,8 @@ import {
 
 const short = (commit: string) => commit.slice(0, 7);
 
+const revParse = async (ref: string) => (await runOrThrow("git", ["rev-parse", ref])).stdout.trim();
+
 /** The release workflow's run-name (release.yml): one version, and whether it's a dry run. */
 export const runTitle = (version: string, dryRun: boolean) =>
   `Release v${version}${dryRun ? " (dry run)" : ""}`;
@@ -87,18 +89,25 @@ export type NextStep =
   /** A run failed after it started publishing: run its failed jobs again, on the same commit. */
   | { readonly action: "rerun"; readonly run: WorkflowRun };
 
+/** A release run, with whether its publish job ran: it may have published something. */
+export interface ReleaseRun extends WorkflowRun {
+  readonly publishStarted: boolean;
+}
+
 /**
- * What to do about a version, from its release runs, newest first, and whether the newest got as
- * far as publishing. A run that failed before it published anything is left alone: a new run
- * starts from main as it is now, with whatever fixed it. One that failed after runs its failed
- * jobs again, on the same commit and tarballs, so npm never gets two builds of one version.
+ * What to do about a version, from its release runs, newest first. A run that's going is watched,
+ * and one that succeeded means it's released. Of the runs that failed, the newest that got as far
+ * as publishing runs its failed jobs again, on the same commit and tarballs, so npm never gets two
+ * builds of one version; a later run that failed before publishing doesn't hide it. With none, a
+ * new run starts from main as it is now, with whatever fixed the last one.
  */
-export function nextStep(runs: readonly WorkflowRun[], publishStarted: boolean): NextStep {
-  const [newest] = runs;
-  if (!newest) return { action: "dispatch" };
-  if (newest.status !== "completed") return { action: "watch", run: newest };
-  if (newest.conclusion === "success") return { action: "released", run: newest };
-  return publishStarted ? { action: "rerun", run: newest } : { action: "dispatch" };
+export function nextStep(runs: readonly ReleaseRun[]): NextStep {
+  const going = runs.find(({ status }) => status !== "completed");
+  if (going) return { action: "watch", run: going };
+  const released = runs.find(({ conclusion }) => conclusion === "success");
+  if (released) return { action: "released", run: released };
+  const published = runs.find(({ publishStarted }) => publishStarted);
+  return published ? { action: "rerun", run: published } : { action: "dispatch" };
 }
 
 interface Job {
@@ -126,8 +135,8 @@ async function quietly(args: readonly string[]): Promise<string> {
   return result.code === 0 ? result.stdout : "";
 }
 
-/** The release workflow's runs of one version, newest first. */
-async function releaseRuns(version: string, dryRun: boolean): Promise<WorkflowRun[]> {
+/** The release workflow's runs, newest first, with their titles. */
+async function releaseRuns(): Promise<(WorkflowRun & { displayTitle: string })[]> {
   const { stdout } = await runOrThrow("gh", [
     "run",
     "list",
@@ -138,8 +147,22 @@ async function releaseRuns(version: string, dryRun: boolean): Promise<WorkflowRu
     "--json",
     "databaseId,status,conclusion,url,displayTitle",
   ]);
-  return (JSON.parse(stdout) as (WorkflowRun & { displayTitle: string })[]).filter(
-    ({ displayTitle }) => displayTitle === runTitle(version, dryRun),
+  return JSON.parse(stdout) as (WorkflowRun & { displayTitle: string })[];
+}
+
+/** One version's release runs, newest first, with whether each got as far as publishing. */
+async function versionRuns(version: string): Promise<ReleaseRun[]> {
+  const runs = (await releaseRuns()).filter(
+    ({ displayTitle }) => displayTitle === runTitle(version, false),
+  );
+  return Promise.all(
+    runs.map(async (run) => ({
+      ...run,
+      publishStarted:
+        run.status === "completed" && run.conclusion !== "success"
+          ? publishStarted(await jobsOf(run.databaseId))
+          : false,
+    })),
   );
 }
 
@@ -189,7 +212,7 @@ async function pushProblems(): Promise<string[]> {
  * The checkout a release starts from: main, clean, and what GitHub has, with CI green on it. A
  * dry run starts from any pushed branch, and only reports CI and main's rules.
  */
-async function preflight(dryRun: boolean): Promise<{ branch: string }> {
+async function preflight(dryRun: boolean): Promise<{ branch: string; head: string }> {
   const problems: string[] = [];
   const branch = (await runOrThrow("git", ["branch", "--show-current"])).stdout.trim();
   if (!branch) throw new Error("HEAD is detached. Check out main.");
@@ -216,8 +239,14 @@ async function preflight(dryRun: boolean): Promise<{ branch: string }> {
   const write = await run("gh", ["api", "repos/{owner}/{repo}", "--jq", ".permissions.push"]);
   if (write.stdout.trim() !== "true") problems.push("Your gh login can't start workflows here.");
 
-  const ci = dryRun ? ciState(await ciRuns(head)) : await waitForCi(head);
-  if (ci.state === "passed") console.log(`CI passed on ${short(head)}.`);
+  // The release workflow pushes with GitHub's token, which starts no CI: on a release commit, or
+  // its merge into main, CI is the commit's first parent's, which the release's gate built on.
+  const subject = (await runOrThrow("git", ["log", "-1", "--format=%s", head])).stdout.trim();
+  const ciCommit = /^chore\(release\): (?:v\S+|merge v\S+ into main)$/.test(subject)
+    ? await revParse(`${head}^`)
+    : head;
+  const ci = dryRun ? ciState(await ciRuns(ciCommit)) : await waitForCi(ciCommit);
+  if (ci.state === "passed") console.log(`CI passed on ${short(ciCommit)}.`);
   else {
     const what =
       ci.state === "missing"
@@ -225,7 +254,7 @@ async function preflight(dryRun: boolean): Promise<{ branch: string }> {
         : ci.state === "running"
           ? "is still running"
           : "failed";
-    const problem = `CI ${what} on ${short(head)}${ci.run ? `: ${ci.run.url}` : "."}`;
+    const problem = `CI ${what} on ${short(ciCommit)}${ci.run ? `: ${ci.run.url}` : "."}`;
     if (dryRun) console.log(`${problem} A release would stop here.`);
     else problems.push(problem);
   }
@@ -234,7 +263,7 @@ async function preflight(dryRun: boolean): Promise<{ branch: string }> {
   else problems.push(...rules);
 
   if (problems.length > 0) throw new Error(`Not releasing:\n- ${problems.join("\n- ")}`);
-  return { branch };
+  return { branch, head };
 }
 
 /** The version to release: the argument, or the one the commits since the last tag suggest. */
@@ -248,7 +277,12 @@ async function chooseVersion(requested: string | undefined): Promise<string> {
 }
 
 /** Starts the release workflow on `branch` and returns its run. */
-async function dispatch(version: string, branch: string, dryRun: boolean): Promise<number> {
+async function dispatch(
+  version: string,
+  branch: string,
+  commit: string,
+  dryRun: boolean,
+): Promise<number> {
   const started = Date.now();
   const { stdout } = await runOrThrow("gh", [
     "workflow",
@@ -260,13 +294,18 @@ async function dispatch(version: string, branch: string, dryRun: boolean): Promi
     `version=${version}`,
     "-f",
     `dry-run=${dryRun}`,
+    "-f",
+    `commit=${commit}`,
   ]);
   const printed = /actions\/runs\/(\d+)/.exec(stdout)?.[1];
   if (printed) return Number(printed);
   // An older gh prints nothing: find the run GitHub has just listed.
   while (Date.now() - started < 2 * 60_000) {
-    const [run] = await releaseRuns(version, dryRun);
-    if (run && run.status !== "completed") return run.databaseId;
+    const run = (await releaseRuns()).find(
+      ({ displayTitle, status }) =>
+        displayTitle === runTitle(version, dryRun) && status !== "completed",
+    );
+    if (run) return run.databaseId;
     await sleep(5_000);
   }
   throw new Error(
@@ -352,19 +391,21 @@ export interface ReleaseOptions {
  */
 export async function release(options: ReleaseOptions): Promise<boolean> {
   const { dryRun } = options;
-  const { branch } = await step("Check the checkout and CI", () => preflight(dryRun));
+  if ((await run("gh", ["auth", "status"])).code !== 0) {
+    throw new Error("gh isn't logged in. Run gh auth login.");
+  }
+  // The tags the suggestion counts from.
+  await run("git", ["fetch", "--quiet", "origin", "refs/tags/v*:refs/tags/v*"], {
+    env: { ...process.env, GIT_TERMINAL_PROMPT: "0" },
+  });
   const version = await chooseVersion(options.version);
   assertVersion(version);
 
   const id = await step(
     `Start the release of ${version}${dryRun ? ", as a dry run" : ""}`,
     async () => {
-      const runs = dryRun ? [] : await releaseRuns(version, false);
-      const newest = runs[0];
-      const next = nextStep(
-        runs,
-        newest !== undefined && publishStarted(await jobsOf(newest.databaseId)),
-      );
+      // Finishing or reporting a release needs no checkout: only starting one does.
+      const next: NextStep = dryRun ? { action: "dispatch" } : nextStep(await versionRuns(version));
       if (next.action === "released") {
         console.log(`${version} is released already: ${next.run.url}`);
         return next.run.databaseId;
@@ -394,7 +435,19 @@ export async function release(options: ReleaseOptions): Promise<boolean> {
         }
         return next.run.databaseId;
       }
-      const started = await dispatch(version, branch, dryRun);
+      if (!dryRun) {
+        const other = (await releaseRuns()).find(
+          ({ displayTitle, status }) =>
+            !displayTitle.endsWith("(dry run)") && status !== "completed",
+        );
+        if (other) {
+          throw new Error(
+            `${other.displayTitle} is running: ${other.url}. Let it finish, then run this again.`,
+          );
+        }
+      }
+      const { branch, head } = await preflight(dryRun);
+      const started = await dispatch(version, branch, head, dryRun);
       console.log(`Started: https://github.com/Moltenship/time/actions/runs/${started}`);
       return started;
     },

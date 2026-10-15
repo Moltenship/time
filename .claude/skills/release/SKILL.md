@@ -23,7 +23,8 @@ must be logged in (`gh auth status`). Nothing else: the laptop needs no npm logi
 
 ## 2. The release
 
-Run, in the background, allowing it an hour (the Bash tool's `timeout: 3600000`):
+Run, in the background, allowing it two hours (the Bash tool's `timeout: 7200000`): it may wait
+up to 40 minutes for CI before its run's 15.
 
 ```sh
 vp run release $ARGUMENTS

@@ -16,11 +16,9 @@ export default defineConfig({
       "dry-run": { command: script("dry-run.ts"), cache: false },
       artifacts: { command: script("artifacts.ts"), cache: false },
       // The release (docs/internal/releasing.md): `release` starts and watches the release
-      // workflow, `ci` is that workflow's steps, `trust` the owner's one-time npm setup. Uncached:
-      // a cached task doesn't pass GH_REPO or GitHub's OIDC variables through, and each must reach
-      // npm and GitHub every time.
+      // workflow, whose steps run src/ci.ts with node; `trust` is the owner's one-time npm setup.
+      // Uncached: each must reach npm and GitHub every time.
       release: { command: script("release.ts"), cache: false },
-      ci: { command: script("ci.ts"), cache: false },
       trust: { command: script("trust.ts"), cache: false },
     },
   },

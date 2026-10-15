@@ -3,7 +3,7 @@ import { npmRegistry } from "./config";
 /**
  * What npm said when this workflow's OIDC token asked to publish a package: `trusted` when a
  * trusted publisher for the workflow is set up on it, `untrusted` when not (npm answers 404, or
- * refuses the token), and `error` when npm couldn't answer.
+ * refuses the token with 401 or 403), and `error` for anything else.
  */
 export type Trust =
   | { readonly verdict: "trusted" }
@@ -25,7 +25,9 @@ export function trustFromResponse(status: number, body: string): Trust {
     }
   })().trim();
   const detail = `npm answered ${status}${message ? `: ${message}` : ""}`;
-  return status >= 400 && status < 500
+  // 404 when no trusted publisher matches; 401 and 403 when npm refuses the token. Anything else,
+  // such as 429, says nothing about the setup.
+  return [401, 403, 404].includes(status)
     ? { verdict: "untrusted", detail }
     : { verdict: "error", detail };
 }

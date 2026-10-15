@@ -108,11 +108,10 @@ export default defineConfig({
       // The one release command: `vp run release [<version>] [--dry-run]` starts the release
       // workflow and watches it. The workflow bumps the versions, runs `release:gate` on the
       // release commit, publishes the tarballs the gate checked through npm trusted publishing,
-      // pushes, and writes the GitHub release; `release:ci` is its steps. `release:trust` is the
+      // pushes, and writes the GitHub release (tools/release/src/ci.ts). `release:trust` is the
       // owner's one-time npm setup. See docs/internal/releasing.md; `/release` drives it all
       // (.claude/skills/release/SKILL.md).
       release: { command: "vp run release#release", cache: false },
-      "release:ci": { command: "vp run release#ci", cache: false },
       "release:trust": { command: "vp run release#trust", cache: false },
       // What uses the dry run's tarballs: the SSR fixture, the docs site, and #43's shadcn install
       // test, which needs the network. `vp run release:artifacts showcase` runs one.

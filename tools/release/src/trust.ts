@@ -52,7 +52,7 @@ async function setUp(options: { readonly disallowTokens: boolean; readonly dryRu
         );
         continue;
       }
-      await npm([
+      const args = [
         "trust",
         "github",
         name,
@@ -62,8 +62,18 @@ async function setUp(options: { readonly disallowTokens: boolean; readonly dryRu
         trustedPublisher.repository,
         "--allow-publish",
         "--yes",
-        ...(options.dryRun ? ["--dry-run"] : []),
-      ]);
+      ];
+      // npm trust doesn't promise to honor --dry-run, so a dry run only says what it would run.
+      if (options.dryRun) {
+        console.log(`Would run: npm ${args.join(" ")}`);
+        continue;
+      }
+      const added = await run("npm", [...args, "--registry", registry], { cwd, inherit: true });
+      if (added.code !== 0) {
+        throw new Error(
+          `npm trust github failed for ${name}. If it has another trusted publisher, npm allows one: list it (npm trust list ${name}), revoke it (npm trust revoke ${name} --id <id>), and run this again.`,
+        );
+      }
       // npm's docs pace a loop of npm trust calls at two seconds.
       await sleep(2_000);
     }

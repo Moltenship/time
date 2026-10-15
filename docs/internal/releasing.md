@@ -66,25 +66,28 @@ generated release notes into polished ones.
 On the laptop, the command needs only `gh`, logged in with push access: no npm login, no browser,
 no prompt. It:
 
-1. **Checks** that the checkout is `main`, clean and at `origin/main`, that CI passed on `HEAD`
-   (waiting while it runs), and that nothing in `main`'s rules or branch protection would refuse
-   the workflow's push of the release commit. It reads them and changes nothing.
-2. **Picks the version:** the argument, or the suggestion from the Conventional Commits since the
+1. **Picks the version:** the argument, or the suggestion from the Conventional Commits since the
    last tag. After a prerelease, the next one (`1.0.0-rc.2`); after a stable version, major for a
    breaking change, minor for a feature and patch for the rest. Prereleases go to npm's `next`
    tag, stable versions to `latest`.
-3. **Starts the release workflow** on `main` with the version, or, if that version's last run
-   failed after it started publishing, runs that run's failed jobs again
-   ([When it stops](#when-it-stops)). A version that's released already is just reported.
+2. **Looks at the version's runs.** One that's going is watched, and one that succeeded is
+   reported. The newest that failed after it started publishing runs its failed jobs again
+   ([When it stops](#when-it-stops)). None of that needs the checkout.
+3. **Otherwise checks, and starts a run.** No other release may be running. The checkout must be
+   `main`, clean and at `origin/main`, with CI passed on `HEAD` (it waits while CI runs; on a
+   release commit the workflow pushed, which starts no CI, it reads the parent's). Nothing in
+   `main`'s rules or branch protection may refuse the workflow's push: it reads them and changes
+   nothing. Then it starts the release workflow on `main`, passing the commit it checked.
 4. **Watches** it (`gh run watch`) and reports: the GitHub release's link, or the jobs that failed
    and the end of their logs.
 
-The workflow, one release at a time:
+The workflow, one release at a time (a second waits; dry runs queue apart):
 
 1. **Check** (with an OIDC token, publishing nothing): the version is above the packages',
-   `v<version>` isn't on GitHub, npm doesn't have it, the run is on `main`, and npm's trusted
-   publisher for the workflow is on every package: it asks npm the way `npm publish` does, trading
-   the job's OIDC token for a publish token it throws away.
+   `v<version>` isn't on GitHub, npm doesn't have it, the run is on `main` and on the commit the
+   command checked, no release landed on `main` while the run waited, and npm's trusted publisher
+   for the workflow is on every package: it asks npm the way `npm publish` does, trading the job's
+   OIDC token for a publish token it throws away.
 2. **Gate** (read-only): bumps the nine manifests, commits `chore(release): v<version>` and tags it,
    in the runner only, then runs `RELEASE_VERSION=<version> vp run release:gate` on that commit:
    the whole full tier, Firefox included, with a strict dry run that packs the tarballs and writes
@@ -97,15 +100,17 @@ The workflow, one release at a time:
    `npm publish --provenance` through trusted publishing, skipping any npm serves already.
 4. **Finish** (the only job that can write to the repository): waits for npm to serve every
    package with the gate's integrity, the dist-tag, its trusted publisher and provenance; then
-   pushes `main` and the tag in one atomic push, and writes the GitHub release, marked a
-   prerelease for one. If `main` moved while the release ran, it merges the release into `main`
-   as a PR would (`chore(release): merge v<version> into main`), so the tag stays on the commit the
-   gate checked; a conflict stops it, with the steps.
+   pushes the tag, so the commit npm has is on GitHub whatever happens next, then `main`, and
+   writes the GitHub release, marked a prerelease for one. If `main` moved while the release ran,
+   it merges the release into `main` as a PR would (`chore(release): merge v<version> into main`),
+   so the tag stays on the commit the gate checked; a conflict stops it, with the steps.
 5. **Install** it as a user would: `REGISTRY_E2E_PACKAGES=npm vp run registry:e2e`, #43's install
    test with the packages from npm, `shadcn add` into clean Vite and Next.js apps, then a typecheck
    and a build.
 
-It takes about 15 minutes. Then rewrite the notes: `/release` does it from
+The jobs that can publish or push pin their actions to commits, use no cache, install without
+scripts, and run the release's steps (`tools/release/src/ci.ts`) with node, not through Vite
+Task. It takes about 15 minutes. Then rewrite the notes: `/release` does it from
 [the template](../../.claude/skills/release/notes-template.md), or by hand with
 `gh release edit v<version> --notes-file <file>`.
 
@@ -121,10 +126,25 @@ Run the same command again once the cause is fixed. It looks at the version's la
   nine never mix two builds; the push and the GitHub release are safe to repeat.
 - **It's running:** it watches it. **It released:** it says so.
 
+A rerun runs the same commit and the same `release.yml`, so a failure after publishing that only a
+change to the release tooling can fix can't be finished by one. Finish it by hand from the run's
+artifact, with the version `v<version>` (the tag may be on GitHub already):
+
+```sh
+gh run download <run> --name release --dir .release
+git fetch .release/release.bundle "refs/tags/v<version>:refs/tags/v<version>"
+git push origin v<version>                       # if GitHub doesn't have it
+git switch main && git pull && git merge --no-ff v<version> && git push
+gh release create v<version> --verify-tag --title <version> --notes-file .release/notes.md --prerelease
+```
+
+`--prerelease` is for a prerelease only.
+
 `--dry-run` starts a run with `dry-run` on, from any pushed branch: the check reports what a
-release would stop at instead of stopping, the gate runs, the publish job checks what it would
-publish, and the finish job checks it could push the tag and prints the notes. It publishes,
-pushes and releases nothing, and only reports CI and `main`'s rules on the laptop.
+release would stop at instead of stopping, and the gate runs. Then two jobs of their own, with no
+OIDC token and no write access, check what publishing would do and how the push would go, and
+print the notes; the publish and finish jobs don't run. It publishes, pushes and releases nothing,
+and only reports CI and `main`'s rules on the laptop.
 
 ### Why this order
 

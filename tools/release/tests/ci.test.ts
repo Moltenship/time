@@ -10,6 +10,8 @@ const ready: CheckFacts = {
   version: "1.0.0-rc.2",
   current: "1.0.0-rc.1",
   ref: "refs/heads/main",
+  sha: "a".repeat(40),
+  mainVersion: "1.0.0-rc.1",
   served: [],
   trust: new Map([
     ["@x/a", trusted],
@@ -33,6 +35,16 @@ describe("the release workflow's check", () => {
       "another branch",
       { ref: "refs/heads/feature" },
       "A release runs from main, not refs/heads/feature.",
+    ],
+    [
+      "main moving between the check and the start",
+      { expected: "b".repeat(40) },
+      "This run builds on aaaaaaa, not bbbbbbb, the commit vp run release checked",
+    ],
+    [
+      "a release landing while it queued",
+      { mainVersion: "1.0.0-rc.2" },
+      "main is at 1.0.0-rc.2 now, not 1.0.0-rc.1 as when this run started",
     ],
     [
       "a tag that exists",
@@ -75,7 +87,7 @@ describe("npm's answer to a trusted publisher's token exchange", () => {
     expect(trustFromResponse(200, "{}").verdict).toBe("error");
   });
 
-  test("doesn't on a 4xx, and can't say on anything else", () => {
+  test("doesn't on a 401, 403 or 404, and can't say on anything else", () => {
     expect(trustFromResponse(404, '{"message":"No trusted publisher"}')).toEqual({
       verdict: "untrusted",
       detail: "npm answered 404: No trusted publisher",
@@ -84,6 +96,7 @@ describe("npm's answer to a trusted publisher's token exchange", () => {
       verdict: "untrusted",
       detail: "npm answered 403",
     });
+    expect(trustFromResponse(429, "").verdict).toBe("error");
     expect(trustFromResponse(503, "Service Unavailable")).toEqual({
       verdict: "error",
       detail: "npm answered 503: Service Unavailable",
