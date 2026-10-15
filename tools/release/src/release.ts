@@ -86,12 +86,13 @@ export function releaseStage(checkout: Checkout, version: string): StagePlan {
   const blockers: string[] = [];
   const problems: string[] = [];
   const tag = releaseTag(version);
-  if (checkout.branch !== "main") {
+  const { localTag, remoteTag } = checkout;
+  // A tagged release commit checked out on its own is how a rerun finishes after main moved on.
+  if (checkout.branch !== "main" && checkout.head !== (remoteTag ?? localTag)) {
     problems.push(`The checkout is on ${checkout.branch || "a detached HEAD"}, not main.`);
   }
   if (!checkout.clean) blockers.push("The working tree has changes. Commit or stash them first.");
 
-  const { localTag, remoteTag } = checkout;
   if (localTag && remoteTag && localTag !== remoteTag) {
     blockers.push(`${tag} is ${short(localTag)} here, but ${short(remoteTag)} on GitHub.`);
   }
@@ -881,14 +882,15 @@ export async function release(options: ReleaseOptions): Promise<void> {
     waitForPublished({ version, tag: options.tag, staged: true }),
   );
   await step("Write the GitHub release", () => createGitHubRelease({ version, notes }));
+  // Released: another version may follow, whatever the install test below says.
+  const state = await readState();
+  if (state?.publishing) await writeState({ ...state, publishing: false });
   await step("Install the release from npm into clean apps", () =>
     runOrThrow("vp", ["run", "registry:e2e"], {
       env: { ...process.env, REGISTRY_E2E_PACKAGES: "npm" },
       inherit: true,
     }),
   );
-  const state = await readState();
-  if (state?.publishing) await writeState({ ...state, publishing: false });
   console.log(`\nReleased ${version}.`);
   console.log(
     `Its GitHub release has the notes generated from the commits. Rewrite them into the polished notes with /release in Claude Code, or by hand: gh release edit ${tag} --notes-file <file>.`,

@@ -126,6 +126,27 @@ describe("where a release starts", () => {
     ]);
   });
 
+  test("finishes from the tagged release commit checked out on its own", () => {
+    const detached = {
+      ...fresh,
+      branch: "",
+      head: bumped,
+      headOnMain: true,
+      current: "1.0.0-rc.2",
+      remoteTag: bumped,
+      tagInHistory: true,
+    };
+
+    expect(releaseStage(detached, "1.0.0-rc.2")).toEqual({
+      stage: { kind: "tagged", commit: bumped },
+      blockers: [],
+      problems: [],
+    });
+    expect(releaseStage({ ...detached, head: main }, "1.0.0-rc.2").problems).toEqual([
+      "The checkout is on a detached HEAD, not main.",
+    ]);
+  });
+
   test("releases a version bump that landed on main through a PR", () => {
     expect(releaseStage({ ...fresh, current: "1.0.0-rc.2" }, "1.0.0-rc.2").stage).toEqual({
       kind: "bumped",
