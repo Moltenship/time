@@ -477,6 +477,31 @@ describe("startCalendarDrop", () => {
     expect(scroller.top()).toBeGreaterThan(0);
   });
 
+  test("scrolls a nested element sideways at the view's side edges", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([]);
+    const scroller = scrollable();
+    const days = document.createElement("div");
+    let scrollLeft = 100;
+    Object.defineProperty(days, "scrollLeft", {
+      get: () => scrollLeft,
+      set: (value: number) => (scrollLeft = Math.max(0, value)),
+    });
+    setup(grid, {
+      columns: grid.columns,
+      scrollContainer: { current: scroller.element },
+      sidewaysScrollContainer: { current: days },
+    });
+    const drop = start({});
+
+    // Clear of the edges first, then resting at the right one.
+    drop.move({ x: 100, y: 300 });
+    drop.move({ x: 190, y: 300 });
+    for (let frame = 0; frame < 20; frame += 1) vi.advanceTimersToNextFrame();
+    expect(scrollLeft).toBeGreaterThan(100);
+    expect(scroller.top()).toBe(0);
+  });
+
   test("doesn't scroll while the point rests over a part of the view outside its scroller", () => {
     vi.useFakeTimers();
     const grid = mountTimeGrid([]);

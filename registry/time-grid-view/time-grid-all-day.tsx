@@ -159,8 +159,8 @@ function AllDayEvent<TEvent>({
   offset,
   offscreen,
   resourceId,
+  scrolledDayWidth,
   segment: { endsAfter, event, lane, span, startsBefore },
-  stickyLabel,
 }: {
   /**
    * The first date it is a focus target on: the date of the cell it renders in, so keys move on
@@ -175,9 +175,9 @@ function AllDayEvent<TEvent>({
   /** All of it is beside the visible dates of a scrolling grid: not a focus target. */
   readonly offscreen: boolean;
   readonly resourceId?: ResourceId | null;
+  /** One day's width as CSS, in a grid that scrolls sideways; see `TimeGridAllDayCellsProps`. */
+  readonly scrolledDayWidth?: string;
   readonly segment: Segment<TEvent>;
-  /** Keep the title in view past the hour gutter while the bar's start scrolls under it. */
-  readonly stickyLabel: boolean;
 }) {
   const chip = useEventChip(event, {
     date,
@@ -195,17 +195,18 @@ function AllDayEvent<TEvent>({
         "absolute start-0 z-1 mx-1 min-w-0 py-0 leading-[1.375rem]",
         startsBefore && "ms-0 rounded-s-none",
         endsAfter && "me-0 rounded-e-none",
-        // Clipping without a scroll container lets the title stick to the scrolling grid.
-        stickyLabel && "overflow-clip",
       )}
       style={laneStyle(lane, span, offset)}
     >
       <span
         data-slot="calendar-event-title"
-        className={cn(
-          "truncate",
-          stickyLabel && "sticky start-[calc(var(--calendar-gutter-width)+0.5rem)]",
-        )}
+        className="truncate"
+        // From the cell it renders in, as `laneStyle` reaches back from it to the bar's start.
+        style={
+          scrolledDayWidth === undefined || offset === 0
+            ? undefined
+            : { marginInlineStart: `calc(${offset} * (${scrolledDayWidth} + 1px))` }
+        }
       >
         <EventIcon>{getEventIcon?.(event.event)}</EventIcon>
         {event.title}
@@ -320,10 +321,10 @@ export interface TimeGridAllDayCellsProps<TEvent> extends TimeGridAllDayProps<TE
    */
   readonly shown?: PlainDateInterval;
   /**
-   * Keep bar titles in view past the hour gutter, for a grid that scrolls sideways under a sticky
-   * gutter: a bar that starts in days scrolled away still shows its title.
+   * One day's width as CSS, for a grid that scrolls sideways: a bar that starts in days scrolled
+   * away starts its title on the first day on screen, where it can be read.
    */
-  readonly stickyLabels?: boolean;
+  readonly scrolledDayWidth?: string;
 }
 
 /**
@@ -342,8 +343,8 @@ export function TimeGridAllDayCells<TEvent>({
   overflow,
   resourceId,
   row,
+  scrolledDayWidth,
   shown,
-  stickyLabels = false,
 }: TimeGridAllDayCellsProps<TEvent>) {
   const segments = overflow?.segments ?? row.segments;
   const isShown = (column: number) =>
@@ -388,7 +389,7 @@ export function TimeGridAllDayCells<TEvent>({
                 offscreen={!isShown(column)}
                 resourceId={resourceId}
                 segment={segment}
-                stickyLabel={stickyLabels}
+                scrolledDayWidth={scrolledDayWidth}
               />
             ))}
           {overflow !== null && overflow.hiddenCounts[column]! > 0 && (

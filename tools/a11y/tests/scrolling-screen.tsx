@@ -108,7 +108,7 @@ export const title = () => document.querySelector('[data-calendar-part="title"]'
  * element around it that scrolls the hours.
  */
 export function axis(view: ScrollingView) {
-  const viewport = document.querySelector<HTMLElement>(
+  const scroller = document.querySelector<HTMLElement>(
     view === "scrolling-month"
       ? '[data-slot="scrolling-month-viewport"]'
       : '[data-slot="scrolling-time-grid-days"]',
@@ -117,7 +117,7 @@ export function axis(view: ScrollingView) {
   // The spread of the snap points, a page of visible days apart, or of the week rows, gives one
   // item's length without the rounding of any one of them.
   const points = [
-    ...viewport.querySelectorAll(view === "scrolling-month" ? '[role="row"]' : ".snap-start"),
+    ...scroller.querySelectorAll(view === "scrolling-month" ? '[role="row"]' : ".snap-start"),
   ].map((point) => {
     const { left, top } = point.getBoundingClientRect();
     return view === "scrolling-month" ? top : left;
@@ -125,15 +125,15 @@ export function axis(view: ScrollingView) {
   const apart =
     view === "scrolling-month"
       ? 1
-      : viewport.querySelectorAll('[role="gridcell"][data-date]:not([aria-hidden])').length;
+      : scroller.querySelectorAll('[role="gridcell"][data-date]:not([aria-hidden])').length;
   const size = Math.abs(points.at(-1)! - points[0]!) / (points.length - 1) / apart;
   /**
    * Weeks from 1970 to the top of the view, by the week row there: its rounding stays within the
    * row, where a row length rounded to layout units would add up across a thousand weeks.
    */
   const monthPosition = () => {
-    const { top } = viewport.getBoundingClientRect();
-    const row = [...viewport.querySelectorAll('[role="row"]')].find(
+    const { top } = scroller.getBoundingClientRect();
+    const row = [...scroller.querySelectorAll('[role="row"]')].find(
       (candidate) => candidate.getBoundingClientRect().bottom > top + 0.5,
     )!;
     const bounds = row.getBoundingClientRect();
@@ -146,7 +146,7 @@ export function axis(view: ScrollingView) {
   return {
     /** Items from a fixed start to the start of the view; compare positions, not their values. */
     position: () =>
-      view === "scrolling-month" ? monthPosition() : Math.abs(viewport.scrollLeft) / size,
+      view === "scrolling-month" ? monthPosition() : Math.abs(scroller.scrollLeft) / size,
     /**
      * Moves the view `items` on toward later dates and leaves it there, as a drag let go there
      * does: the browser snaps to the nearest page, where a step such as `scrollBy` or a wheel
@@ -154,25 +154,25 @@ export function axis(view: ScrollingView) {
      */
     dragBy: (items: number, dir: "ltr" | "rtl" = "ltr") =>
       act(async () =>
-        viewport.scrollTo(
+        scroller.scrollTo(
           view === "scrolling-month"
-            ? { behavior: "instant", top: viewport.scrollTop + items * size }
+            ? { behavior: "instant", top: scroller.scrollTop + items * size }
             : {
                 behavior: "instant",
-                left: viewport.scrollLeft + items * size * (dir === "rtl" ? -1 : 1),
+                left: scroller.scrollLeft + items * size * (dir === "rtl" ? -1 : 1),
               },
         ),
       ),
     /** Scrolls by `items` along the axis, toward later dates. */
     scrollBy: (items: number, dir: "ltr" | "rtl" = "ltr") =>
       act(async () =>
-        viewport.scrollBy(
+        scroller.scrollBy(
           view === "scrolling-month"
             ? { behavior: "instant", top: items * size }
             : { behavior: "instant", left: items * size * (dir === "rtl" ? -1 : 1) },
         ),
       ),
     hours,
-    viewport,
+    scroller,
   };
 }

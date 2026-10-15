@@ -66,7 +66,7 @@ import {
 import { cn } from "cn";
 
 import {
-  useHeaderOnDays,
+  useDaysFollower,
   useOpeningTime,
   useStickyHeaderPadding,
 } from "./scrolling-time-grid-scroll";
@@ -171,7 +171,8 @@ function Track({
  *
  * The hours and the days scroll in two elements, one inside the other, so a swipe moves one of
  * them, whichever way it starts: Safari on iOS locks no direction in an element that scrolls both
- * ways, where a swipe down would also page the days. The header follows the days' scroll position.
+ * ways, where a swipe down would also page the days. The header follows the days by a transform
+ * that a scroll timeline drives.
  */
 export function ScrollingTimeGridView<TEvent>({
   actions,
@@ -272,7 +273,7 @@ export function ScrollingTimeGridView<TEvent>({
     [columns, now],
   );
   const headerRef = useStickyHeaderPadding(viewportRef);
-  useHeaderOnDays(axis.scrollRef, headerRef);
+  const followDays = useDaysFollower(axis.scrollRef, direction === "rtl");
   useOpeningTime({
     bodyRef,
     headerRef,
@@ -284,7 +285,7 @@ export function ScrollingTimeGridView<TEvent>({
   const placed = { count: axis.count, start, strip: days.length };
   const firstShown = days.find(({ column }) => column.date.equals(range.start)) ?? days[0];
   const corner = gutterColumn(columns, zones, firstShown?.column);
-  const gutter = "sticky start-0 shrink-0 w-(--calendar-gutter-width) bg-calendar-surface";
+  const gutter = "shrink-0 w-(--calendar-gutter-width) bg-calendar-surface";
 
   return (
     <>
@@ -307,34 +308,32 @@ export function ScrollingTimeGridView<TEvent>({
         <div
           ref={viewportRef}
           data-slot="scrolling-time-grid-viewport"
-          className="relative min-h-0 flex-1 scroll-pt-(--calendar-header-height) overflow-x-hidden overflow-y-auto [container-type:inline-size] [scrollbar-gutter:stable]"
+          className="relative min-h-0 flex-1 scroll-pt-(--calendar-header-height) overflow-x-hidden overflow-y-auto overscroll-x-contain [container-type:inline-size] [scrollbar-gutter:stable]"
           style={
             {
               "--calendar-day-width": `calc((100cqw - var(--calendar-gutter-width)) / ${visibleDays})`,
             } as CSSProperties
           }
         >
-          {/* Can't be scrolled, only follows the days' scroll, so its gutter cells stay sticky. */}
           <div
             ref={headerRef}
             data-slot="scrolling-time-grid-header"
-            className="sticky top-0 z-30 overflow-hidden border-b border-calendar-grid bg-calendar-surface"
+            className="sticky top-0 z-30 border-b border-calendar-grid bg-calendar-surface"
           >
-            <div style={{ width: `calc(var(--calendar-gutter-width) + ${axis.count} * ${DAY})` }}>
-              {/* Days scroll beneath it, so the pointer layer doesn't look through it to them. */}
-              <div role="row" data-occludes="" className="flex">
-                <div
-                  role="columnheader"
-                  className={`${gutter} z-10 flex items-end pb-1 text-[0.625rem] text-calendar-axis`}
-                >
-                  <TimeGridGutterLabels
-                    offset={
-                      corner === undefined ? undefined : offsetLabel(locale, timeZone, corner)
-                    }
-                    zones={zones}
-                  />
-                </div>
-                <Track {...placed}>
+            {/* Days scroll beneath it, so the pointer layer doesn't look through it to them. */}
+            <div role="row" data-occludes="" className="flex">
+              <div
+                role="columnheader"
+                className={`${gutter} flex items-end pb-1 text-[0.625rem] text-calendar-axis`}
+              >
+                <TimeGridGutterLabels
+                  offset={corner === undefined ? undefined : offsetLabel(locale, timeZone, corner)}
+                  zones={zones}
+                />
+              </div>
+              {/* The days follow the scroll below by transform; nothing can scroll them here. */}
+              <div className="flex min-w-0 flex-1 overflow-clip">
+                <Track {...placed} ref={followDays}>
                   <TimeGridDayHeaders
                     actions={actions}
                     annotations={annotations}
@@ -347,11 +346,13 @@ export function ScrollingTimeGridView<TEvent>({
                   />
                 </Track>
               </div>
-              <div role="row" className="flex" style={{ height: collapse.height }}>
-                <div data-occludes="" className={`${gutter} z-10`}>
-                  <AllDayRowHeader collapse={collapse} />
-                </div>
-                <Track {...placed}>
+            </div>
+            <div role="row" className="flex" style={{ height: collapse.height }}>
+              <div data-occludes="" className={gutter}>
+                <AllDayRowHeader collapse={collapse} />
+              </div>
+              <div className="flex min-w-0 flex-1 overflow-clip">
+                <Track {...placed} ref={followDays}>
                   <TimeGridAllDayCells
                     days={days}
                     formatDate={formatDate}
@@ -362,15 +363,15 @@ export function ScrollingTimeGridView<TEvent>({
                     onOpenDay={openDay}
                     overflow={collapse.overflows[0]!}
                     row={projection.allDay}
+                    scrolledDayWidth={DAY}
                     shown={range}
-                    stickyLabels
                   />
                 </Track>
               </div>
             </div>
           </div>
           <div ref={bodyRef} role="row" className="flex h-[calc(var(--calendar-hour-height)*24)]">
-            <div role="rowheader" data-occludes="" className={`${gutter} z-20`}>
+            <div role="rowheader" data-occludes="" className={gutter}>
               <span className="sr-only">Timed events</span>
               <TimeGridHours locale={locale} zones={zones} />
             </div>
