@@ -36,8 +36,9 @@ const views = [
   are sticky above them, and their days follow the days' scroll by a transform on a scroll
   timeline, which the browser runs with the scroll itself, falling back to scroll events where
   there are no scroll timelines. A swipe over the header scrolls nothing. An all-day bar that
-  starts in days scrolled away shows its title from the first day on screen. Days rendered around the visible ones are hidden from assistive technology; keys move
-  through the visible days and page past them, as in the week view.
+  starts in days scrolled away shows its title from the first day on screen. Days rendered around
+  the visible ones are hidden from assistive technology; keys move through the visible days and
+  page past them, as in the week view.
 - Dragging works across the scroll: snapping pauses while a gesture is under way, and dragging
   to an edge scrolls into the next days, or the hours at the top and bottom.
 

@@ -205,7 +205,7 @@ function AllDayEvent<TEvent>({
         style={
           scrolledDayWidth === undefined || offset === 0
             ? undefined
-            : { marginInlineStart: `calc(${offset} * (${scrolledDayWidth} + 1px))` }
+            : { marginInlineStart: `calc(${offset} * ${scrolledDayWidth})` }
         }
       >
         <EventIcon>{getEventIcon?.(event.event)}</EventIcon>

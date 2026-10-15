@@ -1,5 +1,14 @@
 import { act } from "react";
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from "vite-plus/test";
 import { cdp, page, server } from "vite-plus/test/browser";
 
 import { atRest, inWebKit, nextFrame, press, render, until } from "./render";
@@ -64,36 +73,6 @@ describe.each(["ltr", "rtl"] as const)("scrolling time grids, %s", (dir) => {
       expect(scrollers).toEqual([hours, scroller]);
     },
   );
-
-  test("the header stays on the days as they scroll a page", async () => {
-    await render(<Screen dir={dir} view="scrolling-3-day" />);
-    const { position, scroller } = axis("scrolling-3-day");
-    // The header's animations start on the frame after the view mounts.
-    await atRest(scroller);
-    const start = position();
-    expect(headerDrift()).toBeLessThan(1);
-
-    // Next scrolls smoothly; the header keeps up every frame of the way.
-    await act(async () =>
-      document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click(),
-    );
-    let frames = 0;
-    while (Math.abs(position() - start - 3) >= 0.05) {
-      await nextFrame();
-      expect(headerDrift()).toBeLessThan(1);
-      frames += 1;
-      if (frames > 600) throw new Error("the page never came to rest");
-    }
-    await atRest(scroller);
-    expect(title()).toBe("Oct 10 – 12, 2026");
-    expect(headerDrift()).toBeLessThan(1);
-
-    // A scroll that stops between pages, before it settles back.
-    await axis("scrolling-3-day").dragBy(0.4, dir);
-    expect(headerDrift()).toBeLessThan(1);
-    await atRest(scroller);
-    expect(headerDrift()).toBeLessThan(1);
-  });
 });
 
 test("the hours open on the current time, in the element that scrolls them", async () => {
@@ -108,36 +87,82 @@ test("the hours open on the current time, in the element that scrolls them", asy
   expect(Math.abs(now - hours!.scrollTop - third)).toBeLessThan(2);
 });
 
-test("the header's days follow a scroll timeline where the browser has them", async () => {
-  await render(<Screen view="scrolling-3-day" />);
-  const header = document.querySelector('[data-slot="scrolling-time-grid-header"]')!;
-  const timelines = header
-    .getAnimations({ subtree: true })
-    .map(({ timeline }) => timeline?.constructor.name);
+// Chromium and WebKit here have scroll timelines; Firefox, and Safari before 26, follow scroll
+// events instead.
+describe.each([
+  ["a scroll timeline", false],
+  ["scroll events", true],
+] as const)("the header following %s", (_, fallback) => {
+  beforeEach(() => {
+    if (fallback) vi.stubGlobal("ScrollTimeline", undefined);
+  });
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
 
-  // The day names and the all-day row.
-  expect(timelines).toEqual(
-    typeof ScrollTimeline === "function" ? ["ScrollTimeline", "ScrollTimeline"] : [],
-  );
-});
+  test("the header's days follow a scroll timeline where the browser has them", async () => {
+    await render(<Screen view="scrolling-3-day" />);
+    const header = document.querySelector('[data-slot="scrolling-time-grid-header"]')!;
+    const timelines = header
+      .getAnimations({ subtree: true })
+      .map(({ timeline }) => timeline?.constructor.name);
 
-test("keys moving focus from the header to the next page keep the header on the days", async () => {
-  await render(<Screen view="scrolling-3-day" />);
-  const { scroller } = axis("scrolling-3-day");
-  await atRest(scroller);
-  const header = document.querySelector('[data-slot="scrolling-time-grid-header"]')!;
-  // The all-day cell of the last day shown.
-  const cell = header
-    .querySelector('[data-date="2026-10-09"]')!
-    .closest<HTMLElement>('[role="gridcell"]')!;
-  await act(async () => cell.focus());
+    // The day names and the all-day row.
+    expect(timelines).toEqual(
+      !fallback && typeof ScrollTimeline === "function" ? ["ScrollTimeline", "ScrollTimeline"] : [],
+    );
+  });
 
-  await press("ArrowRight");
-  await atRest(scroller);
+  test("keys moving focus from the header to the next page keep the header on the days", async () => {
+    await render(<Screen view="scrolling-3-day" />);
+    const { scroller } = axis("scrolling-3-day");
+    await atRest(scroller);
+    const header = document.querySelector('[data-slot="scrolling-time-grid-header"]')!;
+    // The all-day cell of the last day shown.
+    const cell = header
+      .querySelector('[data-date="2026-10-09"]')!
+      .closest<HTMLElement>('[role="gridcell"]')!;
+    await act(async () => cell.focus());
 
-  expect(title()).toBe("Oct 10 – 12, 2026");
-  expect(header.contains(document.activeElement)).toBe(true);
-  expect(headerDrift()).toBeLessThan(1);
+    await press("ArrowRight");
+    await atRest(scroller);
+
+    expect(title()).toBe("Oct 10 – 12, 2026");
+    expect(header.contains(document.activeElement)).toBe(true);
+    expect(headerDrift()).toBeLessThan(1);
+  });
+
+  describe.each(["ltr", "rtl"] as const)("%s", (dir) => {
+    test("the header stays on the days as they scroll a page", async () => {
+      await render(<Screen dir={dir} view="scrolling-3-day" />);
+      const { position, scroller } = axis("scrolling-3-day");
+      // The header's animations start on the frame after the view mounts.
+      await atRest(scroller);
+      const start = position();
+      expect(headerDrift()).toBeLessThan(1);
+
+      // Next scrolls smoothly; the header keeps up every frame of the way.
+      await act(async () =>
+        document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click(),
+      );
+      let frames = 0;
+      while (Math.abs(position() - start - 3) >= 0.05) {
+        await nextFrame();
+        expect(headerDrift()).toBeLessThan(1);
+        frames += 1;
+        if (frames > 600) throw new Error("the page never came to rest");
+      }
+      await atRest(scroller);
+      expect(title()).toBe("Oct 10 – 12, 2026");
+      expect(headerDrift()).toBeLessThan(1);
+
+      // A scroll that stops between pages, before it settles back.
+      await axis("scrolling-3-day").dragBy(0.4, dir);
+      expect(headerDrift()).toBeLessThan(1);
+      await atRest(scroller);
+      expect(headerDrift()).toBeLessThan(1);
+    });
+  });
 });
 
 // In WebKit the drag doesn't carry the view on; why isn't known yet: #181.
