@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-recurrence",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Range-bounded recurrence for Moltenship Time: RRULE expansion, exceptions and series edits.",
   "homepage": "https://time.molten.sh/docs/api/recurrence",
   "bugs": {

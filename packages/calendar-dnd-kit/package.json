@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-dnd-kit",
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "description": "Optional dnd-kit adapter for Moltenship Time: drag your items into the calendar and events out.",
   "homepage": "https://time.molten.sh/docs/api/dnd-kit",
   "bugs": {
