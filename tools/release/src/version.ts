@@ -8,6 +8,19 @@ import { readPublishedPackages, workspaceRoot, type WorkspacePackage } from "./w
 /** The release commit's subject, a Conventional Commit as AGENTS.md asks. */
 export const releaseSubject = (version: string) => `chore(release): v${version}`;
 
+/** GitHub Actions' bot, which the release workflow commits as. */
+export const botName = "github-actions[bot]";
+export const botEmail = "41898282+github-actions[bot]@users.noreply.github.com";
+
+const releaseCommitSubject = /^chore\(release\): (?:v\S+|merge v\S+ into main)$/;
+
+/**
+ * Whether a commit is one the release workflow pushed: a release commit, or its merge into main.
+ * It takes both the bot's address and the subject, so a person's commit titled the same isn't.
+ */
+export const isReleaseCommit = (subject: string, email: string) =>
+  email === botEmail && releaseCommitSubject.test(subject);
+
 /** The one version every published package shares. Throws when they differ. */
 export function sharedVersion(packages: readonly WorkspacePackage[]): string {
   const versions = new Set(packages.map(({ manifest }) => manifest.version));

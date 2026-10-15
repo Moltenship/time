@@ -9,7 +9,14 @@ import { manifestPath, readManifest } from "./manifest";
 import { trustedPublishing, type Trust } from "./oidc";
 import { publish } from "./publish";
 import { fetchPackument, waitForPublished } from "./published";
-import { assertVersion, releaseSubject, setVersion, sharedVersion } from "./version";
+import {
+  assertVersion,
+  botEmail,
+  botName,
+  releaseSubject,
+  setVersion,
+  sharedVersion,
+} from "./version";
 import {
   isOnMain,
   parseArguments,
@@ -40,12 +47,7 @@ const bundlePath = releaseFile("release.bundle");
 const notesPath = releaseFile("notes.md");
 
 /** The release commit's author and committer: GitHub Actions' bot. */
-const bot = [
-  "-c",
-  "user.name=github-actions[bot]",
-  "-c",
-  "user.email=41898282+github-actions[bot]@users.noreply.github.com",
-];
+const bot = ["-c", `user.name=${botName}`, "-c", `user.email=${botEmail}`];
 
 const revParse = async (ref: string) => (await runOrThrow("git", ["rev-parse", ref])).stdout.trim();
 

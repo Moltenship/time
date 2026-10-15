@@ -1,12 +1,14 @@
 import { describe, expect, test } from "vite-plus/test";
 
 import { suggestVersion } from "../src/notes";
+import { botEmail, isReleaseCommit } from "../src/version";
 import {
   ciState,
   nextStep,
   publishJob,
   publishStarted,
   pushRuleProblems,
+  releaseChanges,
   runTitle,
   type WorkflowRun,
 } from "../src/release";
@@ -69,6 +71,24 @@ describe("what a release does about a version's runs", () => {
   test("a run's title names the version, and a dry run says so", () => {
     expect(runTitle("1.0.0-rc.2", false)).toBe("Release v1.0.0-rc.2");
     expect(runTitle("1.0.0-rc.2", true)).toBe("Release v1.0.0-rc.2 (dry run)");
+  });
+});
+
+describe("the release workflow's own commits", () => {
+  test("are the bot's release commits and merges, not a person's titled the same", () => {
+    expect(isReleaseCommit("chore(release): v1.0.0-rc.2", botEmail)).toBe(true);
+    expect(isReleaseCommit("chore(release): merge v1.0.0-rc.2 into main", botEmail)).toBe(true);
+    expect(isReleaseCommit("chore(release): v1.0.0-rc.2", "owner@example.com")).toBe(false);
+    expect(isReleaseCommit("chore(release): bump the gate", botEmail)).toBe(false);
+  });
+
+  test("leave nothing to release when they're all there is since the last tag", () => {
+    const own = [botEmail, "chore(release): v1.0.0-rc.2"] as const;
+    const change = ["owner@example.com", "fix(core): keep the overlay"] as const;
+
+    expect(releaseChanges([])).toEqual([]);
+    expect(releaseChanges([own])).toEqual([]);
+    expect(releaseChanges([change, own])).toEqual([change]);
   });
 });
 

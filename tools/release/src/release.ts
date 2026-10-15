@@ -2,7 +2,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 
 import { releaseTag } from "./github-release";
 import { commitsBetween, previousTag, suggestVersion } from "./notes";
-import { assertVersion, sharedVersion } from "./version";
+import { assertVersion, isReleaseCommit, sharedVersion } from "./version";
 import {
   gitState,
   parseArguments,
@@ -241,10 +241,12 @@ async function preflight(dryRun: boolean): Promise<{ branch: string; head: strin
 
   // The release workflow pushes with GitHub's token, which starts no CI: on a release commit, or
   // its merge into main, CI is the commit's first parent's, which the release's gate built on.
-  const subject = (await runOrThrow("git", ["log", "-1", "--format=%s", head])).stdout.trim();
-  const ciCommit = /^chore\(release\): (?:v\S+|merge v\S+ into main)$/.test(subject)
-    ? await revParse(`${head}^`)
-    : head;
+  const [email = "", subject = ""] = (
+    await runOrThrow("git", ["log", "-1", "--format=%ae%x00%s", head])
+  ).stdout
+    .trim()
+    .split("\0");
+  const ciCommit = isReleaseCommit(subject, email) ? await revParse(`${head}^`) : head;
   const ci = dryRun ? ciState(await ciRuns(ciCommit)) : await waitForCi(ciCommit);
   if (ci.state === "passed") console.log(`CI passed on ${short(ciCommit)}.`);
   else {
@@ -266,11 +268,35 @@ async function preflight(dryRun: boolean): Promise<{ branch: string; head: strin
   return { branch, head };
 }
 
-/** The version to release: the argument, or the one the commits since the last tag suggest. */
+/** The commits, as `[email, subject]`, that change something: not the release workflow's own. */
+export const releaseChanges = (commits: readonly (readonly [string, string])[]) =>
+  commits.filter(([email, subject]) => !isReleaseCommit(subject, email));
+
+/**
+ * The version to release: the argument; or the packages' own version while its release isn't done;
+ * or the one the commits since the last tag suggest, when there are any.
+ */
 async function chooseVersion(requested: string | undefined): Promise<string> {
   if (requested !== undefined) return requested;
   const current = sharedVersion(await readPublishedPackages());
+  // The packages' own version, while its run is going or must finish after it started publishing.
+  const unfinished = nextStep(await versionRuns(current));
+  if (unfinished.action === "watch" || unfinished.action === "rerun") {
+    console.log(`Releasing ${current}: its release isn't done yet.`);
+    return current;
+  }
   const from = await previousTag("HEAD");
+  if (from) {
+    const commits = (await runOrThrow("git", ["log", "--format=%ae%x00%s", `${from}..HEAD`])).stdout
+      .split("\n")
+      .filter(Boolean)
+      .map((line) => line.split("\0") as [string, string]);
+    if (releaseChanges(commits).length === 0) {
+      throw new Error(
+        `Nothing to release: no commits since ${from} but the release's own. To release anyway, name the version: vp run release <version>.`,
+      );
+    }
+  }
   const suggestion = suggestVersion(current, from ? await commitsBetween(from, "HEAD") : []);
   console.log(`Releasing ${suggestion.version}: ${suggestion.reason}.`);
   return suggestion.version;

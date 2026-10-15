@@ -66,10 +66,12 @@ generated release notes into polished ones.
 On the laptop, the command needs only `gh`, logged in with push access: no npm login, no browser,
 no prompt. It:
 
-1. **Picks the version:** the argument, or the suggestion from the Conventional Commits since the
-   last tag. After a prerelease, the next one (`1.0.0-rc.2`); after a stable version, major for a
-   breaking change, minor for a feature and patch for the rest. Prereleases go to npm's `next`
-   tag, stable versions to `latest`.
+1. **Picks the version:** the argument; or the packages' own version while its release is
+   running or failed after it started publishing; or the suggestion from the Conventional Commits
+   since the last tag. After a prerelease, that's the next one (`1.0.0-rc.2`); after a stable
+   version, major for a breaking change, minor for a feature and patch for the rest. With no
+   commits since the last tag but the release's own, it stops: there's nothing to release, unless
+   you name a version. Prereleases go to npm's `next` tag, stable versions to `latest`.
 2. **Looks at the version's runs.** One that's going is watched, and one that succeeded is
    reported. The newest that failed after it started publishing runs its failed jobs again
    ([When it stops](#when-it-stops)). None of that needs the checkout.
@@ -134,7 +136,10 @@ artifact, with the version `v<version>` (the tag may be on GitHub already):
 gh run download <run> --name release --dir .release
 git fetch .release/release.bundle "refs/tags/v<version>:refs/tags/v<version>"
 git push origin v<version>                       # if GitHub doesn't have it
-git switch main && git pull && git merge --no-ff v<version> && git push
+git switch main && git pull
+git merge --ff-only v<version>                   # main hasn't moved; otherwise:
+git merge --no-ff -m "chore(release): merge v<version> into main" v<version>
+git push
 gh release create v<version> --verify-tag --title <version> --notes-file .release/notes.md --prerelease
 ```
 

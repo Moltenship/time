@@ -130,7 +130,7 @@ jobs:
 
       # The tarballs, the manifest the publish step trusts, the notes and the release commit.
       - name: Keep the release for the jobs after this one
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: release
           path: .release/
