@@ -13,7 +13,8 @@ import {
   type PublishState,
   type ReleaseManifest,
 } from "../src/manifest";
-import { parseArguments, run } from "../src/workspace";
+import { publish } from "../src/publish";
+import { parseArguments } from "../src/workspace";
 
 const manifest: ReleaseManifest = {
   status: "passed",
@@ -114,36 +115,19 @@ describe("the publish guard", () => {
     expect(() => distTag("1.0.0", "next tag")).toThrow("isn't a dist-tag");
   });
 
-  test("the command refuses without a manifest and never reaches the registry", async () => {
-    const releaseRoot = resolve(import.meta.dirname, "..");
-    const result = await run(
-      process.execPath,
-      [
-        "--import",
-        "tsx",
-        "src/publish.ts",
-        "--version",
-        "1.0.0",
-        "--yes",
-        "--manifest",
-        join(releaseRoot, "tests/no-such-manifest.json"),
-      ],
-      // A registry nothing listens on, in case a regression ever got past the guard.
-      {
-        cwd: releaseRoot,
-        env: {
-          ...process.env,
-          npm_config_registry: "http://127.0.0.1:9/",
-          pnpm_config_registry: "http://127.0.0.1:9/",
-        },
-      },
-    );
+  test("refuses without a manifest, before it reaches npm", async () => {
+    const lines: string[] = [];
+    const missing = join(resolve(import.meta.dirname, ".."), "tests/no-such-manifest.json");
+    const attempt = publish({
+      version: "1.0.0",
+      manifestFile: missing,
+      log: (line) => lines.push(line),
+    });
 
-    expect(result.code).toBe(1);
-    expect(result.stderr).toContain("Refusing to publish");
-    expect(result.stderr).toContain("No dry-run manifest");
-    expect(result.stdout).not.toContain("Ready to publish");
-  }, 30_000);
+    await expect(attempt).rejects.toThrow("Refusing to publish");
+    await expect(attempt).rejects.toThrow("No dry-run manifest");
+    expect(lines).toEqual([]);
+  });
 
   test("flags are strict: no value on booleans, a value on strings, nothing unknown", () => {
     const parse = (argv: string[]) => parseArguments(argv, ["yes"], ["tag"]);

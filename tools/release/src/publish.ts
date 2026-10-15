@@ -1,186 +1,118 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createInterface } from "node:readline/promises";
+
+import { gte } from "semver";
 
 import { npmRegistry as registry } from "./config";
 import { distTag, manifestPath, publishProblems, readManifest, tarballIntegrity } from "./manifest";
 import { tarballDirectory } from "./pack";
-import {
-  gitState,
-  isOnMain,
-  parseArguments,
-  readPublishedPackages,
-  run,
-  runMain,
-  runOrThrow,
-} from "./workspace";
+import { fetchPackument } from "./published";
+import { gitState, isOnMain, readPublishedPackages, runOrThrow } from "./workspace";
+
+/** The first npm that publishes through trusted publishing (docs.npmjs.com/trusted-publishers). */
+export const trustedPublishingNpm = "11.5.1";
 
 /**
- * The integrity npm records for this version, or undefined when npm doesn't have it. Throws when
- * the registry can't say.
- */
-async function publishedIntegrity(
-  name: string,
-  version: string,
-  env: NodeJS.ProcessEnv,
-): Promise<string | undefined> {
-  const result = await run("vp", ["pm", "view", `${name}@${version}`, "dist.integrity", "--json"], {
-    env,
-  });
-  if (result.code === 0) {
-    const integrity = result.stdout.trim() ? (JSON.parse(result.stdout) as unknown) : undefined;
-    return typeof integrity === "string" ? integrity : undefined;
-  }
-  const output = `${result.stdout}\n${result.stderr}`;
-  if (/ERR_PNPM_PACKAGE_NOT_FOUND|ERR_PNPM_FETCH_404|E404/.test(output)) return undefined;
-  throw new Error(`Can't tell whether ${name}@${version} is on npm:\n${output.trim()}`);
-}
-
-async function confirm(question: string, expected: string): Promise<boolean> {
-  if (!process.stdin.isTTY) return false;
-  const prompt = createInterface({ input: process.stdin, output: process.stdout });
-  try {
-    return (await prompt.question(question)).trim() === expected;
-  } finally {
-    prompt.close();
-  }
-}
-
-/**
- * Publishes the tarballs a passing dry run checked, and nothing else. Run it by hand, or from the
- * manual release workflow. It refuses unless the dry-run manifest matches HEAD, the version and
- * every tarball, on a clean tree.
+ * Publishes the tarballs the release gate checked, and nothing else, with npm trusted publishing:
+ * npm trades the job's OIDC token for a short-lived publish token and signs provenance, so there
+ * is no npm token anywhere. The release workflow's publish job runs it, after the gate.
+ *
+ * It refuses unless the dry-run manifest matches HEAD, the version and every tarball, on a clean
+ * tree on main or right on top of it. Safe to run again: a version npm serves is skipped when it's
+ * the tarball the gate checked, and stops the run when it isn't, so the nine on npm never mix two
+ * builds. With `dryRun`, it checks all of that and npm's state, publishes nothing, and returns what
+ * a release would refuse instead of throwing.
  */
 export async function publish(options: {
   readonly version: string;
   readonly tag?: string;
-  readonly provenance: boolean;
-  readonly yes: boolean;
+  readonly dryRun?: boolean;
   readonly manifestFile?: string;
-}): Promise<void> {
+  readonly log?: (line: string) => void;
+}): Promise<readonly string[]> {
+  const { version, log = console.log } = options;
   const manifest = await readManifest(options.manifestFile ?? manifestPath);
   const git = await gitState();
   const packages = await readPublishedPackages();
   const problems = publishProblems({
     manifest,
-    version: options.version,
+    version,
     head: git.head,
     clean: git.clean,
-    onMain: await isOnMain(git.head),
+    onMain: (await isOnMain(git.head)) || (await isOnMain(`${git.head}^`)),
     expectedPackages: packages.map(({ manifest: { name } }) => name),
     tarballIntegrity: await tarballIntegrity(manifest),
   });
-  if (problems.length > 0 || !manifest) {
+  if (!manifest || (problems.length > 0 && !options.dryRun)) {
     throw new Error(`Refusing to publish:\n- ${problems.join("\n- ")}`);
   }
-  const tag = distTag(options.version, options.tag);
-  if (options.provenance && process.env.GITHUB_ACTIONS !== "true") {
-    throw new Error(
-      "--provenance needs GitHub Actions. Publish locally without it, or run the release workflow.",
-    );
-  }
+  const tag = distTag(version, options.tag);
 
-  const summary = `${manifest.packages.length} packages at ${options.version} with the "${tag}" tag${options.provenance ? " and provenance" : ""}`;
-  console.log(`Ready to publish ${summary}:`);
-  for (const { file } of manifest.packages) console.log(`  ${file}`);
-  if (!options.yes && !(await confirm(`Type ${options.version} to publish: `, options.version))) {
-    throw new Error(
-      "Not confirmed. Nothing was published. (Pass --yes when there is no terminal.)",
-    );
-  }
-
-  // Always the public registry, whatever a local .npmrc says. pnpm reads pnpm_config_*; npm_config_*
-  // covers anything that shells out to npm. With NODE_AUTH_TOKEN set, a throwaway npmrc reads the
-  // token from the environment, so it is never written to disk.
+  // npm runs outside the workspace, whose devEngines pins pnpm, and reads an empty npmrc: no
+  // token, no project or user config, and the public registry.
+  const cwd = await mkdtemp(join(tmpdir(), "moltenship-publish-"));
+  const userconfig = join(cwd, ".npmrc");
+  await writeFile(userconfig, "");
   const env: NodeJS.ProcessEnv = {
     ...process.env,
     npm_config_registry: registry,
-    pnpm_config_registry: registry,
+    npm_config_userconfig: userconfig,
   };
-  const configDirectory = process.env.NODE_AUTH_TOKEN
-    ? await mkdtemp(join(tmpdir(), "moltenship-npmrc-"))
-    : undefined;
-  if (configDirectory) {
-    const userconfig = join(configDirectory, ".npmrc");
-    await writeFile(
-      userconfig,
-      `registry=${registry}\n//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}\n`,
-    );
-    env.npm_config_userconfig = userconfig;
-  }
-
+  delete env.NODE_AUTH_TOKEN;
+  delete env.NPM_TOKEN;
   try {
-    // A scoped line such as `@moltenship:registry=…` in an npmrc beats the default registry, so
-    // check both.
-    for (const key of ["registry", "@moltenship:registry"]) {
-      const configured = (
-        await runOrThrow("vp", ["pm", "config", "get", key], { env })
-      ).stdout.trim();
-      if (key !== "registry" && (configured === "" || configured === "undefined")) continue;
-      if (configured.replace(/\/?$/, "/") !== registry) {
-        throw new Error(`pnpm's ${key} is ${configured}, not ${registry}. Nothing was published.`);
-      }
+    const npm = (await runOrThrow("npm", ["--version"], { cwd, env })).stdout.trim();
+    if (!gte(npm, trustedPublishingNpm)) {
+      throw new Error(
+        `npm ${npm} can't publish through trusted publishing; it needs ${trustedPublishingNpm}.`,
+      );
     }
 
-    // Look at all nine before publishing any. A re-run after a partial publish skips what is out,
-    // but only if it is the tarball this dry run checked; otherwise npm would mix two builds.
-    const published = new Map<string, string | undefined>();
-    for (const { name, integrity } of manifest.packages) {
-      const current = await publishedIntegrity(name, options.version, env);
-      if (current !== undefined && current !== integrity) {
+    // Look at all nine before publishing any.
+    const pending: (typeof manifest.packages)[number][] = [];
+    for (const entry of manifest.packages) {
+      const current = (await fetchPackument(entry.name))?.versions?.[version]?.dist?.integrity;
+      if (current === undefined) pending.push(entry);
+      else if (current !== entry.integrity) {
         throw new Error(
-          `${name}@${options.version} is already on npm with different contents (${current}). Release a new version instead. Nothing was published.`,
+          `${entry.name}@${version} is already on npm with different contents (${current}). Release a new version instead. Nothing was published.`,
         );
-      }
-      published.set(name, current);
+      } else log(`${entry.name}@${version} is on npm already; skipping it.`);
+    }
+    if (pending.length === 0) {
+      log(`npm serves all ${manifest.packages.length} packages at ${version} already.`);
+      return problems;
     }
 
-    for (const { name, file } of manifest.packages) {
-      if (published.get(name) !== undefined) {
-        console.log(`${name}@${options.version} is already on npm; skipping.`);
-        continue;
-      }
-      const args = [
-        "pm",
-        "publish",
-        join(tarballDirectory, file),
-        "--tag",
-        tag,
-        "--access",
-        "public",
-        "--no-git-checks",
-      ];
-      if (options.provenance) args.push("--provenance");
-      await runOrThrow("vp", args, { env, inherit: true });
-      console.log(`Published ${name}@${options.version}.`);
+    const summary = `${pending.length} packages at ${version} with the "${tag}" tag`;
+    log(`Ready to publish ${summary}, through trusted publishing, with provenance:`);
+    for (const { file } of pending) log(`  ${file}`);
+    if (options.dryRun) {
+      log(`A release would publish them now, with npm ${npm}.`);
+      return problems;
     }
+    for (const { name, file } of pending) {
+      await runOrThrow(
+        "npm",
+        [
+          "publish",
+          join(tarballDirectory, file),
+          "--access",
+          "public",
+          "--tag",
+          tag,
+          "--provenance",
+          "--registry",
+          registry,
+        ],
+        { cwd, env, inherit: true },
+      );
+      log(`Published ${name}@${version}.`);
+    }
+    log(`Published ${summary}.`);
+    return problems;
   } finally {
-    if (configDirectory) await rm(configDirectory, { force: true, recursive: true });
+    await rm(cwd, { force: true, recursive: true });
   }
-  console.log(`Published ${summary}.`);
 }
-
-runMain(import.meta, async () => {
-  const { flags } = parseArguments(
-    process.argv.slice(2),
-    ["provenance", "yes"],
-    ["version", "tag", "manifest"],
-  );
-  const value = (key: string) =>
-    typeof flags.get(key) === "string" ? (flags.get(key) as string) : undefined;
-  const version = value("version");
-  if (!version) {
-    throw new Error(
-      "Usage: vp run release:publish --version <version> [--tag <tag>] [--provenance] [--yes]",
-    );
-  }
-  await publish({
-    version,
-    tag: value("tag"),
-    provenance: flags.has("provenance"),
-    yes: flags.has("yes"),
-    // Tests only: point at a manifest that doesn't exist to exercise the refusal.
-    manifestFile: value("manifest"),
-  });
-});

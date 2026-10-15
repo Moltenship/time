@@ -44,12 +44,12 @@ When each tier runs:
   merge gate: once it's green, merge without waiting for the GitHub Actions run. CI runs the same
   tasks as a backstop. If CI goes red on `main`, fix it right away. CI red with local green is a
   gate bug: fix the local gate until it reproduces the failure.
-- **Full, for releases only:** the release workflow runs it before publishing, and you run it by
-  hand right before cutting a release candidate or a release. A PR doesn't run it, with one
-  exception: a PR that changes the full gate itself or the release tooling runs it once, to show
-  the gate still works. Release work is the exception to merging on the local gate: the release
-  job's gate must pass, and a change to the release job, or a version PR, links a green run of
-  CI's `release-gate` job on a fresh runner.
+- **Full, for releases only:** the release workflow runs it on the release commit before it
+  publishes. A PR doesn't run it, with one exception: a PR that changes the full gate itself or the
+  release tooling runs it once, to show the gate still works, and links a green run of CI's
+  on-demand `release-gate` job on a fresh runner, which runs Firefox too. A PR that changes the
+  release tooling also links a green dry run of the release workflow (`vp run release --dry-run`
+  from its branch).
 
 On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 120 from a cold cache.
 Steps run in parallel where they're independent. Steps that write or read generated files
@@ -73,12 +73,27 @@ command.
 `tests/quality-gates.test.ts` fails if the full gate misses a PR step, or the release gate a full
 one.
 
-The release workflow runs the whole full tier on a GitHub runner, with a strict dry run of the
-version it publishes, and its two lanes one after the other, since a 4-core runner can't run both
-at once: `RELEASE_VERSION=<version> vp run release:gate`, the one command that reproduces it
-locally. To rehearse it without the release workflow, dispatch CI
-(`gh workflow run ci.yml --ref <branch>`): its `release-gate` job runs the same steps
-(`docs/internal/releasing.md`).
+The release workflow runs the whole full tier on the release commit on a fresh runner, with a
+strict dry run of the version it publishes and its two lanes one after the other:
+`RELEASE_VERSION=<version> vp run release:gate`, the one command that reproduces it. To rehearse
+the gate on a fresh runner, dispatch CI (`gh workflow run ci.yml --ref <branch>`): its
+`release-gate` job runs the same steps (`docs/internal/releasing.md`).
+
+# Releasing
+
+The owner releases with one command, `vp run release [<version>] [--dry-run]`, or with the
+`/release` skill in Claude Code (`.claude/skills/release/SKILL.md`), which runs it and then
+rewrites the generated release notes. Asking for a release is the approval: nothing asks anyone to
+confirm. The command starts the release workflow (`.github/workflows/release.yml`) on `main` and
+watches it; the workflow gates the release commit, publishes through npm trusted publishing, pushes
+and writes the GitHub release. Only the owner can start the skill. Agents never publish, push tags,
+create GitHub releases, start the release workflow or run `vp run release` on their own, though
+`vp run release --dry-run` from a PR's branch is safe: it publishes, pushes and releases nothing.
+The runbook is `docs/internal/releasing.md`.
+
+The release notes start from the Conventional Commits since the last tag: `feat`, `fix` and `perf`
+PR titles become their lines, and `!` and `BREAKING CHANGE:` their breaking changes. So write PR
+titles for the packages' users. There's no changelog line to add in a PR.
 
 # Commits
 
@@ -86,7 +101,7 @@ Every commit message and every PR title is `<type>(<scope>)!: <summary>`, per [C
 
 - **Squash merges:** the PR's title becomes the commit on `main`, so the title follows the format too. The merge keeps GitHub's ` (#N)` suffix.
 - **Types:** `feat`, `fix`, `perf`, `refactor`, `docs`, `test`, `build`, `ci`, `chore`, `revert`, `style`. `refactor` changes no behaviour and `perf` only speed or memory; `build` is dependencies, bundling and the `vite.config.ts` tasks, `ci` the workflows; `style` is formatting alone; `revert` repeats the reverted title; `chore` is the rest.
-- **Scopes:** optional. Packages by short name: `calendar` (`@moltenship/calendar`), `core`, `temporal`, `recurrence`, `react`, `dnd`, `dnd-kit`, `testing` (`@moltenship/calendar-*`) and `ics`. Areas: `registry` (`registry/`, `tools/registry`), `demo` (`apps/demo`), `docs-site` (`apps/showcase`), `ssr-fixture`, `a11y` (`tools/a11y`), `release` (`tools/release`, `release.yml`) and `gate` (the quality gate's tasks). Leave the scope out when a change spans many areas.
+- **Scopes:** optional. Packages by short name: `calendar` (`@moltenship/calendar`), `core`, `temporal`, `recurrence`, `react`, `dnd`, `dnd-kit`, `testing` (`@moltenship/calendar-*`) and `ics`. Areas: `registry` (`registry/`, `tools/registry`), `demo` (`apps/demo`), `docs-site` (`apps/showcase`), `ssr-fixture`, `a11y` (`tools/a11y`), `release` (`tools/release`, `release.yml`, `.claude/skills/release`) and `gate` (the quality gate's tasks). Leave the scope out when a change spans many areas.
 - **Summary:** imperative mood, lowercase start, no trailing period, about 72 characters at most. Issue references go in the body (`Closes #N`), not in the summary.
 - **Breaking changes:** `!` after the type or scope, plus a `BREAKING CHANGE:` footer that explains the migration; on a squash merge, put it in the merge's body. After 1.0 this is how a break in the public API is marked.
 - **Examples:**

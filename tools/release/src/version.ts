@@ -3,16 +3,23 @@ import { join } from "node:path";
 
 import { gt, valid } from "semver";
 
-import {
-  parseArguments,
-  readPublishedPackages,
-  runMain,
-  workspaceRoot,
-  type WorkspacePackage,
-} from "./workspace";
+import { readPublishedPackages, workspaceRoot, type WorkspacePackage } from "./workspace";
 
-export const changelogPath = join(workspaceRoot, "CHANGELOG.md");
-const unreleasedHeading = /^## Unreleased[ \t]*$/m;
+/** The release commit's subject, a Conventional Commit as AGENTS.md asks. */
+export const releaseSubject = (version: string) => `chore(release): v${version}`;
+
+/** GitHub Actions' bot, which the release workflow commits as. */
+export const botName = "github-actions[bot]";
+export const botEmail = "41898282+github-actions[bot]@users.noreply.github.com";
+
+const releaseCommitSubject = /^chore\(release\): (?:v\S+|merge v\S+ into main)$/;
+
+/**
+ * Whether a commit is one the release workflow pushed: a release commit, or its merge into main.
+ * It takes both the bot's address and the subject, so a person's commit titled the same isn't.
+ */
+export const isReleaseCommit = (subject: string, email: string) =>
+  email === botEmail && releaseCommitSubject.test(subject);
 
 /** The one version every published package shares. Throws when they differ. */
 export function sharedVersion(packages: readonly WorkspacePackage[]): string {
@@ -31,64 +38,24 @@ export function assertVersion(version: string): void {
   }
 }
 
-/** The lines of a changelog section, or undefined when the changelog has no such section. */
-export function changelogSection(changelog: string, heading: string): string | undefined {
-  const lines = changelog.split("\n");
-  const start = lines.findIndex(
-    (line) => line.trimEnd() === `## ${heading}` || line.startsWith(`## ${heading} `),
-  );
-  if (start === -1) return undefined;
-  const end = lines.findIndex((line, index) => index > start && line.startsWith("## "));
-  return lines
-    .slice(start + 1, end === -1 ? undefined : end)
-    .join("\n")
-    .trim();
-}
-
-/** Renames "Unreleased" to the version and date, and opens a new empty "Unreleased" above it. */
-export function releaseChangelog(changelog: string, version: string, date: string): string {
-  if (changelogSection(changelog, version) !== undefined) {
-    throw new Error(`CHANGELOG.md already has a section for ${version}`);
-  }
-  const notes = changelogSection(changelog, "Unreleased");
-  if (notes === undefined) throw new Error('CHANGELOG.md has no "## Unreleased" section');
-  if (notes === "") throw new Error('CHANGELOG.md has nothing under "## Unreleased" to release');
-  return changelog.replace(unreleasedHeading, `## Unreleased\n\n## ${version} (${date})`);
-}
-
-/** Sets the version of every published package and releases the changelog's "Unreleased" notes. */
-export async function setVersion(version: string, date: string): Promise<void> {
+/**
+ * Sets the version of every published package, and returns the manifests it wrote, from the
+ * root. The release notes come from the commits, so nothing else changes (releasing.md).
+ */
+export async function setVersion(version: string, root = workspaceRoot): Promise<string[]> {
   assertVersion(version);
-  const packages = await readPublishedPackages();
+  const packages = await readPublishedPackages(root);
   const current = sharedVersion(packages);
   if (!gt(version, current))
     throw new Error(`${version} must be greater than the current ${current}`);
 
-  const changelog = releaseChangelog(await readFile(changelogPath, "utf8"), version, date);
+  const written: string[] = [];
   for (const entry of packages) {
     const path = join(entry.path, "package.json");
-    const text = await readFile(path, "utf8");
-    const manifest = JSON.parse(text) as Record<string, unknown>;
+    const manifest = JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
     manifest.version = version;
     await writeFile(path, `${JSON.stringify(manifest, null, 2)}\n`);
+    written.push(join("packages", entry.directory, "package.json"));
   }
-  await writeFile(changelogPath, changelog);
-  console.log(
-    `Set ${packages.length} packages to ${version} and released the changelog's Unreleased notes.`,
-  );
+  return written;
 }
-
-runMain(import.meta, async () => {
-  const { flags, positionals } = parseArguments(process.argv.slice(2), [], ["date"], {
-    positionals: true,
-  });
-  const [version] = positionals;
-  if (!version || positionals.length > 1) {
-    throw new Error("Usage: vp run release:version <version> [--date YYYY-MM-DD]");
-  }
-  const date =
-    typeof flags.get("date") === "string"
-      ? (flags.get("date") as string)
-      : new Date().toISOString().slice(0, 10);
-  await setVersion(version, date);
-});

@@ -1,0 +1,152 @@
+import { describe, expect, test } from "vite-plus/test";
+
+import { suggestVersion } from "../src/notes";
+import { botEmail, isReleaseCommit } from "../src/version";
+import {
+  ciState,
+  nextStep,
+  publishJob,
+  publishStarted,
+  pushRuleProblems,
+  releaseChanges,
+  runTitle,
+  type WorkflowRun,
+} from "../src/release";
+
+const run = (status: string, conclusion: string, databaseId = 1): WorkflowRun => ({
+  databaseId,
+  status,
+  conclusion,
+  url: `https://github.com/Moltenship/time/actions/runs/${databaseId}`,
+});
+
+describe("what a release does about a version's runs", () => {
+  const release = (status: string, conclusion: string, publishStarted = false, databaseId = 1) => ({
+    ...run(status, conclusion, databaseId),
+    publishStarted,
+  });
+
+  test("starts a run when there's none, or none that reached npm", () => {
+    expect(nextStep([])).toEqual({ action: "dispatch" });
+    // Nothing reached npm: a new run starts from main as it is, with whatever fixed it.
+    expect(nextStep([release("completed", "failure")])).toEqual({ action: "dispatch" });
+  });
+
+  test("watches one that's going, and stops at one that released", () => {
+    expect(nextStep([release("queued", ""), release("completed", "failure", true, 2)])).toEqual({
+      action: "watch",
+      run: release("queued", ""),
+    });
+    expect(
+      nextStep([release("completed", "failure", false, 2), release("completed", "success")]),
+    ).toEqual({ action: "released", run: release("completed", "success") });
+  });
+
+  test("runs the failed jobs again of the newest run that started publishing", () => {
+    const published = release("completed", "failure", true, 2);
+
+    expect(nextStep([published])).toEqual({ action: "rerun", run: published });
+    expect(nextStep([release("completed", "cancelled", true)]).action).toBe("rerun");
+    // A later run that stopped at the check, as on a version npm has, doesn't hide it.
+    expect(nextStep([release("completed", "failure", false, 3), published])).toEqual({
+      action: "rerun",
+      run: published,
+    });
+  });
+
+  test("a run started publishing once its publish job ran, whatever came of it", () => {
+    const job = (status: string, conclusion: string) => ({
+      databaseId: 1,
+      name: publishJob,
+      status,
+      conclusion,
+    });
+
+    expect(publishStarted([job("completed", "failure")])).toBe(true);
+    expect(publishStarted([job("completed", "success")])).toBe(true);
+    expect(publishStarted([job("completed", "skipped")])).toBe(false);
+    expect(publishStarted([{ ...job("completed", "failure"), name: "Release gate" }])).toBe(false);
+  });
+
+  test("a run's title names the version, and a dry run says so", () => {
+    expect(runTitle("1.0.0-rc.2", false)).toBe("Release v1.0.0-rc.2");
+    expect(runTitle("1.0.0-rc.2", true)).toBe("Release v1.0.0-rc.2 (dry run)");
+  });
+});
+
+describe("the release workflow's own commits", () => {
+  test("are the bot's release commits and merges, not a person's titled the same", () => {
+    expect(isReleaseCommit("chore(release): v1.0.0-rc.2", botEmail)).toBe(true);
+    expect(isReleaseCommit("chore(release): merge v1.0.0-rc.2 into main", botEmail)).toBe(true);
+    expect(isReleaseCommit("chore(release): v1.0.0-rc.2", "owner@example.com")).toBe(false);
+    expect(isReleaseCommit("chore(release): bump the gate", botEmail)).toBe(false);
+  });
+
+  test("leave nothing to release when they're all there is since the last tag", () => {
+    const own = [botEmail, "chore(release): v1.0.0-rc.2"] as const;
+    const change = ["owner@example.com", "fix(core): keep the overlay"] as const;
+
+    expect(releaseChanges([])).toEqual([]);
+    expect(releaseChanges([own])).toEqual([]);
+    expect(releaseChanges([change, own])).toEqual([change]);
+  });
+});
+
+describe("main's rules", () => {
+  test("only rules that refuse a fast-forward push stop the release", () => {
+    expect(pushRuleProblems([], false)).toEqual([]);
+    expect(pushRuleProblems([{ type: "deletion" }, { type: "non_fast_forward" }], false)).toEqual(
+      [],
+    );
+    expect(
+      pushRuleProblems([{ type: "pull_request" }, { type: "required_status_checks" }], false),
+    ).toEqual([
+      "main's rules would refuse the release workflow's push of the release commit: pull_request, required_status_checks.",
+    ]);
+    expect(pushRuleProblems([], true)).toEqual([
+      "main has branch protection, which may refuse the release workflow's push of the release commit.",
+    ]);
+  });
+});
+
+describe("CI on the commit a release starts from", () => {
+  test("reads the newest run that wasn't cancelled", () => {
+    expect(ciState([]).state).toBe("missing");
+    expect(ciState([run("completed", "success")]).state).toBe("passed");
+    expect(ciState([run("in_progress", ""), run("completed", "success", 2)]).state).toBe("running");
+    expect(ciState([run("completed", "cancelled"), run("completed", "success", 2)])).toEqual({
+      state: "passed",
+      run: run("completed", "success", 2),
+    });
+    expect(ciState([run("completed", "failure"), run("completed", "success", 2)]).state).toBe(
+      "failed",
+    );
+  });
+});
+
+describe("the suggested version", () => {
+  const commits = (...types: string[]) =>
+    types.map((type) => ({ type: type.replace("!", ""), isBreaking: type.endsWith("!") }));
+
+  test("a prerelease moves to the next one, with the stable version beside it", () => {
+    expect(suggestVersion("1.0.0-rc.1", commits("feat!", "fix"))).toEqual({
+      version: "1.0.0-rc.2",
+      reason:
+        "1 breaking change, 1 other commit since 1.0.0-rc.1; the next prerelease, or 1.0.0 when it's ready",
+      alternatives: ["1.0.0"],
+    });
+  });
+
+  test("a stable version bumps by the commits: breaking, feature, or the rest", () => {
+    expect(suggestVersion("1.2.3", commits("feat!", "feat", "fix")).version).toBe("2.0.0");
+    expect(suggestVersion("1.2.3", commits("feat", "fix"))).toEqual({
+      version: "1.3.0",
+      reason: "1 feature, 1 other commit since 1.2.3: a minor release",
+      alternatives: ["1.2.4", "2.0.0", "1.3.0-rc.1"],
+    });
+    expect(suggestVersion("1.2.3", commits("fix", "docs")).version).toBe("1.2.4");
+    expect(suggestVersion("1.2.3", []).version).toBe("1.2.4");
+    // Before 1.0, a breaking change takes a minor release.
+    expect(suggestVersion("0.4.1", commits("fix!")).version).toBe("0.5.0");
+  });
+});

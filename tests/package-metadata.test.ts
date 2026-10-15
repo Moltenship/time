@@ -102,7 +102,7 @@ describe("published package metadata", () => {
       });
       expect(manifest.bugs).toEqual({ url: "https://github.com/Moltenship/time/issues" });
       // `pnpm publish` in the package folder fails, so nothing skips the release dry run.
-      expect(manifest.scripts?.prepublishOnly).toMatch(/release:publish.*&& exit 1$/);
+      expect(manifest.scripts?.prepublishOnly).toMatch(/vp run release,.*&& exit 1$/);
 
       // The homepage is a docs page that exists in the showcase.
       const page = /^https:\/\/time\.molten\.sh\/docs(?:\/(.+))?$/.exec(manifest.homepage ?? "");

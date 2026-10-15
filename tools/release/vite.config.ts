@@ -14,11 +14,12 @@ export default defineConfig({
       treeshake: script("treeshake.ts"),
       consumer: { command: script("consumer.ts"), cache: false },
       "dry-run": { command: script("dry-run.ts"), cache: false },
-      version: { command: script("version.ts"), cache: false },
-      publish: { command: script("publish.ts"), cache: false },
-      published: { command: script("published.ts"), cache: false },
-      github: { command: script("github-release.ts"), cache: false },
       artifacts: { command: script("artifacts.ts"), cache: false },
+      // The release (docs/internal/releasing.md): `release` starts and watches the release
+      // workflow, whose steps run src/ci.ts with node; `trust` is the owner's one-time npm setup.
+      // Uncached: each must reach npm and GitHub every time.
+      release: { command: script("release.ts"), cache: false },
+      trust: { command: script("trust.ts"), cache: false },
     },
   },
   test: {

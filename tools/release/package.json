@@ -2,13 +2,14 @@
   "name": "release",
   "version": "0.0.0",
   "private": true,
-  "description": "Release tooling: versions, size budgets, API reports, export checks, a clean-consumer install, the dry run, the publish step, and the npm check and GitHub release after it.",
+  "description": "Release tooling: size budgets, API reports, export checks, a clean-consumer install, the dry run, and `vp run release`, which bumps, gates, publishes, pushes and writes the GitHub release.",
   "type": "module",
   "scripts": {
     "check": "vp check"
   },
   "dependencies": {
     "@arethetypeswrong/core": "catalog:",
+    "changelogithub": "catalog:",
     "publint": "catalog:",
     "semver": "catalog:",
     "yaml": "catalog:"
