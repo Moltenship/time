@@ -196,7 +196,7 @@ describe.each([
 
     test("a pinned bar dragged into the hours keeps its title at its copy's start", async () => {
       await render(<Screen dir={dir} view="scrolling-3-day" />);
-      const { scroller } = axis("scrolling-3-day");
+      const { hours, scroller } = axis("scrolling-3-day");
       const next = () =>
         act(async () => document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click());
       // October 13 to 15: the trip started on the 12th, so its title is pinned.
@@ -208,6 +208,9 @@ describe.each([
         '[data-slot="scrolling-time-grid-header"] [data-event-id="trip"]',
       )!;
       const from = bar.getBoundingClientRect();
+      expect(
+        getComputedStyle(bar.querySelector('[data-slot="calendar-event-title"]')!).transform,
+      ).not.toBe("none");
       const column = scroller
         .querySelector('[role="gridcell"][data-date="2026-10-14"]')!
         .getBoundingClientRect();
@@ -217,25 +220,29 @@ describe.each([
         clientX: x,
         clientY: y,
         isPrimary: true,
-        pointerId: 1,
+        // Not the page's own mouse, whose moves WebKit sends as layout changes under it.
+        pointerId: 11,
         pointerType: "mouse",
       });
       const middle = column.left + column.width / 2;
+      // Over the hours on screen, well below the header.
+      const below = hours!.getBoundingClientRect().bottom - 150;
 
       await act(async () => {
         bar.dispatchEvent(
           new PointerEvent("pointerdown", at(from.left + from.width / 2, from.top + 5)),
         );
         bar.dispatchEvent(new PointerEvent("pointermove", at(middle, from.top + 30)));
-        bar.dispatchEvent(new PointerEvent("pointermove", at(middle, column.top + 300)));
+        bar.dispatchEvent(new PointerEvent("pointermove", at(middle, below)));
       });
       try {
-        const copies = [
+        const copied = () => [
           ...document.querySelectorAll<HTMLElement>(
             '[data-calendar-ghost] [data-slot="calendar-event-title"]',
           ),
         ];
-        expect(copies.length).toBeGreaterThan(0);
+        await until(() => expect(copied().length).toBeGreaterThan(0));
+        const copies = copied();
         for (const copy of copies) {
           expect(getComputedStyle(copy).transform).toBe("none");
           const box = copy.parentElement!.getBoundingClientRect();
