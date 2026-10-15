@@ -146,7 +146,7 @@ describe("scrolling views", () => {
 
   test("a viewport a pixel narrower keeps the leading day at the start", async () => {
     await render(<Screen view="scrolling-week" />);
-    const { scrollBy, viewport } = axis("scrolling-week");
+    const { hours, scrollBy, viewport } = axis("scrolling-week");
     await scrollBy(7);
     await until(() => expect(title()).toBe("Oct 12 – 18, 2026"));
     const leading = () =>
@@ -156,7 +156,7 @@ describe("scrolling views", () => {
 
     // Each day narrows by a seventh of a pixel, a thousand days from the canvas start.
     await act(async () => {
-      viewport.style.width = `${viewport.getBoundingClientRect().width - 1}px`;
+      hours!.style.width = `${hours!.getBoundingClientRect().width - 1}px`;
     });
     await atRest(viewport);
 
@@ -245,8 +245,8 @@ describe("scrolling views", () => {
     "dragging an event against the edge carries it past the days rendered at first",
     async () => {
       await render(<Screen view="scrolling-week" />);
-      const { viewport } = axis("scrolling-week");
-      viewport.scrollTop = 400;
+      const { hours, viewport } = axis("scrolling-week");
+      hours!.scrollTop = 400;
       const event = viewport.querySelector<HTMLElement>('[data-event-id="planning"]')!;
       const box = event.getBoundingClientRect();
       // Deep in the auto-scroll band, clear of the scrollbar.
@@ -292,8 +292,8 @@ describe("scrolling views", () => {
 
   test("asking for the anchor mid-drag doesn't stall the drag's scroll", async () => {
     await render(<Screen view="scrolling-week" />);
-    const { viewport } = axis("scrolling-week");
-    viewport.scrollTop = 400;
+    const { hours, viewport } = axis("scrolling-week");
+    hours!.scrollTop = 400;
     // A create from an empty slot, with focus outside the grid.
     const column = viewport.querySelector<HTMLElement>(
       '[role="gridcell"][data-date="2026-10-09"]',
@@ -343,11 +343,11 @@ describe("scrolling views", () => {
     "a day view scrolled down to the evening still stops a swipe at the next day",
     async () => {
       await render(<Screen view="scrolling-day" />);
-      const { position, viewport } = axis("scrolling-day");
+      const { hours, position, viewport } = axis("scrolling-day");
       const start = position();
       const day = viewport.getBoundingClientRect().width;
       await act(async () => {
-        viewport.scrollTop = viewport.scrollHeight;
+        hours!.scrollTop = hours!.scrollHeight;
       });
 
       // A swipe worth more than two days, which snapping stops at the next one.

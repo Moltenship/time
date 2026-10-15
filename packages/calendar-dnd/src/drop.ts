@@ -96,6 +96,8 @@ interface Over {
   readonly options: GestureOptions;
   readonly region: PointerRegion;
   readonly scrollContainer: Element;
+  /** What scrolls sideways in `scrollContainer`'s place, or it. */
+  readonly sideways: Element;
   surface: TargetSurface;
   surfaceColumns: readonly unknown[] | undefined;
 }
@@ -112,6 +114,7 @@ const DEFAULT_SNAP: WallTimeSnapOptions = { increment: 15, smallestUnit: "minute
 function regionOver(region: PointerRegion, hit: Element, eventId: EventId | undefined): Over {
   const options = region.getOptions();
   const event = eventId === undefined ? undefined : options.events.get(eventId);
+  const scrollContainer = options.scrollContainer?.current ?? scrollableAncestor(hit);
   return {
     edges: new EdgeArming(false),
     ghost: new GhostLayer(region.element, options.ghostClassName),
@@ -123,7 +126,8 @@ function regionOver(region: PointerRegion, hit: Element, eventId: EventId | unde
           : { event, original: eventPlacement(event) },
     options: { snap: options.snap ?? DEFAULT_SNAP, timeZone: options.timeZone },
     region,
-    scrollContainer: options.scrollContainer?.current ?? scrollableAncestor(hit),
+    scrollContainer,
+    sideways: options.sidewaysScrollContainer?.current ?? scrollContainer,
     surface: {
       clippers: new Map(),
       columns: columnsByDate(options.columns),
@@ -300,7 +304,7 @@ export function startCalendarDrop<
     // Only over a view, once the point has been clear of its edges or rested at one: a drag
     // still in a sidebar, or one crossing an edge on its way in, leaves the calendar where it is.
     if (arm() && over !== null && point !== null) {
-      if (autoScroll(over.scrollContainer, point.x, point.y)) update(true);
+      if (autoScroll(over.scrollContainer, point.x, point.y, over.sideways)) update(true);
     }
     frame = requestAnimationFrame(scrollFrame);
   }

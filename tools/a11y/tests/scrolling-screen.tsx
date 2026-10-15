@@ -103,13 +103,17 @@ export function ScrollingScreen({
 
 export const title = () => document.querySelector('[data-calendar-part="title"]')?.textContent;
 
-/** The scrolling element and one item's length along its axis. */
+/**
+ * The element that scrolls along the axis, one item's length along it, and in a time grid the
+ * element around it that scrolls the hours.
+ */
 export function axis(view: ScrollingView) {
   const viewport = document.querySelector<HTMLElement>(
     view === "scrolling-month"
       ? '[data-slot="scrolling-month-viewport"]'
-      : '[data-slot="scrolling-time-grid-viewport"]',
+      : '[data-slot="scrolling-time-grid-days"]',
   )!;
+  const hours = document.querySelector<HTMLElement>('[data-slot="scrolling-time-grid-viewport"]');
   // The spread of the snap points, a page of visible days apart, or of the week rows, gives one
   // item's length without the rounding of any one of them.
   const points = [
@@ -168,6 +172,7 @@ export function axis(view: ScrollingView) {
             : { behavior: "instant", left: items * size * (dir === "rtl" ? -1 : 1) },
         ),
       ),
+    hours,
     viewport,
   };
 }

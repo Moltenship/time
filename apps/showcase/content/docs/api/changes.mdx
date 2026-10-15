@@ -191,6 +191,17 @@ React and returns a cleanup function. Both come from `@moltenship/calendar-dnd`,
         "A ref to the element to scroll while dragging near its edges. It's read when a drag starts.",
       default: "the nearest scrollable ancestor",
     },
+    sidewaysScrollContainer: {
+      type: "{ current: Element | null }",
+      description: (
+        <>
+          A ref to an element inside <code>scrollContainer</code> to scroll in its place at the left
+          and right edges, for a view that scrolls its two axes in two elements. It&apos;s read when
+          a drag starts.
+        </>
+      ),
+      default: "scrollContainer",
+    },
     announcer: {
       type: "CalendarAnnouncer",
       description: (

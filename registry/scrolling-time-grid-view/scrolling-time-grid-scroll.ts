@@ -25,6 +25,37 @@ export function useStickyHeaderPadding(scrollRef: RefObject<HTMLElement | null>)
   return headerRef;
 }
 
+/**
+ * Keeps the header's scroll position on the days', which scroll sideways in an element of their
+ * own below it. The header can't be scrolled itself; anything else that scrolls it, such as focus
+ * moving into it, is put back.
+ */
+export function useHeaderOnDays(
+  daysRef: RefObject<HTMLElement | null>,
+  headerRef: RefObject<HTMLElement | null>,
+) {
+  // Each render too: one can move the days' canvas, whose scroll reports itself only later.
+  useLayoutEffect(() => {
+    const days = daysRef.current;
+    const header = headerRef.current;
+    if (days !== null && header !== null) header.scrollLeft = days.scrollLeft;
+  });
+  useLayoutEffect(() => {
+    const days = daysRef.current;
+    const header = headerRef.current;
+    if (days === null || header === null) return;
+    const follow = () => {
+      if (header.scrollLeft !== days.scrollLeft) header.scrollLeft = days.scrollLeft;
+    };
+    days.addEventListener("scroll", follow, { passive: true });
+    header.addEventListener("scroll", follow, { passive: true });
+    return () => {
+      days.removeEventListener("scroll", follow);
+      header.removeEventListener("scroll", follow);
+    };
+  }, [daysRef, headerRef]);
+}
+
 export interface OpeningTimeOptions {
   /** The 24-hour row below the header. */
   readonly bodyRef: RefObject<HTMLElement | null>;

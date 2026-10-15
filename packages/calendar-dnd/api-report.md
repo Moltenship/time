@@ -77,6 +77,9 @@ interface CalendarPointerOptions<TEvent, TEventId extends EventId, TResourceId e
   readonly scrollContainer?: {
     readonly current: Element | null;
   };
+  readonly sidewaysScrollContainer?: {
+    readonly current: Element | null;
+  };
   readonly snap?: WallTimeSnapOptions;
 }
 interface CalendarRect {

@@ -1164,6 +1164,11 @@ TanStack Virtual is the maintained virtualization primitive for list and resourc
 - Resource columns render their headers, all-day row and hour gutter outside the scrolling body
   and move them by transform. The timeline and the agenda use `position: sticky` inside the
   scroller.
+- The scrolling time grid scrolls its hours in one element and its days sideways in another
+  inside it, so iOS locks each swipe to one of them (#260). The header and all-day row are sticky
+  above the days and set their own `scrollLeft` from the days' on each scroll: unlike a transform,
+  that keeps them a scroll container, which their sticky gutter cell and all-day titles need. The
+  pointer layer scrolls the days at the side edges through `sidewaysScrollContainer`.
 - Overscan is a small fixed count per axis: 3 agenda rows, 2 resource columns, 4 timeline rows and
   2 timeline slots.
 - SSR supplies deterministic initial rectangles and ranges where practical.

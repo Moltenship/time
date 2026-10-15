@@ -91,13 +91,20 @@ export class EdgeArming {
 }
 
 /**
- * Scrolls `container` when a viewport point sits near its edges. Returns whether it moved, so the
- * caller re-reads geometry only after a scroll.
+ * Scrolls `container` when a viewport point sits near its edges, and `sideways` in its place at
+ * the left and right edges: a scroller nested in it that scrolls sideways. Returns whether either
+ * moved, so the caller re-reads geometry only after a scroll.
  */
-export function autoScroll(container: Element, x: number, y: number): boolean {
+export function autoScroll(
+  container: Element,
+  x: number,
+  y: number,
+  sideways: Element = container,
+): boolean {
   const rect = bounds(container);
-  const { scrollLeft, scrollTop } = container;
+  const { scrollTop } = container;
+  const { scrollLeft } = sideways;
   container.scrollTop += step(y, rect.top, rect.bottom);
-  container.scrollLeft += step(x, rect.left, rect.right);
-  return container.scrollTop !== scrollTop || container.scrollLeft !== scrollLeft;
+  sideways.scrollLeft += step(x, rect.left, rect.right);
+  return container.scrollTop !== scrollTop || sideways.scrollLeft !== scrollLeft;
 }
