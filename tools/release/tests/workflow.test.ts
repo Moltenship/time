@@ -33,7 +33,7 @@ const workflows = resolve(import.meta.dirname, "../../../.github/workflows");
 
 const runs = (job: Job | undefined) => job?.steps.map(({ run }) => run).filter(Boolean);
 
-describe("release workflow contract", () => {
+describe("no workflow publishes", () => {
   test("no workflow publishes: the owner releases from a laptop with vp run release", async () => {
     const files = await readdir(workflows);
 

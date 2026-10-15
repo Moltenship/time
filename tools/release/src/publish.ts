@@ -225,7 +225,9 @@ export async function publish(options: {
     const listed = await run("vp", pnpm(["stage", "list", "--json"]), { env });
     if (listed.code !== 0) {
       const output = `${listed.stdout}\n${listed.stderr}`.trim();
-      const reason = `Can't list npm's staged versions. Log in with \`npm login\`.\n${output}`;
+      const reason = /\b401\b/.test(output)
+        ? "npm: not logged in, so the staged versions can't be listed."
+        : `Can't list npm's staged versions:\n${output}`;
       if (!options.dryRun) throw new Error(reason);
       return [...problems, reason];
     }

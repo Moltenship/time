@@ -118,7 +118,8 @@ vp run ready:full  # the release gate
 - [`docs/internal`](./docs/internal) has contributor notes: quality gates, package layout,
   benchmarks, and verification records.
 - Planned work is tracked in [GitHub issues](https://github.com/Moltenship/time/issues).
-- [`CHANGELOG.md`](./CHANGELOG.md) collects the notes for the next release.
+- Each release's notes are on [GitHub Releases](https://github.com/Moltenship/time/releases);
+  [`CHANGELOG.md`](./CHANGELOG.md) has `1.0.0-rc.1`'s.
 
 ## License
 

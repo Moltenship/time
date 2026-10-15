@@ -191,7 +191,7 @@ describe("CI quality gate contract", () => {
     expect(stepsOf("ready:checks").has("release:check")).toBe(true);
   });
 
-  test("the release workflow's gate is the whole full tier, with a strict dry run", () => {
+  test("the release's gate is the whole full tier, with a strict dry run", () => {
     const full = new Set(work("ready:full"));
     const release = new Set(work("release:gate"));
 

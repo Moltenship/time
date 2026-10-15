@@ -267,8 +267,8 @@ async function checkCi(
     else if (firefox.state === "failed") {
       problems.push(`CI's Firefox job failed on ${short(commit)}: ${firefox.url}`);
     } else if (firefox.state === "missing" && dryRun) {
-      problems.push(
-        `Firefox can't start here (#182), and no dispatched CI run has tested ${short(commit)} in it. A release would start one.`,
+      console.log(
+        `Firefox can't start here (#182), and no dispatched CI run has tested ${short(commit)} in it: a release would start CI's Firefox job and wait for it.`,
       );
     } else {
       if (firefox.state === "missing") {

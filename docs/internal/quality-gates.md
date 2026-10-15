@@ -32,18 +32,18 @@ after another in a lane of their own, `gate:browsers`, beside the serial lane: s
 Each browser mode keeps its own Vite dependency cache. CI's `quality-gates` job runs
 `vp run ready:checks` and its `accessibility` job runs `vp run a11y`: together, `vp run ready`, on
 every PR. On demand (`gh workflow run ci.yml --ref <branch>`), two more jobs run: `browsers` runs
-`vp run browsers` on Linux, and `release-gate` runs what the release workflow's gate runs. When a
+`vp run browsers` on Linux, and `release-gate` runs the release's gate, `vp run release:gate`. When a
 job fails, its last step names the failed task. The contract test `tests/quality-gates.test.ts`
 holds the workflows to those task names and fails if `ready:full` misses a step of `ready`.
 
-The release workflow runs `vp run release:gate` before it publishes: the whole full tier, with a
-strict dry run of the version it publishes (`--require-clean`, `RELEASE_VERSION`) in its own lane,
-`gate:serial:release`. It runs its lanes one after the other, the serial lane and then the browser
-runs: on a 4-core runner the serial lane's builds take every core, and beside them the year view's
-popover test ran out of its 15 s (#197). On a runner it takes about 11 minutes.
-`RELEASE_VERSION=<version> vp run release:gate` reproduces it locally (WebKit alone on macOS 27,
-#182), and CI's on-demand `release-gate` job runs the same steps on a fresh runner without
-publishing. A check that joins only the full gate joins `release:gate` too: a serial step in its
+`vp run release` runs `vp run release:gate` on the release commit before it publishes: the whole
+full tier, with a strict dry run of the version it publishes (`--require-clean`, `RELEASE_VERSION`)
+in its own lane, `gate:serial:release`. It runs its lanes one after the other, the serial lane and
+then the browser runs: on a 4-core runner the serial lane's builds take every core, and beside them
+the year view's popover test ran out of its 15 s (#197). It takes about three minutes on an
+Apple-silicon laptop and 11 on a runner. On macOS 27 its browser run is WebKit alone (#182), so the
+release also waits for CI's Firefox job. CI's on-demand `release-gate` job runs the same steps on a
+fresh Linux runner. A check that joins only the full gate joins `release:gate` too: a serial step in its
 `gate:serial:release` lane, a browser run in `gate:browsers`, and any other step in its command.
 The contract test fails if the two differ in anything but their serial lanes. See
 [releasing.md](./releasing.md).
