@@ -2,8 +2,8 @@
 
 All published `@moltenship/*` packages share one version until after 1.0. From `1.0.0-rc.2` on,
 each release's notes are on [GitHub Releases](https://github.com/Moltenship/time/releases):
-`vp run release` writes them from the Conventional Commits since the previous release, and they're
-edited from there. This file keeps the notes of `1.0.0-rc.1`. See
+the release workflow writes them from the Conventional Commits since the previous release, and
+they're edited from there. This file keeps the notes of `1.0.0-rc.1`. See
 [docs/internal/releasing.md](./docs/internal/releasing.md).
 
 ## 1.0.0-rc.1 (2026-10-14)

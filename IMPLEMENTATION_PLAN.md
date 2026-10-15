@@ -40,7 +40,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | Quality gate   | #47              | The local gate in three tiers, the same tasks CI runs: `vp run ready:quick`, `ready` and `ready:full` (#179); the a11y suite fixed at the causes of CI's flakes, and run at CI's speed in the full gate (#178); the a11y suite and real mouse and keyboard interactions in Firefox and WebKit, WebKit on `temporal-polyfill` (`vp run browsers`, #183) |
 | Release audit  | #47 (phase 1)    | `docs/internal/release-audit.md`: each invariant in `architecture.md` linked to its proof, the gaps filed (#180–#182, #184–#192), the open p0 and p1 issues triaged |
 | Test harness   | #45              | `@moltenship/calendar-testing`, published with the others: a fixed `now`, zone and locale through `Root`'s props; builders and fixtures (a dense day, a DST week, series in three zones, a resource day); `renderCalendar` and `hydrateCalendar` with controlled events and recorded changes and results; queries by the calendar's own events and the pointer layer's attributes; keyboard drivers through the grab mode, pointer and touch drivers in browser mode; `settled`, announcements and placements. Used by registry tests, browser tests in `tools/a11y`, the SSR fixture on the dry run's tarballs, and the Testing docs page |
-| Release tooling | #46             | One version for the nine published packages; size budgets, API reports, publint and are-the-types-wrong checks, a clean-consumer install from the pnpm store and a dry run that writes a manifest. Since `1.0.0-rc.1`, one local command, `vp run release`, and the owner's `/release` skill: bump, the full gate on the release commit, a staged publish of the checked tarballs approved with one 2FA, the push, the npm check, the GitHub release from the Conventional Commits and an install from npm. Runbook in `docs/internal/releasing.md`. MIT `LICENSE` in every tarball (#175) |
+| Release tooling | #46             | One version for the nine published packages; size budgets, API reports, publint and are-the-types-wrong checks, a clean-consumer install from the pnpm store and a dry run that writes a manifest. Since `1.0.0-rc.1`, one command, `vp run release`, and the owner's `/release` skill, which nobody confirms: they start the release workflow, which bumps, runs the full gate on the release commit, publishes the checked tarballs through npm trusted publishing with provenance, pushes, writes the GitHub release from the Conventional Commits and installs from npm. Runbook in `docs/internal/releasing.md`. MIT `LICENSE` in every tarball (#175) |
 
 0.1 — Working calendar, 0.2 — Keyboard & accessibility, 0.3 — Resource views and
 0.4 — Availability, layout & scale are closed. Epic #2, recurrence, closes with #155.
@@ -93,8 +93,7 @@ issue's "Later" section when work starts.
 - Registry follow-ups from #43: a registry per release (`/r/<version>/…`) so `main` never asks for
   an unpublished runtime, `@moltenship` in shadcn's registry directory, installing from GitHub
 - Release follow-ups from #46: changesets or per-package changelogs if versions stop moving
-  together, npm staged publishing, budgets for minified bundles with dependencies, the benchmark
-  gate in the release run
+  together, budgets for minified bundles with dependencies, the benchmark gate in the release run
 - Recurrence edge cases left after #160: Outlook's all-day flag at a UTC midnight and its MSN
   variant, overrides in a third zone, an override's own placement at the later 02:30 (#234)
 
@@ -106,7 +105,7 @@ issue's "Later" section when work starts.
   evidence attachments.
 - Run the quality gate's tiers as `AGENTS.md` ("Quality gate") says: `vp run ready:quick` after
   every change, which is enough to merge a change to docs or notes alone, and `vp run ready`
-  before every other merge. The full tier runs for releases: `vp run release` runs it on the
+  before every other merge. The full tier runs for releases: the release workflow runs it on the
   release commit. A PR runs `vp run ready:full` only when it changes the full gate itself or the
   release tooling. Add any focused `vp run` gate or lane the change touches.
 - The local `vp run ready` is the merge gate. Once it's green, merge without waiting for GitHub

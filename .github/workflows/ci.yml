@@ -9,10 +9,8 @@ on:
 permissions:
   contents: read
 
-# A dispatched run, such as the Firefox job `vp run release` waits for on macOS 27, has a group of
-# its own: a push to main doesn't cancel it, and it doesn't cancel the push's run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -71,9 +69,7 @@ jobs:
     name: Firefox and WebKit
     # The full gate's Firefox and WebKit run, on Linux, where Playwright's Firefox starts (#182).
     # On demand, as the full tier runs for releases (AGENTS.md): `gh workflow run ci.yml --ref
-    # <branch>`. Pull requests and main run the PR tier. The release-gate job runs it too. On
-    # macOS 27, `vp run release` waits for this job on the commit it releases, and starts a run
-    # when there is none: it looks for the job by its name.
+    # <branch>`. Pull requests and main run the PR tier. The release-gate job runs it too.
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -102,11 +98,11 @@ jobs:
 
   release-gate:
     name: Release gate
-    # What `vp run release` runs on the owner's laptop before it publishes, on a fresh Linux
-    # runner, where Firefox starts too: the whole full tier with a strict dry run. On demand only,
-    # as a rehearsal on any branch: `gh workflow run ci.yml --ref <branch>`. A PR that changes the
-    # release tooling links a green run. Without RELEASE_VERSION, the dry run checks the version
-    # the manifests have. Nothing in this workflow publishes.
+    # The release workflow's gate (release.yml) without its bump, notes and bundle: the whole full
+    # tier with a strict dry run, on a fresh runner. On demand only, as a rehearsal on any branch:
+    # `gh workflow run ci.yml --ref <branch>`. A PR that changes the release tooling links a green
+    # run. Without RELEASE_VERSION, the dry run checks the version the manifests have. Nothing in
+    # this workflow publishes.
     if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     # About 11 minutes on a runner; the browser runs' watchdog catches a stuck page sooner.

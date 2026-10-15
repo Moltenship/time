@@ -1,22 +1,22 @@
 # Research: how to release the nine packages
 
-How large libraries release today, what npm and pnpm allow from a laptop in October 2026, and
-what that means for `vp run release`. Checked against the repositories' default branches, npm's
-and pnpm's docs and source, and the registry, on 15 October 2026. Anything not verified says so.
+How large libraries release today, what npm and pnpm allow in October 2026, and what that means
+for `vp run release`. Checked against the repositories' default branches, npm's and pnpm's docs and
+source, and the registry, on 15 October 2026. Anything not verified says so. The owner then decided
+that nobody confirms a release ([below](#the-owners-decision-nobody-confirms)), which settled it:
+CI publishes, through trusted publishing.
 
 ## Short answer
 
 - **Publishing from CI on a tag is the norm.** TanStack, antfu's repositories, vitest, nitro and
   nuxt publish from GitHub Actions with trusted publishing, so provenance is automatic. Laptop
   publishing survives in smaller unjs packages (h3 stable, unbuild), without provenance.
-- **From a laptop, use npm's staged publishing.** Stage the nine tarballs, which needs no 2FA, then
-  approve them with one `pnpm stage approve` and a single 2FA. The approval also leaves the trust
-  evidence pnpm ranks highest. That is what `vp run release` does.
-- **Recommendation: keep the local flow.** It's built, it needs no secrets in CI, and the owner
-  approves every release in person anyway. If provenance matters later, move only the staging to
-  CI, on the tag, through trusted publishing, and keep the owner's approval: vitest's and nuxt's
-  model. All nine packages exist on npm now, so trusted publishing's first-publish limit no longer
-  applies.
+- **From a laptop, publishing always asks a person.** A login session asks for 2FA on every
+  publish, and staged publishing, which batches nine into one approval, still needs that approval.
+- **The release: CI, through trusted publishing, started by one command.** The owner wants no
+  confirmation at all, so `vp run release` starts a workflow that gates, publishes with trusted
+  publishing and provenance, pushes and writes the release. All nine packages exist on npm, so
+  trusted publishing's first-publish limit doesn't apply.
 
 ## How maintainers release
 
@@ -114,12 +114,34 @@ or later). `vp run release` is a task of this repository.
 
 ## Trusted publishing
 
-Trusted publishing needs npm 11.5.1 or later, a cloud runner on GitHub Actions, GitLab or
-CircleCI, and `id-token: write`. Provenance is automatic on GitHub and GitLab. A publisher can be
-limited to staging ([docs](https://docs.npmjs.com/trusted-publishers)). The package must already
-exist on npm before a publisher can be configured, so trusted publishing can't do a package's
-first publish ([`npm trust`](https://docs.npmjs.com/cli/v11/commands/npm-trust): npm 11.15 or
-later, one package per call).
+- **Requirements:** npm 11.5.1 or later and Node 22.14, a GitHub-hosted runner (or GitLab or
+  CircleCI), and `id-token: write`. On npmjs.com a GitHub publisher has four fields: the
+  organization or user, the repository, the workflow's file name alone (`release.yml`, not its
+  path) and an optional environment ([docs](https://docs.npmjs.com/trusted-publishers)).
+- **Provenance** is automatic on GitHub Actions for a public repository and package. A publisher
+  can be limited to staging.
+- **"Require two-factor authentication and disallow tokens"** on a package only affects tokens:
+  trusted publishers keep working. `npm access set mfa=publish` is the same setting (2FA required,
+  tokens can't override it; `libnpmaccess`).
+- **No first publish.** The package must exist before a publisher can be set up, so trusted
+  publishing can't do a package's first publish.
+- **`npm trust`** (npm 11.15 or later) sets publishers up from the CLI:
+  `npm trust github <package> --file release.yml --repo Moltenship/time --allow-publish --yes`.
+  One package per call; the first asks for 2FA, and ticking "skip 2FA for the next 5 minutes"
+  lets the rest through, which npm's docs suggest for a loop
+  ([`npm trust`](https://docs.npmjs.com/cli/v11/commands/npm-trust)). `vp run release:trust` is
+  that loop.
+- **Expiry.** Since 2 October 2026 a publisher that hasn't published within 48 hours of its
+  creation expires, and must be set up again; npm also refuses tokens from `issue_comment` events
+  ([changelog](https://github.blog/changelog/2026-10-02-unvalidated-npm-trusted-publishing-configurations-now-expire)).
+  `workflow_dispatch` is fine.
+- **The exchange.** `npm publish` asks GitHub for an OIDC token with the audience
+  `npm:registry.npmjs.org` and `POST`s it to
+  `/-/npm/v1/oidc/token/exchange/package/<name>` for a publish token; on failure it logs and
+  publishes without a token ([`oidc.js`](https://github.com/npm/cli/blob/latest/lib/utils/oidc.js)).
+  The release workflow's first job makes the same exchange for each package, so a missing
+  publisher stops it before the gate. With none set up, npm answers
+  `404 OIDC token exchange error - package not found`.
 
 ## This repository
 
@@ -132,27 +154,50 @@ later, one package per call).
 - **Placeholders.** Each package's first version on npm is a `0.0.0-stage` placeholder with the time
   the job published it; `1.0.0-rc.1` became visible one to two minutes later. Why a direct
   publish made placeholders isn't verified.
-- **Trust evidence.** `1.0.0-rc.1` has provenance and no approver. A later release from a laptop
-  without staging would have none, so `1.0.0-rc.2` would read as a downgrade under
-  `trustPolicy: no-downgrade`. A staged, approved one ranks above provenance.
+- **Trust evidence.** `1.0.0-rc.1` has provenance, from a token, and no trusted publisher or
+  approver (`_npmUser` is the owner's account). A later release from a laptop without staging
+  would have none, so `1.0.0-rc.2` would read as a downgrade under `trustPolicy: no-downgrade`.
+  One through trusted publishing has a trusted publisher and provenance, which pnpm ranks above
+  provenance alone: no downgrade. npm itself has no such check: its install-time controls (npm
+  11.15) choose where packages may come from, not their trust evidence
+  ([changelog](https://github.blog/changelog/2026-05-22-staged-publishing-and-new-install-time-controls-for-npm/)).
 
 ## The options
 
-| | **Local, staged** (built) | **antfu's hybrid** | **Staged from CI** |
+| | **Local, staged** (#259's first version) | **antfu's hybrid** | **CI on `workflow_dispatch`** (built) |
 | --- | --- | --- | --- |
-| The laptop | Bumps, gates, stages, approves, pushes, writes the release | Bumps, tags, pushes | Bumps, tags, pushes, approves |
-| CI | Nothing; `release-gate` on demand | Publishes on the tag, with trusted publishing | Stages on the tag, with trusted publishing |
-| 2FA | One approval for all nine | None: no person in the loop | One approval for all nine |
-| Provenance | No | Yes | Yes, with an approver |
-| pnpm's trust rank | Highest (approver) | Below an approved staged publish: after one, a downgrade | Highest |
-| What ships | The tarballs the local gate checked, by hash | What CI builds on the tag: a second build, gated again in CI | What CI builds, then approved |
-| Secrets | None in CI | A trusted publisher per package, no token | A trusted publisher per package, limited to staging |
-| Firefox (#182) | Waits for CI's Firefox job on macOS 27 | CI runs it | CI runs it |
+| The laptop | Bumps, gates, stages, approves, pushes, writes the release | Bumps, tags, pushes | Starts the workflow and watches it |
+| CI | Nothing | Publishes on the tag | Bumps, gates, publishes, pushes, writes the release |
+| A person confirms | One 2FA for all nine | Nothing | Nothing |
+| Provenance | No | Yes | Yes |
+| pnpm's trust rank | Highest (approver) | Trusted publisher, above rc.1's provenance | Trusted publisher, above rc.1's provenance |
+| What a red gate leaves | Nothing, after an undo | A pushed tag and version bump on `main` | Nothing: the commit and tag stay in the runner |
+| What ships | The tarballs the local gate checked | A second build, on the tag | The tarballs the gate checked, by hash |
+| Firefox (#182) | A wait for CI's job on macOS 27 | CI | CI |
 
-**Recommendation.** Keep the local flow, which is built. It needs nothing in the repository's
-settings, the owner sees every release through, and what ships is byte for byte what the gate
-checked. The one thing it lacks is provenance. If that matters, adopt the third column: release
-on the tag from a CI job that stages with trusted publishing, and keep `vp run release` for the
-bump, the gate, the tag and the approval. Plain trusted publishing (the middle column) would now
-be a trust downgrade, since an approved release ranks above it, and it removes the owner's
-approval.
+## The owner's decision: nobody confirms
+
+The owner wants telling the agent "release" to be the whole approval: no 2FA, no staged approval,
+no environment reviewer, no npm login, no typing the version back. That rules out every laptop
+flow and staging, and leaves trusted publishing from CI.
+
+**Why `workflow_dispatch` and not a tag push.** With antfu's hybrid the laptop pushes the version
+bump and the tag before anything checks them, so a red gate leaves both on `main` and GitHub. With
+a dispatch, the workflow bumps, commits and tags inside the runner, gates that commit, and pushes
+nothing until the gate passes and npm serves the packages. The laptop keeps no state, so it needs
+no undo, signals or resume logic. A run that fails after publishing finishes when its failed jobs
+run again on the same commit and tarballs, which GitHub keeps.
+
+**What it gives up, and what stands in.** No person looks at a release before it ships. In
+exchange:
+
+- Only the owner can push to `main` or start workflows. A real release runs only from `main`: an
+  accident guard, which a branch's copy of the workflow could drop.
+- Each package's trusted publisher is pinned to `Moltenship/time` and `release.yml`.
+- With "Require two-factor authentication and disallow tokens", no token can publish at all.
+- The gate runs the whole full tier on the exact commit, and the publish job ships only the
+  tarballs it checked.
+
+The publisher could also name a GitHub environment limited to `main`, with no reviewer, so a
+branch's copy of the workflow couldn't publish. The owner chose to leave the environment blank: it
+is one more setting to keep, and only the owner can push branches anyway.

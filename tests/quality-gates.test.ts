@@ -106,7 +106,7 @@ describe("CI quality gate contract", () => {
     ]);
     expect(workflow.permissions).toEqual({ contents: "read" });
     expect(workflow.concurrency).toMatchObject({
-      group: "${{ github.workflow }}-${{ github.event_name }}-${{ github.ref }}",
+      group: "${{ github.workflow }}-${{ github.ref }}",
       "cancel-in-progress": true,
     });
   });
