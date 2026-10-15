@@ -194,6 +194,62 @@ describe.each([
       await atRest(scroller);
     });
 
+    test("a pinned bar dragged into the hours keeps its title at its copy's start", async () => {
+      await render(<Screen dir={dir} view="scrolling-3-day" />);
+      const { scroller } = axis("scrolling-3-day");
+      const next = () =>
+        act(async () => document.querySelector<HTMLElement>('[aria-label="Next period"]')!.click());
+      // October 13 to 15: the trip started on the 12th, so its title is pinned.
+      await next();
+      await atRest(scroller);
+      await next();
+      await atRest(scroller);
+      const bar = document.querySelector<HTMLElement>(
+        '[data-slot="scrolling-time-grid-header"] [data-event-id="trip"]',
+      )!;
+      const from = bar.getBoundingClientRect();
+      const column = scroller
+        .querySelector('[role="gridcell"][data-date="2026-10-14"]')!
+        .getBoundingClientRect();
+      const at = (x: number, y: number) => ({
+        bubbles: true,
+        button: 0,
+        clientX: x,
+        clientY: y,
+        isPrimary: true,
+        pointerId: 1,
+        pointerType: "mouse",
+      });
+      const middle = column.left + column.width / 2;
+
+      await act(async () => {
+        bar.dispatchEvent(
+          new PointerEvent("pointerdown", at(from.left + from.width / 2, from.top + 5)),
+        );
+        bar.dispatchEvent(new PointerEvent("pointermove", at(middle, from.top + 30)));
+        bar.dispatchEvent(new PointerEvent("pointermove", at(middle, column.top + 300)));
+      });
+      try {
+        const copies = [
+          ...document.querySelectorAll<HTMLElement>(
+            '[data-calendar-ghost] [data-slot="calendar-event-title"]',
+          ),
+        ];
+        expect(copies.length).toBeGreaterThan(0);
+        for (const copy of copies) {
+          expect(getComputedStyle(copy).transform).toBe("none");
+          const box = copy.parentElement!.getBoundingClientRect();
+          const text = copy.getBoundingClientRect();
+          // At the copy's start, inside its padding, not shifted along it.
+          expect(dir === "rtl" ? box.right - text.right : text.left - box.left).toBeLessThan(20);
+        }
+      } finally {
+        await act(async () =>
+          window.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, key: "Escape" })),
+        );
+      }
+    });
+
     test("the header stays on the days as they scroll a page", async () => {
       await render(<Screen dir={dir} view="scrolling-3-day" />);
       const { position, scroller } = axis("scrolling-3-day");

@@ -109,9 +109,12 @@ export function useDaysFollower(daysRef: RefObject<HTMLElement | null>, rtl: boo
 
     // A running pin stays as long as its title and bar haven't moved: a new animation takes a
     // frame to start, in which a pinned title would slide with its bar.
+    const sign = reach.rtl ? -1 : 1;
     for (const [title, { animation, pin }] of pins.current) {
       const now = measured.get(title);
       if (now !== undefined && !changed && samePin(now, pin)) {
+        // Without scroll timelines, the transform is all there is, and the days may have moved.
+        title.style.transform = `translateX(${sign * shiftAt(pin, offset)}px)`;
         measured.delete(title);
         continue;
       }
@@ -119,7 +122,6 @@ export function useDaysFollower(daysRef: RefObject<HTMLElement | null>, rtl: boo
       title.style.transform = "";
       pins.current.delete(title);
     }
-    const sign = reach.rtl ? -1 : 1;
     for (const [title, pin] of measured) {
       title.style.transform = `translateX(${sign * shiftAt(pin, offset)}px)`;
       const animation =
