@@ -13,13 +13,7 @@ import {
   type PublishState,
   type ReleaseManifest,
 } from "../src/manifest";
-import {
-  planStage,
-  printedJson,
-  publish,
-  stagedFromSummary,
-  type StagedVersion,
-} from "../src/publish";
+import { publish } from "../src/publish";
 import { parseArguments } from "../src/workspace";
 
 const manifest: ReleaseManifest = {
@@ -121,31 +115,19 @@ describe("the publish guard", () => {
     expect(() => distTag("1.0.0", "next tag")).toThrow("isn't a dist-tag");
   });
 
-  test("refuses without a manifest, before it reaches the registry", async () => {
-    const previous = {
-      npm: process.env.npm_config_registry,
-      pnpm: process.env.pnpm_config_registry,
-    };
-    // A registry nothing listens on, in case a regression ever got past the guard.
-    process.env.npm_config_registry = "http://127.0.0.1:9/";
-    process.env.pnpm_config_registry = "http://127.0.0.1:9/";
+  test("refuses without a manifest, before it reaches npm", async () => {
     const lines: string[] = [];
-    try {
-      const missing = join(resolve(import.meta.dirname, ".."), "tests/no-such-manifest.json");
-      const attempt = publish({
-        version: "1.0.0",
-        manifestFile: missing,
-        log: (line) => lines.push(line),
-      });
+    const missing = join(resolve(import.meta.dirname, ".."), "tests/no-such-manifest.json");
+    const attempt = publish({
+      version: "1.0.0",
+      manifestFile: missing,
+      log: (line) => lines.push(line),
+    });
 
-      await expect(attempt).rejects.toThrow("Refusing to publish");
-      await expect(attempt).rejects.toThrow("No dry-run manifest");
-      expect(lines).toEqual([]);
-    } finally {
-      process.env.npm_config_registry = previous.npm;
-      process.env.pnpm_config_registry = previous.pnpm;
-    }
-  }, 30_000);
+    await expect(attempt).rejects.toThrow("Refusing to publish");
+    await expect(attempt).rejects.toThrow("No dry-run manifest");
+    expect(lines).toEqual([]);
+  });
 
   test("flags are strict: no value on booleans, a value on strings, nothing unknown", () => {
     const parse = (argv: string[]) => parseArguments(argv, ["yes"], ["tag"]);
@@ -163,59 +145,6 @@ describe("the publish guard", () => {
         ["tag", "next"],
       ]),
     );
-  });
-});
-
-describe("staged publishing", () => {
-  const wanted = { name: "@x/a", version: "1.0.0-rc.2", shasum: "aaa", tag: "next" };
-  const item = (fields: Partial<StagedVersion>): StagedVersion => ({
-    id: "11111111-1111-4111-8111-111111111111",
-    packageName: "@x/a",
-    version: "1.0.0-rc.2",
-    tag: "next",
-    shasum: "aaa",
-    ...fields,
-  });
-
-  test("stages what isn't staged, and approves what a run before staged with this tarball", () => {
-    expect(planStage([], wanted)).toEqual({ action: "stage" });
-    expect(
-      planStage([item({ packageName: "@x/b" }), item({ version: "1.0.0-rc.1" })], wanted),
-    ).toEqual({
-      action: "stage",
-    });
-    expect(planStage([item({ shasum: "bbb", id: "other" }), item({})], wanted)).toEqual({
-      action: "approve",
-      id: "11111111-1111-4111-8111-111111111111",
-    });
-  });
-
-  test("stops on a version staged with another tarball or tag, or one the listing doesn't describe", () => {
-    expect(planStage([item({ shasum: "bbb" })], wanted)).toEqual({
-      action: "conflict",
-      ids: ["11111111-1111-4111-8111-111111111111"],
-    });
-    expect(planStage([item({ tag: "latest" })], wanted).action).toBe("conflict");
-    expect(planStage([item({ shasum: undefined })], wanted).action).toBe("conflict");
-  });
-
-  test("reads the JSON pnpm printed, past anything its reporter printed first", () => {
-    expect(printedJson('Progress: resolved 1\n[\n  { "id": "a" }\n]\n', "x")).toEqual([
-      { id: "a" },
-    ]);
-    expect(() => printedJson("Staged.", "pnpm stage list")).toThrow(
-      "pnpm stage list didn't print JSON",
-    );
-  });
-
-  test("reads the stage id pnpm printed for the tarball", () => {
-    const stdout = JSON.stringify({
-      "@x/a": { id: "@x/a@1.0.0-rc.2", name: "@x/a", integrity: "sha512-a", stageId: "abc" },
-    });
-
-    expect(stagedFromSummary(stdout, "@x/a")).toEqual({ stageId: "abc", integrity: "sha512-a" });
-    expect(() => stagedFromSummary(stdout, "@x/b")).toThrow("no stage id for @x/b");
-    expect(() => stagedFromSummary("Staged.", "@x/a")).toThrow("didn't print JSON");
   });
 });
 

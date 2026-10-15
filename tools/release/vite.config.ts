@@ -15,9 +15,13 @@ export default defineConfig({
       consumer: { command: script("consumer.ts"), cache: false },
       "dry-run": { command: script("dry-run.ts"), cache: false },
       artifacts: { command: script("artifacts.ts"), cache: false },
-      // The whole release, from this laptop (docs/internal/releasing.md). Uncached: a cached task
-      // doesn't pass GH_REPO through to gh, and every run must reach npm and GitHub.
+      // The release (docs/internal/releasing.md): `release` starts and watches the release
+      // workflow, `ci` is that workflow's steps, `trust` the owner's one-time npm setup. Uncached:
+      // a cached task doesn't pass GH_REPO or GitHub's OIDC variables through, and each must reach
+      // npm and GitHub every time.
       release: { command: script("release.ts"), cache: false },
+      ci: { command: script("ci.ts"), cache: false },
+      trust: { command: script("trust.ts"), cache: false },
     },
   },
   test: {

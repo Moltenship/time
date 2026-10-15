@@ -5,6 +5,9 @@ import { gt, valid } from "semver";
 
 import { readPublishedPackages, workspaceRoot, type WorkspacePackage } from "./workspace";
 
+/** The release commit's subject, a Conventional Commit as AGENTS.md asks. */
+export const releaseSubject = (version: string) => `chore(release): v${version}`;
+
 /** The one version every published package shares. Throws when they differ. */
 export function sharedVersion(packages: readonly WorkspacePackage[]): string {
   const versions = new Set(packages.map(({ manifest }) => manifest.version));

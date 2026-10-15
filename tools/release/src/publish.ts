@@ -1,213 +1,33 @@
-import { createHash } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+import { gte } from "semver";
 
 import { npmRegistry as registry } from "./config";
 import { distTag, manifestPath, publishProblems, readManifest, tarballIntegrity } from "./manifest";
 import { tarballDirectory } from "./pack";
-import { gitState, isOnMain, readPublishedPackages, run, runOrThrow } from "./workspace";
+import { fetchPackument } from "./published";
+import { gitState, isOnMain, readPublishedPackages, runOrThrow } from "./workspace";
+
+/** The first npm that publishes through trusted publishing (docs.npmjs.com/trusted-publishers). */
+export const trustedPublishingNpm = "11.5.1";
 
 /**
- * One staged version, as `pnpm stage list --json` prints the registry's listing. Every field is
- * optional: the registry doesn't pin its schema.
- */
-export interface StagedVersion {
-  readonly id?: string;
-  readonly packageName?: string;
-  readonly version?: string;
-  readonly tag?: string;
-  /** The tarball's SHA-1, in hex. */
-  readonly shasum?: string;
-}
-
-/** What to do with a package npm doesn't serve yet. */
-export type StagePlan =
-  | { readonly action: "stage" }
-  /** Staged already, with this tarball and tag: approve it. */
-  | { readonly action: "approve"; readonly id: string }
-  /** Staged already, with another tarball or tag, or one the listing doesn't describe. */
-  | { readonly action: "conflict"; readonly ids: readonly string[] };
-
-/**
- * Whether to stage a package, approve the version a run before staged, or stop. A staged
- * version's tarball and tag can't change, so one with another tarball or tag must be rejected
- * first, and one the listing doesn't fully describe can't be trusted.
- */
-export function planStage(
-  staged: readonly StagedVersion[],
-  wanted: {
-    readonly name: string;
-    readonly version: string;
-    readonly shasum: string;
-    readonly tag: string;
-  },
-): StagePlan {
-  const same = staged.filter(
-    ({ id, packageName, version }) =>
-      id !== undefined && packageName === wanted.name && version === wanted.version,
-  );
-  const match = same.find(({ shasum, tag }) => shasum === wanted.shasum && tag === wanted.tag);
-  if (match) return { action: "approve", id: match.id! };
-  if (same.length > 0) return { action: "conflict", ids: same.map(({ id }) => id!) };
-  return { action: "stage" };
-}
-
-/**
- * The JSON a pnpm command printed with `--json`: from the first line that opens an object or an
- * array and parses to the end, past anything its reporter printed before.
- */
-export function printedJson<T>(stdout: string, command: string): T {
-  for (const { index } of stdout.matchAll(/^[[{]/gm)) {
-    try {
-      return JSON.parse(stdout.slice(index)) as T;
-    } catch {
-      // A reporter line that only looks like JSON: try the next.
-    }
-  }
-  throw new Error(`${command} didn't print JSON:\n${stdout.trim()}`);
-}
-
-/** The stage id `pnpm stage publish --json` printed for one tarball, with its integrity. */
-export function stagedFromSummary(
-  stdout: string,
-  name: string,
-): { readonly stageId: string; readonly integrity?: string } {
-  const summaries = printedJson<Record<string, { stageId?: unknown; integrity?: unknown }>>(
-    stdout,
-    `pnpm stage publish for ${name}`,
-  );
-  const summary = summaries[name];
-  if (typeof summary?.stageId !== "string" || summary.stageId === "") {
-    throw new Error(`pnpm stage publish printed no stage id for ${name}:\n${stdout.trim()}`);
-  }
-  return {
-    stageId: summary.stageId,
-    integrity: typeof summary.integrity === "string" ? summary.integrity : undefined,
-  };
-}
-
-/**
- * The integrity npm records for this version, or undefined when npm doesn't have it. Throws when
- * the registry can't say.
- */
-async function publishedIntegrity(
-  name: string,
-  version: string,
-  env: NodeJS.ProcessEnv,
-): Promise<string | undefined> {
-  const result = await run("vp", ["pm", "view", `${name}@${version}`, "dist.integrity", "--json"], {
-    env,
-  });
-  if (result.code === 0) {
-    const integrity = result.stdout.trim() ? (JSON.parse(result.stdout) as unknown) : undefined;
-    return typeof integrity === "string" ? integrity : undefined;
-  }
-  const output = `${result.stdout}\n${result.stderr}`;
-  if (/ERR_PNPM_PACKAGE_NOT_FOUND|ERR_PNPM_FETCH_404|E404/.test(output)) return undefined;
-  throw new Error(`Can't tell whether ${name}@${version} is on npm:\n${output.trim()}`);
-}
-
-async function shasumOf(path: string): Promise<string> {
-  return createHash("sha1")
-    .update(await readFile(path))
-    .digest("hex");
-}
-
-/** Whether npm's 2FA can ask in this terminal: pnpm needs both ends to be one. */
-export const interactive = () => Boolean(process.stdin.isTTY && process.stdout.isTTY);
-
-/**
- * Runs `action` with an environment that always reaches the public registry, whatever a local
- * .npmrc says. pnpm reads pnpm_config_*; npm_config_* covers anything that shells out to npm. With
- * NODE_AUTH_TOKEN set, a throwaway npmrc reads the token from the environment, so it is never
- * written to disk.
- */
-export async function withRegistry<T>(action: (env: NodeJS.ProcessEnv) => Promise<T>): Promise<T> {
-  const env: NodeJS.ProcessEnv = {
-    ...process.env,
-    npm_config_registry: registry,
-    pnpm_config_registry: registry,
-  };
-  const configDirectory = process.env.NODE_AUTH_TOKEN
-    ? await mkdtemp(join(tmpdir(), "moltenship-npmrc-"))
-    : undefined;
-  if (configDirectory) {
-    const userconfig = join(configDirectory, ".npmrc");
-    await writeFile(
-      userconfig,
-      `registry=${registry}\n//registry.npmjs.org/:_authToken=\${NODE_AUTH_TOKEN}\n`,
-    );
-    env.npm_config_userconfig = userconfig;
-  }
-  try {
-    // A scoped line such as `@moltenship:registry=…` in an npmrc beats the default registry, so
-    // check both.
-    for (const key of ["registry", "@moltenship:registry"]) {
-      const configured = (
-        await runOrThrow("vp", ["pm", "config", "get", key], { env })
-      ).stdout.trim();
-      if (key !== "registry" && (configured === "" || configured === "undefined")) continue;
-      if (configured.replace(/\/?$/, "/") !== registry) {
-        throw new Error(`pnpm's ${key} is ${configured}, not ${registry}. Nothing was published.`);
-      }
-    }
-    return await action(env);
-  } finally {
-    if (configDirectory) await rm(configDirectory, { force: true, recursive: true });
-  }
-}
-
-/** The npm user pnpm publishes as, or undefined when it isn't logged in. */
-export function npmUser(): Promise<string | undefined> {
-  return withRegistry(async (env) => {
-    const result = await run("vp", ["exec", "pnpm", "whoami", "--registry", registry], { env });
-    return result.code === 0 ? result.stdout.trim() || undefined : undefined;
-  });
-}
-
-const pnpm = (args: readonly string[]) => ["exec", "pnpm", ...args, "--registry", registry];
-
-/**
- * npm's listing of the staged versions, with what it leaves out of one of `names` at `version`
- * read from that version's own record, so a rerun can tell a version it staged from another.
- */
-async function stagedVersions(
-  names: readonly string[],
-  version: string,
-  env: NodeJS.ProcessEnv,
-): Promise<StagedVersion[]> {
-  const { stdout } = await runOrThrow("vp", pnpm(["stage", "list", "--json"]), { env });
-  const listed = printedJson<StagedVersion[]>(stdout, "pnpm stage list");
-  return Promise.all(
-    listed.map(async (item) => {
-      const ours = item.id && item.packageName && names.includes(item.packageName);
-      if (!ours || item.version !== version || (item.shasum && item.tag)) return item;
-      const viewed = await runOrThrow("vp", pnpm(["stage", "view", item.id!, "--json"]), { env });
-      const record = printedJson<StagedVersion>(viewed.stdout, "pnpm stage view");
-      return { ...item, shasum: item.shasum ?? record.shasum, tag: item.tag ?? record.tag };
-    }),
-  );
-}
-
-/**
- * Publishes the tarballs a passing gate checked, and nothing else, through npm's staged
- * publishing: each tarball is staged, which needs no 2FA, then one `pnpm stage approve` publishes
- * them all with a single 2FA, in dependency order. A staged version can't be installed until it's
- * approved, so a failure before the approval exposes nothing. Safe to run again: versions npm
- * serves are skipped, and a version an earlier run staged with the same tarball is approved, not
- * staged twice.
+ * Publishes the tarballs the release gate checked, and nothing else, with npm trusted publishing:
+ * npm trades the job's OIDC token for a short-lived publish token and signs provenance, so there
+ * is no npm token anywhere. The release workflow's publish job runs it, after the gate.
  *
  * It refuses unless the dry-run manifest matches HEAD, the version and every tarball, on a clean
- * tree on main or right on top of it. `onUpload` runs once, right before the first request that
- * changes anything on npm. With `dryRun`, it checks all of that and npm's state, stages nothing,
- * and returns what a real run would refuse instead of throwing.
+ * tree on main or right on top of it. Safe to run again: a version npm serves is skipped when it's
+ * the tarball the gate checked, and stops the run when it isn't, so the nine on npm never mix two
+ * builds. With `dryRun`, it checks all of that and npm's state, publishes nothing, and returns what
+ * a release would refuse instead of throwing.
  */
 export async function publish(options: {
   readonly version: string;
   readonly tag?: string;
   readonly dryRun?: boolean;
-  readonly onUpload?: () => Promise<void>;
   readonly manifestFile?: string;
   readonly log?: (line: string) => void;
 }): Promise<readonly string[]> {
@@ -229,12 +49,30 @@ export async function publish(options: {
   }
   const tag = distTag(version, options.tag);
 
-  return withRegistry(async (env) => {
-    // Look at all nine before publishing any. A version npm serves is skipped, but only if it is
-    // the tarball the gate checked; otherwise npm would mix two builds.
+  // npm runs outside the workspace, whose devEngines pins pnpm, and reads an empty npmrc: no
+  // token, no project or user config, and the public registry.
+  const cwd = await mkdtemp(join(tmpdir(), "moltenship-publish-"));
+  const userconfig = join(cwd, ".npmrc");
+  await writeFile(userconfig, "");
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    npm_config_registry: registry,
+    npm_config_userconfig: userconfig,
+  };
+  delete env.NODE_AUTH_TOKEN;
+  delete env.NPM_TOKEN;
+  try {
+    const npm = (await runOrThrow("npm", ["--version"], { cwd, env })).stdout.trim();
+    if (!gte(npm, trustedPublishingNpm)) {
+      throw new Error(
+        `npm ${npm} can't publish through trusted publishing; it needs ${trustedPublishingNpm}.`,
+      );
+    }
+
+    // Look at all nine before publishing any.
     const pending: (typeof manifest.packages)[number][] = [];
     for (const entry of manifest.packages) {
-      const current = await publishedIntegrity(entry.name, version, env);
+      const current = (await fetchPackument(entry.name))?.versions?.[version]?.dist?.integrity;
       if (current === undefined) pending.push(entry);
       else if (current !== entry.integrity) {
         throw new Error(
@@ -247,88 +85,34 @@ export async function publish(options: {
       return problems;
     }
 
-    let staged: StagedVersion[];
-    try {
-      staged = await stagedVersions(
-        manifest.packages.map(({ name }) => name),
-        version,
-        env,
-      );
-    } catch (error) {
-      const output = error instanceof Error ? error.message : String(error);
-      const reason = /\b401\b/.test(output)
-        ? "npm: not logged in, so the staged versions can't be listed."
-        : `Can't list npm's staged versions:\n${output}`;
-      if (!options.dryRun) throw new Error(reason);
-      return [...problems, reason];
-    }
-    const plans = await Promise.all(
-      pending.map(async (entry) => {
-        const tarball = join(tarballDirectory, entry.file);
-        const wanted = { name: entry.name, version, shasum: await shasumOf(tarball), tag };
-        return { ...entry, tarball, plan: planStage(staged, wanted) };
-      }),
-    );
-    const conflicts = plans.flatMap(({ name, plan }) =>
-      plan.action === "conflict" ? plan.ids.map((id) => `${name}: vp pm stage reject ${id}`) : [],
-    );
-    if (conflicts.length > 0) {
-      throw new Error(
-        `npm has ${version} staged with another tarball or tag, or one its listing doesn't describe. Reject each, then run again. Nothing was published.\n- ${conflicts.join("\n- ")}`,
-      );
-    }
-
-    const toStage = plans.filter(({ plan }) => plan.action === "stage");
     const summary = `${pending.length} packages at ${version} with the "${tag}" tag`;
-    log(`Ready to publish ${summary}:`);
-    for (const { file, plan } of plans) {
-      log(`  ${file}${plan.action === "approve" ? `, staged already (${plan.id})` : ""}`);
-    }
+    log(`Ready to publish ${summary}, through trusted publishing, with provenance:`);
+    for (const { file } of pending) log(`  ${file}`);
     if (options.dryRun) {
-      log(`A release would stage ${toStage.length} and approve ${pending.length} with one 2FA.`);
+      log(`A release would publish them now, with npm ${npm}.`);
       return problems;
     }
-    if (!interactive()) {
-      throw new Error(
-        "Approving needs npm's 2FA, and pnpm asks for it only in a terminal. Run this in a terminal, or through .claude/skills/release/terminal.sh, as /release does. Nothing was published.",
-      );
-    }
-
-    await options.onUpload?.();
-    const ids: string[] = [];
-    for (const { name, tarball, integrity, plan } of plans) {
-      if (plan.action === "approve") {
-        ids.push(plan.id);
-        continue;
-      }
-      const { stdout } = await runOrThrow(
-        "vp",
-        pnpm([
-          "stage",
+    for (const { name, file } of pending) {
+      await runOrThrow(
+        "npm",
+        [
           "publish",
-          tarball,
-          "--tag",
-          tag,
+          join(tarballDirectory, file),
           "--access",
           "public",
-          "--no-git-checks",
-          "--json",
-        ]),
-        { env },
+          "--tag",
+          tag,
+          "--provenance",
+          "--registry",
+          registry,
+        ],
+        { cwd, env, inherit: true },
       );
-      const result = stagedFromSummary(stdout, name);
-      if (result.integrity !== undefined && result.integrity !== integrity) {
-        throw new Error(
-          `pnpm staged ${name} as ${result.integrity}, not the tarball the gate checked (${integrity}). Reject stage ${result.stageId} before anything else.`,
-        );
-      }
-      log(`Staged ${name}@${version} as ${result.stageId}.`);
-      ids.push(result.stageId);
+      log(`Published ${name}@${version}.`);
     }
-
-    log(`\nApproving ${ids.length} staged packages: npm asks for 2FA once.`);
-    await runOrThrow("vp", pnpm(["stage", "approve", ...ids, "--yes"]), { env, inherit: true });
     log(`Published ${summary}.`);
     return problems;
-  });
+  } finally {
+    await rm(cwd, { force: true, recursive: true });
+  }
 }

@@ -12,16 +12,16 @@ export interface Packument {
     Record<
       string,
       {
-        readonly dist?: { readonly integrity?: string };
-        /** Who published it; `approver` is set when a staged version was approved. */
-        readonly _npmUser?: { readonly approver?: unknown };
+        readonly dist?: { readonly integrity?: string; readonly attestations?: unknown };
+        /** Who published it; `trustedPublisher` is set when it came through npm trusted publishing. */
+        readonly _npmUser?: { readonly trustedPublisher?: unknown };
       }
     >
   >;
 }
 
 export interface PublishedCheck {
-  /** Wrong for good: other contents, no approver, or the tag elsewhere. Waiting won't help. */
+  /** Wrong for good: other contents, no trusted publisher, or the tag elsewhere. Waiting won't help. */
   readonly problems: readonly string[];
   /** Not there yet: npm can take minutes to list a version it just took. */
   readonly pending: readonly string[];
@@ -31,16 +31,16 @@ export interface PublishedCheck {
 
 /**
  * Compares what npm serves with what the dry run checked: every package at the version, with the
- * tarball's integrity, under the dist-tag it went out with, and with an approver when it went out
- * through a staged approval, the trust evidence package managers rank highest (pnpm's
- * `trustPolicy`).
+ * tarball's integrity, under the dist-tag it went out with, and, when it went out through npm
+ * trusted publishing, with the trusted publisher and provenance npm records for it: the evidence
+ * pnpm's `trustPolicy` ranks above provenance alone, which `1.0.0-rc.1` has.
  * `packuments` maps each package to npm's document, or undefined when npm doesn't list it yet.
  * npm writes a version and its tags in one document, so once it lists the version, a tag that
  * points elsewhere stays there, unless a newer release moved it on.
  */
 export function checkPublished(
   manifest: ReleaseManifest,
-  options: { readonly version: string; readonly tag: string; readonly staged: boolean },
+  options: { readonly version: string; readonly tag: string; readonly trusted: boolean },
   packuments: ReadonlyMap<string, Packument | undefined>,
 ): PublishedCheck {
   const problems: string[] = [];
@@ -64,8 +64,8 @@ export function checkPublished(
         `${id} on npm is ${dist.integrity ?? "without an integrity"}, not the tarball the dry run checked (${integrity})`,
       );
     }
-    if (options.staged && !published._npmUser?.approver) {
-      problems.push(`${id} has no approver on npm, so it didn't go out through a staged approval`);
+    if (options.trusted && !(published._npmUser?.trustedPublisher && dist.attestations)) {
+      problems.push(`${id} has no trusted publisher and provenance on npm`);
     }
     const tagged = packument["dist-tags"]?.[options.tag];
     if (tagged === options.version) continue;
@@ -100,7 +100,7 @@ export async function fetchPackument(name: string): Promise<Packument | undefine
 export async function waitForPublished(options: {
   readonly version: string;
   readonly tag?: string;
-  readonly staged: boolean;
+  readonly trusted: boolean;
   readonly manifestFile?: string;
   readonly timeoutMs?: number;
   readonly intervalMs?: number;
@@ -135,7 +135,7 @@ export async function waitForPublished(options: {
     });
     const check = checkPublished(
       manifest,
-      { version: options.version, tag, staged: options.staged },
+      { version: options.version, tag, trusted: options.trusted },
       packuments,
     );
     if (check.problems.length > 0) {
@@ -156,6 +156,6 @@ export async function waitForPublished(options: {
   }
   for (const note of notes) log(note);
   log(
-    `npm serves ${manifest.packages.length} packages at ${options.version} as the dry run checked them, tagged ${tag}${options.staged ? ", each approved" : ""}.`,
+    `npm serves ${manifest.packages.length} packages at ${options.version} as the dry run checked them, tagged ${tag}${options.trusted ? ", from the trusted publisher, with provenance" : ""}.`,
   );
 }
