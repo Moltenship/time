@@ -65,19 +65,30 @@ export function useDaysFollower(daysRef: RefObject<HTMLElement | null>, rtl: boo
   const layout = useCallback(() => {
     const days = daysRef.current;
     if (days === null) return;
+    // Every measurement before any write, so a render costs one layout, not one per title.
     const reach: Reach = {
       distance: Math.max(0, days.scrollWidth - days.clientWidth),
       rtl: latestRtl.current,
     };
+    const offset = Math.abs(days.scrollLeft);
+    const inset = parseFloat(getComputedStyle(days.ownerDocument.documentElement).fontSize) / 2;
+    const measured = new Map<HTMLElement, Pin>();
+    for (const element of followers.current.keys()) {
+      for (const title of element.querySelectorAll<HTMLElement>(TITLES)) {
+        const pin = pinned(title, element, reach.rtl, inset);
+        if (pin !== null) measured.set(title, pin);
+      }
+    }
+
     const changed =
       laidOut.current?.distance !== reach.distance || laidOut.current.rtl !== reach.rtl;
     laidOut.current = reach;
     const view = days.ownerDocument.defaultView;
+    let shared: ScrollTimeline | undefined;
     const timeline =
-      view !== null && typeof view.ScrollTimeline === "function"
-        ? () => new view.ScrollTimeline({ axis: "inline", source: days })
-        : undefined;
-    const offset = Math.abs(days.scrollLeft);
+      view === null || typeof view.ScrollTimeline !== "function"
+        ? undefined
+        : () => (shared ??= new view.ScrollTimeline({ axis: "inline", source: days }));
     for (const [element, animation] of followers.current) {
       // RTL `scrollLeft` is negative, so the same negation moves content the right way. A new
       // animation takes over from the next frame, so this places the follower until then.
@@ -96,28 +107,30 @@ export function useDaysFollower(daysRef: RefObject<HTMLElement | null>, rtl: boo
       }
     }
 
-    // The titles move with the bars a render places, so each render measures them again.
-    for (const [title, { animation }] of pins.current) {
+    // A running pin stays as long as its title and bar haven't moved: a new animation takes a
+    // frame to start, in which a pinned title would slide with its bar.
+    for (const [title, { animation, pin }] of pins.current) {
+      const now = measured.get(title);
+      if (now !== undefined && !changed && samePin(now, pin)) {
+        measured.delete(title);
+        continue;
+      }
       animation?.cancel();
       title.style.transform = "";
+      pins.current.delete(title);
     }
-    pins.current.clear();
-    for (const element of followers.current.keys()) {
-      for (const title of element.querySelectorAll<HTMLElement>(TITLES)) {
-        const pin = pinned(title, element, reach.rtl);
-        if (pin === null) continue;
-        const sign = reach.rtl ? -1 : 1;
-        title.style.transform = `translateX(${sign * shiftAt(pin, offset)}px)`;
-        const animation =
-          timeline === undefined || reach.distance <= 0
-            ? null
-            : title.animate(pinKeyframes(pin, reach), {
-                easing: "linear",
-                fill: "both",
-                timeline: timeline(),
-              });
-        pins.current.set(title, { animation, pin });
-      }
+    const sign = reach.rtl ? -1 : 1;
+    for (const [title, pin] of measured) {
+      title.style.transform = `translateX(${sign * shiftAt(pin, offset)}px)`;
+      const animation =
+        timeline === undefined || reach.distance <= 0
+          ? null
+          : title.animate(pinKeyframes(pin, reach), {
+              easing: "linear",
+              fill: "both",
+              timeline: timeline(),
+            });
+      pins.current.set(title, { animation, pin });
     }
   }, [daysRef]);
 
@@ -180,28 +193,34 @@ function keyframes({ distance, rtl }: Reach): Keyframe[] {
 
 /**
  * Where `title` starts to move along its bar, as a scroll offset from the days' inline start, and
- * how far it can: it stays put while the bar's start is on screen, then moves with the scroll, half
- * a rem in from the start of the days, until it reaches the bar's end. `null` for a title with no
+ * how far it can: it stays put while the bar's start is on screen, then moves with the scroll,
+ * `inset` in from the start of the days, until it reaches the bar's end. `null` for a title with no
  * room to move. Positions are along the inline axis from the start of `track`, the follower the
  * bar is in.
  */
-function pinned(title: HTMLElement, track: HTMLElement, rtl: boolean): Pin | null {
+function pinned(title: HTMLElement, track: HTMLElement, rtl: boolean, inset: number): Pin | null {
   const bar = title.parentElement;
   if (bar === null) return null;
+  // The bar's box, and the title's place in it from layout, which its own shift doesn't move.
   const box = track.getBoundingClientRect();
-  const along = (rect: DOMRect) =>
-    rtl
-      ? { end: box.right - rect.left, start: box.right - rect.right }
-      : { end: rect.right - box.left, start: rect.left - box.left };
-  const text = along(title.getBoundingClientRect());
-  const style = getComputedStyle(bar);
-  const barEnd =
-    along(bar.getBoundingClientRect()).end -
-    parseFloat(rtl ? style.paddingLeft : style.paddingRight);
+  const barBox = bar.getBoundingClientRect();
+  const left = barBox.left + bar.clientLeft + title.offsetLeft;
+  const right = left + title.offsetWidth;
+  const padding = parseFloat(
+    rtl ? getComputedStyle(bar).paddingLeft : getComputedStyle(bar).paddingRight,
+  );
+  const text = rtl
+    ? { end: box.right - left, start: box.right - right }
+    : { end: right - box.left, start: left - box.left };
+  const barEnd = (rtl ? box.right - barBox.left : barBox.right - box.left) - padding;
   const room = barEnd - text.end;
   if (room <= 0) return null;
-  const inset = parseFloat(getComputedStyle(title.ownerDocument.documentElement).fontSize) / 2;
   return { from: text.start - inset, room };
+}
+
+/** Whether a title's pin is where it was, within half a pixel. */
+function samePin(a: Pin, b: Pin): boolean {
+  return Math.abs(a.from - b.from) < 0.5 && Math.abs(a.room - b.room) < 0.5;
 }
 
 /** How far a pinned title has moved at a scroll offset. */

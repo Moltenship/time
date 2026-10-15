@@ -180,6 +180,18 @@ describe.each([
       await atRest(scroller);
       // Half a rem in from the start of the days.
       expect(Math.abs(inFromStart() - 8)).toBeLessThan(1.5);
+
+      // Back past halfway to October 10: the range moves mid-scroll, and the view renders again
+      // while the title is pinned. It stays on screen.
+      await axis("scrolling-3-day").dragBy(-1.7, dir);
+      frames = 0;
+      while (title() !== "Oct 10 – 12, 2026" || frames < 30) {
+        await nextFrame();
+        expect(inFromStart()).toBeGreaterThan(-1);
+        frames += 1;
+        if (frames > 600) throw new Error("the page never came to rest");
+      }
+      await atRest(scroller);
     });
 
     test("the header stays on the days as they scroll a page", async () => {

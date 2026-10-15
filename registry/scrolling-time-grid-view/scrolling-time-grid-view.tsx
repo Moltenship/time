@@ -217,6 +217,8 @@ export function ScrollingTimeGridView<TEvent>({
     columns,
     disabled: isReadOnly,
     events,
+    // A dragged bar's copy keeps its title at its start, not where the bar's pin had moved it.
+    ghostClassName: "[&_[data-slot=calendar-event-title]]:transform-none!",
     onPropose: actions.proposeEventChange,
     scrollContainer: viewportRef,
     sidewaysScrollContainer: axis.scrollRef,
