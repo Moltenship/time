@@ -1,16 +1,21 @@
 import { availableParallelism } from "node:os";
 
-import { defineConfig } from "vite-plus";
+import { defaultExclude, defaultInclude, defineConfig } from "vite-plus";
 
 const staticCheckIgnorePatterns = [".github/**", "*.md", "**/*.md"];
 // This fixture must stay invalid; the focused boundary test asserts its exact failure.
 const invalidBoundaryFixturePattern = "tests/fixtures/dependency-boundaries/**";
+// Where the workspace keeps its tests. Vitest doesn't read `.gitignore`, so searching the whole
+// root also ran copies of the repository inside it, such as Claude Code's agent worktrees.
+const testRoots = ["apps/*", "benchmarks", "packages/*", "registry", "tests", "tools/*"];
 
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
   test: {
+    include: testRoots.flatMap((root) => defaultInclude.map((pattern) => `${root}/${pattern}`)),
+    exclude: [...defaultExclude, ".claude/worktrees/**"],
     // Half the cores, for `vp test` from the root: `ci:test`, the quick tier and the engine tasks.
     // In the PR and full tiers it shares the machine with a browser run, and Vitest's default, a
     // worker per core but one, oversubscribed it (quality-gates.md).
