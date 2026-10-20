@@ -51,15 +51,15 @@ you list them, and leaving one out of `annotationSources` hides its annotations.
 annotations are half-open, `[start, end)`. Invalid ones are skipped and reported through
 `onDiagnosticsChange`.
 
-The week and day views draw annotations as soon as `Root` has sources. Without any, they reserve no
-space for them.
+The week and day views draw annotations as soon as `Root` has sources. Without any, they draw no
+rail.
 
 ## How they draw
 
 - **A rail beside the events.** The marks draw in a narrow strip at the start of each day column,
   18px in the week and 30px in the day. An event moves aside for the rail only where a mark is
-  beside it, as the rail draws the mark, with a short one as tall as it's wide. The events it
-  overlaps move with it, so they keep their lanes beside each other. Every other event, and every
+  beside it, counting a short mark as tall as the rail's `markWidth`. The events it shares lanes
+  with move with it, so they keep their places beside each other. Every other event, and every
   event on a day without marks, keeps the column's whole width. With `placement: "overlay"` the
   parts draw behind events instead and move nothing.
 - **Capsules with the source's icon.** Each annotation draws as a capsule in its source's color,

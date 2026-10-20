@@ -86,7 +86,7 @@ let cleanup: (() => Promise<void>) | undefined;
 afterEach(async () => {
   await cleanup?.();
   cleanup = undefined;
-  cleanupHarness();
+  await cleanupHarness();
 });
 
 async function renderDay({
@@ -169,13 +169,20 @@ const lanes = (container: ParentNode) =>
 const lunch = timed("lunch", "2026-10-08T12:00Z", "2026-10-08T13:00Z");
 
 test("moves aside only the events beside a mark, and the events they share lanes with", async () => {
-  const container = await renderDay({ dayEvents: [...events, lunch] });
+  const container = await renderDay({
+    dayEvents: [
+      timed("standup", "2026-10-08T09:00Z", "2026-10-08T09:45Z"),
+      timed("planning", "2026-10-08T09:30Z", "2026-10-08T10:15Z"),
+      lunch,
+    ],
+  });
 
   expect(lanes(container)).toEqual({
     // Lunch is clear of every mark, so it keeps the column's whole width.
     lunch: ["0%", "100%"],
-    // Review misses the 9:00 listening session, but shares its lanes with standup, which doesn't.
-    review: ["calc(30px + 0.5 * (100% - 30px))", "calc(0.5 * (100% - 30px))"],
+    // The 9:00 listening session draws as a 20px dot, to 9:25. Planning starts after it, but
+    // shares its lanes with standup, which crosses it.
+    planning: ["calc(30px + 0.5 * (100% - 30px))", "calc(0.5 * (100% - 30px))"],
     standup: ["calc(30px + 0 * (100% - 30px))", "calc(0.5 * (100% - 30px))"],
   });
   // The event area itself stays put: one container for every event, so none remounts as it moves.
@@ -247,6 +254,30 @@ test("a new event's draft moves aside beside a mark, as an event would", async (
   await calendar.keyboard.focusCell({ date: anchorDate, time: "17:30" });
   await calendar.keyboard.grab();
   expect([draft().insetInlineStart, draft().insetInlineEnd]).toEqual(["30px", "0px"]);
+});
+
+test("an event a keyboard move takes beside a mark moves aside and keeps focus", async () => {
+  const Calendar = calendarWith(createDayView<ColoredEvent>());
+  const calendar = await renderCalendar(Calendar, {
+    children: <Calendar.ActiveView />,
+    environment: createTestEnvironment({
+      weekRules: { firstDay: 7, minimalDays: 1, weekend: [6, 7] },
+    }),
+    events: [lunch],
+    rootProps: { annotationSources: [sleep, music], annotations },
+    view: "day",
+  });
+  await calendar.keyboard.focusEvent("lunch");
+  const event = document.activeElement as HTMLElement;
+  expect(event.style.insetInlineStart).toBe("0%");
+
+  // Down from 12:00 to 17:30, an hour that reaches the music at 18:00.
+  await calendar.keyboard.grab();
+  await calendar.keyboard.step({ down: 22 });
+
+  // The same element, so focus stays on it.
+  expect(document.activeElement).toBe(event);
+  expect(event.style.insetInlineStart).toBe("calc(30px + 0 * (100% - 30px))");
 });
 
 describe("events beside marks", () => {
