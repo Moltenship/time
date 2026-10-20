@@ -7,7 +7,8 @@ description: Time-based information beside events, such as listening history, sl
 
 Annotations show what happened alongside the events: what you listened to, when you slept, a
 workout, a focus session. Unlike events they are read-only, and they never take part in overlap
-layout, so they never move, narrow or reorder an event. Try them in the
+layout, so they never reorder an event or change its lane. An event beside one only moves aside
+for the rail. Try them in the
 [live demo](https://moltenship-time-demo.vercel.app); the sidebar's Activity list shows and hides
 each source.
 
@@ -50,15 +51,17 @@ you list them, and leaving one out of `annotationSources` hides its annotations.
 annotations are half-open, `[start, end)`. Invalid ones are skipped and reported through
 `onDiagnosticsChange`.
 
-The week and day views draw annotations as soon as `Root` has sources. Without any, they reserve no
-space for them.
+The week and day views draw annotations as soon as `Root` has sources. Without any, they draw no
+rail.
 
 ## How they draw
 
-- **A rail beside the events.** Each day column keeps a narrow strip at its start, 18px in the week
-  and 30px in the day, whenever the root has annotation sources. Events move over by that much once,
-  the same in every column whatever the data, and keep their layout. With `placement: "overlay"`
-  the parts draw behind events instead and reserve nothing.
+- **A rail beside the events.** The marks draw in a narrow strip at the start of each day column,
+  18px in the week and 30px in the day. An event moves aside for the rail only where a mark is
+  beside it, counting a short mark as tall as the rail's `markWidth`. The events it shares lanes
+  with move with it, so they keep their places beside each other. Every other event, and every
+  event on a day without marks, keeps the column's whole width. With `placement: "overlay"` the
+  parts draw behind events instead and move nothing.
 - **Capsules with the source's icon.** Each annotation draws as a capsule in its source's color,
   with the icon inside its top. A mark is never shorter than it is wide, so a short session is a
   circle with the icon.
@@ -179,7 +182,7 @@ TimeGridColumn                   time-grid-column.tsx
     placement: {
       type: '"rail" | "overlay"',
       description:
-        "rail reserves a strip beside events; overlay gives the parts the whole column, behind events.",
+        "rail draws marks in a strip, and the events beside them move aside for it; overlay gives the parts the whole column, behind events.",
       default: '"rail"',
     },
     Annotations: {

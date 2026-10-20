@@ -41,7 +41,7 @@ import { gutterStyle, timeGridGutterClassName, useTimeGridZones } from "./time-g
 export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions<TEvent> {
   /**
    * How the root's annotations draw: the rail's size and side, or your own composition of the
-   * annotation parts. Without annotation sources on the root, no rail is reserved.
+   * annotation parts. Without annotation sources on the root, there is no rail.
    */
   readonly annotations?: TimeGridAnnotationOptions;
   /** Registered view a week's header date opens, usually `"day"`; without it dates are static. */

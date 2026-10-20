@@ -51,8 +51,8 @@ describe.each(["ltr", "rtl"] as const)("%s layout", (dir) => {
 
     expect(gap(hourLabel.getBoundingClientRect(), column("2026-10-05"))).toBe(8);
     expect(gap(column("2026-10-05"), column("2026-10-06"))).toBe(0);
-    // Past the column's 1px divider and the 18px annotation rail at the inline start, with a
-    // strip left free at the inline end for creating.
+    // Beside the 8:00 listening session, so past the column's 1px divider and the 18px annotation
+    // rail at the inline start, with a strip left free at the inline end for creating.
     expect(insets(box('[data-event-id="blue meeting"]'), column("2026-10-08"))).toEqual({
       end: 8,
       start: 19,
@@ -63,24 +63,53 @@ describe.each(["ltr", "rtl"] as const)("%s layout", (dir) => {
     expect(dir === "rtl" ? event.borderRightWidth : event.borderLeftWidth).toBe("3px");
   });
 
-  test.each(["week", "day"] as const)(
-    "%s view: annotation data never moves or narrows an event",
-    async (view) => {
+  test.each([
+    ["week", 18],
+    ["day", 30],
+  ] as const)(
+    "%s view: only the events beside a mark move aside for the rail",
+    async (view, rail) => {
       const body = () => document.querySelector('[data-slot="time-grid-body"]')!;
       const events = () =>
-        [...body().querySelectorAll("[data-event-id]")].map((event) => {
-          const { height, left, top, width } = event.getBoundingClientRect();
-          return [event.getAttribute("data-event-id"), left, top, width, height];
-        });
+        new Map(
+          [...body().querySelectorAll("[data-event-id]")].map((event) => {
+            const { height, top } = event.getBoundingClientRect();
+            const column = event.closest('[role="gridcell"]')!.getBoundingClientRect();
+            const inset = insets(event.getBoundingClientRect(), column);
+            return [
+              event.getAttribute("data-event-id")!,
+              JSON.stringify({ height, top, ...inset }),
+            ];
+          }),
+        );
       await render(<RegistryScreen dir={dir} view={view} />);
       const annotated = { events: events(), scrollHeight: body().scrollHeight };
       // Including the dot at 23:59, which draws up from midnight rather than past it.
       expect(document.querySelector('[data-annotation-id="late"]')).not.toBeNull();
+      // The teal meeting and the orange call share lanes beside the 15:00 track, flush beside the
+      // rail and each other.
+      const [teal, orange] = [
+        box('[data-event-id="teal meeting"]'),
+        box('[data-event-id="orange call"]'),
+      ];
+      expect(insets(teal, box('[data-slot="time-grid-body"] [data-date="2026-10-08"]')).start).toBe(
+        1 + rail,
+      );
+      expect(gap(teal, orange)).toBe(0);
       await render(<RegistryScreen annotations={[]} dir={dir} view={view} />);
+      const plain = { events: events(), scrollHeight: body().scrollHeight };
 
       expect(document.querySelectorAll('[data-slot="annotation-mark"]')).toHaveLength(0);
-      expect({ events: events(), scrollHeight: body().scrollHeight }).toEqual(annotated);
-      expect(annotated.events.length).toBeGreaterThan(0);
+      expect(annotated.scrollHeight).toBe(plain.scrollHeight);
+      expect([...annotated.events.keys()].sort()).toEqual([...plain.events.keys()].sort());
+      // The 8:00 session moves the blue meeting, and the 15:00 track the two events at 15:00. Every
+      // other event, clear of the marks, keeps the column's whole width and its place.
+      const moved = [...annotated.events].filter(([id, place]) => plain.events.get(id) !== place);
+      expect(moved.map(([id]) => id).sort()).toEqual([
+        "blue meeting",
+        "orange call",
+        "teal meeting",
+      ]);
     },
   );
 

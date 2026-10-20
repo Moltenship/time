@@ -181,8 +181,8 @@ interface CalendarRootBaseProps<
   readonly annotationSources?: readonly CalendarAnnotationSource[];
   /**
    * Time-based information shown beside events, such as listening sessions or sleep. Annotations
-   * are read-only and never change event layout. Invalid ones are skipped and reported through
-   * `onDiagnosticsChange`.
+   * are read-only and never change how events share lanes. Invalid ones are skipped and reported
+   * through `onDiagnosticsChange`.
    */
   readonly annotations?: readonly CalendarAnnotation<unknown, TResourceId>[];
   /**

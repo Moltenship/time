@@ -8,6 +8,7 @@ import {
   useTimeGridAnnotations,
   type CalendarAnnotationSource,
   type TimeGridAnnotationMark,
+  type TimeGridBand,
   type TimeGridColumn,
 } from "@moltenship/calendar";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -85,7 +86,10 @@ export interface TimeGridAnnotationsProps {
 }
 
 export interface TimeGridAnnotationOptions {
-  /** `rail` reserves a strip beside events; `overlay` gives the parts the whole column, behind. */
+  /**
+   * `rail` draws marks in a strip, and the events beside them move aside for it; `overlay` gives
+   * the parts the whole column, behind events.
+   */
   readonly placement?: "rail" | "overlay";
   readonly rail?: TimeGridAnnotationRail;
   /** Your composition of the parts below, in place of `TimeGridAnnotations`. */
@@ -99,6 +103,8 @@ export interface TimeGridAnnotationLayout {
   /** Marks per column; empty when the root has no annotation sources. */
   readonly columns: readonly (readonly TimeGridAnnotationMarkData[])[];
   readonly enabled: boolean;
+  /** The shortest a mark draws, as a fraction of the day; 0 for an overlay. */
+  readonly minHeight: number;
   readonly options: TimeGridAnnotationOptions;
   readonly placement: "rail" | "overlay";
   readonly rail: ResolvedRail;
@@ -142,29 +148,93 @@ export function useTimeGridAnnotationLayout(
   const placement = options.placement ?? "rail";
   const { layout, markWidth, side, width } = resolveRail(options.rail, dense);
   const overlay = placement === "overlay";
+  const minHeight = overlay ? 0 : markWidth / columnHeight;
   const marks = useTimeGridAnnotations(columns, {
     layout,
     minGap: overlay ? 0 : MIN_GAP_PX / columnHeight,
-    minHeight: overlay ? 0 : markWidth / columnHeight,
+    minHeight,
   });
   return useMemo(
     () => ({
       columns: marks,
       enabled: sources.length > 0,
+      minHeight,
       options,
       placement,
       rail: { layout, markWidth, side, width },
     }),
-    [layout, markWidth, marks, options, placement, side, sources.length, width],
+    [layout, markWidth, marks, minHeight, options, placement, side, sources.length, width],
   );
 }
 
-/** Where a column's events sit, so a rail gets its own strip. */
-export function annotationEventInset(layout: TimeGridAnnotationLayout): CSSProperties | undefined {
+/** Px an event keeps free at each side of the column's event area, for the rail. */
+export interface AnnotationEventInset {
+  readonly end: number;
+  readonly start: number;
+}
+
+/** The strip the event area already keeps free at its end, for creating beside busy blocks. */
+const CREATE_STRIP = 8;
+/** Bands this close, as fractions of a day, meet rather than overlap, as in the event layout. */
+const EDGE_TOLERANCE = 1e-9;
+
+/** What the rail takes from the events beside its marks; `undefined` when it takes nothing. */
+export function annotationEventInset(
+  layout: TimeGridAnnotationLayout,
+): AnnotationEventInset | undefined {
   if (!layout.enabled || layout.placement === "overlay") return undefined;
   return layout.rail.side === "start"
-    ? { insetInlineStart: layout.rail.width }
-    : { insetInlineEnd: Math.max(8, layout.rail.width + 2) };
+    ? { end: 0, start: layout.rail.width }
+    : { end: Math.max(0, layout.rail.width + 2 - CREATE_STRIP), start: 0 };
+}
+
+/**
+ * Whether a band crosses one of the column's marks as the rail draws it: never shorter than the
+ * layout's `minHeight`, and drawn up from the day's end when too close to midnight to fit.
+ */
+export function bandBesideMarks(
+  layout: TimeGridAnnotationLayout,
+  marks: readonly TimeGridAnnotationMarkData[],
+  { height, top }: TimeGridBand,
+): boolean {
+  return marks.some((mark) => {
+    const from = Math.min(mark.top, 1 - layout.minHeight);
+    const to = Math.max(mark.top + mark.height, from + layout.minHeight);
+    return top < to - EDGE_TOLERANCE && from < top + height - EDGE_TOLERANCE;
+  });
+}
+
+/**
+ * Which of a column's events move aside for the rail. Overlapping events form groups as the
+ * event layout groups them, and a group moves as one when any of its events is beside a mark, so
+ * its events keep their places beside each other. Every other event keeps the column's width.
+ */
+export function eventsBesideMarks(
+  layout: TimeGridAnnotationLayout,
+  marks: readonly TimeGridAnnotationMarkData[],
+  events: readonly TimeGridBand[],
+): readonly boolean[] {
+  const moved = events.map(() => false);
+  if (marks.length === 0) return moved;
+  const order = events.map((_, index) => index).sort((a, b) => events[a]!.top - events[b]!.top);
+  let group: number[] = [];
+  let bottom = -Infinity;
+  const place = () => {
+    if (group.some((index) => bandBesideMarks(layout, marks, events[index]!))) {
+      for (const index of group) moved[index] = true;
+    }
+  };
+  for (const index of order) {
+    const { height, top } = events[index]!;
+    if (bottom <= top + EDGE_TOLERANCE) {
+      place();
+      group = [];
+    }
+    group.push(index);
+    bottom = Math.max(bottom, top + height);
+  }
+  place();
+  return moved;
 }
 
 export function useAnnotationHandles() {

@@ -32,6 +32,8 @@ import { cn } from "cn";
 import { describeAnnotationsAt } from "./annotation-label";
 import {
   annotationEventInset,
+  bandBesideMarks,
+  eventsBesideMarks,
   TimeGridAnnotationProvider,
   TimeGridAnnotations,
   type TimeGridAnnotationMarkData,
@@ -247,6 +249,20 @@ export function TimeGridColumn<TEvent>({
   const draftCheck = useDraftCheck();
   const unavailable = useColumnAvailability(column, resourceId);
   const Annotations = annotations?.layout.options.Annotations ?? TimeGridAnnotations;
+  // A new object each render; its layout and marks keep their identity.
+  const annotationLayout = annotations?.layout;
+  const marks = annotations?.marks;
+  const inset = useMemo(
+    () => (annotationLayout === undefined ? undefined : annotationEventInset(annotationLayout)),
+    [annotationLayout],
+  );
+  const besideMarks = useMemo(
+    () =>
+      annotationLayout === undefined || marks === undefined || inset === undefined
+        ? undefined
+        : eventsBesideMarks(annotationLayout, marks, events),
+    [annotationLayout, events, inset, marks],
+  );
   const labelHere = useMemo<EventLabeler<TEvent>>(
     () => (resource === undefined ? labelEvent : (event) => labelEvent(event, resource.title)),
     [labelEvent, resource],
@@ -288,16 +304,15 @@ export function TimeGridColumn<TEvent>({
           <Annotations marks={annotations.marks} />
         </TimeGridAnnotationProvider>
       )}
-      {/* The inline-end margin keeps a strip free for creating an event beside busy blocks. */}
-      <div
-        className="absolute inset-y-0 start-0 end-2"
-        style={annotations === undefined ? undefined : annotationEventInset(annotations.layout)}
-      >
-        {events.map((layout) => (
+      {/* The inline-end margin keeps a strip free for creating an event beside busy blocks. The
+          rail takes its strip only from the events beside its marks. */}
+      <div className="absolute inset-y-0 start-0 end-2">
+        {events.map((layout, index) => (
           <TimeGridEvent
             key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
             color={getEventColor?.(layout.fragment.event.event)}
             icon={getEventIcon?.(layout.fragment.event.event)}
+            inset={besideMarks?.[index] === true ? inset : undefined}
             isReadOnly={isReadOnly}
             labelEvent={labelHere}
             layout={layout}
@@ -316,7 +331,16 @@ export function TimeGridColumn<TEvent>({
               "pointer-events-none absolute inset-x-0 rounded-md bg-calendar-selection",
               draftCheckClassName,
             )}
-            style={bandStyle(draft)}
+            style={{
+              ...bandStyle(draft),
+              ...(inset !== undefined &&
+                annotationLayout !== undefined &&
+                marks !== undefined &&
+                bandBesideMarks(annotationLayout, marks, draft) && {
+                  insetInlineEnd: inset.end,
+                  insetInlineStart: inset.start,
+                }),
+            }}
           />
         )}
       </div>
