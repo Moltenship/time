@@ -285,3 +285,21 @@ the registry and the packages agree. `vp run release:artifacts` serves that
 build at `/r` from the docs site built on the tarballs. Its install test builds the registry again
 from source with a local base URL and installs it into clean apps against the exact tarballs the
 dry run checked. The release gate runs both.
+
+### What needs a release
+
+The docs site deploys every merge to `main`, so a registry change reaches users when it merges:
+they get it the next time they run `shadcn add`. Only the packages wait for a release.
+
+- **No release:** changes to `registry/`, the docs site, the demo, ADRs and `docs/internal`, and
+  changes to `packages/*` that users can't see (comments, tests, internal code). The registry on
+  `main` must still work with the version on npm.
+- **A release:** a `feat`, `fix` or `perf` in `packages/*` that users of the packages should get,
+  and any registry change that needs a package API npm doesn't serve yet. Until that release,
+  `shadcn add` hands out code that doesn't build against the packages it installs, so release
+  right after such a PR merges, or hold the PR until the release is ready.
+
+The gate builds the registry against the workspace's packages, not npm's, so it doesn't catch the
+second case. Check it in review: a registry change that imports something new from
+`@moltenship/*` needs that export in the latest release. A release with no package changes since
+the last tag publishes the same code under a new version; it's allowed, just not needed.

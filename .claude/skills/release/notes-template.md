@@ -1,5 +1,5 @@
 <!--
-The shape of a GitHub release's notes, for /release (SKILL.md, step 5). Keep the sections that
+The shape of a GitHub release's notes, for /release (SKILL.md, step 3). Keep the sections that
 have something in them and drop the rest; keep their order. Replace every <…>.
 -->
 
@@ -45,7 +45,8 @@ the line from the last one.>
 ## Registry
 
 - <Changes to the shadcn registry's source, which apps own after `shadcn add`: say what to add
-  again, or what to change by hand.> (#<PR>)
+  again, or what to change by hand, and whether it needs this version of the packages. They were
+  live on the docs site from their merge, before this release.> (#<PR>)
 
 ## Contributors
 

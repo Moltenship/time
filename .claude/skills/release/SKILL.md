@@ -21,6 +21,13 @@ Run everything from the repository root, in the owner's checkout of `main`.
 checkout has changes or another branch, stop and tell the owner: they're the owner's work. `gh`
 must be logged in (`gh auth status`). Nothing else: the laptop needs no npm login.
 
+Then look at what the release would ship: `git diff --stat $(git describe --tags --abbrev=0)..HEAD
+-- packages`. Registry changes reached users when they merged, since the docs site serves the
+registry from `main`; only package changes wait for a release (`docs/internal/releasing.md`,
+"What needs a release"). If nothing users can see changed in `packages/`, the release republishes
+the same code under a new version. Go on anyway, since asking was the approval, and say so in your
+report.
+
 ## 2. The release
 
 Run, in the background, allowing it two hours (the Bash tool's `timeout: 7200000`): it may wait
@@ -69,6 +76,10 @@ the last tag, by scope, with links. Rewrite them into the release notes people r
 
 Write as `AGENTS.md` and the docs do: plain, specific, the API names in code, no hype. A release
 note says what changed for someone using the packages, not how the code changed.
+
+`fix(registry)` and `feat(registry)` commits go under "Registry", not under a package. They were
+live on the docs site before the release, so don't present them as new in this version. Say what
+to add again with `shadcn add`, and whether it needs this version of the packages.
 
 ## After the release
 
