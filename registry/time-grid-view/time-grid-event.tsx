@@ -16,6 +16,8 @@ import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { TooltipContent } from "@registry/ui/tooltip";
 import { cn } from "cn";
 
+import type { AnnotationEventInset } from "./time-grid-annotations";
+
 type DayFragment = EventDayFragment<unknown, EventId, ResourceId>;
 
 export interface TimeGridEventFormats {
@@ -30,6 +32,11 @@ export interface TimeGridEventProps<TEvent> {
   readonly formats: TimeGridEventFormats;
   /** Shown before the title, from the view's `getEventIcon`. */
   readonly icon?: ReactNode;
+  /**
+   * Px kept free at each side of the event area, for the annotation rail when a mark is beside
+   * the event or the events it shares space with. Its lanes share the rest.
+   */
+  readonly inset?: AnnotationEventInset;
   /** The root takes no changes, so the event has no resize handles. */
   readonly isReadOnly?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
@@ -46,6 +53,16 @@ const COMPACT_MINUTES = 45;
 
 export function percent(fraction: number): string {
   return `${fraction * 100}%`;
+}
+
+/** Where a lane sits across the event area, less what `inset` keeps free at its sides. */
+function laneBox(left: number, width: number, inset: AnnotationEventInset | undefined) {
+  if (inset === undefined) return { insetInlineStart: percent(left), width: percent(width) };
+  const area = `(100% - ${inset.start + inset.end}px)`;
+  return {
+    insetInlineStart: `calc(${inset.start}px + ${left} * ${area})`,
+    width: `calc(${width} * ${area})`,
+  };
 }
 
 /** The event's own start and end on the wall clock, even on the second day of an overnight event. */
@@ -120,6 +137,7 @@ export function TimeGridEvent<TEvent>({
   color,
   formats,
   icon,
+  inset,
   isReadOnly = false,
   labelEvent,
   layout,
@@ -169,12 +187,7 @@ export function TimeGridEvent<TEvent>({
               startsBeforeDay && "rounded-t-none",
               endsAfterDay && "rounded-b-none",
             )}
-            style={{
-              height: percent(height),
-              insetInlineStart: percent(left),
-              top: percent(top),
-              width: percent(width),
-            }}
+            style={{ height: percent(height), top: percent(top), ...laneBox(left, width, inset) }}
           />
         }
       >

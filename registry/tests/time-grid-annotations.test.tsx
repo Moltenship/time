@@ -11,6 +11,11 @@ import {
   type CalendarAnnotation,
   type CalendarFocus,
 } from "@moltenship/calendar";
+import {
+  cleanup as cleanupHarness,
+  createTestEnvironment,
+  renderCalendar,
+} from "@moltenship/calendar-testing";
 import { MusicIcon } from "lucide-react";
 import { afterEach, describe, expect, test } from "vite-plus/test";
 
@@ -18,6 +23,9 @@ import { annotationFormats, describeAnnotationsAt } from "../time-grid-view/anno
 import {
   AnnotationMark,
   AnnotationRail,
+  DEFAULT_COLUMN_HEIGHT,
+  eventsBesideMarks,
+  type TimeGridAnnotationLayout,
   type TimeGridAnnotationSource,
   type TimeGridAnnotationsProps,
 } from "../time-grid-view/time-grid-annotations";
@@ -78,15 +86,18 @@ let cleanup: (() => Promise<void>) | undefined;
 afterEach(async () => {
   await cleanup?.();
   cleanup = undefined;
+  cleanupHarness();
 });
 
 async function renderDay({
   data = annotations,
+  dayEvents = events,
   defaultFocus = null,
   sources = [sleep, music],
   view = createDayView<ColoredEvent>(),
 }: {
   readonly data?: readonly CalendarAnnotation<unknown, string>[];
+  readonly dayEvents?: readonly ColoredEvent[];
   readonly defaultFocus?: CalendarFocus | null;
   readonly sources?: readonly TimeGridAnnotationSource[];
   readonly view?: ReturnType<typeof createDayView<ColoredEvent>>;
@@ -101,7 +112,7 @@ async function renderDay({
       defaultFocus={defaultFocus}
       defaultTimeZone="UTC"
       defaultView="day"
-      events={events}
+      events={dayEvents}
       locale="en-US"
       weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
     >
@@ -146,35 +157,166 @@ test("draws the root's annotations in a rail, merged per source, with short ones
   expect(container.querySelectorAll('[data-slot="annotation-mark-icon"]')).toHaveLength(2);
 });
 
-test("annotations never change event layout; sources reserve the same rail on every day", async () => {
-  const strip = (container: ParentNode) =>
-    container.querySelector<HTMLElement>('[data-slot="calendar-event"]')!.parentElement!.style
-      .insetInlineStart;
-  const withAnnotations = await renderDay();
-  const [boxes, inset] = [eventBoxes(withAnnotations), strip(withAnnotations)];
-  await cleanup?.();
-  const empty = await renderDay({ data: [] });
-  const [emptyBoxes, emptyInset] = [eventBoxes(empty), strip(empty)];
-  await cleanup?.();
-  const noSources = eventBoxes(await renderDay({ sources: [] }));
+/** Each event's inline start and width, by ID. */
+const lanes = (container: ParentNode) =>
+  Object.fromEntries(
+    [...container.querySelectorAll<HTMLElement>('[data-slot="calendar-event"]')].map((event) => [
+      event.getAttribute("data-event-id"),
+      [event.style.insetInlineStart, event.style.width],
+    ]),
+  );
 
-  // The data never moves or narrows an event: only the sources decide the rail's strip.
-  expect(boxes).toEqual(emptyBoxes);
-  expect(inset).toBe(emptyInset);
-  expect(inset).toBe("30px");
-  // Lanes and widths inside the strip match a calendar without annotations.
-  expect(boxes).toEqual(noSources);
-  expect(boxes).toHaveLength(2);
+const lunch = timed("lunch", "2026-10-08T12:00Z", "2026-10-08T13:00Z");
+
+test("moves aside only the events beside a mark, and the events they share lanes with", async () => {
+  const container = await renderDay({ dayEvents: [...events, lunch] });
+
+  expect(lanes(container)).toEqual({
+    // Lunch is clear of every mark, so it keeps the column's whole width.
+    lunch: ["0%", "100%"],
+    // Review misses the 9:00 listening session, but shares its lanes with standup, which doesn't.
+    review: ["calc(30px + 0.5 * (100% - 30px))", "calc(0.5 * (100% - 30px))"],
+    standup: ["calc(30px + 0 * (100% - 30px))", "calc(0.5 * (100% - 30px))"],
+  });
+  // The event area itself stays put: one container for every event, so none remounts as it moves.
+  const area = container.querySelector('[data-slot="calendar-event"]')!.parentElement!;
+  expect(area.getAttribute("style")).toBeNull();
+  expect(area.querySelectorAll('[data-slot="calendar-event"]')).toHaveLength(3);
+});
+
+test("a rail at the column's end takes its strip from there, past the strip kept for creating", async () => {
+  const container = await renderDay({
+    view: createDayView<ColoredEvent>({ annotations: { rail: { side: "end" } } }),
+  });
+
+  // The rail's 30px and its 2px gap, less the 8px the event area already keeps free.
+  expect(lanes(container)).toEqual({
+    review: ["calc(0px + 0.5 * (100% - 24px))", "calc(0.5 * (100% - 24px))"],
+    standup: ["calc(0px + 0 * (100% - 24px))", "calc(0.5 * (100% - 24px))"],
+  });
+});
+
+test("moves nothing without marks beside events, without sources or in an overlay", async () => {
+  const unmoved = { review: ["50%", "50%"], standup: ["0%", "50%"] };
+  expect(lanes(await renderDay({ data: [] }))).toEqual(unmoved);
+  await cleanup?.();
+  expect(lanes(await renderDay({ sources: [] }))).toEqual(unmoved);
+  await cleanup?.();
+  expect(
+    lanes(
+      await renderDay({
+        view: createDayView<ColoredEvent>({ annotations: { placement: "overlay" } }),
+      }),
+    ),
+  ).toEqual(unmoved);
 });
 
 test("reserves no rail when the root has no annotation sources", async () => {
   const container = await renderDay({ sources: [] });
 
   expect(container.querySelector('[data-slot="annotation-rail"]')).toBeNull();
-  const strip = container.querySelector<HTMLElement>(
-    '[data-slot="calendar-event"]',
-  )!.parentElement!;
-  expect(strip.style.insetInlineStart).toBe("");
+  expect(eventBoxes(container)).toHaveLength(2);
+});
+
+test("a new event's draft moves aside beside a mark, as an event would", async () => {
+  const Calendar = calendarWith(createDayView<ColoredEvent>());
+  const calendar = await renderCalendar(Calendar, {
+    children: <Calendar.ActiveView />,
+    createEvent: (change, id) => ({
+      ...change.proposed,
+      data: { color: "blue" as const },
+      id,
+      title: "New event",
+    }),
+    environment: createTestEnvironment({
+      weekRules: { firstDay: 7, minimalDays: 1, weekend: [6, 7] },
+    }),
+    events: [],
+    rootProps: { annotationSources: [sleep, music], annotations },
+    view: "day",
+  });
+  const draft = () =>
+    calendar.container.querySelector<HTMLElement>('[data-slot="time-grid-draft"]')!.style;
+
+  await calendar.keyboard.focusCell({ date: anchorDate, time: "12:00" });
+  await calendar.keyboard.grab();
+  expect([draft().insetInlineStart, draft().insetInlineEnd]).toEqual(["", ""]);
+  await calendar.keyboard.cancel();
+
+  // An hour from 17:30 reaches the music at 18:00.
+  await calendar.keyboard.focusCell({ date: anchorDate, time: "17:30" });
+  await calendar.keyboard.grab();
+  expect([draft().insetInlineStart, draft().insetInlineEnd]).toEqual(["30px", "0px"]);
+});
+
+describe("events beside marks", () => {
+  // The day view's rail at the default hour height: marks are 20px, 25 minutes, at their shortest.
+  const minHeight = 20 / DEFAULT_COLUMN_HEIGHT;
+  const rail: TimeGridAnnotationLayout = {
+    columns: [],
+    enabled: true,
+    minHeight,
+    options: {},
+    placement: "rail",
+    rail: { layout: "pack", markWidth: 20, side: "start", width: 30 },
+  };
+  const at = (time: string) => {
+    if (time === "24:00") return 1;
+    const { hour, minute } = Temporal.PlainTime.from(time);
+    return (hour * 60 + minute) / (24 * 60);
+  };
+  const band = (start: string, end: string) => ({ height: at(end) - at(start), top: at(start) });
+  function marksOf(...items: CalendarAnnotation<unknown, string>[]) {
+    const columns = timeGridColumns(
+      plainDateInterval(anchorDate, anchorDate.add({ days: 1 })),
+      "UTC",
+    );
+    const [marks] = projectTimeGridAnnotations(columns, createAnnotationSnapshot(items), [music], {
+      minHeight,
+    });
+    return marks!;
+  }
+  const session = marksOf(annotation("Session", "music", "2026-10-08T12:00Z", "2026-10-08T13:40Z"));
+
+  test("an event away from every mark keeps the column's width", () => {
+    expect(
+      eventsBesideMarks(rail, session, [band("00:00", "01:00"), band("12:30", "13:00")]),
+    ).toEqual([false, true]);
+  });
+
+  test("a group of overlapping events moves as one when any of them is beside a mark", () => {
+    // 11:00–12:30 crosses the session, and 10:00–11:30 overlaps it; 09:00–10:00 only meets them.
+    expect(
+      eventsBesideMarks(rail, session, [
+        band("10:00", "11:30"),
+        band("11:00", "12:30"),
+        band("09:00", "10:00"),
+      ]),
+    ).toEqual([true, true, false]);
+  });
+
+  test("an event that only meets a mark stays put", () => {
+    expect(
+      eventsBesideMarks(rail, session, [band("11:00", "12:00"), band("13:40", "14:00")]),
+    ).toEqual([false, false]);
+  });
+
+  test("a short mark counts as tall as the rail draws it, up from midnight near the day's end", () => {
+    const short = marksOf(
+      annotation("Intro", "music", "2026-10-08T18:00Z", "2026-10-08T18:03Z"),
+      annotation("Late", "music", "2026-10-08T23:58Z", "2026-10-09T00:00Z"),
+    );
+
+    // Intro draws 18:00–18:25, and Late 23:35–24:00.
+    expect(
+      eventsBesideMarks(rail, short, [
+        band("18:15", "18:30"),
+        band("18:30", "19:00"),
+        band("23:30", "23:45"),
+      ]),
+    ).toEqual([true, false, true]);
+    expect(eventsBesideMarks(rail, short, [band("23:00", "23:35")])).toEqual([false]);
+  });
 });
 
 test("hides a source left out of annotationSources", async () => {
@@ -298,10 +440,10 @@ test("a view draws a custom composition of the parts", async () => {
   expect(container.querySelector(".custom-rail")).not.toBeNull();
   expect(container.querySelectorAll("[data-custom]")).toHaveLength(3);
   expect(container.querySelectorAll('[data-slot="annotation-mark-icon"]')).toHaveLength(0);
-  const strip = container.querySelector<HTMLElement>(
-    '[data-slot="calendar-event"]',
-  )!.parentElement!;
-  expect(strip.style.insetInlineStart).toBe("10px");
+  expect(lanes(container).standup).toEqual([
+    "calc(10px + 0 * (100% - 10px))",
+    "calc(0.5 * (100% - 10px))",
+  ]);
 });
 
 test("a week view draws each day's annotations in its own column", async () => {

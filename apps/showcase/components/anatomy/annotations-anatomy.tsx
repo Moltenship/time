@@ -17,6 +17,8 @@ const columnLeft = (column: number) => GUTTER + column * COLUMN;
 const markX = (column: number) => columnLeft(column) + (RAIL - MARK) / 2;
 const EVENT_LEFT = (column: number) => columnLeft(column) + RAIL;
 const EVENT_WIDTH = COLUMN - RAIL - 8;
+/** An event clear of every mark keeps the column's width. */
+const FULL_WIDTH = COLUMN - 8;
 
 const callouts: readonly AnatomyCallout[] = [
   {
@@ -57,9 +59,15 @@ const callouts: readonly AnatomyCallout[] = [
     side: "right",
   },
   {
-    label: "Events, never moved",
+    label: "Beside a mark, moved aside",
     name: "TimeGridEvent",
     anchor: [EVENT_LEFT(1) + EVENT_WIDTH, hourY(9.5)],
+    side: "right",
+  },
+  {
+    label: "Clear of marks, full width",
+    name: "TimeGridEvent",
+    anchor: [columnLeft(0) + 1 + FULL_WIDTH, hourY(10.6)],
     side: "right",
   },
 ];
@@ -243,6 +251,25 @@ function Marks() {
           className="font-medium"
         >
           Design review
+        </text>
+      </EventShape>
+      <EventShape
+        x={columnLeft(0) + 1}
+        y={hourY(10.25)}
+        width={FULL_WIDTH}
+        height={HOUR * 0.75}
+        color="blue"
+        corners={[6, 6, 6, 6]}
+        ring
+      >
+        <text
+          x={columnLeft(0) + 10}
+          y={hourY(10.25) + 10}
+          fontSize={9}
+          dominantBaseline="central"
+          className="font-medium"
+        >
+          Planning
         </text>
       </EventShape>
     </g>
