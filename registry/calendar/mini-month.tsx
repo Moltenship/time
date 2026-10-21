@@ -140,11 +140,12 @@ export function MiniMonth({
         <thead>
           <tr>
             {weeks[0]?.map((day) => (
+              // A header cell inherits an ancestor's explicit text-align, so it centers itself.
               <th
                 key={day.dayOfWeek}
                 abbr={formats.weekdayName.format(day)}
                 scope="col"
-                className="pb-1 text-[0.6875rem] font-medium text-muted-foreground"
+                className="pb-1 text-center text-[0.6875rem] font-medium text-muted-foreground"
               >
                 {formats.weekday.format(day)}
               </th>
