@@ -95,6 +95,7 @@ const styles = stylex.create({
     width: "1rem",
   },
   miniMonth: {
+    WebkitUserSelect: "none",
     userSelect: "none",
     width: "100%",
   },

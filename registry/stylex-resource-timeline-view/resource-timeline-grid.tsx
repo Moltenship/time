@@ -50,10 +50,16 @@ const styles = stylex.create({
     flexDirection: "column",
     height: "100%",
     minHeight: 0,
+    WebkitUserSelect: { default: null, "[data-interaction]": "none" },
     userSelect: { default: null, "[data-interaction]": "none" },
   },
   gridEditable: {
     WebkitTouchCallout: { default: null, "@media (pointer: coarse)": "none" },
+    WebkitUserSelect: {
+      default: null,
+      "@media (pointer: coarse)": "none",
+      "[data-interaction]": "none",
+    },
     userSelect: {
       default: null,
       "@media (pointer: coarse)": "none",

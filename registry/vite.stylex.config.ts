@@ -14,9 +14,9 @@ const ported = new Set(
 );
 const sourceFile = /^(.+?)(\.tsx?)?$/u;
 const tailwindClassTests = [
-  "timed blocks, one-line blocks and all-day bars show the icon",
-  "a room's row stacks its bookings",
-  "are named closed",
+  "icons sit in the clamped and truncated titles",
+  "the ring that sets them apart",
+  "only the exceptions are shaded",
   "shades weekends",
 ];
 

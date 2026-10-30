@@ -265,10 +265,15 @@ describe("closed days", () => {
       .join(" ");
   }
 
-  test("are named closed, and only the exceptions are shaded by default", async () => {
+  test("only the exceptions are shaded by default", async () => {
     const container = await renderYear({ availability: officeHours });
 
     expect(shading(container)).toBe("· · · · · [09] ·");
+  });
+
+  test("are named closed", async () => {
+    const container = await renderYear({ availability: officeHours });
+
     expect(ariaLabel(cell(container, "2026-10-09"))).toBe(
       "Friday, October 9, 2026, Offsite, closed, no events",
     );
@@ -284,6 +289,11 @@ describe("closed days", () => {
     const container = await renderYear({ availability: officeHours, closedDays: "all" });
 
     expect(shading(container)).toBe("[04] · · · · [09 10]");
+  });
+
+  test('"all" says why a band is closed and where open time meets it', async () => {
+    const container = await renderYear({ availability: officeHours, closedDays: "all" });
+
     const offsite = cell(container, "2026-10-09").querySelector('[data-slot="year-closed"]')!;
     expect(offsite.getAttribute("data-reason")).toBe("exception");
     // Open time meets the band on Thursday's side only.

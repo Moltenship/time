@@ -67,7 +67,7 @@ import {
 } from "@registry/stylex-time-grid-view/time-grid-zones";
 import {
   calendarConsts,
-  calendarMarker,
+  calendarGridMarker,
   calendarVars,
 } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 
@@ -102,7 +102,7 @@ const styles = stylex.create({
     overscrollBehaviorX: "contain",
     scrollSnapType: {
       default: "x mandatory",
-      [stylex.when.ancestor("[data-interaction]", calendarMarker)]: "none",
+      [stylex.when.ancestor("[data-interaction]", calendarGridMarker)]: "none",
     },
     scrollbarWidth: "none",
   },
@@ -123,10 +123,16 @@ const styles = stylex.create({
     flexDirection: "column",
     height: "100%",
     minHeight: 0,
+    WebkitUserSelect: { default: null, "[data-interaction]": "none" },
     userSelect: { default: null, "[data-interaction]": "none" },
   },
   gridEditable: {
     WebkitTouchCallout: { default: null, "@media (pointer: coarse)": "none" },
+    WebkitUserSelect: {
+      default: null,
+      "@media (pointer: coarse)": "none",
+      "[data-interaction]": "none",
+    },
     userSelect: {
       default: null,
       "@media (pointer: coarse)": "none",
@@ -387,7 +393,7 @@ export function ScrollingTimeGridView<TEvent>({
   const corner = gutterColumn(columns, zones, firstShown?.column);
   const gridProps = stylex.props(
     styles.grid,
-    calendarMarker,
+    calendarGridMarker,
     // A long-press on a touch screen picks events up: it selects no text and opens no callout.
     !isReadOnly && styles.gridEditable,
   );

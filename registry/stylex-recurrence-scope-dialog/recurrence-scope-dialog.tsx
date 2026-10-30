@@ -21,7 +21,7 @@ const styles = stylex.create({
     gap: "0.5rem",
   },
   content: {
-    animationDuration: "100ms",
+    animationDuration: { default: "100ms", "@media (prefers-reduced-motion: reduce)": "0s" },
     animationName: { default: null, "[data-open]": popIn, "[data-closed]": popOut },
     backgroundColor: calendarVars["--popover"],
     borderRadius: "calc(var(--radius) * 1.4)",
@@ -68,7 +68,7 @@ const styles = stylex.create({
     gap: "0.5rem",
   },
   overlay: {
-    animationDuration: "100ms",
+    animationDuration: { default: "100ms", "@media (prefers-reduced-motion: reduce)": "0s" },
     animationName: { default: null, "[data-open]": fadeIn, "[data-closed]": fadeOut },
     backdropFilter: { default: null, "@supports (backdrop-filter: blur(0))": "blur(4px)" },
     backgroundColor: "rgb(0 0 0 / 0.1)",

@@ -38,6 +38,8 @@ const styles = stylex.create({
     boxShadow: {
       default: `0 0 0 1px ${calendarConsts.surface}`,
       "[data-grabbed]": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+      "[data-grabbed][data-invalid]": `0 0 0 2px ${calendarVars["--calendar-invalid"]}, 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)`,
+      "[data-grabbed][data-warning]": `0 0 0 2px ${calendarVars["--calendar-warning"]}, 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)`,
       "[data-invalid]": `0 0 0 2px ${calendarVars["--calendar-invalid"]}`,
       "[data-warning]": `0 0 0 2px ${calendarVars["--calendar-warning"]}`,
     },

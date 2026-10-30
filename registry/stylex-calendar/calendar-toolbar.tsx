@@ -44,6 +44,7 @@ const styles = stylex.create({
     transitionProperty: "all",
     transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
     translate: { default: null, ":active:not([aria-haspopup])": "0 1px" },
+    WebkitUserSelect: "none",
     userSelect: "none",
     whiteSpace: "nowrap",
   },

@@ -127,6 +127,17 @@ describe("the StyleX flavour keeps in step with the Tailwind source", () => {
     }
   });
 
+  test("popups and other animations respect reduced motion", () => {
+    for (const item of items) {
+      for (const file of sourceFiles(`${flavour}${item}`)) {
+        const source = read(`${flavour}${item}`, file);
+        if (source.includes("animationName:")) {
+          expect(source, `${item}/${file}`).toContain("prefers-reduced-motion");
+        }
+      }
+    }
+  });
+
   test("the manifests differ only by the flavour's names and dependencies", () => {
     for (const item of items) {
       const source = manifestOf(item);

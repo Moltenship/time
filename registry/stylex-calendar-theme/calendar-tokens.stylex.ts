@@ -122,6 +122,9 @@ export const calendarVars = stylex.defineVars(calendarTokenDefaults);
  */
 export const calendarMarker = stylex.defineMarker();
 
+/** The same for a view's grid, kept apart so hovering the grid isn't hovering every part in it. */
+export const calendarGridMarker = stylex.defineMarker();
+
 /**
  * What the calendar sits on, behind sticky headers and gutters and between overlapping events.
  * Unset, it is `--background` wherever it is used; a container sets `--calendar-surface` to change

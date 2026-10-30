@@ -220,7 +220,7 @@ const styles = stylex.create({
     fontWeight: 500,
   },
   popover: {
-    animationDuration: "100ms",
+    animationDuration: { default: "100ms", "@media (prefers-reduced-motion: reduce)": "0s" },
     animationName: {
       default: null,
       "[data-closed]": zoomOut,
@@ -270,7 +270,7 @@ const styles = stylex.create({
   },
   tooltip: {
     alignItems: "center",
-    animationDuration: "150ms",
+    animationDuration: { default: "150ms", "@media (prefers-reduced-motion: reduce)": "0s" },
     animationName: {
       default: null,
       "[data-closed]": zoomOut,

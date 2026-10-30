@@ -100,7 +100,7 @@ const styles = stylex.create({
     textAlign: "center",
   },
   popup: {
-    animationDuration: "100ms",
+    animationDuration: { default: "100ms", "@media (prefers-reduced-motion: reduce)": "0s" },
     animationName: {
       default: null,
       "[data-closed]": popOut,
