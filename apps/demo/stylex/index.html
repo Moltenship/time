@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <title>Calendar · Moltenship Time demo (StyleX)</title>
+    <script>
+      // Apply the saved theme before first paint; with none, the stylesheet follows the system.
+      // `.dark` is what the demo's theme hook reads, in both UIs; no style on this page uses it.
+      try {
+        const saved = localStorage.getItem("moltenship-demo:theme");
+        if (saved) document.documentElement.dataset.theme = saved;
+        const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.classList.toggle("dark", dark);
+      } catch {}
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/stylex/main.tsx"></script>
+  </body>
+</html>

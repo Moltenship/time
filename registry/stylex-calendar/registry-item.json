@@ -1,0 +1,77 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-calendar",
+  "type": "registry:component",
+  "title": "Calendar shell (StyleX)",
+  "description": "Toolbar, view switcher, event chip, accessible event names, English screen-reader announcements of gestures, undo and redo, sidebar mini month, the endless scroll axis, and the replaceable shading of closed time and resource status badges shared by every calendar view.",
+  "dependencies": [
+    "@astryxdesign/core",
+    "@base-ui/react",
+    "@moltenship/calendar",
+    "@stylexjs/stylex",
+    "lucide-react"
+  ],
+  "registryDependencies": ["@moltenship/stylex-calendar-theme"],
+  "files": [
+    {
+      "path": "registry/stylex-calendar/calendar-toolbar.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/calendar-toolbar.tsx"
+    },
+    {
+      "path": "registry/stylex-calendar/announcements.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/announcements.ts"
+    },
+    {
+      "path": "registry/stylex-calendar/event-chip.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/event-chip.tsx"
+    },
+    {
+      "path": "registry/stylex-calendar/event-label.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/event-label.ts"
+    },
+    {
+      "path": "registry/stylex-calendar/mini-month.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/mini-month.tsx"
+    },
+    {
+      "path": "registry/stylex-calendar/preview-check.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/preview-check.ts"
+    },
+    {
+      "path": "registry/stylex-calendar/resource-status.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/resource-status.tsx"
+    },
+    {
+      "path": "registry/stylex-calendar/resource-time.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/resource-time.tsx"
+    },
+    {
+      "path": "registry/stylex-calendar/scrolling-axis.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/scrolling-axis.tsx"
+    },
+    {
+      "path": "registry/stylex-calendar/unavailable-time.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/unavailable-time.tsx"
+    },
+    {
+      "path": "registry/stylex-calendar/view-keyboard.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/view-keyboard.ts"
+    },
+    {
+      "path": "registry/stylex-calendar/view-switcher.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/view-switcher.tsx"
+    }
+  ]
+}

@@ -1,19 +1,12 @@
-import {
-  fitsAvailability,
-  useBusyResources,
-  useCalendarAvailability,
-  type CalendarEventInterval,
-} from "@moltenship/calendar";
+import type { CalendarEventInterval } from "@moltenship/calendar";
 import { useId } from "react";
 
 import { Badge } from "@registry/ui/badge";
 import { Checkbox } from "@registry/ui/checkbox";
 import { Label } from "@registry/ui/label";
 
-import { demoResources, type DemoResourceId } from "../resources";
-
-/** Rooms and people, without the teams that group them. */
-const bookable = demoResources.filter(({ data }) => data.kind !== "team");
+import { useResourceGroups } from "../resource-groups";
+import type { DemoResourceId } from "../resources";
 
 export interface ResourcePickerProps {
   /** The event's time; without one, nothing says who's busy. */
@@ -25,48 +18,26 @@ export interface ResourcePickerProps {
 }
 
 /**
- * A "find a room" picker, built on `useBusyResources` rather than shipped as a part: rooms and
- * people split into Available and Busy at the event's time, free first. Busy ones stay
- * selectable, since a double booking can be on purpose, and say so in words; so does a time
- * outside someone's hours. When "Rooms and people" blocks double-booking rooms, saving with a
- * busy room says so instead.
+ * A "find a room" picker. Busy ones stay selectable, since a double booking can be on purpose, and
+ * say so in words; so does a time outside someone's hours. When "Rooms and people" blocks
+ * double-booking rooms, saving with a busy room says so instead.
  */
 export function ResourcePicker({ eventId, interval, onChange, value }: ResourcePickerProps) {
   const id = useId();
-  const busy = useBusyResources(interval, { exclude: eventId });
-  const availability = useCalendarAvailability();
-  const outsideHours = (resourceId: DemoResourceId) =>
-    interval !== null &&
-    !fitsAvailability(
-      { ...interval, resourceIds: [] },
-      availability.forResource(resourceId),
-      availability.timeZone,
-    );
-  const groups = [
-    { busy: false, title: "Available" },
-    { busy: true, title: "Busy" },
-  ] as const;
+  const groups = useResourceGroups(interval, eventId);
 
   return (
     <fieldset className="grid gap-2">
       <legend className="mb-2 text-sm font-medium">Rooms and people</legend>
       <div className="grid max-h-56 gap-3 overflow-y-auto rounded-lg border p-2">
         {groups.map((group) => {
-          const members = bookable
-            .filter((resource) => busy.has(resource.id) === group.busy)
-            // Within a group, those inside their hours first.
-            .toSorted(
-              (left, right) => Number(outsideHours(left.id)) - Number(outsideHours(right.id)),
-            );
-          if (members.length === 0) return null;
           const heading = `${id}-${group.title}`;
           return (
             <div key={group.title} role="group" aria-labelledby={heading} className="grid gap-1">
               <div id={heading} className="px-1 text-xs font-medium text-muted-foreground">
                 {group.title}
               </div>
-              {members.map((resource) => {
-                const events = busy.get(resource.id) ?? [];
+              {group.members.map(({ events, outsideHours, resource }) => {
                 return (
                   <Label
                     key={resource.id}
@@ -100,7 +71,7 @@ export function ResourcePicker({ eventId, interval, onChange, value }: ResourceP
                         Busy
                       </Badge>
                     )}
-                    {outsideHours(resource.id) && <Badge variant="outline">Outside hours</Badge>}
+                    {outsideHours && <Badge variant="outline">Outside hours</Badge>}
                   </Label>
                 );
               })}

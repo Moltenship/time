@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 
-import type { DemoEvent } from "./calendar";
+import type { DemoEvent } from "./demo-model";
 import { applyEventChange, type DemoEventChange } from "./event-changes";
 import { parseEvents, serializeEvents } from "./event-storage";
 import { createRoutineEvents } from "./routine";

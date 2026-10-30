@@ -4,7 +4,7 @@ import type {
   CalendarPolicyDecision,
 } from "@moltenship/calendar";
 
-import type { DemoEvent, DemoOccurrence } from "./calendar";
+import type { DemoEvent, DemoOccurrence } from "./demo-model";
 import { isTaskRecord } from "./tasks";
 import type { DemoResourceId } from "./resources";
 

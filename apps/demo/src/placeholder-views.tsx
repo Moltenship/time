@@ -1,6 +1,3 @@
-import { RepeatIcon } from "lucide-react";
-
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
@@ -19,26 +16,9 @@ import {
 } from "@registry/time-grid-view/time-grid-view";
 import { createYearView } from "@registry/year-view/year-view";
 
-import type { DemoOccurrence } from "./calendar";
-import { demoCalendars, getCalendarColor } from "./calendars";
+import type { DemoOccurrence } from "./demo-model";
 import type { DemoResource } from "./resources";
-
-/** One element for every repeating event's chip; the views hide it from assistive technology. */
-const repeatIcon = <RepeatIcon />;
-
-const options = {
-  // Read after each event's title and time:
-  // "Standup, Thursday, October 8, 9:30 – 9:45 AM, Work calendar, repeating event".
-  describeEvent: ({ event, recurrence }: DemoOccurrence) =>
-    [
-      `${demoCalendars.find(({ id }) => id === event.calendarId)?.name ?? "Unknown"} calendar`,
-      ...(recurrence === undefined ? [] : ["repeating event"]),
-    ].join(", "),
-  getEventColor: ({ event }: DemoOccurrence): CalendarEventColor =>
-    getCalendarColor(event.calendarId),
-  // The mark the description above puts in words.
-  getEventIcon: ({ recurrence }: DemoOccurrence) => (recurrence === undefined ? null : repeatIcon),
-};
+import { demoViewOptions as options } from "./view-options";
 
 export const demoViews = [
   createWeekView<DemoOccurrence>({ ...options, dayView: "day" }),

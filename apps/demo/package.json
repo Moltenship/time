@@ -12,12 +12,15 @@
     "test": "vp test"
   },
   "dependencies": {
+    "@astryxdesign/core": "catalog:",
+    "@astryxdesign/theme-neutral": "catalog:",
     "@base-ui/react": "catalog:",
     "@dnd-kit/dom": "catalog:",
     "@dnd-kit/react": "catalog:",
     "@moltenship/calendar": "workspace:*",
     "@moltenship/calendar-dnd-kit": "workspace:*",
     "@moltenship/calendar-recurrence": "workspace:*",
+    "@stylexjs/stylex": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "class-variance-authority": "catalog:",
     "cn": "catalog:",
@@ -27,6 +30,7 @@
     "temporal-polyfill": "catalog:"
   },
   "devDependencies": {
+    "@stylexjs/unplugin": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

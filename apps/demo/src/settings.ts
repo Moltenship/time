@@ -146,3 +146,107 @@ export function useDemoSettings() {
     serializeSettings,
   );
 }
+
+/** The select's value for no second time zone; no IANA zone is named this. */
+const noSecondaryTimeZone = "none";
+
+function offsetLabel(timeZone: string): string {
+  return `UTC${Temporal.Now.zonedDateTimeISO(timeZone).offset}`;
+}
+
+export interface SettingItem {
+  /** What the option does, shown under the select while it's chosen. */
+  readonly description?: string;
+  /** Shown after the label in the list only, such as a UTC offset. */
+  readonly hint?: string;
+  readonly label: string;
+  readonly value: string;
+}
+
+export interface SettingField {
+  readonly items: readonly SettingItem[];
+  readonly label: string;
+  readonly onValueChange: (value: string) => void;
+  readonly value: string;
+}
+
+/** The settings each UI shows a select for, in order. */
+export function settingFields(
+  settings: DemoSettings,
+  systemTimeZone: string,
+  onChange: (settings: DemoSettings) => void,
+): readonly SettingField[] {
+  return [
+    {
+      items: timeZoneOptions(systemTimeZone, settings.timeZone).map((timeZone) => ({
+        hint: offsetLabel(timeZone),
+        label: timeZone.replaceAll("_", " "),
+        value: timeZone,
+      })),
+      label: "Time zone",
+      onValueChange: (timeZone) => onChange({ ...settings, timeZone }),
+      value: settings.timeZone,
+    },
+    {
+      items: [
+        { label: "None", value: noSecondaryTimeZone },
+        ...timeZoneOptions(systemTimeZone, settings.secondaryTimeZone ?? settings.timeZone).map(
+          (timeZone) => ({
+            hint: offsetLabel(timeZone),
+            label: timeZone.replaceAll("_", " "),
+            value: timeZone,
+          }),
+        ),
+      ],
+      label: "Second time zone",
+      onValueChange: (value) =>
+        onChange({
+          ...settings,
+          secondaryTimeZone: value === noSecondaryTimeZone ? null : value,
+        }),
+      value: settings.secondaryTimeZone ?? noSecondaryTimeZone,
+    },
+    {
+      items: weekStartOptions.map(({ label, value }) => ({ label, value: String(value) })),
+      label: "Week starts on",
+      onValueChange: (value) => {
+        const option = weekStartOptions.find((candidate) => String(candidate.value) === value);
+        if (option !== undefined) onChange({ ...settings, weekStartsOn: option.value });
+      },
+      value: String(settings.weekStartsOn),
+    },
+    {
+      items: localeOptions,
+      label: "Date format",
+      onValueChange: (locale) => onChange({ ...settings, locale }),
+      value: settings.locale,
+    },
+    {
+      items: overlapLayoutOptions,
+      label: "Overlapping events",
+      onValueChange: (value) => {
+        const option = overlapLayoutOptions.find((candidate) => candidate.value === value);
+        if (option !== undefined) onChange({ ...settings, overlapLayout: option.value });
+      },
+      value: settings.overlapLayout,
+    },
+    {
+      items: resourceRulesOptions,
+      label: "Rooms and people",
+      onValueChange: (value) => {
+        const option = resourceRulesOptions.find((candidate) => candidate.value === value);
+        if (option !== undefined) onChange({ ...settings, resourceRules: option.value });
+      },
+      value: settings.resourceRules,
+    },
+    {
+      items: workingHoursOptions,
+      label: "Working hours",
+      onValueChange: (value) => {
+        const option = workingHoursOptions.find((candidate) => candidate.value === value);
+        if (option !== undefined) onChange({ ...settings, workingHours: option.value });
+      },
+      value: settings.workingHours,
+    },
+  ];
+}

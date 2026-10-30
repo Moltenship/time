@@ -1,15 +1,14 @@
-import { calendarDropData, calendarEventOf, isCalendarTarget } from "@moltenship/calendar-dnd-kit";
-import { useDragDropMonitor, useDraggable, useDragOperation, useDroppable } from "@dnd-kit/react";
 import { CalendarPlusIcon, GripVerticalIcon } from "lucide-react";
-import { useId, useMemo, useRef } from "react";
+import { useId, useRef } from "react";
 
 import { Button } from "@registry/ui/button";
 import { cn } from "cn";
 
-import { DemoCalendar, type DemoOccurrence } from "../calendar";
+import { DemoCalendar } from "../calendar";
 import { getCalendarColor } from "../calendars";
-import { taskFromOccurrence, taskOccurrence, type DemoTask, type DemoTaskList } from "../tasks";
+import type { DemoTask, DemoTaskList } from "../tasks";
 import { useUnschedule } from "../unschedule";
+import { taskLength, useTaskCard, useUnscheduledDrop } from "../unscheduled";
 
 export interface UnscheduledTasksProps {
   /**
@@ -20,46 +19,17 @@ export interface UnscheduledTasksProps {
   readonly taskList: DemoTaskList;
 }
 
-function length(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
-  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
-}
-
-/** Only an event that can become a task again: a timed one-off. */
-function takesEvent(source: { readonly data?: unknown }): boolean {
-  const dragged = calendarEventOf<DemoOccurrence>(source);
-  return dragged !== null && taskFromOccurrence(dragged.event) !== null;
-}
-
 /**
  * Tasks not on the calendar yet. Drag one onto a time slot, a day or a person to schedule it, or
  * press its button to schedule it in the editor; drag a one-off event here to unschedule it.
  */
 export function UnscheduledTasks({ onSchedule, taskList }: UnscheduledTasksProps) {
   const { tasks } = taskList;
-  const onUnschedule = useUnschedule(taskList);
+  const onUnschedule = useUnschedule(DemoCalendar.useCalendarActions(), taskList);
   const headingId = useId();
   const hintId = useId();
-  // The sidebar renders twice, beside the calendar and in the phone's sheet, so the list's
-  // droppable and its tasks' draggables get IDs of their own in each.
-  const listId = useId();
-  const dropId = `unscheduled${listId}`;
-  const { isDropTarget, ref } = useDroppable({ accept: takesEvent, id: dropId });
+  const { isDropTarget, listId, ref } = useUnscheduledDrop(onUnschedule);
   const listRef = useRef<HTMLUListElement>(null);
-  useDragDropMonitor(
-    useMemo(
-      () => ({
-        onDragEnd: ({ canceled, operation }) => {
-          if (canceled || operation.target?.id !== dropId) return;
-          const dragged = calendarEventOf<DemoOccurrence>(operation.source);
-          if (dragged !== null) onUnschedule(dragged.event, "pointer");
-        },
-      }),
-      [dropId, onUnschedule],
-    ),
-  );
 
   return (
     <section aria-labelledby={headingId}>
@@ -105,32 +75,7 @@ function TaskItem({
   readonly onSchedule: (task: DemoTask, opener: HTMLElement) => void;
   readonly task: DemoTask;
 }) {
-  // What the calendar makes of the task when it's dropped there: an event under the task's ID,
-  // as long as the task takes, named after it.
-  const data = useMemo(
-    () => ({
-      task,
-      ...calendarDropData({
-        duration: { minutes: task.minutes },
-        event: taskOccurrence(task),
-        title: task.title,
-      }),
-    }),
-    [task],
-  );
-  // A dropped task waits for its event to save, and an unscheduled one for its event's delete; it
-  // can't be dragged or scheduled again meanwhile.
-  const saving = DemoCalendar.useCalendarPendingChanges((changes) =>
-    [...changes.values()].some(
-      ({ change }) =>
-        (change.cause === "create" && change.event?.id === task.id) ||
-        (change.cause === "delete" && change.eventId === task.id),
-    ),
-  );
-  const { isDragSource, ref } = useDraggable({ data, disabled: saving, id });
-  // Over the calendar the card fades, so the slots it would take show through.
-  const { target } = useDragOperation();
-  const overCalendar = isDragSource && isCalendarTarget(target);
+  const { isDragSource, overCalendar, ref, saving } = useTaskCard(DemoCalendar, task, id);
 
   return (
     <li className="flex items-center gap-1">
@@ -149,7 +94,7 @@ function TaskItem({
           <span className="block text-sm leading-snug font-medium">{task.title}</span>
           {/* Read as "Long run, 1 h": the name is the card's own text. */}
           <span className="sr-only">, </span>
-          <span className="block text-xs">{length(task.minutes)}</span>
+          <span className="block text-xs">{taskLength(task.minutes)}</span>
         </span>
       </button>
       <Button
@@ -163,14 +108,4 @@ function TaskItem({
       </Button>
     </li>
   );
-}
-
-/**
- * Moves focus to a task's card, as after its event was unscheduled from the popover, once the card
- * has rendered. Nothing happens where the list isn't shown, as on a phone.
- */
-export function focusTask(id: string): void {
-  requestAnimationFrame(() => {
-    document.querySelector<HTMLElement>(`aside [data-task-id="${CSS.escape(id)}"]`)?.focus();
-  });
 }

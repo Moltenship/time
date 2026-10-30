@@ -11,6 +11,9 @@ import { consumerImportForTarget } from "./rewrite-imports";
 
 /** The composition that installs every other item. */
 export const fullItemName = "calendar-full";
+/** The StyleX flavour's items start with this, and its own full item installs them. */
+export const stylexItemPrefix = "stylex-";
+export const stylexFullItemName = `${stylexItemPrefix}${fullItemName}`;
 
 export interface CheckBuiltRegistryOptions {
   readonly outDir: string;
@@ -200,15 +203,20 @@ export async function checkBuiltRegistry({
     }
   }
 
-  const full = byName.get(fullItemName);
-  if (!full) issues.push(`There is no ${fullItemName} item`);
-  else {
-    if (full.targets.length > 0)
-      issues.push(`${fullItemName} owns files instead of composing items`);
+  for (const [fullName, inFlavour] of [
+    [fullItemName, (name: string) => !name.startsWith(stylexItemPrefix)],
+    [stylexFullItemName, (name: string) => name.startsWith(stylexItemPrefix)],
+  ] as const) {
+    const full = byName.get(fullName);
+    if (!full) {
+      issues.push(`There is no ${fullName} item`);
+      continue;
+    }
+    if (full.targets.length > 0) issues.push(`${fullName} owns files instead of composing items`);
     const missing = manifest.items
-      .filter(({ name }) => name !== fullItemName && !full.items.includes(name))
+      .filter(({ name }) => inFlavour(name) && name !== fullName && !full.items.includes(name))
       .map(({ name }) => name);
-    if (missing.length > 0) issues.push(`${fullItemName} doesn't install ${missing.join(", ")}`);
+    if (missing.length > 0) issues.push(`${fullName} doesn't install ${missing.join(", ")}`);
   }
 
   return issues;

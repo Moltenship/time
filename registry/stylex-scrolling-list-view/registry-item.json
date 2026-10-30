@@ -1,0 +1,21 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-scrolling-list-view",
+  "type": "registry:component",
+  "title": "Scrolling agenda view (StyleX)",
+  "description": "An agenda that scrolls through months or years without end: only the days in view render, the anchor date follows the day on top so the title and load range follow the scroll, Today and picked dates scroll there, and the end of the list says what's loading.",
+  "dependencies": ["@moltenship/calendar", "@stylexjs/stylex", "@tanstack/react-virtual"],
+  "registryDependencies": ["@moltenship/stylex-calendar-theme", "@moltenship/stylex-list-view"],
+  "files": [
+    {
+      "path": "registry/stylex-scrolling-list-view/scrolling-agenda-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/scrolling-list-view/scrolling-agenda-view.tsx"
+    },
+    {
+      "path": "registry/stylex-scrolling-list-view/use-agenda-scroll.ts",
+      "type": "registry:hook",
+      "target": "@components/calendar-stylex/scrolling-list-view/use-agenda-scroll.ts"
+    }
+  ]
+}

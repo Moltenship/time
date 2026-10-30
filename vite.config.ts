@@ -80,7 +80,7 @@ export default defineConfig({
       "gate:browsers": "vp run a11y && vp run browsers && vp run a11y:ci-speed",
       // release:check reads the packages ci:build wrote and packs them, so it runs right after.
       "gate:serial":
-        "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run ci:test && vp run react:gate && vp run ssr:smoke && vp run package:graph",
+        "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run ci:test && vp run registry:stylex && vp run react:gate && vp run ssr:smoke && vp run package:graph",
       // `ci:build` has built the docs site, so search checks that build. The release dry run
       // rebuilds and packs every published package and installs them from the pnpm store into a
       // clean project. Then the SSR fixture, the docs site and the registry's clean apps install
@@ -94,6 +94,8 @@ export default defineConfig({
       "ci:build": "vp run -r build",
       "ssr:smoke": "vp run ssr-fixture#smoke",
       "registry:smoke": "vp run registry#smoke",
+      // Every registry test again, over the `stylex-*` items.
+      "registry:stylex": { command: "vp test --config vite.stylex.config.ts", cwd: "registry" },
       "registry:build": "vp run registry#site",
       "registry:e2e": "vp run registry#e2e",
       // Release checks (docs/internal/releasing.md). release:check is the PR tier's part.

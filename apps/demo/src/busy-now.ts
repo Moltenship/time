@@ -1,4 +1,4 @@
-import type { DemoEvent } from "./calendar";
+import type { DemoEvent } from "./demo-model";
 import type { DemoResourceId } from "./resources";
 
 /** Meetings around the moment the demo opens, by minutes from it, so resources show as busy. */

@@ -39,8 +39,11 @@
     "tw-animate-css": "catalog:"
   },
   "devDependencies": {
+    "@babel/core": "catalog:",
     "@moltenship/calendar-testing": "workspace:*",
+    "@stylexjs/babel-plugin": "catalog:",
     "@tailwindcss/postcss": "catalog:",
+    "@types/babel__core": "catalog:",
     "@types/mdx": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

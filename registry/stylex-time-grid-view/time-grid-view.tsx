@@ -1,0 +1,267 @@
+"use client";
+
+import {
+  defineCalendarView,
+  timeGridStrategy,
+  timeGridTitle,
+  useCalendarAnnouncer,
+  useCalendarPointer,
+  type CalendarViewRendererProps,
+  type OverlapLayoutOptions,
+  type TimeGridProjection,
+  type TimeGridSpan,
+} from "@moltenship/calendar";
+import * as stylex from "@stylexjs/stylex";
+import { useMemo, useRef, useState, type ReactNode } from "react";
+
+import { useEventLabel, type EventDescriber } from "@registry/stylex-calendar/event-label";
+import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
+import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
+import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
+import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import { xprops } from "@registry/stylex-calendar-theme/xprops";
+
+import { annotationFormats } from "./annotation-label";
+import { TimeGridAllDay } from "./time-grid-all-day";
+import {
+  DEFAULT_COLUMN_HEIGHT,
+  TimeGridAnnotationOverlays,
+  useAnnotationHandles,
+  useTimeGridAnnotationLayout,
+  type TimeGridAnnotationOptions,
+} from "./time-grid-annotations";
+import { TimeGridBody } from "./time-grid-body";
+import { TimeGridHeader } from "./time-grid-header";
+import { gutterStyle, timeGridGutterClassName, useTimeGridZones } from "./time-grid-zones";
+
+const styles = stylex.create({
+  grid: {
+    "--calendar-ghost-background": calendarVars["--calendar-selection"],
+    cursor: {
+      default: null,
+      '[data-interaction="move"]': "grabbing",
+      '[data-interaction="resize"]': "ns-resize",
+    },
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+    minHeight: 0,
+    WebkitUserSelect: { default: null, "[data-interaction]": "none" },
+    userSelect: { default: null, "[data-interaction]": "none" },
+  },
+  gridEditable: {
+    WebkitTouchCallout: { default: null, "@media (pointer: coarse)": "none" },
+    WebkitUserSelect: {
+      default: null,
+      "@media (pointer: coarse)": "none",
+      "[data-interaction]": "none",
+    },
+    userSelect: { default: null, "@media (pointer: coarse)": "none", "[data-interaction]": "none" },
+  },
+  head: {
+    borderBottomColor: calendarVars["--calendar-grid"],
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    flexShrink: 0,
+    overflow: "hidden",
+    scrollbarGutter: "stable",
+  },
+});
+
+/**
+ * Overlapping events sit side by side in lanes (`overlapLayout: "columns"`, the default), in lanes
+ * of equal width (`"equal"`), or cascade (`"stack"`, indented by `stackIndent`).
+ * `getEventOverlapLayout` gives events their own layout, such as their calendar's: a group of
+ * overlapping events that all agree takes it, and any other group `overlapLayout`.
+ */
+export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions<TEvent> {
+  /**
+   * How the root's annotations draw: the rail's size and side, or your own composition of the
+   * annotation parts. Without annotation sources on the root, there is no rail.
+   */
+  readonly annotations?: TimeGridAnnotationOptions;
+  /** Registered view a week's header date opens, usually `"day"`; without it dates are static. */
+  readonly dayView?: string;
+  /** Extra words for each event's accessible name, such as its calendar. */
+  readonly describeEvent?: EventDescriber<TEvent>;
+  /** Colour for an event; sets `data-color` on every element that renders it. */
+  readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /**
+   * A small icon before an event's title, such as a repeat mark on recurring events, or nothing.
+   * It's decorative and hidden from assistive technology: say the same in `describeEvent`, which
+   * adds to each event's accessible name.
+   */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
+  /**
+   * Replaces the shading of closed time: an element, or a function of its props and of the band,
+   * date and resource, such as a gradient into working hours or a tint for rooms.
+   */
+  readonly renderUnavailable?: UnavailableTimeRender;
+}
+
+/** Pointer and keyboard both step by these slots, so they reach the same times. */
+const snap = { increment: 15, smallestUnit: "minute" } as const;
+
+export type TimeGridViewProps<TEvent> = CalendarViewRendererProps<
+  TimeGridProjection<TEvent>,
+  TimeGridViewOptions<TEvent>
+>;
+
+/**
+ * Day columns under a sticky header and all-day row, with a scrolling 24-hour body. Drag an event
+ * to move it (into the all-day row to make it all-day), its edges to resize it, or empty time to
+ * create one; changes go to the root's `onEventChange`. From the keyboard the grid is one tab
+ * stop: arrow keys move between all-day cells, 15-minute slots, and events, and Space picks up an
+ * event (Shift+Space to resize) or starts an event on the focused slot or day.
+ */
+export function TimeGridView<TEvent>({
+  actions,
+  environment,
+  events,
+  isReadOnly,
+  options,
+  projection,
+  range,
+}: TimeGridViewProps<TEvent>) {
+  const { days } = projection;
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const columns = useMemo(() => days.map(({ column }) => column), [days]);
+  const zones = useTimeGridZones(environment, columns);
+  // Pointer drags speak through the same messages as the keyboard, and the drag preview labels
+  // the proposed range in the calendar's locale.
+  const announcer = useCalendarAnnouncer();
+  const pointerRef = useCalendarPointer({
+    announcer,
+    check: actions.checkEventChange,
+    columns,
+    disabled: isReadOnly,
+    events,
+    onPropose: actions.proposeEventChange,
+    scrollContainer: scrollRef,
+    snap,
+    timeZone: environment.timeZone,
+  });
+  const keyboard = useViewKeyboard({ snap });
+  // Merging and lane packing use drawn sizes, so they follow the body's measured height.
+  const [columnHeight, setColumnHeight] = useState(DEFAULT_COLUMN_HEIGHT);
+  const annotationLayout = useTimeGridAnnotationLayout(columns, options.annotations, {
+    columnHeight,
+    dense: days.length > 1,
+  });
+  const annotationHandles = useAnnotationHandles();
+  const formats = useMemo(
+    () => annotationFormats(environment.locale, environment.timeZone),
+    [environment.locale, environment.timeZone],
+  );
+  const annotations = useMemo(
+    () =>
+      annotationLayout.enabled
+        ? { formats, handles: annotationHandles, layout: annotationLayout }
+        : undefined,
+    [annotationHandles, annotationLayout, formats],
+  );
+  const labelEvent = useEventLabel(environment, options.describeEvent);
+  const formatDate = useMemo(() => {
+    const format = new Intl.DateTimeFormat(environment.locale, { dateStyle: "full" });
+    return (date: Temporal.PlainDate) => format.format(date);
+  }, [environment.locale]);
+  const { dayView } = options;
+  const openDay =
+    dayView === undefined || days.length === 1
+      ? undefined
+      : (date: Temporal.PlainDate) => {
+          actions.setAnchorDate(date);
+          actions.setView(dayView);
+        };
+
+  return (
+    <>
+      {/* Rows: day headers, all-day events, and the timed day columns; each starts with a gutter cell. */}
+      <div
+        ref={pointerRef}
+        role="grid"
+        aria-label={timeGridTitle(range, environment.locale)}
+        {...keyboard}
+        data-slot="time-grid"
+        {...xprops(
+          { className: timeGridGutterClassName, style: gutterStyle(zones) },
+          styles.grid,
+          // A long-press on a touch screen picks events up: it selects no text and opens no callout.
+          !isReadOnly && styles.gridEditable,
+        )}
+      >
+        <div {...stylex.props(styles.head)}>
+          <TimeGridHeader
+            actions={actions}
+            annotations={annotations}
+            days={days}
+            dayView={options.dayView}
+            environment={environment}
+            zones={zones}
+          />
+          <TimeGridAllDay
+            days={days}
+            formatDate={formatDate}
+            getEventColor={options.getEventColor}
+            getEventIcon={options.getEventIcon}
+            labelEvent={labelEvent}
+            onOpenDay={openDay}
+            row={projection.allDay}
+          />
+        </div>
+        <TimeGridBody
+          annotations={annotations}
+          days={days}
+          environment={environment}
+          getEventColor={options.getEventColor}
+          getEventIcon={options.getEventIcon}
+          isReadOnly={isReadOnly}
+          labelEvent={labelEvent}
+          onColumnHeightChange={setColumnHeight}
+          onOpenDay={openDay}
+          renderUnavailable={options.renderUnavailable}
+          scrollRef={scrollRef}
+          slotMinutes={snap.increment}
+          zones={zones}
+        />
+      </div>
+      {/* Outside the grid: an open popover's Base UI internals must not become grid children. */}
+      {annotations !== undefined && (
+        <TimeGridAnnotationOverlays formatTime={formats.time} handles={annotationHandles} />
+      )}
+    </>
+  );
+}
+
+function timeGridView<const TName extends string, TEvent>(
+  name: TName,
+  span: TimeGridSpan,
+  defaultOptions: TimeGridViewOptions<TEvent>,
+) {
+  return defineCalendarView({
+    defaultOptions,
+    name,
+    strategy: timeGridStrategy<TimeGridViewOptions<TEvent>, TEvent>(span),
+    Renderer: TimeGridView<TEvent>,
+  });
+}
+
+/** Seven columns starting on the calendar's `weekRules.firstDay`. */
+export function createWeekView<TEvent = unknown>(defaultOptions: TimeGridViewOptions<TEvent> = {}) {
+  return timeGridView("week", { kind: "week" }, defaultOptions);
+}
+
+/** One column for the anchor date. */
+export function createDayView<TEvent = unknown>(defaultOptions: TimeGridViewOptions<TEvent> = {}) {
+  return timeGridView("day", { count: 1, kind: "days" }, defaultOptions);
+}
+
+/**
+ * Three columns from the anchor date, named `3-day`: more than a day where a week's seven columns
+ * don't fit, as on a phone. Previous and Next move three days.
+ */
+export function createThreeDayView<TEvent = unknown>(
+  defaultOptions: TimeGridViewOptions<TEvent> = {},
+) {
+  return timeGridView("3-day", { count: 3, kind: "days" }, defaultOptions);
+}

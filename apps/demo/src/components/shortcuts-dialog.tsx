@@ -2,53 +2,13 @@ import { Fragment } from "react";
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@registry/ui/dialog";
 
-import { shortcuts } from "../shortcuts";
-
-/** Keys for moving around inside the calendar. */
-const navigationKeys = [
-  { keys: ["Tab"], label: "Move into or out of the calendar" },
-  { keys: ["↑ ↓ ← →"], label: "Move between days, times and events" },
-  { keys: ["Home", "End"], label: "Go to the first or last day" },
-  { keys: ["PageUp", "PageDown"], label: "Go back or forward a page" },
-  { keys: ["Enter"], label: "Open the focused event, or go into a day's events" },
-  { keys: ["Shift+Enter"], label: "Open the focused day" },
-  { keys: ["Escape"], label: "Go back from an event to its day" },
-] as const;
-
-/** Keys for moving, resizing and creating events. */
-const editingKeys = [
-  { keys: ["Space"], label: "Pick up the focused event to move it" },
-  { keys: ["Shift+Space"], label: "Pick up the focused event to resize it" },
-  { keys: ["Space"], label: "Start a new event on the focused day or time" },
-  { keys: ["↑ ↓ ← →"], label: "Move, resize or extend it" },
-  { keys: ["Enter", "Space"], label: "Save the change" },
-  { keys: ["Escape"], label: "Cancel the change" },
-] as const;
-
-const isApple =
-  typeof navigator !== "undefined" && /mac|iphone|ipad|ipod/i.test(navigator.platform);
-
-/** Undo and redo, which work while focus is in the calendar. */
-const historyKeys = [
-  { keys: [isApple ? "⌘Z" : "Ctrl+Z"], label: "Undo the last change" },
-  { keys: isApple ? ["Shift+⌘Z"] : ["Shift+Ctrl+Z", "Ctrl+Y"], label: "Redo it" },
-];
-
-const keyNames: Readonly<Record<string, string>> = {
-  ArrowDown: "↓",
-  ArrowLeft: "←",
-  ArrowRight: "→",
-  ArrowUp: "↑",
-  Escape: "Esc",
-  PageDown: "Page Down",
-  PageUp: "Page Up",
-};
+import { keyLabel, shortcutSections, type KeyListItem } from "../shortcuts";
 
 function KeyList({
   items,
   title,
 }: {
-  readonly items: readonly { readonly keys: readonly string[]; readonly label: string }[];
+  readonly items: readonly KeyListItem[];
   readonly title: string;
 }) {
   return (
@@ -63,7 +23,7 @@ function KeyList({
                 <Fragment key={key}>
                   {index > 0 && <span>or</span>}
                   <kbd className="min-w-6 rounded-md border bg-muted px-1.5 py-0.5 text-center font-sans text-foreground">
-                    {keyNames[key] ?? (key.length === 1 ? key.toUpperCase() : key)}
+                    {keyLabel(key)}
                   </kbd>
                 </Fragment>
               ))}
@@ -88,10 +48,9 @@ export function ShortcutsDialog({
         <DialogHeader>
           <DialogTitle>Keyboard shortcuts</DialogTitle>
         </DialogHeader>
-        <KeyList items={shortcuts} title="Anywhere" />
-        <KeyList items={navigationKeys} title="In the calendar" />
-        <KeyList items={editingKeys} title="Changing events" />
-        <KeyList items={historyKeys} title="Undo and redo" />
+        {shortcutSections.map(({ items, title }) => (
+          <KeyList key={title} items={items} title={title} />
+        ))}
       </DialogContent>
     </Dialog>
   );

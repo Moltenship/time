@@ -12,10 +12,10 @@ import {
 } from "@registry/ui/select";
 
 import {
-  describeRule,
-  presetLabel,
-  repeatPresets,
-  withoutEnd,
+  repeatEndTypes as endTypes,
+  repeatLabel,
+  repeatOptions,
+  withEndType,
   type RepeatDraft,
   type RepeatEnd,
   type RepeatFrequency,
@@ -32,12 +32,6 @@ export interface RepeatFieldProps {
   readonly timeZone: string;
   readonly value: RepeatDraft;
 }
-
-const endTypes = [
-  { label: "Never", value: "never" },
-  { label: "On date", value: "until" },
-  { label: "After", value: "count" },
-] as const satisfies readonly { readonly label: string; readonly value: RepeatEnd["type"] }[];
 
 function parseDate(value: string): Temporal.PlainDate | undefined {
   try {
@@ -61,24 +55,14 @@ export function RepeatField({
   value,
 }: RepeatFieldProps) {
   const id = useId();
-  const { end, frequency, rule } = value;
+  const { end, frequency } = value;
   const label = (option: RepeatFrequency) =>
-    option === "custom"
-      ? `Custom: ${rule === undefined ? "" : describeRule(withoutEnd(rule), startDate, timeZone, locale)}`
-      : presetLabel(option, startDate, locale);
-  const options: readonly RepeatFrequency[] =
-    frequency === "custom" ? [...repeatPresets, "custom"] : repeatPresets;
+    repeatLabel(option, value, startDate, timeZone, locale);
+  const options = repeatOptions(value);
 
   function changeEnd(type: RepeatEnd["type"]) {
-    if (type === end.type) return;
-    // Starting points calendar apps use: three months out, or ten times.
-    const next: RepeatEnd =
-      type === "never"
-        ? { type }
-        : type === "until"
-          ? { date: startDate.add({ months: 3 }), type }
-          : { count: 10, type };
-    onChange({ ...value, end: next });
+    const next = withEndType(value, type, startDate);
+    if (next !== undefined) onChange(next);
   }
 
   return (

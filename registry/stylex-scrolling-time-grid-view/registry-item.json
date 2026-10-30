@@ -1,0 +1,25 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-scrolling-time-grid-view",
+  "type": "registry:component",
+  "title": "Scrolling week and day views (StyleX)",
+  "description": "Week, 3-day and day time grids that scroll sideways without end and come to rest on a day, as in Apple's Calendar on iPad: a sticky header, all-day row and hour gutter over day columns rendered a page either side with their events, keyboard paging, and drag, resize and create across the scroll.",
+  "dependencies": ["@astryxdesign/core", "@moltenship/calendar", "@stylexjs/stylex"],
+  "registryDependencies": [
+    "@moltenship/stylex-calendar",
+    "@moltenship/stylex-calendar-theme",
+    "@moltenship/stylex-time-grid-view"
+  ],
+  "files": [
+    {
+      "path": "registry/stylex-scrolling-time-grid-view/scrolling-time-grid-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/scrolling-time-grid-view/scrolling-time-grid-view.tsx"
+    },
+    {
+      "path": "registry/stylex-scrolling-time-grid-view/scrolling-time-grid-scroll.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/scrolling-time-grid-view/scrolling-time-grid-scroll.ts"
+    }
+  ]
+}

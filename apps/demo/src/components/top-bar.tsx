@@ -1,26 +1,16 @@
 import { KeyboardIcon, MenuIcon } from "lucide-react";
 
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
-import { ViewSwitcher, type ViewSwitcherOption } from "@registry/calendar/view-switcher";
+import { ViewSwitcher } from "@registry/calendar/view-switcher";
 import { Button } from "@registry/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/ui/tooltip";
 
 import { DemoCalendar, type DemoView } from "../calendar";
-import { viewFor } from "../scrolling";
+import { viewSwitcherOptions } from "../view-options";
 import { BrandMark } from "./brand";
 import { DocsLink } from "./docs-link";
 import { ThemeToggle } from "./theme-toggle";
-
-const viewOptions: readonly ViewSwitcherOption<DemoView>[] = [
-  { label: "Day", shortcut: "D", value: "day" },
-  { label: "3 days", shortcut: "X", value: "3-day" },
-  { label: "Week", shortcut: "W", value: "week" },
-  { label: "Month", shortcut: "M", value: "month" },
-  { label: "Year", shortcut: "Y", value: "year" },
-  { label: "Agenda", shortcut: "A", value: "agenda" },
-  { label: "Resources", shortcut: "R", value: "resources" },
-  { label: "Timeline", shortcut: "L", value: "timeline-week" },
-];
+import { UiSwitch } from "./ui-switch";
 
 const selectView = (state: { readonly view: DemoView }) => state.view;
 
@@ -34,10 +24,6 @@ export interface TopBarProps {
 export function TopBar({ onOpenSidebar, onShowShortcuts, scrolling }: TopBarProps) {
   const view = DemoCalendar.useCalendarSelector(selectView);
   const { setView } = DemoCalendar.useCalendarActions();
-  const options = viewOptions.map((option) => ({
-    ...option,
-    value: viewFor(option.value, scrolling),
-  }));
 
   return (
     <CalendarToolbar
@@ -64,9 +50,10 @@ export function TopBar({ onOpenSidebar, onShowShortcuts, scrolling }: TopBarProp
         // Wide enough for "Resources".
         className="sm:w-32"
         onValueChange={setView}
-        options={options}
+        options={viewSwitcherOptions(scrolling)}
         value={view}
       />
+      <UiSwitch className="max-sm:hidden" current="tailwind" />
       <Tooltip>
         <TooltipTrigger
           render={

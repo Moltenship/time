@@ -1,0 +1,245 @@
+import type {
+  CalendarAnnouncementContext,
+  CalendarAnnouncementMessages,
+  CalendarEventPlacement,
+  CalendarHistoryAnnouncementBuilder,
+  CalendarHistoryMessages,
+  CalendarInteractionCause,
+  CalendarInteractionCheck,
+  CalendarInteractionUpdate,
+  ResourceId,
+} from "@moltenship/calendar";
+
+import { describeWhen, eventTitle } from "@registry/stylex-calendar/event-label";
+
+/** What a keyboard user can press next, after the gesture starts. */
+const keyboardHints: Readonly<Record<CalendarInteractionCause, string>> = {
+  create: "Use the arrow keys to extend it, then Enter to finish or Escape to cancel.",
+  move: "Use the arrow keys to move it, then Enter to drop it or Escape to cancel.",
+  "resize-end":
+    "Use the arrow keys to change its end, Shift+Space to change its start instead, then Enter to finish or Escape to cancel.",
+  "resize-start":
+    "Use the arrow keys to change its start, Shift+Space to change its end instead, then Enter to finish or Escape to cancel.",
+};
+
+/** Policy reasons a gesture can run into, as a step or a saved change mentions them. */
+const concerns: Readonly<Record<string, string>> = {
+  "outside-availability": "outside working hours",
+  "resource-conflict": "double-booked",
+};
+
+/**
+ * What a placement runs into, after it: ", outside working hours" when the policies would reject
+ * it for that or flag it with it, ", can't go here" for other rejections.
+ */
+function concern(reasons: readonly string[] | undefined, rejected = false): string {
+  const known = (reasons ?? [])
+    .map((reason) => concerns[reason])
+    .filter((text) => text !== undefined);
+  if (known.length > 0) return `, ${known.join(", ")}`;
+  return rejected ? ", can't go here" : "";
+}
+
+function checkConcern(check: CalendarInteractionCheck | undefined): string {
+  if (check == null) return "";
+  return check.status === "rejected"
+    ? concern([check.reason], true)
+    : concern(check.change.warnings);
+}
+
+/** The event's title, or for a new one the name of the item dragged in, if it has one. */
+function subject({ event, outside }: Pick<CalendarInteractionUpdate, "event" | "outside">): string {
+  if (event !== null) return eventTitle(event);
+  return outside?.title ?? "the new event";
+}
+
+/**
+ * Whether the application cancelled the change itself: `onEventChange` rejected with an
+ * `AbortError`, as when the user dismisses a question it asked, such as the recurrence scope.
+ */
+function isAbort(error: unknown): boolean {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    (error as { name?: unknown }).name === "AbortError"
+  );
+}
+
+function cancelled(update: Pick<CalendarInteractionUpdate, "cause" | "event" | "outside">): string {
+  if (update.cause !== "create") return `Cancelled. ${subject(update)} is back where it was.`;
+  return update.outside?.title === undefined
+    ? "Cancelled the new event."
+    : `Cancelled. ${update.outside.title} wasn't added.`;
+}
+
+function sameResources(left: readonly ResourceId[], right: readonly ResourceId[]): boolean {
+  return left.length === right.length && left.every((id) => right.includes(id));
+}
+
+/**
+ * The resources each move last announced, by the placement it started from, which keyboard and
+ * pointer updates carry unchanged through a gesture. A step names the resources when they differ
+ * from the last announcement, so moving out to another resource and back names both, even when a
+ * drag starts over another resource. An item dragged in from outside the calendar is tracked by
+ * its `outside`, one object for the whole drag.
+ */
+const announcedResources = new WeakMap<object, readonly ResourceId[]>();
+
+/**
+ * Remembers the resources a move, or an item dragged in, announces, and returns whether they
+ * differ from the ones it announced before. One that hasn't named any yet, as a drag that starts
+ * off the view, names them on its first placement. Resizes and creates in a view keep their
+ * resources, so they never track them.
+ */
+function announceResources({
+  cause,
+  original,
+  outside,
+  proposed,
+}: CalendarInteractionUpdate): boolean {
+  const gesture = cause === "move" ? original : cause === "create" ? outside : undefined;
+  if (gesture == null || proposed === null) return false;
+  const announced = announcedResources.get(gesture);
+  announcedResources.set(gesture, proposed.resourceIds);
+  return announced === undefined || !sameResources(announced, proposed.resourceIds);
+}
+
+/**
+ * When a placement is and, with `resources`, the resources it books that the calendar knows:
+ * "Thursday, October 8, 9:00 – 9:30 AM, Orchid, Maya".
+ */
+function describePlacement(
+  placement: CalendarEventPlacement,
+  where: CalendarAnnouncementContext,
+  resources: boolean,
+): string {
+  const when = describeWhen(placement, where);
+  const titles = resources
+    ? placement.resourceIds.map(where.resourceTitle).filter((title) => title !== undefined)
+    : [];
+  return [when, ...titles].join(", ");
+}
+
+/**
+ * English announcements for moves, resizes, and creates, from the keyboard or a pointer. Render
+ * them through `<Calendar.Announcer messages={calendarAnnouncements} />`, and edit or translate
+ * them here. In a calendar with resources, picking up, moving and creating an event name the
+ * resources it books, and a step names them when the move changes them; a resize can't. Where the
+ * policies would reject or flag a placement, such as outside working hours, steps say so.
+ */
+export const calendarAnnouncements: CalendarAnnouncementMessages = {
+  start: (update, where) => {
+    announceResources(update);
+    const resources = update.cause === "create" || update.cause === "move";
+    const when =
+      update.proposed === null
+        ? ""
+        : `, ${describePlacement(update.proposed, where, resources)}${checkConcern(update.check)}`;
+    // An item dragged in from outside the calendar: its name and where it would go, with no
+    // keyboard hints, since its own drag library has its own keys.
+    if (update.outside !== undefined) {
+      return update.event === null && update.outside.title === undefined
+        ? `New event${when}.`
+        : `${subject(update)}${when}.`;
+    }
+    const opening = {
+      create: `New event${when}.`,
+      move: `Picked up ${subject(update)}${when}.`,
+      "resize-end": `Resizing the end of ${subject(update)}${when}.`,
+      "resize-start": `Resizing the start of ${subject(update)}${when}.`,
+    }[update.cause];
+    return update.input === "keyboard" ? `${opening} ${keyboardHints[update.cause]}` : opening;
+  },
+  step: (update, where) =>
+    update.proposed === null
+      ? null
+      : `${describePlacement(update.proposed, where, announceResources(update))}${checkConcern(update.check)}`,
+  commit: (update, where) => {
+    const flagged = concern(update.warnings);
+    switch (update.cause) {
+      case "create":
+        return update.outside?.title === undefined
+          ? `New event for ${describePlacement(update.proposed, where, true)}${flagged}.`
+          : `Added ${update.outside.title} for ${describePlacement(update.proposed, where, true)}${flagged}.`;
+      case "move":
+        return `Moved ${subject(update)} to ${describePlacement(update.proposed, where, true)}${flagged}.`;
+      case "resize-end":
+      case "resize-start":
+        return `${subject(update)} now runs ${describeWhen(update.proposed, where)}${flagged}.`;
+    }
+  },
+  reject: (update) => {
+    if (update.reason === "handler-error" && isAbort(update.error)) return cancelled(update);
+    switch (update.reason) {
+      // A newer change to the same event replaced this one.
+      case "superseded":
+        return null;
+      case "read-only":
+        return `${subject(update)} is read-only and can't be changed.`;
+      case "invalid-placement":
+      case "out-of-bounds":
+        return `${subject(update)} can't go there, so it's back where it was.`;
+      case "outside-availability":
+        return update.cause === "create"
+          ? "Can't create an event outside working hours."
+          : `${subject(update)} can't go outside working hours, so it's back where it was.`;
+      case "resource-conflict":
+        return update.cause === "create"
+          ? "Can't create an event there: a room or person it books is busy then."
+          : `${subject(update)} would double-book a room or person, so it's back where it was.`;
+      default:
+        return `Couldn't save ${subject(update)}, so it's back where it was.`;
+    }
+  },
+  cancel: cancelled,
+};
+
+/** What an undo or redo couldn't do, after "Couldn't undo: ", by the reason it was rejected. */
+const historyFailures: Readonly<Record<string, (name: string) => string>> = {
+  "invalid-placement": (name) => `${name} can't go there.`,
+  "out-of-bounds": (name) => `${name} can't go there.`,
+  "outside-availability": (name) => `${name} can't go outside working hours.`,
+  "read-only": (name) => `${name} is read-only.`,
+  "resource-conflict": (name) => `${name} would double-book someone.`,
+};
+
+/** Says how an undo or redo went, naming the event when the calendar shows it. */
+const historyOutcome: CalendarHistoryAnnouncementBuilder = (outcome, where) => {
+  const verb = outcome.direction;
+  if (outcome.status === "empty") return `Nothing to ${verb}.`;
+  const name = where.event === undefined ? "the event" : eventTitle(where.event);
+  if (outcome.status === "stale") return `Can't ${verb} that: ${name} has changed since.`;
+  if (outcome.status === "rejected") {
+    const { error, reason } = outcome.result;
+    if (reason === "superseded") return null;
+    if (reason === "handler-error" && isAbort(error)) return `Cancelled the ${verb}.`;
+    const failure = historyFailures[reason];
+    return failure === undefined
+      ? `Couldn't ${verb} the change to ${name}.`
+      : `Couldn't ${verb}: ${failure(name)}`;
+  }
+  const { cause } = outcome.step;
+  const placement = verb === "undo" ? outcome.step.before : outcome.step.after;
+  if (placement === null) {
+    return verb === "undo" ? `Undid creating ${name}.` : `Deleted ${name} again.`;
+  }
+  const when = describePlacement(placement, where, true);
+  if (cause === "delete" || cause === "create") return `Restored ${name}, ${when}.`;
+  if (cause === "move") {
+    return verb === "undo"
+      ? `Undid the move: ${name} is back at ${when}.`
+      : `Moved ${name} to ${when} again.`;
+  }
+  const action = cause === "update" ? "change" : "resize";
+  return `${verb === "undo" ? "Undid" : "Redid"} the ${action}: ${name} runs ${describeWhen(placement, where)}.`;
+};
+
+/**
+ * English announcements for undo and redo. Pass them to `useCalendarHistory(history, { messages:
+ * calendarHistoryAnnouncements })`, and edit or translate them here. They name the event when the
+ * calendar shows it, and where it is now.
+ */
+export const calendarHistoryAnnouncements: CalendarHistoryMessages = {
+  redo: historyOutcome,
+  undo: historyOutcome,
+};

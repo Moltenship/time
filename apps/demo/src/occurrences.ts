@@ -6,7 +6,7 @@ import {
 import { createOccurrenceExpander } from "@moltenship/calendar-recurrence";
 import { useCallback, useMemo, useState } from "react";
 
-import { demoAdapters, type DemoEvent } from "./calendar";
+import { demoAdapters, type DemoEvent } from "./demo-model";
 
 /**
  * Six weeks either side of `date`: what the calendar shows first, before `onVisibleRangeChange`

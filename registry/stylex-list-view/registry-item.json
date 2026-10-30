@@ -1,0 +1,51 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-list-view",
+  "type": "registry:component",
+  "title": "Agenda view (StyleX)",
+  "description": "Chronological agenda grouped by day, virtualized so only the days in view render: sticky dates, Intl time ranges, all-day badges, \"Day k of n\" for multi-day events, and empty and loading states. The scrolling agenda builds on its parts.",
+  "dependencies": [
+    "@moltenship/calendar",
+    "@stylexjs/stylex",
+    "@tanstack/react-virtual",
+    "lucide-react"
+  ],
+  "registryDependencies": ["@moltenship/stylex-calendar", "@moltenship/stylex-calendar-theme"],
+  "files": [
+    {
+      "path": "registry/stylex-list-view/agenda-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/list-view/agenda-view.tsx"
+    },
+    {
+      "path": "registry/stylex-list-view/agenda-list.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/list-view/agenda-list.tsx"
+    },
+    {
+      "path": "registry/stylex-list-view/agenda-day.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/list-view/agenda-day.tsx"
+    },
+    {
+      "path": "registry/stylex-list-view/agenda-item.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/list-view/agenda-item.tsx"
+    },
+    {
+      "path": "registry/stylex-list-view/agenda-states.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/list-view/agenda-states.tsx"
+    },
+    {
+      "path": "registry/stylex-list-view/agenda-rows.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/list-view/agenda-rows.ts"
+    },
+    {
+      "path": "registry/stylex-list-view/use-agenda-virtualizer.ts",
+      "type": "registry:hook",
+      "target": "@components/calendar-stylex/list-view/use-agenda-virtualizer.ts"
+    }
+  ]
+}

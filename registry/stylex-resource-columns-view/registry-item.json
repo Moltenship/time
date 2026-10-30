@@ -1,0 +1,66 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-resource-columns-view",
+  "type": "registry:component",
+  "title": "Resource columns view (StyleX)",
+  "description": "A day or N-day time grid with a column per resource: headers grouped by the resource hierarchy with collapsible groups and a slot for your own header content such as avatars, an all-day row per resource, a sticky hour gutter and header, a now-line, drag and keyboard moves across resources, and horizontal virtualization so hundreds of resources scroll smoothly.",
+  "dependencies": [
+    "@astryxdesign/core",
+    "@moltenship/calendar",
+    "@stylexjs/stylex",
+    "@tanstack/react-virtual",
+    "lucide-react"
+  ],
+  "registryDependencies": [
+    "@moltenship/stylex-calendar",
+    "@moltenship/stylex-calendar-theme",
+    "@moltenship/stylex-time-grid-view"
+  ],
+  "files": [
+    {
+      "path": "registry/stylex-resource-columns-view/resource-columns-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/resource-columns-view/resource-columns-view.tsx"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/resource-columns-header.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/resource-columns-view/resource-columns-header.tsx"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/resource-header.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/resource-columns-view/resource-header.tsx"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/resource-columns-dates.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/resource-columns-view/resource-columns-dates.tsx"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/resource-columns-all-day.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/resource-columns-view/resource-columns-all-day.tsx"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/resource-columns-body.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/resource-columns-view/resource-columns-body.tsx"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/column-virtualizer.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/resource-columns-view/column-virtualizer.ts"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/axis-sync.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/resource-columns-view/axis-sync.ts"
+    },
+    {
+      "path": "registry/stylex-resource-columns-view/focused-column.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/resource-columns-view/focused-column.ts"
+    }
+  ]
+}

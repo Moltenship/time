@@ -345,3 +345,44 @@ export function readRule(text: string): RecurrenceRule | undefined {
   const { issues, rule } = parseRecurrenceRule(text);
   return issues.some(({ severity }) => severity === "error") ? undefined : rule;
 }
+
+export const repeatEndTypes = [
+  { label: "Never", value: "never" },
+  { label: "On date", value: "until" },
+  { label: "After", value: "count" },
+] as const satisfies readonly { readonly label: string; readonly value: RepeatEnd["type"] }[];
+
+/** How a Repeat field names a frequency, for a series that starts on `startDate`. */
+export function repeatLabel(
+  option: RepeatFrequency,
+  { rule }: RepeatDraft,
+  startDate: Temporal.PlainDate,
+  timeZone: string,
+  locale: Intl.LocalesArgument,
+): string {
+  return option === "custom"
+    ? `Custom: ${rule === undefined ? "" : describeRule(withoutEnd(rule), startDate, timeZone, locale)}`
+    : presetLabel(option, startDate, locale);
+}
+
+/** The frequencies a Repeat field offers: the presets, and the custom rule while it's chosen. */
+export function repeatOptions({ frequency }: RepeatDraft): readonly RepeatFrequency[] {
+  return frequency === "custom" ? [...repeatPresets, "custom"] : repeatPresets;
+}
+
+/** The draft with another kind of end, or `undefined` when that's already its kind. */
+export function withEndType(
+  value: RepeatDraft,
+  type: RepeatEnd["type"],
+  startDate: Temporal.PlainDate,
+): RepeatDraft | undefined {
+  if (type === value.end.type) return undefined;
+  // Starting points calendar apps use: three months out, or ten times.
+  const next: RepeatEnd =
+    type === "never"
+      ? { type }
+      : type === "until"
+        ? { date: startDate.add({ months: 3 }), type }
+        : { count: 10, type };
+  return { ...value, end: next };
+}

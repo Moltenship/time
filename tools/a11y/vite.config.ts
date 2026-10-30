@@ -1,5 +1,7 @@
 import { availableParallelism } from "node:os";
+import { fileURLToPath } from "node:url";
 
+import stylex from "@stylexjs/unplugin";
 import tailwindcss from "@tailwindcss/vite";
 import { configDefaults, defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
@@ -13,8 +15,20 @@ import { Watchdog } from "./watchdog";
  */
 const firefoxRuns = false;
 
+const fromHere = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+
 /** Reduced motion runs in a Chromium context of its own. */
 const chromiumOnly = ["tests/reduced-motion.a11y.tsx"];
+
+/**
+ * The demo's StyleX page runs without Tailwind's global CSS, as it does in the demo: the two define
+ * the same tokens, and a contrast check should see the page's own.
+ */
+const stylexOnly = ["tests/demo-stylex.a11y.tsx"];
+const tailwindExclude = [...chromiumOnly, ...stylexOnly];
+// Absolute: Vitest doesn't resolve the paths of an instance's own setup files.
+const stylexSetup = [fromHere("./tests/setup.ts")];
+const tailwindSetup = [...stylexSetup, fromHere("./tests/setup-tailwind.ts")];
 
 export default defineConfig(({ mode }) => {
   // `vp run browsers`: the suite in Firefox and WebKit instead of Chromium.
@@ -37,7 +51,17 @@ export default defineConfig(({ mode }) => {
     // Each mode optimizes dependencies in a cache of its own, so two runs at once don't rewrite
     // each other's. Vitest's mode is `test`.
     cacheDir: mode === "test" ? undefined : `node_modules/.vite-${mode}`,
-    plugins: [tailwindcss()],
+    // What StyleX's compiled files import, known up front so the first such test doesn't reload.
+    optimizeDeps: { include: ["@stylexjs/stylex/lib/stylex-inject"] },
+    plugins: [
+      stylex.vite({
+        aliases: { "@registry/*": [fromHere("../../registry/*")] },
+        dev: true,
+        runtimeInjection: true,
+        unstable_moduleResolution: { rootDir: fromHere("../.."), type: "commonJS" },
+      }),
+      tailwindcss(),
+    ],
     resolve: {
       tsconfigPaths: true,
     },
@@ -46,7 +70,6 @@ export default defineConfig(({ mode }) => {
     test: {
       // Not `*.test.tsx`, so the root `vp test` run, which has no browser, leaves these alone.
       include: ["tests/**/*.a11y.tsx"],
-      setupFiles: ["./tests/setup.ts"],
       maxWorkers,
       // A stuck page can't time its own tests out: the watchdog fails the run from Node instead.
       // Beside Vitest's own reporters, which in CI include the GitHub Actions annotations.
@@ -59,16 +82,37 @@ export default defineConfig(({ mode }) => {
         headless: true,
         instances: otherBrowsers
           ? [
-              ...(firefoxRuns ? [{ browser: "firefox" as const, exclude: chromiumOnly }] : []),
-              { browser: "webkit" as const, exclude: chromiumOnly },
+              ...(firefoxRuns
+                ? [
+                    {
+                      browser: "firefox" as const,
+                      exclude: tailwindExclude,
+                      setupFiles: tailwindSetup,
+                    },
+                  ]
+                : []),
+              { browser: "webkit" as const, exclude: tailwindExclude, setupFiles: tailwindSetup },
+              {
+                browser: "webkit" as const,
+                include: stylexOnly,
+                name: "webkit-stylex",
+                setupFiles: stylexSetup,
+              },
             ]
           : [
-              { browser: "chromium", exclude: chromiumOnly },
+              { browser: "chromium", exclude: tailwindExclude, setupFiles: tailwindSetup },
               {
                 browser: "chromium",
                 include: chromiumOnly,
                 name: "reduced-motion",
                 provider: playwright({ contextOptions: { reducedMotion: "reduce" } }),
+                setupFiles: tailwindSetup,
+              },
+              {
+                browser: "chromium",
+                include: stylexOnly,
+                name: "chromium-stylex",
+                setupFiles: stylexSetup,
               },
             ],
         provider: playwright(),

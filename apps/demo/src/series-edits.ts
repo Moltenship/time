@@ -7,7 +7,7 @@ import {
   type RecurrenceSeriesEdit,
 } from "@moltenship/calendar-recurrence";
 
-import type { DemoEvent } from "./calendar";
+import type { DemoEvent } from "./demo-model";
 import { withPlacement } from "./event-changes";
 import { withoutEnd, type RuleEnd } from "./repeat";
 import type { DemoResourceId } from "./resources";

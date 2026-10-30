@@ -1,0 +1,235 @@
+"use client";
+
+import {
+  defineCalendarView,
+  resourceTimelineSpatialNavigation,
+  resourceTimelineStrategy,
+  resourceTimelineTitle,
+  useCalendarAnnouncer,
+  useCalendarFocus,
+  useCalendarDraftReporter,
+  useCalendarPointer,
+  type CalendarDayFocus,
+  type CalendarResource,
+  type CalendarViewRendererProps,
+  type PlainDateInterval,
+  type ResourceId,
+  type ResourceTimelineLayoutOptions,
+  type ResourceTimelineOptions,
+  type ResourceTimelineProjection,
+  type ResourceTimelineSpan,
+} from "@moltenship/calendar";
+import { useLayoutEffect, useMemo, type ReactNode } from "react";
+
+import { useEventLabel, type EventDescriber } from "@registry/stylex-calendar/event-label";
+import {
+  resourceStatusOptions,
+  type ResourceStatusOptions,
+} from "@registry/stylex-calendar/resource-status";
+import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
+import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
+import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+
+import { ResourceTimelineGrid } from "./resource-timeline-grid";
+
+/**
+ * In an hour timeline, overlapping events in a row sit in lanes, or cascade in a stack where the
+ * resource's `getResourceOverlapLayout`, or else `overlapLayout`, is `"stack"`; see
+ * `ResourceTimelineLayoutOptions`.
+ */
+export interface ResourceTimelineViewOptions<
+  TEvent,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+>
+  extends ResourceTimelineOptions, ResourceTimelineLayoutOptions<TEvent, TResource> {
+  /** Extra words for each event's accessible name, such as its calendar. */
+  readonly describeEvent?: EventDescriber<TEvent>;
+  /** Colour for an event; sets `data-color` on every element that renders it. */
+  readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
+  /**
+   * A small icon before an event's title, such as a repeat mark on recurring events, or nothing.
+   * It's decorative and hidden from assistive technology: say the same in `describeEvent`, which
+   * adds to each event's accessible name.
+   */
+  readonly getEventIcon?: (event: TEvent) => ReactNode;
+  /**
+   * Replaces the shading of closed time and closed days: an element, or a function of its props
+   * and of the band, date and resource, such as a gradient into working hours or a tint for rooms.
+   */
+  readonly renderUnavailable?: UnavailableTimeRender;
+  /**
+   * Shows each resource's status in its row header: now, such as "Busy until 3:00 PM", and while
+   * an event is being placed, whether it's busy or outside its hours then, so you see who's free.
+   * Pass options for your own words or your own draft status in place of the badge.
+   */
+  readonly resourceStatus?: boolean | ResourceStatusOptions;
+}
+
+export type ResourceTimelineViewProps<
+  TEvent,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+> = CalendarViewRendererProps<
+  ResourceTimelineProjection<TEvent>,
+  ResourceTimelineViewOptions<TEvent, TResource>
+>;
+
+/** The grid's name: the title the toolbar shows for the range, "October 2026" for a month. */
+function gridLabel(range: PlainDateInterval, locale: Intl.Locale | string): string {
+  const days = range.start.until(range.end).days;
+  const month = range.start.day === 1 && range.end.equals(range.start.add({ months: 1 }));
+  return resourceTimelineTitle(
+    range,
+    month ? { kind: "month" } : { count: days, kind: "days" },
+    locale,
+  );
+}
+
+/** Pointer and keyboard both step by these slots in an hour timeline, so they reach the same times. */
+const snap = { increment: 30, smallestUnit: "minute" } as const;
+/** The calendar's default slots, in which it finds where focus enters a view. */
+const entrySnap = { increment: 15, smallestUnit: "minute" } as const;
+
+/**
+ * Resources as rows and time as columns, with each resource's events as bars packed into lanes.
+ * The header and the resource column stay in view, groups collapse, and only the rows and slots
+ * in view render. Drag a bar along its row or onto another resource to move it, its ends to
+ * resize it, or across empty time to create an event; changes go to the root's `onEventChange`.
+ * From the keyboard the grid is one tab stop: arrow keys move along a row and between rows, and
+ * Space picks up an event (Shift+Space to resize) or starts one on the focused cell.
+ */
+export function ResourceTimelineView<
+  TEvent,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+>({
+  actions,
+  environment,
+  events,
+  isReadOnly,
+  options,
+  projection,
+  range,
+}: ResourceTimelineViewProps<TEvent, TResource>) {
+  // Hour rows map a pointer along their date strips through the columns; day rows have plain day
+  // cells, which steps drags by whole days. Drags speak through the same messages as the keyboard.
+  const announcer = useCalendarAnnouncer();
+  // Drags report their draft, so headers show who's busy then.
+  const reportDraft = useCalendarDraftReporter();
+  const pointerRef = useCalendarPointer({
+    announcer,
+    check: actions.checkEventChange,
+    columns: projection.unit === "hour" ? projection.columns : undefined,
+    disabled: isReadOnly,
+    events,
+    onPreview: reportDraft,
+    onPropose: actions.proposeEventChange,
+    snap,
+    timeZone: environment.timeZone,
+  });
+  const keyboard = useViewKeyboard({ axis: "inline", snap });
+  const labelEvent = useEventLabel(environment, options.describeEvent);
+
+  // Where the calendar enters the view: today or the range's first day in the first row, at the
+  // day's first wall time in an hour timeline. The calendar finds it in its default slots, so ask
+  // with those, whatever this view steps by, or the cell rendered for it isn't the tab stop.
+  const entry = useMemo(() => {
+    const found = resourceTimelineSpatialNavigation({
+      command: "home",
+      environment,
+      focus: null,
+      options,
+      projection,
+      range,
+      snap: entrySnap,
+    });
+    return found === null || !("focus" in found) || found.focus.kind === "event"
+      ? null
+      : found.focus;
+  }, [environment, options, projection, range]);
+
+  // A time grid's slot is its whole day in a timeline of days, so keys act on the day, as a drag
+  // does. One day per slot, so a replayed effect asks for the same focus and changes nothing.
+  const slot = useCalendarFocus((focus) => (focus?.kind === "slot" ? focus : null));
+  const slotDay = useMemo<CalendarDayFocus | null>(
+    () =>
+      projection.unit === "day" && slot !== null
+        ? { date: slot.date, kind: "day", resourceId: slot.resourceId }
+        : null,
+    [projection.unit, slot],
+  );
+  useLayoutEffect(() => {
+    if (slotDay !== null) actions.setFocus(slotDay);
+  }, [actions, slotDay]);
+
+  return (
+    <ResourceTimelineGrid
+      entry={entry}
+      environment={environment}
+      getEventColor={options.getEventColor}
+      getEventIcon={options.getEventIcon}
+      isReadOnly={isReadOnly}
+      keyboard={keyboard}
+      label={gridLabel(range, environment.locale)}
+      labelEvent={labelEvent}
+      projection={projection}
+      range={range}
+      ref={pointerRef}
+      renderUnavailable={options.renderUnavailable}
+      resourceStatus={resourceStatusOptions(options.resourceStatus)}
+      snapMinutes={snap.increment}
+    />
+  );
+}
+
+function timelineView<
+  const TName extends string,
+  TEvent,
+  TResource extends CalendarResource<unknown, ResourceId>,
+>(
+  name: TName,
+  span: ResourceTimelineSpan,
+  defaultOptions: ResourceTimelineViewOptions<TEvent, TResource>,
+) {
+  return defineCalendarView({
+    defaultOptions,
+    name,
+    strategy: resourceTimelineStrategy<ResourceTimelineViewOptions<TEvent, TResource>, TEvent>(
+      span,
+    ),
+    Renderer: ResourceTimelineView<TEvent, TResource>,
+  });
+}
+
+/**
+ * The anchor date in hours, named `timeline-day`. Pass the root's resource type as `TResource` to
+ * read your own fields in `getResourceOverlapLayout`. The overlap layout options apply to hour
+ * rows: here, or in the other timelines with `slotUnit: "hour"`.
+ */
+export function createTimelineDayView<
+  TEvent = unknown,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+>(defaultOptions: ResourceTimelineViewOptions<TEvent, TResource> = {}) {
+  return timelineView("timeline-day", { count: 1, kind: "days" }, defaultOptions);
+}
+
+/**
+ * A week of days, starting on the calendar's `weekRules.firstDay`, named `timeline-week`. Its day
+ * rows lay events out like a month row; the overlap layout options apply with `slotUnit: "hour"`.
+ * Pass the root's resource type as `TResource`, as for `createTimelineDayView`.
+ */
+export function createTimelineWeekView<
+  TEvent = unknown,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+>(defaultOptions: ResourceTimelineViewOptions<TEvent, TResource> = {}) {
+  return timelineView("timeline-week", { kind: "week" }, defaultOptions);
+}
+
+/**
+ * The anchor's calendar month, day by day, named `timeline-month`. As with the week, the overlap
+ * layout options apply with `slotUnit: "hour"`, and `TResource` is the root's resource type.
+ */
+export function createTimelineMonthView<
+  TEvent = unknown,
+  TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
+>(defaultOptions: ResourceTimelineViewOptions<TEvent, TResource> = {}) {
+  return timelineView("timeline-month", { kind: "month" }, defaultOptions);
+}

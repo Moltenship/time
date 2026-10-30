@@ -1,6 +1,6 @@
 ---
 title: Theme builder
-description: Change the calendar's tokens in light and dark, see them live, and copy the CSS.
+description: Change the calendar's tokens in light and dark, see them live, and copy the CSS or a StyleX theme.
 full: true
 ---
 
@@ -24,6 +24,37 @@ the tokens, outside the layer, as on [Availability](/docs/availability#customize
 
 Rules your app writes outside a layer win over the pasted ones: its own shadcn theme, or overrides
 like those in [Changing tokens](/docs/theming#changing-tokens). Change those tokens there instead.
+
+## Use the StyleX theme
+
+Below the preview, **Tailwind + shadcn** gives the CSS above and **StyleX** gives a theme for the
+[StyleX flavour](/docs/stylex). The preview is the Tailwind-rendered calendar either way: the views
+read the same tokens, so it shows your theme, and compiling StyleX inside these docs isn't worth it.
+The **Astryx neutral** preset approximates the colors the StyleX flavour gets from
+`@astryxdesign/theme-neutral`.
+
+Paste the code into a file of your own, then apply the theme on a wrapper around the calendar. To
+reach popovers and tooltips, which open in a portal under `<body>`, put its class on `<body>` instead:
+
+```tsx
+import * as stylex from "@stylexjs/stylex";
+
+import { calendarTheme } from "./calendar-theme";
+
+<div {...stylex.props(calendarTheme)}>
+  <TeamCalendar meetings={meetings} />
+</div>;
+```
+
+- **Changed tokens** copies what differs from the theme as it ships, in either mode, with one value
+  for both through `light-dark()`. It adds the tokens that read one you changed: on a wrapper they'd
+  keep the value they got on `:root`. So changing `--primary` also restates `--calendar-event-border`.
+- **All tokens** copies the whole theme. It pins the base colors too, so they stop following your
+  Astryx theme.
+- A palette color you changed, or any change to what the colors derive, comes as each color's three
+  tokens, such as `--calendar-event-blue`, with the hue and chroma filled in.
+- A shading recipe comes last, in a comment: StyleX can't select the closed-time band, so it goes in
+  your global CSS.
 
 ## What you can change
 

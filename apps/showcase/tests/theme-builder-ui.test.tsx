@@ -223,6 +223,38 @@ test("presets show when applied, sizes slide in rem, and the full set copies", a
   Reflect.deleteProperty(navigator, "clipboard");
 });
 
+test("the output switches to a StyleX theme, for both extents and the copy button", async () => {
+  const writeText = vi.fn(async () => {});
+  Object.defineProperty(navigator, "clipboard", { configurable: true, value: { writeText } });
+  const container = await render(<ThemeBuilder source={source} />);
+  const heading = () => container.querySelector("section[aria-labelledby] h3")?.textContent;
+
+  expect(heading()).toBe("CSS");
+  expect(
+    container.querySelector('[aria-label="Output format"] [aria-pressed="true"]')?.textContent,
+  ).toBe("Tailwind + shadcn");
+  await type(input(container, "Today"), "oklch(0.6 0.2 30)");
+  expect(css(container)).toContain("@layer base");
+
+  await act(async () => button(container, "StyleX").click());
+  expect(heading()).toBe("StyleX");
+  expect(css(container)).toContain("stylex.createTheme(calendarVars, {");
+  expect(css(container)).toContain(
+    '"--calendar-today": "light-dark(oklch(0.6 0.2 30), oklch(0.707 0.165 254.6))",',
+  );
+  expect(css(container)).not.toContain("--calendar-grid");
+
+  await act(async () => button(container, "All tokens").click());
+  expect(css(container)).toContain('"--calendar-grid": "var(--border)",');
+  await act(async () => button(container, "Copy StyleX").click());
+  expect(writeText).toHaveBeenCalledWith(css(container));
+
+  await act(async () => button(container, "Tailwind + shadcn").click());
+  expect(button(container, "Copy CSS")).toBeDefined();
+  expect(css(container)).toContain("--calendar-grid: var(--border);");
+  Reflect.deleteProperty(navigator, "clipboard");
+});
+
 test("arrow keys move between the preview's views, which the tabs switch", async () => {
   const container = await render(<ThemeBuilder source={source} />);
   const week = button(container, "Week");

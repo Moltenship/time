@@ -1,4 +1,4 @@
-import type { DemoEvent } from "./calendar";
+import type { DemoEvent } from "./demo-model";
 import type { DemoCalendarId } from "./calendars";
 import type { DemoResourceId } from "./resources";
 

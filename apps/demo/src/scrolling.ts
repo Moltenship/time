@@ -1,4 +1,4 @@
-import type { DemoView } from "./calendar";
+import type { DemoView } from "./demo-model";
 
 /** The paged views and their scrolling versions. */
 const scrollingViews = {

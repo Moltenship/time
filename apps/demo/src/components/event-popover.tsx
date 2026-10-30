@@ -44,9 +44,9 @@ export function EventPopover({
   taskList,
   timeZone,
 }: EventPopoverProps) {
-  const onUnschedule = useUnschedule(taskList);
-  const titleId = useId();
   const actions = DemoCalendar.useCalendarActions();
+  const onUnschedule = useUnschedule(actions, taskList);
+  const titleId = useId();
   const handingOffFocus = useRef(false);
   const event = occurrence?.event;
   const calendar = demoCalendars.find(({ id }) => id === event?.calendarId);
