@@ -1,0 +1,264 @@
+---
+title: StyleX
+description: The calendar's views styled with StyleX and Astryx, for apps without Tailwind.
+---
+
+The registry's baseline is Tailwind and shadcn/ui. If your app styles with
+[StyleX](https://stylexjs.com) and builds on [Astryx](https://astryx.atmeta.com), Meta's design
+system, use the `stylex-*` items instead. They hold the same components with the same behaviour,
+every view included: same file names, exports, `data-slot` attributes, roles and labels. Styles are
+`stylex.create` rather than Tailwind classes, and buttons, tooltips and the like come from Astryx
+rather than shadcn/ui. As with the baseline, you own the source you add.
+
+See it running on the demo's [StyleX page](https://moltenship-time-demo.vercel.app/stylex/).
+
+## Install
+
+```bash
+npm install @stylexjs/stylex @astryxdesign/core @astryxdesign/theme-neutral
+npm install --save-dev @stylexjs/unplugin
+```
+
+`@moltenship/calendar` comes with the items, as [UI source](/docs/installation#ui-source-optional)
+describes, and [Temporal](/docs/installation#temporal) needs the same setup as in any app.
+
+## Configure Vite
+
+```ts title="vite.config.ts"
+import { fileURLToPath } from "node:url";
+
+import stylex from "@stylexjs/unplugin";
+import react from "@vitejs/plugin-react";
+import { defineConfig } from "vite";
+
+const fromHere = (path: string) => fileURLToPath(new URL(path, import.meta.url));
+
+export default defineConfig(({ command }) => ({
+  plugins: [
+    // Before React.
+    stylex.vite({
+      aliases: { "@/*": [fromHere("src/*")] },
+      dev: command === "serve",
+      lightningcssOptions: {
+        targets: { chrome: 123 << 16, firefox: 120 << 16, safari: (17 << 16) | (5 << 8) },
+      },
+      runtimeInjection: false,
+      unstable_moduleResolution: { rootDir: fromHere("."), type: "commonJS" },
+    }),
+    react(),
+  ],
+  build: { cssTarget: ["chrome123", "firefox120", "safari17.5"] },
+  resolve: { alias: { "@": fromHere("src") } },
+}));
+```
+
+- `aliases` and `unstable_moduleResolution` let StyleX find the tokens file. The items import it as
+  `@/components/calendar-stylex/calendar-tokens.stylex`, and StyleX reads it at compile time. Vite's
+  own alias doesn't reach the StyleX compiler, so it needs both.
+- `lightningcssOptions.targets` and `build.cssTarget` name browsers that have `light-dark()`. Astryx
+  and the calendar's tokens rely on it for dark mode. With older targets it's lowered to a polyfill
+  that needs `color-scheme` in the same stylesheet, and dark colors break without an error.
+
+## Add the global CSS
+
+Declare the layers first, then import the stylesheets. `calendar-global.css` holds the few rules
+StyleX can't write, such as those for drag previews, and arrives with the items.
+
+```css title="styles.css"
+@layer reset, astryx-base, astryx-theme;
+@import "@astryxdesign/core/reset.css";
+@import "@astryxdesign/core/astryx.css";
+@import "@astryxdesign/theme-neutral/theme.css";
+@import "@/components/calendar-stylex/calendar-global.css";
+```
+
+Wrap your app in Astryx's `Theme`. It sets the root's `color-scheme`, which `light-dark()` follows:
+
+```tsx title="main.tsx"
+import { Theme } from "@astryxdesign/core/theme";
+import { neutralTheme } from "@astryxdesign/theme-neutral/built";
+
+import "./styles.css";
+
+<Theme theme={neutralTheme}>
+  <App />
+</Theme>;
+```
+
+## Add the items
+
+`shadcn add` needs a `components.json` to know your aliases, even in an app without Tailwind, and
+your `tsconfig.json` needs the `@/*` path. The schema requires the `tailwind` block, but these items
+don't read it, and adding them leaves your CSS as it is:
+
+```json title="components.json"
+{
+  "$schema": "https://ui.shadcn.com/schema.json",
+  "style": "base-nova",
+  "rsc": false,
+  "tsx": true,
+  "tailwind": { "css": "src/styles.css", "baseColor": "neutral", "cssVariables": true },
+  "aliases": {
+    "components": "@/components",
+    "utils": "@/lib/utils",
+    "ui": "@/components/ui",
+    "lib": "@/lib",
+    "hooks": "@/hooks"
+  }
+}
+```
+
+`stylex-calendar-full` installs every view, the tokens and the parts they share:
+
+```bash
+npx shadcn@latest add https://time.molten.sh/r/stylex-calendar-full.json
+```
+
+Or add one view, which brings what it builds on. Every item in the
+[table on Installation](/docs/installation#ui-source-optional) has a `stylex-` version:
+
+```bash
+npx shadcn@latest add https://time.molten.sh/r/stylex-month-view.json
+```
+
+The files land in `calendar-stylex/` under your `components` alias, so they never overwrite the
+Tailwind ones.
+
+## Use the views
+
+The API is the [Quick start](/docs/quick-start)'s, with imports from `calendar-stylex`:
+
+```tsx title="calendar.tsx"
+import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
+import * as stylex from "@stylexjs/stylex";
+
+import { CalendarToolbar } from "@/components/calendar-stylex/calendar-toolbar";
+import { createMonthView } from "@/components/calendar-stylex/month-view/month-view";
+import { createWeekView } from "@/components/calendar-stylex/time-grid-view/time-grid-view";
+
+const eventAdapter = defineEventAdapter<Meeting>()({
+  getId: (meeting) => meeting.id,
+  getTitle: (meeting) => meeting.title,
+  getInterval: (meeting) => ({ kind: "timed", start: meeting.start, end: meeting.end }),
+  getResourceIds: () => [],
+});
+
+const Calendar = createCalendar<Meeting>()({
+  eventAdapter,
+  views: [createWeekView<Meeting>(), createMonthView<Meeting>()],
+});
+
+const styles = stylex.create({
+  frame: { display: "flex", flexDirection: "column", height: 640 },
+  viewport: { flexGrow: 1, minHeight: 0 },
+});
+
+export function TeamCalendar({ meetings }: { readonly meetings: readonly Meeting[] }) {
+  return (
+    <Calendar.Root
+      events={meetings}
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="Europe/Berlin"
+      locale="en-US"
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Calendar.Frame {...stylex.props(styles.frame)}>
+        <CalendarToolbar calendar={Calendar} />
+        <Calendar.Viewport {...stylex.props(styles.viewport)}>
+          <Calendar.ActiveView />
+        </Calendar.Viewport>
+      </Calendar.Frame>
+    </Calendar.Root>
+  );
+}
+```
+
+## Change the tokens
+
+The tokens have the names in [Theming](/docs/theming#tokens), as keys of `calendarVars`:
+`calendarVars["--calendar-today"]` is `var(--calendar-today)`. Override them on a part of the page
+with `stylex.createTheme`, and apply the theme on a wrapper. One value covers both modes through
+`light-dark()`, which takes only colors:
+
+```tsx
+import * as stylex from "@stylexjs/stylex";
+
+import { calendarVars } from "@/components/calendar-stylex/calendar-tokens.stylex";
+
+const calendarTheme = stylex.createTheme(calendarVars, {
+  "--calendar-today": "light-dark(oklch(0.55 0.17 150), oklch(0.72 0.15 150))",
+  "--calendar-hour-height": "4rem",
+});
+
+<div {...stylex.props(calendarTheme)}>
+  <TeamCalendar meetings={meetings} />
+</div>;
+```
+
+The base colors, such as `--background` and `--primary`, read the tokens of the root Astryx theme, so
+a theme of yours flows in with no change here. They fall back to the values of `calendar-theme.css`
+without one.
+
+Tokens are resolved where they're declared, on `:root`. So a wrapper that overrides `--primary`
+doesn't change `--calendar-event-border`, which reads `var(--primary)`: restate it in the same
+theme. The [Theme builder](/docs/theme-builder#use-the-stylex-theme) does this for you, and lets you
+try a theme and copy it.
+
+Popovers and tooltips open in a portal under `<body>`, outside a wrapper. To theme them too, put the
+theme's class on `<body>`, or pass your wrapper to the portal's `container` in the source you own.
+
+`--calendar-surface` is no token. It's unset, and the views read it through a constant, for a
+container with its own background to set in an inline `style`, as on
+[Theming](/docs/theming#changing-tokens).
+
+## Override a component's styles
+
+The components take `xstyle` beside `className` and `style`, for styles of your own. They win over
+the component's:
+
+```tsx
+const styles = stylex.create({
+  toolbar: { paddingBlock: "1rem" },
+});
+
+<CalendarToolbar calendar={Calendar} xstyle={styles.toolbar} />;
+```
+
+## Event colors
+
+Views take `getEventColor`, and the names are the same nine, as in
+[Choosing a color per event](/docs/theming#choosing-a-color-per-event). Each color has three tokens
+of its own, in place of the baseline's hue and chroma: `--calendar-event-blue`,
+`--calendar-event-blue-foreground` and `--calendar-event-blue-border`. Override them with
+`createTheme` like any other:
+
+```tsx
+const calendarTheme = stylex.createTheme(calendarVars, {
+  "--calendar-event-blue": "light-dark(oklch(0.92 0.06 240), oklch(0.35 0.08 240))",
+});
+```
+
+`eventColorStyles` in `event-color-styles.ts` points an element's `--calendar-event` tokens at one
+color, and `data-color` stays on the element as a hook for your own CSS. To add a color, add its
+name to `event-colors.ts`, its tokens to `calendar-tokens.stylex.ts`, and an entry to
+`eventColorStyles`.
+
+## Next.js
+
+The demo and CI exercise this flavour under Vite, and not under Next.js. Astryx's
+[`example-nextjs-stylex`](https://github.com/meta/astryx/tree/main/apps/example-nextjs-stylex) shows
+the setup for Next.js: `@stylexjs/babel-plugin` in `babel.config.js` with the `@/*` alias, and
+`@stylexjs/postcss-plugin` with `useCSSLayers.before` naming Astryx's layers, with `@stylex;` at the
+end of the global CSS.
+
+## What's different from the baseline
+
+- Base UI stays, unstyled, under the parts that need its focus handling or anchoring where Astryx has
+  no equal: the recurrence scope dialog, the undo toast, the year view's day popover, and some
+  tooltips and popovers in the views. An item lists `@base-ui/react` when it uses it.
+- StyleX's classes have the same specificity as a global `[data-slot]` rule, and come after your
+  CSS. So a rule of yours that sets a property a view's styles also set, such as an
+  [Availability](/docs/availability) recipe's background color, needs a stronger selector:
+  `[data-slot="time-grid-unavailable"][data-slot]`. Or use `xstyle` or the tokens.
+- A fix to a view goes to both flavours. You get it the way you do for the baseline, by running
+  `shadcn add` for the item again, which asks before it replaces a file you changed.

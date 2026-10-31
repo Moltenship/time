@@ -1,0 +1,67 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-time-grid-view",
+  "type": "registry:component",
+  "title": "Week and day views (StyleX)",
+  "description": "Google Calendar-style week, 3-day and day time grids: day headers with today highlighted, all-day lanes that collapse to +N, an hour gutter with optional secondary time zones, overlapping events side by side, in equal lanes or stacked, daylight-saving gaps and folds, a now-line, and a rail of read-only annotations (listening sessions, sleep, workouts) beside events.",
+  "dependencies": [
+    "@astryxdesign/core",
+    "@base-ui/react",
+    "@moltenship/calendar",
+    "@stylexjs/stylex",
+    "lucide-react"
+  ],
+  "registryDependencies": ["@moltenship/stylex-calendar", "@moltenship/stylex-calendar-theme"],
+  "files": [
+    {
+      "path": "registry/stylex-time-grid-view/time-grid-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-view.tsx"
+    },
+    {
+      "path": "registry/stylex-time-grid-view/time-grid-header.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-header.tsx"
+    },
+    {
+      "path": "registry/stylex-time-grid-view/time-grid-all-day.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-all-day.tsx"
+    },
+    {
+      "path": "registry/stylex-time-grid-view/time-grid-body.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-body.tsx"
+    },
+    {
+      "path": "registry/stylex-time-grid-view/time-grid-column.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-column.tsx"
+    },
+    {
+      "path": "registry/stylex-time-grid-view/time-grid-availability.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-availability.tsx"
+    },
+    {
+      "path": "registry/stylex-time-grid-view/time-grid-event.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-event.tsx"
+    },
+    {
+      "path": "registry/stylex-time-grid-view/time-grid-annotations.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-annotations.tsx"
+    },
+    {
+      "path": "registry/stylex-time-grid-view/time-grid-zones.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-zones.tsx"
+    },
+    {
+      "path": "registry/stylex-time-grid-view/annotation-label.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/time-grid-view/annotation-label.ts"
+    }
+  ]
+}

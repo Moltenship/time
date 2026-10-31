@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-month-view",
+  "type": "registry:component",
+  "title": "Month view (StyleX)",
+  "description": "Google Calendar-style month grid: multi-day bars with continuation ends, timed events as dot, time, and title, lane counts that follow the cell height, and a \"+N more\" popover per day.",
+  "dependencies": ["@base-ui/react", "@moltenship/calendar", "@stylexjs/stylex", "lucide-react"],
+  "registryDependencies": ["@moltenship/stylex-calendar", "@moltenship/stylex-calendar-theme"],
+  "files": [
+    {
+      "path": "registry/stylex-month-view/month-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/month-view/month-view.tsx"
+    },
+    {
+      "path": "registry/stylex-month-view/month-week.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/month-view/month-week.tsx"
+    },
+    {
+      "path": "registry/stylex-month-view/month-event.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/month-view/month-event.tsx"
+    }
+  ]
+}

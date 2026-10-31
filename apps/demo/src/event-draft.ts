@@ -1,6 +1,6 @@
 import type { CalendarEventInterval } from "@moltenship/calendar";
 
-import type { DemoEvent, DemoOccurrence } from "./calendar";
+import type { DemoEvent, DemoOccurrence } from "./demo-model";
 import type { DemoCalendarId } from "./calendars";
 import { noRepeat, repeatFromRule, ruleFromRepeat, seriesDate, type RepeatDraft } from "./repeat";
 import type { DemoResourceId } from "./resources";

@@ -1,7 +1,7 @@
 import { Accessibility } from "@dnd-kit/dom";
 import { calendarEventOf, isCalendarTarget } from "@moltenship/calendar-dnd-kit";
 
-import type { DemoOccurrence } from "./calendar";
+import type { DemoOccurrence } from "./demo-model";
 import type { DemoTask } from "./tasks";
 
 /** A draggable or droppable, as dnd-kit's announcements see it. */

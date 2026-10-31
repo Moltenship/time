@@ -167,6 +167,9 @@ The toolbar's buttons use shadcn's tooltip, so wrap your app in `TooltipProvider
 </Step>
 </Steps>
 
+For an app on StyleX and Astryx rather than Tailwind, every item has a `stylex-` version; see
+[StyleX](/docs/stylex).
+
 The theme's tokens and rules go into your global CSS inside `@layer base`, so your own rules win
 over them. Each `shadcn add` writes that block again, so change tokens in your own rules instead,
 as [Theming](/docs/theming#changing-tokens) shows. Run `shadcn add` again to update the files: it

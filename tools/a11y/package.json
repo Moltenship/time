@@ -8,16 +8,20 @@
     "test": "vp test"
   },
   "dependencies": {
+    "@astryxdesign/core": "catalog:",
+    "@astryxdesign/theme-neutral": "catalog:",
     "@dnd-kit/dom": "catalog:",
     "@dnd-kit/react": "catalog:",
     "@moltenship/calendar": "workspace:*",
     "@moltenship/calendar-dnd-kit": "workspace:*",
     "@moltenship/calendar-recurrence": "workspace:*",
+    "@stylexjs/stylex": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:"
   },
   "devDependencies": {
     "@moltenship/calendar-testing": "workspace:*",
+    "@stylexjs/unplugin": "catalog:",
     "@tailwindcss/vite": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",

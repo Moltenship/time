@@ -1,0 +1,586 @@
+"use client";
+
+import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
+import {
+  defineCalendarView,
+  eventDateRanges,
+  plainDateIntervalContains,
+  sameFocus,
+  useAnchorDateRequests,
+  scrollingTimeGridStrategy,
+  timeGridPosition,
+  timeGridTitle,
+  useCalendarAnnouncer,
+  useCalendarFocus,
+  useCalendarPointer,
+  useNow,
+  type CalendarFocus,
+  type CalendarViewRendererProps,
+  type PlainDateInterval,
+  type TimeGridProjection,
+  type TimeGridSpan,
+} from "@moltenship/calendar";
+import * as stylex from "@stylexjs/stylex";
+import {
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+  type Ref,
+} from "react";
+
+import { useEventLabel } from "@registry/stylex-calendar/event-label";
+import {
+  epochDay,
+  fromEpochDay,
+  ScrollSnapPoints,
+  useScrollingAxis,
+} from "@registry/stylex-calendar/scrolling-axis";
+import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
+import { annotationFormats } from "@registry/stylex-time-grid-view/annotation-label";
+import {
+  AllDayRowHeader,
+  TimeGridAllDayCells,
+  useAllDayCollapse,
+} from "@registry/stylex-time-grid-view/time-grid-all-day";
+import {
+  DEFAULT_COLUMN_HEIGHT,
+  TimeGridAnnotationOverlays,
+  useAnnotationHandles,
+  useTimeGridAnnotationLayout,
+} from "@registry/stylex-time-grid-view/time-grid-annotations";
+import { TimeGridHours, useHeightObserver } from "@registry/stylex-time-grid-view/time-grid-body";
+import {
+  TimeGridColumn,
+  useTimeGridColumnFormats,
+} from "@registry/stylex-time-grid-view/time-grid-column";
+import { offsetLabel, TimeGridDayHeaders } from "@registry/stylex-time-grid-view/time-grid-header";
+import type { TimeGridViewOptions } from "@registry/stylex-time-grid-view/time-grid-view";
+import {
+  gutterColumn,
+  gutterStyle,
+  TimeGridGutterLabels,
+  timeGridGutterClassName,
+  useTimeGridZones,
+} from "@registry/stylex-time-grid-view/time-grid-zones";
+import {
+  calendarConsts,
+  calendarGridMarker,
+  calendarVars,
+} from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
+
+import {
+  useDaysFollower,
+  useOpeningTime,
+  useStickyHeaderPadding,
+} from "./scrolling-time-grid-scroll";
+
+const styles = stylex.create({
+  body: {
+    display: "flex",
+    height: `calc(${calendarVars["--calendar-hour-height"]} * 24)`,
+  },
+  columns: {
+    display: "grid",
+    flex: "1",
+  },
+  corner: {
+    alignItems: "flex-end",
+    color: calendarVars["--calendar-axis"],
+    display: "flex",
+    fontSize: "0.625rem",
+    paddingBottom: "0.25rem",
+  },
+  days: {
+    "::-webkit-scrollbar": { display: "none" },
+    flex: "1",
+    minWidth: 0,
+    overflowX: "auto",
+    overflowY: "hidden",
+    overscrollBehaviorX: "contain",
+    scrollSnapType: {
+      default: "x mandatory",
+      [stylex.when.ancestor("[data-interaction]", calendarGridMarker)]: "none",
+    },
+    scrollbarWidth: "none",
+  },
+  following: {
+    display: "flex",
+    flex: "1",
+    minWidth: 0,
+    overflow: "clip",
+  },
+  grid: {
+    "--calendar-ghost-background": calendarVars["--calendar-selection"],
+    cursor: {
+      default: null,
+      '[data-interaction="move"]': "grabbing",
+      '[data-interaction="resize"]': "ns-resize",
+    },
+    display: "flex",
+    flexDirection: "column",
+    height: "100%",
+    minHeight: 0,
+    WebkitUserSelect: { default: null, "[data-interaction]": "none" },
+    userSelect: { default: null, "[data-interaction]": "none" },
+  },
+  gridEditable: {
+    WebkitTouchCallout: { default: null, "@media (pointer: coarse)": "none" },
+    WebkitUserSelect: {
+      default: null,
+      "@media (pointer: coarse)": "none",
+      "[data-interaction]": "none",
+    },
+    userSelect: {
+      default: null,
+      "@media (pointer: coarse)": "none",
+      "[data-interaction]": "none",
+    },
+  },
+  gutter: {
+    backgroundColor: calendarConsts.surface,
+    flexShrink: 0,
+    width: "var(--calendar-gutter-width)",
+  },
+  header: {
+    backgroundColor: calendarConsts.surface,
+    borderBottomColor: calendarVars["--calendar-grid"],
+    borderBottomStyle: "solid",
+    borderBottomWidth: 1,
+    position: "sticky",
+    top: 0,
+    zIndex: 30,
+  },
+  row: {
+    display: "flex",
+  },
+  track: {
+    flex: "none",
+    height: "100%",
+    position: "relative",
+  },
+  trackDays: {
+    display: "flex",
+    height: "100%",
+  },
+  viewport: {
+    containerType: "inline-size",
+    flex: "1",
+    minHeight: 0,
+    overflowX: "hidden",
+    overflowY: "auto",
+    overscrollBehaviorX: "contain",
+    position: "relative",
+    scrollPaddingTop: "var(--calendar-header-height)",
+    scrollbarGutter: "stable",
+  },
+});
+
+/** Pointer and keyboard both step by these slots, so they reach the same times. */
+const snap = { increment: 15, smallestUnit: "minute" } as const;
+/** One day's width: the viewport past the hour gutter, shared by the visible days. */
+const DAY = "var(--calendar-day-width)";
+/** Pages with snap points either way of the range, past any a swipe reaches before it renders. */
+const SNAP_PAGES = 6;
+export type ScrollingTimeGridViewProps<TEvent> = CalendarViewRendererProps<
+  TimeGridProjection<TEvent>,
+  TimeGridViewOptions<TEvent>
+>;
+
+/**
+ * Focus on an all-day bar from a day outside the visible ones, moved to the visible day nearest
+ * it that the bar covers; `null` when there's nothing to move. The bar renders from the visible
+ * days once its focused day scrolls away, either way, so focus on it has to follow.
+ */
+function barFocusInView(
+  focus: CalendarFocus | null,
+  row: TimeGridProjection<unknown>["allDay"],
+  visible: PlainDateInterval,
+  timeZone: string,
+): CalendarFocus | null {
+  if (focus?.kind !== "event" || plainDateIntervalContains(visible, focus.date)) return null;
+  const before = Temporal.PlainDate.compare(focus.date, visible.start) < 0;
+  const lastVisible = visible.end.subtract({ days: 1 });
+  for (const { column, event, span } of row.segments) {
+    if (event.id !== focus.eventId) continue;
+    const first = row.range.start.add({ days: column });
+    const last = first.add({ days: span - 1 });
+    const target = before
+      ? Temporal.PlainDate.compare(first, visible.start) > 0
+        ? first
+        : visible.start
+      : Temporal.PlainDate.compare(last, lastVisible) < 0
+        ? last
+        : lastVisible;
+    if (!plainDateIntervalContains(visible, target)) continue;
+    // Segments are clipped to the loaded days, so the event's own dates decide what it covered:
+    // one run of local dates through both days, which a fold at midnight can start a day early.
+    const [from, to] = before ? [focus.date, target] : [target, focus.date];
+    const continuous = eventDateRanges(event, timeZone).some(
+      ({ first: runFirst, last: runLast }) =>
+        Temporal.PlainDate.compare(runFirst, from) <= 0 &&
+        Temporal.PlainDate.compare(to, runLast) <= 0,
+    );
+    if (continuous) return { ...focus, date: target };
+  }
+  return null;
+}
+
+/** A row's days across the canvas, with `children` at `start`. */
+function Track({
+  children,
+  count,
+  overlay,
+  ref,
+  start,
+  strip,
+  style,
+}: {
+  readonly children: ReactNode;
+  /** Days the canvas holds. */
+  readonly count: number;
+  /** Positioned over the whole track, such as its snap points. */
+  readonly overlay?: ReactNode;
+  /** The element `count` days wide. */
+  readonly ref?: Ref<HTMLDivElement>;
+  /** Days from the canvas's start to the first rendered one; negative before it is extended. */
+  readonly start: number;
+  /** Days rendered. */
+  readonly strip: number;
+  readonly style?: CSSProperties;
+}) {
+  return (
+    <div
+      ref={ref}
+      {...stylex.props(styles.track)}
+      style={{ ...style, width: `calc(${count} * ${DAY})` }}
+    >
+      {overlay}
+      <div
+        {...stylex.props(styles.trackDays)}
+        style={{ marginInlineStart: `calc(${start} * ${DAY})`, width: `calc(${strip} * ${DAY})` }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Day columns that scroll sideways without end, a page at a time, as in Apple's Calendar on
+ * iPad: a week swipes to the next week, three days to the next three, and a day to the next day,
+ * and the calendar's range follows. The header, all-day row, and hour gutter stay in place while the
+ * days scroll under them. A page of days on each side is rendered with its events, and keys,
+ * dragging, and creating work as in `TimeGridView`.
+ *
+ * The hours and the days scroll in two elements, one inside the other, so a swipe moves one of
+ * them, whichever way it starts: Safari on iOS locks no direction in an element that scrolls both
+ * ways, where a swipe down would also page the days. The header follows the days by a transform
+ * that a scroll timeline drives.
+ */
+export function ScrollingTimeGridView<TEvent>({
+  actions,
+  environment,
+  events,
+  isReadOnly,
+  loadRange,
+  options,
+  projection,
+  range,
+}: ScrollingTimeGridViewProps<TEvent>) {
+  const { days } = projection;
+  const { direction, locale, timeZone } = environment;
+  const visibleDays = range.start.until(range.end).days;
+  const columns = useMemo(() => days.map(({ column }) => column), [days]);
+  // The gutter reads each secondary zone on a visible day, not on the pages rendered beside them.
+  const zones = useTimeGridZones(environment, columns, range);
+  const first = epochDay(range.start);
+  // Scrolls the hours; the days scroll sideways in `axis.scrollRef`, inside it.
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const axis = useScrollingAxis({
+    axis: "inline",
+    first,
+    onScroll: (day) => actions.setAnchorDate(fromEpochDay(day)),
+    page: visibleDays,
+    rtl: direction === "rtl",
+    // Whole pages from the range, so a week stays a calendar week and three days move three.
+    snapTo: (day) => first + Math.round((day - first) / visibleDays) * visibleDays,
+  });
+  // Today and Next can ask for the range the view already has while a scroll runs ahead of it.
+  useAnchorDateRequests((_, requested) => {
+    if (requested !== null) axis.request(epochDay(requested.start));
+  });
+  const start = epochDay((loadRange ?? range).start) - axis.base;
+
+  // Pointer drags speak through the same messages as the keyboard, and the drag preview labels
+  // the proposed range in the calendar's locale.
+  const announcer = useCalendarAnnouncer();
+  const pointerRef = useCalendarPointer({
+    announcer,
+    check: actions.checkEventChange,
+    columns,
+    disabled: isReadOnly,
+    events,
+    onPropose: actions.proposeEventChange,
+    scrollContainer: viewportRef,
+    sidewaysScrollContainer: axis.scrollRef,
+    snap,
+    timeZone,
+  });
+  const keyboard = useViewKeyboard({ snap });
+
+  // Merging and lane packing use drawn sizes, so they follow the body's measured height.
+  const [columnHeight, setColumnHeight] = useState(DEFAULT_COLUMN_HEIGHT);
+  const bodyRef = useHeightObserver(setColumnHeight);
+  const annotationLayout = useTimeGridAnnotationLayout(columns, options.annotations, {
+    columnHeight,
+    dense: visibleDays > 1,
+  });
+  const annotationHandles = useAnnotationHandles();
+  const formats = useMemo(() => annotationFormats(locale, timeZone), [locale, timeZone]);
+  const annotations = useMemo(
+    () =>
+      annotationLayout.enabled
+        ? { formats, handles: annotationHandles, layout: annotationLayout }
+        : undefined,
+    [annotationHandles, annotationLayout, formats],
+  );
+
+  const labelEvent = useEventLabel(environment, options.describeEvent);
+  const columnFormats = useTimeGridColumnFormats(locale);
+  const formatDate = useMemo(() => {
+    const format = new Intl.DateTimeFormat(locale, { dateStyle: "full" });
+    return (date: Temporal.PlainDate) => format.format(date);
+  }, [locale]);
+  const { dayView } = options;
+  const openDay =
+    dayView === undefined || visibleDays === 1
+      ? undefined
+      : (date: Temporal.PlainDate) => {
+          actions.setAnchorDate(date);
+          actions.setView(dayView);
+        };
+
+  const allDayRows = useMemo(() => [{ row: projection.allDay }], [projection.allDay]);
+  const collapse = useAllDayCollapse(days, allDayRows);
+  // A bar keeps focus as its focused day scrolls away, on the visible day nearest it.
+  const focusOnBar = useCalendarFocus(
+    (focus) => barFocusInView(focus, projection.allDay, range, timeZone),
+    { isEqual: sameFocus },
+  );
+  useLayoutEffect(() => {
+    if (focusOnBar !== null) actions.setFocus(focusOnBar);
+  }, [actions, focusOnBar]);
+  const now = useNow();
+  const nowPosition = useMemo(
+    () => (now === null ? null : timeGridPosition(columns, now)),
+    [columns, now],
+  );
+  const headerRef = useStickyHeaderPadding(viewportRef);
+  const followDays = useDaysFollower(axis.scrollRef, direction === "rtl");
+  useOpeningTime({
+    bodyRef,
+    headerRef,
+    now,
+    nowTop: nowPosition?.top ?? null,
+    scrollRef: viewportRef,
+  });
+
+  const placed = { count: axis.count, start, strip: days.length };
+  const firstShown = days.find(({ column }) => column.date.equals(range.start)) ?? days[0];
+  const corner = gutterColumn(columns, zones, firstShown?.column);
+  const gridProps = stylex.props(
+    styles.grid,
+    calendarGridMarker,
+    // A long-press on a touch screen picks events up: it selects no text and opens no callout.
+    !isReadOnly && styles.gridEditable,
+  );
+
+  return (
+    <>
+      {/* Rows: day headers, all-day events, and the timed day columns; each starts with a gutter cell. */}
+      <div
+        ref={pointerRef}
+        role="grid"
+        aria-label={timeGridTitle(range, locale)}
+        {...keyboard}
+        data-slot="scrolling-time-grid"
+        dir={direction}
+        className={`${gridProps.className} ${timeGridGutterClassName}`}
+        style={gutterStyle(zones)}
+      >
+        <div
+          ref={viewportRef}
+          data-slot="scrolling-time-grid-viewport"
+          {...stylex.props(styles.viewport)}
+          style={
+            {
+              "--calendar-day-width": `calc((100cqw - var(--calendar-gutter-width)) / ${visibleDays})`,
+            } as CSSProperties
+          }
+        >
+          <div
+            ref={headerRef}
+            data-slot="scrolling-time-grid-header"
+            {...stylex.props(styles.header)}
+          >
+            {/* Days scroll beneath it, so the pointer layer doesn't look through it to them. */}
+            <div role="row" data-occludes="" {...stylex.props(styles.row)}>
+              <div role="columnheader" {...stylex.props(styles.gutter, styles.corner)}>
+                <TimeGridGutterLabels
+                  offset={corner === undefined ? undefined : offsetLabel(locale, timeZone, corner)}
+                  zones={zones}
+                />
+              </div>
+              {/* The days follow the scroll below by transform; nothing can scroll them here. */}
+              <div {...stylex.props(styles.following)}>
+                <Track {...placed} ref={followDays}>
+                  <TimeGridDayHeaders
+                    actions={actions}
+                    annotations={annotations}
+                    days={days}
+                    dayView={dayView}
+                    environment={environment}
+                    shown={range}
+                    single={visibleDays === 1}
+                    zones={zones}
+                  />
+                </Track>
+              </div>
+            </div>
+            <div role="row" {...stylex.props(styles.row)} style={{ height: collapse.height }}>
+              <div data-occludes="" {...stylex.props(styles.gutter)}>
+                <AllDayRowHeader collapse={collapse} />
+              </div>
+              <div {...stylex.props(styles.following)}>
+                <Track {...placed} ref={followDays}>
+                  <TimeGridAllDayCells
+                    days={days}
+                    formatDate={formatDate}
+                    getEventColor={options.getEventColor}
+                    getEventIcon={options.getEventIcon}
+                    labelEvent={labelEvent}
+                    onExpand={collapse.expand}
+                    onOpenDay={openDay}
+                    overflow={collapse.overflows[0]!}
+                    row={projection.allDay}
+                    shown={range}
+                  />
+                </Track>
+              </div>
+            </div>
+          </div>
+          <div ref={bodyRef} role="row" {...stylex.props(styles.body)}>
+            <div role="rowheader" data-occludes="" {...stylex.props(styles.gutter)}>
+              <VisuallyHidden>Timed events</VisuallyHidden>
+              <TimeGridHours locale={locale} zones={zones} />
+            </div>
+            {/* The days scroll sideways only, a page at a time; it has no scrollbar to drag. */}
+            <div
+              ref={axis.scrollRef}
+              data-slot="scrolling-time-grid-days"
+              {...stylex.props(styles.days)}
+            >
+              <Track
+                {...placed}
+                overlay={
+                  <ScrollSnapPoints
+                    axis="inline"
+                    base={axis.base}
+                    points={Array.from(
+                      { length: 2 * SNAP_PAGES + 1 },
+                      (_, index) => first + (index - SNAP_PAGES) * visibleDays,
+                    )}
+                    size={DAY}
+                  />
+                }
+                ref={axis.trackRef}
+                style={{
+                  // Hour lines, and day lines past the rendered days during a long swipe.
+                  backgroundImage: `linear-gradient(to bottom, var(--calendar-grid) 1px, transparent 1px), linear-gradient(to ${direction === "rtl" ? "left" : "right"}, var(--calendar-grid) 1px, transparent 1px)`,
+                  backgroundSize: `100% var(--calendar-hour-height), ${DAY} 100%`,
+                  // Day lines start at the first rendered day: each tile's length is rounded to
+                  // layout units, an error that tiling from the canvas's start would grow into
+                  // lines pixels off the days.
+                  backgroundPosition: `0 0, ${direction === "rtl" ? "right" : "left"} calc(${start} * ${DAY}) top 0`,
+                }}
+              >
+                <div
+                  {...stylex.props(styles.columns)}
+                  style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+                >
+                  {days.map((day, index) => (
+                    <TimeGridColumn
+                      key={day.column.key}
+                      annotations={
+                        annotations === undefined
+                          ? undefined
+                          : { ...annotations, marks: annotations.layout.columns[index] ?? [] }
+                      }
+                      day={day}
+                      formats={columnFormats}
+                      getEventColor={options.getEventColor}
+                      getEventIcon={options.getEventIcon}
+                      isReadOnly={isReadOnly}
+                      labelEvent={labelEvent}
+                      nowTop={nowPosition?.column === index ? nowPosition.top : null}
+                      offscreen={!plainDateIntervalContains(range, day.column.date)}
+                      onOpenDay={openDay}
+                      renderUnavailable={options.renderUnavailable}
+                      slotMinutes={snap.increment}
+                      timeZone={timeZone}
+                      zones={zones}
+                    />
+                  ))}
+                </div>
+              </Track>
+            </div>
+          </div>
+        </div>
+      </div>
+      {/* Outside the grid: an open popover's Base UI internals must not become grid children. */}
+      {annotations !== undefined && (
+        <TimeGridAnnotationOverlays formatTime={formats.time} handles={annotationHandles} />
+      )}
+    </>
+  );
+}
+
+function scrollingTimeGridView<const TName extends string, TEvent>(
+  name: TName,
+  span: TimeGridSpan,
+  defaultOptions: TimeGridViewOptions<TEvent>,
+) {
+  return defineCalendarView({
+    defaultOptions,
+    name,
+    strategy: scrollingTimeGridStrategy<TimeGridViewOptions<TEvent>, TEvent>(span),
+    Renderer: ScrollingTimeGridView<TEvent>,
+  });
+}
+
+/**
+ * The anchor's week, starting on `weekRules.firstDay`, swiping to the week before or after,
+ * named `scrolling-week`. Previous and Next move a week, and Today shows today's week.
+ */
+export function createScrollingWeekView<TEvent = unknown>(
+  defaultOptions: TimeGridViewOptions<TEvent> = {},
+) {
+  return scrollingTimeGridView("scrolling-week", { kind: "week" }, defaultOptions);
+}
+
+/** The anchor date, swiping to the day before or after, named `scrolling-day`. */
+export function createScrollingDayView<TEvent = unknown>(
+  defaultOptions: TimeGridViewOptions<TEvent> = {},
+) {
+  return scrollingTimeGridView("scrolling-day", { count: 1, kind: "days" }, defaultOptions);
+}
+
+/** Three days from the anchor date, swiping three at a time, named `scrolling-3-day`. */
+export function createScrollingThreeDayView<TEvent = unknown>(
+  defaultOptions: TimeGridViewOptions<TEvent> = {},
+) {
+  return scrollingTimeGridView("scrolling-3-day", { count: 3, kind: "days" }, defaultOptions);
+}

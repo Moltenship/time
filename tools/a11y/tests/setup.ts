@@ -1,8 +1,6 @@
 import { afterEach } from "vite-plus/test";
 import { cdp, server, userEvent } from "vite-plus/test/browser";
 
-import "./styles.css";
-
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
   /** Set by `vite.config.ts` when the run is on a GitHub runner. */

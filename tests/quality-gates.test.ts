@@ -40,6 +40,7 @@ const prGates = [
   "react:gate",
   "ssr:smoke",
   "registry:smoke",
+  "registry:stylex",
   "package:graph",
   "a11y",
 ] as const;

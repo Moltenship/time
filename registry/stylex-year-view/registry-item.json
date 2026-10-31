@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-year-view",
+  "type": "registry:component",
+  "title": "Year view (StyleX)",
+  "description": "A year at a glance: twelve month grids with today circled and a dot for each event colour on a day, a popover listing a day's events, and links into the day and month views.",
+  "dependencies": ["@base-ui/react", "@moltenship/calendar", "@stylexjs/stylex"],
+  "registryDependencies": ["@moltenship/stylex-calendar", "@moltenship/stylex-calendar-theme"],
+  "files": [
+    {
+      "path": "registry/stylex-year-view/year-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/year-view/year-view.tsx"
+    },
+    {
+      "path": "registry/stylex-year-view/year-month.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/year-view/year-month.tsx"
+    },
+    {
+      "path": "registry/stylex-year-view/year-day-popover.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/year-view/year-day-popover.tsx"
+    }
+  ]
+}

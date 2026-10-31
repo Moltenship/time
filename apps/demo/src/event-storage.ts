@@ -7,7 +7,7 @@ import {
   type RecurrencePeriod,
 } from "@moltenship/calendar-recurrence";
 
-import type { DemoEvent } from "./calendar";
+import type { DemoEvent } from "./demo-model";
 import { isDemoCalendarId } from "./calendars";
 import { readRule } from "./repeat";
 import { isDemoResourceId } from "./resources";

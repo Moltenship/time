@@ -9,8 +9,10 @@
     "test": "vp test"
   },
   "dependencies": {
+    "@astryxdesign/core": "catalog:",
     "@base-ui/react": "catalog:",
     "@moltenship/calendar": "workspace:*",
+    "@stylexjs/stylex": "catalog:",
     "@tanstack/react-virtual": "catalog:",
     "class-variance-authority": "catalog:",
     "cn": "catalog:",
@@ -19,6 +21,7 @@
   },
   "devDependencies": {
     "@moltenship/calendar-testing": "workspace:*",
+    "@stylexjs/unplugin": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "jsdom": "catalog:",

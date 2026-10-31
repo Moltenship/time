@@ -1,0 +1,20 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-scrolling-month-view",
+  "type": "registry:component",
+  "title": "Scrolling month view (StyleX)",
+  "description": "A month of weeks that scrolls up and down without end and comes to rest on a week: rows share the height, the month most of the third row falls in names the view, and weeks a page either side render with their events, \"+N more\" popovers, drag and keys.",
+  "dependencies": ["@moltenship/calendar", "@stylexjs/stylex"],
+  "registryDependencies": [
+    "@moltenship/stylex-calendar",
+    "@moltenship/stylex-calendar-theme",
+    "@moltenship/stylex-month-view"
+  ],
+  "files": [
+    {
+      "path": "registry/stylex-scrolling-month-view/scrolling-month-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/scrolling-month-view/scrolling-month-view.tsx"
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-calendar-theme",
+  "type": "registry:component",
+  "title": "Calendar theme (StyleX)",
+  "description": "The calendar's tokens as StyleX variables, reading the Astryx theme around them, with the event colours and the few global rules for drag previews.",
+  "dependencies": ["@stylexjs/stylex"],
+  "files": [
+    {
+      "path": "registry/stylex-calendar-theme/calendar-tokens.stylex.ts",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/calendar-tokens.stylex.ts"
+    },
+    {
+      "path": "registry/stylex-calendar-theme/calendar-global.css",
+      "type": "registry:file",
+      "target": "@components/calendar-stylex/calendar-global.css"
+    },
+    {
+      "path": "registry/stylex-calendar-theme/event-color-styles.ts",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/event-color-styles.ts"
+    },
+    {
+      "path": "registry/stylex-calendar-theme/event-colors.ts",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/event-colors.ts"
+    },
+    {
+      "path": "registry/stylex-calendar-theme/xprops.ts",
+      "type": "registry:component",
+      "target": "@components/calendar-stylex/xprops.ts"
+    }
+  ]
+}

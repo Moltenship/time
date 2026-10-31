@@ -1,0 +1,55 @@
+/*
+ * The few rules StyleX can't write, as they select elements the app's source doesn't render: drag
+ * previews, which `@moltenship/calendar` makes, and icons an app passes to an event. Import it
+ * once, after the Astryx stylesheets.
+ */
+
+/*
+ * A drag preview the policies would reject or flag: outlined in dashes, so the state doesn't rest
+ * on colour alone, with a rejected range tinted. An outline, because the preview's own inline
+ * shadow would hide a ring.
+ */
+[data-calendar-ghost][data-invalid] {
+  outline: 2px dashed var(--calendar-invalid);
+  outline-offset: -2px;
+}
+
+[data-calendar-ghost="range"][data-invalid] {
+  --calendar-ghost-background: color-mix(in oklch, var(--calendar-invalid) 15%, transparent);
+}
+
+[data-calendar-ghost][data-warning] {
+  outline: 2px dashed var(--calendar-warning);
+  outline-offset: -2px;
+}
+
+/* A dragged bar's copy keeps its title at its start, not where the bar's pin had moved it. */
+[data-calendar-ghost] [data-slot="calendar-event-title"] {
+  transform: none !important;
+}
+
+/* An icon from `getEventIcon`, sized for the chip's text; a view sets the custom property. */
+[data-slot="calendar-event-icon"] svg {
+  flex-shrink: 0;
+  height: var(--calendar-event-icon-size, 0.75rem);
+  width: var(--calendar-event-icon-size, 0.75rem);
+}
+
+/* An icon an app passes to an annotation mark, sized for the mark. */
+[data-slot="annotation-mark-icon"] svg {
+  height: 62%;
+  width: 62%;
+}
+
+/*
+ * Reduced motion: the drag preview jumps between slots, and view transitions crossfade in place.
+ */
+@media (prefers-reduced-motion: reduce) {
+  [data-calendar-ghost] {
+    transition: none;
+  }
+
+  ::view-transition-group(*) {
+    animation: none;
+  }
+}

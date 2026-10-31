@@ -1,4 +1,4 @@
-import type { DemoEvent } from "./calendar";
+import type { DemoEvent } from "./demo-model";
 import type { DemoCalendarId } from "./calendars";
 
 /** Weeks of routine either way of this week: about a year. */

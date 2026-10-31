@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 
-import type { DemoEvent, DemoOccurrence } from "./calendar";
+import type { DemoEvent, DemoOccurrence } from "./demo-model";
 import { isDemoCalendarId, type DemoCalendarId } from "./calendars";
 import { isDemoResourceId, type DemoResourceId } from "./resources";
 import { isRecord, usePersistentState } from "./storage";
@@ -129,4 +129,14 @@ export function taskFromOccurrence(occurrence: DemoOccurrence): DemoTask | null 
     ...(resourceIds === undefined ? {} : { resourceIds }),
     title,
   };
+}
+
+/**
+ * Moves focus to a task's card, as after its event was unscheduled from the popover, once the card
+ * has rendered. Nothing happens where the list isn't shown, as on a phone.
+ */
+export function focusTask(id: string): void {
+  requestAnimationFrame(() => {
+    document.querySelector<HTMLElement>(`aside [data-task-id="${CSS.escape(id)}"]`)?.focus();
+  });
 }

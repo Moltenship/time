@@ -1,0 +1,22 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "stylex-calendar-full",
+  "type": "registry:item",
+  "title": "Calendar, every part (StyleX)",
+  "description": "Every calendar item, styled with StyleX and Astryx: the tokens, the shared parts, the month, week and day, agenda and year views, their scrolling versions, the resource columns and timeline views, the recurrence scope dialog and the undo toast. It owns no files; it installs the other items.",
+  "registryDependencies": [
+    "@moltenship/stylex-calendar-theme",
+    "@moltenship/stylex-calendar",
+    "@moltenship/stylex-month-view",
+    "@moltenship/stylex-time-grid-view",
+    "@moltenship/stylex-list-view",
+    "@moltenship/stylex-year-view",
+    "@moltenship/stylex-scrolling-month-view",
+    "@moltenship/stylex-scrolling-time-grid-view",
+    "@moltenship/stylex-scrolling-list-view",
+    "@moltenship/stylex-resource-columns-view",
+    "@moltenship/stylex-resource-timeline-view",
+    "@moltenship/stylex-recurrence-scope-dialog",
+    "@moltenship/stylex-calendar-history-toast"
+  ]
+}

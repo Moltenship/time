@@ -1,7 +1,7 @@
 import type { CalendarInputMethod } from "@moltenship/calendar";
 import { useCallback } from "react";
 
-import { DemoCalendar, type DemoOccurrence } from "./calendar";
+import type { DemoCalendarActions, DemoOccurrence } from "./demo-model";
 import { taskFromOccurrence, type DemoTaskList } from "./tasks";
 
 /** Events being unscheduled, whose deletes the undo history leaves out. */
@@ -21,15 +21,10 @@ export function isUnscheduling(eventId: string): boolean {
  * `onEventChange`, so it saves and shows pending like any other; the task shows at once, and goes
  * again if the delete doesn't save, unless the demo's data was reset meanwhile.
  */
-export function useUnschedule({
-  addTask,
-  removeTask,
-  resets,
-}: Pick<DemoTaskList, "addTask" | "removeTask" | "resets">): (
-  occurrence: DemoOccurrence,
-  input?: CalendarInputMethod,
-) => void {
-  const actions = DemoCalendar.useCalendarActions();
+export function useUnschedule(
+  actions: Pick<DemoCalendarActions, "proposeEventChange">,
+  { addTask, removeTask, resets }: Pick<DemoTaskList, "addTask" | "removeTask" | "resets">,
+): (occurrence: DemoOccurrence, input?: CalendarInputMethod) => void {
   return useCallback(
     (occurrence, input = "api") => {
       const task = taskFromOccurrence(occurrence);

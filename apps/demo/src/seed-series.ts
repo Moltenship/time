@@ -1,4 +1,4 @@
-import type { DemoEvent } from "./calendar";
+import type { DemoEvent } from "./demo-model";
 
 const workweek = (["MO", "TU", "WE", "TH", "FR"] as const).map((weekday) => ({ weekday }));
 

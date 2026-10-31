@@ -1,0 +1,10 @@
+@layer reset, astryx-base, astryx-theme;
+@import "@astryxdesign/core/reset.css";
+@import "@astryxdesign/core/astryx.css";
+@import "@astryxdesign/theme-neutral/theme.css";
+@import "../../../../registry/stylex-calendar-theme/calendar-global.css";
+@import "../annotation-marks.css";
+
+body {
+  background-color: var(--color-background-body);
+}

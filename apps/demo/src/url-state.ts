@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-import { DemoCalendar, type DemoView } from "./calendar";
+import { demoViewNames, type DemoView } from "./demo-model";
 
 export interface CalendarLocation {
   readonly date: Temporal.PlainDate;
@@ -8,7 +8,7 @@ export interface CalendarLocation {
 }
 
 function isDemoView(value: string | null): value is DemoView {
-  return DemoCalendar.views.some(({ name }) => name === value);
+  return demoViewNames.some((name) => name === value);
 }
 
 function parseDate(value: string | null): Temporal.PlainDate | undefined {

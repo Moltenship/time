@@ -194,6 +194,17 @@ test.each<View>(["week", "scrolling-week"])(
   "%s view: timed blocks, one-line blocks and all-day bars show the icon",
   async (view) => {
     const elements = await expectSameNamesWithIcons(view);
+
+    expect(
+      ariaLabel(elements.find((chip) => chip.getAttribute("data-event-id") === "standup")),
+    ).toBe("standup, Thursday, October 8, 9:00 – 9:30 AM");
+  },
+);
+
+test.each<View>(["week", "scrolling-week"])(
+  "%s view: icons sit in the clamped and truncated titles",
+  async (view) => {
+    const elements = await expectSameNamesWithIcons(view);
     const titleOf = (id: string) =>
       elements
         .find((chip) => chip.getAttribute("data-event-id") === id)!
@@ -204,9 +215,6 @@ test.each<View>(["week", "scrolling-week"])(
     expect(titleOf("planning").className).toContain("line-clamp-2");
     expect(titleOf("standup").parentElement!.className).toContain("truncate");
     expect(titleOf("trip").className).toContain("truncate");
-    expect(
-      ariaLabel(elements.find((chip) => chip.getAttribute("data-event-id") === "standup")),
-    ).toBe("standup, Thursday, October 8, 9:00 – 9:30 AM");
   },
 );
 

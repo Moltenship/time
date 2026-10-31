@@ -5,7 +5,13 @@ import { join, resolve } from "node:path";
 import { afterAll, beforeAll, describe, expect, test } from "vite-plus/test";
 
 import { buildRegistry } from "../src/build";
-import { checkBuiltRegistry, clientBoundaryIssue, fullItemName } from "../src/check";
+import {
+  checkBuiltRegistry,
+  clientBoundaryIssue,
+  fullItemName,
+  stylexFullItemName,
+  stylexItemPrefix,
+} from "../src/check";
 import {
   describeIncompatibility,
   findIncompatibleItems,
@@ -69,9 +75,23 @@ describe("registry build", () => {
     );
   });
 
+  test("stylex-calendar-full owns no files and installs every StyleX item", async () => {
+    const full = await readItem(stylexFullItemName);
+    const others = manifest.items.filter(
+      ({ name }) => name !== stylexFullItemName && name.startsWith(stylexItemPrefix),
+    );
+
+    expect(full.files ?? []).toEqual([]);
+    expect([...(full.registryDependencies ?? [])].sort()).toEqual(
+      others.map(({ name }) => `${baseUrl}/${name}.json`).sort(),
+    );
+  });
+
   test("calendar-full owns no files and installs every other item", async () => {
     const full = await readItem(fullItemName);
-    const others = manifest.items.filter(({ name }) => name !== fullItemName);
+    const others = manifest.items.filter(
+      ({ name }) => name !== fullItemName && !name.startsWith(stylexItemPrefix),
+    );
 
     expect(full.files ?? []).toEqual([]);
     expect([...(full.registryDependencies ?? [])].sort()).toEqual(
@@ -197,7 +217,12 @@ describe("registry build", () => {
     expect(installation).toContain(
       `npx shadcn@latest add ${defaultRegistryBaseUrl}/${fullItemName}.json`,
     );
-    for (const name of names) expect(installation).toContain(`| \`${name}\``);
+    for (const name of names) {
+      if (!name.startsWith(stylexItemPrefix)) expect(installation).toContain(`| \`${name}\``);
+    }
+    expect(await readFile(join(docs, "stylex.mdx"), "utf8")).toContain(
+      `npx shadcn@latest add ${defaultRegistryBaseUrl}/${stylexFullItemName}.json`,
+    );
 
     const pages = (await readdir(docs, { recursive: true })).filter((file) =>
       file.endsWith(".mdx"),

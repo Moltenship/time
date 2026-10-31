@@ -14,7 +14,7 @@ describe("shadcn registry validation", () => {
     const report = await validateRegistryWorkspace(workspaceRoot);
 
     expect(report.issues).toEqual([]);
-    expect(report.manifests).toBe(14);
+    expect(report.manifests).toBe(28);
   });
 
   test("accepts the target, dependency, CSS variable, and stylesheet contract", async () => {

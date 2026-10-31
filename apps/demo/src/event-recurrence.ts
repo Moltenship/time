@@ -1,4 +1,4 @@
-import type { DemoOccurrence } from "./calendar";
+import type { DemoOccurrence } from "./demo-model";
 import { dateOf, describeRule } from "./repeat";
 
 /**

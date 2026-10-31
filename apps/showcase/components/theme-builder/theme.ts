@@ -1,7 +1,7 @@
 /**
  * The theme builder's model of `calendar-theme.css`: its tokens and their light and dark values,
- * the event palette, and a closed-time shading recipe, with the CSS an app pastes in and the CSS
- * that styles the preview.
+ * the event palette, and a closed-time shading recipe, with the CSS or StyleX theme an app pastes
+ * in and the CSS that styles the preview.
  */
 
 export type Mode = "light" | "dark";
@@ -302,6 +302,121 @@ export function themeCss(source: ThemeSource, theme: Theme, { full = false } = {
   ].filter((part) => part !== "");
   return parts.length === 0
     ? "/* No changes: the theme is calendar-theme.css as it ships. */\n"
+    : `${parts.join("\n\n")}\n`;
+}
+
+/** One value for both modes, through `light-dark()` where they differ. */
+function sharedValue(light: string, dark: string): string {
+  return same(light, dark)
+    ? normalizeValue(light)
+    : `light-dark(${normalizeValue(light)}, ${normalizeValue(dark)})`;
+}
+
+const readsAny = (value: string, names: ReadonlySet<string>) =>
+  [...value.matchAll(/var\((--[\w-]+)/g)].some(([, name]) => names.has(name!));
+
+/** A `[data-color]` formula as one colour's value, with its hue and chroma in place. */
+function paletteValue(formula: string, { chroma, hue }: { chroma: number; hue: number }): string {
+  return normalizeValue(formula).replace(
+    /var\(--calendar-event-(chroma|hue)(?:\s*,[^()]*)?\)/g,
+    (_, part: string) => String(part === "hue" ? hue : chroma),
+  );
+}
+
+/**
+ * What the StyleX theme overrides, in the order of `calendar-tokens.stylex.ts`. `createTheme` sets
+ * variables on a wrapper, but a token that reads another was resolved on `:root` and inherits that
+ * result, so a token reading a changed one has to be restated beside it to follow.
+ */
+function stylexDeclarations(source: ThemeSource, theme: Theme, full: boolean): [string, string][] {
+  const names = new Set(
+    source.tokens
+      .filter(
+        ({ name }) =>
+          full ||
+          isTokenChanged(source, theme, "light", name) ||
+          isTokenChanged(source, theme, "dark", name),
+      )
+      .map(({ name }) => name),
+  );
+  for (let size = -1; size !== names.size;) {
+    size = names.size;
+    for (const { name } of source.tokens) {
+      if (readsAny(theme.light[name]!, names) || readsAny(theme.dark[name]!, names)) {
+        names.add(name);
+      }
+    }
+  }
+  const formulas = Object.keys(source.eventColor.light);
+  const formulasChanged = (["light", "dark"] as const).some((mode) =>
+    formulas.some(
+      (name) =>
+        !same(theme.eventColor[mode][name], source.eventColor[mode][name]) ||
+        readsAny(theme.eventColor[mode][name]!, names),
+    ),
+  );
+  return [
+    ...source.tokens
+      .filter(({ name }) => names.has(name))
+      .map(({ kind, name }): [string, string] => [
+        name,
+        // `light-dark()` takes only colours, and a length is the same in both modes.
+        kind === "length"
+          ? normalizeValue(theme.light[name]!)
+          : sharedValue(theme.light[name]!, theme.dark[name]!),
+      ]),
+    ...source.palette
+      .filter(({ name }) => full || formulasChanged || isPaletteChanged(source, theme, name))
+      .flatMap(({ name: color }) =>
+        formulas.map((formula): [string, string] => [
+          `--calendar-event-${color}${formula.slice("--calendar-event".length)}`,
+          sharedValue(
+            paletteValue(theme.eventColor.light[formula]!, theme.palette[color]!),
+            paletteValue(theme.eventColor.dark[formula]!, theme.palette[color]!),
+          ),
+        ]),
+      ),
+  ];
+}
+
+/**
+ * The source of a StyleX theme to paste: the changed tokens, or all of them when `full`, then the
+ * shading recipe in a comment, since StyleX can't select the band it styles. The recipe's own
+ * comments go, as they would end this one.
+ */
+export function themeStylex(source: ThemeSource, theme: Theme, { full = false } = {}): string {
+  const declarations = stylexDeclarations(source, theme, full);
+  const shading = shadingCss(theme.shading)
+    .replace(/\/\*[\s\S]*?\*\//g, "")
+    .split("\n")
+    .filter((line) => line.trim() !== "")
+    .join("\n")
+    .replaceAll("*/", "* /");
+  const parts = [
+    declarations.length === 0
+      ? ""
+      : [
+          'import * as stylex from "@stylexjs/stylex";',
+          "",
+          'import { calendarVars } from "@/components/calendar-stylex/calendar-tokens.stylex";',
+          "",
+          "export const calendarTheme = stylex.createTheme(calendarVars, {",
+          ...declarations.map(
+            ([name, value]) => `  ${JSON.stringify(name)}: ${JSON.stringify(value)},`,
+          ),
+          "});",
+        ].join("\n"),
+    shading === ""
+      ? ""
+      : [
+          "// Put this in your app's global CSS, as StyleX can't select the closed-time band.",
+          "/*",
+          shading,
+          "*/",
+        ].join("\n"),
+  ].filter((part) => part !== "");
+  return parts.length === 0
+    ? "// No changes: the theme is calendar-tokens.stylex.ts as it ships.\n"
     : `${parts.join("\n\n")}\n`;
 }
 

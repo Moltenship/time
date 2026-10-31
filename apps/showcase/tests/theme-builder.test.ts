@@ -18,12 +18,17 @@ import {
   previewCss,
   setToken,
   themeCss,
+  themeStylex,
   type Theme,
 } from "../components/theme-builder/theme";
 import { eventColorLabels, tokenInfo } from "../components/theme-builder/tokens";
 
 const css = await readFile(
   new URL("../../../registry/calendar-theme/calendar-theme.css", import.meta.url),
+  "utf8",
+);
+const stylexTokens = await readFile(
+  new URL("../../../registry/stylex-calendar-theme/calendar-tokens.stylex.ts", import.meta.url),
   "utf8",
 );
 const source = parseTheme(css);
@@ -295,6 +300,227 @@ describe("pasted after the theme", () => {
   });
 });
 
+/** The object a theme's source passes to `createTheme`, parsed. */
+function createThemeTokens(text: string): Record<string, string> {
+  const body = /createTheme\(calendarVars, (\{[\s\S]*?\n\})\);/.exec(text)?.[1] ?? "{}";
+  return JSON.parse(body.replace(/,\n\}$/, "\n}")) as Record<string, string>;
+}
+
+/** The defaults in `calendar-tokens.stylex.ts`, by a plain scan of its text. */
+const tokensFileDefaults = Object.fromEntries(
+  [
+    ...stylexTokens
+      .slice(0, stylexTokens.indexOf("stylex.defineVars"))
+      .matchAll(/"(--[\w-]+)":\s*"([^"]+)"/g),
+  ].map(([, name, value]) => [name!, value!]),
+);
+
+describe("StyleX theme", () => {
+  const eventTokens = (color: string) => [
+    `--calendar-event-${color}`,
+    `--calendar-event-${color}-foreground`,
+    `--calendar-event-${color}-border`,
+  ];
+
+  test("says so when nothing changed", () => {
+    expect(themeStylex(source, shipped)).toBe(
+      "// No changes: the theme is calendar-tokens.stylex.ts as it ships.\n",
+    );
+  });
+
+  test("holds the changed tokens, one value per token", () => {
+    let theme = setToken(source, shipped, "light", "--calendar-today", "oklch(0.5 0.2 260)");
+    theme = setToken(source, theme, "dark", "--calendar-today", "oklch(0.7 0.16 255)");
+    theme = setToken(source, theme, "light", "--calendar-hour-height", "3.5rem");
+
+    expect(
+      themeStylex(source, setToken(source, shipped, "dark", "--calendar-now", "red")),
+    ).toContain('"--calendar-now": "light-dark(oklch(0.637 0.237 25.3), red)",');
+    expect(themeStylex(source, theme)).toBe(
+      [
+        'import * as stylex from "@stylexjs/stylex";',
+        "",
+        'import { calendarVars } from "@/components/calendar-stylex/calendar-tokens.stylex";',
+        "",
+        "export const calendarTheme = stylex.createTheme(calendarVars, {",
+        // `--calendar-selection` reads today's colour, so it comes along.
+        '  "--calendar-today": "light-dark(oklch(0.5 0.2 260), oklch(0.7 0.16 255))",',
+        '  "--calendar-selection": "light-dark(color-mix(in oklch, var(--calendar-today) 12%, transparent), color-mix(in oklch, var(--calendar-today) 18%, transparent))",',
+        '  "--calendar-hour-height": "3.5rem",',
+        "});",
+        "",
+      ].join("\n"),
+    );
+  });
+
+  test("a value the same in both modes stands alone, and a length never uses light-dark()", () => {
+    const both = setToken(
+      source,
+      setToken(source, shipped, "light", "--calendar-now", "oklch(0.6 0.2 30)"),
+      "dark",
+      "--calendar-now",
+      "oklch( 0.6  0.2 30 )",
+    );
+    expect(createThemeTokens(themeStylex(source, both))).toEqual({
+      "--calendar-now": "oklch(0.6 0.2 30)",
+    });
+    const apart: Theme = {
+      ...shipped,
+      dark: { ...shipped.dark, "--radius": "1rem" },
+      light: { ...shipped.light, "--radius": "0.5rem" },
+    };
+    expect(createThemeTokens(themeStylex(source, apart))).toEqual({ "--radius": "0.5rem" });
+  });
+
+  test("restates what reads a changed token, which a wrapper wouldn't reach otherwise", () => {
+    const tokens = createThemeTokens(
+      themeStylex(source, setToken(source, shipped, "light", "--primary", "oklch(0.5 0.2 260)")),
+    );
+
+    expect(Object.keys(tokens)).toEqual([
+      "--primary",
+      "--calendar-event",
+      "--calendar-event-border",
+    ]);
+    expect(tokens["--calendar-event-border"]).toBe("var(--primary)");
+    // Through a chain: the grid reads the axis, which reads the muted text.
+    const chain = setToken(
+      source,
+      setToken(source, shipped, "light", "--calendar-grid", "var(--calendar-axis)"),
+      "light",
+      "--muted-foreground",
+      "red",
+    );
+    expect(Object.keys(createThemeTokens(themeStylex(source, chain)))).toEqual(
+      expect.arrayContaining(["--muted-foreground", "--calendar-axis", "--calendar-grid"]),
+    );
+    // A formula reading a changed token follows too, in every colour.
+    const formula: Theme = {
+      ...setToken(source, shipped, "light", "--primary", "red"),
+      eventColor: {
+        ...shipped.eventColor,
+        light: { ...shipped.eventColor.light, "--calendar-event-border": "var(--primary)" },
+      },
+    };
+    expect(createThemeTokens(themeStylex(source, formula))).toHaveProperty([
+      "--calendar-event-gray-border",
+    ]);
+  });
+
+  test("a palette colour gives its three tokens, computed from the formulas", () => {
+    const theme: Theme = {
+      ...shipped,
+      palette: { ...shipped.palette, teal: { chroma: 0.14, hue: 200 } },
+    };
+
+    expect(createThemeTokens(themeStylex(source, theme))).toEqual({
+      "--calendar-event-teal":
+        "light-dark(oklch(0.95 calc(0.14 * 0.3) 200), oklch(0.32 calc(0.14 * 0.45) 200))",
+      "--calendar-event-teal-foreground":
+        "light-dark(oklch(0.37 calc(0.14 * 0.8) 200), oklch(0.93 calc(0.14 * 0.35) 200))",
+      "--calendar-event-teal-border": "light-dark(oklch(0.63 0.14 200), oklch(0.72 0.14 200))",
+    });
+  });
+
+  test("a formula change reaches every colour, and leaves the :root tokens alone", () => {
+    const theme: Theme = {
+      ...shipped,
+      eventColor: {
+        ...shipped.eventColor,
+        dark: { ...shipped.eventColor.dark, "--calendar-event-foreground": "oklch(1 0 0)" },
+        light: { ...shipped.eventColor.light, "--calendar-event-foreground": "oklch(1 0 0)" },
+      },
+    };
+    const tokens = createThemeTokens(themeStylex(source, theme));
+
+    expect(Object.keys(tokens)).toEqual(calendarEventColors.flatMap(eventTokens));
+    expect(tokens["--calendar-event-red-foreground"]).toBe("oklch(1 0 0)");
+    expect(tokens).not.toHaveProperty(["--calendar-event-foreground"]);
+  });
+
+  test("the :root event tokens are ordinary tokens", () => {
+    const theme = setToken(source, shipped, "light", "--calendar-event-foreground", "red");
+
+    expect(Object.keys(createThemeTokens(themeStylex(source, theme)))).toEqual([
+      "--calendar-event-foreground",
+    ]);
+  });
+
+  test("no value can leave its string", () => {
+    const value = 'red", "--x": "y';
+    const theme = setToken(source, shipped, "light", "--calendar-now", value);
+    const tokens = createThemeTokens(themeStylex(source, theme));
+
+    expect(tokens["--calendar-now"]).toContain(value);
+    expect(tokens).not.toHaveProperty(["--x"]);
+  });
+
+  describe("the shading recipe", () => {
+    const closers = (text: string) => text.split("*/").length - 1;
+
+    test.each([
+      ["gradient", "--fade: min(calc(var(--calendar-hour-height) * 1.5), 50%);"],
+      ["hatching", "color-mix(in oklch, var(--muted-foreground) 25%, transparent) 6px 7px"],
+    ] as const)("%s comes after the theme, as a comment for the global CSS", (recipe, line) => {
+      const output = themeStylex(source, {
+        ...setToken(source, shipped, "light", "--calendar-now", "red"),
+        shading: { ...shipped.shading, recipe },
+      });
+      const comment = output.slice(output.indexOf("// Put this in your app's global CSS"));
+
+      expect(output.indexOf("});")).toBeLessThan(output.indexOf(comment));
+      expect(comment).toContain(line);
+      expect(comment).toContain('[data-slot="time-grid-unavailable"]');
+      // The recipe's own comments would end the block, so only the block's closer is left.
+      expect(closers(output)).toBe(1);
+      expect(output.trimEnd().endsWith("*/")).toBe(true);
+    });
+
+    test("stands alone without a change, and nothing in it ends the comment", () => {
+      const output = themeStylex(source, {
+        ...shipped,
+        shading: {
+          ...shipped.shading,
+          fade: "*/ alert(1) /*" as unknown as number,
+          recipe: "gradient",
+        },
+      });
+
+      expect(output).not.toContain("createTheme");
+      expect(closers(output)).toBe(1);
+    });
+
+    test("is left out when flat, even with its settings changed", () => {
+      expect(
+        themeStylex(source, { ...shipped, shading: { ...shipped.shading, fade: 2 } }),
+      ).toContain("No changes");
+    });
+  });
+
+  describe("agrees with calendar-tokens.stylex.ts", () => {
+    const full = createThemeTokens(themeStylex(source, shipped, { full: true }));
+
+    test("the same tokens, both ways", () => {
+      expect(Object.keys(full).toSorted()).toEqual(Object.keys(tokensFileDefaults).toSorted());
+      // What a container sets, not a token: the file reads it through a constant.
+      expect(full).not.toHaveProperty(["--calendar-surface"]);
+      expect(source.tokens.map(({ name }) => name)).not.toContain("--calendar-surface");
+    });
+
+    test.each(Object.keys(tokensFileDefaults))("%s has the file's value or fallback", (name) => {
+      // A base colour reads the Astryx theme around it first, then `calendar-theme.css`'s value.
+      const fallback = /^var\(--[\w-]+, (.*)\)$/.exec(tokensFileDefaults[name]!)?.[1];
+      // Lighter in the file's dark, for Astryx's lighter dark surface, as the file says.
+      if (name === "--calendar-today") {
+        expect(tokensFileDefaults[name]).toContain("oklch(0.73 0.15 254.6)");
+        return;
+      }
+
+      expect(full[name]).toBe(fallback ?? tokensFileDefaults[name]);
+    });
+  });
+});
+
 describe("preview CSS", () => {
   test("sets every token of both modes, following the page or a picked mode", () => {
     const theme = setToken(source, shipped, "dark", "--calendar-now", "oklch(0.8 0.1 30)");
@@ -356,6 +582,19 @@ describe("presets", () => {
     expect(
       isPresetApplied(source, setToken(source, theme, "light", "--primary", "red"), ocean),
     ).toBe(false);
+  });
+
+  test("Astryx neutral sets every token that reads the Astryx theme's colours", () => {
+    const astryx = presets.find(({ name }) => name === "Astryx neutral")!;
+    const mapped = Object.entries(tokensFileDefaults)
+      .filter(([, value]) => /^var\(--(?:color|focus)-/.test(value))
+      .map(([name]) => name)
+      .toSorted();
+
+    expect(Object.keys(astryx.light!).toSorted()).toEqual(mapped);
+    expect(Object.keys(astryx.dark!).toSorted()).toEqual(
+      [...mapped, "--calendar-today"].toSorted(),
+    );
   });
 
   // The contrast the shipped theme guarantees, in registry/tests/theme-contrast.test.ts.
