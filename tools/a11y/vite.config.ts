@@ -23,7 +23,7 @@ const chromiumOnly = ["tests/reduced-motion.a11y.tsx"];
 /**
  * The demo's StyleX page runs without Tailwind's global CSS, as it does in the demo: the two define
  * the same tokens, and a contrast check should see the page's own. It runs after the others, in a
- * group of its own: beside them, under a build's load, its second browser made their drags time out.
+ * group of its own, so its second browser doesn't compete with theirs for the CPU.
  */
 const stylexOnly = ["tests/demo-stylex.a11y.tsx"];
 const tailwindExclude = [...chromiumOnly, ...stylexOnly];
