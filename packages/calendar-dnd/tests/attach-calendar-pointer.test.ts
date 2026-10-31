@@ -553,7 +553,9 @@ describe("time grid", () => {
     let scrollTop = 0;
     Object.defineProperty(container, "scrollTop", {
       get: () => scrollTop,
-      set: (value: number) => (scrollTop = Math.max(0, value)),
+      set: (value: number) => {
+        scrollTop = Math.max(0, value);
+      },
     });
     setup(grid, { columns: grid.columns, scrollContainer: { current: container } });
     const element = grid.elements.get("a")!;
@@ -581,7 +583,9 @@ describe("time grid", () => {
       const position = { value: 100 };
       Object.defineProperty(element, axis, {
         get: () => position.value,
-        set: (value: number) => (position.value = Math.max(0, value)),
+        set: (value: number) => {
+          position.value = Math.max(0, value);
+        },
       });
       return { element, position };
     };

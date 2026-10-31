@@ -13,7 +13,7 @@
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "dependency-cruiser": "18.5.0",
+    "dependency-cruiser": "18.7.0",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:",
@@ -22,7 +22,7 @@
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
-      "version": "12.10.1",
+      "version": "12.16.1",
       "onFail": "download"
     }
   },

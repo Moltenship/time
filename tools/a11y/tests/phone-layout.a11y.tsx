@@ -139,8 +139,9 @@ function Phone({ anchor = "2026-10-08", view }: { readonly anchor?: string; read
 
 // A resize handle sits inside its event, which is the target it belongs to. Annotation marks are
 // targets too, but under 24 px on touch until #219, so the fixture has none.
+// A Select's hidden input is clipped to nothing, so it's no target, though it sits 1 px wide in a corner.
 const TARGETS =
-  "a[href], button, input, select, [role='button'], [role='combobox'], [data-event-id], [data-slot='annotation-mark']";
+  "a[href], button, input:not([aria-hidden='true']), select, [role='button'], [role='combobox'], [data-event-id], [data-slot='annotation-mark']";
 
 /**
  * A timed event in a time grid, whose box is its time span: WCAG 2.5.8's "essential" exception,

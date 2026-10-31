@@ -98,7 +98,9 @@ function scrollable() {
   let scrollTop = 0;
   Object.defineProperty(element, "scrollTop", {
     get: () => scrollTop,
-    set: (value: number) => (scrollTop = Math.max(0, value)),
+    set: (value: number) => {
+      scrollTop = Math.max(0, value);
+    },
   });
   return { element, top: () => scrollTop };
 }
@@ -485,7 +487,9 @@ describe("startCalendarDrop", () => {
     let scrollLeft = 100;
     Object.defineProperty(days, "scrollLeft", {
       get: () => scrollLeft,
-      set: (value: number) => (scrollLeft = Math.max(0, value)),
+      set: (value: number) => {
+        scrollLeft = Math.max(0, value);
+      },
     });
     setup(grid, {
       columns: grid.columns,

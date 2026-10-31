@@ -233,6 +233,8 @@ test("Space opens a day's events rather than creating an event", async () => {
   await focusDay(container, "2026-10-10");
 
   await press(" ");
+  // The popup takes focus a frame later, and a real browser's next key comes after that.
+  await vi.waitFor(() => expect(popover()?.contains(document.activeElement)).toBe(true));
   await press("ArrowRight");
   await press("Enter");
 
