@@ -13,7 +13,7 @@
     "@flatten-js/interval-tree": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^24.13.3",
+    "@types/node": "catalog:",
     "fast-check": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:"

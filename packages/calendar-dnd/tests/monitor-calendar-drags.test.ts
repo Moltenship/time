@@ -263,7 +263,9 @@ describe("monitorCalendarDrags", () => {
     let scrollTop = 0;
     Object.defineProperty(container, "scrollTop", {
       get: () => scrollTop,
-      set: (value: number) => (scrollTop = Math.max(0, value)),
+      set: (value: number) => {
+        scrollTop = Math.max(0, value);
+      },
     });
     const { element } = setup({ scrollContainer: { current: container } });
     follow(() => true);
@@ -285,7 +287,9 @@ describe("monitorCalendarDrags", () => {
     let scrollTop = 0;
     Object.defineProperty(container, "scrollTop", {
       get: () => scrollTop,
-      set: (value: number) => (scrollTop = Math.max(0, value)),
+      set: (value: number) => {
+        scrollTop = Math.max(0, value);
+      },
     });
     const { element } = setup({ scrollContainer: { current: container } });
     follow();
@@ -351,7 +355,9 @@ describe("monitorCalendarDrags", () => {
     let scrollTop = 0;
     Object.defineProperty(container, "scrollTop", {
       get: () => scrollTop,
-      set: (value: number) => (scrollTop = Math.max(0, value)),
+      set: (value: number) => {
+        scrollTop = Math.max(0, value);
+      },
     });
     const late = timedEvent("late", "2026-08-17T13:00Z", "2026-08-17T14:00Z");
     const grid = mountTimeGrid([late]);
@@ -383,7 +389,9 @@ describe("monitorCalendarDrags", () => {
     let scrollTop = 0;
     Object.defineProperty(container, "scrollTop", {
       get: () => scrollTop,
-      set: (value: number) => (scrollTop = Math.max(0, value)),
+      set: (value: number) => {
+        scrollTop = Math.max(0, value);
+      },
     });
     const { element } = setup({ scrollContainer: { current: container } });
     follow();
@@ -548,7 +556,9 @@ describe("followers that watch", () => {
     let scrollTop = 0;
     Object.defineProperty(container, "scrollTop", {
       get: () => scrollTop,
-      set: (value: number) => (scrollTop = Math.max(0, value)),
+      set: (value: number) => {
+        scrollTop = Math.max(0, value);
+      },
     });
     const { element, grid } = setup({ scrollContainer: { current: container } });
     const { previews } = watch();
