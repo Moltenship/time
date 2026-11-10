@@ -401,7 +401,7 @@ async function summarize(id: number, version: string, dryRun: boolean): Promise<
   return false;
 }
 
-export interface ReleaseOptions {
+interface ReleaseOptions {
   /** The suggestion from the commits since the last tag when missing. */
   readonly version?: string;
   /** Everything but publishing, pushing and the GitHub release, from any pushed branch. */
@@ -415,7 +415,7 @@ export interface ReleaseOptions {
  * it started publishing, it runs that run's failed jobs again; for one that failed before, it
  * starts a new run. See docs/internal/releasing.md.
  */
-export async function release(options: ReleaseOptions): Promise<boolean> {
+async function release(options: ReleaseOptions): Promise<boolean> {
   const { dryRun } = options;
   if ((await run("gh", ["auth", "status"])).code !== 0) {
     throw new Error("gh isn't logged in. Run gh auth login.");
@@ -486,7 +486,7 @@ export async function release(options: ReleaseOptions): Promise<boolean> {
 }
 
 runMain(import.meta, async () => {
-  const { flags, positionals } = parseArguments(process.argv.slice(2), ["dry-run"], [], {
+  const { flags, positionals } = parseArguments(process.argv.slice(2), ["dry-run"], {
     positionals: true,
   });
   if (positionals.length > 1) throw new Error("Usage: vp run release [<version>] [--dry-run]");

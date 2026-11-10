@@ -99,7 +99,7 @@ function MonthFixture({
   );
 }
 
-export const monthView = defineCalendarView({
+const monthView = defineCalendarView({
   name: "month",
   strategy: {
     getRange: getMonthRange,

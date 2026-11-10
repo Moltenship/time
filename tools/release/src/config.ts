@@ -21,7 +21,9 @@ export interface PublishedPackage {
  * the PR that needs it, and say why.
  */
 export const publishedPackages: readonly PublishedPackage[] = [
-  { directory: "calendar", budgets: { ".": { raw: 4 * KiB, gzip: 1.5 * KiB } } },
+  // The facade only re-exports: 1,611 raw and 394 gzip bytes. A whole KiB is too coarse for the
+  // usual headroom at that size, so 1,700 and 420 bytes leave it.
+  { directory: "calendar", budgets: { ".": { raw: 1700, gzip: 420 } } },
   // The engine's pending changes and their phases (#199) took calendar-core to 184,065 of 184,320
   // raw and 47,477 of 47,104 gzip bytes; the event history (#227) and per-resource overlap layouts
   // (#233) to 197,523 raw and 51,097 gzip bytes. Apps that don't import the history bundle none of

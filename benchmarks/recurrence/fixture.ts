@@ -12,7 +12,7 @@ import {
   type RecurrenceRule,
   type RecurringCalendarEvent,
 } from "@moltenship/calendar-recurrence";
-import { BENCHMARK_FIXTURE_SEED, createRandom } from "fixtures";
+import { BENCHMARK_FIXTURE_SEED, createRandom } from "../shared/fixtures";
 
 export const RECURRENCE_SERIES_COUNT = 200;
 /** Where the calendar shows the year. */

@@ -30,7 +30,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | Year view      | #148             | Twelve month grids with a dot per event colour and a shared popover of a day's events; one tab stop across the year; read-only |
 | iCalendar      | #151, #153       | Standalone `@moltenship/ics`: ICS text to typed Temporal values, TZID resolution, a Standard Schema parser with typed extensions; a docs reference with a playground and a guide to showing a feed |
 | Time zones     | #165             | Secondary time zones (ADR 0165): `secondaryTimeZones` on `Root`, each hour line read in another zone on its own date (`timeGridZoneAxis`), an hour column per zone in the day, week, scrolling and resource columns views, notes on days a zone shifts, slot names with the time in each zone |
-| Recurrence     | #48, #49, #155   | `@moltenship/calendar-recurrence` (ADR 0048), shipped through #156–#159: an RFC 5545 rule engine and RRULE text; range-bounded expansion with stable occurrence IDs, EXDATE, RDATE, overrides and an ICS bridge; "this / following / all" edits and the registry scope dialog. #155 closes epic #2 with the demo and docs, in a PR of their own, and a gate: a DST matrix, Google/Outlook/iCloud interop fixtures and a year-view expansion benchmark (`vp run recurrence:gate`) |
+| Recurrence     | #48, #49, #155   | `@moltenship/calendar-recurrence` (ADR 0048), shipped through #156–#159: an RFC 5545 rule engine and RRULE text; range-bounded expansion with stable occurrence IDs, EXDATE, RDATE, overrides and an ICS bridge; "this / following / all" edits and the registry scope dialog. #155 closes epic #2 with the demo and docs, in a PR of their own, and a gate: a DST matrix, Google/Outlook/iCloud interop fixtures and a year-view expansion benchmark (`vp run benchmark#recurrence`) |
 | Recurrence follow-ups | #160 | The #155 gate's follow-ups: year-view expansion about 18% faster under a 40 ms budget; rules whose INTERVAL never meets their BY values end at once; the ICS bridge applies RANGE=THISANDFUTURE, Outlook's all-day flag and a feed's own zone; edits replay a change on the series' clock, keep the later of two equal wall times and see cancelled overrides; a DST matrix of edits in four zones |
 | Theme builder  | #166             | A docs page that edits every token of `calendar-theme.css` live, light and dark apart, over a scoped preview, with presets, contrast checks and CSS to copy; `--calendar-event-padding-x` and `-y` for time-grid events |
 | shadcn registry | #43             | Every view, the shared parts, the theme, the recurrence scope dialog and `calendar-full`, built with `shadcn build` and served by the docs site at `/r/<item>.json`; `npx shadcn add <url>` tested in clean Vite and Next.js apps against packed packages (`vp run registry:e2e`); `compatibility.json` lists each item's runtime range for release tooling |
@@ -38,7 +38,7 @@ shipped as shadcn-style registry source. This file is the short map. Issues hold
 | dnd-kit adapter | #237             | Drags across the calendar's edge in `calendar-dnd` (`startCalendarDrop`, `monitorCalendarDrags`, `observeCalendarRegions`); the optional `@moltenship/calendar-dnd-kit` for dnd-kit 0.5: draggables carrying `calendarDropData` drop into any view, and events a view moves drag out to the app's droppables; real-mouse tests in Chromium and WebKit; the demo's unscheduled tasks and a docs guide with a live backlog |
 | Undo and redo  | #227             | Opt-in: `createEventHistory` records committed changes from `onEventChangeResult` and undoes them by proposing the inverse through the pipeline, dropping steps changed elsewhere; `useCalendarHistory` with announcements, `useCalendarHistoryShortcuts`, the registry's undo toast, the demo and a docs page. A bundle without it keeps none of it. Recurring events aren't supported yet |
 | Quality gate   | #47              | The local gate in three tiers, the same tasks CI runs: `vp run ready:quick`, `ready` and `ready:full` (#179); the a11y suite fixed at the causes of CI's flakes, and run at CI's speed in the full gate (#178); the a11y suite and real mouse and keyboard interactions in Firefox and WebKit, WebKit on `temporal-polyfill` (`vp run browsers`, #183) |
-| Release audit  | #47 (phase 1)    | `docs/internal/release-audit.md`: each invariant in `architecture.md` linked to its proof, the gaps filed (#180–#182, #184–#192), the open p0 and p1 issues triaged |
+| Release audit  | #47 (phase 1)    | Each invariant in `architecture.md` linked to its proof, the gaps filed (#180–#182, #184–#192), the open p0 and p1 issues triaged. The audit's document is in git history: `docs/internal/release-audit.md` at `1d39eb1f` |
 | Test harness   | #45              | `@moltenship/calendar-testing`, published with the others: a fixed `now`, zone and locale through `Root`'s props; builders and fixtures (a dense day, a DST week, series in three zones, a resource day); `renderCalendar` and `hydrateCalendar` with controlled events and recorded changes and results; queries by the calendar's own events and the pointer layer's attributes; keyboard drivers through the grab mode, pointer and touch drivers in browser mode; `settled`, announcements and placements. Used by registry tests, browser tests in `tools/a11y`, the SSR fixture on the dry run's tarballs, and the Testing docs page |
 | Release tooling | #46             | One version for the nine published packages; size budgets, API reports, publint and are-the-types-wrong checks, a clean-consumer install from the pnpm store and a dry run that writes a manifest. Since `1.0.0-rc.1`, one command, `vp run release`, and the owner's `/release` skill, which nobody confirms: they start the release workflow, which bumps, runs the full gate on the release commit, publishes the checked tarballs through npm trusted publishing with provenance, pushes, writes the GitHub release from the Conventional Commits and installs from npm. Runbook in `docs/internal/releasing.md`. MIT `LICENSE` in every tarball (#175) |
 
@@ -103,29 +103,9 @@ issue's "Later" section when work starts.
   phase; the last one closes the issue.
 - The issue's "Done when" list is the acceptance check. There are no separate gate issues and no
   evidence attachments.
-- Run the quality gate's tiers as `AGENTS.md` ("Quality gate") says: `vp run ready:quick` after
-  every change, which is enough to merge a change to docs or notes alone, and `vp run ready`
-  before every other merge. The full tier runs for releases: the release workflow runs it on the
-  release commit. A PR runs `vp run ready:full` only when it changes the full gate itself or the
-  release tooling. Add any focused `vp run` gate or lane the change touches.
-- The local `vp run ready` is the merge gate. Once it's green, merge without waiting for GitHub
-  Actions; CI runs the same tasks as a backstop. A red CI run on `main` gets fixed right away, and
-  CI red with local green is a gate bug: the local gate must reproduce it. A PR that changes the
-  release tooling or the full gate also links a green run of CI's on-demand `release-gate` job.
-- Non-trivial PRs get a code review from Claude Opus 5.5 (xhigh), instead of Pullfrog. Simple
-  ones may skip it: docs or notes only, mechanical changes, or small fixes their tests cover. Fix
-  each finding, or reply with the reason you didn't. Post the local gate's result on the PR.
-- One reviewer per PR, kept for every round. Spawn it once; after fixing its findings, continue
-  the same reviewer with what changed and the new commit or diff, and ask for a re-review. Start a
-  new one only when the old one can't be continued, because its context ran out or it's gone, and
-  give it the earlier rounds' findings and your replies.
-- Merge with squash once the local gate passes and, when the PR had a review, the review has no
-  open blocker or should-fix findings. The Vercel checks don't gate merges. When Vercel's daily
-  deploy limit is hit, production catches up with the next deploy after it resets. Rebase on
-  `main` first if behind.
-- UI changes include screenshots attached with `gh pr create/edit --attach`, as described in
-  `AGENTS.md`: a before/after table for fixes, light/dark or demo screenshots for new UI. Docs show
-  live, theme-aware UI, not screenshots.
+- The quality gate's tiers, commit and PR titles, code review, merging and screenshots are in
+  [`AGENTS.md`](./AGENTS.md), and releasing in
+  [`docs/internal/releasing.md`](./docs/internal/releasing.md). They aren't repeated here.
 - Keep native "blocked by" links and this file current when scope or order changes.
 
 ## Boundaries

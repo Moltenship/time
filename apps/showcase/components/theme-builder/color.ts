@@ -28,7 +28,7 @@ export function hexToOklch(hex: string, alpha = 1): string {
   return alpha < 1 ? `oklch(${body} / ${round(alpha, 2)})` : `oklch(${body})`;
 }
 
-export function toHex([red, green, blue]: Rgba): string {
+function toHex([red, green, blue]: Rgba): string {
   return `#${[red, green, blue]
     .map((channel) =>
       Math.round(channel * 255)

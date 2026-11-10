@@ -8,8 +8,6 @@
     "test": "vp test"
   },
   "dependencies": {
-    "@astryxdesign/core": "catalog:",
-    "@astryxdesign/theme-neutral": "catalog:",
     "@dnd-kit/dom": "catalog:",
     "@dnd-kit/react": "catalog:",
     "@moltenship/calendar": "workspace:*",

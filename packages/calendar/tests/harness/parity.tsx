@@ -116,7 +116,7 @@ export function createParity(view: AnyCalendarView) {
   return { mount, unmount };
 }
 
-export function pointer(type: string, target: Element, x: number, y: number) {
+function pointer(type: string, target: Element, x: number, y: number) {
   const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y });
   Object.defineProperties(event, {
     isPrimary: { value: true },

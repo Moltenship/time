@@ -23,17 +23,17 @@ export interface DemoSettings {
   readonly workingHours: WorkingHours;
 }
 
-export type WorkingHours = (typeof workingHoursOptions)[number]["value"];
-export type ResourceRules = (typeof resourceRulesOptions)[number]["value"];
+type WorkingHours = (typeof workingHoursOptions)[number]["value"];
+type ResourceRules = (typeof resourceRulesOptions)[number]["value"];
 
-export const workingHoursOptions = [
+const workingHoursOptions = [
   { label: "Hidden", value: "off" },
   { label: "Shown", value: "show" },
   { label: "Shown, warn outside", value: "warn" },
   { label: "Shown, block outside", value: "block" },
 ] as const;
 
-export const localeOptions = [
+const localeOptions = [
   { label: "English (US)", value: "en-US" },
   { label: "English (UK)", value: "en-GB" },
   { label: "Deutsch", value: "de-DE" },
@@ -42,13 +42,13 @@ export const localeOptions = [
   { label: "日本語", value: "ja-JP" },
 ] as const;
 
-export const overlapLayoutOptions = [
+const overlapLayoutOptions = [
   { label: "Side by side", value: "columns" },
   { label: "Equal columns", value: "equal" },
   { label: "Stacked", value: "stack" },
 ] as const satisfies readonly { readonly label: string; readonly value: OverlapLayout }[];
 
-export const resourceRulesOptions = [
+const resourceRulesOptions = [
   {
     description: "Rooms and people follow the settings above, and double booking is flagged.",
     label: "Same rules",
@@ -62,7 +62,7 @@ export const resourceRulesOptions = [
   },
 ] as const;
 
-export const weekStartOptions = [
+const weekStartOptions = [
   { label: "Sunday", value: 7 },
   { label: "Monday", value: 1 },
   { label: "Saturday", value: 6 },
@@ -154,7 +154,7 @@ function offsetLabel(timeZone: string): string {
   return `UTC${Temporal.Now.zonedDateTimeISO(timeZone).offset}`;
 }
 
-export interface SettingItem {
+interface SettingItem {
   /** What the option does, shown under the select while it's chosen. */
   readonly description?: string;
   /** Shown after the label in the list only, such as a UTC offset. */

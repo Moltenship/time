@@ -5,13 +5,11 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
+import { satisfies } from "semver";
+
 import { buildRegistry } from "./build";
 import { checkBuiltRegistry, fullItemName, importsOf } from "./check";
-import {
-  describeIncompatibility,
-  findIncompatibleItems,
-  type RegistryManifest,
-} from "./compatibility";
+import type { RegistryManifest } from "./compatibility";
 import { dragAndDropPackages } from "./config";
 import { itemClosure } from "./items";
 import { servedPackageProblems } from "./lockfile";
@@ -175,7 +173,7 @@ async function installedVersions(
       ) as { readonly version: string };
       versions[name] = manifest.version;
     } catch {
-      // Missing: reported as incompatible.
+      // Missing: verifyInstall reports it.
     }
   }
   return versions;
@@ -242,10 +240,17 @@ async function verifyInstall(
     problems.push(...servedPackageProblems(lockfile, served, Object.keys(manifest.runtime)));
   }
 
+  // calendar-full's range covers its whole install, so it holds for every item.
   const versions = await installedVersions(root, Object.keys(manifest.runtime));
-  problems.push(
-    ...findIncompatibleItems(manifest, versions, [fullItemName]).map(describeIncompatibility),
-  );
+  const full = manifest.items.find(({ name }) => name === fullItemName)!;
+  for (const [name, range] of Object.entries(full.compatibility)) {
+    const version = versions[name];
+    if (!version) {
+      problems.push(`${fullItemName} needs ${name}@${range}, which isn't installed`);
+    } else if (!satisfies(version, range, { includePrerelease: true })) {
+      problems.push(`${fullItemName} needs ${name}@${range}, but ${version} is installed`);
+    }
+  }
 
   const css = await readFile(join(root, app.css), "utf8");
   for (const token of ["--calendar-grid:", "--color-calendar-event:", '[data-color="blue"]']) {

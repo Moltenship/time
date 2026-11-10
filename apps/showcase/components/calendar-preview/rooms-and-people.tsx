@@ -77,7 +77,7 @@ const bookings: readonly Booking[] = [
 ];
 
 /** The bookings on `day`, at wall-clock times in its time zone. */
-export function createRoomBookings(day: Temporal.ZonedDateTime): readonly PreviewEvent[] {
+function createRoomBookings(day: Temporal.ZonedDateTime): readonly PreviewEvent[] {
   return bookings.map(([color, title, time, duration, resourceIds], index) => {
     const start = day.withPlainTime(Temporal.PlainTime.from(time));
     return {

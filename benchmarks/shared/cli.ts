@@ -1,17 +1,7 @@
-import { pathToFileURL } from "node:url";
+import type { BenchmarkMode, BenchmarkReport } from "./contracts";
+import { benchmarkExitCode } from "./protocol";
 
-import { generateBenchmarkFixtures } from "fixtures";
-
-import type { BenchmarkEngine, BenchmarkMode, BenchmarkReport, BenchmarkStage } from "./contracts";
-import { benchmarkExitCode, runBenchmark } from "./protocol";
-import { referenceEngine } from "./reference";
-
-export interface BenchmarkLogger {
-  error(message: string): void;
-  log(message: string): void;
-}
-
-export interface BenchmarkCliOptions {
+interface BenchmarkCliOptions {
   readonly gated: boolean;
   readonly json: boolean;
   readonly mode: BenchmarkMode;
@@ -52,16 +42,8 @@ function megabytes(bytes: number): string {
   return `${(bytes / 1_048_576).toFixed(1)} MiB`;
 }
 
-export function formatBenchmarkReport(report: BenchmarkReport): string {
-  const { fixture } = report;
-  return formatSuiteReport(
-    report,
-    `seed=${fixture.seed} events=${fixture.events} fragments=${fixture.visibleFragments} resources=${fixture.resources} dst=${fixture.dstCases}`,
-  );
-}
-
 /** The report as text, with `fixture` describing the suite's fixture on one line. */
-export function formatSuiteReport(report: BenchmarkReport<unknown>, fixture: string): string {
+function formatSuiteReport(report: BenchmarkReport<unknown>, fixture: string): string {
   const lines = [
     `Moltenship benchmark protocol v${report.protocolVersion}`,
     `suite=${report.suite} engine=${report.engine} mode=${report.mode}`,
@@ -85,50 +67,25 @@ export function formatSuiteReport(report: BenchmarkReport<unknown>, fixture: str
   return lines.join("\n");
 }
 
-export function runBenchmarkCli<TSnapshot = ReturnType<typeof referenceEngine.build>>(
-  arguments_: readonly string[],
-  stages: readonly BenchmarkStage[],
-  suite: string,
-  engine: BenchmarkEngine<TSnapshot> = referenceEngine as BenchmarkEngine<TSnapshot>,
-  logger: BenchmarkLogger = console,
-): number {
-  return runSuiteCli(
-    arguments_,
-    (options) =>
-      runBenchmark(engine, generateBenchmarkFixtures(), {
-        collectGarbageBetweenSamples: options.gated,
-        mode: options.mode,
-        stages,
-        suite,
-        thresholdScale: options.thresholdScale,
-      }),
-    formatBenchmarkReport,
-    logger,
-  );
-}
-
 /**
- * Parses the shared arguments, runs a suite, and prints its report as text or `--json`. Returns
+ * Runs a suite with the command line's options and prints its report as text or `--json`. Returns
  * the process exit code: 1 for a failed gate with `--gated`, 2 for an error.
  */
 export function runSuiteCli<TFixture>(
-  arguments_: readonly string[],
   run: (options: BenchmarkCliOptions) => BenchmarkReport<TFixture>,
-  format: (report: BenchmarkReport<TFixture>) => string,
-  logger: BenchmarkLogger = console,
+  describeFixture: (fixture: TFixture) => string,
 ): number {
   try {
-    const options = parseOptions(arguments_);
+    const options = parseOptions(process.argv.slice(2));
     const report = run(options);
-    logger.log(options.json ? JSON.stringify(report, null, 2) : format(report));
+    console.log(
+      options.json
+        ? JSON.stringify(report, null, 2)
+        : formatSuiteReport(report, describeFixture(report.fixture)),
+    );
     return benchmarkExitCode(report, options.gated);
   } catch (error) {
-    logger.error(error instanceof Error ? error.message : String(error));
+    console.error(error instanceof Error ? error.message : String(error));
     return 2;
   }
-}
-
-export function isDirectExecution(moduleUrl: string): boolean {
-  const entry = process.argv[1];
-  return entry !== undefined && pathToFileURL(entry).href === moduleUrl;
 }

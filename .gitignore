@@ -34,9 +34,6 @@ dist-ssr
 
 # AI agent worktrees
 .claude/worktrees/
-!.vscode/
-!.vscode/settings.json
-!.vscode/extensions.json
 .vitest/
 
 # Built by `node --run registry` in apps/showcase (shadcn build output)

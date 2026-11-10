@@ -11,55 +11,28 @@ import {
   registrySourcePackage,
 } from "./config";
 
-/** Tokens a stock shadcn theme defines. Items may set these or `calendar-*` tokens, nothing else. */
-export const standardCssVariables: ReadonlySet<string> = new Set([
-  "accent",
-  "accent-foreground",
-  "background",
-  "border",
-  "card",
-  "card-foreground",
-  "destructive",
-  "foreground",
-  "input",
-  "muted",
-  "muted-foreground",
-  "popover",
-  "popover-foreground",
-  "primary",
-  "primary-foreground",
-  "radius",
-  "ring",
-  "secondary",
-  "secondary-foreground",
-]);
-
 /**
- * Targets start with one of shadcn's alias placeholders, so files land under the consumer's own
- * `components.json` aliases, or with `~/` for a path from the project root.
+ * Targets start with shadcn's `@components/` alias placeholder, so files land under the consumer's
+ * own `components` alias.
  */
-const aliasTargetPrefixes = ["@components/", "@ui/", "@lib/", "@hooks/", "~/"] as const;
+const targetPrefix = "@components/";
 const shadcnItemName = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const namespacedItem = new RegExp(`^${registryNamespace}/([a-z0-9]+(?:-[a-z0-9]+)*)$`, "u");
 
-export interface RegistryValidationIssue {
+interface RegistryValidationIssue {
   readonly code: string;
   readonly path: string;
   readonly message: string;
 }
 
-export interface RegistryValidationReport {
+interface RegistryValidationReport {
   readonly valid: boolean;
   readonly manifests: number;
   readonly targets: number;
   readonly issues: readonly RegistryValidationIssue[];
 }
 
-export interface RegistryValidationOptions {
-  readonly workspaceRoot: string;
-}
-
-export interface RegistryItemValidation {
+interface RegistryItemValidation {
   readonly issues: RegistryValidationIssue[];
   readonly name: string | null;
   readonly targets: string[];
@@ -82,9 +55,8 @@ function isWithinWorkspace(workspaceRoot: string, path: string): boolean {
 }
 
 function isSafeTarget(target: string): boolean {
-  const prefix = aliasTargetPrefixes.find((candidate) => target.startsWith(candidate));
-  if (!prefix) return false;
-  const rest = target.slice(prefix.length);
+  if (!target.startsWith(targetPrefix)) return false;
+  const rest = target.slice(targetPrefix.length);
   return (
     rest.length > 0 &&
     !rest.includes("\\") &&
@@ -195,37 +167,6 @@ function validateRegistryDependencies(
   return { issues, itemDependencies };
 }
 
-function validateCssVariables(cssVars: unknown, manifestPath: string): RegistryValidationIssue[] {
-  if (cssVars === undefined) return [];
-  if (!isRecord(cssVars)) {
-    return [issue("invalid-css-vars", `${manifestPath}.cssVars`, "cssVars must be an object")];
-  }
-
-  const issues: RegistryValidationIssue[] = [];
-  for (const [mode, variables] of Object.entries(cssVars)) {
-    if (!isRecord(variables)) continue;
-    for (const [name, value] of Object.entries(variables)) {
-      const path = `${manifestPath}.cssVars.${mode}.${name}`;
-      const tokenName = mode === "theme" ? name.replace(/^color-/u, "") : name;
-      if (!standardCssVariables.has(tokenName) && !tokenName.startsWith("calendar-")) {
-        issues.push(
-          issue(
-            "invalid-css-variable",
-            path,
-            `CSS variable must use a standard shadcn token or the calendar-* namespace: ${name}`,
-          ),
-        );
-      }
-      if (typeof value !== "string" || value.trim().length === 0) {
-        issues.push(
-          issue("invalid-css-value", path, "CSS variable values must be non-empty strings"),
-        );
-      }
-    }
-  }
-  return issues;
-}
-
 async function validateMeta(
   meta: unknown,
   manifestPath: string,
@@ -322,7 +263,7 @@ async function validateParsedItem(
         issue(
           "invalid-target",
           `${path}.target`,
-          `Target must start with ${aliasTargetPrefixes.join(", ")} and stay inside it: ${file.target}`,
+          `Target must start with ${targetPrefix} and stay inside it: ${file.target}`,
         ),
       );
     } else {
@@ -342,7 +283,16 @@ async function validateParsedItem(
         ]
       : []),
     ...registryDependencies.issues,
-    ...validateCssVariables(item.cssVars, manifestPath),
+    // The theme's CSS comes from meta.stylesheet, which the build converts and checks.
+    ...(item.cssVars || item.css
+      ? [
+          issue(
+            "inline-css",
+            manifestPath,
+            "Put CSS in a stylesheet and point meta.stylesheet at it, as calendar-theme does",
+          ),
+        ]
+      : []),
     ...(await validateMeta(item.meta, manifestPath, workspaceRoot)),
   );
 
@@ -354,10 +304,10 @@ async function validateParsedItem(
   };
 }
 
-export async function validateRegistryItemFile(
+async function validateRegistryItemFile(
   manifestPath: string,
-  { workspaceRoot }: RegistryValidationOptions,
-  declaredPackages?: ReadonlySet<string>,
+  workspaceRoot: string,
+  declaredPackages: ReadonlySet<string>,
 ): Promise<RegistryItemValidation> {
   let input: unknown;
   try {
@@ -389,12 +339,7 @@ export async function validateRegistryItemFile(
     };
   }
 
-  return validateParsedItem(
-    parsed.data,
-    manifestPath,
-    workspaceRoot,
-    declaredPackages ?? (await readDeclaredPackages(workspaceRoot)),
-  );
+  return validateParsedItem(parsed.data, manifestPath, workspaceRoot, declaredPackages);
 }
 
 /** Every `registry-item.json` one folder below `registry/`, in a stable order. */
@@ -419,7 +364,7 @@ export async function validateRegistryWorkspace(
   const results = await Promise.all(
     paths.map(async (manifestPath) => ({
       manifestPath,
-      validation: await validateRegistryItemFile(manifestPath, { workspaceRoot }, declaredPackages),
+      validation: await validateRegistryItemFile(manifestPath, workspaceRoot, declaredPackages),
     })),
   );
   const issues = results.flatMap(({ validation }) => validation.issues);

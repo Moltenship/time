@@ -84,7 +84,7 @@ function isVisible({ height, left, top, visible, width }: GhostRect): boolean {
   );
 }
 
-export interface GhostLayout {
+interface GhostLayout {
   /** `"time"` boxes sit inside time columns; `"day"` boxes cover runs of day cells. */
   readonly axis: "day" | "time";
   readonly rects: readonly GhostRect[];
@@ -279,7 +279,7 @@ export function ghostLayout(
 }
 
 /** `invalid` when a policy would reject the drop, `warning` when one would flag it. */
-export type GhostValidity = "invalid" | "warning" | null;
+type GhostValidity = "invalid" | "warning" | null;
 
 /** How a preview shows what the policies say: rejected, flagged, or fine. */
 export function ghostValidity(check: CalendarInteractionCheck): GhostValidity {

@@ -15,7 +15,7 @@ export const fullItemName = "calendar-full";
 export const stylexItemPrefix = "stylex-";
 export const stylexFullItemName = `${stylexItemPrefix}${fullItemName}`;
 
-export interface CheckBuiltRegistryOptions {
+interface CheckBuiltRegistryOptions {
   readonly outDir: string;
   readonly manifest: RegistryManifest;
 }
@@ -95,9 +95,9 @@ function importIssue(
 /**
  * Checks a built registry the way a consumer would meet it: every item parses with shadcn's
  * schema, every import resolves to a file, component, or package its install provides, components
- * that need the client say so, the full item composes the others without owning files, no two
- * items write the same file, nothing turns on drag and drop, and the runtime ranges hold for the
- * workspace versions.
+ * that need the client say so, each flavour's full item composes exactly that flavour's other
+ * items without owning files, no two items write the same file, nothing turns on drag and drop,
+ * and the runtime ranges hold for the workspace versions.
  */
 export async function checkBuiltRegistry({
   outDir,
@@ -217,6 +217,10 @@ export async function checkBuiltRegistry({
       .filter(({ name }) => inFlavour(name) && name !== fullName && !full.items.includes(name))
       .map(({ name }) => name);
     if (missing.length > 0) issues.push(`${fullName} doesn't install ${missing.join(", ")}`);
+    const foreign = full.items.filter((name) => !inFlavour(name));
+    if (foreign.length > 0) {
+      issues.push(`${fullName} installs ${foreign.join(", ")}, from the other flavour`);
+    }
   }
 
   return issues;

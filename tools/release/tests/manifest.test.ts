@@ -20,8 +20,6 @@ async function dryRun(commit?: string): Promise<{ path: string; manifest: Releas
     version: "1.0.0",
     commit: commit ?? (await gitState()).head,
     clean: true,
-    createdAt: "2026-10-13T00:00:00.000Z",
-    checks: [],
     packages: [
       {
         name: "@moltenship/ics",

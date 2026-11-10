@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { generateBenchmarkFixtures } from "fixtures";
-
+import { indexedSnapshotEngine } from "../core/indexed-snapshot";
 import type { BenchmarkEngine, BenchmarkQuery } from "../shared/contracts";
+import { generateBenchmarkFixtures } from "../shared/fixtures";
 import {
   benchmarkExitCode,
   compareCandidateToReference,
@@ -11,7 +11,6 @@ import {
   summarizeSamples,
 } from "../shared/protocol";
 import { referenceEngine, type ReferenceSnapshot } from "../shared/reference";
-import { indexedSnapshotEngine } from "../core/indexed-snapshot";
 
 describe("benchmark protocol", () => {
   test("reports nearest-rank p50 and p95 after warmup", () => {
@@ -26,11 +25,7 @@ describe("benchmark protocol", () => {
   });
 
   test("compares a candidate against the simple reference", () => {
-    const fixtures = generateBenchmarkFixtures({
-      eventCount: 80,
-      resourceCount: 20,
-      visibleFragmentCount: 40,
-    });
+    const fixtures = generateBenchmarkFixtures({ eventCount: 80, resourceCount: 20 });
     const equivalentCandidate: BenchmarkEngine<ReferenceSnapshot> = {
       ...referenceEngine,
       name: "equivalent-candidate",
@@ -41,47 +36,26 @@ describe("benchmark protocol", () => {
       query: () => [],
     };
 
-    expect(compareCandidateToReference(equivalentCandidate, fixtures)).toMatchObject({
-      differences: [],
-      matchesReference: true,
-    });
-    expect(compareCandidateToReference(invalidCandidate, fixtures)).toMatchObject({
-      differences: ["query"],
-      matchesReference: false,
-    });
+    expect(compareCandidateToReference(equivalentCandidate, fixtures).matchesReference).toBe(true);
+    expect(compareCandidateToReference(invalidCandidate, fixtures).matchesReference).toBe(false);
   });
 
   test("keeps the production indexed snapshot equivalent to the reference", () => {
-    const fixtures = generateBenchmarkFixtures({
-      eventCount: 500,
-      resourceCount: 40,
-      visibleFragmentCount: 100,
-    });
+    const fixtures = generateBenchmarkFixtures({ eventCount: 500, resourceCount: 40 });
 
-    expect(compareCandidateToReference(indexedSnapshotEngine, fixtures)).toMatchObject({
-      differences: [],
-      matchesReference: true,
-    });
-    expect(CORE_BENCHMARK_STAGES).toEqual([
-      "build",
-      "query-1d",
-      "query-7d",
-      "projection",
-      "layout",
-    ]);
+    expect(compareCandidateToReference(indexedSnapshotEngine, fixtures).matchesReference).toBe(
+      true,
+    );
+    expect(CORE_BENCHMARK_STAGES).toEqual(["build", "query-1d", "query-7d"]);
   });
 
   test("returns nonzero in gated mode when a threshold fails", () => {
     const report = runBenchmark(
       referenceEngine,
-      generateBenchmarkFixtures({
-        eventCount: 50,
-        resourceCount: 10,
-        visibleFragmentCount: 20,
-      }),
+      generateBenchmarkFixtures({ eventCount: 50, resourceCount: 10 }),
       {
         mode: "smoke",
-        stages: ["query"],
+        stages: ["query-1d"],
         suite: "intentional-gate-failure",
         thresholdScale: -1,
       },
@@ -93,11 +67,7 @@ describe("benchmark protocol", () => {
   });
 
   test("measures distinct one-day and seven-day core query workloads", () => {
-    const fixtures = generateBenchmarkFixtures({
-      eventCount: 50,
-      resourceCount: 10,
-      visibleFragmentCount: 20,
-    });
+    const fixtures = generateBenchmarkFixtures({ eventCount: 50, resourceCount: 10 });
     const measuredQueries: BenchmarkQuery[] = [];
     const candidate: BenchmarkEngine<ReferenceSnapshot> = {
       ...referenceEngine,
@@ -114,127 +84,13 @@ describe("benchmark protocol", () => {
     });
 
     expect(new Set(measuredQueries.map(({ endUnit, startUnit }) => endUnit - startUnit))).toEqual(
-      new Set([1_440, 2_400, 10_080]),
+      new Set([1_440, 10_080]),
     );
     expect(
       report.stages.map(({ referenceP95Ms, stage }) => [stage, typeof referenceP95Ms]),
     ).toEqual([
       ["query-1d", "number"],
       ["query-7d", "number"],
-    ]);
-  });
-});
-
-describe("reference layout", () => {
-  test("orders equal starts by longer duration and then stable ID", () => {
-    const layout = referenceEngine.layout([
-      {
-        endUnit: 20,
-        eventId: "short",
-        key: "short",
-        resourceId: "resource",
-        startUnit: 10,
-      },
-      {
-        endUnit: 30,
-        eventId: "long-b",
-        key: "long-b",
-        resourceId: "resource",
-        startUnit: 10,
-      },
-      {
-        endUnit: 30,
-        eventId: "long-a",
-        key: "long-a",
-        resourceId: "resource",
-        startUnit: 10,
-      },
-    ]);
-
-    expect(layout).toEqual([
-      {
-        endUnit: 30,
-        eventId: "long-a",
-        key: "long-a",
-        lane: 0,
-        laneCount: 3,
-        resourceId: "resource",
-        startUnit: 10,
-      },
-      {
-        endUnit: 30,
-        eventId: "long-b",
-        key: "long-b",
-        lane: 1,
-        laneCount: 3,
-        resourceId: "resource",
-        startUnit: 10,
-      },
-      {
-        endUnit: 20,
-        eventId: "short",
-        key: "short",
-        lane: 2,
-        laneCount: 3,
-        resourceId: "resource",
-        startUnit: 10,
-      },
-    ]);
-  });
-
-  test("resets lane count for each half-open collision group", () => {
-    const layout = referenceEngine.layout([
-      {
-        endUnit: 20,
-        eventId: "overlap-a",
-        key: "overlap-a",
-        resourceId: "resource",
-        startUnit: 0,
-      },
-      {
-        endUnit: 30,
-        eventId: "overlap-b",
-        key: "overlap-b",
-        resourceId: "resource",
-        startUnit: 10,
-      },
-      {
-        endUnit: 40,
-        eventId: "isolated",
-        key: "isolated",
-        resourceId: "resource",
-        startUnit: 30,
-      },
-    ]);
-
-    expect(layout).toEqual([
-      {
-        endUnit: 20,
-        eventId: "overlap-a",
-        key: "overlap-a",
-        lane: 0,
-        laneCount: 2,
-        resourceId: "resource",
-        startUnit: 0,
-      },
-      {
-        endUnit: 30,
-        eventId: "overlap-b",
-        key: "overlap-b",
-        lane: 1,
-        laneCount: 2,
-        resourceId: "resource",
-        startUnit: 10,
-      },
-      {
-        endUnit: 40,
-        eventId: "isolated",
-        key: "isolated",
-        lane: 0,
-        laneCount: 1,
-        resourceId: "resource",
-        startUnit: 30,
-      },
     ]);
   });
 });

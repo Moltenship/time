@@ -5,6 +5,4 @@ export default defineConfig({
     dts: { generator: "tsgo" },
     entry: ["src/index.ts"],
   },
-  lint: { options: { typeAware: true, typeCheck: true } },
-  fmt: {},
 });

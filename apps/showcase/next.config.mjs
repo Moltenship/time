@@ -5,14 +5,6 @@ const withMDX = createMDX();
 /** @type {import("next").NextConfig} */
 const config = {
   reactStrictMode: true,
-  transpilePackages: [
-    "@moltenship/calendar",
-    "@moltenship/calendar-core",
-    "@moltenship/calendar-react",
-    "@moltenship/calendar-recurrence",
-    "@moltenship/calendar-temporal",
-    "@moltenship/ics",
-  ],
 };
 
 export default withMDX(config);

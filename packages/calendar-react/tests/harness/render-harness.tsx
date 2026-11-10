@@ -11,7 +11,7 @@ export interface ReactRootHarness {
   unmount(): Promise<void>;
 }
 
-export interface ReactHydrationHarness extends ReactRootHarness {
+interface ReactHydrationHarness extends ReactRootHarness {
   readonly hydratedWithoutMutation: boolean;
   readonly serverMarkup: string;
 }

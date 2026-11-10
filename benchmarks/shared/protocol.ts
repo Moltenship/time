@@ -2,41 +2,25 @@ import { availableParallelism, cpus, release, totalmem } from "node:os";
 import { performance } from "node:perf_hooks";
 import { memoryUsage } from "node:process";
 
-import type { BenchmarkFixtureSet } from "fixtures";
-
 import type {
   BenchmarkComparison,
   BenchmarkEngine,
   BenchmarkEnvironment,
   BenchmarkMode,
+  BenchmarkQuery,
   BenchmarkReport,
   BenchmarkRunOptions,
   BenchmarkStage,
   BenchmarkStageResult,
   BenchmarkStatistics,
 } from "./contracts";
+import type { BenchmarkFixtureSet } from "./fixtures";
 import { referenceEngine } from "./reference";
-
-export const ALL_BENCHMARK_STAGES: readonly BenchmarkStage[] = Object.freeze([
-  "build",
-  "query",
-  "projection",
-  "layout",
-  "render",
-  "pointer-frame",
-]);
 
 export const CORE_BENCHMARK_STAGES: readonly BenchmarkStage[] = Object.freeze([
   "build",
   "query-1d",
   "query-7d",
-  "projection",
-  "layout",
-]);
-
-export const REACT_BENCHMARK_STAGES: readonly BenchmarkStage[] = Object.freeze([
-  "render",
-  "pointer-frame",
 ]);
 
 export const RECURRENCE_BENCHMARK_STAGES: readonly BenchmarkStage[] = Object.freeze([
@@ -49,33 +33,20 @@ const initialP95ThresholdsMs: Readonly<Partial<Record<BenchmarkStage, number>>> 
   build: 25,
   "expand-cold": 40,
   "expand-warm": 40,
-  layout: 8,
-  "pointer-frame": 4,
-  query: 1,
   "query-1d": 1,
   "query-7d": 1,
 });
 
 const QUERY_START_UNIT = 8 * 60;
 const QUERY_OPERATIONS_PER_SAMPLE = 200;
-const queries = Object.freeze({
-  default: Object.freeze({ startUnit: QUERY_START_UNIT, endUnit: 2 * 1_440 }),
-  oneDay: Object.freeze({ startUnit: QUERY_START_UNIT, endUnit: QUERY_START_UNIT + 1_440 }),
-  sevenDays: Object.freeze({ startUnit: QUERY_START_UNIT, endUnit: QUERY_START_UNIT + 7 * 1_440 }),
+const queries: Readonly<Partial<Record<BenchmarkStage, BenchmarkQuery>>> = Object.freeze({
+  "query-1d": Object.freeze({ startUnit: QUERY_START_UNIT, endUnit: QUERY_START_UNIT + 1_440 }),
+  "query-7d": Object.freeze({
+    startUnit: QUERY_START_UNIT,
+    endUnit: QUERY_START_UNIT + 7 * 1_440,
+  }),
 });
 let benchmarkSink = 0;
-
-function queryForStage(stage: BenchmarkStage) {
-  return stage === "query-1d"
-    ? queries.oneDay
-    : stage === "query-7d"
-      ? queries.sevenDays
-      : queries.default;
-}
-
-function isRetentionQuery(stage: BenchmarkStage): stage is "query-1d" | "query-7d" {
-  return stage === "query-1d" || stage === "query-7d";
-}
 
 function iterationCounts(mode: BenchmarkMode): {
   readonly iterations: number;
@@ -110,22 +81,12 @@ export function summarizeSamples(
   };
 }
 
-function hashString(value: string | null): number {
-  if (value === null) {
-    return 0;
-  }
-
+function hashString(value: string): number {
   let hash = 0;
   for (const character of value) {
     hash = (Math.imul(hash, 31) + character.charCodeAt(0)) | 0;
   }
   return hash;
-}
-
-function hashCollection(values: readonly { readonly key?: string }[]): number {
-  const first = values[0]?.key ?? "";
-  const last = values.at(-1)?.key ?? "";
-  return values.length ^ hashString(first) ^ hashString(last);
 }
 
 export interface MeasureOptions {
@@ -211,49 +172,21 @@ export function stageResult(
   };
 }
 
-function equivalent(left: unknown, right: unknown): boolean {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
+/** Whether the candidate's range queries return the IDs the reference scan returns. */
 export function compareCandidateToReference<TSnapshot>(
   candidate: BenchmarkEngine<TSnapshot>,
   fixtures: BenchmarkFixtureSet,
 ): BenchmarkComparison {
   const referenceSnapshot = referenceEngine.build(fixtures);
   const candidateSnapshot = candidate.build(fixtures);
-  const referenceProjection = referenceEngine.project(referenceSnapshot, fixtures.visibleFragments);
-  const candidateProjection = candidate.project(candidateSnapshot, fixtures.visibleFragments);
-  const referenceLayout = referenceEngine.layout(referenceProjection);
-  const candidateLayout = candidate.layout(candidateProjection);
-  const differences: BenchmarkStage[] = [];
-
-  if (
-    [queries.default, queries.oneDay, queries.sevenDays].some(
-      (query) =>
-        !equivalent(
-          referenceEngine.query(referenceSnapshot, query),
-          candidate.query(candidateSnapshot, query),
-        ),
-    )
-  ) {
-    differences.push("query");
-  }
-  if (!equivalent(referenceProjection, candidateProjection)) differences.push("projection");
-  if (!equivalent(referenceLayout, candidateLayout)) differences.push("layout");
-  if (!equivalent(referenceEngine.render(referenceLayout), candidate.render(candidateLayout))) {
-    differences.push("render");
-  }
-  if (
-    referenceEngine.pointerFrame(referenceLayout, 17) !==
-    candidate.pointerFrame(candidateLayout, 17)
-  ) {
-    differences.push("pointer-frame");
-  }
 
   return {
     candidate: candidate.name,
-    differences,
-    matchesReference: differences.length === 0,
+    matchesReference: Object.values(queries).every(
+      (query) =>
+        JSON.stringify(referenceEngine.query(referenceSnapshot, query)) ===
+        JSON.stringify(candidate.query(candidateSnapshot, query)),
+    ),
     reference: referenceEngine.name,
   };
 }
@@ -303,6 +236,7 @@ export function finishReport<TFixture>(
   };
 }
 
+/** Times the core suite's stages: a snapshot's build, and its range queries against the scan. */
 export function runBenchmark<TSnapshot>(
   engine: BenchmarkEngine<TSnapshot>,
   fixtures: BenchmarkFixtureSet,
@@ -311,54 +245,42 @@ export function runBenchmark<TSnapshot>(
   const thresholdScale = thresholdScaleOf(options);
   const before = memoryUsage();
   const snapshot = engine.build(fixtures);
-  const queried = engine.query(snapshot, queries.default);
-  const projection = engine.project(snapshot, fixtures.visibleFragments);
-  const layout = engine.layout(projection);
-  const render = engine.render(layout);
   const results: BenchmarkStageResult[] = [];
   let referenceSnapshot: ReturnType<typeof referenceEngine.build> | undefined;
 
   for (const stage of options.stages) {
-    const query = queryForStage(stage);
-    const operationsPerSample =
-      stage === "query" || isRetentionQuery(stage) ? QUERY_OPERATIONS_PER_SAMPLE : 1;
-    const statistics = measure(
-      stage === "build"
-        ? () => {
-            engine.build(fixtures);
-            return fixtures.events.length;
-          }
-        : stage === "query" || isRetentionQuery(stage)
-          ? () => hashString(engine.query(snapshot, query)[0] ?? null) ^ queried.length
-          : stage === "projection"
-            ? () => hashCollection(engine.project(snapshot, fixtures.visibleFragments))
-            : stage === "layout"
-              ? () => hashCollection(engine.layout(projection))
-              : stage === "render"
-                ? () => hashCollection(engine.render(layout))
-                : stage === "pointer-frame"
-                  ? (iteration) => hashString(engine.pointerFrame(layout, iteration))
-                  : unsupportedStage(stage, options.suite),
-      {
-        collectGarbageBetweenSamples: options.collectGarbageBetweenSamples,
-        mode: options.mode,
-        operationsPerSample,
-      },
-    );
-    let referenceP95Ms: number | undefined;
-    if (isRetentionQuery(stage) && engine !== referenceEngine) {
-      referenceSnapshot ??= referenceEngine.build(fixtures);
-      referenceP95Ms = measure(
+    const { collectGarbageBetweenSamples, mode } = options;
+
+    if (stage === "build") {
+      const statistics = measure(
         () => {
-          const result = referenceEngine.query(referenceSnapshot!, query);
-          return hashString(result[0] ?? null) ^ result.length;
+          engine.build(fixtures);
+          return fixtures.events.length;
         },
-        {
-          collectGarbageBetweenSamples: options.collectGarbageBetweenSamples,
-          mode: options.mode,
-          operationsPerSample,
-        },
-      ).p95Ms;
+        { collectGarbageBetweenSamples, mode },
+      );
+      results.push(stageResult(stage, statistics, thresholdScale));
+      continue;
+    }
+
+    const query = queries[stage] ?? unsupportedStage(stage, options.suite);
+    const measureOptions = {
+      collectGarbageBetweenSamples,
+      mode,
+      operationsPerSample: QUERY_OPERATIONS_PER_SAMPLE,
+    };
+    const statistics = measure(() => {
+      const result = engine.query(snapshot, query);
+      return hashString(result[0] ?? "") ^ result.length;
+    }, measureOptions);
+    let referenceP95Ms: number | undefined;
+    if (engine !== referenceEngine) {
+      referenceSnapshot ??= referenceEngine.build(fixtures);
+      const scanned = referenceSnapshot;
+      referenceP95Ms = measure(() => {
+        const result = referenceEngine.query(scanned, query);
+        return hashString(result[0] ?? "") ^ result.length;
+      }, measureOptions).p95Ms;
     }
     results.push(stageResult(stage, statistics, thresholdScale, referenceP95Ms));
   }
@@ -366,22 +288,14 @@ export function runBenchmark<TSnapshot>(
   return finishReport(
     {
       engine: engine.name,
-      fixture: {
-        dstCases: fixtures.dstCases.length,
-        events: fixtures.events.length,
-        resources: fixtures.resources.length,
-        seed: fixtures.seed,
-        visibleFragments: fixtures.visibleFragments.length,
-      },
+      fixture: { events: fixtures.events.length, seed: fixtures.seed },
       mode: options.mode,
       notes: [
-        "Reference algorithms are the correctness oracle; timings describe the selected engine.",
-        "Render measures render-model materialization, not browser paint or React commits.",
-        "Pointer-frame measures library hit-test scripting, not end-to-end input latency.",
-        "Core one-day and seven-day query gates require indexed p95 below both 1 ms and scan p95.",
+        "The scan is the correctness oracle; timings describe the selected engine.",
+        "One-day and seven-day query gates require indexed p95 below both 1 ms and scan p95.",
         "Query samples average 200 operations to reduce sub-millisecond timer and scheduler noise.",
         garbageCollectionNote(options),
-        `Observable sink: ${benchmarkSink ^ queried.length ^ render.length}`,
+        `Observable sink: ${benchmarkSink}`,
       ],
       stages: results,
       suite: options.suite,

@@ -6,7 +6,7 @@ const EQUALS = 0x3d;
 const QUOTE = 0x22;
 const SEMICOLON = 0x3b;
 
-export interface ContentLine {
+interface ContentLine {
   readonly name: string;
   readonly parameters: Record<string, string[]>;
   /** Tolerated deviations, each worth a warning. */

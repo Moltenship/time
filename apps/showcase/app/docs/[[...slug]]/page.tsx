@@ -7,7 +7,6 @@ import {
   DocsPage,
   DocsTitle,
   EditOnGitHub,
-  PageLastUpdate,
 } from "fumadocs-ui/layouts/docs/page";
 import { createRelativeLink } from "fumadocs-ui/mdx";
 import type { Metadata } from "next";
@@ -35,11 +34,8 @@ export default async function DocumentationPage({ params }: DocumentationPagePro
           })}
         />
       </DocsBody>
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t pt-6">
+      <div className="flex border-t pt-6">
         <EditOnGitHub href={`${githubUrl}/blob/main/apps/showcase/content/docs/${page.path}`} />
-        {page.data.lastModified === undefined ? null : (
-          <PageLastUpdate date={page.data.lastModified} />
-        )}
       </div>
     </DocsPage>
   );

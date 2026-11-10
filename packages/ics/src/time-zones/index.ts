@@ -10,7 +10,7 @@ import { displayNameTimeZone, windowsTimeZone } from "./windows";
 
 export { canonicalTimeZoneId } from "./canonical";
 
-export interface TimeZoneResolverOptions {
+interface TimeZoneResolverOptions {
   /** Consulted first; `undefined` falls through to the built-in rules. */
   readonly custom?: IcsTimeZoneResolver;
   /** The calendar's VTIMEZONE components, keyed by their TZID as written. */

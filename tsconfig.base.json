@@ -10,13 +10,6 @@
     "noFallthroughCasesInSwitch": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "paths": {
-      "@moltenship/calendar": ["./packages/calendar/src/index.ts"],
-      "@moltenship/calendar-core": ["./packages/calendar-core/src/index.ts"],
-      "@moltenship/calendar-react": ["./packages/calendar-react/src/index.ts"],
-      "@moltenship/calendar-temporal": ["./packages/calendar-temporal/src/index.ts"],
-      "fixtures": ["./tools/fixtures/src/index.ts"]
-    },
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "strict": true,

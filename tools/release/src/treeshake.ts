@@ -133,7 +133,7 @@ export function featureProblems(feature: OptionalFeature, without: string, withi
 }
 
 /** Bundles the facade's exports from the built packages, with and without each optional feature. */
-export async function optionalFeatureProblems(
+async function optionalFeatureProblems(
   features: readonly OptionalFeature[] = optionalFeatures,
 ): Promise<string[]> {
   const alias = await builtEntries();

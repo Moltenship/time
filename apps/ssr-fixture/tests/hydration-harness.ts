@@ -1,5 +1,3 @@
-import { createHash } from "node:crypto";
-
 import { JSDOM } from "jsdom";
 import { createElement, act } from "react";
 import { hydrateRoot, type Root } from "react-dom/client";
@@ -18,7 +16,6 @@ interface HydrationScenario {
 }
 
 export interface SsrSmokeReport {
-  readonly serverHtmlSha256: string;
   readonly recoverableErrors: readonly string[];
   readonly hydratedWithoutMutation: boolean;
   readonly interactionCount: number;
@@ -145,7 +142,6 @@ export async function runHydrationScenario({
   }
 
   return {
-    serverHtmlSha256: createHash("sha256").update(serverHtml).digest("hex"),
     recoverableErrors,
     hydratedWithoutMutation,
     interactionCount,

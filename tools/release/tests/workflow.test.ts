@@ -74,32 +74,24 @@ describe("the release workflow", () => {
     expect(runTitle("1.0.0", true)).toBe("Release v1.0.0 (dry run)");
   });
 
-  test("checks, gates, publishes, pushes, then installs; a dry run takes jobs without credentials", async () => {
+  test("checks, gates, publishes, pushes, then installs; a dry run takes a job without credentials", async () => {
     const { jobs } = await read("release.yml");
 
-    expect(Object.keys(jobs)).toEqual([
-      "check",
-      "gate",
-      "publish",
-      "publish-dry-run",
-      "finish",
-      "finish-dry-run",
-      "install",
-    ]);
+    expect(Object.keys(jobs)).toEqual(["check", "gate", "publish", "finish", "dry-run", "install"]);
     expect(jobs.gate?.needs).toBe("check");
     expect(jobs.publish?.needs).toBe("gate");
     expect(jobs.publish?.name).toBe(publishJob);
     expect(jobs.finish?.needs).toBe("publish");
     expect(jobs.install?.needs).toBe("finish");
-    expect(jobs["publish-dry-run"]?.needs).toBe("gate");
-    expect(jobs["finish-dry-run"]?.needs).toBe("publish-dry-run");
+    expect(jobs["dry-run"]?.needs).toBe("gate");
     for (const name of ["publish", "finish", "install"]) {
       expect(jobs[name]?.if, name).toBe("${{ !inputs.dry-run }}");
     }
-    for (const name of ["publish-dry-run", "finish-dry-run"]) {
-      expect(jobs[name]?.if, name).toBe("${{ inputs.dry-run }}");
-      expect(jobs[name]?.permissions, name).toBeUndefined();
-      expect(jobs[name]?.steps.at(-1)?.env?.DRY_RUN, name).toBe("true");
+    expect(jobs["dry-run"]?.if).toBe("${{ inputs.dry-run }}");
+    expect(jobs["dry-run"]?.permissions).toBeUndefined();
+    for (const step of jobs["dry-run"]?.steps.filter(({ run }) => run?.includes("src/ci.ts")) ??
+      []) {
+      expect(step.env?.DRY_RUN, step.run).toBe("true");
     }
     // The jobs that publish and push never take the dry-run input: a dry run doesn't reach them.
     for (const name of ["publish", "finish"]) {
@@ -132,7 +124,7 @@ describe("the release workflow", () => {
   test("the jobs with credentials pin their actions, use no cache, and run no install scripts", async () => {
     const { jobs } = await read("release.yml");
 
-    for (const name of [...privileged, "publish-dry-run", "finish-dry-run"]) {
+    for (const name of [...privileged, "dry-run"]) {
       const job = jobs[name]!;
       for (const { uses } of job.steps) {
         if (uses) expect(uses, name).toMatch(/@[0-9a-f]{40}$/);
@@ -160,12 +152,10 @@ describe("the release workflow", () => {
     expect(jobs.gate?.steps.find(({ run }) => run === "vp run release:gate")?.env).toEqual({
       RELEASE_VERSION: "${{ inputs.version }}",
     });
-    for (const name of ["publish", "publish-dry-run"]) {
-      expect(runs(jobs[name])?.at(-1), name).toBe(step("publish"));
-    }
-    for (const name of ["finish", "finish-dry-run"]) {
-      expect(runs(jobs[name])?.at(-1), name).toBe(step("finish"));
-    }
+    expect(runs(jobs.publish)?.at(-1)).toBe(step("publish"));
+    expect(runs(jobs.finish)?.at(-1)).toBe(step("finish"));
+    // The dry run's one job runs both, in the release's order.
+    expect(runs(jobs["dry-run"])?.slice(-2)).toEqual([step("publish"), step("finish")]);
     for (const job of Object.values(jobs)) {
       for (const { run, ...rest } of job.steps) {
         if (run?.includes("src/ci.ts")) {
@@ -187,7 +177,7 @@ describe("the release workflow", () => {
       path: ".release/",
       "include-hidden-files": true,
     });
-    for (const name of ["publish", "publish-dry-run", "finish", "finish-dry-run"]) {
+    for (const name of ["publish", "finish", "dry-run"]) {
       const download = jobs[name]?.steps.find(({ uses }) =>
         uses?.startsWith("actions/download-artifact@"),
       );

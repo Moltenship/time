@@ -7,7 +7,7 @@
  */
 const registryImport = /(\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)(["'])(@registry\/[^"']+)\2/gu;
 
-export interface ConsumerImportResolver {
+interface ConsumerImportResolver {
   /** `@registry/calendar/event-chip` → `@/components/calendar/event-chip`. */
   (specifier: string): string;
 }
@@ -25,9 +25,8 @@ export function rewriteRegistryImports(
 
 /** The import a consumer writes for a file at `target`: `@components/a/b.tsx` → `@/components/a/b`. */
 export function consumerImportForTarget(target: string): string {
-  const match = /^@(components|ui|lib|hooks)\/(.+?)(?:\.tsx?)?$/u.exec(target);
-  if (!match) throw new Error(`Target ${target} isn't under an alias, so nothing can import it`);
-  const [, alias, path] = match;
-  const base = alias === "ui" ? "components/ui" : alias;
-  return `@/${base}/${path}`;
+  const match = /^@components\/(.+?)(?:\.tsx?)?$/u.exec(target);
+  if (!match)
+    throw new Error(`Target ${target} isn't under @components/, so nothing can import it`);
+  return `@/components/${match[1]}`;
 }

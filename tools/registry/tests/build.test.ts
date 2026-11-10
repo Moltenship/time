@@ -12,12 +12,7 @@ import {
   stylexFullItemName,
   stylexItemPrefix,
 } from "../src/check";
-import {
-  describeIncompatibility,
-  findIncompatibleItems,
-  type RegistryManifest,
-  type RegistryManifestItem,
-} from "../src/compatibility";
+import type { RegistryManifest, RegistryManifestItem } from "../src/compatibility";
 import { defaultRegistryBaseUrl } from "../src/config";
 import { consumerImportForTarget, rewriteRegistryImports } from "../src/rewrite-imports";
 
@@ -73,32 +68,6 @@ describe("registry build", () => {
         "registry.json",
       ].sort(),
     );
-  });
-
-  test("stylex-calendar-full owns no files and installs every StyleX item", async () => {
-    const full = await readItem(stylexFullItemName);
-    const others = manifest.items.filter(
-      ({ name }) => name !== stylexFullItemName && name.startsWith(stylexItemPrefix),
-    );
-
-    expect(full.files ?? []).toEqual([]);
-    expect([...(full.registryDependencies ?? [])].sort()).toEqual(
-      others.map(({ name }) => `${baseUrl}/${name}.json`).sort(),
-    );
-  });
-
-  test("calendar-full owns no files and installs every other item", async () => {
-    const full = await readItem(fullItemName);
-    const others = manifest.items.filter(
-      ({ name }) => name !== fullItemName && !name.startsWith(stylexItemPrefix),
-    );
-
-    expect(full.files ?? []).toEqual([]);
-    expect([...(full.registryDependencies ?? [])].sort()).toEqual(
-      others.map(({ name }) => `${baseUrl}/${name}.json`).sort(),
-    );
-    const targets = others.flatMap((item) => item.targets);
-    expect(new Set(targets).size).toBe(targets.length);
   });
 
   test("imports point at the consumer's aliases, not the repository's", async () => {
@@ -350,6 +319,16 @@ describe("built registry checks", () => {
     expect(issues).toEqual([`${fullItemName} doesn't install year-view`]);
   });
 
+  test("a composition that installs the other flavour's item", async () => {
+    const yearView = `${baseUrl}/year-view.json`;
+    const issues = await tamper(
+      stylexFullItemName,
+      (item) => ({ ...item, registryDependencies: [...item.registryDependencies!, yearView] }),
+      changeItem(stylexFullItemName, (item) => ({ ...item, items: [...item.items, "year-view"] })),
+    );
+    expect(issues).toEqual([`${stylexFullItemName} installs year-view, from the other flavour`]);
+  });
+
   test("a composition that owns a file", async () => {
     const file = {
       content: "export {};\n",
@@ -413,52 +392,12 @@ describe("client boundary", () => {
   });
 });
 
-describe("runtime compatibility", () => {
-  test("reports items whose runtime range the installed version misses", () => {
-    const range = manifest.items.find(({ name }) => name === fullItemName)!.compatibility[
-      "@moltenship/calendar"
-    ]!;
-    const older = {
-      ...manifest,
-      items: manifest.items.map((item) => ({
-        ...item,
-        compatibility: { "@moltenship/calendar": "^1.0.0" },
-      })),
-    };
-
-    expect(findIncompatibleItems(manifest, manifest.runtime)).toEqual([]);
-    expect(
-      findIncompatibleItems(older, { "@moltenship/calendar": "0.9.0" }, [fullItemName]).map(
-        describeIncompatibility,
-      ),
-    ).toEqual([`${fullItemName} needs @moltenship/calendar@^1.0.0, but 0.9.0 is installed`]);
-    expect(findIncompatibleItems(older, {}, [fullItemName]).map(describeIncompatibility)).toEqual([
-      `${fullItemName} needs @moltenship/calendar@^1.0.0, which isn't installed`,
-    ]);
-    expect(findIncompatibleItems(older, { "@moltenship/calendar": "1.4.2" })).toEqual([]);
-    expect(range).toMatch(/^\^/u);
-  });
-
-  test("prereleases of the same version satisfy a prerelease range", () => {
-    const rc = {
-      ...manifest,
-      items: [{ ...manifest.items[0]!, compatibility: { "@moltenship/calendar": "^1.0.0-rc.1" } }],
-    };
-
-    expect(findIncompatibleItems(rc, { "@moltenship/calendar": "1.0.0-rc.2" })).toEqual([]);
-    expect(findIncompatibleItems(rc, { "@moltenship/calendar": "1.0.0" })).toEqual([]);
-    expect(findIncompatibleItems(rc, { "@moltenship/calendar": "1.0.0-beta.1" })).toHaveLength(1);
-  });
-});
-
 describe("import rewriting", () => {
   test("maps alias targets to the imports shadcn rewrites to the consumer's aliases", () => {
     expect(consumerImportForTarget("@components/calendar/event-chip.tsx")).toBe(
       "@/components/calendar/event-chip",
     );
-    expect(consumerImportForTarget("@ui/button.tsx")).toBe("@/components/ui/button");
-    expect(consumerImportForTarget("@hooks/use-thing.ts")).toBe("@/hooks/use-thing");
-    expect(() => consumerImportForTarget("~/src/styles.css")).toThrow("isn't under an alias");
+    expect(() => consumerImportForTarget("~/src/styles.css")).toThrow("isn't under @components/");
   });
 
   test("rewrites static, multi-line, type-only, and dynamic imports", () => {

@@ -31,4 +31,4 @@ depending on a pre-1.0 library whose API changed between 0.1 and 0.5.
   optional adapter behind the same semantic contracts.
 - Keyboard grab, move and resize are built in `calendar-core` and `calendar-react` (#36), not
   through a dnd-kit keyboard sensor.
-- `tools/dnd-adapter-spike` stays as history and keeps its own tests.
+- `tools/dnd-adapter-spike` was removed from the tree later; commit `a59a08a2` has it.

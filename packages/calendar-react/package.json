@@ -33,12 +33,9 @@
   },
   "scripts": {
     "build": "vp pack && node scripts/verify-public-api.mjs",
-    "check": "vp check",
     "dev": "vp pack --watch",
     "prepublishOnly": "echo \"Release with vp run release, which publishes the tarballs its gate checked. See docs/internal/releasing.md.\" && exit 1",
-    "test": "vp test",
-    "test:gate": "vp test tests/react-gate.test.tsx",
-    "test:ssr": "vp test tests/ssr-hydration.test.tsx"
+    "test": "vp test"
   },
   "dependencies": {
     "@moltenship/calendar-core": "workspace:*",

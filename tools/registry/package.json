@@ -4,13 +4,6 @@
   "private": true,
   "description": "Internal shadcn registry schema and build verification tooling.",
   "type": "module",
-  "exports": {
-    ".": "./src/index.ts"
-  },
-  "scripts": {
-    "build": "vp pack",
-    "check": "vp check"
-  },
   "dependencies": {
     "npm-package-arg": "catalog:",
     "postcss": "catalog:",

@@ -1,3 +1,4 @@
+import { CollisionPriority, CollisionType } from "@dnd-kit/abstract";
 import { AutoScroller, Draggable, Droppable, Feedback, type DragDropManager } from "@dnd-kit/dom";
 import { eventPlacement } from "@moltenship/calendar-core";
 import {
@@ -23,15 +24,6 @@ import {
 const PROXY_MAXIMUM = { height: 120, width: 320 } as const;
 /** The stand-in moves with the pointer and is dropped where it is, without an animation back. */
 const proxyFeedback = [Feedback.configure({ dropAnimation: null, feedback: "move" })];
-
-/**
- * dnd-kit's `CollisionPriority.Highest`, which a view claims only where it's the topmost thing
- * under the pointer: there it wins over a droppable of the app's around or under it, and a
- * droppable of the app's over it wins, since the view isn't topmost there.
- */
-const VIEW_PRIORITY = 4;
-/** dnd-kit's `CollisionType.PointerIntersection`. */
-const POINTER_INTERSECTION = 2;
 
 /** Opaque IDs for the entities the adapter registers, unique on the page. */
 let entities = 0;
@@ -200,9 +192,17 @@ function connect(manager: DragDropManager): () => void {
         const droppable = new Droppable(
           {
             accept: takesDrop,
+            // The highest priority, which a view claims only where it's the topmost thing under
+            // the pointer: there it wins over a droppable of the app's around or under it, and a
+            // droppable of the app's over it wins, since the view isn't topmost there.
             collisionDetector: ({ dragOperation }) =>
               topmostIn(element, dragOperation.position.current)
-                ? { id, priority: VIEW_PRIORITY, type: POINTER_INTERSECTION, value: 1 }
+                ? {
+                    id,
+                    priority: CollisionPriority.Highest,
+                    type: CollisionType.PointerIntersection,
+                    value: 1,
+                  }
                 : null,
             data: calendarViewData,
             disabled,

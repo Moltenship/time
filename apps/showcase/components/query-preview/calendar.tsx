@@ -10,7 +10,7 @@ import { TooltipProvider } from "@registry/ui/tooltip";
 import { createSampleEvents } from "./events";
 
 /** How long the pretend server takes, so loading and saving show. */
-export const PREVIEW_LATENCY_MS = 700;
+const PREVIEW_LATENCY_MS = 700;
 
 /**
  * The guide's calendar over a pretend server in the visitor's time zone, with a switch that makes

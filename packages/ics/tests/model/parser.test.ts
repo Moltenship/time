@@ -1,7 +1,7 @@
 import { describe, expect, expectTypeOf, test } from "vite-plus/test";
 
-import type { IcsParseResult, StandardSchemaV1 } from "../../src/index";
-import { createIcsParser, IcsParseError, parseIcs } from "../../src/index";
+import type { IcsParser, IcsParseResult, StandardSchemaV1 } from "../../src/index";
+import { createIcsParser, IcsParseError, icsExtension, parseIcs } from "../../src/index";
 import { calendarText, eventText } from "./helpers";
 
 const valid = eventText("SUMMARY:Fine");
@@ -17,6 +17,14 @@ const withErrors = calendarText(
   "PRIORITY:high",
   "END:VEVENT",
 );
+
+test("a parser can be reused", () => {
+  const parser = createIcsParser();
+  const one = calendarText("NAME:One");
+  expect(parser.parse(one).calendars[0]?.name).toBe("One");
+  expect(parser.parse(calendarText("NAME:Two")).calendars[0]?.name).toBe("Two");
+  expect(parser.parse(one).calendars[0]?.name).toBe("One");
+});
 
 describe("the Standard Schema surface", () => {
   test("declares version 1 and the vendor", () => {
@@ -69,6 +77,15 @@ describe("the Standard Schema surface", () => {
     const parser = createIcsParser();
     expectTypeOf<StandardSchemaV1.InferInput<typeof parser>>().toEqualTypeOf<string>();
     expectTypeOf<StandardSchemaV1.InferOutput<typeof parser>>().toEqualTypeOf<IcsParseResult>();
+
+    const busy = icsExtension("X-BUSY", { type: "BOOLEAN" });
+    type Config = { event: { busy: typeof busy } };
+    const typed = createIcsParser({ extensions: { event: { busy } } });
+    expectTypeOf(typed).toEqualTypeOf<IcsParser<Config>>();
+    expectTypeOf<StandardSchemaV1.InferOutput<typeof typed>>().toEqualTypeOf<
+      IcsParseResult<Config>
+    >();
+    expectTypeOf<ReturnType<typeof typed.parse>>().toEqualTypeOf<IcsParseResult<Config>>();
   });
 });
 
@@ -81,12 +98,19 @@ describe("strict mode", () => {
       thrown = error;
     }
     expect(thrown).toBeInstanceOf(IcsParseError);
-    const { issues, message } = thrown as IcsParseError;
+    const { issues, message, name } = thrown as IcsParseError;
+    expect(name).toBe("IcsParseError");
     expect(issues.map(({ code, severity }) => [code, severity])).toEqual([
       ["missing-property", "error"],
       ["invalid-value", "error"],
     ]);
     expect(message).toBe("VEVENT has no UID; skipped (and 1 more)");
+  });
+
+  test("parseIcs throws for text without a calendar", () => {
+    expect(() => parseIcs("", { strict: true })).toThrow(
+      expect.objectContaining({ message: "No VCALENDAR found", name: "IcsParseError" }),
+    );
   });
 
   test("returns the result when there are only warnings", () => {

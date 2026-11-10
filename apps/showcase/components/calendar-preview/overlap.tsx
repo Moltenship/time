@@ -73,7 +73,7 @@ const bookings: readonly (readonly Booking[])[] = [
 ];
 
 /** The bookings over the three days from `first`, at wall-clock times in its time zone. */
-export function createBusyDays(first: Temporal.ZonedDateTime): readonly PreviewEvent[] {
+function createBusyDays(first: Temporal.ZonedDateTime): readonly PreviewEvent[] {
   return bookings.flatMap((day, index) =>
     day.map(([color, title, time, duration], position) => {
       const start = first.add({ days: index }).withPlainTime(Temporal.PlainTime.from(time));

@@ -11,17 +11,15 @@ export interface ConventionalCommit {
 
 export interface VersionSuggestion {
   readonly version: string;
-  /** One line on why, for the prompt. */
+  /** One line on why, which `vp run release` prints. */
   readonly reason: string;
-  /** Other versions worth offering, after the suggestion. */
-  readonly alternatives: readonly string[];
 }
 
 const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
 
 /**
  * The next version after `current`, from the commits since its release. A prerelease moves to the
- * next one (`1.0.0-rc.1` → `1.0.0-rc.2`), with its stable version offered beside it. A stable
+ * next one (`1.0.0-rc.1` → `1.0.0-rc.2`), and the reason names its stable version. A stable
  * version takes a major bump for a breaking change, a minor one for a feature and a patch for the
  * rest; before 1.0, a breaking change takes a minor one.
  */
@@ -43,20 +41,11 @@ export function suggestVersion(
     return {
       version: inc(current, "prerelease")!,
       reason: `${since}; the next prerelease, or ${stable} when it's ready`,
-      alternatives: [stable],
     };
   }
   const level =
     breaking > 0 ? (major(current) === 0 ? "minor" : "major") : features > 0 ? "minor" : "patch";
-  const levels = ["patch", "minor", "major"] as const;
-  return {
-    version: inc(current, level)!,
-    reason: `${since}: a ${level} release`,
-    alternatives: [
-      ...levels.filter((other) => other !== level).map((other) => inc(current, other)!),
-      inc(current, `pre${level}`, "rc", "1")!,
-    ],
-  };
+  return { version: inc(current, level)!, reason: `${since}: a ${level} release` };
 }
 
 /**

@@ -108,20 +108,17 @@ time/
 │   ├── calendar-full/            # installs every item; owns no files
 │   └── ui/                       # stock shadcn components (Base UI) the source compiles against
 ├── benchmarks/
-│   ├── core/                     # indexes, projection, overlap layout
-│   ├── react/                    # reference render and pointer-frame stages (#188)
+│   ├── core/                     # the indexed snapshot's build and range queries
 │   ├── recurrence/               # series expansion for the year view
-│   └── shared/                   # protocol, CLI, reference engine
+│   └── shared/                   # protocol, CLI, fixtures, the reference scan
 ├── docs/
 │   ├── adr/                      # one consequential decision per record
-│   └── internal/                 # contributor notes: quality gates, topology, releasing, release audit, benchmarks, evidence
+│   └── internal/                 # contributor notes: quality gates, topology, releasing
 ├── tools/
 │   ├── registry/                 # shadcn build, registry checks, clean-app install test
 │   ├── release/                  # versions, size budgets, API reports, export checks, dry run, artifact runs, publish
 │   ├── a11y/                     # axe and real interactions in Chromium, Firefox and WebKit
-│   ├── fixtures/                 # deterministic event/resource generators
-│   ├── recurrence-oracle/        # RRULE reference fixtures (not a workspace)
-│   └── *-spike/                  # dnd-adapter, interval-dst, react-store and resource-virtualization spikes
+│   └── recurrence-oracle/        # RRULE reference fixtures (not a workspace)
 ├── tests/                        # repository contracts: dependency boundaries, package metadata, quality gates
 └── architecture.md
 ```
@@ -138,10 +135,10 @@ carries no documentation.
 | `@moltenship/calendar-core`       | Event adapters, normalized snapshots, interval indexes, view strategies, fragments, layout engines, policies, transactions.   | `calendar-temporal`; provisional `@flatten-js/interval-tree` behind an internal interface | Stable                                            |
 | `@moltenship/calendar-react`      | Per-instance provider, controlled state bridge, selectors, actions, meta, headless primitives, custom-view renderer contract. | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable                                            |
 | `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements; drags in from and out to the rest of the page. | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable adapter; no DOM event types in callbacks   |
-| `@moltenship/calendar-dnd-kit`    | Optional dnd-kit adapter: a draggable carrying `calendarDropData` drops into the views; events a view moves become dnd-kit drags for the app's droppables. | `calendar-dnd`, `calendar-core`; React 19, `@dnd-kit/react` and `@dnd-kit/dom` 0.5 peers | Optional adapter; follows dnd-kit 0.5, which is pre-1.0 |
+| `@moltenship/calendar-dnd-kit`    | Optional dnd-kit adapter: a draggable carrying `calendarDropData` drops into the views; events a view moves become dnd-kit drags for the app's droppables. | `calendar-dnd`, `calendar-core`, `@dnd-kit/abstract` (dnd-kit's collision enums); React 19, `@dnd-kit/react` and `@dnd-kit/dom` 0.5 peers | Optional adapter; follows dnd-kit 0.5, which is pre-1.0 |
 | `@moltenship/calendar`            | The ergonomic entry point used by most consumers. Re-exports core, the Temporal utilities, the React bindings and the pointer adapter. | `calendar-core`, `calendar-temporal`, `calendar-react`, `calendar-dnd`; React 19 peer | Stable facade                                     |
 | `@moltenship/calendar-testing`    | Test helpers for apps (#45): a deterministic environment, typed builders, a render and hydration harness that records `onEventChange` and `onEventChangeResult`. Built only on public entry points. | `calendar` (the facade), `calendar-recurrence`; React 19 and React DOM 19 peers           | Stable                                            |
-| `@moltenship/calendar-recurrence` | Range-bounded RRULE expansion, occurrence identity, exceptions and overrides, explicit series edits (ADR 0048).            | `calendar-core`, `calendar-temporal`, `ics`                                               | Stable                                            |
+| `@moltenship/calendar-recurrence` | Range-bounded RRULE expansion, occurrence identity, exceptions and overrides, explicit series edits (ADR 0048).            | `calendar-core`, `ics`                                                                    | Stable                                            |
 | `@moltenship/ics`                 | iCalendar syntax tree, typed values and components, TZID resolution, Standard Schema parser. Parses RRULEs; doesn't expand them. | None                                                                                      | Stable, standalone                                |
 
 All of these publish. Package versions move in lockstep until after `1.0`. The lockfile pins every implementation dependency; the `pnpm-workspace.yaml` catalog sets most exactly and a few as caret ranges. The published packages that use React (`calendar-react`, `calendar-dnd`, `calendar-dnd-kit`, `calendar` and `calendar-testing`) declare a `^19.0.0` peer. `calendar-dnd-kit` also declares `@dnd-kit/react` and `@dnd-kit/dom` `^0.5.0`, which for 0.x means 0.5 only, and `calendar-testing` React DOM `^19.0.0`, which it renders and hydrates with; there are no other peers.
@@ -151,8 +148,7 @@ All of these publish. Package versions move in lockstep until after `1.0`. The l
 | Dependency line                       | Used by                            | Why it exists                                                     | Containment rule                                                  |
 | ------------------------------------- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
 | React 19                              | `calendar-react`, `calendar-dnd`, facade, registry | Rendering, context, refs, SSR, external-store subscription | Peer dependency; absent from core, Temporal utilities, recurrence and `ics` |
-| Jotai 3                               | `tools/react-store-spike` only     | Spike history (ADR 0018); `calendar-react` dropped it in #70 (ADR 0070) | Not a production dependency                                      |
-| `@dnd-kit/react` + `@dnd-kit/dom` 0.5 | `calendar-dnd-kit` (peer), the demo, the docs site, `tools/a11y`, `tools/dnd-adapter-spike` | Apps that already use dnd-kit drag their items into the calendar and events out (#237); the spike is history (ADR 0037) | A peer of the optional adapter, used besides only by the demo, the docs site and tests; a minor upgrade is a PR to the adapter and those |
+| `@dnd-kit/react` + `@dnd-kit/dom` 0.5 | `calendar-dnd-kit` (peer), the demo, the docs site, `tools/a11y` | Apps that already use dnd-kit drag their items into the calendar and events out (#237) | A peer of the optional adapter, used besides only by the demo, the docs site and tests; a minor upgrade is a PR to the adapter and those |
 | TanStack Virtual 3                    | List and resource registry views   | Maintained vertical/horizontal windowing and measurement          | Hidden behind view adapters; not required by core                 |
 | `@flatten-js/interval-tree` 2         | `calendar-core` provisionally      | Established interval-query baseline                               | Hidden behind `IntervalIndex`; retained only if benchmarks pass   |
 | Tailwind CSS 4 + shadcn registry      | Consumer-owned registry source     | Theme-token compatibility and source distribution                 | No runtime import in headless packages                            |
@@ -1204,9 +1200,9 @@ The performance claim is enforced by production-build benchmarks on a recorded r
 | Selection change           | Does not rebuild event index or unrelated view fragments                                   |
 | Bundle                     | Each package has a checked ESM size budget; optional adapters do not enter the base bundle |
 
-Measured now, by hand on reference hardware (`vp run engine:gate`, `vp run recurrence:gate`), not in
-CI: the 10k snapshot build, the warm queries and the recurrence year view. The layout and
-pointer-frame rows still time reference code, and nothing measures scrolling yet (#188). Zero React
+Measured now, by hand on reference hardware (`vp run benchmark#core`,
+`vp run benchmark#recurrence`), not in CI: the 10k snapshot build, the warm queries and the
+recurrence year view. Nothing measures the layout, pointer-frame or scrolling rows yet (#188). Zero React
 commits on pointer moves, the 500-resource DOM bound and the 10,000-event agenda are tests in
 `vp test` and the a11y suite. The bundle budgets run in `vp run release:check`.
 
@@ -1251,7 +1247,7 @@ SSR-compatible means the calendar can produce useful, deterministic server marku
 5. If `now` is omitted, transient today/current-time decoration appears after hydration rather than risking mismatch.
 6. IDs use React `useId` or deterministic entity keys, never random values.
 7. The core and Temporal packages are safe in React Server Components.
-8. Interactive React/registry entry points declare their client boundary where a framework requires it. `calendar-react` and `calendar-dnd` do, and so does every registry component file that calls hooks, creates a context or sets event handlers: `registry:smoke` checks the built registry for it, and the install test's Next.js page imports each item from a Server Component (#190).
+8. Interactive React/registry entry points declare their client boundary where a framework requires it. `calendar-react` and `calendar-dnd` do, and so does every registry component file that calls hooks, creates a context or sets event handlers: the registry's tests check the built registry for it, and the install test's Next.js page imports each item from a Server Component (#190).
 9. Measurements enhance a CSS-valid initial layout; they do not replace it.
 
 The SSR fixture runs render, hydrate, interaction, and unmount tests. A Vite client example and at least one full-stack React SSR example prove packaging boundaries without adding framework-specific runtime code.
@@ -1415,7 +1411,7 @@ vp test
 vp run -r build
 ```
 
-Focused benchmark, SSR, registry-schema, and browser tasks become first-class Vite+ tasks rather than ad hoc shell scripts.
+Benchmarks and browser runs are Vite+ tasks rather than ad hoc shell scripts; SSR and registry-schema checks are tests that `vp test` runs.
 
 ## 20. Showcase application
 
@@ -1627,7 +1623,7 @@ over `loadRange`, `createOccurrenceAdapter` and the `recurringEventsFromIcs` bri
   pinned across every change week, and IDs stable across ranges and display zones;
 - Google Calendar, Outlook/Exchange and iCloud interop fixtures, parsed, bridged and expanded;
 - a year-view expansion benchmark: 200 series, about 10,000 occurrences, gated at 40 ms p95
-  (`vp run recurrence:gate`);
+  (`vp run benchmark#recurrence`);
 - the scope dialog's focus and announcements in the a11y suite.
 
 Base event and transaction semantics are unchanged: occurrences reach the calendar through an
@@ -1643,12 +1639,12 @@ the DST matrix covers edits in New York, Sydney and Lord Howe as well as Berlin.
 
 ## 23. Prototype risks to retire early
 
-1. **React controlled bridge:** prove synchronous controlled state plus fine-grained selector subscriptions under SSR/Strict Mode. Retired by the #18 spike (ADR 0018) and `vp run react:gate`; the store is `calendar-react`'s own since #70 (ADR 0070).
+1. **React controlled bridge:** prove synchronous controlled state plus fine-grained selector subscriptions under SSR/Strict Mode. Retired by the #18 spike (ADR 0018) and `calendar-react`'s `react-gate.test.tsx`; the store is `calendar-react`'s own since #70 (ADR 0070).
 2. **dnd-kit adapter:** pin the current 0.x line in the lockfile and prove pointer, touch, keyboard, auto-scroll, and announcements behind semantic types. Superseded in 0.1 by native Pointer Events (ADR 0037).
 3. **Two-axis resource timeline:** prove TanStack Virtual composition, sticky axes, focus retention, and SSR initial geometry. Retired by the #20 spike (ADR 0020).
 4. **DST wall-time geometry:** prove gaps and folds in day/week drag, resize, slots, and announcements. Retired by the #16 spike (ADR 0016) and the DST parity tests; announcing a shift is #187.
 5. **Index implementation:** compare the selected interval-tree adapter with a simple reference and retain it only if build/query/memory budgets pass. Retired by #16 (ADR 0016) and the #24 engine gate.
-6. **Typed calendar factory:** prove generics flow through compound components and custom views without casts in consumer code. Retired by the #18 spike and #26 (`vp run react:factory`).
+6. **Typed calendar factory:** prove generics flow through compound components and custom views without casts in consumer code. Retired by the #18 spike and #26.
 
 None of these risks waits until the final polishing phase.
 

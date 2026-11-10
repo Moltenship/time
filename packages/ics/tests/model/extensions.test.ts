@@ -3,9 +3,12 @@ import { describe, expect, expectTypeOf, test } from "vite-plus/test";
 import type {
   IcsCalendar,
   IcsDateValue,
+  IcsEvent,
   IcsExtension,
+  IcsJournal,
   IcsPeriod,
   IcsRecurrenceRule,
+  IcsTodo,
   StandardSchemaV1,
 } from "../../src/index";
 import { icsExtension, parseIcs } from "../../src/index";
@@ -60,10 +63,16 @@ describe("extension values", () => {
         "X-RULE:FREQ=DAILY;COUNT=2",
         "X-OFFSET:+0530",
         "X-TIME:093000",
+        "X-FLAG:TRUE",
+        "X-LENGTH:PT90M",
+        "X-RATIO:0.75",
       ],
       {
         at: icsExtension("X-AT", { type: "DATE-TIME" }),
         count: icsExtension("X-COUNT", { type: "INTEGER" }),
+        flag: icsExtension("X-FLAG", { type: "BOOLEAN" }),
+        length: icsExtension("X-LENGTH", { type: "DURATION" }),
+        ratio: icsExtension("X-RATIO", { type: "FLOAT" }),
         offset: icsExtension("X-OFFSET", { type: "UTC-OFFSET" }),
         rule: icsExtension("X-RULE", { type: "RECUR" }),
         slot: icsExtension("X-SLOT", { type: "PERIOD" }),
@@ -80,12 +89,32 @@ describe("extension values", () => {
         zoned: "2026-03-02T09:00:00+01:00[Europe/Berlin]",
       },
       count: 7,
+      flag: true,
+      length: "PT90M",
       offset: "+05:30",
+      ratio: 0.75,
       rule: { count: 2, frequency: "DAILY" },
       slot: { duration: "PT1H", start: { instant: "2026-03-02T09:00:00Z", kind: "utc" } },
       time: { time: "09:30:00", utc: false },
       when: { date: "2026-03-02", kind: "date" },
     });
+  });
+
+  test("a value that doesn't decode is dropped with an error, and the event stays", () => {
+    const { extensions, issues } = eventWith(["X-COUNT:many"], {
+      count: icsExtension("X-COUNT", { type: "INTEGER" }),
+    });
+    expect(extensions).toEqual({ count: undefined });
+    expect(issuesOf(issues)).toEqual([
+      {
+        code: "invalid-value",
+        component: "VEVENT",
+        line: 5,
+        path: [...EVENT_PATH, "extensions", "count"],
+        property: "X-COUNT",
+        severity: "error",
+      },
+    ]);
   });
 
   test("a DATE extension reads a date-time by its shape, with a warning", () => {
@@ -279,6 +308,14 @@ describe("types", () => {
     expectTypeOf<OutputOf<ReturnType<typeof icsExtension<"TEXT">>>>().toEqualTypeOf<
       string | undefined
     >();
+    const count = icsExtension("X-COUNT", { type: "INTEGER" });
+    expectTypeOf<OutputOf<typeof count>>().toEqualTypeOf<number | undefined>();
+    const flag = icsExtension("X-FLAG", { type: "BOOLEAN" });
+    expectTypeOf<OutputOf<typeof flag>>().toEqualTypeOf<boolean | undefined>();
+    const length = icsExtension("X-LENGTH", { type: "DURATION" });
+    expectTypeOf<OutputOf<typeof length>>().toEqualTypeOf<Temporal.Duration | undefined>();
+    const at = icsExtension("X-AT", { type: "DATE-TIME" });
+    expectTypeOf<OutputOf<typeof at>>().toEqualTypeOf<IcsDateValue | undefined>();
     const period = icsExtension("X-SLOT", { type: "PERIOD" });
     expectTypeOf<OutputOf<typeof period>>().toEqualTypeOf<IcsPeriod | undefined>();
     const rule = icsExtension("X-RULE", { multiple: true, type: "RECUR" });
@@ -337,5 +374,28 @@ describe("types", () => {
     type Event = (typeof result)["calendars"][number]["events"][number];
     expectTypeOf<Event["extensions"]["seats"]>().toEqualTypeOf<number | undefined>();
     expectTypeOf<StandardSchemaV1.InferOutput<typeof positive>>().toEqualTypeOf<number>();
+  });
+
+  test("infer every component's extensions from parseIcs's config", () => {
+    const owner = icsExtension("X-OWNER");
+    const tags = icsExtension("X-TAGS", { multiple: true });
+    const config = { calendar: { owner }, journal: { tags }, todo: { owner } };
+    type Config = typeof config;
+    type Calendar = ReturnType<typeof parseIcs<Config>>["calendars"][number];
+    expectTypeOf<Calendar>().toEqualTypeOf<IcsCalendar<Config>>();
+    expectTypeOf<Calendar["events"][number]>().toEqualTypeOf<IcsEvent<Config>>();
+    expectTypeOf<Calendar["todos"][number]>().toEqualTypeOf<IcsTodo<Config>>();
+    expectTypeOf<Calendar["journals"][number]>().toEqualTypeOf<IcsJournal<Config>>();
+    expectTypeOf<Calendar["extensions"]>().toEqualTypeOf<{ readonly owner: string | undefined }>();
+    expectTypeOf<Calendar["events"][number]["extensions"]>().toEqualTypeOf<{}>();
+    expectTypeOf<Calendar["todos"][number]["extensions"]>().toEqualTypeOf<{
+      readonly owner: string | undefined;
+    }>();
+    expectTypeOf<Calendar["journals"][number]["extensions"]>().toEqualTypeOf<{
+      readonly tags: readonly string[];
+    }>();
+    expectTypeOf<IcsEvent["extensions"]>().toEqualTypeOf<{}>();
+    type Plain = ReturnType<typeof parseIcs<{}>>["calendars"][number];
+    expectTypeOf<Plain["extensions"]>().toEqualTypeOf<{}>();
   });
 });

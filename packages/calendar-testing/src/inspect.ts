@@ -88,7 +88,7 @@ export interface CalendarInspection<
   readonly pointer: PointerDriver<TEventId, TResourceId>;
 }
 
-export interface InspectionContext<TEventId extends EventId, TResourceId extends ResourceId> {
+interface InspectionContext<TEventId extends EventId, TResourceId extends ResourceId> {
   readonly container: HTMLElement;
   readonly ensureMounted: () => void;
   readonly focus: () => CalendarFocus | null;

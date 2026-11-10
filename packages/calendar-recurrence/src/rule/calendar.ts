@@ -21,7 +21,7 @@ export function epochDay(year: number, month: number, day: number): number {
   return era * 146_097 + dayOfEra - 719_468;
 }
 
-export interface CivilDate {
+interface CivilDate {
   readonly day: number;
   readonly month: number;
   readonly year: number;

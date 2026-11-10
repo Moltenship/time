@@ -1,7 +1,7 @@
 import { access, readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { prerelease, valid, validRange } from "semver";
+import { prerelease, valid } from "semver";
 
 import { releaseDirectory } from "./config";
 import { integrityOf, tarballDirectory } from "./pack";
@@ -19,8 +19,6 @@ export interface ReleaseManifest {
   readonly commit: string;
   /** Whether the working tree was clean at the start and end of the dry run. */
   readonly clean: boolean;
-  readonly createdAt: string;
-  readonly checks: readonly string[];
   /** In publish order: dependencies first. */
   readonly packages: readonly {
     readonly name: string;
@@ -54,8 +52,8 @@ export interface PublishState {
   readonly head: string;
   readonly clean: boolean;
   /**
-   * Whether HEAD is on `origin/main`, or right on top of it: the release commit, which
-   * `vp run release` pushes after publishing.
+   * Whether HEAD is on `origin/main`, or right on top of it: the release commit, which the
+   * release workflow pushes after publishing.
    */
   readonly onMain: boolean;
   /** The packages that should publish, by name. */
@@ -69,8 +67,6 @@ export function publishProblems(state: PublishState): string[] {
   const problems: string[] = [];
   if (valid(state.version) !== state.version)
     problems.push(`"${state.version}" isn't a semver version`);
-  if (state.version === "0.0.0")
-    problems.push("0.0.0 is the unreleased placeholder; vp run release <version> sets a version");
   const { manifest } = state;
   if (!manifest) {
     problems.push("No dry-run manifest. vp run release runs the gate, which writes one.");
@@ -182,14 +178,4 @@ export async function readCheckedManifest({
 }
 
 /** Prereleases go to `next`, so `npm install` keeps getting the last stable version. */
-export function distTag(version: string, requested?: string): string {
-  const isPrerelease = prerelease(version) !== null;
-  const tag = requested ?? (isPrerelease ? "next" : "latest");
-  if (!/^[a-z][a-z0-9._-]*$/i.test(tag))
-    throw new Error(`"${tag}" isn't a dist-tag such as next or beta`);
-  if (validRange(tag)) throw new Error(`The dist-tag "${tag}" looks like a version range`);
-  if (isPrerelease && tag === "latest") {
-    throw new Error(`A prerelease (${version}) can't take the latest tag`);
-  }
-  return tag;
-}
+export const distTag = (version: string) => (prerelease(version) !== null ? "next" : "latest");

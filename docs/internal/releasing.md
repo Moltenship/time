@@ -9,8 +9,7 @@ command only through `/release`, which only the owner can start.
 Nine packages publish under `@moltenship`, listed in
 [`tools/release/src/config.ts`](../../tools/release/src/config.ts) and
 [package-topology.md](./package-topology.md#published-packages). They share one version until after
-1.0 (`architecture.md` §24). Why the release works this way, and how other libraries release:
-[research/release-flow.md](./research/release-flow.md).
+1.0 (`architecture.md` §24).
 
 ## One-time setup
 
@@ -146,9 +145,9 @@ gh release create v<version> --verify-tag --title <version> --notes-file .releas
 `--prerelease` is for a prerelease only.
 
 `--dry-run` starts a run with `dry-run` on, from any pushed branch: the check reports what a
-release would stop at instead of stopping, and the gate runs. Then two jobs of their own, with no
-OIDC token and no write access, check what publishing would do and how the push would go, and
-print the notes; the publish and finish jobs don't run. It publishes, pushes and releases nothing,
+release would stop at instead of stopping, and the gate runs. Then a job of its own, with no
+OIDC token and no write access, checks what publishing would do and how the push would go, and
+prints the notes; the publish and finish jobs don't run. It publishes, pushes and releases nothing,
 and only reports CI and `main`'s rules on the laptop.
 
 ### Why this order
@@ -201,17 +200,16 @@ on what the dry run packed.
 | `vp run release:api` | Each package's built declarations against its committed `api-report.md` | PR |
 | `vp run release:exports` | Packs every package into a temporary folder, then runs publint and are-the-types-wrong (ESM-only), checks for `LICENSE`, and checks that base packages don't import the dnd adapter | PR |
 | `vp run release:treeshake` | Bundles the facade's exports with esbuild, minified, with and without each opt-in feature's exports (`optionalFeatures` in `tools/release/src/config.ts`; today the event history, #227). From the built packages, as an app's bundler sees them, the bundle without the feature must have none of its markers. From source, with every module's side effects kept, it must have no bytes from the feature's files, so a statement left at a module's top level fails. With the feature, both must find it | PR |
-| `vp run release:consumer` | Installs the tarballs into a new project outside the workspace, from the pnpm store, with every third-party package at the version the workspace locks (offline, unless a cold cache needs metadata from npm, which it says); imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away | Full |
-| `vp run release:dry-run` | A fresh build of every published package, then all of the above, the registry smoke, and a registry build into `.release/registry` that must ask for the packed version. Writes `.release/manifest.json` | Full |
+| `vp run release:dry-run` | A fresh build of every published package, then the size, API and export checks on it, and a clean consumer: installs the tarballs into a new project outside the workspace, from the pnpm store, with every third-party package at the version the workspace locks (offline, unless a cold cache needs metadata from npm, which it says); imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away. Last, a registry build into `.release/registry` that must ask for the packed version; the registry's tests run in `ci:test`. Writes `.release/manifest.json` | Full |
 | `vp run release:artifacts` | What uses the release, on the dry run's tarballs and registry, with their hashes checked: the SSR fixture's render and hydration tests and the docs site's build, routes and example tests, each in a copy outside the workspace, installed offline from the pnpm store (a cold cache reads metadata from npm); and #43's install test, `shadcn add` into clean Vite and Next.js apps, which needs the network for npm and shadcn's own components. See [quality-gates.md](./quality-gates.md#release-artifacts) | Full |
 | `vp run release` | The release itself ([Release](#release)). After publishing, the workflow checks that npm serves every package the dry run packed, with its integrity, its dist-tag, its trusted publisher and provenance, and runs #43's install test with the packages from npm (`REGISTRY_E2E_PACKAGES=npm vp run registry:e2e`) | Releases |
 
 The PR checks read the built packages, so on their own they run after `vp run ci:build`. Only the
-dry run writes `.release/`. It takes the version to check from `--version`, or else from
-`RELEASE_VERSION`, which the release workflow sets for `release:gate`; a stray `RELEASE_VERSION` in
-your shell makes a plain dry run check that version, and the error says so. Without
-`--require-clean`, it also runs on a tree with changes and records that in the manifest, which the
-publish step then refuses; the release gate passes the flag. `vp run release --dry-run` is another
+dry run writes `.release/`. It checks that the packages are at `RELEASE_VERSION`, which the
+release workflow sets for `release:gate`; without it, it takes the version they have. A stray
+`RELEASE_VERSION` in your shell makes a plain dry run check that version, and the error says so.
+Without `--require-clean`, it also runs on a tree with changes and records that in the manifest,
+which the publish step then refuses; the release gate passes the flag. `vp run release --dry-run` is another
 thing: a rehearsal of the whole release workflow, which runs this dry run inside its gate.
 `release:artifacts` only reads `.release/`: it packs nothing, and refuses a manifest from another
 commit or a file whose hash changed since.
@@ -228,7 +226,7 @@ The publish job (`tools/release/src/publish.ts`) refuses unless:
 - `.release/manifest.json` exists from the gate's passing dry run;
 - the dry run ran on `HEAD`, the release commit, on a clean tree, and the tree is still clean;
 - `HEAD` is on `origin/main`, or right on top of it: the release commit, not pushed yet;
-- the dry run checked the version asked for, and it isn't `0.0.0`;
+- the dry run checked the version asked for;
 - every published package was packed, and each tarball's sha512 still matches;
 - npm is 11.5.1 or later, the first that publishes through trusted publishing.
 

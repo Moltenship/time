@@ -269,9 +269,6 @@ catalogs:
     happy-dom:
       specifier: 21.0.4
       version: 21.0.4
-    jotai:
-      specifier: 3.0.1
-      version: 3.0.1
     jsdom:
       specifier: 30.1.3
       version: 30.1.3
@@ -481,9 +478,6 @@ importers:
       '@tanstack/react-query':
         specifier: 'catalog:'
         version: 5.105.0(@types/react@19.3.0)(react@19.3.1)
-      '@tanstack/react-virtual':
-        specifier: 'catalog:'
-        version: 3.14.24(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       fumadocs-core:
         specifier: 'catalog:'
         version: 16.17.9(@mdx-js/mdx@3.1.1(supports-color@7.2.0))(@modelcontextprotocol/server@2.4.0)(@types/estree-jsx@1.0.5)(@types/hast@3.0.5)(@types/mdast@4.0.4)(@types/react@19.3.0)(lucide-react@1.65.0(@types/react@19.3.0)(react@19.3.1))(next@16.4.3(@babel/core@7.29.7(supports-color@7.2.0))(@types/node@26.6.6)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react-dom@19.3.1(react@19.3.1))(react@19.3.1)(supports-color@7.2.0)(zod@4.6.7)
@@ -548,9 +542,6 @@ importers:
       next-validate-link:
         specifier: 'catalog:'
         version: 1.6.7(@types/mdast@4.0.4)(@types/unist@3.0.3)(supports-color@7.2.0)
-      postcss:
-        specifier: 'catalog:'
-        version: 8.5.32
       registry:
         specifier: workspace:*
         version: link:../../tools/registry
@@ -615,18 +606,12 @@ importers:
       '@moltenship/calendar-core':
         specifier: workspace:*
         version: link:../packages/calendar-core
-      '@moltenship/calendar-react':
-        specifier: workspace:*
-        version: link:../packages/calendar-react
       '@moltenship/calendar-recurrence':
         specifier: workspace:*
         version: link:../packages/calendar-recurrence
       '@moltenship/calendar-temporal':
         specifier: workspace:*
         version: link:../packages/calendar-temporal
-      fixtures:
-        specifier: workspace:*
-        version: link:../tools/fixtures
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
@@ -739,6 +724,9 @@ importers:
 
   packages/calendar-dnd-kit:
     dependencies:
+      '@dnd-kit/abstract':
+        specifier: ^0.5.0
+        version: 0.5.1
       '@moltenship/calendar-core':
         specifier: workspace:*
         version: link:../calendar-core
@@ -816,9 +804,6 @@ importers:
       '@moltenship/calendar-core':
         specifier: workspace:*
         version: link:../calendar-core
-      '@moltenship/calendar-temporal':
-        specifier: workspace:*
-        version: link:../calendar-temporal
       '@moltenship/ics':
         specifier: workspace:*
         version: link:../ics
@@ -960,12 +945,6 @@ importers:
 
   tools/a11y:
     dependencies:
-      '@astryxdesign/core':
-        specifier: 'catalog:'
-        version: 0.7.5(@stylexjs/stylex@0.19.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      '@astryxdesign/theme-neutral':
-        specifier: 'catalog:'
-        version: 0.7.5(@astryxdesign/core@0.7.5(@stylexjs/stylex@0.19.1)(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(@types/react@19.3.0)(react@19.3.1)
       '@dnd-kit/dom':
         specifier: 'catalog:'
         version: 0.5.1
@@ -1027,106 +1006,6 @@ importers:
       tw-animate-css:
         specifier: 'catalog:'
         version: 1.4.0
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-      vite:
-        specifier: 'catalog:'
-        version: '@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)'
-      vite-plus:
-        specifier: 'catalog:'
-        version: 1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(esbuild@0.28.2)(happy-dom@21.0.4)(jiti@2.7.0)(jsdom@30.1.3)(playwright@1.64.1)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
-
-  tools/dnd-adapter-spike:
-    dependencies:
-      '@dnd-kit/dom':
-        specifier: 'catalog:'
-        version: 0.5.1
-      '@dnd-kit/react':
-        specifier: 'catalog:'
-        version: 0.5.1(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      react:
-        specifier: 'catalog:'
-        version: 19.3.1
-      react-dom:
-        specifier: 'catalog:'
-        version: 19.3.1(react@19.3.1)
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.6
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: 'catalog:'
-        version: 19.3.0(@types/react@19.3.0)
-      happy-dom:
-        specifier: 'catalog:'
-        version: 21.0.4
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-
-  tools/fixtures:
-    dependencies:
-      '@moltenship/calendar-core':
-        specifier: workspace:*
-        version: link:../../packages/calendar-core
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.6
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-      vite:
-        specifier: 'catalog:'
-        version: '@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)'
-      vite-plus:
-        specifier: 'catalog:'
-        version: 1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(esbuild@0.28.2)(happy-dom@21.0.4)(jiti@2.7.0)(jsdom@30.1.3)(playwright@1.64.1)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
-
-  tools/interval-dst-spike:
-    dependencies:
-      '@flatten-js/interval-tree':
-        specifier: 'catalog:'
-        version: 2.0.3
-    devDependencies:
-      '@types/node':
-        specifier: 'catalog:'
-        version: 26.6.6
-      fast-check:
-        specifier: 'catalog:'
-        version: 4.10.2
-      tsx:
-        specifier: 'catalog:'
-        version: 4.23.15
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
-
-  tools/react-store-spike:
-    dependencies:
-      jotai:
-        specifier: 'catalog:'
-        version: 3.0.1(@types/react@19.3.0)(react@19.3.1)
-      react:
-        specifier: 'catalog:'
-        version: 19.3.1
-      react-dom:
-        specifier: 'catalog:'
-        version: 19.3.1(react@19.3.1)
-    devDependencies:
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: 'catalog:'
-        version: 19.3.0(@types/react@19.3.0)
-      jsdom:
-        specifier: 'catalog:'
-        version: 30.1.3
       typescript:
         specifier: 'catalog:'
         version: 7.0.2
@@ -1222,40 +1101,6 @@ importers:
       typescript-6:
         specifier: 'catalog:'
         version: typescript@6.0.3
-      vite:
-        specifier: 'catalog:'
-        version: '@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)'
-      vite-plus:
-        specifier: 'catalog:'
-        version: 1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(@vitest/browser-playwright@5.0.5)(@vitest/ui@5.0.5)(esbuild@0.28.2)(happy-dom@21.0.4)(jiti@2.7.0)(jsdom@30.1.3)(playwright@1.64.1)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)
-
-  tools/resource-virtualization-spike:
-    dependencies:
-      '@tanstack/react-virtual':
-        specifier: 'catalog:'
-        version: 3.14.24(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
-      react:
-        specifier: 'catalog:'
-        version: 19.3.1
-      react-dom:
-        specifier: 'catalog:'
-        version: 19.3.1(react@19.3.1)
-    devDependencies:
-      '@types/react':
-        specifier: 'catalog:'
-        version: 19.3.0
-      '@types/react-dom':
-        specifier: 'catalog:'
-        version: 19.3.0(@types/react@19.3.0)
-      '@vitejs/plugin-react':
-        specifier: 'catalog:'
-        version: 6.1.2(@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
-      jsdom:
-        specifier: 'catalog:'
-        version: 30.1.3
-      typescript:
-        specifier: 'catalog:'
-        version: 7.0.2
       vite:
         specifier: 'catalog:'
         version: '@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1)'
@@ -4274,18 +4119,6 @@ packages:
   jiti@2.7.0:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
-
-  jotai@3.0.1:
-    resolution: {integrity: sha512-6tS7wY9otdiNp26Wqb/1ds3OuVJVoV+tJlN4hpLrYmfFf/t9bauVt+zKBNSpS5qSl5h6GieVQ+OknVraZX+udQ==}
-    engines: {node: '>=22.12.0'}
-    peerDependencies:
-      '@types/react': '>=18.0.0'
-      react: '>=18.0.0'
-    peerDependenciesMeta:
-      '@types/react':
-        optional: true
-      react:
-        optional: true
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -8465,11 +8298,6 @@ snapshots:
   jiti@1.21.7: {}
 
   jiti@2.7.0: {}
-
-  jotai@3.0.1(@types/react@19.3.0)(react@19.3.1):
-    optionalDependencies:
-      '@types/react': 19.3.0
-      react: 19.3.1
 
   js-tokens@4.0.0: {}
 

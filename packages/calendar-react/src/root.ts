@@ -83,7 +83,7 @@ import { useNowFrom } from "./use-now";
 import { useStableValue } from "./use-stable-value";
 import { resolveViewOptions, type AnyCalendarView, type CalendarActiveView } from "./views";
 
-export interface CalendarRootConfig<
+interface CalendarRootConfig<
   TEvent,
   TViewDef,
   TEventId extends EventId,

@@ -72,8 +72,9 @@ The native Temporal fixture matrix proves:
   with the scan oracle;
 - 1,000 seeded property runs compare candidate queries with the scan reference.
 
-The benchmark JSON/table and DST JSON/review table are committed beside the
-spike. Node.js 24.19.0 does **not** expose Temporal without a flag on this
+The benchmark JSON/table and DST JSON/review table were committed beside the
+spike, `tools/interval-dst-spike`. The spike is no longer in the tree: commit
+`1034a5fb` has it as it was measured. Node.js 24.19.0 does **not** expose Temporal without a flag on this
 workspace. The named tasks use native V8 Temporal through
 `--harmony-temporal`; this evidence does not claim unflagged runtime support.
 

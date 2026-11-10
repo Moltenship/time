@@ -37,7 +37,7 @@ Check locally; don't wait on CI to learn whether a change passes. There are thre
 | Tier  | Command              | What it runs                                                                                                                                                         |
 | ----- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Quick | `vp run ready:quick` | The docs site's link check, which compiles every page, then `vp check` and `vp test`                                                                                |
-| PR    | `vp run ready`       | Quick, plus production builds, the release checks (size budgets, API reports, package exports), the React, SSR, registry and package-graph gates, and the a11y suite in Chromium. CI runs the same tasks on every PR: `ready:checks` and `a11y`. |
+| PR    | `vp run ready`       | Quick, plus production builds, the release checks (size budgets, API reports, package exports), the registry's tests over its StyleX items, the package-graph gate, and the a11y suite in Chromium. CI runs the same tasks on every PR: `ready:checks` and `a11y`. |
 | Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and in WebKit (`browsers`; Firefox is off until #263), the release dry run (a fresh build, the packed tarballs installed from the pnpm store into a clean project, the registry built for that version), the docs site's types and search, and the dry run's tarballs in use (`release:artifacts`): the SSR fixture's tests and the docs site's build in copies outside the workspace, and `shadcn add` into clean Vite and Next.js apps, which needs the network. It's the release gate. |
 
 When each tier runs:
@@ -67,7 +67,7 @@ When a tier fails, `vp run --last-details` names the step; rerun it alone with `
 
 The browser runs need Playwright's browsers once: `vp exec --filter a11y playwright install chromium
 firefox webkit` (add `--with-deps` on Linux). `browsers` runs WebKit alone until #263 brings Firefox
-back. CI runs it on demand: `gh workflow run ci.yml --ref <branch>`.
+back. CI runs it on demand, in its `release-gate` job: `gh workflow run ci.yml --ref <branch>`.
 
 A new check joins a tier in `vite.config.ts`: `ready:checks` or `gate:serial` for the PR tier,
 `ready:full` or `gate:serial:full` for the full gate only. Put it in a `gate:serial` lane if it
@@ -121,7 +121,8 @@ Every commit message and every PR title is `<type>(<scope>)!: <summary>`, per [C
 - Non-trivial PRs get a review from Claude Opus 5.5 (xhigh). Simple ones skip it: docs or notes only, mechanical changes, or small fixes their tests cover.
 - One reviewer per PR, for every round: spawn it once, then continue the same agent (SendMessage) with what you changed and the new commit, instead of spawning a fresh one.
 - Start a new reviewer only if the old one can't be continued (its context ran out, or it's gone), and give it the earlier rounds' findings and your replies.
-- Merge once the local gate passes and the review, if there was one, has no open blocker or should-fix findings. Details: `IMPLEMENTATION_PLAN.md`, "How we work".
+- Fix each finding, or reply with the reason you didn't. Post the local gate's result on the PR.
+- Merge with squash once the local gate passes and the review, if there was one, has no open blocker or should-fix findings. Rebase on `main` first if behind. The Vercel checks don't gate merges: when Vercel's daily deploy limit is hit, production catches up with the next deploy after it resets.
 
 ## Screenshots
 
@@ -141,7 +142,7 @@ PRs that change what users see carry screenshots in the PR description.
   | --- | --- | --- |
   | Year view | ![Year view, light](./year-light.png) | ![Year view, dark](./year-dark.png) |
 
-- PRs without visible UI changes need no screenshots.
+- PRs without visible UI changes need no screenshots. Docs show live, theme-aware UI, not screenshots.
 - Example of the table layout: https://github.com/Moltenship/time/pull/125
 
 ```bash

@@ -56,7 +56,7 @@ interface ResolvedTabStop {
 }
 
 /** Where focus enters the active view: its default entry (`"home"`) or its last target. */
-export type RovingEntry = (command: "end" | "home") => CalendarFocus | null;
+type RovingEntry = (command: "end" | "home") => CalendarFocus | null;
 
 /**
  * The elements of the active view that can take focus. Exactly one is the tab stop: the focused

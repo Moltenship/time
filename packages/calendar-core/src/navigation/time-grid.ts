@@ -17,7 +17,7 @@ type ResourceFocus = CalendarFocus["resourceId"];
  * A column the keyboard moves through: a date's slots, events, and all-day cell, in a resource
  * when the view has resources. Columns are listed in the order the view lays them out.
  */
-export interface TimeGridNavigationColumn {
+interface TimeGridNavigationColumn {
   /** The all-day row the column's all-day cell belongs to. */
   readonly allDay: DayGridRow<unknown, EventId, ResourceId>;
   readonly date: Temporal.PlainDate;

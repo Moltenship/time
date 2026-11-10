@@ -6,15 +6,13 @@ ownership. A workspace may import only the public entry points of workspaces lis
 
 Entry points expose only contracts approved by their owning implementation issues. Calendar core
 and Temporal expose the canonical engine contracts. Calendar React exposes its state/SSR layer and
-the issue #26 factory, compound context, and custom-view surface. The internal fixtures and
-benchmark workspaces own reproducible data and performance protocol code. `calendar-testing`
+the issue #26 factory, compound context, and custom-view surface. The internal benchmark
+workspace owns reproducible data and performance protocol code. `calendar-testing`
 exposes the test harness apps use (#45), built on the facade's and recurrence's public API only.
 
 Publishable workspaces expose `src/index.ts` inside the checkout so declared package imports work
 before any ignored build output exists. pnpm applies each package's `publishConfig.exports` while
-packing, replacing that development entry with `dist/index.mjs` and `dist/index.d.mts`. The private
-`fixtures` workspace follows the same type-checking rule but keeps its runtime import on built
-`dist/`, which is the artifact consumed by `benchmark`.
+packing, replacing that development entry with `dist/index.mjs` and `dist/index.d.mts`.
 
 ## Published packages
 
@@ -50,12 +48,11 @@ packed code carries the `/*!` notice.
 | `@moltenship/calendar-dnd-kit` | Optional dnd-kit adapter: items dragged into the calendar, events dragged out (#237) | `calendar-core`, `calendar-dnd` |
 | `@moltenship/calendar` | Supported public facade | `calendar-core`, `calendar-dnd`, `calendar-react`, `calendar-temporal` |
 | `@moltenship/calendar-testing` | Test helpers for apps: environment, builders, fixtures, render and hydration harness, queries, drivers and assertions (#45) | Public facade and `calendar-recurrence` |
-| `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `calendar-temporal`, `ics` |
+| `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `ics` |
 | `@moltenship/ics` | Standalone iCalendar parsing (ADR 0151) | None |
 | `showcase` | Consumer-equivalent documentation and examples | Public facade, `calendar-recurrence`, `calendar-dnd-kit`, `calendar-testing` and `@moltenship/ics` |
 | `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade; its tests also use `calendar-testing` |
-| `fixtures` | Internal deterministic fixture generation | `calendar-core` |
-| `benchmark` | Internal core, React and recurrence benchmark runners | Core, React bindings, recurrence, Temporal utilities, and fixture tooling |
+| `benchmark` | Internal core and recurrence benchmark runners, with their fixtures | Core, recurrence and Temporal utilities |
 | `demo` | The Google Calendar-style demo app | Public facade, `calendar-recurrence` and `calendar-dnd-kit` |
 | `registry-source` | Registry source, type-checked and tested in place | Public facade only; its tests also use `calendar-testing` |
 | `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, the dnd-kit adapter, `calendar-testing`, registry source in place (`@registry/*`), and the demo's `App` by path (`apps/demo/src/app`); not in the manifest check yet |
@@ -68,9 +65,9 @@ DOM 19 of `calendar-testing`. `calendar-react` has no runtime dependency outside
 dropped Jotai in #70 (ADR 0070). `calendar-core` depends on `@flatten-js/interval-tree` behind its
 internal `IntervalIndex` (ADR 0016). dnd-kit (`@dnd-kit/react` and `@dnd-kit/dom` 0.5) is a peer
 of `calendar-dnd-kit` alone, which no other package depends on; the `a11y` tests use it with the
-adapter, and `tools/dnd-adapter-spike` keeps the old spike (ADR 0037). TanStack Virtual is a registry-source dependency, not a
-package one. Playwright and axe-core are `tools/a11y` development dependencies. The `*-spike`
-workspaces under `tools/` import no workspace.
+adapter. The adapter also depends on `@dnd-kit/abstract`, which `@dnd-kit/dom` brings, for
+dnd-kit's collision enums. TanStack Virtual is a registry-source dependency, not a package one. Playwright and
+axe-core are `tools/a11y` development dependencies.
 
 Every workspace compiles with the cataloged current TypeScript toolchain against the `ESNext`
 standard library. Temporal is an ambient global, so `calendar-temporal` has no declaration
@@ -82,9 +79,9 @@ boundary.
 ```text
 calendar-temporal
        ↓
-calendar-core ───────────────→ fixtures ───────→ benchmark (also imports core and temporal)
-       ↓                                           ↑
-calendar-core + calendar-temporal → calendar-react ┘
+calendar-core + calendar-temporal ─────→ benchmark
+       ↓
+calendar-core + calendar-temporal → calendar-react
 calendar-core + calendar-temporal → calendar-dnd
 calendar-core + calendar-dnd → calendar-dnd-kit (optional; dnd-kit peer) ─────→ showcase / demo / a11y
 
@@ -94,7 +91,7 @@ calendar (facade) ─────→ showcase / ssr-fixture / demo / registry-so
        ↓
 calendar-testing (also imports calendar-recurrence) ─────→ showcase
 
-calendar-core + calendar-temporal + ics ─────→ calendar-recurrence ─────→ showcase / demo / benchmark / a11y
+calendar-core + ics ─────→ calendar-recurrence ─────→ showcase / demo / benchmark / a11y
 
 ics (standalone: no workspace imports, no runtime dependencies) ─────→ showcase
 ```
@@ -113,6 +110,6 @@ fixture and passes only when the expected deep-import violation is reported. Cor
 `ics` configuration is also asserted to omit DOM libraries and ambient package types.
 
 Dependency-cruiser 18 uses an isolated TypeScript 6 parser through `packageExtensions` because its
-boundary analysis does not yet work with TypeScript 7. This exception is tooling-only: Vite+, the
-packed-consumer test, and every workspace compile with the cataloged current TypeScript toolchain.
+boundary analysis does not yet work with TypeScript 7. This exception is tooling-only: Vite+ and
+every workspace compile with the cataloged current TypeScript toolchain.
 The release clean-consumer check also compiles with TypeScript 6, the oldest the README supports.

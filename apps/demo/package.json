@@ -6,7 +6,6 @@
   "type": "module",
   "scripts": {
     "build": "vp build",
-    "check": "vp check",
     "dev": "vp dev",
     "preview": "vp preview",
     "test": "vp test"

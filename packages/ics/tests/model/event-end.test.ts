@@ -100,6 +100,16 @@ describe("getEventEnd", () => {
       });
     });
 
+    test("to a zoned time, keeping its TZID as written", () => {
+      const start = zoned("2026-03-10T09:00:00", "America/Los_Angeles", "Pacific Standard Time");
+      expect(plain(getEventEnd({ duration: duration("PT15M"), start }))).toEqual({
+        kind: "zoned",
+        tzid: "Pacific Standard Time",
+        wallTime: "2026-03-10T09:15:00",
+        zoned: "2026-03-10T09:15:00-07:00[America/Los_Angeles]",
+      });
+    });
+
     test("to floating and unresolved times as wall times", () => {
       expect(
         plain(

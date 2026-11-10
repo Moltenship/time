@@ -176,7 +176,7 @@ function pad(value: number, length = 2): string {
   return String(value).padStart(length, "0");
 }
 
-export function encodeDate(date: Temporal.PlainDate): string {
+function encodeDate(date: Temporal.PlainDate): string {
   if (date.year < 0 || date.year > 9999) {
     throw new RangeError(`iCalendar can't write the year ${date.year}`);
   }

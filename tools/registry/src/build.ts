@@ -21,7 +21,7 @@ const ownScope = `${registryNamespace}/`;
 
 type SourceItem = ReturnType<typeof registryItemSchema.parse>;
 
-export interface BuildRegistryOptions {
+interface BuildRegistryOptions {
   readonly workspaceRoot: string;
   /** Where the item JSON lands, such as `apps/showcase/public/r`. */
   readonly outDir: string;
@@ -186,8 +186,6 @@ export async function buildRegistry({
             }
           : {}),
         ...(theme ? { cssVars: theme.cssVars, css: theme.css } : {}),
-        ...(item.cssVars ? { cssVars: item.cssVars } : {}),
-        ...(item.css ? { css: item.css } : {}),
         meta: { ...meta, compatibility },
       });
       manifestItems.push({

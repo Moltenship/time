@@ -25,13 +25,11 @@ import {
  */
 export async function dryRun({
   version: requested,
-  requestedFrom = "flag",
   manifestFile = manifestPath,
   requireClean = false,
 }: {
+  /** The version the packages must be at; the release workflow sets it through RELEASE_VERSION. */
   readonly version?: string;
-  /** Where the version came from, for the error message. */
-  readonly requestedFrom?: "flag" | "env";
   readonly manifestFile?: string;
   /** Fail on a working tree with changes, as a release must. Without it, the manifest records them. */
   readonly requireClean?: boolean;
@@ -45,44 +43,31 @@ export async function dryRun({
     );
   }
   const packages = await readPublishedPackages();
-  const checks: string[] = [];
-  const record = async <T>(name: string, action: () => Promise<T>) => {
-    const result = await step(name, action);
-    checks.push(name);
-    return result;
-  };
-
-  const version = await record("versions", async () => {
+  const version = await step("versions", async () => {
     const shared = sharedVersion(packages);
     if (requested !== undefined && requested !== shared) {
-      const source = requestedFrom === "env" ? " (from RELEASE_VERSION)" : "";
-      throw new Error(
-        `The packages are at ${shared}, not ${requested}${source}. vp run release ${requested} sets the version, then runs this.`,
-      );
+      throw new Error(`The packages are at ${shared}, not ${requested} (from RELEASE_VERSION).`);
     }
     console.log(`${packages.length} packages at ${shared}`);
     return shared;
   });
 
-  await record("build", async () => {
+  await step("build", async () => {
     for (const entry of packages) {
       await runOrThrow("vp", ["run", "--no-cache", `${entry.manifest.name}#build`], {
         inherit: true,
       });
     }
   });
-  await record("size", () => checkSizes(packages));
-  await record("api", () => checkApiReports(packages));
-  const tarballs: PackedTarball[] = await record("pack", () => packPublishedPackages(packages));
-  await record("exports", () => checkTarballs(tarballs));
-  await record("consumer", () => checkConsumer(tarballs));
-  // The registry (#43): its schema smoke, then a build for the packed version into
-  // .release/registry. What uses the artifacts, its install test included, runs on its own
-  // afterwards: vp run release:artifacts.
-  const registry = await record("registry", async () => {
-    await runOrThrow("vp", ["run", "--no-cache", "registry:smoke"], { inherit: true });
-    return buildRegistry(tarballs);
-  });
+  await step("size", () => checkSizes(packages));
+  await step("api", () => checkApiReports(packages));
+  const tarballs: PackedTarball[] = await step("pack", () => packPublishedPackages(packages));
+  await step("exports", () => checkTarballs(tarballs));
+  await step("consumer", () => checkConsumer(tarballs));
+  // The registry (#43), built for the packed version into .release/registry; ci:test runs its
+  // tests. What uses the artifacts, its install test included, runs on its own afterwards:
+  // vp run release:artifacts.
+  const registry = await step("registry", () => buildRegistry(tarballs));
 
   const end = await gitState();
   if (end.head !== start.head)
@@ -96,8 +81,6 @@ export async function dryRun({
       version,
       commit: start.head,
       clean: start.clean && end.clean,
-      createdAt: new Date().toISOString(),
-      checks,
       packages: tarballs.map(({ name, file, integrity }) => ({ name, file, integrity })),
       registry,
     },
@@ -109,23 +92,11 @@ export async function dryRun({
     console.log("The working tree had changes, so the publish step won't accept this run.");
 }
 
-/**
- * The version a dry run checks: `--version` first, else `RELEASE_VERSION`, which the release
- * workflow sets for `release:gate`, whose lane runs the dry run without arguments. Neither means
- * "whatever the manifests say".
- */
-export function requestedVersion(
-  flag: string | true | undefined,
-  environment: string | undefined,
-): { readonly version?: string; readonly requestedFrom: "flag" | "env" } {
-  if (typeof flag === "string") return { version: flag, requestedFrom: "flag" };
-  return { version: environment || undefined, requestedFrom: "env" };
-}
-
 runMain(import.meta, async () => {
-  const { flags } = parseArguments(process.argv.slice(2), ["require-clean"], ["version"]);
+  const { flags } = parseArguments(process.argv.slice(2), ["require-clean"]);
   await dryRun({
-    ...requestedVersion(flags.get("version"), process.env.RELEASE_VERSION),
+    // Without it, as in CI's release-gate job, the dry run checks the version the manifests have.
+    version: process.env.RELEASE_VERSION || undefined,
     requireClean: flags.has("require-clean"),
   });
 });

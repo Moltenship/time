@@ -7,7 +7,7 @@ export type ShortcutCommand =
   | { readonly type: "create" | "help" | "next" | "previous" | "today" }
   | { readonly type: "view"; readonly view: DemoView };
 
-export interface Shortcut {
+interface Shortcut {
   readonly command: ShortcutCommand;
   /** `KeyboardEvent.key` values that run the command. */
   readonly keys: readonly string[];
@@ -15,7 +15,7 @@ export interface Shortcut {
 }
 
 /** Global shortcuts, in the order the shortcuts dialog lists them. */
-export const shortcuts: readonly Shortcut[] = [
+const shortcuts: readonly Shortcut[] = [
   { command: { type: "today" }, keys: ["t"], label: "Go to today" },
   { command: { type: "previous" }, keys: ["k", "ArrowLeft"], label: "Previous period" },
   { command: { type: "next" }, keys: ["j", "ArrowRight"], label: "Next period" },

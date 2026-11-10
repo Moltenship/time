@@ -47,7 +47,8 @@ If triggered, retain the public `{ state, actions, meta }` and typed-factory con
 | Event/resource generics reach public composition APIs | `typed-custom-view.test.tsx` compiles and renders a custom view and compound event callback without consumer casts |
 | Jotai does not leak | The production build checks the emitted declaration for Jotai/escape-hatch types and the public consumer fixture for casts |
 
-Validation commands:
+Validation commands, as they ran when the spike was written. The spike,
+`tools/react-store-spike`, is no longer in the tree: commit `8633f2e5` has it as it was measured.
 
 ```sh
 vp check

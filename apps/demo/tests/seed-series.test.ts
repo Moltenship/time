@@ -3,9 +3,7 @@ import { createOccurrenceExpander } from "@moltenship/calendar-recurrence";
 import { describe, expect, test } from "vite-plus/test";
 
 import { demoAdapters, type DemoEvent, type DemoOccurrence } from "../src/calendar";
-import { createRoutineEvents } from "../src/routine";
-import { createSeedEvents } from "../src/seed";
-import { createSeriesEvents, nearestClockChange, upgradeSavedEvents } from "../src/seed-series";
+import { createSeriesEvents, nearestClockChange } from "../src/seed-series";
 
 // A Monday, two weeks before Berlin's clocks go back and three before New York's.
 const today = Temporal.PlainDate.from("2026-10-12");
@@ -114,30 +112,5 @@ describe("seeded series", () => {
     );
 
     expect(titled(occurrences, "Walk the dog")).toHaveLength(14);
-  });
-
-  test("replace the seeded one-off standups and birthday in events saved before recurrence", () => {
-    const timeZone = "Europe/Berlin";
-    const saved: DemoEvent[] = [
-      ...createSeedEvents(today, timeZone),
-      ...createRoutineEvents(today, timeZone),
-      // The one-offs the old seed had, and an event of the visitor's own with the same title.
-      { ...createSeedEvents(today, timeZone)[0]!, id: "seed-900", title: "Standup" },
-      { ...createSeedEvents(today, timeZone)[0]!, id: "routine-9000", title: "Standup" },
-      { ...createSeedEvents(today, timeZone)[0]!, id: "seed-901", title: "Mom's birthday" },
-      { ...createSeedEvents(today, timeZone)[0]!, id: "4f9c", title: "Standup" },
-    ];
-    const upgraded = upgradeSavedEvents(saved, today, timeZone);
-    const ids = upgraded.map(({ id }) => id);
-
-    expect(ids).not.toContain("seed-900");
-    expect(ids).not.toContain("routine-9000");
-    expect(ids).not.toContain("seed-901");
-    expect(ids).toContain("4f9c");
-    expect(ids).toEqual(expect.arrayContaining(["standup", "standup-moved", "moms-birthday"]));
-    expect(new Set(ids).size).toBe(ids.length);
-    expect(upgraded.filter(({ title }) => title === "Design review")).toHaveLength(
-      saved.filter(({ title }) => title === "Design review").length,
-    );
   });
 });

@@ -29,7 +29,7 @@ export interface LocalRegistryServer {
   readonly close: () => Promise<void>;
 }
 
-export interface LocalRegistryServerOptions {
+interface LocalRegistryServerOptions {
   /** Served as is: `<siteDir>/r/month-view.json` is `/r/month-view.json`. */
   readonly siteDir: string;
   /** Packed packages served as an npm registry under `/npm/`, or none. */

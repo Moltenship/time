@@ -39,11 +39,11 @@ select semantic state. `architecture.md` §9.1 and §9.2 describe it.
 - The package keeps its own listener set and snapshot identity, which Jotai used to.
 - `getServerSnapshot()` and `store.destroy()` are gone. Inside `Root`, the server and the first
   client render read the same merged state; a store `Root` created is dropped with it.
-- Jotai stays in the workspace only for `tools/react-store-spike` (ADR 0018).
+- Jotai left the workspace when `tools/react-store-spike` (ADR 0018) was removed from the tree.
 
 ## Evidence
 
 `packages/calendar-react/tests/react-gate.test.tsx` (controlled state in every Strict Mode render,
 selectors that don't commit unrelated changes, isolated roots, a caller-owned store after unmount),
 `store.test.ts`, and the Activity cases in `view-projection.test.tsx` and `regressions.test.tsx`.
-`vp run react:gate` runs the first, and `vp test` all of them.
+`vp test` runs all of them.

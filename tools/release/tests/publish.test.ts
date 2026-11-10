@@ -4,7 +4,7 @@ import { join, resolve } from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { dryRun, requestedVersion } from "../src/dry-run";
+import { dryRun } from "../src/dry-run";
 import {
   distTag,
   publishProblems,
@@ -21,8 +21,6 @@ const manifest: ReleaseManifest = {
   version: "1.0.0-rc.1",
   commit: "abc123",
   clean: true,
-  createdAt: "2026-10-12T00:00:00.000Z",
-  checks: ["versions", "build", "size", "api", "pack", "exports", "consumer", "registry"],
   packages: [
     { name: "@x/a", file: "x-a-1.0.0-rc.1.tgz", integrity: "sha512-a" },
     { name: "@x/b", file: "x-b-1.0.0-rc.1.tgz", integrity: "sha512-b" },
@@ -68,11 +66,6 @@ describe("the publish guard", () => {
       "working tree with changes",
     ],
     ["another version", { version: "1.0.0" }, "The dry run checked 1.0.0-rc.1, not 1.0.0"],
-    [
-      "the placeholder version",
-      { version: "0.0.0", manifest: { ...manifest, version: "0.0.0" } },
-      "placeholder",
-    ],
     ["an invalid version", { version: "v1" }, "isn't a semver version"],
     [
       "a changed tarball",
@@ -106,13 +99,6 @@ describe("the publish guard", () => {
   test("prereleases go to next, stable versions to latest", () => {
     expect(distTag("1.0.0-rc.1")).toBe("next");
     expect(distTag("1.0.0")).toBe("latest");
-    expect(distTag("1.0.0-rc.1", "rc")).toBe("rc");
-    expect(() => distTag("1.0.0-rc.1", "latest")).toThrow("can't take the latest tag");
-    expect(() => distTag("1.0.0", "1.0.0")).toThrow("isn't a dist-tag");
-    // npm refuses tags that parse as a semver range, such as "x".
-    expect(() => distTag("1.0.0", "x")).toThrow("looks like a version range");
-    expect(() => distTag("1.0.0", "")).toThrow("isn't a dist-tag");
-    expect(() => distTag("1.0.0", "next tag")).toThrow("isn't a dist-tag");
   });
 
   test("refuses without a manifest, before it reaches npm", async () => {
@@ -128,40 +114,25 @@ describe("the publish guard", () => {
     await expect(attempt).rejects.toThrow("No dry-run manifest");
     expect(lines).toEqual([]);
   });
+});
 
-  test("flags are strict: no value on booleans, a value on strings, nothing unknown", () => {
-    const parse = (argv: string[]) => parseArguments(argv, ["yes"], ["tag"]);
+describe("command-line arguments", () => {
+  test("flags are strict: no value, nothing unknown, positionals only where taken", () => {
+    const parse = (argv: string[]) => parseArguments(argv, ["dry-run"]);
 
-    expect(() => parse(["--yes=false"])).toThrow("--yes takes no value");
-    expect(() => parse(["--tag"])).toThrow("--tag needs a value");
-    expect(() => parse(["--tag", "--yes"])).toThrow("--tag needs a value");
-    expect(() => parse(["--dry-run", "--yes"])).toThrow("Unknown option --dry-run");
+    expect(() => parse(["--dry-run=false"])).toThrow("--dry-run takes no value");
+    expect(() => parse(["--dry-run="])).toThrow("--dry-run takes no value");
+    expect(() => parse(["--dryrun"])).toThrow("Unknown option --dryrun");
     expect(() => parse(["1.0.0-rc.1"])).toThrow("Unexpected argument 1.0.0-rc.1");
-    expect(() => parse(["--tag="])).toThrow("--tag needs a value");
-    expect(parse(["--tag=a=b"]).flags.get("tag")).toBe("a=b");
-    expect(parse(["--yes", "--tag", "next"]).flags).toEqual(
-      new Map<string, string | true>([
-        ["yes", true],
-        ["tag", "next"],
-      ]),
-    );
+    expect(parse(["--dry-run", "--"]).flags).toEqual(new Set(["dry-run"]));
+    expect(parseArguments(["1.0.0", "--dry-run"], ["dry-run"], { positionals: true })).toEqual({
+      flags: new Set(["dry-run"]),
+      positionals: ["1.0.0"],
+    });
   });
 });
 
 describe("the dry run", () => {
-  test("checks --version first, then RELEASE_VERSION, then nothing", () => {
-    expect(requestedVersion("1.0.0", "2.0.0")).toEqual({ version: "1.0.0", requestedFrom: "flag" });
-    expect(requestedVersion(undefined, "2.0.0")).toEqual({
-      version: "2.0.0",
-      requestedFrom: "env",
-    });
-    expect(requestedVersion(undefined, "")).toEqual({ version: undefined, requestedFrom: "env" });
-    expect(requestedVersion(undefined, undefined)).toEqual({
-      version: undefined,
-      requestedFrom: "env",
-    });
-  });
-
   test("a failed run removes the manifest an earlier run left", async () => {
     const directory = await mkdtemp(join(tmpdir(), "release-dry-run-"));
     const manifestFile = join(directory, "manifest.json");

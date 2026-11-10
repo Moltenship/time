@@ -54,7 +54,7 @@ function assertNoLineBreak(text: string, subject: () => string): void {
  * Folds a line into physical lines of at most 75 UTF-8 octets, each ending in CRLF. Continuation
  * lines start with a space that counts toward their 75. Breaks fall between code points only.
  */
-export function foldLine(line: string): string {
+function foldLine(line: string): string {
   // Each UTF-16 unit takes at most 3 octets.
   if (line.length * 3 <= MAX_OCTETS) return `${line}\r\n`;
 
