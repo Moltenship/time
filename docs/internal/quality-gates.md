@@ -255,7 +255,8 @@ the workspace builds and tests with:
 The range covers the item's whole install, its registry dependencies included, and `shadcn add`
 installs a matching runtime. `compatibility.json`, written next to the built items, lists every
 item with its URL, range, packages, items and targets, and the workspace versions; release tooling
-reads it. The install test fails on any item whose range the installed runtime falls outside of.
+reads it. The install test fails when the installed runtime falls outside `calendar-full`'s range,
+which covers every item.
 
 Source manifests list bare package names and leave `meta.compatibility` to the build. Targets start
 with shadcn's `@components/` alias placeholder. A manifest sets no `cssVars` or `css` of its own:

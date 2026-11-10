@@ -9,6 +9,7 @@ import {
   checkBuiltRegistry,
   clientBoundaryIssue,
   fullItemName,
+  runtimeProblems,
   stylexFullItemName,
   stylexItemPrefix,
 } from "../src/check";
@@ -342,6 +343,34 @@ describe("built registry checks", () => {
       changeItem(fullItemName, (item) => ({ ...item, targets: [file.target] })),
     );
     expect(issues).toEqual([`${fullItemName} owns files instead of composing items`]);
+  });
+
+  test("a composition that lists a stock component itself", async () => {
+    const issues = await tamper(
+      fullItemName,
+      (item) => ({ ...item, registryDependencies: [...item.registryDependencies!, "button"] }),
+      changeItem(fullItemName, (item) => ({ ...item, components: ["button"] })),
+    );
+    expect(issues).toEqual([`${fullItemName} installs button itself, not through an item`]);
+  });
+
+  test("a runtime outside an item's range, missing, or a prerelease of the range's version", () => {
+    const range = { "@moltenship/calendar": "^1.0.0-rc.1" };
+    const problems = (version?: string) =>
+      runtimeProblems("month-view", range, { "@moltenship/calendar": version }, "the app");
+
+    expect(problems("1.0.0-rc.2")).toEqual([]);
+    expect(problems("1.0.0")).toEqual([]);
+    expect(problems("1.4.2")).toEqual([]);
+    expect(problems("1.0.0-beta.1")).toEqual([
+      "month-view: needs @moltenship/calendar@^1.0.0-rc.1, but the app has 1.0.0-beta.1",
+    ]);
+    expect(problems("2.0.0")).toEqual([
+      "month-view: needs @moltenship/calendar@^1.0.0-rc.1, but the app has 2.0.0",
+    ]);
+    expect(problems()).toEqual([
+      "month-view: needs @moltenship/calendar@^1.0.0-rc.1, but the app has none",
+    ]);
   });
 
   test("a pinned third-party package or a runtime without a range", async () => {

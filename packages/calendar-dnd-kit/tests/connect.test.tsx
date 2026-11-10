@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-// First, so dnd-kit finds the ResizeObserver it reads as it loads.
 
 import { DragDropManager, Draggable } from "@dnd-kit/dom";
 import { DragDropProvider } from "@dnd-kit/react";

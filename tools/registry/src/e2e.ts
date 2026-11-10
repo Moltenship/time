@@ -5,10 +5,8 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
-import { satisfies } from "semver";
-
 import { buildRegistry } from "./build";
-import { checkBuiltRegistry, fullItemName, importsOf } from "./check";
+import { checkBuiltRegistry, fullItemName, importsOf, runtimeProblems } from "./check";
 import type { RegistryManifest } from "./compatibility";
 import { dragAndDropPackages } from "./config";
 import { itemClosure } from "./items";
@@ -243,14 +241,7 @@ async function verifyInstall(
   // calendar-full's range covers its whole install, so it holds for every item.
   const versions = await installedVersions(root, Object.keys(manifest.runtime));
   const full = manifest.items.find(({ name }) => name === fullItemName)!;
-  for (const [name, range] of Object.entries(full.compatibility)) {
-    const version = versions[name];
-    if (!version) {
-      problems.push(`${fullItemName} needs ${name}@${range}, which isn't installed`);
-    } else if (!satisfies(version, range, { includePrerelease: true })) {
-      problems.push(`${fullItemName} needs ${name}@${range}, but ${version} is installed`);
-    }
-  }
+  problems.push(...runtimeProblems(fullItemName, full.compatibility, versions, "the app"));
 
   const css = await readFile(join(root, app.css), "utf8");
   for (const token of ["--calendar-grid:", "--color-calendar-event:", '[data-color="blue"]']) {
