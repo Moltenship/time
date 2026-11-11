@@ -45,21 +45,22 @@ export default function OpenGraphImage() {
       }}
     >
       <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, fontSize: 30 }}>
-          <svg height="48" viewBox="0 0 32 32" width="48">
-            <rect fill={brand} height="32" rx="8" width="32" />
-            <path
-              d="M12.5 8v16M19.5 8v16"
-              stroke="#fff"
-              strokeLinecap="round"
-              strokeOpacity="0.45"
-              strokeWidth="1.5"
-            />
-            <circle cx="8.5" cy="17" fill="#fff" r="2.5" />
-            <path d="M10 17h14" stroke="#fff" strokeLinecap="round" strokeWidth="2" />
-          </svg>
-          Moltenship Time
-        </div>
+        <svg
+          fill="none"
+          height="52"
+          stroke="#fafafa"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="3"
+          viewBox="-2 1 58 24"
+          width="126"
+        >
+          <path d="M4 5V18a4 4 0 0 0 4 4h1.5M0.5 10.5H9" />
+          <path d="M15 10.5V22" />
+          <path d="M21 10.5V22M21 14.75a4 4 0 0 1 8 0V22M29 14.75a4 4 0 0 1 8 0V22" />
+          <path d="M41.75 16.25H53.25A5.75 5.75 0 1 0 51.6 20.3" />
+          <circle cx="15" cy="4.6" fill={brand} r="2.2" stroke="none" />
+        </svg>
         <div
           style={{
             marginTop: "auto",

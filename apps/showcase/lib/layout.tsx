@@ -1,4 +1,4 @@
-import { BrandMark } from "@/components/brand";
+import { Wordmark } from "@/components/brand";
 import type { HomeLayoutProps } from "fumadocs-ui/layouts/home";
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
 
@@ -8,12 +8,7 @@ export const demoUrl = "https://moltenship-time-demo.vercel.app";
 export function baseOptions(): BaseLayoutProps {
   return {
     nav: {
-      title: (
-        <>
-          <BrandMark className="size-6" />
-          <span className="font-semibold tracking-tight">Moltenship Time</span>
-        </>
-      ),
+      title: <Wordmark className="h-5 w-auto" />,
     },
     githubUrl,
   };
