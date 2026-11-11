@@ -27,9 +27,10 @@ export default async function DocumentationPage({ params }: DocumentationPagePro
   // Search engines want a link on every crumb, so a section without an index page is left out.
   const crumbs = [
     { name: "Docs", url: `${siteUrl}/docs` },
-    ...sections(page.url).flatMap((section) =>
-      section.url === undefined ? [] : [{ name: section.name, url: `${siteUrl}${section.url}` }],
-    ),
+    ...sections(page.url).flatMap((name, depth) => {
+      const index = source.getPage(page.slugs.slice(0, depth + 1));
+      return index === undefined ? [] : [{ name, url: `${siteUrl}${index.url}` }];
+    }),
   ];
   if (crumbs.at(-1)?.url !== url) crumbs.push({ name: page.data.title, url });
   const structuredData = {
@@ -74,10 +75,10 @@ export default async function DocumentationPage({ params }: DocumentationPagePro
   );
 }
 
-/** The sidebar sections a page sits in, outermost first. */
-function sections(url: string): { name: string; url: string | undefined }[] {
+/** The names of the sidebar sections a page sits in, outermost first. */
+function sections(url: string): string[] {
   return getBreadcrumbItems(url, source.getPageTree()).flatMap((item) =>
-    typeof item.name === "string" ? [{ name: item.name, url: item.url }] : [],
+    typeof item.name === "string" ? [item.name] : [],
   );
 }
 
@@ -91,12 +92,7 @@ export async function generateMetadata({ params }: DocumentationPageProps): Prom
   if (page === undefined) notFound();
 
   // "Overview" and "Recurrence" name several pages, so a title carries its section too.
-  const title = [
-    page.data.title,
-    ...sections(page.url)
-      .map((section) => section.name)
-      .reverse(),
-  ].join(" · ");
+  const title = [page.data.title, ...sections(page.url).reverse()].join(" · ");
 
   return {
     title,
