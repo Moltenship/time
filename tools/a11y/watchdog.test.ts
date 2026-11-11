@@ -42,6 +42,12 @@ async function eventually(check: () => boolean | Promise<boolean>, ms = 5000) {
   }
 }
 
+/**
+ * The watch's own timers run in its thread on the real clock, which fake timers don't reach. So
+ * these tests give it a short stall and have it look often, instead of waiting out a second per look.
+ */
+const fast = { checkMs: 20, limitMs: 60_000 } as const;
+
 let cleanup: (() => Promise<void>)[] = [];
 afterEach(async () => {
   for (const step of cleanup.reverse()) await step();
@@ -65,7 +71,7 @@ describe("the browser runs' watchdog", () => {
   test("a run where no test finishes names what's still running, and is cancelled", async () => {
     const report = await reportFile();
     const { cancelCurrentRun, vitest } = fakeVitest();
-    const dog = new Watchdog({ fd: report.fd, graceMs: 60_000, limitMs: 60_000, stallMs: 1000 });
+    const dog = new Watchdog({ ...fast, fd: report.fd, graceMs: 60_000, stallMs: 100 });
     dog.onInit(vitest);
     cleanup.push(async () => dog.onTestRunEnd());
 
@@ -90,22 +96,24 @@ describe("the browser runs' watchdog", () => {
   test("tests that keep finishing keep it quiet, and the end of the run stops it", async () => {
     const report = await reportFile();
     const { cancelCurrentRun, vitest } = fakeVitest();
-    const dog = new Watchdog({ fd: report.fd, graceMs: 60_000, limitMs: 60_000, stallMs: 3000 });
+    const dog = new Watchdog({ ...fast, fd: report.fd, graceMs: 60_000, stallMs: 800 });
     dog.onInit(vitest);
 
     dog.onTestRunStart();
     const module = file("tests/busy.a11y.tsx");
     dog.onTestModuleQueued(module);
     dog.onTestModuleStart(module);
-    for (let step = 0; step < 6; step += 1) {
+    // Longer than the stall in all, with each test well inside it.
+    for (let step = 0; step < 8; step += 1) {
       const test = testIn(module, `test ${step}`);
       dog.onTestCaseReady(test);
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 120));
       dog.onTestCaseResult(test);
     }
     dog.onTestModuleEnd(module);
     dog.onTestRunEnd();
-    await new Promise((resolve) => setTimeout(resolve, 4000));
+    // Past the stall again: a watch still running would report here.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
 
     expect(cancelCurrentRun).not.toHaveBeenCalled();
     expect(await report.read()).toBe("");
@@ -118,20 +126,22 @@ describe("the browser runs' watchdog", () => {
   ] as const)("it doesn't watch in %s", async (_, config) => {
     const report = await reportFile();
     const { cancelCurrentRun, vitest } = fakeVitest(config);
-    const dog = new Watchdog({ fd: report.fd, graceMs: 60_000, limitMs: 60_000, stallMs: 200 });
+    const dog = new Watchdog({ ...fast, fd: report.fd, graceMs: 60_000, stallMs: 50 });
     dog.onInit(vitest);
 
     dog.onTestRunStart();
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    // Several stalls long: a watch would have reported by now.
+    await new Promise((resolve) => setTimeout(resolve, 300));
 
     expect(cancelCurrentRun).not.toHaveBeenCalled();
     expect(await report.read()).toBe("");
   });
 
   test("a stuck main thread gets the report once, from the watch", async () => {
+    // The watch writes the report after `answerMs`, and kills the run after `graceMs`.
     const script = `
       import { Watchdog } from ${JSON.stringify(watchdog)};
-      const dog = new Watchdog({ graceMs: 3500, limitMs: 60_000, stallMs: 1000 });
+      const dog = new Watchdog({ answerMs: 200, checkMs: 20, graceMs: 1500, limitMs: 60_000, stallMs: 100 });
       dog.onInit({ cancelCurrentRun: async () => {}, config: { browser: { headless: true }, inspector: {}, watch: false } });
       dog.onTestRunStart();
       Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 30_000);
@@ -143,20 +153,29 @@ describe("the browser runs' watchdog", () => {
       if (run.exitCode === null) run.kill("SIGKILL");
     });
     let stderr = "";
-    run.stderr.on("data", (chunk) => (stderr += chunk));
+    let reportedAt: number | undefined;
+    run.stderr.on("data", (chunk) => {
+      stderr += chunk;
+      if (stderr.includes("Still running:")) reportedAt ??= performance.now();
+    });
     await new Promise((resolve) => run.on("close", resolve));
+    const closedAt = performance.now();
 
     expect(stderr.split("Still running:").length - 1).toBe(1);
     expect(stderr).toContain("so it's killed");
+    // The kill writes the report too when nothing has. This one came 1.3 s before it, from the
+    // watch's own write.
+    expect(closedAt - (reportedAt ?? closedAt)).toBeGreaterThan(600);
   }, 20_000);
 
   test("a run that doesn't stop is killed, with the processes it started", async () => {
     // A process whose main thread never comes back, with a child of its own, as a browser is.
+    // It's killed before `answerMs` is up, so the kill writes the report.
     const script = `
       import { spawn } from "node:child_process";
       import { writeSync } from "node:fs";
       import { Watchdog } from ${JSON.stringify(watchdog)};
-      const dog = new Watchdog({ graceMs: 500, limitMs: 60_000, stallMs: 1000 });
+      const dog = new Watchdog({ checkMs: 20, graceMs: 200, limitMs: 60_000, stallMs: 100 });
       dog.onInit({ cancelCurrentRun: async () => {}, config: { browser: { headless: true }, inspector: {}, watch: false } });
       dog.onTestRunStart();
       const child = spawn("sleep", ["60"], { stdio: "ignore" });

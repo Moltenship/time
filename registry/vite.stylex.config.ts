@@ -62,6 +62,8 @@ export default defineConfig({
     // a Tailwind class off an element.
     exclude: ["tests/stylex-flavour.test.ts", "tests/theme-contrast.test.ts"],
     include: ["tests/**/*.test.{ts,tsx}"],
+    // As the root's tests: a VM context a file, in processes that are reused.
+    pool: "vmForks",
     testNamePattern: new RegExp(`^(?!.*(?:${tailwindClassTests.join("|")}))`, "u"),
   },
 });

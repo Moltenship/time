@@ -23,6 +23,17 @@ interface Meeting {
   readonly end: Temporal.Instant;
 }
 
+/** The code a diagram's parts come from, read once for every diagram. */
+let codeSources: Promise<string[]> | undefined;
+const readCodeSources = async () =>
+  (
+    await Promise.all(
+      ["registry", "packages/calendar-react/src"].map((directory) =>
+        readSources(join(repositoryRoot, directory)),
+      ),
+    )
+  ).flat();
+
 /** Only its keys matter: they are the `Calendar.*` parts a diagram may name. */
 const Calendar = createCalendar<Meeting>()({
   eventAdapter: defineEventAdapter<Meeting>()({
@@ -50,13 +61,7 @@ describe("anatomy diagrams", () => {
     "resource-columns-anatomy.tsx",
     "resource-timeline-anatomy.tsx",
   ])("%s names parts that exist in the code", async (file) => {
-    const sources = (
-      await Promise.all(
-        ["registry", "packages/calendar-react/src"].map((directory) =>
-          readSources(join(repositoryRoot, directory)),
-        ),
-      )
-    ).flat();
+    const sources = await (codeSources ??= readCodeSources());
     const names = await partNames(file);
 
     expect(names.length).toBeGreaterThan(3);

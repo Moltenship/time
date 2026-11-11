@@ -38,6 +38,10 @@ const root = createRoot(container);
 let stored = new Map<string, string>();
 
 beforeEach(() => {
+  // The demo's simulated save takes 600 ms: the tests step the clock past it instead of waiting.
+  vi.useFakeTimers({
+    toFake: ["setTimeout", "clearTimeout", "requestAnimationFrame", "cancelAnimationFrame"],
+  });
   // Node's experimental localStorage global shadows jsdom's, so stub a small one.
   stored = new Map([
     [eventsStorageKey, serializeEvents([focusTime])],
@@ -63,10 +67,11 @@ afterEach(async () => {
   await act(async () => root.render(null));
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
-const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 20)));
-const pastSaveDelay = () => act(() => new Promise((resolve) => setTimeout(resolve, 700)));
+const settle = () => act(() => vi.advanceTimersByTimeAsync(20));
+const pastSaveDelay = () => act(() => vi.advanceTimersByTimeAsync(700));
 const eventButton = (id: string) =>
   container.querySelector<HTMLButtonElement>(`main [data-event-id="${id}"]`);
 const taskTitles = () =>

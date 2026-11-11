@@ -8,14 +8,39 @@ const invalidBoundaryFixturePattern = "tests/fixtures/dependency-boundaries/**";
 // Where the workspace keeps its tests. Vitest doesn't read `.gitignore`, so searching the whole
 // root also ran copies of the repository inside it, such as Claude Code's agent worktrees.
 const testRoots = ["apps/*", "benchmarks", "packages/*", "registry", "tests", "tools/*"];
+const testExclude = [...defaultExclude, ".claude/worktrees/**"];
+// These build with Vite inside the test, with a regular expression in `external`. In a VM context
+// it comes from another realm, and the bundler's native code doesn't take it for one, so they run
+// in a process of their own.
+const bundlerTests = ["tests/history-bundle.test.ts", "tools/release/tests/consumer.test.ts"];
 
 export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
   test: {
-    include: testRoots.flatMap((root) => defaultInclude.map((pattern) => `${root}/${pattern}`)),
-    exclude: [...defaultExclude, ".claude/worktrees/**"],
+    // Most of a test file's time went to starting it: a process, the environment and the imports,
+    // for each of some 250 files. `vmForks` gives each file a VM context of its own, with its own
+    // globals, modules and jsdom, and reuses the process, which took two fifths off the run. The
+    // process itself is shared: a test that changes `process.env` or the working directory puts
+    // it back.
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          include: testRoots.flatMap((root) =>
+            defaultInclude.map((pattern) => `${root}/${pattern}`),
+          ),
+          exclude: [...testExclude, ...bundlerTests],
+          pool: "vmForks",
+        },
+      },
+      {
+        extends: true,
+        test: { name: "bundler", include: bundlerTests, exclude: testExclude, pool: "forks" },
+      },
+    ],
     // Half the cores, for `vp test` from the root: `ci:test` and the quick tier.
     // In the PR and full tiers it shares the machine with a browser run, and Vitest's default, a
     // worker per core but one, oversubscribed it (quality-gates.md).
@@ -121,7 +146,8 @@ export default defineConfig({
       "release:artifacts": { command: "vp run release#artifacts", cache: false },
       a11y: "vp run a11y#test",
       // The a11y suite with Chromium slowed down to a CI runner's speed. Never replayed: it's what
-      // to run when CI and local disagree, and a timing race can pass once by luck.
+      // to run when CI and local disagree, and a timing race can pass once by luck. On a GitHub
+      // runner it runs nothing: there it would repeat `a11y` (tools/a11y/vite.config.ts).
       "a11y:ci-speed": { command: "vp test --mode ci-speed", cwd: "tools/a11y", cache: false },
       // The a11y suite and real mouse and keyboard interactions in Firefox and WebKit, WebKit on
       // temporal-polyfill. Needs `vp exec --filter a11y playwright install firefox webkit` once.
