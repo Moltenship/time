@@ -38,7 +38,7 @@ Check locally; don't wait on CI to learn whether a change passes. There are thre
 | ----- | -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Quick | `vp run ready:quick` | The docs site's link check, which compiles every page, then `vp check` and `vp test`                                                                                |
 | PR    | `vp run ready`       | Quick, plus production builds, the release checks (size budgets, API reports, package exports), the registry's tests over its StyleX items, the package-graph gate, and the a11y suite in Chromium. CI runs the same tasks on every PR: `ready:checks` and `a11y`. |
-| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`) and in WebKit (`browsers`; Firefox is off until #263), the release dry run (a fresh build, the packed tarballs installed from the pnpm store into a clean project, the registry built for that version), the docs site's types and search, and the dry run's tarballs in use (`release:artifacts`): the SSR fixture's tests and the docs site's build in copies outside the workspace, and `shadcn add` into clean Vite and Next.js apps, which needs the network. It's the release gate. |
+| Full  | `vp run ready:full`  | Everything in PR, plus the a11y suite at CI's speed (`a11y:ci-speed`, left out on a GitHub runner, where it would repeat `a11y`) and in WebKit (`browsers`; Firefox is off until #263), the release dry run (a fresh build, the packed tarballs installed from the pnpm store into a clean project, the registry built for that version), the docs site's types and search, and the dry run's tarballs in use (`release:artifacts`): the SSR fixture's tests and the docs site's build in copies outside the workspace, and `shadcn add` into clean Vite and Next.js apps, which needs the network. It's the release gate. |
 
 When each tier runs:
 
@@ -55,7 +55,7 @@ When each tier runs:
   release tooling also links a green dry run of the release workflow (`vp run release --dry-run`
   from its branch).
 
-On a recent laptop, quick takes about 15 seconds, PR about 40 and full about 120 from a cold cache.
+On a recent laptop, quick takes about 13 seconds, PR about 30 and full about 120 from a cold cache.
 Steps run in parallel where they're independent. Steps that write or read generated files
 (`dist`, `.next`, `.source`, packed tarballs) run one after another in a `gate:serial` lane. The
 full gate's browser runs (`a11y`, `browsers`, `a11y:ci-speed`) run one after another in a

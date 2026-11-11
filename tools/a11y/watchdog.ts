@@ -10,6 +10,10 @@ export interface WatchdogOptions {
   readonly limitMs: number;
   /** How long a cancelled run gets to close its browsers before the process is killed. */
   readonly graceMs?: number;
+  /** How often the watch looks at the run. */
+  readonly checkMs?: number;
+  /** How long the main thread gets to print the report before the watch writes it itself. */
+  readonly answerMs?: number;
   /** Where the report goes: stderr, or a file a test opened. */
   readonly fd?: number;
 }
@@ -31,7 +35,8 @@ function watch() {
   const { parentPort, workerData } = process.getBuiltinModule("node:worker_threads");
   const { execFileSync } = process.getBuiltinModule("node:child_process");
   const { writeSync } = process.getBuiltinModule("node:fs");
-  const { fd, graceMs, limitMs, stallMs } = workerData as Required<WatchdogOptions>;
+  const { answerMs, checkMs, fd, graceMs, limitMs, stallMs } =
+    workerData as Required<WatchdogOptions>;
   const files = new Map<
     string,
     { label: string; since: number; running: boolean; test?: string; testSince?: number }
@@ -112,7 +117,7 @@ function watch() {
       if (printed) return;
       printed = true;
       write(text);
-    }, 2000);
+    }, answerMs);
     kill = setTimeout(() => {
       let pids: number[] = [];
       try {
@@ -145,7 +150,7 @@ function watch() {
       clearInterval(timer);
       clearTimeout(kill);
       clearTimeout(fallback);
-      timer = setInterval(check, 1000);
+      timer = setInterval(check, checkMs);
     } else if (event.type === "end") {
       clearInterval(timer);
       clearTimeout(kill);
@@ -182,8 +187,14 @@ export class Watchdog implements Reporter {
   readonly #options: Required<WatchdogOptions>;
   #worker: Worker | undefined;
 
-  constructor({ fd = 2, graceMs = 20_000, ...options }: WatchdogOptions) {
-    this.#options = { fd, graceMs, ...options };
+  constructor({
+    answerMs = 2000,
+    checkMs = 1000,
+    fd = 2,
+    graceMs = 20_000,
+    ...options
+  }: WatchdogOptions) {
+    this.#options = { answerMs, checkMs, fd, graceMs, ...options };
   }
 
   onInit(vitest: Vitest) {

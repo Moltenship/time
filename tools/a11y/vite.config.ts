@@ -25,7 +25,7 @@ const chromiumOnly = ["tests/reduced-motion.a11y.tsx"];
  * the same tokens, and a contrast check should see the page's own. It runs after the others, in a
  * group of its own, so its second browser doesn't compete with theirs for the CPU.
  */
-const stylexOnly = ["tests/demo-stylex.a11y.tsx"];
+const stylexOnly = ["tests/demo-stylex*.a11y.tsx"];
 const tailwindExclude = [...chromiumOnly, ...stylexOnly];
 // Absolute: Vitest doesn't resolve the paths of an instance's own setup files.
 const stylexSetup = [fromHere("./tests/setup.ts")];
@@ -45,10 +45,14 @@ export default defineConfig(({ mode }) => {
   const browsers = otherBrowsers && firefoxRuns ? 2 : 1;
   const maxWorkers = Math.max(1, Math.ceil(availableParallelism() / 2 / browsers));
 
+  // A GitHub runner is the speed `--mode ci-speed` simulates. Unthrottled there, it would be `a11y`
+  // again, test for test, which the release gate has just run on that runner: it runs nothing.
+  if (mode === "ci-speed" && process.env.GITHUB_ACTIONS === "true") {
+    console.warn("a11y:ci-speed: left out on a GitHub runner, where it would repeat `a11y`.");
+    return { test: { include: [], passWithNoTests: true } };
+  }
+
   return {
-    // A GitHub runner is the speed `--mode ci-speed` simulates: there it runs unthrottled, a second
-    // Chromium run like `a11y`.
-    define: { __ON_GITHUB_RUNNER__: JSON.stringify(process.env.GITHUB_ACTIONS === "true") },
     // Each mode optimizes dependencies in a cache of its own, so two runs at once don't rewrite
     // each other's. Vitest's mode is `test`.
     cacheDir: mode === "test" ? undefined : `node_modules/.vite-${mode}`,

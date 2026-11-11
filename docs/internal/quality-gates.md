@@ -50,9 +50,9 @@ covers it:
   (`Emulation.setCPUThrottlingRate`, set in `tools/a11y/tests/setup.ts` for `--mode ci-speed`), and
   the full gate runs it, never from cache. In `ready:full` it runs beside the serial lane, which
   loads the machine further: stricter, and a little less repeatable, so rerun it alone before
-  calling a failure a flake. On a GitHub runner, which is the speed it simulates, it runs
-  unthrottled: there the release gate's `a11y:ci-speed` is a second, identical Chromium run, after
-  the serial lane.
+  calling a failure a flake. On a GitHub runner, which is the speed it simulates, it is left out:
+  unthrottled there, it would be `a11y` again, test for test, which the release gate has just run
+  on that runner (`tools/a11y/vite.config.ts`).
 - **Fonts.** CI's Ubuntu image has other system fonts, so text wraps and positions differ. Tests
   compare layouts with each other and with ratios, not with fixed pixels, and a test that hovers
   does so on purpose instead of trusting where the mouse was left.
@@ -88,6 +88,20 @@ and fails fast when a browser run stalls:
   tiers it runs beside a browser run. Its timeout is 15 seconds, as in the browser suite: a few
   tests do real work, such as a registry build, that takes under a second alone and passed 5
   seconds on a busy machine. They wait on no clock.
+- **A VM context per test file.** Most of a unit test file's time went to starting it: a process,
+  jsdom and the imports, for each of some 250 files. The root `vite.config.ts` and the registry's
+  StyleX run use Vitest's `vmForks` pool, which gives each file a VM context of its own, with its
+  own globals, modules and jsdom, and reuses the process; `vp test` went from 12 seconds to 7. The
+  process itself is shared, so a test that changes `process.env` or the working directory puts it
+  back. On two workers, a 4-core runner's share, a worker's memory peaked at 1.7 GB, so
+  `vmMemoryLimit` keeps its default. Turning isolation off instead (`isolate: false`) was faster
+  still and failed differently on each run: modules loaded for one file keep its jsdom. The two
+  tests that build with Vite pass it a regular expression in `external`. In a VM context it comes
+  from another realm, and the bundler's native code doesn't take it for one: those are listed as
+  `bundlerTests` and run in the `forks` pool.
+- **Clocks the tests step.** The unit tests' long waits step a fake clock instead: the demo's
+  600 ms save, the agenda's settle time. The watchdog's timers run in its own thread, out
+  of a fake clock's reach, so its tests give it a short stall and have it look every 20 ms.
 - **A watchdog.** A page whose main thread is stuck can't time its own tests out, so a run could
   wait for hours. `tools/a11y/watchdog.ts` is a Vitest reporter that watches from a Node worker
   thread of its own. When no test finishes for two minutes, or a run passes ten, it names the

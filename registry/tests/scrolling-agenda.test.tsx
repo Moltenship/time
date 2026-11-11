@@ -81,6 +81,7 @@ let scrolls: number[] = [];
 let cleanup: (() => Promise<void>) | undefined;
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
   scrolls = [];
   HTMLElement.prototype.scrollTo = function (
     this: HTMLElement,
@@ -100,8 +101,12 @@ afterEach(async () => {
   cleanup = undefined;
   actions = undefined;
   vi.restoreAllMocks();
+  vi.useRealTimers();
   Reflect.deleteProperty(HTMLElement.prototype, "scrollTo");
 });
+
+/** Steps the clock past the time a scroll takes to count as settled, instead of waiting it out. */
+const settleTime = () => act(() => vi.advanceTimersByTimeAsync(200));
 
 /** Presses `key` on the focused element, as a keyboard would. */
 const press = (key: string) => pressOn(document.activeElement, key);
@@ -339,7 +344,7 @@ test("scrolling past either end of the loaded days crosses weeks without events"
     await act(async () =>
       scroller().dispatchEvent(new WheelEvent("wheel", { bubbles: true, deltaY })),
     );
-    await act(() => new Promise((resolve) => setTimeout(resolve, 200)));
+    await settleTime();
   };
 
   await scrollToEnd();
@@ -394,8 +399,6 @@ function touch(type: "touchend" | "touchmove" | "touchstart", clientY = 0) {
     );
   });
 }
-
-const settleTime = () => act(() => new Promise((resolve) => setTimeout(resolve, 200)));
 
 test("past the end while events load, the list holds the date it moved to", async () => {
   fitScrollHeight();

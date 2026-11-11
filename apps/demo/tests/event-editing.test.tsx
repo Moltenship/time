@@ -39,6 +39,10 @@ const root = createRoot(container);
 let stored = new Map<string, string>();
 
 beforeEach(() => {
+  // The demo's simulated save takes 600 ms: the tests step the clock past it instead of waiting.
+  vi.useFakeTimers({
+    toFake: ["setTimeout", "clearTimeout", "requestAnimationFrame", "cancelAnimationFrame"],
+  });
   // Node's experimental localStorage global shadows jsdom's, so stub a small one.
   stored = new Map([
     [eventsStorageKey, serializeEvents([focusTime, lunch])],
@@ -71,14 +75,15 @@ afterEach(async () => {
   await act(async () => root.render(null));
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 
 // Radix restores focus on a zero-delay timer after a layer unmounts.
-const settle = () => act(() => new Promise((resolve) => setTimeout(resolve, 20)));
+const settle = () => act(() => vi.advanceTimersByTimeAsync(20));
 const view = () => new URLSearchParams(location.search).get("view");
 const eventButton = (id: string) =>
   container.querySelector<HTMLButtonElement>(`[data-event-id="${id}"]`);
-const pastSaveDelay = () => act(() => new Promise((resolve) => setTimeout(resolve, 700)));
+const pastSaveDelay = () => act(() => vi.advanceTimersByTimeAsync(700));
 
 async function deleteFromPopover(id: string) {
   await act(async () => eventButton(id)?.click());
