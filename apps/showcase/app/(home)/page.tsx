@@ -13,10 +13,13 @@ import {
   githubUrl,
   jsonLd,
   npmUrl,
+  openGraphBase,
   siteDescription,
   siteKeywords,
   siteName,
+  siteTitle,
   siteUrl,
+  websiteId,
 } from "@/lib/site";
 import type { Metadata } from "next";
 import { ServerCodeBlock } from "fumadocs-ui/components/codeblock.rsc";
@@ -26,6 +29,7 @@ import { join } from "node:path";
 
 export const metadata: Metadata = {
   alternates: { canonical: "/" },
+  openGraph: { ...openGraphBase, type: "website", url: "/", title: siteTitle },
 };
 
 const structuredData = {
@@ -33,6 +37,7 @@ const structuredData = {
   "@graph": [
     {
       "@type": "WebSite",
+      "@id": websiteId,
       name: siteName,
       url: siteUrl,
       description: siteDescription,
@@ -45,7 +50,6 @@ const structuredData = {
       url: siteUrl,
       codeRepository: githubUrl,
       programmingLanguage: "TypeScript",
-      runtimePlatform: "React",
       license: "https://opensource.org/licenses/MIT",
       keywords: siteKeywords.join(", "),
       sameAs: [githubUrl, npmUrl],

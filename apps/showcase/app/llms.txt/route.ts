@@ -1,13 +1,14 @@
 import { siteDescription, siteName, siteUrl } from "@/lib/site";
-import { source } from "@/lib/source";
+import { qualifiedTitle, source } from "@/lib/source";
 
 export const dynamic = "force-static";
 
 // An index of the docs for language models: https://llmstxt.org
 export function GET() {
-  const pages = source
-    .getPages()
-    .map((page) => `- [${page.data.title}](${siteUrl}${page.url}): ${page.data.description ?? ""}`);
+  const pages = source.getPages().map((page) => {
+    const link = `- [${qualifiedTitle(page)}](${siteUrl}${page.url})`;
+    return page.data.description === undefined ? link : `${link}: ${page.data.description}`;
+  });
 
   return new Response(
     [`# ${siteName}`, "", `> ${siteDescription}`, "", "## Docs", "", ...pages, ""].join("\n"),

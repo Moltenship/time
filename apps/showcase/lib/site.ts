@@ -2,7 +2,9 @@ export const siteUrl = "https://time.molten.sh";
 export const siteName = "Moltenship Time";
 export const siteTitle = "Moltenship Time: the React calendar built on Temporal";
 export const siteDescription =
-  "A headless React 19 calendar built on the Temporal API. Week, day, month, year, agenda and resource views you own as shadcn/ui source, with exact time zones and DST.";
+  "A headless React 19 calendar built on the Temporal API. Week, month, agenda and resource views you own as shadcn/ui source, with exact time zones and DST.";
+/** The `@id` that structured data on other pages uses to point at the site. */
+export const websiteId = `${siteUrl}/#website`;
 export const githubUrl = "https://github.com/Moltenship/time";
 export const demoUrl = "https://moltenship-time-demo.vercel.app";
 export const npmUrl = "https://www.npmjs.com/package/@moltenship/calendar";

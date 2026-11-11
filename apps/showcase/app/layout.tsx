@@ -4,7 +4,6 @@ import { Geist, Geist_Mono } from "next/font/google";
 import type { ReactNode } from "react";
 import { RootProvider } from "fumadocs-ui/provider/next";
 import {
-  githubUrl,
   openGraphBase,
   siteDescription,
   siteKeywords,
@@ -25,15 +24,13 @@ export const metadata: Metadata = {
   description: siteDescription,
   applicationName: siteName,
   keywords: siteKeywords,
-  authors: [{ name: "Moltenship", url: githubUrl }],
+  authors: [{ name: "Moltenship", url: "https://github.com/Moltenship" }],
   creator: "Moltenship",
   category: "technology",
   metadataBase: new URL(siteUrl),
-  openGraph: { ...openGraphBase, type: "website", url: "/", title: siteTitle },
+  openGraph: { ...openGraphBase, type: "website", title: siteTitle },
   twitter: { card: "summary_large_image" },
   robots: {
-    index: true,
-    follow: true,
     googleBot: { "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },
   },
 };

@@ -1,7 +1,6 @@
 import { getMDXComponents } from "@/components/mdx";
-import { githubUrl, jsonLd, openGraphBase, siteName, siteUrl } from "@/lib/site";
-import { source } from "@/lib/source";
-import { getBreadcrumbItems } from "fumadocs-core/breadcrumb";
+import { githubUrl, jsonLd, openGraphBase, siteName, siteUrl, websiteId } from "@/lib/site";
+import { pageSections, qualifiedTitle, source } from "@/lib/source";
 import {
   DocsBody,
   DocsDescription,
@@ -26,8 +25,9 @@ export default async function DocumentationPage({ params }: DocumentationPagePro
   const url = `${siteUrl}${page.url}`;
   // Search engines want a link on every crumb, so a section without an index page is left out.
   const crumbs = [
+    { name: siteName, url: siteUrl },
     { name: "Docs", url: `${siteUrl}/docs` },
-    ...sections(page.url).flatMap((name, depth) => {
+    ...pageSections(page).flatMap((name, depth) => {
       const index = source.getPage(page.slugs.slice(0, depth + 1));
       return index === undefined ? [] : [{ name, url: `${siteUrl}${index.url}` }];
     }),
@@ -38,11 +38,11 @@ export default async function DocumentationPage({ params }: DocumentationPagePro
     "@graph": [
       {
         "@type": "TechArticle",
-        headline: page.data.title,
+        headline: qualifiedTitle(page),
         description: page.data.description,
         url,
         inLanguage: "en",
-        isPartOf: { "@type": "WebSite", name: siteName, url: siteUrl },
+        isPartOf: { "@id": websiteId },
       },
       {
         "@type": "BreadcrumbList",
@@ -75,13 +75,6 @@ export default async function DocumentationPage({ params }: DocumentationPagePro
   );
 }
 
-/** The names of the sidebar sections a page sits in, outermost first. */
-function sections(url: string): string[] {
-  return getBreadcrumbItems(url, source.getPageTree()).flatMap((item) =>
-    typeof item.name === "string" ? [item.name] : [],
-  );
-}
-
 export function generateStaticParams() {
   return source.generateParams();
 }
@@ -91,8 +84,7 @@ export async function generateMetadata({ params }: DocumentationPageProps): Prom
   const page = source.getPage(slug);
   if (page === undefined) notFound();
 
-  // "Overview" and "Recurrence" name several pages, so a title carries its section too.
-  const title = [page.data.title, ...sections(page.url).reverse()].join(" · ");
+  const title = qualifiedTitle(page);
 
   return {
     title,
