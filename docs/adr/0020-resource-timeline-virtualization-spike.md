@@ -46,8 +46,10 @@ The production browser probe bounded the logical `500 × 336` surface to at most
 17 time slots, and 425 grid cells during the recorded LTR/RTL traces. Sticky-axis deltas were `0px`,
 axis synchronization performed exactly two writes per sample, device-pixel error was zero at DPR 2,
 and no sample read all 500 resource keys. Focus moved from resource 240 to 241 and returned to 241
-after its DOM node was virtualized away. Full results and reproduction steps are in
-[`docs/internal/evidence/issue-20-browser.md`](../internal/evidence/issue-20-browser.md).
+after its DOM node was virtualized away. Full results and reproduction steps were recorded in
+`docs/internal/evidence/issue-20-browser.md`. That record and the spike,
+`tools/resource-virtualization-spike`, are no longer in the tree: commit `1d39eb1f` has both, and
+`d598d981` the spike as it was measured.
 
 Automated tests also cover deterministic repeated SSR output, exact StrictMode hydration without a
 recovery, RTL initial markup, focus restoration, stable IDs, two-write synchronization, pixel

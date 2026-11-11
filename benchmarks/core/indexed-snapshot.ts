@@ -9,15 +9,8 @@ import {
   plainDateInterval,
   plainDateTimeInterval,
 } from "@moltenship/calendar-temporal";
-import type { BenchmarkFixtureSet, FixtureEventData, FixtureFragment } from "fixtures";
-
-import type {
-  BenchmarkEngine,
-  BenchmarkLayout,
-  BenchmarkProjection,
-  BenchmarkQuery,
-} from "../shared/contracts";
-import { referenceEngine } from "../shared/reference";
+import type { BenchmarkEngine, BenchmarkQuery } from "../shared/contracts";
+import type { BenchmarkFixtureSet, FixtureEventData } from "../shared/fixtures";
 
 type NativeFixtureEvent = CalendarEvent<FixtureEventData, string, string>;
 type IndexedFixtureSnapshot = EventSnapshot<NativeFixtureEvent, string, string>;
@@ -75,8 +68,6 @@ function queryIndexedSnapshot(
   snapshot: IndexedFixtureSnapshot,
   query: BenchmarkQuery,
 ): readonly string[] {
-  const resourceIds = query.resourceIds === undefined ? undefined : [...query.resourceIds];
-  const options = resourceIds === undefined ? undefined : { resourceIds };
   const firstDay = Math.floor(query.startUnit / 1_440);
   const endDay = Math.ceil(query.endUnit / 1_440);
   const events = [
@@ -85,50 +76,23 @@ function queryIndexedSnapshot(
         originInstant.add({ minutes: query.startUnit }),
         originInstant.add({ minutes: query.endUnit }),
       ),
-      options,
     ),
     ...snapshot.queryAllDay(
       plainDateInterval(originDate.add({ days: firstDay }), originDate.add({ days: endDay })),
-      options,
     ),
     ...snapshot.queryFloating(
       plainDateTimeInterval(
         originDateTime.add({ minutes: query.startUnit }),
         originDateTime.add({ minutes: query.endUnit }),
       ),
-      options,
     ),
   ];
 
   return events.sort((left, right) => left.inputIndex - right.inputIndex).map(({ id }) => id);
 }
 
-function projectIndexedSnapshot(
-  snapshot: IndexedFixtureSnapshot,
-  fragments: readonly FixtureFragment[],
-): readonly BenchmarkProjection[] {
-  return fragments.flatMap((fragment) =>
-    snapshot.byId.has(fragment.eventId)
-      ? [
-          {
-            endUnit: fragment.endUnit,
-            eventId: fragment.eventId,
-            key: fragment.id,
-            resourceId: fragment.resourceId,
-            startUnit: fragment.startUnit,
-          },
-        ]
-      : [],
-  );
-}
-
 export const indexedSnapshotEngine: BenchmarkEngine<IndexedFixtureSnapshot> = Object.freeze({
   build: buildIndexedSnapshot,
-  layout: (projection: readonly BenchmarkProjection[]) => referenceEngine.layout(projection),
   name: "indexed-event-snapshot",
-  pointerFrame: (layout: readonly BenchmarkLayout[], frame: number) =>
-    referenceEngine.pointerFrame(layout, frame),
-  project: projectIndexedSnapshot,
   query: queryIndexedSnapshot,
-  render: (layout: readonly BenchmarkLayout[]) => referenceEngine.render(layout),
 });

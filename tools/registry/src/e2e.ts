@@ -6,12 +6,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
 import { buildRegistry } from "./build";
-import { checkBuiltRegistry, fullItemName, importsOf } from "./check";
-import {
-  describeIncompatibility,
-  findIncompatibleItems,
-  type RegistryManifest,
-} from "./compatibility";
+import { checkBuiltRegistry, fullItemName, importsOf, runtimeProblems } from "./check";
+import type { RegistryManifest } from "./compatibility";
 import { dragAndDropPackages } from "./config";
 import { itemClosure } from "./items";
 import { servedPackageProblems } from "./lockfile";
@@ -175,7 +171,7 @@ async function installedVersions(
       ) as { readonly version: string };
       versions[name] = manifest.version;
     } catch {
-      // Missing: reported as incompatible.
+      // Missing: verifyInstall reports it.
     }
   }
   return versions;
@@ -242,10 +238,10 @@ async function verifyInstall(
     problems.push(...servedPackageProblems(lockfile, served, Object.keys(manifest.runtime)));
   }
 
+  // calendar-full's range covers its whole install, so it holds for every item.
   const versions = await installedVersions(root, Object.keys(manifest.runtime));
-  problems.push(
-    ...findIncompatibleItems(manifest, versions, [fullItemName]).map(describeIncompatibility),
-  );
+  const full = manifest.items.find(({ name }) => name === fullItemName)!;
+  problems.push(...runtimeProblems(fullItemName, full.compatibility, versions, "the app"));
 
   const css = await readFile(join(root, app.css), "utf8");
   for (const token of ["--calendar-grid:", "--color-calendar-event:", '[data-color="blue"]']) {

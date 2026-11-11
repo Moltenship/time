@@ -115,8 +115,8 @@ vp run ready:full  # the release gate
 
 - [`architecture.md`](./architecture.md) is the design the project is building toward.
 - [`docs/adr`](./docs/adr) records individual design decisions.
-- [`docs/internal`](./docs/internal) has contributor notes: quality gates, package layout,
-  benchmarks, and verification records.
+- [`docs/internal`](./docs/internal) has contributor notes: quality gates, package layout and
+  releasing.
 - Planned work is tracked in [GitHub issues](https://github.com/Moltenship/time/issues).
 - Each release's notes are on [GitHub Releases](https://github.com/Moltenship/time/releases);
   [`CHANGELOG.md`](./CHANGELOG.md) has `1.0.0-rc.1`'s.

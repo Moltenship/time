@@ -11,7 +11,7 @@ import { fetchPackument } from "./published";
 import { gitState, isOnMain, readPublishedPackages, runOrThrow } from "./workspace";
 
 /** The first npm that publishes through trusted publishing (docs.npmjs.com/trusted-publishers). */
-export const trustedPublishingNpm = "11.5.1";
+const trustedPublishingNpm = "11.5.1";
 
 /**
  * Publishes the tarballs the release gate checked, and nothing else, with npm trusted publishing:
@@ -26,7 +26,6 @@ export const trustedPublishingNpm = "11.5.1";
  */
 export async function publish(options: {
   readonly version: string;
-  readonly tag?: string;
   readonly dryRun?: boolean;
   readonly manifestFile?: string;
   readonly log?: (line: string) => void;
@@ -47,7 +46,7 @@ export async function publish(options: {
   if (!manifest || (problems.length > 0 && !options.dryRun)) {
     throw new Error(`Refusing to publish:\n- ${problems.join("\n- ")}`);
   }
-  const tag = distTag(version, options.tag);
+  const tag = distTag(version);
 
   // npm runs outside the workspace, whose devEngines pins pnpm, and reads an empty npmrc: no
   // token, no project or user config, and the public registry.

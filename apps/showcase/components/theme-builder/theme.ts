@@ -69,7 +69,7 @@ export function normalizeValue(value: string): string {
 }
 
 /** Each rule's custom properties by selector, in source order, ignoring at-rule wrappers. */
-export function parseRules(css: string): ReadonlyMap<string, Declarations> {
+function parseRules(css: string): ReadonlyMap<string, Declarations> {
   const rules = new Map<string, Declarations>();
   const source = css.replace(/\/\*[\s\S]*?\*\//g, "");
   for (const [, selector, body] of source.matchAll(/([^{};]+)\{([^{}]*)\}/g)) {
@@ -243,7 +243,7 @@ export function isThemeChanged(source: ThemeSource, theme: Theme): boolean {
  * The shading recipe's rules, under `scope` when given. They follow the Availability page's
  * recipes, but leave the tint to `--calendar-unavailable`, which has its own control.
  */
-export function shadingCss(shading: Shading, scope = ""): string {
+function shadingCss(shading: Shading, scope = ""): string {
   const band = `${scope}[data-slot="time-grid-unavailable"]`;
   switch (shading.recipe) {
     case "flat":

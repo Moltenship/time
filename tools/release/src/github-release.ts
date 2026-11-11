@@ -40,10 +40,10 @@ async function taggedCommit(exec: Exec, tag: string): Promise<string | undefined
 }
 
 /**
- * Writes the GitHub release of the commit the dry run checked, tagged `v<version>`, with `notes`.
- * Prereleases are marked so. `vp run release` runs it after publishing and pushing the tag; with
- * no tag on GitHub, GitHub makes one at the commit. Safe to run again: a published release is left
- * alone, while a draft or a tag on another commit stops it.
+ * Writes the GitHub release of the commit the dry run checked, for its `v<version>` tag, with
+ * `notes`. Prereleases are marked so. The release workflow runs it after publishing and pushing the
+ * tag. Safe to run again: a published release is left alone, while a draft, or a tag missing or on
+ * another commit, stops it.
  */
 export async function createGitHubRelease(options: {
   readonly version: string;
@@ -68,7 +68,10 @@ export async function createGitHubRelease(options: {
   const tag = releaseTag(version);
 
   const tagged = await taggedCommit(exec, tag);
-  if (tagged !== undefined && tagged !== commit) {
+  if (tagged === undefined) {
+    throw new Error(`${tag} isn't on GitHub. The release pushes it before writing the release.`);
+  }
+  if (tagged !== commit) {
     throw new Error(
       `${tag} already points at ${tagged}, not ${commit}, the commit the dry run checked`,
     );
@@ -89,14 +92,19 @@ export async function createGitHubRelease(options: {
   try {
     const notes = join(directory, "notes.md");
     await writeFile(notes, options.notes);
-    const args = ["release", "create", tag, "--title", version, "--notes-file", notes];
-    // An existing tag stays where it is; otherwise GitHub makes it at the dry run's commit.
-    args.push(...(tagged === undefined ? ["--target", commit] : ["--verify-tag"]));
+    const args = [
+      "release",
+      "create",
+      tag,
+      "--verify-tag",
+      "--title",
+      version,
+      "--notes-file",
+      notes,
+    ];
     if (prerelease(version) !== null) args.push("--prerelease");
     const { stdout } = await orThrow(exec, "gh", args);
-    log(
-      `${tagged === undefined ? `Tagged ${commit} ${tag}` : `${tag} was already at ${commit}`}; wrote the GitHub release: ${stdout.trim()}`,
-    );
+    log(`Wrote the GitHub release of ${tag}, at ${commit}: ${stdout.trim()}`);
   } finally {
     await rm(directory, { force: true, recursive: true });
   }

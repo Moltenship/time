@@ -69,7 +69,7 @@ export interface TimedOverlapOptions extends Pick<
   readonly minHeight?: number;
 }
 
-export interface TimedOverlapPlacement<TItem> {
+interface TimedOverlapPlacement<TItem> {
   readonly height: number;
   readonly item: TItem;
   /** Horizontal offset as a fraction of the column width. */

@@ -63,7 +63,7 @@ const Calendar = createCalendar<Booking, CalendarResource<null>>()({
   ],
 });
 
-export type TimelineName = (typeof Calendar.views)[number]["name"];
+type TimelineName = (typeof Calendar.views)[number]["name"];
 
 /** The timeline views over the 500 resources, on Thursday, October 8, 2026, at noon UTC. */
 export function Timeline({

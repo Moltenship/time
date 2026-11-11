@@ -407,7 +407,6 @@ describe("regressions", () => {
 
   test("a timed series doesn't report truncation when the cap runs out exactly at `before`", () => {
     // Steps: 1 January (the first start), then 2..5 January give nothing; 6 January is `before`.
-    // The all-day series in expand-rule-contract.test.ts gives `truncated: false` here.
     const expansion = expandRecurrenceRule(
       { byMonthDay: [1], frequency: "DAILY" },
       timed("2026-01-01T00:00", "UTC"),

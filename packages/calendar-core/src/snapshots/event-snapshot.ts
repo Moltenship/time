@@ -5,7 +5,7 @@ import {
 } from "@moltenship/calendar-temporal";
 
 import { type CalendarEventInterval, type EventAdapter } from "../events";
-import type { EventId, ResourceId } from "../ids";
+import { type EventId, isEventId, isResourceId, type ResourceId } from "../ids";
 import {
   createIntervalIndex,
   type IntervalIndex,
@@ -341,11 +341,7 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
     });
   }
 
-  if (
-    (typeof eventId === "string" && eventId.length === 0) ||
-    (typeof eventId === "number" && !Number.isFinite(eventId)) ||
-    (typeof eventId !== "string" && typeof eventId !== "number")
-  ) {
+  if (!isEventId(eventId)) {
     return Object.freeze({ code: "invalid-event-id", event, index });
   }
   if (normalizedById.has(eventId)) {
@@ -500,11 +496,7 @@ function normalizeEvent<TEvent, TEventId extends EventId, TResourceId extends Re
     if (!Array.isArray(value)) throw new TypeError("resource-ids-must-be-an-array");
     const unique: TResourceId[] = [];
     for (const [resourceIndex, resourceId] of value.entries()) {
-      if (
-        (typeof resourceId === "string" && resourceId.length === 0) ||
-        (typeof resourceId === "number" && !Number.isFinite(resourceId)) ||
-        (typeof resourceId !== "string" && typeof resourceId !== "number")
-      ) {
+      if (!isResourceId(resourceId)) {
         return Object.freeze({
           code: "invalid-resource-id",
           event,

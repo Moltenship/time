@@ -4,7 +4,7 @@ const NANOSECONDS_PER_SECOND = 1_000_000_000n;
 const NANOSECONDS_PER_MILLISECOND = 1_000_000n;
 const NANOSECONDS_PER_MICROSECOND = 1_000n;
 
-export interface PositiveTimeDuration {
+interface PositiveTimeDuration {
   readonly duration: Temporal.Duration;
   readonly nanoseconds: bigint;
 }

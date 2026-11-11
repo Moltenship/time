@@ -19,7 +19,7 @@ export interface RuleShift {
   readonly toAllDay: boolean;
 }
 
-export type ShiftedRule =
+type ShiftedRule =
   | { readonly ordinals?: RecurrenceOrdinalShift; readonly rule: RecurrenceRule }
   | { readonly problem: string };
 

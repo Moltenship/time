@@ -151,7 +151,7 @@ function normalize(text: string): string {
 }
 
 /** The committed report for a package: one section per entry point. */
-export async function apiReport(entry: WorkspacePackage): Promise<string> {
+async function apiReport(entry: WorkspacePackage): Promise<string> {
   const sections: string[] = [];
   const entryPoints = typeEntryPoints(entry.manifest);
   if (entryPoints.size === 0) {

@@ -33,12 +33,12 @@
   },
   "scripts": {
     "build": "vp pack",
-    "check": "vp check",
     "dev": "vp pack --watch",
     "prepublishOnly": "echo \"Release with vp run release, which publishes the tarballs its gate checked. See docs/internal/releasing.md.\" && exit 1",
     "test": "vp test --passWithNoTests"
   },
   "dependencies": {
+    "@dnd-kit/abstract": "^0.5.0",
     "@moltenship/calendar-core": "workspace:*",
     "@moltenship/calendar-dnd": "workspace:*"
   },

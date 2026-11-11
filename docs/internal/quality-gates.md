@@ -1,39 +1,32 @@
 # Quality gates
 
-Issue #15 makes the repository's compatibility checks executable before calendar feature code lands. CI and local development run the same named Vite+ tasks.
+CI and local development run the same named Vite+ tasks, defined in the root `vite.config.ts`.
+[`AGENTS.md`](../../AGENTS.md) ("Quality gate") has the three tiers, what each runs, when each
+runs and how long they take. This note covers how they work.
 
 CI runs on Node.js 26, the server-runtime floor where the suite exercises native `Temporal` without
 a V8 feature flag or bundled polyfill.
 
-## Tiers
+## Lanes
 
-Three tasks group the gates below. Quick runs after every change, and is enough to merge a change
-to docs or notes alone. PR runs before every other merge. Full runs for releases: in the release
-workflow, and by hand right before a release candidate or a release, plus once in a PR that
-changes the full gate or the release tooling (`AGENTS.md`).
+The PR tier, `vp run ready`, is `ready:checks` (the `gate:serial` lane) beside `a11y`. The full
+tier, `vp run ready:full`, runs `gate:serial:full` beside `gate:browsers`: the serial lane with
+`release:dry-run`, `showcase:types`, search and `release:artifacts` added, and the three browser
+runs one at a time.
 
-| Tier  | Task                 | Steps                                                                                        |
-| ----- | -------------------- | -------------------------------------------------------------------------------------------- |
-| Quick | `vp run ready:quick` | `showcase:links`, `vp check`, `vp test`                                                      |
-| PR    | `vp run ready`       | `ready:checks` (`registry:smoke` beside the `gate:serial` lane) and `a11y`                   |
-| Full  | `vp run ready:full`  | Every PR step, plus `browsers` and `a11y:ci-speed`. The three browser runs go one at a time in `gate:browsers`, beside `registry:smoke` and `gate:serial:full`, which adds `release:dry-run`, `showcase:types`, search and `release:artifacts` to the serial lane |
-
-On a 15-core Apple-silicon laptop, quick takes about 13 seconds, PR 37 seconds from a cold cache
-and 24 warm, and full about 120 seconds cold (119.4, release artifacts and dry run included).
-Beside six threads of CPU load, full took 101 to 127 seconds before #203 (#47).
-The warm floor is the steps that pack packages, build the docs site or install the registry into
-clean apps, which never replay: they rewrite their own inputs, or reach the network.
+The warm floor of a rerun is the steps that pack packages, build the docs site or install the
+registry into clean apps, which never replay: they rewrite their own inputs, or reach the network.
 
 `gate:serial` runs `showcase:links`, `ci:check`, `ci:build`, `release:check`, `ci:test`,
-`react:gate`, `ssr:smoke` and `package:graph` in that order, because each writes or reads generated
-files: packages' `dist`, packed tarballs, the docs site's `.next` and `.source`. Steps outside it
-read only source, so they run at the same time. The full gate runs its three browser runs one
+`registry:stylex` and `package:graph` in that order, because each writes or reads generated files:
+packages' `dist`, packed tarballs, the docs site's `.next` and `.source`. Steps outside it read
+only source, so they run at the same time. The full gate runs its three browser runs one
 after another in a lane of their own, `gate:browsers`, beside the serial lane: see [Load](#load).
 Each browser mode keeps its own Vite dependency cache. CI's `quality-gates` job runs
 `vp run ready:checks` and its `accessibility` job runs `vp run a11y`: together, `vp run ready`, on
-every PR. On demand (`gh workflow run ci.yml --ref <branch>`), two more jobs run: `browsers` runs
-`vp run browsers` on Linux, and `release-gate` runs the release's gate, `vp run release:gate`. When a
-job fails, its last step names the failed task. The contract test `tests/quality-gates.test.ts`
+every PR. On demand (`gh workflow run ci.yml --ref <branch>`), one more job runs: `release-gate`
+runs the release's gate, `vp run release:gate`, and with it `vp run browsers` on Linux. When a job
+fails, its last step names the failed task. The contract test `tests/quality-gates.test.ts`
 holds the workflows to those task names and fails if `ready:full` misses a step of `ready`.
 
 The release workflow runs `vp run release:gate` on the release commit before it publishes: the
@@ -42,10 +35,9 @@ whole full tier, with a strict dry run of the version it publishes (`--require-c
 the serial lane and then the browser runs: on a 4-core runner the serial lane's builds take every
 core, and beside them the year view's popover test ran out of its 15 s (#197). On a runner it takes
 about 11 minutes; locally, `RELEASE_VERSION=<version> vp run release:gate` reproduces it (WebKit
-alone on macOS 27, #182). CI's on-demand `release-gate` job runs the same steps on a fresh runner. A check that joins only the full gate joins `release:gate` too: a serial step in its
-`gate:serial:release` lane, a browser run in `gate:browsers`, and any other step in its command.
-The contract test fails if the two differ in anything but their serial lanes. See
-[releasing.md](./releasing.md).
+alone on macOS 27, #182). CI's on-demand `release-gate` job runs the same steps on a fresh runner.
+`AGENTS.md` says where a new check joins; the contract test fails if the full gate and the release
+gate differ in anything but their serial lanes. See [releasing.md](./releasing.md).
 
 ## CI and local runs
 
@@ -90,9 +82,9 @@ and fails fast when a browser run stalls:
   runs `a11y`, `browsers` and `a11y:ci-speed` one at a time, beside the serial lane. The lane stops
   at the first run that fails. Reduced motion runs its one file in a page of its own, beside the
   Chromium pages of `a11y`.
-  In CI's 4-core runner the `accessibility` job gets 2 pages and the `browsers` job 1 per browser.
-- **Half the cores for the unit tests.** `vp test` from the root (`ci:test`, the quick tier, the
-  engine tasks) takes half the cores too, in the root `vite.config.ts`, since in the PR and full
+  In CI's 4-core runner the `accessibility` job gets 2 pages and a `browsers` run 1 per browser.
+- **Half the cores for the unit tests.** `vp test` from the root (`ci:test` and the quick tier)
+  takes half the cores too, in the root `vite.config.ts`, since in the PR and full
   tiers it runs beside a browser run. Its timeout is 15 seconds, as in the browser suite: a few
   tests do real work, such as a registry build, that takes under a second alone and passed 5
   seconds on a busy machine. They wait on no clock.
@@ -137,68 +129,34 @@ installs the polyfill before any test imports, as an app would, and a test check
   test failed there in the 1.0.0-rc.2 release gate. Playwright's Firefox also doesn't start on
   macOS 27 (#182).
 
-## Passing gates
-
-From the workspace root:
-
-```sh
-vp install
-vp run showcase:links
-vp run ci:check
-vp run ci:build
-vp run release:check
-vp run ci:test
-vp run react:gate
-vp run ssr:smoke
-vp run registry:smoke
-vp run package:graph
-vp run a11y
-```
-
-`vp run ready` runs the same gates, in parallel where they don't share generated files. The SSR report includes its deterministic environment, server-markup hash, recoverable hydration errors, interaction result, and unmount result. The registry report validates any `registry-item.json` files under `registry/` plus a committed contract fixture so an empty source registry cannot make the schema smoke vacuous, then builds the registry and checks the output (see [Registry](#registry)).
+## Size and performance
 
 Every published entry point has a size budget for its emitted ESM, raw and gzip. The budgets live in
 one file, [`tools/release/src/config.ts`](../../tools/release/src/config.ts), and
 `vp run release:size` checks them after a build. [releasing.md](./releasing.md) describes it and
 the other release checks: API reports, export checks, a clean-consumer install and the dry run.
+The React package's build also fails if its bundle loses the `"use client"` directive
+(`packages/calendar-react/scripts/verify-public-api.mjs`).
 
-`vp run engine:gate` is the reproducible phase-1 audit. It runs the
-repository check, the interval/DST/index/revision/cache/invalid-data matrices, dependency and packed
-API checks, both production engine builds and their size budgets, and the uncached protocol-v2 core
-benchmark. The benchmark is a reference-hardware gate rather than a portable CI timing claim, so it
-remains an explicit local task while its deterministic correctness and build checks also run in CI.
-
-`vp run react:store` is the focused issue #25 gate. It checks and builds `calendar-react`, runs the
-controlled/uncontrolled state matrix, two-root isolation, selector invalidation, injected-store and
-cleanup checks, and verifies deterministic SSR/hydration. The production build check
-(`packages/calendar-react/scripts/verify-public-api.mjs`) fails if the React client boundary is
-dropped, and `vp run release#size calendar-react` if the runtime outgrows its budget.
-
-`vp run react:factory` is the focused issue #26 gate. It adds the typed factory, compound controls,
-custom-view registry, diagnostics/capabilities, facade consumer, direct React 19 refs, deterministic
-IDs, and public declaration checks. The facade test imports only supported package roots and fails
-if its third-party view needs a cast or a private source path. The React package build also checks
-that the bundle keeps its `"use client"` directive.
-
-`vp run react:gate` is the phase-2 regression gate from issue #27. It runs the repository check, the
-complete React/facade package tests and production builds, the focused render/hydrate harness, the
-consumer-equivalent SSR smoke, and dependency-boundary checks. The focused harness covers the
-six-slice controlled-state matrix under Strict Mode, a Suspense-held transition interrupted by an
-urgent update and rebased on release, selector evaluation versus React commit counts, a typed
-custom view, two physical roots, and final unmount. A static known-bad import and a temporary
-consumer of the actual packed React artifact both prove that React source deep imports fail.
+`vp run benchmark#core` and `vp run benchmark#recurrence` time the indexed snapshot and the year
+view's recurrence expansion against p95 gates. They are reference-hardware gates rather than a
+portable CI timing claim, so no tier runs them: run them by hand when a change touches the engine
+or the expander ([benchmarks/README.md](../../benchmarks/README.md)). Their correctness tests run
+in `ci:test`.
 
 ## Intentional failure proofs
 
-These commands must exit non-zero:
+A check that never fails proves nothing, so three of them have a test that feeds them a known-bad
+input and expects the failure. They run in `ci:test`:
 
-```sh
-vp run ssr-fixture#fixture:bad-hydration
-vp run ssr-fixture#fixture:bad-browser-global
-vp run registry#fixture:known-bad
-```
-
-The hydration fixture renders different server/client locale text and reports React's hydration mismatch. The browser-global fixture reads `window` at module scope and fails during a server import. The registry fixture is valid enough for shadcn's base schema to reach the repository checks, then fails its npm dependency, drag-and-drop, registry dependency, source/target, CSS variable, stylesheet, and generated-compatibility contracts.
+- **Hydration.** `apps/ssr-fixture/tests/ssr-fixture.test.ts` hydrates server markup rendered for
+  one locale with a client that renders another, and expects React's "Hydration failed" error.
+- **Registry.** `tools/registry/tests/validation.test.ts` validates `tools/registry/fixtures/known-bad`.
+  The fixture is valid enough for shadcn's base schema to reach the repository's checks, then fails
+  its npm dependency, drag-and-drop, registry dependency, source/target, stylesheet, inline CSS,
+  composition and generated-compatibility contracts.
+- **Package boundaries.** `tests/dependency-boundaries.test.ts` cruises the invalid imports under
+  `tests/fixtures/dependency-boundaries` and expects each rule to name its violation.
 
 ## Release artifacts
 
@@ -209,7 +167,7 @@ and registry file's sha512 against it before and after. Nothing packs again.
 
 | Consumer | What it runs | Network |
 | --- | --- | --- |
-| `ssr-fixture` | The fixture's tests: render, hydrate, interact and unmount, the known-bad cases fail, and its calendar hydrates through `@moltenship/calendar-testing`'s tarball | None, unless pnpm's cache lacks metadata (below) |
+| `ssr-fixture` | The fixture's tests: render, hydrate, interact and unmount, the known-bad hydration fails, and its calendar hydrates through `@moltenship/calendar-testing`'s tarball | None, unless pnpm's cache lacks metadata (below) |
 | `showcase` | `next build` of the docs site; every route through `next start` (`scripts/verify-production.mjs`), with the dry run's registry at `/r`; then the docs tests, which render the live examples | The build fetches the site's Google fonts, as `ci:build` does; metadata as for the fixture |
 | `registry` | `vp run registry:e2e` on the dry run's tarballs: `shadcn add` into clean Vite and Next.js apps, then a typecheck and a build of each | npm and shadcn's own components |
 
@@ -256,14 +214,15 @@ after another, as on a 4-core runner, the three take their sum: about 45 seconds
 
 ## Registry
 
-`vp run registry:smoke` runs in `ready`. It validates every `registry-item.json` under `registry/`
-and a committed contract fixture, so an empty source registry can't make it vacuous, then builds the
-registry with `shadcn build` into a temporary folder, offline, and checks the output: every import
-resolves to a file, component or package the item's install provides, every component file that
-calls hooks, creates a context or sets event handlers starts with `"use client"`, `calendar-full`
-installs every other item and owns no files, no two items write the same file, nothing depends on a
-drag-and-drop library, and each range holds for the workspace versions. `vp run registry#fixture:known-bad`
-must fail.
+`tools/registry/tests` run in `ci:test`. They validate every `registry-item.json` under
+`registry/`, and count them, so an empty source registry can't make the check vacuous. Then they
+build the registry with `shadcn build` into a temporary folder, offline, and check the output: every
+import resolves to a file, component or package the item's install provides, every component file
+that calls hooks, creates a context or sets event handlers starts with `"use client"`, each full
+item installs every other item of its flavour and owns no files, no two items write the same file,
+nothing depends on a drag-and-drop library, and each range holds for the workspace versions. The
+manifest in `tools/registry/fixtures/known-bad` must fail every contract it breaks. Each
+`vp run registry#site` build runs the same checks on what it writes.
 
 `vp run registry:e2e` is the install test. It needs the network for npm and shadcn's own
 components, takes 15 to 35 seconds once the pnpm store is warm, and isn't part of `ready`. It
@@ -296,9 +255,10 @@ the workspace builds and tests with:
 The range covers the item's whole install, its registry dependencies included, and `shadcn add`
 installs a matching runtime. `compatibility.json`, written next to the built items, lists every
 item with its URL, range, packages, items and targets, and the workspace versions; release tooling
-reads it. `findIncompatibleItems` from `tools/registry` reports the items an installed runtime falls
-outside of, and the install test fails on any.
+reads it. The install test fails when the installed runtime falls outside `calendar-full`'s range,
+which covers every item.
 
 Source manifests list bare package names and leave `meta.compatibility` to the build. Targets start
-with one of shadcn's alias placeholders (`@components/`, `@ui/`, `@lib/`, `@hooks/`) or `~/`, and
-CSS variable names use standard shadcn tokens or the `calendar-*` namespace.
+with shadcn's `@components/` alias placeholder. A manifest sets no `cssVars` or `css` of its own:
+the theme stylesheet holds the variables, which use standard shadcn tokens or the `calendar-*`
+namespace (`tools/registry/src/theme-css.ts`).

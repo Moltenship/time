@@ -1,56 +1,23 @@
-import type { BenchmarkFixtureSet, FixtureFragment } from "fixtures";
+import type { BenchmarkFixtureSet } from "./fixtures";
 
 export type BenchmarkStage =
   | "build"
-  | "query"
   | "query-1d"
   | "query-7d"
-  | "projection"
-  | "layout"
-  | "render"
-  | "pointer-frame"
   | "expand-cold"
   | "expand-warm"
   | "occurrence-snapshot";
 
 export interface BenchmarkQuery {
   readonly endUnit: number;
-  readonly resourceIds?: ReadonlySet<string>;
   readonly startUnit: number;
 }
 
-export interface BenchmarkProjection {
-  readonly endUnit: number;
-  readonly eventId: string;
-  readonly key: string;
-  readonly resourceId: string;
-  readonly startUnit: number;
-}
-
-export interface BenchmarkLayout extends BenchmarkProjection {
-  readonly lane: number;
-  readonly laneCount: number;
-}
-
-export interface BenchmarkRenderModel {
-  readonly height: number;
-  readonly key: string;
-  readonly lane: number;
-  readonly resourceId: string;
-  readonly top: number;
-}
-
+/** What the core suite times: a snapshot's build and its range queries, as event IDs. */
 export interface BenchmarkEngine<TSnapshot> {
   readonly name: string;
   build(fixtures: BenchmarkFixtureSet): TSnapshot;
-  layout(projection: readonly BenchmarkProjection[]): readonly BenchmarkLayout[];
-  pointerFrame(layout: readonly BenchmarkLayout[], frame: number): string | null;
-  project(
-    snapshot: TSnapshot,
-    fragments: readonly FixtureFragment[],
-  ): readonly BenchmarkProjection[];
   query(snapshot: TSnapshot, query: BenchmarkQuery): readonly string[];
-  render(layout: readonly BenchmarkLayout[]): readonly BenchmarkRenderModel[];
 }
 
 export interface BenchmarkStatistics {
@@ -91,13 +58,10 @@ export interface BenchmarkMemory {
   readonly rssDeltaBytes: number;
 }
 
-/** The fixture counts the core, React, and complete suites report. */
+/** The fixture counts the core suite reports. */
 export interface BenchmarkFixtureCounts {
-  readonly dstCases: number;
   readonly events: number;
-  readonly resources: number;
   readonly seed: number;
-  readonly visibleFragments: number;
 }
 
 export interface BenchmarkReport<TFixture = BenchmarkFixtureCounts> {
@@ -125,7 +89,6 @@ export interface BenchmarkRunOptions {
 
 export interface BenchmarkComparison {
   readonly candidate: string;
-  readonly differences: readonly BenchmarkStage[];
   readonly matchesReference: boolean;
   readonly reference: string;
 }

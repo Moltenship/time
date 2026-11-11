@@ -1,14 +1,11 @@
 // @vitest-environment jsdom
-// First, so dnd-kit, which the demo's sidebar uses, finds the ResizeObserver it reads as it loads.
-import "./resize-observer";
-
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";
 
 import { App } from "../src/app";
 import type { DemoEvent } from "../src/calendar";
-import { eventsStorageKey, legacyEventsStorageKey } from "../src/demo-events";
+import { eventsStorageKey } from "../src/demo-events";
 import { parseEvents, serializeEvents } from "../src/event-storage";
 
 declare global {
@@ -60,7 +57,6 @@ beforeEach(() => {
   // Node's experimental localStorage global shadows jsdom's, so stub a small one.
   vi.stubGlobal("localStorage", {
     getItem: (key: string) => stored.get(key) ?? null,
-    removeItem: (key: string) => stored.delete(key),
     setItem: (key: string, value: string) => stored.set(key, value),
   });
   vi.stubGlobal(
@@ -225,16 +221,4 @@ test("the editor saves a new title to the whole series through the scope dialog"
   expect(saved().find(({ id }) => id === "standup")?.title).toBe("Daily sync");
   expect(saved()).toHaveLength(2);
   expect(label(thursday)).toContain("Daily sync");
-});
-
-test("events saved before recurrence load, are upgraded once, and the old key goes", async () => {
-  stored.delete(eventsStorageKey);
-  stored.set(legacyEventsStorageKey, JSON.stringify([JSON.parse(serializeEvents([focusTime]))[0]]));
-  await act(async () => root.render(<App />));
-
-  expect(eventButton("focus-time")).not.toBeNull();
-  const ids = saved().map(({ id }) => id);
-  expect(ids).toContain("focus-time");
-  expect(ids).toContain("standup");
-  expect(stored.has(legacyEventsStorageKey)).toBe(false);
 });

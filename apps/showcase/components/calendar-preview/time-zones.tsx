@@ -31,7 +31,7 @@ const Calendar = createCalendar<PreviewEvent, never>()({
   views: [createWeekView<PreviewEvent>({ getEventColor: (event) => event.color })],
 });
 
-export const zoneChoices = [
+const zoneChoices = [
   { label: "None", value: "none", zones: [] },
   { label: "New York", value: "new-york", zones: ["America/New_York"] },
   { label: "Tokyo", value: "tokyo", zones: [{ label: "Tokyo", timeZone: "Asia/Tokyo" }] },

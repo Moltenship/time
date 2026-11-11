@@ -4,10 +4,6 @@
   "private": true,
   "description": "Consumer-equivalent SSR render and hydration verification boundary.",
   "type": "module",
-  "scripts": {
-    "build": "vp pack",
-    "check": "vp check"
-  },
   "dependencies": {
     "@moltenship/calendar": "workspace:*",
     "react": "catalog:",

@@ -406,6 +406,19 @@ describe("the first occurrence", () => {
       "2026-01-02T09:00:00.25+00:00",
     ]);
   });
+
+  test("in another calendar, gives dates in the ISO calendar", () => {
+    const hebrew = Temporal.PlainDate.from("2026-01-01").withCalendar("hebrew");
+    const { dates } = expandRecurrenceRule(rule("FREQ=DAILY;COUNT=2"), {
+      end: hebrew.add({ days: 1 }),
+      kind: "all-day",
+      start: hebrew,
+    });
+    expect(dates.map((date) => [String(date), (date as Temporal.PlainDate).calendarId])).toEqual([
+      ["2026-01-01", "iso8601"],
+      ["2026-01-02", "iso8601"],
+    ]);
+  });
 });
 
 describe("UNTIL", () => {
@@ -424,12 +437,27 @@ describe("UNTIL", () => {
       allDay("2026-01-01"),
     );
     expect(dates.map(String)).toEqual(["2026-01-01", "2026-01-08", "2026-01-15"]);
+    const counted = expandRecurrenceRule(
+      { count: 2, frequency: "WEEKLY", until },
+      allDay("2026-01-01"),
+    );
+    expect(counted.dates.map(String)).toEqual(["2026-01-01", "2026-01-08"]);
+  });
+
+  test("before the first start still gives the first occurrence", () => {
+    expect(expand("FREQ=DAILY;UNTIL=20251201", allDay("2026-01-01"))).toEqual(["2026-01-01"]);
   });
 
   test("a date-only UNTIL on a timed series ends with that day in its zone", () => {
     expect(expand("FREQ=DAILY;UNTIL=20260103", timed("2026-01-01T23:30", "Europe/Berlin"))).toEqual(
       ["2026-01-01T23:30:00+01:00", "2026-01-02T23:30:00+01:00", "2026-01-03T23:30:00+01:00"],
     );
+  });
+
+  test("an instant UNTIL on an all-day series ends with that day in UTC", () => {
+    const until = Temporal.Instant.from("2026-01-03T23:59:59Z");
+    const { dates } = expandRecurrenceRule({ frequency: "DAILY", until }, allDay("2026-01-01"));
+    expect(dates.map(String)).toEqual(["2026-01-01", "2026-01-02", "2026-01-03"]);
   });
 });
 
@@ -523,6 +551,13 @@ describe("DST", () => {
     ]);
   });
 
+  test("a written start that no longer resolves to the first start is ignored", () => {
+    expect(expand("FREQ=DAILY;COUNT=2", berlin("2027-04-05T10:00", "2027-03-28T02:30"))).toEqual([
+      "2027-04-05T10:00:00+02:00",
+      "2027-04-06T10:00:00+02:00",
+    ]);
+  });
+
   test("30-minute shifts on Lord Howe Island", () => {
     expect(
       expand("FREQ=MINUTELY;INTERVAL=15;COUNT=6", timed("2026-10-04T01:30", "Australia/Lord_Howe")),
@@ -582,6 +617,34 @@ describe("the window", () => {
       maxIterations: 100,
     });
     expect(expansion).toEqual({ dates: [], truncated: true });
+    expect(
+      expand("FREQ=WEEKLY;COUNT=4", allDay("2026-10-21"), {
+        before: Temporal.PlainDate.from("2027-01-01"),
+        from: Temporal.PlainDate.from("2026-11-01"),
+      }),
+    ).toEqual(["2026-11-04", "2026-11-11"]);
+  });
+
+  test("stops an endless rule at maxIterations and says so", () => {
+    const expansion = expandRecurrenceRule(rule("FREQ=DAILY"), allDay("2026-01-01"), {
+      maxIterations: 10,
+    });
+    expect(expansion.dates).toHaveLength(10);
+    expect(expansion.truncated).toBe(true);
+  });
+
+  test("reports truncation only when occurrences were left", () => {
+    const until = rule("FREQ=DAILY;UNTIL=20260105");
+    const first = allDay("2026-01-01");
+    expect(expandRecurrenceRule(until, first, { maxIterations: 50 }).truncated).toBe(false);
+    expect(
+      expandRecurrenceRule(rule("FREQ=DAILY"), first, {
+        before: Temporal.PlainDate.from("2026-01-06"),
+        maxIterations: 50,
+      }).truncated,
+    ).toBe(false);
+    // Every occurrence costs at least one step, so five can't fit in four.
+    expect(expandRecurrenceRule(until, first, { maxIterations: 4 }).truncated).toBe(true);
   });
 
   test("one step visits one period, so a sub-daily rule that never matches stops soon", () => {
@@ -695,6 +758,9 @@ describe("floating series", () => {
 describe("rules it can't expand", () => {
   test.each([
     [{ frequency: "FORTNIGHTLY" }, "invalid-rule", /FREQ/],
+    [{ frequency: "DAILY", interval: 0 }, "invalid-rule", /INTERVAL/],
+    [{ count: 0, frequency: "DAILY" }, "invalid-rule", /COUNT/],
+    [{ byDay: [], frequency: "WEEKLY" }, "invalid-rule", /BYDAY/],
     [{ byMonthDay: [0], frequency: "MONTHLY" }, "invalid-rule", /BYMONTHDAY/],
     [{ byHour: [24], frequency: "DAILY" }, "invalid-rule", /BYHOUR/],
     [{ byDay: [{ ordinal: 0, weekday: "MO" }], frequency: "MONTHLY" }, "invalid-rule", /ordinal/],
@@ -728,9 +794,9 @@ describe("rules it can't expand", () => {
     ).toThrow(expect.objectContaining({ code: "invalid-time-zone" }));
   });
 
-  test("a maxIterations that isn't a positive integer", () => {
+  test.each([0, -1, Number.NaN, 1.5])("a maxIterations of %s", (maxIterations) => {
     expect(() =>
-      expandRecurrenceRule(rule("FREQ=DAILY"), allDay("2026-01-01"), { maxIterations: 0 }),
+      expandRecurrenceRule(rule("FREQ=DAILY"), allDay("2026-01-01"), { maxIterations }),
     ).toThrow(RangeError);
   });
 

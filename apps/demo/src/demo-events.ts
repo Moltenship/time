@@ -1,12 +1,12 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
 import type { DemoEvent } from "./demo-model";
 import { applyEventChange, type DemoEventChange } from "./event-changes";
 import { parseEvents, serializeEvents } from "./event-storage";
 import { createRoutineEvents } from "./routine";
 import { createSeedEvents } from "./seed";
-import { createSeriesEvents, upgradeSavedEvents } from "./seed-series";
-import { readStorage, removeStorage, usePersistentState } from "./storage";
+import { createSeriesEvents } from "./seed-series";
+import { usePersistentState } from "./storage";
 
 /** Three detailed weeks around today, its series, and a year of routine either way. */
 function seedAroundToday(timeZone: string) {
@@ -20,30 +20,14 @@ function seedAroundToday(timeZone: string) {
 
 /** The storage key; a new one when the seed changes, so returning visitors get the new seed. */
 export const eventsStorageKey = "moltenship-demo:events:v4";
-/** Where events were saved before the demo had recurrence; they're upgraded once, then removed. */
-export const legacyEventsStorageKey = "moltenship-demo:events:v3";
-
-/** The saved events, else those saved before recurrence brought up to date, else a fresh seed. */
-export function loadEvents(stored: string | null, timeZone: string): DemoEvent[] {
-  const events = parseEvents(stored);
-  if (events !== null) return events;
-  const legacy = parseEvents(readStorage(legacyEventsStorageKey));
-  return legacy === null
-    ? seedAroundToday(timeZone)
-    : upgradeSavedEvents(legacy, Temporal.Now.plainDateISO(timeZone), timeZone);
-}
 
 /** Demo events in memory, persisted to localStorage, and seeded around today on first visit. */
 export function useDemoEvents(timeZone: string) {
   const [events, setEvents] = usePersistentState<readonly DemoEvent[]>(
     eventsStorageKey,
-    (stored) => loadEvents(stored, timeZone),
+    (stored) => parseEvents(stored) ?? seedAroundToday(timeZone),
     serializeEvents,
   );
-  // Runs after the effect above saves the events under the new key, and only once that worked.
-  useEffect(() => {
-    if (readStorage(eventsStorageKey) !== null) removeStorage(legacyEventsStorageKey);
-  }, []);
   const saveEvent = useCallback(
     (event: DemoEvent) =>
       setEvents((current) =>

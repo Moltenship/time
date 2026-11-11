@@ -8,8 +8,8 @@ name: Release
 # Nothing leaves the runners until the gate has passed on the release commit, and main gets the
 # new version only once npm serves it. A run that fails after it starts publishing finishes when
 # its failed jobs run again, on the same commit and tarballs: `vp run release <version>` does that.
-# A dry run does everything but publish, push and write the GitHub release, and its jobs after the
-# gate hold no credentials at all.
+# A dry run does everything but publish, push and write the GitHub release, and its job after the
+# gate holds no credentials at all.
 #
 # The jobs that hold credentials pin their actions to commits and use no cache, and run the
 # release's own steps with node, not through Vite Task.
@@ -178,42 +178,6 @@ jobs:
           VERSION: ${{ inputs.version }}
         run: node --import tsx src/ci.ts publish
 
-  publish-dry-run:
-    name: Publish to npm (dry run)
-    needs: gate
-    if: ${{ inputs.dry-run }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout
-        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-
-      - name: Set up Vite+
-        uses: voidzero-dev/setup-vp@3754dd7dbdb32bd8f6d28b6043de13ad3a75f21f # v1.21.1
-        with:
-          node-version: "26"
-          cache: false
-
-      - name: Install locked dependencies
-        run: vp install --frozen-lockfile --ignore-scripts
-
-      - name: Get the release the gate checked
-        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
-        with:
-          name: release
-          path: .release
-
-      # What the publish job would publish, from a job that can't.
-      - name: Check what publishing would do
-        working-directory: tools/release
-        env:
-          VERSION: ${{ inputs.version }}
-          DRY_RUN: "true"
-        run: node --import tsx src/ci.ts publish
-
   finish:
     name: Push and write the GitHub release
     needs: publish
@@ -256,12 +220,12 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: node --import tsx src/ci.ts finish
 
-  finish-dry-run:
-    name: Push and write the GitHub release (dry run)
-    needs: publish-dry-run
+  dry-run:
+    name: Publish, push and release (dry run)
+    needs: gate
     if: ${{ inputs.dry-run }}
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -283,6 +247,14 @@ jobs:
         with:
           name: release
           path: .release
+
+      # What the publish job would publish, from a job that can't.
+      - name: Check what publishing would do
+        working-directory: tools/release
+        env:
+          VERSION: ${{ inputs.version }}
+          DRY_RUN: "true"
+        run: node --import tsx src/ci.ts publish
 
       # How the push would go, and the notes the release would have, from a job that can't write.
       - name: Check what pushing and releasing would do

@@ -1,11 +1,32 @@
 import postcss, { type AtRule, type ChildNode, type Container, type Rule } from "postcss";
 
-import { standardCssVariables } from "./validation";
+/** Tokens a stock shadcn theme defines. An app has its own, so the theme ships only `calendar-*`. */
+const standardCssVariables: ReadonlySet<string> = new Set([
+  "accent",
+  "accent-foreground",
+  "background",
+  "border",
+  "card",
+  "card-foreground",
+  "destructive",
+  "foreground",
+  "input",
+  "muted",
+  "muted-foreground",
+  "popover",
+  "popover-foreground",
+  "primary",
+  "primary-foreground",
+  "radius",
+  "ring",
+  "secondary",
+  "secondary-foreground",
+]);
 
 type Declarations = Record<string, string>;
 type CssBlock = Record<string, Declarations | Record<string, Declarations>>;
 
-export interface ThemeRegistryCss {
+interface ThemeRegistryCss {
   readonly cssVars: { readonly theme: Declarations };
   readonly css: CssBlock;
 }

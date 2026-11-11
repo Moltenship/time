@@ -1,6 +1,6 @@
 # ADR 0019: Keep dnd-kit behind a semantic calendar adapter
 
-- Status: superseded by [ADR 0037](./0037-native-pointer-events.md). Production pointer input uses native Pointer Events; this spike stays as history.
+- Status: superseded by [ADR 0037](./0037-native-pointer-events.md). Production pointer input uses native Pointer Events; the spike, `tools/dnd-adapter-spike`, is no longer in the tree: commit `a59a08a2` has it as it was measured.
 - Date: 2026-08-15
 - Spike: issue #19
 
@@ -26,7 +26,7 @@ The spike remains disposable under `tools/dnd-adapter-spike`; issue #37 will mov
 
 ## Evidence
 
-The committed [interaction trace](../../tools/dnd-adapter-spike/artifacts/interaction-trace.json) records:
+The interaction trace committed with the spike (`tools/dnd-adapter-spike/artifacts/interaction-trace.json` at `a59a08a2`) records:
 
 - 240 manager-level pointer movements and zero React commits in the profiled calendar view;
 - equivalent pointer, touch, and keyboard proposals;

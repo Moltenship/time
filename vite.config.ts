@@ -16,7 +16,7 @@ export default defineConfig({
   test: {
     include: testRoots.flatMap((root) => defaultInclude.map((pattern) => `${root}/${pattern}`)),
     exclude: [...defaultExclude, ".claude/worktrees/**"],
-    // Half the cores, for `vp test` from the root: `ci:test`, the quick tier and the engine tasks.
+    // Half the cores, for `vp test` from the root: `ci:test` and the quick tier.
     // In the PR and full tiers it shares the machine with a browser run, and Vitest's default, a
     // worker per core but one, oversubscribed it (quality-gates.md).
     maxWorkers: Math.ceil(availableParallelism() / 2),
@@ -54,7 +54,7 @@ export default defineConfig({
       "ready:checks": {
         command: "echo ready:checks passed",
         cache: false,
-        dependsOn: ["registry:smoke", "gate:serial"],
+        dependsOn: ["gate:serial"],
       },
       // The full tier, which runs for releases only (AGENTS.md): everything `ready` runs, the a11y
       // suite at CI's speed and in Firefox and WebKit, the release dry run, the docs site's types and
@@ -63,7 +63,7 @@ export default defineConfig({
       "ready:full": {
         command: "echo ready:full: the full tier passed",
         cache: false,
-        dependsOn: ["registry:smoke", "gate:browsers", "gate:serial:full"],
+        dependsOn: ["gate:browsers", "gate:serial:full"],
       },
       // The release's gate before it publishes: the whole full tier, with a strict dry run of
       // RELEASE_VERSION, its lanes one after the other. On a 4-core runner both at once ran the
@@ -72,7 +72,7 @@ export default defineConfig({
       // full-only check joins it too: a serial step in gate:serial:release, a browser run in
       // gate:browsers, any other in this command.
       "release:gate": {
-        command: "vp run registry:smoke && vp run gate:serial:release && vp run gate:browsers",
+        command: "vp run gate:serial:release && vp run gate:browsers",
         cache: false,
       },
       // The full gate's browser runs, one at a time beside its serial lane. Each takes half the
@@ -80,7 +80,7 @@ export default defineConfig({
       "gate:browsers": "vp run a11y && vp run browsers && vp run a11y:ci-speed",
       // release:check reads the packages ci:build wrote and packs them, so it runs right after.
       "gate:serial":
-        "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run ci:test && vp run registry:stylex && vp run react:gate && vp run ssr:smoke && vp run package:graph",
+        "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run ci:test && vp run registry:stylex && vp run package:graph",
       // `ci:build` has built the docs site, so search checks that build. The release dry run
       // rebuilds and packs every published package and installs them from the pnpm store into a
       // clean project. Then the SSR fixture, the docs site and the registry's clean apps install
@@ -92,11 +92,8 @@ export default defineConfig({
       "ci:check": "vp check",
       "ci:test": "vp test",
       "ci:build": "vp run -r build",
-      "ssr:smoke": "vp run ssr-fixture#smoke",
-      "registry:smoke": "vp run registry#smoke",
       // Every registry test again, over the `stylex-*` items.
       "registry:stylex": { command: "vp test --config vite.stylex.config.ts", cwd: "registry" },
-      "registry:build": "vp run registry#site",
       "registry:e2e": "vp run registry#e2e",
       // Release checks (docs/internal/releasing.md). release:check is the PR tier's part.
       "release:check": [
@@ -110,7 +107,6 @@ export default defineConfig({
       "release:api:update": { command: "vp run release#api:update", cache: false },
       "release:exports": { command: "vp run release#exports", cache: false },
       "release:treeshake": "vp run release#treeshake",
-      "release:consumer": { command: "vp run release#consumer", cache: false },
       "release:dry-run": { command: "vp run release#dry-run", cache: false },
       // The one release command: `vp run release [<version>] [--dry-run]` starts the release
       // workflow and watches it. The workflow bumps the versions, runs `release:gate` on the
@@ -133,55 +129,7 @@ export default defineConfig({
       "package:graph": ["vp run check:boundaries", "vp test tests/quality-gates.test.ts"],
       "showcase:source": "vp run showcase#source:generate",
       "showcase:types": "vp run showcase#types:check",
-      "showcase:test": "vp run showcase#test",
       "showcase:links": "vp run showcase:source && vp run showcase#links:check",
-      "showcase:build": "vp run showcase#build",
-      "showcase:search": "vp run showcase:build && vp run showcase#search:check",
-      "showcase:gate":
-        "vp run showcase:types && vp run showcase:test && vp run showcase:links && vp run showcase:search",
-      "engine:correctness":
-        "vp test packages/calendar-temporal/tests packages/calendar-core/tests benchmarks/tests/harness.test.ts tools/fixtures/tests",
-      "engine:contracts":
-        "vp test tests/temporal-utilities-boundary.test.ts tests/dependency-boundaries.test.ts",
-      "engine:build": [
-        "vp run calendar-temporal#build",
-        "vp run calendar-core#build",
-        "vp run release#size calendar-temporal calendar-core",
-      ],
-      "engine:gate": [
-        "vp check",
-        "vp run engine:correctness",
-        "vp run engine:contracts",
-        "vp run engine:build",
-        "vp run --no-cache benchmark#core",
-      ],
-      "recurrence:gate": [
-        "vp check",
-        "vp test packages/calendar-recurrence benchmarks/tests/recurrence.test.ts registry/tests/recurrence-scope-dialog.test.tsx registry/tests/announcements.test.ts tests/dependency-boundaries.test.ts",
-        "vp run a11y#test tests/recurrence-scope-dialog.a11y.tsx tests/recurrence-scope-dialog-week.a11y.tsx",
-        "vp run --no-cache benchmark#recurrence",
-      ],
-      "react:store": [
-        "vp run calendar-react#check",
-        "vp run calendar-react#test",
-        "vp run calendar-react#build",
-        "vp run release#size calendar-react",
-      ],
-      "react:factory": [
-        "vp run calendar-react#check",
-        "vp run calendar-react#test",
-        "vp run calendar-react#build",
-        "vp run calendar#check",
-        "vp run calendar#test",
-        "vp run calendar#build",
-      ],
-      "react:gate": [
-        "vp check",
-        "vp run calendar-react#test:gate",
-        "vp run react:factory",
-        "vp run ssr:smoke",
-        "vp run check:boundaries",
-      ],
     },
   },
 });

@@ -182,14 +182,10 @@ export function errorsOf(issues: readonly IcsIssue[]): readonly IcsIssue[] {
 
 // ── Hand-written Standard Schemas (the package has no dependencies, so no Zod here) ───────────
 
-type Validate<Output> = (
-  value: unknown,
-) => StandardSchemaV1.Result<Output> | Promise<StandardSchemaV1.Result<Output>>;
+type Validate<Output> = (value: unknown) => StandardSchemaV1.Result<Output>;
 
 /** A minimal Standard Schema V1 implementation. */
-export function defineSchema<Input, Output>(
-  validate: Validate<Output>,
-): StandardSchemaV1<Input, Output> {
+function defineSchema<Input, Output>(validate: Validate<Output>): StandardSchemaV1<Input, Output> {
   return { "~standard": { validate, vendor: "ics-tests", version: 1 } };
 }
 
@@ -209,9 +205,4 @@ export const idSchema = defineSchema<number, { readonly id: number }>((value) =>
   typeof value === "number" && Number.isInteger(value)
     ? { value: { id: value } }
     : { issues: [{ message: `expected an integer, got ${typeof value}` }] },
-);
-
-/** Validates asynchronously, which an extension schema must not do. */
-export const promiseSchema = defineSchema<string, string>((value) =>
-  Promise.resolve({ value: String(value) }),
 );

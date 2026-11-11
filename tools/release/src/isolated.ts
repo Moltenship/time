@@ -251,8 +251,8 @@ export function temporaryRoot(name: string): Promise<string> {
  * from the pnpm store (`installFromStore`), with every published package from the dry run's
  * tarballs instead of linked from source.
  * The folders keep their paths, so relative imports between them still resolve. The copy has no
- * package source and no `paths` into it, so `@moltenship` imports can only reach the tarballs; its
- * lockfile starts from the workspace's, so third-party packages keep their versions.
+ * package source, so `@moltenship` imports can only reach the tarballs; its lockfile starts from
+ * the workspace's, so third-party packages keep their versions.
  */
 export async function isolatedWorkspace({
   root,
@@ -309,13 +309,7 @@ export async function isolatedWorkspace({
     ),
   );
   await copyFile(join(workspaceRoot, "pnpm-lock.yaml"), join(root, "pnpm-lock.yaml"));
-  // The base maps `@moltenship` imports to package source for the workspace's own type checks.
-  const { compilerOptions, ...base } = await readJson<{
-    compilerOptions: Record<string, unknown>;
-  }>(join(workspaceRoot, "tsconfig.base.json"));
-  const options = { ...compilerOptions };
-  delete options.paths;
-  await writeFile(join(root, "tsconfig.base.json"), json({ ...base, compilerOptions: options }));
+  await copyFile(join(workspaceRoot, "tsconfig.base.json"), join(root, "tsconfig.base.json"));
 
   const { online } = await installFromStore(root);
   const problems = lockfileProblems({

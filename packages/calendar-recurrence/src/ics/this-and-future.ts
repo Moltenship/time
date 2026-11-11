@@ -93,7 +93,7 @@ function occurrenceAt<TExtensions extends IcsExtensionsConfig>(
   return occurrences.find((occurrence) => occurrence.id === id);
 }
 
-export interface ThisAndFuture<TExtensions extends IcsExtensionsConfig> {
+interface ThisAndFuture<TExtensions extends IcsExtensionsConfig> {
   readonly events: readonly Event<TExtensions>[];
   /** Overrides that stayed single, with why. */
   readonly failures: ReadonlyMap<IcsEvent<TExtensions>, string>;

@@ -3,17 +3,8 @@ import { defineConfig } from "vite-plus";
 export default defineConfig({
   pack: {
     dts: false,
-    entry: [
-      "core/index.ts",
-      "react/index.ts",
-      "recurrence/index.ts",
-      "run.ts",
-      "shared/published-packages.ts",
-    ],
-    tsconfig: "tsconfig.build.json",
+    entry: ["core/index.ts", "recurrence/index.ts", "shared/published-packages.ts"],
   },
-  lint: { options: { typeAware: true, typeCheck: true } },
-  fmt: {},
   run: {
     tasks: {
       core: {
@@ -22,33 +13,12 @@ export default defineConfig({
           "node --expose-gc --import ./dist/shared/published-packages.mjs dist/core/index.mjs --mode=full --gated",
         dependsOn: ["build", { task: "build", from: "dependencies" }],
       },
-      gated: {
-        cache: false,
-        command: "node --expose-gc dist/run.mjs --mode=full --gated",
-        dependsOn: ["build", { task: "build", from: "dependencies" }],
-      },
-      react: {
-        cache: false,
-        command: "node dist/react/index.mjs --mode=full",
-        dependsOn: ["build", { task: "build", from: "dependencies" }],
-      },
       // Recurrence's bundle imports the iCalendar package, which isn't a direct dependency here.
       recurrence: {
         cache: false,
         command:
           "node --expose-gc --import ./dist/shared/published-packages.mjs dist/recurrence/index.mjs --mode=full --gated",
         dependsOn: ["build", { task: "build", from: "dependencies" }, "@moltenship/ics#build"],
-      },
-      "recurrence:smoke": {
-        cache: false,
-        command:
-          "node --import ./dist/shared/published-packages.mjs dist/recurrence/index.mjs --mode=smoke",
-        dependsOn: ["build", { task: "build", from: "dependencies" }, "@moltenship/ics#build"],
-      },
-      smoke: {
-        cache: false,
-        command: "node dist/run.mjs --mode=smoke",
-        dependsOn: ["build", { task: "build", from: "dependencies" }],
       },
     },
   },

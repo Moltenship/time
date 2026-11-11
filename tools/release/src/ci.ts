@@ -287,7 +287,7 @@ async function finish(version: string, dryRun: boolean): Promise<void> {
   if (!dryRun) {
     // npm first: main gets the new version, which the docs site's registry asks for, only once
     // npm serves it.
-    await waitForPublished({ version, trusted: true });
+    await waitForPublished({ version });
     await push(tag, version);
     // The release checks its commit is on origin/main, as GitHub has it now.
     await runOrThrow("git", ["fetch", "--quiet", "origin", "main"]);
@@ -310,7 +310,7 @@ runMain(import.meta, async () => {
   if (process.env.GITHUB_ACTIONS !== "true") {
     throw new Error("These are the release workflow's steps. To release, run vp run release.");
   }
-  const { positionals } = parseArguments(process.argv.slice(2), [], [], { positionals: true });
+  const { positionals } = parseArguments(process.argv.slice(2), [], { positionals: true });
   const version = process.env.VERSION ?? "";
   const dryRun = process.env.DRY_RUN === "true";
   assertVersion(version);

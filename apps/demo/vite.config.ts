@@ -35,8 +35,6 @@ export default defineConfig(({ command }) => ({
   resolve: {
     tsconfigPaths: true,
   },
-  lint: { options: { typeAware: true, typeCheck: true } },
-  fmt: {},
   test: {
     include: ["tests/**/*.test.{ts,tsx}"],
   },

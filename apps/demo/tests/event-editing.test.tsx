@@ -1,7 +1,4 @@
 // @vitest-environment jsdom
-// First, so dnd-kit, which the demo's sidebar uses, finds the ResizeObserver it reads as it loads.
-import "./resize-observer";
-
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, expect, test, vi } from "vite-plus/test";

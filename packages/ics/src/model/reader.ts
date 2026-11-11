@@ -25,7 +25,7 @@ import { quote } from "../values/result";
 export type Path = readonly (number | string)[];
 
 /** A path relative to the component: a field, or a field and what lies below it. */
-export type At = Path | string;
+type At = Path | string;
 
 /** What the components of one VCALENDAR share. */
 export interface CalendarScope {
@@ -68,7 +68,7 @@ function isUnresolved(value: unknown): boolean {
 }
 
 // DATE when the VALUE parameter says so, else DATE-TIME; the value's shape decides in the end.
-export function declaredDateType(property: IcsProperty): "DATE" | "DATE-TIME" {
+function declaredDateType(property: IcsProperty): "DATE" | "DATE-TIME" {
   return icsValueTypeOf(property) === "DATE" ? "DATE" : "DATE-TIME";
 }
 

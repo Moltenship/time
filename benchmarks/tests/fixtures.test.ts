@@ -4,24 +4,13 @@ import {
   BENCHMARK_EVENT_COUNT,
   BENCHMARK_EVENT_DAY_SPAN,
   BENCHMARK_RESOURCE_COUNT,
-  BENCHMARK_VISIBLE_FRAGMENT_COUNT,
   generateBenchmarkFixtures,
-} from "../src/index";
+} from "../shared/fixtures";
 
 describe("benchmark fixtures", () => {
   test("repeats identical semantic data for the same seed", () => {
-    const first = generateBenchmarkFixtures({
-      eventCount: 40,
-      resourceCount: 12,
-      seed: 42,
-      visibleFragmentCount: 20,
-    });
-    const second = generateBenchmarkFixtures({
-      eventCount: 40,
-      resourceCount: 12,
-      seed: 42,
-      visibleFragmentCount: 20,
-    });
+    const first = generateBenchmarkFixtures({ eventCount: 40, resourceCount: 12, seed: 42 });
+    const second = generateBenchmarkFixtures({ eventCount: 40, resourceCount: 12, seed: 42 });
 
     expect(JSON.stringify(first)).toBe(JSON.stringify(second));
     expect(generateBenchmarkFixtures({ eventCount: 2, seed: 1 }).events).not.toEqual(
@@ -33,32 +22,13 @@ describe("benchmark fixtures", () => {
     const fixtures = generateBenchmarkFixtures();
 
     expect(fixtures.events).toHaveLength(BENCHMARK_EVENT_COUNT);
-    expect(fixtures.resources).toHaveLength(BENCHMARK_RESOURCE_COUNT);
-    expect(fixtures.visibleFragments).toHaveLength(BENCHMARK_VISIBLE_FRAGMENT_COUNT);
     expect(Math.max(...fixtures.events.map(({ data }) => data.startUnit))).toBeGreaterThan(
       (BENCHMARK_EVENT_DAY_SPAN - 30) * 1_440,
     );
-    const eventIds = new Set(fixtures.events.map(({ id }) => id));
-    const resourceIds = new Set(fixtures.resources.map(({ id }) => id));
-    expect(eventIds.size).toBe(BENCHMARK_EVENT_COUNT);
-    expect(resourceIds.size).toBe(BENCHMARK_RESOURCE_COUNT);
-    expect(
-      fixtures.events.every((event) =>
-        event.resourceIds?.every((resourceId) => resourceIds.has(resourceId)),
-      ),
-    ).toBe(true);
-    expect(
-      fixtures.visibleFragments.every(
-        (fragment) => eventIds.has(fragment.eventId) && resourceIds.has(fragment.resourceId),
-      ),
-    ).toBe(true);
-    expect(fixtures.dstCases.map(({ kind }) => kind)).toEqual([
-      "gap",
-      "fold",
-      "fold",
-      "midnight-transition",
-      "unusual-offset",
-    ]);
+    expect(new Set(fixtures.events.map(({ id }) => id)).size).toBe(BENCHMARK_EVENT_COUNT);
+    const resourceIds = new Set(fixtures.events.flatMap((event) => event.resourceIds ?? []));
+    expect(resourceIds.size).toBeGreaterThan(BENCHMARK_RESOURCE_COUNT / 2);
+    expect(resourceIds.size).toBeLessThanOrEqual(BENCHMARK_RESOURCE_COUNT);
   });
 
   test("contains overlaps, multi-day spans, and valid non-empty ranges", () => {

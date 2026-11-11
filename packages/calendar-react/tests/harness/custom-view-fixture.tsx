@@ -50,8 +50,8 @@ function defineGateView<const TName extends string>(name: TName, defaultOptions:
   });
 }
 
-export const gateMonthView = defineGateView("month", { days: 7, label: "Month" });
-export const gateAgendaView = defineGateView("agenda", { days: 1, label: "Agenda" });
+const gateMonthView = defineGateView("month", { days: 7, label: "Month" });
+const gateAgendaView = defineGateView("agenda", { days: 1, label: "Agenda" });
 
 export const GateCalendar = createCalendar<GateEvent, GateResource, GateSelection, GateFocus>()({
   eventAdapter: gateEventAdapter,

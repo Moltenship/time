@@ -91,8 +91,8 @@ async function freePort(): Promise<number> {
  */
 export const consumers: readonly Consumer[] = [
   {
-    // The fixture's own tests: render, hydrate, interact and unmount, its known-bad cases fail, and
-    // its calendar hydrates through calendar-testing.
+    // The fixture's own tests: render, hydrate, interact and unmount, its known-bad hydration
+    // fails, and its calendar hydrates through calendar-testing.
     name: "ssr-fixture",
     run: async ({ step, note, isolate }) => {
       const fixture = await step("install", () => isolate(["apps/ssr-fixture"]));
@@ -116,10 +116,9 @@ export const consumers: readonly Consumer[] = [
         }
         return workspace;
       });
-      await step("build", async () => {
-        await site.run("apps/showcase", "fumadocs-mdx", []);
-        note(outcome(await site.run("apps/showcase", "next", ["build"])));
-      });
+      await step("build", async () =>
+        note(outcome(await site.run("apps/showcase", "next", ["build"]))),
+      );
       await step("render", async () => {
         const port = String(await freePort());
         note(
@@ -346,7 +345,7 @@ export async function checkArtifacts({
 }
 
 runMain(import.meta, async () => {
-  const { flags, positionals } = parseArguments(process.argv.slice(2), ["keep"], [], {
+  const { flags, positionals } = parseArguments(process.argv.slice(2), ["keep"], {
     positionals: true,
   });
   await checkArtifacts({ only: positionals, keep: flags.has("keep") });

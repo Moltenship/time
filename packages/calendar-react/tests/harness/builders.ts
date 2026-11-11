@@ -22,7 +22,7 @@ export interface GateResource {
   readonly title: string;
 }
 
-export interface TestCalendarClock extends CalendarClock {
+interface TestCalendarClock extends CalendarClock {
   set(instant: Temporal.Instant): void;
 }
 
@@ -49,7 +49,7 @@ export function buildGateEvent(overrides: Partial<GateEvent> = {}): GateEvent {
   });
 }
 
-export function buildGateResource(overrides: Partial<GateResource> = {}): GateResource {
+function buildGateResource(overrides: Partial<GateResource> = {}): GateResource {
   return Object.freeze({
     id: overrides.id ?? "resource-1",
     title: overrides.title ?? "Orchid",

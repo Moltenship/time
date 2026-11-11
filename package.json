@@ -8,8 +8,7 @@
     "check:boundaries": "vp test tests/dependency-boundaries.test.ts",
     "dev": "vp run showcase#dev",
     "prepare": "vp config",
-    "test": "vp test",
-    "test:contracts": "vp test packages/calendar-temporal/tests packages/calendar-core/tests"
+    "test": "vp test"
   },
   "devDependencies": {
     "@types/node": "catalog:",

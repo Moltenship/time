@@ -8,8 +8,8 @@ import { parse, stringify } from "yaml";
 
 import { facadePackage, pointerAdapterPackage } from "./config";
 import { installFromStore, lockfileEntries, lockfileProblems } from "./isolated";
-import { withPackedPackages, type PackedTarball } from "./pack";
-import { parseArguments, readJson, run, runMain, runOrThrow, workspaceRoot } from "./workspace";
+import type { PackedTarball } from "./pack";
+import { readJson, run, runOrThrow, workspaceRoot } from "./workspace";
 
 const require = createRequire(import.meta.url);
 
@@ -51,7 +51,7 @@ export function lockedVersions(workspaceLockfile: string): Record<string, string
  * the metadata from npm, says so, and the lockfile check still holds it to the workspace's
  * packages.
  */
-export async function installConsumer(tarballs: readonly PackedTarball[]): Promise<string> {
+async function installConsumer(tarballs: readonly PackedTarball[]): Promise<string> {
   const directory = await mkdtemp(join(tmpdir(), "moltenship-consumer-"));
   const settings = parse(await readFile(join(workspaceRoot, "pnpm-workspace.yaml"), "utf8")) as {
     readonly catalog: Record<string, string>;
@@ -173,7 +173,7 @@ const compilers = [
  * Type-checks an import of every package with each compiler, under `NodeNext` and `Bundler`,
  * library files included.
  */
-export async function typeProblems(directory: string, names: readonly string[]): Promise<string[]> {
+async function typeProblems(directory: string, names: readonly string[]): Promise<string[]> {
   const source = [
     ...names.map((name, index) => `import * as package${index} from ${JSON.stringify(name)};`),
     `export const packages = [${names.map((_, index) => `package${index}`).join(", ")}];`,
@@ -298,10 +298,7 @@ console.log(JSON.stringify({ base: facade.filter((name) => !adapter.has(name)), 
 }
 
 /** Installs the tarballs into a clean project and runs every consumer check. */
-export async function checkConsumer(
-  tarballs: readonly PackedTarball[],
-  { keep = false } = {},
-): Promise<void> {
+export async function checkConsumer(tarballs: readonly PackedTarball[]): Promise<void> {
   const directory = await installConsumer(tarballs);
   const names = tarballs.map(({ name }) => name);
   const problems = [
@@ -313,14 +310,8 @@ export async function checkConsumer(
   if (problems.length > 0) {
     throw new Error(`Clean-consumer checks failed in ${directory}:\n- ${problems.join("\n- ")}`);
   }
-  if (keep) console.log(`Kept the consumer project at ${directory}`);
-  else await rm(directory, { force: true, recursive: true });
+  await rm(directory, { force: true, recursive: true });
   console.log(
     `Clean consumer passed: ${names.length} packages installed from the pnpm store, imported, type-checked and bundled.`,
   );
 }
-
-runMain(import.meta, async () => {
-  const keep = parseArguments(process.argv.slice(2), ["keep"]).flags.has("keep");
-  await withPackedPackages((tarballs) => checkConsumer(tarballs, { keep }));
-});

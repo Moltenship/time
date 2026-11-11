@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
-import { publishedPackages, type SizeBudget } from "./config";
+import type { SizeBudget } from "./config";
 import {
   parseArguments,
   publishedEntryPoints,
@@ -64,7 +64,7 @@ export function sizeFailures(measurements: readonly SizeMeasurement[]): string[]
   });
 }
 
-export function formatSizes(measurements: readonly SizeMeasurement[]): string {
+function formatSizes(measurements: readonly SizeMeasurement[]): string {
   const rows = measurements.map(({ name, subpath, raw, gzip, budget }) => {
     const label = subpath === "." ? name : `${name}/${subpath.slice(2)}`;
     const share = (value: number, limit?: number) =>
@@ -83,15 +83,7 @@ export async function checkSizes(packages: readonly WorkspacePackage[]): Promise
 }
 
 runMain(import.meta, async () => {
-  // Directory names narrow the check, as engine:build does for the two engine packages.
-  const { positionals } = parseArguments(process.argv.slice(2), [], [], { positionals: true });
-  const unknown = positionals.filter(
-    (name) => !publishedPackages.some(({ directory }) => directory === name),
-  );
-  if (unknown.length > 0) throw new Error(`Not published packages: ${unknown.join(", ")}`);
-  const packages = (await readPublishedPackages()).filter(
-    ({ directory }) => positionals.length === 0 || positionals.includes(directory),
-  );
-  await checkSizes(packages);
+  parseArguments(process.argv.slice(2));
+  await checkSizes(await readPublishedPackages());
   console.log("Size budgets passed.");
 });

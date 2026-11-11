@@ -16,7 +16,7 @@ interface PropertyDraft {
   value: string;
 }
 
-export interface ParsedComponents {
+interface ParsedComponents {
   readonly components: ComponentDraft[];
   readonly issues: IcsIssue[];
 }

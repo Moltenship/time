@@ -128,12 +128,11 @@ describe("the suggested version", () => {
   const commits = (...types: string[]) =>
     types.map((type) => ({ type: type.replace("!", ""), isBreaking: type.endsWith("!") }));
 
-  test("a prerelease moves to the next one, with the stable version beside it", () => {
+  test("a prerelease moves to the next one, and names the stable version", () => {
     expect(suggestVersion("1.0.0-rc.1", commits("feat!", "fix"))).toEqual({
       version: "1.0.0-rc.2",
       reason:
         "1 breaking change, 1 other commit since 1.0.0-rc.1; the next prerelease, or 1.0.0 when it's ready",
-      alternatives: ["1.0.0"],
     });
   });
 
@@ -142,7 +141,6 @@ describe("the suggested version", () => {
     expect(suggestVersion("1.2.3", commits("feat", "fix"))).toEqual({
       version: "1.3.0",
       reason: "1 feature, 1 other commit since 1.2.3: a minor release",
-      alternatives: ["1.2.4", "2.0.0", "1.3.0-rc.1"],
     });
     expect(suggestVersion("1.2.3", commits("fix", "docs")).version).toBe("1.2.4");
     expect(suggestVersion("1.2.3", []).version).toBe("1.2.4");

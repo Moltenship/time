@@ -13,7 +13,7 @@ interface PackageManifest {
   readonly dependencies?: Record<string, string>;
 }
 
-export interface WorkspacePackages {
+interface WorkspacePackages {
   /** The npm range an item declares for each package registry source may import. */
   readonly ranges: ReadonlyMap<string, string>;
   /** The version of each workspace package, which the ranges above were made from. */

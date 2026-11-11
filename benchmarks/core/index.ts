@@ -1,27 +1,16 @@
-import { isDirectExecution, runBenchmarkCli } from "../shared/cli";
-import { CORE_BENCHMARK_STAGES } from "../shared/protocol";
+import { runSuiteCli } from "../shared/cli";
+import { generateBenchmarkFixtures } from "../shared/fixtures";
+import { CORE_BENCHMARK_STAGES, runBenchmark } from "../shared/protocol";
 import { indexedSnapshotEngine } from "./indexed-snapshot";
 
-export { compareCandidateToReference, runBenchmark } from "../shared/protocol";
-export { referenceEngine } from "../shared/reference";
-export { indexedSnapshotEngine } from "./indexed-snapshot";
-export type {
-  BenchmarkComparison,
-  BenchmarkEngine,
-  BenchmarkReport,
-  BenchmarkRunOptions,
-  BenchmarkStage,
-} from "../shared/contracts";
-
-export function runCoreBenchmarkCli(arguments_: readonly string[]): number {
-  return runBenchmarkCli(
-    arguments_,
-    CORE_BENCHMARK_STAGES,
-    "core-indexed-snapshot",
-    indexedSnapshotEngine,
-  );
-}
-
-if (isDirectExecution(import.meta.url)) {
-  process.exitCode = runCoreBenchmarkCli(process.argv.slice(2));
-}
+process.exitCode = runSuiteCli(
+  (options) =>
+    runBenchmark(indexedSnapshotEngine, generateBenchmarkFixtures(), {
+      collectGarbageBetweenSamples: options.gated,
+      mode: options.mode,
+      stages: CORE_BENCHMARK_STAGES,
+      suite: "core-indexed-snapshot",
+      thresholdScale: options.thresholdScale,
+    }),
+  (fixture) => `seed=${fixture.seed} events=${fixture.events}`,
+);

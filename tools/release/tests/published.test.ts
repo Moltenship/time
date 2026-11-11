@@ -12,8 +12,6 @@ const manifest: ReleaseManifest = {
   version: "1.0.0-rc.1",
   commit: "abc123",
   clean: true,
-  createdAt: "2026-10-14T00:00:00.000Z",
-  checks: [],
   packages: [
     { name: "@x/a", file: "x-a-1.0.0-rc.1.tgz", integrity: "sha512-a" },
     { name: "@x/b", file: "x-b-1.0.0-rc.1.tgz", integrity: "sha512-b" },
@@ -35,7 +33,7 @@ const both = new Map([
   ["@x/b", served("sha512-b")],
 ]);
 
-const options = { version: "1.0.0-rc.1", tag: "next", trusted: true };
+const options = { version: "1.0.0-rc.1", tag: "next" };
 
 describe("what npm serves after publishing", () => {
   test("accepts the dry run's tarballs under their tag, from the trusted publisher", () => {
@@ -89,12 +87,6 @@ describe("what npm serves after publishing", () => {
       expect.arrayContaining([expect.stringContaining(message)]),
     );
   });
-
-  test("needs no trusted publisher when asked only for the contents", () => {
-    const token = new Map([...both, ["@x/a", served("sha512-a", "1.0.0-rc.1", false)]]);
-
-    expect(checkPublished(manifest, { ...options, trusted: false }, token).problems).toEqual([]);
-  });
 });
 
 describe("waiting for npm", () => {
@@ -117,7 +109,7 @@ describe("waiting for npm", () => {
       return calls <= 3 ? undefined : both.get(name);
     };
 
-    await waitForPublished({ ...quiet, ...options, manifestFile, fetch });
+    await waitForPublished({ ...quiet, version: options.version, manifestFile, fetch });
     expect(calls).toBe(6);
   });
 
@@ -125,13 +117,19 @@ describe("waiting for npm", () => {
     const other = async (name: string) =>
       name === "@x/b" ? served("sha512-other") : both.get(name);
     await expect(
-      waitForPublished({ ...quiet, ...options, manifestFile, timeoutMs: 60_000, fetch: other }),
+      waitForPublished({
+        ...quiet,
+        version: options.version,
+        manifestFile,
+        timeoutMs: 60_000,
+        fetch: other,
+      }),
     ).rejects.toThrow("npm doesn't serve what the dry run checked");
 
     await expect(
       waitForPublished({
         ...quiet,
-        ...options,
+        version: options.version,
         manifestFile,
         timeoutMs: 0,
         fetch: async () => undefined,
@@ -139,13 +137,16 @@ describe("waiting for npm", () => {
     ).rejects.toThrow("npm doesn't list @x/a@1.0.0-rc.1 yet");
   });
 
-  test("takes the prerelease's next tag unless told otherwise, and never latest", async () => {
+  test("checks a prerelease under the next tag", async () => {
+    const lines: string[] = [];
     const fetch = async (name: string) => both.get(name);
-    await expect(
-      waitForPublished({ ...quiet, version: "1.0.0-rc.1", trusted: true, manifestFile, fetch }),
-    ).resolves.toBeUndefined();
-    await expect(
-      waitForPublished({ ...quiet, ...options, tag: "latest", manifestFile, fetch }),
-    ).rejects.toThrow("can't take the latest tag");
+    await waitForPublished({
+      intervalMs: 0,
+      log: (line) => lines.push(line),
+      version: "1.0.0-rc.1",
+      manifestFile,
+      fetch,
+    });
+    expect(lines.at(-1)).toContain("tagged next, from the trusted publisher, with provenance");
   });
 });

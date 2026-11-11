@@ -7,10 +7,6 @@ export const docs = defineDocs({
   dir: "content/docs",
   docs: {
     schema: pageSchema,
-    lastModified: true,
-    postprocess: {
-      includeProcessedMarkdown: true,
-    },
   },
   meta: {
     schema: metaSchema,
@@ -19,7 +15,6 @@ export const docs = defineDocs({
 
 export default defineConfig({
   mdxOptions: {
-    providerImportSource: "@/components/mdx",
     rehypeCodeOptions: {
       themes: codeThemes,
     },

@@ -16,8 +16,6 @@ const manifest = (version: string): ReleaseManifest => ({
   version,
   commit,
   clean: true,
-  createdAt: "2026-10-14T00:00:00.000Z",
-  checks: [],
   packages: [],
 });
 
@@ -30,13 +28,13 @@ interface Remote {
   /** What `gh` prints when GitHub can't answer, for the tag lookup or the release lookup. */
   readonly tagError?: string;
   readonly releaseError?: string;
-  /** The tag's ref object: a commit, or an annotated tag that points at one. */
-  readonly tag?: { readonly sha: string; readonly type: "commit" | "tag" };
+  /** The tag's ref object, a commit or an annotated tag that points at one; null without a tag. */
+  readonly tag?: { readonly sha: string; readonly type: "commit" | "tag" } | null;
   readonly release?: { readonly isDraft: boolean };
 }
 
 /** A fake `gh` and `git`, recording each call and the notes `gh release create` got. */
-function fake(remote: Remote) {
+function fake({ tag = { sha: commit, type: "commit" }, ...remote }: Remote) {
   const calls: string[][] = [];
   let notes: string | undefined;
   const exec: Exec = async (command, args) => {
@@ -46,8 +44,8 @@ function fake(remote: Remote) {
       return remote.onMain === false ? fail("") : ok();
     if (command === "gh" && first === "api" && second?.includes("/git/ref/tags/")) {
       if (remote.tagError) return fail(remote.tagError);
-      if (!remote.tag) return fail("gh: Not Found (HTTP 404)");
-      return ok(JSON.stringify({ object: remote.tag }));
+      if (!tag) return fail("gh: Not Found (HTTP 404)");
+      return ok(JSON.stringify({ object: tag }));
     }
     if (command === "gh" && first === "api" && second?.includes("/git/tags/")) {
       return ok(JSON.stringify({ object: { sha: commit, type: "commit" } }));
@@ -95,21 +93,20 @@ describe("the GitHub release", () => {
     expect(releaseTag("1.0.0-rc.1")).toBe("v1.0.0-rc.1");
   });
 
-  test("tags the dry run's commit and marks a prerelease, with the notes it's given", async () => {
+  test("writes the release of the tag at the dry run's commit and marks a prerelease, with the notes it's given", async () => {
     const { created, notes: written, lines } = await release("1.0.0-rc.1", {});
 
     expect(created()?.slice(3)).toEqual([
       "v1.0.0-rc.1",
+      "--verify-tag",
       "--title",
       "1.0.0-rc.1",
       "--notes-file",
       expect.any(String),
-      "--target",
-      commit,
       "--prerelease",
     ]);
     expect(written()).toBe(notes);
-    expect(lines.at(-1)).toContain(`Tagged ${commit} v1.0.0-rc.1`);
+    expect(lines.at(-1)).toContain(`Wrote the GitHub release of v1.0.0-rc.1, at ${commit}`);
   });
 
   test("writes a stable release without the prerelease mark", async () => {
@@ -118,24 +115,14 @@ describe("the GitHub release", () => {
     expect(created()).not.toContain("--prerelease");
   });
 
-  test("keeps a tag already at the commit, through an annotated tag", async () => {
-    for (const tag of [
-      { sha: commit, type: "commit" as const },
-      { sha: "annotated", type: "tag" as const },
-    ]) {
-      const { created, lines } = await release("1.0.0-rc.1", { tag });
+  test("follows an annotated tag to its commit", async () => {
+    const { created } = await release("1.0.0-rc.1", { tag: { sha: "annotated", type: "tag" } });
 
-      expect(created()).toContain("--verify-tag");
-      expect(created()).not.toContain("--target");
-      expect(lines.at(-1)).toContain(`v1.0.0-rc.1 was already at ${commit}`);
-    }
+    expect(created()).toContain("--verify-tag");
   });
 
   test("leaves a published release alone", async () => {
-    const { created, lines } = await release("1.0.0-rc.1", {
-      tag: { sha: commit, type: "commit" },
-      release: { isDraft: false },
-    });
+    const { created, lines } = await release("1.0.0-rc.1", { release: { isDraft: false } });
 
     expect(created()).toBeUndefined();
     expect(lines).toEqual(["The v1.0.0-rc.1 release is already on GitHub; leaving it."]);
@@ -148,6 +135,7 @@ describe("the GitHub release", () => {
       { tag: { sha: "f00", type: "commit" } },
       `v1.0.0-rc.1 already points at f00, not ${commit}`,
     ],
+    ["a missing tag", "1.0.0-rc.1", { tag: null }, "v1.0.0-rc.1 isn't on GitHub"],
     ["a draft", "1.0.0-rc.1", { release: { isDraft: true } }, "A draft v1.0.0-rc.1 release"],
     ["a commit that isn't on main", "1.0.0-rc.1", { onMain: false }, "isn't on origin/main"],
     ["a version the dry run didn't check", "1.0.1", {}, "checked 1.0.0-rc.1, not 1.0.1"],

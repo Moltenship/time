@@ -52,7 +52,7 @@ export type DemoOccurrence = RecurrenceOccurrence<DemoEvent, string>;
 
 const noResourceIds: readonly DemoResourceId[] = [];
 
-export const demoEventAdapter = defineEventAdapter<DemoEvent>()({
+const demoEventAdapter = defineEventAdapter<DemoEvent>()({
   getId: (event) => event.id,
   getInterval: (event) => event,
   getResourceIds: (event) => event.resourceIds ?? noResourceIds,

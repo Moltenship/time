@@ -66,7 +66,7 @@ export interface Series<TEvent, TEventId extends EventId, TResourceId extends Re
 }
 
 /** Where the edited occurrence goes, measured in the series' own time. */
-export interface Move {
+interface Move {
   /** Calendar days its date moves. */
   readonly days: number;
   /** The clock the occurrence showed on before the change. */

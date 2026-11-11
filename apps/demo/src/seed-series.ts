@@ -126,23 +126,3 @@ const earlierOf = (left: Temporal.PlainDate, right: Temporal.PlainDate) =>
   Temporal.PlainDate.compare(left, right) <= 0 ? left : right;
 const laterOf = (left: Temporal.PlainDate, right: Temporal.PlainDate) =>
   Temporal.PlainDate.compare(left, right) >= 0 ? left : right;
-
-/** One-off seeded events that are series now. Saved data from before has them one by one. */
-const replacedBySeries = new Set(["Mom's birthday", "Standup"]);
-const seededId = /^(?:seed|routine)-\d+$/;
-
-/**
- * Events saved before the demo had recurrence, brought up to date: the seeded one-off standups and
- * birthday give way to the series, and everything else, the visitor's own events and edits to other
- * seeded events included, stays as it was.
- */
-export function upgradeSavedEvents(
-  events: readonly DemoEvent[],
-  today: Temporal.PlainDate,
-  timeZone: string,
-): DemoEvent[] {
-  return [
-    ...events.filter(({ id, title }) => !(seededId.test(id) && replacedBySeries.has(title))),
-    ...createSeriesEvents(today, timeZone),
-  ];
-}

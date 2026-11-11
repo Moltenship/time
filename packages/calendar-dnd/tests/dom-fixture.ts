@@ -198,8 +198,8 @@ export function mountTimeGrid(events: readonly TestEvent[]) {
 }
 
 /** Month grid: two week rows of 100×80 cells starting Sunday 2026-08-16. */
-export const CELL_WIDTH = 100;
-export const CELL_HEIGHT = 80;
+const CELL_WIDTH = 100;
+const CELL_HEIGHT = 80;
 
 export function cellCenter(date: string): { readonly x: number; readonly y: number } {
   const index = Temporal.PlainDate.from("2026-08-16").until(Temporal.PlainDate.from(date)).days;
@@ -264,7 +264,7 @@ export function mountMonth(events: readonly TestEvent[]) {
 
 /** Resource columns: one date, a 100px-wide column per resource with its own all-day cell. */
 export const resourceIds = ["room-a", "room-b"] as const;
-export const resourceDate = gridDates[0];
+const resourceDate = gridDates[0];
 
 export function xIn(resourceId: (typeof resourceIds)[number]): number {
   return resourceIds.indexOf(resourceId) * COLUMN_WIDTH + COLUMN_WIDTH / 2;

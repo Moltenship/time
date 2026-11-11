@@ -15,7 +15,7 @@ export const fullItemName = "calendar-full";
 export const stylexItemPrefix = "stylex-";
 export const stylexFullItemName = `${stylexItemPrefix}${fullItemName}`;
 
-export interface CheckBuiltRegistryOptions {
+interface CheckBuiltRegistryOptions {
   readonly outDir: string;
   readonly manifest: RegistryManifest;
 }
@@ -93,11 +93,32 @@ function importIssue(
 }
 
 /**
+ * The runtime packages an item's ranges don't accept at the versions `where` has, a prerelease of
+ * the range's own version included: `^1.0.0-rc.1` takes `1.0.0-rc.2` and `1.0.0`.
+ */
+export function runtimeProblems(
+  item: string,
+  compatibility: Readonly<Record<string, string>>,
+  versions: Readonly<Record<string, string | undefined>>,
+  where: string,
+): string[] {
+  return Object.entries(compatibility)
+    .filter(([name, range]) => {
+      const version = versions[name];
+      return !version || !satisfies(version, range, { includePrerelease: true });
+    })
+    .map(
+      ([name, range]) =>
+        `${item}: needs ${name}@${range}, but ${where} has ${versions[name] ?? "none"}`,
+    );
+}
+
+/**
  * Checks a built registry the way a consumer would meet it: every item parses with shadcn's
  * schema, every import resolves to a file, component, or package its install provides, components
- * that need the client say so, the full item composes the others without owning files, no two
- * items write the same file, nothing turns on drag and drop, and the runtime ranges hold for the
- * workspace versions.
+ * that need the client say so, each flavour's full item composes exactly that flavour's other
+ * items without owning files, no two items write the same file, nothing turns on drag and drop,
+ * and the runtime ranges hold for the workspace versions.
  */
 export async function checkBuiltRegistry({
   outDir,
@@ -173,14 +194,7 @@ export async function checkBuiltRegistry({
     if (JSON.stringify(compatibility) !== JSON.stringify(item.compatibility)) {
       issues.push(`${item.name}: meta.compatibility differs from compatibility.json`);
     }
-    for (const [name, range] of Object.entries(compatibility)) {
-      const version = manifest.runtime[name];
-      if (!version || !satisfies(version, range, { includePrerelease: true })) {
-        issues.push(
-          `${item.name}: needs ${name}@${range}, but the workspace has ${version ?? "none"}`,
-        );
-      }
-    }
+    issues.push(...runtimeProblems(item.name, compatibility, manifest.runtime, "the workspace"));
 
     for (const file of built.files ?? []) {
       const target = file.target ?? "";
@@ -213,10 +227,17 @@ export async function checkBuiltRegistry({
       continue;
     }
     if (full.targets.length > 0) issues.push(`${fullName} owns files instead of composing items`);
+    if (full.components.length > 0) {
+      issues.push(`${fullName} installs ${full.components.join(", ")} itself, not through an item`);
+    }
     const missing = manifest.items
       .filter(({ name }) => inFlavour(name) && name !== fullName && !full.items.includes(name))
       .map(({ name }) => name);
     if (missing.length > 0) issues.push(`${fullName} doesn't install ${missing.join(", ")}`);
+    const foreign = full.items.filter((name) => !inFlavour(name));
+    if (foreign.length > 0) {
+      issues.push(`${fullName} installs ${foreign.join(", ")}, from the other flavour`);
+    }
   }
 
   return issues;

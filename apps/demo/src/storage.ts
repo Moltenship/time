@@ -21,14 +21,6 @@ export function writeStorage(key: string, value: string): void {
   }
 }
 
-export function removeStorage(key: string): void {
-  try {
-    localStorage.removeItem(key);
-  } catch {
-    // Nothing to clean up.
-  }
-}
-
 export function usePersistentState<T>(
   key: string,
   load: (stored: string | null) => T,

@@ -44,7 +44,7 @@ export function shiftWallClock<TPoint extends Temporal.ZonedDateTime | Temporal.
     .add({ hours, microseconds, milliseconds, minutes, nanoseconds, seconds }) as TPoint;
 }
 
-export type WallClockPlacement<TResourceId extends ResourceId> = Exclude<
+type WallClockPlacement<TResourceId extends ResourceId> = Exclude<
   CalendarEventPlacement<TResourceId>,
   { readonly kind: "all-day" }
 >;

@@ -31,16 +31,16 @@ export interface PublishedCheck {
 
 /**
  * Compares what npm serves with what the dry run checked: every package at the version, with the
- * tarball's integrity, under the dist-tag it went out with, and, when it went out through npm
- * trusted publishing, with the trusted publisher and provenance npm records for it: the evidence
- * pnpm's `trustPolicy` ranks above provenance alone, which `1.0.0-rc.1` has.
+ * tarball's integrity, under the dist-tag it went out with, from the trusted publisher and with
+ * provenance: the evidence pnpm's `trustPolicy` ranks above provenance alone, which `1.0.0-rc.1`
+ * has.
  * `packuments` maps each package to npm's document, or undefined when npm doesn't list it yet.
  * npm writes a version and its tags in one document, so once it lists the version, a tag that
  * points elsewhere stays there, unless a newer release moved it on.
  */
 export function checkPublished(
   manifest: ReleaseManifest,
-  options: { readonly version: string; readonly tag: string; readonly trusted: boolean },
+  options: { readonly version: string; readonly tag: string },
   packuments: ReadonlyMap<string, Packument | undefined>,
 ): PublishedCheck {
   const problems: string[] = [];
@@ -64,7 +64,7 @@ export function checkPublished(
         `${id} on npm is ${dist.integrity ?? "without an integrity"}, not the tarball the dry run checked (${integrity})`,
       );
     }
-    if (options.trusted && !(published._npmUser?.trustedPublisher && dist.attestations)) {
+    if (!(published._npmUser?.trustedPublisher && dist.attestations)) {
       problems.push(`${id} has no trusted publisher and provenance on npm`);
     }
     const tagged = packument["dist-tags"]?.[options.tag];
@@ -94,13 +94,11 @@ export async function fetchPackument(name: string): Promise<Packument | undefine
 
 /**
  * Waits until npm serves every package the dry run checked, and fails as soon as a package it
- * lists differs. `vp run release` runs it after publishing. A tarball npm stored with other
+ * lists differs. The release workflow runs it after publishing. A tarball npm stored with other
  * contents means the release must be deprecated and a new version released (releasing.md).
  */
 export async function waitForPublished(options: {
   readonly version: string;
-  readonly tag?: string;
-  readonly trusted: boolean;
   readonly manifestFile?: string;
   readonly timeoutMs?: number;
   readonly intervalMs?: number;
@@ -116,7 +114,7 @@ export async function waitForPublished(options: {
   const manifest = await readManifest(options.manifestFile ?? manifestPath);
   if (!manifest)
     throw new Error("No dry-run manifest. vp run release runs the gate, which writes one.");
-  const tag = distTag(options.version, options.tag);
+  const tag = distTag(options.version);
   const deadline = Date.now() + timeoutMs;
   let notes: readonly string[] = [];
   for (;;) {
@@ -133,11 +131,7 @@ export async function waitForPublished(options: {
           answer.reason instanceof Error ? answer.reason.message : String(answer.reason),
         );
     });
-    const check = checkPublished(
-      manifest,
-      { version: options.version, tag, trusted: options.trusted },
-      packuments,
-    );
+    const check = checkPublished(manifest, { version: options.version, tag }, packuments);
     if (check.problems.length > 0) {
       throw new Error(
         `npm doesn't serve what the dry run checked:\n- ${check.problems.join("\n- ")}`,
@@ -156,6 +150,6 @@ export async function waitForPublished(options: {
   }
   for (const note of notes) log(note);
   log(
-    `npm serves ${manifest.packages.length} packages at ${options.version} as the dry run checked them, tagged ${tag}${options.trusted ? ", from the trusted publisher, with provenance" : ""}.`,
+    `npm serves ${manifest.packages.length} packages at ${options.version} as the dry run checked them, tagged ${tag}, from the trusted publisher, with provenance.`,
   );
 }

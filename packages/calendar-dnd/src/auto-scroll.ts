@@ -29,7 +29,7 @@ function bounds(container: Element) {
 }
 
 /** Whether a viewport point is inside `container` and clear of the bands that scroll it. */
-export function clearOfEdges(container: Element, x: number, y: number): boolean {
+function clearOfEdges(container: Element, x: number, y: number): boolean {
   const rect = bounds(container);
   return (
     x >= rect.left &&

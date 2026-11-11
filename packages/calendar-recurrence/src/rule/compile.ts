@@ -28,7 +28,7 @@ const FREQUENCIES: Readonly<Record<IcsFrequency, Frequency>> = {
 };
 
 /** The first occurrence's wall-clock fields, which fill in what the rule leaves out. */
-export interface RuleStart {
+interface RuleStart {
   readonly allDay: boolean;
   readonly day: number;
   readonly hour: number;
@@ -39,7 +39,7 @@ export interface RuleStart {
   readonly weekday: number;
 }
 
-export interface OrdinalWeekday {
+interface OrdinalWeekday {
   readonly ordinal: number;
   readonly weekday: number;
 }

@@ -5,7 +5,6 @@
   "description": "Consumer-owned shadcn registry source, type-checked and tested in place.",
   "type": "module",
   "scripts": {
-    "check": "vp check",
     "test": "vp test"
   },
   "dependencies": {

@@ -1,4 +1,4 @@
-export interface LruCacheStatistics {
+interface LruCacheStatistics {
   readonly capacity: number;
   readonly evictions: number;
   readonly hits: number;

@@ -156,45 +156,28 @@ export async function isOnMain(commit: string, root = workspaceRoot): Promise<bo
 }
 
 /**
- * Parses `--flag value`, `--flag=value` and boolean `--flag` arguments, with the rest as
- * positionals. Any flag that is neither a boolean nor one of `strings` is an error, and so is a
- * string flag without a value or a positional where none is taken, so a typo such as `--dry-run`
- * can't be silently ignored.
+ * Parses boolean `--flag` arguments, with the rest as positionals. An unknown flag, a flag with a
+ * value, and a positional where none is taken are errors, so a typo such as `--dryrun` can't be
+ * silently ignored.
  */
 export function parseArguments(
   argv: readonly string[],
   booleans: readonly string[] = [],
-  strings: readonly string[] = [],
   { positionals: allowPositionals = false } = {},
 ) {
-  const flags = new Map<string, string | true>();
+  const flags = new Set<string>();
   const positionals: string[] = [];
-  for (let index = 0; index < argv.length; index += 1) {
-    const argument = argv[index]!;
+  for (const argument of argv) {
     if (argument === "--") continue;
     if (!argument.startsWith("--")) {
       if (!allowPositionals) throw new Error(`Unexpected argument ${argument}`);
       positionals.push(argument);
       continue;
     }
-    // Split at the first "=" only, so a value may contain one.
-    const equals = argument.indexOf("=");
-    const key = equals === -1 ? argument.slice(2) : argument.slice(2, equals);
-    const inline = equals === -1 ? undefined : argument.slice(equals + 1);
-    if (!booleans.includes(key) && !strings.includes(key))
-      throw new Error(`Unknown option --${key}`);
-    const next = argv[index + 1];
-    if (inline !== undefined && booleans.includes(key)) {
-      throw new Error(`--${key} takes no value`);
-    }
-    if (inline === "") throw new Error(`--${key} needs a value`);
-    if (inline !== undefined) flags.set(key, inline);
-    else if (!booleans.includes(key) && next !== undefined && !next.startsWith("--")) {
-      flags.set(key, next);
-      index += 1;
-    } else if (strings.includes(key)) {
-      throw new Error(`--${key} needs a value`);
-    } else flags.set(key, true);
+    const [key = "", ...value] = argument.slice(2).split("=");
+    if (!booleans.includes(key)) throw new Error(`Unknown option --${key}`);
+    if (value.length > 0) throw new Error(`--${key} takes no value`);
+    flags.add(key);
   }
   return { flags, positionals };
 }

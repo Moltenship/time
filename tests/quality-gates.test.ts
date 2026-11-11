@@ -37,9 +37,6 @@ const prGates = [
   "ci:build",
   "release:check",
   "ci:test",
-  "react:gate",
-  "ssr:smoke",
-  "registry:smoke",
   "registry:stylex",
   "package:graph",
   "a11y",
@@ -102,7 +99,6 @@ describe("CI quality gate contract", () => {
     expect(Object.keys(workflow.jobs ?? {})).toEqual([
       "quality-gates",
       "accessibility",
-      "browsers",
       "release-gate",
     ]);
     expect(workflow.permissions).toEqual({ contents: "read" });
@@ -123,19 +119,19 @@ describe("CI quality gate contract", () => {
     ]);
   });
 
-  test("Firefox and WebKit, part of the full gate, run on demand in a job of their own", async () => {
-    const job = (await readWorkflow()).jobs?.browsers as
+  test("the release gate, with Firefox and WebKit, runs on demand in a job of its own", async () => {
+    const job = (await readWorkflow()).jobs?.["release-gate"] as
       | { readonly if?: string; readonly steps?: readonly WorkflowStep[] }
       | undefined;
 
     expect(job?.if).toBe("github.event_name == 'workflow_dispatch'");
     expect(job?.steps?.map(({ run }) => run).filter(Boolean)).toEqual([
       "vp install --frozen-lockfile",
-      "vp exec --filter a11y playwright install --with-deps firefox webkit",
-      "vp run browsers",
+      "vp exec --filter a11y playwright install --with-deps --only-shell chromium firefox webkit",
+      "vp run release:gate",
       "vp run --last-details",
     ]);
-    expect(work("ready:full")).toContain("browsers");
+    expect(work("release:gate")).toContain("browsers");
   });
 
   test("a pull request's two jobs are `vp run ready`, which runs every named gate", () => {
@@ -201,7 +197,7 @@ describe("CI quality gate contract", () => {
     expect([...release].filter((step) => !full.has(step))).toEqual(["gate:serial:release"]);
     // One lane after the other, as a 4-core runner needs: the serial lane, then the browser runs.
     expect(commandsOf(tasks["release:gate"]!)).toEqual([
-      "vp run registry:smoke && vp run gate:serial:release && vp run gate:browsers",
+      "vp run gate:serial:release && vp run gate:browsers",
     ]);
     expect(commandsOf(tasks["gate:serial:release"]!)[0]).toContain(
       "vp run release:dry-run --require-clean",

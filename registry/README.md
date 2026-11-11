@@ -23,7 +23,7 @@ A folder with a `registry-item.json` is a registry item. The manifest follows th
 [shadcn registry-item schema](https://ui.shadcn.com/schema/registry-item.json), with a few rules
 that `tools/registry` checks:
 
-- Every file has a `target` under one of shadcn's alias placeholders, such as
+- Every file has a `target` under shadcn's `@components/` alias placeholder, such as
   `@components/calendar/month-view/month-view.tsx`, so it lands under the consumer's own
   `components` alias. No two items write the same file.
 - `dependencies` lists bare package names, each declared in `registry/package.json`. The build
@@ -36,7 +36,7 @@ that `tools/registry` checks:
 - `calendar-theme` points `meta.stylesheet` at `calendar-theme.css`. The build turns the file into
   the item's `cssVars` and `css`, so `shadcn add` merges its tokens and rules into the app's global
   CSS, inside `@layer base` as in the file. The stock shadcn tokens the file also sets stay out: a
-  shadcn app has its own.
+  shadcn app has its own. No manifest sets `cssVars` or `css` itself.
 - `calendar-full` is a `registry:item` that owns no files and installs every other item.
 
 `ui/` is not a registry item. It holds the components a stock shadcn app already has (Base UI,
@@ -45,7 +45,7 @@ compiles here. Items list them in `registryDependencies`, and consumers get the 
 
 ## Building and serving
 
-`vp run registry:build` builds the registry with the official `shadcn build` into
+`vp run registry#site` builds the registry with the official `shadcn build` into
 `apps/showcase/public/r`, which the docs site serves as `/r/<item>.json`, with `/r/registry.json`
 as the index. The docs site's `dev` and `build` scripts run it first; the output isn't committed.
 The build:
@@ -66,11 +66,12 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
 
 ## Checks
 
-- `vp run registry:smoke`, part of `vp run ready`: checks the manifests and a contract fixture,
-  builds the registry offline into a temporary folder, and checks what it built. Every import must
+- `tools/registry/tests`, part of `vp test`: checks the manifests and a known-bad fixture, builds
+  the registry offline into a temporary folder, and checks what it built. Every import must
   resolve to a file, component or package the item's install provides; component files that need
-  the client must start with `"use client"`; `calendar-full` must install every item and own no
-  file; ranges must hold for the workspace versions.
+  the client must start with `"use client"`; each flavour's full item must install exactly that
+  flavour's other items and own no file; ranges must hold for the workspace versions. Every
+  `vp run registry#site` runs the same checks on what it builds.
 - `vp run registry:e2e`, slow and online: makes clean Vite and Next.js apps with `shadcn init`, runs
   `shadcn add <url>/calendar-full.json` against the registry served locally, checks where the
   files landed and what the app installed, then typechecks and builds both apps. The Vite app uses
