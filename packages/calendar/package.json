@@ -1,7 +1,28 @@
 {
   "name": "@moltenship/calendar",
   "version": "1.0.0-rc.2",
-  "description": "DX-first supported facade for Moltenship Time.",
+  "description": "A headless React calendar built on the Temporal API: week, day, month, year, agenda and resource views, exact time zones and DST, drag and drop.",
+  "keywords": [
+    "agenda",
+    "calendar",
+    "drag-and-drop",
+    "dst",
+    "event-calendar",
+    "headless",
+    "month-view",
+    "nextjs",
+    "react",
+    "react-calendar",
+    "react-component",
+    "resource-timeline",
+    "scheduler",
+    "shadcn",
+    "ssr",
+    "temporal",
+    "timezone",
+    "typescript",
+    "week-view"
+  ],
   "homepage": "https://time.molten.sh/docs",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"

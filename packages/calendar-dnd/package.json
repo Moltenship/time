@@ -2,6 +2,17 @@
   "name": "@moltenship/calendar-dnd",
   "version": "1.0.0-rc.2",
   "description": "Pointer drag, resize, and create interactions for Moltenship Time views.",
+  "keywords": [
+    "calendar",
+    "drag-and-drop",
+    "event-calendar",
+    "pointer-events",
+    "react",
+    "resize",
+    "scheduler",
+    "temporal",
+    "typescript"
+  ],
   "homepage": "https://time.molten.sh/docs/interactions",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"

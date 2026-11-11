@@ -1,7 +1,20 @@
 {
   "name": "@moltenship/calendar-react",
   "version": "1.0.0-rc.2",
-  "description": "Headless React integration for Moltenship Time.",
+  "description": "Headless React components and hooks for Moltenship Time, a calendar built on the Temporal API.",
+  "keywords": [
+    "calendar",
+    "event-calendar",
+    "headless",
+    "react",
+    "react-calendar",
+    "react-component",
+    "react-hooks",
+    "scheduler",
+    "ssr",
+    "temporal",
+    "typescript"
+  ],
   "homepage": "https://time.molten.sh/docs/api/react",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"

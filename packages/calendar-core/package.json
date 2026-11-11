@@ -2,6 +2,17 @@
   "name": "@moltenship/calendar-core",
   "version": "1.0.0-rc.2",
   "description": "Framework-independent calendar data, projection, layout, and interaction engine.",
+  "keywords": [
+    "calendar",
+    "event-calendar",
+    "framework-agnostic",
+    "headless",
+    "layout",
+    "scheduler",
+    "temporal",
+    "timezone",
+    "typescript"
+  ],
   "homepage": "https://time.molten.sh/docs/api",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"

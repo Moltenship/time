@@ -2,6 +2,19 @@
   "name": "@moltenship/calendar-recurrence",
   "version": "1.0.0-rc.2",
   "description": "Range-bounded recurrence for Moltenship Time: RRULE expansion, exceptions and series edits.",
+  "keywords": [
+    "calendar",
+    "event-calendar",
+    "exdate",
+    "icalendar",
+    "react",
+    "recurrence",
+    "recurring-events",
+    "rfc5545",
+    "rrule",
+    "temporal",
+    "typescript"
+  ],
   "homepage": "https://time.molten.sh/docs/api/recurrence",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
