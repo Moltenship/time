@@ -2,6 +2,19 @@
   "name": "@moltenship/ics",
   "version": "1.0.0-rc.2",
   "description": "Typed, Temporal-native iCalendar (RFC 5545) parsing with Standard Schema support.",
+  "keywords": [
+    "ical",
+    "icalendar",
+    "ics",
+    "parser",
+    "rfc5545",
+    "rrule",
+    "standard-schema",
+    "temporal",
+    "timezone",
+    "typescript",
+    "vevent"
+  ],
   "homepage": "https://time.molten.sh/docs/api/ics",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"

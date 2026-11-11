@@ -1,9 +1,7 @@
 import { Wordmark } from "@/components/brand";
+import { demoUrl, githubUrl } from "@/lib/site";
 import type { HomeLayoutProps } from "fumadocs-ui/layouts/home";
 import type { BaseLayoutProps } from "fumadocs-ui/layouts/shared";
-
-export const githubUrl = "https://github.com/Moltenship/time";
-export const demoUrl = "https://moltenship-time-demo.vercel.app";
 
 export function baseOptions(): BaseLayoutProps {
   return {

@@ -1,6 +1,6 @@
 import { getMDXComponents } from "@/components/mdx";
-import { githubUrl } from "@/lib/layout";
-import { source } from "@/lib/source";
+import { githubUrl, jsonLd, openGraphBase, siteName, siteUrl, websiteId } from "@/lib/site";
+import { pageSections, qualifiedTitle, source } from "@/lib/source";
 import {
   DocsBody,
   DocsDescription,
@@ -22,9 +22,43 @@ export default async function DocumentationPage({ params }: DocumentationPagePro
   if (page === undefined) notFound();
 
   const MDX = page.data.body;
+  const url = `${siteUrl}${page.url}`;
+  // Search engines want a link on every crumb, so a section without an index page is left out.
+  const crumbs = [
+    { name: siteName, url: siteUrl },
+    { name: "Docs", url: `${siteUrl}/docs` },
+    ...pageSections(page).flatMap((name, depth) => {
+      const index = source.getPage(page.slugs.slice(0, depth + 1));
+      return index === undefined ? [] : [{ name, url: `${siteUrl}${index.url}` }];
+    }),
+  ];
+  if (crumbs.at(-1)?.url !== url) crumbs.push({ name: page.data.title, url });
+  const structuredData = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "TechArticle",
+        headline: qualifiedTitle(page),
+        description: page.data.description,
+        url,
+        inLanguage: "en",
+        isPartOf: { "@id": websiteId },
+      },
+      {
+        "@type": "BreadcrumbList",
+        itemListElement: crumbs.map((crumb, index) => ({
+          "@type": "ListItem",
+          position: index + 1,
+          name: crumb.name,
+          item: crumb.url,
+        })),
+      },
+    ],
+  };
 
   return (
     <DocsPage full={page.data.full} toc={page.data.toc}>
+      <script dangerouslySetInnerHTML={jsonLd(structuredData)} type="application/ld+json" />
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>
       <DocsBody>
@@ -50,8 +84,18 @@ export async function generateMetadata({ params }: DocumentationPageProps): Prom
   const page = source.getPage(slug);
   if (page === undefined) notFound();
 
+  const title = qualifiedTitle(page);
+
   return {
-    title: page.data.title,
+    title,
     description: page.data.description,
+    alternates: { canonical: page.url },
+    openGraph: {
+      ...openGraphBase,
+      type: "article",
+      url: page.url,
+      title,
+      description: page.data.description,
+    },
   };
 }

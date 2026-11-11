@@ -2,6 +2,17 @@
   "name": "@moltenship/calendar-testing",
   "version": "1.0.0-rc.2",
   "description": "Test helpers for apps built on Moltenship Time: a deterministic environment, typed builders and fixtures, a render and hydration harness, queries, and keyboard and pointer drivers.",
+  "keywords": [
+    "calendar",
+    "event-calendar",
+    "fixtures",
+    "react",
+    "temporal",
+    "test-utils",
+    "testing",
+    "typescript",
+    "vitest"
+  ],
   "homepage": "https://time.molten.sh/docs/testing",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"

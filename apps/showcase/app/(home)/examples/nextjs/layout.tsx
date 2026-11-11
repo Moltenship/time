@@ -1,12 +1,17 @@
-import { githubUrl } from "@/lib/layout";
+import { githubUrl, openGraphBase } from "@/lib/site";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+const title = "Next.js App Router example";
+const description =
+  "A calendar whose view and date live in the URL, with Server Actions saving its changes.";
+
 export const metadata: Metadata = {
-  title: "Next.js App Router example",
-  description:
-    "A calendar whose view and date live in the URL, with Server Actions saving its changes.",
+  title,
+  description,
+  alternates: { canonical: "/examples/nextjs" },
+  openGraph: { ...openGraphBase, type: "website", url: "/examples/nextjs", title, description },
 };
 
 const sourceUrl = `${githubUrl}/tree/main/apps/showcase/app/(home)/examples/nextjs`;

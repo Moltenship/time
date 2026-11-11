@@ -8,11 +8,54 @@ import {
 import InstallCommand from "@/components/install-command";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { codeThemes } from "@/lib/code-themes";
-import { demoUrl, githubUrl } from "@/lib/layout";
+import {
+  demoUrl,
+  githubUrl,
+  jsonLd,
+  npmUrl,
+  openGraphBase,
+  siteDescription,
+  siteKeywords,
+  siteName,
+  siteTitle,
+  siteUrl,
+  websiteId,
+} from "@/lib/site";
+import type { Metadata } from "next";
 import { ServerCodeBlock } from "fumadocs-ui/components/codeblock.rsc";
 import Link from "next/link";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
+
+export const metadata: Metadata = {
+  alternates: { canonical: "/" },
+  openGraph: { ...openGraphBase, type: "website", url: "/", title: siteTitle },
+};
+
+const structuredData = {
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": websiteId,
+      name: siteName,
+      url: siteUrl,
+      description: siteDescription,
+      inLanguage: "en",
+    },
+    {
+      "@type": "SoftwareSourceCode",
+      name: siteName,
+      description: siteDescription,
+      url: siteUrl,
+      codeRepository: githubUrl,
+      programmingLanguage: "TypeScript",
+      license: "https://opensource.org/licenses/MIT",
+      keywords: siteKeywords.join(", "),
+      sameAs: [githubUrl, npmUrl],
+    },
+  ],
+};
 
 const features = [
   {
@@ -56,6 +99,7 @@ export default async function HomePage() {
 
   return (
     <>
+      <script dangerouslySetInnerHTML={jsonLd(structuredData)} type="application/ld+json" />
       <section className="relative overflow-hidden">
         <div
           aria-hidden="true"
