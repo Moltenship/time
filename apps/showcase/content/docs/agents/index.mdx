@@ -311,7 +311,8 @@ A change your policies or your handler refuse at once fails its step the same wa
 The calendar holds no events, so three parts of an agent's change are your code:
 
 - **Saving.** `onEventChange` gets an agent's change as it gets a drag, with `detail.input` of
-  `"agent"`. That holds for anything a step causes, a press on a button of yours included.
+  `"agent"`. That holds for anything a step causes, a press on a button of yours included, as
+  long as the button's handler makes the change before it returns.
 - **Titles and your own fields.** `createEvent` and `updateEvent` take a `title` and a `fields`
   object. The calendar doesn't know your event's shape, so it hands them to your handler as
   `detail.fields` without checking what's in them, and your handler stores what it accepts.
@@ -331,7 +332,8 @@ The calendar holds no events, so three parts of an agent's change are your code:
   by pressing a delete button of yours. See [Deleting](/docs/agents/deleting).
 - **Skip your rules.** Policies and `onEventChange` run for an agent as they do for a person, and
   they hear `input: "agent"` for every change a step causes, so a policy that refuses agents
-  can't be stepped around through a button. A calendar without `onEventChange` is read-only for
+  can't be stepped around through a button whose handler changes the calendar at once. A button
+  that waits first is [yours to keep from agents](/docs/agents/changes#two-kinds-of-change). A calendar without `onEventChange` is read-only for
   agents too, and offers no action that changes an event.
 - **Write a field your handler doesn't store.** `fields` reaches your `onEventChange` and goes no
   further unless your code puts it somewhere.

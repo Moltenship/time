@@ -107,6 +107,12 @@ with `detail.input` of `"agent"`, whatever input the handler passed:
 The same holds for every change a pressed button proposes: a policy that refuses agents refuses
 it. [Who made a change](/docs/agents/changes#two-kinds-of-change) has the rule.
 
+All of this is about a handler that proposes the delete before it returns. A button that waits
+first, for a confirmation dialog of its own or a request, proposes later, and by then the calendar
+can't tell the agent started it: the delete reads as `"api"` and goes through without
+`allowAgentDelete`. Keep a button like that from agents with `data-agent-hidden`, or refuse its
+press in `allow`.
+
 ## Stopping a turn
 
 When the person stops the agent while a question is open, pass an `AbortSignal` to `act`. The

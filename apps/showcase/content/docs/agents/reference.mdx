@@ -448,6 +448,9 @@ you pass another to `undo({ input })`.
 Anything a step causes is the agent's, not only the calendar's own actions. When an agent presses
 a ui-sdk button of yours and its handler calls `proposeEventChange`, an action such as `setView`,
 or a history's `undo`, your policies and handlers hear `"agent"`, whatever input your code passed.
+That holds for what the handler does before it returns: a call it makes after an `await`, in a
+timer or in an effect reads as your own code, as
+[Who made a change](/docs/agents/changes#two-kinds-of-change) explains.
 A delete an agent causes that way is refused on a `Root` without `allowAgentDelete`, as
 [Deleting](/docs/agents/deleting#a-delete-button-of-yours) describes.
 

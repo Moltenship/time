@@ -89,6 +89,7 @@ export type {
   CalendarPublicState,
   CalendarResourceExpansion,
   CalendarResourceExpansionCause,
+  CalendarResourceExpansionCommand,
   CalendarResourceStatus,
   CalendarRootProps,
   CalendarRovingFocusOptions,

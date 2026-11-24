@@ -215,11 +215,12 @@ interface CalendarPartRefs {
 }
 interface CalendarResourceExpansion {
   readonly expanded: boolean;
-  readonly collapse: (cause?: CalendarResourceExpansionCause) => void;
-  readonly expand: (cause?: CalendarResourceExpansionCause) => void;
-  readonly toggle: (cause?: CalendarResourceExpansionCause) => void;
+  readonly collapse: CalendarResourceExpansionCommand;
+  readonly expand: CalendarResourceExpansionCommand;
+  readonly toggle: CalendarResourceExpansionCommand;
 }
 type CalendarResourceExpansionCause = CalendarCommandOptions | SyntheticEvent;
+type CalendarResourceExpansionCommand = (cause?: unknown) => void;
 type CalendarResourceStatus = ResourceStatus<NormalizedCalendarEvent<unknown, EventId, ResourceId>>;
 type CalendarRootAnchorProps = {
   readonly anchorDate: Temporal.PlainDate;
@@ -387,6 +388,7 @@ export {
   type CalendarPublicState,
   type CalendarResourceExpansion,
   type CalendarResourceExpansionCause,
+  type CalendarResourceExpansionCommand,
   type CalendarResourceStatus,
   type CalendarRootProps,
   type CalendarRootStore,

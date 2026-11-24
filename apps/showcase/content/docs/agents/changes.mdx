@@ -35,6 +35,13 @@ ui-sdk button your app rendered. If its handler calls `proposeEventChange` or an
 `setView`, the handlers above hear `"agent"`, whatever input your code passed, and so do your
 policies. A person's click on the same button reads as before.
 
+That covers what the button's handler does before it returns. Work the handler starts and finishes
+later, after an `await`, in a timer or in an effect, reads as your own code: `"api"` for a proposal
+and `"programmatic"` for a state change. ui-sdk tracks the agent for the length of the press and no
+longer. So a button that waits before it changes the calendar, as one that asks "are you sure?"
+first, isn't covered by a policy on `"agent"`. Keep such a button from agents: put it inside an
+element with `data-agent-hidden`, or refuse the press in the bridge's `allow`.
+
 This calendar logs both:
 
 <include meta='title="agent-audit.tsx"'>../../examples/agent-audit.tsx</include>
@@ -140,7 +147,8 @@ with `detail.input` of `"api"` and `detail.history` of `"undo"`, and the log abo
 
 It is the agent's when the agent presses the button. Had this one been a ui-sdk button, a `press`
 step on it would propose the undo with `input: "agent"` and `history: "undo"`, and
-`weekdaysForAgents` would have its say.
+`weekdaysForAgents` would have its say. Undoing a create proposes a delete, so on a `Root` without
+`allowAgentDelete` the agent's press would be refused with `agent-delete-not-allowed`.
 
 The history records where an event was, not your fields. Undoing an agent's rename proposes the
 event's times again, with no `detail.fields`, and the new title would stay. So the button reads
