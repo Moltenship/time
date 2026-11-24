@@ -1,5 +1,5 @@
 import type { CalendarNowSource } from "@moltenship/calendar-core";
-import { createSystemClock, type CalendarClock } from "@moltenship/calendar-temporal";
+import { clockOf, createClockTicker } from "@moltenship/calendar-primitives";
 import { useContext, useMemo, useSyncExternalStore } from "react";
 
 import { CalendarNowSourceContext } from "./context";
@@ -9,36 +9,15 @@ export interface UseNowOptions {
   readonly intervalMs?: number;
 }
 
-const systemClock = createSystemClock();
 const serverSnapshot = () => null;
 const subscribeToNothing = () => () => undefined;
-
-function createClockTicker(clock: CalendarClock, intervalMs: number) {
-  let current: Temporal.Instant | undefined;
-
-  return {
-    getSnapshot: () => (current ??= clock.instant()),
-    subscribe: (onChange: () => void) => {
-      const sample = () => {
-        const next = clock.instant();
-        if (current?.equals(next) === true) return;
-        current = next;
-        onChange();
-      };
-      // Resample on every (re)subscription so a revealed Activity does not show a stale instant.
-      sample();
-      const timer = setInterval(sample, intervalMs);
-      return () => clearInterval(timer);
-    },
-  };
-}
 
 /** Samples `source`; `null` while server rendering and hydrating unless `now` is fixed. */
 export function useNowFrom(
   source: CalendarNowSource | undefined,
   intervalMs: number,
 ): Temporal.Instant | null {
-  const clock = source?.clock ?? systemClock;
+  const clock = clockOf(source);
   const ticker = useMemo(() => createClockTicker(clock, intervalMs), [clock, intervalMs]);
   const fixed = source?.now;
   const sampled = useSyncExternalStore(

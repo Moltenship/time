@@ -1,7 +1,11 @@
 import type { AvailabilitySnapshot } from "../availability/types";
 import type { EventId, ResourceId } from "../ids";
 import type { EventSnapshot } from "../snapshots/types";
-import type { CalendarEventChange, CalendarEventPlacement } from "../transactions/types";
+import type {
+  CalendarEventChange,
+  CalendarEventPlacement,
+  CalendarProposalDetail,
+} from "../transactions/types";
 
 export interface CalendarPolicyContext<
   TEvent,
@@ -10,6 +14,12 @@ export interface CalendarPolicyContext<
 > {
   /** The root's working hours, for `availabilityPolicy`. */
   readonly availability?: AvailabilitySnapshot;
+  /**
+   * Which input proposed the change, as `detail.input === "agent"` for an AI agent's, so a policy
+   * can reject or flag it. Event transactions always set it; it is absent only where a caller runs
+   * policies itself without one.
+   */
+  readonly detail?: CalendarProposalDetail;
   /** Current events with pending changes applied, as the user sees them. */
   readonly events: EventSnapshot<TEvent, TEventId, TResourceId>;
   readonly timeZone: string;

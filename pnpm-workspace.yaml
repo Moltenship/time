@@ -68,6 +68,16 @@ catalog:
   axe-core: 4.14.0
   playwright: 1.64.1
   publint: 0.3.25
+  # ui-sdk: the behavior layer the 2.0 primitives are written on, and its renderers.
+  "@ui-sdk/core": 0.1.0-beta.16
+  "@ui-sdk/react": 0.1.0-beta.16
+  "@ui-sdk/solid": 0.1.0-beta.16
+  solid-js: 2.0.3
+  "@solidjs/web": 2.0.3
+  # Compiles JSX for Solid 2.0, in apps/demo-solid. The packages are written without JSX.
+  "@solidjs/vite-plugin": 3.0.1
+  # Types the docs site's "model on your server" example, which no page runs.
+  "@anthropic-ai/sdk": 1.9.0
 overrides:
   vite@*: "catalog:"
 packageExtensions:
@@ -91,3 +101,6 @@ minimumReleaseAgeExclude:
   - motion@14.9.0
   - framer-motion@14.9.0
   - motion-dom@14.9.0
+  - "@ui-sdk/core@0.1.0-beta.16"
+  - "@ui-sdk/react@0.1.0-beta.16"
+  - "@ui-sdk/solid@0.1.0-beta.16"

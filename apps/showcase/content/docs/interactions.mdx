@@ -30,6 +30,13 @@ The handler receives a change object:
 | `id`       | Identifies the change within this calendar, such as `change-3`. It isn't an event ID                                   |
 | `warnings` | Reasons policies flagged the change with but let through, such as `"outside-availability"`. Absent when there are none |
 
+The handler's second argument is the detail the change was proposed with: `{ input }`, one of
+`"pointer"`, `"keyboard"`, `"api"` or `"agent"`. `"api"` is your own `proposeEventChange` call, and
+`"agent"` is an AI agent acting through the [agent bridge](/docs/agents). A change an
+[event history](/docs/undo-redo) proposes also has `history`, `"undo"` or `"redo"`. An agent that
+names or renames an event sends the title in `detail.fields`, which a handler has to read to save
+it: see [Save what the agent sent](/docs/agents/connect#save-what-the-agent-sent).
+
 `applyChange` turns a change into new state. A created event needs an ID of your own, usually from
 your server; this example makes one up. Records you don't touch stay the same objects:
 
@@ -91,8 +98,8 @@ its next phase, or ends.
 
 `onEventChangeResult` on `Root` hears how every proposal ended: drags, keyboard moves and creates,
 and your own `proposeEventChange` calls. It gets the result `proposeEventChange` resolves with, and
-the detail it was proposed with, `{ input }`: `"pointer"`, `"keyboard"`, or `"api"`. Use it for a
-toast when a drop is refused or a save fails, to log what happens, or to record changes to
+the detail it was proposed with, `{ input }`: `"pointer"`, `"keyboard"`, `"api"`, or `"agent"` for
+an [AI agent](/docs/agents/changes)'s change. Use it for a toast when a drop is refused or a save fails, to log what happens, or to record changes to
 [undo](/docs/undo-redo):
 
 <include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#outcomes</include>
@@ -126,6 +133,11 @@ them to `Root` as `policies`, as in the example above.
 A policy is a function, so you can write your own. This one keeps meetings out of the all-day row.
 Policies can also be `async`, for example to check availability on your server.
 
+A policy's second argument is a context: the `events` as the user sees them, the calendar's
+`timeZone`, its `availability`, and the proposal's `detail`. Read `detail?.input` to treat one input differently, such as refusing an
+[agent's change](/docs/agents/changes#refuse-an-agents-change) that a person may make. `detail` is
+absent when a policy runs outside a proposal.
+
 <include meta='title="editable-calendar.tsx"'>../examples/editing.tsx#policies</include>
 
 ## Changing events from your own UI
@@ -133,23 +145,25 @@ Policies can also be `async`, for example to check availability on your server.
 Buttons, forms, and dialogs can propose changes too, with `proposeEventChange` from
 `useCalendarActions()` (or the `actions` prop inside a view). The change goes through the same
 policies, pending state, and handler as a drag. The returned promise tells you how it ended; it
-never rejects. `onEventChangeResult` hears it with the input `"api"`; a gesture layer of your own
-can name its input as the second argument, as in `proposeEventChange(proposal, { input: "pointer" })`.
+never rejects. `onEventChange`, policies and `onEventChangeResult` hear it with the input `"api"`; a
+gesture layer of your own can name its input as the second argument, as in
+`proposeEventChange(proposal, { input: "pointer" })`.
 
 <include meta='title="push-back-button.tsx"'>../examples/editing.tsx#propose</include>
 
 A rejected result has a `reason`, and the `change` it would have made, except for
 `unknown-event`:
 
-| `reason`            | Meaning                                                           |
-| ------------------- | ----------------------------------------------------------------- |
-| `read-only`         | The event is read-only, or `Root` has no `onEventChange`          |
-| a policy's reason   | A policy rejected it, such as `out-of-bounds`                     |
-| `superseded`        | A newer change for the same event replaced it                     |
-| `handler-error`     | Your handler threw or its promise rejected; `error` has the cause |
-| `policy-error`      | A policy threw                                                    |
-| `invalid-placement` | The proposed range is empty or reversed                           |
-| `unknown-event`     | No event has that ID                                              |
+| `reason`                   | Meaning                                                                                 |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `read-only`                | The event is read-only, or `Root` has no `onEventChange`                                |
+| a policy's reason          | A policy rejected it, such as `out-of-bounds`                                           |
+| `superseded`               | A newer change for the same event replaced it                                           |
+| `handler-error`            | Your handler threw or its promise rejected; `error` has the cause                       |
+| `policy-error`             | A policy threw                                                                          |
+| `invalid-placement`        | The proposed range is empty or reversed                                                 |
+| `unknown-event`            | No event has that ID                                                                    |
+| `agent-delete-not-allowed` | An [agent](/docs/agents/deleting) caused a delete, and `Root` has no `allowAgentDelete` |
 
 To create an event, propose `{ cause: "create", proposed: { kind, start, end } }`. To delete one,
 propose `{ cause: "delete", eventId }`.

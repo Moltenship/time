@@ -1,21 +1,23 @@
 ---
 title: Introduction
-description: A React 19 calendar built on the Temporal API, with views you copy and own.
+description: A headless calendar for React 19, built on the Temporal API, with views you copy and own and actions an AI agent can call.
 ---
 
 Moltenship Time handles the hard parts of a calendar: dates, time zones, navigation, calendar
 state, fast event lookups, and saving changes. Your events stay in the shape your app already uses,
 and Time reads them through a small adapter. The week, day, month, year, agenda and resource views are
-source files you copy into your app, so you can change how they look and behave.
+source files you copy into your app, so you can change how they look and behave. An AI agent can
+read the same calendar and act on it through named actions, under rules your app sets.
 
 <CalendarPreview switcher />
 
 To see every view with more data, try the [live demo](https://moltenship-time-demo.vercel.app), a Google Calendar-style app built from
 the same views.
 
-<Callout type="warn" title="Release candidate">
-  Time's packages are on npm as a release candidate for 1.0.0. The API can still change before 1.0.0
-  if the release candidate turns up problems.
+<Callout type="warn" title="2.0 is a pre-release">
+  These docs describe Time 2.0, which is built on [ui-sdk](https://ui-sdk.dev). Both are
+  pre-releases, and their APIs can still change before 2.0.0. Coming from 1.x? See [Migrating to
+  2.0](/docs/migrating-to-2).
 </Callout>
 
 ## What it looks like
@@ -27,12 +29,16 @@ This is the render part of the [Quick start](/docs/quick-start). `Calendar` come
 
 ## Who it's for
 
-Time is for React developers building scheduling screens (bookings, rooms, shifts, team calendars)
-who want to:
+Time is for developers building scheduling screens (bookings, rooms, shifts, team calendars) who
+want to:
 
 - keep their existing event data and API,
 - style the calendar with their own design system, or start from shadcn/ui,
-- get time zones and daylight saving time right without writing that math themselves.
+- get time zones and daylight saving time right without writing that math themselves,
+- let an AI agent work with the calendar without handing it the page's markup.
+
+The calendar and its views are for React 19. A [SolidJS 2 package](/docs/api/solid) renders the
+same calendar without the views, as a preview.
 
 [Comparison](/docs/comparison) sets Time beside FullCalendar and react-big-calendar, including
 where they're ahead.
@@ -59,6 +65,14 @@ where they're ahead.
   each be owned by the calendar or by your app.
 - **Headless parts.** `Root`, previous/next/today buttons, `Title`, and `ActiveView` render plain
   elements, and [custom views](/docs/views/custom-views) are a strategy plus a component.
+- **Ready for agents.** A calendar gives an AI agent fifteen actions: describe the calendar, list
+  its events, navigate, switch view, and create, rename, move, resize and delete events. An
+  agent's change goes through your policies and your `onEventChange`, marked as an agent's, and
+  the agent gets back how it ended. Deleting is off until you turn it on. It works with the agent
+  built into a browser through WebMCP, or with a model you run. See [Agents](/docs/agents).
+- **Docs your coding agent can read.** Every page has a Markdown version, the docs ship inside
+  the npm package, and a skill teaches a coding agent the library. See
+  [Build with a coding agent](/docs/agents/coding-agents).
 - **Server rendering.** During server rendering, Time doesn't read the clock, the host time zone, or
   `window`, so the server and the browser render the same markup from the same props.
 
@@ -70,4 +84,5 @@ where they're ahead.
     description="A week, month, and agenda calendar."
   />
   <Card title="Concepts" href="/docs/concepts/events" description="Events, time, and state." />
+  <Card title="Agents" href="/docs/agents" description="What an agent sees, and what it can do." />
 </Cards>

@@ -1,20 +1,16 @@
 import type {
-  AnnotationSnapshotIssue,
-  AvailabilityIssue,
   CalendarAvailability,
   CalendarAnnotation,
   CalendarAnnotationSource,
   CalendarAnnouncementMessages,
   CalendarEnvironment,
+  CalendarEventChangeHandler,
   CalendarFocus,
   CalendarSelection,
-  CalendarEventChangeHandler,
   CalendarEventInput,
-  CalendarEventProposal,
   CalendarNowSource,
   CalendarPendingChanges,
   CalendarPolicy,
-  CalendarPolicyResult,
   CalendarProposalDetail,
   CalendarSecondaryTimeZone,
   CalendarTransactionResult,
@@ -22,89 +18,36 @@ import type {
   EventAdapter,
   EventId,
   EventSnapshot,
-  EventSnapshotIssue,
   InvalidCalendarEventPolicy,
   NormalizedCalendarEvent,
   ResourceId,
-  SecondaryTimeZoneIssue,
 } from "@moltenship/calendar-core";
-import type { InstantInterval, PlainDateInterval } from "@moltenship/calendar-temporal";
+import type {
+  CalendarAgentEvent,
+  CalendarDiagnostic,
+  CalendarPartIds,
+  CalendarSemanticActions,
+  CalendarVisibleRange,
+} from "@moltenship/calendar-primitives";
+import type { PlainDateInterval } from "@moltenship/calendar-temporal";
 import type { ComponentPropsWithRef, ComponentType, ReactNode, RefObject } from "react";
 
 import type {
-  CalendarActions,
   CalendarPublicState,
   CalendarStateChangeHandler,
   CalendarStateSelector,
   CalendarStateSelectorOptions,
-  CalendarStore,
+  CalendarRootStore,
 } from "./types";
 import type { AnyCalendarView, CalendarActiveView, CalendarViewOptionsMap } from "./views";
 
-export type CalendarSemanticActions<
-  TView extends string = string,
-  TSelection = CalendarSelection,
-  TFocus = CalendarFocus,
-  TResourceId extends ResourceId = ResourceId,
-  TEvent = unknown,
-  TEventId extends EventId = EventId,
-> = CalendarActions<TView, TSelection, TFocus, TResourceId> & {
-  navigateNext(): void;
-  navigatePrevious(): void;
-  navigateToday(): void;
-  /**
-   * Runs a change through the root's policies without showing or saving it, as a gesture's
-   * preview does: `rejected` with the reason `proposeEventChange` would give, or `accepted`, with
-   * any `change.warnings`. `null` for an unknown event, or when a policy answers asynchronously.
-   */
-  readonly checkEventChange: (
-    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
-  ) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
-  /**
-   * Validates a change against the root's policies, shows it while `onEventChange` persists it,
-   * and resolves with the outcome, which `onEventChangeResult` hears first, with `detail` as
-   * given. Read-only events and roots without `onEventChange` reject. `detail.input` names the
-   * input that made the proposal, `"api"` by default. A plain function, so it can be passed on as
-   * a callback.
-   */
-  readonly proposeEventChange: (
-    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
-    detail?: CalendarProposalDetail,
-  ) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+export type {
+  CalendarAgentEvent,
+  CalendarDiagnostic,
+  CalendarPartIds,
+  CalendarSemanticActions,
+  CalendarVisibleRange,
 };
-
-export type CalendarDiagnostic<TEvent, TEventId extends EventId> =
-  | {
-      readonly code: "unregistered-active-view";
-      readonly severity: "error";
-      readonly viewName: string;
-    }
-  | {
-      readonly code: "invalid-event";
-      readonly issue: EventSnapshotIssue<TEvent, TEventId>;
-      readonly severity: "error";
-    }
-  | {
-      readonly code: "invalid-annotation";
-      readonly issue: AnnotationSnapshotIssue;
-      readonly severity: "error";
-    }
-  | {
-      readonly code: "invalid-availability";
-      readonly issue: AvailabilityIssue;
-      readonly severity: "error";
-    }
-  | {
-      readonly code: "invalid-secondary-time-zone";
-      readonly issue: SecondaryTimeZoneIssue;
-      readonly severity: "error";
-    };
-
-export interface CalendarPartIds {
-  readonly frame: string;
-  readonly title: string;
-  readonly viewport: string;
-}
 
 export interface CalendarPartRefs {
   readonly frame: RefObject<HTMLElement | null>;
@@ -126,6 +69,8 @@ export interface CalendarMeta<
   readonly eventSnapshot: EventSnapshot<TEvent, TEventId, TResourceId>;
   readonly ids: CalendarPartIds;
   readonly instanceId: string;
+  /** `Root`'s `label`, the frame's name. */
+  readonly label: string | undefined;
   readonly refs: CalendarPartRefs;
   readonly resources: readonly TResource[];
   readonly views: readonly TViewDef[];
@@ -152,22 +97,6 @@ export interface CalendarContextValue<
   readonly state: CalendarPublicState<TViewDef["name"], TSelection, TFocus, TResourceId>;
 }
 
-/** What the active view shows and which events it needs, as `onVisibleRangeChange` reports it. */
-export interface CalendarVisibleRange<TView extends string = string> {
-  /** `range` resolved to instants in the display time zone. */
-  readonly instantRange: InstantInterval;
-  /** `loadRange` resolved to instants in the display time zone. */
-  readonly loadInstantRange: InstantInterval;
-  /**
-   * The dates to have events for: `range`, plus the pages a scrolling view keeps ready on each
-   * side, so a swipe shows their events at once.
-   */
-  readonly loadRange: PlainDateInterval;
-  /** The visible dates. */
-  readonly range: PlainDateInterval;
-  readonly view: TView;
-}
-
 interface CalendarRootBaseProps<
   TEvent,
   TResource,
@@ -177,6 +106,12 @@ interface CalendarRootBaseProps<
   TEventId extends EventId,
   TResourceId extends ResourceId,
 > {
+  /**
+   * Lets an AI agent delete events through the calendar's `deleteEvent` action. Off by default,
+   * since a delete needs a person: turn it on only with an agent bridge whose `allow` asks one
+   * for each `deleteEvent` step. While it's off, `deleteEvent` isn't among the agent's actions.
+   */
+  readonly allowAgentDelete?: boolean;
   /** The sources views show annotations of, in order. Leave one out to hide its annotations. */
   readonly annotationSources?: readonly CalendarAnnotationSource[];
   /**
@@ -200,6 +135,13 @@ interface CalendarRootBaseProps<
   readonly direction?: CalendarEnvironment["direction"];
   readonly disambiguation?: CalendarEnvironment["disambiguation"];
   /**
+   * Names each visible event for an AI agent, in the calendar's agent items. By default its title
+   * and when it happens in ISO 8601 in the calendar's time zone, as
+   * `Design review · 2026-03-14T09:00 to 2026-03-14T10:00 (Europe/Berlin)`, which an agent reads
+   * back exactly; a localized date it can't.
+   */
+  readonly formatAgentEventLabel?: (event: CalendarAgentEvent) => string;
+  /**
    * Your events: an array, or a `CalendarEventSource` an external store updates. A new array
    * holding the same records counts as unchanged. A source's updates render the calendar without
    * the component that renders `Root`; keep the source stable, since a new one subscribes again.
@@ -208,6 +150,12 @@ interface CalendarRootBaseProps<
   readonly expandedResourceIds?: readonly TResourceId[];
   readonly focus?: TFocus | null;
   readonly id?: string;
+  /**
+   * The calendar's name, as `"Team calendar"`. The frame takes it as its `aria-label`, so screen
+   * readers and AI agents find the calendar by a name that stays put while navigating; without
+   * it, the frame is labelled by the title, which names the visible dates.
+   */
+  readonly label?: string;
   readonly locale: Intl.Locale | string;
   readonly onAnchorDateChange?: CalendarStateChangeHandler<Temporal.PlainDate, "anchorDate">;
   readonly onDiagnosticsChange?: (
@@ -216,11 +164,12 @@ interface CalendarRootBaseProps<
   /**
    * Persists an accepted event change. Apply it to `events` synchronously, or return a promise:
    * the change stays visible as pending until it settles and `events` reflect it, and a rejection
-   * rolls it back. Without a handler the calendar is read-only.
+   * rolls it back. Without a handler the calendar is read-only. `detail.input` names what proposed
+   * the change: `"pointer"`, `"keyboard"`, `"api"`, or `"agent"` for an AI agent's.
    */
   readonly onEventChange?: CalendarEventChangeHandler<TEvent, TEventId, TResourceId>;
   /**
-   * Hears how each proposal ended, from a pointer, the keyboard or `proposeEventChange`: once per
+   * Hears how each proposal ended, from a pointer, the keyboard, an agent or `proposeEventChange`: once per
    * proposal, after it settles, with the result its promise resolves with and the input that made
    * it. Read from the latest render. A committed change may still wait for `events`; see
    * `useCalendarPendingChanges`.
@@ -256,7 +205,7 @@ interface CalendarRootBaseProps<
    */
   readonly secondaryTimeZones?: readonly (CalendarSecondaryTimeZone | string)[];
   readonly selection?: TSelection | null;
-  readonly store?: CalendarStore<TViewDef["name"], TSelection, TFocus, TResourceId>;
+  readonly store?: CalendarRootStore<TViewDef["name"], TSelection, TFocus, TResourceId>;
   readonly view?: TViewDef["name"];
   /** Per-view overrides of each registered view's `defaultOptions`. */
   readonly viewOptions?: CalendarViewOptionsMap<TViewDef>;

@@ -1,0 +1,110 @@
+---
+title: WebMCP
+description: Hand the calendar's tools to the agent built into a browser, with rules of their own for an agent you didn't write.
+---
+
+<AgentWebMcpPreview />
+
+WebMCP lets a page offer tools to the agent built into a browser, through
+`document.modelContext`. `registerTools` from `@ui-sdk/react/agent` registers the bridge's three
+tools there, and a browser's agent can then read your calendar and change it without any server of
+yours in between.
+
+WebMCP is new, and most browsers don't have it yet. In one without it, `registerTools` does
+nothing, so calling it is safe everywhere. The panel above says what this browser has.
+
+This page uses the bridge in `agent.ts` from [Connect an agent](/docs/agents/connect).
+
+## Register the tools
+
+Call `registerTools` once, in the browser, with the bridge and an `allow`:
+
+<include meta='title="agent-webmcp.ts"'>../../examples/agent-webmcp.ts</include>
+
+Call `registerCalendarTools()` when your app starts, or when the person turns the feature on. It
+returns the function that takes the tools back:
+
+<include meta='title="agent-webmcp-tools.tsx"'>../../examples/agent-webmcp-tools.tsx</include>
+
+The browser's agent gets three tools:
+
+| Tool       | What it does                                          | Hints the browser gets                      |
+| ---------- | ----------------------------------------------------- | ------------------------------------------- |
+| `snapshot` | Lists the page's components, your calendar among them | `readOnlyHint`, `untrustedContentHint`      |
+| `query`    | Finds components, or the events one calendar shows    | `readOnlyHint`, `untrustedContentHint`      |
+| `act`      | Runs steps, such as `moveEvent`                       | `consequentialHint`, `untrustedContentHint` |
+
+The tools are the bridge's own, with the descriptions ui-sdk wrote for models. They aren't
+calendar-specific: the agent learns the calendar's actions from the snapshot, where the entry
+lists them by name.
+
+The names are all the tools can tell it. `act`'s definition doesn't say what `moveEvent` takes, and
+you can't add to a browser agent's prompt. The calendar says it in two places. Its
+`describeCalendar` action returns each action with its input. And an agent that guesses gets the
+input spelled out in the failed step, which is enough to correct the next call:
+
+```text
+calendar-agent-invalid-arguments: moveEvent takes { eventId: ID, start: ISO date or date-time, end?: same, resourceIds?: ID[] }; it takes one object, not 2 arguments
+```
+
+## An `allow` of its own
+
+You didn't write the browser's agent, and it acts for whoever is using the browser. So
+`registerTools` takes an `allow` of its own, apart from the bridge's:
+
+1. The bridge's `allow` from `createAgent`, when it has one.
+2. The `allow` you pass to `registerTools`.
+3. Your [policies](/docs/agents/changes#refuse-an-agents-change), then `onEventChange`.
+
+A step runs when all of them let it. The one above lets the browser's agent read, navigate and
+change events, and never delete or change the time zone. A refused step fails with
+`The app refused setTimeZone on c1.`
+
+`deleteEvent` is on that list for the calendars that [turn deleting on](/docs/agents/deleting). On
+any other calendar the action doesn't exist, and the step fails before `allow` is asked.
+
+`confirm === undefined` in the example leaves out any step on a control you marked with
+`data-agent-confirm`, which is ui-sdk's mark for a control a person must press. The calendar has
+no such controls of its own; the check keeps the rule for the other ui-sdk components on your page,
+which the same three tools reach.
+
+## Detect WebMCP
+
+`hasWebMcp()` in the file above checks for the registration function, so you can show the feature
+only where it works:
+
+```js
+typeof document.modelContext?.registerTool === "function";
+```
+
+TypeScript's DOM types don't have `modelContext` yet, which is why the helper reads it through a
+cast.
+
+## What the browser's agent reads
+
+Everything the tools return is page content: event titles, labels, the calendar's title, and what
+`listEvents` and `describeCalendar` return. A title is text somebody typed, and it may say "ignore
+your instructions". The tools carry
+`untrustedContentHint` so the browser treats their results as data. Your part is the same as for
+any agent:
+
+- Keep what the agent shouldn't read out of the snapshot, with
+  [`data-agent-hidden`](/docs/agents/connect#decide-what-an-agent-may-do).
+- Decide by action in `allow`, not by trusting what the agent says it wants.
+- Keep deletes [off, or behind a question](/docs/agents/deleting).
+
+## Try it
+
+1. In a browser with WebMCP, open your app and look for `snapshot`, `query` and `act` among the
+   page's tools.
+2. Ask the agent to read first: "Which meetings are on the team calendar this week?"
+3. Then to change something: "Move the design review to Friday at 10."
+
+Without such a browser, the example above registers the tools with a stand-in for
+`document.modelContext` and calls their `execute` functions the way a browser does. The bridge
+behind them is the real one, and so is the `allow`.
+
+The ui-sdk documentation at [ui-sdk.dev/docs](https://ui-sdk.dev/docs) has a walkthrough for a
+browser that supports WebMCP today.
+
+Next, [drive the calendar from a model on your own server](/docs/agents/server).

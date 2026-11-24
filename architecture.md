@@ -1,12 +1,13 @@
 # Moltenship Time — Calendar Architecture
 
-Time is a Temporal-native, React 19 calendar system built on five principles: application data remains authoritative; performance comes from indexed projections and bounded rendering rather than later optimization; every interaction is controllable and accessible; consumers own the visual source while upgradeable engines own difficult algorithms; and public contracts stay typed, deterministic, composable, and SSR-safe.
+Time is a Temporal-native calendar system for React 19 and, from version 2.0, SolidJS 2.0, built on five principles: application data remains authoritative; performance comes from indexed projections and bounded rendering rather than later optimization; every interaction is controllable and accessible; consumers own the visual source while upgradeable engines own difficult algorithms; and public contracts stay typed, deterministic, composable, and SSR-safe.
 
 > **Status:** Target design. Parts of it are built; the documentation site (`apps/showcase`) describes only what exists today.
+> **Version 2.0:** decided on 2026-11-24 ([ADR 0275](./docs/adr/0275-ui-sdk-primitives.md)) and not released. §2 says what of it is built, in progress and planned; the published 1.x line has none of it.
 > **Repository:** `github.com/Moltenship/time`
 > **Primary package:** `@moltenship/calendar`
 > **Registry:** `moltenship-time` (namespace `@moltenship`), served at `/r/<item>.json`; `calendar-full` installs every item
-> **Runtime target:** React 19+, modern ESM, native `Temporal`, Node.js 26+, any React-capable SSR framework
+> **Runtime target:** React 19+, modern ESM, native `Temporal`, Node.js 26+, any React-capable SSR framework; in 2.0 also SolidJS 2.0
 > **TypeScript target:** current TypeScript with `compilerOptions.lib: ["ESNext"]`
 > **Date policy:** no `Date`, no bundled polyfill, ISO-8601 chronology in v1
 
@@ -17,59 +18,118 @@ This document is the normative architecture contract.
 | Concern            | Decision                                                                                                                                             |
 | ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Distribution       | Hybrid: versioned headless engines on npm; editable React presentation source through a shadcn registry.                                             |
-| Framework          | React 19 web only. Core packages remain framework- and DOM-independent.                                                                              |
+| Framework          | React 19 on the web through 1.x. 2.0 adds SolidJS 2.0: the calendar's behaviour moves into framework-free primitives written on ui-sdk, which thin React and Solid integrations render (ADR 0275). Core packages remain framework- and DOM-independent. |
 | Event ownership    | Events are immutable external snapshots supplied by the application. The calendar never becomes the persistence authority.                           |
 | Event typing       | Canonical generic event types plus an accessor-based `EventAdapter<TEvent>` for application-native records.                                          |
 | Time model         | Timed events use `Temporal.Instant`; all-day events use `Temporal.PlainDate`; floating events use `Temporal.PlainDateTime`.                          |
 | Interval semantics | Every core interval is half-open: `[start, end)`.                                                                                                    |
 | Timezones          | Timed events are projected into one display timezone. DST gaps/folds use an explicit, configurable disambiguation policy.                            |
-| State              | Per-calendar store, the React package's own, read through `useSyncExternalStore`; independently controlled/uncontrolled state slices.                 |
+| State              | Per-calendar store, the calendar's own (ADR 0070), read through `useSyncExternalStore` in React; independently controlled/uncontrolled state slices. In 2.0 it moves to the primitives package and stays the owner of uncontrolled state. |
 | Views              | Day, week, month, year, list/agenda, resource columns, and resource timeline ship as explicit view definitions. Custom views use a stable plugin contract. |
 | Resources          | An event can have zero-to-many resources. Both day-by-resource columns and horizontal resource timelines are first-class.                            |
 | Interaction        | Native Pointer Events live behind a semantic adapter (ADR 0037). Pointer, touch, keyboard, and explicit edit actions produce the same typed transaction. |
+| Agents             | In 2.0 the calendar describes its state, the visible range's events and its actions to ui-sdk's agent bridge, and through it to WebMCP (§10). An agent's change is a proposal like any other, attributed as `"agent"`; the application creates the bridge and decides what it may do (ADR 0275). The library is also readable by coding agents: the docs site serves `llms.txt` and a Markdown version of every page, and the facade ships those docs and a skill (§20). |
 | Recurrence         | Separate package layered over the base contracts (ADR 0048): occurrences are ordinary events with stable IDs, and base packages stay recurrence-agnostic. |
 | iCalendar          | Standalone `@moltenship/ics`: ICS text to typed Temporal values, a Standard Schema parser, no dependencies (ADR 0151).                                |
 | Styling            | Tailwind CSS 4 and shadcn tokens in registry source; no Tailwind dependency in headless packages.                                                    |
 | SSR                | Full deterministic server markup when environment inputs are provided; no browser globals at module scope.                                           |
-| Performance target | 10,000 loaded events, 1,000 visible fragments, and 500 resources with bounded DOM and no React commit on pointer movement.                           |
+| Performance target | 10,000 loaded events, 1,000 visible fragments, and 500 resources with bounded DOM and no React commit, or other framework update, on pointer movement. |
 | Accessibility      | WCAG 2.2 AA is a release gate, including keyboard create/move/resize and screen-reader announcements.                                                |
 
 ## 2. Architectural shape
 
-The system is deliberately split into four planes. A plane may depend only on planes below it.
+The system is deliberately split into five planes. A plane may depend only on planes below it.
+Through 1.x there are four: the primitives plane is new in 2.0, and in 1.x what it holds lives in
+the React integration.
 
 ```text
 Application plane
-  fetched records · persistence · business rules · authorization
+  fetched records · persistence · business rules · authorization · the agent bridge and its permissions
                           │
                           ▼
 Presentation plane — source installed into the consumer repository
   compound components · default views · Tailwind/shadcn styles · app dialogs
                           │
                           ▼
-React integration plane — versioned npm packages
-  provider · typed selectors/actions/meta · state bridge · dnd adapter
+Framework integration plane — versioned npm packages, one per framework
+  React: provider · typed selectors/actions/meta · parts · the facade      Solid: the same, for SolidJS 2.0
+                          │
+                          ▼
+Primitives plane — versioned, framework-free npm packages (2.0)
+  calendar runtime · calendar store · the calendar as a ui-sdk primitive · agent surface
+  beside it: the pointer adapter (native Pointer Events)
                           │
                           ▼
 Engine plane — versioned, framework-independent npm packages
-  Temporal utilities · normalization · interval indexes · projections · layouts
+  Temporal utilities · normalization · interval indexes · projections · layouts · transactions
 ```
 
-The application owns facts. The engine derives render models. React binds those models to fine-grained subscriptions. Registry source decides what the user sees.
+The application owns facts. The engine derives render models. The primitives hold what a calendar
+does between the two: which state there is, what a command means, which parts exist and what an
+agent may read and do. An integration binds that to its framework's fine-grained subscriptions.
+Registry source decides what the user sees.
+
+The primitives are written on [ui-sdk](https://ui-sdk.dev) (ADR 0275). Its part in the design is
+narrow:
+
+- **The engine doesn't know it.** Dates, zones, recurrence, layouts, transactions and policies are
+  ours; ui-sdk's own date strings, Calendar and Timeline are not used.
+- **The calendar runtime is not ui-sdk state.** It is the derivation `Root` runs: a synchronous
+  function, memoized per root, from a root's inputs and state to the event snapshot, the ranges and
+  the active view's projection (§6.4). An integration calls it in its own idiom, during render in
+  React and in a memo in Solid. It keeps caches, not state: its result depends only on the inputs of
+  the call, so a render a framework discards changes nothing a later one can observe. A ui-sdk
+  primitive derives state from options alone, and the projection needs options and state together,
+  so derived data in ui-sdk's store would lag a render.
+- **The calendar store owns uncontrolled state** (§9.1). The ui-sdk primitive holds the six slices
+  as controlled keys, fed with the merged state, so it is a projection of that state for parts and
+  agents and never a second owner.
+- **The primitive is created inside the typed factory,** once per `createCalendar` call. Its api is
+  the semantic actions, its slots are the calendar's structural parts, and its agent description is
+  the agent surface (§10).
+
+### Version 2.0 status
+
+Three words, used the same way in every section: **built** is in the tree and tested; **in
+progress** is being written against the contract here; **planned** is decided and not started.
+None of 2.0 is released.
+
+| Piece | Status on 2026-11-24 |
+| --- | --- |
+| `calendar-primitives`: the store, the runtime, the calendar primitive | Built |
+| `calendar-react` rendering the primitive | Built |
+| `calendar-solid` and `apps/demo-solid` | Built: the root, the structural parts, the read hooks and the agent surface. No ready-made views |
+| Enforcement of rules 12 to 15 and the release tooling for the two packages | Built |
+| The `"agent"` input method (§10) | Built |
+| The agent surface: actions with one JSON object each, reading actions, a change's outcome, the proposal's detail and `fields` for policies and `onEventChange` (§10) | Built |
+| Docs for agents: agent and WebMCP guides with live examples, `llms.txt`, a skill for coding agents (§20) | Built |
+| Keyboard gestures, roving focus, drafts and the history binding in the primitives | In progress: the stores behind drafts and keyboard grabs and the announcer channel are there; the gestures, roving focus and the history binding are still React's, and Solid binds none of them |
+| A framework-free pointer adapter: `useCalendarPointer` in the React integration (rule 4) | Planned |
+| Registry views on the new parts; Solid views | Planned |
+
+Until a piece is built, the sections below describe the 1.x implementation and say where 2.0
+differs.
 
 ### Dependency law
 
-1. Temporal utilities never import React, Jotai, dnd-kit, DOM types, CSS, or application types.
-2. Core never imports React, Jotai, dnd-kit, DOM types, or registry source.
-3. React bindings may import core, the Temporal utilities and React, but not default view source.
-4. The pointer adapter may import core, the Temporal utilities and React, but not the React bindings. It uses native Pointer Events, not a drag-and-drop library (ADR 0037). Of the published packages, only the facade imports it.
+Rules 1 to 11 keep their numbers from 1.x. ADR 0275 restated rules 1 to 4 and 6 and added rules 12
+to 15.
+
+1. Temporal utilities never import a UI framework (React, Solid), ui-sdk, Jotai, dnd-kit, DOM types, CSS, or application types.
+2. Core never imports a UI framework, ui-sdk, Jotai, dnd-kit, DOM types, or registry source.
+3. The React integration (`calendar-react`) may import the primitives, core, the Temporal utilities, React, and ui-sdk's `@ui-sdk/core` and `@ui-sdk/react` (rule 14), but not default view source. Once rule 4's hook moves into it, it also imports the pointer adapter.
+4. The pointer adapter (`calendar-dnd`) may import core and the Temporal utilities, and nothing else of ours: not the primitives and not an integration. It never imports ui-sdk. It uses native Pointer Events, not a drag-and-drop library (ADR 0037). In 2.0 it imports no framework: `useCalendarPointer`, its one React hook, moves to the React integration, and the Solid integration binds `attachCalendarPointer` itself (planned). Until then it imports React for that hook, and of the published packages only the facade and the dnd-kit adapter import it; afterwards the two integrations do as well.
 5. Registry source imports only the `@moltenship/calendar` facade, other registry items, the npm packages `registry/package.json` declares, and stock shadcn components. It never imports a drag-and-drop library or `calendar-dnd`. Its tests, which aren't installed, may also use `calendar-testing`, as an app's tests would.
-6. The showcase and the demo import packages only through their public entry points, and registry source in place. In the full tier and the release gate, `vp run release:artifacts` runs the SSR fixture's tests and builds and serves the docs site in copies outside the workspace, installed from the dry run's packed tarballs as an end user would, and installs the built registry into clean Vite and Next.js apps on the same tarballs (#203).
+6. The showcase and the demos (`apps/demo`, and `apps/demo-solid` for Solid) import packages only through their public entry points, and registry source in place. In the full tier and the release gate, `vp run release:artifacts` runs the SSR fixture's tests and builds and serves the docs site in copies outside the workspace, installed from the dry run's packed tarballs as an end user would, and installs the built registry into clean Vite and Next.js apps on the same tarballs (#203).
 7. No package may deep-import another package's `src/` directory.
 8. The iCalendar package imports no other workspace, so applications can use it without the calendar (ADR 0151).
 9. The recurrence package depends on core, the Temporal utilities and `ics`. No other published package but the test harness, and no registry source, imports it (ADR 0048).
 10. The dnd-kit adapter (`calendar-dnd-kit`) imports `calendar-dnd`, core, React and dnd-kit, which is its peer, and nothing else of ours: not the React bindings or the facade. It is the only package that imports dnd-kit, and no other package, the facade included, or registry source imports it (#237).
 11. The test harness, `calendar-testing`, imports only what apps import: the `@moltenship/calendar` facade and `@moltenship/calendar-recurrence`, never the packages behind the facade (#45).
+12. The primitives (`calendar-primitives`) import core, the Temporal utilities and `@ui-sdk/core`, and nothing else: no UI framework, no ui-sdk renderer (`@ui-sdk/react`, `@ui-sdk/solid` or another), no integration, no pointer adapter and no registry source. Unlike the engine, they may use DOM types: slots bind elements.
+13. The integrations never import each other. `calendar-react` imports no `calendar-solid`, no Solid and no `@ui-sdk/solid`. `calendar-solid` may import the primitives, core, the Temporal utilities, Solid, ui-sdk's `@ui-sdk/core` and `@ui-sdk/solid`, and the pointer adapter once that has no React peer; it imports no `calendar-react`, no React, no `@ui-sdk/react`, and no package with a React peer: the facade, `calendar-dnd-kit`, `calendar-testing`, and `calendar-dnd` until rule 4's hook has moved. Rules 12 and 13 cover the packages' tests as well as their source, except that the primitives' tests may also import the test runner (`vite-plus`), `jsdom` and Node's built-ins.
+14. `@ui-sdk/*` is imported only by the primitives and the two integrations, and by the repository's applications that show them: `apps/demo-solid` and the docs site, which create an agent bridge, and the React demo and the a11y suite once they do; creating one is an application's job. Every import goes through a documented public entry (`@ui-sdk/core`, `@ui-sdk/core/<entry>`, `@ui-sdk/<framework>/<entry>`), never an `internal`, `dist` or `src` path, and uses no type that only such a path exports. The packages never import ui-sdk's date entries (`date`, `calendar`, `timeline`, `date-picker`, `date-input`, `time-input`): the domain is the engine's. The engine, the pointer adapter, recurrence, `ics`, the dnd-kit adapter, the facade's own source, the test harness and registry source import no ui-sdk at all.
+15. Solid (`solid-js`, `@solidjs/web`) is imported only by `calendar-solid` and `apps/demo-solid`.
 
 ## 3. Repository and package topology
 
@@ -82,14 +142,17 @@ time/
 │   │   ├── lib/source.ts         # sole runtime content loader
 │   │   └── source.config.ts      # collection schemas and MDX configuration
 │   ├── demo/                     # Google Calendar-style demo app (Vite), built from registry source
+│   ├── demo-solid/               # 2.0: the Solid integration in a Vite app, with views of its own and an agent panel
 │   └── ssr-fixture/              # render/hydrate verification in a real SSR boundary
 ├── packages/
 │   ├── calendar-temporal/        # standalone Temporal calendar utilities
 │   ├── calendar-core/            # data/index/layout/view/transaction engine
-│   ├── calendar-react/           # React provider, store bridge, hooks, primitives
+│   ├── calendar-primitives/      # 2.0: runtime, store, the calendar as a ui-sdk primitive
+│   ├── calendar-react/           # React provider, store bridge, hooks, parts
+│   ├── calendar-solid/           # 2.0: the same for SolidJS 2.0, a preview without views
 │   ├── calendar-dnd/             # pointer interaction adapter (native Pointer Events)
 │   ├── calendar-dnd-kit/         # optional dnd-kit adapter: items dragged in, events dragged out
-│   ├── calendar/                 # DX-first public facade
+│   ├── calendar/                 # DX-first public facade, for React
 │   ├── calendar-testing/         # test harness for apps: environment, builders, fixtures, harness, drivers
 │   ├── calendar-recurrence/      # range-bounded recurrence (RRULE, exceptions, series edits)
 │   └── ics/                      # standalone iCalendar parsing (RFC 5545)
@@ -125,7 +188,8 @@ time/
 
 `apps/showcase` is the only documentation application. It runs on Fumadocs; there is no second docs
 content tree. `apps/demo` is a public Google Calendar-style demo built from the registry views; it
-carries no documentation.
+carries no documentation. `apps/demo-solid` shows the Solid integration and is the one place in the
+repository that compiles Solid JSX; the packages are written without JSX.
 
 ### Published packages
 
@@ -133,21 +197,32 @@ carries no documentation.
 | --------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- | ------------------------------------------------- |
 | `@moltenship/calendar-temporal`   | Type-specific ranges, grids, timezone projection, slots, rounding, keys, and interval helpers.                                | None                                                                                      | Stable, standalone                                |
 | `@moltenship/calendar-core`       | Event adapters, normalized snapshots, interval indexes, view strategies, fragments, layout engines, policies, transactions.   | `calendar-temporal`; provisional `@flatten-js/interval-tree` behind an internal interface | Stable                                            |
-| `@moltenship/calendar-react`      | Per-instance provider, controlled state bridge, selectors, actions, meta, headless primitives, custom-view renderer contract. | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable                                            |
-| `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements; drags in from and out to the rest of the page. | `calendar-core`, `calendar-temporal`; React 19 peer                                       | Stable adapter; no DOM event types in callbacks   |
+| `@moltenship/calendar-primitives` | 2.0. The framework-free calendar: the runtime `Root` derives with, the calendar store and its binding, the calendar as a ui-sdk primitive (controlled slices, semantic actions, slots for parts, the agent surface). | `calendar-core`, `calendar-temporal`; `@ui-sdk/core` peer                                 | 2.0 preview; not settled                          |
+| `@moltenship/calendar-react`      | Per-instance provider, controlled state bridge, selectors, actions, meta, headless parts, custom-view renderer contract. In 2.0 it renders the primitive. | `calendar-core`, `calendar-temporal`; React 19 peer. In 2.0 also `calendar-primitives`, and `@ui-sdk/core` and `@ui-sdk/react` peers | Stable                                            |
+| `@moltenship/calendar-solid`      | 2.0. The same integration for SolidJS 2.0: factory, parts, state and actions over the primitive. No ready-made views, keyboard gestures or pointer layer yet. | `calendar-primitives`, `calendar-core`, `calendar-temporal`; `solid-js`, `@solidjs/web`, `@ui-sdk/core` and `@ui-sdk/solid` peers | 2.0 preview; not settled                          |
+| `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements; drags in from and out to the rest of the page. | `calendar-core`, `calendar-temporal`; React 19 peer, which 2.0 drops with the hook (rule 4) | Stable adapter; no DOM event types in callbacks   |
 | `@moltenship/calendar-dnd-kit`    | Optional dnd-kit adapter: a draggable carrying `calendarDropData` drops into the views; events a view moves become dnd-kit drags for the app's droppables. | `calendar-dnd`, `calendar-core`, `@dnd-kit/abstract` (dnd-kit's collision enums); React 19, `@dnd-kit/react` and `@dnd-kit/dom` 0.5 peers | Optional adapter; follows dnd-kit 0.5, which is pre-1.0 |
-| `@moltenship/calendar`            | The ergonomic entry point used by most consumers. Re-exports core, the Temporal utilities, the React bindings and the pointer adapter. | `calendar-core`, `calendar-temporal`, `calendar-react`, `calendar-dnd`; React 19 peer | Stable facade                                     |
-| `@moltenship/calendar-testing`    | Test helpers for apps (#45): a deterministic environment, typed builders, a render and hydration harness that records `onEventChange` and `onEventChangeResult`. Built only on public entry points. | `calendar` (the facade), `calendar-recurrence`; React 19 and React DOM 19 peers           | Stable                                            |
+| `@moltenship/calendar`            | The ergonomic entry point used by most React consumers. Re-exports core, the Temporal utilities, the React bindings and the pointer adapter. | `calendar-core`, `calendar-temporal`, `calendar-react`, `calendar-dnd`; React 19 peer. In 2.0 also `calendar-react`'s ui-sdk peers | Stable facade                                     |
+| `@moltenship/calendar-testing`    | Test helpers for apps (#45): a deterministic environment, typed builders, a render and hydration harness that records `onEventChange` and `onEventChangeResult`. Built only on public entry points. | `calendar` (the facade), `calendar-recurrence`; React 19 and React DOM 19 peers. In 2.0 also `calendar-react`'s ui-sdk peers | Stable; React only                                |
 | `@moltenship/calendar-recurrence` | Range-bounded RRULE expansion, occurrence identity, exceptions and overrides, explicit series edits (ADR 0048).            | `calendar-core`, `ics`                                                                    | Stable                                            |
 | `@moltenship/ics`                 | iCalendar syntax tree, typed values and components, TZID resolution, Standard Schema parser. Parses RRULEs; doesn't expand them. | None                                                                                      | Stable, standalone                                |
 
-All of these publish. Package versions move in lockstep until after `1.0`. The lockfile pins every implementation dependency; the `pnpm-workspace.yaml` catalog sets most exactly and a few as caret ranges. The published packages that use React (`calendar-react`, `calendar-dnd`, `calendar-dnd-kit`, `calendar` and `calendar-testing`) declare a `^19.0.0` peer. `calendar-dnd-kit` also declares `@dnd-kit/react` and `@dnd-kit/dom` `^0.5.0`, which for 0.x means 0.5 only, and `calendar-testing` React DOM `^19.0.0`, which it renders and hydrates with; there are no other peers.
+All of these publish. Package versions move in lockstep, through 2.0 as well. The lockfile pins every implementation dependency; the `pnpm-workspace.yaml` catalog sets most exactly and a few as caret ranges. The published packages that use React (`calendar-react`, `calendar-dnd`, `calendar-dnd-kit`, `calendar` and `calendar-testing`) declare a `^19.0.0` peer. `calendar-dnd-kit` also declares `@dnd-kit/react` and `@dnd-kit/dom` `^0.5.0`, which for 0.x means 0.5 only, and `calendar-testing` React DOM `^19.0.0`, which it renders and hydrates with. In 1.x there are no other peers.
+
+2.0 adds ui-sdk and Solid as peers, never as dependencies: the application's agent bridge must share one copy of `@ui-sdk/core` with the calendar, and an app has one copy of its framework.
+
+- `calendar-primitives`, `calendar-react` and `calendar-solid` declare `@ui-sdk/core`; `calendar-react` also `@ui-sdk/react`, which itself needs React DOM 19; `calendar-solid` also `@ui-sdk/solid`, `solid-js` `^2.0.0` and `@solidjs/web` `^2.0.0`.
+- The facade and `calendar-testing` bring `calendar-react`, so they declare its ui-sdk peers too.
+- The catalog pins one version for every `@ui-sdk/*` package, a 0.1 beta today. Each peer range is a caret that starts at the catalog's version, so it admits the later betas of the 0.1 line and 0.1.x. `tests/package-metadata.test.ts` holds the catalog and the peers together.
+- An upgrade is one pull request that moves the catalog and every peer and passes the PR gate. We test the catalog's version; a later beta that breaks the calendar is a bug, fixed by an upgrade that raises the floor.
 
 ### External dependency ledger
 
 | Dependency line                       | Used by                            | Why it exists                                                     | Containment rule                                                  |
 | ------------------------------------- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
-| React 19                              | `calendar-react`, `calendar-dnd`, facade, registry | Rendering, context, refs, SSR, external-store subscription | Peer dependency; absent from core, Temporal utilities, recurrence and `ics` |
+| React 19                              | `calendar-react`, `calendar-dnd`, facade, registry | Rendering, context, refs, SSR, external-store subscription | Peer dependency; absent from core, Temporal utilities, the primitives, the Solid integration, recurrence and `ics` |
+| ui-sdk 0.1 beta: `@ui-sdk/core`, `@ui-sdk/react`, `@ui-sdk/solid` (Apache-2.0) | `calendar-primitives` (core), `calendar-react` (core, React renderer), `calendar-solid` (core, Solid renderer), `apps/demo-solid` | 2.0: one definition of the calendar's parts and actions that React and Solid render, and the agent bridge with WebMCP registration (ADR 0275) | Peers, never dependencies, so the app's bridge shares one core. Public entries only; no date, Calendar or Timeline entries (rule 14). Pre-1.0: one catalog version, caret peers, one PR per upgrade. `@ui-sdk/core` has no dependencies |
+| SolidJS 2.0: `solid-js`, `@solidjs/web` (MIT) | `calendar-solid` (peers), `apps/demo-solid` | 2.0: the second framework the primitives are rendered by | Peers of the Solid integration alone (rule 15); JSX compiled only in the demo |
 | `@dnd-kit/react` + `@dnd-kit/dom` 0.5 | `calendar-dnd-kit` (peer), the demo, the docs site, `tools/a11y` | Apps that already use dnd-kit drag their items into the calendar and events out (#237) | A peer of the optional adapter, used besides only by the demo, the docs site and tests; a minor upgrade is a PR to the adapter and those |
 | TanStack Virtual 3                    | List and resource registry views   | Maintained vertical/horizontal windowing and measurement          | Hidden behind view adapters; not required by core                 |
 | `@flatten-js/interval-tree` 2         | `calendar-core` provisionally      | Established interval-query baseline                               | Hidden behind `IntervalIndex`; retained only if benchmarks pass   |
@@ -181,6 +256,9 @@ The registry is not a second package manager. It distributes the source users ar
   and every change proposed through `actions` is rejected as read-only.
 - `shadcn build` builds it, and the docs site serves it at `/r/<item>.json`.
 - No custom CLI is introduced in v1; the maintained shadcn CLI is the installer.
+- The registry is React source. 2.0 doesn't change what it imports (rule 5): it never imports
+  ui-sdk, and its stock shadcn controls stay Base UI. Solid views are planned; where they live and
+  how they are distributed is not decided.
 
 ## 4. Time and interval model
 
@@ -419,6 +497,9 @@ type CalendarEventInput<TEvent> = readonly TEvent[] | CalendarEventSource<TEvent
 - React renders a source's updates synchronously, as it does for any external store; an update
   meant for a transition passes an array instead.
 
+The two input forms are the calendar runtime's, so in 2.0 the Solid integration takes the same
+ones and reads a source through a subscription of its own.
+
 The calendar never fetches data or mutates backend records.
 
 ### 6.2 Normalized snapshot
@@ -471,7 +552,7 @@ external events
   → registry components
 ```
 
-Each stage is a pure function or a versioned cache. A selection change does not rebuild indexes or rerun projection. A pointer move does not rerun projection. A record replaced with the same normalized fields (interval, title, resources, read-only and busy flags, revision), such as a color change in `data` that keeps its revision, reuses its normalized structure and the interval indexes, but the active view's projection and layout run again.
+Each stage is a pure function or a versioned cache. In 1.x `Root` runs the pipeline with React hooks; in 2.0 it is the calendar runtime in `calendar-primitives`, which both integrations call; no stage of it is ui-sdk state (§2). A selection change does not rebuild indexes or rerun projection. A pointer move does not rerun projection. A record replaced with the same normalized fields (interval, title, resources, read-only and busy flags, revision), such as a color change in `data` that keeps its revision, reuses its normalized structure and the interval indexes, but the active view's projection and layout run again.
 
 ## 7. View system
 
@@ -507,7 +588,7 @@ The strategy has no name; the view does. Pointer geometry is not part of it: vie
 in the interactions docs) and pass the projection's time `columns` to `useCalendarPointer` in time
 grids, resource columns and hour timelines.
 
-React binds a strategy to a renderer:
+An integration binds a strategy to a renderer. In React:
 
 ```ts
 interface CalendarView<TName extends string, TProjection, TOptions, TEvent = unknown> {
@@ -519,7 +600,9 @@ interface CalendarView<TName extends string, TProjection, TOptions, TEvent = unk
 ```
 
 `defineCalendarView({ name, strategy, Renderer, defaultOptions })` makes one; `defaultOptions` may
-be left out when the options can be `undefined`.
+be left out when the options can be `undefined`. In 2.0 the primitives know a view as its name,
+strategy and default options, and each integration's `defineCalendarView` adds its own renderer
+type, so a strategy written once serves a React and a Solid renderer.
 
 This is a semver-protected plugin contract. Custom views do not import the store's internals or private layout files.
 
@@ -538,7 +621,7 @@ This is a semver-protected plugin contract. Custom views do not import the store
 | Scrolling month   | Six to twelve week rows (six by default), from the week of the anchor month's first day | Anchored week axis; a page of weeks rendered either side        | Snaps a month at a time; named by the anchor's month                 |
 | Scrolling agenda  | Days with events, `weeks` from the anchor date                   | Vertical TanStack Virtual over a page of weeks either side      | Rests on any day; anchor follows the day on top; load range for prefetching |
 
-Day and week share the time-grid strategy and primitives; they are explicit view variants, not one component controlled by boolean flags.
+Day and week share the time-grid strategy and components; they are explicit view variants, not one component controlled by boolean flags.
 
 ### 7.2.1 Scrolling views
 
@@ -611,6 +694,10 @@ interface CalendarAnnotationSource {
 - **Presentation lives in the registry** as composable parts.
 
 ## 8. React composition API
+
+This is the React integration's API, and 2.0 keeps it: what changes is underneath, where `Root`
+renders the calendar primitive (§2). The Solid integration follows the same shape, a typed factory
+with a `Root`, parts and `{ state, actions, meta }`; it is a preview and its API is not settled.
 
 ### 8.1 Typed factory
 
@@ -697,10 +784,12 @@ API rules:
 4. Day, week, month, year, list, and resource variants are explicit definitions.
 5. In React 19, DOM refs are ordinary props; composed callbacks preserve returned detach cleanup
    functions, and registry source does not add `forwardRef` wrappers.
-6. UI components read the calendar through the factory's hooks: `TeamCalendar.useCalendar()` returns a generic `{ state, actions, meta }`, and parts subscribe to the slices they need. Only `Root` knows how the store works.
+6. UI components read the calendar through the factory's hooks: `TeamCalendar.useCalendar()` returns a generic `{ state, actions, meta }`, and parts subscribe to the slices they need. Only `Root` knows how the store works and, in 2.0, how the primitive is rendered: each integration carries the primitive's handle in a context of its own, and custom views and parts reach the root through the factory's hooks, never through ui-sdk.
 7. Custom controls may live anywhere inside `Root`, not only inside `Frame`.
-8. `Root.id` is the authoritative instance/part ID seed. Individual identified primitives do not
+8. `Root.id` is the authoritative instance/part ID seed. Individual identified parts do not
    accept an `id` override, so `meta.ids` and default ARIA relationships cannot diverge from the DOM.
+   In 2.0 the parts are ui-sdk slots, which make ids of their own unless one is written; the
+   calendar writes its own, so this rule holds.
 
 ## 9. State architecture
 
@@ -711,7 +800,7 @@ State is divided by ownership and update frequency.
 | External facts        | events, resources, permissions, business policies              | Application                       | Props (`events`, `resources`, `policies`, `availability`, `annotations`) |
 | Controllable UI       | view, anchor date, selection, focus, timezone, expanded groups | Application or calendar           | Independently controlled slices in per-instance store  |
 | Derived               | visible range, queried IDs, fragments, overlap lanes           | Engine                            | Versioned memoized projections                         |
-| Ephemeral interaction | pointer coordinates, resize edge, auto-scroll velocity         | Interaction session               | Mutable adapter-local session for pointer gestures, never React state; a keyboard gesture's preview is a small store `Root` reads |
+| Ephemeral interaction | pointer coordinates, resize edge, auto-scroll velocity         | Interaction session               | Mutable adapter-local session for pointer gestures, never React, Solid or ui-sdk state; a keyboard gesture's preview is a small store `Root` reads |
 | Pending change        | optimistic proposed interval/resource assignment               | Calendar until confirmed/rejected | Small overlay of proposed placements keyed by event ID; the newest change per event wins |
 
 ### 9.1 Per-instance store
@@ -722,9 +811,17 @@ State is divided by ownership and update frequency.
 - There is no provider-less global state. Each factory (`createCalendar<…>()({…})`) makes its own
   React contexts, so a calendar inside another reads its own root. Module-level hooks such as
   `useCalendarFocus`, `useCalendarKeyboard` and `useNow` read the nearest root of any factory.
-- The store is the React package's own (`store.ts`): a frozen snapshot of the six slices (only
+- The store is the calendar's own (`store.ts`, ADR 0070): a frozen snapshot of the six slices (only
   uncontrolled ones change), a listener set, `getSnapshot()`, `subscribe()`, and six `set*` actions.
-  It has no runtime dependency. `calendar-react` dropped Jotai in #70 (ADR 0070).
+  It has no runtime dependency. `calendar-react` dropped Jotai in #70. In 1.x it is part of
+  `calendar-react`; 2.0 moves it and its per-root binding to `calendar-primitives`, unchanged in
+  contract, so the Solid integration uses the same one, and the facade keeps exporting
+  `createCalendarStore`.
+- In 2.0 the merged state also feeds the calendar primitive, which holds the six slices as
+  controlled keys. ui-sdk's instance store is a projection of the merged state, for parts and
+  agents, and never owns a slice: the application owns a controlled slice and the calendar store
+  an uncontrolled one. The integration passes the merged state as the primitive's options in the
+  render that computed it; no subscription of ours copies one store into the other.
 - `Root` reads state through `useSyncExternalStore`. `useCalendarStateBinding` (`state-binding.ts`)
   overlays the controlled props on the store's snapshot during render and caches the merged object
   per snapshot.
@@ -755,6 +852,8 @@ onViewChange?: (next: ViewName, detail: CalendarStateChangeDetail<ViewName, "vie
 The same pattern applies to anchor date, selection, timezone, focus, and resource expansion. `anchorDate` or `defaultAnchorDate`, and `timeZone` or `defaultTimeZone`, are required, one of each. `useCalendarStateBinding` keeps controlled props stable while they stay equal (dates by value, resource IDs by elements, selection and focus by identity) and overlays them on the store's snapshot during render, so a controlled value is current in the first render that receives it. A command for a controlled slice records a pending request, so the next command in the same handler builds on it, and calls the handler; the store itself changes only for uncontrolled slices. Controlled inputs are not copied into the store with `useEffect`. Uncontrolled defaults are read exactly once. A command asking for a controlled slice's current value still reaches its handler while the owner holds another change it was told about and hasn't committed, so a deferring owner can drop that change.
 
 `useSyncExternalStore` owns subscription cleanup, for unmount and for React `Activity` hide and reveal. A root's binding attaches in an insertion effect and detaches when the root unmounts. There is no store destruction: a store `Root` created is dropped with it, and a caller-owned store keeps its state and stays usable after its roots unmount. `useStateSelector` keeps a selector's previous result while `isEqual` (`Object.is` by default) says it is unchanged, so a state change it doesn't select doesn't re-render that component (`Root` itself renders on every state change). `CalendarStore` has `getSnapshot` and `subscribe` and no `getServerSnapshot`; its `getSnapshot` returns the store's six values, in which a controlled slice keeps its initial value, since the current one lives in the application's state. Inside `Root`, server and client read the same merged getter, and explicit defaults and controlled inputs make server and first-client output deterministic.
+
+2.0 keeps this contract in both integrations, and the tests behind ADR 0070 gate the move. A handler's detail gains ui-sdk's change details: `reason`, `source`, which names an agent, and `cancel`, which leaves an uncontrolled slice as it was (in progress). ui-sdk's own controlled-state helper is not the contract. It waits for a controlled key's owner where our commands compose, and its store compares objects by identity, so Temporal values are made stable by value before they reach it.
 
 ### 9.3 Public state interface
 
@@ -851,8 +950,12 @@ another resource is a `move` with new `resourceIds`. `update` and `delete` come 
 made it; the proposal's detail does, `proposeEventChange(proposal, { input })` with
 `CalendarInputMethod = "pointer" | "keyboard" | "api"`: the pointer layer passes
 `{ input: "pointer" }` to `onPropose`, `useCalendarKeyboard` proposes as `"keyboard"`, and anything
-else is `"api"`. `onEventChangeResult` hears the detail as given, or `{ input: "api" }` when it names
-no input; an event history's inverses add `history: "undo" | "redo"`. The announcer hears a
+else is `"api"`. 2.0 adds `"agent"`, for proposals made through the agent surface (below). The
+detail reaches policies (in their context) and `onEventChange` (as its second argument) too, and
+may carry `fields`, an object the engine passes along unread, such as an agent's title or a
+recurrence scope. `onEventChangeResult` hears the detail as given, or
+`{ input: "api" }` when it names no input; an event history's inverses add
+`history: "undo" | "redo"`. The announcer hears a
 gesture's own input. `id` names the change
 within one calendar, such as `change-3`. `warnings` holds the reasons policies flagged the change
 with while letting it through. There are no recurrence fields: `resolveRecurrenceEdit` in
@@ -900,8 +1003,11 @@ change by returning `false`; it throws or rejects. A root without `onEventChange
 a proposal in its read-only check, after the unknown-event and empty-placement checks every
 proposal goes through, so its results carry the change like any policy's rejection; only
 `unknown-event` has none. The engine is `createEventTransactions()` in `calendar-core`, with
-`propose`, `check`, `reconcile`, `getPending`, `getPendingChanges` and `subscribe`, for use outside
-React. `Root` keeps one per calendar and doesn't expose it. The overlay is keyed by event ID, so an
+`propose`, `proposeNow`, `check`, `reconcile`, `getPending`, `getPendingChanges` and `subscribe`,
+for use outside React. `proposeNow` is `propose` without the wait: it returns the result itself
+when the policies and the handler decide at once, and otherwise a `CalendarPendingProposal`,
+`{ status: "pending", phase, change, result }`, whose `result` never rejects. `propose` is
+`proposeNow` with the result wrapped in a promise. `Root` keeps one per calendar and doesn't expose it. The overlay is keyed by event ID, so an
 event shows at most one pending change.
 
 In React, pending state shows per event (`isPending`), per proposal (the promise and
@@ -967,6 +1073,67 @@ bundle of the facade's other exports keeps none of the history's modules.
   announced, are spoken once by its own status region, with how to reach Undo, and that toast
   stays at least 10 seconds.
 
+### Agents (2.0)
+
+The calendar primitive describes itself to ui-sdk's agent bridge, so an AI agent in the page, or a
+browser's agent through WebMCP, reads and operates the calendar without clicking through it
+(`calendar-primitives/src/primitive.ts`). The contract:
+
+- **Arguments.** Every action takes at most one argument, a JSON object; actions without arguments
+  take nothing or `{}`. The calendar checks it itself, since the bridge doesn't check a primitive's
+  own methods: an unknown key, a missing one, a `null` where none is allowed or a value of the
+  wrong shape throws `calendar-agent-invalid-arguments: <action> takes <signature>; <problem>`,
+  which fails the step. Dates are ISO 8601: a time without an offset is wall-clock time in the
+  calendar's zone, and one with an offset or `Z` is that instant; a create with two dates alone
+  makes an all-day event, and a change keeps the event's kind. Ranges are half-open. Event IDs are the ones `listEvents` gives.
+- **What an agent reads.** `describeCalendar()` gives the zone, locale, now and today in that zone,
+  the anchor date, the view and the registered views, the visible range, the selected event, the
+  resources, whether the root is read-only and can delete, the changes pending, the actions with
+  their signatures, and the conventions above. `listEvents({ start?, end? })` lists the events of
+  a range, the visible one by default, pending changes included: ID, title, kind, ISO `start` and
+  exclusive `end` (with the zone's offset for timed events), resources, and `pending` or
+  `readOnly` where they hold. The snapshot's items are the visible events, labelled
+  `Title · 2026-08-15T09:00 to 2026-08-15T10:00 (UTC)`, so a query by date finds them; `Root`'s
+  `formatAgentEventLabel` replaces the label. ui-sdk caps how many items a snapshot and a query
+  return, which `listEvents` doesn't. Everything read is the latest requested state, before a
+  framework renders it, so a later step of one `act` sees what an earlier one asked for.
+- **What an agent does.** It navigates (`navigatePrevious`, `navigateNext`, `navigateToday`,
+  `goToDate`), switches view (`setView`) and zone (`setTimeZone`), selects (`selectEvent`, or
+  `null` to clear), and proposes: `createEvent({ start, end, resourceIds?, title?, fields? })`,
+  `updateEvent({ eventId, title?, fields?, start?, end?, resourceIds? })` with the `"update"`
+  cause, `moveEvent({ eventId, start, end?, resourceIds? })` keeping the duration unless `end` is
+  given, `resizeEvent({ eventId, start } | { eventId, end })` and `deleteEvent({ eventId })`. A
+  title and fields travel as the proposal detail's `fields`, unread by the engine; the application
+  stores them in `onEventChange`.
+- **One pipeline.** An agent's change is a proposal with `{ input: "agent" }`, passed by the
+  calendar's own methods rather than read from the bridge. It goes through the unknown-event and
+  read-only checks, the policies, `onEventChange`, the pending overlay and `onEventChangeResult`
+  like any other, and a history records it unless its `inputs` leave agents out. A state change an
+  agent makes carries `source: "agent"` in the handler's detail (§9.2), also passed explicitly.
+- **Refusing.** An application can refuse in three places. The bridge's `allow`, which is the
+  application's, sees each action and its arguments before it runs. A policy gets the proposal's
+  detail in its context, so it can reject or flag what an agent proposes. `onEventChange` gets the
+  detail as its second argument, so it can throw.
+- **What isn't allowed isn't offered.** A read-only root offers no change actions, and `deleteEvent`
+  is offered only when `Root` sets `allowAgentDelete`. An action the root stops allowing leaves the
+  bridge's list; calling it anyway fails with the bridge's own message.
+- **Outcome.** A change goes through `proposeNow`, so the policies run once. A refusal known at
+  once throws `calendar-event-change-rejected: <reason>`, with the handler's error message after
+  it when the handler threw, and the step fails. Otherwise the step's result is the change:
+  `{ changeId, cause, eventId, proposed, status, reason? }`, where `status` is `"saved"`, or
+  `"validating"` or `"saving"` while it waits. `getChange({ changeId })` reads it later, from the
+  last 50 changes and the pending ones, as `"saved"` or `"rejected"` with the reason once settled.
+  A late failure never rejects anything: no unhandled rejection, whatever the save does.
+  `onEventChangeResult` hears every proposal exactly once, refused or not.
+- **Who connects.** The application creates the bridge, from its renderer's `agent` entry so that
+  it shares the calendar's copy of `@ui-sdk/core`, passes `allow`, and registers WebMCP tools if it
+  wants them. WebMCP is an experimental browser API: ui-sdk registers where the browser has it and
+  does nothing elsewhere. The packages never create a bridge, register a tool or call a model.
+- **What an agent can't see.** Only ui-sdk primitives are in the bridge's snapshot. The registry's
+  Base UI controls and an application's dialogs aren't. So everything an agent needs is an action
+  of the calendar, not a button in the toolbar, and a question a handler asks a person, such as
+  the recurrence scope, the application answers itself for an agent's change, or refuses it.
+
 ## 11. Drag, resize, selection, and creation
 
 `@moltenship/calendar-dnd` uses native Pointer Events ([ADR 0037](./docs/adr/0037-native-pointer-events.md)). Core packages know only semantic interaction contracts. Items dragged in from the rest of the page, and events dragged out to it, go through the same layer (below). The optional `@moltenship/calendar-dnd-kit` binds it to dnd-kit; the calendar's own drags stay on native Pointer Events.
@@ -995,11 +1162,14 @@ Pointer dragging is never the only path. The same commands are available through
 - an application's own form or dialog: it can check a change with `actions.checkEventChange()`
   and save it itself, as the demo's event dialog does, or propose it through
   `actions.proposeEventChange()`, as the demo's delete does;
-- programmatic `actions.proposeEventChange()`.
+- programmatic `actions.proposeEventChange()`;
+- in 2.0, an agent's action (§10).
 
 Explicit move and resize buttons and an event details surface in the registry are not built yet.
 
-`useCalendarPointer` takes the rendered `events`, `onPropose` and `timeZone`, and optionally `snap`
+`useCalendarPointer` is the React binding of `attachCalendarPointer`. It is part of `calendar-dnd`
+in 1.x; 2.0 moves it to the React integration, the facade keeps exporting it, and the Solid
+integration binds the same function (rule 4, planned). It takes the rendered `events`, `onPropose` and `timeZone`, and optionally `snap`
 (15 minutes by default), `announcer`, `check`, `columns`, `scrollContainer` (the nearest scrollable
 ancestor by default), `sidewaysScrollContainer` (a scroller nested in it that scrolls sideways in
 its place), `onPreview`, `disabled` (views pass their `isReadOnly` prop) and
@@ -1195,7 +1365,7 @@ The performance claim is enforced by production-build benchmarks on a recorded r
 | Warm range query           | p95 under 1 ms for indexed visible-range queries                                           |
 | Full 10k snapshot build    | p95 under 25 ms on the reference laptop                                                    |
 | 1k-fragment overlap layout | p95 under 8 ms                                                                             |
-| Pointer drag               | p95 library scripting under 4 ms/frame; zero React commits caused by pointer movement      |
+| Pointer drag               | p95 library scripting under 4 ms/frame; zero React commits caused by pointer movement, and in 2.0 no Solid update and no write to ui-sdk state |
 | Scroll                     | No work proportional to total event/resource count per frame                               |
 | Selection change           | Does not rebuild event index or unrelated view fragments                                   |
 | Bundle                     | Each package has a checked ESM size budget; optional adapters do not enter the base bundle |
@@ -1204,7 +1374,9 @@ Measured now, by hand on reference hardware (`vp run benchmark#core`,
 `vp run benchmark#recurrence`), not in CI: the 10k snapshot build, the warm queries and the
 recurrence year view. Nothing measures the layout, pointer-frame or scrolling rows yet (#188). Zero React
 commits on pointer moves, the 500-resource DOM bound and the 10,000-event agenda are tests in
-`vp test` and the a11y suite. The bundle budgets run in `vp run release:check`.
+`vp test` and the a11y suite. The bundle budgets run in `vp run release:check`. The two 2.0
+packages have provisional budgets, set again from their first settled build, and `calendar-react`'s
+is measured again then; until then a budget doesn't decide a 2.0 design question.
 
 ### Required techniques
 
@@ -1217,6 +1389,10 @@ commits on pointer moves, the 500-resource DOM bound and the 10,000-event agenda
 - Virtualization of unbounded axes.
 - No layout reads in render and no DOM measurement per event.
 - No `useEffect` bridge that renders stale controlled props before synchronizing.
+- In 2.0, nothing that changes per pointer move or per scroll frame is ui-sdk state. Event
+  fragments, cells and slots are elements the views render, with the pointer layer's data
+  attributes, not ui-sdk parts: the primitive's slots are the calendar's structural parts. That
+  changes only if a measurement at 1,000 fragments shows parts keep every row of the table above.
 
 ### Development diagnostics (not built yet)
 
@@ -1245,12 +1421,14 @@ SSR-compatible means the calendar can produce useful, deterministic server marku
 3. `timeZone`, `secondaryTimeZones`, `locale`, and week rules are explicit environment inputs.
 4. `Root` takes `now` (a `Temporal.Instant`) or `clock` (a `CalendarClock`); the types allow one, and `now` wins if both arrive.
 5. If `now` is omitted, transient today/current-time decoration appears after hydration rather than risking mismatch.
-6. IDs use React `useId` or deterministic entity keys, never random values.
+6. IDs use the framework's own source (React `useId`) or deterministic entity keys, never random values.
 7. The core and Temporal packages are safe in React Server Components.
 8. Interactive React/registry entry points declare their client boundary where a framework requires it. `calendar-react` and `calendar-dnd` do, and so does every registry component file that calls hooks, creates a context or sets event handlers: the registry's tests check the built registry for it, and the install test's Next.js page imports each item from a Server Component (#190).
 9. Measurements enhance a CSS-valid initial layout; they do not replace it.
 
 The SSR fixture runs render, hydrate, interaction, and unmount tests. A Vite client example and at least one full-stack React SSR example prove packaging boundaries without adding framework-specific runtime code.
+
+In 2.0 the same requirements bind the primitives and the Solid integration. A ui-sdk slot's attributes are a pure function of options and state, and its element bindings run only in the browser, so server markup stays a function of the root's inputs. An application creates its agent bridge in client code. The Solid integration renders and hydrates through `@solidjs/web`; its server tests are in progress, and the SSR fixture is React only.
 
 ## 16. Styling and shadcn contract
 
@@ -1298,7 +1476,8 @@ Rules:
 
 - CSS variables are the theme API; class names are implementation details in copied source.
 - Event-specific colors come from typed consumer data and the event renderer.
-- `data-calendar-part` on the React parts, `data-slot` on registry parts, `data-interaction` on a view during a pointer gesture, and state attributes such as `data-today`, `data-color`, `data-pending`, `data-dragging`, `data-invalid` and `data-closed` support plain CSS customization.
+- `data-calendar-part` on the package parts, `data-slot` on registry parts, `data-interaction` on a view during a pointer gesture, and state attributes such as `data-today`, `data-color`, `data-pending`, `data-dragging`, `data-invalid` and `data-closed` support plain CSS customization.
+- In 2.0 the package parts are ui-sdk slots, and ui-sdk writes a `data-slot` of its own on every slot's element. `data-calendar-part` stays the contract for package parts; that `data-slot` value is not one.
 - No runtime Tailwind import enters npm engine packages.
 - Motion respects `prefers-reduced-motion` and never obscures state changes.
 - Default source follows shadcn's existing token names instead of introducing a parallel design system.
@@ -1331,6 +1510,8 @@ WCAG 2.2 AA is a release gate, not an example-app enhancement.
 The announcer describes event title, proposed start and end (the registry's messages name each end's zone when their offsets differ), resource, validation result, commit, and rollback. Applications localize or replace the builders: `CalendarAnnouncementMessages`, passed to `Announcer`'s `messages`. Announcing a DST shift waits on #187.
 A rollback carries what `onEventChange` threw: the registry's English messages read an `AbortError`
 as the user cancelling, as when they dismiss the recurrence scope question, not as a failed save.
+
+In 2.0 the roles, names, relationships and focus order of the parts must come out of the primitives as they are in 1.x, in both frameworks; the a11y suite gates the React move as before, and the Solid integration joins it with its first views (planned).
 
 Automated axe checks, keyboard integration tests, reduced-motion tests, and manual VoiceOver/NVDA scenarios are required before release. The manual passes haven't run yet (#186), and they don't block rc.1: the owner decided they can follow the release (14 October 2026).
 
@@ -1366,6 +1547,12 @@ Automated axe checks, keyboard integration tests, reduced-motion tests, and manu
   roots, and, in Chromium, real touches through CDP: a swipe scrolls, a long-press drag doesn't.
 - Optimistic confirm/reject races.
 - Custom view installed without internal imports.
+
+In 2.0 these tests are the regression harness for the move onto the primitives: they must pass
+without a change to what they assert. The primitives get tests of their own that run without a
+framework or a DOM where the code needs none (the store, the runtime), and the Solid integration
+tests of its own for the same contracts. `calendar-testing` stays a React
+harness.
 
 ### Apps' tests
 
@@ -1469,7 +1656,10 @@ One application owns both explanation and proof:
 
 Built so far: the overview, the view gallery, custom views, the theme builder and registry/source;
 the accessibility page has the keyboard map and live announcements. Not built yet: the composition,
-event, timezone/DST, interaction, performance and SSR labs (phase 7).
+event, timezone/DST, interaction, performance and SSR labs (phase 7). Built for 2.0 (phase 9):
+the agent and WebMCP guides with live examples, a Markdown version of every page with `llms.txt`
+and `llms-full.txt`, and a skill for coding agents, which the facade ships in its tarball beside
+the docs.
 
 Examples import the public facade or install registry source. They may not reach into workspace internals.
 
@@ -1637,6 +1827,32 @@ series' clock when given the calendar's zone, write an override for a start drop
 two equal wall times, and count cancelled overrides the application passes as hiding occurrences;
 the DST matrix covers edits in New York, Sydney and Lord Howe as well as Berlin.
 
+### Phase 9 — version 2.0 on ui-sdk primitives
+
+Decided in #275 (ADR 0275). The kernel comes first; the waves after it don't wait for each other,
+except that the docs for agents need the agent surface.
+
+1. **Kernel (built).** `calendar-primitives` with the store, the runtime and the calendar
+   primitive; `calendar-react` rendering it; `calendar-solid` and `apps/demo-solid`; rules 12 to 15
+   enforced; release tooling for the two packages.
+   Gate: the React package's tests pass with no change to what they assert, among them the tests
+   behind ADR 0070 and the zero-commit pointer tests; the a11y suite passes; a Solid root renders,
+   hydrates and keeps a controlled slice current.
+2. **Interaction (in progress).** Keyboard gestures, roving focus, gesture drafts and the history
+   binding move into the primitives; `useCalendarPointer` moves to the React integration and
+   `calendar-dnd` drops its React peer; the Solid integration binds all of it.
+   Gate: the keyboard and pointer parity tests pass unchanged in React, and the same scenarios pass
+   in Solid.
+3. **Agents (built).** The agent surface of §10, proposals as `"agent"`, and the proposal's
+   detail for policies and `onEventChange`.
+   Gate: through a bridge, a test navigates, finds events and proposes a change; `allow`, a policy
+   and the handler each refuse one; a root that doesn't allow deletes offers no delete; no package
+   creates a bridge or registers a tool.
+4. **Docs for agents (built).** Agent and WebMCP guides with live examples, `llms.txt`, and a
+   skill for coding agents, on the docs site.
+5. **Views (planned).** The registry's views on the new parts, and Solid views.
+   Gate: the a11y suite in both frameworks; the performance contract of §14 measured on both.
+
 ## 23. Prototype risks to retire early
 
 1. **React controlled bridge:** prove synchronous controlled state plus fine-grained selector subscriptions under SSR/Strict Mode. Retired by the #18 spike (ADR 0018) and `calendar-react`'s `react-gate.test.tsx`; the store is `calendar-react`'s own since #70 (ADR 0070).
@@ -1646,13 +1862,20 @@ the DST matrix covers edits in New York, Sydney and Lord Howe as well as Berlin.
 5. **Index implementation:** compare the selected interval-tree adapter with a simple reference and retain it only if build/query/memory budgets pass. Retired by #16 (ADR 0016) and the #24 engine gate.
 6. **Typed calendar factory:** prove generics flow through compound components and custom views without casts in consumer code. Retired by the #18 spike and #26.
 
+7. **Primitives under the React contract (2.0):** prove that a `Root` rendering the ui-sdk primitive keeps a controlled value current in the render that receives it, composes commands in one handler and commits nothing on pointer movement, under Strict Mode and SSR. In progress; the tests behind ADR 0070 decide it.
+8. **Solid 2.0 (2.0):** prove the runtime as a memo, updates no wider than a selector, and server rendering with hydration through `@solidjs/web`, on tooling that is young. In progress.
+9. **A pre-1.0 peer (2.0):** ui-sdk can change any API between betas. Contained by public entries only, one catalog version and one pull request per upgrade; the fallback is in ADR 0275.
+10. **Agent attribution (2.0):** prove that an action the bridge calls is told apart from the application's own code, and that a proposal keeps `"agent"` across an await. The agent's methods pass the input and the source themselves (§10), and the agent tests of both integrations hold it.
+
 None of these risks waits until the final polishing phase.
 
 ## 24. Versioning and upgrade story
 
-- Packages follow semantic versioning and lockstep releases through 1.0.
+- Packages follow semantic versioning and lockstep releases, through 2.0 as well.
+- 2.0 is a major version: the React packages gain required peers (`@ui-sdk/core`, `@ui-sdk/react`). The facade's exports keep their signatures unless a release note names the break.
+- ui-sdk is pre-1.0 and not our contract. The factory's hooks, parts and types are; an application imports ui-sdk only for its own agent bridge. Where a public type of ours carries ui-sdk data, such as a change's source, it declares the fields it promises and doesn't alias a ui-sdk type. The APIs ui-sdk marks experimental that the calendar uses or will use are the `agent` key of a primitive, `dispatch` and `withSource`; an upgrade checks those first.
 - Public package exports, event semantics, view strategies, transactions, and CSS variable names are compatibility contracts.
-- The React store's internals, interval-tree types, layout caches, and DOM structure are not contracts. The data attributes the pointer layer reads (`data-event-id`, `data-date`, `data-resize`, …) are.
+- The store's internals, the calendar primitive's definition, interval-tree types, layout caches, and DOM structure are not contracts. The data attributes the pointer layer reads (`data-event-id`, `data-date`, `data-resize`, …) are.
 - Registry source is user-owned after installation. Running `shadcn add` again asks before it replaces a file; `--overwrite` replaces them all. The theme's CSS block is written again on each add, so apps change tokens in their own rules.
 - The registry isn't versioned on its own: the docs site serves it from `main`. Each item's `meta.compatibility`, and `compatibility.json`, record the `@moltenship/calendar` range it needs.
 - Deprecations include codemod or mechanical migration guidance where feasible.
@@ -1671,6 +1894,13 @@ None of these risks waits until the final polishing phase.
 - A custom installer when the shadcn registry already supplies one.
 - Private or undocumented framework hooks.
 
+For 2.0, also:
+
+- Frameworks other than React and SolidJS.
+- Running a model or an agent, creating the agent bridge, or registering WebMCP tools for the application.
+- ui-sdk's ready-made components, its Calendar and Timeline among them, in the packages.
+- A Solid test harness or a Solid dnd-kit adapter: `calendar-testing` and `calendar-dnd-kit` stay React.
+
 ## 26. Architecture invariants
 
 Before merging any feature, verify:
@@ -1678,7 +1908,7 @@ Before merging any feature, verify:
 - [ ] External events remain authoritative.
 - [ ] Every interval is explicitly typed and half-open.
 - [ ] No host timezone or current time is read implicitly during render.
-- [ ] Core imports no React, DOM, Jotai, dnd-kit, Tailwind, or application code.
+- [ ] Core imports no UI framework, ui-sdk, DOM, Jotai, dnd-kit, Tailwind, or application code.
 - [ ] The change does not add work proportional to all events/resources inside a render or frame.
 - [ ] Pointer interaction has explicit-action and keyboard equivalents (#36).
 - [ ] Controlled state is not mirrored through an effect.
@@ -1687,3 +1917,5 @@ Before merging any feature, verify:
 - [ ] SSR markup is deterministic or the client-only enhancement is intentional.
 - [ ] The issue's "Done when" list is met, with tests for each behavioural claim.
 - [ ] No new boolean-prop matrix or god file was introduced.
+- [ ] In 2.0, behaviour lands in the primitives, not in one integration, and ui-sdk and Solid stay inside rules 12 to 15.
+- [ ] In 2.0, an agent's change takes the same proposal pipeline as a person's.

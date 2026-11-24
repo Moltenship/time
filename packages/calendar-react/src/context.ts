@@ -1,24 +1,21 @@
+import type { CalendarNowSource } from "@moltenship/calendar-core";
 import type {
-  CalendarNowSource,
-  CalendarPendingChanges,
-  EventId,
-  ResourceId,
-} from "@moltenship/calendar-core";
+  AnyCalendarState,
+  AnyPendingChanges,
+  CalendarPrimitive,
+  CalendarStateSource,
+} from "@moltenship/calendar-primitives";
+import type { PrimitiveHandle } from "@ui-sdk/react/primitive";
 import { createContext, useContext, type Context } from "react";
 
 import type { CalendarMeta, CalendarSemanticActions } from "./calendar-types";
-import type { CalendarPublicState } from "./types";
 import type { AnyCalendarView, CalendarActiveView } from "./views";
 
-export type AnyCalendarState = CalendarPublicState<string, unknown, unknown>;
-export type AnyPendingChanges = CalendarPendingChanges<unknown, EventId, ResourceId>;
+export type { AnyCalendarState, AnyPendingChanges, CalendarStateSource };
 
-export interface CalendarStateSource<TState = AnyCalendarState> {
-  /** What the server and hydration read, when it differs from `getSnapshot`. */
-  readonly getServerSnapshot?: () => TState;
-  readonly getSnapshot: () => TState;
-  readonly subscribe: (listener: () => void) => () => void;
-}
+/** The root's ui-sdk instance, which the chrome parts render their slots through. */
+// oxlint-disable-next-line typescript/no-explicit-any -- the parts render every factory's root.
+export type CalendarHandle = PrimitiveHandle<CalendarPrimitive<string, any, any, any>>;
 
 // oxlint-disable-next-line typescript/no-explicit-any -- commands accept every factory's values.
 type AnyCalendarActions = CalendarSemanticActions<any, any, any, any, any, any>;
@@ -28,6 +25,8 @@ export interface CalendarContexts {
   readonly actions: Context<AnyCalendarActions | null>;
   /** The root's pending changes, for `useCalendarPendingChanges`. */
   readonly changes: Context<CalendarStateSource<AnyPendingChanges> | null>;
+  /** The root's ui-sdk instance; ui-sdk keeps its own lookup internal, so the factory carries it. */
+  readonly handle: Context<CalendarHandle | null>;
   readonly meta: Context<CalendarMeta<unknown, unknown> | null>;
   readonly source: Context<CalendarStateSource | null>;
   readonly state: Context<AnyCalendarState | null>;
@@ -40,6 +39,7 @@ export function createCalendarContexts(): CalendarContexts {
   return Object.freeze({
     actions: createContext<AnyCalendarActions | null>(null),
     changes: createContext<CalendarStateSource<AnyPendingChanges> | null>(null),
+    handle: createContext<CalendarHandle | null>(null),
     meta: createContext<CalendarMeta<unknown, unknown> | null>(null),
     source: createContext<CalendarStateSource | null>(null),
     state: createContext<AnyCalendarState | null>(null),

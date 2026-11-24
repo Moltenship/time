@@ -128,7 +128,7 @@ function createApp(
     },
     propose: async (proposal: Proposal, detail: CalendarProposalDetail = { input: "pointer" }) => {
       const result = await transactions.propose(proposal, {
-        onEventChange: (change) => app.handler(change),
+        onEventChange: (change, detail) => app.handler(change, detail),
         policies,
         snapshot: cache.getSnapshot(events),
         timeZone,
@@ -303,9 +303,9 @@ describe("inverses", () => {
     const app = createApp([event("a", "09:00", "10:00", ["room-1"])]);
     const causes: string[] = [];
     const save = app.handler;
-    app.handler = (change) => {
+    app.handler = (change, detail) => {
       causes.push(change.cause);
-      return save(change);
+      return save(change, detail);
     };
     await app.propose({ cause: "resize-end", eventId: "a", proposed: timed("09:00", "11:00") });
     await app.propose(moveTo("a", "13:00", "15:00", ["room-2"]));
@@ -500,10 +500,10 @@ describe("queueing and timing", () => {
     await app.propose(moveTo("a", "10:00", "11:00"));
     let finish!: () => void;
     const save = app.handler;
-    app.handler = (change) =>
+    app.handler = (change, detail) =>
       new Promise<void>((resolve) => {
         finish = () => {
-          void save(change);
+          void save(change, detail);
           resolve();
         };
       });
@@ -605,10 +605,10 @@ function createSnappedApp(app: ReturnType<typeof createApp>) {
 function holdSaves(app: ReturnType<typeof createApp>) {
   const save = app.handler;
   const held: (() => void)[] = [];
-  app.handler = (change) =>
+  app.handler = (change, detail) =>
     new Promise<void>((resolve) => {
       held.push(() => {
-        void save(change);
+        void save(change, detail);
         resolve();
       });
     });

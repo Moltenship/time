@@ -282,8 +282,10 @@ describe("warnings", () => {
     expect(
       await transactions.propose(proposal, { ...base, onEventChange, policies: [warn] }),
     ).toMatchObject({ change: { warnings: ["outside-availability"] }, status: "committed" });
+    // The handler also hears the proposal's detail, the app's own here.
     expect(onEventChange).toHaveBeenCalledWith(
       expect.objectContaining({ proposed: evening, warnings: ["outside-availability"] }),
+      { input: "api" },
     );
   });
 

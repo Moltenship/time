@@ -284,11 +284,18 @@ describe("commands", () => {
     const harness = await render(<Application />);
     await act(async () => store.actions.setView("agenda"));
 
-    expect(onViewChange).toHaveBeenCalledExactlyOnceWith("agenda", {
-      controlled: true,
-      previous: "month",
-      slice: "view",
-    });
+    // 2.0's details are ui-sdk's change details: the slice's fields plus why, how, and cancel.
+    expect(onViewChange).toHaveBeenCalledExactlyOnceWith(
+      "agenda",
+      expect.objectContaining({
+        canceled: false,
+        controlled: true,
+        previous: "month",
+        reason: "imperative",
+        slice: "view",
+        source: "programmatic",
+      }),
+    );
     expect(store.getSnapshot().view).toBe("month");
     expect(
       harness.container.querySelector("[data-gate-view]")?.getAttribute("data-gate-view"),

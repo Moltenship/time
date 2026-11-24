@@ -39,7 +39,7 @@ import {
 import type { KeyboardGrab } from "./keyboard-store";
 import { CalendarResourcesContext } from "./resources";
 import { useStateSelector } from "./state-binding";
-import type { CalendarStateSelectorOptions } from "./types";
+import type { CalendarCommandOptions, CalendarStateSelectorOptions } from "./types";
 
 export interface CalendarKeyboardOptions {
   /**
@@ -57,6 +57,14 @@ export interface CalendarKeyboardOptions {
 }
 
 const DEFAULT_CREATE_DURATION: Temporal.DurationLike = { hours: 1 };
+
+/**
+ * What a key tells the state handlers it changes: its reason, and the key itself, from which the
+ * store works out the source, the keyboard's, or the agent's while an agent's step presses it.
+ */
+function keyCommand(event: KeyboardEvent<HTMLElement>): CalendarCommandOptions {
+  return { event: event.nativeEvent, reason: "keyboard-navigation" };
+}
 const keyboardInput: CalendarProposalDetail = Object.freeze({ input: "keyboard" });
 
 /** Handlers for the element that holds a view's focusable cells and events. */
@@ -129,38 +137,48 @@ function createKeyboardHandlers(
     return { snap: getSnap(), timeZone: view().environment.timeZone };
   }
 
-  /** Navigates the view by whole ranges until it shows `date`. */
-  function reveal(date: Temporal.PlainDate) {
+  /**
+   * Navigates the view by whole ranges until it shows `date`. `command` carries the key, or the
+   * focus change, behind it, so the state handlers hear a person's keys as the keyboard's.
+   */
+  function reveal(date: Temporal.PlainDate, command: CalendarCommandOptions) {
     const { definition, environment, options, range } = view();
     if (plainDateIntervalContains(range, date)) return;
     const { anchorDate } = read();
     actions.setAnchorDate(
       anchorShowingDate(definition.strategy, anchorDate, date, environment, options),
+      command,
     );
   }
 
   /** Moves the calendar's focus and, once the view renders it, DOM focus. */
-  function moveFocus(focus: CalendarFocus | null) {
+  function moveFocus(focus: CalendarFocus | null, command: CalendarCommandOptions) {
     if (sameFocus(focus, read().focus as CalendarFocus | null)) {
       roving.focusTabStop("now");
       return;
     }
     roving.focusTabStop("after-update");
-    actions.setFocus(focus);
-    if (focus !== null) reveal(focus.date);
+    actions.setFocus(focus, command);
+    if (focus !== null) reveal(focus.date, command);
   }
 
-  function apply(result: CalendarSpatialNavigation | null): boolean {
+  function apply(
+    result: CalendarSpatialNavigation | null,
+    command: CalendarCommandOptions,
+  ): boolean {
     if (result === null) return false;
     if ("focus" in result) {
-      moveFocus(result.focus);
+      moveFocus(result.focus, command);
     } else {
       const { definition, options } = view();
       // Focus enters the next range once it renders, from its end when paging back.
       roving.focusTabStop("after-update");
       if (result.page < 0) roving.enterFromEnd();
-      actions.setAnchorDate(definition.strategy.navigate(read().anchorDate, result.page, options));
-      actions.setFocus(null);
+      actions.setAnchorDate(
+        definition.strategy.navigate(read().anchorDate, result.page, options),
+        command,
+      );
+      actions.setFocus(null, command);
     }
     return true;
   }
@@ -181,7 +199,8 @@ function createKeyboardHandlers(
   /** What the root's policies would say to committing `session` now, as its preview shows. */
   function checkOf(session: CalendarKeyboardSession): CalendarInteractionCheck {
     const proposal = keyboardSessionProposal(session);
-    return proposal === null ? null : actions.checkEventChange(proposal);
+    // The question the commit will ask, with its input, so a policy answers both alike.
+    return proposal === null ? null : actions.checkEventChange(proposal, keyboardInput);
   }
 
   /**
@@ -223,7 +242,11 @@ function createKeyboardHandlers(
     return session;
   }
 
-  function grab(focus: CalendarFocus, cause: "create" | "move" | "resize-end"): boolean {
+  function grab(
+    focus: CalendarFocus,
+    cause: "create" | "move" | "resize-end",
+    command: CalendarCommandOptions,
+  ): boolean {
     if (focus.kind !== "event") {
       if (cause !== "create") return false;
       const session = startCreate(focus);
@@ -235,7 +258,7 @@ function createKeyboardHandlers(
         session,
       };
       keyboard.set(next);
-      moveFocus(focusOfSession(session));
+      moveFocus(focusOfSession(session), command);
       announce(next, { phase: "start" });
       return true;
     }
@@ -255,39 +278,43 @@ function createKeyboardHandlers(
     return true;
   }
 
-  function step(current: KeyboardGrab, command: CalendarNavigationCommand) {
-    const cursor = cellOf(navigate(command, current.session.cursor));
+  function step(
+    current: KeyboardGrab,
+    key: CalendarNavigationCommand,
+    command: CalendarCommandOptions,
+  ) {
+    const cursor = cellOf(navigate(key, current.session.cursor));
     if (cursor === null) return;
     const session = moveKeyboardCursor(current.session, cursor, interactionOptions());
     if (session === current.session) return;
     const next = { ...current, check: checkOf(session), session };
     keyboard.set(next);
-    moveFocus(focusOfSession(session));
+    moveFocus(focusOfSession(session), command);
     announce(next, { phase: "step" });
   }
 
   /** Grabs the other edge, starting the resize over from the event as it was. */
-  function switchEdge(current: KeyboardGrab) {
+  function switchEdge(current: KeyboardGrab, command: CalendarCommandOptions) {
     const { cell, event, session } = current;
     if (event === null || !session.cause.startsWith("resize")) return;
     const cause = session.cause === "resize-end" ? "resize-start" : "resize-end";
     const restarted = startKeyboardSession({ cause, cell, event }, interactionOptions());
     const next = { ...current, check: null, session: restarted };
     keyboard.set(next);
-    moveFocus(focusOfSession(restarted));
+    moveFocus(focusOfSession(restarted), command);
     announce(next, { phase: "start" });
   }
 
-  function cancel(current: KeyboardGrab) {
+  function cancel(current: KeyboardGrab, command: CalendarCommandOptions) {
     keyboard.set(null);
-    moveFocus(current.origin);
+    moveFocus(current.origin, command);
     announce(current, { phase: "cancel" });
   }
 
-  function commit(current: KeyboardGrab) {
+  function commit(current: KeyboardGrab, command: CalendarCommandOptions) {
     const proposal = keyboardSessionProposal(current.session);
     if (proposal === null) {
-      cancel(current);
+      cancel(current, command);
       return;
     }
     keyboard.set(null);
@@ -305,12 +332,16 @@ function createKeyboardHandlers(
         // A policy may have moved the event off the date focus is on.
         if (eventId !== null && proposed !== null && owned()) {
           const { cursor } = current.session;
-          moveFocus({
-            date: dateOn(proposed, cursor.date),
-            eventId,
-            kind: "event",
-            resourceId: resourceOn(proposed, cursor.resourceId),
-          });
+          // Still the key's doing: focus follows the event it committed.
+          moveFocus(
+            {
+              date: dateOn(proposed, cursor.date),
+              eventId,
+              kind: "event",
+              resourceId: resourceOn(proposed, cursor.resourceId),
+            },
+            command,
+          );
         }
         announce(current, {
           phase: "commit",
@@ -318,7 +349,7 @@ function createKeyboardHandlers(
           warnings: result.change.warnings,
         });
       } else {
-        if (owned()) moveFocus(current.origin);
+        if (owned()) moveFocus(current.origin, command);
         announce(current, {
           phase: "reject",
           reason: result.reason,
@@ -368,24 +399,25 @@ function createKeyboardHandlers(
   }
 
   function onGrabbedKey(current: KeyboardGrab, event: KeyboardEvent<HTMLElement>): boolean {
-    const command = navigationKeys[event.key];
-    if (command !== undefined) {
-      step(current, command);
+    const key = navigationKeys[event.key];
+    const command = keyCommand(event);
+    if (key !== undefined) {
+      step(current, key, command);
       return true;
     }
     switch (event.key) {
       case "Enter":
-        commit(current);
+        commit(current, command);
         return true;
       case " ":
-        if (event.shiftKey) switchEdge(current);
-        else commit(current);
+        if (event.shiftKey) switchEdge(current, command);
+        else commit(current, command);
         return true;
       case "Escape":
-        cancel(current);
+        cancel(current, command);
         return true;
       case "Tab":
-        cancel(current);
+        cancel(current, command);
         return false;
       default:
         return false;
@@ -393,20 +425,27 @@ function createKeyboardHandlers(
   }
 
   function onIdleKey(focus: CalendarFocus | null, event: KeyboardEvent<HTMLElement>): boolean {
-    const command = navigationKeys[event.key];
-    if (command !== undefined) return !event.shiftKey && apply(navigate(command, focus));
+    const key = navigationKeys[event.key];
+    const command = keyCommand(event);
+    if (key !== undefined) return !event.shiftKey && apply(navigate(key, focus), command);
     if (focus === null) return false;
     switch (event.key) {
       // Enter on an event is left to the element, which usually opens it.
       case "Enter":
-        return focus.kind !== "event" && !event.shiftKey && apply(navigate("enter", focus));
+        return (
+          focus.kind !== "event" && !event.shiftKey && apply(navigate("enter", focus), command)
+        );
       case "Escape":
-        return focus.kind === "event" && apply(navigate("exit", focus));
+        return focus.kind === "event" && apply(navigate("exit", focus), command);
       // A read-only root takes no changes, so Space is left to the element, as Enter is.
       case " ":
         return (
           !isReadOnly &&
-          grab(focus, focus.kind !== "event" ? "create" : event.shiftKey ? "resize-end" : "move")
+          grab(
+            focus,
+            focus.kind !== "event" ? "create" : event.shiftKey ? "resize-end" : "move",
+            command,
+          )
         );
       default:
         return false;
@@ -420,9 +459,10 @@ function createKeyboardHandlers(
       const next = event.relatedTarget;
       if (next !== null && region.contains(next)) return;
       // A grabbed event re-rendering in a new place blurs on its way; focus returns to it.
+      const command = { event: event.nativeEvent, reason: "focus-change" } as const;
       setTimeout(() => {
         const current = keyboard.get();
-        if (current !== null && !region.contains(document.activeElement)) cancel(current);
+        if (current !== null && !region.contains(document.activeElement)) cancel(current, command);
       });
     },
     onKeyDown(event: KeyboardEvent<HTMLElement>) {

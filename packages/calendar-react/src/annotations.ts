@@ -1,18 +1,13 @@
 import {
   projectTimeGridAnnotations,
-  type AnnotationSnapshot,
-  type CalendarAnnotationSource,
   type TimeGridAnnotationGeometry,
   type TimeGridAnnotationMark,
   type TimeGridColumn,
 } from "@moltenship/calendar-core";
+import type { CalendarAnnotations } from "@moltenship/calendar-primitives";
 import { createContext, useContext, useMemo, type Context } from "react";
 
-/** The root's annotations and the sources it shows. */
-export interface CalendarAnnotations {
-  readonly snapshot: AnnotationSnapshot;
-  readonly sources: readonly CalendarAnnotationSource[];
-}
+export type { CalendarAnnotations };
 
 /** The nearest root's annotations, shared by every factory so annotation hooks work in any view. */
 export const CalendarAnnotationsContext: Context<CalendarAnnotations | null> =

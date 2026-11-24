@@ -464,14 +464,21 @@ describe("followers that watch", () => {
   });
 
   test("hear what the policies would say about the drop", () => {
+    const asked: unknown[] = [];
     const { element } = setup({
-      check: () => ({ reason: "overlap", status: "rejected" }) as never,
+      check: (_proposal, detail) => {
+        asked.push(detail);
+        return { reason: "overlap", status: "rejected" } as never;
+      },
     });
     const { ends, previews } = watch();
 
     pointer("pointerdown", element, xAt("2026-08-17"), yAt("09:30"));
     pointer("pointermove", element, xAt("2026-08-18"), yAt("11:30"));
     expect(previews.at(-1)?.validity).toBe("invalid");
+
+    // The preview asks as the drop will propose: as the pointer.
+    expect(asked).toEqual([{ input: "pointer" }]);
 
     // The release proposes all the same; the root's policies reject it.
     pointer("pointerup", element, xAt("2026-08-18"), yAt("11:30"));

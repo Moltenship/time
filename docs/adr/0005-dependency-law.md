@@ -1,6 +1,8 @@
 # ADR 0005: One-way package dependency law
 
-- Status: Accepted
+- Status: Accepted, amended by [ADR 0275](./0275-ui-sdk-primitives.md). The law stands. 2.0 adds a
+  primitives plane between the engine and the framework integrations, and rules for it, for ui-sdk
+  and for Solid (`architecture.md` §2); the engine stays free of every framework and of ui-sdk.
 - Date: 2026-08-15
 
 ## Context

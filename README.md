@@ -8,7 +8,8 @@
 </h1>
 
 <p align="center">
-  A React 19 calendar built on the Temporal API, with views you copy into your app and own.
+  A calendar for React 19 built on the Temporal API, with views you copy into your app and own,
+  and an agent surface so AI agents can read it and act on it.
 </p>
 
 <p align="center">
@@ -39,8 +40,9 @@ The screenshot is the [live demo](https://moltenship-time-demo.vercel.app), a Go
 app built from the same views. Its source is in [`apps/demo`](./apps/demo).
 
 > [!NOTE]
-> The packages are on npm as a release candidate for 1.0.0. The API can still change before 1.0.0
-> if the release candidate turns up problems.
+> Time 2.0 is a pre-release. It rebuilds the calendar's parts on [ui-sdk](https://ui-sdk.dev),
+> which is itself in beta, so the API can still change before 2.0.0. Coming from 1.x? See
+> [Migrating to 2.0](https://time.molten.sh/docs/migrating-to-2).
 
 ## Features
 
@@ -61,6 +63,12 @@ app built from the same views. Its source is in [`apps/demo`](./apps/demo).
   `window`, so the server and the browser render the same markup from the same props.
 - **Recurrence and iCalendar.** Separate packages expand RRULE series inside the visible range and
   parse ICS feeds.
+- **Agents.** The calendar's parts are ui-sdk components, so an AI agent can list a calendar's
+  events, navigate, switch views, and create, rename, move, resize and delete events. Your app
+  decides what an agent may do and saves every change itself. See
+  [Agents](https://time.molten.sh/docs/agents).
+- **React and Solid.** The behaviour lives in a framework-free package. React is the main
+  integration, and [SolidJS 2](https://time.molten.sh/docs/api/solid) is a preview.
 
 [Comparison](https://time.molten.sh/docs/comparison) sets Time beside FullCalendar and
 react-big-calendar, including where they're ahead.
@@ -68,12 +76,13 @@ react-big-calendar, including where they're ahead.
 ## Install
 
 ```bash
-pnpm add @moltenship/calendar react react-dom
+pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 Time needs:
 
 - React 19.
+- `@ui-sdk/core` and `@ui-sdk/react`, peer dependencies since 2.0.
 - A runtime with `Temporal`. Node.js 26 and later include it. In a browser without it, load a
   polyfill before the calendar. Time never bundles one.
 - TypeScript 6 or later with `"lib": ["DOM", "DOM.Iterable", "ESNext"]`.
@@ -185,6 +194,27 @@ The docs are at **[time.molten.sh](https://time.molten.sh/docs)**. Good places t
 - [Events and adapters](https://time.molten.sh/docs/concepts/events)
 - [Interactions](https://time.molten.sh/docs/interactions)
 - [Theming](https://time.molten.sh/docs/theming)
+- [Agents](https://time.molten.sh/docs/agents)
+
+### For coding agents
+
+The docs are written to be read by a coding agent too:
+
+- [`/llms.txt`](https://time.molten.sh/llms.txt) is the index, and every page has a Markdown
+  version: add `.md` to its address. [`/llms-full.txt`](https://time.molten.sh/llms-full.txt) is
+  every page in one file.
+- `@moltenship/calendar` ships the same docs, for the version you installed, in
+  `node_modules/@moltenship/calendar/docs`.
+- An [Agent Skill](https://agentskills.io) teaches an agent the library:
+
+  ```bash
+  npx skills add Moltenship/time --skill moltenship-time
+  ```
+
+  Its source is in [`packages/calendar/skills`](./packages/calendar/skills/moltenship-time), and it
+  ships in the package beside the docs.
+
+See [Build with a coding agent](https://time.molten.sh/docs/agents/coding-agents).
 
 To work on the docs, run `vp run dev` and edit the MDX in
 [`apps/showcase/content/docs`](./apps/showcase/content/docs). Start the demo with

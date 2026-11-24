@@ -8,6 +8,7 @@ import { afterEach, expect, expectTypeOf, test, vi } from "vite-plus/test";
 
 import {
   createCalendar,
+  createCalendarStore,
   defineCalendarView,
   type CalendarDiagnostic,
   type CalendarFrameProps,
@@ -263,6 +264,51 @@ test("composed callback refs preserve React 19 cleanup on replacement and unmoun
   expect(partRefs?.frame.current).toBeNull();
 });
 
+test("with two copies of a part, meta's ref holds the one still rendered", async () => {
+  let partRefs: CalendarPartRefs | undefined;
+  function Probe() {
+    partRefs = Calendar.useCalendarMeta().refs;
+    return null;
+  }
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mountedRoots.push(root);
+  const render = (first: boolean, second: boolean) =>
+    act(async () =>
+      root.render(
+        <Calendar.Root
+          defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
+          defaultTimeZone="Asia/Tbilisi"
+          defaultView="month"
+          events={events}
+          locale="en-GB"
+          resources={resources}
+          weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+        >
+          <Probe />
+          {first ? <Calendar.Title data-copy="first" /> : null}
+          {second ? <Calendar.Title data-copy="second" /> : null}
+        </Calendar.Root>,
+      ),
+    );
+  const title = (id: string) => container.querySelector(`[data-copy='${id}']`);
+
+  await render(true, true);
+  expect(partRefs?.title.current).toBe(title("second"));
+
+  // The copy that goes away gives the ref back to the one that stays, either way round.
+  await render(true, false);
+  expect(partRefs?.title.current).toBe(title("first"));
+
+  await render(true, true);
+  await render(false, true);
+  expect(partRefs?.title.current).toBe(title("second"));
+
+  await render(false, false);
+  expect(partRefs?.title.current).toBeNull();
+});
+
 test("descendant layout effects navigate with the latest committed view and handler", async () => {
   const actionHistory: ReturnType<typeof Calendar.useCalendarActions>[] = [];
   const navigationCommits: string[] = [];
@@ -369,4 +415,35 @@ test("a factory rejects two views with the same name", () => {
   expect(() =>
     createCalendar<Meeting>()({ eventAdapter: adapter, views: [monthView, monthView] }),
   ).toThrow("calendar-duplicate-view-name:month");
+});
+
+test("a calendar without resources takes a store made without type arguments", async () => {
+  const withoutResources = defineEventAdapter<Meeting>()({
+    getId: (event) => event.id,
+    getInterval: (event) => ({ end: event.end, kind: "timed", start: event.start }),
+    getResourceIds: () => [],
+    getTitle: (event) => event.title,
+  });
+  const Plain = createCalendar<Meeting>()({ eventAdapter: withoutResources, views: [monthView] });
+  // The store's resource IDs are the default `ResourceId`; the adapter's used to be `never`.
+  const store = createCalendarStore({
+    defaultAnchorDate: Temporal.PlainDate.from("2026-08-15"),
+    defaultTimeZone: "UTC",
+    defaultView: "month",
+  });
+
+  const container = await mount(
+    <Plain.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
+      defaultTimeZone="UTC"
+      events={events}
+      locale="en-GB"
+      store={store}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Plain.ActiveView />
+    </Plain.Root>,
+  );
+
+  expect(container.querySelector("[data-active-view]")?.textContent).toBe("month");
 });

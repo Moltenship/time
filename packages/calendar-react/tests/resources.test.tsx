@@ -184,6 +184,19 @@ test("expansion follows a controlled expandedResourceIds and reports each reques
   expect(columns(harness.container)).toEqual(["floor-1:", "garage:", "unassigned:lunch"]);
 });
 
+test("a toggle's click reaches the handler as a resource toggle, with the click behind it", async () => {
+  const heard: string[] = [];
+  const harness = await render({
+    onExpandedResourceIdsChange: (_next, detail) =>
+      heard.push(`${detail.reason} ${detail.event?.type ?? "no-event"}`),
+  });
+
+  // `onClick={toggle}`, as the registry's headers pass it.
+  await click(harness.container, "floor-1");
+
+  expect(heard).toEqual(["resource-toggle click"]);
+});
+
 test("expand and collapse commands in one handler compose", async () => {
   let commands: ReturnType<typeof useResourceExpansion>[] = [];
   function Commands() {
@@ -217,4 +230,43 @@ test("expand and collapse commands in one handler compose", async () => {
 
   await act(async () => commands[0]!.collapse());
   expect(commands.map(({ expanded }) => expanded)).toEqual([false, true]);
+});
+
+test("an expansion command ignores an argument that isn't a cause, as a switch's boolean", async () => {
+  const heard: string[] = [];
+  let commands: ReturnType<typeof useResourceExpansion> | null = null;
+  function Commands() {
+    commands = useResourceExpansion("floor-1");
+    return null;
+  }
+  const harness = await renderWithHarness(
+    <RoomCalendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      events={bookings}
+      locale="en-US"
+      onExpandedResourceIdsChange={(next, detail) =>
+        heard.push(`${next.join(",") || "none"} ${detail.reason} ${detail.source}`)
+      }
+      resources={rooms}
+      timeZone="UTC"
+      weekRules={gateWeekRules}
+    >
+      <Commands />
+    </RoomCalendar.Root>,
+  );
+  harnesses.push(harness);
+
+  // What `onCheckedChange={toggle}` and other callbacks hand over.
+  const onCheckedChange: (checked: boolean) => void = commands!.toggle;
+  await act(async () => onCheckedChange(true));
+  await act(async () => commands!.collapse(null));
+  await act(async () => commands!.expand("floor-1"));
+  await act(async () => commands!.collapse({ reason: 7, source: {} }));
+
+  expect(heard).toEqual([
+    "floor-1 resource-toggle programmatic",
+    "none resource-toggle programmatic",
+    "floor-1 resource-toggle programmatic",
+    "none resource-toggle programmatic",
+  ]);
 });

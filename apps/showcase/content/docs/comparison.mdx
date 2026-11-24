@@ -92,8 +92,8 @@ it isn't built in: you'd write it yourself or add another library.
 
 |                           | Time                                                                                                                                                                                                                                      | FullCalendar                                                                                                                                                       | react-big-calendar                                                                                                 |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
-| Headless core             | ✓ The event engine and Temporal helpers use no React or DOM. The React parts render plain elements ([How it works](/docs/concepts/how-it-works))                                                                                          | Partial. `@full-ui/headless-calendar`, MIT, is its internal core; its readme calls it a beta[^fc-headless]                                                         | ✗                                                                                                                  |
-| Frameworks                | React only                                                                                                                                                                                                                                | ✓ React, Vue 3, Angular, Preact, plain JavaScript and a web component[^fc-frameworks]                                                                              | React only[^rbc-react]                                                                                             |
+| Headless core             | ✓ The event engine, the Temporal helpers and the calendar's state and actions use no React. The React parts render plain elements ([How it works](/docs/concepts/how-it-works))                                                           | Partial. `@full-ui/headless-calendar`, MIT, is its internal core; its readme calls it a beta[^fc-headless]                                                         | ✗                                                                                                                  |
+| Frameworks                | React. A SolidJS 2 package renders the same headless calendar as a preview, without the styled views ([Solid](/docs/api/solid))                                                                                                           | ✓ React, Vue 3, Angular, Preact, plain JavaScript and a web component[^fc-frameworks]                                                                              | React only[^rbc-react]                                                                                             |
 | React versions            | 19                                                                                                                                                                                                                                        | 17 to 19[^fc-frameworks]                                                                                                                                           | 16.14 to 19[^rbc-react]                                                                                            |
 | Server rendering, Next.js | ✓ Renders the same markup on the server and in the browser. Calendars are Client Components. A full [App Router example](/docs/guides/nextjs-app-router) with Server Actions                                                              | ✓ The React package is written in React since 7.0, with server rendering and StrictMode. A Next.js example project[^fc-react]                                      | Partial. Its docs don't cover server rendering or Next.js. App Router users put it in a Client Component[^rbc-ssr] |
 | Own the code              | ✓ Every view's components, the toolbar and the theme are source files you add with the shadcn CLI ([UI source](/docs/installation#ui-source-optional)). Date math, layout, and the drag and keyboard logic stay in `@moltenship/calendar` | Partial. A shadcn registry adds a wrapper, a toolbar and Tailwind classes for each part. The views' markup and behaviour stay in `@fullcalendar/react`[^fc-shadcn] | ✗                                                                                                                  |
@@ -113,7 +113,8 @@ Each library rendered the same calendar from one entry file: month, week, day an
 views, the library's toolbar, and dragging, resizing and creating turned on, in the Europe/Berlin
 time zone. For Time, that's the [Quick start](/docs/quick-start)'s calendar with `onEventChange` and
 the `Announcer` added, built from the registry source that `shadcn add` copies, at commit
-`ed3f9a1b`. FullCalendar used its classic theme. react-big-calendar used its Luxon localizer, since
+`ed3f9a1b`, which is a 1.x build: it doesn't count `@ui-sdk/core` and `@ui-sdk/react`, which 2.0
+adds. FullCalendar used its classic theme. react-big-calendar used its Luxon localizer, since
 its date-fns localizer can't take a time zone, and its drag-and-drop addon, imported from
 `react-big-calendar/lib/addons/dragAndDrop` as its docs show; that path is CommonJS and brings a
 second copy of some modules. Each entry was bundled with esbuild 0.28.2
@@ -165,11 +166,12 @@ drag and drop, and you don't need a year view, a timeline, keyboard editing, rec
 time zones beyond a localizer's default. It had two releases in the last twelve months, so expect
 fixes to come slowly.
 
-**Time** if you're on React 19 and can start on a release candidate, and you want Temporal from
-end to end, view components you own as source, editing by keyboard with screen reader
-announcements, edits to recurring series, availability and conflict rules, or resource views under
-the MIT license. Don't choose it yet if you need a stable release with a track record, or a
-framework other than React.
+**Time** if you're on React 19 and can start on a pre-release, and you want Temporal from end to
+end, view components you own as source, editing by keyboard with screen reader announcements,
+edits to recurring series, availability and conflict rules, resource views under the MIT license,
+or a calendar an [AI agent](/docs/agents) can read and change under your app's rules. Don't choose
+it yet if you need a stable release with a track record, or styled views for a framework other
+than React.
 
 [^fc-license]: FullCalendar's [pricing](https://fullcalendar.io/pricing), [purchase](https://fullcalendar.io/purchase) and [license](https://fullcalendar.io/license) pages, its [premium](https://fullcalendar.io/docs/premium) docs, and the [plugin index](https://fullcalendar.io/docs/plugin-index), which marks the premium plugins.
 

@@ -39,13 +39,18 @@ export type { CalendarKeyboardHandlers, CalendarKeyboardOptions } from "./keyboa
 export { useRovingFocus } from "./roving-focus";
 export type { CalendarRovingFocusOptions, CalendarRovingFocusProps } from "./roving-focus";
 export { useResourceExpansion, useVisibleResources } from "./resources";
-export type { CalendarResourceExpansion } from "./resources";
+export type {
+  CalendarResourceExpansion,
+  CalendarResourceExpansionCause,
+  CalendarResourceExpansionCommand,
+} from "./resources";
 export { useCalendarFocus, useCalendarSelection } from "./selectors";
 export { useNow } from "./use-now";
 export { useAnchorDateRequests } from "./requests";
 export { defineCalendarView } from "./views";
 export type {
   CalendarActiveViewProps,
+  CalendarAgentEvent,
   CalendarAnnouncerProps,
   CalendarContextValue,
   CalendarDiagnostic,
@@ -78,8 +83,12 @@ export type {
 } from "./views";
 export type {
   CalendarActions,
+  CalendarChangeReason,
+  CalendarChangeSource,
+  CalendarCommandOptions,
   CalendarControlledState,
   CalendarPublicState,
+  CalendarRootStore,
   CalendarStateChangeDetail,
   CalendarStateChangeHandler,
   CalendarStateChangeHandlers,

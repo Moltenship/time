@@ -20,6 +20,9 @@ the registry views, your policies and your save logic.
   a mouse, a pen or a finger where the page is laid out.
 - **Assertions.** `settled()` waits for pending changes; `announcements()` and `lastAnnouncement()`
   read the `Announcer`; `placementOf(event)` says where an event shows, as comparable text.
+- **Agents.** An AI agent's steps run through ui-sdk's real bridge inside `calendar.act`, with no
+  model involved, and `results` says each change's input was `"agent"`. See
+  [Changes an agent makes](https://time.molten.sh/docs/testing#changes-an-agent-makes).
 
 It uses only the public API of `@moltenship/calendar` and `@moltenship/calendar-recurrence`, and
 depends on no test runner: it works in Vitest with jsdom or happy-dom, and in Vitest's browser
@@ -54,6 +57,8 @@ pnpm add -D @moltenship/calendar-testing
 ```
 
 - React 19 and React DOM 19, peer dependencies.
+- `@ui-sdk/core` and `@ui-sdk/react` 0.1 beta, peer dependencies since 2.0: the calendar's parts are
+  built on them. An app on `@moltenship/calendar` 2.0 already has both.
 - A runtime with `Temporal` (Node.js 26 and later include it). Elsewhere, add
   `if (!("Temporal" in globalThis)) await import("temporal-polyfill/global");` to your test setup
   file; the package never installs a polyfill itself.

@@ -2,13 +2,15 @@
 
 One consequential, reversible architecture decision belongs in each ADR. Contract decisions land
 with the issue that validates them. ADRs 0001–0005 are the foundation decisions; later ADRs take the
-number of the GitHub issue that made the decision.
+number of the GitHub issue that made the decision. A record a later one replaces is marked
+"superseded by"; one whose decision stands while a later record changes part of it is marked
+"amended by", and its status line says which part.
 
-- [ADR 0001: Hybrid package and source distribution](./0001-hybrid-distribution.md)
+- [ADR 0001: Hybrid package and source distribution](./0001-hybrid-distribution.md), amended by ADR 0275
 - [ADR 0002: Non-empty half-open event intervals](./0002-half-open-intervals.md)
 - [ADR 0003: Application-owned event state](./0003-application-owned-state.md)
 - [ADR 0004: Native Temporal runtime boundary](./0004-native-temporal.md)
-- [ADR 0005: One-way package dependency law](./0005-dependency-law.md)
+- [ADR 0005: One-way package dependency law](./0005-dependency-law.md), amended by ADR 0275
 - [ADR 0016: Provisional interval index and DST wall-time geometry](./0016-interval-index-and-dst-wall-time-geometry.md)
 - [ADR 0018: Controlled React state reads through render-scoped external-store snapshots](./0018-controlled-react-store-spike.md)
 - [ADR 0019: Keep dnd-kit behind a semantic calendar adapter](./0019-semantic-dnd-kit-adapter.md), superseded by ADR 0037
@@ -16,6 +18,7 @@ number of the GitHub issue that made the decision.
 - [ADR 0025: Native Jotai bindings for the production React store](./0025-native-jotai-react-bindings.md), superseded by ADR 0070
 - [ADR 0037: Native Pointer Events for calendar interaction](./0037-native-pointer-events.md)
 - [ADR 0048: Recurrence as a layer over ordinary events](./0048-recurrence.md)
-- [ADR 0070: `calendar-react` owns its store](./0070-own-react-store.md)
+- [ADR 0070: `calendar-react` owns its store](./0070-own-react-store.md), amended by ADR 0275
 - [ADR 0151: A standalone, Temporal-native iCalendar package](./0151-standalone-ics-package.md)
 - [ADR 0165: Secondary time zones on the time grid's axis](./0165-secondary-time-zones.md)
+- [ADR 0275: Framework-free calendar primitives on ui-sdk](./0275-ui-sdk-primitives.md)

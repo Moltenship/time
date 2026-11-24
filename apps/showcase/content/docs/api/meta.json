@@ -9,6 +9,8 @@
     "temporal",
     "ics",
     "recurrence",
-    "dnd-kit"
+    "dnd-kit",
+    "primitives",
+    "solid"
   ]
 }

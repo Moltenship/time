@@ -21,7 +21,7 @@ export function trustsRelease(listed: string): boolean {
 
 /**
  * The owner's one-time setup (docs/internal/releasing.md): a trusted publisher for the release
- * workflow on each of the nine packages, through `npm trust github`, so the workflow publishes
+ * workflow on each of the eleven packages, through `npm trust github`, so the workflow publishes
  * without a token. With `--disallow-tokens`, each package also requires 2FA and refuses tokens
  * (`npm access set mfa=publish`), which trusted publishing isn't subject to. Asks for npm's login
  * and 2FA: once, with the browser's "skip 2FA for 5 minutes". Safe to run again.

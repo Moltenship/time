@@ -238,7 +238,9 @@ export type {
   CalendarPendingChangePhase,
   CalendarPendingChanges,
   CalendarPendingPlacements,
+  CalendarPendingProposal,
   CalendarProposalDetail,
+  CalendarProposalOutcome,
   CalendarTransactionContext,
   CalendarTransactionResult,
 } from "./transactions/types";

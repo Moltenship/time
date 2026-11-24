@@ -7,6 +7,7 @@
   "scripts": {
     "build": "node --run registry && next build",
     "dev": "node --run registry && next dev",
+    "docs:package": "fumadocs-mdx && node --import ./scripts/register-fumadocs.mjs --import tsx ./scripts/package-docs.ts",
     "links:check": "node --import ./scripts/register-fumadocs.mjs --import tsx ./scripts/check-links.ts",
     "postinstall": "fumadocs-mdx",
     "preview": "next start",
@@ -25,6 +26,8 @@
     "@moltenship/calendar-recurrence": "workspace:*",
     "@moltenship/ics": "workspace:*",
     "@tanstack/react-query": "catalog:",
+    "@ui-sdk/core": "catalog:",
+    "@ui-sdk/react": "catalog:",
     "fumadocs-core": "catalog:",
     "fumadocs-mdx": "catalog:",
     "fumadocs-ui": "catalog:",
@@ -37,6 +40,7 @@
     "tw-animate-css": "catalog:"
   },
   "devDependencies": {
+    "@anthropic-ai/sdk": "catalog:",
     "@babel/core": "catalog:",
     "@moltenship/calendar-testing": "workspace:*",
     "@stylexjs/babel-plugin": "catalog:",

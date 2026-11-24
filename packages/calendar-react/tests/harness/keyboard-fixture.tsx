@@ -154,6 +154,7 @@ export function KeyboardFixture({
   initialEvents,
   onChange,
   onResult,
+  onStateChange,
   persist,
   policies,
   readOnly = false,
@@ -167,6 +168,12 @@ export function KeyboardFixture({
     result: CalendarTransactionResult<FixtureEvent, string, string>,
     detail: CalendarProposalDetail,
   ) => void;
+  /**
+   * Hears the anchor date's and focus's changes as `slice reason event`, the DOM event the store
+   * works out the source from. jsdom's events are a script's, which ui-sdk calls programmatic, so
+   * the event, not the source, shows whose they are.
+   */
+  readonly onStateChange?: (heard: string) => void;
   readonly persist?: (change: Change) => Promise<void>;
   readonly policies?: readonly CalendarPolicy<FixtureEvent, string, string>[];
   readonly readOnly?: boolean;
@@ -209,8 +216,14 @@ export function KeyboardFixture({
               return persist(change).then(() => apply(change));
             }
       }
+      onAnchorDateChange={(_value, detail) =>
+        onStateChange?.(`${detail.slice} ${detail.reason} ${detail.event?.type ?? "no-event"}`)
+      }
       onEventChangeResult={onResult}
-      onFocusChange={controlFocus ? setFocus : undefined}
+      onFocusChange={(next, detail) => {
+        onStateChange?.(`${detail.slice} ${detail.reason} ${detail.event?.type ?? "no-event"}`);
+        if (controlFocus) setFocus(next);
+      }}
       policies={policies}
       weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
     >

@@ -246,7 +246,7 @@ describe("onEventChangeResult", () => {
     let handler: Handler = () => undefined;
     await render(
       <Application
-        onEventChange={(change) => handler(change)}
+        onEventChange={(change, detail) => handler(change, detail)}
         onEventChangeResult={(result, { input }) => results.push([input, result])}
         policies={[(change, context) => policy(change, context)]}
       />,

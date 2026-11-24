@@ -6,7 +6,7 @@ workflow (`.github/workflows/release.yml`) on `main` and watches it; the workflo
 npm trusted publishing, with provenance and no npm token. Only the owner releases; agents run the
 command only through `/release`, which only the owner can start.
 
-Nine packages publish under `@moltenship`, listed in
+Eleven packages publish under `@moltenship`, listed in
 [`tools/release/src/config.ts`](../../tools/release/src/config.ts) and
 [package-topology.md](./package-topology.md#published-packages). They share one version until after
 1.0 (`architecture.md` §24).
@@ -18,7 +18,7 @@ trusted publisher that hasn't published within two days of its creation
 ([GitHub changelog, 2 October 2026](https://github.blog/changelog/2026-10-02-unvalidated-npm-trusted-publishing-configurations-now-expire)),
 and then it must be set up again.
 
-1. **A trusted publisher on each of the nine packages.** Either run, from the repository:
+1. **A trusted publisher on each of the eleven packages.** Either run, from the repository:
 
    ```sh
    vp run release:trust                     # add --disallow-tokens for step 3 too
@@ -27,7 +27,7 @@ and then it must be set up again.
    It needs npm 11.15 or later (`npm install -g npm@latest`), logs in to npm in the browser if
    needed, and runs `npm trust github <package> --file release.yml --repo Moltenship/time
    --allow-publish --yes` for each package that doesn't trust the workflow yet. npm asks for 2FA
-   on the first; tick "skip 2FA for the next 5 minutes" in the browser and the other eight go
+   on the first; tick "skip 2FA for the next 5 minutes" in the browser and the other ten go
    through. Or, on npmjs.com, for each package: Settings → Trusted publishing → GitHub Actions,
    with these values:
 
@@ -39,7 +39,8 @@ and then it must be set up again.
    | Environment name | blank |
 
    The packages: `@moltenship/calendar`, `calendar-core`, `calendar-dnd`, `calendar-dnd-kit`,
-   `calendar-react`, `calendar-recurrence`, `calendar-temporal`, `calendar-testing` and `ics`.
+   `calendar-primitives`, `calendar-react`, `calendar-recurrence`, `calendar-solid`,
+   `calendar-temporal`, `calendar-testing` and `ics`.
 2. **Remove the old token.** In the repository's settings, delete the `npm` environment and the
    `NPM_TOKEN` secret; on npmjs.com, revoke that token (Access Tokens). Nothing uses them.
 3. **Optional: disallow tokens.** On npmjs.com, each package's Settings → Publishing access →
@@ -89,7 +90,7 @@ The workflow, one release at a time (a second waits; dry runs queue apart):
    command checked, no release landed on `main` while the run waited, and npm's trusted publisher
    for the workflow is on every package: it asks npm the way `npm publish` does, trading the job's
    OIDC token for a publish token it throws away.
-2. **Gate** (read-only): bumps the nine manifests, commits `chore(release): v<version>` and tags it,
+2. **Gate** (read-only): bumps the eleven manifests, commits `chore(release): v<version>` and tags it,
    in the runner only, then runs `RELEASE_VERSION=<version> vp run release:gate` on that commit:
    the whole full tier, Firefox included, with a strict dry run that packs the tarballs and writes
    `.release/manifest.json` ([Checks](#checks)). Then it writes the release notes with
@@ -124,7 +125,7 @@ Run the same command again once the cause is fixed. It looks at the version's la
   A missing trusted publisher fails the first job: set it up ([One-time setup](#one-time-setup)).
 - **It failed after the publish job started:** the command runs the run's failed jobs again, on
   the same commit and with the same tarballs, kept for 30 days. They skip what npm serves, so the
-  nine never mix two builds; the push and the GitHub release are safe to repeat.
+  eleven never mix two builds; the push and the GitHub release are safe to repeat.
 - **It's running:** it watches it. **It released:** it says so.
 
 A rerun runs the same commit and the same `release.yml`, so a failure after publishing that only a
@@ -198,7 +199,7 @@ on what the dry run packed.
 | --- | --- | --- |
 | `vp run release:size` | Each published entry point's emitted ESM, raw and gzip, against its budget in `tools/release/src/config.ts` | PR |
 | `vp run release:api` | Each package's built declarations against its committed `api-report.md` | PR |
-| `vp run release:exports` | Packs every package into a temporary folder, then runs publint and are-the-types-wrong (ESM-only), checks for `LICENSE`, and checks that base packages don't import the dnd adapter | PR |
+| `vp run release:exports` | Packs every package into a temporary folder, then runs publint and are-the-types-wrong (ESM-only), checks for `LICENSE`, checks that base packages don't import the dnd adapter, and checks that the facade's tarball has its docs and its skill | PR |
 | `vp run release:treeshake` | Bundles the facade's exports with esbuild, minified, with and without each opt-in feature's exports (`optionalFeatures` in `tools/release/src/config.ts`; today the event history, #227). From the built packages, as an app's bundler sees them, the bundle without the feature must have none of its markers. From source, with every module's side effects kept, it must have no bytes from the feature's files, so a statement left at a module's top level fails. With the feature, both must find it | PR |
 | `vp run release:dry-run` | A fresh build of every published package, then the size, API and export checks on it, and a clean consumer: installs the tarballs into a new project outside the workspace, from the pnpm store, with every third-party package at the version the workspace locks (offline, unless a cold cache needs metadata from npm, which it says); imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade without its pointer exports to show `calendar-dnd` tree-shakes away. Last, a registry build into `.release/registry` that must ask for the packed version; the registry's tests run in `ci:test`. Writes `.release/manifest.json` | Full |
 | `vp run release:artifacts` | What uses the release, on the dry run's tarballs and registry, with their hashes checked: the SSR fixture's render and hydration tests and the docs site's build, routes and example tests, each in a copy outside the workspace, installed offline from the pnpm store (a cold cache reads metadata from npm); and #43's install test, `shadcn add` into clean Vite and Next.js apps, which needs the network for npm and shadcn's own components. See [quality-gates.md](./quality-gates.md#release-artifacts) | Full |
@@ -214,6 +215,15 @@ thing: a rehearsal of the whole release workflow, which runs this dry run inside
 `release:artifacts` only reads `.release/`: it packs nothing, and refuses a manifest from another
 commit or a file whose hash changed since.
 
+- **The facade ships the docs and a skill for coding agents.** `@moltenship/calendar`'s `build`
+  runs `vp pack` and then `node --run docs`, which runs the docs site's `docs:package`
+  (`apps/showcase/scripts/package-docs.ts`). It writes every page of `apps/showcase/content/docs`
+  as Markdown into `packages/calendar/docs`, with an `llms.txt` index, through the same code as the
+  site's `/llms.txt` and `.md` routes (`apps/showcase/lib/llms.ts`). The folder is ignored by git
+  and made again on every build, so the tarball's docs match its version. The skill is source, in
+  `packages/calendar/skills/moltenship-time`; `skills.sh.json` at the root points the `skills` CLI
+  at it. `release:exports` fails when the tarball lacks `docs/llms.txt`, `docs/index.md` or the
+  skill's `SKILL.md` (`facadeAgentFiles` in `tools/release/src/config.ts`).
 - **The API changed on purpose.** Run `vp run release:api:update` and commit the reports with the
   change. The diff in `packages/*/api-report.md` is what reviewers look at.
 - **A budget is too small.** Raise it in `tools/release/src/config.ts` in the PR that needs it, and
@@ -230,8 +240,8 @@ The publish job (`tools/release/src/publish.ts`) refuses unless:
 - every published package was packed, and each tarball's sha512 still matches;
 - npm is 11.5.1 or later, the first that publishes through trusted publishing.
 
-Before publishing anything, it asks npm about all nine. A version npm already serves is skipped
-only when npm's integrity matches the tarball the gate checked; otherwise it stops, so the nine
+Before publishing anything, it asks npm about all eleven. A version npm already serves is skipped
+only when npm's integrity matches the tarball the gate checked; otherwise it stops, so the eleven
 packages on npm never mix two builds. It runs `npm publish <tarball> --provenance` outside the
 workspace with an empty npmrc and no token in its environment, so the job's OIDC token is the only
 credential npm can use, and the registry is always `https://registry.npmjs.org/`.
@@ -246,7 +256,7 @@ stays on the RC until `1.0.0` ships.
 
 A published version can't be changed or reused, even after an unpublish. Fix forward.
 
-1. **Stop new installs.** For each of the nine packages, move `latest` (or `next`) back to the
+1. **Stop new installs.** For each of the eleven packages, move `latest` (or `next`) back to the
    previous version and deprecate the bad one:
 
    ```sh
@@ -259,7 +269,7 @@ A published version can't be changed or reused, even after an unpublish. Fix for
 3. **Partial publish.** If the publish job published some packages and not the rest, run
    `vp run release <version>` again: it runs the run's failed jobs again, on the same commit and
    tarballs, and they skip what npm serves. If the fix needs a code change, deprecate what went
-   out and release a new version of all nine.
+   out and release a new version of all eleven.
 
 Unpublish only for something that must disappear, such as a leaked secret. npm allows it within
 72 hours, and it breaks lockfiles that already reference the version.
