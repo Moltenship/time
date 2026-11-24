@@ -13,7 +13,7 @@ Three props on `Root` are for agents:
 | Prop                    | Type                                    | Default | Effect                                                                                            |
 | ----------------------- | --------------------------------------- | ------- | ------------------------------------------------------------------------------------------------- |
 | `label`                 | `string`                                | none    | The calendar's name for agents: `label` in its snapshot entry. Without it, the title is the name  |
-| `allowAgentDelete`      | `boolean`                               | `false` | Gives the calendar its `deleteEvent` action                                                       |
+| `allowAgentDelete`      | `boolean`                               | `false` | Gives the calendar its `deleteEvent` action. Without it, any delete an agent causes is refused    |
 | `formatAgentEventLabel` | `(event: CalendarAgentEvent) => string` | none    | Writes each event's `label` in the snapshot's `items`, in place of the [default](#snapshot-entry) |
 
 An agent's change also needs `onEventChange`, as every change does. A calendar is listed for agents
@@ -132,11 +132,11 @@ required key each fail the step with [`calendar-agent-invalid-arguments`](#error
 
 ### Reading
 
-| Action             | Input                          | Returns                                               |
-| ------------------ | ------------------------------ | ----------------------------------------------------- |
-| `describeCalendar` | nothing                        | The calendar's [description](#describecalendar)       |
-| `listEvents`       | nothing, or `{ start?, end? }` | A list of [events](#listevents)                       |
-| `getChange`        | `{ changeId }`                 | A [change](#a-change) an agent proposed, as it is now |
+| Action             | Input                          | Returns                                         |
+| ------------------ | ------------------------------ | ----------------------------------------------- |
+| `describeCalendar` | nothing                        | The calendar's [description](#describecalendar) |
+| `listEvents`       | nothing, or `{ start?, end? }` | A list of [events](#listevents)                 |
+| `getChange`        | `{ changeId }`                 | A [change](#a-change) by its ID, as it is now   |
 
 These change nothing and call no handler of yours. They're steps, so the bridge's `allow` is asked
 for each.
@@ -204,6 +204,8 @@ what else an event holds is your app's to tell a model.
 
 Each handler gets `detail.source` of `"agent"` and `detail.reason` of `"imperative"`, with no
 `detail.event`. `detail.cancel()` keeps the value, and the step still succeeds, with no `changes`.
+That's for the actions in this table: when the agent presses one of the calendar's triggers
+instead, the handler gets the trigger's own reason, such as `"next-press"`.
 
 `goToDate` also takes a date-time and uses its date. `setTimeZone` changes how times are shown and
 moves no event.
@@ -249,8 +251,16 @@ How `start` and `end` are read depends on the event:
 
 What `listEvents` returns for an event's `start` and `end` is valid input for them.
 
+Dates are in the ISO calendar. A date or a time annotated with another calendar, such as
+`"2026-10-09[u-ca=hebrew]"`, fails with `calendar-agent-unsupported-calendar`: the calendar doesn't
+convert it.
+
 `createEvent` makes an all-day event when both `start` and `end` are dates, and a timed one
-otherwise. `resourceIds` is a list of resource IDs from `describeCalendar`'s `resources`.
+otherwise.
+
+`resourceIds` is a list of resource IDs from `describeCalendar`'s `resources`. On a calendar that
+has resources, an ID that isn't one of them fails with `calendar-agent-unknown-resource`, which
+lists the ones there are. A calendar without resources doesn't check them.
 
 A wall-clock time that a daylight saving change skips or repeats is resolved with `Root`'s
 `disambiguation`, `"compatible"` by default.
@@ -331,28 +341,46 @@ A refusal that comes at once never returns as a change: it [fails the step](#err
 own `result` is `saved`, `saving` or `validating`, and `rejected` is something `getChange` reports.
 
 `saved` means your handler took the change. It doesn't say your `events` prop has the event in its
-new place yet; `listEvents` shows it there either way.
+new place yet. `listEvents` reads your `events` with the changes still pending on top, so what it
+shows after the step depends on your handler:
 
-A calendar keeps the last 50 changes agents proposed on it, for as long as it's mounted.
-`getChange` with an ID it doesn't have fails with `calendar-agent-unknown-change` and lists the
-last ten.
+| Your `onEventChange`                       | `listEvents` after the step                                                |
+| ------------------------------------------ | -------------------------------------------------------------------------- |
+| Updates `events` before it returns         | The event in its new place                                                 |
+| Returns a promise                          | The new place, with `pending: true` while it saves and from `events` after |
+| Returns nothing and updates `events` later | The old place, until `events` changes                                      |
+
+The third is a handler that starts a save and doesn't return its promise. The calendar takes a
+change for saved the moment such a handler returns, a person's drag included, so return the
+promise.
+
+A new event is listed once your `events` has it. While a `createEvent` is `saving`, `listEvents`
+doesn't have the event yet.
+
+A calendar keeps the last 50 changes agents proposed on it, for as long as it's mounted, and
+`getChange` reads those however they ended. It also reads any change that's still being checked
+or saved, a person's included, by the ID `describeCalendar`'s `pendingChanges` gives it. Once a
+person's change has ended, the calendar no longer has it. `getChange` with an ID it doesn't have
+fails with `calendar-agent-unknown-change` and lists the agents' last ten.
 
 ## Errors
 
 A failed step's `message` starts with a code.
 
-| Code                               | When                                                              | The message also says                                     |
-| ---------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------- |
-| `calendar-agent-invalid-arguments` | The input isn't one object with the action's keys                 | What the action takes, and what was wrong                 |
-| `calendar-agent-invalid-date`      | A date isn't an ISO date                                          | The key, an example, and what was sent                    |
-| `calendar-agent-invalid-time`      | A time isn't an ISO date-time                                     | An example in the calendar's time zone, and what was sent |
-| `calendar-agent-invalid-time-zone` | `setTimeZone` got something that isn't an IANA time zone          | An example, and what was sent                             |
-| `calendar-agent-invalid-resources` | `resourceIds` isn't a list of strings or numbers                  | What was sent                                             |
-| `calendar-agent-invalid-range`     | `listEvents` got a `start` that isn't before its `end`            | What was sent                                             |
-| `calendar-agent-unknown-event`     | No event has that ID                                              | The first 20 event IDs                                    |
-| `calendar-agent-unknown-change`    | `getChange` got an ID the calendar doesn't have                   | The last ten change IDs                                   |
-| `calendar-unknown-view`            | `setView` got a name that isn't registered                        | The registered view names                                 |
-| `calendar-event-change-rejected`   | A policy, the calendar or your handler refused the change at once | The [reason](#rejection-reasons)                          |
+| Code                                  | When                                                              | The message also says                                     |
+| ------------------------------------- | ----------------------------------------------------------------- | --------------------------------------------------------- |
+| `calendar-agent-invalid-arguments`    | The input isn't one object with the action's keys                 | What the action takes, and what was wrong                 |
+| `calendar-agent-invalid-date`         | A date isn't an ISO date                                          | The key, an example, and what was sent                    |
+| `calendar-agent-invalid-time`         | A time isn't an ISO date-time                                     | An example in the calendar's time zone, and what was sent |
+| `calendar-agent-invalid-time-zone`    | `setTimeZone` got something that isn't an IANA time zone          | An example, and what was sent                             |
+| `calendar-agent-unsupported-calendar` | A date or a time is in a calendar other than ISO 8601             | The calendar it names, and what was sent                  |
+| `calendar-agent-invalid-resources`    | `resourceIds` isn't a list of strings or numbers                  | What was sent                                             |
+| `calendar-agent-unknown-resource`     | `resourceIds` has an ID that none of the calendar's resources has | The first 20 resource IDs                                 |
+| `calendar-agent-invalid-range`        | `listEvents` got a `start` that isn't before its `end`            | What was sent                                             |
+| `calendar-agent-unknown-event`        | No event has that ID                                              | The first 20 event IDs                                    |
+| `calendar-agent-unknown-change`       | `getChange` got an ID the calendar doesn't have                   | The last ten change IDs                                   |
+| `calendar-unknown-view`               | `setView` got a name that isn't registered                        | The registered view names                                 |
+| `calendar-event-change-rejected`      | A policy, the calendar or your handler refused the change at once | The [reason](#rejection-reasons)                          |
 
 What `calendar-agent-invalid-arguments` says after the code:
 
@@ -381,18 +409,25 @@ The bridge has messages of its own:
 What follows `calendar-event-change-rejected: ` in a failed step, and what a rejected change has as
 `reason`:
 
-| Reason              | Meaning                                                             |
-| ------------------- | ------------------------------------------------------------------- |
-| a policy's reason   | A policy rejected the change, such as `agents-book-weekdays-only`   |
-| `read-only`         | The event is read-only                                              |
-| `invalid-placement` | The range is empty or reversed, such as an `end` before the `start` |
-| `handler-error`     | Your `onEventChange` threw, or the promise it returned rejected     |
-| `policy-error`      | A policy threw                                                      |
-| `superseded`        | A newer change to the same event replaced this one                  |
+| Reason                     | Meaning                                                             |
+| -------------------------- | ------------------------------------------------------------------- |
+| a policy's reason          | A policy rejected the change, such as `agents-book-weekdays-only`   |
+| `read-only`                | The event is read-only                                              |
+| `unknown-event`            | No event has the change's ID                                        |
+| `agent-delete-not-allowed` | An agent caused a delete on a `Root` without `allowAgentDelete`     |
+| `invalid-placement`        | The range is empty or reversed, such as an `end` before the `start` |
+| `handler-error`            | Your `onEventChange` threw, or the promise it returned rejected     |
+| `policy-error`             | A policy threw                                                      |
+| `superseded`               | A newer change to the same event replaced this one                  |
 
 A failed step adds the thrown error's message in parentheses:
 `calendar-event-change-rejected: handler-error (This slot was just taken)`. A rejected change's
 `reason` is the reason alone.
+
+The calendar's own actions look the event up before they propose, so a step that names a missing
+event fails with `calendar-agent-unknown-event`, which lists the IDs there are. `unknown-event` is
+what your `onEventChangeResult` gets for a proposal made another way, such as a button of yours
+that proposes a change to an event that's gone.
 
 ## Who made a change
 
@@ -409,6 +444,16 @@ or `fields`, and no `fields` key otherwise.
 
 An undo or redo also has `detail.history`, `"undo"` or `"redo"`, and its `input` is `"api"` unless
 you pass another to `undo({ input })`.
+
+Anything a step causes is the agent's, not only the calendar's own actions. When an agent presses
+a ui-sdk button of yours and its handler calls `proposeEventChange`, an action such as `setView`,
+or a history's `undo`, your policies and handlers hear `"agent"`, whatever input your code passed.
+A delete an agent causes that way is refused on a `Root` without `allowAgentDelete`, as
+[Deleting](/docs/agents/deleting#a-delete-button-of-yours) describes.
+
+A person's keys report `"keyboard"` in a state handler: arrow-key navigation, moving focus between
+cells and events, and expanding or collapsing a resource. `"programmatic"` is left for calls your
+own code makes.
 
 Each of an agent's proposals reaches `onEventChangeResult` once, however it ends: `committed`, or
 `rejected` with the reason, a policy's refusal included.

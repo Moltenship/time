@@ -36,10 +36,22 @@ import type { AnyCalendarView, CalendarActiveView } from "./views";
 
 const selectView = (state: AnyCalendarState) => state.view;
 
+/**
+ * The elements of the copies of a part still mounted, by the root's ref they share. An application
+ * may render two copies of a part: the ref holds the latest one, and a copy that unmounts gives it
+ * back to the other instead of emptying it.
+ */
+const mountedByRef = new WeakMap<RefObject<unknown>, unknown[]>();
+
 function useComposedRef<T>(internalRef: RefObject<T | null>, externalRef: Ref<T> | undefined) {
   return useCallback(
     (node: T | null) => {
-      internalRef.current = node;
+      if (node !== null) {
+        const mounted = mountedByRef.get(internalRef) ?? [];
+        mountedByRef.set(internalRef, mounted);
+        mounted.push(node);
+        internalRef.current = node;
+      }
       const externalCleanup = typeof externalRef === "function" ? externalRef(node) : undefined;
       if (externalRef !== null && externalRef !== undefined && typeof externalRef !== "function") {
         externalRef.current = node;
@@ -47,7 +59,10 @@ function useComposedRef<T>(internalRef: RefObject<T | null>, externalRef: Ref<T>
       if (node === null) return undefined;
 
       return () => {
-        internalRef.current = null;
+        const mounted = mountedByRef.get(internalRef) ?? [];
+        const index = mounted.lastIndexOf(node);
+        if (index !== -1) mounted.splice(index, 1);
+        internalRef.current = (mounted.at(-1) as T | undefined) ?? null;
         if (typeof externalRef === "function") {
           if (typeof externalCleanup === "function") externalCleanup();
           else externalRef(null);

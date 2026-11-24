@@ -29,6 +29,7 @@ These are the mistakes this library's shape makes easy: the ones a coding agent 
 | Wrapping the calendar in a context "provider" you invented     | `Root` is the provider. There is no other                                                    |
 | `shadcn add` into an app whose style isn't `base-*`            | The views need Base UI primitives. Check `components.json` first                             |
 | Installing only `@moltenship/calendar` on 2.0                  | Also `@ui-sdk/core` and `@ui-sdk/react`. `shadcn add` doesn't add them                       |
+| Selecting `[data-slot="calendar"]` to find a shadcn date picker | In 2.0 `Calendar.Frame` renders it too. Scope the selector, or use `data-calendar-part="frame"` for the scheduler |
 
 ## State
 
@@ -55,6 +56,8 @@ These are the mistakes this library's shape makes easy: the ones a coding agent 
 | `await proposeEventChange(…)` in a `try`/`catch`               | It never rejects. Read `result.status`                                                       |
 | Applying a slow save's result over a newer edit                | Number changes as they start (`docs/interactions.md#pending-changes`)                        |
 | An exhaustive `switch` on `detail.input` with three cases      | 2.0 adds `"agent"`: four values                                                              |
+| `onEventChange={save}` where `save` has its own second parameter | 2.0 passes the detail second. Wrap it: `onEventChange={(change) => save(change)}`          |
+| An `onEventChange` that starts a save and returns nothing      | The change counts as saved at once. Return the promise, so it shows as pending until it lands |
 
 ## Agents
 
@@ -65,11 +68,14 @@ These are the mistakes this library's shape makes easy: the ones a coding agent 
 | A bridge per component, or created in render                   | One `createAgent()` for the app, in its own module                                           |
 | `createAgent()` with no `allow` in production                  | Without `allow` every step runs. List what's permitted                                       |
 | `allowAgentDelete` with `allow: () => true`                    | A delete needs a person's yes: return a promise from `allow` (`docs/agents/deleting.md`)     |
+| An `allow` that asks only for `deleteEvent`, with a ui-sdk delete button on the page | An agent's `press` on that button deletes as the agent. Ask for it too, or hide the button with `data-agent-hidden` |
+| Passing `{ input: "api" }` from a button to keep a change from counting as the agent's | What an agent's step causes is `"agent"`, whatever the code passes |
 | Importing `@ui-sdk/react/agent` in a Next.js route handler     | On the server, `agentTools` comes from `@ui-sdk/core/agent`                                  |
 | Calling a model from the browser                               | The key stays on the server. The page only runs tool calls                                   |
 | Positional arguments: `args: ["review", "2026-10-09T10:00"]`   | Every action takes one object: `args: [{ eventId: "review", start: "2026-10-09T10:00" }]`    |
 | An `onEventChange` that ignores `detail`                       | An agent's title arrives as `detail.fields.title`. Store it, or the event is saved unnamed   |
-| Storing `detail.fields` as it came                             | It's unchecked input. Take the fields the app knows, and check each one's type               |
+| Storing `detail.fields` as it came                             | Nothing inside it is checked. Take the fields the app knows, and check each one's type      |
+| Listing events right after a `createEvent` that's `"saving"`    | The new event is listed once the app's `events` has it. Read `getChange` first             |
 | An allow-list without `describeCalendar`, `listEvents`, `getChange` | Reading is made of steps. Without them the agent can't learn an event's ID              |
 | Reading `status: "saving"` or `"validating"` as saved          | It isn't done. `getChange({ changeId })` says how it ended                                   |
 | Telling the model about an action that isn't there             | The fifteen actions are in `agent-ready.md`. There's no dry run and no bulk action           |

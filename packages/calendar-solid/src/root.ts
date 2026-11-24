@@ -54,11 +54,14 @@ export interface CalendarRootValue {
     CalendarRuntimeModel<Any, Any, AnyCalendarView, Any, Any, EventId, ResourceId>
   >;
   readonly runtime: CalendarRuntime<Any, Any, AnyCalendarView, Any, Any, EventId, ResourceId>;
-  /** Where the structural parts record their elements, for `meta.refs`. */
+  /**
+   * Where the structural parts record their elements, for `meta.refs`. Each call returns the
+   * release a part calls as it unmounts.
+   */
   readonly setRef: {
     readonly [Part in keyof CalendarMeta<unknown, unknown>["refs"]]: (
-      element: HTMLElement | undefined,
-    ) => void;
+      element: HTMLElement,
+    ) => () => void;
   };
   /** The connection's state source, whose identity follows the controlled slices. */
   readonly source: Accessor<CalendarStateSource<AnyCalendarState>>;
@@ -109,6 +112,28 @@ function sameMeta(left: object, right: object): boolean {
     }
   }
   return true;
+}
+
+/**
+ * Where one structural part's element goes for `meta.refs`. An application may render two copies
+ * of a part, so the slot holds the latest one still mounted: a copy that unmounts gives it back
+ * to the other instead of emptying it.
+ */
+function createRefSlot<TElement extends HTMLElement>() {
+  // A part records its element as it renders, inside Solid's render, where writes need opting in.
+  const [read, write] = createSignal<TElement | undefined>(undefined, { ownedWrite: true });
+  // Written through updaters: a generic element type isn't known not to be a function.
+  const mounted: TElement[] = [];
+  const record = (element: TElement) => {
+    mounted.push(element);
+    write(() => element);
+    return () => {
+      const index = mounted.lastIndexOf(element);
+      if (index !== -1) mounted.splice(index, 1);
+      write(() => mounted.at(-1));
+    };
+  };
+  return [read, record] as const;
 }
 
 function sameVisibleRange(
@@ -257,6 +282,7 @@ export function createCalendarRoot<
 
     const derived = createMemo(() => {
       const inputs: Inputs = {
+        allowAgentDelete: props.allowAgentDelete,
         annotationSources: props.annotationSources,
         annotations: props.annotations,
         availability: props.availability,
@@ -325,19 +351,10 @@ export function createCalendarRoot<
       ...state(),
     }));
 
-    // A part records its element as it renders, inside Solid's render, where writes need opting in.
-    const [frame, setFrame] = createSignal<HTMLElement | undefined>(undefined, {
-      ownedWrite: true,
-    });
-    const [title, setTitle] = createSignal<HTMLSpanElement | undefined>(undefined, {
-      ownedWrite: true,
-    });
-    const [toolbar, setToolbar] = createSignal<HTMLElement | undefined>(undefined, {
-      ownedWrite: true,
-    });
-    const [viewport, setViewport] = createSignal<HTMLDivElement | undefined>(undefined, {
-      ownedWrite: true,
-    });
+    const [frame, setFrame] = createRefSlot<HTMLElement>();
+    const [title, setTitle] = createRefSlot<HTMLSpanElement>();
+    const [toolbar, setToolbar] = createRefSlot<HTMLElement>();
+    const [viewport, setViewport] = createRefSlot<HTMLDivElement>();
     const refs = Object.freeze({ frame, title, toolbar, viewport });
     const ids = createMemo(() => createCalendarPartIds(instanceId()));
 
@@ -384,9 +401,9 @@ export function createCalendarRoot<
       runtime: runtime as unknown as CalendarRootValue["runtime"],
       setRef: {
         frame: setFrame,
-        title: (element) => setTitle(element as HTMLSpanElement | undefined),
+        title: (element) => setTitle(element as HTMLSpanElement),
         toolbar: setToolbar,
-        viewport: (element) => setViewport(element as HTMLDivElement | undefined),
+        viewport: (element) => setViewport(element as HTMLDivElement),
       },
       source: source as unknown as CalendarRootValue["source"],
       state: state as unknown as CalendarRootValue["state"],

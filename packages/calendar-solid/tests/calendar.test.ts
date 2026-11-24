@@ -103,6 +103,44 @@ describe("parts", () => {
     expect(select.options[0]!.selected).toBe(true);
   });
 
+  test("with two copies of a part, meta's ref holds the one still rendered", async () => {
+    const [first, setFirst] = createSignal(true);
+    const [second, setSecond] = createSignal(true);
+    let refs: ReturnType<ReturnType<typeof Calendar.useCalendarMeta>>["refs"] | undefined;
+    function Probe() {
+      refs = untrack(Calendar.useCalendarMeta()).refs;
+      return null;
+    }
+    const copy = (shown: () => boolean, id: string) =>
+      (() =>
+        shown()
+          ? createComponent(Calendar.Title, { "data-copy": id })
+          : null) as unknown as JSX.Element;
+    const { container } = render({}, () => [
+      createComponent(Probe, {}),
+      copy(first, "first"),
+      copy(second, "second"),
+    ]);
+    const title = (id: string) => container.querySelector<HTMLElement>(`[data-copy='${id}']`);
+    await settled();
+    expect(refs!.title()).toBe(title("second"));
+
+    // The copy that goes away gives the slot back to the one that stays, either way round.
+    setSecond(false);
+    await settled();
+    expect(refs!.title()).toBe(title("first"));
+
+    setSecond(true);
+    await settled();
+    setFirst(false);
+    await settled();
+    expect(refs!.title()).toBe(title("second"));
+
+    setSecond(false);
+    await settled();
+    expect(refs!.title()).toBeUndefined();
+  });
+
   test("an element prop passes through, and an application's ref gets the element", () => {
     let frame: HTMLElement | undefined;
     const { part } = render({}, () =>
@@ -216,6 +254,34 @@ describe("state", () => {
     await settled();
     expect(container.querySelector("[data-active-view]")!.textContent).toBe("week 2026-08-15");
     expect(select.value).toBe("week");
+  });
+
+  test("an owner that takes the view after an await shows the view on screen until then", async () => {
+    const [view, setView] = createSignal<View>("week");
+    let accepted: Promise<void> | undefined;
+    const { container, part } = render({
+      get view() {
+        return view();
+      },
+      onViewChange: (next) => {
+        accepted = (async () => {
+          await new Promise((resolve) => setTimeout(resolve, 10));
+          setView(next);
+        })();
+      },
+    });
+    const select = part<HTMLSelectElement>("view-switcher");
+    const shown = () =>
+      `${select.value} ${container.querySelector("[data-active-view]")!.textContent}`;
+
+    changeSelect(select, "agenda");
+    await settled();
+    // As React's controlled select does: the switcher names the view the calendar shows.
+    expect(shown()).toBe("week week 2026-08-15");
+
+    await accepted;
+    await settled();
+    expect(shown()).toBe("agenda agenda 2026-08-15");
   });
 
   test("after its owner takes a new view, the triggers still navigate", async () => {

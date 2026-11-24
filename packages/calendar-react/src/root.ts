@@ -177,6 +177,7 @@ export function createCalendarRoot<
     const instant = useNowFrom({ clock, now } as CalendarNowSource, TODAY_SAMPLE_INTERVAL_MS);
 
     const inputs: Inputs = {
+      allowAgentDelete,
       annotationSources,
       annotations,
       availability,

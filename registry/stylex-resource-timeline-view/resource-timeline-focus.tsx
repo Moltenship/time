@@ -196,7 +196,7 @@ export function GroupCellTarget({
       onKeyDown={(event) => {
         if (event.key === "Enter" && event.shiftKey) {
           event.preventDefault();
-          toggle();
+          toggle(event);
         }
       }}
     />

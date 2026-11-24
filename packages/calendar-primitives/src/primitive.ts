@@ -567,7 +567,13 @@ export function createCalendarPrimitive<
         return propose(
           {
             cause: "create",
-            proposed: createdPlacement(args.start, args.end, args.resourceIds, environment()),
+            proposed: createdPlacement(
+              args.start,
+              args.end,
+              args.resourceIds,
+              environment(),
+              modelOf(runtime()).resourceTree.byId,
+            ),
           },
           readFields(args),
         );
@@ -608,7 +614,13 @@ export function createCalendarPrimitive<
             proposed:
               args.resourceIds === undefined
                 ? placement
-                : { ...placement, resourceIds: readResourceIds(args.resourceIds) },
+                : {
+                    ...placement,
+                    resourceIds: readResourceIds(
+                      args.resourceIds,
+                      modelOf(runtime()).resourceTree.byId,
+                    ),
+                  },
           },
           readFields(args),
         );
@@ -636,7 +648,13 @@ export function createCalendarPrimitive<
             proposed:
               args.resourceIds === undefined
                 ? placement
-                : { ...placement, resourceIds: readResourceIds(args.resourceIds) },
+                : {
+                    ...placement,
+                    resourceIds: readResourceIds(
+                      args.resourceIds,
+                      modelOf(runtime()).resourceTree.byId,
+                    ),
+                  },
           },
           undefined,
         );
@@ -683,7 +701,20 @@ export function createCalendarPrimitive<
           },
           extra,
         );
-        return propose({ cause: "delete", eventId: eventOf(args).id }, undefined);
+        const proposal = { cause: "delete", eventId: eventOf(args).id } as const;
+        // The getter hides this method where deletes are off, but a reference handed out before
+        // the instance settled still reaches here. The policies refuse an agent's delete too, and
+        // tell the application through `onEventChangeResult`; where they would let it through, as
+        // while a root that has just turned deletes off hasn't committed that, it's refused here.
+        if (
+          !canDelete() &&
+          modelOf(runtime()).actions.checkEventChange(proposal, agentInput)?.status !== "rejected"
+        ) {
+          throw new Error(
+            `calendar-event-change-rejected: ${canChange() ? "agent-delete-not-allowed" : "read-only"}`,
+          );
+        }
+        return propose(proposal, undefined);
       };
 
       const api = {

@@ -36,6 +36,20 @@ const testingUiSdkFixture =
   "tests/fixtures/dependency-boundaries/packages/calendar-testing/src/ui-sdk-import.ts";
 const testingAgentTestFixture =
   "tests/fixtures/dependency-boundaries/packages/calendar-testing/tests/agent-import.ts";
+// Rules 12 to 14 as architecture.md states them: the primitives import nothing else, the packages'
+// tests are bound as their source is, and no package imports ui-sdk's date entries.
+const primitivesNpmFixture =
+  "tests/fixtures/dependency-boundaries/packages/calendar-primitives/src/npm-import.ts";
+const primitivesTestsFixture =
+  "tests/fixtures/dependency-boundaries/packages/calendar-primitives/tests/integration-import.ts";
+const solidTestsFixture =
+  "tests/fixtures/dependency-boundaries/packages/calendar-solid/tests/react-integration-import.ts";
+const reactTestsFixture =
+  "tests/fixtures/dependency-boundaries/packages/calendar-react/tests/solid-integration-import.ts";
+const reactDateEntriesFixture =
+  "tests/fixtures/dependency-boundaries/packages/calendar-react/src/date-entries-import.ts";
+const solidDateEntriesFixture =
+  "tests/fixtures/dependency-boundaries/packages/calendar-solid/src/date-entries-import.ts";
 
 const expectedWorkspaceDependencies = {
   "@moltenship/calendar": [
@@ -239,6 +253,50 @@ describe("workspace boundaries", { concurrent: false }, () => {
       ]);
     });
 
+    test("the primitives' source imports nothing past the engine and ui-sdk's core", async () => {
+      expect(await violations(primitivesNpmFixture)).toEqual([
+        "primitives-import-nothing-else fs",
+        "primitives-import-nothing-else lodash",
+      ]);
+    });
+
+    test("the primitives' tests may add the test tooling, and no integration or other package", async () => {
+      expect(await violations(primitivesTestsFixture)).toEqual([
+        "no-react-in-primitives-or-solid react",
+        "primitives-build-on-the-engine @moltenship/calendar-react",
+        "primitives-import-no-framework react",
+        "primitives-tests-import-nothing-else lodash",
+      ]);
+    });
+
+    test("the integrations' tests import neither the other integration nor what carries it", async () => {
+      expect(await violations(solidTestsFixture)).toEqual([
+        "no-react-in-primitives-or-solid @ui-sdk/react/agent",
+        "solid-integration-builds-on-the-primitives @moltenship/calendar",
+        "solid-integration-builds-on-the-primitives @moltenship/calendar-dnd",
+        "solid-integration-builds-on-the-primitives @moltenship/calendar-dnd-kit",
+        "solid-integration-builds-on-the-primitives @moltenship/calendar-react",
+        "solid-integration-builds-on-the-primitives @moltenship/calendar-testing",
+      ]);
+      expect(await violations(reactTestsFixture)).toEqual([
+        "only-calendar-solid-imports-solid @ui-sdk/solid",
+        "react-integration-tests-import-no-solid-integration @moltenship/calendar-solid",
+      ]);
+    });
+
+    test("no package imports ui-sdk's date entries", async () => {
+      expect(await violations(reactDateEntriesFixture)).toEqual([
+        "no-ui-sdk-date-entries @ui-sdk/core/calendar",
+        "no-ui-sdk-date-entries @ui-sdk/core/date",
+        "no-ui-sdk-date-entries @ui-sdk/core/date-picker",
+        "no-ui-sdk-date-entries @ui-sdk/react/calendar",
+      ]);
+      expect(await violations(solidDateEntriesFixture)).toEqual([
+        "no-ui-sdk-date-entries @ui-sdk/solid/time-input",
+        "no-ui-sdk-date-entries @ui-sdk/solid/timeline",
+      ]);
+    });
+
     // The fixtures can't resolve npm packages, so they test specifiers. Production imports resolve
     // to files in pnpm's store, which the same rules must match.
     test.each([
@@ -258,10 +316,38 @@ describe("workspace boundaries", { concurrent: false }, () => {
         "primitives-import-no-framework",
         "node_modules/.pnpm/@ui-sdk+react@0.1.0-beta.16_react@19.3.1/node_modules/@ui-sdk/react/dist/index.js",
       ],
+      [
+        "no-ui-sdk-date-entries",
+        "node_modules/.pnpm/@ui-sdk+core@0.1.0-beta.16/node_modules/@ui-sdk/core/dist/components/date-input/time-input.js",
+      ],
+      [
+        "no-ui-sdk-date-entries",
+        "node_modules/.pnpm/@ui-sdk+core@0.1.0-beta.16/node_modules/@ui-sdk/core/dist/foundation/date/date.d.ts",
+      ],
+      [
+        "no-ui-sdk-date-entries",
+        "node_modules/.pnpm/@ui-sdk+solid@0.1.0-beta.16_solid-js@2.0.3/node_modules/@ui-sdk/solid/dist/solid/calendar.jsx",
+      ],
     ])("%s also matches a resolved import, %s", (name, resolved) => {
       const patterns = targetPatterns(name);
 
       expect(patterns.some((pattern) => new RegExp(pattern).test(resolved))).toBe(true);
+    });
+
+    test("ui-sdk's other entries aren't date entries, resolved or not", () => {
+      const patterns = targetPatterns("no-ui-sdk-date-entries");
+      const others = [
+        "@ui-sdk/core",
+        "@ui-sdk/core/observe",
+        "@ui-sdk/react/button",
+        "@ui-sdk/solid/date-picker-like",
+        "node_modules/.pnpm/@ui-sdk+core@0.1.0-beta.16/node_modules/@ui-sdk/core/dist/index.js",
+        "node_modules/.pnpm/@ui-sdk+react@0.1.0-beta.16_react@19.3.1/node_modules/@ui-sdk/react/dist/button.js",
+      ];
+
+      expect(
+        others.filter((path) => patterns.some((pattern) => new RegExp(pattern).test(path))),
+      ).toEqual([]);
     });
 
     test("the primitives may import ui-sdk's core, resolved or not", () => {

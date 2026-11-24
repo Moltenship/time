@@ -336,7 +336,13 @@ export function useRovingFocus(
       const focus = read().focus as CalendarFocus | null;
       const landed = focus === null ? null : landOn(focus, latest.current, days);
       // Focus already on this element stays as it is, keeping an event's date within the element.
-      if (landed === null || landed !== focus) actions.setFocus(landed ?? latest.current);
+      // The focus event goes along, so the handler hears the click or key that moved it.
+      if (landed === null || landed !== focus) {
+        actions.setFocus(landed ?? latest.current, {
+          event: event.nativeEvent,
+          reason: "focus-change",
+        });
+      }
     },
     [actions, days, read],
   );

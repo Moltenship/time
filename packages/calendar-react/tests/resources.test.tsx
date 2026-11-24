@@ -184,6 +184,19 @@ test("expansion follows a controlled expandedResourceIds and reports each reques
   expect(columns(harness.container)).toEqual(["floor-1:", "garage:", "unassigned:lunch"]);
 });
 
+test("a toggle's click reaches the handler as a resource toggle, with the click behind it", async () => {
+  const heard: string[] = [];
+  const harness = await render({
+    onExpandedResourceIdsChange: (_next, detail) =>
+      heard.push(`${detail.reason} ${detail.event?.type ?? "no-event"}`),
+  });
+
+  // `onClick={toggle}`, as the registry's headers pass it.
+  await click(harness.container, "floor-1");
+
+  expect(heard).toEqual(["resource-toggle click"]);
+});
+
 test("expand and collapse commands in one handler compose", async () => {
   let commands: ReturnType<typeof useResourceExpansion>[] = [];
   function Commands() {

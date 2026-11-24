@@ -76,8 +76,8 @@ workspace; it dropped Jotai in #70 (ADR 0070).
 `calendar-primitives`, `calendar-react` and `calendar-solid`: an application's agent bridge has to
 share one copy of it with the calendar. `@ui-sdk/react` is a peer of `calendar-react`, and
 `@ui-sdk/solid`, `solid-js` and `@solidjs/web` of `calendar-solid`. The facade and
-`calendar-testing` bring `calendar-react`, so they declare its ui-sdk peers as well; their
-manifests don't yet. ui-sdk is pre-1.0: the catalog pins one version for all of its packages, every
+`calendar-testing` bring `calendar-react`, so they declare its ui-sdk peers as well, though their
+source imports none of it. ui-sdk is pre-1.0: the catalog pins one version for all of its packages, every
 peer range is a caret that starts at it, `tests/package-metadata.test.ts` holds them together, and
 an upgrade moves all of them in one pull request. Only the primitives, the two integrations and the
 applications that show them import `@ui-sdk/*`, through its public entries, and only

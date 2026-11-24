@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { act } from "react";
+import { createAgent } from "@ui-sdk/react/agent";
+import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeAll, expect, test, vi } from "vite-plus/test";
 
@@ -9,6 +10,9 @@ import { agent } from "../content/examples/agent";
 import { AgentReadyCalendar } from "../content/examples/agent-calendar";
 import { AuditedCalendar } from "../content/examples/agent-audit";
 import { agent as askingAgent, deleteRequest } from "../content/examples/agent-confirm";
+import { RemoveMeeting } from "../content/examples/agent-delete-button";
+import { applyChange } from "../content/examples/agent-save";
+import { Calendar, meetings, weekRules } from "../content/examples/calendar";
 import { ConfirmingCalendar } from "../content/examples/agent-confirm-calendar";
 import { PrivateCalendar } from "../content/examples/agent-hidden";
 import { agent as limitedAgent, setAgentAccess } from "../content/examples/agent-permissions";
@@ -382,6 +386,79 @@ test("a calendar that doesn't let agents delete fails the step before anyone is 
 
   expect(outcome.error?.message).toMatch(/^calendar c\d+ takes no deleteEvent now\./u);
   expect(deleteRequest.getSnapshot()).toBeNull();
+});
+
+/** A calendar with the app's own delete button beside it, and what its handlers heard. */
+function WithRemoveButton({
+  allowAgentDelete,
+  heard,
+}: {
+  readonly allowAgentDelete?: boolean;
+  readonly heard: string[];
+}) {
+  const [current, setCurrent] = useState(meetings);
+  const lunch = current.find((meeting) => meeting.id === "lunch");
+  return (
+    <Calendar.Root
+      label="Team calendar"
+      allowAgentDelete={allowAgentDelete}
+      events={current}
+      onEventChange={(change, detail) => {
+        heard.push(`saved ${change.cause} as ${detail.input}`);
+        setCurrent((now) => applyChange(now, change, detail));
+      }}
+      onEventChangeResult={(result, detail) => {
+        if (result.status === "rejected") heard.push(`${result.reason} as ${detail.input}`);
+      }}
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="Europe/Berlin"
+      locale="en-US"
+      weekRules={weekRules}
+    >
+      <Calendar.Frame>
+        <Calendar.Title />
+        {lunch === undefined ? null : <RemoveMeeting meeting={lunch} />}
+      </Calendar.Frame>
+    </Calendar.Root>
+  );
+}
+
+test("a delete button of the app's, pressed by an agent, deletes as the agent or not at all", async () => {
+  const steps: string[] = [];
+  const pressing = createAgent({
+    allow: ({ action, component }) => {
+      steps.push(`${action} on ${component}`);
+      return true;
+    },
+  });
+  const press = async () => {
+    let outcome: Outcome | undefined;
+    await act(async () => {
+      outcome = await pressing.act({ steps: [{ action: "press", ref: "Remove Team lunch" }] });
+    });
+    return outcome!;
+  };
+
+  // Without `allowAgentDelete`: the press runs, and the calendar refuses the delete it proposes.
+  const heard: string[] = [];
+  const container = await render(<WithRemoveButton heard={heard} />);
+  expect((await press()).ok).toBe(true);
+  expect(steps).toEqual(["press on button"]);
+  expect(heard).toEqual(["agent-delete-not-allowed as agent"]);
+  expect(labelOf("lunch", pressing)).toContain("Team lunch · ");
+
+  // A person's click on the same button deletes, as the app's own proposal.
+  await click(button(container, "Remove Team lunch"));
+  expect(heard.at(-1)).toBe("saved delete as api");
+  expect(labelOf("lunch", pressing)).toBeUndefined();
+  await cleanup?.();
+
+  // With it, the press deletes, and the handler hears the agent.
+  const allowed: string[] = [];
+  await render(<WithRemoveButton allowAgentDelete heard={allowed} />);
+  expect((await press()).ok).toBe(true);
+  expect(allowed).toEqual(["saved delete as agent"]);
+  expect(labelOf("lunch", pressing)).toBeUndefined();
 });
 
 test("registerTools hands a browser with WebMCP three tools, with an allow of their own", async () => {

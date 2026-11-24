@@ -20,13 +20,20 @@ The calendar tells an agent apart from a person in two places, one for each kind
 | An event: a move, an update, a create, a delete | `onEventChange` and `onEventChangeResult`       | `detail.input`    | `"agent"`        |
 
 `detail.source` is one of `"agent"`, `"mouse"`, `"touch"`, `"pen"`, `"keyboard"`, `"virtual"` or
-`"programmatic"`. `"virtual"` is a click with no pointer or key behind it, which may come from
-assistive technology. `"programmatic"` is your own code.
+`"programmatic"`. `"keyboard"` is a person's keys: a toolbar button pressed with Enter, and also
+arrow-key navigation, moving focus between cells and events, and expanding a resource.
+`"virtual"` is a click with no pointer or key behind it, which may come from assistive technology.
+`"programmatic"` is your own code.
 
 `detail.input` is one of `"agent"`, `"pointer"`, `"keyboard"` or `"api"`. `"api"` is your own
 `proposeEventChange` call. An agent's `createEvent` and `updateEvent` also bring `detail.fields`:
 the title and the fields it sent, which
 [your handler stores](/docs/agents/connect#save-what-the-agent-sent).
+
+Anything a step causes is the agent's, not only the calendar's own actions. An agent can press a
+ui-sdk button your app rendered. If its handler calls `proposeEventChange` or an action such as
+`setView`, the handlers above hear `"agent"`, whatever input your code passed, and so do your
+policies. A person's click on the same button reads as before.
 
 This calendar logs both:
 
@@ -83,7 +90,10 @@ A few things to know:
   a proposal, so read it as `detail?.input`.
 - **A policy can read what the agent sent.** `detail?.fields` has the title and fields of a
   `createEvent` or an `updateEvent`, before anything is saved.
-- **Each policy runs once for an agent's change**, as for a drag.
+- **Each policy runs once for an agent's change.** A drag or a keyboard move asks your policies
+  more often: for each preview, then for the drop. Every one of those calls has the `input` the
+  drop will have, `"pointer"` or `"keyboard"`, so a rule on `detail?.input` marks the preview the
+  way it will decide the drop.
 - **`onEventChangeResult` hears the refusal.** It gets `{ status: "rejected", reason }` with
   `detail.input` of `"agent"`, once. The example's log adds
   `agent was refused: agents-book-weekdays-only`.
@@ -124,9 +134,13 @@ The button reads the history with `useCalendarHistory`, anywhere inside `Root`:
 
 <include meta='title="agent-undo.tsx"'>../../examples/agent-undo.tsx</include>
 
-The undo is a proposal of its own. Your `onEventChange` gets it with `detail.input` of `"api"` and
-`detail.history` of `"undo"`, and the log above adds `api moved review`. It isn't the agent's, so a
-policy that refuses agents doesn't refuse it.
+The undo is a proposal of its own. When a person clicks the button, your `onEventChange` gets it
+with `detail.input` of `"api"` and `detail.history` of `"undo"`, and the log above adds
+`api moved review`. It isn't the agent's, so a policy that refuses agents doesn't refuse it.
+
+It is the agent's when the agent presses the button. Had this one been a ui-sdk button, a `press`
+step on it would propose the undo with `input: "agent"` and `history: "undo"`, and
+`weekdaysForAgents` would have its say.
 
 The history records where an event was, not your fields. Undoing an agent's rename proposes the
 event's times again, with no `detail.fields`, and the new title would stay. So the button reads
@@ -180,8 +194,10 @@ The agent asks how it ended with `getChange`, a step like any other:
 | Resolved                       | The change with `status: "saved"`                               |
 | Rejected, or the handler threw | The change with `status: "rejected"`, `reason: "handler-error"` |
 
-While a change saves, `describeCalendar` lists it in `pendingChanges`, and `listEvents` shows the
-event where it's going, with `"pending": true`. A calendar remembers the last 50 changes agents
+While a change saves, `describeCalendar` lists it in `pendingChanges`, and `listEvents` shows a
+moved or updated event where it's going, with `"pending": true`. A new event is different: it
+isn't in `listEvents` until your `events` has it, so an agent that created one reads `getChange`
+first and lists the events once it's `saved`. A calendar remembers the last 50 changes agents
 proposed on it, so an ID from earlier in a conversation still answers.
 
 Your app hears the same outcome at `onEventChangeResult`, with `detail.input` of `"agent"`:

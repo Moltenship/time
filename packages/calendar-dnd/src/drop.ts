@@ -275,7 +275,8 @@ export function startCalendarDrop<
     } else {
       if (changed) {
         const proposed = proposal(current);
-        check = proposed === null ? null : (options.check?.(proposed as never) ?? null);
+        // The question the drop will ask, with its input.
+        check = proposed === null ? null : (options.check?.(proposed as never, detail) ?? null);
         options.onPreview?.({ eventId: source.eventId ?? null, proposed: next });
       }
       const layout = ghostLayout(current.surface, next, current.options.timeZone);

@@ -40,13 +40,18 @@ export type CalendarControlledState<
 
 /**
  * Why a slice changed: `"imperative"` for a command called from code, the press of the
- * navigation trigger that asked for it, or `"input-change"` for the view switcher.
+ * navigation trigger that asked for it, `"input-change"` for the view switcher,
+ * `"keyboard-navigation"` for a view's keys moving focus or the range, `"focus-change"` for focus
+ * a person moves onto a cell or event, and `"resource-toggle"` for a resource's expand or collapse.
  */
 export type CalendarChangeReason =
+  | "focus-change"
   | "imperative"
   | "input-change"
+  | "keyboard-navigation"
   | "next-press"
   | "previous-press"
+  | "resource-toggle"
   | "today-press";
 
 /**

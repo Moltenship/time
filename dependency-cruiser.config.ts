@@ -44,6 +44,30 @@ const solidWorkspaces = "(?:^|/)(?:packages/calendar-solid|apps/demo-solid)/";
 const uiSdkWorkspaces =
   "(?:^|/)(?:packages/calendar-(?:primitives|react|solid)/|packages/calendar-testing/tests/|apps/(?:demo-solid|showcase)/)";
 const sourceRoots = "(?:^|/)(?:apps|benchmarks|packages|registry|tools)/";
+/** A package's source and its tests: rules 12 and 13 cover both (architecture.md). */
+const packageCodePath = (packageName: string) =>
+  `(?:^|/)packages/${packageName}/(?:src|tests)(?:/|$)`;
+/** ui-sdk's date entries, which the packages never import: the domain is the engine's (rule 14). */
+const uiSdkDateEntries = "date|calendar|timeline|date-picker|date-input|time-input";
+/** What the primitives import, and the only things (rule 12): core, the Temporal utilities and ui-sdk's core. */
+const primitivesImports = [
+  "^@moltenship/calendar-(?:core|temporal)$",
+  "(?:^|/)packages/calendar-(?:core|primitives|temporal)/",
+  npmPackages("@ui-sdk/core"),
+];
+/**
+ * What the two rules above already report for the primitives, so the "nothing else" rules name
+ * only what neither of them does.
+ */
+const primitivesReportedElsewhere = [
+  reactPackages,
+  solidPackages,
+  otherFrameworkPackages,
+  npmPackages("jotai|@dnd-kit/[^/]+"),
+  "\\.(?:css|less|sass|scss)$",
+  "^@moltenship/",
+  "(?:^|/)packages/",
+];
 
 const noOtherPackageSourceRules: IForbiddenRuleType[] = packageNames.map((packageName) => ({
   name: `no-${packageName}-deep-imports`,
@@ -150,9 +174,9 @@ export default {
     {
       name: "primitives-import-no-framework",
       comment:
-        "calendar-primitives is framework-free: no React, Solid or other framework, no ui-sdk renderer, no Jotai, dnd-kit or CSS. DOM types are fine.",
+        "calendar-primitives is framework-free, its tests too: no React, Solid or other framework, no ui-sdk renderer, no Jotai, dnd-kit or CSS. DOM types are fine.",
       severity: "error",
-      from: { path: packageSourcePath("calendar-primitives") },
+      from: { path: packageCodePath("calendar-primitives") },
       to: {
         path: [
           reactPackages,
@@ -166,16 +190,41 @@ export default {
     {
       name: "primitives-build-on-the-engine",
       comment:
-        "calendar-primitives imports core and the Temporal utilities, nothing else of ours: no integration, facade, pointer layer or registry source.",
+        "calendar-primitives imports core and the Temporal utilities, nothing else of ours, in its tests too: no integration, facade, pointer layer or registry source.",
       severity: "error",
-      from: { path: packageSourcePath("calendar-primitives") },
+      from: { path: packageCodePath("calendar-primitives") },
       // Specifiers as written, and the packages' source should they resolve to it.
       to: {
         path: ["^@moltenship/", "(?:^|/)packages/"],
         pathNot: [
-          "^@moltenship/calendar-(?:core|temporal)$",
+          // The package's own name too, which its tests may import it by.
+          "^@moltenship/calendar-(?:core|primitives|temporal)$",
           "(?:^|/)packages/calendar-(?:core|primitives|temporal)/",
         ],
+      },
+    },
+    {
+      name: "primitives-import-nothing-else",
+      comment:
+        "calendar-primitives' source imports core, the Temporal utilities and @ui-sdk/core, and nothing else: no other npm package and no Node built-in.",
+      severity: "error",
+      from: { path: packageSourcePath("calendar-primitives") },
+      to: { pathNot: [...primitivesImports, ...primitivesReportedElsewhere] },
+    },
+    {
+      name: "primitives-tests-import-nothing-else",
+      comment:
+        "calendar-primitives' tests import what its source may, plus the test runner, jsdom and Node's built-ins.",
+      severity: "error",
+      from: { path: "(?:^|/)packages/calendar-primitives/tests(?:/|$)" },
+      to: {
+        pathNot: [
+          ...primitivesImports,
+          ...primitivesReportedElsewhere,
+          npmPackages("vite-plus|jsdom"),
+        ],
+        // Node's built-ins, which the cruiser records without their `node:` prefix.
+        dependencyTypesNot: ["core"],
       },
     },
     {
@@ -195,16 +244,23 @@ export default {
     {
       name: "solid-integration-builds-on-the-primitives",
       comment:
-        "calendar-solid imports the primitives, core and the Temporal utilities of ours, never calendar-react, the facade or the React-only packages.",
+        "calendar-solid imports the primitives, core and the Temporal utilities of ours, in its tests too, never calendar-react, the facade or the React-only packages.",
       severity: "error",
-      from: { path: packageSourcePath("calendar-solid") },
+      from: { path: packageCodePath("calendar-solid") },
       to: {
         path: ["^@moltenship/", "(?:^|/)packages/"],
         pathNot: [
-          "^@moltenship/calendar-(?:core|primitives|temporal)$",
+          "^@moltenship/calendar-(?:core|primitives|solid|temporal)$",
           "(?:^|/)packages/calendar-(?:core|primitives|solid|temporal)/",
         ],
       },
+    },
+    {
+      name: "react-integration-tests-import-no-solid-integration",
+      comment: "The integrations never import each other, in their tests either.",
+      severity: "error",
+      from: { path: "(?:^|/)packages/calendar-react/tests(?:/|$)" },
+      to: { path: ["^@moltenship/calendar-solid$", "(?:^|/)packages/calendar-solid/"] },
     },
     {
       name: "no-react-in-primitives-or-solid",
@@ -238,6 +294,22 @@ export default {
         path: [
           "^@ui-sdk/[^/]+/(?:internal|dist|src)(?:/|$)",
           "(?:^|/)node_modules/@ui-sdk/[^/]+/(?:dist/)?(?:internal|src)/",
+        ],
+      },
+    },
+    {
+      name: "no-ui-sdk-date-entries",
+      comment:
+        "The packages never import ui-sdk's date entries (date, calendar, timeline, date-picker, date-input, time-input): the domain is the engine's.",
+      severity: "error",
+      from: { path: "(?:^|/)packages/" },
+      // Specifiers as written, and the files they resolve to: core's under `components/` and
+      // `foundation/`, the renderers' at the top of `dist`, or Solid's under `dist/solid/`.
+      to: {
+        path: [
+          `^@ui-sdk/[^/]+/(?:${uiSdkDateEntries})$`,
+          // Without a quantified group around `[^/]+`, which the cruiser refuses as unsafe.
+          `(?:^|/)node_modules/@ui-sdk/[^/]+/dist/(?:solid/|components/[^/]+/|foundation/[^/]+/|)(?:${uiSdkDateEntries})\\.(?:d\\.ts|jsx?|mjs)$`,
         ],
       },
     },

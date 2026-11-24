@@ -70,11 +70,14 @@ export interface CalendarPointerOptions<
   readonly announcer?: CalendarAnnouncer;
   /**
    * Asks the root's policies about the proposal a drop would make, so the preview shows whether
-   * it would be saved: pass `actions.checkEventChange`. Preview segments get `data-invalid` when
-   * a policy rejects it and `data-warning` when one flags it.
+   * it would be saved: pass `actions.checkEventChange`. It gets the detail the drop will propose
+   * with, `{ input: "pointer" }` or a dragged-in item's input, so a policy that answers by input
+   * answers the preview as it will the drop. Preview segments get `data-invalid` when a policy
+   * rejects it and `data-warning` when one flags it.
    */
   readonly check?: (
     proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
+    detail: CalendarProposalDetail,
   ) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
   /**
    * Day columns of the time axis, matched to `[data-date]` elements without `data-all-day`: a
@@ -409,7 +412,8 @@ export function attachCalendarPointer<
     current.placement = placement;
     if (changed) {
       const proposed = proposal(current);
-      current.check = proposed === null ? null : (getOptions().check?.(proposed) ?? null);
+      current.check =
+        proposed === null ? null : (getOptions().check?.(proposed, pointerInput) ?? null);
       getOptions().onPreview?.({
         eventId: current.gesture.kind === "create" ? null : current.gesture.event.id,
         proposed: placement,

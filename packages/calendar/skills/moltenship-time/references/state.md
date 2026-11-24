@@ -91,7 +91,7 @@ Every state handler is `(next, detail)`:
 | `previous`     | The value before                                                                             |
 | `controlled`   | Whether the app controls this value                                                          |
 | `slice`        | Which value: `"view"`, `"anchorDate"`, …                                                     |
-| `reason`       | `"next-press"`, `"previous-press"`, `"today-press"`, `"input-change"` (the view switcher part), or `"imperative"` (an action call) |
+| `reason`       | `"next-press"`, `"previous-press"`, `"today-press"`, `"input-change"` (the view switcher part), `"keyboard-navigation"` (a view's keys), `"focus-change"` (focus a person moved), `"resource-toggle"`, or `"imperative"` (an action call) |
 | `source`       | `"mouse"`, `"touch"`, `"pen"`, `"keyboard"`, `"virtual"`, `"programmatic"`, or `"agent"`     |
 | `event`        | The DOM event, when a part's own control caused the change                                   |
 | `cancel()`     | Keeps the value as it was                                                                    |
@@ -107,6 +107,8 @@ Every state handler is `(next, detail)`:
 ```
 
 An action takes options last, `{ event?, reason?, source? }`, to say why and how the app called it: `actions.navigateNext({ event: event.nativeEvent })`. Without them a call reads `reason: "imperative"`, `source: "programmatic"`.
+
+`"keyboard"` is a person's keys, on a toolbar button and in a view: arrow-key navigation, moving focus between cells and events, and expanding a resource report it. `"agent"` is anything an agent's step causes, including an action the app's own button calls when an agent presses it.
 
 A click dispatched by a script reads `source: "programmatic"`. Only a real pointer reads `"mouse"`, so don't assert `"mouse"` in a jsdom test.
 

@@ -264,6 +264,51 @@ test("composed callback refs preserve React 19 cleanup on replacement and unmoun
   expect(partRefs?.frame.current).toBeNull();
 });
 
+test("with two copies of a part, meta's ref holds the one still rendered", async () => {
+  let partRefs: CalendarPartRefs | undefined;
+  function Probe() {
+    partRefs = Calendar.useCalendarMeta().refs;
+    return null;
+  }
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  mountedRoots.push(root);
+  const render = (first: boolean, second: boolean) =>
+    act(async () =>
+      root.render(
+        <Calendar.Root
+          defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
+          defaultTimeZone="Asia/Tbilisi"
+          defaultView="month"
+          events={events}
+          locale="en-GB"
+          resources={resources}
+          weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+        >
+          <Probe />
+          {first ? <Calendar.Title data-copy="first" /> : null}
+          {second ? <Calendar.Title data-copy="second" /> : null}
+        </Calendar.Root>,
+      ),
+    );
+  const title = (id: string) => container.querySelector(`[data-copy='${id}']`);
+
+  await render(true, true);
+  expect(partRefs?.title.current).toBe(title("second"));
+
+  // The copy that goes away gives the ref back to the one that stays, either way round.
+  await render(true, false);
+  expect(partRefs?.title.current).toBe(title("first"));
+
+  await render(true, true);
+  await render(false, true);
+  expect(partRefs?.title.current).toBe(title("second"));
+
+  await render(false, false);
+  expect(partRefs?.title.current).toBeNull();
+});
+
 test("descendant layout effects navigate with the latest committed view and handler", async () => {
   const actionHistory: ReturnType<typeof Calendar.useCalendarActions>[] = [];
   const navigationCommits: string[] = [];

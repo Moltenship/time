@@ -38,8 +38,10 @@ export const publishedPackages: readonly PublishedPackage[] = [
   // The dnd-kit adapter (#237): 14,526 raw and 4,945 gzip bytes, with dnd-kit left as imports.
   { directory: "calendar-dnd-kit", budgets: { ".": { raw: 15 * KiB, gzip: 5 * KiB } } },
   // 2.0 preview (ui-sdk primitives). Provisional budgets: set both from the first build of their
-  // sources, with the usual headroom, in the PR that lands them.
-  { directory: "calendar-primitives", budgets: { ".": { raw: 64 * KiB, gzip: 18 * KiB } } },
+  // sources, with the usual headroom, in the PR that lands them. The review's fixes to the agent
+  // (#276: who caused a change, agent deletes, ISO calendars only, known resource IDs) took
+  // calendar-primitives to 69,102 raw and 17,569 gzip bytes. 70 and 18 KiB leave the headroom.
+  { directory: "calendar-primitives", budgets: { ".": { raw: 70 * KiB, gzip: 18 * KiB } } },
   { directory: "calendar-solid", budgets: { ".": { raw: 32 * KiB, gzip: 10 * KiB } } },
   // Root's event source (#200), read through useSyncExternalStore, took calendar-react to 78,147 of
   // 77,824 raw bytes, onEventChangeResult with useCalendarPendingChanges (#199) to 79,597 raw

@@ -9,7 +9,7 @@ A deleted event is gone from the calendar, so an agent can't delete until you tu
 switches are involved, and a careful app sets both:
 
 1. `allowAgentDelete` on `Root`. Without it the calendar has no `deleteEvent` action, for every
-   agent and whatever the bridge allows.
+   agent and whatever the bridge allows, and it refuses a delete an agent causes any other way.
 2. The bridge's `allow`, which holds the step until the person answers.
 
 This page's samples import the `Calendar`, `meetings` and `weekRules` that the
@@ -43,7 +43,8 @@ says.
   The actions a calendar doesn't offer leave its `actions` one microtask after it mounts. A snapshot
   taken in the same task as the mount still lists `deleteEvent` and, on a read-only calendar, the
   actions that change events. No agent reads a page that fast, but a test that mounts a calendar and
-  reads `actions` at once does: await a microtask first.
+  reads `actions` at once does: await a microtask first. A `deleteEvent` called in that moment
+  deletes nothing: it fails with `calendar-event-change-rejected: agent-delete-not-allowed`.
 </Callout>
 
 ## Ask the person
@@ -77,11 +78,34 @@ A few things to get right:
   stopped. A question left on screen would answer a step that's already over.
 - **Later calls wait.** While `allow` is pending, `act` and `query` calls on the same bridge queue
   behind it. `snapshot` still answers.
-- **The calendar is asked first.** On a `Root` without `allowAgentDelete` the step fails before
-  the bridge calls `allow`, so the person is never asked about a delete that can't run.
+- **The calendar is asked first.** On a `Root` without `allowAgentDelete` a `deleteEvent` step
+  fails before the bridge calls `allow`, so the person is never asked about a delete that can't
+  run.
 - **Your policies still run.** After the person says yes, the delete is a proposal like any other.
   A policy can refuse it, and the agent's step fails with the policy's reason.
 - **`timeout` is yours to choose.** A step waits five minutes for `allow` when you don't set it.
+
+## A delete button of yours
+
+An agent can press a ui-sdk button your app rendered, with a `press` step. When that button's
+handler proposes a delete, the delete is the agent's. Your policies and `onEventChange` get it
+with `detail.input` of `"agent"`, whatever input the handler passed:
+
+<include meta='title="remove-meeting.tsx"'>../../examples/agent-delete-button.tsx</include>
+
+- **Without `allowAgentDelete`, the calendar refuses it.** The press succeeds as a step and
+  deletes nothing. The proposal ends `rejected` with the reason `agent-delete-not-allowed`, your
+  `onEventChange` isn't called, and `onEventChangeResult` hears the refusal with `input: "agent"`.
+  A person's click on the same button deletes as it did.
+- **With `allowAgentDelete`, the press is what your `allow` has to hold.** The step is `press` on
+  a `button`, not `deleteEvent` on a calendar. The `allow` above refuses every component but the
+  calendar, so it refuses this press. An `allow` that lets presses through would let this one
+  delete without the question: ask the person for it as well, or put the button inside an element
+  with `data-agent-hidden`, which keeps it from agents as
+  [Connect an agent](/docs/agents/connect#decide-what-an-agent-may-do) does for a whole calendar.
+
+The same holds for every change a pressed button proposes: a policy that refuses agents refuses
+it. [Who made a change](/docs/agents/changes#two-kinds-of-change) has the rule.
 
 ## Stopping a turn
 

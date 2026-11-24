@@ -434,7 +434,8 @@ gives `"saving"`, and the agent reads how it ended with `getChange`: see
   title there, and the calendar doesn't store it for you. The `App` above does this with
   `titleFrom`. See [Save what the agent sent](/docs/agents/connect#save-what-the-agent-sent).
 - **A calendar has `deleteEvent` only when `Root` has `allowAgentDelete`.** Without it the action
-  isn't among the calendar's, and a step that asks for it fails whatever `allow` returns.
+  isn't among the calendar's, a step that asks for it fails whatever `allow` returns, and a delete
+  an agent causes by pressing a button of yours is refused.
 
 The [Agents](/docs/agents) guides show React. The bridge's API (`createAgent`, `snapshot`, `act`,
 `agentTools`, `registerTools`) and everything about the calendar's actions carry over; only the

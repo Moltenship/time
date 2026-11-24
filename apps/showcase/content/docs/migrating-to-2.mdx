@@ -17,19 +17,20 @@ names the types 2.0 widened.
 
 ## In short
 
-| Change                                                                | Do this                                                                 | Who it affects                                |
-| --------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
-| `@ui-sdk/core` and `@ui-sdk/react` are peer dependencies              | [Install them](#install-the-new-peer-dependencies)                      | Everyone                                      |
-| `CalendarInputMethod` has a fourth value, `"agent"`                   | [Handle it](#handle-the-agent-input)                                    | Code that switches on `detail.input`          |
-| `onEventChange` and policies get the proposal's detail, with `fields` | Nothing. [Use it](#handlers-and-policies-hear-who-proposed) if you like | Nobody has to change                          |
-| State handlers hear `reason`, `source`, `event` and can `cancel()`    | Nothing. [Use it](#state-handlers-hear-why-and-who)                     | Code that builds a `detail` by hand, in tests |
-| Actions take options last                                             | [Wrap an action used as an event handler](#actions-take-options)        | Code such as `onClick={actions.navigateNext}` |
-| `Root` has `label`, `allowAgentDelete` and `formatAgentEventLabel`    | [Name your calendar](#name-the-calendar)                                | Apps that want agents, or a fixed name        |
-| The store and state types moved to `@moltenship/calendar-primitives`  | Nothing: [the old imports still work](#new-packages)                    | Nobody                                        |
+| Change                                                                | Do this                                                                            | Who it affects                                                                  |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `@ui-sdk/core` and `@ui-sdk/react` are peer dependencies              | [Install them](#install-the-new-peer-dependencies)                                 | Everyone                                                                        |
+| `CalendarInputMethod` has a fourth value, `"agent"`                   | [Handle it](#handle-the-agent-input)                                               | Code that switches on `detail.input`                                            |
+| `onEventChange` and policies get the proposal's detail, with `fields` | [Check handlers with a second parameter](#handlers-and-policies-hear-who-proposed) | Handlers with an optional second parameter, and code that calls a typed handler |
+| The toolbar parts and the frame render a `data-slot` attribute        | [Check selectors on `data-slot="calendar"`](#the-parts-have-data-slot)             | Apps with shadcn's date picker, or such CSS                                     |
+| State handlers hear `reason`, `source`, `event` and can `cancel()`    | Nothing. [Use it](#state-handlers-hear-why-and-who)                                | Code that builds a `detail` by hand, in tests                                   |
+| Actions take options last                                             | [Wrap an action used as an event handler](#actions-take-options)                   | Code such as `onClick={actions.navigateNext}`                                   |
+| `Root` has `label`, `allowAgentDelete` and `formatAgentEventLabel`    | [Name your calendar](#name-the-calendar)                                           | Apps that want agents, or a fixed name                                          |
+| The store and state types moved to `@moltenship/calendar-primitives`  | Nothing: [the old imports still work](#new-packages)                               | Nobody                                                                          |
 
 What didn't change: the engine, the registry's views, the `data-calendar-part` attributes and the
 other attributes your CSS and tests target, the keyboard model, and every hook's name and return
-value.
+value. The parts gained one attribute, [`data-slot`](#the-parts-have-data-slot).
 
 ## Install the new peer dependencies
 
@@ -91,7 +92,9 @@ TypeScript checks for every case stops compiling until it has the fourth:
 <include meta='title="input-label.ts"'>../examples/migrating-input.ts</include>
 
 No agent proposes anything until your app creates a bridge, so `"agent"` never arrives in an app
-that doesn't opt in.
+that doesn't opt in. In one that does, `"agent"` is the input of everything an agent's step
+causes. That includes a `proposeEventChange` your own button's handler makes when an agent
+presses the button, which a person's click still reports as `"api"`.
 
 An [event history](/docs/undo-redo) records every input by default, and now that includes an
 agent's. To leave an agent's changes out of undo, list the inputs you want:
@@ -105,6 +108,17 @@ second argument, and a policy as `detail` in its second argument. Handlers that 
 are unchanged.
 
 <include meta='title="saving.tsx"'>../examples/migrating-saving.tsx</include>
+
+Two kinds of code do change:
+
+- **A handler with a second parameter of its own.** 1.x called `onEventChange` with the change
+  alone. A function passed directly, as `onEventChange={save}` where `save` is
+  `(change, options?) => …`, now receives the detail as `options`. TypeScript reports it when the
+  two types differ, and stays silent when `options` is loose enough to take a detail. Wrap the
+  call: `onEventChange={(change) => save(change)}`.
+- **Code that calls a typed handler.** `CalendarEventChangeHandler` now has two parameters, and
+  `detail` is required. A test or a wrapper that calls such a handler with one argument stops
+  compiling. Pass a detail: `handler(change, { input: "api" })`.
 
 `applyChange` and `calendar.tsx` are the ones from [Connect an agent](/docs/agents/connect#name-the-calendar)
 and the [Quick start](/docs/quick-start).
@@ -126,13 +140,17 @@ field. Code that builds the context as `{ events, timeZone }` still compiles.
 The second argument of `onViewChange`, `onAnchorDateChange` and the other four state handlers had
 `previous`, `controlled` and `slice`. It now also has:
 
-| Field      | Contents                                                                                |
-| ---------- | --------------------------------------------------------------------------------------- |
-| `reason`   | `"next-press"`, `"previous-press"`, `"today-press"`, `"input-change"` or `"imperative"` |
-| `source`   | `"mouse"`, `"touch"`, `"pen"`, `"keyboard"`, `"virtual"`, `"programmatic"` or `"agent"` |
-| `event`    | The DOM event, when one of the calendar's own controls caused the change                |
-| `cancel()` | Keeps the value as it was                                                               |
-| `canceled` | Whether a handler cancelled                                                             |
+| Field      | Contents                                                                                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `reason`   | `"next-press"`, `"previous-press"`, `"today-press"`, `"input-change"`, `"keyboard-navigation"`, `"focus-change"`, `"resource-toggle"` or `"imperative"` |
+| `source`   | `"mouse"`, `"touch"`, `"pen"`, `"keyboard"`, `"virtual"`, `"programmatic"` or `"agent"`                                                                 |
+| `event`    | The DOM event, when one of the calendar's own controls caused the change                                                                                |
+| `cancel()` | Keeps the value as it was                                                                                                                               |
+| `canceled` | Whether a handler cancelled                                                                                                                             |
+
+`"keyboard"` is a person's keys, on a toolbar button and in a view: arrow-key navigation, moving
+focus and expanding a resource report it. `"programmatic"` is a call from your own code, and
+`"agent"` anything an [agent's step](/docs/agents/changes#two-kinds-of-change) causes.
 
 Handlers still run when they did: before a controlled value changes, since your handler is what
 changes it, and after an uncontrolled one. `cancel()` puts an uncontrolled value back.
@@ -156,15 +174,37 @@ type `CalendarCommandOptions`". Wrap the call, and pass the event if a handler s
 
 `Calendar.NextTrigger`, `Calendar.PreviousTrigger` and `Calendar.TodayTrigger` already do this.
 
+## The parts have `data-slot`
+
+`Calendar.Frame` and the toolbar parts are ui-sdk slots now, and each renders a `data-slot`
+attribute beside its `data-calendar-part`:
+
+| Part              | `data-slot`                 |
+| ----------------- | --------------------------- |
+| `Frame`           | `calendar`                  |
+| `Toolbar`         | `calendar-toolbar`          |
+| `Title`           | `calendar-title`            |
+| `Viewport`        | `calendar-viewport`         |
+| `PreviousTrigger` | `calendar-previous-trigger` |
+| `TodayTrigger`    | `calendar-today-trigger`    |
+| `NextTrigger`     | `calendar-next-trigger`     |
+| `ViewSwitcher`    | `calendar-view-switcher`    |
+
+They matter when your app already targets one of those names, and `calendar` is the likely one:
+shadcn's date picker renders `data-slot="calendar"` on its root. A rule such as `[data-slot="calendar"] { … }`, or a test's
+`querySelector('[data-slot="calendar"]')`, written for the date picker now matches the scheduler's
+frame too. Scope such a selector to the date picker, or select the scheduler by
+`data-calendar-part="frame"`.
+
 ## Name the calendar
 
 `Root` takes three new props:
 
-| Prop                    | Effect                                                                                                   |
-| ----------------------- | -------------------------------------------------------------------------------------------------------- |
-| `label`                 | Names the calendar. `Calendar.Frame` takes it as its `aria-label`, and an agent finds the calendar by it |
-| `allowAgentDelete`      | Gives an agent the `deleteEvent` action. Off by default, and the calendar has no such action then        |
-| `formatAgentEventLabel` | Names each visible event in the list an agent reads. By default the title and ISO times                  |
+| Prop                    | Effect                                                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| `label`                 | Names the calendar. `Calendar.Frame` takes it as its `aria-label`, and an agent finds the calendar by it                              |
+| `allowAgentDelete`      | Gives an agent the `deleteEvent` action. Off by default: the calendar has no such action then, and refuses any delete an agent causes |
+| `formatAgentEventLabel` | Names each visible event in the list an agent reads. By default the title and ISO times                                               |
 
 Without `label`, the frame is labelled by the title, as in 1.x, so nothing changes for a screen
 reader until you set it. With `label`, the frame's name is the label and the title is no longer

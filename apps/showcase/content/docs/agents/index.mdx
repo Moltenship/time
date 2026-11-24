@@ -120,27 +120,29 @@ input. An action takes nothing, or exactly one object:
 }
 ```
 
-| Action                                                                  | What it does                                                                     |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
-| `describeCalendar()`                                                    | Returns the calendar's facts: today, the time zone, the views, what's allowed    |
-| `listEvents({ start?, end? })`                                          | Returns the events of a range of dates. Without one, the range in view           |
-| `getChange({ changeId })`                                               | Returns a change the agent proposed, with where it is now                        |
-| `navigateNext()`                                                        | Shows the next range: the next week in a week view                               |
-| `navigatePrevious()`                                                    | Shows the previous range                                                         |
-| `navigateToday()`                                                       | Shows the range that holds today                                                 |
-| `goToDate({ date })`                                                    | Shows the range that holds `date`                                                |
-| `setView({ view })`                                                     | Switches to one of your views by name                                            |
-| `setTimeZone({ timeZone })`                                             | Shows times in another IANA time zone                                            |
-| `selectEvent({ eventId })`                                              | Selects an event, or clears the selection with `null`                            |
-| `createEvent({ start, end, title?, resourceIds?, fields? })`            | Proposes a new event. Dates make an all-day event, date-times a timed one        |
-| `updateEvent({ eventId, title?, start?, end?, resourceIds?, fields? })` | Proposes new details for an event: a title, times, resources, or your own fields |
-| `moveEvent({ eventId, start, end?, resourceIds? })`                     | Proposes a new time for an event. It keeps its length unless `end` is given      |
-| `resizeEvent({ eventId, start?, end? })`                                | Proposes a new start or a new end for an event                                   |
-| `deleteEvent({ eventId })`                                              | Proposes deleting an event. Absent unless `Root` has `allowAgentDelete`          |
+| Action                                                                  | What it does                                                                                              |
+| ----------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `describeCalendar()`                                                    | Returns the calendar's facts: today, the time zone, the views, what's allowed                             |
+| `listEvents({ start?, end? })`                                          | Returns the events of a range of dates. Without one, the range in view                                    |
+| `getChange({ changeId })`                                               | Returns a change by its ID, with where it is now: one an agent proposed, or anyone's that's still pending |
+| `navigateNext()`                                                        | Shows the next range: the next week in a week view                                                        |
+| `navigatePrevious()`                                                    | Shows the previous range                                                                                  |
+| `navigateToday()`                                                       | Shows the range that holds today                                                                          |
+| `goToDate({ date })`                                                    | Shows the range that holds `date`                                                                         |
+| `setView({ view })`                                                     | Switches to one of your views by name                                                                     |
+| `setTimeZone({ timeZone })`                                             | Shows times in another IANA time zone                                                                     |
+| `selectEvent({ eventId })`                                              | Selects an event, or clears the selection with `null`                                                     |
+| `createEvent({ start, end, title?, resourceIds?, fields? })`            | Proposes a new event. Dates make an all-day event, date-times a timed one                                 |
+| `updateEvent({ eventId, title?, start?, end?, resourceIds?, fields? })` | Proposes new details for an event: a title, times, resources, or your own fields                          |
+| `moveEvent({ eventId, start, end?, resourceIds? })`                     | Proposes a new time for an event. It keeps its length unless `end` is given                               |
+| `resizeEvent({ eventId, start?, end? })`                                | Proposes a new start or a new end for an event                                                            |
+| `deleteEvent({ eventId })`                                              | Proposes deleting an event. Absent unless `Root` has `allowAgentDelete`                                   |
 
 Dates are ISO strings, such as `"2026-10-09"`. A time without an offset, such as
 `"2026-10-09T10:00"`, is wall-clock time in the calendar's time zone; with `Z` or an offset it's
-that exact moment. The [reference](/docs/agents/reference) has every argument and every error.
+that exact moment. A date in another calendar, such as one that ends in `[u-ca=hebrew]`, fails
+with `calendar-agent-unsupported-calendar`. The [reference](/docs/agents/reference) has every
+argument and every error.
 
 The bridge's three tools are the same for every component, so their definitions don't say what a
 calendar's actions take. The calendar says it itself: `describeCalendar` returns each action it
@@ -187,7 +189,9 @@ A model starts with `describeCalendar`. Its result is what the model can't know 
 
 `today` and `now` are in the calendar's time zone, so "tomorrow at ten" needs nothing from your
 prompt. `views` is what `setView` takes, `resources` what `resourceIds` takes, and `actions` what
-the calendar offers now, each with its input.
+the calendar offers now, each with its input. On a calendar that has resources, a `resourceIds`
+entry that isn't one of them fails with `calendar-agent-unknown-resource`, which lists the ones
+there are.
 
 `listEvents` returns the events themselves, which is where event IDs come from:
 
@@ -307,10 +311,10 @@ A change your policies or your handler refuse at once fails its step the same wa
 The calendar holds no events, so three parts of an agent's change are your code:
 
 - **Saving.** `onEventChange` gets an agent's change as it gets a drag, with `detail.input` of
-  `"agent"`.
+  `"agent"`. That holds for anything a step causes, a press on a button of yours included.
 - **Titles and your own fields.** `createEvent` and `updateEvent` take a `title` and a `fields`
   object. The calendar doesn't know your event's shape, so it hands them to your handler as
-  `detail.fields`, unchecked, and your handler stores what it accepts.
+  `detail.fields` without checking what's in them, and your handler stores what it accepts.
 - **Rules.** Your policies see every change before it's saved, and `detail.fields` with it.
 
 [Connect an agent](/docs/agents/connect#name-the-calendar) has the handler.
@@ -323,10 +327,12 @@ The calendar holds no events, so three parts of an agent's change are your code:
 - **Ask whether a change would be accepted.** There's no dry run. An agent proposes the change, and
   a refusal fails the step with the reason.
 - **Delete, unless you say so.** A calendar has no `deleteEvent` action until `Root` has
-  `allowAgentDelete`. See [Deleting](/docs/agents/deleting).
-- **Skip your rules.** Policies and `onEventChange` run for an agent as they do for a person. A
-  calendar without `onEventChange` is read-only for agents too, and offers no action that changes
-  an event.
+  `allowAgentDelete`, and until then it refuses a delete an agent causes any other way, such as
+  by pressing a delete button of yours. See [Deleting](/docs/agents/deleting).
+- **Skip your rules.** Policies and `onEventChange` run for an agent as they do for a person, and
+  they hear `input: "agent"` for every change a step causes, so a policy that refuses agents
+  can't be stepped around through a button. A calendar without `onEventChange` is read-only for
+  agents too, and offers no action that changes an event.
 - **Write a field your handler doesn't store.** `fields` reaches your `onEventChange` and goes no
   further unless your code puts it somewhere.
 - **See what isn't a ui-sdk component.** A dialog or a form you build with another library isn't in

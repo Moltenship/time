@@ -2,10 +2,18 @@
 
 import { createComponent } from "@solidjs/web";
 import { createAgent, registerTools } from "@ui-sdk/solid/agent";
+import { Button } from "@ui-sdk/solid/button";
 import { createSignal, merge } from "solid-js";
 import { afterEach, expect, test } from "vite-plus/test";
 
-import { CalendarRoot, Chrome, review, type Meeting, type RootProps } from "./fixtures/calendar";
+import {
+  Calendar,
+  CalendarRoot,
+  Chrome,
+  review,
+  type Meeting,
+  type RootProps,
+} from "./fixtures/calendar";
 import { cleanup, mount, settled } from "./harness/render";
 import "./setup";
 
@@ -456,6 +464,77 @@ test("an agent deletes only where the root lets it", async () => {
   expect(allowing.events()).toEqual([]);
   // The bridge leaves out an empty item list.
   expect(calendarOf().items ?? []).toEqual([]);
+});
+
+/** The application's own button, a ui-sdk one an agent can press, that deletes the review. */
+function RemoveButton() {
+  const actions = Calendar.useCalendarActions();
+  return createComponent(Button, {
+    children: "Remove review",
+    onClick: () => void actions.proposeEventChange({ cause: "delete", eventId: "meeting-1" }),
+  });
+}
+
+function renderWithButton(props: RootProps) {
+  return mount(() =>
+    createComponent(
+      CalendarRoot,
+      merge(props, {
+        get children() {
+          return [createComponent(RemoveButton, {}), createComponent(Chrome, {})];
+        },
+      }),
+    ),
+  );
+}
+
+async function press(ref: string) {
+  const outcome = await agent.act({ steps: [{ action: "press", ref }] });
+  await settled();
+  return outcome;
+}
+
+test("a change an agent causes by pressing the application's button is the agent's", async () => {
+  const seen: string[] = [];
+  const results: string[] = [];
+  renderWithButton({
+    allowAgentDelete: true,
+    onEventChange: () => undefined,
+    onEventChangeResult: (result, detail) => results.push(`${result.status}:${detail.input}`),
+    policies: [
+      (_change, { detail }) => {
+        seen.push(detail?.input ?? "none");
+        return { type: "accept" };
+      },
+    ],
+  });
+
+  expect((await press("Remove review")).ok).toBe(true);
+
+  expect(seen).toEqual(["agent"]);
+  expect(results).toEqual(["committed:agent"]);
+});
+
+test("an agent's press can't delete where the root doesn't let agents delete", async () => {
+  const deleted: string[] = [];
+  const results: string[] = [];
+  const view = renderWithButton({
+    onEventChange: (change) => void deleted.push(change.cause),
+    onEventChangeResult: (result, detail) =>
+      results.push(
+        `${result.status}:${result.status === "rejected" ? result.reason : ""}:${detail.input}`,
+      ),
+  });
+
+  await press("Remove review");
+
+  expect(deleted).toEqual([]);
+  expect(results).toEqual(["rejected:agent-delete-not-allowed:agent"]);
+
+  // A person's click on the same button still deletes.
+  view.container.querySelector("button")!.click();
+  await settled();
+  expect(deleted).toEqual(["delete"]);
 });
 
 test("query lists the visible events within the calendar, labelled as the root formats them", async () => {

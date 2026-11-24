@@ -216,7 +216,8 @@ export function createCalendarStore<
       }
 
       // The handler hears the change after it is written, as it always has, so it reads the new
-      // state; `cancel()` then puts an uncontrolled slice back, unless the handler moved on.
+      // state; `cancel()` then puts an uncontrolled slice back, unless the handler moved that
+      // slice on. Only that slice: what the handler wrote to the others stays.
       const canceled = dispatch(handlerContext, handlerNames[slice], next, {
         controlled,
         ...(options?.event === undefined ? {} : { event: options.event }),
@@ -225,8 +226,8 @@ export function createCalendarStore<
         slice,
         ...(options?.source === undefined ? {} : { source: options.source }),
       });
-      if (canceled && written !== undefined && state === written) {
-        state = before;
+      if (canceled && written !== undefined && Object.is(state[slice], written[slice])) {
+        state = Object.freeze({ ...state, [slice]: before[slice] });
         notify();
       }
     };

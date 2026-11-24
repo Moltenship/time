@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import "./setup";
 
+import { withSource } from "@ui-sdk/core/observe";
 import { checkServer, mount } from "@ui-sdk/core/testing";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
@@ -27,7 +28,12 @@ function setup(
   props: HostProps = {},
   extra: Pick<CalendarPrimitiveOptions, "allowAgentDelete" | "formatAgentEventLabel"> = {},
 ) {
-  const root = host(props);
+  // The root and the primitive hear the same option, as Root passes it to both.
+  const root = host(
+    extra.allowAgentDelete === undefined
+      ? props
+      : { ...props, allowAgentDelete: extra.allowAgentDelete },
+  );
   const view = mount(calendar, { ...extra, runtime: root.runtime, ...root.model.state }, markup);
   cleanups.push(
     () => view.unmount(),
@@ -125,6 +131,84 @@ test("the agent's actions are the agent's, whatever calls them", () => {
 
   view.api.selectEvent({ eventId: null });
   expect(root.model.state.selection).toBeNull();
+});
+
+test("a date in another calendar than ISO is refused wherever an agent gives one", () => {
+  const onAnchorDateChange = vi.fn();
+  const onEventChange = vi.fn();
+  const { root, view } = setup({ handlers: { onAnchorDateChange }, onEventChange });
+  const refused = 'in the "hebrew" calendar';
+
+  expect(() => view.api.goToDate({ date: "2026-08-20[u-ca=hebrew]" })).toThrow(
+    `calendar-agent-unsupported-calendar: date is ${refused}`,
+  );
+  expect(() => view.api.listEvents({ end: "2026-08-21[!u-ca=hebrew]" })).toThrow(refused);
+  expect(() =>
+    view.api.createEvent!({ end: "2026-08-21[u-ca=hebrew]", start: "2026-08-20" }),
+  ).toThrow(`end is ${refused}`);
+  expect(() =>
+    view.api.createEvent!({ end: "2026-08-20T11:00", start: "2026-08-20T10:00Z[u-ca=hebrew]" }),
+  ).toThrow(`start is ${refused}`);
+  expect(() =>
+    view.api.moveEvent!({
+      eventId: "meeting-1",
+      start: "2026-08-20T10:00[Europe/Berlin][u-ca=hebrew]",
+    }),
+  ).toThrow(refused);
+  expect(onAnchorDateChange).not.toHaveBeenCalled();
+  expect(onEventChange).not.toHaveBeenCalled();
+
+  // ISO, said out loud, is ISO; a wall-clock time stays in the calendar's zone.
+  view.api.goToDate({ date: "2026-08-20[u-ca=iso8601]" });
+  expect(root.model.state.anchorDate.calendarId).toBe("iso8601");
+  expect(
+    view.api.moveEvent!({ eventId: "meeting-1", start: "2026-08-16T14:00[u-ca=iso8601]" }),
+  ).toMatchObject({ proposed: { start: "2026-08-16T14:00:00+00:00" } });
+});
+
+test("an agent's resource IDs must be the calendar's, where it has resources", () => {
+  const onEventChange = vi.fn();
+  const { view } = setup({
+    onEventChange,
+    resources: [
+      { id: "room-a", title: "Room A" },
+      { id: 7, title: "Room 7" },
+    ],
+  });
+
+  expect(() =>
+    view.api.createEvent!({
+      end: "2026-08-16T11:00",
+      resourceIds: ["room-z"],
+      start: "2026-08-16T10:00",
+    }),
+  ).toThrow(
+    'calendar-agent-unknown-resource: no resource has the ID "room-z". Resources: "room-a", 7',
+  );
+  expect(() =>
+    view.api.moveEvent!({
+      eventId: "meeting-1",
+      resourceIds: ["room-z"],
+      start: "2026-08-16T14:00",
+    }),
+  ).toThrow("calendar-agent-unknown-resource");
+  expect(() =>
+    view.api.updateEvent!({ eventId: "meeting-1", resourceIds: ["room-a", "room-z"] }),
+  ).toThrow("calendar-agent-unknown-resource");
+  expect(onEventChange).not.toHaveBeenCalled();
+
+  // A known ID, also a number given as a string, reaches the application as the calendar's.
+  view.api.moveEvent!({ eventId: "meeting-1", resourceIds: ["7"], start: "2026-08-16T14:00" });
+  expect(onEventChange.mock.calls[0]![0].proposed.resourceIds).toEqual([7]);
+});
+
+test("a calendar without resources takes the resource IDs an agent gives", () => {
+  const onEventChange = vi.fn();
+  const { view } = setup({ onEventChange });
+
+  view.api.moveEvent!({ eventId: "meeting-1", resourceIds: ["room-z"], start: "2026-08-16T14:00" });
+
+  expect(onEventChange.mock.calls[0]![0].proposed.resourceIds).toEqual(["room-z"]);
 });
 
 test("bad arguments fail with what was expected", () => {
@@ -371,6 +455,109 @@ test("an agent deletes only where the root lets it", async () => {
     status: "saved",
   });
   expect(saved).toEqual(["delete:agent"]);
+});
+
+test("deleteEvent refuses in its own body where the root doesn't allow it, however it was reached", () => {
+  const saved: string[] = [];
+  const results: string[] = [];
+  const { view } = setup({
+    onEventChange: (change) => void saved.push(change.cause),
+    onEventChangeResult: (result, detail) =>
+      results.push(
+        `${result.status}:${result.status === "rejected" ? result.reason : ""}:${detail.input}`,
+      ),
+  });
+
+  // Before the instance settles, the getter still hands the method out, as ui-sdk's check needs.
+  const deleteEvent = view.api.deleteEvent!;
+
+  expect(() => deleteEvent({ eventId: "meeting-1" })).toThrow(
+    "calendar-event-change-rejected: agent-delete-not-allowed",
+  );
+  expect(saved).toEqual([]);
+  expect(results).toEqual(["rejected:agent-delete-not-allowed:agent"]);
+});
+
+test("deleteEvent refuses in its own body where the policies would still let it through", () => {
+  const onEventChange = vi.fn();
+  // The root has turned deletes off and the runtime hasn't committed that yet, so the policies
+  // still allow an agent's delete.
+  const root = host({ allowAgentDelete: true, onEventChange });
+  const view = mount(
+    calendar,
+    { allowAgentDelete: false, runtime: root.runtime, ...root.model.state },
+    markup,
+  );
+  cleanups.push(
+    () => view.unmount(),
+    () => root.dispose(),
+  );
+  const deleteEvent = view.api.deleteEvent!;
+
+  expect(() => deleteEvent({ eventId: "meeting-1" })).toThrow(
+    "calendar-event-change-rejected: agent-delete-not-allowed",
+  );
+  expect(onEventChange).not.toHaveBeenCalled();
+});
+
+test("a delete proposed as the agent is refused without allowAgentDelete, and kept with it", async () => {
+  const results: string[] = [];
+  const onEventChangeResult = (
+    result: { readonly status: string; readonly reason?: string },
+    detail: { readonly input: string },
+  ) => void results.push(`${result.status}:${result.reason ?? ""}:${detail.input}`);
+  const refused = host({ onEventChange: vi.fn(), onEventChangeResult });
+  const allowed = host({ allowAgentDelete: true, onEventChange: vi.fn(), onEventChangeResult });
+  cleanups.push(
+    () => refused.dispose(),
+    () => allowed.dispose(),
+  );
+  const proposal = { cause: "delete", eventId: "meeting-1" } as const;
+
+  await refused.model.actions.proposeEventChange(proposal, { input: "agent" });
+  await refused.model.actions.proposeEventChange(proposal);
+  await allowed.model.actions.proposeEventChange(proposal, { input: "agent" });
+
+  expect(results).toEqual([
+    "rejected:agent-delete-not-allowed:agent",
+    "committed::api",
+    "committed::agent",
+  ]);
+});
+
+test("a proposal made while an agent's step runs is the agent's, with the rest of its detail", async () => {
+  const seen: string[] = [];
+  const root = host({
+    onEventChange: vi.fn(),
+    policies: [
+      (_change, { detail }) => {
+        seen.push(`${detail?.input}:${detail?.history ?? ""}`);
+        return { type: "accept" };
+      },
+    ],
+  });
+  cleanups.push(() => root.dispose());
+  const move = {
+    cause: "move",
+    eventId: "meeting-1",
+    proposed: {
+      end: Temporal.Instant.from("2026-08-15T12:00:00Z"),
+      kind: "timed",
+      start: Temporal.Instant.from("2026-08-15T11:00:00Z"),
+    },
+  } as const;
+
+  // As the application's own button calls it when an agent presses it.
+  await withSource("agent", () => root.model.actions.proposeEventChange(move));
+  await withSource("agent", () =>
+    root.model.actions.proposeEventChange(move, { history: "undo", input: "api" }),
+  );
+  withSource("agent", () => root.model.actions.checkEventChange(move));
+  // A person's, or the application's own, stay as they were.
+  await withSource("mouse", () => root.model.actions.proposeEventChange(move));
+  await root.model.actions.proposeEventChange(move, { input: "keyboard" });
+
+  expect(seen).toEqual(["agent:", "agent:undo", "agent:", "api:", "keyboard:"]);
 });
 
 test("describeCalendar gives today, the time zone, the views and the visible range", () => {

@@ -194,7 +194,7 @@ interface CalendarAnnotations {
   readonly snapshot: AnnotationSnapshot;
   readonly sources: readonly CalendarAnnotationSource[];
 }
-type CalendarChangeReason = "imperative" | "input-change" | "next-press" | "previous-press" | "today-press";
+type CalendarChangeReason = "focus-change" | "imperative" | "input-change" | "keyboard-navigation" | "next-press" | "previous-press" | "resource-toggle" | "today-press";
 type CalendarChangeSource = "agent" | "keyboard" | "mouse" | "pen" | "programmatic" | "touch" | "virtual";
 interface CalendarClockTicker {
   readonly getSnapshot: () => Temporal.Instant;
@@ -332,6 +332,7 @@ interface CalendarRuntimeConnection<TView extends string, TSelection, TFocus, TR
   readonly store: CalendarStore<TView, TSelection, TFocus, TResourceId>;
 }
 interface CalendarRuntimeInputs<TEvent, TResource, TViewDef extends AnyCalendarViewDefinition, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly allowAgentDelete?: boolean;
   readonly annotationSources?: readonly CalendarAnnotationSource[];
   readonly annotations?: readonly CalendarAnnotation<unknown, TResourceId>[];
   readonly availability?: CalendarAvailability;

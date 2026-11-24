@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { createComponent } from "@solidjs/web";
-import { createMemo, createRoot, createSignal, flush } from "solid-js";
+import { createMemo, createRoot, createSignal, flush, Loading } from "solid-js";
 import { describe, expect, test } from "vite-plus/test";
 
 import { when } from "../src/flow";
@@ -165,6 +165,69 @@ describe("createStateSelector", () => {
     store.set({ ...initial, label: "b" });
     await settled();
     expect(view.container.textContent).toBe("second b");
+  });
+
+  test("under a held transition, keeps the source on screen subscribed and lets go of one superseded", async () => {
+    const stores = {
+      first: createTestStore({ ...initial, label: "first" }),
+      second: createTestStore({ ...initial, label: "second" }),
+      third: createTestStore({ ...initial, label: "third" }),
+    };
+    type Key = keyof typeof stores;
+    const [key, setKey] = createSignal<Key>("first");
+    const waiting: (() => void)[] = [];
+    // Something async that reads the same key holds each change of it in a transition.
+    const slow = createMemo(async () => {
+      const current = key();
+      await new Promise<void>((resolve) => waiting.push(resolve));
+      return current;
+    });
+    const listeners = () =>
+      `${stores.first.listeners} ${stores.second.listeners} ${stores.third.listeners}`;
+    const release = async () => {
+      for (const resolve of waiting.splice(0)) resolve();
+      await settled();
+      await settled();
+    };
+    const view = mount(() => {
+      const label = createStateSelector(
+        () => stores[key()],
+        (state) => state.label,
+      );
+      return createComponent(Loading, {
+        fallback: "loading",
+        get children() {
+          return createComponent(Span, {
+            get children() {
+              return `${label()} ${slow()}`;
+            },
+          });
+        },
+      });
+    });
+    await release();
+    expect(view.container.textContent).toBe("first first");
+    expect(listeners()).toBe("1 0 0");
+
+    setKey("second");
+    await settled();
+    // The screen still shows the first source, which stays subscribed while the change is held.
+    expect(view.container.textContent).toBe("first first");
+    // The held run subscribed to the second, so a change there isn't missed once it lands.
+    expect(listeners()).toBe("1 1 0");
+
+    setKey("third");
+    await settled();
+    // The run for the second source never reached the screen; it let go when superseded.
+    expect(listeners()).toBe("1 0 1");
+
+    await release();
+    expect(view.container.textContent).toBe("third third");
+    expect(listeners()).toBe("0 0 1");
+
+    stores.third.set({ ...initial, label: "third, later" });
+    await settled();
+    expect(view.container.textContent).toBe("third, later third");
   });
 
   test("takes a change the store makes while Solid computes", async () => {

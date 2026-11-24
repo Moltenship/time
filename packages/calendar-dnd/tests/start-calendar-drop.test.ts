@@ -334,6 +334,8 @@ describe("startCalendarDrop", () => {
     // Once a placement: the second point is in the same slot.
     expect(check).toHaveBeenCalledOnce();
     expect(check.mock.calls[0]![0]).toMatchObject({ cause: "create", event: task });
+    // The question the drop will ask, with its input.
+    expect(check.mock.calls[0]![1]).toEqual({ input: "pointer" });
     expect(ghosts(grid.region)[0]!.hasAttribute("data-invalid")).toBe(true);
   });
 
@@ -398,12 +400,14 @@ describe("startCalendarDrop", () => {
 
   test("passes a keyboard sensor's input on", async () => {
     const grid = mountTimeGrid([]);
-    const { proposals, updates } = setup(grid, { columns: grid.columns });
+    const check = vi.fn<NonNullable<Options["check"]>>(() => null);
+    const { proposals, updates } = setup(grid, { check, columns: grid.columns });
     const drop = start({}, { input: "keyboard" });
 
     drop.move({ x: xAt("2026-08-17"), y: yAt("10:00") });
     await drop.drop();
 
+    expect(check.mock.calls.map(([, detail]) => detail)).toEqual([{ input: "keyboard" }]);
     expect(proposals[0]![1]).toEqual({ input: "keyboard" });
     expect(updates.every(({ input }) => input === "keyboard")).toBe(true);
   });

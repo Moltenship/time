@@ -101,8 +101,9 @@ What each change brings:
 Three rules for the handler, which `applyChange` above follows:
 
 - **Check every field.** The calendar passes `fields` on as the agent sent them. It checks that
-  they're JSON and nothing else. `titleFrom` takes a title only when it's a non-empty string;
-  treat each field of yours the same way, as you would a form's input.
+  `fields` is an object and `title` a string, and nothing inside: a value can be any type, nested
+  to any depth. `titleFrom` takes a title only when it's a non-empty string; treat each field of
+  yours the same way, as you would a form's input.
 - **An update can bring fields alone.** `updateEvent` with only a `title` proposes the event's
   current times, so keep storing `change.proposed` and read the title beside it.
 - **A person's change has no fields.** A drag, a resize and an undo arrive without
@@ -203,6 +204,13 @@ Put the reading actions on that list. `describeCalendar`, `listEvents` and `getC
 like any other, and `allow` is asked for them. An agent that may move events and may not list them
 has no event IDs to move. `allow` sees `args` before the calendar checks them, so read them as
 unknown input.
+
+A step isn't always one of the calendar's actions. An agent can also press a ui-sdk button of
+yours, as a step with the action `press`, and what its handler does to the calendar counts as the
+agent's: your policies and `onEventChange` hear `input: "agent"`. The example's `allow` refuses
+every component but the calendar, so no button is pressed there. If yours lets presses through,
+decide them as carefully as the calendar's own actions, a
+[delete button](/docs/agents/deleting#a-delete-button-of-yours) most of all.
 
 `allow` covers steps. The bridge's own `snapshot` and `query` aren't steps: they answer whatever
 `allow` says, with the calendar's entry and the events in view. To keep a calendar from agents

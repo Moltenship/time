@@ -39,7 +39,8 @@ and then it must be set up again.
    | Environment name | blank |
 
    The packages: `@moltenship/calendar`, `calendar-core`, `calendar-dnd`, `calendar-dnd-kit`,
-   `calendar-react`, `calendar-recurrence`, `calendar-temporal`, `calendar-testing` and `ics`.
+   `calendar-primitives`, `calendar-react`, `calendar-recurrence`, `calendar-solid`,
+   `calendar-temporal`, `calendar-testing` and `ics`.
 2. **Remove the old token.** In the repository's settings, delete the `npm` environment and the
    `NPM_TOKEN` secret; on npmjs.com, revoke that token (Access Tokens). Nothing uses them.
 3. **Optional: disallow tokens.** On npmjs.com, each package's Settings → Publishing access →

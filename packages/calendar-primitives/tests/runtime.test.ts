@@ -153,6 +153,42 @@ test("a handler that cancels puts an uncontrolled slice back", () => {
   expect(mounted.model.activeView?.range.start.toString()).toBe("2026-08-15");
 });
 
+test("a handler that cancels and writes another slice keeps both: its slice back, the other written", () => {
+  let actions: (typeof mounted)["model"]["actions"] | undefined;
+  const mounted = mount({
+    handlers: {
+      onViewChange: (_value, detail) => {
+        detail.cancel();
+        actions!.setAnchorDate(date("2026-08-20"));
+      },
+    },
+  });
+  actions = mounted.model.actions;
+
+  mounted.model.actions.setView("agenda");
+
+  expect(mounted.model.state.view).toBe("week");
+  expect(mounted.model.state.anchorDate.toString()).toBe("2026-08-20");
+});
+
+test("a handler that cancels after moving its own slice on keeps where it moved to", () => {
+  let actions: (typeof mounted)["model"]["actions"] | undefined;
+  const mounted = mount({
+    handlers: {
+      onAnchorDateChange: (value, detail) => {
+        if (value.toString() !== "2026-08-22") return;
+        detail.cancel();
+        actions!.setAnchorDate(date("2026-08-01"));
+      },
+    },
+  });
+  actions = mounted.model.actions;
+
+  mounted.model.actions.navigateNext();
+
+  expect(mounted.model.state.anchorDate.toString()).toBe("2026-08-01");
+});
+
 test("a command's reason and event reach the handler", () => {
   const onAnchorDateChange = vi.fn();
   const mounted = mount({ handlers: { onAnchorDateChange } });
@@ -214,6 +250,8 @@ test("event changes run as transactions without a framework", async () => {
 
 test("a policy hears which input proposed a change", async () => {
   const mounted = mount({
+    // Agents may delete here, so the root's own refusal doesn't answer first.
+    allowAgentDelete: true,
     onEventChange: () => undefined,
     policies: [
       (_change, { detail }) =>

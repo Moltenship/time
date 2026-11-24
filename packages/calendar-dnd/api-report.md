@@ -69,7 +69,7 @@ interface CalendarPointerOptions<TEvent, TEventId extends EventId, TResourceId e
   readonly onPropose: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>, detail: CalendarProposalDetail) => void | PromiseLike<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
   readonly timeZone: string;
   readonly announcer?: CalendarAnnouncer;
-  readonly check?: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
+  readonly check?: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>, detail: CalendarProposalDetail) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
   readonly columns?: readonly TimeGridColumn[];
   readonly disabled?: boolean;
   readonly onPreview?: (draft: CalendarDraft<TEventId, TResourceId> | null) => void;

@@ -88,6 +88,7 @@ import {
   ReactNode,
   RefCallback,
   RefObject,
+  SyntheticEvent,
 } from "react";
 import {
   InstantInterval,
@@ -214,10 +215,11 @@ interface CalendarPartRefs {
 }
 interface CalendarResourceExpansion {
   readonly expanded: boolean;
-  readonly collapse: () => void;
-  readonly expand: () => void;
-  readonly toggle: () => void;
+  readonly collapse: (cause?: CalendarResourceExpansionCause) => void;
+  readonly expand: (cause?: CalendarResourceExpansionCause) => void;
+  readonly toggle: (cause?: CalendarResourceExpansionCause) => void;
 }
+type CalendarResourceExpansionCause = CalendarCommandOptions | SyntheticEvent;
 type CalendarResourceStatus = ResourceStatus<NormalizedCalendarEvent<unknown, EventId, ResourceId>>;
 type CalendarRootAnchorProps = {
   readonly anchorDate: Temporal.PlainDate;
@@ -384,6 +386,7 @@ export {
   type CalendarPartRefs,
   type CalendarPublicState,
   type CalendarResourceExpansion,
+  type CalendarResourceExpansionCause,
   type CalendarResourceStatus,
   type CalendarRootProps,
   type CalendarRootStore,

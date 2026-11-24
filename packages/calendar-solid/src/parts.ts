@@ -37,13 +37,15 @@ function applyRef(ref: unknown, node: HTMLElement): void {
  * reads a `ref`: it binds the element as it is created.
  */
 function recordRef(
-  record: (node: HTMLElement | undefined) => void,
+  record: (node: HTMLElement) => () => void,
   user: unknown,
 ): (node: HTMLElement) => void {
+  let release: (() => void) | undefined;
   // The server binds no element, and its render is pure: a write as it disposes would warn.
-  if (!isServer) onCleanup(() => record(undefined));
+  if (!isServer) onCleanup(() => release?.());
   return (node) => {
-    record(node);
+    release?.();
+    release = record(node);
     applyRef(user, node);
   };
 }

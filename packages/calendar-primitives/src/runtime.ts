@@ -42,6 +42,7 @@ import {
   type SecondaryTimeZoneIssue,
 } from "@moltenship/calendar-core";
 import type { CalendarClock, PlainDateInterval } from "@moltenship/calendar-temporal";
+import { dispatch, type ChangeSource } from "@ui-sdk/core";
 
 import { createAnnouncerChannel, type AnnouncerChannel } from "./announcer-channel";
 import type {
@@ -143,6 +144,8 @@ export interface CalendarRuntimeInputs<
   TEventId extends EventId,
   TResourceId extends ResourceId,
 > {
+  /** Whether an agent may delete events; without it the engine refuses an agent's delete. */
+  readonly allowAgentDelete?: boolean;
   readonly annotationSources?: readonly CalendarAnnotationSource[];
   readonly annotations?: readonly CalendarAnnotation<unknown, TResourceId>[];
   readonly availability?: CalendarAvailability;
@@ -346,6 +349,7 @@ type ProposeNow<TEvent, TEventId extends EventId, TResourceId extends ResourceId
 ) => CalendarProposalOutcome<TEvent, TEventId, TResourceId>;
 
 interface CommittedInputs<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly allowAgentDelete: boolean | undefined;
   /** The view on screen. */
   readonly activeView: CalendarActiveView<AnyCalendarViewDefinition> | null;
   readonly availability: AvailabilitySnapshot;
@@ -379,9 +383,51 @@ const noHandler = () => {
 };
 /** The detail of a proposal made without one, or with something that names no input. */
 const apiInput: CalendarProposalDetail = Object.freeze({ input: "api" });
+const agentInput: CalendarProposalDetail = Object.freeze({ input: "agent" });
 const knownInputs: ReadonlySet<unknown> = new Set(["agent", "api", "keyboard", "pointer"]);
-const detailOf = (detail: CalendarProposalDetail | undefined): CalendarProposalDetail =>
-  detail !== undefined && knownInputs.has(detail.input) ? detail : apiInput;
+
+/**
+ * The source ui-sdk gives a change made now, read the one way its public entries offer: an event
+ * option `dispatch` calls with the details a change would get. While an agent's step runs, such as
+ * a press on the application's own button, that is `"agent"`; the state handlers hear the same.
+ * The probe is a handler of our own, so nothing else hears it and nothing changes.
+ */
+let probed: ChangeSource | undefined;
+const sourceProbe = Object.freeze({
+  options: () => probeOptions,
+});
+const probeOptions = Object.freeze({
+  onSourceProbe: (_value: unknown, details: { readonly source: ChangeSource }) => {
+    probed = details.source;
+  },
+});
+function currentSource(): ChangeSource | undefined {
+  probed = undefined;
+  dispatch(sourceProbe, "onSourceProbe", null, { reason: "imperative" });
+  return probed;
+}
+
+/**
+ * The detail every listener hears. Anything an agent's step causes is the agent's, whatever the
+ * caller passed, so a policy that refuses agents can't be stepped around by pressing a button;
+ * the rest of the detail, such as a history's `history`, is kept.
+ */
+function detailOf(detail: CalendarProposalDetail | undefined): CalendarProposalDetail {
+  if (detail?.input !== "agent" && currentSource() === "agent") {
+    return detail === undefined ? agentInput : Object.freeze({ ...detail, input: "agent" });
+  }
+  return detail !== undefined && knownInputs.has(detail.input) ? detail : apiInput;
+}
+
+/**
+ * An agent deletes only where the root allows it with `allowAgentDelete`, however it got there:
+ * through the calendar's own action or a button of the application's it pressed. The application
+ * hears the refusal like any other, through `onEventChangeResult`.
+ */
+const noAgentDeletes = ((change, { detail }) =>
+  change.cause === "delete" && detail?.input === "agent"
+    ? { reason: "agent-delete-not-allowed", type: "reject" }
+    : { type: "accept" }) satisfies CalendarPolicy<unknown, EventId, ResourceId>;
 
 function sameLocale(left: Intl.Locale | string, right: Intl.Locale | string): boolean {
   return String(left) === String(right);
@@ -536,10 +582,14 @@ function createSemanticActions<
 } {
   /** The policies every change runs through; a root without `onEventChange` rejects them all. */
   function policiesOf({
+    allowAgentDelete,
     onEventChange,
     policies = [],
   }: CommittedInputs<TEvent, TEventId, TResourceId>) {
-    return onEventChange === undefined ? [readOnlyRoot] : [readOnly, ...policies];
+    if (onEventChange === undefined) return [readOnlyRoot];
+    return allowAgentDelete === true
+      ? [readOnly, ...policies]
+      : [readOnly, noAgentDeletes as CalendarPolicy<TEvent, TEventId, TResourceId>, ...policies];
   }
 
   type Options = Parameters<typeof actions.setAnchorDate>[1];
@@ -844,6 +894,7 @@ export function createCalendarRuntime<
   ): CommittedInputs<TEvent, TEventId, TResourceId> {
     return {
       activeView: model.activeView as CalendarActiveView<AnyCalendarViewDefinition> | null,
+      allowAgentDelete: inputs.allowAgentDelete,
       availability: model.availability,
       environment: model.environment,
       eventSnapshot: model.eventSnapshot,
@@ -1020,6 +1071,7 @@ export function createCalendarRuntime<
     committedInputs ??= {
       current: {
         activeView: activeView as CalendarActiveView<AnyCalendarViewDefinition> | null,
+        allowAgentDelete: inputs.allowAgentDelete,
         availability,
         environment,
         eventSnapshot,

@@ -55,7 +55,30 @@ function describe(value: unknown): string {
 }
 
 /** A date as `YYYY-MM-DD`; a date-time's date counts too. */
+const calendarAnnotation = /\[!?u-ca=([^\]]*)\]/iu;
+
+/**
+ * Refuses a date in another calendar than ISO 8601, as `2026-08-20[u-ca=hebrew]` gives: Temporal
+ * would carry that calendar into state and proposals, where everything else is ISO, and its
+ * month and day would mean something else to every reader.
+ */
+function refuseOtherCalendars(value: unknown, name: string): void {
+  const calendar =
+    typeof value === "string"
+      ? calendarAnnotation.exec(value)?.[1]
+      : value instanceof Temporal.PlainDate ||
+          value instanceof Temporal.PlainDateTime ||
+          value instanceof Temporal.ZonedDateTime
+        ? value.calendarId
+        : undefined;
+  if (calendar === undefined || calendar.toLowerCase() === "iso8601") return;
+  throw new RangeError(
+    `calendar-agent-unsupported-calendar: ${name} is in the ${JSON.stringify(calendar)} calendar, in ${describe(value)}; the calendar takes ISO 8601 dates only, without a [u-ca=…] annotation`,
+  );
+}
+
 export function parsePlainDate(value: unknown, name: string): Temporal.PlainDate {
+  refuseOtherCalendars(value, name);
   if (value instanceof Temporal.PlainDate) return value;
   if (typeof value === "string") {
     try {
@@ -95,16 +118,19 @@ export function parseInstant(
   name: string,
   environment: Pick<CalendarEnvironmentBase, "disambiguation" | "timeZone">,
 ): Temporal.Instant {
+  refuseOtherCalendars(value, name);
   if (value instanceof Temporal.Instant) return value;
   if (value instanceof Temporal.ZonedDateTime) return value.toInstant();
   if (typeof value === "string") {
     try {
-      if (offsetOrZone.test(value)) {
-        return value.includes("[")
-          ? Temporal.ZonedDateTime.from(value).toInstant()
-          : Temporal.Instant.from(value);
+      // An ISO calendar annotation names no zone, so it doesn't make the time exact.
+      const iso = value.replace(calendarAnnotation, "");
+      if (offsetOrZone.test(iso)) {
+        return iso.includes("[")
+          ? Temporal.ZonedDateTime.from(iso).toInstant()
+          : Temporal.Instant.from(iso);
       }
-      return Temporal.PlainDateTime.from(value)
+      return Temporal.PlainDateTime.from(iso)
         .toZonedDateTime(environment.timeZone, { disambiguation: environment.disambiguation })
         .toInstant();
     } catch {
@@ -118,6 +144,7 @@ export function parseInstant(
 
 /** A wall-clock date-time, for floating events. */
 export function parsePlainDateTime(value: unknown, name: string): Temporal.PlainDateTime {
+  refuseOtherCalendars(value, name);
   if (value instanceof Temporal.PlainDateTime) return value;
   if (typeof value === "string") {
     try {
@@ -186,15 +213,34 @@ export function readEventId(value: unknown): EventId {
 }
 
 /** A list of resource IDs, each a string or a number. */
-export function readResourceIds(value: unknown): readonly ResourceId[] {
+export function readResourceIds(
+  value: unknown,
+  known: ReadonlyMap<ResourceId, unknown>,
+): readonly ResourceId[] {
   if (
-    Array.isArray(value) &&
-    value.every((id) => typeof id === "string" || typeof id === "number")
+    !Array.isArray(value) ||
+    !value.every((id) => typeof id === "string" || typeof id === "number")
   ) {
-    return Object.freeze([...(value as readonly ResourceId[])]);
+    throw new TypeError(
+      `calendar-agent-invalid-resources: resourceIds must be a list of resource IDs, not ${describe(value)}`,
+    );
   }
-  throw new TypeError(
-    `calendar-agent-invalid-resources: resourceIds must be a list of resource IDs, not ${describe(value)}`,
+  // A calendar without resources has none to check against: its events may name the
+  // application's own.
+  if (known.size === 0) return Object.freeze([...(value as readonly ResourceId[])]);
+  return Object.freeze(
+    (value as readonly ResourceId[]).map((id) => {
+      if (known.has(id)) return id;
+      // JSON gives a number as a string and back, as event IDs may come.
+      const found = [...known.keys()].find((candidate) => String(candidate) === String(id));
+      if (found !== undefined) return found;
+      const listed = [...known.keys()].slice(0, 20).map((candidate) => JSON.stringify(candidate));
+      throw new RangeError(
+        `calendar-agent-unknown-resource: no resource has the ID ${describe(id)}. Resources: ${listed.join(", ")}${
+          known.size > listed.length ? ", …" : ""
+        }`,
+      );
+    }),
   );
 }
 
@@ -293,9 +339,10 @@ export function createdPlacement(
   end: unknown,
   resourceIds: unknown,
   environment: CalendarEnvironmentBase,
+  resources: ReadonlyMap<ResourceId, unknown>,
 ): CalendarEventPlacementInput {
   const withResources =
-    resourceIds === undefined ? {} : { resourceIds: readResourceIds(resourceIds) };
+    resourceIds === undefined ? {} : { resourceIds: readResourceIds(resourceIds, resources) };
   if (!hasTime(start) && !hasTime(end)) {
     return {
       end: parsePlainDate(end, "end"),

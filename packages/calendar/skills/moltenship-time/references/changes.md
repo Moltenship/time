@@ -96,7 +96,7 @@ export function EditableCalendar({ initial }: { readonly initial: readonly Meeti
 
 Narrow before you read: check `cause === "delete"` before `proposed`, and `proposed.kind` before treating `start` as an instant.
 
-`onEventChange`'s second argument is `{ input, history?, fields? }`. `input` is `"pointer"`, `"keyboard"`, `"api"` or `"agent"`. `history` is `"undo"` or `"redo"` for a change the event history proposes. `fields` is what the proposer sent beside the placement: an agent's `createEvent` and `updateEvent` put the title and the app's own fields there, unchecked, and the handler stores what it accepts (`agent-ready.md#save-what-the-agent-sent`). A drag has none.
+`onEventChange`'s second argument is `{ input, history?, fields? }`. `input` is `"pointer"`, `"keyboard"`, `"api"` or `"agent"`. `"agent"` is anything an agent's step causes: the calendar's own actions, and a proposal the app's own button makes when an agent presses it. `history` is `"undo"` or `"redo"` for a change the event history proposes. `fields` is what the proposer sent beside the placement: an agent's `createEvent` and `updateEvent` put the title and the app's own fields there, with nothing inside them checked, and the handler stores what it accepts (`agent-ready.md#save-what-the-agent-sent`). A drag has none.
 
 ## Saving that takes time
 
@@ -123,7 +123,7 @@ A policy is `(change, context) => decision`. `context` is `{ events, timeZone, a
 | `readOnlyPolicy()`                          | Always runs first. Don't pass it                               |
 
 - **Put rules in policies, not in the handler.** A policy's `reason` reaches the person (as a refused drop) and an agent (as the step's error). An error thrown from `onEventChange` reads `handler-error`, for a person and an agent alike.
-- **Keep policies free of side effects.** They also run to preview a drop.
+- **Keep policies free of side effects.** They also run to preview a drop or a keyboard move, with the `input` the commit will have, so a rule on `detail?.input` marks the preview the way it decides the drop.
 - **Read `context.detail` as `detail?.input`.** It's `undefined` when code calls a policy outside a proposal.
 
 ## Propose from your own UI
@@ -160,7 +160,7 @@ export function PushBackButton({ meeting }: { readonly meeting: Meeting }) {
 
 Create with `{ cause: "create", proposed: { kind, start, end } }`. Delete with `{ cause: "delete", eventId }`. A change to anything but time and resources, such as a title, is the app's own state update: the calendar isn't involved.
 
-Rejection reasons: a policy's own reason, `read-only`, `invalid-placement` (an empty or reversed range), `handler-error`, `policy-error`, `superseded` (a newer change to the same event replaced it), `unknown-event`.
+Rejection reasons: a policy's own reason, `read-only`, `invalid-placement` (an empty or reversed range), `handler-error`, `policy-error`, `superseded` (a newer change to the same event replaced it), `unknown-event`, and `agent-delete-not-allowed` (an agent caused a delete on a `Root` without `allowAgentDelete`).
 
 ## How a change ended
 

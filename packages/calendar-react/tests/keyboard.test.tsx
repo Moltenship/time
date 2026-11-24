@@ -48,7 +48,7 @@ async function mount(
   onChange?: (change: Change) => void,
   props: Pick<
     Parameters<typeof KeyboardFixture>[0],
-    "controlFocus" | "persist" | "policies" | "readOnly"
+    "controlFocus" | "onStateChange" | "persist" | "policies" | "readOnly"
   > = {},
 ) {
   harness = await renderWithHarness(
@@ -195,6 +195,28 @@ describe("keyboard move, resize, and create", () => {
     expect(document.activeElement).toBe(segment(container, "trip"));
   });
 
+  test("the preview asks the policies as the commit will, as the keyboard", async () => {
+    const asked: string[] = [];
+    const container = await mount([allDay("trip", "2026-10-07", "2026-10-09", "Trip")], undefined, {
+      policies: [
+        (_change, { detail }) => {
+          asked.push(detail?.input ?? "none");
+          return { type: "accept" };
+        },
+      ],
+    });
+    await focus(segment(container, "trip"));
+
+    await press(" ");
+    await press("ArrowRight");
+    const previews = asked.length;
+    await press("Enter");
+
+    expect(previews).toBeGreaterThan(0);
+    expect(asked).toEqual(asked.map(() => "keyboard"));
+    expect(asked.length).toBeGreaterThan(previews);
+  });
+
   test("Escape cancels: the event and focus go back", async () => {
     const changes: Change[] = [];
     const container = await mount([allDay("trip", "2026-10-07", "2026-10-09", "Trip")], (change) =>
@@ -313,6 +335,33 @@ describe("keyboard move, resize, and create", () => {
     await press("Enter");
     expect(changes).toEqual([]);
     expect(spoken(container)).toBe("cancel move Trip");
+  });
+});
+
+describe("what a person's keys tell the state handlers", () => {
+  test("arrow keys and paging are the keyboard's, with their reason", async () => {
+    const heard: string[] = [];
+    const container = await mount([], undefined, { onStateChange: (entry) => heard.push(entry) });
+    await focus(cell(container, "2026-10-08"));
+    heard.length = 0;
+
+    await press("ArrowRight");
+    await press("PageDown");
+
+    expect(heard).toEqual([
+      "focus keyboard-navigation keydown",
+      "focus keyboard-navigation keydown",
+      "anchorDate keyboard-navigation keydown",
+    ]);
+  });
+
+  test("focus a person moves onto a cell is a focus change, not the application's", async () => {
+    const heard: string[] = [];
+    const container = await mount([], undefined, { onStateChange: (entry) => heard.push(entry) });
+
+    await focus(cell(container, "2026-10-12"));
+
+    expect(heard).toEqual(["focus focus-change focusin"]);
   });
 });
 

@@ -82,7 +82,7 @@ Every action takes nothing, or **exactly one object**:
 | ------------------ | -------------------------------------------------------------- | ----------------------------------------------------------------- |
 | `describeCalendar` | none                                                           | Today, now, the time zone, the views, resources, each action's input |
 | `listEvents`       | none, or `{ start?, end? }`                                    | Events as `{ id, title, kind, start, end, resourceIds }`. Any dates, in view or not |
-| `getChange`        | `{ changeId }`                                                 | A change this agent proposed, with its `status` now               |
+| `getChange`        | `{ changeId }`                                                 | A change by its ID, with its `status` now: an agent's, or anyone's that's still pending |
 | `navigateNext`, `navigatePrevious`, `navigateToday` | none                          |                                                                   |
 | `goToDate`         | `{ date }`                                                     | `"2026-10-09"`                                                    |
 | `setView`          | `{ view }`                                                     | One of the registered view names                                  |
@@ -94,7 +94,7 @@ Every action takes nothing, or **exactly one object**:
 | `resizeEvent`      | `{ eventId, start }` or `{ eventId, end }`                     | One of the two. No `fields`                                       |
 | `deleteEvent`      | `{ eventId }`                                                  | Only on a `Root` with `allowAgentDelete`                          |
 
-Times are ISO strings. `"2026-10-09T10:00"` is wall-clock time in the calendar's time zone; with `Z` or an offset it's that exact moment. Ends are exclusive.
+Times are ISO strings. `"2026-10-09T10:00"` is wall-clock time in the calendar's time zone; with `Z` or an offset it's that exact moment. Ends are exclusive. A date in another calendar, such as `"2026-10-09[u-ca=hebrew]"`, fails with `calendar-agent-unsupported-calendar`. On a calendar that has resources, a `resourceIds` entry that isn't one of them fails with `calendar-agent-unknown-resource`, which lists the ones there are.
 
 ```ts
 const outcome = await agent.act({
@@ -114,9 +114,10 @@ const outcome = await agent.act({
 - **A reading action's step has what it returned as `result`.** So does an event action's: the change, with a `status`.
 - **`status` says how far the change got.** `"saved"`: `onEventChange` took it. `"saving"`: the handler returned a promise that hasn't settled. `"validating"`: a policy returned a promise. For the last two the agent calls `getChange({ changeId })` later, and reads `"saved"`, or `"rejected"` with a `reason`.
 - **A refusal that's known at once fails the step.** `act` resolves with `ok: false` and `error: { step, message }`; it doesn't throw. The steps before stay applied, and the ones after don't run.
-- **`createEvent` returns `eventId: null`.** The app makes the event and its ID. The agent finds it with `listEvents`.
+- **`createEvent` returns `eventId: null`.** The app makes the event and its ID. The agent finds it with `listEvents`, once the app's `events` has it: a create that's still `"saving"` isn't listed.
+- **`listEvents` reads the app's `events`, with pending changes on top.** After a `"saved"` move it shows the new place when the handler updated `events` before returning, or returned a promise. A handler that returns nothing and updates `events` later leaves the old place listed until it does, so return the save's promise from `onEventChange`.
 - **Positional arguments fail.** `args: ["review", "2026-10-09T10:00"]` gives `calendar-agent-invalid-arguments: moveEvent takes { eventId: ID, start: ISO date or date-time, end?: same, resourceIds?: ID[] }; it takes one object, not 2 arguments`.
-- Error messages start with a code: `calendar-agent-invalid-arguments`, `calendar-agent-unknown-event` (with event IDs), `calendar-agent-unknown-change`, `calendar-unknown-view` (with the view names), `calendar-agent-invalid-time-zone`, `calendar-agent-invalid-range`, `calendar-event-change-rejected: <reason>`. An action the calendar doesn't take now fails with the bridge's own `calendar c1 takes no deleteEvent now. It takes: …`. `docs/agents/reference.md#errors` has all of them.
+- Error messages start with a code: `calendar-agent-invalid-arguments`, `calendar-agent-unknown-event` (with event IDs), `calendar-agent-unknown-change`, `calendar-unknown-view` (with the view names), `calendar-agent-invalid-time-zone`, `calendar-agent-invalid-range`, `calendar-agent-unsupported-calendar`, `calendar-agent-unknown-resource` (with resource IDs), `calendar-event-change-rejected: <reason>`. An action the calendar doesn't take now fails with the bridge's own `calendar c1 takes no deleteEvent now. It takes: …`. `docs/agents/reference.md#errors` has all of them.
 
 What isn't there, so don't tell a model it is:
 
@@ -173,6 +174,7 @@ Wire it as `onEventChange={(change, detail) => setMeetings((current) => applyCha
 
 - **`updateEvent` with only a title proposes the event's current times**, with `cause: "update"`. Keep storing `change.proposed`, and read the title beside it.
 - **`moveEvent`, `resizeEvent` and `deleteEvent` take no `fields`.** A person's drag has none either. Fall back to what the event had.
+- **The calendar checks that `fields` is an object and `title` a string, and nothing inside.** A value can be any type, nested to any depth.
 - **A field the handler doesn't store is dropped without a word to the agent.** Say in the model's prompt which fields the app takes, or refuse the others in a policy: `context.detail?.fields` is there too.
 - **A recurring series.** An occurrence's ID is in `listEvents`. To change the whole series the agent sends `updateEvent` with `fields: { scope: "all" }`, and the handler reads `detail.fields?.scope`. `docs/agents/reference.md#recurring-events` has it.
 - **Undo doesn't restore fields.** The event history records placements. An undone rename proposes the old placement with no fields, so restore the title from the step's `event` (`docs/agents/changes.md#undo-an-agents-changes`).
@@ -206,6 +208,7 @@ export const weekdaysForAgents: CalendarPolicy<Meeting, string, never> = (
 };
 ```
 
+- **Anything a step causes is the agent's.** An agent can press a ui-sdk button the app rendered, with a `press` step. If the button's handler calls `proposeEventChange`, an action such as `setView`, or a history's `undo`, policies and handlers hear `"agent"`, whatever input the code passed. A person's click on the same button reads as before. So a policy on `detail?.input === "agent"` can't be stepped around through a button.
 - Decide an agent's changes with a policy that answers at once: its refusal fails the step, with the reason. A policy that returns a promise makes every change on that root come back as `"validating"`, and the agent has to ask `getChange` for each.
 - A save that fails later doesn't fail the step, which already returned `"saving"`. The agent reads `"rejected"` with `reason: "handler-error"` from `getChange`, and `onEventChangeResult` hears it with the error. Tell the model to call `getChange` after a change that isn't `"saved"`.
 - A handler that throws at once fails the step with `calendar-event-change-rejected: handler-error (<the error's message>)`. The message goes to the model, so don't put anything in it the person shouldn't read.
@@ -214,6 +217,11 @@ export const weekdaysForAgents: CalendarPolicy<Meeting, string, never> = (
 ## Deleting
 
 `deleteEvent` needs two yeses: `allowAgentDelete` on `Root`, and the bridge's `allow`. Without the first the calendar has no such action: the step fails before `allow` is asked, and `describeCalendar` says `canDelete: false`. Make `allow` ask the person by returning a promise that resolves with their answer, and resolve `false` when `signal` aborts. The pattern, with its dialog, is in `docs/agents/deleting.md`. Copy it; don't shorten it to `allow: () => true`.
+
+A delete button of the app's counts too. When an agent presses a ui-sdk button whose handler proposes a delete, the delete is the agent's:
+
+- Without `allowAgentDelete` the calendar refuses it. The press succeeds as a step and deletes nothing; the proposal ends `rejected` with the reason `agent-delete-not-allowed`, and `onEventChangeResult` hears it with `input: "agent"`. A person's click still deletes.
+- With `allowAgentDelete`, the step's action is `press`, not `deleteEvent`. An `allow` that asks the person only for `deleteEvent` lets the press through, so ask for that step too, or put the button inside `data-agent-hidden`.
 
 An alternative to asking: record changes in an event history and offer Undo (`docs/agents/changes.md#undo-an-agents-changes`).
 

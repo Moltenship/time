@@ -90,13 +90,19 @@ Every change handler gets the new value and a detail:
 - `"next-press"`, `"previous-press"` or `"today-press"`: a press of `Calendar.NextTrigger`,
   `Calendar.PreviousTrigger` or `Calendar.TodayTrigger`.
 - `"input-change"`: a choice in `Calendar.ViewSwitcher`.
+- `"keyboard-navigation"`: a key in a view that moves focus or the visible range, such as an
+  arrow key or Page Down.
+- `"focus-change"`: focus a person moved onto a cell or an event, by clicking it or tabbing to it.
+- `"resource-toggle"`: a resource expanded or collapsed.
 - `"imperative"`: an action called from code, such as `actions.setView("month")`. It's also the
   reason for anything an [agent](/docs/agents) does.
 
 `source` is one of `"mouse"`, `"touch"`, `"pen"`, `"keyboard"`, `"virtual"`, `"agent"` or
-`"programmatic"`. `"virtual"` is a click with no pointer or key behind it, which may come from
-assistive technology. `"agent"` is an AI agent acting through the
-[agent bridge](/docs/agents/connect). `"programmatic"` is your own code.
+`"programmatic"`. `"keyboard"` is a person's keys, on a toolbar button and in a view: arrow-key
+navigation, moving focus and expanding a resource report it. `"virtual"` is a click with no
+pointer or key behind it, which may come from assistive technology. `"agent"` is an AI agent
+acting through the [agent bridge](/docs/agents/connect), and anything its step causes.
+`"programmatic"` is your own code.
 
 This calendar records how people navigate and keeps agents out of the month view. It uses the
 `Calendar`, `meetings` and `weekRules` from the [Quick start](/docs/quick-start):

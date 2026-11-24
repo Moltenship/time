@@ -154,15 +154,16 @@ gesture layer of your own can name its input as the second argument, as in
 A rejected result has a `reason`, and the `change` it would have made, except for
 `unknown-event`:
 
-| `reason`            | Meaning                                                           |
-| ------------------- | ----------------------------------------------------------------- |
-| `read-only`         | The event is read-only, or `Root` has no `onEventChange`          |
-| a policy's reason   | A policy rejected it, such as `out-of-bounds`                     |
-| `superseded`        | A newer change for the same event replaced it                     |
-| `handler-error`     | Your handler threw or its promise rejected; `error` has the cause |
-| `policy-error`      | A policy threw                                                    |
-| `invalid-placement` | The proposed range is empty or reversed                           |
-| `unknown-event`     | No event has that ID                                              |
+| `reason`                   | Meaning                                                                                 |
+| -------------------------- | --------------------------------------------------------------------------------------- |
+| `read-only`                | The event is read-only, or `Root` has no `onEventChange`                                |
+| a policy's reason          | A policy rejected it, such as `out-of-bounds`                                           |
+| `superseded`               | A newer change for the same event replaced it                                           |
+| `handler-error`            | Your handler threw or its promise rejected; `error` has the cause                       |
+| `policy-error`             | A policy threw                                                                          |
+| `invalid-placement`        | The proposed range is empty or reversed                                                 |
+| `unknown-event`            | No event has that ID                                                                    |
+| `agent-delete-not-allowed` | An [agent](/docs/agents/deleting) caused a delete, and `Root` has no `allowAgentDelete` |
 
 To create an event, propose `{ cause: "create", proposed: { kind, start, end } }`. To delete one,
 propose `{ cause: "delete", eventId }`.
