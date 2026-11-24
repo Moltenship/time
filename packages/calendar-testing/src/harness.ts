@@ -416,9 +416,9 @@ function setUp<
     );
   }
 
-  const onEventChange = (change: Change): void | Promise<void> => {
+  const onEventChange = (change: Change, detail: CalendarProposalDetail): void | Promise<void> => {
     changes.push(change);
-    const outcome = options.get().onEventChange?.(change);
+    const outcome = options.get().onEventChange?.(change, detail);
     if (isThenable(outcome)) return Promise.resolve(outcome).then(() => apply(change));
     apply(change);
   };

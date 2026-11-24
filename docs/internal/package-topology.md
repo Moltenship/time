@@ -4,6 +4,11 @@ This document turns the dependency law in [architecture.md](../../architecture.m
 ownership. A workspace may import only the public entry points of workspaces listed in its
 `dependencies`; importing another workspace's `src/` tree is always invalid.
 
+Version 2.0 adds a plane and two packages (#275, ADR 0275): the framework-free
+`calendar-primitives`, written on ui-sdk, between the engine and the framework integrations, and
+`calendar-solid` beside `calendar-react`. Both are in progress and unreleased; `architecture.md` §2
+says what is built. Where this document says "2.0", the 1.x line doesn't have it.
+
 Entry points expose only contracts approved by their owning implementation issues. Calendar core
 and Temporal expose the canonical engine contracts. Calendar React exposes its state/SSR layer and
 the issue #26 factory, compound context, and custom-view surface. The internal benchmark
@@ -16,10 +21,10 @@ packing, replacing that development entry with `dist/index.mjs` and `dist/index.
 
 ## Published packages
 
-Nine packages will publish to npm under `@moltenship`: `calendar`, `calendar-core`,
+Eleven packages will publish to npm under `@moltenship`: `calendar`, `calendar-core`,
 `calendar-dnd`, `calendar-dnd-kit`, `calendar-react`, `calendar-recurrence`, `calendar-temporal`,
-`calendar-testing` and `ics`. The list, with each
-entry point's size budget, is in [`tools/release/src/config.ts`](../../tools/release/src/config.ts);
+`calendar-testing`, `ics` and, new in 2.0, `calendar-primitives` and `calendar-solid`. All eleven
+share one version. The list, with each entry point's size budget, is in [`tools/release/src/config.ts`](../../tools/release/src/config.ts);
 [releasing.md](./releasing.md) covers versions, release checks and publishing.
 
 Every published package ships the root MIT `LICENSE`. pnpm adds it to a package's tarball when no
@@ -43,10 +48,12 @@ packed code carries the `/*!` notice.
 | --- | --- | --- |
 | `@moltenship/calendar-temporal` | Engine: type-specific Temporal utilities | None |
 | `@moltenship/calendar-core` | Engine: snapshots, indexes, projections, layouts, and transactions | `calendar-temporal` |
-| `@moltenship/calendar-react` | React integration: provider, selectors, actions, and headless primitives | `calendar-core`, `calendar-temporal` |
-| `@moltenship/calendar-dnd` | Pointer interaction adapter (native Pointer Events) | `calendar-core`, `calendar-temporal` |
+| `@moltenship/calendar-primitives` | Primitives (2.0): the calendar runtime, the calendar store, the calendar as a ui-sdk primitive, the agent surface. No framework | `calendar-core`, `calendar-temporal` |
+| `@moltenship/calendar-react` | React integration: provider, selectors, actions, and headless parts | `calendar-core`, `calendar-temporal`; in 2.0 also `calendar-primitives`, and `calendar-dnd` once `useCalendarPointer` moves into it |
+| `@moltenship/calendar-solid` | Solid integration (2.0): the same for SolidJS 2.0. Never `calendar-react`, the facade or another package with a React peer | `calendar-core`, `calendar-primitives`, `calendar-temporal`; `calendar-dnd` once it has no React peer |
+| `@moltenship/calendar-dnd` | Pointer interaction adapter (native Pointer Events); framework-free in 2.0, when its one React hook moves to `calendar-react` | `calendar-core`, `calendar-temporal` |
 | `@moltenship/calendar-dnd-kit` | Optional dnd-kit adapter: items dragged into the calendar, events dragged out (#237) | `calendar-core`, `calendar-dnd` |
-| `@moltenship/calendar` | Supported public facade | `calendar-core`, `calendar-dnd`, `calendar-react`, `calendar-temporal` |
+| `@moltenship/calendar` | Supported public facade, for React | `calendar-core`, `calendar-dnd`, `calendar-react`, `calendar-temporal` |
 | `@moltenship/calendar-testing` | Test helpers for apps: environment, builders, fixtures, render and hydration harness, queries, drivers and assertions (#45) | Public facade and `calendar-recurrence` |
 | `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `ics` |
 | `@moltenship/ics` | Standalone iCalendar parsing (ADR 0151) | None |
@@ -54,6 +61,7 @@ packed code carries the `/*!` notice.
 | `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade; its tests also use `calendar-testing` |
 | `benchmark` | Internal core and recurrence benchmark runners, with their fixtures | Core, recurrence and Temporal utilities |
 | `demo` | The Google Calendar-style demo app | Public facade, `calendar-recurrence` and `calendar-dnd-kit` |
+| `demo-solid` | The Solid integration in a Vite app (2.0, in progress); the one workspace that compiles Solid JSX | `calendar-solid`, and the engine packages it needs, through public entries |
 | `registry-source` | Registry source, type-checked and tested in place | Public facade only; its tests also use `calendar-testing` |
 | `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, the dnd-kit adapter, `calendar-testing`, registry source in place (`@registry/*`), and the demo's `App` by path (`apps/demo/src/app`); not in the manifest check yet |
 | `registry` | Internal shadcn build, validation and install test (`tools/registry`) | None |
@@ -61,8 +69,21 @@ packed code carries the `/*!` notice.
 
 External dependencies are added by the issue that validates their contract. React 19 is a peer of
 `calendar-react`, `calendar-dnd`, `calendar-dnd-kit`, `calendar` and `calendar-testing`, and React
-DOM 19 of `calendar-testing`. `calendar-react` has no runtime dependency outside the workspace; it
-dropped Jotai in #70 (ADR 0070). `calendar-core` depends on `@flatten-js/interval-tree` behind its
+DOM 19 of `calendar-testing`. In 1.x `calendar-react` has no runtime dependency outside the
+workspace; it dropped Jotai in #70 (ADR 0070).
+
+2.0 adds ui-sdk and Solid, as peers only (#275, ADR 0275). `@ui-sdk/core` is a peer of
+`calendar-primitives`, `calendar-react` and `calendar-solid`: an application's agent bridge has to
+share one copy of it with the calendar. `@ui-sdk/react` is a peer of `calendar-react`, and
+`@ui-sdk/solid`, `solid-js` and `@solidjs/web` of `calendar-solid`. The facade and
+`calendar-testing` bring `calendar-react`, so they declare its ui-sdk peers as well; their
+manifests don't yet. ui-sdk is pre-1.0: the catalog pins one version for all of its packages, every
+peer range is a caret that starts at it, `tests/package-metadata.test.ts` holds them together, and
+an upgrade moves all of them in one pull request. Only the primitives, the two integrations and the
+applications that show them import `@ui-sdk/*`, through its public entries, and only
+`calendar-solid` and `demo-solid` import Solid.
+
+`calendar-core` depends on `@flatten-js/interval-tree` behind its
 internal `IntervalIndex` (ADR 0016). dnd-kit (`@dnd-kit/react` and `@dnd-kit/dom` 0.5) is a peer
 of `calendar-dnd-kit` alone, which no other package depends on; the `a11y` tests use it with the
 adapter. The adapter also depends on `@dnd-kit/abstract`, which `@dnd-kit/dom` brings, for
@@ -96,6 +117,20 @@ calendar-core + ics ─────→ calendar-recurrence ─────→ sh
 ics (standalone: no workspace imports, no runtime dependencies) ─────→ showcase
 ```
 
+2.0 puts the primitives between the engine and the integrations. The rest of the flow stays:
+
+```text
+calendar-core + calendar-temporal → calendar-primitives (ui-sdk core peer; no framework)
+       ↓
+calendar-primitives + calendar-core + calendar-temporal → calendar-react (React, ui-sdk React peers)
+calendar-primitives + calendar-core + calendar-temporal → calendar-solid (Solid, ui-sdk Solid peers) ─────→ demo-solid
+
+calendar-react ⇸ calendar-solid, and calendar-solid ⇸ calendar-react, the facade or any package with a React peer
+```
+
+`calendar-dnd` keeps its place. Once `useCalendarPointer` has moved to `calendar-react`, it has no
+React peer and both integrations import it; `calendar-primitives` never does.
+
 Registry item directories are consumer-owned source boundaries, not npm packages. Of our packages,
 they import only the `@moltenship/calendar` facade, which the `registry-source-uses-calendar-facade` rule enforces,
 and published packages must never import registry, application, benchmark, or tool source. The
@@ -108,6 +143,14 @@ tests would (`registry-tests-use-the-facade-and-the-harness`).
 the workspace manifest graph. The same test runs dependency-cruiser against a deliberately invalid
 fixture and passes only when the expected deep-import violation is reported. Core, Temporal and
 `ics` configuration is also asserted to omit DOM libraries and ambient package types.
+
+The 2.0 rules (`architecture.md` §2, rules 12 to 15) are checked the same way, with invalid
+fixtures of their own; that enforcement is in progress. What it has to hold: the primitives import
+no framework, no ui-sdk renderer and, of ours, only core and the Temporal utilities; neither
+integration imports the other or the other's framework; `@ui-sdk/*` is imported only by the
+primitives, the integrations and the applications that show them, never through an `internal`,
+`dist` or `src` path and never its date, Calendar or Timeline entries from a package; Solid only by
+`calendar-solid` and `demo-solid`; and the catalog and the `@ui-sdk/*` peers move together.
 
 Dependency-cruiser 18 uses an isolated TypeScript 6 parser through `packageExtensions` because its
 boundary analysis does not yet work with TypeScript 7. This exception is tooling-only: Vite+ and

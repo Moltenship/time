@@ -1,4 +1,5 @@
 import type { EventId, ResourceId } from "../ids";
+import { createListeners } from "../internal/listeners";
 import { isPromiseLike } from "../internal/promise-like";
 import { ReadonlyMapView } from "../internal/readonly-map";
 import { runEventPolicies } from "../policies/pipeline";
@@ -15,6 +16,9 @@ import type {
   CalendarPendingChangePhase,
   CalendarPendingChanges,
   CalendarPendingPlacements,
+  CalendarPendingProposal,
+  CalendarProposalDetail,
+  CalendarProposalOutcome,
   CalendarTransactionContext,
   CalendarTransactionResult,
 } from "./types";
@@ -41,6 +45,16 @@ export interface EventTransactions<
     proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
     context: CalendarTransactionContext<TEvent, TEventId, TResourceId>,
   ) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  /**
+   * `propose`, returning the outcome itself when nothing waits: a policy's synchronous refusal, a
+   * synchronous save, or a proposal that can't apply. Otherwise the pending proposal, with its
+   * change and a `result` that never rejects. A caller that must answer at once, as an agent's
+   * step, learns a refusal without running the policies a second time.
+   */
+  readonly proposeNow: (
+    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
+    context: CalendarTransactionContext<TEvent, TEventId, TResourceId>,
+  ) => CalendarProposalOutcome<TEvent, TEventId, TResourceId>;
   /**
    * Runs a proposal through the policies without showing or saving it, as a gesture's preview
    * does, against the same events `propose` would see. `null` for an unknown event, or when a
@@ -69,6 +83,11 @@ interface PendingEntry<TEvent, TEventId extends EventId, TResourceId extends Res
 
 const noPending = new ReadonlyMapView(new Map<never, never>());
 
+/** A proposal that names no input is the application's own. */
+const apiDetail: CalendarProposalDetail = Object.freeze({ input: "api" });
+const detailOf = (context: { readonly detail?: CalendarProposalDetail }) =>
+  context.detail ?? apiDetail;
+
 function createChange<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
   proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
   id: string,
@@ -94,6 +113,14 @@ function createChange<TEvent, TEventId extends EventId, TResourceId extends Reso
   };
 }
 
+function pendingProposal<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(
+  change: CalendarEventChange<TEvent, TEventId, TResourceId>,
+  phase: CalendarPendingProposal<TEvent, TEventId, TResourceId>["phase"],
+  result: Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>,
+): CalendarPendingProposal<TEvent, TEventId, TResourceId> {
+  return Object.freeze({ change, phase, result, status: "pending" });
+}
+
 /**
  * Tracks proposed event changes from validation through persistence. Changes stay visible while
  * the handler runs; a rejection rolls them back, and the latest proposal for an event wins.
@@ -106,6 +133,7 @@ export function createEventTransactions<
   type Change = CalendarEventChange<TEvent, TEventId, TResourceId>;
   type Context = CalendarTransactionContext<TEvent, TEventId, TResourceId>;
   type Entry = PendingEntry<TEvent, TEventId, TResourceId>;
+  type Outcome = CalendarProposalOutcome<TEvent, TEventId, TResourceId>;
   type Result = CalendarTransactionResult<TEvent, TEventId, TResourceId>;
   type Snapshot = EventSnapshot<TEvent, TEventId, TResourceId>;
 
@@ -114,7 +142,7 @@ export function createEventTransactions<
   const records = new Map<string, CalendarPendingChange<TEvent, TEventId, TResourceId>>();
   /** The newest proposal per event; older proposals still being validated are superseded. */
   const latest = new Map<TEventId, string>();
-  const listeners = new Set<() => void>();
+  const listeners = createListeners();
   let pending: CalendarPendingPlacements<TEventId, TResourceId> = noPending;
   let changes: CalendarPendingChanges<TEvent, TEventId, TResourceId> = noPending;
   let base: Snapshot | undefined;
@@ -136,7 +164,7 @@ export function createEventTransactions<
     if (phases) {
       changes = records.size === 0 ? noPending : new ReadonlyMapView(new Map(records));
     }
-    for (const listener of listeners) listener();
+    listeners.notify();
   }
 
   function track(change: Change, phase: CalendarPendingChangePhase): void {
@@ -274,7 +302,7 @@ export function createEventTransactions<
 
     let returned: void | Promise<void>;
     try {
-      returned = context.onEventChange(change);
+      returned = context.onEventChange(change, detailOf(context));
     } catch (error) {
       hide(change);
       return { change, error, reason: "handler-error", status: "rejected" };
@@ -314,19 +342,17 @@ export function createEventTransactions<
     );
   }
 
-  function propose(
+  function proposeNow(
     proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
     context: Context,
-  ): Promise<Result> {
+  ): Outcome {
     reconcile(context.snapshot);
     sequence += 1;
     const events = applyEventOverlay(context.snapshot, pending);
     const change = createChange(proposal, `change-${sequence}`, events);
-    if (change === undefined) {
-      return Promise.resolve({ reason: "unknown-event", status: "rejected" });
-    }
+    if (change === undefined) return { reason: "unknown-event", status: "rejected" };
     if (change.proposed !== null && !isNonEmptyInterval(change.proposed)) {
-      return Promise.resolve({ change, reason: "invalid-placement", status: "rejected" });
+      return { change, reason: "invalid-placement", status: "rejected" };
     }
 
     const revision =
@@ -342,24 +368,40 @@ export function createEventTransactions<
     try {
       outcome = runEventPolicies(change, context.policies ?? [], {
         availability: context.availability,
+        detail: detailOf(context),
         events,
         timeZone: context.timeZone,
       });
       // Commit only throws before the handler runs, on a malformed policy adjustment.
       if (!isPromiseLike(outcome)) {
-        return Promise.resolve(commit(outcome, revision, context)).then(finish);
+        const committed = commit(outcome, revision, context);
+        if (!isPromiseLike(committed)) return finish(committed);
+        // The handler has the change, as the policies may have adjusted it.
+        return pendingProposal(outcome.change, "saving", committed.then(finish));
       }
     } catch (error) {
-      return Promise.resolve(policyError(error));
+      return policyError(error);
     }
 
     // Keep the proposal visible while asynchronous policies decide.
     if (change.cause === "create") track(change, "validating");
     else show(change, { revision, validating: true }, "validating");
-    return outcome
-      .then((result) => commit(result, revision, context))
-      .catch(policyError)
-      .then(finish);
+    return pendingProposal(
+      change,
+      "validating",
+      outcome
+        .then((result) => commit(result, revision, context))
+        .catch(policyError)
+        .then(finish),
+    );
+  }
+
+  function propose(
+    proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>,
+    context: Context,
+  ): Promise<Result> {
+    const outcome = proposeNow(proposal, context);
+    return outcome.status === "pending" ? outcome.result : Promise.resolve(outcome);
   }
 
   function check(
@@ -376,6 +418,7 @@ export function createEventTransactions<
     try {
       const outcome = runEventPolicies(change, context.policies ?? [], {
         availability: context.availability,
+        detail: detailOf(context),
         events,
         timeZone: context.timeZone,
       });
@@ -401,12 +444,8 @@ export function createEventTransactions<
     getPending: () => pending,
     getPendingChanges: () => changes,
     propose,
+    proposeNow,
     reconcile,
-    subscribe(listener: () => void) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    subscribe: listeners.subscribe,
   });
 }

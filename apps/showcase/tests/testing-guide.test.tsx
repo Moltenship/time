@@ -20,6 +20,8 @@ import {
   renderCalendar,
 } from "@moltenship/calendar-testing";
 
+import { createAgent } from "@ui-sdk/react/agent";
+
 import { calendarAnnouncements } from "@/components/calendar/announcements";
 import { createWeekView } from "@/components/calendar/time-grid-view/time-grid-view";
 
@@ -189,3 +191,40 @@ test("the week renders on the server and hydrates without a mismatch", async () 
   expect(calendar.serverMarkup).toContain("Standup");
 });
 // #endregion hydrate
+
+// #region agent
+test("an agent's move is saved like a person's, and says who asked", async () => {
+  const agent = createAgent();
+  const calendar = await renderCalendar(Calendar, {
+    environment,
+    events: [standup],
+    // An agent finds a calendar by its name, on the frame.
+    rootProps: { label: "Team calendar" },
+    children: (
+      <Calendar.Frame>
+        <Calendar.ActiveView />
+      </Calendar.Frame>
+    ),
+  });
+
+  const outcome = await calendar.act(() =>
+    agent.act({
+      steps: [
+        {
+          ref: "Team calendar",
+          action: "moveEvent",
+          // One object per action. The event's ID is what `listEvents` gives the agent.
+          args: [{ eventId: standup.id, start: "2026-10-08T11:00" }],
+        },
+      ],
+    }),
+  );
+  await calendar.settled();
+
+  // The step returns the change, and the harness saved it at once.
+  expect(outcome.steps[0]?.result).toMatchObject({ cause: "move", status: "saved" });
+  expect(calendar.changes.map((change) => change.cause)).toEqual(["move"]);
+  expect(calendar.results[0]?.detail.input).toBe("agent");
+  expect(calendar.placementOf("Standup").wallRange).toBe("2026-10-08T11:00/2026-10-08T12:00");
+});
+// #endregion agent

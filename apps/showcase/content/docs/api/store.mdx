@@ -5,7 +5,8 @@ description: Create calendar state outside Root, and change it from anywhere in 
 
 `Root` creates a store for its [state](/docs/concepts/state) automatically. Create one yourself when
 code outside `Root` needs to change the calendar, or when the state should survive `Root`
-unmounting. Everything here is exported from `@moltenship/calendar`.
+unmounting. Everything here is exported from `@moltenship/calendar`. The store has no framework in
+it: `@moltenship/calendar-solid` exports the same `createCalendarStore`.
 
 ## createCalendarStore
 
@@ -44,7 +45,9 @@ store.getSnapshot().view; // "days"
 The type arguments are `<TView, TSelection, TFocus, TResourceId>`. The store has three members:
 
 - `actions`: `setView`, `setAnchorDate`, `setTimeZone`, `setSelection`, `setFocus`, and
-  `setExpandedResourceIds`.
+  `setExpandedResourceIds`. Each takes the new value and, optionally, `{ event?, reason?, source? }`
+  (`CalendarCommandOptions`), which a mounted `Root` passes on to its
+  [change handler](/docs/concepts/state#what-a-handler-hears).
 - `getSnapshot()`: the current state as one frozen object. It's a new object after each change.
 - `subscribe(listener)`: calls `listener` after each change and returns an unsubscribe function.
 
@@ -89,7 +92,10 @@ function JumpToHolidays() {
   `defaultTimeZone`, but `Root` ignores them when it has a store.
 - `store.actions` go through the mounted `Root`: controlled props stay controlled, and their change
   handlers run. If several mounted roots share the store, the most recently mounted one handles
-  them.
+  them. A handler hears such a call with `reason: "imperative"` and `source: "programmatic"`, and
+  can stop it with `cancel()`.
+- An [agent](/docs/agents)'s changes go through the same store. The store has no agent API of its
+  own: agents reach the calendar through the mounted `Root`.
 - `getSnapshot()` returns the values the store holds. A value you control with a prop lives in your
   own state, not in the store.
 - Unmounting `Root` leaves the store as it was.

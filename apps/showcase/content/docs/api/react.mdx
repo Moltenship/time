@@ -170,17 +170,22 @@ own.
       description: (
         <>
           One handler per value. <code>detail</code> has <code>previous</code>,{" "}
-          <code>controlled</code>, and <code>slice</code>. See{" "}
-          <a href="/docs/concepts/state">State</a>.
+          <code>controlled</code>, <code>slice</code>, why it changed (<code>reason</code>), who
+          caused it (<code>source</code>, <code>"agent"</code> for an AI agent), the DOM{" "}
+          <code>event</code> and <code>cancel()</code>. See{" "}
+          <a href="/docs/concepts/state#what-a-handler-hears">what a handler hears</a>.
         </>
       ),
     },
     onEventChange: {
-      type: "(change) => void | Promise<void>",
+      type: "(change, detail) => void | Promise<void>",
       description: (
         <>
           Saves a proposed change. Return a promise to keep it pending until it settles. Without it
-          the calendar is read-only. See <a href="/docs/interactions">Interactions</a>.
+          the calendar is read-only. <code>detail.input</code> says what proposed it, as for{" "}
+          <code>onEventChangeResult</code>, and <code>detail.fields</code> has what an agent sent
+          beside the times, such as a title. See <a href="/docs/interactions">Interactions</a> and{" "}
+          <a href="/docs/agents/connect#save-what-the-agent-sent">saving what an agent sent</a>.
         </>
       ),
     },
@@ -190,8 +195,9 @@ own.
         <>
           Hears how each proposal ended, once it settles: the result <code>proposeEventChange</code>{" "}
           resolves with, and the detail it was proposed with, whose <code>input</code> is{" "}
-          <code>"pointer"</code>, <code>"keyboard"</code> or <code>"api"</code>. Pass an event
-          history's <code>record</code> here to <a href="/docs/undo-redo">undo and redo</a>. See{" "}
+          <code>"pointer"</code>, <code>"keyboard"</code>, <code>"api"</code> or{" "}
+          <code>"agent"</code>. Pass an event history's <code>record</code> here to{" "}
+          <a href="/docs/undo-redo">undo and redo</a>. See{" "}
           <a href="/docs/interactions#how-changes-end">how changes end</a>.
         </>
       ),
@@ -266,8 +272,10 @@ own.
       description: (
         <>
           Given to views as <code>environment.disambiguation</code>, for your own views to resolve
-          skipped or repeated wall-clock times. The built-in views and interactions don&apos;t read
-          it. See <a href="/docs/concepts/time#daylight-saving-time">daylight saving time</a>.
+          skipped or repeated wall-clock times, and used for the wall-clock times an{" "}
+          <a href="/docs/agents/reference#events">agent</a> sends. The built-in views and
+          interactions don&apos;t read it. See{" "}
+          <a href="/docs/concepts/time#daylight-saving-time">daylight saving time</a>.
         </>
       ),
       default: '"compatible"',
@@ -302,6 +310,38 @@ own.
       ),
       default: "derived from useId()",
     },
+    label: {
+      type: "string",
+      description: (
+        <>
+          The calendar's name, such as <code>"Team calendar"</code>. <code>Frame</code> takes it as
+          its <code>aria-label</code>, so screen readers and{" "}
+          <a href="/docs/agents/connect#name-the-calendar">AI agents</a> find the calendar by a name
+          that stays the same while it navigates. Without it, the frame is labelled by the title.
+        </>
+      ),
+    },
+    allowAgentDelete: {
+      type: "boolean",
+      description: (
+        <>
+          Gives an AI agent the <code>deleteEvent</code> action. Without it the calendar has no such
+          action and a step that asks for it fails. Turn it on only with an agent bridge that asks a
+          person first. See <a href="/docs/agents/deleting">Deleting</a>.
+        </>
+      ),
+      default: "false",
+    },
+    formatAgentEventLabel: {
+      type: "(event: CalendarAgentEvent) => string",
+      description: (
+        <>
+          Names each visible event in the list an AI agent reads. By default the title and the times
+          in ISO 8601 in the calendar's time zone. See the{" "}
+          <a href="/docs/agents/reference#snapshot-entry">agent reference</a>.
+        </>
+      ),
+    },
     store: {
       type: "CalendarStore",
       description: (
@@ -330,19 +370,19 @@ time zone (`calendar-root-requires-time-zone`), or no view (`calendar-root-requi
 Use these inside `Root`. Each renders one plain element with a `data-calendar-part` attribute and
 accepts that element's usual props, including `className`, `style`, `ref`, and event handlers.
 
-| Component         | Renders     | Notes                                                                                 |
-| ----------------- | ----------- | ------------------------------------------------------------------------------------- |
-| `Frame`           | `<section>` | Outer wrapper. Gets the `{id}-frame` ID and is labelled by the title.                 |
-| `Toolbar`         | `<header>`  | Wrapper for controls.                                                                 |
-| `Title`           | `<span>`    | The active view's title, or its children. Gets the `{id}-title` ID.                   |
-| `PreviousTrigger` | `<button>`  | Moves back one step of the active view. Disabled when no view is active.              |
-| `NextTrigger`     | `<button>`  | Moves forward one step of the active view. Disabled when no view is active.           |
-| `TodayTrigger`    | `<button>`  | Moves to today in the calendar's time zone, from `now`, `clock`, or the system clock. |
-| `ViewSwitcher`    | `<select>`  | One option per view. Requires `getViewLabel(name)`.                                   |
-| `Viewport`        | `<div>`     | Wrapper for the view. Gets the `{id}-viewport` ID.                                    |
-| `ActiveView`      | view output | Renders the active view, or `fallback` if it isn't registered.                        |
-| `Event`           | your output | Looks up one event by `eventId` and calls `children` with it.                         |
-| `Announcer`       | `<div>`     | A hidden live region that speaks moves, resizes, and creates. Requires `messages`.    |
+| Component         | Renders     | Notes                                                                                     |
+| ----------------- | ----------- | ----------------------------------------------------------------------------------------- |
+| `Frame`           | `<section>` | Outer wrapper. Gets the `{id}-frame` ID, and its name from `Root`'s `label` or the title. |
+| `Toolbar`         | `<header>`  | Wrapper for controls.                                                                     |
+| `Title`           | `<span>`    | The active view's title, or its children. Gets the `{id}-title` ID.                       |
+| `PreviousTrigger` | `<button>`  | Moves back one step of the active view. Disabled when no view is active.                  |
+| `NextTrigger`     | `<button>`  | Moves forward one step of the active view. Disabled when no view is active.               |
+| `TodayTrigger`    | `<button>`  | Moves to today in the calendar's time zone, from `now`, `clock`, or the system clock.     |
+| `ViewSwitcher`    | `<select>`  | One option per view. Requires `getViewLabel(name)`.                                       |
+| `Viewport`        | `<div>`     | Wrapper for the view. Gets the `{id}-viewport` ID.                                        |
+| `ActiveView`      | view output | Renders the active view, or `fallback` if it isn't registered.                            |
+| `Event`           | your output | Looks up one event by `eventId` and calls `children` with it.                             |
+| `Announcer`       | `<div>`     | A hidden live region that speaks moves, resizes, and creates. Requires `messages`.        |
 
 - The buttons default to `type="button"` and set `aria-controls` to the viewport. Give each one
   text or an `aria-label`.
@@ -350,6 +390,9 @@ accepts that element's usual props, including `className`, `style`, `ref`, and e
   action.
 - `Frame`, `Title`, and `Viewport` don't accept `id`. Set `id` on `Root` instead, so the IDs and
   `aria-controls` always match.
+- The parts are [ui-sdk](https://ui-sdk.dev) components, which is how an
+  [agent bridge](/docs/agents/connect) finds a calendar. A calendar is listed for agents only when
+  it renders `Frame`. Events and cells stay elements your views render.
 
 `Event` passes your record and its normalized form:
 
@@ -405,18 +448,18 @@ it. The [scrolling views](/docs/views/scrolling) do this.
 
 ### Actions
 
-| Action                                  | Effect                                                                                                                                                                                                              |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `setView(name)`                         | Changes the view                                                                                                                                                                                                    |
-| `setAnchorDate(date)`                   | Changes the date                                                                                                                                                                                                    |
-| `setTimeZone(zone)`                     | Changes the time zone                                                                                                                                                                                               |
-| `setSelection(value)`                   | Changes the selection (`null` clears it)                                                                                                                                                                            |
-| `setFocus(value)`                       | Changes the focus (`null` clears it)                                                                                                                                                                                |
-| `setExpandedResourceIds(ids)`           | Changes the expanded resources                                                                                                                                                                                      |
-| `navigatePrevious()`, `navigateNext()`  | Moves by one step of the active view                                                                                                                                                                                |
-| `navigateToday()`                       | Moves to today in the calendar's time zone                                                                                                                                                                          |
-| `proposeEventChange(proposal, detail?)` | Proposes a change to an event and resolves with the outcome. `detail.input` names the input for `onEventChangeResult`, `"api"` by default. See [Interactions](/docs/interactions#changing-events-from-your-own-ui). |
-| `checkEventChange(proposal)`            | Runs the policies on a proposal without showing or saving it. Returns `{ status: "accepted", change }` or `{ status: "rejected", change, reason }`, or `null` for an unknown event or an async policy.              |
+| Action                                  | Effect                                                                                                                                                                                                                                            |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `setView(name, options?)`               | Changes the view. Every setter and navigation action takes `{ event?, reason?, source? }` last, for the [change handler](/docs/concepts/state#what-a-handler-hears)                                                                               |
+| `setAnchorDate(date)`                   | Changes the date                                                                                                                                                                                                                                  |
+| `setTimeZone(zone)`                     | Changes the time zone                                                                                                                                                                                                                             |
+| `setSelection(value)`                   | Changes the selection (`null` clears it)                                                                                                                                                                                                          |
+| `setFocus(value)`                       | Changes the focus (`null` clears it)                                                                                                                                                                                                              |
+| `setExpandedResourceIds(ids)`           | Changes the expanded resources                                                                                                                                                                                                                    |
+| `navigatePrevious()`, `navigateNext()`  | Moves by one step of the active view                                                                                                                                                                                                              |
+| `navigateToday()`                       | Moves to today in the calendar's time zone                                                                                                                                                                                                        |
+| `proposeEventChange(proposal, detail?)` | Proposes a change to an event and resolves with the outcome. `detail.input` names the input for policies, `onEventChange` and `onEventChangeResult`, `"api"` by default. See [Interactions](/docs/interactions#changing-events-from-your-own-ui). |
+| `checkEventChange(proposal, detail?)`   | Runs the policies on a proposal without showing or saving it. Returns `{ status: "accepted", change }` or `{ status: "rejected", change, reason }`, or `null` for an unknown event or an async policy.                                            |
 
 Setting the current value again (the same date, view, time zone or resource IDs, or the same
 `selection` or `focus` object) doesn't change state or call its handler, unless the value is
@@ -460,6 +503,7 @@ first, so `navigateNext(); navigateNext()` moves two steps, even for controlled 
       description: "Refs to the rendered elements.",
     },
     instanceId: { type: "string", description: "The base for the element IDs." },
+    label: { type: "string | undefined", description: "Root's label prop." },
   }}
 />
 

@@ -1,4 +1,5 @@
 import type { EventId, ResourceId } from "@moltenship/calendar-core";
+import { usePart, type PartProps } from "@ui-sdk/react/primitive";
 import {
   createElement,
   useCallback,
@@ -7,7 +8,6 @@ import {
   useRef,
   useState,
   type ChangeEvent,
-  type MouseEvent,
   type Ref,
   type RefObject,
 } from "react";
@@ -63,43 +63,66 @@ function useComposedRef<T>(internalRef: RefObject<T | null>, externalRef: Ref<T>
 /** Builds the compound parts that read one factory's root. */
 export function createCalendarParts(contexts: CalendarContexts) {
   function Frame({ children, ref, ...props }: CalendarFrameProps) {
+    const handle = useRootContext(contexts.handle);
     const meta = useRootContext(contexts.meta);
     const composedRef = useComposedRef(meta.refs.frame, ref);
-    return createElement(
-      "section",
-      {
-        "aria-labelledby": meta.ids.title,
-        ...props,
-        "data-calendar-instance": meta.instanceId,
-        "data-calendar-part": "frame",
-        id: meta.ids.frame,
-        ref: composedRef,
-      },
+    // A name of its own outlasts navigation; the title names the visible dates.
+    const name =
+      meta.label === undefined
+        ? { "aria-labelledby": meta.ids.title }
+        : { "aria-label": meta.label };
+    const elementProps = {
+      ...name,
+      ...props,
       children,
-    );
+      "data-calendar-instance": meta.instanceId,
+      "data-calendar-part": "frame",
+      id: meta.ids.frame,
+      ref: composedRef,
+    };
+    // The frame is the primitive's root slot, so an agent finds the calendar here, by that name.
+    return usePart(handle, "root", {}, elementProps as PartProps<"section">, "section");
   }
 
   function Toolbar({ children, ref, ...props }: CalendarToolbarProps) {
+    const handle = useRootContext(contexts.handle);
     const meta = useRootContext(contexts.meta);
     const composedRef = useComposedRef(meta.refs.toolbar, ref);
-    return createElement(
+    return usePart(
+      handle,
+      "toolbar",
+      {},
+      {
+        ...props,
+        children,
+        "data-calendar-part": "toolbar",
+        ref: composedRef,
+      } as PartProps<"header">,
       "header",
-      { ...props, "data-calendar-part": "toolbar", ref: composedRef },
-      children,
     );
   }
 
   function Viewport({ children, ref, ...props }: CalendarViewportProps) {
+    const handle = useRootContext(contexts.handle);
     const meta = useRootContext(contexts.meta);
     const composedRef = useComposedRef(meta.refs.viewport, ref);
-    return createElement(
+    return usePart(
+      handle,
+      "viewport",
+      {},
+      {
+        ...props,
+        children,
+        "data-calendar-part": "viewport",
+        id: meta.ids.viewport,
+        ref: composedRef,
+      } as PartProps<"div">,
       "div",
-      { ...props, "data-calendar-part": "viewport", id: meta.ids.viewport, ref: composedRef },
-      children,
     );
   }
 
   function Title({ children, ref, ...props }: CalendarTitleProps) {
+    const handle = useRootContext(contexts.handle);
     const meta = useRootContext(contexts.meta);
     const activeView = useActiveViewContext(contexts.view);
     const composedRef = useComposedRef(meta.refs.title, ref);
@@ -112,73 +135,74 @@ export function createCalendarParts(contexts: CalendarContexts) {
         ) ?? "",
       [activeView],
     );
-    return createElement(
+    return usePart(
+      handle,
+      "title",
+      {},
+      {
+        ...props,
+        children: children ?? title,
+        "data-calendar-part": "title",
+        id: meta.ids.title,
+        ref: composedRef,
+      } as PartProps<"span">,
       "span",
-      { ...props, "data-calendar-part": "title", id: meta.ids.title, ref: composedRef },
-      children ?? title,
     );
   }
 
   function createTrigger(
-    part: string,
-    command: "navigateNext" | "navigatePrevious" | "navigateToday",
+    part: "previous-trigger" | "next-trigger" | "today-trigger",
+    requiresView: boolean,
   ) {
     return function Trigger({
       children,
       disabled,
-      ref,
       type = "button",
       ...props
     }: CalendarTriggerProps) {
-      const actions = useRootContext(contexts.actions);
+      const handle = useRootContext(contexts.handle);
       const meta = useRootContext(contexts.meta);
-      const requiresView = command !== "navigateToday";
-      return createElement(
-        "button",
-        {
-          ...props,
-          "aria-controls": props["aria-controls"] ?? meta.ids.viewport,
-          "data-calendar-part": part,
-          disabled: disabled ?? (requiresView && meta.activeView === undefined),
-          onClick: (event: MouseEvent<HTMLButtonElement>) => {
-            props.onClick?.(event);
-            if (!event.defaultPrevented) actions[command]();
-          },
-          ref,
-          type,
-        },
+      // The slot's press runs the command after the element's own `onClick`, unless that one
+      // calls `preventDefault()`.
+      const elementProps = {
+        ...props,
+        "aria-controls": props["aria-controls"] ?? meta.ids.viewport,
         children,
-      );
+        "data-calendar-part": part,
+        disabled: disabled ?? (requiresView && meta.activeView === undefined),
+        type,
+      };
+      return usePart(handle, part, {}, elementProps as PartProps<"button">, "button");
     };
   }
 
-  const PreviousTrigger = createTrigger("previous-trigger", "navigatePrevious");
-  const NextTrigger = createTrigger("next-trigger", "navigateNext");
-  const TodayTrigger = createTrigger("today-trigger", "navigateToday");
+  const PreviousTrigger = createTrigger("previous-trigger", true);
+  const NextTrigger = createTrigger("next-trigger", true);
+  const TodayTrigger = createTrigger("today-trigger", false);
 
-  function ViewSwitcher({ getViewLabel, onChange, ref, ...props }: CalendarViewSwitcherProps) {
-    const actions = useRootContext(contexts.actions);
+  function ViewSwitcher({ getViewLabel, onChange, ...props }: CalendarViewSwitcherProps) {
+    const handle = useRootContext(contexts.handle);
     const meta = useRootContext(contexts.meta);
     const view = useStateSelector(useRootContext(contexts.source), selectView);
-    return createElement(
-      "select",
-      {
-        ...props,
-        "data-calendar-part": "view-switcher",
-        onChange: (event: ChangeEvent<HTMLSelectElement>) => {
-          onChange?.(event);
-          const next = event.currentTarget.value;
-          if (!event.defaultPrevented && meta.views.some((candidate) => candidate.name === next)) {
-            actions.setView(next);
-          }
-        },
-        ref,
-        value: view,
-      },
-      meta.views.map(({ name }) =>
+    const elementProps = {
+      ...props,
+      children: meta.views.map(({ name }) =>
         createElement("option", { key: name, value: name }, getViewLabel(name)),
       ),
-    );
+      "data-calendar-part": "view-switcher",
+      // React delegates `onChange`, so the element's own handler runs here first and may call
+      // `preventDefault()`; a value no registered view has changes nothing.
+      onChange: (event: ChangeEvent<HTMLSelectElement>) => {
+        onChange?.(event);
+        if (event.defaultPrevented) return;
+        handle.api.selectView(event.currentTarget.value, {
+          event: event.nativeEvent,
+          reason: "input-change",
+        });
+      },
+      value: view,
+    };
+    return usePart(handle, "view-switcher", {}, elementProps as PartProps<"select">, "select");
   }
 
   function ActiveView({ fallback = null }: CalendarActiveViewProps) {

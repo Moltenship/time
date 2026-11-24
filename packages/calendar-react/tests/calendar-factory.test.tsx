@@ -8,6 +8,7 @@ import { afterEach, expect, expectTypeOf, test, vi } from "vite-plus/test";
 
 import {
   createCalendar,
+  createCalendarStore,
   defineCalendarView,
   type CalendarDiagnostic,
   type CalendarFrameProps,
@@ -369,4 +370,35 @@ test("a factory rejects two views with the same name", () => {
   expect(() =>
     createCalendar<Meeting>()({ eventAdapter: adapter, views: [monthView, monthView] }),
   ).toThrow("calendar-duplicate-view-name:month");
+});
+
+test("a calendar without resources takes a store made without type arguments", async () => {
+  const withoutResources = defineEventAdapter<Meeting>()({
+    getId: (event) => event.id,
+    getInterval: (event) => ({ end: event.end, kind: "timed", start: event.start }),
+    getResourceIds: () => [],
+    getTitle: (event) => event.title,
+  });
+  const Plain = createCalendar<Meeting>()({ eventAdapter: withoutResources, views: [monthView] });
+  // The store's resource IDs are the default `ResourceId`; the adapter's used to be `never`.
+  const store = createCalendarStore({
+    defaultAnchorDate: Temporal.PlainDate.from("2026-08-15"),
+    defaultTimeZone: "UTC",
+    defaultView: "month",
+  });
+
+  const container = await mount(
+    <Plain.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-08-15")}
+      defaultTimeZone="UTC"
+      events={events}
+      locale="en-GB"
+      store={store}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Plain.ActiveView />
+    </Plain.Root>,
+  );
+
+  expect(container.querySelector("[data-active-view]")?.textContent).toBe("month");
 });

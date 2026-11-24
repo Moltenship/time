@@ -1,0 +1,27 @@
+{
+  "name": "demo-solid",
+  "version": "0.0.0",
+  "private": true,
+  "description": "A Solid 2.0 calendar on @moltenship/calendar-solid, with an agent panel, written in JSX.",
+  "type": "module",
+  "scripts": {
+    "build": "vp build",
+    "dev": "vp dev",
+    "preview": "vp preview"
+  },
+  "dependencies": {
+    "@moltenship/calendar-core": "workspace:*",
+    "@moltenship/calendar-solid": "workspace:*",
+    "@solidjs/web": "catalog:",
+    "@ui-sdk/core": "catalog:",
+    "@ui-sdk/solid": "catalog:",
+    "solid-js": "catalog:",
+    "temporal-polyfill": "catalog:"
+  },
+  "devDependencies": {
+    "@solidjs/vite-plugin": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

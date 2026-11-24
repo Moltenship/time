@@ -61,7 +61,7 @@ A few rules:
 - `undefined` means uncontrolled. To control `selection` or `focus` with nothing selected, pass
   `null`.
 - Handlers also run for uncontrolled values, after the calendar updates them. The second argument
-  tells you the `previous` value and whether the value is `controlled`.
+  says what changed, why, and who asked. See [what a handler hears](#what-a-handler-hears).
 - If you haven't applied a change the calendar asked for, the handler also hears a later request
   for the value you have. For example, Today after a scroll you deferred. Apply the latest value
   you were given, and you'll drop the earlier change.
@@ -69,6 +69,52 @@ A few rules:
   `defaultView`, `view`, or the first registered view. If one is missing, `Root` throws
   `calendar-root-requires-anchor-date`, `calendar-root-requires-time-zone`, or
   `calendar-root-requires-view`.
+
+## What a handler hears
+
+Every change handler gets the new value and a detail:
+
+| Field        | Type               | Meaning                                                                       |
+| ------------ | ------------------ | ----------------------------------------------------------------------------- |
+| `slice`      | `string`           | Which value changed, such as `"view"` or `"anchorDate"`                       |
+| `previous`   | the value's type   | The value before the change                                                   |
+| `controlled` | `boolean`          | Whether a prop controls the value                                             |
+| `reason`     | `string`           | Why it changed. See below                                                     |
+| `source`     | `string`           | Who caused it. See below                                                      |
+| `event`      | `Event`, or absent | The DOM event behind it, such as a button's click. Absent for code and agents |
+| `cancel()`   | function           | Stops the change. An uncontrolled value goes back to `previous`               |
+| `canceled`   | `boolean`          | Whether `cancel()` was called                                                 |
+
+`reason` is one of:
+
+- `"next-press"`, `"previous-press"` or `"today-press"`: a press of `Calendar.NextTrigger`,
+  `Calendar.PreviousTrigger` or `Calendar.TodayTrigger`.
+- `"input-change"`: a choice in `Calendar.ViewSwitcher`.
+- `"imperative"`: an action called from code, such as `actions.setView("month")`. It's also the
+  reason for anything an [agent](/docs/agents) does.
+
+`source` is one of `"mouse"`, `"touch"`, `"pen"`, `"keyboard"`, `"virtual"`, `"agent"` or
+`"programmatic"`. `"virtual"` is a click with no pointer or key behind it, which may come from
+assistive technology. `"agent"` is an AI agent acting through the
+[agent bridge](/docs/agents/connect). `"programmatic"` is your own code.
+
+This calendar records how people navigate and keeps agents out of the month view. It uses the
+`Calendar`, `meetings` and `weekRules` from the [Quick start](/docs/quick-start):
+
+<include meta='title="tracked-calendar.tsx"'>../../examples/state-change-detail.tsx</include>
+
+`cancel()` puts an uncontrolled value back as it was. For a controlled value it does nothing you
+couldn't do yourself: the value changes only when you store it.
+
+An action you call can say why and who. Pass the DOM event that led to it, and the calendar works
+out the `source`:
+
+```tsx
+<button onClick={(event) => actions.navigateNext({ event: event.nativeEvent })}>Next</button>
+```
+
+Every action takes the same options as its last argument: `{ event?, reason?, source? }`.
+Without them, a call from your code reads `reason: "imperative"` and `source: "programmatic"`.
 
 ## Reading and changing state
 

@@ -1,0 +1,62 @@
+{
+  "name": "@moltenship/calendar-solid",
+  "version": "1.0.0-rc.2",
+  "description": "Headless SolidJS integration for Moltenship Time.",
+  "homepage": "https://time.molten.sh/docs/api/solid",
+  "bugs": {
+    "url": "https://github.com/Moltenship/time/issues"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Moltenship/time.git",
+    "directory": "packages/calendar-solid"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": "./src/index.ts",
+    "./package.json": "./package.json"
+  },
+  "publishConfig": {
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.mts",
+        "import": "./dist/index.mjs"
+      },
+      "./package.json": "./package.json"
+    },
+    "access": "public"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "dev": "vp pack --watch",
+    "prepublishOnly": "echo \"Release with vp run release, which publishes the tarballs its gate checked. See docs/internal/releasing.md.\" && exit 1",
+    "test": "vp test --passWithNoTests"
+  },
+  "dependencies": {
+    "@moltenship/calendar-core": "workspace:*",
+    "@moltenship/calendar-primitives": "workspace:*",
+    "@moltenship/calendar-temporal": "workspace:*"
+  },
+  "devDependencies": {
+    "@solidjs/web": "catalog:",
+    "@types/jsdom": "catalog:",
+    "@ui-sdk/core": "catalog:",
+    "@ui-sdk/solid": "catalog:",
+    "jsdom": "catalog:",
+    "solid-js": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "peerDependencies": {
+    "@solidjs/web": "^2.0.0",
+    "@ui-sdk/core": "^0.1.0-beta.16",
+    "@ui-sdk/solid": "^0.1.0-beta.16",
+    "solid-js": "^2.0.0"
+  }
+}

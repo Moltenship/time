@@ -1,5 +1,6 @@
 import type { CalendarEventInterval } from "../events";
 import type { EventId, ResourceId } from "../ids";
+import { createListeners } from "../internal/listeners";
 import type { EventSnapshot } from "../snapshots/types";
 import { eventPlacement } from "../transactions/placement";
 import type {
@@ -113,7 +114,7 @@ export function createEventHistory<
    * the event a new one, which `createdEventId` tells when a step for it is next taken.
    */
   const restores = new Map<TEventId, CalendarEventCreateChange<TResourceId, TEvent>>();
-  const listeners = new Set<() => void>();
+  const listeners = createListeners();
 
   function publish(activity?: Activity | null): void {
     if (activity !== undefined) latest = activity;
@@ -126,7 +127,7 @@ export function createEventHistory<
           ? null
           : Object.freeze({ direction: pending.direction, step: pending.entry.step }),
     });
-    for (const listener of listeners) listener();
+    listeners.notify();
   }
 
   function newStep(change: Change, detail: CalendarProposalDetail): HistoryEntry {
@@ -407,12 +408,7 @@ export function createEventHistory<
     getSnapshot: () => snapshot,
     record,
     redo: (context: EventHistoryContext<TEvent, TEventId, TResourceId>) => enqueue("redo", context),
-    subscribe(listener: () => void) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
+    subscribe: listeners.subscribe,
     undo: (context: EventHistoryContext<TEvent, TEventId, TResourceId>) => enqueue("undo", context),
   });
 }

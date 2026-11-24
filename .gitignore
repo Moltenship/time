@@ -44,3 +44,6 @@ apps/showcase/next-env.d.ts
 
 # Release dry-run tarballs and manifest
 .release/
+
+# The docs as Markdown, written by @moltenship/calendar's build from apps/showcase/content/docs
+packages/calendar/docs/

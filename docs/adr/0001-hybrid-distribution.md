@@ -1,6 +1,8 @@
 # ADR 0001: Hybrid package and source distribution
 
-- Status: Accepted
+- Status: Accepted, amended by [ADR 0275](./0275-ui-sdk-primitives.md). The split stands. 2.0 adds
+  a SolidJS integration beside the React one; the registry's source is still React, and how Solid
+  presentation source is distributed isn't decided.
 - Date: 2026-08-15
 
 ## Context

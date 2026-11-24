@@ -1,6 +1,10 @@
 # ADR 0070: `calendar-react` owns its store
 
-- Status: Accepted
+- Status: Accepted, amended by [ADR 0275](./0275-ui-sdk-primitives.md). The store, its binding and
+  the guarantees below stand, and remain the source of truth for uncontrolled state. In 2.0 the
+  store moves to `calendar-primitives`, where the Solid integration uses it too, and
+  `calendar-react` gets peers outside the workspace (`@ui-sdk/core`, `@ui-sdk/react`), so the title
+  and the first consequence describe 1.x.
 - Date: 2026-10-08
 - Issue: [#70](https://github.com/Moltenship/time/issues/70), in PR #80
 - Supersedes: [ADR 0025](./0025-native-jotai-react-bindings.md)

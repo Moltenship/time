@@ -46,6 +46,7 @@ export { useAnchorDateRequests } from "./requests";
 export { defineCalendarView } from "./views";
 export type {
   CalendarActiveViewProps,
+  CalendarAgentEvent,
   CalendarAnnouncerProps,
   CalendarContextValue,
   CalendarDiagnostic,
@@ -78,8 +79,12 @@ export type {
 } from "./views";
 export type {
   CalendarActions,
+  CalendarChangeReason,
+  CalendarChangeSource,
+  CalendarCommandOptions,
   CalendarControlledState,
   CalendarPublicState,
+  CalendarRootStore,
   CalendarStateChangeDetail,
   CalendarStateChangeHandler,
   CalendarStateChangeHandlers,

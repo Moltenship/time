@@ -34,7 +34,9 @@
     "directory": "packages/calendar"
   },
   "files": [
-    "dist"
+    "dist",
+    "docs",
+    "skills"
   ],
   "type": "module",
   "sideEffects": false,
@@ -53,8 +55,9 @@
     "access": "public"
   },
   "scripts": {
-    "build": "vp pack",
+    "build": "vp pack && node --run docs",
     "dev": "vp pack --watch",
+    "docs": "cd ../../apps/showcase && node --run docs:package",
     "prepublishOnly": "echo \"Release with vp run release, which publishes the tarballs its gate checked. See docs/internal/releasing.md.\" && exit 1",
     "test": "vp test --passWithNoTests"
   },
@@ -67,6 +70,8 @@
   "devDependencies": {
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@ui-sdk/core": "catalog:",
+    "@ui-sdk/react": "catalog:",
     "jsdom": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
@@ -75,6 +80,8 @@
     "vite-plus": "catalog:"
   },
   "peerDependencies": {
+    "@ui-sdk/core": "^0.1.0-beta.16",
+    "@ui-sdk/react": "^0.1.0-beta.16",
     "react": "^19.0.0"
   }
 }

@@ -140,4 +140,38 @@ describe("export checks", () => {
 
     expect(problems.filter((problem) => problem.includes("adapter"))).toEqual([]);
   }, 30_000);
+
+  test("the facade ships its docs and its skill", async () => {
+    const shipped = {
+      "docs/llms.txt": "# Moltenship Time\n",
+      "docs/index.md": "# Introduction\n",
+      "skills/moltenship-time/SKILL.md": "---\nname: moltenship-time\n---\n",
+    };
+    const manifest = { files: ["dist", "docs", "skills"] };
+
+    expect(
+      await tarballProblems(
+        await tarball("facade-with-docs", {
+          name: "@moltenship/calendar",
+          files: shipped,
+          manifest,
+        }),
+      ),
+    ).toEqual([]);
+    expect(
+      await tarballProblems(
+        await tarball("facade-without-docs", { name: "@moltenship/calendar", manifest }),
+      ),
+    ).toEqual([
+      "the tarball has no docs/llms.txt",
+      "the tarball has no docs/index.md",
+      "the tarball has no skills/moltenship-time/SKILL.md",
+    ]);
+  }, 30_000);
+
+  test("another package needs no docs or skill", async () => {
+    expect(
+      await tarballProblems(await tarball("no-docs", { name: "@moltenship/calendar-core" })),
+    ).toEqual([]);
+  }, 30_000);
 });

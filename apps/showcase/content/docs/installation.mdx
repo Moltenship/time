@@ -1,11 +1,14 @@
 ---
 title: Installation
-description: Requirements, packages, and Temporal setup.
+description: Requirements, packages, the ui-sdk peer dependencies, and Temporal setup.
 ---
 
 ## Requirements
 
-- **React 19.** React is a peer dependency.
+- **React 19.** React and React DOM are peer dependencies.
+- **ui-sdk.** `@ui-sdk/core` and `@ui-sdk/react` are peer dependencies since 2.0. The calendar's
+  parts are [ui-sdk](https://ui-sdk.dev) components, which is how an [agent](/docs/agents) reaches
+  them. ui-sdk is in beta: the calendar takes `0.1.0-beta.16` and the betas after it.
 - **A JavaScript runtime with `Temporal`.** Node.js 26 and later include it. Browser support is
   still rolling out, so check the
   [MDN compatibility table](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal#browser_compatibility)
@@ -15,46 +18,54 @@ description: Requirements, packages, and Temporal setup.
 
 ## Install
 
-<Callout type="warn" title="Release candidate">
-  The packages are on npm as a release candidate for 1.0.0. The API can still change before 1.0.0 if
-  the release candidate turns up problems.
+<Callout type="warn" title="2.0 is a pre-release">
+  These docs describe Time 2.0. Its API can still change before 2.0.0, and so can ui-sdk's while it
+  is in beta. Coming from 1.x? See [Migrating to 2.0](/docs/migrating-to-2).
 </Callout>
 
 <Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
 <Tab value="pnpm">
 
 ```bash
-pnpm add @moltenship/calendar react react-dom
+pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="npm">
 
 ```bash
-npm install @moltenship/calendar react react-dom
+npm install @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="yarn">
 
 ```bash
-yarn add @moltenship/calendar react react-dom
+yarn add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="bun">
 
 ```bash
-bun add @moltenship/calendar react react-dom
+bun add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 </Tabs>
 
-`@moltenship/calendar` is the only package most apps import. It includes the React components, the
-event engine, the Temporal helpers, and the pointer interactions. Recurring events add
-`@moltenship/calendar-recurrence`, reading ICS feeds `@moltenship/ics`, and dragging your own
-dnd-kit items into the calendar `@moltenship/calendar-dnd-kit`. See [How it works](/docs/concepts/how-it-works) for what's inside.
+`@moltenship/calendar` is the only calendar package most apps import. It includes the React
+components, the event engine, the Temporal helpers, and the pointer interactions. Recurring events
+add `@moltenship/calendar-recurrence`, reading ICS feeds `@moltenship/ics`, and dragging your own
+dnd-kit items into the calendar `@moltenship/calendar-dnd-kit`. See
+[How it works](/docs/concepts/how-it-works) for what's inside.
+
+You import ui-sdk yourself in one case: to create the [agent bridge](/docs/agents/connect), from
+`@ui-sdk/react/agent`. Keep one copy of `@ui-sdk/core` in your app. The calendar and the bridge
+find each other through it, and with two copies an agent sees no calendar. Your package manager
+keeps one as long as every `@ui-sdk/*` package is on the same version.
+
+For SolidJS 2, install `@moltenship/calendar-solid` instead; see [Solid](/docs/api/solid).
 
 ## Temporal
 
@@ -143,7 +154,8 @@ npx shadcn@latest add https://time.molten.sh/r/month-view.json
 The files land in `calendar/` under the `components` alias in your `components.json`, such as
 `components/calendar/month-view/month-view.tsx`, and their imports follow your aliases. Each item
 asks for the `@moltenship/calendar` versions it was built for, and `shadcn add` installs a
-matching one.
+matching one. It doesn't add `@ui-sdk/core` and `@ui-sdk/react` to your `package.json`; install
+them as above.
 
 To add items by name, add the registry to `components.json` once:
 

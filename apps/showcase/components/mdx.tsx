@@ -9,6 +9,15 @@ import {
   YearAnatomy,
 } from "@/components/anatomy";
 import {
+  AgentChangesPreview,
+  AgentDeletePreview,
+  AgentPermissionsPreview,
+  AgentPreview,
+  AgentSavePreview,
+  AgentServerPreview,
+  AgentWebMcpPreview,
+} from "@/components/agent-preview";
+import {
   CalendarPreview,
   OverlapLayoutPreview,
   RoomsAndPeoplePreview,
@@ -33,6 +42,13 @@ import type { MDXComponents } from "mdx/types";
 export function getMDXComponents(components?: MDXComponents): MDXComponents {
   return {
     ...defaultMdxComponents,
+    AgentChangesPreview,
+    AgentDeletePreview,
+    AgentPermissionsPreview,
+    AgentPreview,
+    AgentSavePreview,
+    AgentServerPreview,
+    AgentWebMcpPreview,
     AgendaAnatomy,
     AnnotationsAnatomy,
     CalendarAnatomy,

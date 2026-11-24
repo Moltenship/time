@@ -32,7 +32,7 @@ import {
  *
  * - `check`: the version, the tag, npm, and npm's trusted publisher on each package, before
  *   anything else runs;
- * - `prepare`: bumps the nine manifests, commits and tags, inside the runner;
+ * - `prepare`: bumps the eleven manifests, commits and tags, inside the runner;
  * - `package`, after the gate: the release notes and a git bundle of the release commit, for the
  *   jobs after it;
  * - `publish`: the tarballs the gate checked, with npm trusted publishing;
@@ -182,7 +182,7 @@ async function check(version: string, dryRun: boolean): Promise<void> {
   console.log(`Releasing ${version}${dryRun ? ", as a dry run" : ""}.`);
 }
 
-/** Bumps the nine manifests, commits `chore(release): v<version>` and tags it, in the runner. */
+/** Bumps the eleven manifests, commits `chore(release): v<version>` and tags it, in the runner. */
 async function prepare(version: string): Promise<void> {
   const files = await setVersion(version);
   const tag = releaseTag(version);

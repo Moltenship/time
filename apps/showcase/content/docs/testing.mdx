@@ -18,7 +18,9 @@ works too, and pointer tests run in [Vitest's browser mode](#pointer-and-touch).
 pnpm add -D @moltenship/calendar-testing vitest jsdom
 ```
 
-React 19 and React DOM 19 are peer dependencies: the harness renders and hydrates with React DOM.
+Its peer dependencies are the four packages a 2.0 app already has: `react` and `react-dom` 19, which
+the harness renders and hydrates with, and `@ui-sdk/core` and `@ui-sdk/react`, which the calendar's
+parts are built on. See [Installation](/docs/installation) if the app doesn't have them yet.
 
 ## Set up Vitest
 
@@ -162,6 +164,27 @@ When `onEventChange` returns a promise, the calendar shows the change as pending
 Hold the promise in the test to check what the calendar shows meanwhile.
 
 <include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#pending</include>
+
+## Changes an agent makes
+
+An [agent](/docs/agents) acts on the calendar through a bridge, and its changes take the same path
+as a person's. Test them with the real bridge: no model is involved, since a step is a plain object.
+
+<include meta='title="calendar.test.tsx"'>../../tests/testing-guide.test.tsx#agent</include>
+
+Three things make it work:
+
+- **A name and a frame.** The bridge lists a calendar that renders `Calendar.Frame`, and finds it
+  by the `label` on `Root`. The harness renders `<Calendar.ActiveView />` alone by default, so pass
+  the frame as `children`.
+- **`calendar.act`.** The agent's steps change React state, so they run inside `act` like any
+  other change.
+- **`calendar.settled()`.** A step returns the change with its `status`: `"saved"` when the handler
+  saved at once, as the harness does by default, and `"saving"` when the handler returned a
+  promise. `settled()` waits for every save before the test reads `results`.
+
+`results[n].detail.input` is `"agent"` for these changes, which is how an app's handler, a policy
+and the history tell them from a person's.
 
 ## Find what the calendar shows
 

@@ -1,0 +1,203 @@
+---
+title: Who made a change
+description: Tell an agent's change from a person's, refuse it with a policy, and undo it without touching what the person did.
+---
+
+<AgentChangesPreview />
+
+An agent's change reaches the same handlers as a person's, with a detail that says who made it.
+You can log it, refuse it, and take it back. This page's samples import the `Calendar`, `Meeting`,
+`meetings` and `weekRules` that the [Quick start](/docs/quick-start) puts in `calendar.tsx`, and
+the bridge in `agent.ts` from [Connect an agent](/docs/agents/connect).
+
+## Two kinds of change
+
+The calendar tells an agent apart from a person in two places, one for each kind of change:
+
+| What changed                                    | Handler on `Root`                               | Where it says who | An agent's value |
+| ----------------------------------------------- | ----------------------------------------------- | ----------------- | ---------------- |
+| The calendar's state: view, date, time zone     | `onViewChange`, `onAnchorDateChange`, and so on | `detail.source`   | `"agent"`        |
+| An event: a move, an update, a create, a delete | `onEventChange` and `onEventChangeResult`       | `detail.input`    | `"agent"`        |
+
+`detail.source` is one of `"agent"`, `"mouse"`, `"touch"`, `"pen"`, `"keyboard"`, `"virtual"` or
+`"programmatic"`. `"virtual"` is a click with no pointer or key behind it, which may come from
+assistive technology. `"programmatic"` is your own code.
+
+`detail.input` is one of `"agent"`, `"pointer"`, `"keyboard"` or `"api"`. `"api"` is your own
+`proposeEventChange` call. An agent's `createEvent` and `updateEvent` also bring `detail.fields`:
+the title and the fields it sent, which
+[your handler stores](/docs/agents/connect#save-what-the-agent-sent).
+
+This calendar logs both:
+
+<include meta='title="agent-audit.tsx"'>../../examples/agent-audit.tsx</include>
+
+`applyChange` and `timedOnly` come from `agent-save.ts` in
+[Connect an agent](/docs/agents/connect#name-the-calendar). The policy and the undo button are
+below.
+
+After an agent moves the design review and renames the team lunch, a person clicks Next, and the
+agent switches to the month view, the log reads:
+
+```text
+agent moved review
+agent updated lunch
+mouse went to 2026-10-15
+agent switched to the month view
+```
+
+`change.cause` is `"update"` for an agent's `updateEvent`, whether it changed the title, the times
+or both. A person's drag makes a `"move"` or a resize.
+
+## Refuse an agent's change
+
+A [policy](/docs/interactions#policies) sees every proposed change before your handler does, and
+its second argument has the same `detail`. This one lets a person book a Saturday and refuses an
+agent that tries:
+
+<include meta='title="agent-policy.ts"'>../../examples/agent-policy.ts</include>
+
+Pass it to `Root` with your other policies, as `policies={[timedOnly, weekdaysForAgents]}` above.
+The agent's step fails with the policy's reason, and your `onEventChange` isn't called:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "step": 1,
+    "message": "calendar-event-change-rejected: agents-book-weekdays-only"
+  },
+  "steps": [{ "step": 0, "ref": "c1" }],
+  "appeared": [],
+  "values": {}
+}
+```
+
+Write the reason for the model that reads it. `agents-book-weekdays-only` tells it what to try
+next; `rejected` doesn't. An agent can't ask beforehand whether a change would pass, so the reason
+is how it learns your rules.
+
+A few things to know:
+
+- **`detail` is optional in a policy.** It's `undefined` when your own code calls a policy outside
+  a proposal, so read it as `detail?.input`.
+- **A policy can read what the agent sent.** `detail?.fields` has the title and fields of a
+  `createEvent` or an `updateEvent`, before anything is saved.
+- **Each policy runs once for an agent's change**, as for a drag.
+- **`onEventChangeResult` hears the refusal.** It gets `{ status: "rejected", reason }` with
+  `detail.input` of `"agent"`, once. The example's log adds
+  `agent was refused: agents-book-weekdays-only`.
+- **A policy that returns a promise can't fail the step.** The step returns the change with
+  `status: "validating"`, and the agent reads the refusal from `getChange`, as for a
+  [save that takes a while](#saves-that-take-a-while). Where you can, decide an agent's changes
+  with a policy that answers at once.
+
+Your handler can refuse too, by throwing. The agent then reads `handler-error` and your error's
+message, as in `calendar-event-change-rejected: handler-error (This slot was just taken)`. Write
+that message for the model as well, and keep anything private out of it.
+
+The same policy works for every other input. `detail?.input === "keyboard"` is a keyboard move, and
+`detail?.history` is `"undo"` or `"redo"` for a change the [history](/docs/undo-redo) proposes.
+
+## Refuse a state change
+
+A state handler's detail has `cancel()`. This `Root` keeps an agent out of the month view:
+
+<include meta='title="agent-week-only.tsx"'>../../examples/agent-week-only.tsx</include>
+
+A cancelled change doesn't fail the step. The call returns `ok: true` and the step has no
+`changes`, so the agent sees that nothing happened. To fail the step with a message instead,
+refuse the action in the bridge's [`allow`](/docs/agents/connect#decide-what-an-agent-may-do).
+
+For a [controlled](/docs/concepts/state#controlled) value, not storing the new value does the same
+as `cancel()`.
+
+## Undo an agent's changes
+
+An [event history](/docs/undo-redo) records changes and undoes them through the same pipeline.
+`inputs: ["agent"]` makes one that records an agent's changes only, so its undo never takes back a
+drag. `AuditedCalendar` in `agent-audit.tsx` creates it with
+`createEventHistory<Meeting, string, never>({ inputs: ["agent"], createdEventId })` and records
+into it from `onEventChangeResult` with `history.record(result, detail)`.
+
+The button reads the history with `useCalendarHistory`, anywhere inside `Root`:
+
+<include meta='title="agent-undo.tsx"'>../../examples/agent-undo.tsx</include>
+
+The undo is a proposal of its own. Your `onEventChange` gets it with `detail.input` of `"api"` and
+`detail.history` of `"undo"`, and the log above adds `api moved review`. It isn't the agent's, so a
+policy that refuses agents doesn't refuse it.
+
+The history records where an event was, not your fields. Undoing an agent's rename proposes the
+event's times again, with no `detail.fields`, and the new title would stay. So the button reads
+the step it's about to undo: `past.at(-1).changes[0].event` is your record as it was before the
+step, and `onRestore` puts its title back once the undo is saved. `AuditedCalendar` passes
+`onRestore` a function that copies the title into its meetings.
+
+To undo an agent's `createEvent`, the history has to find the event the create became. That's what
+`createdEventId` in `AuditedCalendar` is for; [Undo and redo](/docs/undo-redo#creates-and-deletes)
+explains it.
+
+For one history that holds everyone's changes, leave `inputs` out. Each step in `past` from
+`useCalendarHistory` has the `input` that made it, so your UI can still mark the agent's.
+
+## Saves that take a while
+
+<AgentSavePreview />
+
+This page has two calendars, so this one has a label of its own, `Bookings`. An agent names a
+calendar by its label, and a step on a label two calendars share fails: the bridge can't tell which
+one is meant.
+
+When `onEventChange` returns a promise, the calendar shows the change as
+[pending](/docs/interactions#pending-changes) while it settles. The agent's step doesn't wait for
+it. It returns the change at once, with `status: "saving"`:
+
+```json
+{
+  "cause": "move",
+  "changeId": "change-1",
+  "eventId": "review",
+  "proposed": {
+    "start": "2026-10-09T10:00:00+02:00",
+    "end": "2026-10-09T11:00:00+02:00",
+    "kind": "timed",
+    "resourceIds": []
+  },
+  "status": "saving"
+}
+```
+
+The agent asks how it ended with `getChange`, a step like any other:
+
+```json
+{ "ref": "Bookings", "action": "getChange", "args": [{ "changeId": "change-1" }] }
+```
+
+| The save                       | `getChange` returns                                             |
+| ------------------------------ | --------------------------------------------------------------- |
+| Hasn't settled                 | The change with `status: "saving"`                              |
+| Resolved                       | The change with `status: "saved"`                               |
+| Rejected, or the handler threw | The change with `status: "rejected"`, `reason: "handler-error"` |
+
+While a change saves, `describeCalendar` lists it in `pendingChanges`, and `listEvents` shows the
+event where it's going, with `"pending": true`. A calendar remembers the last 50 changes agents
+proposed on it, so an ID from earlier in a conversation still answers.
+
+Your app hears the same outcome at `onEventChangeResult`, with `detail.input` of `"agent"`:
+
+<include meta='title="agent-slow-save.tsx"'>../../examples/agent-slow-save.tsx</include>
+
+`save` is your own server call. When it fails, the calendar puts the event back as it was, the
+agent's `getChange` reads `rejected`, and `onAgentSaveFailed` is where your app tells the person.
+A failed save leaves nothing in the browser's console that you didn't put there.
+
+Two differences from a refusal that fails the step:
+
+- **A late `rejected` has the reason and not your message.** `handler-error` is all `getChange`
+  says. A handler that throws before it returns a promise fails the step, and that message carries
+  your error's text.
+- **Nothing tells the agent.** It reads a late outcome only when it asks. Tell your model to call
+  `getChange` before it reports a change that came back as `saving` or `validating`.
+
+Next, [deleting with the person's say](/docs/agents/deleting).

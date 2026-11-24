@@ -49,9 +49,18 @@ change still pending for the same event. `warnings` is absent when no policy fla
 `{ status: "rejected", reason, change?, error? }`. It never rejects. The
 [reasons](/docs/interactions#changing-events-from-your-own-ui) are listed on the Interactions page.
 `Root`'s `onEventChangeResult` gets the same result for every proposal, with the detail it was
-proposed with (`CalendarProposalDetail`): `{ input: "pointer" | "keyboard" | "api" }`, and
-`history: "undo" | "redo"` on an event history's inverse. A detail that names no input reads
-`{ input: "api" }`.
+proposed with (`CalendarProposalDetail`): `{ input: "pointer" | "keyboard" | "api" | "agent" }`,
+`history: "undo" | "redo"` on an event history's inverse, and `fields` when the proposer asked
+for more than a placement. A detail that names no input reads `{ input: "api" }`. `"agent"` is an
+AI agent's change, made through the [agent bridge](/docs/agents). `onEventChange` gets the same
+detail as its second argument, and a policy as `context.detail`, so both can
+[refuse an agent's change](/docs/agents/changes).
+
+`fields` is what a change says beside where the event goes. The engine models placement only, so
+a title, a colour or anything else of your record travels there, as it came and unchecked. An
+agent's `createEvent` and `updateEvent` fill it, with the title as `fields.title`, and your
+`onEventChange` reads it to [save what the agent sent](/docs/agents/connect#save-what-the-agent-sent).
+Your own code can send fields the same way, as `proposeEventChange(proposal, { input: "api", fields })`.
 
 While a proposal is on its way, `useCalendarPendingChanges` lists it as a `CalendarPendingChange`,
 `{ change, phase }`, with `phase` one of `"validating"`, `"saving"` and `"awaiting-events"`. See
@@ -71,8 +80,19 @@ snapshot (`EventHistorySnapshot`), and `useCalendarHistory` binds a history to a
 ```ts
 type CalendarPolicy = (
   change: CalendarEventChange,
-  context: { events: EventSnapshot; timeZone: string; availability?: AvailabilitySnapshot },
+  context: {
+    events: EventSnapshot;
+    timeZone: string;
+    availability?: AvailabilitySnapshot;
+    detail?: CalendarProposalDetail;
+  },
 ) => Decision | Promise<Decision>;
+
+type CalendarProposalDetail = {
+  input: "pointer" | "keyboard" | "api" | "agent";
+  history?: "undo" | "redo";
+  fields?: Readonly<Record<string, unknown>>;
+};
 
 type Decision =
   | { type: "accept" }
@@ -83,7 +103,9 @@ type Decision =
 
 `warn` accepts the change and adds `reason` to its `warnings`. `context.availability` holds the
 root's working hours, for `availabilityPolicy`. `context.events` includes pending changes, so a
-policy sees the calendar as the user does. A policy
+policy sees the calendar as the user does. `context.detail` says who proposed the change, so a
+policy can [refuse an agent's change](/docs/agents/changes#refuse-an-agents-change) and allow a
+person's; it's absent when your own code calls a policy outside a proposal. A policy
 that throws rejects the change with the reason `policy-error`.
 
 | Policy                                      | Behaviour                                                                                                                                                                                                                                                                                                                                                          |

@@ -14,6 +14,16 @@ const scanned = await scanURLs({
     })),
   },
 });
+// The Markdown addresses are route handlers and a rewrite (`app/llms.txt`, `app/llms-full.txt`,
+// `next.config.mjs`), which the scan of pages doesn't list.
+for (const url of [
+  "/llms.txt",
+  "/llms-full.txt",
+  "/docs.md",
+  ...pages.filter((page) => page.url !== "/docs").map((page) => `${page.url}.md`),
+]) {
+  scanned.urls.set(url, {});
+}
 const files = await Promise.all(
   pages.map(async (page): Promise<FileObject> => ({
     content: await page.data.getText("raw"),

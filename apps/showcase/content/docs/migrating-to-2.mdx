@@ -1,0 +1,213 @@
+---
+title: Migrating to 2.0
+description: What changes between Time 1.x and 2.0, and what to do about each change.
+---
+
+2.0 rebuilds the calendar's parts on [ui-sdk](https://ui-sdk.dev). That gives the calendar an
+[agent surface](/docs/agents) and a second framework, [Solid](/docs/api/solid). The engine didn't
+move: dates, time zones, recurrence, layouts, transactions and policies work as they did.
+
+For most apps the upgrade is two more packages to install. The rest of this page is for code that
+names the types 2.0 widened.
+
+<Callout type="warn" title="2.0 is a pre-release">
+  Its API can still change before 2.0.0, and ui-sdk is in beta. Stay on 1.x if you need a stable API
+  today: it keeps the shape it has.
+</Callout>
+
+## In short
+
+| Change                                                                | Do this                                                                 | Who it affects                                |
+| --------------------------------------------------------------------- | ----------------------------------------------------------------------- | --------------------------------------------- |
+| `@ui-sdk/core` and `@ui-sdk/react` are peer dependencies              | [Install them](#install-the-new-peer-dependencies)                      | Everyone                                      |
+| `CalendarInputMethod` has a fourth value, `"agent"`                   | [Handle it](#handle-the-agent-input)                                    | Code that switches on `detail.input`          |
+| `onEventChange` and policies get the proposal's detail, with `fields` | Nothing. [Use it](#handlers-and-policies-hear-who-proposed) if you like | Nobody has to change                          |
+| State handlers hear `reason`, `source`, `event` and can `cancel()`    | Nothing. [Use it](#state-handlers-hear-why-and-who)                     | Code that builds a `detail` by hand, in tests |
+| Actions take options last                                             | [Wrap an action used as an event handler](#actions-take-options)        | Code such as `onClick={actions.navigateNext}` |
+| `Root` has `label`, `allowAgentDelete` and `formatAgentEventLabel`    | [Name your calendar](#name-the-calendar)                                | Apps that want agents, or a fixed name        |
+| The store and state types moved to `@moltenship/calendar-primitives`  | Nothing: [the old imports still work](#new-packages)                    | Nobody                                        |
+
+What didn't change: the engine, the registry's views, the `data-calendar-part` attributes and the
+other attributes your CSS and tests target, the keyboard model, and every hook's name and return
+value.
+
+## Install the new peer dependencies
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/calendar @ui-sdk/core @ui-sdk/react
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/calendar @ui-sdk/core @ui-sdk/react
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar @ui-sdk/core @ui-sdk/react
+```
+
+</Tab>
+</Tabs>
+
+- **`react-dom` is needed too.** `@ui-sdk/react` has it as a peer dependency. A React app on the web
+  already has it.
+- **Install the 2.0 version of every `@moltenship/*` package you use.** They share one version,
+  and a 1.x package beside a 2.0 one brings a second copy of the engine.
+- **`@moltenship/calendar-testing` has the same two peers.** A project that tests with it needs
+  nothing more once the app has them.
+- **`shadcn add` doesn't install them.** The registry's items list `@moltenship/calendar` and not
+  the ui-sdk packages, so an app set up from the registry alone adds them by hand.
+- **Keep one copy of `@ui-sdk/core`.** The calendar and an [agent bridge](/docs/agents/connect)
+  find each other through it. Your package manager keeps one as long as every `@ui-sdk/*` package
+  is on the same version; `pnpm why @ui-sdk/core` shows whether it did.
+
+The calendar takes `@ui-sdk/core` and `@ui-sdk/react` from `0.1.0-beta.16` on, within the 0.1
+line.
+
+## Handle the agent input
+
+`CalendarInputMethod` was `"pointer" | "keyboard" | "api"`. It's now
+`"pointer" | "keyboard" | "api" | "agent"`. The value is the `input` of the detail that
+`onEventChangeResult` gets, and of a history step.
+
+Code that only compares, such as `detail.input === "keyboard"`, keeps working. A `switch` that
+TypeScript checks for every case stops compiling until it has the fourth:
+
+<include meta='title="input-label.ts"'>../examples/migrating-input.ts</include>
+
+No agent proposes anything until your app creates a bridge, so `"agent"` never arrives in an app
+that doesn't opt in.
+
+An [event history](/docs/undo-redo) records every input by default, and now that includes an
+agent's. To leave an agent's changes out of undo, list the inputs you want:
+
+<include meta='title="history.ts"'>../examples/migrating-history.ts</include>
+
+## Handlers and policies hear who proposed
+
+In 1.x only `onEventChangeResult` got the proposal's detail. In 2.0 `onEventChange` gets it as a
+second argument, and a policy as `detail` in its second argument. Handlers that take one argument
+are unchanged.
+
+<include meta='title="saving.tsx"'>../examples/migrating-saving.tsx</include>
+
+`applyChange` and `calendar.tsx` are the ones from [Connect an agent](/docs/agents/connect#name-the-calendar)
+and the [Quick start](/docs/quick-start).
+
+The detail has a new optional member, `fields`: what a change says beside where the event goes.
+An agent's `createEvent` and `updateEvent` put the title there, and whatever else the agent sent.
+A person's gestures send none, so a handler that ignores `detail` saves a person's changes as it
+did. It saves an agent's too, but without the title, which is why `applyChange` above takes the
+detail. See [Save what the agent sent](/docs/agents/connect#save-what-the-agent-sent).
+
+`actions.checkEventChange(proposal, detail?)` takes the detail as well, so a preview can ask the
+policies the question the real proposal will.
+
+A policy you call yourself, in a unit test for example, has a context type with one more optional
+field. Code that builds the context as `{ events, timeZone }` still compiles.
+
+## State handlers hear why and who
+
+The second argument of `onViewChange`, `onAnchorDateChange` and the other four state handlers had
+`previous`, `controlled` and `slice`. It now also has:
+
+| Field      | Contents                                                                                |
+| ---------- | --------------------------------------------------------------------------------------- |
+| `reason`   | `"next-press"`, `"previous-press"`, `"today-press"`, `"input-change"` or `"imperative"` |
+| `source`   | `"mouse"`, `"touch"`, `"pen"`, `"keyboard"`, `"virtual"`, `"programmatic"` or `"agent"` |
+| `event`    | The DOM event, when one of the calendar's own controls caused the change                |
+| `cancel()` | Keeps the value as it was                                                               |
+| `canceled` | Whether a handler cancelled                                                             |
+
+Handlers still run when they did: before a controlled value changes, since your handler is what
+changes it, and after an uncontrolled one. `cancel()` puts an uncontrolled value back.
+[State](/docs/concepts/state#what-a-handler-hears) has an example.
+
+This breaks one thing: a test or a wrapper that builds a `CalendarStateChangeDetail` object by
+hand. Add the new fields, or let the calendar make the detail by calling an action.
+
+## Actions take options
+
+`setView`, `setAnchorDate`, `setTimeZone`, `setSelection`, `setFocus`, `setExpandedResourceIds`,
+`navigateNext`, `navigatePrevious` and `navigateToday` take an options object last:
+`{ event?, reason?, source? }`. It says why the app made the call, and a state handler reads it
+back.
+
+Calls without it are unchanged. One pattern stops compiling: a navigation action passed directly
+as an event handler. TypeScript reports that the click event "has no properties in common with
+type `CalendarCommandOptions`". Wrap the call, and pass the event if a handler should hear it:
+
+<include meta='title="next-button.tsx"'>../examples/migrating-next-button.tsx</include>
+
+`Calendar.NextTrigger`, `Calendar.PreviousTrigger` and `Calendar.TodayTrigger` already do this.
+
+## Name the calendar
+
+`Root` takes three new props:
+
+| Prop                    | Effect                                                                                                   |
+| ----------------------- | -------------------------------------------------------------------------------------------------------- |
+| `label`                 | Names the calendar. `Calendar.Frame` takes it as its `aria-label`, and an agent finds the calendar by it |
+| `allowAgentDelete`      | Gives an agent the `deleteEvent` action. Off by default, and the calendar has no such action then        |
+| `formatAgentEventLabel` | Names each visible event in the list an agent reads. By default the title and ISO times                  |
+
+Without `label`, the frame is labelled by the title, as in 1.x, so nothing changes for a screen
+reader until you set it. With `label`, the frame's name is the label and the title is no longer
+part of it. `useCalendarMeta()` has the label as `meta.label`.
+
+## Make it agent-ready
+
+Upgrading exposes nothing. An agent reaches a calendar only after your app creates a bridge.
+When you want that:
+
+1. Give `Root` a `label`.
+2. Render `Calendar.Frame` inside `Root`. A calendar without a frame works for people and isn't
+   listed for agents.
+3. Read `detail.fields` in `onEventChange`, so a title an agent sends is saved. See
+   [Save what the agent sent](/docs/agents/connect#save-what-the-agent-sent).
+4. Create the bridge with an `allow`, as [Connect an agent](/docs/agents/connect) shows.
+
+A calendar without `onEventChange` gives an agent the reading and navigation actions and no
+event action, as it gives a person no editing.
+
+## New packages
+
+| Package                           | What it is                                             | Install it when                   |
+| --------------------------------- | ------------------------------------------------------ | --------------------------------- |
+| `@moltenship/calendar-primitives` | The framework-free runtime, store and ui-sdk primitive | You write a framework integration |
+| `@moltenship/calendar-solid`      | The Solid integration, a preview                       | Your app is on SolidJS 2          |
+
+`createCalendarStore`, `resolveViewOptions` and the state types moved from
+`@moltenship/calendar-react` into the primitives. Both `@moltenship/calendar` and
+`@moltenship/calendar-react` re-export them, so imports from either still work and a store you
+created keeps its contract. See [Primitives](/docs/api/primitives).
+
+## Tests
+
+- **Scripted clicks.** A click a test dispatches reads `source: "programmatic"` in a state
+  handler. Only a real pointer reads `"mouse"`.
+- **The frame's name.** A test that finds the frame by its accessible name finds the `label` once
+  you set one.
+- **Agent changes.** [Testing](/docs/testing#changes-an-agent-makes) shows how to run an agent's
+  step in a test.
+
+## For coding agents
+
+If a coding agent does the upgrade, give it the docs for the version you install. They ship in the
+package, at `node_modules/@moltenship/calendar/docs`, with a skill beside them. See
+[Build with a coding agent](/docs/agents/coding-agents).

@@ -1,0 +1,465 @@
+---
+title: Solid
+description: The SolidJS 2 integration, a preview. What it has, how it differs from React, and what isn't in it yet.
+---
+
+`@moltenship/calendar-solid` is the calendar for [SolidJS](https://www.solidjs.com) 2. It renders
+the same [primitive](/docs/api/primitives) as the React integration, so both share one
+implementation of the calendar's state, actions, event changes and [agent surface](/docs/agents).
+
+<Callout type="warn" title="A preview">
+  This package is new in 2.0 and its API can change in any release before 2.0.0. It has the root,
+  the structural parts, the read hooks and the agent surface. It has no ready-made views, no
+  keyboard navigation and no dragging yet: see [what isn't in it yet](#what-isnt-in-it-yet). The
+  rest of these docs describe React.
+</Callout>
+
+## Install
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/calendar-solid @moltenship/calendar-core solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/calendar-solid @moltenship/calendar-core solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/calendar-solid @moltenship/calendar-core solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar-solid @moltenship/calendar-core solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+```
+
+</Tab>
+</Tabs>
+
+- **`@moltenship/calendar-core`** has the event adapter and the functions a view is made of. The
+  Solid package doesn't re-export them.
+- **`solid-js` and `@solidjs/web`** 2.0, and **`@ui-sdk/core` and `@ui-sdk/solid`** from
+  `0.1.0-beta.16` on within the 0.1 line, are peer dependencies.
+- **Don't install `@moltenship/calendar`.** It's the React package, and it doesn't re-export this
+  one.
+- A runtime with `Temporal`, or a polyfill that defines `globalThis.Temporal`, loaded before the
+  calendar, and TypeScript 6 or later with `"lib": ["DOM", "DOM.Iterable", "ESNext"]`. Both are the
+  same as for React: see [Installation](/docs/installation).
+
+### Build setup
+
+The integration is plain TypeScript, and `@ui-sdk/solid` ships JSX for your app's Solid compiler.
+With Vite, use Solid's plugin:
+
+```ts title="vite.config.ts"
+import solid from "@solidjs/vite-plugin";
+import { defineConfig } from "vite";
+
+export default defineConfig({
+  plugins: [solid()],
+  optimizeDeps: {
+    // One copy of ui-sdk's core in the dev server. The calendar and the agent bridge find each
+    // other through it.
+    exclude: ["@ui-sdk/core"],
+  },
+});
+```
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "jsx": "preserve",
+    "jsxImportSource": "@solidjs/web",
+    "lib": ["ESNext", "DOM", "DOM.Iterable"]
+  }
+}
+```
+
+If the page fails with `React is not defined` from a file in `@ui-sdk/solid`, the plugin didn't
+compile that package as Solid. Check that `@ui-sdk/solid` is in your app's own `dependencies`,
+where the install command puts it.
+
+## A calendar
+
+There are no ready-made Solid views. A view is a strategy from `@moltenship/calendar-core` and a
+Solid component that draws its projection. This one is the engine's list projection as an agenda:
+
+```tsx title="calendar.tsx"
+import {
+  defineEventAdapter,
+  getListRange,
+  getListTitle,
+  navigateList,
+  projectList,
+  type CalendarEventInterval,
+  type ListProjection,
+  type ListViewOptions,
+} from "@moltenship/calendar-core";
+import {
+  createCalendar,
+  defineCalendarView,
+  type CalendarViewRendererProps,
+} from "@moltenship/calendar-solid";
+import { For } from "solid-js";
+
+export interface Meeting {
+  readonly id: string;
+  readonly title: string;
+  readonly interval: CalendarEventInterval;
+}
+
+const eventAdapter = defineEventAdapter<Meeting>()({
+  getId: (meeting) => meeting.id,
+  getTitle: (meeting) => meeting.title,
+  getInterval: (meeting) => meeting.interval,
+  getResourceIds: () => [],
+});
+
+type List = ListProjection<Meeting, string, string>;
+
+// Props are getters in Solid: read `props.projection` in the JSX, and don't destructure it.
+function Agenda(props: CalendarViewRendererProps<List, ListViewOptions>) {
+  const day = (date: Temporal.PlainDate) =>
+    date.toLocaleString(props.environment.locale, { dateStyle: "full" });
+
+  return (
+    <For each={props.projection.days} fallback={<p>Nothing in these weeks.</p>}>
+      {(entry) => (
+        <section>
+          <h3>{day(entry.date)}</h3>
+          <ul>
+            <For each={entry.items}>
+              {(item) => <li data-event-id={item.event.id}>{item.event.title}</li>}
+            </For>
+          </ul>
+        </section>
+      )}
+    </For>
+  );
+}
+
+const listView = defineCalendarView({
+  name: "list",
+  defaultOptions: { weeks: 2 } as ListViewOptions,
+  strategy: {
+    getRange: (anchor, environment, options) => getListRange(anchor, environment, options),
+    getTitle: (range, environment) => getListTitle(range, environment),
+    navigate: (anchor, delta, options) => navigateList(anchor, delta, options),
+    project: (input) => projectList(input) as List,
+  },
+  Renderer: Agenda,
+});
+
+export const Calendar = createCalendar<Meeting>()({ eventAdapter, views: [listView] });
+
+export type View = (typeof Calendar.views)[number]["name"];
+```
+
+`Root` takes your events and the handler that saves a change, as in React. Events live in a
+signal of yours, and the calendar never stores them:
+
+```tsx title="app.tsx"
+import type { CalendarProposalDetail, CalendarWeekRules } from "@moltenship/calendar-core";
+import { createSignal } from "solid-js";
+
+import { Calendar, type Meeting } from "./calendar";
+
+const timeZone = "Europe/Berlin";
+const at = (value: string) =>
+  Temporal.PlainDateTime.from(value).toZonedDateTime(timeZone).toInstant();
+
+const seed: readonly Meeting[] = [
+  {
+    id: "standup",
+    title: "Standup",
+    interval: { kind: "timed", start: at("2026-10-08T09:00"), end: at("2026-10-08T09:30") },
+  },
+];
+
+const weekRules: CalendarWeekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] };
+
+// A title an agent sent with `createEvent` or `updateEvent`. A person's gesture sends none.
+function titleFrom(detail: CalendarProposalDetail): string | undefined {
+  const title = detail.fields?.title;
+  return typeof title === "string" && title.trim() !== "" ? title.trim() : undefined;
+}
+
+export function App() {
+  const [meetings, setMeetings] = createSignal<readonly Meeting[]>(seed);
+
+  return (
+    <Calendar.Root
+      label="Team calendar"
+      events={meetings()}
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone={timeZone}
+      locale="en-US"
+      weekRules={weekRules}
+      onEventChange={(change, detail) => {
+        const title = titleFrom(detail);
+        if (change.cause === "delete") {
+          setMeetings((current) => current.filter((meeting) => meeting.id !== change.eventId));
+        } else if (change.cause === "create") {
+          setMeetings((current) => [
+            ...current,
+            { id: crypto.randomUUID(), title: title ?? "New meeting", interval: change.proposed },
+          ]);
+        } else {
+          setMeetings((current) =>
+            current.map((meeting) =>
+              meeting.id === change.eventId
+                ? { ...meeting, title: title ?? meeting.title, interval: change.proposed }
+                : meeting,
+            ),
+          );
+        }
+      }}
+    >
+      <Calendar.Frame>
+        <Calendar.Toolbar>
+          <Calendar.PreviousTrigger>Previous</Calendar.PreviousTrigger>
+          <Calendar.TodayTrigger>Today</Calendar.TodayTrigger>
+          <Calendar.NextTrigger>Next</Calendar.NextTrigger>
+          <Calendar.Title />
+        </Calendar.Toolbar>
+        <Calendar.Viewport>
+          <Calendar.ActiveView />
+        </Calendar.Viewport>
+      </Calendar.Frame>
+    </Calendar.Root>
+  );
+}
+```
+
+A page of this site is a React app, so this example isn't live here. The repository's
+[`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid) is a running
+Solid calendar with a month grid, an agenda and an agent panel.
+
+## What it exports
+
+| Export                                                             | What it is                                                                                                             |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `createCalendar<TEvent, TResource, TSelection, TFocus>()(options)` | The factory. Takes `eventAdapter`, `views` and `invalidEventPolicy`, as [React's](/docs/api/react#createcalendar) does |
+| `defineCalendarView({ name, defaultOptions, strategy, Renderer })` | A view. `Renderer` is a Solid component                                                                                |
+| `createStateSelector(source, selector, options?)`                  | An accessor of one value of a store                                                                                    |
+| `createCalendarStore(options)`                                     | The [state store](/docs/api/store). The same function `@moltenship/calendar` exports                                   |
+| `resolveViewOptions(view, overrides)`                              | A view's options: its `defaultOptions` with a root's `viewOptions` over them                                           |
+
+It also exports the types of all of these, and the state types: `CalendarPublicState`,
+`CalendarActions`, `CalendarStore`, `CalendarStateChangeDetail`, `CalendarCommandOptions` and the
+others [Primitives](/docs/api/primitives#what-it-exports) lists.
+
+## The factory
+
+`createCalendar` returns the parts and hooks for your record types.
+
+### Parts
+
+| Part              | Renders     | Notes                                                                                      |
+| ----------------- | ----------- | ------------------------------------------------------------------------------------------ |
+| `Root`            | nothing     | Provides the calendar. Its props are the ones [React's `Root`](/docs/api/react#root) takes |
+| `Frame`           | `<section>` | Named by `Root`'s `label`, or by the title without one. An agent finds the calendar here   |
+| `Toolbar`         | `<header>`  |                                                                                            |
+| `Title`           | `<span>`    | The visible dates, from the view's `getTitle`                                              |
+| `PreviousTrigger` | `<button>`  | Needs children or an `aria-label`                                                          |
+| `NextTrigger`     | `<button>`  | Needs children or an `aria-label`                                                          |
+| `TodayTrigger`    | `<button>`  | Needs children or an `aria-label`                                                          |
+| `ViewSwitcher`    | `<select>`  | One option per view. Requires `getViewLabel(name)`                                         |
+| `Viewport`        | `<div>`     | Wrapper for the view                                                                       |
+| `ActiveView`      | view output | Renders the active view's `Renderer`, or `fallback` if the view isn't registered           |
+
+Each part has the `data-calendar-part` attribute React's has, so CSS written for one works for the
+other. The parts take the element's own props, in Solid's spelling: `class`, not `className`.
+
+`Root`'s props have the same names, types and defaults as in React, the agent's `label`,
+`allowAgentDelete` and `formatAgentEventLabel` included. Pass a signal's value for a prop that
+changes: `events={meetings()}`, `view={view()}`.
+
+### Hooks
+
+Call them in a component inside `Root`. Where React's hook returns a value, Solid's returns an
+accessor:
+
+| Hook                                      | Returns                                                                                                |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `useCalendarState()`                      | `Accessor` of the six state values                                                                     |
+| `useCalendarSelector(selector, options?)` | `Accessor` of one value from the state. Re-runs readers only when it changes by `options.isEqual`      |
+| `useCalendarActions()`                    | The actions, as an object. Stable for the root's lifetime                                              |
+| `useCalendarMeta()`                       | `Accessor` of the meta: `label`, `environment`, `eventSnapshot`, `views`, `diagnostics`, `ids`, `refs` |
+| `useVisibleRange()`                       | `Accessor` of the visible dates, or `null`                                                             |
+| `useViewProjection()`                     | `Accessor` of the active view and its projection, or `null`                                            |
+| `useCalendarPendingChanges(selector?)`    | `Accessor` of the changes being saved, or of what `selector` picks from them                           |
+| `useCalendar()`                           | `{ actions, meta, state }`. `meta` and `state` are getters                                             |
+
+```tsx title="status.tsx"
+import { Calendar } from "./calendar";
+
+// Render it inside <Calendar.Root>.
+export function Status() {
+  const state = Calendar.useCalendarState();
+  const range = Calendar.useVisibleRange();
+  const view = Calendar.useCalendarSelector((current) => current.view);
+  const saving = Calendar.useCalendarPendingChanges((changes) => changes.size > 0);
+  const actions = Calendar.useCalendarActions();
+
+  return (
+    <p>
+      {view()} from {range()?.start.toString()}, anchored on {state().anchorDate.toString()}
+      {saving() ? ", saving" : ""}
+      <button type="button" onClick={() => actions.navigateToday()}>
+        Today
+      </button>
+    </p>
+  );
+}
+```
+
+## Differences from React
+
+| In React                                     | In Solid                                                                                          |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Hooks return values                          | Hooks return accessors: `state().view`, not `state.view`                                          |
+| `useCalendar()` returns plain objects        | `meta` and `state` are getters. Read them in JSX, a memo or an effect, and don't destructure them |
+| A `Renderer` gets props you can destructure  | A `Renderer`'s props are getters: `props.projection`, read where it's used                        |
+| `meta.refs` holds React refs                 | `meta.refs` holds accessors: `meta().refs.viewport()`                                             |
+| A state change is visible on the next render | An accessor has the new value once Solid flushes: a microtask later, or after `flush()`           |
+| `@moltenship/calendar` is the one package    | `@moltenship/calendar-solid` and `@moltenship/calendar-core`                                      |
+| The bridge is `@ui-sdk/react/agent`          | The bridge is `@ui-sdk/solid/agent`                                                               |
+
+What doesn't differ: the [state model](/docs/concepts/state), controlled and uncontrolled props,
+[change handlers](/docs/concepts/state#what-a-handler-hears), `onEventChange` and
+`onEventChangeResult`, [policies](/docs/api/changes), pending changes, and every agent action.
+
+## A store outside Root
+
+`createStateSelector` reads one value of a store as an accessor, for a component outside `Root`:
+
+```tsx title="store.tsx"
+import { createCalendarStore, createStateSelector } from "@moltenship/calendar-solid";
+
+import type { View } from "./calendar";
+
+export const store = createCalendarStore<View>({
+  defaultView: "list",
+  defaultAnchorDate: Temporal.PlainDate.from("2026-10-08"),
+  defaultTimeZone: "Europe/Berlin",
+});
+
+// An accessor of one value, for a component outside <Calendar.Root store={store}>.
+export function AnchorDate() {
+  const anchorDate = createStateSelector(store, (state) => state.anchorDate, {
+    isEqual: (a, b) => a.equals(b),
+  });
+  return <time>{anchorDate().toString()}</time>;
+}
+```
+
+Pass the store to `Root` as `store={store}`, and `store.actions.setAnchorDate(date)` moves the
+calendar from anywhere. The store's view type has to be the calendar's, and so do its selection
+and focus types if you changed them. A calendar without resources takes a store made without the
+resource ID type, as here. [State store](/docs/api/store) has the rest.
+
+## Agents
+
+The agent surface is the primitive's, so it's the same fifteen actions with the same inputs,
+results and errors as in React: see the [agent reference](/docs/agents/reference). The bridge
+comes from ui-sdk's Solid package.
+
+```ts title="agent.ts"
+import { createAgent } from "@ui-sdk/solid/agent";
+
+// One bridge for the page, created before the app renders.
+export const agent = createAgent({
+  // Reading, navigation and changes run. A delete doesn't, until your app asks the person.
+  allow: (step) => step.action !== "deleteEvent",
+});
+
+export async function moveStandup() {
+  const outcome = await agent.act({
+    steps: [
+      {
+        ref: "Team calendar",
+        action: "moveEvent",
+        // Every action takes one object.
+        args: [{ eventId: "standup", start: "2026-10-09T11:00" }],
+      },
+    ],
+  });
+  if (!outcome.ok) {
+    return outcome.error?.message ?? "failed";
+  }
+  // The change the calendar made of the step: `{ changeId, cause, eventId, proposed, status }`.
+  return JSON.stringify(outcome.steps[0]?.result);
+}
+```
+
+With the calendar above, `moveStandup()` calls your `onEventChange` with `detail.input` equal to
+`"agent"`, the standup shows on October 9, and the function returns the change:
+
+```json
+{
+  "cause": "move",
+  "changeId": "change-1",
+  "eventId": "standup",
+  "proposed": {
+    "end": "2026-10-09T11:30:00+02:00",
+    "kind": "timed",
+    "resourceIds": [],
+    "start": "2026-10-09T11:00:00+02:00"
+  },
+  "status": "saved"
+}
+```
+
+`status` is `"saved"` because this handler saves synchronously. A handler that returns a promise
+gives `"saving"`, and the agent reads how it ended with `getChange`: see
+[What a step returns](/docs/agents#what-a-step-returns).
+
+- **Create the bridge before the app renders.** Import its module before the one that calls
+  `render`.
+- **Give `Root` a `label` and render `Calendar.Frame`.** An agent finds the calendar by the label,
+  and a calendar without a frame isn't listed.
+- **Read `detail.fields` in `onEventChange`.** An agent's `createEvent` and `updateEvent` send the
+  title there, and the calendar doesn't store it for you. The `App` above does this with
+  `titleFrom`. See [Save what the agent sent](/docs/agents/connect#save-what-the-agent-sent).
+- **A calendar has `deleteEvent` only when `Root` has `allowAgentDelete`.** Without it the action
+  isn't among the calendar's, and a step that asks for it fails whatever `allow` returns.
+
+The [Agents](/docs/agents) guides show React. The bridge's API (`createAgent`, `snapshot`, `act`,
+`agentTools`, `registerTools`) and everything about the calendar's actions carry over; only the
+import path changes.
+
+## What isn't in it yet
+
+| Missing                                                                 | In React it's                                                                                                           |
+| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| Ready-made views                                                        | The [registry](/docs/installation)'s week, day, month, year, agenda and timeline views, which are React source          |
+| Keyboard navigation inside a view                                       | `useCalendarKeyboard`, `useRovingFocus`, `useCalendarFocus`                                                             |
+| Dragging, resizing and creating with a pointer                          | `@moltenship/calendar-dnd` and the hooks that bind it                                                                   |
+| Gesture previews                                                        | `useCalendarDraft`, `useCalendarInteraction`                                                                            |
+| Undo and redo bindings                                                  | `useCalendarHistory`, `useCalendarHistoryShortcuts`                                                                     |
+| Announcements for screen readers                                        | `Calendar.Announcer`, `useCalendarAnnouncer`                                                                            |
+| `Calendar.Event`                                                        | A part that looks up one event                                                                                          |
+| Hooks for selection, annotations, availability, resources and the clock | `useCalendarSelection`, `useCalendarAnnotations`, `useCalendarAvailability`, `useVisibleResources`, `useNow` and others |
+| A testing package                                                       | `@moltenship/calendar-testing`, which is React only                                                                     |
+
+`Root` already takes the props behind some of these: `annotations`, `availability`, `resources`,
+`selection` and `focus`. The calendar validates them, policies get `availability`, and `selection`
+and `focus` are state values you can read and set. What's missing is the hooks that hand
+annotations, availability and the resource tree to a view, and the behaviour built on them.
+
+Until they land, a Solid calendar is navigated and changed with its toolbar, with your own
+controls calling `actions`, and by an agent. Events change through
+`actions.proposeEventChange(proposal)`, which runs your policies and `onEventChange` as a drag
+does in React.

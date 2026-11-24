@@ -1,8 +1,12 @@
 # @moltenship/calendar
 
-A React 19 calendar built on the Temporal API. This is the package you install and import. It
-has the React components and hooks, the event engine, the Temporal helpers and the pointer
-interactions.
+A headless React 19 calendar built on the Temporal API. This is the package you install and import.
+It has the React components and hooks, the event engine, the Temporal helpers and the pointer
+interactions. Its parts are [ui-sdk](https://ui-sdk.dev) components, so an AI agent can read a
+calendar and act on it through ui-sdk's agent bridge.
+
+> **2.0 pre-release.** The API can still change before 2.0.0. Coming from 1.x? See
+> [Migrating to 2.0](https://time.molten.sh/docs/migrating-to-2).
 
 ```ts
 import { createCalendar, defineCalendarView, plainDateInterval } from "@moltenship/calendar";
@@ -16,10 +20,13 @@ parsing (`@moltenship/ics`) are separate packages that you add when you need the
 ## Install
 
 ```bash
-pnpm add @moltenship/calendar react react-dom
+pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 - React 19. React is a peer dependency.
+- `@ui-sdk/core` and `@ui-sdk/react` 0.1 beta, peer dependencies since 2.0. `@ui-sdk/react` needs
+  React DOM. Keep one copy of `@ui-sdk/core` in your app: the calendar and an agent bridge find
+  each other through it.
 - A runtime with `Temporal` (Node.js 26 and later include it), or a polyfill that defines
   `globalThis.Temporal`, loaded before the calendar. The package never bundles one.
 - TypeScript 6 or later with `"lib": ["DOM", "DOM.Iterable", "ESNext"]`. `ESNext` has the
@@ -29,10 +36,23 @@ The styled views, toolbar and theme aren't in this package. They're source files
 that you add to your app with the shadcn CLI and then own; see
 [Installation](https://time.molten.sh/docs/installation).
 
+## For coding agents
+
+The package ships its docs and a skill, so a coding agent reads the API of the version you
+installed:
+
+- `docs/llms.txt` is the index of the docs, and `docs/` has each page as Markdown.
+- `skills/moltenship-time` is an [Agent Skill](https://agentskills.io): `SKILL.md` and its
+  `references/`. Install it with `npx skills add Moltenship/time --skill moltenship-time`, or copy
+  the folder into your agent's skills folder.
+
+See [Build with a coding agent](https://time.molten.sh/docs/agents/coding-agents).
+
 ## Documentation
 
 - [Docs](https://time.molten.sh/docs), starting with the
   [Quick start](https://time.molten.sh/docs/quick-start)
+- [Agents](https://time.molten.sh/docs/agents)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

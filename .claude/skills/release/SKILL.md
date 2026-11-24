@@ -1,6 +1,6 @@
 ---
 name: release
-description: Release the nine @moltenship packages with `vp run release`, which runs the release workflow in CI through npm trusted publishing, then rewrite the GitHub release's generated notes into polished ones. Only the owner starts it, with /release [version] [--dry-run].
+description: Release the eleven @moltenship packages with `vp run release`, which runs the release workflow in CI through npm trusted publishing, then rewrite the GitHub release's generated notes into polished ones. Only the owner starts it, with /release [version] [--dry-run].
 disable-model-invocation: true
 argument-hint: "[version] [--dry-run]"
 ---

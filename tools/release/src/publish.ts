@@ -20,7 +20,7 @@ const trustedPublishingNpm = "11.5.1";
  *
  * It refuses unless the dry-run manifest matches HEAD, the version and every tarball, on a clean
  * tree on main or right on top of it. Safe to run again: a version npm serves is skipped when it's
- * the tarball the gate checked, and stops the run when it isn't, so the nine on npm never mix two
+ * the tarball the gate checked, and stops the run when it isn't, so the eleven on npm never mix two
  * builds. With `dryRun`, it checks all of that and npm's state, publishes nothing, and returns what
  * a release would refuse instead of throwing.
  */
@@ -68,7 +68,7 @@ export async function publish(options: {
       );
     }
 
-    // Look at all nine before publishing any.
+    // Look at all eleven before publishing any.
     const pending: (typeof manifest.packages)[number][] = [];
     for (const entry of manifest.packages) {
       const current = (await fetchPackument(entry.name))?.versions?.[version]?.dist?.integrity;

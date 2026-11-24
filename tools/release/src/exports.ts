@@ -5,7 +5,7 @@ import { problemAffectsResolutionKind } from "@arethetypeswrong/core/problems";
 import { publint } from "publint";
 import { formatMessage } from "publint/utils";
 
-import { facadePackage, optionalAdapters } from "./config";
+import { facadeAgentFiles, facadePackage, optionalAdapters } from "./config";
 import { withPackedPackages, type PackedTarball } from "./pack";
 import { parseArguments, runMain } from "./workspace";
 
@@ -16,7 +16,10 @@ const adapterSpecifier = new RegExp(
   `["'\`](${optionalAdapters.map((name) => name.replace(/[/.]/g, "\\$&")).join("|")})`,
 );
 
-/** Problems with one packed tarball: publint, are-the-types-wrong, LICENSE, and adapter imports. */
+/**
+ * Problems with one packed tarball: publint, are-the-types-wrong, LICENSE, adapter imports, and the
+ * facade's docs and skill.
+ */
 export async function tarballProblems(path: string): Promise<string[]> {
   const bytes = await readFile(path);
   const problems: string[] = [];
@@ -47,6 +50,11 @@ export async function tarballProblems(path: string): Promise<string[]> {
   const root = `/node_modules/${archive.packageName}`;
   const files = archive.listFiles(root).map((file) => file.slice(root.length + 1));
   if (!files.includes("LICENSE")) problems.push("the tarball has no LICENSE");
+  if (archive.packageName === facadePackage) {
+    for (const file of facadeAgentFiles) {
+      if (!files.includes(file)) problems.push(`the tarball has no ${file}`);
+    }
+  }
 
   // Base packages must work without the optional adapters. The facade re-exports the pointer
   // adapter; the clean-consumer check proves it tree-shakes away.
@@ -87,6 +95,6 @@ runMain(import.meta, async () => {
   parseArguments(process.argv.slice(2));
   await withPackedPackages(checkTarballs);
   console.log(
-    "Export checks passed: publint, are-the-types-wrong (ESM), LICENSE, no adapter in base packages.",
+    "Export checks passed: publint, are-the-types-wrong (ESM), LICENSE, no adapter in base packages, the facade's docs and skill.",
   );
 });

@@ -1,47 +1,21 @@
 import type {
   CalendarEnvironmentBase,
-  CalendarEventProposal,
-  CalendarPolicyResult,
-  CalendarProposalDetail,
-  CalendarFocus,
-  CalendarSelection,
-  CalendarTransactionResult,
   CalendarViewStrategy,
   EventId,
   EventSnapshot,
   ResourceId,
 } from "@moltenship/calendar-core";
-import type { InstantInterval, PlainDateInterval } from "@moltenship/calendar-temporal";
+import type {
+  CalendarActiveView as KernelActiveView,
+  CalendarViewActions,
+  CalendarViewDefinition,
+  CalendarViewOptionsMap as KernelViewOptionsMap,
+} from "@moltenship/calendar-primitives";
+import type { PlainDateInterval } from "@moltenship/calendar-temporal";
 import type { ComponentType } from "react";
 
-/** The semantic commands a view renderer may issue without knowing its calendar's types. */
-export interface CalendarViewActions {
-  /**
-   * Asks the policies about a proposal without saving it, as a gesture's preview does; pass it to
-   * the pointer layer's `check`. A plain function, so it can be passed on as a callback.
-   */
-  readonly checkEventChange: (
-    proposal: CalendarEventProposal<EventId, ResourceId, unknown>,
-  ) => CalendarPolicyResult<unknown, EventId, ResourceId> | null;
-  navigateNext(): void;
-  navigatePrevious(): void;
-  navigateToday(): void;
-  /**
-   * Proposes a move, resize, create, or delete, such as the result of a pointer drag; the pointer
-   * layer passes `{ input: "pointer" }` as `detail`. A create may carry the application's record
-   * as `event`, as an item dropped in from outside the calendar does. A plain function, so it can
-   * be passed on as a callback.
-   */
-  readonly proposeEventChange: (
-    proposal: CalendarEventProposal<EventId, ResourceId, unknown>,
-    detail?: CalendarProposalDetail,
-  ) => Promise<CalendarTransactionResult<unknown, EventId, ResourceId>>;
-  setAnchorDate(anchorDate: Temporal.PlainDate): void;
-  /** Moves the calendar's focus; `useRovingFocus` and `useCalendarKeyboard` call it for you. */
-  setFocus(focus: CalendarFocus | null): void;
-  setSelection(selection: CalendarSelection | null): void;
-  setView(view: string): void;
-}
+export { resolveViewOptions } from "@moltenship/calendar-primitives";
+export type { CalendarViewActions };
 
 export interface CalendarViewRendererProps<TProjection, TOptions> {
   /** Stable for the lifetime of the calendar root. */
@@ -67,16 +41,14 @@ export interface CalendarViewRendererProps<TProjection, TOptions> {
   readonly range: PlainDateInterval;
 }
 
+/** A kernel view definition with the React component that renders its projection. */
 export interface CalendarView<
   TName extends string = string,
   TProjection = unknown,
   TOptions = unknown,
   TEvent = unknown,
-> {
-  readonly defaultOptions: TOptions;
-  readonly name: TName;
+> extends CalendarViewDefinition<TName, TProjection, TOptions, TEvent> {
   readonly Renderer: ComponentType<CalendarViewRendererProps<TProjection, TOptions>>;
-  readonly strategy: CalendarViewStrategy<TProjection, TOptions, TEvent>;
 }
 
 // oxlint-disable-next-line typescript/no-explicit-any -- views are heterogeneous in a calendar.
@@ -99,30 +71,11 @@ export type CalendarViewInput<
     : { readonly defaultOptions: TOptions });
 
 /** Options a root passes to its registered views, keyed by view name. */
-export type CalendarViewOptionsMap<TViewDef extends AnyCalendarView> = {
-  readonly [TName in TViewDef["name"]]?: Partial<
-    Extract<TViewDef, { readonly name: TName }>["defaultOptions"]
-  >;
-};
+export type CalendarViewOptionsMap<TViewDef extends AnyCalendarView> =
+  KernelViewOptionsMap<TViewDef>;
 
 /** The active view of a calendar with its visible range and memoized projection. */
-export type CalendarActiveView<TViewDef extends AnyCalendarView> = TViewDef extends unknown
-  ? {
-      readonly definition: TViewDef;
-      readonly environment: CalendarEnvironmentBase;
-      /** The events the projection was built from, pending changes included. */
-      readonly events: EventSnapshot<unknown, EventId, ResourceId>;
-      readonly instantRange: InstantInterval;
-      /** `loadRange` resolved to instants in the display time zone. */
-      readonly loadInstantRange: InstantInterval;
-      /** The dates the projection covers: `range`, or more for a scrolling view. */
-      readonly loadRange: PlainDateInterval;
-      readonly options: TViewDef["defaultOptions"];
-      readonly projection: ReturnType<TViewDef["strategy"]["project"]>;
-      readonly range: PlainDateInterval;
-      readonly view: TViewDef["name"];
-    }
-  : never;
+export type CalendarActiveView<TViewDef extends AnyCalendarView> = KernelActiveView<TViewDef>;
 
 export function defineCalendarView<
   const TName extends string,
@@ -138,9 +91,4 @@ export function defineCalendarView<
     Renderer: view.Renderer,
     strategy: view.strategy,
   });
-}
-
-/** Applies a root's partial overrides to a view's `defaultOptions`. */
-export function resolveViewOptions(view: AnyCalendarView, overrides: object | undefined): unknown {
-  return overrides === undefined ? view.defaultOptions : { ...view.defaultOptions, ...overrides };
 }

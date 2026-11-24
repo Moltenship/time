@@ -13,6 +13,8 @@ const testExclude = [...defaultExclude, ".claude/worktrees/**"];
 // it comes from another realm, and the bundler's native code doesn't take it for one, so they run
 // in a process of their own.
 const bundlerTests = ["tests/history-bundle.test.ts", "tools/release/tests/consumer.test.ts"];
+// The Solid integration's tests run as a project of their own; see `test.projects`.
+const solidTestsPattern = "packages/calendar-solid/**";
 
 export default defineConfig({
   resolve: {
@@ -32,13 +34,27 @@ export default defineConfig({
           include: testRoots.flatMap((root) =>
             defaultInclude.map((pattern) => `${root}/${pattern}`),
           ),
-          exclude: [...testExclude, ...bundlerTests],
+          exclude: [...testExclude, ...bundlerTests, solidTestsPattern],
           pool: "vmForks",
         },
       },
       {
         extends: true,
         test: { name: "bundler", include: bundlerTests, exclude: testExclude, pool: "forks" },
+      },
+      // Solid's tests need another module resolution than the rest: solid-js and @solidjs/web
+      // export their server build to Node, so jsdom tests would render with the server runtime.
+      // This project inlines them and resolves the browser build, as
+      // `packages/calendar-solid/vite.config.ts` does for `vp test` inside the package.
+      {
+        extends: true,
+        resolve: { conditions: ["browser", "development"] },
+        test: {
+          name: "solid",
+          include: defaultInclude.map((pattern) => `packages/calendar-solid/${pattern}`),
+          exclude: testExclude,
+          server: { deps: { inline: [/solid-js/, /@solidjs\/web/, /@ui-sdk\//] } },
+        },
       },
     ],
     // Half the cores, for `vp test` from the root: `ci:test` and the quick tier.

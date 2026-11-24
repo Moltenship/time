@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { promisify } from "node:util";
 
 import { describe, expect, test } from "vite-plus/test";
+import { parse } from "yaml";
 
 import { publishedPackages } from "../tools/release/src/config";
 
@@ -130,6 +131,47 @@ describe("published package metadata", () => {
       if (directory in bundledData) expect(files, directory).toContain("THIRD-PARTY-NOTICES.md");
     }
   }, 30_000);
+
+  // ui-sdk is pre-1.0 and its API can change between betas: the catalog pins one beta for all of
+  // its packages, and every peer range starts at it, so an upgrade moves them together.
+  test("ui-sdk and Solid peers follow the versions the catalog pins", async () => {
+    const { catalog } = parse(await readFile("pnpm-workspace.yaml", "utf8")) as {
+      readonly catalog: Readonly<Record<string, string>>;
+    };
+    const uiSdk = Object.entries(catalog).filter(([name]) => name.startsWith("@ui-sdk/"));
+    const [beta] = new Set(uiSdk.map(([, version]) => version));
+    expect(new Set(uiSdk.map(([, version]) => version)).size, "one ui-sdk version").toBe(1);
+    expect(beta).toMatch(/^\d+\.\d+\.\d+-[\w.]+$/u);
+
+    const problems: string[] = [];
+    let uiSdkPeers = 0;
+    for (const directory of publishedPackageDirectories) {
+      const manifest = (await readManifest(directory)) as PackageManifest & {
+        readonly devDependencies?: Readonly<Record<string, string>>;
+        readonly peerDependencies?: Readonly<Record<string, string>>;
+      };
+      for (const [name, range] of Object.entries(manifest.peerDependencies ?? {})) {
+        const pinned = catalog[name];
+        if (name.startsWith("@ui-sdk/")) {
+          uiSdkPeers += 1;
+          if (range !== `^${beta}`)
+            problems.push(`${manifest.name}: ${name} ${range}, not ^${beta}`);
+        } else if (/^(?:solid-js|@solidjs\/)/u.test(name)) {
+          const major = pinned?.split(".")[0];
+          if (range !== `^${major}.0.0`) problems.push(`${manifest.name}: ${name} ${range}`);
+        } else {
+          continue;
+        }
+        // The workspace develops against the version it publishes for.
+        if (manifest.devDependencies?.[name] !== "catalog:") {
+          problems.push(`${manifest.name}: ${name} isn't a catalog devDependency`);
+        }
+      }
+    }
+
+    expect(problems).toEqual([]);
+    expect(uiSdkPeers, "packages with ui-sdk peers").toBeGreaterThan(0);
+  });
 
   test.each(Object.entries(bundledData))(
     "%s's notices and its generated source carry the same license text",

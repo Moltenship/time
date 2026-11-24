@@ -827,3 +827,189 @@ describe("pending changes", () => {
     expect(listener).toHaveBeenCalledOnce();
   });
 });
+
+describe("the proposal's detail", () => {
+  test("reaches policies, checks and the handler, so an agent's change can be refused", async () => {
+    const app = createHarness([event("a", "2026-03-14T09:00", "2026-03-14T10:00")]);
+    const heard: string[] = [];
+    const noAgents: Policy = (_change, { detail }) => {
+      heard.push(`policy:${detail?.input}`);
+      return detail?.input === "agent"
+        ? { reason: "agents-may-not", type: "reject" }
+        : { type: "accept" };
+    };
+    const onEventChange: Handler = (change, detail) => {
+      heard.push(`handler:${detail.input}`);
+      app.apply(change);
+    };
+    const move = {
+      cause: "move",
+      eventId: "a",
+      proposed: interval("2026-03-14T11:00", "2026-03-14T12:00"),
+    } as const;
+    const context = { onEventChange, policies: [noAgents], timeZone };
+
+    const refused = await app.transactions.propose(move, {
+      ...context,
+      detail: { input: "agent" },
+      snapshot: app.snapshot,
+    });
+    expect(refused).toMatchObject({ reason: "agents-may-not", status: "rejected" });
+    expect(
+      app.transactions.check(move, {
+        ...context,
+        detail: { input: "agent" },
+        snapshot: app.snapshot,
+      }),
+    ).toMatchObject({ reason: "agents-may-not", status: "rejected" });
+
+    // Without a detail the proposal is the application's own.
+    const accepted = await app.transactions.propose(move, { ...context, snapshot: app.snapshot });
+    expect(accepted.status).toBe("committed");
+    expect(heard).toEqual(["policy:agent", "policy:agent", "policy:api", "handler:api"]);
+  });
+});
+
+describe("proposeNow", () => {
+  const move = {
+    cause: "move",
+    eventId: "a",
+    proposed: interval("2026-03-14T11:00", "2026-03-14T12:00"),
+  } as const;
+
+  test("answers at once when a policy refuses, running the policies once", () => {
+    const app = createHarness([event("a", "2026-03-14T09:00", "2026-03-14T10:00")]);
+    const policy = vi.fn<Policy>(() => ({ reason: "closed", type: "reject" }));
+    const onEventChange = vi.fn<Handler>();
+
+    const outcome = app.transactions.proposeNow(move, {
+      onEventChange,
+      policies: [policy],
+      snapshot: app.snapshot,
+      timeZone,
+    });
+
+    expect(outcome).toMatchObject({ reason: "closed", status: "rejected" });
+    expect(policy).toHaveBeenCalledTimes(1);
+    expect(onEventChange).not.toHaveBeenCalled();
+    expect(app.transactions.getPendingChanges().size).toBe(0);
+  });
+
+  test("answers at once when the handler saves synchronously", () => {
+    const app = createHarness([event("a", "2026-03-14T09:00", "2026-03-14T10:00")]);
+
+    const outcome = app.transactions.proposeNow(move, {
+      onEventChange: (change) => app.apply(change),
+      snapshot: app.snapshot,
+      timeZone,
+    });
+
+    expect(outcome).toMatchObject({ change: { cause: "move", eventId: "a" }, status: "committed" });
+  });
+
+  test("an unknown event and an empty placement are refused at once", () => {
+    const app = createHarness([event("a", "2026-03-14T09:00", "2026-03-14T10:00")]);
+    const context = { onEventChange: () => undefined, snapshot: app.snapshot, timeZone };
+
+    expect(app.transactions.proposeNow({ ...move, eventId: "b" }, context)).toEqual({
+      reason: "unknown-event",
+      status: "rejected",
+    });
+    expect(
+      app.transactions.proposeNow(
+        { ...move, proposed: interval("2026-03-14T11:00", "2026-03-14T11:00") },
+        context,
+      ),
+    ).toMatchObject({ reason: "invalid-placement", status: "rejected" });
+  });
+
+  test("a save that returns a promise is pending, with its change and phase", async () => {
+    const app = createHarness([event("a", "2026-03-14T09:00", "2026-03-14T10:00")]);
+    let fail: ((error: Error) => void) | undefined;
+
+    const outcome = app.transactions.proposeNow(move, {
+      onEventChange: () => new Promise<void>((_resolve, reject) => (fail = reject)),
+      snapshot: app.snapshot,
+      timeZone,
+    });
+
+    expect(outcome).toMatchObject({ change: { eventId: "a" }, phase: "saving", status: "pending" });
+    if (outcome.status !== "pending") throw new Error("expected a pending proposal");
+    expect(app.transactions.getPendingChanges().get(outcome.change.id)?.phase).toBe("saving");
+    // A late failure settles the result; it never rejects.
+    fail?.(new Error("offline"));
+    await expect(outcome.result).resolves.toMatchObject({
+      reason: "handler-error",
+      status: "rejected",
+    });
+  });
+
+  test("asynchronous policies leave it validating", async () => {
+    const app = createHarness([event("a", "2026-03-14T09:00", "2026-03-14T10:00")]);
+    const later: Policy = () => Promise.resolve({ reason: "busy", type: "reject" });
+
+    const outcome = app.transactions.proposeNow(move, {
+      onEventChange: () => undefined,
+      policies: [later],
+      snapshot: app.snapshot,
+      timeZone,
+    });
+
+    expect(outcome).toMatchObject({ phase: "validating", status: "pending" });
+    if (outcome.status !== "pending") throw new Error("expected a pending proposal");
+    await expect(outcome.result).resolves.toMatchObject({ reason: "busy", status: "rejected" });
+  });
+
+  test("the detail's fields reach policies and the handler as they came", () => {
+    const app = createHarness([event("a", "2026-03-14T09:00", "2026-03-14T10:00")]);
+    const heard: unknown[] = [];
+    const fields = { color: "teal", title: "Design review" };
+
+    app.transactions.proposeNow(
+      { cause: "update", eventId: "a", proposed: interval("2026-03-14T09:00", "2026-03-14T10:00") },
+      {
+        detail: { fields, input: "agent" },
+        onEventChange: (change, detail) =>
+          void heard.push(["handler", change.cause, detail.fields]),
+        policies: [
+          (_change, { detail }) => {
+            heard.push(["policy", detail?.fields]);
+            return { type: "accept" };
+          },
+        ],
+        snapshot: app.snapshot,
+        timeZone,
+      },
+    );
+
+    expect(heard).toEqual([
+      ["policy", fields],
+      ["handler", "update", fields],
+    ]);
+  });
+});
+
+test("a listener subscribed twice hears changes until its own subscription ends", () => {
+  const transactions = createEventTransactions<TestEvent, string, string>();
+  const app = createHarness([event("a", "2026-03-14T09:00", "2026-03-14T10:00")]);
+  const listener = vi.fn();
+  const first = transactions.subscribe(listener);
+  const second = transactions.subscribe(listener);
+
+  // An adapter that subscribes again before it cleans up the old subscription.
+  first();
+  transactions.proposeNow(
+    { cause: "move", eventId: "a", proposed: interval("2026-03-14T11:00", "2026-03-14T12:00") },
+    { onEventChange: () => new Promise<void>(() => undefined), snapshot: app.snapshot, timeZone },
+  );
+  expect(listener).toHaveBeenCalled();
+
+  second();
+  listener.mockClear();
+  transactions.reconcile(app.snapshot);
+  transactions.proposeNow(
+    { cause: "move", eventId: "a", proposed: interval("2026-03-14T13:00", "2026-03-14T14:00") },
+    { onEventChange: () => new Promise<void>(() => undefined), snapshot: app.snapshot, timeZone },
+  );
+  expect(listener).not.toHaveBeenCalled();
+});

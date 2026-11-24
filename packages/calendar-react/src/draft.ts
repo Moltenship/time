@@ -14,6 +14,9 @@ import { useMemo, useRef, useSyncExternalStore } from "react";
 
 import { useCalendarAvailability } from "./availability";
 import type { CalendarStateSource } from "./context";
+
+export { createDraftStore } from "@moltenship/calendar-primitives";
+export type { DraftStore } from "@moltenship/calendar-primitives";
 import { useInteractionRuntime } from "./interaction";
 import { useStableValue } from "./use-stable-value";
 import { sameElements } from "./equality";
@@ -34,28 +37,6 @@ export interface CalendarDraftBusy {
   readonly events: readonly NormalizedCalendarEvent<unknown, EventId, ResourceId>[];
   /** Whether the draft falls outside the resource's hours. */
   readonly outsideHours: boolean;
-}
-
-/** The pointer's draft, which the pointer layer reports through `useCalendarDraftReporter`. */
-export interface DraftStore extends CalendarStateSource<AnyDraft | null> {
-  readonly set: (draft: AnyDraft | null) => void;
-}
-
-export function createDraftStore(): DraftStore {
-  let draft: AnyDraft | null = null;
-  const listeners = new Set<() => void>();
-  return Object.freeze({
-    getSnapshot: () => draft,
-    set(next: AnyDraft | null) {
-      if (next === draft) return;
-      draft = next;
-      for (const listener of listeners) listener();
-    },
-    subscribe(listener: () => void) {
-      listeners.add(listener);
-      return () => listeners.delete(listener);
-    },
-  });
 }
 
 function sameIds(

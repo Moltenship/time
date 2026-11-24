@@ -110,19 +110,36 @@ export type CalendarEventChange<TEvent, TEventId extends EventId, TResourceId ex
 
 /**
  * Persists an accepted change. Returning a promise keeps the change visible as pending until it
- * settles; throwing or rejecting rolls it back.
+ * settles; throwing or rejecting rolls it back. `detail` says which input proposed it, so a
+ * handler can refuse an agent's change by throwing.
  */
 export type CalendarEventChangeHandler<
   TEvent,
   TEventId extends EventId,
   TResourceId extends ResourceId,
-> = (change: CalendarEventChange<TEvent, TEventId, TResourceId>) => void | Promise<void>;
+> = (
+  change: CalendarEventChange<TEvent, TEventId, TResourceId>,
+  detail: CalendarProposalDetail,
+) => void | Promise<void>;
 
-/** Which input made a proposal: a pointer or keyboard gesture, or the application's own code. */
-export type CalendarInputMethod = "pointer" | "keyboard" | "api";
+/**
+ * Which input made a proposal: a pointer or keyboard gesture, the application's own code, or an
+ * AI agent acting through the calendar's agent surface.
+ */
+export type CalendarInputMethod = "pointer" | "keyboard" | "api" | "agent";
 
-/** What a proposal says beside the change itself; `onEventChangeResult` gets it back. */
+/**
+ * What a proposal says beside the change itself. Policies and `onEventChange` read it, and
+ * `onEventChangeResult` gets it back.
+ */
 export interface CalendarProposalDetail {
+  /**
+   * What the proposer asks for beside the placement, such as the title an agent gives a new
+   * event. The engine only models placement and the application owns its records, so these reach
+   * policies and `onEventChange` as they came, unvalidated: the application decides which it
+   * accepts, and refuses the rest from a policy or by throwing.
+   */
+  readonly fields?: Readonly<Record<string, unknown>>;
   /** Set on the inverse an event history proposes to undo or redo a step. */
   readonly history?: "undo" | "redo";
   readonly input: CalendarInputMethod;
@@ -145,6 +162,33 @@ export type CalendarTransactionResult<
       readonly status: "rejected";
     };
 
+/**
+ * A proposal still being decided: its policies answer asynchronously (`validating`), or its handler
+ * returned a promise (`saving`). `result` settles with the outcome and never rejects.
+ */
+export interface CalendarPendingProposal<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+> {
+  readonly change: CalendarEventChange<TEvent, TEventId, TResourceId>;
+  readonly phase: "validating" | "saving";
+  readonly result: Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  readonly status: "pending";
+}
+
+/**
+ * What `proposeNow` returns: the outcome itself when it is known before anything waits, as a
+ * policy's synchronous refusal or a synchronous save, and the pending proposal otherwise.
+ */
+export type CalendarProposalOutcome<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+> =
+  | CalendarTransactionResult<TEvent, TEventId, TResourceId>
+  | CalendarPendingProposal<TEvent, TEventId, TResourceId>;
+
 export interface CalendarTransactionContext<
   TEvent,
   TEventId extends EventId,
@@ -152,6 +196,8 @@ export interface CalendarTransactionContext<
 > {
   /** The root's working hours, handed to policies. */
   readonly availability?: AvailabilitySnapshot;
+  /** Which input proposes the change, handed to policies and the handler; `{ input: "api" }` if absent. */
+  readonly detail?: CalendarProposalDetail;
   readonly onEventChange: CalendarEventChangeHandler<TEvent, TEventId, TResourceId>;
   readonly policies?: readonly CalendarPolicy<TEvent, TEventId, TResourceId>[];
   /** The application's events, without pending changes applied. */

@@ -171,7 +171,7 @@ interface CalendarEventBase<TData, TEventId extends EventId, TResourceId extends
   readonly title: string;
 }
 type CalendarEventChange<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = CalendarEventCreateChange<TResourceId, TEvent> | CalendarEventUpdateChange<TEvent, TEventId, TResourceId> | CalendarEventDeleteChange<TEvent, TEventId, TResourceId>;
-type CalendarEventChangeHandler<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = (change: CalendarEventChange<TEvent, TEventId, TResourceId>) => void | Promise<void>;
+type CalendarEventChangeHandler<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = (change: CalendarEventChange<TEvent, TEventId, TResourceId>, detail: CalendarProposalDetail) => void | Promise<void>;
 type CalendarEventContractValidation<TValue> = {
   readonly valid: true;
   readonly value: TValue;
@@ -261,7 +261,7 @@ interface CalendarEventValidationIssue {
   readonly kind?: CalendarEventInterval["kind"];
 }
 type CalendarFocus<TEventId extends EventId = EventId> = CalendarCellFocus | CalendarEventFocus<TEventId>;
-type CalendarInputMethod = "pointer" | "keyboard" | "api";
+type CalendarInputMethod = "pointer" | "keyboard" | "api" | "agent";
 type CalendarInteractionCause = "create" | "move" | "resize-end" | "resize-start";
 type CalendarInteractionCheck = CalendarPolicyResult<unknown, EventId, ResourceId> | null;
 interface CalendarInteractionOptions {
@@ -339,9 +339,16 @@ interface CalendarPendingChange<TEvent, TEventId extends EventId, TResourceId ex
 type CalendarPendingChangePhase = "validating" | "saving" | "awaiting-events";
 type CalendarPendingChanges<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = ReadonlyMap<string, CalendarPendingChange<TEvent, TEventId, TResourceId>>;
 type CalendarPendingPlacements<TEventId extends EventId, TResourceId extends ResourceId> = ReadonlyMap<TEventId, CalendarEventPlacement<TResourceId> | null>;
+interface CalendarPendingProposal<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly change: CalendarEventChange<TEvent, TEventId, TResourceId>;
+  readonly phase: "validating" | "saving";
+  readonly result: Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  readonly status: "pending";
+}
 type CalendarPolicy<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = (change: CalendarEventChange<TEvent, TEventId, TResourceId>, context: CalendarPolicyContext<TEvent, TEventId, TResourceId>) => CalendarPolicyDecision<TResourceId> | Promise<CalendarPolicyDecision<TResourceId>>;
 interface CalendarPolicyContext<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
   readonly availability?: AvailabilitySnapshot;
+  readonly detail?: CalendarProposalDetail;
   readonly events: EventSnapshot<TEvent, TEventId, TResourceId>;
   readonly timeZone: string;
 }
@@ -366,9 +373,11 @@ type CalendarPolicyResult<TEvent, TEventId extends EventId, TResourceId extends 
   readonly status: "rejected";
 };
 interface CalendarProposalDetail {
+  readonly fields?: Readonly<Record<string, unknown>>;
   readonly history?: "undo" | "redo";
   readonly input: CalendarInputMethod;
 }
+type CalendarProposalOutcome<TEvent, TEventId extends EventId, TResourceId extends ResourceId> = CalendarTransactionResult<TEvent, TEventId, TResourceId> | CalendarPendingProposal<TEvent, TEventId, TResourceId>;
 interface CalendarResource<TData = unknown, TResourceId extends ResourceId = string> {
   readonly availability?: ResourceAvailability;
   readonly data: TData;
@@ -409,6 +418,7 @@ interface CalendarSpatialNavigationInput<TProjection, TOptions> {
 }
 interface CalendarTransactionContext<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
   readonly availability?: AvailabilitySnapshot;
+  readonly detail?: CalendarProposalDetail;
   readonly onEventChange: CalendarEventChangeHandler<TEvent, TEventId, TResourceId>;
   readonly policies?: readonly CalendarPolicy<TEvent, TEventId, TResourceId>[];
   readonly snapshot: EventSnapshot<TEvent, TEventId, TResourceId>;
@@ -627,6 +637,7 @@ interface EventTransactions<TEvent, TEventId extends EventId, TResourceId extend
   readonly getPending: () => CalendarPendingPlacements<TEventId, TResourceId>;
   readonly getPendingChanges: () => CalendarPendingChanges<TEvent, TEventId, TResourceId>;
   readonly propose: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>, context: CalendarTransactionContext<TEvent, TEventId, TResourceId>) => Promise<CalendarTransactionResult<TEvent, TEventId, TResourceId>>;
+  readonly proposeNow: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>, context: CalendarTransactionContext<TEvent, TEventId, TResourceId>) => CalendarProposalOutcome<TEvent, TEventId, TResourceId>;
   readonly check: (proposal: CalendarEventProposal<TEventId, TResourceId, TEvent>, context: Omit<CalendarTransactionContext<TEvent, TEventId, TResourceId>, "onEventChange">) => CalendarPolicyResult<TEvent, TEventId, TResourceId> | null;
   readonly reconcile: (snapshot: EventSnapshot<TEvent, TEventId, TResourceId>) => void;
   readonly subscribe: (listener: () => void) => () => void;
@@ -1120,11 +1131,13 @@ export {
   type CalendarPendingChangePhase,
   type CalendarPendingChanges,
   type CalendarPendingPlacements,
+  type CalendarPendingProposal,
   type CalendarPolicy,
   type CalendarPolicyContext,
   type CalendarPolicyDecision,
   type CalendarPolicyResult,
   type CalendarProposalDetail,
+  type CalendarProposalOutcome,
   type CalendarResource,
   type CalendarSecondaryTimeZone,
   type CalendarSelection,

@@ -5,6 +5,7 @@ import type {
   EventId,
   ResourceId,
 } from "@moltenship/calendar-core";
+import { createCalendarPrimitive } from "@moltenship/calendar-primitives";
 import { useMemo, type ComponentType } from "react";
 
 import type {
@@ -70,6 +71,8 @@ export function createCalendar<
     }
 
     const contexts = createCalendarContexts();
+    // One primitive per factory: its agent surface checks view names against these views.
+    const primitive = createCalendarPrimitive<TViewDef, TSelection, TFocus, TResourceId>({ views });
     const { EventPart, ViewSwitcher, ...parts } = createCalendarParts(contexts);
     const Root = createCalendarRoot<
       TEvent,
@@ -80,7 +83,12 @@ export function createCalendar<
       TEventId,
       TResourceId
     >(
-      { eventAdapter: options.eventAdapter, invalidEventPolicy: options.invalidEventPolicy, views },
+      {
+        eventAdapter: options.eventAdapter,
+        invalidEventPolicy: options.invalidEventPolicy,
+        primitive,
+        views,
+      },
       contexts,
     );
 

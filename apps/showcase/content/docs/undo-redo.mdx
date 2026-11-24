@@ -123,12 +123,20 @@ with `null` where there's no event, as before a create or after a delete. A step
 `cause`, the `input` that made it, your record (`event`), the event's ID and the changes it was made
 of.
 
+An [AI agent](/docs/agents)'s committed changes are recorded like anyone else's, with the input
+`"agent"`, so one undo stack covers what people and agents did. To give agents an undo stack of
+their own, see [Undo an agent's changes](/docs/agents/changes#undo-an-agents-changes).
+
+A step holds a placement and nothing else. When an agent renames an event, the history records
+the change and its undo proposes the same placement, without the old title: restore the fields
+your app saved yourself, from the step's `event`, as that section shows.
+
 `createEventHistory` takes these options:
 
 | Option                           | Default   | Effect                                                                                                                                   |
 | -------------------------------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `limit`                          | `100`     | The most steps the undo stack keeps; the oldest drops. `0` records nothing                                                               |
-| `inputs`                         | all three | The inputs whose changes are recorded: `"pointer"`, `"keyboard"`, `"api"`                                                                |
+| `inputs`                         | all four  | The inputs whose changes are recorded: `"pointer"`, `"keyboard"`, `"api"`, `"agent"`                                                     |
 | `filter(change, detail)`         | keeps all | Records a change only when it returns `true`                                                                                             |
 | `coalesce(change, step, detail)` | never     | Return `true` to fold a change into the step on top, when both change the same event: the step keeps its `before`, takes the new `after` |
 | `createdEventId(change, events)` | none      | The event a committed create became. Without it, creates aren't recorded. See [creates and deletes](#creates-and-deletes)                |

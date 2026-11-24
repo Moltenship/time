@@ -145,7 +145,7 @@ export interface EventHistoryOptions<
     change: CalendarEventChange<TEvent, TEventId, TResourceId>,
     detail: CalendarProposalDetail,
   ) => boolean;
-  /** The inputs whose changes are recorded; all three by default. */
+  /** The inputs whose changes are recorded; every input, an agent's included, by default. */
   readonly inputs?: readonly CalendarInputMethod[];
   /** The most steps the undo stack keeps; the oldest drops. 100 by default. */
   readonly limit?: number;
