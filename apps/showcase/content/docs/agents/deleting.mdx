@@ -9,7 +9,8 @@ A deleted event is gone from the calendar, so an agent can't delete until you tu
 switches are involved, and a careful app sets both:
 
 1. `allowAgentDelete` on `Root`. Without it the calendar has no `deleteEvent` action, for every
-   agent and whatever the bridge allows, and it refuses a delete an agent causes any other way.
+   agent and whatever the bridge allows, and it refuses a delete an agent causes any other way,
+   with [one exception](#a-delete-button-of-yours): a button of yours that waits before it deletes.
 2. The bridge's `allow`, which holds the step until the person answers.
 
 This page's samples import the `Calendar`, `meetings` and `weekRules` that the

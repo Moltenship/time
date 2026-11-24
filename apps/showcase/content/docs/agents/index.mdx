@@ -329,7 +329,8 @@ The calendar holds no events, so three parts of an agent's change are your code:
   a refusal fails the step with the reason.
 - **Delete, unless you say so.** A calendar has no `deleteEvent` action until `Root` has
   `allowAgentDelete`, and until then it refuses a delete an agent causes any other way, such as
-  by pressing a delete button of yours. See [Deleting](/docs/agents/deleting).
+  by pressing a delete button of yours whose handler deletes at once. See
+  [Deleting](/docs/agents/deleting) for a button that waits first.
 - **Skip your rules.** Policies and `onEventChange` run for an agent as they do for a person, and
   they hear `input: "agent"` for every change a step causes, so a policy that refuses agents
   can't be stepped around through a button whose handler changes the calendar at once. A button
