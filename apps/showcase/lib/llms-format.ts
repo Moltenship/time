@@ -5,7 +5,9 @@
  * packaged copy).
  */
 
-export const siteUrl = "https://time.molten.sh";
+import { siteUrl } from "./site";
+
+export { siteUrl };
 
 /** Turns a docs URL such as `/docs/agents/connect`, and its `#hash` if any, into a link target. */
 export type DocLink = (url: string, hash: string) => string;
