@@ -1,11 +1,13 @@
 ---
 name: moltenship-time
-description: Builds calendars with Moltenship Time (@moltenship/calendar), a headless calendar for React built on ui-sdk, with a Solid preview. Covers composing week, day, month, year, agenda and resource views from the registry, controlling view, date and time zone, saving moved, resized, created and deleted events, policies and undo, making the calendar usable by AI agents through the ui-sdk agent bridge and WebMCP, and testing with @moltenship/calendar-testing. Use whenever a project has @moltenship/calendar or @moltenship/calendar-solid installed, or the user mentions Moltenship Time.
+description: Builds calendars with Moltenship Time (@moltenship/calendar), a headless calendar on the Temporal API, built on ui-sdk, with a complete React integration and a SolidJS 2 preview. Covers composing week, day, month, year, agenda and resource views from the registry, controlling view, date and time zone, saving moved, resized, created and deleted events, policies and undo, making the calendar usable by AI agents through the ui-sdk agent bridge and WebMCP, and testing with @moltenship/calendar-testing. Use whenever a project has @moltenship/calendar or @moltenship/calendar-solid installed, or the user mentions Moltenship Time.
 ---
 
 # Build with Moltenship Time
 
-Moltenship Time is a headless calendar. The npm packages hold the behaviour: state, dates and time zones, layout, drag and keyboard editing, recurrence. The views (week, month, agenda and the rest) are source files the app owns, added with the shadcn CLI. Since 2.0 the calendar's parts are [ui-sdk](https://ui-sdk.dev) components, so an AI agent can read the calendar and act on it through ui-sdk's agent bridge.
+Moltenship Time is a headless calendar. The npm packages hold the behaviour: state, dates and time zones, layout, drag and keyboard editing, recurrence. The views (week, month, agenda and the rest) are source files the app owns, added with the shadcn CLI. Since 2.0 the calendar's parts are [ui-sdk](https://ui-sdk.dev) components, so an AI agent can read the calendar and act on it once the app creates ui-sdk's agent bridge.
+
+The engine and the calendar's state import no UI framework. The React integration is complete, and the registry's views are React source. The SolidJS 2 integration is a preview without views, keyboard navigation or dragging. This file describes React unless it says otherwise.
 
 ## Read first
 
@@ -17,13 +19,13 @@ The docs for the installed version ship in the package, as Markdown:
 
 The same docs are online at https://time.molten.sh/docs, with `https://time.molten.sh/llms.txt` as the index and `.md` after any page's address for its Markdown. Prefer the installed copy: it matches the version in the project.
 
-If the package isn't installed yet:
+If the package isn't installed yet, in a React app:
 
 ```bash
 pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
-`@ui-sdk/core` and `@ui-sdk/react` are peer dependencies since 2.0. Use the project's package manager. The runtime needs `Temporal`: Node.js 26 has it, and a browser without it needs a polyfill loaded before the calendar (`docs/installation.md`).
+`@ui-sdk/core` and `@ui-sdk/react` are peer dependencies since 2.0. Use the project's package manager. The runtime needs `Temporal`: Node.js 26 has it, and a browser without it needs a polyfill loaded before the calendar (`docs/installation.md`). A SolidJS 2 app installs other packages, which [references/solid.md](references/solid.md) lists.
 
 ## How it fits together
 

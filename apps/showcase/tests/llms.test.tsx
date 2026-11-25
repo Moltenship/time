@@ -7,6 +7,7 @@ import {
   fileLink,
   formatIndex,
   formatPage,
+  groupedLabel,
   markdownPath,
   rewriteLinks,
   siteLink,
@@ -117,6 +118,19 @@ describe("documents", () => {
         "",
       ].join("\n"),
     );
+  });
+});
+
+describe("the index's page names", () => {
+  test("a page in a folder carries the folder's name", () => {
+    expect(groupedLabel("Quick start", undefined)).toBe("Quick start");
+    expect(groupedLabel("Month", "Views")).toBe("Views: Month");
+    expect(groupedLabel("Overview", "API reference")).toBe("API reference: Overview");
+  });
+
+  test("a folder whose name holds the page's title stands alone", () => {
+    expect(groupedLabel("Agents", "Agents in your app")).toBe("Agents in your app");
+    expect(groupedLabel("Concepts", "Concepts")).toBe("Concepts");
   });
 });
 

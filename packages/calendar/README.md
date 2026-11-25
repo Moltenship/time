@@ -1,9 +1,11 @@
 # @moltenship/calendar
 
-A headless React 19 calendar built on the Temporal API. This is the package you install and import.
-It has the React components and hooks, the event engine, the Temporal helpers and the pointer
-interactions. Its parts are [ui-sdk](https://ui-sdk.dev) components, so an AI agent can read a
-calendar and act on it through ui-sdk's agent bridge.
+Moltenship Time for React 19, a headless calendar built on the Temporal API. This is the package a
+React app installs and imports. It has the React components and hooks, the event engine, the
+Temporal helpers and the pointer interactions. Its parts are [ui-sdk](https://ui-sdk.dev)
+components, so an AI agent can read a calendar and act on it once your app creates ui-sdk's agent
+bridge. A SolidJS 2 app installs
+[`@moltenship/calendar-solid`](https://time.molten.sh/docs/api/solid), a preview, instead.
 
 > **2.0 pre-release.** The API can still change before 2.0.0. Coming from 1.x? See
 > [Migrating to 2.0](https://time.molten.sh/docs/migrating-to-2).

@@ -2,9 +2,12 @@ import {
   ArrowRightIcon,
   BracesIcon,
   GlobeClockIcon,
+  GlobeIcon,
   PanelsIcon,
+  RepeatIcon,
   ServerIcon,
 } from "@/components/icons";
+import { AgentPreview } from "@/components/agent-preview";
 import InstallCommand from "@/components/install-command";
 import { CalendarPreview } from "@/components/calendar-preview";
 import { codeThemes } from "@/lib/code-themes";
@@ -15,6 +18,7 @@ import {
   npmUrl,
   openGraphBase,
   siteDescription,
+  siteHeadline,
   siteKeywords,
   siteName,
   siteTitle,
@@ -50,6 +54,7 @@ const structuredData = {
       url: siteUrl,
       codeRepository: githubUrl,
       programmingLanguage: "TypeScript",
+      runtimePlatform: ["React 19", "SolidJS 2"],
       license: "https://opensource.org/licenses/MIT",
       keywords: siteKeywords.join(", "),
       sameAs: [githubUrl, npmUrl],
@@ -60,27 +65,39 @@ const structuredData = {
 const features = [
   {
     icon: GlobeClockIcon,
-    title: "Temporal end to end",
+    title: "Temporal, not Date",
     description:
-      "Events are Temporal instants and plain dates, never Date. Time zones, DST gaps and repeated hours resolve exactly.",
+      "A timed event is a Temporal.Instant, an all-day event a Temporal.PlainDate, and a floating event a Temporal.PlainDateTime.",
+  },
+  {
+    icon: GlobeIcon,
+    title: "Time zones and DST",
+    description:
+      "The engine lays out days that are 23 or 25 hours long, and the hours a clock change skips or repeats, in any IANA time zone.",
+  },
+  {
+    icon: RepeatIcon,
+    title: "Recurrence and iCalendar",
+    description:
+      "Two more packages expand RRULE series inside the dates on screen and parse ICS feeds into Temporal values.",
   },
   {
     icon: PanelsIcon,
-    title: "Headless React, shadcn/ui views",
+    title: "Views you copy and own",
     description:
-      "State and navigation live in typed hooks and components. Views ship as shadcn/ui source you copy in and edit.",
+      "Week, day, month, year, agenda and resource views are React source files. The shadcn CLI copies them into your app, in Tailwind CSS or StyleX.",
   },
   {
     icon: BracesIcon,
     title: "Typed adapters",
     description:
-      "Map your existing records with one adapter. Your ID and resource types reach every callback without casts.",
+      "One adapter reads an ID, a title and a time range from your records. TypeScript keeps your record and ID types in every hook and callback.",
   },
   {
     icon: ServerIcon,
-    title: "SSR-safe",
+    title: "Server rendering",
     description:
-      "No browser globals at import time. Pass the time zone and clock, and server HTML hydrates without mismatches.",
+      "In React, the calendar reads no clock, host time zone or window while it renders on the server, so the server and the browser render the same markup.",
   },
 ] as const;
 
@@ -90,8 +107,57 @@ const steps = [
   "Use its hooks and components with your types, no casts.",
 ] as const;
 
+const agentFacts = [
+  {
+    title: "An agent sees nothing by default.",
+    description:
+      "An agent can read or change a calendar only after your app creates ui-sdk's agent bridge.",
+  },
+  {
+    title: "Your rules run for every step.",
+    description:
+      "The bridge asks your allow function first. Then your policies and onEventChange run, as they do for a drag.",
+  },
+  {
+    title: "Deleting is off.",
+    description:
+      "A calendar has no deleteEvent action until Root has allowAgentDelete, and your app can ask the person first.",
+  },
+  {
+    title: "A browser's agent, or a model you run.",
+    description:
+      "registerTools offers the same tools through WebMCP where the browser has it. WebMCP is an experimental browser API.",
+  },
+] as const;
+
+/** What each integration has today. `docs/frameworks` has the full table. */
+const frameworkRows = [
+  ["Engine, state and event changes", "Yes", "Yes"],
+  ["The fifteen agent actions", "Yes", "Yes"],
+  ["Root, toolbar parts and read hooks", "Yes", "Yes"],
+  ["Ready-made views", "shadcn/ui or StyleX source", "Not yet"],
+  ["Keyboard navigation in a view", "Yes", "Not yet"],
+  ["Drag, resize and create", "Yes", "Not yet"],
+  ["Undo and redo", "Yes", "Not yet"],
+] as const;
+
+const agentDocs = [
+  {
+    name: "/llms.txt",
+    href: "/llms.txt",
+    description:
+      "The index of every page, with a Markdown version of each at its address plus .md.",
+  },
+  {
+    name: "node_modules/@moltenship/calendar/docs",
+    href: "/docs/agents/coding-agents#docs-in-the-package",
+    description: "The same pages inside the npm package, for the version you installed.",
+  },
+] as const;
+
 const buttonClass =
   "inline-flex h-10 items-center gap-2 rounded-lg px-5 text-sm font-medium transition-colors";
+const sectionLinkClass = "inline-flex items-center gap-1.5 text-sm font-medium hover:text-brand";
 
 export default async function HomePage() {
   // The sample is a real module, type-checked and imported by tests, so it tracks the public API.
@@ -107,14 +173,15 @@ export default async function HomePage() {
         />
         <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pt-20 pb-14 text-center sm:pt-28">
           <p className="rounded-full border bg-fd-background px-3 py-1 text-xs font-medium text-fd-muted-foreground">
-            React 19 · Temporal API · shadcn/ui
+            2.0 pre-release · React 19 · SolidJS 2 preview
           </p>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
-            The React calendar built on Temporal
+            {siteHeadline}
           </h1>
-          <p className="mt-5 max-w-xl text-lg text-balance text-fd-muted-foreground">
-            Week, month, day and agenda views with exact time zone and DST handling. Bring your own
-            data and restyle every pixel.
+          <p className="mt-5 max-w-2xl text-lg text-balance text-fd-muted-foreground">
+            One engine computes time zones, daylight saving time and recurrence. React renders it
+            with views you copy and own, and SolidJS 2 renders it as a preview. An AI agent can read
+            the calendar and change it, under rules your app sets.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
@@ -132,7 +199,7 @@ export default async function HomePage() {
             </a>
           </div>
           <div className="mt-6 max-w-full">
-            <InstallCommand command="pnpm add @moltenship/calendar" />
+            <InstallCommand command="pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react" />
           </div>
         </div>
         <div className="mx-auto max-w-6xl px-4 sm:px-6">
@@ -145,9 +212,13 @@ export default async function HomePage() {
           className="max-w-xl text-3xl font-semibold tracking-tight text-balance"
           id="features-title"
         >
-          Correct time underneath. Your interface on top.
+          One engine under every view
         </h2>
-        <div className="mt-10 grid gap-px overflow-hidden rounded-xl border bg-fd-border sm:grid-cols-2 lg:grid-cols-4">
+        <p className="mt-4 max-w-2xl text-fd-muted-foreground">
+          The packages that hold events, time and state import no UI framework. The calendar above
+          is that engine with the React views from this site&apos;s registry.
+        </p>
+        <div className="mt-10 grid gap-px overflow-hidden rounded-xl border bg-fd-border sm:grid-cols-2 lg:grid-cols-3">
           {features.map(({ icon: Icon, title, description }) => (
             <article className="bg-fd-background p-6" key={title}>
               <Icon className="size-5 text-brand" />
@@ -159,12 +230,106 @@ export default async function HomePage() {
       </section>
 
       <section
+        aria-labelledby="agents-title"
+        className="mx-auto w-full max-w-6xl px-4 pb-24 sm:px-6"
+      >
+        <div className="px-2 sm:px-0">
+          <h2
+            className="max-w-2xl text-3xl font-semibold tracking-tight text-balance"
+            id="agents-title"
+          >
+            An AI agent can read this calendar and change it
+          </h2>
+          <p className="mt-4 max-w-2xl text-fd-muted-foreground">
+            A calendar describes itself to an agent as state, events and fifteen named actions. The
+            agent never reads your markup or simulates a pointer. Below is a live calendar next to
+            what the bridge lists for it. Each button sends the call a model would send.
+          </p>
+        </div>
+        <AgentPreview />
+        <dl className="mt-10 grid gap-px overflow-hidden rounded-xl border bg-fd-border sm:grid-cols-2 lg:grid-cols-4">
+          {agentFacts.map(({ title, description }) => (
+            <div className="bg-fd-background p-6" key={title}>
+              <dt className="font-medium">{title}</dt>
+              <dd className="mt-2 text-sm leading-relaxed text-fd-muted-foreground">
+                {description}
+              </dd>
+            </div>
+          ))}
+        </dl>
+        <Link className={`${sectionLinkClass} mt-8 px-2 sm:px-0`} href="/docs/agents">
+          Read the agents guide
+          <ArrowRightIcon className="size-3.5" />
+        </Link>
+      </section>
+
+      <section
+        aria-labelledby="frameworks-title"
+        className="mx-auto grid w-full max-w-6xl gap-10 px-6 pb-24 lg:grid-cols-[2fr_3fr] lg:items-start"
+      >
+        <div className="lg:pt-4">
+          <h2 className="text-3xl font-semibold tracking-tight text-balance" id="frameworks-title">
+            React is complete. Solid is a preview.
+          </h2>
+          <p className="mt-6 text-fd-muted-foreground">
+            One package holds the calendar&apos;s state and actions. It imports no framework and is
+            built on{" "}
+            <a
+              className="underline underline-offset-4 hover:text-fd-foreground"
+              href="https://ui-sdk.dev"
+            >
+              ui-sdk
+            </a>
+            . React and Solid each have a thin package that renders them. The Solid package has the
+            typed factory, Root, the structural parts and the read hooks. You write its views
+            yourself for now.
+          </p>
+          <p className="mt-4 text-fd-muted-foreground">
+            Time 2.0 is a pre-release and ui-sdk is a beta, so both APIs can still change.
+          </p>
+          <Link className={`${sectionLinkClass} mt-8`} href="/docs/frameworks">
+            Compare React and Solid
+            <ArrowRightIcon className="size-3.5" />
+          </Link>
+        </div>
+        <div className="overflow-x-auto rounded-xl border bg-fd-background shadow-sm">
+          <table className="w-full text-left text-sm">
+            <caption className="sr-only">What the React and Solid integrations have today</caption>
+            <thead className="border-b bg-fd-muted/50 text-fd-muted-foreground">
+              <tr>
+                <td className="px-4 py-3" />
+                <th className="px-4 py-3 font-medium" scope="col">
+                  React 19
+                </th>
+                <th className="px-4 py-3 font-medium" scope="col">
+                  SolidJS 2
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {frameworkRows.map(([feature, react, solid]) => (
+                <tr key={feature}>
+                  <th className="px-4 py-3 font-normal" scope="row">
+                    {feature}
+                  </th>
+                  <td className="px-4 py-3">{react}</td>
+                  <td className={`px-4 py-3 ${solid === "Yes" ? "" : "text-fd-muted-foreground"}`}>
+                    {solid}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section
         aria-labelledby="example-title"
         className="mx-auto grid w-full max-w-6xl gap-10 px-6 pb-24 lg:grid-cols-[2fr_3fr] lg:items-start"
       >
         <div className="lg:pt-4">
           <h2 className="text-3xl font-semibold tracking-tight text-balance" id="example-title">
-            Your data, typed all the way through
+            One adapter types the whole calendar
           </h2>
           <ol className="mt-6 space-y-4">
             {steps.map((step, index) => (
@@ -176,11 +341,8 @@ export default async function HomePage() {
               </li>
             ))}
           </ol>
-          <Link
-            className="mt-8 inline-flex items-center gap-1.5 text-sm font-medium hover:text-brand"
-            href="/docs/installation"
-          >
-            Read the installation guide
+          <Link className={`${sectionLinkClass} mt-8`} href="/docs/quick-start">
+            Build the React quick start
             <ArrowRightIcon className="size-3.5" />
           </Link>
         </div>
@@ -190,6 +352,44 @@ export default async function HomePage() {
           lang="ts"
           themes={codeThemes}
         />
+      </section>
+
+      <section
+        aria-labelledby="coding-agents-title"
+        className="mx-auto grid w-full max-w-6xl gap-10 px-6 pb-24 lg:grid-cols-[2fr_3fr] lg:items-start"
+      >
+        <div className="lg:pt-4">
+          <h2
+            className="text-3xl font-semibold tracking-tight text-balance"
+            id="coding-agents-title"
+          >
+            Docs your coding agent can read
+          </h2>
+          <p className="mt-6 text-fd-muted-foreground">
+            A coding agent trained before 2.0 guesses at this API. The docs come as Markdown, on the
+            site and inside the package, and a skill tells the agent where to look first.
+          </p>
+          <Link className={`${sectionLinkClass} mt-8`} href="/docs/agents/coding-agents">
+            Build with a coding agent
+            <ArrowRightIcon className="size-3.5" />
+          </Link>
+        </div>
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-px overflow-hidden rounded-xl border bg-fd-border">
+          {agentDocs.map(({ name, href, description }) => (
+            <div className="min-w-0 bg-fd-background p-6" key={name}>
+              <a className="font-mono text-sm font-medium break-all hover:text-brand" href={href}>
+                {name}
+              </a>
+              <p className="mt-2 text-sm leading-relaxed text-fd-muted-foreground">{description}</p>
+            </div>
+          ))}
+          <div className="min-w-0 bg-fd-background p-6">
+            <InstallCommand command="npx skills add Moltenship/time --skill moltenship-time" />
+            <p className="mt-3 text-sm leading-relaxed text-fd-muted-foreground">
+              An Agent Skill with seven references, which also ships in the npm package.
+            </p>
+          </div>
+        </div>
       </section>
 
       <footer className="mt-auto border-t">

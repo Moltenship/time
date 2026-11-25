@@ -1,24 +1,31 @@
 {
   "title": "Moltenship Time",
   "pages": [
+    "---Get started---",
     "index",
     "installation",
     "quick-start",
-    "comparison",
-    "migrating-to-2",
+    "frameworks",
+    "---Build a calendar---",
     "concepts",
     "views",
     "interactions",
     "undo-redo",
-    "agents",
-    "annotations",
     "availability",
+    "annotations",
     "accessibility",
+    "testing",
+    "guides",
+    "---Styling---",
     "theming",
     "theme-builder",
     "stylex",
-    "testing",
-    "guides",
-    "api"
+    "---Agents---",
+    "agents",
+    "agents/coding-agents",
+    "---Reference---",
+    "api",
+    "comparison",
+    "migrating-to-2"
   ]
 }

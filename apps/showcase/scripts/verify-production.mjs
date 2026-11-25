@@ -65,7 +65,7 @@ try {
   await waitForServer();
 
   const landing = await fetch(origin);
-  assert.match(await landing.text(), /The React calendar built on Temporal/);
+  assert.match(await landing.text(), /The Temporal calendar for React, Solid and AI agents/);
 
   const ogImage = await fetch(`${origin}/opengraph-image`);
   assert.equal(ogImage.status, 200);

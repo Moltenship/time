@@ -1,13 +1,15 @@
 ---
 title: Introduction
-description: A headless calendar for React 19, built on the Temporal API, with views you copy and own and actions an AI agent can call.
+description: A calendar engine on the Temporal API, rendered by React and by SolidJS 2 as a preview, with views you copy and own and actions an AI agent can call.
 ---
 
-Moltenship Time handles the hard parts of a calendar: dates, time zones, navigation, calendar
-state, fast event lookups, and saving changes. Your events stay in the shape your app already uses,
-and Time reads them through a small adapter. The week, day, month, year, agenda and resource views are
-source files you copy into your app, so you can change how they look and behave. An AI agent can
-read the same calendar and act on it through named actions, under rules your app sets.
+Moltenship Time is a calendar for scheduling screens such as bookings, rooms, shifts and team
+calendars. Its engine handles dates, time zones, recurrence, calendar state, event lookups and
+saving changes, and it imports no UI framework. React renders it, and SolidJS 2 renders it as a
+preview. Your events stay in the shape your app already uses, and Time reads them through an
+adapter. The week, day, month, year, agenda and resource views are React source files you copy into
+your app. An AI agent can read the same calendar and act on it through named actions, under rules
+your app sets.
 
 <CalendarPreview switcher />
 
@@ -15,74 +17,126 @@ To see every view with more data, try the [live demo](https://moltenship-time-de
 the same views.
 
 <Callout type="warn" title="2.0 is a pre-release">
-  These docs describe Time 2.0, which is built on [ui-sdk](https://ui-sdk.dev). Both are
-  pre-releases, and their APIs can still change before 2.0.0. Coming from 1.x? See [Migrating to
-  2.0](/docs/migrating-to-2).
+  These docs describe Time 2.0, which is built on [ui-sdk](https://ui-sdk.dev). Time 2.0 is a
+  pre-release and ui-sdk is a beta, so both APIs can still change before 2.0.0. Coming from 1.x? See
+  [Migrating to 2.0](/docs/migrating-to-2).
 </Callout>
+
+## Where to start
+
+<Cards>
+  <Card
+    title="Build a calendar in React"
+    href="/docs/quick-start"
+    description="Install the package, add the views with the shadcn CLI, and render a week, day, month and agenda calendar."
+  />
+  <Card
+    title="Build a calendar in Solid"
+    href="/docs/frameworks#start-in-solid"
+    description="What the SolidJS 2 preview has, what it doesn't have yet, and a first calendar with a view you write."
+  />
+  <Card
+    title="Let an AI agent use a calendar"
+    href="/docs/agents"
+    description="What an agent reads, the fifteen actions it can call, and the rules your app sets."
+  />
+  <Card
+    title="Build with a coding agent"
+    href="/docs/agents/coding-agents"
+    description="These docs as Markdown, llms.txt, and a skill that ships in the npm package."
+  />
+</Cards>
 
 ## What it looks like
 
-This is the render part of the [Quick start](/docs/quick-start). `Calendar` comes from
+This is the render part of the [Quick start](/docs/quick-start), in React. `Calendar` comes from
 `createCalendar`, and `meetings` is a plain array of your own records.
 
 <include meta='title="calendar.tsx"'>../examples/quick-start.tsx#root</include>
 
 ## Who it's for
 
-Time is for developers building scheduling screens (bookings, rooms, shifts, team calendars) who
-want to:
+Time is for developers who build scheduling screens and want to:
 
 - keep their existing event data and API,
 - style the calendar with their own design system, or start from shadcn/ui,
 - get time zones and daylight saving time right without writing that math themselves,
 - let an AI agent work with the calendar without handing it the page's markup.
 
-The calendar and its views are for React 19. A [SolidJS 2 package](/docs/api/solid) renders the
-same calendar without the views, as a preview.
-
 [Comparison](/docs/comparison) sets Time beside FullCalendar and react-big-calendar, including
 where they're ahead.
 
 ## What you get today
 
+The engine and the calendar's state are the same in React and Solid. The views, the gestures and
+some hooks exist in React only. [React and Solid](/docs/frameworks) has the full table.
+
+### In React and in Solid
+
+- **Your data, read through an adapter.** You describe how to read an ID, a title and a time range
+  from your records. TypeScript keeps your record and ID types in every hook and callback.
+- **Three kinds of time.** Timed events use `Temporal.Instant`, all-day events use
+  `Temporal.PlainDate`, and floating events use `Temporal.PlainDateTime`. No `Date` objects.
+- **Time zones and daylight saving time.** The engine lays out days that are 23 or 25 hours long,
+  and hours that a clock change skips or repeats. See [Time and time zones](/docs/concepts/time).
+- **Recurrence and iCalendar.** `@moltenship/calendar-recurrence` expands RRULE series inside the
+  dates on screen, and `@moltenship/ics` parses ICS feeds. Neither imports a framework.
+- **Changes you save.** A move, a resize, a create or a delete arrives as a change in
+  `onEventChange`. It shows as pending while it saves, rolls back if saving fails, and passes
+  through policies you choose. See [Interactions](/docs/interactions).
+- **Controlled or uncontrolled state.** The calendar or your app can own the visible date, the
+  view, the time zone, the selection and the focus, one value at a time.
+- **Headless parts.** `Root`, the previous, next and today buttons, `Title` and `ActiveView` render
+  plain elements. A [custom view](/docs/views/custom-views) is a strategy and a component.
+- **Actions for agents.** A calendar gives an AI agent fifteen actions: describe the calendar, list
+  its events, navigate, switch view, and create, rename, move, resize and delete events. An agent
+  sees nothing until your app creates ui-sdk's agent bridge. An agent's change goes through your
+  policies and your `onEventChange`, marked as an agent's, and the agent gets back how it ended.
+  Deleting is off until you turn it on. The actions reach the agent built into a browser through
+  WebMCP, an experimental browser API, or a model you run. See [Agents](/docs/agents).
+- **Docs your coding agent can read.** Every page has a Markdown version, the docs ship inside
+  the npm package, and a skill teaches a coding agent the library. See
+  [Build with a coding agent](/docs/agents/coding-agents).
+
+### In React
+
 - **Built-in views.** [Week, day](/docs/views/week-and-day), [month](/docs/views/month),
   [year](/docs/views/year), [agenda](/docs/views/agenda),
   [resource columns](/docs/views/resource-columns) and
   [resource timeline](/docs/views/resource-timeline), plus week, day, month and agenda views that
-  [scroll without end](/docs/views/scrolling), in the style of Google Calendar, built on shadcn/ui and Tailwind
-  CSS. A [theme](/docs/theming) with calendar tokens and an event color palette comes with them.
-- **Your data, read through an adapter.** You describe how to read an ID, title, and time range
-  from your records. TypeScript keeps your record and ID types all the way through.
-- **Three kinds of time.** Timed events use `Temporal.Instant`, all-day events use
-  `Temporal.PlainDate`, and floating events use `Temporal.PlainDateTime`. No `Date` objects.
-- **Time zone and DST handling.** Days that are 23 or 25 hours long and skipped or repeated hours
-  are handled for you.
-- **Editing.** Moves, resizes, creates, and deletes arrive as changes for you to save. They show
-  as pending while they save, roll back if saving fails, and pass through policies you choose. See
-  [Interactions](/docs/interactions). The built-in views support dragging, resizing, and creating
-  events with the mouse, a pen, or touch.
-- **Controlled or uncontrolled state.** The visible date, view, time zone, selection, and focus can
-  each be owned by the calendar or by your app.
-- **Headless parts.** `Root`, previous/next/today buttons, `Title`, and `ActiveView` render plain
-  elements, and [custom views](/docs/views/custom-views) are a strategy plus a component.
-- **Ready for agents.** A calendar gives an AI agent fifteen actions: describe the calendar, list
-  its events, navigate, switch view, and create, rename, move, resize and delete events. An
-  agent's change goes through your policies and your `onEventChange`, marked as an agent's, and
-  the agent gets back how it ended. Deleting is off until you turn it on. It works with the agent
-  built into a browser through WebMCP, or with a model you run. See [Agents](/docs/agents).
-- **Docs your coding agent can read.** Every page has a Markdown version, the docs ship inside
-  the npm package, and a skill teaches a coding agent the library. See
-  [Build with a coding agent](/docs/agents/coding-agents).
-- **Server rendering.** During server rendering, Time doesn't read the clock, the host time zone, or
+  [scroll without end](/docs/views/scrolling). They are source files built on shadcn/ui and
+  Tailwind CSS, or on [StyleX](/docs/stylex), with a [theme](/docs/theming) of calendar tokens and
+  an event color palette.
+- **Editing by pointer and keyboard.** The built-in views support dragging, resizing and creating
+  events with a mouse, a pen or touch, and moving and resizing them
+  [from the keyboard](/docs/accessibility#changing-events).
+- **Undo and redo.** An opt-in [history](/docs/undo-redo) records changes and takes them back.
+- **Server rendering.** During server rendering, Time doesn't read the clock, the host time zone or
   `window`, so the server and the browser render the same markup from the same props.
+- **A testing package.** [`@moltenship/calendar-testing`](/docs/testing) has a fixed clock, typed
+  builders, a render harness, and keyboard and pointer drivers.
+
+### In Solid, as a preview
+
+`@moltenship/calendar-solid` has the typed factory, `Root`, the structural parts and the hooks that
+read state. It has no ready-made views, no keyboard navigation and no dragging yet. See
+[Solid](/docs/api/solid).
 
 <Cards>
   <Card title="Installation" href="/docs/installation" description="Requirements and setup." />
   <Card
     title="Quick start"
     href="/docs/quick-start"
-    description="A week, month, and agenda calendar."
+    description="A week, day, month and agenda calendar in React."
   />
-  <Card title="Concepts" href="/docs/concepts/events" description="Events, time, and state." />
-  <Card title="Agents" href="/docs/agents" description="What an agent sees, and what it can do." />
+  <Card
+    title="React and Solid"
+    href="/docs/frameworks"
+    description="What the two integrations share, and what each has today."
+  />
+  <Card
+    title="Concepts"
+    href="/docs/concepts/how-it-works"
+    description="The packages, events, time and state."
+  />
 </Cards>

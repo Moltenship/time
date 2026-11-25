@@ -134,3 +134,13 @@ export function formatIndex({ title, summary, notes, sections }: IndexText): str
 
   return [`# ${title}`, `> ${summary}`, ...notes, ...lists].join("\n\n").concat("\n");
 }
+
+/**
+ * A page's name in the index: "Views: Month" for a page in a folder. A folder whose name holds
+ * the title stands alone, so the page "Agents" in "Agents in your app" takes the folder's name.
+ */
+export function groupedLabel(title: string, folder: string | undefined): string {
+  if (folder === undefined) return title;
+  if (folder.toLowerCase().includes(title.toLowerCase())) return folder;
+  return `${folder}: ${title}`;
+}

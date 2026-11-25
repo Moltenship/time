@@ -4,6 +4,7 @@ import { llmsComponents } from "@/lib/llms-components";
 import {
   formatIndex,
   formatPage,
+  groupedLabel,
   rewriteLinks,
   siteLink,
   siteUrl,
@@ -15,9 +16,11 @@ import { source } from "@/lib/source";
 export type DocsPage = InferPageType<typeof source>;
 
 const summary =
-  "A headless calendar for React, with a Solid preview: week, day, month, year, agenda and " +
-  "resource views, drag and keyboard editing, time zones and recurrence, built on ui-sdk so an AI " +
-  "agent can read the calendar and act on it.";
+  "A calendar on the Temporal API whose engine imports no UI framework. React renders it, with " +
+  "week, day, month, year, agenda and resource views you copy and own, and drag and keyboard " +
+  "editing. SolidJS 2 renders it as a preview, without those views. It is built on ui-sdk, so an " +
+  "AI agent can read a calendar and act on it once the app creates a bridge. Version 2.0 is a " +
+  "pre-release.";
 
 /** Pages a reader short of context can skip; llms.txt lists them under "Optional". */
 const optional: ReadonlySet<string> = new Set([
@@ -26,49 +29,59 @@ const optional: ReadonlySet<string> = new Set([
   "/docs/theme-builder",
 ]);
 
-interface PageGroup {
-  readonly title: string;
-  readonly pages: readonly DocsPage[];
+interface GroupedPage {
+  readonly page: DocsPage;
+  /** The page's title, with its folder's name before it for a page inside a folder. */
+  readonly label: string;
 }
 
-/** The pages in the sidebar's order: the top-level pages first, then each folder as a group. */
+interface PageGroup {
+  readonly title: string;
+  readonly pages: readonly GroupedPage[];
+}
+
+/**
+ * The pages in the sidebar's order, grouped as the sidebar's separators group them. A folder's
+ * pages join the group the folder sits in, each labelled with the folder's name.
+ */
 export function pageGroups(): PageGroup[] {
   const tree = source.getPageTree();
-  const top: DocsPage[] = [];
-  const folders: PageGroup[] = [];
-  const page = (url: string) => source.getPageByUrl(url);
+  const groups: { title: string; pages: GroupedPage[] }[] = [];
+  let current: GroupedPage[] | undefined;
 
   type Node = (typeof tree.children)[number];
-  const collect = (nodes: readonly Node[], into: DocsPage[]) => {
+  const name = (node: Node) => (typeof node.name === "string" ? node.name : undefined);
+  const add = (url: string, folder: string | undefined) => {
+    const page = source.getPageByUrl(url);
+    if (page === undefined) return;
+    if (current === undefined) {
+      current = [];
+      groups.push({ title: "Docs", pages: current });
+    }
+    current.push({ page, label: groupedLabel(page.data.title, folder) });
+  };
+  const collect = (nodes: readonly Node[], folder: string | undefined) => {
     for (const node of nodes) {
       if (node.type === "page") {
-        const found = page(node.url);
-        if (found !== undefined) into.push(found);
+        add(node.url, folder);
       } else if (node.type === "folder") {
-        const index = node.index === undefined ? undefined : page(node.index.url);
-        if (index !== undefined) into.push(index);
-        collect(node.children, into);
+        const inner = name(node) ?? folder;
+        if (node.index !== undefined) add(node.index.url, inner);
+        collect(node.children, inner);
+      } else if (folder === undefined) {
+        current = [];
+        groups.push({ title: name(node) ?? "More", pages: current });
       }
     }
   };
+  collect(tree.children, undefined);
 
-  for (const node of tree.children) {
-    if (node.type === "page") {
-      const found = page(node.url);
-      if (found !== undefined) top.push(found);
-    } else if (node.type === "folder") {
-      const pages: DocsPage[] = [];
-      collect([node], pages);
-      folders.push({ title: typeof node.name === "string" ? node.name : "More", pages });
-    }
-  }
-
-  return [{ title: "Docs", pages: top }, ...folders];
+  return groups;
 }
 
 /** Every page once, in the sidebar's order. */
 export function orderedPages(): DocsPage[] {
-  return pageGroups().flatMap((group) => group.pages);
+  return pageGroups().flatMap((group) => group.pages.map(({ page }) => page));
 }
 
 /** A page as Markdown, with no JSX left in it and its links to other pages made by `link`. */
@@ -87,24 +100,24 @@ export async function pageMarkdown(page: DocsPage, link: DocLink = siteLink): Pr
 /** The llms.txt index. `link` says where each page's Markdown is; `notes` follow the summary. */
 export function llmsIndex(link: DocLink, notes: readonly string[]): string {
   const sections: IndexSection[] = [];
-  const skippable: DocsPage[] = [];
+  const skippable: GroupedPage[] = [];
 
   for (const group of pageGroups()) {
-    const pages = group.pages.filter((page) => {
-      if (!optional.has(page.url)) return true;
-      skippable.push(page);
+    const pages = group.pages.filter((entry) => {
+      if (!optional.has(entry.page.url)) return true;
+      skippable.push(entry);
       return false;
     });
-    sections.push({ title: group.title, links: pages.map((page) => indexLink(page, link)) });
+    sections.push({ title: group.title, links: pages.map((entry) => indexLink(entry, link)) });
   }
-  sections.push({ title: "Optional", links: skippable.map((page) => indexLink(page, link)) });
+  sections.push({ title: "Optional", links: skippable.map((entry) => indexLink(entry, link)) });
 
   return formatIndex({ title: "Moltenship Time", summary, notes, sections });
 }
 
-function indexLink(page: DocsPage, link: DocLink) {
+function indexLink({ label, page }: GroupedPage, link: DocLink) {
   return {
-    title: page.data.title,
+    title: label,
     href: link(page.url, ""),
     description: page.data.description,
   };

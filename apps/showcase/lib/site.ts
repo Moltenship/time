@@ -1,8 +1,10 @@
 export const siteUrl = "https://time.molten.sh";
 export const siteName = "Moltenship Time";
-export const siteTitle = "Moltenship Time: the React calendar built on Temporal";
+/** The landing page's headline, which the Open Graph image and the production check repeat. */
+export const siteHeadline = "The Temporal calendar for React, Solid and AI agents";
+export const siteTitle = `Moltenship Time: ${siteHeadline.charAt(0).toLowerCase()}${siteHeadline.slice(1)}`;
 export const siteDescription =
-  "A headless React 19 calendar built on the Temporal API. Week, month, agenda and resource views you own as shadcn/ui source, with exact time zones and DST.";
+  "A calendar engine on the Temporal API with exact time zones and recurrence. React views you copy and own, a SolidJS 2 preview, and actions an AI agent can call.";
 /** The `@id` that structured data on other pages uses to point at the site. */
 export const websiteId = `${siteUrl}/#website`;
 export const githubUrl = "https://github.com/Moltenship/time";
@@ -12,6 +14,9 @@ export const npmUrl = "https://www.npmjs.com/package/@moltenship/calendar";
 export const siteKeywords = [
   "React calendar",
   "React scheduler",
+  "SolidJS calendar",
+  "calendar for AI agents",
+  "WebMCP",
   "event calendar",
   "Temporal API",
   "headless calendar",
