@@ -3,8 +3,15 @@ title: Year
 description: The Solid year, twelve months at a glance with a dot for each event color on a day and a popover of its events, from the Solid registry.
 ---
 
-Try it in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=year): it opens on
-the year.
+<SolidExample
+  name="year"
+  title="The year view"
+  size="h-[40rem]"
+  caption="Live. The page that Add it builds, with two events in October 2026. Click a day to see its events."
+/>
+
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=year) opens on the year, with
+more events and a toolbar.
 
 `createYearView` shows the anchor's calendar year, January to December, as twelve small month
 grids. Weeks start on `weekRules.firstDay`. Each date shows once: a week that reaches into the
