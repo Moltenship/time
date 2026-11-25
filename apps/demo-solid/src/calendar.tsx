@@ -2,6 +2,7 @@ import { createCalendar } from "@moltenship/calendar-solid";
 
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
+import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createScrollingAgendaView } from "@registry/scrolling-list-view/scrolling-agenda-view";
 import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
 import {
@@ -41,6 +42,7 @@ export const Calendar = createCalendar<DemoOccurrence, DemoResource>()({
     createMonthView<DemoOccurrence>(options),
     createYearView<DemoOccurrence>(options),
     createAgendaView<DemoOccurrence>(options),
+    createResourceColumnsView<DemoOccurrence, DemoResource>({ ...options, resourceStatus: true }),
     createScrollingMonthView<DemoOccurrence>({ ...options, dayView: "day" }),
     createScrollingAgendaView<DemoOccurrence>({ ...options, dayView: "day" }),
   ],
