@@ -247,8 +247,11 @@ export function temporaryRoot(name: string): Promise<string> {
   return mkdtemp(join(tmpdir(), `moltenship-${name}-`));
 }
 
-/** The workspace's own files the copy takes at its root, beside the folders. */
-export const copiedRootFiles: readonly string[] = ["tsconfig.base.json"];
+/** The workspace's own files outside the folders that the copy takes too, at the same paths. */
+export const copiedRootFiles: readonly string[] = [
+  "tsconfig.base.json",
+  "tests/setup/paint-timing.ts",
+];
 
 /**
  * Copies workspace folders into a new pnpm workspace in `root`, outside this one, and installs it
@@ -313,7 +316,10 @@ export async function isolatedWorkspace({
     ),
   );
   await copyFile(join(workspaceRoot, "pnpm-lock.yaml"), join(root, "pnpm-lock.yaml"));
-  for (const file of copiedRootFiles) await copyFile(join(workspaceRoot, file), join(root, file));
+  for (const file of copiedRootFiles) {
+    await mkdir(dirname(join(root, file)), { recursive: true });
+    await copyFile(join(workspaceRoot, file), join(root, file));
+  }
 
   const { online } = await installFromStore(root);
   const problems = lockfileProblems({

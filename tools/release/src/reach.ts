@@ -67,8 +67,9 @@ export function referencesIn(file: string, source: string): string[] {
 export async function referencesOutside(
   directories: readonly string[],
 ): Promise<OutsideReference[]> {
+  // An import may leave out the file's extension.
   const inside = (target: string) =>
-    copiedRootFiles.includes(target) ||
+    copiedRootFiles.some((file) => file === target || file.replace(/\.[^./]+$/u, "") === target) ||
     directories.some((directory) => target === directory || target.startsWith(`${directory}/`));
   const outside: OutsideReference[] = [];
   for (const file of await workspaceFiles(directories)) {
