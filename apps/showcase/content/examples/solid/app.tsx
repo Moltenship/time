@@ -1,5 +1,5 @@
 // #region app
-import type { CalendarProposalDetail, CalendarWeekRules } from "@moltenship/calendar-core";
+import type { CalendarProposalDetail, CalendarWeekRules } from "@moltenship/calendar-solid";
 import { createSignal } from "solid-js";
 
 import { Calendar, type Meeting } from "./calendar";

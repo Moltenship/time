@@ -110,8 +110,10 @@ describe("code samples in Solid's docs", () => {
   });
 
   test("no sample a Solid reader sees imports React or a React-only package", () => {
+    // `@/components/calendar/…` is where `shadcn add` puts the Solid registry's files, which the
+    // samples' tsconfig.json maps to registry/solid; any other `@/` path is the docs site's.
     const reactImport =
-      /from "(?:react|react-dom(?:\/[^"]+)?|next(?:\/[^"]+)?|@moltenship\/calendar|@moltenship\/calendar-(?:react|primitives|dnd|dnd-kit|testing)|@ui-sdk\/react|@registry\/[^"]+|@\/[^"]+)"/u;
+      /from "(?:react|react-dom(?:\/[^"]+)?|next(?:\/[^"]+)?|@moltenship\/calendar|@moltenship\/calendar-(?:react|primitives|dnd|dnd-kit|testing)|@ui-sdk\/react|@registry\/[^"]+|@\/(?!components\/calendar\/)[^"]+)"/u;
     const react = solidPages
       .flatMap(samplesOf)
       .filter((sample) => reactImport.test(sample.code))

@@ -13,7 +13,7 @@ events, stays fast.
 ## Add it
 
 Add the `list-view` item to your app with the shadcn CLI, as
-[Solid views from the registry](/docs/solid/registry) describes. It brings the theme and the shared
+[UI source](/docs/installation#ui-source-optional) describes. It brings the theme and the shared
 `calendar` parts:
 
 ```bash
@@ -22,9 +22,7 @@ npx shadcn@latest add @moltenship/list-view
 
 Then register the view, and render it in `Calendar.ActiveView`:
 
-<include meta='title="calendar-page.tsx"'>
-  ../../../../../tools/registry/consumers/solid/calendar-page.tsx#view
-</include>
+<include meta='title="calendar-page.tsx"'>../../examples/solid/calendar-page.tsx#view</include>
 
 The view is named `agenda`. It decides which days render with `@tanstack/virtual-core`, which the
 item installs.
@@ -33,9 +31,7 @@ item installs.
 
 Pass them to `createAgendaView`, or per root in `viewOptions`, where they override the view's own:
 
-```tsx
-<Calendar.Root viewOptions={{ agenda: { loading: isFetching(), weeks: 8 } }} /* … */>
-```
+<include meta='title="schedule.tsx"'>../../examples/solid/agenda-options.tsx#options</include>
 
 <TypeTable
   type={{
@@ -50,7 +46,7 @@ Pass them to `createAgendaView`, or per root in `viewOptions`, where they overri
       description: (
         <>
           The color for each event, one of <code>calendarEventColors</code> in{" "}
-          <code>event-colors.ts</code>. See <a href="/docs/theming#event-colors">event colors</a>.
+          <code>event-colors.ts</code>, which <code>calendar-theme</code> installs.
         </>
       ),
     },
@@ -83,8 +79,9 @@ Pass them to `createAgendaView`, or per root in `viewOptions`, where they overri
   `loading` is set.
 - **Clicking a date** opens that day in the view named `day`. Register a view of your own by that
   name so the click has somewhere to go.
-- **Changes being saved:** events with a [pending change](/docs/interactions#pending-changes) get
-  `aria-busy` and render at 60% opacity.
+- **Changes being saved:** events with a pending change, the ones
+  [`useCalendarPendingChanges`](/docs/api/components#hooks) returns, get `aria-busy` and render at
+  60% opacity.
 - **On a phone** each event stacks its time above its title, and every date and event is at least
   24 px tall.
 - **Right to left** mirrors the list, the date column included, when the page or `Calendar.Frame`

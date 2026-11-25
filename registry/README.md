@@ -90,8 +90,8 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
 - `vp run registry:e2e`, slow and online: makes clean Vite and Next.js apps with `shadcn init`, runs
   `shadcn add <url>/calendar-full.json` against the registry served locally, and a clean Solid 2.0
   app that runs `shadcn add @moltenship/base-tokens @moltenship/list-view` against `/r/solid` with
-  the `components.json`, `app.css` and page in `tools/registry/consumers/solid`, which the Solid
-  docs show; checks where the
+  the `components.json`, `app.css` and page that the Solid docs show, from
+  `apps/showcase/content/examples/solid`; checks where the
   files landed and what the app installed, then typechecks and builds both apps. The Vite app uses
   a non-default `components` alias. The Next.js app's page, a Server Component, imports every item
   the client page uses straight from the server. The test packs the runtime packages from the

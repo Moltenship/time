@@ -93,28 +93,28 @@ keeps one as long as every `@ui-sdk/*` package is on the same version.
 <Tab value="pnpm">
 
 ```bash
-pnpm add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+pnpm add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 <Tab value="npm">
 
 ```bash
-npm install @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+npm install @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 <Tab value="yarn">
 
 ```bash
-yarn add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+yarn add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 <Tab value="bun">
 
 ```bash
-bun add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+bun add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
@@ -122,14 +122,12 @@ bun add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js 
 
 Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
-- **`@moltenship/calendar-solid`** has the parts and the hooks.
-- **`@moltenship/calendar-core`** has the event adapter and the functions a view is made of. The
-  Solid package doesn't re-export them.
-- **Don't install `@moltenship/calendar`.** It's the React package, and it doesn't re-export the
-  Solid one.
+`@moltenship/calendar-solid` is the only calendar package most Solid apps import. It has the parts
+and the hooks, and it re-exports the event engine and the [Temporal helpers](/docs/temporal), so
+the event adapter and the functions a view is made of come from it too. Don't install
+`@moltenship/calendar`: it's the React package.
 
-Three more packages are optional, and none of them imports a framework. The
-[Temporal helpers](/docs/temporal) are in `@moltenship/calendar-temporal`, recurring events add
+Two more packages are optional, and neither imports a framework. Recurring events add
 [`@moltenship/calendar-recurrence`](/docs/recurrence), and reading ICS feeds adds
 [`@moltenship/ics`](/docs/ics). Install each with `@next` when you import it.
 
@@ -320,11 +318,139 @@ changes you made.
 
 <Solid>
 
-## Views
+## UI source (optional)
 
-The package has no ready-made views yet. You write each view as a Solid component, and the
-[Quick start](/docs/quick-start) writes the first one. [What's coming](/docs/frameworks#whats-coming)
-has the plan for Solid views in the registry.
+The package renders plain, unstyled elements. The registry has a styled Solid view, the
+[agenda](/docs/views/agenda), as source files that you add to your app and then own, the way
+shadcn/ui works. They install with the shadcn CLI from this site's Solid registry, at
+`https://time.molten.sh/r/solid`. The other views aren't in it yet, so you write those, as the
+[Quick start](/docs/quick-start) does. [What's coming](/docs/frameworks#whats-coming) has the plan.
+
+| Item             | What it adds                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------ |
+| `list-view`      | The [agenda](/docs/views/agenda)                                                     |
+| `calendar`       | The event chip, event names, the views' key map and the icons, which the views share |
+| `calendar-theme` | The calendar's color tokens and its event colors, in `event-colors.ts`               |
+| `base-tokens`    | shadcn/ui's neutral tokens for light and dark, for an app without them               |
+
+`list-view` brings `calendar` and `calendar-theme` with it. An app with its own shadcn/ui-style
+theme, which defines `--background`, `--border`, `--primary` and the rest, skips `base-tokens`.
+
+<Steps>
+<Step>
+
+### Set up Tailwind CSS 4
+
+The files style themselves with Tailwind classes, so the app needs Tailwind CSS 4 and its
+preflight. With Vite, add `@tailwindcss/vite` to the plugins in the `vite.config.ts` above, after
+Solid's.
+
+Import Tailwind in your global stylesheet, below an `@layer ui-sdk;` that puts your styles after
+the CSS ui-sdk adds to the page, and make Tailwind's `dark:` variant follow a `.dark` ancestor, as
+the theme does:
+
+<include meta='title="src/app.css"'>../examples/solid/app.css</include>
+
+The files import each other through the `@/` alias. Map it in `tsconfig.json`, beside the
+settings above:
+
+```json title="tsconfig.json"
+{
+  "compilerOptions": {
+    "paths": { "@/*": ["./src/*"] }
+  }
+}
+```
+
+With Vite, also set `resolve: { tsconfigPaths: true }` in `vite.config.ts`, so the dev server
+reads that alias.
+
+</Step>
+<Step>
+
+### Point the shadcn CLI at the Solid registry
+
+The CLI has no Solid template to `init` from, so write `components.json` at the app's root
+yourself. `registries` names the Solid registry, so `@moltenship/<item>` installs the Solid items,
+and `tailwind.css` names the stylesheet the theme's tokens go into:
+
+<include meta='title="components.json"'>../examples/solid/components.json</include>
+
+</Step>
+<Step>
+
+### Add the items
+
+```bash
+npx shadcn@latest add @moltenship/base-tokens @moltenship/list-view
+```
+
+Without `registries` in `components.json`, give the item's full address instead:
+
+```bash
+npx shadcn@latest add https://time.molten.sh/r/solid/list-view.json
+```
+
+The CLI writes the tokens into `src/app.css` and the files under `components/calendar`:
+
+```txt
+src/components/calendar
+├── event-colors.ts          calendar-theme
+├── event-chip.tsx           calendar
+├── event-chip.styles.ts
+├── event-label.ts
+├── event-names.ts
+├── icons.tsx
+├── preview-state.ts
+├── view-keyboard.ts
+├── view-keys.ts
+└── list-view                list-view
+    ├── agenda-view.tsx
+    ├── agenda-list.tsx
+    ├── agenda-day.tsx
+    ├── agenda-item.tsx
+    ├── agenda-states.tsx
+    ├── agenda-rows.ts
+    ├── agenda-labels.ts
+    ├── agenda.styles.ts
+    ├── agenda-virtualizer.ts
+    └── use-agenda-virtualizer.ts
+```
+
+The `.styles.ts`, label, row, key map and virtualizer files are plain TypeScript, the same files
+React's registry installs, so the Solid agenda looks, reads and moves as React's does. `shadcn add`
+adds the npm packages the files import, such as `@tanstack/virtual-core`, if your app doesn't have
+them yet. Each item names the range of `@moltenship/calendar-solid` it's built for, so the CLI
+installs a version the files compile against.
+
+</Step>
+<Step>
+
+### Register the view
+
+Add the agenda to your calendar, and render it in `Calendar.ActiveView`:
+
+<include meta='title="calendar-page.tsx"'>../examples/solid/calendar-page.tsx#view</include>
+
+<include meta='title="calendar-page.tsx"'>../examples/solid/calendar-page.tsx#page</include>
+
+</Step>
+</Steps>
+
+The theme switches when an ancestor of the calendar has the `dark` class, as shadcn/ui does. Toggle
+it on `<html>` from your app's theme setting; the `@custom-variant` line in `src/app.css` makes the
+files' `dark:` classes follow the same class. The theme's tokens go into `src/app.css` inside
+`@layer base`, so your own rules win over them: change a token in a rule of your own.
+
+The files are copies you own: edit them as you would any component. A fix in the registry reaches
+your app when you add the item again. The command writes the files your app doesn't have, skips
+the ones that match, and asks before it replaces one that differs. `--dry-run` lists what it would
+do, and `--diff` with a path from that list prints the difference, writing nothing:
+
+```bash
+npx shadcn@latest add @moltenship/list-view --dry-run
+npx shadcn@latest add @moltenship/list-view --diff src/components/calendar/list-view/agenda-view.tsx
+```
 
 </Solid>
 

@@ -45,7 +45,8 @@ import { startLocalRegistryServer, type LocalRegistryServer } from "./server";
 const workspaceRoot = resolve(import.meta.dirname, "../../..");
 const fixture = resolve(import.meta.dirname, "../consumers/calendar-page.tsx");
 /** The Solid app's page, `components.json` and stylesheet, which the docs include. */
-const solidConsumer = resolve(import.meta.dirname, "../consumers/solid");
+// The Solid docs show these files, so the test installs what a reader copies.
+const solidConsumer = resolve(import.meta.dirname, "../../../apps/showcase/content/examples/solid");
 const shadcn = createRequire(import.meta.url).resolve("shadcn");
 /** shadcn picks the package manager from the user agent, as `pnpm dlx shadcn` would set it. */
 const pnpmUserAgent = `pnpm/${process.env.npm_config_user_agent?.match(/pnpm\/(\S+)/u)?.[1] ?? "12"} node/${process.version}`;
@@ -479,7 +480,7 @@ async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
   const components = await readFile(join(solidConsumer, "components.json"), "utf8");
   const published = frameworkBaseUrl(defaultRegistryBaseUrl, solidRegistry);
   if (!components.includes(`"${published}/{name}.json"`)) {
-    throw new Error(`consumers/solid/components.json names no ${published} registry`);
+    throw new Error(`examples/solid/components.json names no ${published} registry`);
   }
   await writeFile(
     join(root, "components.json"),

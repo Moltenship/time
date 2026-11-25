@@ -1,6 +1,9 @@
 // #region history
-import { createEventHistory } from "@moltenship/calendar-core";
-import { useCalendarHistory, useCalendarHistoryShortcuts } from "@moltenship/calendar-solid";
+import {
+  createEventHistory,
+  useCalendarHistory,
+  useCalendarHistoryShortcuts,
+} from "@moltenship/calendar-solid";
 
 import { Calendar, type Meeting } from "./calendar";
 

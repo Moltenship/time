@@ -10,8 +10,8 @@ type that the samples here import from `./calendar`.
 
 <Callout type="warn" title="A preview">
   This package is new in 2.0 and its API can change in any release before 2.0.0. It has every part
-  and hook React's integration has, and no ready-made views yet: see [What's
-  coming](/docs/frameworks#whats-coming).
+  and hook React's integration has. The registry has one ready-made Solid view so far, the
+  [agenda](/docs/views/agenda): see [What's coming](/docs/frameworks#whats-coming).
 </Callout>
 
 Some subjects are the same in both frameworks, and their Solid pages aren't written yet. For those
@@ -109,7 +109,7 @@ reads on an event and a resource, so a numeric ID stays a number.
 A view gets keyboard navigation from three pieces:
 
 - **`getSpatialNavigation`** on the strategy says where each key moves focus. Reuse
-  `monthSpatialNavigation`, `listSpatialNavigation` or another from `@moltenship/calendar-core`.
+  `monthSpatialNavigation`, `listSpatialNavigation` or another the package exports.
 - **`useCalendarKeyboard()`** returns a ref for the element around the view's cells.
 - **`useRovingFocus(target)`** returns the props for each day, slot and event that takes focus.
   The view has one tab stop.
@@ -183,7 +183,7 @@ nothing until the page hydrates.
 | `useRovingFocus` listens for `focusin`       | It listens for `focus`, so a focus handler of yours hears `"focus"`                               |
 | `Calendar.Event`'s children get a value      | They get an accessor, and stay rendered while the event changes                                   |
 | A state change is visible on the next render | An accessor has the new value once Solid flushes: a microtask later, or after `flush()`           |
-| `@moltenship/calendar` is the one package    | `@moltenship/calendar-solid` and `@moltenship/calendar-core`                                      |
+| `@moltenship/calendar` is the one package    | `@moltenship/calendar-solid` is the one package too: it re-exports the engine                     |
 | The bridge is `@ui-sdk/react/agent`          | The bridge is `@ui-sdk/solid/agent`                                                               |
 
 What doesn't differ: the state model, controlled and uncontrolled props, change handlers,

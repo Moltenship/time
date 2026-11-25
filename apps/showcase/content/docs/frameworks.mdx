@@ -10,14 +10,15 @@ integration is complete, and SolidJS 2's is a preview.
 
 <Callout type="warn" title="Solid is a preview">
   `@moltenship/calendar-solid` has the parts and hooks React's integration has, keyboard navigation,
-  dragging, drafts and undo included. It has no ready-made views and no testing package yet, so you
-  write each view. Its API can change in any release before 2.0.0.
+  dragging, drafts and undo included. Of the registry's views it has the agenda so far, and it has
+  no testing package yet, so you write the other views. Its API can change in any release before
+  2.0.0.
 </Callout>
 
 ## The layers
 
 ```text
-views         React source from the registry, or components you write
+views         React or Solid source from the registry, or components you write
 integration   @moltenship/calendar (React)       @moltenship/calendar-solid (Solid)
 calendar      @moltenship/calendar-primitives    state, actions, what an agent can call
 engine        @moltenship/calendar-core          events, time zones, layout, changes, policies
@@ -58,10 +59,10 @@ These work the same in both frameworks, because they run below the integration:
 | ----------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
 | Status                        | Complete                                                          | Preview                                                                                         |
 | Framework version             | React 19                                                          | SolidJS 2.0                                                                                     |
-| Packages you install          | `@moltenship/calendar`, `@ui-sdk/core`, `@ui-sdk/react`           | `@moltenship/calendar-solid`, `@moltenship/calendar-core`, `@ui-sdk/core`, `@ui-sdk/solid`      |
+| Packages you install          | `@moltenship/calendar`, `@ui-sdk/core`, `@ui-sdk/react`           | `@moltenship/calendar-solid`, `@ui-sdk/core`, `@ui-sdk/solid`                                   |
 | Parts                         | `Root`, the structural parts, `Event` and `Announcer`             | The same parts                                                                                  |
 | Hooks                         | Every hook, returning values                                      | The same hooks, returning accessors. `useCalendarKeyboard` and `useCalendarPointer` return refs |
-| Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | None. You write each view's `Renderer`                                                          |
+| Ready-made views              | The registry's views, in shadcn/ui with Tailwind CSS or in StyleX | The agenda, in Tailwind CSS. You write the other views' `Renderer`                              |
 | Keyboard navigation in a view | Yes                                                               | Yes, in a view you write                                                                        |
 | Drag, resize and create       | Yes, with a mouse, a pen or touch                                 | Yes, in a view you write                                                                        |
 | Undo and redo                 | `useCalendarHistory`, its shortcuts and the registry's toast      | `useCalendarHistory` and its shortcuts. No toast                                                |
@@ -74,25 +75,25 @@ These work the same in both frameworks, because they run below the integration:
 
 Solid doesn't have these yet:
 
-| Missing           | In React it's                                                                            |
-| ----------------- | ---------------------------------------------------------------------------------------- |
-| Ready-made views  | The registry's week, day, month, year, agenda and resource views, which are React source |
-| An undo toast     | The registry's `calendar-history-toast`, which is React source                           |
-| A testing package | `@moltenship/calendar-testing`, which is React only                                      |
-| A dnd-kit adapter | `@moltenship/calendar-dnd-kit`, which has React as a peer dependency                     |
+| Missing           | In React it's                                                                    |
+| ----------------- | -------------------------------------------------------------------------------- |
+| Ready-made views  | The registry's week, day, month, year and resource views, which are React source |
+| An undo toast     | The registry's `calendar-history-toast`, which is React source                   |
+| A testing package | `@moltenship/calendar-testing`, which is React only                              |
+| A dnd-kit adapter | `@moltenship/calendar-dnd-kit`, which has React as a peer dependency             |
 
 The views are the next work. The registry gets Solid versions of its items, installed with the
-same `shadcn add` command, starting with the agenda and then the toolbar, the month view and the
-week and day views. [Issue #279](https://github.com/Moltenship/time/issues/279) tracks each step.
+same `shadcn add` command. The agenda is the first, and the toolbar, the month view and the week and
+day views come next. [Issue #279](https://github.com/Moltenship/time/issues/279) tracks each step.
 The testing package and the dnd-kit adapter have no Solid plan yet.
 
-Until the registry has a Solid view, you write its `Renderer` with the package's hooks. The
-[Solid demo](https://moltenship-time-demo.vercel.app/solid/)'s month grid and agenda are such
-views, with keyboard navigation, dragging and undo, and their source is the repository's
-[`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
+Until the registry has a view in Solid, you write its `Renderer` with the package's hooks. The
+[Solid demo](https://moltenship-time-demo.vercel.app/solid/)'s month grid is such a view, with
+keyboard navigation, dragging and undo, beside the registry's agenda. Its source is the
+repository's [`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
 
-The Solid docs have no page on something Solid lacks. That is why they have no pages on the
-built-in views, theming, StyleX or testing.
+The Solid docs have no page on something Solid lacks. That is why the only view they have a page on
+is the agenda, and they have none on theming, StyleX or testing.
 
 <Solid>
 

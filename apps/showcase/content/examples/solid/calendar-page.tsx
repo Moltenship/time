@@ -1,5 +1,5 @@
-// The page the install test adds to its clean Solid app after `shadcn add @moltenship/list-view`.
-// It imports the Solid items the way the docs do, so the app's typecheck and build cover them.
+// The page Installation and the Agenda page show, after `shadcn add @moltenship/list-view`. The
+// registry's install test adds this file to a clean Solid app, whose typecheck and build cover it.
 
 // #region view
 import {
@@ -11,9 +11,9 @@ import {
 import type { CalendarEventColor } from "@/components/calendar/event-colors";
 import { createAgendaView } from "@/components/calendar/list-view/agenda-view";
 
-type Event = CalendarEvent<{ readonly color: CalendarEventColor }>;
+export type Event = CalendarEvent<{ readonly color: CalendarEventColor }>;
 
-const Calendar = createCalendar<Event>()({
+export const Calendar = createCalendar<Event>()({
   eventAdapter: createCanonicalEventAdapter<{ readonly color: CalendarEventColor }>(),
   views: [createAgendaView<Event>({ getEventColor: (event) => event.data.color })],
 });
