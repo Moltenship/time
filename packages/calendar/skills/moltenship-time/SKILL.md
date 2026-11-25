@@ -1,13 +1,13 @@
 ---
 name: moltenship-time
-description: Builds calendars with Moltenship Time (@moltenship/calendar), a headless calendar on the Temporal API, built on ui-sdk, with a complete React integration and a SolidJS 2 preview. Covers composing week, day, month, year, agenda and resource views from the registry, controlling view, date and time zone, saving moved, resized, created and deleted events, policies and undo, making the calendar usable by AI agents through the ui-sdk agent bridge and WebMCP, and testing with @moltenship/calendar-testing. Use whenever a project has @moltenship/calendar or @moltenship/calendar-solid installed, or the user mentions Moltenship Time.
+description: Builds calendars with Moltenship Time (@moltenship/calendar), a headless calendar on the Temporal API, built on ui-sdk, with React and SolidJS 2 integrations. Covers composing week, day, month, year, agenda and resource views from the registry, controlling view, date and time zone, saving moved, resized, created and deleted events, policies and undo, making the calendar usable by AI agents through the ui-sdk agent bridge and WebMCP, and testing with @moltenship/calendar-testing. Use whenever a project has @moltenship/calendar or @moltenship/calendar-solid installed, or the user mentions Moltenship Time.
 ---
 
 # Build with Moltenship Time
 
 Moltenship Time is a headless calendar. The npm packages hold the behaviour: state, dates and time zones, layout, drag and keyboard editing, recurrence. The views (week, month, agenda and the rest) are source files the app owns, added with the shadcn CLI. Since 2.0 the calendar's parts are [ui-sdk](https://ui-sdk.dev) components, so an AI agent can read the calendar and act on it once the app creates ui-sdk's agent bridge.
 
-The engine and the calendar's state import no UI framework. The React integration is complete, and the registry's views are React source. The SolidJS 2 integration is a preview with the same hooks, keyboard navigation and dragging included. Its registry has every view in Tailwind CSS, but none in StyleX: the week and day, the month, the year, the agenda, the scrolling week, day, month and agenda, the resource columns and the resource timeline. This file describes React unless it says otherwise.
+The engine and the calendar's state import no UI framework. The React and SolidJS 2 integrations have the same parts and hooks, keyboard navigation and dragging included, and the registry has its views in both. Solid's has every view in Tailwind CSS, and no StyleX views, testing package or dnd-kit adapter. This file describes React unless it says otherwise.
 
 ## Read first
 
@@ -54,7 +54,7 @@ your records ──adapter──▶ createCalendar({ eventAdapter, views }) ─�
 3. **Save changes, restrict them, undo them**: [references/changes.md](references/changes.md).
 4. **Let an AI agent use the calendar**: [references/agent-ready.md](references/agent-ready.md).
 5. **Test it**: [references/testing.md](references/testing.md).
-6. **SolidJS**: [references/solid.md](references/solid.md). It's a preview with no StyleX views and no testing package; read that file before promising anything.
+6. **SolidJS**: [references/solid.md](references/solid.md). It has no StyleX views or testing package; read that file before promising anything.
 
 Before you finish, check your work against [references/mistakes.md](references/mistakes.md).
 

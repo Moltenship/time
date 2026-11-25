@@ -1,11 +1,10 @@
 # @moltenship/calendar-solid
 
-> **2.0 preview.** This package is new and its API isn't settled. It can change in any release
-> before 2.0. The Solid registry has ready-made views for the week and day, the
-> month, the year, the agenda and the resource columns (`npx shadcn@latest add https://time.molten.sh/r/solid/time-grid-view.json`,
-> `…/month-view.json`, `…/year-view.json`, `…/list-view.json` and `…/resource-columns-view.json`). For the others you
-> define a view with `defineCalendarView`, over the engine's projections, and bind keyboard
-> navigation, dragging, drafts and undo to it with this package's hooks.
+> **New in 2.0.** The Solid registry has every ready-made view but the resource timeline:
+> `npx shadcn@latest add https://time.molten.sh/r/solid/calendar-full.json` installs them all.
+> For a view it doesn't have, you define one with `defineCalendarView`, over the engine's
+> projections, and bind keyboard navigation, dragging, drafts and undo to it with this package's
+> hooks.
 
 The headless [SolidJS](https://www.solidjs.com) 2 layer of Moltenship Time. It renders the
 calendar primitive from `@moltenship/calendar-primitives` with

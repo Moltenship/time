@@ -142,14 +142,14 @@ time/
 │   │   ├── lib/source.ts         # sole runtime content loader
 │   │   └── source.config.ts      # collection schemas and MDX configuration
 │   ├── demo/                     # Google Calendar-style demo app (Vite), built from registry source
-│   ├── demo-solid/               # 2.0: the Solid integration in a Vite app, with views of its own and an agent panel
+│   ├── demo-solid/               # 2.0: the demo's app in Solid, on the Solid registry's views, with an agent panel
 │   └── ssr-fixture/              # render/hydrate verification in a real SSR boundary
 ├── packages/
 │   ├── calendar-temporal/        # standalone Temporal calendar utilities
 │   ├── calendar-core/            # data/index/layout/view/transaction engine
 │   ├── calendar-primitives/      # 2.0: runtime, store, the calendar as a ui-sdk primitive
 │   ├── calendar-react/           # React provider, store bridge, hooks, parts
-│   ├── calendar-solid/           # 2.0: the same for SolidJS 2.0, a preview without views
+│   ├── calendar-solid/           # 2.0: the same for SolidJS 2.0
 │   ├── calendar-dnd/             # pointer interaction adapter (native Pointer Events)
 │   ├── calendar-dnd-kit/         # optional dnd-kit adapter: items dragged in, events dragged out
 │   ├── calendar/                 # DX-first public facade, for React
@@ -209,7 +209,7 @@ demo (`apps/demo/vite.config.ts`), so one deployment has both frameworks and a s
 | `@moltenship/calendar-core`       | Event adapters, normalized snapshots, interval indexes, view strategies, fragments, layout engines, policies, transactions.   | `calendar-temporal`; provisional `@flatten-js/interval-tree` behind an internal interface | Stable                                            |
 | `@moltenship/calendar-primitives` | 2.0. The framework-free calendar: the runtime `Root` derives with, the calendar store and its binding, the calendar as a ui-sdk primitive (controlled slices, semantic actions, slots for parts, the agent surface). | `calendar-core`, `calendar-temporal`; `@ui-sdk/core` peer                                 | 2.0 preview; not settled                          |
 | `@moltenship/calendar-react`      | Per-instance provider, controlled state bridge, selectors, actions, meta, headless parts, custom-view renderer contract. In 2.0 it renders the primitive. | `calendar-core`, `calendar-temporal`; React 19 peer. In 2.0 also `calendar-primitives` and `calendar-dnd`, and `@ui-sdk/core` and `@ui-sdk/react` peers | Stable                                            |
-| `@moltenship/calendar-solid`      | 2.0. The same integration for SolidJS 2.0: factory, parts, hooks, state and actions over the primitive, keyboard gestures and the pointer binding included. The facade a Solid app installs: it re-exports core and the Temporal utilities. | `calendar-primitives`, `calendar-core`, `calendar-temporal`, `calendar-dnd`; `solid-js`, `@solidjs/web`, `@ui-sdk/core` and `@ui-sdk/solid` peers | 2.0 preview; not settled                          |
+| `@moltenship/calendar-solid`      | 2.0. The same integration for SolidJS 2.0: factory, parts, hooks, state and actions over the primitive, keyboard gestures and the pointer binding included. The facade a Solid app installs: it re-exports core and the Temporal utilities. | `calendar-primitives`, `calendar-core`, `calendar-temporal`, `calendar-dnd`; `solid-js`, `@solidjs/web`, `@ui-sdk/core` and `@ui-sdk/solid` peers | Stable from 2.0                                   |
 | `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements; drags in from and out to the rest of the page. | `calendar-core`, `calendar-temporal`. React 19 peer in 1.x; in 2.0 no framework (rule 4) | Stable adapter; no DOM event types in callbacks   |
 | `@moltenship/calendar-dnd-kit`    | Optional dnd-kit adapter: a draggable carrying `calendarDropData` drops into the views; events a view moves become dnd-kit drags for the app's droppables. | `calendar-dnd`, `calendar-core`, `@dnd-kit/abstract` (dnd-kit's collision enums); React 19, `@dnd-kit/react` and `@dnd-kit/dom` 0.5 peers | Optional adapter; follows dnd-kit 0.5, which is pre-1.0 |
 | `@moltenship/calendar`            | The ergonomic entry point used by most React consumers. Re-exports core, the Temporal utilities, the React bindings and the pointer adapter. | `calendar-core`, `calendar-temporal`, `calendar-react`, `calendar-dnd`; React 19 peer. In 2.0 also `calendar-react`'s ui-sdk peers | Stable facade                                     |
@@ -272,8 +272,8 @@ The registry is not a second package manager. It distributes the source users ar
   `/r/solid/<item>.json` and installed by the same `shadcn` CLI into a Solid 2.0 app. Files with no
   framework in them, such as the theme, the agenda's rows, words and class strings, and its
   virtualizer on TanStack's framework-free engine, live once in `registry/shared` and install from
-  both registries at the same targets. The Solid registry has the theme, `base-tokens`, the shared
-  `calendar` parts and the agenda so far; the other views follow. The React items' controls come
+  both registries at the same targets. The Solid registry has every item but the resource timeline
+  and the StyleX flavour, and its own `calendar-full`. The React items' controls come
   from one kit on ui-sdk per flavour, `calendar-ui` and `stylex-calendar-ui`, with no stock shadcn
   components or Base UI in the items. Rules 5, 14 and 15 above describe what is enforced.
 
@@ -714,7 +714,7 @@ interface CalendarAnnotationSource {
 
 This is the React integration's API, and 2.0 keeps it: what changes is underneath, where `Root`
 renders the calendar primitive (§2). The Solid integration follows the same shape, a typed factory
-with a `Root`, parts and `{ state, actions, meta }`; it is a preview and its API is not settled.
+with a `Root`, parts and `{ state, actions, meta }`; its API is new in 2.0.
 
 ### 8.1 Typed factory
 
