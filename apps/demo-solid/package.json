@@ -2,7 +2,7 @@
   "name": "demo-solid",
   "version": "0.0.0",
   "private": true,
-  "description": "A Solid 2.0 calendar on @moltenship/calendar-solid, with the Solid registry's week, day, month, year, agenda and resource columns and an agent panel, written in JSX.",
+  "description": "The demo's calendar app in Solid 2.0, on @moltenship/calendar-solid and the Solid registry's items, beside the React demo.",
   "type": "module",
   "scripts": {
     "build": "vp build",
@@ -11,17 +11,21 @@
   },
   "dependencies": {
     "@moltenship/calendar-core": "workspace:*",
+    "@moltenship/calendar-recurrence": "workspace:*",
     "@moltenship/calendar-solid": "workspace:*",
     "@solidjs/web": "catalog:",
     "@ui-sdk/core": "catalog:",
     "@ui-sdk/solid": "catalog:",
+    "cn": "catalog:",
     "solid-js": "catalog:",
     "temporal-polyfill": "catalog:"
   },
   "devDependencies": {
     "@solidjs/vite-plugin": "catalog:",
     "@tailwindcss/vite": "catalog:",
+    "shadcn": "catalog:",
     "tailwindcss": "catalog:",
+    "tw-animate-css": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
     "vite-plus": "catalog:"

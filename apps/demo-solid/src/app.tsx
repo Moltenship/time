@@ -1,377 +1,148 @@
-import { createEventHistory, type CalendarWeekRules } from "@moltenship/calendar-core";
-import { useCalendarHistory } from "@moltenship/calendar-solid";
-import { createEffect, createSignal, For } from "solid-js";
+import { createSignal } from "solid-js";
 
-import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
-import { MiniMonth } from "@registry/calendar/mini-month";
-import { ViewSwitcher } from "@registry/calendar/view-switcher";
+import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { CalendarHistoryToast } from "@registry/calendar-history-toast/calendar-history-toast";
 import { Button } from "@registry/calendar-ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectGroup,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@registry/calendar-ui/select";
 import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-recurrence-scope-prompt";
 
-import { activityAround, activitySources, officeHours } from "./activity";
 import { AgentPanel } from "./agent-panel";
-import { announcements, historyAnnouncements } from "./announcements";
-import { Calendar, type Meeting } from "./calendar";
-import {
-  dragPreviewOptions,
-  readDragPreview,
-  writeDragPreview,
-  type DragPreview,
-} from "./drag-preview";
-import { FrameworkSwitch } from "./framework-switch";
-import { isScrolling, viewFor } from "./scrolling";
-import { demoResourceGroups, demoResources } from "./resources";
-import { applyToSeries, seriesScopes } from "./series";
-import { readSolidLocation, writeSolidLocation, type SolidView } from "./url-state";
-
-const timeZone = Temporal.Now.timeZoneId();
-const today = Temporal.Now.plainDateISO(timeZone);
-const at = (date: Temporal.PlainDate, time: string) =>
-  date.toZonedDateTime({ plainTime: Temporal.PlainTime.from(time), timeZone }).toInstant();
-const timed = (date: Temporal.PlainDate, start: string, end: string) =>
-  ({ end: at(date, end), kind: "timed", start: at(date, start) }) as const;
-
-const seed: readonly Meeting[] = [
-  {
-    id: "design-review",
-    interval: timed(today, "10:00", "11:00"),
-    resourceIds: ["room-orchid", "person-maya", "person-alex"],
-    title: "Design review",
-  },
-  { id: "team-lunch", interval: timed(today.add({ days: 1 }), "12:30", "13:30"), title: "Lunch" },
-  {
-    id: "sprint-planning",
-    interval: timed(today.add({ days: 1 }), "09:30", "11:00"),
-    resourceIds: ["room-cedar", "person-sam", "person-lee"],
-    title: "Sprint planning",
-  },
-  {
-    id: "interview",
-    interval: timed(today.add({ days: 3 }), "14:00", "15:00"),
-    resourceIds: ["room-lotus", "person-alex"],
-    title: "Interview",
-  },
-  {
-    id: "board-meeting",
-    interval: timed(today.add({ days: 2 }), "09:00", "10:30"),
-    locked: true,
-    resourceIds: ["room-orchid"],
-    title: "Board meeting",
-  },
-  // A sync every day for five days, at 16:00: changing one asks which ones it applies to.
-  ...Array.from({ length: 5 }, (_, day) => ({
-    id: `sync-${day + 1}`,
-    interval: timed(today.add({ days: day }), "16:00", "16:30"),
-    series: "sync",
-    title: "Team sync",
-  })),
-  {
-    id: "offsite",
-    interval: { end: today.add({ days: 7 }), kind: "all-day", start: today.add({ days: 5 }) },
-    resourceIds: ["team-design", "team-engineering"],
-    title: "Offsite",
-  },
-];
-
-const activity = activityAround(today, timeZone);
-
-// ISO weeks: they start on Monday, and the first has four days of the new year.
-const weekRules: CalendarWeekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] };
-
-// The Solid integration's docs, which say what the preview has and what comes next.
-const docsUrl = "https://time.molten.sh/docs/solid";
-
-const local = (date: Temporal.PlainDate, time: string) => `${date.toString()}T${time}`;
-
-/** What the agent panel runs, each one step through the bridge. */
-const steps = [
-  { action: "describeCalendar", args: [], label: "Read the calendar" },
-  { action: "listEvents", args: [], label: "List the visible events" },
-  { action: "navigateNext", args: [], label: "Next period" },
-  { action: "navigateToday", args: [], label: "Back to today" },
-  { action: "setView", args: [{ view: "week" }], label: "Switch to the week" },
-  { action: "setView", args: [{ view: "agenda" }], label: "Switch to the agenda" },
-  { action: "setView", args: [{ view: "month" }], label: "Switch to the month" },
-  { action: "setView", args: [{ view: "resources" }], label: "Switch to the resources" },
-  {
-    action: "moveEvent",
-    args: [{ eventId: "design-review", start: local(today.add({ days: 1 }), "14:00") }],
-    label: "Move the design review to tomorrow 14:00",
-  },
-  {
-    action: "createEvent",
-    args: [
-      {
-        end: local(today.add({ days: 3 }), "16:00"),
-        start: local(today.add({ days: 3 }), "15:00"),
-        title: "Agent's event",
-      },
-    ],
-    label: "Create an event in three days",
-  },
-  {
-    action: "moveEvent",
-    args: [{ eventId: "board-meeting", start: local(today.add({ days: 3 }), "09:00") }],
-    label: "Move the locked board meeting (refused)",
-  },
-  { action: "selectEvent", args: [{ eventId: "team-lunch" }], label: "Select the lunch" },
-  { action: "deleteEvent", args: [{ eventId: "team-lunch" }], label: "Delete the lunch" },
-] as const;
-
-/** The event each create became, by change ID, so undo finds it. */
-const createdIds = new Map<string, string>();
-
-/** Every saved change, from a drag, a key or the agent, for undo and redo. */
-const changes = createEventHistory<Meeting, string, string>({
-  // A step holds one event, so undo can't take back a change to the Team sync's other occurrences.
-  filter: (change) => change.cause === "create" || change.event.series === undefined,
-  // Once the events show it.
-  createdEventId: (change, events) => {
-    const id = createdIds.get(change.id);
-    return id !== undefined && events.get(id) !== undefined ? id : undefined;
-  },
-});
-
-/** Undo and redo as buttons. The registry's undo toast adds Ctrl+Z and Ctrl+Y, or ⌘Z and ⇧⌘Z. */
-function HistoryControls() {
-  const controls = useCalendarHistory(changes, { messages: historyAnnouncements });
-  return (
-    <>
-      <Button disabled={!controls().canUndo} onClick={() => controls().undo()} variant="outline">
-        Undo
-      </Button>
-      <Button disabled={!controls().canRedo} onClick={() => controls().redo()} variant="outline">
-        Redo
-      </Button>
-    </>
-  );
-}
-
-/** The views the switcher offers: the paged ones. The setting below makes the month and agenda scroll. */
-const viewOptions: readonly { readonly label: string; readonly value: SolidView }[] = [
-  { label: "Day", value: "day" },
-  { label: "3 days", value: "3-day" },
-  { label: "Week", value: "week" },
-  { label: "Month", value: "month" },
-  { label: "Year", value: "year" },
-  { label: "Agenda", value: "agenda" },
-  { label: "Resources", value: "resources" },
-];
-
-/** How a pointer drag previews where it lands, as the React demo's settings choose it. */
-function DragPreviewSelect(props: {
-  readonly onValueChange: (preview: DragPreview) => void;
-  readonly value: DragPreview;
-}) {
-  return (
-    <Select
-      items={dragPreviewOptions}
-      value={props.value}
-      onValueChange={(next) => {
-        const option = dragPreviewOptions.find((candidate) => candidate.value === next);
-        if (option !== undefined) props.onValueChange(option.value);
-      }}
-    >
-      <SelectTrigger aria-label="Dragging">
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent align="end" alignItemWithTrigger={false}>
-        {/* The group pads the list: the popup itself has no padding. */}
-        <SelectGroup>
-          <For each={dragPreviewOptions} keyed={(option) => option.value}>
-            {(option) => (
-              <SelectItem label={option().label} value={option().value}>
-                {option().label}
-              </SelectItem>
-            )}
-          </For>
-        </SelectGroup>
-      </SelectContent>
-    </Select>
-  );
-}
-
-/** The registry's mini month, following the calendar: it shows the range the view shows. */
-function Sidebar(props: {
-  readonly date: Temporal.PlainDate;
-  readonly onSelectDate: (date: Temporal.PlainDate) => void;
-}) {
-  const visibleRange = Calendar.useVisibleRange();
-  return (
-    <MiniMonth
-      locale={navigator.language}
-      onSelectDate={props.onSelectDate}
-      selectedDate={props.date}
-      today={today}
-      visibleRange={visibleRange() ?? undefined}
-      weekStartsOn={weekRules.firstDay}
-    />
-  );
-}
+import { ActivityList } from "./components/activity-list";
+import { Calendar } from "./calendar";
+import { BrandMark } from "./components/brand";
+import { DocsLink } from "./components/docs-link";
+import { EventDialog } from "./components/event-dialog";
+import { EventPopover } from "./components/event-popover";
+import { KeyboardShortcuts } from "./components/keyboard-shortcuts";
+import { Notice } from "./components/notice";
+import { FrameworkSwitch } from "./components/page-switch";
+import { SettingsPanel } from "./components/settings-panel";
+import { ShortcutsDialog } from "./components/shortcuts-dialog";
+import { Sidebar } from "./components/sidebar";
+import { ThemeToggle } from "./components/theme-toggle";
+import { TopBar } from "./components/top-bar";
+import { UnscheduledTasks } from "./components/unscheduled-tasks";
+import { PlusIcon } from "./icons";
+import { Sheet, SheetTitle } from "./ui/sheet";
+import { createDemoWorkspace } from "./workspace";
 
 export function App() {
-  const [events, setEvents] = createSignal<readonly Meeting[]>(seed);
-  // The view and date come from the URL and go back into it, so the framework switch keeps them.
-  const [location, setLocation] = createSignal(
-    readSolidLocation(window.location.search, { date: today, view: "month" }),
+  const { ask, dialog: scopeDialog } = useRecurrenceScopePrompt();
+  const workspace = createDemoWorkspace(ask);
+  const [allowAgentDelete, setAllowAgentDelete] = createSignal(false);
+  const showShortcuts = () => workspace.setShortcutsOpen(true);
+  const sidebar = (onNavigate?: () => void) => (
+    <Sidebar
+      hiddenCalendars={workspace.hiddenCalendars()}
+      onCreate={workspace.openCreate}
+      onNavigate={onNavigate}
+      onToggleCalendar={workspace.toggleCalendar}
+      today={workspace.today()}
+    >
+      <UnscheduledTasks onSchedule={workspace.scheduleTask} taskList={workspace.tasks} />
+      <ActivityList hidden={workspace.hiddenSources()} onToggle={workspace.toggleSource} />
+      <SettingsPanel
+        dragPreview={workspace.dragPreview()}
+        failSaves={workspace.failSaves()}
+        onChange={workspace.changeSettings}
+        onDragPreviewChange={workspace.setDragPreview}
+        onFailSavesChange={workspace.setFailSaves}
+        onReset={workspace.resetDemoData}
+        settings={workspace.settings()}
+        systemTimeZone={workspace.systemTimeZone}
+      />
+      <AgentPanel
+        allowDelete={allowAgentDelete()}
+        events={workspace.occurrences()}
+        onAllowDeleteChange={setAllowAgentDelete}
+        timeZone={workspace.timeZone()}
+      />
+    </Sidebar>
   );
-  const [dragPreview, setDragPreview] = createSignal(readDragPreview(window.location.search));
-  // What the URL says for them, which the effect writes and the framework switch's links carry.
-  const href = () =>
-    writeDragPreview(writeSolidLocation(window.location.href, location()), dragPreview());
-  createEffect(href, (next) => {
-    history.replaceState(history.state, "", next);
-  });
-  // The React demo's "Scroll days, weeks, months and agenda": here the month and the agenda. A
-  // setting of its own, as React's, so it outlasts the views it doesn't change; it starts on when
-  // the URL's view scrolls.
-  const [scrolling, setScrolling] = createSignal(isScrolling(location().view));
-  const showView = (view: SolidView) =>
-    setLocation((current) => ({ ...current, view: viewFor(view, scrolling()) }));
-  const [allowDelete, setAllowDelete] = createSignal(false);
-  const { ask, dialog } = useRecurrenceScopePrompt();
-  const [lastChange, setLastChange] = createSignal("none yet");
-  let created = 0;
 
   return (
-    <main>
-      <header class="header">
-        <h1>Calendar</h1>
-        <FrameworkSwitch search={new URL(href()).search} />
-        <a href={docsUrl}>Docs</a>
-      </header>
-      <p class="hint">
-        A Solid 2.0 calendar on the engine's time grid, month, year and list projections, with an
-        agent driving it through ui-sdk. Last change:{" "}
-        <output data-last-change="">{lastChange()}</output>
-      </p>
-      <Calendar.Root
-        allowAgentDelete={allowDelete()}
-        anchorDate={location().date}
-        annotationSources={activitySources}
-        annotations={activity}
-        availability={officeHours}
-        defaultExpandedResourceIds={demoResourceGroups}
-        defaultTimeZone={timeZone}
-        events={events()}
-        label="Team calendar"
-        locale={navigator.language}
-        onEventChange={async (change, detail) => {
-          setLastChange(`${change.cause} by ${detail.input}`);
-          if (change.cause !== "create" && change.event.series !== undefined) {
-            const scope = await ask({
-              action: change.cause === "delete" ? "delete" : "edit",
-              eventTitle: change.event.title,
-              scopes: seriesScopes(change, events()),
-            });
-            // Rejecting rolls the change back; an `AbortError` is announced as a cancel.
-            if (scope === null) throw new DOMException("Cancelled", "AbortError");
-            setEvents((current) => applyToSeries(current, change, scope));
-          } else if (change.cause === "delete") {
-            setEvents((current) => current.filter((event) => event.id !== change.eventId));
-          } else if (change.cause === "create") {
-            // Undoing a delete proposes a create with the deleted record: it comes back as it was.
-            // An agent names a new event; the calendar passes the title on as a field.
-            const title =
-              typeof detail.fields?.title === "string" ? detail.fields.title : "New event";
-            const event = change.event ?? { id: `created-${(created += 1)}`, title };
-            createdIds.set(change.id, event.id);
-            setEvents((current) => [
-              ...current,
-              { ...event, interval: change.proposed, resourceIds: change.proposed.resourceIds },
-            ]);
-          } else {
-            setEvents((current) =>
-              current.map((event) =>
-                event.id === change.eventId
-                  ? {
-                      ...event,
-                      interval: change.proposed,
-                      resourceIds: change.proposed.resourceIds,
-                    }
-                  : event,
-              ),
-            );
-          }
-        }}
-        onEventChangeResult={(result, detail) => changes.record(result, detail)}
-        onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
-        onViewChange={showView}
-        resources={demoResources}
-        policies={[
-          // A locked event stays where it is: the change fails, and an agent hears the reason.
-          (change) =>
-            change.cause !== "create" && change.event.locked === true
-              ? { reason: "locked-event", type: "reject" }
-              : { type: "accept" },
-        ]}
-        view={location().view}
-        viewOptions={{
-          "3-day": { dragPreview: dragPreview() },
-          day: { dragPreview: dragPreview() },
-          month: { dragPreview: dragPreview() },
-          resources: { dragPreview: dragPreview() },
-          "scrolling-month": { dragPreview: dragPreview() },
-          week: { dragPreview: dragPreview() },
-        }}
-        weekRules={weekRules}
-      >
-        <div class="layout">
-          <Calendar.Frame class="calendar">
-            <CalendarToolbar calendar={Calendar} class="toolbar">
-              <HistoryControls />
-              <DragPreviewSelect onValueChange={setDragPreview} value={dragPreview()} />
-              <ViewSwitcher
-                onValueChange={showView}
-                options={viewOptions}
-                value={viewFor(location().view, false)}
-              />
-            </CalendarToolbar>
-            <Calendar.Viewport class="viewport">
+    <Calendar.Root {...workspace.calendarProps} allowAgentDelete={allowAgentDelete()}>
+      <KeyboardShortcuts
+        onCreate={workspace.openCreate}
+        onHelp={showShortcuts}
+        scrolling={workspace.scrolling()}
+      />
+      <Calendar.Frame class="flex h-dvh flex-col">
+        <TopBar
+          onOpenSidebar={() => workspace.setSidebarOpen(true)}
+          onShowShortcuts={showShortcuts}
+          scrolling={workspace.scrolling()}
+        />
+        <div class="flex min-h-0 flex-1">
+          <aside class="hidden w-64 shrink-0 overflow-y-auto lg:block">{sidebar()}</aside>
+          <main class="min-w-0 flex-1 border-t lg:mr-3 lg:mb-3 lg:overflow-clip lg:rounded-xl lg:border lg:bg-card lg:[--calendar-surface:var(--card)]">
+            <Calendar.Viewport
+              ref={workspace.viewportRef}
+              class="h-full"
+              onClick={workspace.openClickedEvent}
+            >
               <Calendar.ActiveView />
             </Calendar.Viewport>
-          </Calendar.Frame>
-          <Calendar.Announcer messages={announcements} />
-          <CalendarHistoryToast
-            announcements={historyAnnouncements}
-            calendar={Calendar}
-            history={changes}
-          />
-          <div class="side">
-            <label class="toggle">
-              <input
-                type="checkbox"
-                checked={scrolling()}
-                onChange={(event) => {
-                  const on = event.currentTarget.checked;
-                  setScrolling(on);
-                  setLocation((current) => ({ ...current, view: viewFor(current.view, on) }));
-                }}
-              />
-              <span>Scroll the month and agenda</span>
-            </label>
-            <Sidebar
-              date={location().date}
-              onSelectDate={(date) => setLocation((current) => ({ ...current, date }))}
-            />
-            <AgentPanel
-              allowDelete={allowDelete()}
-              onAllowDeleteChange={setAllowDelete}
-              steps={steps}
-            />
-          </div>
+          </main>
         </div>
-      </Calendar.Root>
-      {dialog}
-    </main>
+        <Button
+          aria-label="Create event"
+          // Above the views' events, which stack in their own layers.
+          class="fixed right-4 bottom-4 z-30 size-14 rounded-2xl shadow-lg lg:hidden"
+          onClick={workspace.openCreate}
+        >
+          <PlusIcon class="size-6" />
+        </Button>
+        <Sheet
+          class="gap-2 outline-none w-72"
+          onOpenChange={workspace.setSidebarOpen}
+          open={workspace.sidebarOpen()}
+        >
+          <div class="flex h-14 shrink-0 items-center gap-2 pr-12 pl-4">
+            <BrandMark />
+            <SheetTitle class="text-lg font-medium">Calendar</SheetTitle>
+            <DocsLink class="ml-auto" />
+            <ThemeToggle class="rounded-full" />
+          </div>
+          <div class="mx-4 flex flex-wrap gap-2">
+            <FrameworkSwitch />
+          </div>
+          <div class="min-h-0 flex-1 overflow-y-auto">
+            {sidebar(() => workspace.setSidebarOpen(false))}
+          </div>
+        </Sheet>
+        <EventPopover
+          anchor={workspace.openEvent()?.anchor ?? null}
+          locale={workspace.settings().locale}
+          occurrence={workspace.shownEvent()}
+          onClose={workspace.closePopover}
+          onEdit={workspace.openEdit}
+          onUnscheduled={workspace.onUnscheduled}
+          taskList={workspace.tasks}
+          timeZone={workspace.timeZone()}
+        />
+        <EventDialog
+          draft={workspace.draft()}
+          locale={workspace.settings().locale}
+          onOpenChange={workspace.closeDialog}
+          onSave={workspace.saveFromDialog}
+          returnFocus={workspace.returnFocus()}
+          timeZone={workspace.timeZone()}
+        />
+        {/* Asks "this, this and following, or all" for changes to a repeating event. */}
+        {scopeDialog}
+        <ShortcutsDialog
+          onOpenChange={workspace.setShortcutsOpen}
+          open={workspace.shortcutsOpen()}
+        />
+        {/* Speaks keyboard and pointer moves, resizes and creates. */}
+        <Calendar.Announcer messages={calendarAnnouncements} />
+        <Notice text={workspace.notice()} />
+        <CalendarHistoryToast
+          calendar={Calendar}
+          class="bottom-24 lg:bottom-6"
+          history={workspace.history}
+        />
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }

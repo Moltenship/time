@@ -1,44 +1,41 @@
-/** The Solid demo's views. `app.tsx` passes them as the calendar's `view`, which checks the names. */
-export type SolidView =
-  | "week"
-  | "3-day"
-  | "day"
-  | "month"
-  | "year"
-  | "agenda"
-  | "scrolling-month"
-  | "scrolling-agenda"
-  | "resources";
+import type { DemoView } from "@demo/demo-model";
 
-export interface SolidLocation {
+export interface SolidLocation<TView extends string = string> {
   readonly date: Temporal.PlainDate;
-  readonly view: SolidView;
+  readonly view: TView;
 }
 
 /**
- * The React demo's views (`demoViewNames` in apps/demo/src/demo-model.ts), each with the nearest
- * view this demo has: the time grid of the same days for the scrolling grids and the timeline, the
- * month grid for a month, the year for a year, and the agenda for the agendas. The resource columns
- * and the scrolling month and agenda are themselves.
+ * Each of the React demo's views (`demoViewNames` in apps/demo/src/demo-model.ts), then the views
+ * that come nearest, for a page that doesn't have it: the time grid of the same days for the
+ * scrolling grids, the resource columns and the timeline, the month grid for the scrolling month,
+ * and the agenda for the scrolling agenda.
  */
-const nearestView: Readonly<Record<string, SolidView>> = {
-  "3-day": "3-day",
-  agenda: "agenda",
-  day: "day",
-  month: "month",
-  resources: "resources",
-  "scrolling-3-day": "3-day",
-  "scrolling-agenda": "scrolling-agenda",
-  "scrolling-day": "day",
-  "scrolling-month": "scrolling-month",
-  "scrolling-week": "week",
-  "timeline-week": "week",
-  week: "week",
-  year: "year",
+const nearestViews: Readonly<Record<DemoView, readonly DemoView[]>> = {
+  "3-day": ["3-day"],
+  agenda: ["agenda"],
+  day: ["day"],
+  month: ["month"],
+  resources: ["resources", "day"],
+  "scrolling-3-day": ["scrolling-3-day", "3-day"],
+  "scrolling-agenda": ["scrolling-agenda", "agenda"],
+  "scrolling-day": ["scrolling-day", "day"],
+  "scrolling-month": ["scrolling-month", "month"],
+  "scrolling-week": ["scrolling-week", "week"],
+  "timeline-week": ["timeline-week", "week"],
+  week: ["week"],
+  year: ["year"],
 };
 
-function viewFor(value: string | null): SolidView | undefined {
-  return value !== null && Object.hasOwn(nearestView, value) ? nearestView[value] : undefined;
+/** The view `value` names, or the nearest of `views`, the views this page registers. */
+export function nearestView<TView extends string>(
+  value: string | null,
+  views: readonly TView[],
+): TView | undefined {
+  if (value === null || !Object.hasOwn(nearestViews, value)) return undefined;
+  return nearestViews[value as DemoView].find((view): view is DemoView & TView =>
+    views.includes(view as DemoView & TView),
+  );
 }
 
 function parseDate(value: string | null): Temporal.PlainDate | undefined {
@@ -54,23 +51,32 @@ function parseDate(value: string | null): Temporal.PlainDate | undefined {
 
 /**
  * Reads `?view=week&date=2026-10-08`, the React demo's format (apps/demo/src/url-state.ts), with
- * the view mapped to the nearest one here. A parameter that's missing or invalid falls back.
+ * the view mapped to the nearest of `views`. A parameter that's missing or invalid falls back.
  */
-export function readSolidLocation(search: string, fallback: SolidLocation): SolidLocation {
+export function readSolidLocation<TView extends string>(
+  search: string,
+  fallback: SolidLocation<TView>,
+  views: readonly TView[],
+): SolidLocation<TView> {
   const params = new URLSearchParams(search);
   return {
     date: parseDate(params.get("date")) ?? fallback.date,
-    view: viewFor(params.get("view")) ?? fallback.view,
+    view: nearestView(params.get("view"), views) ?? fallback.view,
   };
 }
 
 /**
  * Writes the view and date into `href`. A view in the URL that maps to the one shown stays, so
- * `week` comes back as `week` when the visitor returns to React without changing the view here.
+ * `scrolling-week` comes back as itself when the visitor returns to React without changing the
+ * view here.
  */
-export function writeSolidLocation(href: string, { date, view }: SolidLocation): string {
+export function writeSolidLocation<TView extends string>(
+  href: string,
+  { date, view }: SolidLocation<TView>,
+  views: readonly TView[],
+): string {
   const url = new URL(href);
-  if (viewFor(url.searchParams.get("view")) !== view) url.searchParams.set("view", view);
+  if (nearestView(url.searchParams.get("view"), views) !== view) url.searchParams.set("view", view);
   url.searchParams.set("date", date.toString());
   return url.toString();
 }

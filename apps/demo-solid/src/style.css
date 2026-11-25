@@ -1,211 +1,31 @@
-/* Declared first, so the page's styles win over the CSS ui-sdk adds to it. */
+/* The React demo's stylesheet (apps/demo/src/styles.css), on the Solid registry's items. */
 @layer ui-sdk;
 
-/* What an app that installs the registry's Solid items has: Tailwind, and the calendar's theme. */
 @import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
 @import "../../../registry/shared/calendar-theme/calendar-theme.css";
+@import "../../demo/src/annotation-marks.css";
 
 @source "../../../registry/solid";
 @source "../../../registry/shared";
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  color-scheme: light dark;
-  font-family: system-ui, sans-serif;
-  --line: color-mix(in srgb, CanvasText 15%, transparent);
-  --demo-muted: color-mix(in srgb, CanvasText 60%, transparent);
-  --demo-accent: #2563eb;
-  /* The accent for text, lighter on a dark page, where #2563eb has too little contrast. */
-  --accent-text: light-dark(var(--demo-accent), #60a5fa);
-  --refused: #b91c1c;
-}
-
-body {
-  margin: 0;
-  padding: 1.5rem 1rem;
-  background: Canvas;
-  color: CanvasText;
-}
-
-/* Tailwind's preflight leaves headings at the text's weight and links without an underline. */
-h1,
-h2,
-h3 {
-  font-weight: 700;
-}
-
-h1 {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-a {
-  color: var(--accent-text);
-  text-decoration: underline;
-}
-
-.header {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.75rem 1rem;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-/* React and Solid, as the React demo's pill-shaped switch. */
-.switch {
-  display: flex;
-  padding: 0.125rem;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-}
-
-.switch a {
-  padding: 0 0.75rem;
-  border-radius: 999px;
-  color: inherit;
-  font-size: 0.875rem;
-  font-weight: 500;
-  line-height: 1.75rem;
-  text-decoration: none;
-}
-
-.switch a:hover {
-  background: color-mix(in srgb, CanvasText 6%, Canvas);
-}
-
-.switch a[aria-current="page"] {
-  background: color-mix(in srgb, CanvasText 10%, Canvas);
-}
-
-.switch a:focus-visible,
-.agent pre:focus-visible {
-  outline: 2px solid var(--demo-accent);
-  outline-offset: 1px;
-}
-
-.hint {
-  margin: 0 0 1rem;
-  color: var(--demo-muted);
-}
-
-.layout {
-  display: grid;
-  gap: 1.5rem;
-  grid-template-columns: minmax(0, 1fr) minmax(16rem, 22rem);
-  align-items: start;
-}
-
-@media (max-width: 52rem) {
-  .layout {
-    grid-template-columns: minmax(0, 1fr);
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
   }
-}
 
-/* The registry's toolbar, over the view. */
-.toolbar {
-  margin-bottom: 0.75rem;
-}
+  :root {
+    color-scheme: light;
+  }
 
-.side {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  gap: 1.5rem;
-  min-width: 0;
-}
+  .dark {
+    color-scheme: dark;
+  }
 
-.agent button {
-  font: inherit;
-  padding: 0.3rem 0.7rem;
-  border: 1px solid var(--line);
-  border-radius: 0.4rem;
-  background: Canvas;
-  color: inherit;
-  cursor: pointer;
-}
-
-/* The agenda scrolls its days inside the viewport, which renders only the days in view. */
-.viewport:has([data-slot="agenda-view"]) {
-  height: min(36rem, 70dvh);
-  border-top: 1px solid var(--line);
-}
-
-/* The year scrolls its months inside the viewport, and keeps the page around it still. */
-.viewport:has([data-slot="year-view"]) {
-  height: min(42rem, 75dvh);
-  border-top: 1px solid var(--line);
-}
-
-/* The time grid scrolls its hours inside the viewport, under its header and all-day row. */
-.viewport:has([data-slot="time-grid"]) {
-  height: min(42rem, 75dvh);
-  border-top: 1px solid var(--line);
-}
-
-/* The resource columns scroll their hours and resources inside the viewport, under their header. */
-.viewport:has([data-slot="resource-columns"]) {
-  height: min(42rem, 75dvh);
-  border-top: 1px solid var(--line);
-}
-
-/* The month shares the viewport's height between its weeks, as many event lanes as fit. */
-.viewport:has([data-slot="month-view"]),
-.viewport:has([data-slot="scrolling-month"]) {
-  height: min(42rem, 75dvh);
-  border-top: 1px solid var(--line);
-}
-
-.agent {
-  padding: 1rem;
-  border: 1px solid var(--line);
-  border-radius: 0.6rem;
-}
-
-.agent h2 {
-  margin: 0;
-  font-size: 1.1rem;
-}
-
-.agent h3 {
-  margin: 1rem 0 0.4rem;
-  font-size: 0.95rem;
-}
-
-.toggle {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
-}
-
-.agent-actions {
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  margin-top: 0.75rem;
-}
-
-.agent-actions button {
-  text-align: left;
-}
-
-.agent-log {
-  margin: 0;
-  padding-left: 1.25rem;
-  font-size: 0.85rem;
-  list-style: decimal;
-}
-
-.agent-log [data-failed] {
-  color: var(--refused);
-}
-
-.agent pre {
-  max-height: 20rem;
-  margin: 0;
-  overflow: auto;
-  padding: 0.5rem;
-  border-radius: 0.4rem;
-  background: color-mix(in srgb, CanvasText 6%, Canvas);
-  font-size: 0.75rem;
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
 }

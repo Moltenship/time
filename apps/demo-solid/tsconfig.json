@@ -8,7 +8,8 @@
     "paths": {
       "@moltenship/calendar": ["../../packages/calendar-solid/src/index.ts"],
       "@registry/shared/*": ["../../registry/shared/*"],
-      "@registry/*": ["../../registry/solid/*"]
+      "@registry/*": ["../../registry/solid/*"],
+      "@demo/*": ["../demo/src/*"]
     }
   },
   "include": ["src", "tests", "vite.config.ts"]
