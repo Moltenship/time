@@ -8,6 +8,7 @@ import {
   createThreeDayView,
   createWeekView,
 } from "@registry/time-grid-view/time-grid-view";
+import { createYearView } from "@registry/year-view/year-view";
 
 export interface Meeting {
   readonly id: string;
@@ -27,20 +28,21 @@ const adapter = defineEventAdapter<Meeting>()({
 });
 
 /**
- * The registry's week, day, month and agenda (`registry/solid/time-grid-view`,
- * `registry/solid/month-view` and `registry/solid/list-view`), the files `shadcn add` installs into
- * a Solid app, run here from their source. A date in the week's header, or the month's date
- * number, opens the day.
+ * The registry's week, day, month, year and agenda (`registry/solid/time-grid-view`,
+ * `registry/solid/month-view`, `registry/solid/year-view` and `registry/solid/list-view`), the
+ * files `shadcn add` installs into a Solid app, run here from their source. A date in the week's
+ * header, the month's date number, or a date in the year's popover opens the day.
  */
 const week = createWeekView<Meeting>({ dayView: "day" });
 const threeDays = createThreeDayView<Meeting>({ dayView: "day" });
 const day = createDayView<Meeting>();
 const month = createMonthView<Meeting>();
+const year = createYearView<Meeting>();
 const agenda = createAgendaView<Meeting>({ weeks: 2 });
 
 export const Calendar = createCalendar<Meeting>()({
   eventAdapter: adapter,
-  views: [month, week, threeDays, day, agenda],
+  views: [month, year, week, threeDays, day, agenda],
 });
 
 export type View = (typeof Calendar.views)[number]["name"];

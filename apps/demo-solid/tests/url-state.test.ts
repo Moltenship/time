@@ -28,6 +28,7 @@ describe("the Solid demo's view and date in the URL", () => {
     expect(read("?view=week&date=2026-12-24")).toEqual(["week", "2026-12-24"]);
     expect(read("?view=day")[0]).toBe("day");
     expect(read("?view=3-day")[0]).toBe("3-day");
+    expect(read("?view=year&date=2026-12-24")).toEqual(["year", "2026-12-24"]);
   });
 
   test.each([
@@ -37,7 +38,6 @@ describe("the Solid demo's view and date in the URL", () => {
     ["scrolling-day", "day"],
     ["scrolling-3-day", "3-day"],
     ["scrolling-agenda", "agenda"],
-    ["year", "month"],
     ["scrolling-month", "month"],
   ])("shows the nearest view for %s: %s", (view, nearest) => {
     expect(read(`?view=${view}`)[0]).toBe(nearest);
@@ -89,7 +89,7 @@ describe("the Solid demo's view and date in the URL", () => {
       ).searchParams.get("view");
 
     expect(write("?view=scrolling-week", "week")).toBe("scrolling-week");
-    expect(write("?view=year", "month")).toBe("year");
+    expect(write("?view=scrolling-month", "month")).toBe("scrolling-month");
     expect(write("?view=scrolling-week", "month")).toBe("month");
     expect(write("?view=year", "agenda")).toBe("agenda");
   });
