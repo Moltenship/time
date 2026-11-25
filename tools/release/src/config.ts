@@ -33,8 +33,10 @@ export const publishedPackages: readonly PublishedPackage[] = [
   // the region registry and edge arming took calendar-dnd from 33,255 raw and 9,868 gzip bytes to
   // 53,008 and 14,920. Followers that hear the preview and where a drop lands, and followers that
   // only watch, for animations (the Motion guide), took it to 54,473 raw and 15,338 gzip bytes, 99%
-  // of both budgets. 56 and 16 KiB leave the usual headroom.
-  { directory: "calendar-dnd", budgets: { ".": { raw: 56 * KiB, gzip: 16 * KiB } } },
+  // of both budgets. The free drag preview (#282: a copy that follows the pointer, landing boxes, the
+  // settle) took it to 67,026 raw and 18,530 gzip bytes, much of it TSDoc the bundle keeps. 72 and
+  // 20 KiB leave the usual headroom.
+  { directory: "calendar-dnd", budgets: { ".": { raw: 72 * KiB, gzip: 20 * KiB } } },
   // The dnd-kit adapter (#237): 14,526 raw and 4,945 gzip bytes, with dnd-kit left as imports.
   { directory: "calendar-dnd-kit", budgets: { ".": { raw: 15 * KiB, gzip: 5 * KiB } } },
   // 2.0 preview (ui-sdk primitives). Provisional budgets: set both from the first build of their
