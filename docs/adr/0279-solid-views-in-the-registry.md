@@ -34,7 +34,11 @@ Some terms this record uses:
 Version 2.0 moved the calendar's behaviour into framework-free primitives written on ui-sdk and
 added a SolidJS 2.0 integration, `@moltenship/calendar-solid` (ADR 0275). That record left one
 thing open: the registry's views are React only, so a Solid application has a root, parts and
-hooks, and nothing to render with. `apps/demo-solid` draws its two views by hand.
+hooks, and nothing to render with. The Solid demo (`apps/demo-solid`, served at
+<https://moltenship-time-demo.vercel.app/solid/>) draws its two views by hand.
+
+2.0 is in beta: `2.0.0-beta.1` went to npm under the `next` tag on 2026-11-25. The registry's
+items may still change in ways that break an application's copy, which matters for point 5.
 
 The registry today, counted on 2026-11-25:
 
@@ -155,7 +159,7 @@ A Solid application needs four things, none of them `shadcn init`:
        "lib": "@/lib",
        "hooks": "@/hooks"
      },
-     "registries": { "@time": "https://time.molten.sh/r/solid/{name}.json" }
+     "registries": { "@moltenship": "https://time.molten.sh/r/solid/{name}.json" }
    }
    ```
 
@@ -164,9 +168,10 @@ A Solid application needs four things, none of them `shadcn init`:
    with shadcn's neutral values. The calendar's own theme item keeps leaving them out, as today,
    so it never overwrites an application's colours.
 
-With the `registries` entry, the install command is the same in both frameworks:
-`npx shadcn@latest add @time/list-view`. A React application's entry points at
-`https://time.molten.sh/r/{name}.json`. The full URL keeps working:
+The `registries` entry gives the registry a short name, called a namespace. Ours is
+`@moltenship`, the same as the npm scope of the packages. With it, the install command is the
+same in both frameworks: `npx shadcn@latest add @moltenship/list-view`. A React application's
+entry points at `https://time.molten.sh/r/{name}.json`. The full URL keeps working:
 `npx shadcn@latest add https://time.molten.sh/r/solid/list-view.json`.
 
 `shadcn init` also works in a Solid application once the alias exists, but it treats the project
@@ -225,8 +230,9 @@ What it costs:
   too. The a11y suite and the views' tests, about 10,400 lines, are the check.
 - **Applications that already installed the items keep a Base UI copy.** It keeps working: no
   package of ours imports Base UI. They move when they next run `shadcn add --overwrite` for an
-  item, which brings the kit. The migration guide says so, and the change lands inside 2.0 so
-  that there is one migration.
+  item, which brings the kit and replaces their edits to that item's files. The migration guide
+  says so. The React kit lands inside 2.0, while 2.0 is a beta, so an application meets one
+  migration and not a second one after the release.
 - **Differences found by reading ui-sdk's docs,** each with an answer:
   - Base UI's detached triggers (`createHandle`, in the year view and the time grid's
     annotations) become ui-sdk's popup controllers (`createPopoverController`, with a `payload`
@@ -241,8 +247,10 @@ What it costs:
 
 **Icons** are the one part of the kit that is not a twin yet. The React items keep `lucide-react`.
 `lucide-solid` names Solid 1 in its peer range, so the Solid `calendar` item ships the seven icons
-the views use as inline SVG in one file, `icons.tsx`, with the same names. It moves to
-`lucide-solid` when that package supports Solid 2.0.
+the views use as inline SVG in one file, `icons.tsx`, with the same names. The item moves to
+`lucide-solid` when a release of that package accepts `solid-js` 2 in its peer range and its
+icons render in the Solid registry's tests. That is one pull request: the imports change, the
+package joins the item's dependencies, and `icons.tsx` goes.
 
 ### 6. What an agent gains
 
@@ -364,11 +372,12 @@ replace that code:
   its gesture works on wall-clock times across daylight-saving changes, moves between views and
   resources, converts between all-day and timed, and commits through the engine's transactions
   and policies.
-- **Virtualization: later, perhaps.** `createVirtualizer` could replace TanStack Virtual, remove
-  a dependency and bring find-in-page for rows that are not rendered. The React views' scroll
-  anchoring is tuned and tested against TanStack's engine. Changing the engine and adding a
-  framework at once would hide regressions, so the shared controllers start on
-  `@tanstack/virtual-core`, and the swap can be weighed on its own once the Solid views match.
+- **Virtualization: not now.** TanStack Virtual stays, and the shared controllers are written on
+  `@tanstack/virtual-core`. `createVirtualizer` could replace it, remove a dependency and bring
+  find-in-page for rows that are not rendered. The React views' scroll anchoring is tuned and
+  tested against TanStack's engine, and changing the engine while adding a framework would hide
+  regressions. It is something to look at after 2.0, with no commitment and no place in the
+  order of work.
 
 Registry source keeps away from ui-sdk's date entries (`calendar`, `date-picker`, `timeline` and
 the date inputs), as the packages do: dates are the engine's.
@@ -470,7 +479,9 @@ install test, the demo and the docs.
 | K3 | `stylex-calendar-ui`; the `stylex-*` items leave Astryx and Base UI; token values; the StyleX page | K2 | M to L |
 | K4 | The demo's `/stylex/` chrome on ui-sdk and StyleX; `@astryxdesign/*` leaves the repository. Screenshots | K3 | M |
 
-S1 and K1 can run at the same time. K3 and K4 don't block the Solid track.
+S1 and K1 can run at the same time. K3 and K4 don't block the Solid track. Both tracks land
+inside 2.0, before its release: K1 and K2 change what the React items contain, which a beta
+allows.
 
 ### 12. Docs
 
@@ -478,15 +489,40 @@ S1 and K1 can run at the same time. K3 and K4 don't block the Solid track.
   React and Solid code in tabs that share one remembered choice, so picking Solid on one page
   picks it on all. The API pages are already one per framework.
 - **Install commands** are the same text in both tabs when the application's `components.json`
-  names the registry (`npx shadcn@latest add @time/list-view`); the tab changes the
+  names the registry (`npx shadcn@latest add @moltenship/list-view`); the tab changes the
   `components.json` snippet and the full-URL form, by one path segment. Import paths in the
   examples are the same (`@/components/calendar/list-view/agenda-view`); the package name differs.
 - **A later React and Solid switch in the sidebar** sets the same remembered choice and hides the
   other tab. Nothing in the registry has to change for it: no item is renamed and no URL moves.
 - **Live examples** in the docs stay React, since the docs site is a React application. Solid tabs
-  show source and link to the Solid demo. Whether the site should also run Solid examples is left
-  to the owner.
+  show source and link to the Solid demo at <https://moltenship-time-demo.vercel.app/solid/>.
+  Solid examples that run on the docs site may come later; this record plans none.
 - Until every Solid view exists, the Solid tab of a views page without one says so.
+
+### 13. Decided by the owner
+
+The first version of this record put eleven questions to the owner. The answers, given on
+2026-11-25, are part of the decision, and each is written into the point it belongs to. No
+question is left open.
+
+1. Merging this record accepts it.
+2. The calendar's controls stop being the application's own `components/ui` files. They follow
+   the application's tokens only, and the application owns the kit's files (point 5).
+3. The React kit, K1 and K2, lands inside 2.0, so there is one migration. Changing what the items
+   contain is acceptable now because 2.0 is a beta (points 5 and 11).
+4. `@moltenship/calendar-solid` is the Solid facade, as `@moltenship/calendar` is the React one
+   (point 3).
+5. The registry's namespace is `@moltenship`, like the npm scope (point 4).
+6. Each registry gets a `base-tokens` item (point 4).
+7. The Solid items ship seven icons as inline SVG until `lucide-solid` supports Solid 2.0
+   (point 5).
+8. The demo's `/stylex/` page leaves Astryx in K4, the last step of the kit track (points 7
+   and 11).
+9. Solid StyleX views are out of scope for 2.0 (point 7).
+10. The docs show Solid source and link to the Solid demo. Solid examples running on the docs
+    site are not planned (point 12).
+11. TanStack Virtual stays. `createVirtualizer` is a possibility after 2.0, with no commitment
+    (point 9).
 
 ## Alternatives
 
@@ -610,8 +646,10 @@ The application was the official Solid 2.0 starter with Tailwind
    files under `src/shared/components/calendar/`, imports rewritten to that alias, the CSS file
    written as a file, and no React package installed. What is then missing is the base tokens,
    which is why point 4 adds `base-tokens`.
-7. With `"registries": { "@time": "<local url>/r/solid/{name}.json" }` in `components.json`,
-   `shadcn add @time/list-view` **works** and installs the same eight files.
+7. With `"registries": { "@moltenship": "<local url>/r/solid/{name}.json" }` in
+   `components.json`, `shadcn add @moltenship/list-view` **works** and installs the same eight
+   files. The namespace has the same name as the npm scope of the packages the item depends on,
+   and the CLI keeps the two apart.
 8. Running `add` again: files that are identical are skipped and the theme is not merged twice. A
    file the application edited makes the CLI ask before overwriting, even with `--yes`; with
    `--overwrite` it is replaced. This is the CLI's behaviour for React items too.
