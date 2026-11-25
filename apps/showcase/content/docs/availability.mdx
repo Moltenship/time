@@ -106,6 +106,17 @@ as `invalid-availability`. The calendar never throws over them.
 
 </React>
 
+<Solid>
+
+<SolidExample
+  name="availability-timeline"
+  title="Rooms and people with their own hours"
+  size="h-[20rem]"
+  caption="Live, in your time zone. Each row shades its own hours: Orchid's 8 to 8, Alex's on Los Angeles time, Lee's on Kolkata time. Drag a meeting onto Orchid's interview, and the room takes it back."
+/>
+
+</Solid>
+
 Resources follow the calendar's hours unless they have their own:
 
 <React>
@@ -148,22 +159,9 @@ const resources = [
 - **The same instant.** Moving an event to a resource in another time zone keeps its instant: a
   9:00 call in New York stays 9:00 in New York, which is 14:00 for London.
 
-<React>
-
 - **One time axis.** Resource columns and the timeline keep a single axis in the display time
   zone. Only the shading follows each resource's clock, and its header shows its local time and
   UTC offset, such as "7:18 AM GMT-7", while that clock differs from the display time zone's.
-
-</React>
-
-<Solid>
-
-- **One time axis.** The [resource timeline](/docs/views/resource-timeline) keeps a single axis in
-  the display time zone. Only the shading follows each resource's clock, and its row's header shows
-  its local time and UTC offset, such as "7:18 AM GMT-7", while that clock differs from the display
-  time zone's.
-
-</Solid>
 
 ## Customize the shading
 
@@ -193,6 +191,15 @@ where it meets open time, so CSS can restyle it:
 | `data-label`                            | The exception's `label`, such as "Company holiday"                                                                                                      |
 | `data-opens-before`, `data-opens-after` | Present where open time meets the band's start or end in the view                                                                                       |
 | `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                                                                                  |
+
+<SolidExample
+  name="shading-recipes"
+  title="The shading recipes"
+  size="h-[32rem]"
+  caption="Live, in your time zone. Switch the recipe, and the theme, to see each in light and dark."
+/>
+
+<include meta='title="shading-recipes.tsx"'>../examples/solid/shading-recipes.tsx#page</include>
 
 </Solid>
 
@@ -283,9 +290,8 @@ time.
 
 <include meta='title="views.tsx"'>../examples/solid/shading-render.tsx#render</include>
 
-The week, day, month, year and resource timeline take `renderUnavailable`, and so do the scrolling
-week, day and
-month. The agendas don't shade closed time.
+The week, day, month, year, resource columns and resource timeline take `renderUnavailable`, and so
+do the scrolling week, day and month. The agendas don't shade closed time.
 
 </Solid>
 
@@ -373,9 +379,11 @@ resource:
 
 <Solid>
 
-Set `resourceStatus: true` on the [resource timeline](/docs/views/resource-timeline) to show a badge
-on each resource, as the [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=timeline-week)
-does:
+Set `resourceStatus: true` on the [resource columns](/docs/views/resource-columns) or the
+[timeline](/docs/views/resource-timeline) to show a badge on each resource, as the timeline in
+[People and rooms](#people-and-rooms) does:
+
+<include meta='title="calendar.tsx"'>../examples/solid/availability-timeline.tsx#status</include>
 
 </Solid>
 
@@ -447,9 +455,12 @@ The draft's own event never conflicts with itself, and events that only touch do
 
 <Solid>
 
-While someone places an event, by dragging or with the keyboard, your UI can say for each resource
-whether it's busy then: an event overlaps the draft, the time is outside its hours, or it's free.
-The draft's own event never conflicts with itself, and events that only touch don't conflict.
+While you place an event, by dragging or with the keyboard, each resource's header says whether
+it's busy then: **Busy** when an event overlaps the draft, **Outside hours** when the time is
+outside its hours, **Free** otherwise. The resource columns and the timeline show it with
+`resourceStatus` on: move an event in the timeline in [People and rooms](#people-and-rooms), and
+watch the row headers. The draft's own event never conflicts with itself, and events that only
+touch don't conflict.
 
 </Solid>
 It all rests on one function. `busyResources` answers for many resources at once, with one query
@@ -658,6 +669,9 @@ const policies = [
 </React>
 
 <Solid>
+
+The timeline in [People and rooms](#people-and-rooms) has these policies: drag a meeting onto
+Orchid's interview, and the room blocks it, or onto one of Alex's or Lee's, and it saves, flagged.
 
 <include meta='title="conflicts.ts"'>../examples/solid/conflicts.ts#conflicts</include>
 

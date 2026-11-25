@@ -110,7 +110,8 @@ the layout (see [Right-to-left](#right-to-left)).
 In resource columns, each resource's days come before the next resource's, and inside a column the
 week and day keys apply.
 
-Shift+Enter opens the view named `day`. In the week view it needs the
+Shift+Enter opens the view named `day`; in the resource timeline it expands or collapses a group
+instead. In the week view it needs the
 [`dayView`](/docs/views/week-and-day#options) option, and the day view has nothing to open.
 Enter on an event clicks its element, so open your own popover or dialog from the element's
 `onClick`. The table shows left-to-right calendars; with `direction="rtl"` on `Root`, ← and → swap
@@ -120,7 +121,7 @@ so they follow the layout (see [Right-to-left](#right-to-left)).
 
 ### Changing events
 
-With `onEventChange` on `Root`, <React>the month, week, day, resource columns, and resource timeline views</React><Solid>the registry's month, week, day and resource timeline, and a view that binds `useCalendarKeyboard`,</Solid>
+With `onEventChange` on `Root`, <React>the month, week, day, resource columns, and resource timeline views</React><Solid>the registry's month, week, day, resource columns and resource timeline, and a view that binds `useCalendarKeyboard`,</Solid>
 can change events from the keyboard, just as a drag does; without it, Space picks nothing up and
 is left to the focused element. The year view shows events without
 changing them, so Space there opens a day's events. Moving a picked-up event into another
