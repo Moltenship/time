@@ -438,8 +438,8 @@ src/components/calendar
     └── use-agenda-virtualizer.ts
 ```
 
-The `.styles.ts`, label, row, key map and virtualizer files are plain TypeScript, the same files
-React's registry installs, so the Solid agenda looks, reads and moves as React's does. `shadcn add`
+The `.styles.ts`, label, row, key map and virtualizer files are plain TypeScript, with no JSX:
+a view's classes, its words and its keys are each in one file. `shadcn add`
 adds the npm packages the files import, such as `@tanstack/virtual-core`, if your app doesn't have
 them yet. Each item names the range of `@moltenship/calendar-solid` it's built for, so the CLI
 installs a version the files compile against.

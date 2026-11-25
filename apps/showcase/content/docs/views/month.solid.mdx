@@ -3,8 +3,15 @@ title: Month
 description: The Solid month, a grid of weeks with multi-day bars and a "+N more" popover, from the Solid registry.
 ---
 
-Try it in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=month): it opens on
-the month.
+<SolidExample
+  name="month"
+  title="The month view"
+  size="h-[34rem]"
+  caption="Live. The page that Add it builds, with two events in October 2026. Drag one to move it."
+/>
+
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=month) opens on the month,
+with more events and a toolbar.
 
 `createMonthView` shows every week that touches the month, starting on `weekRules.firstDay`. Most
 months need five rows; some need four or six.
@@ -47,7 +54,8 @@ Pass them to `createMonthView`, or per root in `viewOptions`, as the page above 
       description: (
         <>
           The color for each event, one of <code>calendarEventColors</code> in{" "}
-          <code>event-colors.ts</code>, which <code>calendar-theme</code> installs.
+          <code>event-colors.ts</code>, which <code>calendar-theme</code> installs. See{" "}
+          <a href="/docs/theming#event-colors">event colors</a>.
         </>
       ),
     },

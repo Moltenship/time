@@ -40,13 +40,14 @@ The calendar's tokens, and the files of the Solid registry that read each one to
 
 | Variable                      | Used for                                              | Tailwind class                    | Read by                               |
 | ----------------------------- | ----------------------------------------------------- | --------------------------------- | ------------------------------------- |
-| `--calendar-grid`             | Lines between days and hours                          | `border-calendar-grid`            | The agenda                            |
-| `--calendar-today`            | Today's date marker                                   | `bg-calendar-today`               | The agenda, the mini month            |
-| `--calendar-today-foreground` | Text on today's marker                                | `text-calendar-today-foreground`  | The agenda, the mini month            |
-| `--calendar-selection`        | Selected days and ranges, and the dates in view       | `bg-calendar-selection`           | The mini month                        |
-| `--calendar-event`            | Event background                                      | `bg-calendar-event`               | The agenda, the event chip            |
-| `--calendar-event-foreground` | Event text                                            | `text-calendar-event-foreground`  | The agenda, the event chip            |
-| `--calendar-event-border`     | Event accent edge, and the agenda's color dot         | `border-calendar-event-border`    | The agenda, the event chip            |
+| `--calendar-grid`             | Lines between days and hours                          | `border-calendar-grid`            | The month, the agenda                 |
+| `--calendar-today`            | Today's date marker                                   | `bg-calendar-today`               | The month, the agenda, the mini month |
+| `--calendar-today-foreground` | Text on today's marker                                | `text-calendar-today-foreground`  | The month, the agenda, the mini month |
+| `--calendar-selection`        | Selected days and ranges, and the dates in view       | `bg-calendar-selection`           | The month, the mini month             |
+| `--calendar-event`            | Event background                                      | `bg-calendar-event`               | The month, the agenda, the event chip |
+| `--calendar-event-foreground` | Event text                                            | `text-calendar-event-foreground`  | The month, the agenda, the event chip |
+| `--calendar-event-border`     | Event accent edge, and an event's color dot           | `border-calendar-event-border`    | The month, the agenda, the event chip |
+| `--calendar-closed`           | Closed days in a month or a year                      | `bg-calendar-closed`              | The month                             |
 | `--calendar-busy`             | A resource status's busy dot                          | `bg-calendar-busy`                | The resource status                   |
 | `--calendar-free`             | A resource status's free dot                          | `bg-calendar-free`                | The resource status                   |
 | `--calendar-invalid`          | A preview the policies would reject                   | `outline-calendar-invalid`        | The event chip, the previews' classes |
@@ -56,13 +57,12 @@ The calendar's tokens, and the files of the Solid registry that read each one to
 | `--calendar-now`              | The current-time line                                 | `bg-calendar-now`                 | No file yet                           |
 | `--calendar-weekend`          | Weekend background                                    | `bg-calendar-weekend`             | No file yet                           |
 | `--calendar-unavailable`      | Closed time in time grids and timelines               | `bg-calendar-unavailable`         | No file yet                           |
-| `--calendar-closed`           | Closed days in a month or a year                      | `bg-calendar-closed`              | No file yet                           |
 | `--calendar-hour-height`      | Height of one hour in time grids (`3rem`)             | `h-(--calendar-hour-height)`      | No file yet                           |
 | `--calendar-event-padding-x`  | Padding at the sides of time-grid events (`0.375rem`) | `px-(--calendar-event-padding-x)` | No file yet                           |
 | `--calendar-event-padding-y`  | Padding above and below time-grid events (`0.25rem`)  | `py-(--calendar-event-padding-y)` | No file yet                           |
 
-The tokens no file reads yet belong to views the registry doesn't have in Solid: grids of hours,
-and months with weekends and closed days. The theme defines them all the same, so a
+The tokens no file reads yet belong to views the registry doesn't have in Solid, such as the week's
+and the day's grids of hours and the resource timeline. The theme defines them all the same, so a
 [view you write](/docs/views/custom-views) uses their classes today and matches the registry's
 views when they arrive.
 
@@ -124,14 +124,14 @@ The names come from `event-colors.ts` as `calendarEventColors`, with the type `C
 
 ### Choosing a color per event
 
-The agenda takes a `getEventColor` option: a function from your event to a color name. Pass it when
-you create the view:
+The month and the agenda each take a `getEventColor` option: a function from your event to a color
+name. Pass it when you create the view:
 
 <include meta='title="calendar-page.tsx"'>../examples/solid/calendar-page.tsx#view</include>
 
 Without `getEventColor`, events use the default event tokens. To set it for one calendar, pass it
 in `viewOptions` on `Root`, as [Options](/docs/views/agenda#options) shows for the agenda's other
-options.
+options. The month's [options](/docs/views/month#options) work the same way.
 
 ### Adding a color
 
@@ -157,11 +157,14 @@ each control keeps them in a `.styles.ts` file beside it, apart from its behavio
 | `ui/badge.styles.ts`         | `badgeVariants`: the badge's base classes and its four variants                       |
 | `ui/tooltip.styles.ts`       | The bubble's and the arrow's classes, and `tooltipDefaults`: the delay and the offset |
 | `ui/select.styles.ts`        | A class list for each part of the select, and `selectDefaults`: where the list opens  |
+| `ui/popover.styles.ts`       | The panel's and the title's classes, and `popoverDefaults`: the gap to the trigger    |
 | `calendar-toolbar.styles.ts` | The toolbar's layout, its title, and the view switcher's trigger                      |
 | `mini-month.styles.ts`       | The mini month's grid, its days, today and the band of dates in view                  |
 | `event-chip.styles.ts`       | The event chip, in every state                                                        |
 | `resource-status.styles.ts`  | A resource's status badge and its dot                                                 |
 | `preview-state.styles.ts`    | The outline of a draft the policies would reject or flag                              |
+| `unavailable-time.styles.ts` | Where the shading of closed time sits, behind the events                              |
+| `month-view/month.styles.ts` | The month's grid, its days and dates, its events, and the "+N more" list              |
 | `list-view/agenda.styles.ts` | The agenda's days and rows                                                            |
 
 The paths are from `components/calendar/`. These files are plain TypeScript: strings of classes,

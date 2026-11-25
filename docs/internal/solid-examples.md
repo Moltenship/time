@@ -21,13 +21,13 @@ A step that adds a view adds its example in the same PR:
    ```tsx
    import "./registry.css";
 
-   export { MonthPage as default } from "../month-page";
+   export { WeekPage as default } from "../week-page";
    ```
 
 3. Show it on the view's page, in Solid's set alone (`page.solid.mdx`):
 
    ```mdx
-   <SolidExample name="month" title="The month view" size="h-[34rem]" caption="Live. Drag an event to another day." />
+   <SolidExample name="week" title="The week view" size="h-[34rem]" caption="Live. Drag an event to another day." />
    ```
 
    `title` is the frame's accessible name, and `size` is its height, set before the example loads
