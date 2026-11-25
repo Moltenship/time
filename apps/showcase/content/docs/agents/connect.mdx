@@ -130,15 +130,20 @@ Then, in the browser's console:
 
 ```js
 agent.snapshot();
-// [{ ref: "c1", component: "calendar", label: "Team calendar", view: "week", … }]
+// [
+//   { ref: "c1", component: "button", label: "Today", … },
+//   …,
+//   { ref: "c6", component: "select", label: "View", value: "week", … },
+//   { ref: "c7", component: "calendar", label: "Team calendar", view: "week", … },
+// ]
 
 const calendar = { ref: "Team calendar" };
 
 await agent.act({ steps: [{ ...calendar, action: "describeCalendar" }] });
-// { ok: true, steps: [{ step: 0, ref: "c1", result: { today: "2026-10-06", views: […], … } }], … }
+// { ok: true, steps: [{ step: 0, ref: "c7", result: { today: "2026-10-06", views: […], … } }], … }
 
 await agent.act({ steps: [{ ...calendar, action: "listEvents" }] });
-// { ok: true, steps: [{ step: 0, ref: "c1", result: [{ id: "review", title: "Design review", … }] }], … }
+// { ok: true, steps: [{ step: 0, ref: "c7", result: [{ id: "review", title: "Design review", … }] }], … }
 
 await agent.act({
   steps: [
@@ -149,7 +154,7 @@ await agent.act({
     },
   ],
 });
-// { ok: true, steps: [{ step: 0, ref: "c1", result: { changeId: "change-1", status: "saved", … } }], … }
+// { ok: true, steps: [{ step: 0, ref: "c7", result: { changeId: "change-1", status: "saved", … } }], … }
 ```
 
 An action takes one object, never a list of values. `args: ["review", "2026-10-09T10:00"]` fails,
@@ -160,7 +165,9 @@ calendar-agent-invalid-arguments: moveEvent takes { eventId: ID, start: ISO date
 ```
 
 `ref` takes the calendar's label, its ref from the snapshot, or its kind, `"calendar"`. A name that
-fits two components fails the step and lists both, so use the ref then.
+fits two components fails the step and lists both, so use the ref then. The registry's toolbar
+adds its buttons and its view select to the snapshot, ahead of the calendar, so the calendar's ref
+depends on what else is on the page. Its label doesn't.
 
 In the object `snapshot()` returns, `anchorDate` is a `Temporal.PlainDate`. It becomes the string
 `"2026-10-08"` when the snapshot is sent as JSON, which is how a model gets it.
@@ -189,8 +196,8 @@ agent reads, and the steps after it don't run:
 ```json
 {
   "ok": false,
-  "error": { "step": 1, "message": "The app refused moveEvent on c1." },
-  "steps": [{ "step": 0, "ref": "c1" }],
+  "error": { "step": 1, "message": "The app refused moveEvent on c7." },
+  "steps": [{ "step": 0, "ref": "c7" }],
   "appeared": [],
   "values": {}
 }

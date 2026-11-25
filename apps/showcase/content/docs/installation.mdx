@@ -240,6 +240,12 @@ Tailwind in your global CSS, so your styles and Tailwind's win over it:
 @import "tailwindcss";
 ```
 
+The view select's list and the toolbar's tooltips open in the browser's top layer, through the
+Popover API: Chrome and Edge 114, Safari 17 and Firefox 125 or later. In an older browser they
+render at the end of the page instead, and a server-rendered page doesn't hydrate them cleanly.
+The toolbar's tooltips open after 400 ms; change `tooltipDefaults` in
+`components/calendar/ui/tooltip.styles.ts`, or pass `delay` to a `Tooltip`.
+
 </Step>
 <Step>
 

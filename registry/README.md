@@ -40,8 +40,10 @@ that `tools/registry` checks:
   CSS, inside `@layer base` as in the file. The stock shadcn tokens the file also sets stay out: a
   shadcn app has its own. No manifest sets `cssVars` or `css` itself.
 - `calendar-full` is a `registry:item` that owns no files and installs every other item.
-- A file under `shared/` is plain TypeScript (`.ts`) with no framework in it: no React, Solid, Base
-  UI, Astryx or ui-sdk renderer, and no `@registry/` import outside `shared/`. An item lists the
+- A file under `shared/` is plain TypeScript (`.ts`) with no framework in it. It imports other
+  shared files and only the framework-free packages in `sharedFilePackages`
+  (`tools/registry/src/config.ts`): no React, Solid, Base UI or ui-sdk, and no item's own file. A
+  package joins that list when a shared file needs it and it imports no framework. An item lists the
   shared files it installs among its own `files`, with their targets. `calendar-ui` installs
   `shared/calendar-ui/<control>.styles.ts`, the class strings each control's look comes from, so
   another framework's kit can install the same look.

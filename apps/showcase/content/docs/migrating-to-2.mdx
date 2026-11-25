@@ -228,13 +228,20 @@ app's `components/ui`: they look the same in every app, and you restyle them in 
    @import "tailwindcss";
    ```
 
+   The view select's list and the toolbar's tooltips open in the browser's top layer, through the
+   Popover API, so the registry's items now need Chrome and Edge 114, Safari 17 or Firefox 125. In
+   an older browser they render at the end of the page, and a server-rendered page doesn't
+   hydrate them cleanly.
+
 3. If you restyled the calendar's buttons, badges, tooltips or the view switcher through
    `components/ui`, make those changes in `components/calendar/ui/` instead.
 
 An [agent bridge](/docs/agents/connect) now lists the toolbar's buttons and the view select
 beside the calendar, as `button` and `select` entries, and your `allow` hears the steps an agent
-takes on them. The toolbar's tooltips no longer need a `TooltipProvider`. The week and day views' event tooltips,
-the popovers and the dialogs still use shadcn's components, so keep the provider if you use
+takes on them. The toolbar's tooltips no longer need a `TooltipProvider`, and they don't follow
+its `delay`: they open after 400 ms, which `tooltipDefaults` in
+`components/calendar/ui/tooltip.styles.ts` sets. The week and day views' event tooltips, the
+popovers and the dialogs still use shadcn's components, so keep the provider if you use
 `time-grid-view`. The `stylex-` items don't change.
 
 ## Name the calendar
