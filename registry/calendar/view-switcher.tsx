@@ -32,8 +32,7 @@ export function ViewSwitcher<TView extends string>({
 }: ViewSwitcherProps<TView>) {
   return (
     <Select
-      // ui-sdk's select takes a mutable array.
-      items={[...options]}
+      items={options}
       value={value}
       onValueChange={(next) => {
         const option = options.find((candidate) => candidate.value === next);

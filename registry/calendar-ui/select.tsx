@@ -1,5 +1,7 @@
+"use client";
+
 import {
-  Select,
+  Select as SelectRoot,
   SelectContent as SelectContentPart,
   SelectGroup as SelectGroupPart,
   SelectGroupLabel as SelectGroupLabelPart,
@@ -11,7 +13,7 @@ import {
 } from "@ui-sdk/react/select";
 import { cn } from "cn";
 import { CheckIcon, ChevronDownIcon } from "lucide-react";
-import type { ComponentProps, ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import {
   selectContentClassName,
@@ -26,13 +28,54 @@ import {
   selectValueClassName,
 } from "@registry/shared/calendar-ui/select.styles";
 
-/** A part's props with plain class names and content, as the kit's parts take them. */
-type KitProps<T> = Omit<T, "children" | "className"> & {
+/** An option as `items` lists it: what the trigger shows, and the value it stands for. */
+export interface SelectItemData<TValue extends string = string> {
+  readonly label: string;
+  readonly value: TValue;
+}
+
+/**
+ * What the views pass a select. The names are shadcn's and Base UI's, so an app can make this file
+ * render its own select instead (see "Use your own controls" in the theming docs).
+ */
+export interface SelectProps<TValue extends string = string> {
+  readonly children?: ReactNode;
+  readonly defaultValue?: TValue;
+  readonly disabled?: boolean;
+  /** Every option, so the trigger shows the chosen one's label before the list first opens. */
+  readonly items?: readonly SelectItemData<TValue>[];
+  readonly name?: string;
+  /** The chosen value. A select with a value never clears it, so this never hears `null`. */
+  readonly onValueChange?: (value: TValue) => void;
+  readonly value?: TValue;
+}
+
+/** One value from a list in a popup. Typing on the trigger picks the option whose label matches. */
+function Select<TValue extends string = string>({
+  children,
+  items,
+  onValueChange,
+  ...props
+}: SelectProps<TValue>) {
+  return (
+    <SelectRoot<TValue>
+      items={items === undefined ? undefined : [...items]}
+      onValueChange={(value) => {
+        if (value !== null) onValueChange?.(value);
+      }}
+      {...props}
+    >
+      {children}
+    </SelectRoot>
+  );
+}
+
+export interface SelectTriggerProps {
+  readonly "aria-label"?: string;
+  readonly "aria-labelledby"?: string;
   readonly children?: ReactNode;
   readonly className?: string;
-};
-
-export interface SelectTriggerProps extends KitProps<ComponentProps<typeof SelectTriggerPart>> {
+  readonly id?: string;
   readonly size?: "default" | "sm";
 }
 
@@ -50,8 +93,25 @@ function SelectTrigger({ children, className, size = "default", ...props }: Sele
   );
 }
 
-function SelectValue({ className, ...props }: KitProps<ComponentProps<typeof SelectValuePart>>) {
+export interface SelectValueProps {
+  readonly className?: string;
+  /** What the trigger shows while nothing is chosen. */
+  readonly placeholder?: string;
+}
+
+/** The chosen option's label, from `items`. */
+function SelectValue({ className, ...props }: SelectValueProps) {
   return <SelectValuePart className={cn(selectValueClassName, className)} {...props} />;
+}
+
+export interface SelectContentProps {
+  readonly align?: "center" | "end" | "start";
+  /** Whether the list opens with the chosen option over the trigger, as a native select's does. */
+  readonly alignItemWithTrigger?: boolean;
+  readonly children?: ReactNode;
+  readonly className?: string;
+  readonly side?: "bottom" | "top";
+  readonly sideOffset?: number;
 }
 
 /** The list, below the trigger unless `alignItemWithTrigger` puts the chosen item over it. */
@@ -60,7 +120,7 @@ function SelectContent({
   className,
   sideOffset = 4,
   ...props
-}: KitProps<ComponentProps<typeof SelectContentPart>>) {
+}: SelectContentProps) {
   return (
     <SelectContentPart
       alignItemWithTrigger={alignItemWithTrigger}
@@ -72,23 +132,30 @@ function SelectContent({
   );
 }
 
-function SelectGroup({ className, ...props }: KitProps<ComponentProps<typeof SelectGroupPart>>) {
+export interface SelectGroupProps {
+  readonly children?: ReactNode;
+  readonly className?: string;
+}
+
+function SelectGroup({ className, ...props }: SelectGroupProps) {
   return <SelectGroupPart className={cn(selectGroupClassName, className)} {...props} />;
 }
 
-function SelectGroupLabel({
-  className,
-  ...props
-}: KitProps<ComponentProps<typeof SelectGroupLabelPart>>) {
+function SelectGroupLabel({ className, ...props }: SelectGroupProps) {
   return <SelectGroupLabelPart className={cn(selectGroupLabelClassName, className)} {...props} />;
 }
 
+export interface SelectItemProps {
+  readonly children?: ReactNode;
+  readonly className?: string;
+  readonly disabled?: boolean;
+  /** What typing matches and the trigger shows, when the children hold more than the label. */
+  readonly label?: string;
+  readonly value: string;
+}
+
 /** An option, with a check at its end while it is chosen. */
-function SelectItem({
-  children,
-  className,
-  ...props
-}: KitProps<ComponentProps<typeof SelectItemPart>>) {
+function SelectItem({ children, className, ...props }: SelectItemProps) {
   return (
     <SelectItemPart className={cn(selectItemClassName, className)} {...props}>
       <span className={selectItemTextClassName}>{children}</span>
@@ -99,11 +166,8 @@ function SelectItem({
   );
 }
 
-function SelectSeparator({
-  className,
-  ...props
-}: KitProps<ComponentProps<typeof SelectSeparatorPart>>) {
-  return <SelectSeparatorPart className={cn(selectSeparatorClassName, className)} {...props} />;
+function SelectSeparator({ className }: { readonly className?: string }) {
+  return <SelectSeparatorPart className={cn(selectSeparatorClassName, className)} />;
 }
 
 export {
