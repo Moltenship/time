@@ -1,5 +1,5 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
 
@@ -23,10 +23,11 @@ const solidItems = readdirSync(solid).filter((name) =>
   existsSync(join(solid, name, "registry-item.json")),
 );
 
-test("the Solid registry has the items ported so far", () => {
+test("the Solid registry has every React item but the StyleX ones", () => {
   expect(solidItems.toSorted()).toEqual([
     "base-tokens",
     "calendar",
+    "calendar-full",
     "calendar-history-toast",
     "calendar-theme",
     "calendar-ui",
@@ -41,6 +42,55 @@ test("the Solid registry has the items ported so far", () => {
     "time-grid-view",
     "year-view",
   ]);
+});
+
+/** The modules a file imports for their values: no `import type`, nothing in a comment. */
+function valueImports(file: string): string[] {
+  const code = readFileSync(file, "utf8")
+    .replaceAll(/\/\*[\s\S]*?\*\//gu, "")
+    .replaceAll(/^\s*\/\/.*$/gmu, "");
+  return [...code.matchAll(/^\s*import\s+(?!type\b)(?:[^;]*?\sfrom\s+)?["']([^"']+)["']/gmu)].map(
+    (match) => match[1]!,
+  );
+}
+
+/** The a11y run's Solid files, and the helpers beside them they import, by path. */
+function a11yFiles(): string[] {
+  const root = join(registry, "..", "tools/a11y/tests/solid");
+  const queue = readdirSync(root, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && entry.name.endsWith(".a11y.tsx"))
+    .map((entry) => join(entry.parentPath, entry.name));
+  const seen = new Set<string>();
+  while (queue.length > 0) {
+    const file = queue.pop()!;
+    if (seen.has(file)) continue;
+    seen.add(file);
+    for (const specifier of valueImports(file).filter((name) => name.startsWith("."))) {
+      const base = join(dirname(file), specifier);
+      const found = [".tsx", ".ts", ""].map((ending) => base + ending).find(existsSync);
+      // Not the Solid demo, which registers every view whether its tests draw each or not.
+      if (found?.startsWith(root)) queue.push(found);
+    }
+  }
+  return [...seen];
+}
+
+test("the Solid a11y group renders every Solid item that draws something", () => {
+  const imported = new Set(
+    a11yFiles()
+      .flatMap(valueImports)
+      .filter((name) => name.startsWith("@registry/"))
+      .map((name) => `registry/solid/${name.slice("@registry/".length)}.tsx`),
+  );
+  const components = (name: string) =>
+    (manifestOf(join(solid, name)).files ?? [])
+      .map(({ path }) => path)
+      .filter((path) => path.startsWith(`registry/solid/${name}/`) && path.endsWith(".tsx"));
+  const drawn = solidItems.filter((name) => components(name).length > 0);
+  const untested = drawn.filter((name) => !components(name).some((path) => imported.has(path)));
+
+  expect(drawn.length).toBeGreaterThan(10);
+  expect(untested).toEqual([]);
 });
 
 describe.each(solidItems.filter((name) => existsSync(join(registry, name, "registry-item.json"))))(

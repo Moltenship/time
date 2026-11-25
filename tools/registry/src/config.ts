@@ -87,8 +87,7 @@ export const solidRegistry: RegistryFramework = {
   consumerPackages: new Set(["solid-js", "@solidjs/web"]),
   facade: "@moltenship/calendar-solid",
   useClient: false,
-  // `calendar-full` comes once every Solid view exists (ADR 0279, S9).
-  flavours: [{ prefix: "", fullItem: null }],
+  flavours: [{ prefix: "", fullItem: "calendar-full" }],
 };
 
 export const registryFrameworks: readonly RegistryFramework[] = [reactRegistry, solidRegistry];

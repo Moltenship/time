@@ -324,17 +324,18 @@ interface Scenario {
 
 /**
  * What the Solid demo can't match. It has no UI switch, as StyleX is a React page's, so the top
- * bar's controls after it sit further right. Its boxes are compared by size.
+ * bar's controls after it sit further right: a box may move sideways, and must keep its size and
+ * its top.
  */
 function notInSolid(line: string) {
   if (/^only in Tailwind: (?:group: UI|a: UI, )/u.test(line)) return true;
   const box =
-    /^.+: box is [\d.]+ [\d.]+ ([\d.]+) ([\d.]+) in Tailwind, [\d.]+ [\d.]+ ([\d.]+) ([\d.]+) in Solid$/u.exec(
+    /^.+: box is [\d.]+ ([\d.]+) ([\d.]+) ([\d.]+) in Tailwind, [\d.]+ ([\d.]+) ([\d.]+) ([\d.]+) in Solid$/u.exec(
       line,
     );
   if (box === null) return false;
-  const [, width, height, solidWidth, solidHeight] = box;
-  return width === solidWidth && height === solidHeight;
+  const [, top, width, height, solidTop, solidWidth, solidHeight] = box;
+  return top === solidTop && width === solidWidth && height === solidHeight;
 }
 
 /**

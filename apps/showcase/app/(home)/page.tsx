@@ -140,12 +140,8 @@ const frameworkRows = [
   ["Keyboard navigation in a view", "Yes", "Yes"],
   ["Drag, resize and create", "Yes", "Yes"],
   ["Undo and redo", "A hook and shortcuts", "A hook and shortcuts"],
-  [
-    "Ready-made views",
-    "shadcn/ui or StyleX source",
-    "Week, day, month, year and agenda, the scrolling week, day, month and agenda, and resource columns",
-  ],
-  ["Testing package", "Yes", "Not yet"],
+  ["Ready-made views", "shadcn/ui or StyleX source", "Every view, as Tailwind CSS source"],
+  ["Testing package", "Yes", "No"],
 ] as const;
 
 const agentDocs = [
@@ -180,16 +176,15 @@ export default async function HomePage() {
         />
         <div className="mx-auto flex max-w-3xl flex-col items-center px-6 pt-20 pb-14 text-center sm:pt-28">
           <p className="rounded-full border bg-fd-background px-3 py-1 text-xs font-medium text-fd-muted-foreground">
-            {installTag === undefined ? "2.0" : "2.0 pre-release"} · React 19 · SolidJS 2 preview
+            {installTag === undefined ? "2.0" : "2.0 pre-release"} · React 19 · SolidJS 2
           </p>
           <h1 className="mt-6 text-4xl font-semibold tracking-tight text-balance sm:text-6xl">
             {siteHeadline}
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-balance text-fd-muted-foreground">
-            One engine computes time zones, daylight saving time and recurrence. React renders it
-            with views you copy and own. A SolidJS 2 package, a preview, renders it too, with a
-            week, a day, a month, a year and an agenda to copy so far. An AI agent can read the
-            calendar and change it, under rules your app sets.
+            One engine computes time zones, daylight saving time and recurrence. React and SolidJS 2
+            render it, with views you copy and own. An AI agent can read the calendar and change it,
+            under rules your app sets.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
@@ -309,7 +304,7 @@ export default async function HomePage() {
       >
         <div className="lg:pt-4">
           <h2 className="text-3xl font-semibold tracking-tight text-balance" id="frameworks-title">
-            React is complete. Solid is a preview.
+            One engine, in React and in Solid.
           </h2>
           <p className="mt-6 text-fd-muted-foreground">
             One package holds the calendar&apos;s state and actions. It imports no framework and is
@@ -321,9 +316,8 @@ export default async function HomePage() {
               ui-sdk
             </a>
             . React and Solid each have a package that renders that state. The Solid package has the
-            parts and hooks React has, keyboard navigation, dragging and undo included. Its registry
-            has the week and day, the month, the year and the agenda so far, the month and agenda
-            also as scrolling views, and the resource columns, and you write the other views.
+            parts and hooks React has, keyboard navigation, dragging and undo included, and its
+            registry has every view, in Tailwind CSS.
           </p>
           <p className="mt-4 text-fd-muted-foreground">
             {installTag === undefined
@@ -368,9 +362,7 @@ export default async function HomePage() {
                     {feature}
                   </th>
                   <td className="px-4 py-3">{react}</td>
-                  <td
-                    className={`px-4 py-3 ${solid === "Not yet" ? "text-fd-muted-foreground" : ""}`}
-                  >
+                  <td className={`px-4 py-3 ${solid === "No" ? "text-fd-muted-foreground" : ""}`}>
                     {solid}
                   </td>
                 </tr>

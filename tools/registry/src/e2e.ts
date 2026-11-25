@@ -26,8 +26,8 @@ import { startLocalRegistryServer, type LocalRegistryServer } from "./server";
  * The install test. Clean Vite and Next.js apps made by `shadcn init` run
  * `shadcn add <url>/calendar-full.json` against a registry built and served locally, then
  * typecheck and build. A clean Solid 2.0 app, set up by hand as the Solid docs say (no
- * `shadcn init`), adds the Solid registry's items by its namespace and builds too (ADR 0279,
- * point 4). Needs the network for npm and shadcn's own components.
+ * `shadcn init`), adds `base-tokens` and the Solid registry's `calendar-full` by its namespace and
+ * builds too (ADR 0279, point 4). Needs the network for npm and shadcn's own components.
  *
  * - `REGISTRY_E2E_PACKAGES=local` (default): the runtime packages are packed from the workspace,
  *   so the test checks the registry against the code beside it, and served from a local npm
@@ -373,23 +373,11 @@ async function testApp(
   return { app: app.name, files: expectedFiles(manifest).length, seconds };
 }
 
-/** The Solid items the Solid app adds, by the registry's namespace, as the Solid docs do. */
-const solidItems = [
-  "base-tokens",
-  "calendar-ui",
-  "calendar",
-  "list-view",
-  "month-view",
-  "resource-timeline-view",
-  "scrolling-list-view",
-  "scrolling-month-view",
-  "scrolling-time-grid-view",
-  "recurrence-scope-dialog",
-  "calendar-history-toast",
-  "time-grid-view",
-  "year-view",
-  "resource-columns-view",
-] as const;
+/**
+ * The Solid items the Solid app adds, by the registry's namespace, as the Solid docs do: every item,
+ * and shadcn's tokens, since the app has no shadcn theme of its own.
+ */
+const solidItems = ["base-tokens", fullItemName] as const;
 
 /** The versions the workspace builds and tests with, from its catalog. */
 async function catalogVersion(name: string): Promise<string> {
@@ -614,8 +602,9 @@ async function verifySolidInstall(
     problems.push(...servedPackageProblems(lockfile, served, Object.keys(manifest.runtime)));
   }
   const versions = await installedVersions(root, Object.keys(manifest.runtime));
-  const list = manifest.items.find(({ name }) => name === "list-view")!;
-  problems.push(...runtimeProblems("list-view", list.compatibility, versions, "the app"));
+  // calendar-full's range covers its whole install, so it holds for every item.
+  const full = manifest.items.find(({ name }) => name === fullItemName)!;
+  problems.push(...runtimeProblems(fullItemName, full.compatibility, versions, "the app"));
 
   const css = await readFile(join(root, "src/app.css"), "utf8");
   for (const token of [

@@ -44,7 +44,7 @@ that `tools/registry` checks:
   the Solid tree's `base-tokens` builds from too, and keeps the stock
   tokens, which are its job; it owns no other files. No manifest sets `cssVars` or `css` itself.
 - `calendar-full` is a `registry:item` that owns no files and installs every other item but
-  `base-tokens`.
+  `base-tokens`. The Solid tree has its own, which installs every Solid item but `base-tokens`.
 - A file under `shared/` is plain TypeScript (`.ts`) with no framework in it. It imports other
   shared files and only the framework-free packages in `sharedFilePackages`
   (`tools/registry/src/config.ts`): no React, Solid, Base UI or ui-sdk, and no item's own file.
@@ -94,7 +94,7 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
   `vp run registry#site` runs the same checks on what it builds.
 - `vp run registry:e2e`, slow and online: makes clean Vite and Next.js apps with `shadcn init`, runs
   `shadcn add <url>/calendar-full.json` against the registry served locally, and a clean Solid 2.0
-  app that runs `shadcn add @moltenship/base-tokens @moltenship/list-view` against `/r/solid` with
+  app that runs `shadcn add @moltenship/base-tokens @moltenship/calendar-full` against `/r/solid` with
   the `components.json`, `app.css` and page that the Solid docs show, from
   `apps/showcase/content/examples/solid`; checks where the
   files landed and what the app installed, then typechecks and builds both apps. The Vite app uses
@@ -256,7 +256,9 @@ follow the rules above, with these differences:
   app without shadcn/ui's theme.
 - The icons are inline SVG in `calendar-ui/icons.tsx`, installed beside the kit's controls, so no
   item depends on an icon package.
-- `calendar-ui` holds the controls the ported views use so far, on `@ui-sdk/solid`, with the same
+- `calendar-full` installs every Solid item but `base-tokens`. The React registry's resource
+  timeline and StyleX items have no Solid twin, so it installs neither.
+- `calendar-ui` holds the controls the views use, on `@ui-sdk/solid`, with the same
   names, props and `shared/calendar-ui/<control>.styles.ts` look files as React's. A Solid control
   takes `class` where React's takes `className`. `registry/tests/kit-twins.test.ts` and the a11y
   run's `kit-twins` check fail when the two kits drift.
@@ -264,8 +266,9 @@ follow the rules above, with these differences:
 `registry/solid` is its own private workspace (`registry-source-solid`), depending on
 `@moltenship/calendar-solid`, with `@registry/*` mapped to it and `@registry/shared/*` to
 `registry/shared`. Its tests run in the `registry-solid` Vitest project, and
-`tools/a11y/tests/solid` checks the agenda, the toolbar, the view switcher and the mini month in
-a real browser against what the React files check. `apps/demo-solid` draws its toolbar, view switcher, mini month and agenda from it.
+`tools/a11y/tests/solid` checks each Solid item that draws something in a real browser against
+what the React files check (`registry/tests/solid-twins.test.ts` fails when an item has no file
+there). `apps/demo-solid` draws every view from it.
 
 ## Consuming the source in this repo
 

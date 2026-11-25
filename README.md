@@ -8,8 +8,8 @@
 </h1>
 
 <p align="center">
-  A calendar engine on the Temporal API with exact time zones and recurrence. React views you copy
-  and own, a SolidJS 2 preview, and actions an AI agent can call.
+  A calendar engine on the Temporal API with exact time zones and recurrence. React and SolidJS 2
+  views you copy and own, and actions an AI agent can call.
 </p>
 
 <p align="center">
@@ -36,7 +36,7 @@
 
 Time handles dates, time zones, navigation, calendar state, fast event lookups, and saving changes.
 Your events stay in the shape your app already uses, and Time reads them through a small adapter.
-The engine imports no UI framework. React renders it, and SolidJS 2 renders it as a preview. The
+The engine imports no UI framework. React and SolidJS 2 render it. The
 screenshot is the [live demo](https://moltenship-time-demo.vercel.app), a Google Calendar-style
 React app built from the same views. Its source is in [`apps/demo`](./apps/demo).
 
@@ -60,7 +60,7 @@ Coming from 1.x? See [Migrating to 2.0](https://time.molten.sh/docs/react/migrat
   records. TypeScript keeps your record and ID types.
 - **Views you own.** Week, day, month, year, agenda, resource columns and resource timeline are
   React source files built on shadcn/ui. The shadcn CLI copies them into your app, in Tailwind CSS
-  or StyleX. A Solid registry has the agenda so far.
+  or StyleX. The Solid registry has every one of them, in Tailwind CSS.
 - **Headless underneath.** The packages ship no styles, and the registry's views are one UI on top
   of them. Restyle it with tokens, edit the files, swap its controls, or build your own UI with
   MUI or any other library. See [Customization](https://time.molten.sh/docs/react/customization).
@@ -79,10 +79,10 @@ Coming from 1.x? See [Migrating to 2.0](https://time.molten.sh/docs/react/migrat
   you turn it on. Your app decides what an agent may do and saves every change itself. See
   [Agents](https://time.molten.sh/docs/react/agents).
 - **React and Solid.** One package holds the calendar's state and actions, and it imports no
-  framework. The React integration is complete. The
-  [SolidJS 2](https://time.molten.sh/docs/solid) integration is a preview. It has the same parts
-  and hooks, keyboard navigation, dragging and undo, and the registry's agenda as a ready-made
-  Solid view. [React and Solid](https://time.molten.sh/docs/react/frameworks) lists what the two
+  framework. The React and
+  [SolidJS 2](https://time.molten.sh/docs/solid) integrations have the same parts and hooks,
+  keyboard navigation, dragging and undo, and the registry has every view in Solid
+  too. [React and Solid](https://time.molten.sh/docs/react/frameworks) lists what the two
   share.
 
 [Comparison](https://time.molten.sh/docs/react/comparison) sets Time beside FullCalendar and
@@ -106,7 +106,7 @@ Time 2.0 is a pre-release on npm's `next` tag, so both commands install `@next`.
 
 Time needs:
 
-- React 19, or SolidJS 2.0 for the preview.
+- React 19, or SolidJS 2.0.
 - `@ui-sdk/core`, with `@ui-sdk/react` or `@ui-sdk/solid` beside it. They are peer dependencies
   since 2.0.
 - A runtime with `Temporal`. Node.js 26 and later include it. In a browser without it, load a
@@ -208,7 +208,7 @@ packages too.
 | Package | What it does |
 | --- | --- |
 | [`@moltenship/calendar`](./packages/calendar) | The package a React app installs: React components and hooks, the event engine, Temporal helpers and pointer interactions. |
-| [`@moltenship/calendar-solid`](./packages/calendar-solid) | The package a Solid app installs: the SolidJS 2 integration, a preview, with the event engine and Temporal helpers. |
+| [`@moltenship/calendar-solid`](./packages/calendar-solid) | The package a Solid app installs: the SolidJS 2 integration, with the event engine and Temporal helpers. |
 | [`@moltenship/calendar-recurrence`](./packages/calendar-recurrence) | RRULE expansion inside a range, exceptions and series edits. |
 | [`@moltenship/ics`](./packages/ics) | Typed iCalendar (RFC 5545) parsing into Temporal values, with Standard Schema support. |
 | [`@moltenship/calendar-dnd-kit`](./packages/calendar-dnd-kit) | A dnd-kit adapter: drag your own items into the calendar and events out. |

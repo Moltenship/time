@@ -339,12 +339,12 @@ The package renders plain, unstyled elements. The registry has styled Solid view
 [recurring-event dialog](/docs/recurrence/calendar), the [undo toast](/docs/undo-redo#undo-toast)
 and the [controls](/docs/views/controls) they're built from, as source files that you add to your app and
 then own, the way shadcn/ui works. They install with the shadcn CLI from this site's Solid registry,
-at `https://time.molten.sh/r/solid`. The other views aren't in it yet, so you write those: the
-[Quick start](/docs/quick-start) writes the first one, and [Custom views](/docs/views/custom-views)
-covers the rest. [What's coming](/docs/frameworks#whats-coming) has the plan.
+at `https://time.molten.sh/r/solid`. A view it doesn't have is one you write, as
+[Custom views](/docs/views/custom-views) shows.
 
 | Item                       | What it adds                                                                                                                                   |
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `calendar-full`            | Every item below but `base-tokens`                                                                                                             |
 | `time-grid-view`           | The [week and day](/docs/views/week-and-day)                                                                                                   |
 | `month-view`               | The [month](/docs/views/month)                                                                                                                 |
 | `year-view`                | The [year](/docs/views/year)                                                                                                                   |
@@ -410,6 +410,14 @@ and `tailwind.css` names the stylesheet the theme's tokens go into:
 
 ### Add the items
 
+`calendar-full` installs every view, the theme and the parts they share:
+
+```bash
+npx shadcn@latest add @moltenship/base-tokens @moltenship/calendar-full
+```
+
+Or add only the views you use. Each one brings what it builds on, so the agenda alone is:
+
 ```bash
 npx shadcn@latest add @moltenship/base-tokens @moltenship/list-view
 ```
@@ -417,10 +425,11 @@ npx shadcn@latest add @moltenship/base-tokens @moltenship/list-view
 Without `registries` in `components.json`, give the item's full address instead:
 
 ```bash
-npx shadcn@latest add https://time.molten.sh/r/solid/list-view.json
+npx shadcn@latest add https://time.molten.sh/r/solid/base-tokens.json https://time.molten.sh/r/solid/calendar-full.json
 ```
 
-The CLI writes the tokens into `src/app.css` and the files under `components/calendar`:
+For the agenda, the CLI writes the tokens into `src/app.css` and these files under
+`components/calendar`:
 
 ```txt
 src/components/calendar
