@@ -11,7 +11,7 @@ import {
 import { act } from "react";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { calendarAnnouncements } from "../calendar/announcements";
+import { calendarAnnouncements } from "../shared/calendar/announcements";
 import { createResourceColumnsView } from "../resource-columns-view/resource-columns-view";
 import { layOut, pointer } from "./pointer";
 import { render } from "./render";

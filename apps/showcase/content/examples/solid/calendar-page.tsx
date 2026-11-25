@@ -1,5 +1,6 @@
-// The page Installation and the Agenda page show, after `shadcn add @moltenship/list-view`. The
-// registry's install test adds this file to a clean Solid app, whose typecheck and build cover it.
+// The page Installation, the Agenda page and the Toolbar page show, after `shadcn add` of the
+// Solid items. The registry's install test adds this file to a clean Solid app, whose typecheck and
+// build cover it.
 
 // #region view
 import {
@@ -18,6 +19,26 @@ export const Calendar = createCalendar<Event>()({
   views: [createAgendaView<Event>({ getEventColor: (event) => event.data.color })],
 });
 // #endregion view
+
+// #region toolbar-imports
+import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
+import { MiniMonth } from "@/components/calendar/mini-month";
+import { ViewSwitcher } from "@/components/calendar/view-switcher";
+// #endregion toolbar-imports
+
+// #region own-controls
+import { Button } from "@/components/calendar/ui/button";
+
+/** The kit's button, in a control of the app's own. */
+function Refresh(props: { readonly onRefresh: () => Promise<void> }) {
+  // A click that returns a promise marks the button pending until it settles.
+  return (
+    <Button onClick={() => props.onRefresh()} size="sm" variant="outline">
+      Refresh
+    </Button>
+  );
+}
+// #endregion own-controls
 
 // #region page
 const events: readonly Event[] = [
@@ -59,3 +80,60 @@ export default function CalendarPage() {
   );
 }
 // #endregion page
+
+// #region toolbar
+const today = Temporal.PlainDate.from("2026-10-08");
+const viewOptions = Calendar.views.map(({ name }) => ({ label: "Agenda", value: name }));
+
+/** The view switcher, on the calendar's view. Inside `Calendar.Root`. */
+function CalendarViewSwitcher() {
+  const view = Calendar.useCalendarSelector((state) => state.view);
+  const { setView } = Calendar.useCalendarActions();
+  return <ViewSwitcher onValueChange={setView} options={viewOptions} value={view()} />;
+}
+
+/** The mini month beside the calendar: it shows the dates the view shows, and picks the date. */
+function Sidebar() {
+  const anchorDate = Calendar.useCalendarSelector((state) => state.anchorDate);
+  const visibleRange = Calendar.useVisibleRange();
+  const { setAnchorDate } = Calendar.useCalendarActions();
+  return (
+    <MiniMonth
+      locale="en-US"
+      onSelectDate={(date) => setAnchorDate(date)}
+      selectedDate={anchorDate()}
+      today={today}
+      visibleRange={visibleRange() ?? undefined}
+      weekStartsOn={7}
+    />
+  );
+}
+
+export function CalendarWithToolbar() {
+  return (
+    <Calendar.Root
+      defaultAnchorDate={today}
+      defaultTimeZone="UTC"
+      defaultView="agenda"
+      events={events}
+      locale="en-US"
+      weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
+    >
+      <Calendar.Frame class="flex h-dvh">
+        <aside class="w-64 shrink-0 border-e p-3">
+          <Sidebar />
+        </aside>
+        <main class="flex min-w-0 flex-1 flex-col">
+          <CalendarToolbar calendar={Calendar} class="border-b">
+            <Refresh onRefresh={() => new Promise((resolve) => setTimeout(resolve, 500))} />
+            <CalendarViewSwitcher />
+          </CalendarToolbar>
+          <Calendar.Viewport class="min-h-0 flex-1">
+            <Calendar.ActiveView />
+          </Calendar.Viewport>
+        </main>
+      </Calendar.Frame>
+    </Calendar.Root>
+  );
+}
+// #endregion toolbar

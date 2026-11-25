@@ -8,7 +8,7 @@ import {
 } from "@moltenship/calendar";
 import { act } from "react";
 
-import { calendarAnnouncements } from "../calendar/announcements";
+import { calendarAnnouncements } from "../shared/calendar/announcements";
 import {
   createTimelineDayView,
   createTimelineMonthView,

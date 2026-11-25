@@ -10,7 +10,7 @@ import { CalendarDndKit } from "@moltenship/calendar-dnd-kit";
 import * as stylex from "@stylexjs/stylex";
 import { PlusIcon } from "lucide-react";
 
-import { calendarAnnouncements } from "@registry/stylex-calendar/announcements";
+import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { CalendarHistoryToast } from "@registry/stylex-calendar-history-toast/calendar-history-toast";
 import { useRecurrenceScopePrompt } from "@registry/stylex-recurrence-scope-dialog/use-recurrence-scope-prompt";
 

@@ -28,6 +28,7 @@
       ],
       "@/components/calendar/calendar-history-toast/*": ["../../registry/calendar-history-toast/*"],
       "@/components/calendar/event-colors": ["../../registry/shared/calendar-theme/event-colors"],
+      "@/components/calendar/announcements": ["../../registry/shared/calendar/announcements"],
       "@/components/calendar/*": ["../../registry/calendar/*"],
       "@/lib/google-calendar": ["./content/examples/google-calendar"],
       "@/lib/google-calendar-api": ["./content/examples/google-calendar-api"],

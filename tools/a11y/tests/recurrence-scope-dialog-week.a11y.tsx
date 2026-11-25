@@ -14,7 +14,7 @@ import { useMemo, useState } from "react";
 import { expect, test } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 
-import { calendarAnnouncements } from "@registry/calendar/announcements";
+import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-recurrence-scope-prompt";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 

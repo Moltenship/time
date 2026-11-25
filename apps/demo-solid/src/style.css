@@ -108,16 +108,18 @@ a {
   }
 }
 
+/* The registry's toolbar, over the view. */
 .toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
   margin-bottom: 0.75rem;
 }
 
-.toolbar button,
-.toolbar select,
+.side {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1.5rem;
+  min-width: 0;
+}
+
 .agent button {
   font: inherit;
   padding: 0.3rem 0.7rem;
@@ -128,21 +130,10 @@ a {
   cursor: pointer;
 }
 
-.toolbar button:disabled {
-  cursor: default;
-  opacity: 0.5;
-}
-
 /* The agenda scrolls its days inside the viewport, which renders only the days in view. */
 .viewport:has([data-slot="agenda-view"]) {
   height: min(36rem, 70dvh);
   border-top: 1px solid var(--line);
-}
-
-.title {
-  flex: 1;
-  font-size: 1.15rem;
-  font-weight: 600;
 }
 
 .weekdays,

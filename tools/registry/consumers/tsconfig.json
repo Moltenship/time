@@ -10,6 +10,7 @@
       "@/components/calendar/event-colors": [
         "../../../registry/shared/calendar-theme/event-colors"
       ],
+      "@/components/calendar/announcements": ["../../../registry/shared/calendar/announcements"],
       "@/components/calendar/list-view/*": ["../../../registry/list-view/*"],
       "@/components/calendar/month-view/*": ["../../../registry/month-view/*"],
       "@/components/calendar/recurrence-scope-dialog/*": [

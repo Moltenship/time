@@ -1,7 +1,7 @@
 import { useRovingFocus, type PlainDateInterval } from "@moltenship/calendar-solid";
 import { createUniqueId, Show } from "solid-js";
 
-import { CalendarX2Icon, LoaderCircleIcon } from "@registry/calendar/icons";
+import { CalendarX2Icon, LoaderCircleIcon } from "@registry/calendar-ui/icons";
 import {
   agendaEndLabel,
   agendaEndLoadingLabel,

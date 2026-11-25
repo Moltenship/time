@@ -3,7 +3,7 @@ import { CalendarDndKit } from "@moltenship/calendar-dnd-kit";
 import { PlusIcon } from "lucide-react";
 import { useRef } from "react";
 
-import { calendarAnnouncements } from "@registry/calendar/announcements";
+import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { CalendarHistoryToast } from "@registry/calendar-history-toast/calendar-history-toast";
 import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-recurrence-scope-prompt";
 import { Button } from "./components/ui/button";

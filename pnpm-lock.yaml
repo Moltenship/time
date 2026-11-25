@@ -1158,6 +1158,9 @@ importers:
       '@ui-sdk/solid':
         specifier: 'catalog:'
         version: 0.1.0-beta.16(@solidjs/web@2.0.3(solid-js@2.0.3))(@ui-sdk/core@0.1.0-beta.16)(solid-js@2.0.3)
+      class-variance-authority:
+        specifier: 'catalog:'
+        version: 0.7.1
       cn:
         specifier: 'catalog:'
         version: 0.5.1

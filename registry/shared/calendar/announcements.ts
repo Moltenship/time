@@ -10,7 +10,7 @@ import type {
   ResourceId,
 } from "@moltenship/calendar";
 
-import { describeWhen, eventTitle } from "@registry/calendar/event-label";
+import { describeWhen, eventTitle } from "@registry/shared/calendar/event-names";
 
 /** What a keyboard user can press next, after the gesture starts. */
 const keyboardHints: Readonly<Record<CalendarInteractionCause, string>> = {

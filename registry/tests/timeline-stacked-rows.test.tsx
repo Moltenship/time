@@ -9,7 +9,7 @@ import {
 import { act } from "react";
 import { afterEach, beforeAll, expect, test, vi } from "vite-plus/test";
 
-import { calendarAnnouncements } from "../calendar/announcements";
+import { calendarAnnouncements } from "../shared/calendar/announcements";
 import { createTimelineDayView } from "../resource-timeline-view/resource-timeline-view";
 import { drag, layOut } from "./pointer";
 import { render } from "./render";

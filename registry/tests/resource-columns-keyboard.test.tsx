@@ -4,7 +4,7 @@ import type { CalendarEventChange, CalendarFocus, CalendarResource } from "@molt
 import { act } from "react";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import { calendarAnnouncements } from "../calendar/announcements";
+import { calendarAnnouncements } from "../shared/calendar/announcements";
 import { drag, layOut, pointer } from "./pointer";
 import { render } from "./render";
 import { people, ResourceCalendar, shift, type StaffEvent } from "./resource-fixtures";

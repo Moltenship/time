@@ -10,7 +10,7 @@ import {
 import { act } from "react";
 import { afterEach, describe, expect, test, vi } from "vite-plus/test";
 
-import { calendarAnnouncements } from "../calendar/announcements";
+import { calendarAnnouncements } from "../shared/calendar/announcements";
 import { createWeekView } from "../time-grid-view/time-grid-view";
 import { layOut, pointer } from "./pointer";
 import { render } from "./render";

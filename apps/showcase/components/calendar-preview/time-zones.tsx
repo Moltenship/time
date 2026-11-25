@@ -7,7 +7,7 @@ import {
 } from "@moltenship/calendar";
 import { useId, useState } from "react";
 
-import { calendarAnnouncements } from "@registry/calendar/announcements";
+import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 

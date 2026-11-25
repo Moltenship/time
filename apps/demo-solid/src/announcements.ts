@@ -8,7 +8,7 @@ import type {
   CalendarHistoryMessages,
 } from "@moltenship/calendar-solid";
 
-// This page's English messages, shorter than the registry's set (registry/calendar/announcements.ts).
+// This page's English messages, shorter than the registry's set (registry/shared/calendar/announcements.ts).
 
 const hints: Readonly<Record<CalendarInteractionCause, string>> = {
   create: "Use the arrow keys to extend it, then Enter to finish or Escape to cancel.",

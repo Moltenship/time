@@ -6,6 +6,7 @@ import type { ComponentType, ReactNode } from "react";
 
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
+import { calendarToolbarLabels } from "@registry/shared/calendar/navigation-labels";
 
 const styles = stylex.create({
   actions: {
@@ -160,17 +161,20 @@ export function CalendarToolbar({
   return (
     <Toolbar {...xprops({ className }, styles.toolbar, xstyle)}>
       {start}
-      <TodayTrigger aria-label="Today" {...stylex.props(styles.button, styles.today)}>
+      <TodayTrigger
+        aria-label={calendarToolbarLabels.today}
+        {...stylex.props(styles.button, styles.today)}
+      >
         <span {...stylex.props(styles.todayIcon)}>
           <CalendarCheckIcon {...stylex.props(styles.icon)} />
         </span>
-        <span {...stylex.props(styles.todayLabel)}>Today</span>
+        <span {...stylex.props(styles.todayLabel)}>{calendarToolbarLabels.today}</span>
       </TodayTrigger>
       <div {...stylex.props(styles.steps)}>
-        <StepTrigger label="Previous period" Trigger={PreviousTrigger}>
+        <StepTrigger label={calendarToolbarLabels.previous} Trigger={PreviousTrigger}>
           <ChevronLeftIcon {...stylex.props(styles.icon, styles.iconFlipped)} />
         </StepTrigger>
-        <StepTrigger label="Next period" Trigger={NextTrigger}>
+        <StepTrigger label={calendarToolbarLabels.next} Trigger={NextTrigger}>
           <ChevronRightIcon {...stylex.props(styles.icon, styles.iconFlipped)} />
         </StepTrigger>
       </div>
