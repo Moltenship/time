@@ -133,7 +133,9 @@ event tokens for light and dark mode. To add a color, add its name to `calendarE
 
 ## Use your own controls
 
-The kit's files are your app's code once you add them: a default to edit or replace.
+The kit's files are your app's code once you add them: a default to edit or replace. Swapping a
+control is one of four ways to change the calendar's UI, and
+[Customization](/docs/customization) sets it beside the other three.
 
 The Tailwind views take their buttons, badges, tooltips and the view select from the files
 `calendar-ui` adds to `components/calendar/ui/`. They don't import ui-sdk themselves, and they
@@ -184,6 +186,6 @@ A control that isn't built on ui-sdk gives up two things:
   reads your control only as far as your component tells it, and a stock shadcn control tells it
   nothing. The calendar stays on the bridge, so an agent can still change the view with its
   `setView` action.
-- **The same control in React and Solid.** The kit's controls behave alike in both frameworks
-  because both build on ui-sdk's. Yours behaves as your component does, so a Solid app needs its
-  own version of it.
+- **The same control in React and Solid.** ui-sdk has the same components in both frameworks, so
+  a control built on it behaves alike in both. Yours behaves as your component does, so a Solid
+  app needs its own version of it. The registry has no Solid files yet.
