@@ -296,6 +296,37 @@ const taskList = () => document.querySelector<HTMLElement>("aside ul[aria-descri
 const eventOf = (id: string) =>
   document.querySelector<HTMLElement>(`[data-slot="time-grid-body"] [data-event-id="${id}"]`);
 
+/** The tooltip's text, if one is shown: the kit keeps closed tooltips in the page, hidden. */
+const shownTooltip = () =>
+  [...document.querySelectorAll<HTMLElement>('[role="tooltip"]')]
+    .find((tooltip) => tooltip.checkVisibility())
+    ?.textContent?.trim() ?? null;
+
+describe("the Solid demo's top bar", () => {
+  afterEach(async () => {
+    await mouse({ type: "up" });
+    localStorage.clear();
+    setTheme("light");
+  });
+
+  // The button's own click handler once replaced the tooltip trigger's, so a press left the
+  // tooltip open, over the dialog it opened. The React demo's press closes it.
+  test.each([
+    ["Keyboard shortcuts", "Keyboard shortcuts (?)"],
+    ["Switch to dark theme", "Switch to dark theme"],
+  ])("a press on %s closes the tooltip it shows", async (name, text) => {
+    await renderDemo("week");
+    const { x, y } = center(find("header button", name)!);
+    await mouse({ type: "move", x, y });
+    await until(() => expect(shownTooltip()).toBe(text));
+
+    await mouse({ type: "down" });
+    await mouse({ type: "up" });
+
+    await until(() => expect(shownTooltip()).toBeNull());
+  });
+});
+
 describe("the Solid demo's unscheduled tasks", () => {
   // A test that fails mid-drag leaves the button down, which the next test's press would inherit.
   afterEach(async () => {

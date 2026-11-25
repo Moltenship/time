@@ -7,6 +7,7 @@ import { viewChoices } from "@demo/view-choices";
 
 import { Calendar } from "../calendar";
 import { KeyboardIcon, MenuIcon } from "../icons";
+import { withPartClick } from "../part-click";
 import { viewFor } from "../scrolling";
 import { hasView, viewNames } from "../workspace";
 import { BrandMark } from "./brand";
@@ -68,7 +69,7 @@ export function TopBar(props: {
               {...trigger}
               aria-label="Keyboard shortcuts"
               class="rounded-full max-sm:hidden"
-              onClick={() => props.onShowShortcuts()}
+              onClick={withPartClick(trigger, () => props.onShowShortcuts())}
               size="icon"
               variant="ghost"
             />
