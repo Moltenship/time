@@ -62,7 +62,7 @@ const styles = stylex.create({
       "[data-ending-style]": "-2.5rem",
       "[data-starting-style]": "-2.5rem",
     },
-    width: "18rem",
+    width: "20rem",
   },
   close: {
     position: "absolute",

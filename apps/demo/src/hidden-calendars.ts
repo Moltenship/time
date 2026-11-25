@@ -1,9 +1,9 @@
-import { useCallback } from "react";
-
 import { isDemoCalendarId, type DemoCalendarId } from "./calendars";
-import { usePersistentState } from "./storage";
 
-function parseHiddenCalendars(stored: string | null): ReadonlySet<DemoCalendarId> {
+/** Where the calendars switched off in the sidebar are saved. */
+export const hiddenCalendarsStorageKey = "moltenship-demo:hidden-calendars";
+
+export function parseHiddenCalendars(stored: string | null): ReadonlySet<DemoCalendarId> {
   try {
     const value: unknown = JSON.parse(stored ?? "[]");
     return new Set(Array.isArray(value) ? value.filter(isDemoCalendarId) : []);
@@ -12,25 +12,13 @@ function parseHiddenCalendars(stored: string | null): ReadonlySet<DemoCalendarId
   }
 }
 
-function serializeHiddenCalendars(hidden: ReadonlySet<DemoCalendarId>): string {
+export function serializeHiddenCalendars(hidden: ReadonlySet<DemoCalendarId>): string {
   return JSON.stringify([...hidden]);
 }
 
-export function useHiddenCalendars() {
-  const [hidden, setHidden] = usePersistentState(
-    "moltenship-demo:hidden-calendars",
-    parseHiddenCalendars,
-    serializeHiddenCalendars,
-  );
-  const toggleCalendar = useCallback(
-    (calendarId: DemoCalendarId) =>
-      setHidden((current) => {
-        const next = new Set(current);
-        if (!next.delete(calendarId)) next.add(calendarId);
-        return next;
-      }),
-    [setHidden],
-  );
-
-  return [hidden, toggleCalendar] as const;
+/** `hidden` with `calendarId` shown if it was hidden, and hidden if it was shown. */
+export function toggleHidden<T>(hidden: ReadonlySet<T>, id: T): ReadonlySet<T> {
+  const next = new Set(hidden);
+  if (!next.delete(id)) next.add(id);
+  return next;
 }

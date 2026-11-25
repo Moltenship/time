@@ -5,7 +5,7 @@ import { Badge } from "./ui/badge";
 import { Checkbox } from "./ui/checkbox";
 import { Label } from "./ui/label";
 
-import { useResourceGroups } from "../resource-groups";
+import { useResourceGroups } from "../use-resource-groups";
 import type { DemoResourceId } from "../resources";
 
 export interface ResourcePickerProps {

@@ -1,24 +1,9 @@
-import {
-  plainDateInterval,
-  type CalendarVisibleRange,
-  type PlainDateInterval,
-} from "@moltenship/calendar";
+import type { CalendarVisibleRange } from "@moltenship/calendar";
 import { createOccurrenceExpander } from "@moltenship/calendar-recurrence";
 import { useCallback, useMemo, useState } from "react";
 
 import { demoAdapters, type DemoEvent } from "./demo-model";
-
-/**
- * Six weeks either side of `date`: what the calendar shows first, before `onVisibleRangeChange`
- * reports the dates it needs, so series show on the first paint.
- */
-function around(date: Temporal.PlainDate): PlainDateInterval {
-  return plainDateInterval(date.subtract({ weeks: 6 }), date.add({ weeks: 6 }));
-}
-
-function sameRange(left: PlainDateInterval, right: PlainDateInterval): boolean {
-  return left.start.equals(right.start) && left.end.equals(right.end);
-}
+import { around, covering } from "./load-range";
 
 /**
  * The calendar's items: `events` with each series expanded into its occurrences over the dates
@@ -39,9 +24,7 @@ export function useOccurrences(
   const [loadRange, setLoadRange] = useState(() => around(anchorDate));
   const onVisibleRangeChange = useCallback(
     (visible: CalendarVisibleRange) =>
-      setLoadRange((current) =>
-        sameRange(current, visible.loadRange) ? current : visible.loadRange,
-      ),
+      setLoadRange((current) => covering(current, visible.loadRange)),
     [],
   );
   const expansion = useMemo(

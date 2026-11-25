@@ -8,7 +8,7 @@
     <title>Solid · Moltenship Time demo</title>
     <meta
       name="description"
-      content="Moltenship Time's SolidJS 2 integration, a preview, with the Solid registry's week, day, month, year, agenda and resource columns, and an agent panel."
+      content="A Google Calendar-style app built with Moltenship Time, in SolidJS 2: the React demo's app on the Solid integration, with week, day, month, year, agenda and resource views, drag and drop, time zones."
     />
     <link rel="canonical" href="https://moltenship-time-demo.vercel.app/solid/" />
     <meta property="og:type" content="website" />
@@ -16,28 +16,19 @@
     <meta property="og:title" content="Moltenship Time demo (Solid)" />
     <meta
       property="og:description"
-      content="Moltenship Time's SolidJS 2 integration, a preview, with an agent panel."
+      content="A Google Calendar-style app built with Moltenship Time, in SolidJS 2."
     />
     <meta property="og:url" content="https://moltenship-time-demo.vercel.app/solid/" />
     <meta property="og:image" content="https://time.molten.sh/opengraph-image" />
     <meta name="twitter:card" content="summary_large_image" />
     <script>
-      // The theme the React demo saved on this origin (apps/demo/src/theme.ts), before first paint.
-      // Without one, the page follows the system's, as `color-scheme: light dark` says. The
-      // registry's views take their colours from a `.dark` class, as a shadcn app's components do.
-      (() => {
-        let saved = null;
-        try {
-          saved = localStorage.getItem("moltenship-demo:theme");
-        } catch {}
-        const root = document.documentElement;
-        if (saved === "light" || saved === "dark") root.style.colorScheme = saved;
-        const system = matchMedia("(prefers-color-scheme: dark)");
-        const apply = () =>
-          root.classList.toggle("dark", saved === "dark" || (saved !== "light" && system.matches));
-        apply();
-        system.addEventListener("change", apply);
-      })();
+      // Apply the saved theme, or the system one, before first paint, as the React demo does: the
+      // two pages share the saved theme (apps/demo/src/theme.ts) and its `.dark` class.
+      try {
+        const saved = localStorage.getItem("moltenship-demo:theme");
+        const dark = saved ? saved === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+        document.documentElement.classList.toggle("dark", dark);
+      } catch {}
     </script>
   </head>
   <body>

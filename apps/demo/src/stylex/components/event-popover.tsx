@@ -21,7 +21,7 @@ import type { DemoOccurrence } from "../../demo-model";
 import { formatEventWhen } from "../../event-format";
 import { describeOccurrenceRecurrence } from "../../event-recurrence";
 import { taskFromOccurrence, type DemoTaskList } from "../../tasks";
-import { useUnschedule } from "../../unschedule";
+import { useUnschedule } from "../../unscheduled";
 import { StylexDemoCalendar } from "../calendar";
 
 const styles = stylex.create({

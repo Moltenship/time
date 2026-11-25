@@ -1,9 +1,9 @@
-import {
-  defineEventAdapter,
-  type AnyCalendarView,
-  type CalendarFactory,
-  type CalendarFocus,
-  type CalendarSelection,
+import type {
+  AnyCalendarView,
+  CalendarFactory,
+  CalendarFocus,
+  CalendarSelection,
+  EventAdapter,
 } from "@moltenship/calendar";
 import {
   createOccurrenceAdapter,
@@ -52,13 +52,14 @@ export type DemoOccurrence = RecurrenceOccurrence<DemoEvent, string>;
 
 const noResourceIds: readonly DemoResourceId[] = [];
 
-const demoEventAdapter = defineEventAdapter<DemoEvent>()({
+// A typed literal, not `defineEventAdapter`, so this file imports no facade: the Solid demo shares it.
+const demoEventAdapter: EventAdapter<DemoEvent, string, DemoResourceId> = {
   getId: (event) => event.id,
   getInterval: (event) => event,
   getResourceIds: (event) => event.resourceIds ?? noResourceIds,
   getTitle: (event) => event.title,
   isReadOnly: (event) => event.live === true,
-});
+};
 
 /** The stored events' two adapters: the calendar's, and the one that reads their recurrence. */
 export const demoAdapters: RecurrenceAdapters<DemoEvent, string, DemoResourceId> = {

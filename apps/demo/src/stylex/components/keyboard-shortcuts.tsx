@@ -1,4 +1,4 @@
-import { useShortcutKeys } from "../../shortcuts";
+import { useShortcutKeys } from "../../use-shortcut-keys";
 import { StylexDemoCalendar } from "../calendar";
 
 export interface KeyboardShortcutsProps {

@@ -4,7 +4,7 @@ import { useId } from "react";
 
 import { Badge } from "@registry/stylex-calendar-ui/badge";
 
-import { useResourceGroups } from "../../resource-groups";
+import { useResourceGroups } from "../../use-resource-groups";
 import type { DemoResourceId } from "../../resources";
 import { Checkbox } from "../ui/checkbox";
 import { Label } from "../ui/field";

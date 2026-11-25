@@ -8,6 +8,7 @@
 
 @source "../../../registry";
 @source "../../../apps/demo/src";
+@source "../../../apps/demo-solid/src";
 
 @custom-variant dark (&:is(.dark *));
 

@@ -6,7 +6,7 @@ import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 import { DemoCalendar, type DemoView } from "../calendar";
-import { viewSwitcherOptions } from "../view-options";
+import { viewSwitcherOptions } from "../view-choices";
 import { BrandMark } from "./brand";
 import { DocsLink } from "./docs-link";
 import { ThemeToggle } from "./theme-toggle";

@@ -3,7 +3,7 @@ import { MoonIcon, SunIcon } from "lucide-react";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
-import { useTheme } from "../theme";
+import { useTheme } from "../use-theme";
 
 export function ThemeToggle({ className }: { readonly className?: string }) {
   const { theme, toggleTheme } = useTheme();

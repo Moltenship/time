@@ -1,43 +1,45 @@
 import type { CalendarAnnotation } from "@moltenship/calendar";
-import { ActivityIcon, CodeXmlIcon, MoonIcon, MusicIcon, TargetIcon } from "lucide-react";
-import { useCallback } from "react";
 
-import type { TimeGridAnnotationSource } from "@registry/time-grid-view/time-grid-annotations";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 
 import type { DemoResourceId } from "./resources";
-import { usePersistentState } from "./storage";
 
-/** What the demo pretends to sync: music, sleep, workouts, focus sessions and coding time. */
-export const demoAnnotationSources = [
+/**
+ * What the demo pretends to sync: music, sleep, workouts, focus sessions and coding time. Each UI
+ * gives each source its icon, and passes them to the views as `annotationSources`.
+ */
+export const demoAnnotationSourceData = [
   {
     color: "purple",
-    Icon: MoonIcon,
     id: "sleep",
     label: "Sleep",
     mergeGap: Temporal.Duration.from({ minutes: 20 }),
   },
   {
     color: "green",
-    Icon: MusicIcon,
     id: "music",
     label: "Music",
     mergeGap: Temporal.Duration.from({ minutes: 5 }),
   },
-  { color: "orange", Icon: ActivityIcon, id: "workouts", label: "Workouts" },
-  { color: "teal", Icon: TargetIcon, id: "focus", label: "Focus" },
+  { color: "orange", id: "workouts", label: "Workouts" },
+  { color: "teal", id: "focus", label: "Focus" },
   {
     color: "yellow",
-    Icon: CodeXmlIcon,
     id: "coding",
     label: "Coding",
     mergeGap: Temporal.Duration.from({ minutes: 15 }),
   },
-] as const satisfies readonly TimeGridAnnotationSource[];
+] as const satisfies readonly {
+  readonly color: CalendarEventColor;
+  readonly id: string;
+  readonly label: string;
+  readonly mergeGap?: Temporal.Duration;
+}[];
 
-export type DemoAnnotationSourceId = (typeof demoAnnotationSources)[number]["id"];
+export type DemoAnnotationSourceId = (typeof demoAnnotationSourceData)[number]["id"];
 
 function isDemoAnnotationSourceId(value: unknown): value is DemoAnnotationSourceId {
-  return demoAnnotationSources.some((source) => source.id === value);
+  return demoAnnotationSourceData.some((source) => source.id === value);
 }
 
 const tracks = [
@@ -167,7 +169,10 @@ export function createDemoAnnotations(
   return annotations;
 }
 
-function parseHiddenSources(stored: string | null): ReadonlySet<DemoAnnotationSourceId> {
+/** Where the activity switched off in the sidebar is saved. */
+export const hiddenSourcesStorageKey = "moltenship-demo:hidden-annotation-sources";
+
+export function parseHiddenSources(stored: string | null): ReadonlySet<DemoAnnotationSourceId> {
   try {
     const value: unknown = JSON.parse(stored ?? "[]");
     return new Set(Array.isArray(value) ? value.filter(isDemoAnnotationSourceId) : []);
@@ -176,21 +181,6 @@ function parseHiddenSources(stored: string | null): ReadonlySet<DemoAnnotationSo
   }
 }
 
-/** Which annotation sources the sidebar hides; hiding one leaves it out of `annotationSources`. */
-export function useHiddenAnnotationSources() {
-  const [hidden, setHidden] = usePersistentState(
-    "moltenship-demo:hidden-annotation-sources",
-    parseHiddenSources,
-    (value: ReadonlySet<DemoAnnotationSourceId>) => JSON.stringify([...value]),
-  );
-  const toggleSource = useCallback(
-    (sourceId: DemoAnnotationSourceId) =>
-      setHidden((current) => {
-        const next = new Set(current);
-        if (!next.delete(sourceId)) next.add(sourceId);
-        return next;
-      }),
-    [setHidden],
-  );
-  return [hidden, toggleSource] as const;
+export function serializeHiddenSources(hidden: ReadonlySet<DemoAnnotationSourceId>): string {
+  return JSON.stringify([...hidden]);
 }

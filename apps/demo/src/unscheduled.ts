@@ -1,17 +1,13 @@
 import { calendarDropData, calendarEventOf, isCalendarTarget } from "@moltenship/calendar-dnd-kit";
 import { useDragDropMonitor, useDraggable, useDragOperation, useDroppable } from "@dnd-kit/react";
-import { useId, useMemo } from "react";
+import type { CalendarInputMethod } from "@moltenship/calendar";
+import { useCallback, useId, useMemo } from "react";
 
-import type { DemoCalendarHooks, DemoOccurrence } from "./demo-model";
-import { taskFromOccurrence, taskOccurrence, type DemoTask } from "./tasks";
+import type { DemoCalendarActions, DemoCalendarHooks, DemoOccurrence } from "./demo-model";
+import { taskFromOccurrence, taskOccurrence, type DemoTask, type DemoTaskList } from "./tasks";
+import { unschedule } from "./unschedule";
 
-/** A task's length, as its card shows it. */
-export function taskLength(minutes: number): string {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
-  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
-}
+export { taskLength } from "./tasks";
 
 /** Only an event that can become a task again: a timed one-off. */
 function takesEvent(source: { readonly data?: unknown }): boolean {
@@ -76,4 +72,16 @@ export function useTaskCard(
   const { target } = useDragOperation();
   const overCalendar = isDragSource && isCalendarTarget(target);
   return { isDragSource, overCalendar, ref, saving };
+}
+
+/** `unschedule` for a component: takes an event back to the unscheduled tasks. */
+export function useUnschedule(
+  actions: Pick<DemoCalendarActions, "proposeEventChange">,
+  taskList: Pick<DemoTaskList, "addTask" | "removeTask" | "resets">,
+): (occurrence: DemoOccurrence, input?: CalendarInputMethod) => void {
+  const { addTask, removeTask, resets } = taskList;
+  return useCallback(
+    (occurrence, input) => unschedule(actions, { addTask, removeTask, resets }, occurrence, input),
+    [actions, addTask, removeTask, resets],
+  );
 }

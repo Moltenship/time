@@ -478,6 +478,9 @@ importers:
       '@moltenship/calendar-core':
         specifier: workspace:*
         version: link:../../packages/calendar-core
+      '@moltenship/calendar-recurrence':
+        specifier: workspace:*
+        version: link:../../packages/calendar-recurrence
       '@moltenship/calendar-solid':
         specifier: workspace:*
         version: link:../../packages/calendar-solid
@@ -490,6 +493,9 @@ importers:
       '@ui-sdk/solid':
         specifier: 'catalog:'
         version: 0.1.0-beta.16(@solidjs/web@2.0.3(solid-js@2.0.3))(@ui-sdk/core@0.1.0-beta.16)(solid-js@2.0.3)
+      cn:
+        specifier: 'catalog:'
+        version: 0.5.1
       solid-js:
         specifier: 'catalog:'
         version: 2.0.3
@@ -503,9 +509,15 @@ importers:
       '@tailwindcss/vite':
         specifier: 'catalog:'
         version: 4.3.3(@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))
+      shadcn:
+        specifier: 'catalog:'
+        version: 4.23.0(supports-color@7.2.0)
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3
+      tw-animate-css:
+        specifier: 'catalog:'
+        version: 1.4.0
       typescript:
         specifier: 'catalog:'
         version: 7.0.2

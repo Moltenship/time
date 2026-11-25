@@ -20,15 +20,10 @@ import {
 } from "@moltenship/calendar-recurrence";
 import { useCallback, useLayoutEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 
-import {
-  createDemoAnnotations,
-  demoAnnotationSources,
-  useHiddenAnnotationSources,
-} from "./annotations";
+import { demoAnnotationSources } from "./annotation-sources";
+import { createDemoAnnotations } from "./annotations";
 import { demoAvailability, demoResourcesWithHours } from "./availability";
 import { busyNowEvents } from "./busy-now";
-import { useDemoEvents } from "./demo-events";
-import { useDragPreview } from "./drag-preview";
 import { demoAdapters, type DemoOccurrence, type DemoView } from "./demo-model";
 import { findEventElement, useFollowEventElement } from "./event-anchor";
 import { demoEventPolicy, type DemoEventChange } from "./event-changes";
@@ -40,17 +35,22 @@ import {
   type EventDraft,
 } from "./event-draft";
 import type { EventDialogSave } from "./event-form";
-import { useHiddenCalendars } from "./hidden-calendars";
 import { useNotice } from "./notice";
 import { useOccurrences } from "./occurrences";
+import {
+  useDemoEvents,
+  useDemoSettings,
+  useDemoTasks,
+  useHiddenAnnotationSources,
+  useHiddenCalendars,
+} from "./persisted";
 import { demoResourceConflictMode, demoResourceOverlapLayout } from "./resource-rules";
 import { demoResourceGroups, demoResources, type DemoResourceId } from "./resources";
 import { viewFor } from "./scrolling";
 import { applySeriesEdit, type DemoSeriesEdit, type SeriesEditExtras } from "./series-edits";
-import { useDemoSettings } from "./settings";
-import { focusTask, useDemoTasks, type DemoTask } from "./tasks";
+import { focusTask, type DemoTask } from "./tasks";
 import { isUnscheduling } from "./unschedule";
-import { useCalendarLocation } from "./url-state";
+import { useCalendarLocation, useDragPreview } from "./url-state";
 
 /** How long a simulated save takes, so the pending state is visible. */
 const saveDelayMs = 600;

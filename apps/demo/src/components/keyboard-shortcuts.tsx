@@ -1,5 +1,5 @@
 import { DemoCalendar } from "../calendar";
-import { useShortcutKeys } from "../shortcuts";
+import { useShortcutKeys } from "../use-shortcut-keys";
 
 export interface KeyboardShortcutsProps {
   readonly onCreate: () => void;

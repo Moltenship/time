@@ -7,8 +7,7 @@ import { cn } from "cn";
 import { DemoCalendar } from "../calendar";
 import { getCalendarColor } from "../calendars";
 import type { DemoTask, DemoTaskList } from "../tasks";
-import { useUnschedule } from "../unschedule";
-import { taskLength, useTaskCard, useUnscheduledDrop } from "../unscheduled";
+import { taskLength, useTaskCard, useUnschedule, useUnscheduledDrop } from "../unscheduled";
 
 export interface UnscheduledTasksProps {
   /**
