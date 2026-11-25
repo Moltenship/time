@@ -347,7 +347,7 @@ describe.each(["snapped", "free"] as const)("the Solid time grid's %s drag previ
     );
   });
 
-  test("drags across empty time to create an event, drawing a draft while it moves", async () => {
+  test("drags across empty time to create an event, drawing its range while it moves", async () => {
     const onEventChange = vi.fn<(change: Change) => void>();
     await render(() => <TimeGrid dragPreview={preview} onEventChange={onEventChange} />);
     await nowLine();
@@ -356,6 +356,8 @@ describe.each(["snapped", "free"] as const)("the Solid time grid's %s drag previ
 
     await dragTo(from, to);
     expect(grid().getAttribute("data-interaction")).toBe("create");
+    // The pointer layer draws the new event's range as a ghost, not as the keyboard's draft.
+    expect(document.querySelector("[data-calendar-ghost]")).not.toBeNull();
     fire("pointerup", to);
 
     await until(() =>

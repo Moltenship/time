@@ -39,9 +39,14 @@ function Actions() {
   return null;
 }
 
+type Decision =
+  | { readonly reason: string; readonly type: "reject" | "warn" }
+  | { readonly type: "accept" };
+
 async function renderWeek(
   weekEvents: readonly ColoredEvent[] = events,
-  onEventChange: (change: Change) => void | Promise<void> = () => {},
+  onEventChange: ((change: Change) => void | Promise<void>) | null = () => {},
+  decide?: (change: Change) => Decision,
 ) {
   const view = await render(() => (
     <Calendar.Root
@@ -51,7 +56,9 @@ async function renderWeek(
       defaultView="week"
       events={weekEvents}
       locale="en-US"
-      onEventChange={onEventChange}
+      // Without a handler the root is read-only.
+      {...(onEventChange === null ? {} : { onEventChange })}
+      {...(decide === undefined ? {} : { policies: [decide] })}
       weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
     >
       <Actions />
@@ -214,6 +221,44 @@ test("Space on an all-day cell drafts an all-day event", async () => {
   );
 });
 
+test.each([
+  ["reject", "data-invalid"],
+  ["warn", "data-warning"],
+] as const)(
+  "a draft the policies would %s is marked %s, in the hours and in the all-day row",
+  async (type, mark) => {
+    const container = await renderWeek(
+      events,
+      () => {},
+      (change) => (change.cause === "create" ? { reason: "busy", type } : { type: "accept" }),
+    );
+    await focusSlot(container, "14:00");
+    await press(" ");
+    await settled();
+    expect(container.querySelector('[data-slot="time-grid-draft"]')?.hasAttribute(mark)).toBe(true);
+    await press("Escape");
+
+    await focusToday(container);
+    await press(" ");
+    await settled();
+    expect(container.querySelector(`[data-all-day][data-draft]`)?.hasAttribute(mark)).toBe(true);
+    await press("Escape");
+  },
+);
+
+test("a read-only root has no resize handles, and Space picks nothing up", async () => {
+  const container = await renderWeek(events, null);
+  expect(container.querySelector("[data-resize]")).toBeNull();
+
+  await focusSlot(container, "14:00");
+  await press(" ");
+  expect(container.querySelector('[data-slot="time-grid-draft"]')).toBeNull();
+  await focusEvent(container, "standup");
+  await press(" ");
+  expect(container.querySelector('[role="grid"]')?.hasAttribute("data-interaction")).toBe(false);
+  expect(spoken(container) ?? "").not.toMatch(/Picked up/u);
+});
+
 test("Escape cancels a gesture and returns focus to where it started", async () => {
   const onEventChange = vi.fn<(change: Change) => void>();
   const container = await renderWeek(events, onEventChange);
@@ -262,6 +307,17 @@ test("Shift+Enter on an all-day cell opens its day", async () => {
   await press("Enter", { shiftKey: true });
 
   expect(text(container.querySelector('[data-calendar-part="title"]'))).toBe("Day 2026-10-09");
+});
+
+test("Shift+Enter on an all-day event leaves the day closed", async () => {
+  const container = await renderWeek([allDay("trip", "2026-10-08", "2026-10-09")]);
+  await focusToday(container);
+  await press("Enter");
+  expect(focused()).toBe("trip");
+
+  await press("Enter", { shiftKey: true });
+
+  expect(text(container.querySelector('[data-calendar-part="title"]'))).not.toMatch(/^Day /u);
 });
 
 test("arrow keys with nowhere to go keep focus and never reach app shortcuts", async () => {
