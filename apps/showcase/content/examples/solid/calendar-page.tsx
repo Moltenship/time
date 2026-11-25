@@ -1,5 +1,4 @@
-// The page Installation, the Agenda, Toolbar and Undo and redo pages show, after `shadcn add` of the
-// Solid items. The registry's install test adds this file to a clean Solid app, whose typecheck and
+// The page Installation, the Agenda and Toolbar pages show, after `shadcn add` of the Solid items. The registry's install test adds this file to a clean Solid app, whose typecheck and
 // build cover it.
 
 // #region view
@@ -142,47 +141,6 @@ export function CalendarWithToolbar() {
   );
 }
 // #endregion toolbar
-
-// #region undo-toast
-import { createEventHistory } from "@moltenship/calendar-solid";
-import { createSignal } from "solid-js";
-
-import { calendarAnnouncements } from "@/components/calendar/announcements";
-import { CalendarHistoryToast } from "@/components/calendar/calendar-history-toast/calendar-history-toast";
-
-// One history per calendar, outside the component, so it outlives a remount.
-const history = createEventHistory<Event, string, string>();
-
-export function CalendarWithUndo() {
-  const [list, setList] = createSignal(events);
-  return (
-    <Calendar.Root
-      defaultAnchorDate={today}
-      defaultTimeZone="UTC"
-      defaultView="agenda"
-      events={list()}
-      locale="en-US"
-      onEventChange={(change) => {
-        // Undoing a delete proposes a create with the deleted record, so it comes back as it was.
-        if (change.cause === "delete") {
-          setList((current) => current.filter((event) => event.id !== change.eventId));
-        } else if (change.cause === "create" && change.event) {
-          const restored = change.event;
-          setList((current) => [...current, restored]);
-        }
-      }}
-      onEventChangeResult={(result, detail) => history.record(result, detail)}
-      weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
-    >
-      <Calendar.Frame class="h-dvh">
-        <Calendar.ActiveView />
-      </Calendar.Frame>
-      <Calendar.Announcer messages={calendarAnnouncements} />
-      <CalendarHistoryToast calendar={Calendar} history={history} />
-    </Calendar.Root>
-  );
-}
-// #endregion undo-toast
 
 // The recurrence dialog, as the install test adds it. Its page shows it with
 // `@moltenship/calendar-recurrence` (`recurrence.tsx`), which this app doesn't install.

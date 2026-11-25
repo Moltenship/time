@@ -149,14 +149,19 @@ import { CalendarHistoryToast } from "@/components/calendar/calendar-history-toa
 
 <Solid>
 
-The page from [UI source](/docs/installation#ui-source-optional), with a history and the toast:
+The month from [Month](/docs/views/month#add-it), with a history and the toast:
 
-<include meta='title="calendar-page.tsx"'>../examples/solid/calendar-page.tsx#undo-toast</include>
+<SolidExample
+  name="undo-toast"
+  title="The undo toast"
+  size="h-[30rem]"
+  caption="Live. Drag an event to another day, and the toast offers to undo the move. F6 reaches it."
+/>
 
-The agenda changes no events itself, so the changes this page records come from your own UI, such
-as a delete through `proposeEventChange`, and from a view that drags, such as the
-[month](/docs/views/month). The `history` prop
-is read once.
+<include meta='title="undo-toast.tsx"'>../examples/solid/undo-toast.tsx#undo-toast</include>
+
+`createdEventId` finds the event a create became, so undoing the create removes it. The `history`
+prop is read once.
 
 | Prop            | Default                        | Effect                                                                 |
 | --------------- | ------------------------------ | ---------------------------------------------------------------------- |

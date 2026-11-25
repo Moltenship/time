@@ -7,6 +7,13 @@ Try it in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/): drag
 the month grid, and the calendar asks whether the change applies to this event, this and following
 events, or all events. The change waits on screen while it asks.
 
+<SolidExample
+  name="recurrence"
+  title="A daily standup"
+  size="h-96"
+  caption="Live. The calendar this guide builds. Pick a standup, press Delete, and choose which of the standups to delete."
+/>
+
 This guide builds such a calendar with `@moltenship/calendar-recurrence`. It expands each series
 into its occurrences for the dates on screen, and turns a change to one occurrence into what to
 save. The registry's `recurrence-scope-dialog` asks the question. [Series and

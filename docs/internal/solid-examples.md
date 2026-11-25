@@ -24,7 +24,8 @@ A step that adds a view adds its example in the same PR:
    export { WeekPage as default } from "../week-page";
    ```
 
-3. Show it on the view's page, in Solid's set alone (`page.solid.mdx`):
+3. Show it on the view's page, in Solid's set alone (`page.solid.mdx`, or a `<Solid>` block of a
+   shared page, which React's docs drop whole):
 
    ```mdx
    <SolidExample name="week" title="The week view" size="h-[34rem]" caption="Live. Drag an event to another day." />

@@ -476,10 +476,16 @@ async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
       "",
       'import CalendarPage from "./calendar-page";',
       'import MonthPage from "./month-page";',
+      'import UndoToastPage from "./undo-toast";',
       'import "./app.css";',
       "",
+      'const pages = { "#month": MonthPage, "#undo": UndoToastPage };',
+      "",
       "render(",
-      '  () => (location.hash === "#month" ? <MonthPage /> : <CalendarPage />),',
+      "  () => {",
+      "    const Page = pages[location.hash as keyof typeof pages] ?? CalendarPage;",
+      "    return <Page />;",
+      "  },",
       '  document.getElementById("root")!,',
       ");",
       "",
@@ -502,7 +508,7 @@ async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
     join(root, "src/app.css"),
     await readFile(join(solidConsumer, "app.css"), "utf8"),
   );
-  for (const page of ["calendar-page.tsx", "month-page.tsx"]) {
+  for (const page of ["calendar-page.tsx", "month-page.tsx", "undo-toast.tsx"]) {
     await writeFile(join(root, "src", page), await readFile(join(solidConsumer, page), "utf8"));
   }
 }

@@ -70,7 +70,8 @@ The color tokens work with any Tailwind color utility, so `text-calendar-today` 
 `ring-calendar-now` are classes too. Most calendar tokens derive from the base tokens:
 `--calendar-grid` is your `--border`, and the default event colors mix your `--primary` into
 `--background`. The controls read the base tokens directly: a button's fill is `--primary`, a
-tooltip's is `--foreground`, and the focus ring is `--ring`.
+tooltip's and the toast's are `--foreground`, a dialog's is `--popover`, and the focus ring is
+`--ring`.
 
 ## Changing tokens
 
@@ -151,21 +152,25 @@ event tokens for light and dark. To add a color, add its name to `calendarEventC
 Tokens change colors. The shape of a control, its sizes and its states are Tailwind classes, and
 each control keeps them in a `.styles.ts` file beside it, apart from its behaviour:
 
-| File                         | What it holds                                                                         |
-| ---------------------------- | ------------------------------------------------------------------------------------- |
-| `ui/button.styles.ts`        | `buttonVariants`: the button's base classes, its six variants and its eight sizes     |
-| `ui/badge.styles.ts`         | `badgeVariants`: the badge's base classes and its four variants                       |
-| `ui/tooltip.styles.ts`       | The bubble's and the arrow's classes, and `tooltipDefaults`: the delay and the offset |
-| `ui/select.styles.ts`        | A class list for each part of the select, and `selectDefaults`: where the list opens  |
-| `ui/popover.styles.ts`       | The panel's and the title's classes, and `popoverDefaults`: the gap to the trigger    |
-| `calendar-toolbar.styles.ts` | The toolbar's layout, its title, and the view switcher's trigger                      |
-| `mini-month.styles.ts`       | The mini month's grid, its days, today and the band of dates in view                  |
-| `event-chip.styles.ts`       | The event chip, in every state                                                        |
-| `resource-status.styles.ts`  | A resource's status badge and its dot                                                 |
-| `preview-state.styles.ts`    | The outline of a draft the policies would reject or flag                              |
-| `unavailable-time.styles.ts` | Where the shading of closed time sits, behind the events                              |
-| `month-view/month.styles.ts` | The month's grid, its days and dates, its events, and the "+N more" list              |
-| `list-view/agenda.styles.ts` | The agenda's days and rows                                                            |
+| File                                                        | What it holds                                                                                                   |
+| ----------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `ui/button.styles.ts`                                       | `buttonVariants`: the button's base classes, its six variants and its eight sizes                               |
+| `ui/badge.styles.ts`                                        | `badgeVariants`: the badge's base classes and its four variants                                                 |
+| `ui/tooltip.styles.ts`                                      | The bubble's and the arrow's classes, and `tooltipDefaults`: the delay and the offset                           |
+| `ui/select.styles.ts`                                       | A class list for each part of the select, and `selectDefaults`: where the list opens                            |
+| `ui/popover.styles.ts`                                      | The panel's and the title's classes, and `popoverDefaults`: the gap to the trigger                              |
+| `calendar-toolbar.styles.ts`                                | The toolbar's layout, its title, and the view switcher's trigger                                                |
+| `mini-month.styles.ts`                                      | The mini month's grid, its days, today and the band of dates in view                                            |
+| `event-chip.styles.ts`                                      | The event chip, in every state                                                                                  |
+| `resource-status.styles.ts`                                 | A resource's status badge and its dot                                                                           |
+| `preview-state.styles.ts`                                   | The outline of a draft the policies would reject or flag                                                        |
+| `unavailable-time.styles.ts`                                | Where the shading of closed time sits, behind the events                                                        |
+| `month-view/month.styles.ts`                                | The month's grid, its days and dates, its events, and the "+N more" list                                        |
+| `list-view/agenda.styles.ts`                                | The agenda's days and rows                                                                                      |
+| `ui/dialog.styles.ts`                                       | The backdrop's, the panel's, and its header's, footer's, title's and description's classes                      |
+| `ui/toast.styles.ts`                                        | The region's, the toast's and its parts' classes, and `toastRegionDefaults`: one toast at a time, at the bottom |
+| `recurrence-scope-dialog/recurrence-scope-dialog.styles.ts` | The recurring-event dialog's list of scopes and each choice                                                     |
+| `calendar-history-toast/history-toast.styles.ts`            | The undo toast's hint, which a screen reader hears after the title and the screen doesn't show                  |
 
 The paths are from `components/calendar/`. These files are plain TypeScript: strings of classes,
 with no JSX and no import from Solid. To change a look, edit the file, and every view that draws
