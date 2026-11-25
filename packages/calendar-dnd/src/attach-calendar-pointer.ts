@@ -117,7 +117,7 @@ export interface CalendarPointerOptions<
    * pointer, pixel for pixel, over boxes where a drop would land
    * (`[data-calendar-ghost="landing"]`), and slides it there on release; a resize or create on a
    * time axis draws its edge under the pointer. Both propose, check, and announce the same snapped
-   * placement. A prototype: the name and values may change.
+   * placement.
    */
   readonly preview?: "free" | "snapped";
   /**
@@ -146,6 +146,8 @@ interface FreePreview {
   validity: GhostValidity;
   /** Where a drop would land. */
   readonly marker: GhostLayer;
+  /** Whether `onPropose` answered the drop's proposal with a refusal. */
+  refused: boolean;
 }
 
 interface EventGesture<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
@@ -291,6 +293,16 @@ function floatingRect({ height, offset, width }: Floating, point: CalendarPoint)
     visible: { bottom: innerHeight, left: 0, right: innerWidth, top: 0 },
     width,
   };
+}
+
+/** Whether two boxes are the same to within half a pixel. */
+function sameBox(left: GhostBox, right: GhostBox): boolean {
+  return (
+    Math.abs(left.left - right.left) < 0.5 &&
+    Math.abs(left.top - right.top) < 0.5 &&
+    Math.abs(left.width - right.width) < 0.5 &&
+    Math.abs(left.height - right.height) < 0.5
+  );
 }
 
 function center({ height, left, top, width }: GhostBox): CalendarPoint {
@@ -548,15 +560,15 @@ export function attachCalendarPointer<
     free.clone?.follow(current.point);
   }
 
-  /** Where the event renders now, nearest `near`; `null` when the view doesn't show it. */
-  function renderedBox(id: TEventId, near: GhostBox): GhostBox | null {
+  /** Where the view renders the event now: a box per segment it shows. */
+  function renderedBoxes(id: TEventId): GhostBox[] {
     const boxes: GhostBox[] = [];
     for (const element of region.querySelectorAll("[data-event-id]")) {
       if (String(eventIdOf(element)) !== String(id)) continue;
       const rect = element.getBoundingClientRect();
       if (rect.width > 0 || rect.height > 0) boxes.push(rect);
     }
-    return nearest(boxes, near);
+    return boxes;
   }
 
   /**
@@ -586,7 +598,7 @@ export function attachCalendarPointer<
       clone.settle(
         gesture.element.isConnected
           ? gesture.element.getBoundingClientRect()
-          : renderedBox(gesture.event.id, from),
+          : nearest(renderedBoxes(gesture.event.id), from),
       );
       return;
     }
@@ -602,9 +614,22 @@ export function attachCalendarPointer<
             top: landing.top,
             width: Math.min(from.width, landing.width),
           };
-    // The proposal renders the event where it lands, or where it was if refused, by the next
-    // frame: the copy slides onto it there.
-    requestAnimationFrame(() => clone.settle(renderedBox(gesture.event.id, from) ?? fallback));
+    // Where the event shows before the proposal renders it anywhere new.
+    const before = renderedBoxes(gesture.event.id);
+    requestAnimationFrame(() => {
+      const after = renderedBoxes(gesture.event.id);
+      // A refusal, known by now when the policies or the app answered at once, leaves the event
+      // where it was: the copy goes back to it.
+      if (free.refused || free.validity === "invalid") {
+        clone.settle(nearest(after, from) ?? fallback);
+        return;
+      }
+      // Otherwise the copy lands on the event where it renders anew. An app that hasn't rendered
+      // the change yet shows it nowhere new, so the copy lands on the landing box instead of
+      // sliding home before the event appears.
+      const moved = after.filter((box) => !before.some((old) => sameBox(old, box)));
+      clone.settle(nearest(moved, from) ?? fallback);
+    });
   }
 
   /** Tells the followers what the preview shows now. */
@@ -805,7 +830,11 @@ export function attachCalendarPointer<
     void settleProposal(
       getOptions().onPropose(proposed, pointerInput),
       current.placement!,
-      (outcome) => announce(current, outcome),
+      (outcome) => {
+        // A free drag's copy, settling from the next frame, goes home after a refusal.
+        if (outcome.phase === "reject" && current.free !== undefined) current.free.refused = true;
+        announce(current, outcome);
+      },
     );
   }
 
@@ -867,6 +896,7 @@ export function attachCalendarPointer<
               label: null,
               layout: null,
               marker: new GhostLayer(region, options.ghostClassName, "landing"),
+              refused: false,
               validity: null,
             }
           : undefined,

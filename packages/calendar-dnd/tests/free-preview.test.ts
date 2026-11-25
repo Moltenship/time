@@ -449,6 +449,72 @@ describe("a free move's release", () => {
     });
   });
 
+  test("slides onto the landing box, not home, when the view hasn't rendered the change yet", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    const element = grid.elements.get("a")!;
+    // The app saves first and renders the change later: the event is still where it was.
+    setup(grid, { onPropose: () => new Promise(() => undefined), preview: "free" });
+
+    pointer("pointerdown", element, 50, yAt("09:30"));
+    pointer("pointermove", element, 150, yAt("10:37"));
+    pointer("pointerup", element, 150, yAt("10:37"));
+    vi.advanceTimersToNextFrame();
+
+    expect(box(ghostsOf(grid.region, "event")[0]!)).toEqual({
+      height: HOUR_HEIGHT,
+      left: COLUMN_WIDTH,
+      top: yAt("10:00"),
+      width: COLUMN_WIDTH,
+    });
+  });
+
+  test("goes back to the event when the drop is refused at once", async () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    const element = grid.elements.get("a")!;
+    setup(grid, {
+      onPropose: () => Promise.resolve({ reason: "policy", status: "rejected" } as never),
+      preview: "free",
+    });
+
+    pointer("pointerdown", element, 50, yAt("09:30"));
+    pointer("pointermove", element, 150, yAt("10:37"));
+    pointer("pointerup", element, 150, yAt("10:37"));
+    // The answer arrives before the next frame, as an already-settled promise's does.
+    for (let tick = 0; tick < 3; tick += 1) await Promise.resolve();
+    vi.advanceTimersToNextFrame();
+
+    expect(box(ghostsOf(grid.region, "event")[0]!)).toEqual({
+      height: HOUR_HEIGHT,
+      left: 0,
+      top: yAt("09:00"),
+      width: COLUMN_WIDTH,
+    });
+  });
+
+  test("goes back to the event when the policies refuse the drop", () => {
+    vi.useFakeTimers();
+    const grid = mountTimeGrid([meeting]);
+    const element = grid.elements.get("a")!;
+    setup(grid, {
+      check: () =>
+        ({ status: "rejected" }) as unknown as CalendarPolicyResult<
+          TestEvent,
+          string | number,
+          string
+        >,
+      preview: "free",
+    });
+
+    pointer("pointerdown", element, 50, yAt("09:30"));
+    pointer("pointermove", element, 150, yAt("10:37"));
+    pointer("pointerup", element, 150, yAt("10:37"));
+    vi.advanceTimersToNextFrame();
+
+    expect(translation(ghostsOf(grid.region, "event")[0]!)).toEqual([0, yAt("09:00")]);
+  });
+
   test("goes back to the event on Escape", () => {
     vi.useFakeTimers();
     const grid = mountTimeGrid([meeting]);
