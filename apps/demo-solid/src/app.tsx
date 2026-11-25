@@ -28,6 +28,7 @@ import {
 } from "./drag-preview";
 import { FrameworkSwitch } from "./framework-switch";
 import { isScrolling, viewFor } from "./scrolling";
+import { demoResourceGroups, demoResources } from "./resources";
 import { applyToSeries, seriesScopes } from "./series";
 import { readSolidLocation, writeSolidLocation, type SolidView } from "./url-state";
 
@@ -39,12 +40,30 @@ const timed = (date: Temporal.PlainDate, start: string, end: string) =>
   ({ end: at(date, end), kind: "timed", start: at(date, start) }) as const;
 
 const seed: readonly Meeting[] = [
-  { id: "design-review", interval: timed(today, "10:00", "11:00"), title: "Design review" },
+  {
+    id: "design-review",
+    interval: timed(today, "10:00", "11:00"),
+    resourceIds: ["room-orchid", "person-maya", "person-alex"],
+    title: "Design review",
+  },
   { id: "team-lunch", interval: timed(today.add({ days: 1 }), "12:30", "13:30"), title: "Lunch" },
+  {
+    id: "sprint-planning",
+    interval: timed(today.add({ days: 1 }), "09:30", "11:00"),
+    resourceIds: ["room-cedar", "person-sam", "person-lee"],
+    title: "Sprint planning",
+  },
+  {
+    id: "interview",
+    interval: timed(today.add({ days: 3 }), "14:00", "15:00"),
+    resourceIds: ["room-lotus", "person-alex"],
+    title: "Interview",
+  },
   {
     id: "board-meeting",
     interval: timed(today.add({ days: 2 }), "09:00", "10:30"),
     locked: true,
+    resourceIds: ["room-orchid"],
     title: "Board meeting",
   },
   // A sync every day for five days, at 16:00: changing one asks which ones it applies to.
@@ -57,6 +76,7 @@ const seed: readonly Meeting[] = [
   {
     id: "offsite",
     interval: { end: today.add({ days: 7 }), kind: "all-day", start: today.add({ days: 5 }) },
+    resourceIds: ["team-design", "team-engineering"],
     title: "Offsite",
   },
 ];
@@ -80,6 +100,7 @@ const steps = [
   { action: "setView", args: [{ view: "week" }], label: "Switch to the week" },
   { action: "setView", args: [{ view: "agenda" }], label: "Switch to the agenda" },
   { action: "setView", args: [{ view: "month" }], label: "Switch to the month" },
+  { action: "setView", args: [{ view: "resources" }], label: "Switch to the resources" },
   {
     action: "moveEvent",
     args: [{ eventId: "design-review", start: local(today.add({ days: 1 }), "14:00") }],
@@ -142,6 +163,7 @@ const viewOptions: readonly { readonly label: string; readonly value: SolidView 
   { label: "Month", value: "month" },
   { label: "Year", value: "year" },
   { label: "Agenda", value: "agenda" },
+  { label: "Resources", value: "resources" },
 ];
 
 /** How a pointer drag previews where it lands, as the React demo's settings choose it. */
@@ -224,18 +246,21 @@ export function App() {
       </header>
       <p class="preview">
         This page runs <code>@moltenship/calendar-solid</code>, a preview. The toolbar, the view
-        switcher, the mini month, the week, day, month, year and agenda, the recurrence dialog and
-        the undo toast are the registry's Solid items, the files <code>shadcn add</code> installs
-        into a Solid app. "Scroll the month and agenda" switches to their scrolling versions, which
-        swipe a month at a time and scroll through days without end. Arrow keys move through the
-        week's and day's 15-minute slots and the month's days, Enter moves into the events there,
-        and Space picks an event up or starts a new one. A pointer drags an event to another time or
-        day, or its edges, or across empty time or days to create one. In the year, arrow keys move
-        through days and Enter or a click lists a day's events. In the agenda, up and down move
-        between events, Page Up and Page Down between days. A change to a Team sync asks which of
-        the series it applies to, and every other change shows a toast to undo it; F6 reaches it.
-        The week and day draw your sleep and music beside the events, and shade the time outside 9
-        to 6 on weekdays; the month mutes the weekend. <a href={docsUrl}>The Solid docs</a>
+        switcher, the mini month, the week, day, month, year and agenda, the resource columns, the
+        recurrence dialog and the undo toast are the registry's Solid items, the files{" "}
+        <code>shadcn add</code> installs into a Solid app. "Scroll the month and agenda" switches to
+        their scrolling versions, which swipe a month at a time and scroll through days without end.
+        Arrow keys move through the week's and day's 15-minute slots and the month's days, Enter
+        moves into the events there, and Space picks an event up or starts a new one. A pointer
+        drags an event to another time or day, or its edges, or across empty time or days to create
+        one. In the year, arrow keys move through days and Enter or a click lists a day's events. In
+        the agenda, up and down move between events, Page Up and Page Down between days. The
+        resource columns show the rooms and people the events book, each with whether it's free now:
+        drag an event to another column, or press the arrow keys while it's picked up, to move it to
+        that room or person. A change to a Team sync asks which of the series it applies to, and
+        every other change shows a toast to undo it; F6 reaches it. The week and day draw your sleep
+        and music beside the events, and shade the time outside 9 to 6 on weekdays; the month mutes
+        the weekend. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's time grid, month, year and list projections, with an
@@ -248,6 +273,7 @@ export function App() {
         annotationSources={activitySources}
         annotations={activity}
         availability={officeHours}
+        defaultExpandedResourceIds={demoResourceGroups}
         defaultTimeZone={timeZone}
         events={events()}
         label="Team calendar"
@@ -272,11 +298,20 @@ export function App() {
               typeof detail.fields?.title === "string" ? detail.fields.title : "New event";
             const event = change.event ?? { id: `created-${(created += 1)}`, title };
             createdIds.set(change.id, event.id);
-            setEvents((current) => [...current, { ...event, interval: change.proposed }]);
+            setEvents((current) => [
+              ...current,
+              { ...event, interval: change.proposed, resourceIds: change.proposed.resourceIds },
+            ]);
           } else {
             setEvents((current) =>
               current.map((event) =>
-                event.id === change.eventId ? { ...event, interval: change.proposed } : event,
+                event.id === change.eventId
+                  ? {
+                      ...event,
+                      interval: change.proposed,
+                      resourceIds: change.proposed.resourceIds,
+                    }
+                  : event,
               ),
             );
           }
@@ -284,6 +319,7 @@ export function App() {
         onEventChangeResult={(result, detail) => changes.record(result, detail)}
         onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
         onViewChange={showView}
+        resources={demoResources}
         policies={[
           // A locked event stays where it is: the change fails, and an agent hears the reason.
           (change) =>
@@ -296,6 +332,7 @@ export function App() {
           "3-day": { dragPreview: dragPreview() },
           day: { dragPreview: dragPreview() },
           month: { dragPreview: dragPreview() },
+          resources: { dragPreview: dragPreview() },
           "scrolling-month": { dragPreview: dragPreview() },
           week: { dragPreview: dragPreview() },
         }}

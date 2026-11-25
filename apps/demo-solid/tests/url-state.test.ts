@@ -32,7 +32,7 @@ describe("the Solid demo's view and date in the URL", () => {
   });
 
   test.each([
-    ["resources", "day"],
+    ["resources", "resources"],
     ["timeline-week", "week"],
     ["scrolling-week", "week"],
     ["scrolling-day", "day"],
