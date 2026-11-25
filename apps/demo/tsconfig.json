@@ -8,5 +8,5 @@
     },
     "types": ["vite-plus/client"]
   },
-  "include": ["src", "tests", "vite.config.ts"]
+  "include": ["scripts", "src", "tests", "vite.config.ts"]
 }

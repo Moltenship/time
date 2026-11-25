@@ -30,7 +30,7 @@ import { ShortcutsDialog } from "./components/shortcuts-dialog";
 import { Sidebar } from "./components/sidebar";
 import { ThemeToggle } from "./components/theme-toggle";
 import { TopBar } from "./components/top-bar";
-import { UiSwitch } from "./components/ui-switch";
+import { FrameworkSwitch, UiSwitch } from "./components/ui-switch";
 import { UnscheduledTasks } from "./components/unscheduled-tasks";
 
 const styles = stylex.create({
@@ -48,6 +48,7 @@ const styles = stylex.create({
   drawerBar: {
     alignItems: "center",
     display: "flex",
+    flexWrap: "wrap",
     gap: "0.25rem",
     justifyContent: "space-between",
     paddingBlockEnd: "0.5rem",
@@ -121,6 +122,7 @@ function Workspace() {
                     content={
                       <LayoutContent padding={0}>
                         <div {...stylex.props(styles.drawerBar)}>
+                          <FrameworkSwitch />
                           <UiSwitch />
                           <DocsLink />
                           <ThemeToggle />

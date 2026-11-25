@@ -35,6 +35,7 @@ const tasks = (config.run?.tasks ?? {}) as Record<string, Task>;
 const prGates = [
   "ci:check",
   "ci:build",
+  "demo:pages",
   "release:check",
   "ci:test",
   "registry:stylex",
@@ -186,6 +187,15 @@ describe("CI quality gate contract", () => {
 
     expect(lane[lane.indexOf("vp run ci:build") + 1]).toBe("vp run release:check");
     expect(stepsOf("ready:checks").has("release:check")).toBe(true);
+  });
+
+  test("the demo's pages are checked after the build wrote them, in the lane CI runs", () => {
+    const lane = commandsOf(tasks["gate:serial"]!)[0]!
+      .split("&&")
+      .map((step) => step.trim());
+
+    expect(lane.indexOf("vp run demo:pages")).toBeGreaterThan(lane.indexOf("vp run ci:build"));
+    expect(stepsOf("ready:checks").has("demo:pages")).toBe(true);
   });
 
   test("the release's gate is the whole full tier, with a strict dry run", () => {

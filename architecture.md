@@ -189,7 +189,9 @@ time/
 `apps/showcase` is the only documentation application. It runs on Fumadocs; there is no second docs
 content tree. `apps/demo` is a public Google Calendar-style demo built from the registry views; it
 carries no documentation. `apps/demo-solid` shows the Solid integration and is the one place in the
-repository that compiles Solid JSX; the packages are written without JSX.
+repository that compiles Solid JSX; the packages are written without JSX. It stays an app of its
+own, with its own Vite config, and the demo's build and dev server serve it at `/solid/` of the
+demo (`apps/demo/vite.config.ts`), so one deployment has both frameworks and a switch between them.
 
 ### Published packages
 

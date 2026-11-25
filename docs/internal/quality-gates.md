@@ -17,9 +17,11 @@ runs one at a time.
 The warm floor of a rerun is the steps that pack packages, build the docs site or install the
 registry into clean apps, which never replay: they rewrite their own inputs, or reach the network.
 
-`gate:serial` runs `showcase:links`, `ci:check`, `ci:build`, `release:check`, `ci:test`,
-`registry:stylex` and `package:graph` in that order, because each writes or reads generated files:
-packages' `dist`, packed tarballs, the docs site's `.next` and `.source`. Steps outside it read
+`gate:serial` runs `showcase:links`, `ci:check`, `ci:build`, `release:check`, `demo:pages`,
+`ci:test`, `registry:stylex` and `package:graph` in that order, because each writes or reads
+generated files: packages' `dist`, packed tarballs, the docs site's `.next` and `.source`, the
+demo's `dist`. `demo:pages` checks that the demo's build has its three pages, the Solid demo at
+`/solid/` among them, with the scripts and stylesheets they link. Steps outside it read
 only source, so they run at the same time. The full gate runs its three browser runs one
 after another in a lane of their own, `gate:browsers`, beside the serial lane: see [Load](#load).
 Each browser mode keeps its own Vite dependency cache. CI's `quality-gates` job runs

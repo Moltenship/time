@@ -2,6 +2,10 @@ import solid from "@solidjs/vite-plugin";
 import { defineConfig } from "vite-plus";
 
 export default defineConfig({
+  // The page lives at `/solid/` of the React demo's deployment, whose build builds this app into
+  // its own `dist/solid` and whose dev server serves it there (apps/demo/vite.config.ts). Alone,
+  // `vp dev` here serves it at the same path.
+  base: "/solid/",
   // The native compiler, so no Babel. The plugin also adds the `solid` export condition, which
   // makes @ui-sdk/solid resolve to its JSX source and compile with this app's Solid.
   plugins: [solid()],

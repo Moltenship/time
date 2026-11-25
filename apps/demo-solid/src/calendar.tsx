@@ -106,7 +106,8 @@ function Agenda(props: CalendarViewRendererProps<List, ListViewOptions>) {
       <For each={props.projection.days} fallback={<p class="empty">Nothing in these weeks.</p>}>
         {(entry) => (
           <section class="agenda-day" data-today={entry.isToday ? "" : undefined}>
-            <h3>{day(entry.date)}</h3>
+            {/* Under the page's `h1`, as the agent panel's `h2` is. */}
+            <h2>{day(entry.date)}</h2>
             <ul>
               <For each={entry.items}>
                 {(item) => (

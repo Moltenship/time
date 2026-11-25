@@ -119,9 +119,10 @@ export default defineConfig({
       // The full gate's browser runs, one at a time beside its serial lane. Each takes half the
       // cores, and a watchdog fails a run that stops making progress (tools/a11y/vite.config.ts).
       "gate:browsers": "vp run a11y && vp run browsers && vp run a11y:ci-speed",
-      // release:check reads the packages ci:build wrote and packs them, so it runs right after.
+      // release:check reads the packages ci:build wrote and packs them, so it runs right after,
+      // and demo:pages the demo's dist, which ci:build wrote too.
       "gate:serial":
-        "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run ci:test && vp run registry:stylex && vp run package:graph",
+        "vp run showcase:links && vp run ci:check && vp run ci:build && vp run release:check && vp run demo:pages && vp run ci:test && vp run registry:stylex && vp run package:graph",
       // `ci:build` has built the docs site, so search checks that build. The release dry run
       // rebuilds and packs every published package and installs them from the pnpm store into a
       // clean project. Then the SSR fixture, the docs site and the registry's clean apps install
@@ -133,6 +134,8 @@ export default defineConfig({
       "ci:check": "vp check",
       "ci:test": "vp test",
       "ci:build": "vp run -r build",
+      // The demo's build has its three pages, the Solid demo at /solid/ among them, and their assets.
+      "demo:pages": "vp run demo#pages:check",
       // Every registry test again, over the `stylex-*` items.
       "registry:stylex": { command: "vp test --config vite.stylex.config.ts", cwd: "registry" },
       "registry:e2e": "vp run registry#e2e",

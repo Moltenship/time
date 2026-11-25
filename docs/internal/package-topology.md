@@ -60,7 +60,7 @@ packed code carries the `/*!` notice.
 | `showcase` | Consumer-equivalent documentation and examples | Public facade, `calendar-recurrence`, `calendar-dnd-kit`, `calendar-testing` and `@moltenship/ics` |
 | `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade; its tests also use `calendar-testing` |
 | `benchmark` | Internal core and recurrence benchmark runners, with their fixtures | Core, recurrence and Temporal utilities |
-| `demo` | The Google Calendar-style demo app | Public facade, `calendar-recurrence` and `calendar-dnd-kit` |
+| `demo` | The Google Calendar-style demo app. Its build also builds `demo-solid` into `dist/solid`, and its dev server serves it at `/solid/` (`apps/demo/vite.config.ts`) | Public facade, `calendar-recurrence` and `calendar-dnd-kit`; `demo-solid` as a dev dependency, which it builds and never imports |
 | `demo-solid` | The Solid integration in a Vite app (2.0, in progress); the one workspace that compiles Solid JSX | `calendar-solid`, and the engine packages it needs, through public entries |
 | `registry-source` | Registry source, type-checked and tested in place | Public facade only; its tests also use `calendar-testing` |
 | `a11y` | Internal axe and interaction suite (`tools/a11y`) | Public facade, `calendar-recurrence`, the dnd-kit adapter, `calendar-testing`, registry source in place (`@registry/*`), and the demo's `App` by path (`apps/demo/src/app`); not in the manifest check yet |
