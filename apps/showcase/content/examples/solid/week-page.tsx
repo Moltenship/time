@@ -6,7 +6,9 @@ import {
   createCalendar,
   createCanonicalEventAdapter,
   type CalendarEvent,
+  type CalendarEventChange,
 } from "@moltenship/calendar-solid";
+import { createSignal } from "solid-js";
 
 import type { CalendarEventColor } from "@/components/calendar/event-colors";
 import { createDayView, createWeekView } from "@/components/calendar/time-grid-view/time-grid-view";
@@ -24,7 +26,7 @@ export const Calendar = createCalendar<Event>()({
 });
 // #endregion view
 
-const events: readonly Event[] = [
+const seed: readonly Event[] = [
   {
     data: { color: "blue" },
     end: Temporal.Instant.from("2026-10-08T09:30:00Z"),
@@ -45,13 +47,33 @@ const events: readonly Event[] = [
 
 // #region page
 export default function WeekPage() {
+  const [events, setEvents] = createSignal<readonly Event[]>(seed);
+  // A drag or a key proposes a change; saving it moves the event.
+  const save = (change: CalendarEventChange<Event, string, string>) => {
+    if (change.cause === "create") {
+      const event: Event = {
+        data: { color: "blue" },
+        id: crypto.randomUUID(),
+        title: "New event",
+        ...change.proposed,
+      };
+      setEvents((all) => [...all, event]);
+    } else if (change.cause !== "delete") {
+      setEvents((all) =>
+        all.map((event) =>
+          event.id === change.eventId ? { ...event, ...change.proposed } : event,
+        ),
+      );
+    }
+  };
   return (
     <Calendar.Root
       defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
       defaultTimeZone="UTC"
       defaultView="week"
-      events={events}
+      events={events()}
       locale="en-US"
+      onEventChange={save}
       weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
     >
       {/* The hours scroll inside the viewport, under the header and the all-day row. */}
