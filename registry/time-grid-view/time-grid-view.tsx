@@ -17,7 +17,11 @@ import { useEventLabel, type EventDescriber } from "@registry/calendar/event-lab
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
-import { cn } from "cn";
+import { fullDateFormat } from "@registry/shared/time-grid-view/time-grid-labels";
+import {
+  timeGridHeadClass,
+  timeGridViewClass,
+} from "@registry/shared/time-grid-view/time-grid.styles";
 
 import { annotationFormats } from "./annotation-label";
 import { TimeGridAllDay } from "./time-grid-all-day";
@@ -31,7 +35,7 @@ import {
 import { TimeGridBody } from "./time-grid-body";
 import { TimeGridEventTooltip } from "./time-grid-event";
 import { TimeGridHeader } from "./time-grid-header";
-import { gutterStyle, timeGridGutterClassName, useTimeGridZones } from "./time-grid-zones";
+import { gutterStyle, useTimeGridZones } from "./time-grid-zones";
 
 /**
  * Overlapping events sit side by side in lanes (`overlapLayout: "columns"`, the default), in lanes
@@ -133,10 +137,7 @@ export function TimeGridView<TEvent>({
     [annotationHandles, annotationLayout, formats],
   );
   const labelEvent = useEventLabel(environment, options.describeEvent);
-  const formatDate = useMemo(() => {
-    const format = new Intl.DateTimeFormat(environment.locale, { dateStyle: "full" });
-    return (date: Temporal.PlainDate) => format.format(date);
-  }, [environment.locale]);
+  const formatDate = useMemo(() => fullDateFormat(environment.locale), [environment.locale]);
   const { dayView } = options;
   const openDay =
     dayView === undefined || days.length === 1
@@ -155,15 +156,10 @@ export function TimeGridView<TEvent>({
         aria-label={timeGridTitle(range, environment.locale)}
         {...keyboard}
         data-slot="time-grid"
-        className={cn(
-          "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize",
-          timeGridGutterClassName,
-          // A long-press on a touch screen picks events up: it selects no text and opens no callout.
-          !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
-        )}
+        className={timeGridViewClass(isReadOnly)}
         style={gutterStyle(zones)}
       >
-        <div className="shrink-0 overflow-hidden border-b border-calendar-grid [scrollbar-gutter:stable]">
+        <div className={timeGridHeadClass}>
           <TimeGridHeader
             actions={actions}
             annotations={annotations}
