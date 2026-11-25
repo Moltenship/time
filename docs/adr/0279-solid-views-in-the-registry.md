@@ -239,6 +239,11 @@ What it costs:
     copy.
   - No control the views use is missing: the React and Solid packages export the same 69 entries.
 
+**Icons** are the one part of the kit that is not a twin yet. The React items keep `lucide-react`.
+`lucide-solid` names Solid 1 in its peer range, so the Solid `calendar` item ships the seven icons
+the views use as inline SVG in one file, `icons.tsx`, with the same names. It moves to
+`lucide-solid` when that package supports Solid 2.0.
+
 ### 6. What an agent gains
 
 When the controls are ui-sdk components, ui-sdk's bridge reads them as it reads the calendar. In
