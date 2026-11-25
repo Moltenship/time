@@ -1,0 +1,206 @@
+<div aria-label="Oct 5 – 11, 2026" class="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize [--calendar-hours-width:3rem] sm:[--calendar-hours-width:4rem] [--calendar-gutter-width:calc(var(--calendar-hours-width)+var(--calendar-zones,0)*var(--calendar-zone-width,4rem))] pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]" data-slot="time-grid" role="grid">
+  <div class="shrink-0 overflow-hidden border-b border-calendar-grid [scrollbar-gutter:stable]">
+    <div class="flex" role="row">
+      <div class="flex w-(--calendar-gutter-width) shrink-0 items-end pb-1 text-[0.625rem] text-calendar-axis" role="columnheader">
+        <span class="flex min-w-0 flex-1 justify-end pe-2 whitespace-nowrap">
+          "GMT+0"
+      <div class="grid flex-1" style="grid-template-columns: repeat(7, minmax(0px, 1fr))">
+        <div aria-label="Monday, October 5, 2026" class="flex min-w-0 flex-col gap-0.5 py-2 items-center" role="columnheader">
+          <span class="text-[0.6875rem] font-medium tracking-wide uppercase text-muted-foreground">
+            "Mon"
+          <button aria-label="Open Monday, October 5, 2026" class="group rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+            <span class="flex items-center justify-center rounded-full text-xl tabular-nums sm:text-2xl size-9 sm:size-11 group-hover:bg-accent">
+              "5"
+        <div aria-label="Tuesday, October 6, 2026" class="flex min-w-0 flex-col gap-0.5 py-2 items-center" role="columnheader">
+          <span class="text-[0.6875rem] font-medium tracking-wide uppercase text-muted-foreground">
+            "Tue"
+          <button aria-label="Open Tuesday, October 6, 2026" class="group rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+            <span class="flex items-center justify-center rounded-full text-xl tabular-nums sm:text-2xl size-9 sm:size-11 group-hover:bg-accent">
+              "6"
+        <div aria-label="Wednesday, October 7, 2026" class="flex min-w-0 flex-col gap-0.5 py-2 items-center" role="columnheader">
+          <span class="text-[0.6875rem] font-medium tracking-wide uppercase text-muted-foreground">
+            "Wed"
+          <button aria-label="Open Wednesday, October 7, 2026" class="group rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+            <span class="flex items-center justify-center rounded-full text-xl tabular-nums sm:text-2xl size-9 sm:size-11 group-hover:bg-accent">
+              "7"
+        <div aria-current="date" aria-label="Thursday, October 8, 2026" class="flex min-w-0 flex-col gap-0.5 py-2 items-center" role="columnheader">
+          <span class="text-[0.6875rem] font-medium tracking-wide uppercase text-calendar-today">
+            "Thu"
+          <button aria-label="Open Thursday, October 8, 2026" class="group rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+            <span class="flex items-center justify-center rounded-full text-xl tabular-nums sm:text-2xl size-9 sm:size-11 bg-calendar-today text-calendar-today-foreground">
+              "8"
+        <div aria-label="Friday, October 9, 2026" class="flex min-w-0 flex-col gap-0.5 py-2 items-center" role="columnheader">
+          <span class="text-[0.6875rem] font-medium tracking-wide uppercase text-muted-foreground">
+            "Fri"
+          <button aria-label="Open Friday, October 9, 2026" class="group rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+            <span class="flex items-center justify-center rounded-full text-xl tabular-nums sm:text-2xl size-9 sm:size-11 group-hover:bg-accent">
+              "9"
+        <div aria-label="Saturday, October 10, 2026" class="flex min-w-0 flex-col gap-0.5 py-2 items-center" role="columnheader">
+          <span class="text-[0.6875rem] font-medium tracking-wide uppercase text-muted-foreground">
+            "Sat"
+          <button aria-label="Open Saturday, October 10, 2026" class="group rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+            <span class="flex items-center justify-center rounded-full text-xl tabular-nums sm:text-2xl size-9 sm:size-11 group-hover:bg-accent">
+              "10"
+        <div aria-label="Sunday, October 11, 2026" class="flex min-w-0 flex-col gap-0.5 py-2 items-center" role="columnheader">
+          <span class="text-[0.6875rem] font-medium tracking-wide uppercase text-muted-foreground">
+            "Sun"
+          <button aria-label="Open Sunday, October 11, 2026" class="group rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+            <span class="flex items-center justify-center rounded-full text-xl tabular-nums sm:text-2xl size-9 sm:size-11 group-hover:bg-accent">
+              "11"
+    <div class="flex" role="row" style="height: 4.875rem">
+      <div class="flex w-(--calendar-gutter-width) shrink-0 items-start justify-end pt-0.5 pe-1" role="rowheader">
+        <span class="sr-only">
+          "All day"
+        <button aria-expanded="false" aria-label="Show all all-day events" class="group/button inline-flex shrink-0 items-center justify-center border border-transparent bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 data-disabled:pointer-events-none data-disabled:opacity-50 data-pending:cursor-wait aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:hover:bg-muted/50 size-7 rounded-full" data-slot="button" tabindex="-1" type="button">
+          <svg aria-hidden="true" class="transition-transform" fill="none" height="24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" stroke="currentColor" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+      <div class="grid flex-1" style="grid-template-columns: repeat(7, minmax(0px, 1fr))">
+        <div aria-label="Monday, October 5, 2026, 1 all-day event" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+          <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-05">
+          <button aria-label="Conference, all day, Monday, October 5 – Wednesday, October 7" class="flex items-center gap-1.5 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event px-2 text-start text-xs font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 absolute start-0 z-1 mx-1 min-w-0 py-0 leading-[1.375rem]" data-color="teal" data-event-id="Conference" data-slot="calendar-event" style="height: 1.375rem; inset-inline-end: calc(-200% - 2px); top: 0.25rem" tabindex="-1" type="button">
+            <span class="truncate" data-slot="calendar-event-title">
+              "Conference"
+        <div aria-label="Tuesday, October 6, 2026, 1 all-day event" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+          <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-06">
+        <div aria-label="Wednesday, October 7, 2026, 5 all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+          <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-07">
+          <button aria-label="Inventory, all day, Wednesday, October 7" class="flex items-center gap-1.5 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event px-2 text-start text-xs font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 absolute start-0 z-1 mx-1 min-w-0 py-0 leading-[1.375rem]" data-color="pink" data-event-id="Inventory" data-slot="calendar-event" style="height: 1.375rem; inset-inline-end: calc(0% + 0px); top: 1.75rem" tabindex="-1" type="button">
+            <span class="truncate" data-slot="calendar-event-title">
+              "Inventory"
+          <button class="absolute start-0 z-1 mx-1 truncate rounded-md px-2 text-start text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" style="height: 1.375rem; inset-inline-end: calc(0% + 0px); top: 3.25rem" tabindex="-1" type="button">
+            "+3 more"
+        <div aria-label="Thursday, October 8, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+          <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-08">
+        <div aria-label="Friday, October 9, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+          <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-09">
+        <div aria-label="Saturday, October 10, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+          <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-10">
+        <div aria-label="Sunday, October 11, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+          <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-11">
+  <div class="relative min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]" data-slot="time-grid-body">
+    <div class="flex h-[calc(var(--calendar-hour-height)*24)]" role="row">
+      <div class="w-(--calendar-gutter-width) shrink-0" role="rowheader">
+        <span class="sr-only">
+          "Timed events"
+        <div aria-hidden="true" class="relative h-full">
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 4.16667%">
+            "1 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 8.33333%">
+            "2 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 12.5%">
+            "3 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 16.6667%">
+            "4 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 20.8333%">
+            "5 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 25%">
+            "6 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 29.1667%">
+            "7 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 33.3333%">
+            "8 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 37.5%">
+            "9 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 41.6667%">
+            "10 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 45.8333%">
+            "11 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 50%">
+            "12 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 54.1667%">
+            "1 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 58.3333%">
+            "2 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 62.5%">
+            "3 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 66.6667%">
+            "4 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 70.8333%">
+            "5 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 75%">
+            "6 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 79.1667%">
+            "7 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 83.3333%">
+            "8 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 87.5%">
+            "9 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 91.6667%">
+            "10 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 95.8333%">
+            "11 PM"
+      <div class="grid flex-1 bg-[linear-gradient(to_bottom,var(--calendar-grid)_1px,transparent_1px)] bg-size-[100%_var(--calendar-hour-height)]" style="grid-template-columns: repeat(7, minmax(0px, 1fr))">
+        <div class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-05" role="gridcell">
+          <div class="absolute inset-y-0 start-0 end-2">
+        <div class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-06" role="gridcell">
+          <div class="absolute inset-y-0 start-0 end-2">
+            <button aria-label="Locked review, Tuesday, October 6, 2:00 – 3:00 PM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="yellow" data-event-id="Locked review" data-slot="calendar-event" style="height: 4.16667%; inset-inline-start: 0%; top: 58.3333%; width: 100%" tabindex="-1" type="button">
+              <span class="line-clamp-2" data-slot="calendar-event-title">
+                "Locked review"
+              <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                "2:00 – 3:00 PM"
+              <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
+              <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+        <div class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-07" role="gridcell">
+          <div class="absolute inset-y-0 start-0 end-2">
+        <div class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-08" data-today="" role="gridcell">
+          <div class="absolute inset-y-0 start-0 end-2">
+            <button aria-label="Design review, Thursday, October 8, 9:00 – 10:00 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="blue" data-event-id="Design review" data-slot="calendar-event" style="height: 4.16667%; inset-inline-start: 0%; top: 37.5%; width: 50%" tabindex="-1" type="button">
+              <span class="line-clamp-2" data-slot="calendar-event-title">
+                "Design review"
+              <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                "9:00 – 10:00 AM"
+              <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
+              <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+            <button aria-label="Planning, Thursday, October 8, 9:30 – 10:30 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="green" data-event-id="Planning" data-slot="calendar-event" style="height: 4.16667%; inset-inline-start: 50%; top: 39.5833%; width: 50%" tabindex="-1" type="button">
+              <span class="line-clamp-2" data-slot="calendar-event-title">
+                "Planning"
+              <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                "9:30 – 10:30 AM"
+              <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
+              <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+            <button aria-label="Pairing, Thursday, October 8, 10:00 – 11:00 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="orange" data-event-id="Pairing" data-slot="calendar-event" style="height: 4.16667%; inset-inline-start: 0%; top: 41.6667%; width: 50%" tabindex="-1" type="button">
+              <span class="line-clamp-2" data-slot="calendar-event-title">
+                "Pairing"
+              <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                "10:00 – 11:00 AM"
+              <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
+              <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+            <button aria-label="Standup, Thursday, October 8, 1:00 – 1:15 PM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" data-color="purple" data-event-id="Standup" data-slot="calendar-event" style="height: 1.04167%; inset-inline-start: 0%; top: 54.1667%; width: 100%" tabindex="-1" type="button">
+              <span class="truncate">
+                <span data-slot="calendar-event-title">
+                  "Standup"
+                <span class="font-normal opacity-80">
+                  ","
+                  <span data-event-time="true">
+                    "1:00 PM"
+              <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+            <button aria-label="Quarterly roadmap review with the platform, design and research teams, Thursday, October 8, 3:00 – 3:30 PM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" data-color="teal" data-event-id="Quarterly roadmap review with the platform, design and research teams" data-slot="calendar-event" style="height: 2.08333%; inset-inline-start: 0%; top: 62.5%; width: 100%" tabindex="-1" type="button">
+              <span class="truncate">
+                <span data-slot="calendar-event-title">
+                  "Quarterly roadmap review with the platform, design and research teams"
+                <span class="font-normal opacity-80">
+                  ","
+                  <span data-event-time="true">
+                    "3:00 PM"
+              <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 rounded-md bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-slot="time-grid-draft" style="height: 4.16667%; top: 0%">
+          <div aria-label="Thursday, October 8 at 12:45 AM" class="pointer-events-none absolute inset-x-0 z-10 rounded-sm focus-visible:bg-calendar-selection focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-ring" role="button" style="height: 1.04167%; top: 3.125%" tabindex="0">
+          <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-calendar-now before:absolute before:-top-1 before:-start-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now" data-slot="time-grid-now" style="top: 43.0556%">
+        <div class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-09" role="gridcell">
+          <div class="absolute inset-y-0 start-0 end-2">
+            <button aria-label="Red-eye flight, Friday, October 9 at 10:00 PM – Saturday, October 10 at 4:00 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))] rounded-b-none" data-color="red" data-event-id="Red-eye flight" data-slot="calendar-event" style="height: 8.33333%; inset-inline-start: 0%; top: 91.6667%; width: 100%" tabindex="-1" type="button">
+              <span class="line-clamp-2" data-slot="calendar-event-title">
+                "Red-eye flight"
+              <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                "10:00 PM – Sat 4:00 AM"
+              <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
+        <div class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-10" role="gridcell">
+          <div class="absolute inset-y-0 start-0 end-2">
+            <button aria-label="Red-eye flight, Friday, October 9 at 10:00 PM – Saturday, October 10 at 4:00 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))] rounded-t-none" data-color="red" data-event-id="Red-eye flight" data-slot="calendar-event" style="height: 16.6667%; inset-inline-start: 0%; top: 0%; width: 100%" tabindex="-1" type="button">
+              <span class="line-clamp-2" data-slot="calendar-event-title">
+                "Red-eye flight"
+              <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                "10:00 PM – Sat 4:00 AM"
+              <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+        <div class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-11" role="gridcell">
+          <div class="absolute inset-y-0 start-0 end-2">

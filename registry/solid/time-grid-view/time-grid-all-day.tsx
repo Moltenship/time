@@ -1,5 +1,7 @@
 import {
+  showsInResource,
   useCalendarFocus,
+  useCalendarInteraction,
   useRovingFocus,
   type DayGridOverflow,
   type DayGridRow,
@@ -14,7 +16,11 @@ import { createMemo, createSignal, For, Show, untrack, type Accessor } from "sol
 
 import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
-import { draftCheckClassName } from "@registry/calendar/preview-check";
+import {
+  draftCheckClassName,
+  previewCheckAttributes,
+  useDraftCheck,
+} from "@registry/calendar/preview-check";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import {
   allDayCellPlacement,
@@ -61,6 +67,8 @@ export interface TimeGridAllDayProps<TEvent> {
   /** An icon before an event's title, or nothing. */
   readonly getEventIcon?: (event: TEvent) => JSX.Element;
   readonly labelEvent: EventLabeler<TEvent>;
+  /** Opens a date in the day view; Shift+Enter on its cell does so. */
+  readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   readonly row: DayGridRow<TEvent, EventId, ResourceId>;
 }
 
@@ -90,6 +98,7 @@ function AllDayCell(props: {
    * not a focus target, so the visible dates keep the grid's tab stop.
    */
   readonly offscreen: boolean;
+  readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   readonly resourceId?: ResourceId | null;
 }) {
   const roving = useRovingFocus(() => ({
@@ -97,8 +106,34 @@ function AllDayCell(props: {
     kind: "day",
     resourceId: props.resourceId,
   }));
+  const inDraft = useCalendarInteraction(
+    (session) =>
+      session?.eventId === null &&
+      session.proposed.kind === "all-day" &&
+      (props.resourceId === undefined ||
+        showsInResource(session.proposed.resourceIds, props.resourceId)) &&
+      Temporal.PlainDate.compare(session.proposed.start, props.date) <= 0 &&
+      Temporal.PlainDate.compare(props.date, session.proposed.end) < 0,
+  );
+  const draftCheck = useDraftCheck();
+  const check = () => previewCheckAttributes(inDraft() ? draftCheck() : undefined);
   // Out of the tab order, yet focusable, so focus on it survives a scroll that moves it away.
   const offscreen = untrack(() => props.offscreen);
+  // Native, so it runs before the view's keyboard, which listens on the grid.
+  const openDayKey = (element: HTMLElement) => {
+    element.addEventListener("keydown", (event) => {
+      // Shift+Enter opens the day, as clicking its header date does.
+      if (
+        props.onOpenDay !== undefined &&
+        event.key === "Enter" &&
+        event.shiftKey &&
+        event.target === event.currentTarget
+      ) {
+        event.preventDefault();
+        props.onOpenDay(props.date);
+      }
+    });
+  };
 
   return (
     <div
@@ -106,7 +141,7 @@ function AllDayCell(props: {
       aria-colindex={props.colIndex}
       aria-hidden={props.offscreen ? "true" : undefined}
       aria-label={allDayCellLabel(props.formatDate(props.date), props.count)}
-      ref={offscreen ? undefined : roving.ref}
+      ref={offscreen ? openDayKey : [roving.ref, openDayKey]}
       onFocus={offscreen ? undefined : roving.onFocus}
       tabindex={offscreen ? -1 : roving.tabindex}
       class={allDayCellClass}
@@ -115,6 +150,9 @@ function AllDayCell(props: {
       <div
         data-all-day=""
         data-date={props.date.toString()}
+        data-draft={inDraft() ? "" : undefined}
+        data-invalid={check()["data-invalid"]}
+        data-warning={check()["data-warning"]}
         class={allDayDropClass(draftCheckClassName)}
       />
       {props.children}
@@ -279,6 +317,7 @@ export function TimeGridAllDayCells<TEvent>(props: TimeGridAllDayCellsProps<TEve
               date={date()}
               formatDate={props.formatDate}
               offscreen={offscreen()}
+              onOpenDay={props.onOpenDay}
               resourceId={props.resourceId}
             >
               <For
@@ -335,6 +374,7 @@ export function TimeGridAllDay<TEvent>(props: TimeGridAllDayProps<TEvent>) {
         getEventIcon={props.getEventIcon}
         labelEvent={props.labelEvent}
         onExpand={collapse.expand}
+        onOpenDay={props.onOpenDay}
         overflow={collapse.overflows[0]!}
         row={props.row}
       />

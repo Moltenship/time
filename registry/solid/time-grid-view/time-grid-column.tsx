@@ -1,31 +1,54 @@
-import type {
-  CalendarResource,
-  EventDayFragment,
-  EventId,
-  ResourceId,
-  TimeGridDay,
-  TimeGridEventLayout,
+import {
+  sameFocus,
+  showsInResource,
+  useCalendarFocus,
+  useCalendarInteraction,
+  useRovingFocus,
+  type CalendarResource,
+  type CalendarSlotFocus,
+  type EventDayFragment,
+  type EventId,
+  type ResourceId,
+  type TimeGridDay,
+  type TimeGridEventLayout,
 } from "@moltenship/calendar-solid";
 import type { JSX } from "@solidjs/web";
-import { createMemo, For, Show, type Accessor } from "solid-js";
+import { createMemo, For, Show, untrack, type Accessor } from "solid-js";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import {
+  draftCheckClassName,
+  previewCheckAttributes,
+  useDraftCheck,
+} from "@registry/calendar/preview-check";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
-import { bandBox, eventKey, percent } from "@registry/shared/time-grid-view/time-grid-geometry";
+import {
+  bandBox,
+  draftBox,
+  eventKey,
+  inResource,
+  percent,
+  sameBand,
+  slotBand,
+} from "@registry/shared/time-grid-view/time-grid-geometry";
 import {
   clockChangeTitles,
+  slotLabel,
   timeGridColumnFormats,
   type TimeGridColumnFormats,
 } from "@registry/shared/time-grid-view/time-grid-labels";
 import {
   timeGridColumnClass,
+  timeGridDraftClass,
   timeGridEventsClass,
   timeGridFoldClass,
   timeGridGapClass,
   timeGridNowClass,
+  timeGridSlotClass,
 } from "@registry/shared/time-grid-view/time-grid.styles";
 
 import { TimeGridEvent } from "./time-grid-event";
+import { describeZoneTimes, type TimeGridZone } from "./time-grid-zones";
 
 export { inResource } from "@registry/shared/time-grid-view/time-grid-geometry";
 export type { TimeGridColumnFormats } from "@registry/shared/time-grid-view/time-grid-labels";
@@ -43,7 +66,7 @@ export interface TimeGridColumnResource {
   readonly id: ResourceId | null;
   /** `null` for the unassigned bucket. */
   readonly resource: CalendarResource<unknown, ResourceId> | null;
-  /** Added to the accessible names of the column's events. */
+  /** Added to the accessible names of the column's slots and events. */
   readonly title: string;
 }
 
@@ -62,12 +85,56 @@ export interface TimeGridColumnProps<TEvent> {
   readonly formats: TimeGridColumnFormats;
   /** Rendered beside the visible dates of a scrolling grid, so hidden from assistive technology. */
   readonly offscreen?: boolean;
-  /** The column's resource; without one, the column shows every resource's events. */
+  /** Opens a date in the day view; Shift+Enter on a slot does so. */
+  readonly onOpenDay?: (date: Temporal.PlainDate) => void;
+  /** The column's resource; without one, the column shows every resource's focus and drafts. */
   readonly resource?: TimeGridColumnResource;
+  /** Length of a keyboard slot, as the keyboard's snap sets it. */
+  readonly slotMinutes: number;
   readonly timeZone: string;
+  /** The root's secondary time zones; a focused slot names its time in each. */
+  readonly zones?: readonly TimeGridZone[];
 }
 
 type Layout<TEvent> = TimeGridEventLayout<EventDayFragment<TEvent, EventId, ResourceId>>;
+
+/**
+ * The keyboard's cursor on a slot of this column, rendered only while a slot has focus. Space
+ * starts a create there and Enter moves into the events covering it.
+ */
+function TimeGridSlot(props: {
+  readonly focus: CalendarSlotFocus;
+  readonly label: string;
+  /** In a column scrolled away: out of the tab order, yet still holding focus it has. */
+  readonly offscreen: boolean;
+  readonly onOpenDay?: (date: Temporal.PlainDate) => void;
+  readonly slotMinutes: number;
+}) {
+  const roving = useRovingFocus(() => props.focus);
+  const offscreen = untrack(() => props.offscreen);
+  // Native, so it runs before the view's keyboard, which listens on the grid.
+  const openDayKey = (element: HTMLElement) => {
+    element.addEventListener("keydown", (event) => {
+      // Shift+Enter opens the day, as clicking its header date does.
+      if (props.onOpenDay !== undefined && event.key === "Enter" && event.shiftKey) {
+        event.preventDefault();
+        props.onOpenDay(props.focus.date);
+      }
+    });
+  };
+
+  return (
+    <div
+      role="button"
+      aria-label={props.label}
+      ref={offscreen ? openDayKey : [roving.ref, openDayKey]}
+      onFocus={offscreen ? undefined : roving.onFocus}
+      tabindex={offscreen ? -1 : roving.tabindex}
+      class={timeGridSlotClass}
+      style={bandBox(slotBand(props.focus, props.slotMinutes))}
+    />
+  );
+}
 
 /**
  * One day's 24 hours, a cell of the grid's timed row. `data-date` marks the full-height column for
@@ -75,6 +142,39 @@ type Layout<TEvent> = TimeGridEventLayout<EventDayFragment<TEvent, EventId, Reso
  */
 export function TimeGridColumn<TEvent>(props: TimeGridColumnProps<TEvent>) {
   const column = () => props.day.column;
+  const resourceId = () => props.resource?.id;
+  const slot = useCalendarFocus(
+    (focus) =>
+      focus?.kind === "slot" && focus.date.equals(column().date) && inResource(focus, resourceId())
+        ? focus
+        : null,
+    { isEqual: sameFocus },
+  );
+  const draft = useCalendarInteraction(
+    (session) => {
+      const id = resourceId();
+      return session?.eventId === null &&
+        (id === undefined || showsInResource(session.proposed.resourceIds, id))
+        ? draftBox(column(), session.proposed)
+        : null;
+    },
+    { isEqual: sameBand },
+  );
+  const draftCheck = useDraftCheck();
+  // The column's own resource, so a gesture started here stays in it.
+  const slotFocus = createMemo((): CalendarSlotFocus | null => {
+    const focus = slot();
+    const id = resourceId();
+    return focus === null || id === undefined ? focus : { ...focus, resourceId: id };
+  });
+  const slotName = (focus: CalendarSlotFocus) =>
+    slotLabel([
+      props.resource?.title,
+      props.formats.slot.format(focus.date.toPlainDateTime(focus.time)),
+      props.zones === undefined
+        ? undefined
+        : describeZoneTimes(column(), focus.time, props.zones, props.formats),
+    ]);
   const labelHere = createMemo<EventLabeler<TEvent>>(() => {
     const { labelEvent, resource } = props;
     return resource === undefined ? labelEvent : (event) => labelEvent(event, resource.title);
@@ -119,7 +219,30 @@ export function TimeGridColumn<TEvent>(props: TimeGridColumnProps<TEvent>) {
             />
           )}
         </For>
+        <Show when={draft()}>
+          {(band) => (
+            <div
+              aria-hidden="true"
+              data-slot="time-grid-draft"
+              data-invalid={previewCheckAttributes(draftCheck())["data-invalid"]}
+              data-warning={previewCheckAttributes(draftCheck())["data-warning"]}
+              class={timeGridDraftClass(draftCheckClassName)}
+              style={bandBox(band())}
+            />
+          )}
+        </Show>
       </div>
+      <Show when={slotFocus()}>
+        {(focus) => (
+          <TimeGridSlot
+            focus={focus()}
+            label={slotName(focus())}
+            offscreen={props.offscreen ?? false}
+            onOpenDay={props.onOpenDay}
+            slotMinutes={props.slotMinutes}
+          />
+        )}
+      </Show>
       <Show when={props.nowTop !== null}>
         <div
           aria-hidden="true"

@@ -2,6 +2,8 @@ import {
   defineCalendarView,
   timeGridStrategy,
   timeGridTitle,
+  useCalendarAnnouncer,
+  useCalendarPointer,
   type CalendarViewRendererProps,
   type OverlapLayoutOptions,
   type TimeGridProjection,
@@ -11,6 +13,7 @@ import type { JSX } from "@solidjs/web";
 import { createMemo } from "solid-js";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
+import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { fullDateFormat } from "@registry/shared/time-grid-view/time-grid-labels";
 import {
@@ -35,6 +38,12 @@ export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions<TEvent
   readonly dayView?: string;
   /** Extra words for each event's accessible name, such as its calendar. */
   readonly describeEvent?: EventDescriber<TEvent>;
+  /**
+   * How a pointer drag's preview moves: from slot to slot (`"snapped"`, the default), or with the
+   * pointer over a marker of where it would land (`"free"`), snapping there on release. Both
+   * propose the same snapped placement.
+   */
+  readonly dragPreview?: "free" | "snapped";
   /** Colour for an event; sets `data-color` on every element that renders it. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   /**
@@ -45,30 +54,66 @@ export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions<TEvent
   readonly getEventIcon?: (event: TEvent) => JSX.Element;
 }
 
+/** Pointer and keyboard both step by these slots, so they reach the same times. */
+const snap = { increment: 15, smallestUnit: "minute" } as const;
+
 export type TimeGridViewProps<TEvent> = CalendarViewRendererProps<
   TimeGridProjection<TEvent>,
   TimeGridViewOptions<TEvent>
 >;
 
 /**
- * Day columns under a sticky header and all-day row, with a scrolling 24-hour body. Today's
- * column shows the current time as a line, overlapping events share the column in lanes, and the
- * all-day row collapses busy days to three lanes and "+N more". The grid is one tab stop.
+ * Day columns under a sticky header and all-day row, with a scrolling 24-hour body. Drag an event
+ * to move it (into the all-day row to make it all-day), its edges to resize it, or empty time to
+ * create one; changes go to the root's `onEventChange`. From the keyboard the grid is one tab
+ * stop: arrow keys move between all-day cells, 15-minute slots, and events, and Space picks up an
+ * event (Shift+Space to resize) or starts an event on the focused slot or day.
  */
 export function TimeGridView<TEvent>(props: TimeGridViewProps<TEvent>) {
+  let body: HTMLDivElement | undefined;
   const days = () => props.projection.days;
   const columns = createMemo(() => days().map(({ column }) => column));
   const zones = useTimeGridZones(() => props.environment, columns);
+  // Pointer drags speak through the same messages as the keyboard, and the drag preview labels
+  // the proposed range in the calendar's locale.
+  const announcer = useCalendarAnnouncer();
+  const pointer = useCalendarPointer(() => ({
+    announcer,
+    check: props.actions.checkEventChange,
+    columns: columns(),
+    disabled: props.isReadOnly,
+    events: props.events,
+    onPropose: props.actions.proposeEventChange,
+    preview: props.options.dragPreview,
+    scrollContainer: {
+      get current() {
+        return body ?? null;
+      },
+    },
+    snap,
+    timeZone: props.environment.timeZone,
+  }));
+  const keyboard = useViewKeyboard({ snap });
   const labelEvent = useEventLabel(
     () => props.environment,
     () => props.options.describeEvent,
   );
   const formatDate = createMemo(() => fullDateFormat(props.environment.locale));
+  const openDay = createMemo(() => {
+    const { dayView } = props.options;
+    return dayView === undefined || days().length === 1
+      ? undefined
+      : (date: Temporal.PlainDate) => {
+          props.actions.setAnchorDate(date);
+          props.actions.setView(dayView);
+        };
+  });
 
   return (
     <TimeGridEventTooltip>
       {/* Rows: day headers, all-day events, and the timed day columns; each starts with a gutter cell. */}
       <div
+        ref={[keyboard, pointer]}
         role="grid"
         aria-label={timeGridTitle(props.range, props.environment.locale)}
         data-slot="time-grid"
@@ -89,6 +134,7 @@ export function TimeGridView<TEvent>(props: TimeGridViewProps<TEvent>) {
             getEventColor={props.options.getEventColor}
             getEventIcon={props.options.getEventIcon}
             labelEvent={labelEvent()}
+            onOpenDay={openDay()}
             row={props.projection.allDay}
           />
         </div>
@@ -99,6 +145,11 @@ export function TimeGridView<TEvent>(props: TimeGridViewProps<TEvent>) {
           getEventIcon={props.options.getEventIcon}
           isReadOnly={props.isReadOnly}
           labelEvent={labelEvent()}
+          onOpenDay={openDay()}
+          ref={(element) => {
+            body = element;
+          }}
+          slotMinutes={snap.increment}
           zones={zones()}
         />
       </div>

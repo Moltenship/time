@@ -7,7 +7,7 @@ description: The Solid week and day views, time grids with an all-day row, a cur
   name="week"
   title="The week view"
   size="h-[34rem]"
-  caption="Live. The page that Add them builds, with a standup and a two-day conference in October 2026."
+  caption="Live. The page that Add them builds, with a standup and a two-day conference in October 2026. Drag an event to move it, or drag across empty time to create one."
 />
 
 The [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=week) opens on the week, with
@@ -18,10 +18,8 @@ The week view has seven columns, starting on `weekRules.firstDay`. The day view 
 the anchor date. `createThreeDayView` has three, from the anchor date: on a phone, where a week's
 seven columns are too narrow to read, it shows more than a day.
 
-<Callout type="warn" title="The week and day show events, and don't edit them yet">
-  They draw events, the current time and secondary time zones. Moving, resizing and creating events,
-  by keyboard or pointer, come next, then annotations and working hours. Until then, edit events in
-  the [month](/docs/views/month).
+<Callout type="warn" title="Annotations and working hours come next">
+  The week and day don't draw the root's annotations or shade time outside working hours yet.
 </Callout>
 
 ## Add them
@@ -39,7 +37,8 @@ Then register the views:
 <include meta='title="calendar.tsx"'>../../examples/solid/week-page.tsx#view</include>
 
 The views are named `week`, `day` and `3-day`. Previous and Next move by a week, a day or three
-days. The hours scroll inside the height they're given, so give `Calendar.Viewport` a height:
+days. The hours scroll inside the height they're given, so give `Calendar.Viewport` a height, and
+save the changes a drag or a key proposes in `onEventChange`:
 
 <include meta='title="week-page.tsx"'>../../examples/solid/week-page.tsx#page</include>
 
@@ -56,6 +55,17 @@ Pass them to `createWeekView`, `createDayView` or `createThreeDayView`, or per r
         <>
           A registered view that opens when you click a date in the header, usually{" "}
           <code>"day"</code>. Without it the header dates are plain text.
+        </>
+      ),
+    },
+    dragPreview: {
+      type: '"snapped" | "free"',
+      default: '"snapped"',
+      description: (
+        <>
+          How a drag's preview moves: from slot to slot, or with the pointer over a marker of where
+          it would land, snapping there on release. See{" "}
+          <a href="/docs/interactions#snapped-and-free-drags">snapped and free drags</a>.
         </>
       ),
     },
@@ -119,6 +129,9 @@ Pass them to `createWeekView`, `createDayView` or `createThreeDayView`, or per r
 - **Current time:** a line across today's column, from
   [`useNow()`](/docs/concepts/time#the-current-time). The grid opens scrolled to the current time,
   or to 08:00 when today isn't visible, and keeps its scroll position when you move between weeks.
+- **Editing:** with `onEventChange` on `Root`, drag an event to move it (onto the all-day row to
+  make it all-day), drag its top or bottom edge to resize it, and drag across empty time or all-day
+  cells to create one. See [Interactions](/docs/interactions#drag-resize-and-create).
 - **Changes being saved:** events with a pending change, the ones
   [`useCalendarPendingChanges`](/docs/api/components#hooks) returns, get `aria-busy` and render at
   60% opacity.
@@ -198,6 +211,8 @@ TimeGridView                     time-grid-view.tsx, a grid
         ├── TimeGridEvent        time-grid-event.tsx
         │   ├── Title and time
         │   └── Resize handles   data-resize="start" and "end"
+        ├── Draft                data-slot="time-grid-draft", a keyboard create's range
+        ├── Slot                 the focused 15-minute slot, while one has focus
         └── Now line             data-slot="time-grid-now"
 ```
 
@@ -218,3 +233,35 @@ The `.tsx` files are Solid components. What they draw comes from plain TypeScrip
   event draws over the ones it overlaps.
 - The grid shares one tooltip among its events, so a week of events renders one tooltip, not one
   each.
+
+## Keyboard
+
+The grid is one tab stop. The [Accessibility](/docs/accessibility#keyboard) page has the full map
+and what a screen reader hears.
+
+| Focus           | Key                | Effect                                                                            |
+| --------------- | ------------------ | --------------------------------------------------------------------------------- |
+| An all-day cell | ↓                  | First slot of the day                                                             |
+| A slot          | ↑ ↓                | Previous or next 15-minute slot. Up from the first slot reaches the all-day cell  |
+| A day or slot   | ← →                | Same slot on the previous or next day                                             |
+| A day or slot   | Home, End          | First or last day shown                                                           |
+| A day or slot   | Page Up, Page Down | Back or forward a whole week (or day)                                             |
+| A slot          | Enter              | The event covering it. Escape goes back to the slot it starts in                  |
+| An all-day cell | Enter              | Go into the day's all-day events                                                  |
+| A timed event   | ↑ ↓, ← →           | Previous or next event in the column, or the event beside it that overlaps it     |
+| A day or slot   | Shift+Enter        | Open that date in the day view, when the week has `dayView`                       |
+| A slot          | Space              | Start an hour-long event there. Arrow keys extend it, and Enter saves it          |
+| An all-day cell | Space              | Start an all-day event there                                                      |
+| An event        | Space              | Pick it up. Arrow keys move it by slots and days, Enter saves, and Escape cancels |
+| An event        | Shift+Space        | Pick up its end to resize it. Shift+Space again switches to its start             |
+
+Moving a picked-up timed event above the first slot makes it all-day, and moving an all-day event
+below the all-day row makes it timed. Only the focused slot is an element, so a week's 672 slots
+cost nothing until you visit them. After a drop, focus stays on the moved event.
+
+## Markup for interactions
+
+The view connects the pointer layer for you. If you change its markup, keep the attributes the
+pointer layer reads: day columns have `data-date` and cover the full 24 hours, each all-day cell's
+drop layer has `data-date` and `data-all-day`, each event is a `<button>` with `data-event-id`, and
+events you can edit have `data-resize="start"` and `data-resize="end"` handles.

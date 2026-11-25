@@ -1,11 +1,11 @@
 /**
- * How pointer drags preview where they land, the month's `dragPreview`: stepping from day to day,
+ * How pointer drags preview where they land, each view's `dragPreview`: stepping from slot to slot,
  * or following the pointer over a landing box. The React demo's setting (apps/demo/src/drag-preview.ts).
  */
 export type DragPreview = "free" | "snapped";
 
 export const dragPreviewOptions = [
-  { label: "Snap to days", value: "snapped" },
+  { label: "Snap to grid", value: "snapped" },
   { label: "Free", value: "free" },
 ] as const satisfies readonly { readonly label: string; readonly value: DragPreview }[];
 
