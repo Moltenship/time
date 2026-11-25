@@ -5,12 +5,24 @@ import {
   type CalendarEnvironmentBase,
   type CalendarViewActions,
   type PlainDateInterval,
-  type TimeGridColumn,
   type TimeGridDay,
 } from "@moltenship/calendar";
 import { useId, useMemo } from "react";
 
-import { cn } from "cn";
+import { offsetLabel } from "@registry/shared/time-grid-view/secondary-zones";
+import { dayColumns } from "@registry/shared/time-grid-view/time-grid-geometry";
+import { dayHeaderFormats, openDayLabel } from "@registry/shared/time-grid-view/time-grid-labels";
+import {
+  dayHeaderButtonClass,
+  dayHeaderClass,
+  dayHeaderNotesClass,
+  dayHeaderNumberClass,
+  dayHeaderWeekdayClass,
+  srOnlyClass,
+  timeGridCornerClass,
+  timeGridDaysClass,
+  timeGridHeaderRowClass,
+} from "@registry/shared/time-grid-view/time-grid.styles";
 
 import { describeDayAnnotations } from "./annotation-label";
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
@@ -36,16 +48,7 @@ export interface TimeGridHeaderProps {
 
 const noZones: readonly TimeGridZone[] = [];
 
-/** "GMT-4" for the display zone at the start of a column, such as the first visible day. */
-export function offsetLabel(
-  locale: Intl.LocalesArgument,
-  timeZone: string,
-  column: TimeGridColumn,
-) {
-  return new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: "shortOffset" })
-    .formatToParts(column.day.start)
-    .find((part) => part.type === "timeZoneName")?.value;
-}
+export { offsetLabel } from "@registry/shared/time-grid-view/secondary-zones";
 
 export interface TimeGridDayHeadersProps {
   readonly actions: CalendarViewActions;
@@ -83,20 +86,11 @@ export function TimeGridDayHeaders({
   const { locale } = environment;
   const summaryId = useId();
   const notes = useMemo(() => zoneNotesByDate(zones), [zones]);
-  const formats = useMemo(
-    () => ({
-      full: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
-      weekday: new Intl.DateTimeFormat(locale, { weekday: "short" }),
-    }),
-    [locale],
-  );
+  const formats = useMemo(() => dayHeaderFormats(locale), [locale]);
   const opensDay = !single && dayView !== undefined;
 
   return (
-    <div
-      className="grid flex-1"
-      style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
-    >
+    <div className={timeGridDaysClass} style={{ gridTemplateColumns: dayColumns(days.length) }}>
       {days.map(({ column: { date }, isToday }, index) => {
         const label = formats.full.format(date);
         const marks = annotations?.layout.columns[index];
@@ -105,17 +99,7 @@ export function TimeGridDayHeaders({
             ? undefined
             : describeDayAnnotations(marks, annotations.formats);
         const number = (
-          <span
-            className={cn(
-              "flex items-center justify-center rounded-full text-xl tabular-nums sm:text-2xl",
-              single ? "size-11" : "size-9 sm:size-11",
-              isToday
-                ? "bg-calendar-today text-calendar-today-foreground"
-                : opensDay && "group-hover:bg-accent",
-            )}
-          >
-            {date.day}
-          </span>
+          <span className={dayHeaderNumberClass(single, isToday, opensDay)}>{date.day}</span>
         );
 
         return (
@@ -127,26 +111,16 @@ export function TimeGridDayHeaders({
               shown === undefined || plainDateIntervalContains(shown, date) ? undefined : true
             }
             aria-label={label}
-            className={cn(
-              "flex min-w-0 flex-col gap-0.5 py-2",
-              single ? "items-start px-2" : "items-center",
-            )}
+            className={dayHeaderClass(single)}
             role="columnheader"
           >
-            <span
-              className={cn(
-                "text-[0.6875rem] font-medium tracking-wide uppercase",
-                isToday ? "text-calendar-today" : "text-muted-foreground",
-              )}
-            >
-              {formats.weekday.format(date)}
-            </span>
+            <span className={dayHeaderWeekdayClass(isToday)}>{formats.weekday.format(date)}</span>
             {opensDay ? (
               <button
-                aria-label={`Open ${label}`}
+                aria-label={openDayLabel(label)}
                 // The grid keeps one tab stop; Shift+Enter on a day's cells opens it.
                 tabIndex={-1}
-                className="group rounded-full focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                className={dayHeaderButtonClass}
                 onClick={() => {
                   actions.setAnchorDate(date);
                   actions.setView(dayView);
@@ -159,11 +133,11 @@ export function TimeGridDayHeaders({
               number
             )}
             <TimeGridZoneNotes
-              className={single ? "items-start" : "items-center"}
+              className={dayHeaderNotesClass(single)}
               notes={notes.get(date.toString())}
             />
             {summary !== undefined && (
-              <span className="sr-only" id={`${summaryId}-${index}`}>
+              <span className={srOnlyClass} id={`${summaryId}-${index}`}>
                 {summary}
               </span>
             )}
@@ -195,11 +169,8 @@ export function TimeGridHeader({
   const cornerOffset = corner === undefined ? undefined : offsetLabel(locale, timeZone, corner);
 
   return (
-    <div role="row" className="flex">
-      <div
-        role="columnheader"
-        className="flex w-(--calendar-gutter-width) shrink-0 items-end pb-1 text-[0.625rem] text-calendar-axis"
-      >
+    <div role="row" className={timeGridHeaderRowClass}>
+      <div role="columnheader" className={timeGridCornerClass}>
         <TimeGridGutterLabels offset={cornerOffset} zones={zones} />
       </div>
       <TimeGridDayHeaders

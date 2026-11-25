@@ -11,6 +11,24 @@ import { useLayoutEffect, useMemo, useRef, type ReactNode, type RefObject } from
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
+import {
+  dayColumns,
+  hourTop,
+  labelledHours,
+  openingScrollTop,
+} from "@registry/shared/time-grid-view/time-grid-geometry";
+import { timedEventsLabel } from "@registry/shared/time-grid-view/time-grid-labels";
+import {
+  srOnlyClass,
+  timeGridBodyClass,
+  timeGridColumnsClass,
+  timeGridDisplayHoursClass,
+  timeGridHourLabelClass,
+  timeGridHoursClass,
+  timeGridRowHeaderClass,
+  timeGridTimedRowClass,
+  timeGridZonedHoursClass,
+} from "@registry/shared/time-grid-view/time-grid.styles";
 
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
 import { TimeGridColumn, useTimeGridColumnFormats } from "./time-grid-column";
@@ -40,11 +58,6 @@ export interface TimeGridBodyProps<TEvent> {
 
 const noZones: readonly TimeGridZone[] = [];
 
-/** Hour labels from 1:00 to 23:00; midnight sits under the header. */
-const labelledHours = Array.from({ length: 23 }, (_, index) => index + 1);
-/** Without a current time in view, open the day at 08:00. */
-const DEFAULT_SCROLL_FRACTION = 8 / 24;
-
 /**
  * The gutter's hour labels, from 1:00 to 23:00, over the full height of the element around it.
  * Each secondary zone's hours come first, in a `--calendar-zone-width` column of their own.
@@ -59,13 +72,9 @@ export function TimeGridHours({
   // "1 PM" where the locale uses a 12-hour clock, "13:00" where it uses 24 hours.
   const format = useMemo(() => zoneTimeFormat(locale), [locale]);
   const hours = (
-    <div aria-hidden className="relative h-full">
+    <div aria-hidden className={timeGridHoursClass}>
       {labelledHours.map((hour) => (
-        <span
-          key={hour}
-          className="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums"
-          style={{ top: `${(hour / 24) * 100}%` }}
-        >
+        <span key={hour} className={timeGridHourLabelClass} style={{ top: hourTop(hour) }}>
           {format(new Temporal.PlainTime(hour))}
         </span>
       ))}
@@ -74,11 +83,11 @@ export function TimeGridHours({
   if (zones.length === 0) return hours;
 
   return (
-    <div className="flex h-full">
+    <div className={timeGridZonedHoursClass}>
       {zones.map((zone, index) => (
         <TimeGridZoneHours key={index} locale={locale} zone={zone} />
       ))}
-      <div className="min-w-0 flex-1">{hours}</div>
+      <div className={timeGridDisplayHoursClass}>{hours}</div>
     </div>
   );
 }
@@ -98,10 +107,7 @@ export function useOpeningScroll(
     const node = scrollRef.current;
     if (scrolled.current || node === null || now === null) return;
     scrolled.current = true;
-    node.scrollTop =
-      nowTop === null
-        ? DEFAULT_SCROLL_FRACTION * node.scrollHeight
-        : Math.max(0, nowTop * node.scrollHeight - node.clientHeight / 3);
+    node.scrollTop = openingScrollTop(nowTop, node.scrollHeight, node.clientHeight);
   }, [now, nowTop, scrollRef]);
 }
 
@@ -157,19 +163,15 @@ export function TimeGridBody<TEvent>({
   const rowRef = useHeightObserver(onColumnHeightChange);
 
   return (
-    <div
-      ref={scrollRef}
-      data-slot="time-grid-body"
-      className="relative min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]"
-    >
-      <div ref={rowRef} role="row" className="flex h-[calc(var(--calendar-hour-height)*24)]">
-        <div role="rowheader" className="w-(--calendar-gutter-width) shrink-0">
-          <span className="sr-only">Timed events</span>
+    <div ref={scrollRef} data-slot="time-grid-body" className={timeGridBodyClass}>
+      <div ref={rowRef} role="row" className={timeGridTimedRowClass}>
+        <div role="rowheader" className={timeGridRowHeaderClass}>
+          <span className={srOnlyClass}>{timedEventsLabel}</span>
           <TimeGridHours locale={locale} zones={zones} />
         </div>
         <div
-          className="grid flex-1 bg-[linear-gradient(to_bottom,var(--calendar-grid)_1px,transparent_1px)] bg-size-[100%_var(--calendar-hour-height)]"
-          style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+          className={timeGridColumnsClass}
+          style={{ gridTemplateColumns: dayColumns(days.length) }}
         >
           {days.map((day, index) => (
             <TimeGridColumn

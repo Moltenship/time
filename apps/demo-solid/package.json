@@ -2,7 +2,7 @@
   "name": "demo-solid",
   "version": "0.0.0",
   "private": true,
-  "description": "A Solid 2.0 calendar on @moltenship/calendar-solid, with the Solid registry's month and agenda and an agent panel, written in JSX.",
+  "description": "A Solid 2.0 calendar on @moltenship/calendar-solid, with the Solid registry's week, day, month and agenda and an agent panel, written in JSX.",
   "type": "module",
   "scripts": {
     "build": "vp build",

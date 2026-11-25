@@ -1,19 +1,14 @@
 "use client";
 
 import {
-  instantInterval,
   sameFocus,
   showsInResource,
-  timedFragmentBox,
   useCalendarFocus,
   useCalendarInteraction,
   useRovingFocus,
-  type CalendarEventPlacement,
-  type CalendarFocus,
   type CalendarResource,
   type CalendarSlotFocus,
   type ResourceId,
-  type TimeGridBand,
   type TimeGridColumn as Column,
   type TimeGridDay,
 } from "@moltenship/calendar";
@@ -25,6 +20,22 @@ import { previewCheckAttributes, useDraftCheck } from "@registry/stylex-calendar
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import {
+  bandBox,
+  draftBox,
+  eventKey,
+  inResource,
+  percent,
+  sameBand,
+  slotBand,
+} from "@registry/shared/time-grid-view/time-grid-geometry";
+import {
+  clockChangeTitles,
+  outsideWorkingHours,
+  slotLabel,
+  timeGridColumnFormats,
+  type TimeGridColumnFormats,
+} from "@registry/shared/time-grid-view/time-grid-labels";
 
 import { describeAnnotationsAt } from "./annotation-label";
 import {
@@ -41,7 +52,7 @@ import {
   TimeGridAvailability,
   useColumnAvailability,
 } from "./time-grid-availability";
-import { percent, TimeGridEvent, type TimeGridEventFormats } from "./time-grid-event";
+import { TimeGridEvent } from "./time-grid-event";
 import { describeZoneTimes, type TimeGridZone } from "./time-grid-zones";
 
 const styles = stylex.create({
@@ -119,31 +130,12 @@ const styles = stylex.create({
   },
 });
 
-export interface TimeGridColumnFormats extends TimeGridEventFormats {
-  /** A slot's date and time, for its accessible name. */
-  readonly slot: Intl.DateTimeFormat;
-}
+export { inResource } from "@registry/shared/time-grid-view/time-grid-geometry";
+export type { TimeGridColumnFormats } from "@registry/shared/time-grid-view/time-grid-labels";
 
 /** The formats a column reads, made once per locale for all of a grid's columns. */
 export function useTimeGridColumnFormats(locale: Intl.LocalesArgument): TimeGridColumnFormats {
-  return useMemo(
-    () => ({
-      dayTime: new Intl.DateTimeFormat(locale, {
-        hour: "numeric",
-        minute: "2-digit",
-        weekday: "short",
-      }),
-      slot: new Intl.DateTimeFormat(locale, {
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        month: "long",
-        weekday: "long",
-      }),
-      time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }),
-    }),
-    [locale],
-  );
+  return useMemo(() => timeGridColumnFormats(locale), [locale]);
 }
 
 /** The resource a column shows, in a view with a column per resource. */
@@ -188,45 +180,6 @@ export interface TimeGridColumnProps<TEvent> {
   readonly zones?: readonly TimeGridZone[];
 }
 
-/** Whether focus is in a column's or row's resource; a side without one matches any resource. */
-export function inResource(
-  focus: CalendarFocus,
-  resourceId: ResourceId | null | undefined,
-): boolean {
-  return (
-    resourceId === undefined || focus.resourceId === undefined || focus.resourceId === resourceId
-  );
-}
-
-function bandStyle({ height, top }: TimeGridBand) {
-  return { height: percent(height), top: percent(top) };
-}
-
-const DAY_MINUTES = 24 * 60;
-
-/** Where a keyboard create's timed draft falls in a column, or `null` when it misses it. */
-function draftBox(column: Column, placement: CalendarEventPlacement): TimeGridBand | null {
-  const day = column.day.interval;
-  if (day === null || placement.kind === "all-day") return null;
-  const instant = (point: Temporal.Instant | Temporal.PlainDateTime) =>
-    point instanceof Temporal.Instant
-      ? point
-      : point.toZonedDateTime(column.day.timeZone).toInstant();
-  const start = instant(placement.start);
-  const end = instant(placement.end);
-  const from = Temporal.Instant.compare(start, day.start) > 0 ? start : day.start;
-  const to = Temporal.Instant.compare(end, day.end) < 0 ? end : day.end;
-  return Temporal.Instant.compare(from, to) < 0
-    ? timedFragmentBox(column, instantInterval(from, to))
-    : null;
-}
-
-/** Where a slot sits on its column's 24-hour axis. */
-function slotBand(slot: CalendarSlotFocus, slotMinutes: number): TimeGridBand {
-  const minutes = slot.time.hour * 60 + slot.time.minute;
-  return { height: slotMinutes / DAY_MINUTES, top: minutes / DAY_MINUTES };
-}
-
 /** The annotations drawn across a focused slot, named after its date and time. */
 function slotAnnotations(
   column: Column,
@@ -235,10 +188,6 @@ function slotAnnotations(
   slotMinutes: number,
 ): string | undefined {
   return describeAnnotationsAt(marks, column, slotBand(slot, slotMinutes), formats);
-}
-
-function sameBand(left: TimeGridBand | null, right: TimeGridBand | null): boolean {
-  return left === right || (left?.top === right?.top && left?.height === right?.height);
 }
 
 /**
@@ -260,7 +209,6 @@ function TimeGridSlot({
   readonly slotMinutes: number;
 }) {
   const roving = useRovingFocus(focus);
-  const minutes = focus.time.hour * 60 + focus.time.minute;
 
   return (
     <div
@@ -275,7 +223,7 @@ function TimeGridSlot({
         }
       }}
       {...stylex.props(styles.slot)}
-      style={{ height: percent(slotMinutes / DAY_MINUTES), top: percent(minutes / DAY_MINUTES) }}
+      style={bandBox(slotBand(focus, slotMinutes))}
     />
   );
 }
@@ -359,16 +307,16 @@ export function TimeGridColumn<TEvent>({
         <div
           key={`gap:${band.top}`}
           {...stylex.props(styles.gap)}
-          style={bandStyle(band)}
-          title="Skipped: clocks moved forward"
+          style={bandBox(band)}
+          title={clockChangeTitles.gap}
         />
       ))}
       {column.folds.map((band) => (
         <div
           key={`fold:${band.top}`}
           {...stylex.props(styles.fold)}
-          style={bandStyle(band)}
-          title="Repeated: clocks moved back"
+          style={bandBox(band)}
+          title={clockChangeTitles.fold}
         />
       ))}
       {annotations !== undefined && (
@@ -381,7 +329,7 @@ export function TimeGridColumn<TEvent>({
       <div {...stylex.props(styles.events)}>
         {events.map((layout, index) => (
           <TimeGridEvent
-            key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
+            key={eventKey(layout.fragment.event.id)}
             color={getEventColor?.(layout.fragment.event.event)}
             icon={getEventIcon?.(layout.fragment.event.event)}
             inset={besideMarks?.[index] === true ? inset : undefined}
@@ -401,7 +349,7 @@ export function TimeGridColumn<TEvent>({
             {...previewCheckAttributes(draftCheck)}
             {...stylex.props(styles.draft)}
             style={{
-              ...bandStyle(draft),
+              ...bandBox(draft),
               ...(inset !== undefined &&
                 annotationLayout !== undefined &&
                 marks !== undefined &&
@@ -417,19 +365,17 @@ export function TimeGridColumn<TEvent>({
         <TimeGridSlot
           // The column's own resource, so a gesture started here stays in it.
           focus={resourceId === undefined ? slot : { ...slot, resourceId }}
-          label={[
+          label={slotLabel([
             resource?.title,
             formats.slot.format(slot.date.toPlainDateTime(slot.time)),
             zones === undefined ? undefined : describeZoneTimes(column, slot.time, zones, formats),
             isUnavailableIn(unavailable, slotBand(slot, slotMinutes))
-              ? "outside working hours"
+              ? outsideWorkingHours
               : undefined,
             annotations === undefined
               ? undefined
               : slotAnnotations(column, slot, annotations, slotMinutes),
-          ]
-            .filter((part) => part !== undefined)
-            .join(", ")}
+          ])}
           offscreen={offscreen}
           onOpenDay={onOpenDay}
           slotMinutes={slotMinutes}

@@ -15,9 +15,10 @@ have a reader write for the Solid registry. `calendar-page.tsx` imports the regi
 and `registry/shared`. The registry's install test (`vp run registry:e2e`) copies the three files
 into a clean Solid app, so what the docs show is what it installs and builds.
 
-`month-page.tsx` is the Month page's calendar and page, after `shadcn add` of the Solid month. The
-install test copies it into the same app, beside `calendar-page.tsx`. So it does `undo-toast.tsx`,
-Undo and redo's undo toast on that month.
+`month-page.tsx` is the Month page's calendar and page, after `shadcn add` of the Solid month, and
+`week-page.tsx` the Week and day page's, after `shadcn add` of the Solid time grid. The install
+test copies both into the same app, beside `calendar-page.tsx`. So it does `undo-toast.tsx`, Undo
+and redo's undo toast on that month.
 
 `recurrence.tsx` is the calendar of Show and edit recurring events, on
 `@moltenship/calendar-recurrence`. The install test leaves it out, since its clean app doesn't

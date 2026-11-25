@@ -3,7 +3,8 @@
  * tag, attributes and text, so `kit-twins.a11y.tsx` and `solid/kit-twins.a11y.tsx` compare what
  * the two kits render with one stored description in `kit-twins/`. What a framework or a run picks
  * is left out: generated ids become their order of appearance, a popup's inline position goes, and
- * a textarea shows its value however the framework set it.
+ * a textarea shows its value however the framework set it. `describeLayout` keeps inline styles,
+ * for views whose styles place their parts.
  */
 
 /** Attributes whose value names other elements by id. */
@@ -23,6 +24,27 @@ const positioned = new Set(["style"]);
 const lucideClass = /^lucide(?:-|$)/u;
 
 export function describeTree(...roots: readonly Element[]): string {
+  return describe(roots, false);
+}
+
+/**
+ * `describeTree`, with each element's inline style as its sorted declarations: where a view's
+ * styles place its events, lanes and labels, React and Solid must set the same ones, in whatever
+ * order each writes them.
+ */
+export function describeLayout(...roots: readonly Element[]): string {
+  return describe(roots, true);
+}
+
+function styleOf(element: Element): string {
+  const { style } = element as HTMLElement;
+  return [...style]
+    .map((property) => `${property}: ${style.getPropertyValue(property)}`)
+    .toSorted()
+    .join("; ");
+}
+
+function describe(roots: readonly Element[], styles: boolean): string {
   const ids = new Map<string, string>();
   const idOf = (id: string) => {
     if (!ids.has(id)) ids.set(id, `#${ids.size + 1}`);
@@ -32,8 +54,12 @@ export function describeTree(...roots: readonly Element[]): string {
 
   function attributes(element: Element): string {
     return [...element.attributes]
-      .filter(({ name }) => !positioned.has(name))
+      .filter(({ name }) => styles || !positioned.has(name))
       .flatMap(({ name, value }) => {
+        if (name === "style") {
+          const style = styleOf(element);
+          return style === "" ? [] : [`style="${style}"`];
+        }
         if (name === "id") return [`id="${idOf(value)}"`];
         if (idReferences.has(name)) {
           return [`${name}="${value.split(/\s+/u).filter(Boolean).map(idOf).join(" ")}"`];

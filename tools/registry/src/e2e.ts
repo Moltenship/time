@@ -382,6 +382,7 @@ const solidItems = [
   "month-view",
   "recurrence-scope-dialog",
   "calendar-history-toast",
+  "time-grid-view",
 ] as const;
 
 /** The versions the workspace builds and tests with, from its catalog. */
@@ -477,9 +478,10 @@ async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
       'import CalendarPage from "./calendar-page";',
       'import MonthPage from "./month-page";',
       'import UndoToastPage from "./undo-toast";',
+      'import WeekPage from "./week-page";',
       'import "./app.css";',
       "",
-      'const pages = { "#month": MonthPage, "#undo": UndoToastPage };',
+      'const pages = { "#month": MonthPage, "#undo": UndoToastPage, "#week": WeekPage };',
       "",
       "render(",
       "  () => {",
@@ -508,7 +510,7 @@ async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
     join(root, "src/app.css"),
     await readFile(join(solidConsumer, "app.css"), "utf8"),
   );
-  for (const page of ["calendar-page.tsx", "month-page.tsx", "undo-toast.tsx"]) {
+  for (const page of ["calendar-page.tsx", "month-page.tsx", "undo-toast.tsx", "week-page.tsx"]) {
     await writeFile(join(root, "src", page), await readFile(join(solidConsumer, page), "utf8"));
   }
 }

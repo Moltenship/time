@@ -20,6 +20,7 @@
         "../../../../../registry/solid/recurrence-scope-dialog/*"
       ],
       "@/components/calendar/month-view/*": ["../../../../../registry/solid/month-view/*"],
+      "@/components/calendar/time-grid-view/*": ["../../../../../registry/solid/time-grid-view/*"],
       "@/components/calendar/ui/*": ["../../../../../registry/solid/calendar-ui/*"],
       "@/components/calendar/*": ["../../../../../registry/solid/calendar/*"],
       "@moltenship/calendar": ["../../../../../registry/solid/calendar-facade.ts"],

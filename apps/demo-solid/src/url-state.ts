@@ -1,5 +1,5 @@
 /** The Solid demo's views. `app.tsx` passes them as the calendar's `view`, which checks the names. */
-export type SolidView = "month" | "agenda";
+export type SolidView = "week" | "3-day" | "day" | "month" | "agenda";
 
 export interface SolidLocation {
   readonly date: Temporal.PlainDate;
@@ -8,35 +8,27 @@ export interface SolidLocation {
 
 /**
  * The React demo's views (`demoViewNames` in apps/demo/src/demo-model.ts), each with the nearest
- * view this demo has: the month grid for a month or a year, and the registry's agenda, the days
- * with events, for the agendas and for the views of days and weeks.
+ * view this demo has: the time grid of the same days for the scrolling grids, the resource columns
+ * and the timeline, the month grid for a month or a year, and the agenda for the agendas.
  */
 const nearestView: Readonly<Record<string, SolidView>> = {
-  "3-day": "agenda",
+  "3-day": "3-day",
   agenda: "agenda",
-  day: "agenda",
+  day: "day",
   month: "month",
-  resources: "agenda",
-  "scrolling-3-day": "agenda",
+  resources: "day",
+  "scrolling-3-day": "3-day",
   "scrolling-agenda": "agenda",
-  "scrolling-day": "agenda",
+  "scrolling-day": "day",
   "scrolling-month": "month",
-  "scrolling-week": "agenda",
-  "timeline-week": "agenda",
-  week: "agenda",
+  "scrolling-week": "week",
+  "timeline-week": "week",
+  week: "week",
   year: "month",
 };
 
 function viewFor(value: string | null): SolidView | undefined {
   return value !== null && Object.hasOwn(nearestView, value) ? nearestView[value] : undefined;
-}
-
-/**
- * The view this demo shows for a view name a part asks for: the month's date number opens `day`,
- * which shows here as the agenda from that date.
- */
-export function nearestSolidView(name: string, fallback: SolidView): SolidView {
-  return viewFor(name) ?? fallback;
 }
 
 function parseDate(value: string | null): Temporal.PlainDate | undefined {

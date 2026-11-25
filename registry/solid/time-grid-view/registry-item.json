@@ -1,0 +1,75 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "time-grid-view",
+  "type": "registry:component",
+  "title": "Week and day views",
+  "description": "Google Calendar-style week, 3-day and day time grids: day headers with today highlighted, all-day lanes that collapse to +N, an hour gutter with optional secondary time zones, overlapping events side by side, in equal lanes or stacked, daylight-saving gaps and folds, and a now-line. The same time grid as the React registry's, in Solid.",
+  "dependencies": ["@moltenship/calendar-solid", "cn"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/calendar-ui"
+  ],
+  "files": [
+    {
+      "path": "registry/solid/time-grid-view/time-grid-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/time-grid-view/time-grid-view.tsx"
+    },
+    {
+      "path": "registry/solid/time-grid-view/time-grid-header.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/time-grid-view/time-grid-header.tsx"
+    },
+    {
+      "path": "registry/solid/time-grid-view/time-grid-all-day.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/time-grid-view/time-grid-all-day.tsx"
+    },
+    {
+      "path": "registry/solid/time-grid-view/time-grid-body.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/time-grid-view/time-grid-body.tsx"
+    },
+    {
+      "path": "registry/solid/time-grid-view/time-grid-column.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/time-grid-view/time-grid-column.tsx"
+    },
+    {
+      "path": "registry/solid/time-grid-view/time-grid-event.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/time-grid-view/time-grid-event.tsx"
+    },
+    {
+      "path": "registry/solid/time-grid-view/time-grid-zones.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/time-grid-view/time-grid-zones.tsx"
+    },
+    {
+      "path": "registry/shared/time-grid-view/time-grid-geometry.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/time-grid-view/time-grid-geometry.ts"
+    },
+    {
+      "path": "registry/shared/time-grid-view/time-grid-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/time-grid-view/time-grid-labels.ts"
+    },
+    {
+      "path": "registry/shared/time-grid-view/secondary-zones.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/time-grid-view/secondary-zones.ts"
+    },
+    {
+      "path": "registry/shared/time-grid-view/all-day-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/time-grid-view/all-day-layout.ts"
+    },
+    {
+      "path": "registry/shared/time-grid-view/time-grid.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/time-grid-view/time-grid.styles.ts"
+    }
+  ]
+}

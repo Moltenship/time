@@ -27,12 +27,7 @@ import {
 } from "./drag-preview";
 import { FrameworkSwitch } from "./framework-switch";
 import { applyToSeries, seriesScopes } from "./series";
-import {
-  nearestSolidView,
-  readSolidLocation,
-  writeSolidLocation,
-  type SolidView,
-} from "./url-state";
+import { readSolidLocation, writeSolidLocation, type SolidView } from "./url-state";
 
 const timeZone = Temporal.Now.timeZoneId();
 const today = Temporal.Now.plainDateISO(timeZone);
@@ -78,6 +73,7 @@ const steps = [
   { action: "listEvents", args: [], label: "List the visible events" },
   { action: "navigateNext", args: [], label: "Next period" },
   { action: "navigateToday", args: [], label: "Back to today" },
+  { action: "setView", args: [{ view: "week" }], label: "Switch to the week" },
   { action: "setView", args: [{ view: "agenda" }], label: "Switch to the agenda" },
   { action: "setView", args: [{ view: "month" }], label: "Switch to the month" },
   {
@@ -135,6 +131,9 @@ function HistoryControls() {
 }
 
 const viewOptions = [
+  { label: "Day", value: "day" },
+  { label: "3 days", value: "3-day" },
+  { label: "Week", value: "week" },
   { label: "Month", value: "month" },
   { label: "Agenda", value: "agenda" },
 ] as const satisfies readonly { readonly label: string; readonly value: SolidView }[];
@@ -213,17 +212,17 @@ export function App() {
       </header>
       <p class="preview">
         This page runs <code>@moltenship/calendar-solid</code>, a preview. The toolbar, the view
-        switcher, the mini month, the month, the agenda, the recurrence dialog and the undo toast
-        are the registry's Solid items, the files <code>shadcn add</code> installs into a Solid app.
-        In the month, arrow keys move through days and Enter into a day's events, Space picks an
-        event up or starts a new one, and a pointer drags an event to another day or across days to
-        create one; in the agenda, up and down move between events, Page Up and Page Down between
-        days. A change to a Team sync asks which of the series it applies to, and every other change
-        shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
+        switcher, the mini month, the week, day, month and agenda, the recurrence dialog and the
+        undo toast are the registry's Solid items, the files <code>shadcn add</code> installs into a
+        Solid app. In the month, arrow keys move through days and Enter into a day's events, Space
+        picks an event up or starts a new one, and a pointer drags an event to another day or across
+        days to create one; in the agenda, up and down move between events, Page Up and Page Down
+        between days. A change to a Team sync asks which of the series it applies to, and every
+        other change shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
-        A Solid 2.0 calendar on the engine's month and list projections, with an agent driving it
-        through ui-sdk. Last change: <output data-last-change="">{lastChange()}</output>
+        A Solid 2.0 calendar on the engine's time grid, month and list projections, with an agent
+        driving it through ui-sdk. Last change: <output data-last-change="">{lastChange()}</output>
       </p>
       <Calendar.Root
         allowAgentDelete={allowDelete()}
@@ -263,9 +262,7 @@ export function App() {
         }}
         onEventChangeResult={(result, detail) => changes.record(result, detail)}
         onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
-        onViewChange={(view) =>
-          setLocation((current) => ({ ...current, view: nearestSolidView(view, current.view) }))
-        }
+        onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
         policies={[
           // A locked event stays where it is: the change fails, and an agent hears the reason.
           (change) =>

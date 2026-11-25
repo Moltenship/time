@@ -14,6 +14,7 @@ import {
 import * as stylex from "@stylexjs/stylex";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 
+import { fullDateFormat } from "@registry/shared/time-grid-view/time-grid-labels";
 import { useEventLabel, type EventDescriber } from "@registry/stylex-calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
@@ -169,10 +170,7 @@ export function TimeGridView<TEvent>({
     [annotationHandles, annotationLayout, formats],
   );
   const labelEvent = useEventLabel(environment, options.describeEvent);
-  const formatDate = useMemo(() => {
-    const format = new Intl.DateTimeFormat(environment.locale, { dateStyle: "full" });
-    return (date: Temporal.PlainDate) => format.format(date);
-  }, [environment.locale]);
+  const formatDate = useMemo(() => fullDateFormat(environment.locale), [environment.locale]);
   const { dayView } = options;
   const openDay =
     dayView === undefined || days.length === 1

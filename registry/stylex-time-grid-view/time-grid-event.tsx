@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  withAsciiSpaces,
   type EventDayFragment,
   type EventId,
   type ResourceId,
@@ -26,7 +25,22 @@ import {
   type TooltipHandle,
 } from "@registry/stylex-calendar-ui/tooltip";
 
+import {
+  eventTimeRange,
+  isClipped,
+  isCompact,
+  laneBox,
+  percent,
+  resizeHandles,
+  wallTimes,
+  type TimeGridEventFormats,
+} from "@registry/shared/time-grid-view/time-grid-geometry";
+import { compactTimeSeparator } from "@registry/shared/time-grid-view/time-grid-labels";
+
 import type { AnnotationEventInset } from "./time-grid-annotations";
+
+export { eventTimeRange, percent } from "@registry/shared/time-grid-view/time-grid-geometry";
+export type { TimeGridEventFormats } from "@registry/shared/time-grid-view/time-grid-geometry";
 
 const styles = stylex.create({
   // Raised while hovered, and above that while focused, so a stacked event's title shows over the
@@ -127,15 +141,6 @@ const styles = stylex.create({
   },
 });
 
-type DayFragment = EventDayFragment<unknown, EventId, ResourceId>;
-
-export interface TimeGridEventFormats {
-  /** A wall time on another day, with its weekday. */
-  readonly dayTime: Intl.DateTimeFormat;
-  /** A wall time. */
-  readonly time: Intl.DateTimeFormat;
-}
-
 export interface TimeGridEventProps<TEvent> {
   readonly color?: CalendarEventColor;
   readonly formats: TimeGridEventFormats;
@@ -155,84 +160,6 @@ export interface TimeGridEventProps<TEvent> {
   /** The resource this copy shows in, in a view with a column per resource. */
   readonly resourceId?: ResourceId | null;
   readonly timeZone: string;
-}
-
-/** Blocks shorter than this show title and start time on one line. */
-const COMPACT_MINUTES = 45;
-
-export function percent(fraction: number): string {
-  return `${fraction * 100}%`;
-}
-
-/** Where a lane sits across the event area, less what `inset` keeps free at its sides. */
-function laneBox(left: number, width: number, inset: AnnotationEventInset | undefined) {
-  if (inset === undefined) return { insetInlineStart: percent(left), width: percent(width) };
-  const area = `(100% - ${inset.start + inset.end}px)`;
-  return {
-    insetInlineStart: `calc(${inset.start}px + ${left} * ${area})`,
-    width: `calc(${width} * ${area})`,
-  };
-}
-
-/** The event's own start and end on the wall clock, even on the second day of an overnight event. */
-function wallTimes({ event, end, start }: DayFragment, timeZone: string) {
-  switch (event.kind) {
-    case "timed":
-      return [
-        event.start.toZonedDateTimeISO(timeZone).toPlainDateTime(),
-        event.end.toZonedDateTimeISO(timeZone).toPlainDateTime(),
-      ] as const;
-    case "floating":
-      return [event.start, event.end] as const;
-    case "all-day":
-      return [start, end] as const;
-  }
-}
-
-/** The dash between the ends of a same-day range in this locale, when it is a plain dash. */
-function rangeDash(
-  format: Intl.DateTimeFormat,
-  start: Temporal.PlainTime,
-  end: Temporal.PlainTime,
-): string {
-  const parts = format.formatRangeToParts(start, end);
-  const dash = parts.find(
-    (part, index) => part.source === "shared" && parts[index - 1]?.source === "startRange",
-  )?.value;
-  return dash !== undefined && /^\s*[–—-]\s*$/u.test(dash) ? withAsciiSpaces(dash) : " – ";
-}
-
-/**
- * Whether a title shows less than all of itself: cut short by its clamp or by its event's box.
- * Rounding can leave a pixel of overflow on a title that fits, so a pixel doesn't count.
- */
-function isClipped(title: HTMLElement | null): boolean {
-  const box = title?.closest("[data-event-id]")?.getBoundingClientRect();
-  return (
-    title != null &&
-    box !== undefined &&
-    (title.scrollWidth > title.clientWidth + 1 ||
-      title.scrollHeight > title.clientHeight + 1 ||
-      title.getBoundingClientRect().bottom > box.bottom + 1)
-  );
-}
-
-/**
- * "18:15 – 19:00", or with the end's weekday when it falls on a later date ("18:15 – ter., 18:00"),
- * so an overnight event never reads as ending before it starts. Ending at the next midnight still
- * reads as a time.
- */
-export function eventTimeRange(
-  start: Temporal.PlainDateTime,
-  end: Temporal.PlainDateTime,
-  formats: TimeGridEventFormats,
-): string {
-  const nextMidnight = start.toPlainDate().add({ days: 1 }).toPlainDateTime();
-  if (Temporal.PlainDateTime.compare(end, nextMidnight) <= 0) {
-    return withAsciiSpaces(formats.time.formatRange(start.toPlainTime(), end.toPlainTime()));
-  }
-  const dash = rangeDash(formats.time, start.toPlainTime(), end.toPlainTime());
-  return `${formats.time.format(start.toPlainTime())}${dash}${formats.dayTime.format(end)}`;
 }
 
 /** What an event hands the shared tooltip: its full name, its title, and whether it's cut short. */
@@ -309,8 +236,8 @@ function EventBlock<TEvent>({
   const { fragment, height, left, top, width } = layout;
   const { event, endsAfterDay, startsBeforeDay } = fragment;
   const [start, end] = wallTimes(fragment, timeZone);
-  const compact = height * 24 * 60 < COMPACT_MINUTES;
-  const resizable = !isReadOnly && !event.isReadOnly;
+  const compact = isCompact(height);
+  const handles = resizeHandles(fragment, compact, !isReadOnly && !event.isReadOnly);
   const chip = useEventChip(event, { date: fragment.date, labelEvent, offscreen, resourceId });
   const titleRef = useRef<HTMLSpanElement>(null);
 
@@ -354,7 +281,8 @@ function EventBlock<TEvent>({
             {event.title}
           </span>
           <span {...stylex.props(styles.time)}>
-            , <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
+            {compactTimeSeparator}
+            <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
           </span>
         </span>
       ) : (
@@ -372,14 +300,14 @@ function EventBlock<TEvent>({
           </span>
         </>
       )}
-      {resizable && !startsBeforeDay && (!compact || endsAfterDay) && (
+      {handles.start && (
         <span
           aria-hidden
           data-resize="start"
           {...stylex.props(styles.handle, styles.handleStart)}
         />
       )}
-      {resizable && !endsAfterDay && (
+      {handles.end && (
         <span aria-hidden data-resize="end" {...stylex.props(styles.handle, styles.handleEnd)} />
       )}
     </TooltipTrigger>

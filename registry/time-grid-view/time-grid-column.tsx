@@ -1,19 +1,14 @@
 "use client";
 
 import {
-  instantInterval,
   sameFocus,
   showsInResource,
-  timedFragmentBox,
   useCalendarFocus,
   useCalendarInteraction,
   useRovingFocus,
-  type CalendarEventPlacement,
-  type CalendarFocus,
   type CalendarResource,
   type CalendarSlotFocus,
   type ResourceId,
-  type TimeGridBand,
   type TimeGridColumn as Column,
   type TimeGridDay,
 } from "@moltenship/calendar";
@@ -27,7 +22,31 @@ import {
 } from "@registry/calendar/preview-check";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
-import { cn } from "cn";
+import {
+  bandBox,
+  draftBox,
+  eventKey,
+  inResource,
+  percent,
+  sameBand,
+  slotBand,
+} from "@registry/shared/time-grid-view/time-grid-geometry";
+import {
+  clockChangeTitles,
+  outsideWorkingHours,
+  slotLabel,
+  timeGridColumnFormats,
+  type TimeGridColumnFormats,
+} from "@registry/shared/time-grid-view/time-grid-labels";
+import {
+  timeGridColumnClass,
+  timeGridDraftClass,
+  timeGridEventsClass,
+  timeGridFoldClass,
+  timeGridGapClass,
+  timeGridNowClass,
+  timeGridSlotClass,
+} from "@registry/shared/time-grid-view/time-grid.styles";
 
 import { describeAnnotationsAt } from "./annotation-label";
 import {
@@ -44,34 +63,15 @@ import {
   TimeGridAvailability,
   useColumnAvailability,
 } from "./time-grid-availability";
-import { percent, TimeGridEvent, type TimeGridEventFormats } from "./time-grid-event";
+import { TimeGridEvent } from "./time-grid-event";
 import { describeZoneTimes, type TimeGridZone } from "./time-grid-zones";
 
-export interface TimeGridColumnFormats extends TimeGridEventFormats {
-  /** A slot's date and time, for its accessible name. */
-  readonly slot: Intl.DateTimeFormat;
-}
+export { inResource } from "@registry/shared/time-grid-view/time-grid-geometry";
+export type { TimeGridColumnFormats } from "@registry/shared/time-grid-view/time-grid-labels";
 
 /** The formats a column reads, made once per locale for all of a grid's columns. */
 export function useTimeGridColumnFormats(locale: Intl.LocalesArgument): TimeGridColumnFormats {
-  return useMemo(
-    () => ({
-      dayTime: new Intl.DateTimeFormat(locale, {
-        hour: "numeric",
-        minute: "2-digit",
-        weekday: "short",
-      }),
-      slot: new Intl.DateTimeFormat(locale, {
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-        month: "long",
-        weekday: "long",
-      }),
-      time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" }),
-    }),
-    [locale],
-  );
+  return useMemo(() => timeGridColumnFormats(locale), [locale]);
 }
 
 /** The resource a column shows, in a view with a column per resource. */
@@ -116,45 +116,6 @@ export interface TimeGridColumnProps<TEvent> {
   readonly zones?: readonly TimeGridZone[];
 }
 
-/** Whether focus is in a column's or row's resource; a side without one matches any resource. */
-export function inResource(
-  focus: CalendarFocus,
-  resourceId: ResourceId | null | undefined,
-): boolean {
-  return (
-    resourceId === undefined || focus.resourceId === undefined || focus.resourceId === resourceId
-  );
-}
-
-function bandStyle({ height, top }: TimeGridBand) {
-  return { height: percent(height), top: percent(top) };
-}
-
-const DAY_MINUTES = 24 * 60;
-
-/** Where a keyboard create's timed draft falls in a column, or `null` when it misses it. */
-function draftBox(column: Column, placement: CalendarEventPlacement): TimeGridBand | null {
-  const day = column.day.interval;
-  if (day === null || placement.kind === "all-day") return null;
-  const instant = (point: Temporal.Instant | Temporal.PlainDateTime) =>
-    point instanceof Temporal.Instant
-      ? point
-      : point.toZonedDateTime(column.day.timeZone).toInstant();
-  const start = instant(placement.start);
-  const end = instant(placement.end);
-  const from = Temporal.Instant.compare(start, day.start) > 0 ? start : day.start;
-  const to = Temporal.Instant.compare(end, day.end) < 0 ? end : day.end;
-  return Temporal.Instant.compare(from, to) < 0
-    ? timedFragmentBox(column, instantInterval(from, to))
-    : null;
-}
-
-/** Where a slot sits on its column's 24-hour axis. */
-function slotBand(slot: CalendarSlotFocus, slotMinutes: number): TimeGridBand {
-  const minutes = slot.time.hour * 60 + slot.time.minute;
-  return { height: slotMinutes / DAY_MINUTES, top: minutes / DAY_MINUTES };
-}
-
 /** The annotations drawn across a focused slot, named after its date and time. */
 function slotAnnotations(
   column: Column,
@@ -163,10 +124,6 @@ function slotAnnotations(
   slotMinutes: number,
 ): string | undefined {
   return describeAnnotationsAt(marks, column, slotBand(slot, slotMinutes), formats);
-}
-
-function sameBand(left: TimeGridBand | null, right: TimeGridBand | null): boolean {
-  return left === right || (left?.top === right?.top && left?.height === right?.height);
 }
 
 /**
@@ -188,7 +145,6 @@ function TimeGridSlot({
   readonly slotMinutes: number;
 }) {
   const roving = useRovingFocus(focus);
-  const minutes = focus.time.hour * 60 + focus.time.minute;
 
   return (
     <div
@@ -202,8 +158,8 @@ function TimeGridSlot({
           onOpenDay(focus.date);
         }
       }}
-      className="pointer-events-none absolute inset-x-0 z-10 rounded-sm focus-visible:bg-calendar-selection focus-visible:outline-2 focus-visible:-outline-offset-1 focus-visible:outline-ring"
-      style={{ height: percent(slotMinutes / DAY_MINUTES), top: percent(minutes / DAY_MINUTES) }}
+      className={timeGridSlotClass}
+      style={bandBox(slotBand(focus, slotMinutes))}
     />
   );
 }
@@ -275,7 +231,7 @@ export function TimeGridColumn<TEvent>({
       aria-hidden={offscreen ? true : undefined}
       data-date={column.date.toString()}
       data-today={isToday ? "" : undefined}
-      className="relative min-w-0 border-s border-calendar-grid"
+      className={timeGridColumnClass}
     >
       <TimeGridAvailability
         bands={unavailable}
@@ -286,17 +242,17 @@ export function TimeGridColumn<TEvent>({
       {column.gaps.map((band) => (
         <div
           key={`gap:${band.top}`}
-          className="absolute inset-x-0 bg-[repeating-linear-gradient(-45deg,transparent_0_5px,var(--calendar-grid)_5px_6px)]"
-          style={bandStyle(band)}
-          title="Skipped: clocks moved forward"
+          className={timeGridGapClass}
+          style={bandBox(band)}
+          title={clockChangeTitles.gap}
         />
       ))}
       {column.folds.map((band) => (
         <div
           key={`fold:${band.top}`}
-          className="absolute inset-x-0 bg-calendar-selection"
-          style={bandStyle(band)}
-          title="Repeated: clocks moved back"
+          className={timeGridFoldClass}
+          style={bandBox(band)}
+          title={clockChangeTitles.fold}
         />
       ))}
       {annotations !== undefined && (
@@ -306,10 +262,10 @@ export function TimeGridColumn<TEvent>({
       )}
       {/* The inline-end margin keeps a strip free for creating an event beside busy blocks. The
           rail takes its strip only from the events beside its marks. */}
-      <div className="absolute inset-y-0 start-0 end-2">
+      <div className={timeGridEventsClass}>
         {events.map((layout, index) => (
           <TimeGridEvent
-            key={`${typeof layout.fragment.event.id}:${layout.fragment.event.id}`}
+            key={eventKey(layout.fragment.event.id)}
             color={getEventColor?.(layout.fragment.event.event)}
             icon={getEventIcon?.(layout.fragment.event.event)}
             inset={besideMarks?.[index] === true ? inset : undefined}
@@ -327,12 +283,9 @@ export function TimeGridColumn<TEvent>({
             aria-hidden
             data-slot="time-grid-draft"
             {...previewCheckAttributes(draftCheck)}
-            className={cn(
-              "pointer-events-none absolute inset-x-0 rounded-md bg-calendar-selection",
-              draftCheckClassName,
-            )}
+            className={timeGridDraftClass(draftCheckClassName)}
             style={{
-              ...bandStyle(draft),
+              ...bandBox(draft),
               ...(inset !== undefined &&
                 annotationLayout !== undefined &&
                 marks !== undefined &&
@@ -348,19 +301,17 @@ export function TimeGridColumn<TEvent>({
         <TimeGridSlot
           // The column's own resource, so a gesture started here stays in it.
           focus={resourceId === undefined ? slot : { ...slot, resourceId }}
-          label={[
+          label={slotLabel([
             resource?.title,
             formats.slot.format(slot.date.toPlainDateTime(slot.time)),
             zones === undefined ? undefined : describeZoneTimes(column, slot.time, zones, formats),
             isUnavailableIn(unavailable, slotBand(slot, slotMinutes))
-              ? "outside working hours"
+              ? outsideWorkingHours
               : undefined,
             annotations === undefined
               ? undefined
               : slotAnnotations(column, slot, annotations, slotMinutes),
-          ]
-            .filter((part) => part !== undefined)
-            .join(", ")}
+          ])}
           offscreen={offscreen}
           onOpenDay={onOpenDay}
           slotMinutes={slotMinutes}
@@ -370,10 +321,7 @@ export function TimeGridColumn<TEvent>({
         <div
           aria-hidden
           data-slot="time-grid-now"
-          className={cn(
-            "pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-calendar-now",
-            "before:absolute before:-top-1 before:-start-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now",
-          )}
+          className={timeGridNowClass}
           style={{ top: percent(nowTop) }}
         />
       )}
