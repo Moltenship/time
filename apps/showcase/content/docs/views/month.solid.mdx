@@ -1,0 +1,147 @@
+---
+title: Month
+description: The Solid month, a grid of weeks with multi-day bars and a "+N more" popover, from the Solid registry.
+---
+
+Try it in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=month): it opens on
+the month.
+
+`createMonthView` shows every week that touches the month, starting on `weekRules.firstDay`. Most
+months need five rows; some need four or six.
+
+## Add it
+
+Add the `month-view` item to your app with the shadcn CLI, as
+[UI source](/docs/installation#ui-source-optional) describes. It brings the theme, the shared
+`calendar` parts and the kit's popover:
+
+```bash
+npx shadcn@latest add @moltenship/month-view
+```
+
+Then register the view:
+
+<include meta='title="calendar.tsx"'>../../examples/solid/month-page.tsx#view</include>
+
+The view is named `month`. Previous and Next move by one month. Its weeks share the height they're
+given, so give `Calendar.Viewport` a height, and save the changes a drag or a key proposes in
+`onEventChange`:
+
+<include meta='title="month-page.tsx"'>../../examples/solid/month-page.tsx#page</include>
+
+## Options
+
+Pass them to `createMonthView`, or per root in `viewOptions`, as the page above does with
+`dragPreview`:
+
+<TypeTable
+  type={{
+    dragPreview: {
+      type: '"snapped" | "free"',
+      description:
+        "How a drag's preview moves: from day to day, or with the pointer over a marker of where it would land, snapping there on release.",
+      default: '"snapped"',
+    },
+    getEventColor: {
+      type: "(event: TEvent) => CalendarEventColor",
+      description: (
+        <>
+          The color for each event, one of <code>calendarEventColors</code> in{" "}
+          <code>event-colors.ts</code>, which <code>calendar-theme</code> installs.
+        </>
+      ),
+    },
+    getEventIcon: {
+      type: "(event: TEvent) => JSX.Element",
+      description:
+        "A small icon before each event's title, such as a repeat mark on recurring events, or nothing. It's decorative and hidden from screen readers: say the same in describeEvent, which adds to the event's accessible name.",
+    },
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: "Extra words for each event's accessible name, such as its calendar.",
+    },
+    renderUnavailable: {
+      type: "UnavailableTimeRender",
+      description:
+        "Replaces the shading of closed days: a function of the closed range's props and its state that returns a JSX element.",
+    },
+  }}
+/>
+
+## What it shows
+
+- **Days:** weekday names across the top. Days outside the month are muted, today's date sits in a
+  filled circle and is `aria-current="date"`, and the first of each month reads "Oct 1".
+- **Multi-day and all-day events** are bars across the days they cover. A bar that continues into
+  the previous or next week ends with a chevron. Timed bars start with their start time.
+- **Single-day timed events** show a colored dot, the start time and the title.
+- **"+N more":** rows grow to fill the height they're given, at least 80 px each, and show as many
+  events as fit. The rest collapse into "+N more", which opens a popover with the day's events.
+- **Closed days**, from the root's `availability`, are shaded and named by their reason.
+- **Clicking a date number** opens that day in the view named `day`. Register a view of your own by
+  that name so the click has somewhere to go.
+- **Editing:** with `onEventChange` on `Root`, drag an event to another day (timed events keep their
+  time), or drag across days to create an all-day event. Escape cancels a drag. Each change runs
+  your policies and `onEventChange`, and a screen reader hears where the event lands.
+- **Changes being saved:** events with a pending change, the ones
+  [`useCalendarPendingChanges`](/docs/api/components#hooks) returns, get `aria-busy` and render at
+  60% opacity.
+- **On a phone** events become small tinted blocks, every date and event is at least 24 px tall,
+  and a long press doesn't select their text.
+- **Right to left** mirrors the grid, the chevrons included, when the page or `Calendar.Frame` has
+  `dir="rtl"`.
+- **Reduced motion** opens the popover without its scale and slide.
+
+A drag changes only the pointer layer's ghosts: the weeks and their events don't render again until
+the change is saved.
+
+## Anatomy
+
+`MonthView` renders the parts below. The view builds them itself from its projection, so they're not
+parts you compose: to change one, edit its file under `components/calendar/month-view`.
+
+```txt title="Rendered by MonthView"
+MonthView                        month-view.tsx
+├── Weekday header
+└── MonthWeek                    month-week.tsx, one per week
+    ├── Day cell                 data-date
+    │   └── Date button          aria-current="date" on today
+    ├── MonthEvent               month-event.tsx
+    └── "+N more"                the kit's popover, with the day's events
+```
+
+The `.tsx` files are Solid components. What they render comes from plain TypeScript beside them:
+
+| File              | Holds                                                                           |
+| ----------------- | ------------------------------------------------------------------------------- |
+| `month.styles.ts` | Every class the parts set, so a restyle is one file                             |
+| `month-labels.ts` | The dates, start times, cell names and the "+N more" words                      |
+| `month-layout.ts` | How many lanes fit in a week, measured from the grid, and which days are closed |
+
+A bar is a `MonthEvent` with `bar` set. `startsBefore` and `endsAfter` mark the ends that continue
+into another week.
+
+## Keyboard
+
+| Focus    | Key                | Effect                                                                        |
+| -------- | ------------------ | ----------------------------------------------------------------------------- |
+| A day    | ← →                | Previous or next day                                                          |
+| A day    | ↑ ↓                | Same weekday a week earlier or later                                          |
+| A day    | Home, End          | First or last day of the week                                                 |
+| A day    | Page Up, Page Down | Same day in the previous or next month                                        |
+| A day    | Enter              | Go into the day's events. ↑ ↓ walk them, and Escape goes back to the day      |
+| A day    | Shift+Enter        | Open the day in the day view                                                  |
+| A day    | Space              | Start an all-day event there. Arrow keys extend it, and Enter saves it        |
+| An event | Space              | Pick it up. Arrow keys move it by days, Enter saves, and Escape cancels       |
+| An event | Shift+Space        | Pick up its end to resize it by days. Shift+Space again switches to its start |
+
+The grid is one tab stop. Events behind "+N more" are reachable too: while focus is on one, its week
+shows every event. After a drop, focus stays on the moved event. The keys are the ones
+`view-keys.ts` maps, the same in every view.
+
+## Markup for interactions
+
+The view connects the pointer layer for you. If you change its markup, keep the attributes it reads:
+each day cell holds an element with `data-date` underneath its events, and each event is a
+`<button>` with `data-event-id`. The events sit beside that element, not inside it, so a drag over
+a bar still finds the day under the pointer.

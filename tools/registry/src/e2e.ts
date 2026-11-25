@@ -374,7 +374,7 @@ async function testApp(
 }
 
 /** The Solid items the Solid app adds, by the registry's namespace, as the Solid docs do. */
-const solidItems = ["base-tokens", "calendar-ui", "calendar", "list-view"] as const;
+const solidItems = ["base-tokens", "calendar-ui", "calendar", "list-view", "month-view"] as const;
 
 /** The versions the workspace builds and tests with, from its catalog. */
 async function catalogVersion(name: string): Promise<string> {
@@ -467,9 +467,13 @@ async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
       'import { render } from "@solidjs/web";',
       "",
       'import CalendarPage from "./calendar-page";',
+      'import MonthPage from "./month-page";',
       'import "./app.css";',
       "",
-      'render(() => <CalendarPage />, document.getElementById("root")!);',
+      "render(",
+      '  () => (location.hash === "#month" ? <MonthPage /> : <CalendarPage />),',
+      '  document.getElementById("root")!,',
+      ");",
       "",
     ].join("\n"),
   };
@@ -490,10 +494,9 @@ async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
     join(root, "src/app.css"),
     await readFile(join(solidConsumer, "app.css"), "utf8"),
   );
-  await writeFile(
-    join(root, "src/calendar-page.tsx"),
-    await readFile(join(solidConsumer, "calendar-page.tsx"), "utf8"),
-  );
+  for (const page of ["calendar-page.tsx", "month-page.tsx"]) {
+    await writeFile(join(root, "src", page), await readFile(join(solidConsumer, page), "utf8"));
+  }
 }
 
 /** What `shadcn add` of the Solid items should write under the components alias. */

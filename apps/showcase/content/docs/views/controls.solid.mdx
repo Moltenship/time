@@ -4,7 +4,7 @@ description: The Solid registry's controls kit, the buttons, badges, tooltips an
 ---
 
 The registry's views and the [toolbar](/docs/views/toolbar) don't import a component library. They
-take their buttons, badges, tooltips and the view select from the files the `calendar-ui` item adds
+take their buttons, badges, tooltips, popovers and the view select from the files the `calendar-ui` item adds
 to `components/calendar/ui/`. That's the kit: a default built on ui-sdk's Solid components, which
 gives them their keyboard, focus and ARIA. It's your code once you add it, to edit or replace.
 
@@ -14,12 +14,13 @@ gives them their keyboard, focus and ARIA. It's your code once you add it, to ed
 | `badge.tsx`   | A resource's status                                               |
 | `tooltip.tsx` | The names of the toolbar's step buttons, shown after 400 ms       |
 | `select.tsx`  | The view switcher                                                 |
+| `popover.tsx` | The month's "+N more" and the day's events it shows               |
 | `icons.tsx`   | The chevrons and the other icons, drawn inline                    |
 
 React's kit has the same files, with the same exports and props, and takes its look from the same
 `.styles.ts` files. A control looks and behaves alike in both frameworks, and the registry's tests
-check that the two kits render the same elements and attributes. React's kit also has the popover,
-dialog and toast, which come to Solid with the views that use them.
+check that the two kits render the same elements and attributes. The dialog and toast come with the
+views that use them.
 
 ## Add it
 
@@ -29,7 +30,7 @@ The `calendar` item brings `calendar-ui`, so adding a view adds the kit too, as
 
 ui-sdk adds a little CSS of its own to the page, in a layer named `ui-sdk`. The stylesheet in
 [UI source](/docs/installation#ui-source-optional) names that layer before Tailwind, so your styles
-and Tailwind's win over it. The select's list and the tooltips open in the browser's top layer,
+and Tailwind's win over it. The select's list, the tooltips and the popovers open in the browser's top layer,
 through the Popover API: Chrome and Edge 114, Safari 17 and Firefox 125 or later.
 
 Tooltips wait 400 ms. Change `tooltipDefaults` in `components/calendar/ui/tooltip.styles.ts`, or
@@ -62,6 +63,7 @@ What the views import from each file, and what they pass:
 | `badge.tsx`   | `Badge`                                                                                | `variant="outline"`, `class`, `title`, and `data-slot="resource-status"` with `data-state`, which colours the status dot inside it                                                                                                                                         |
 | `tooltip.tsx` | `Tooltip`, `TooltipTrigger`, `TooltipContent`                                          | `Tooltip`: its trigger and content. `TooltipTrigger`: `render`, the button it shows on. `TooltipContent`: the text                                                                                                                                                         |
 | `select.tsx`  | `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectGroup`, `SelectItem` | `Select`: `items` (`{ label, value }`), `value` and `onValueChange`, which gets the new value. `SelectTrigger`: `aria-label` and `class`. `SelectContent`: `align` and `alignItemWithTrigger`. `SelectItem`: `value`, `label`, and the label with its shortcut as children |
+| `popover.tsx` | `Popover`, `PopoverTrigger`, `PopoverContent`                                          | `PopoverTrigger`: `aria-label`, `class`, `style` and `tabIndex={-1}`, since the grid keeps one tab stop, and its text as children. `PopoverContent`: `align`, `aria-label`, which names the popover, and `class`                                                           |
 
 Props take Solid's names, such as `class`, and otherwise React's kit's, so a control you write for
 both frameworks takes the same props in each.
