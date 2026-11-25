@@ -19,7 +19,7 @@ import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 
 import { seriousViolations, setTheme, themes } from "./axe";
-import { removed, render, until } from "./render";
+import { removed, render, tab, until } from "./render";
 
 type Standup = RecurringCalendarEvent<null, string>;
 type Occurrence = RecurrenceOccurrence<Standup, string>;
@@ -160,7 +160,7 @@ async function choose(text: string) {
   // From the first choice, which the dialog focuses in the next animation frame.
   await until(() => expect(dialog()!.querySelector("button")).toBe(document.activeElement));
   for (let tabs = 0; tabs < 4 && document.activeElement?.textContent !== text; tabs += 1) {
-    await userEvent.keyboard("{Tab}");
+    await userEvent.keyboard(tab);
   }
   const question = dialog()!;
   await userEvent.keyboard("{Enter}");

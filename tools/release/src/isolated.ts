@@ -160,7 +160,8 @@ export function lastLines(output: string, count = 60): string {
 }
 
 /** Files under `directories` that git tracks or would track, as they are in the working tree. */
-async function workspaceFiles(directories: readonly string[]): Promise<string[]> {
+/** The tracked and unignored files in workspace folders, as the copy takes them. */
+export async function workspaceFiles(directories: readonly string[]): Promise<string[]> {
   const { stdout } = await runOrThrow("git", [
     "ls-files",
     "-z",
@@ -246,6 +247,9 @@ export function temporaryRoot(name: string): Promise<string> {
   return mkdtemp(join(tmpdir(), `moltenship-${name}-`));
 }
 
+/** The workspace's own files the copy takes at its root, beside the folders. */
+export const copiedRootFiles: readonly string[] = ["tsconfig.base.json"];
+
 /**
  * Copies workspace folders into a new pnpm workspace in `root`, outside this one, and installs it
  * from the pnpm store (`installFromStore`), with every published package from the dry run's
@@ -309,7 +313,7 @@ export async function isolatedWorkspace({
     ),
   );
   await copyFile(join(workspaceRoot, "pnpm-lock.yaml"), join(root, "pnpm-lock.yaml"));
-  await copyFile(join(workspaceRoot, "tsconfig.base.json"), join(root, "tsconfig.base.json"));
+  for (const file of copiedRootFiles) await copyFile(join(workspaceRoot, file), join(root, file));
 
   const { online } = await installFromStore(root);
   const problems = lockfileProblems({

@@ -8,11 +8,21 @@ import {
   servedProblems,
   summary,
 } from "../src/artifacts";
+import { referencesOutside } from "../src/reach";
 
 describe("the release artifacts' consumers", () => {
   test("the SSR fixture, the docs site and the registry's clean apps use the artifacts", () => {
     expect(consumers.map(({ name }) => name)).toEqual(["ssr-fixture", "showcase", "registry"]);
   });
+
+  // The copies build outside the workspace, so a folder that reaches past them, such as the docs
+  // site mapping a path into the demo, would fail only in the release gate.
+  test.each(consumers.filter(({ copies }) => copies !== undefined))(
+    "$name refers to no file outside the folders it copies",
+    async ({ copies }) => {
+      expect(await referencesOutside(copies!)).toEqual([]);
+    },
+  );
 
   test("an unknown consumer is an error, before anything runs", async () => {
     await expect(checkArtifacts({ only: ["docs"] })).rejects.toThrow(

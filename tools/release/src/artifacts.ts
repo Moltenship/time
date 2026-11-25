@@ -21,15 +21,20 @@ interface ConsumerContext {
   readonly note: (message: string | undefined) => void;
   /** Whether to keep what a consumer made, even when it passes. */
   readonly keep: boolean;
-  /** Copies workspace folders into a clean workspace on the dry run's tarballs, kept if a step fails. */
-  readonly isolate: (
-    directories: readonly string[],
-    options?: { readonly drop?: readonly string[] },
-  ) => Promise<IsolatedWorkspace>;
+  /**
+   * Copies the consumer's `copies` into a clean workspace on the dry run's tarballs, kept if a
+   * step fails.
+   */
+  readonly isolate: (options?: { readonly drop?: readonly string[] }) => Promise<IsolatedWorkspace>;
 }
 
 export interface Consumer {
   readonly name: string;
+  /**
+   * The workspace folders `isolate` copies. Nothing in them may refer to a file outside them,
+   * which the release tooling's tests check (`referencesOutside`).
+   */
+  readonly copies?: readonly string[];
   readonly run: (context: ConsumerContext) => Promise<void>;
 }
 
@@ -94,8 +99,9 @@ export const consumers: readonly Consumer[] = [
     // The fixture's own tests: render, hydrate, interact and unmount, its known-bad hydration
     // fails, and its calendar hydrates through calendar-testing.
     name: "ssr-fixture",
+    copies: ["apps/ssr-fixture"],
     run: async ({ step, note, isolate }) => {
-      const fixture = await step("install", () => isolate(["apps/ssr-fixture"]));
+      const fixture = await step("install", () => isolate());
       await step("render and hydrate", async () =>
         note(outcome(await fixture.run("apps/ssr-fixture", "vp", ["test", "--run"]))),
       );
@@ -105,10 +111,11 @@ export const consumers: readonly Consumer[] = [
     // The docs site and its live examples: a production build, every route rendered by
     // `next start`, and the docs tests that render the examples.
     name: "showcase",
+    copies: ["apps/showcase", "registry"],
     run: async ({ manifest, step, note, isolate }) => {
       const site = await step("install", async () => {
         // `registry` is the build tool for public/r; the dry run's registry stands in for it.
-        const workspace = await isolate(["apps/showcase", "registry"], { drop: ["registry"] });
+        const workspace = await isolate({ drop: ["registry"] });
         const served = join(workspace.root, "apps/showcase/public/r");
         await mkdir(served, { recursive: true });
         for (const { file } of manifest.registry ?? []) {
@@ -208,7 +215,7 @@ async function runConsumer(
   };
   const started = performance.now();
   const steps: StepRecord[] = [];
-  const copies: string[] = [];
+  const copyRoots: string[] = [];
   const context: ConsumerContext = {
     manifest,
     step: async (name, action) => {
@@ -225,9 +232,11 @@ async function runConsumer(
     },
     note,
     keep,
-    isolate: async (directories, options) => {
+    isolate: async (options) => {
+      const directories = consumer.copies;
+      if (directories === undefined) throw new Error(`${consumer.name} copies no folders`);
       const root = await temporaryRoot(consumer.name);
-      copies.push(root);
+      copyRoots.push(root);
       const workspace = await isolatedWorkspace({
         root,
         directories,
@@ -247,7 +256,7 @@ async function runConsumer(
   } catch (error) {
     const failed = steps.findLast(({ passed }) => !passed)?.name ?? "setup";
     const message = error instanceof Error ? error.message : String(error);
-    const kept = copies.map((copy) => `\nKept ${copy} to reproduce it.`).join("");
+    const kept = copyRoots.map((copy) => `\nKept ${copy} to reproduce it.`).join("");
     return {
       name: consumer.name,
       seconds: seconds(started),
@@ -255,7 +264,7 @@ async function runConsumer(
       failure: `${consumer.name} failed at "${failed}": ${message}${kept}`,
     };
   }
-  for (const copy of copies) {
+  for (const copy of copyRoots) {
     if (keep) console.log(`[${consumer.name}] kept ${copy}`);
     else await rm(copy, { force: true, recursive: true });
   }
