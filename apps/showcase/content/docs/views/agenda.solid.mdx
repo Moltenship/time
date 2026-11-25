@@ -10,8 +10,8 @@ description: The Solid agenda, a chronological list of events grouped by day tha
   caption="Live. The page that Add it builds, with two events in October 2026."
 />
 
-The [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=agenda) has it beside a month
-grid: pick Agenda in the view switcher.
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=agenda) has it beside the week,
+the day, the month and the year: pick Agenda in the view switcher.
 
 `createAgendaView` lists the events in the coming weeks, one group per day. Days without events are
 left out. Only the days in view render, so a long range, such as `weeks: 104` with thousands of
@@ -86,8 +86,9 @@ Pass them to `createAgendaView`, or per root in `viewOptions`, where they overri
 - **All-day events** show an "All day" badge, and events longer than a day show "Day 2 of 3".
 - **Empty range:** a short message when the weeks shown have no events, or a loading one while
   `loading` is set.
-- **Clicking a date** opens that day in the view named `day`. Register a view of your own by that
-  name so the click has somewhere to go.
+- **Clicking a date** opens that day in the view named `day`. Register the registry's
+  [day view](/docs/views/week-and-day), or a view of your own by that name, so the click has
+  somewhere to go.
 - **Changes being saved:** events with a pending change, the ones
   [`useCalendarPendingChanges`](/docs/api/components#hooks) returns, get `aria-busy` and render at
   60% opacity.

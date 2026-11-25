@@ -89,8 +89,9 @@ Pass them to `createMonthView`, or per root in `viewOptions`, as the page above 
 - **Closed days**, from the root's `availability`, are shaded, and a screen reader hears "closed"
   in the day's name, after its exception's label if it has one: "Friday, October 9, 2026, Offsite,
   closed, 2 events".
-- **Clicking a date number** opens that day in the view named `day`. Register a view of your own by
-  that name so the click has somewhere to go.
+- **Clicking a date number** opens that day in the view named `day`. Register the registry's
+  [day view](/docs/views/week-and-day), or a view of your own by that name, so the click has
+  somewhere to go.
 - **Editing:** with `onEventChange` on `Root`, drag an event to another day (timed events keep their
   time), or drag across days to create an all-day event. Escape cancels a drag. Each change runs
   your policies and `onEventChange`, and a screen reader hears where the event lands.

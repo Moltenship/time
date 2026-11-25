@@ -177,13 +177,13 @@ where it meets open time, so CSS can restyle it:
 
 <Solid>
 
-| Attribute or variable                   | Value                                                                                   |
-| --------------------------------------- | --------------------------------------------------------------------------------------- |
-| `data-slot`                             | `time-grid-unavailable` in the week and day, or `month-closed` in the month             |
-| `data-reason`                           | `outside-hours`, `closed-day` (no weekly hours that day) or `exception` (a closed date) |
-| `data-label`                            | The exception's `label`, such as "Company holiday"                                      |
-| `data-opens-before`, `data-opens-after` | Present where open time meets the band's start or end in the view                       |
-| `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                  |
+| Attribute or variable                   | Value                                                                                                  |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| `data-slot`                             | `time-grid-unavailable` in the week and day, `month-closed` in the month, or `year-closed` in the year |
+| `data-reason`                           | `outside-hours`, `closed-day` (no weekly hours that day) or `exception` (a closed date)                |
+| `data-label`                            | The exception's `label`, such as "Company holiday"                                                     |
+| `data-opens-before`, `data-opens-after` | Present where open time meets the band's start or end in the view                                      |
+| `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                                 |
 
 </Solid>
 
@@ -274,7 +274,8 @@ time.
 
 <include meta='title="views.tsx"'>../examples/solid/shading-render.tsx#render</include>
 
-The week, day and month take `renderUnavailable`. The agenda doesn't shade closed time.
+The week, day, month and year take `renderUnavailable`, and so does the scrolling month. The
+agendas don't shade closed time.
 
 </Solid>
 
