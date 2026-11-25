@@ -26,6 +26,10 @@ const styles = stylex.create({
   },
   // On wrappers that aren't boxes of their own: a `display` set on an Astryx control would replace
   // its own.
+  // Below `lg` the bar has no room for the framework switch; the drawer, open from the menu, has it.
+  fromDesktop: {
+    display: { default: "contents", "@media (max-width: 1023.98px)": "none" },
+  },
   fromTablet: {
     display: { default: "contents", "@media (max-width: 639.98px)": "none" },
   },
@@ -71,7 +75,9 @@ export function TopBar({ onOpenSidebar, onShowShortcuts, scrolling }: TopBarProp
     >
       <ViewSwitcher onValueChange={setView} options={viewSwitcherOptions(scrolling)} value={view} />
       <div {...stylex.props(styles.fromTablet)}>
-        <FrameworkSwitch />
+        <div {...stylex.props(styles.fromDesktop)}>
+          <FrameworkSwitch />
+        </div>
         <UiSwitch />
         <IconButton
           icon={<Icon icon={KeyboardIcon} />}

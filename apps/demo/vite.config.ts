@@ -17,7 +17,9 @@ const solidBase = "/solid/";
  * Puts the Solid demo at `/solid/` of this one, so one deployment has both frameworks. A build
  * builds it into `dist/solid` once this one's bundle is written, whatever starts the build: `vp
  * build` here, as the deployment runs it, or `vp run demo#build`. The dev server hands `/solid/`
- * to a Solid dev server of its own, in middleware mode, sharing this one's port for its HMR.
+ * to a Solid dev server of its own, in middleware mode, sharing this one's port for its HMR. A
+ * server without a port of its own (in middleware mode itself) skips it: run `vp dev` in
+ * apps/demo-solid for the Solid page then.
  */
 function solidDemo(): Plugin {
   let outDir = "";
@@ -39,15 +41,18 @@ function solidDemo(): Plugin {
       });
     },
     async configureServer(server) {
+      const { httpServer } = server;
+      if (httpServer === null) return;
       solidServer = await createServer({
         configFile: solidConfigFile,
         root: solidRoot,
-        server: { hmr: { server: server.httpServer ?? undefined }, middlewareMode: true },
+        server: { hmr: { server: httpServer }, middlewareMode: true },
       });
-      server.httpServer?.once("close", () => void solidServer?.close());
+      httpServer.once("close", () => void solidServer?.close());
       // Before this server's own middlewares, whose SPA fallback would answer `/solid/` itself.
       server.middlewares.use((request, response, next) => {
-        if (request.url === "/solid" || request.url?.startsWith(solidBase) === true) {
+        const path = request.url?.split("?", 1)[0];
+        if (path === "/solid" || path?.startsWith(solidBase) === true) {
           solidServer?.middlewares(request, response, next);
         } else {
           next();

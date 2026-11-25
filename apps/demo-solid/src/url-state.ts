@@ -35,7 +35,9 @@ function viewFor(value: string | null): SolidView | undefined {
 }
 
 function parseDate(value: string | null): Temporal.PlainDate | undefined {
-  if (value === null) return undefined;
+  // A plain ISO date of a four-digit year: Temporal also takes a calendar annotation and years
+  // out to ±271821, whose edges no view can show.
+  if (value === null || !/^\d{4}-\d{2}-\d{2}$/u.test(value)) return undefined;
   try {
     return Temporal.PlainDate.from(value);
   } catch {

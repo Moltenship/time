@@ -7,6 +7,7 @@
   "scripts": {
     "build": "vp build",
     "dev": "vp dev",
+    "pages:check": "vpx ./scripts/check-pages.ts",
     "preview": "vp preview",
     "test": "vp test"
   },
@@ -34,6 +35,7 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
+    "demo-solid": "workspace:*",
     "jsdom": "catalog:",
     "shadcn": "catalog:",
     "tailwindcss": "catalog:",

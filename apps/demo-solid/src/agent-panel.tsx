@@ -113,9 +113,19 @@ export function AgentPanel(props: {
           )}
         </For>
       </ol>
-      <h3>What the agent sees</h3>
+      <h3 id="agent-snapshot-heading">What the agent sees</h3>
       <Show when={entry()} fallback={<p class="empty">The calendar isn't on the page.</p>}>
-        {(seen) => <pre data-agent-snapshot="">{JSON.stringify(seen(), null, 2)}</pre>}
+        {/* It scrolls, so it takes focus, for the keyboard to scroll it. */}
+        {(seen) => (
+          <pre
+            aria-labelledby="agent-snapshot-heading"
+            data-agent-snapshot=""
+            role="region"
+            tabindex="0"
+          >
+            {JSON.stringify(seen(), null, 2)}
+          </pre>
+        )}
       </Show>
     </aside>
   );

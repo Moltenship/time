@@ -76,8 +76,10 @@ export function App() {
   const [location, setLocation] = createSignal(
     readSolidLocation(window.location.search, { date: today, view: "month" }),
   );
-  createEffect(location, (current) => {
-    history.replaceState(history.state, "", writeSolidLocation(window.location.href, current));
+  // What the URL says for them, which the effect writes and the framework switch's links carry.
+  const href = () => writeSolidLocation(window.location.href, location());
+  createEffect(href, (next) => {
+    history.replaceState(history.state, "", next);
   });
   const [allowDelete, setAllowDelete] = createSignal(false);
   const [lastChange, setLastChange] = createSignal("none yet");
@@ -87,11 +89,13 @@ export function App() {
     <main>
       <header class="header">
         <h1>Calendar</h1>
-        <FrameworkSwitch />
+        <FrameworkSwitch search={new URL(href()).search} />
       </header>
       <p class="preview">
-        This is <code>@moltenship/calendar-solid</code>, a preview: a month grid and a list, and no
-        dragging or keyboard navigation yet. <a href={docsUrl}>What the Solid package has</a>
+        This page runs <code>@moltenship/calendar-solid</code>, a preview with the root, the parts,
+        the read hooks and the agent actions. The month grid and the list are this page's own views:
+        the package has no ready-made views, keyboard navigation, dragging, drafts or undo yet.{" "}
+        <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's month and list projections, with an agent driving it

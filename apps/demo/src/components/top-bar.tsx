@@ -53,7 +53,8 @@ export function TopBar({ onOpenSidebar, onShowShortcuts, scrolling }: TopBarProp
         options={viewSwitcherOptions(scrolling)}
         value={view}
       />
-      <FrameworkSwitch className="max-md:hidden" />
+      {/* From `lg`: below it the bar has no room for it, and the drawer, open from the menu, has it. */}
+      <FrameworkSwitch className="max-lg:hidden" />
       <UiSwitch className="max-sm:hidden" current="tailwind" />
       <Tooltip>
         <TooltipTrigger
