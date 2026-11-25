@@ -55,6 +55,12 @@ export interface ResourceColumnsViewOptions<
   TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
 >
   extends ResourceOverlapLayoutOptions<TEvent, TResource>, ResourceVisibilityOptions {
+  /**
+   * How a pointer drag's preview follows the pointer: stepping from slot to slot (`"snapped"`, the
+   * default), or with the pointer over where it would land (`"free"`). A prototype; the name may
+   * change.
+   */
+  readonly dragPreview?: "free" | "snapped";
   /** Extra words for each event's accessible name, such as its calendar. */
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Colour for an event; sets `data-color` on every element that renders it. */
@@ -144,6 +150,7 @@ export function ResourceColumnsView<
     events,
     onPreview: reportDraft,
     onPropose: actions.proposeEventChange,
+    preview: options.dragPreview,
     scrollContainer: scrollRef,
     snap,
     timeZone: environment.timeZone,

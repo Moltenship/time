@@ -161,6 +161,33 @@
   }
 
   /*
+   * Where a free drag (`dragPreview: "free"`) would land, under the copy that follows the pointer:
+   * a quiet tint with a thin edge, tinted red when the drop would be refused.
+   */
+  [data-calendar-ghost="landing"] {
+    --calendar-ghost-landing-background: color-mix(
+      in oklch,
+      var(--calendar-today) 10%,
+      transparent
+    );
+    --calendar-ghost-landing-shadow: inset 0 0 0 1.5px
+      color-mix(in oklch, var(--calendar-today) 45%, transparent);
+  }
+
+  [data-calendar-ghost="landing"][data-invalid] {
+    --calendar-ghost-landing-background: color-mix(
+      in oklch,
+      var(--calendar-invalid) 12%,
+      transparent
+    );
+    --calendar-ghost-landing-shadow: none;
+  }
+
+  [data-calendar-ghost="landing"][data-warning] {
+    --calendar-ghost-landing-shadow: none;
+  }
+
+  /*
    * Event colours. `data-color` picks a hue and chroma; the three semantic event tokens are
    * derived from them per theme, so an element only ever reads `--calendar-event*`.
    * Override a colour by redefining its hue/chroma, or the derived tokens directly.

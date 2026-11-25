@@ -48,6 +48,12 @@ export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions<TEvent
   readonly dayView?: string;
   /** Extra words for each event's accessible name, such as its calendar. */
   readonly describeEvent?: EventDescriber<TEvent>;
+  /**
+   * How a pointer drag's preview follows the pointer: stepping from slot to slot (`"snapped"`, the
+   * default), or with the pointer over where it would land (`"free"`). A prototype; the name may
+   * change.
+   */
+  readonly dragPreview?: "free" | "snapped";
   /** Colour for an event; sets `data-color` on every element that renders it. */
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
   /**
@@ -101,6 +107,7 @@ export function TimeGridView<TEvent>({
     disabled: isReadOnly,
     events,
     onPropose: actions.proposeEventChange,
+    preview: options.dragPreview,
     scrollContainer: scrollRef,
     snap,
     timeZone: environment.timeZone,

@@ -88,6 +88,12 @@ const styles = stylex.create({
 });
 
 export interface MonthViewOptions<TEvent> {
+  /**
+   * How a pointer drag's preview follows the pointer: stepping from slot to slot (`"snapped"`, the
+   * default), or with the pointer over where it would land (`"free"`). A prototype; the name may
+   * change.
+   */
+  readonly dragPreview?: "free" | "snapped";
   /** Extra words for each event's accessible name, such as its calendar. */
   readonly describeEvent?: EventDescriber<TEvent>;
   /** Picks each event's `data-color`; events without one use the theme's default colour. */
@@ -218,6 +224,7 @@ function MonthView<TEvent>({
     disabled: isReadOnly,
     events,
     onPropose: actions.proposeEventChange,
+    preview: options.dragPreview,
     scrollContainer: body,
     timeZone: environment.timeZone,
   });

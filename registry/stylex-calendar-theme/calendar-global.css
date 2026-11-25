@@ -23,6 +23,29 @@
   outline-offset: -2px;
 }
 
+/*
+ * Where a free drag (`dragPreview: "free"`) would land, under the copy that follows the pointer:
+ * a quiet tint with a thin edge, tinted red when the drop would be refused.
+ */
+[data-calendar-ghost="landing"] {
+  --calendar-ghost-landing-background: color-mix(in oklch, var(--calendar-today) 10%, transparent);
+  --calendar-ghost-landing-shadow: inset 0 0 0 1.5px
+    color-mix(in oklch, var(--calendar-today) 45%, transparent);
+}
+
+[data-calendar-ghost="landing"][data-invalid] {
+  --calendar-ghost-landing-background: color-mix(
+    in oklch,
+    var(--calendar-invalid) 12%,
+    transparent
+  );
+  --calendar-ghost-landing-shadow: none;
+}
+
+[data-calendar-ghost="landing"][data-warning] {
+  --calendar-ghost-landing-shadow: none;
+}
+
 /* A dragged bar's copy keeps its title at its start, not where the bar's pin had moved it. */
 [data-calendar-ghost] [data-slot="calendar-event-title"] {
   transform: none !important;
