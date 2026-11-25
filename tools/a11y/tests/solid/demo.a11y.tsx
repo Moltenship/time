@@ -1,4 +1,4 @@
-import { afterAll, afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, test } from "vite-plus/test";
 import { cdp, commands, page, server, userEvent } from "vite-plus/test/browser";
 
 import { App } from "../../../../apps/demo-solid/src/app";
@@ -303,9 +303,10 @@ const shownTooltip = () =>
     ?.textContent?.trim() ?? null;
 
 describe("the Solid demo's top bar", () => {
+  // The theme button's name follows the theme, which a test before may have left dark.
+  beforeEach(() => setTheme("light"));
   afterEach(async () => {
     await mouse({ type: "up" });
-    localStorage.clear();
     setTheme("light");
   });
 
