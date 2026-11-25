@@ -58,7 +58,8 @@ afterEach(async () => {
 });
 
 // What a test drops stays in the page's heap until a full collection, which a busy CI runner's
-// Chromium put off until the heap held a gigabyte of dropped frames and the page lost its
-// connections. So after each test the page collects its garbage once it holds more than 300 MB:
-// on the runner the suite's live heap stayed under 200 MB.
+// Chromium put off until the heap held 0.6–1 GB of dropped frames, and with that much the page
+// lost its connections (`collect-garbage.ts`). So after each test the page collects its garbage
+// once it holds more than 300 MB: on the runner the React page's heap came back to about 170 MB
+// after each collection.
 if (server.browser === "chromium") afterEach(() => commands.collectGarbage(300));
