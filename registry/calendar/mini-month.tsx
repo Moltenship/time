@@ -10,7 +10,7 @@ import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { cn } from "cn";
-import { Button } from "@registry/ui/button";
+import { Button } from "@registry/calendar-ui/button";
 
 export interface MiniMonthProps {
   readonly className?: string;

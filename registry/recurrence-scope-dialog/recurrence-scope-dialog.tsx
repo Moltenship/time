@@ -2,7 +2,7 @@
 
 import { useInsertionEffect, useLayoutEffect, useRef } from "react";
 
-import { Button } from "@registry/ui/button";
+import { Button } from "@registry/calendar-ui/button";
 import {
   Dialog,
   DialogClose,

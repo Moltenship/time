@@ -3,9 +3,10 @@
   "name": "calendar-full",
   "type": "registry:item",
   "title": "Calendar, every part",
-  "description": "Every calendar item at once: the theme, the shared parts, the month, week and day, agenda and year views, their scrolling versions, the resource columns and timeline views, the recurrence scope dialog and the undo toast. It owns no files; it installs the other items.",
+  "description": "Every calendar item at once: the theme, the controls, the shared parts, the month, week and day, agenda and year views, their scrolling versions, the resource columns and timeline views, the recurrence scope dialog and the undo toast. It owns no files; it installs the other items.",
   "registryDependencies": [
     "@moltenship/calendar-theme",
+    "@moltenship/calendar-ui",
     "@moltenship/calendar",
     "@moltenship/month-view",
     "@moltenship/time-grid-view",

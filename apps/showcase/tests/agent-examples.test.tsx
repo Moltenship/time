@@ -537,7 +537,10 @@ test("runToolCall runs a model's tool call on the page and wraps the result", as
   });
 
   expect(read).toMatchObject({ tool_use_id: "toolu_1", type: "tool_result" });
-  expect(JSON.parse(read!.content as string)[0]).toMatchObject({ component: "calendar" });
+  // The toolbar's buttons and view select are listed too, so the calendar isn't always first.
+  expect(JSON.parse(read!.content as string)).toContainEqual(
+    expect.objectContaining({ component: "calendar" }),
+  );
   // The model reads the change and its status in the tool result.
   expect(JSON.parse(moved!.content as string)).toMatchObject({
     ok: true,

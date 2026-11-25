@@ -57,6 +57,8 @@ export default defineConfig({
         },
       },
     ],
+    // jsdom gaps that ui-sdk's popups run into, filled for every project.
+    setupFiles: ["./tests/setup/paint-timing.ts"],
     // Half the cores, for `vp test` from the root: `ci:test` and the quick tier.
     // In the PR and full tiers it shares the machine with a browser run, and Vitest's default, a
     // worker per core but one, oversubscribed it (quality-gates.md).

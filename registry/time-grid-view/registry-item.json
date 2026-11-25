@@ -12,11 +12,11 @@
     "lucide-react"
   ],
   "registryDependencies": [
-    "button",
     "tooltip",
     "popover",
     "@moltenship/calendar",
-    "@moltenship/calendar-theme"
+    "@moltenship/calendar-theme",
+    "@moltenship/calendar-ui"
   ],
   "files": [
     {

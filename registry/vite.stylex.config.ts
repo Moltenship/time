@@ -59,8 +59,13 @@ export default defineConfig({
   },
   test: {
     // Tests of the Tailwind theme, of what ties the flavours together, and, below, the few that read
-    // a Tailwind class off an element.
-    exclude: ["tests/stylex-flavour.test.ts", "tests/theme-contrast.test.ts"],
+    // a Tailwind class off an element. The kit's agent test joins when the flavour moves onto its
+    // own kit, `stylex-calendar-ui` (ADR 0279, K3); until then its toolbar has no ui-sdk controls.
+    exclude: [
+      "tests/calendar-ui-agent.test.tsx",
+      "tests/stylex-flavour.test.ts",
+      "tests/theme-contrast.test.ts",
+    ],
     include: ["tests/**/*.test.{ts,tsx}"],
     // As the root's tests: a VM context a file, in processes that are reused.
     pool: "vmForks",

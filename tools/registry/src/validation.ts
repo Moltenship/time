@@ -1,14 +1,17 @@
 import { readFile, readdir, stat } from "node:fs/promises";
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { isAbsolute, posix, relative, resolve, sep } from "node:path";
 
 import parsePackageArgument from "npm-package-arg";
 import { registryItemSchema } from "shadcn/schema";
 
+import { importsOf } from "./check";
 import {
   dragAndDropPackages,
   registryNamespace,
   registrySourceDirectory,
+  registrySharedDirectory,
   registrySourcePackage,
+  sharedFilePackages,
 } from "./config";
 
 /**
@@ -71,6 +74,42 @@ async function isFile(workspaceRoot: string, path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/** The package an import names: `@scope/name` or `name`, without a subpath. */
+function packageOf(specifier: string): string {
+  const parts = specifier.split("/");
+  return specifier.startsWith("@") ? parts.slice(0, 2).join("/") : (parts[0] ?? specifier);
+}
+
+/**
+ * What a shared file imports that it may not. It may import other shared files, by
+ * `@registry/shared/...` or by a relative path that stays in `registry/shared/`, and the
+ * framework-free packages in `sharedFilePackages`. Each framework's items import the shared file,
+ * so it holds no markup, no framework code and no item's own file.
+ */
+export function sharedFileIssues(path: string, source: string): string[] {
+  if (!path.endsWith(".ts") || path.endsWith(".d.ts")) {
+    return [`${path} is shared, so it is a plain .ts file with no markup`];
+  }
+  return importsOf(source).flatMap((specifier) => {
+    if (specifier.startsWith(".")) {
+      const target = posix.join(posix.dirname(path), specifier);
+      return target.startsWith(`${registrySharedDirectory}/`)
+        ? []
+        : [`${path} is shared, but imports ${specifier}, outside the shared files`];
+    }
+    if (specifier.startsWith("@registry/")) {
+      return specifier.startsWith(`@${registrySharedDirectory}/`)
+        ? []
+        : [`${path} is shared, but imports ${specifier}; it may import other shared files only`];
+    }
+    return sharedFilePackages.has(packageOf(specifier))
+      ? []
+      : [
+          `${path} is shared, but imports ${specifier}, which isn't a framework-free package a shared file may use (sharedFilePackages)`,
+        ];
+  });
 }
 
 async function readDeclaredPackages(workspaceRoot: string): Promise<ReadonlySet<string>> {
@@ -248,6 +287,11 @@ async function validateParsedItem(
       issues.push(
         issue("missing-source-file", `${path}.path`, `Source file does not exist: ${file.path}`),
       );
+    } else if (file.path.startsWith(`${registrySharedDirectory}/`)) {
+      const source = await readFile(resolve(workspaceRoot, file.path), "utf8");
+      for (const message of sharedFileIssues(file.path, source)) {
+        issues.push(issue("framework-in-shared-file", `${path}.path`, message));
+      }
     }
 
     if (!file.target) {

@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { validateRegistryWorkspace } from "../src/validation";
+import { sharedFileIssues, validateRegistryWorkspace } from "../src/validation";
 
 const workspaceRoot = resolve(import.meta.dirname, "../../..");
 
@@ -11,7 +11,7 @@ describe("shadcn registry validation", () => {
     const report = await validateRegistryWorkspace(workspaceRoot);
 
     expect(report.issues).toEqual([]);
-    expect(report.manifests).toBe(28);
+    expect(report.manifests).toBe(29);
   });
 
   test("known-bad registry fixture fails for every protected contract", async () => {
@@ -39,5 +39,42 @@ describe("shadcn registry validation", () => {
         "versioned-dependency",
       ]),
     );
+  });
+
+  test("a shared file is plain TypeScript and imports only shared files and framework-free packages", () => {
+    const path = "registry/shared/calendar-ui/button.styles.ts";
+    for (const specifier of [
+      "class-variance-authority",
+      "cn",
+      "@moltenship/calendar",
+      "@tanstack/virtual-core",
+      "@registry/shared/calendar/locale",
+      "./badge.styles",
+      "../calendar/locale",
+    ]) {
+      expect(sharedFileIssues(path, `import x from "${specifier}";`), specifier).toEqual([]);
+    }
+    expect(sharedFileIssues("registry/shared/calendar-ui/button.tsx", "")).toHaveLength(1);
+    for (const specifier of [
+      "react",
+      "react/jsx-runtime",
+      "solid-js",
+      "@solidjs/web",
+      "@ui-sdk/core/button",
+      "@ui-sdk/react/button",
+      "@ui-sdk/solid/button",
+      "@base-ui/react/button",
+      "lucide-react",
+      "@tanstack/react-virtual",
+      "next/link",
+      "radix-ui",
+      "motion/react",
+      "zustand",
+      "@kobalte/core",
+      "@registry/calendar/event-chip",
+      "../../calendar/event-chip",
+    ]) {
+      expect(sharedFileIssues(path, `import x from "${specifier}";`), specifier).toHaveLength(1);
+    }
   });
 });

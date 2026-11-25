@@ -1,0 +1,56 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "calendar-ui",
+  "type": "registry:component",
+  "title": "Calendar controls",
+  "description": "The calendar's own controls, thin wrappers over ui-sdk's components in the calendar's look: button, badge, tooltip and select. Each control's classes live in a plain .styles.ts file beside it. They land under components/calendar/ui, apart from the app's own components/ui.",
+  "dependencies": [
+    "@ui-sdk/core",
+    "@ui-sdk/react",
+    "class-variance-authority",
+    "cn",
+    "lucide-react"
+  ],
+  "files": [
+    {
+      "path": "registry/calendar-ui/button.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/ui/button.tsx"
+    },
+    {
+      "path": "registry/shared/calendar-ui/button.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/button.styles.ts"
+    },
+    {
+      "path": "registry/calendar-ui/badge.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/ui/badge.tsx"
+    },
+    {
+      "path": "registry/shared/calendar-ui/badge.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/badge.styles.ts"
+    },
+    {
+      "path": "registry/calendar-ui/tooltip.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/ui/tooltip.tsx"
+    },
+    {
+      "path": "registry/shared/calendar-ui/tooltip.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/tooltip.styles.ts"
+    },
+    {
+      "path": "registry/calendar-ui/select.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/ui/select.tsx"
+    },
+    {
+      "path": "registry/shared/calendar-ui/select.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/select.styles.ts"
+    }
+  ]
+}

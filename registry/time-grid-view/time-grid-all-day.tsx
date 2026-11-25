@@ -27,7 +27,7 @@ import {
 } from "@registry/calendar/preview-check";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
-import { Button } from "@registry/ui/button";
+import { Button } from "@registry/calendar-ui/button";
 
 import { inResource } from "./time-grid-column";
 

@@ -12,7 +12,7 @@ import {
 } from "@moltenship/calendar";
 import { useMemo, type ComponentProps, type ComponentType } from "react";
 
-import { Badge } from "@registry/ui/badge";
+import { Badge } from "@registry/calendar-ui/badge";
 import { cn } from "cn";
 
 /** What a status badge shows. Busy wins: events occupy time even outside working hours. */

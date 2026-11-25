@@ -14,6 +14,8 @@ const registryCoreImportFixture =
   "tests/fixtures/dependency-boundaries/registry/calendar/core-import.ts";
 const registryTestsFixture =
   "tests/fixtures/dependency-boundaries/registry/tests/harness-import.ts";
+const registrySharedFrameworkFixture =
+  "tests/fixtures/dependency-boundaries/registry/shared/calendar-ui/framework-import.ts";
 const registrySourceTestingFixture =
   "tests/fixtures/dependency-boundaries/registry/calendar/testing-import.ts";
 const testingInternalsFixture =
@@ -185,6 +187,19 @@ describe("workspace boundaries", { concurrent: false }, () => {
     ]);
     expect(violations(source)).toEqual([
       "registry-source-uses-calendar-facade @moltenship/calendar-testing",
+    ]);
+  });
+
+  test("a shared registry file imports no framework, no ui-sdk and no item's file", async () => {
+    const result = await cruiseWithArchitectureRules([registrySharedFrameworkFixture]);
+    const violations = result.summary.violations
+      .filter(({ rule }) => rule.name === "registry-shared-files-import-no-framework")
+      .map(({ to }) => to);
+
+    expect(violations.toSorted()).toEqual([
+      "@ui-sdk/core/button",
+      "react",
+      "tests/fixtures/dependency-boundaries/registry/calendar/core-import.ts",
     ]);
   });
 
@@ -377,7 +392,7 @@ describe("workspace boundaries", { concurrent: false }, () => {
       ).toEqual([]);
     });
 
-    test("only the primitives, the integrations and what re-exports them declare ui-sdk, and only calendar-solid Solid", async () => {
+    test("only the primitives, the integrations, what re-exports them and the registry declare ui-sdk, and only calendar-solid Solid", async () => {
       const frameworks = {
         react: /^(?:react|react-dom|@ui-sdk\/react)$/u,
         solid: /^(?:solid-js|@solidjs\/.+|@ui-sdk\/solid)$/u,
@@ -390,8 +405,10 @@ describe("workspace boundaries", { concurrent: false }, () => {
         // The docs site creates an agent bridge for its live examples (architecture.md, rule 14).
         // The facade and the testing package re-export the React integration, so they carry its
         // peers, as they carry React; their source still imports no ui-sdk (the cruiser's rule).
+        // The registry's kit, `calendar-ui`, builds the controls on ui-sdk (ADR 0279); the cruiser
+        // keeps the rest of the registry's source off it.
         "ui-sdk": (path) =>
-          /^(?:packages\/calendar(?:-(?:primitives|react|solid|testing))?|apps\/(?:demo-solid|showcase))\//u.test(
+          /^(?:packages\/calendar(?:-(?:primitives|react|solid|testing))?|apps\/(?:demo-solid|showcase)|registry)\//u.test(
             path,
           ),
       };

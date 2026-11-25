@@ -23,6 +23,18 @@ vi.mock("../app/(home)/examples/nextjs/actions", () => ({
 
 beforeAll(() => {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  // jsdom has no Popover API, so ui-sdk would move the toolbar's tooltips and the view select's
+  // list into `document.body` through a portal, which `renderToString` can't render. The browsers
+  // the docs support (Chrome 114, Safari 17, Firefox 125 and later) have the API and a server has no
+  // `window`, and both render those popups in place, as here. An older browser portals them and
+  // doesn't hydrate cleanly, which the installation docs say.
+  if (!("showPopover" in HTMLElement.prototype)) {
+    Object.assign(HTMLElement.prototype, {
+      hidePopover() {},
+      showPopover() {},
+      togglePopover: () => false,
+    });
+  }
   vi.stubGlobal("matchMedia", () => ({
     addEventListener() {},
     matches: true,

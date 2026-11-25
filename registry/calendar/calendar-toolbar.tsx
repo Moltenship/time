@@ -3,8 +3,8 @@ import { CalendarCheckIcon, ChevronLeftIcon, ChevronRightIcon } from "lucide-rea
 import type { ComponentType, ReactNode } from "react";
 
 import { cn } from "cn";
-import { buttonVariants } from "@registry/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/ui/tooltip";
+import { Button } from "@registry/calendar-ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/calendar-ui/tooltip";
 
 /** The headless parts the toolbar styles. Every `createCalendar` factory provides them. */
 export type CalendarToolbarParts = Pick<
@@ -34,9 +34,11 @@ function StepTrigger({
     <Tooltip>
       <TooltipTrigger
         render={
-          <Trigger
-            aria-label={label}
-            className={cn(buttonVariants({ variant: "ghost", size: "icon" }), "rounded-full")}
+          <Button
+            className="rounded-full"
+            render={<Trigger aria-label={label} />}
+            size="icon"
+            variant="ghost"
           />
         }
       >
@@ -55,19 +57,16 @@ export function CalendarToolbar({ calendar, children, className, start }: Calend
       className={cn("flex h-14 shrink-0 items-center gap-0.5 px-2 sm:gap-2 sm:px-4", className)}
     >
       {start}
-      <TodayTrigger
-        aria-label="Today"
-        // `cn` resolves the variant's border colour against the base one, as the Button component does.
-        className={cn(
-          buttonVariants({ variant: "outline" }),
-          "rounded-full max-sm:w-8 max-sm:px-0 sm:px-4",
-        )}
+      <Button
+        className="rounded-full max-sm:w-8 max-sm:px-0 sm:px-4"
+        render={<TodayTrigger aria-label="Today" />}
+        variant="outline"
       >
         <span className="sm:hidden">
           <CalendarCheckIcon />
         </span>
         <span className="max-sm:hidden">Today</span>
-      </TodayTrigger>
+      </Button>
       <div className="flex items-center">
         <StepTrigger label="Previous period" Trigger={PreviousTrigger}>
           <ChevronLeftIcon className="rtl:rotate-180" />

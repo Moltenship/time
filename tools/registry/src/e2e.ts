@@ -78,6 +78,15 @@ async function serverPage(): Promise<string> {
   ].join("\n");
 }
 
+/**
+ * Names ui-sdk's layer before Tailwind, as the Installation docs ask, so the kit's controls keep
+ * their look. It fails when the stylesheet doesn't import Tailwind, rather than add the line
+ * somewhere the docs don't say.
+ */
+function withUiSdkLayer(css: string): string {
+  return css.replace(/^@import ["']tailwindcss["'];?$/mu, (line) => `@layer ui-sdk;\n${line}`);
+}
+
 /** Temporal's types ship in TypeScript's `ESNext` library, as the Installation docs say. */
 function withEsNextLib(tsconfig: string): string {
   return tsconfig.replace(/"lib":\s*\[[^\]]*\]/u, '"lib": ["ESNext", "DOM", "DOM.Iterable"]');
@@ -330,6 +339,7 @@ async function testApp(
 
     step = "set up";
     await app.setUp(root);
+    await edit(join(root, app.css), withUiSdkLayer);
     const page = (await readFile(fixture, "utf8")).replaceAll(
       "@/components/calendar/",
       `${app.componentsAlias}/calendar/`,

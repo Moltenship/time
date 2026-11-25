@@ -36,13 +36,14 @@ const otherFrameworkPackages = npmPackages(
 /** Where Solid may appear: the Solid integration and the Solid demo. */
 const solidWorkspaces = "(?:^|/)(?:packages/calendar-solid|apps/demo-solid)/";
 /**
- * Where ui-sdk may appear: the primitives, the two integrations, and the applications that create
- * an agent bridge to show them (architecture.md, rule 14): the Solid demo and the docs site. Also
- * calendar-testing's tests, which drive an agent over a recurring series: only that package
- * depends on both the facade and recurrence. Its source stays free of ui-sdk.
+ * Where ui-sdk may appear: the primitives, the two integrations, the registry's kit of controls,
+ * and the applications that create an agent bridge to show them (architecture.md, rule 14): the
+ * Solid demo and the docs site. Also calendar-testing's tests, which drive an agent over a
+ * recurring series: only that package depends on both the facade and recurrence. Its source stays
+ * free of ui-sdk. The registry's own tests read the kit through an agent bridge too.
  */
 const uiSdkWorkspaces =
-  "(?:^|/)(?:packages/calendar-(?:primitives|react|solid)/|packages/calendar-testing/tests/|apps/(?:demo-solid|showcase)/)";
+  "(?:^|/)(?:packages/calendar-(?:primitives|react|solid)/|packages/calendar-testing/tests/|registry/(?:calendar-ui|tests)/|apps/(?:demo-solid|showcase)/)";
 const sourceRoots = "(?:^|/)(?:apps|benchmarks|packages|registry|tools)/";
 /** A package's source and its tests: rules 12 and 13 cover both (architecture.md). */
 const packageCodePath = (packageName: string) =>
@@ -116,6 +117,16 @@ export default {
       to: {
         path: ["^@moltenship/", "(?:^|/)(?:apps|benchmarks|packages|tools)/"],
         pathNot: "^@moltenship/calendar$",
+      },
+    },
+    {
+      name: "registry-shared-files-import-no-framework",
+      comment:
+        "A shared file (registry/shared) is plain TypeScript every framework's items import: no React, no Solid, no ui-sdk and no item's own file (architecture.md, rule 5; ADR 0279). tools/registry's validation checks its packages against an allow-list too.",
+      severity: "error",
+      from: { path: "(?:^|/)registry/shared/" },
+      to: {
+        path: [reactPackages, solidPackages, uiSdkPackages, "(?:^|/)registry/(?!shared/)"],
       },
     },
     {
@@ -310,7 +321,7 @@ export default {
     {
       name: "only-primitives-and-integrations-import-ui-sdk",
       comment:
-        "ui-sdk is a peer of calendar-primitives, calendar-react and calendar-solid; besides them only the applications that create an agent bridge import it: the Solid demo and the docs site.",
+        "ui-sdk is a peer of calendar-primitives, calendar-react and calendar-solid; besides them only the registry's kit of controls (registry/calendar-ui) and the registry's tests, calendar-testing's tests, and the applications that create an agent bridge import it: the Solid demo and the docs site.",
       severity: "error",
       from: { path: sourceRoots, pathNot: uiSdkWorkspaces },
       to: { path: uiSdkPackages },
@@ -331,9 +342,9 @@ export default {
     {
       name: "no-ui-sdk-date-entries",
       comment:
-        "The packages never import ui-sdk's date entries (date, calendar, timeline, date-picker, date-input, time-input): the domain is the engine's.",
+        "The packages and registry source never import ui-sdk's date entries (date, calendar, timeline, date-picker, date-input, time-input): the domain is the engine's.",
       severity: "error",
-      from: { path: "(?:^|/)packages/" },
+      from: { path: "(?:^|/)(?:packages|registry)/" },
       // Specifiers as written, and the files they resolve to: core's under `components/` and
       // `foundation/`, the renderers' at the top of `dist`, or Solid's under `dist/solid/`.
       to: {

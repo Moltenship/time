@@ -8,7 +8,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@registry/ui/select";
+} from "@registry/calendar-ui/select";
 
 export interface ViewSwitcherOption<TView extends string> {
   readonly label: string;
@@ -45,9 +45,9 @@ export function ViewSwitcher<TView extends string>({
       <SelectContent align="end" alignItemWithTrigger={false}>
         <SelectGroup>
           {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+            <SelectItem key={option.value} label={option.label} value={option.value}>
               {option.label}
-              {/* The trigger shows the label from `items`, so the shortcut only appears in the list. */}
+              {/* The trigger and typing read `label`, so the shortcut only appears in the list. */}
               {option.shortcut !== undefined && (
                 <kbd className="ms-auto font-sans text-xs text-muted-foreground">
                   {option.shortcut}

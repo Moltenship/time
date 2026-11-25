@@ -183,12 +183,14 @@ npx shadcn@latest add https://time.molten.sh/r/calendar-full.json
 ```
 
 Or add only the views you use. Each one brings what it builds on: the theme, the shared
-`calendar` parts, the shadcn components it uses, and npm packages such as `@moltenship/calendar`.
+`calendar` parts, the calendar's controls, the shadcn components it uses, and npm packages such as
+`@moltenship/calendar`.
 
 | Item                       | What it adds                                                                 |
 | -------------------------- | ---------------------------------------------------------------------------- |
 | `calendar-full`            | Every item below                                                             |
 | `calendar-theme`           | The calendar's tokens and event colors, added to your global CSS             |
+| `calendar-ui`              | The calendar's buttons, badges, tooltips and selects, built on ui-sdk        |
 | `calendar`                 | `CalendarToolbar`, `ViewSwitcher`, `EventChip`, `MiniMonth` and shared parts |
 | `time-grid-view`           | The [week and day](/docs/views/week-and-day) views                           |
 | `month-view`               | The [month](/docs/views/month) view                                          |
@@ -211,8 +213,8 @@ npx shadcn@latest add https://time.molten.sh/r/month-view.json
 The files land in `calendar/` under the `components` alias in your `components.json`, such as
 `components/calendar/month-view/month-view.tsx`, and their imports follow your aliases. Each item
 asks for the `@moltenship/calendar` versions it was built for, and `shadcn add` installs a
-matching one. It doesn't add `@ui-sdk/core` and `@ui-sdk/react` to your `package.json`; install
-them as above.
+matching one. `calendar-ui` lists `@ui-sdk/core` and `@ui-sdk/react`, so `shadcn add` adds them if
+your app doesn't have them yet. Keep them on the version the calendar uses, as above.
 
 To add items by name, add the registry to `components.json` once:
 
@@ -229,8 +231,29 @@ Then `npx shadcn@latest add @moltenship/month-view` works too.
 </Step>
 <Step>
 
-The toolbar's buttons use shadcn's tooltip, so wrap your app in `TooltipProvider` from
-`@/components/ui/tooltip` once, as `shadcn add` reminds you and shadcn's
+The calendar's controls come from `calendar-ui`, not from your app's `components/ui`. They're a
+default: to use your own button, badge, tooltip or select, see
+[Use your own controls](/docs/theming#use-your-own-controls). ui-sdk
+adds a little CSS of its own to the page, in a layer named `ui-sdk`. Name that layer before
+Tailwind in your global CSS, so your styles and Tailwind's win over it:
+
+```css title="globals.css"
+@layer ui-sdk;
+@import "tailwindcss";
+```
+
+The view select's list and the toolbar's tooltips open in the browser's top layer, through the
+Popover API: Chrome and Edge 114, Safari 17 and Firefox 125 or later. In an older browser they
+render at the end of the page instead, and a server-rendered page doesn't hydrate them cleanly.
+The toolbar's tooltips open after 400 ms; change `tooltipDefaults` in
+`components/calendar/ui/tooltip.styles.ts`, or pass `delay` to a `Tooltip`.
+
+</Step>
+<Step>
+
+The week and day views' event and annotation tooltips use shadcn's tooltip, so with
+`time-grid-view` wrap your app in `TooltipProvider` from `@/components/ui/tooltip` once, as
+`shadcn add` reminds you and shadcn's
 [tooltip instructions](https://ui.shadcn.com/docs/components/tooltip) describe.
 
 </Step>

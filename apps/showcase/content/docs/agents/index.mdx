@@ -24,7 +24,9 @@ calls a model would send. No model runs on these pages.
 
 ## What an agent sees
 
-The bridge's `snapshot()` lists every ui-sdk component on the page. A calendar is one entry:
+The bridge's `snapshot()` lists every ui-sdk component on the page. A calendar is one entry, and
+the registry's toolbar adds one for each of its buttons and its view select. A calendar on its own
+is the first, `c1`:
 
 ```json
 {
