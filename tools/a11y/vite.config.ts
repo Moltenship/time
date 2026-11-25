@@ -9,6 +9,7 @@ import { playwright } from "vite-plus/test/browser-playwright";
 
 import { solidRegistrySource } from "../registry/src/solid-source";
 import { animationRate } from "./animation-rate";
+import { collectGarbage } from "./collect-garbage";
 import { mouse } from "./mouse";
 import { solidDemo } from "./solid-demo";
 import { swipe } from "./swipe";
@@ -90,8 +91,9 @@ export default defineConfig(({ mode }) => {
     viewport: { height: 800, width: 1280 },
     // Real mouse input at page points, step by step, for drags a test watches as they go; a
     // finger's swipe on the touch screen, which the page can't make late; and slowed animations
-    // for a test that samples them as they run.
-    commands: { animationRate, mouse, swipe },
+    // for a test that samples them as they run. And the page's garbage collected between tests in
+    // Chromium, where the collector fell behind on a CI runner (`collect-garbage.ts`).
+    commands: { animationRate, collectGarbage, mouse, swipe },
   };
 
   return {
