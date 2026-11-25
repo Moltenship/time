@@ -20,6 +20,21 @@
       "path": "registry/scrolling-time-grid-view/scrolling-time-grid-scroll.ts",
       "type": "registry:lib",
       "target": "@components/calendar/scrolling-time-grid-view/scrolling-time-grid-scroll.ts"
+    },
+    {
+      "path": "registry/shared/scrolling-time-grid-view/scrolling-time-grid.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-time-grid-view/scrolling-time-grid.ts"
+    },
+    {
+      "path": "registry/shared/scrolling-time-grid-view/scrolling-time-grid.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-time-grid-view/scrolling-time-grid.styles.ts"
+    },
+    {
+      "path": "registry/shared/scrolling-time-grid-view/time-grid-scroll.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-time-grid-view/time-grid-scroll.ts"
     }
   ]
 }
