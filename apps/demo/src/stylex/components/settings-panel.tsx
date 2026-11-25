@@ -58,14 +58,14 @@ function Setting({ items, label, onValueChange, value }: SettingField) {
 }
 
 export function SettingsPanel({
+  dragPreview,
   failSaves,
   onChange,
+  onDragPreviewChange,
   onFailSavesChange,
   onReset,
   settings,
   systemTimeZone,
-  dragPreview,
-  onDragPreviewChange,
 }: SettingsPanelProps) {
   const headingId = useId();
 
