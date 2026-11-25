@@ -2,14 +2,22 @@ import { createComponent, isServer, type JSX } from "@solidjs/web";
 import { usePart, type PartProps } from "@ui-sdk/solid/primitive";
 import { createMemo, merge, omit, onCleanup, onSettled, untrack } from "solid-js";
 
-import type { CalendarActiveView } from "@moltenship/calendar-primitives";
+import type { EventId, ResourceId } from "@moltenship/calendar-core";
+import {
+  createCalendarViewRuntime,
+  type CalendarActiveView,
+} from "@moltenship/calendar-primitives";
 
-import { keyedList } from "./flow";
+import { keyedList, when } from "./flow";
 import { element } from "./props";
 import type { CalendarRootValue } from "./root";
 import type { RootContext } from "./root-context";
+import { syncRovingFocus } from "./roving-focus";
+import { viewRuntimeContext } from "./shared";
 import type {
   CalendarActiveViewProps,
+  CalendarEventProps,
+  CalendarEventRenderValue,
   CalendarFrameProps,
   CalendarTitleProps,
   CalendarToolbarProps,
@@ -250,8 +258,12 @@ export function createCalendarParts(root: RootContext<CalendarRootValue>) {
   }
 
   function ActiveView(props: CalendarActiveViewProps): JSX.Element {
-    const { actions, model, view } = root.use();
+    const { actions, model, source, view } = root.use();
     const definition = createMemo(() => view()?.definition);
+    // One focus plumbing for as long as the part renders, whichever view it shows, as React's.
+    // Starting from the view's entry gives server markup its tab stop.
+    const runtime = createCalendarViewRuntime(() => untrack(view));
+    syncRovingFocus(runtime.roving, source, view);
 
     function render(own: AnyCalendarView): JSX.Element {
       // While the switch to another view settles, this renderer keeps the last projection of its
@@ -287,18 +299,38 @@ export function createCalendarParts(root: RootContext<CalendarRootValue>) {
     }
 
     // Keyed by the definition: a switch of views renders the other renderer from scratch.
-    return keyedList(
-      () => {
-        const current = definition();
-        return current === undefined ? [] : [current];
+    return viewRuntimeContext.provide(runtime, () =>
+      keyedList(
+        () => {
+          const current = definition();
+          return current === undefined ? [] : [current];
+        },
+        render,
+        () => props.fallback,
+      ),
+    );
+  }
+
+  function EventPart(props: CalendarEventProps<unknown, EventId, ResourceId>): JSX.Element {
+    const { meta } = root.use();
+    const value = createMemo(
+      (): CalendarEventRenderValue<unknown, EventId, ResourceId> | undefined => {
+        const normalized = meta().eventSnapshot.get(props.eventId);
+        return normalized === undefined ? undefined : { event: normalized.event, normalized };
       },
-      render,
+      // The same render value while the event is the same normalized record.
+      { equals: (left, right) => left?.normalized === right?.normalized },
+    );
+    return when(
+      value,
+      (current) => untrack(() => props.children(current)),
       () => props.fallback,
     );
   }
 
   return Object.freeze({
     ActiveView,
+    EventPart,
     Frame,
     NextTrigger,
     PreviousTrigger,

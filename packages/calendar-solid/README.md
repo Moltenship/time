@@ -2,17 +2,20 @@
 
 > **2.0 preview.** This package is new and its API isn't settled. It can change in any release
 > before 2.0. It ships no ready-made views: the registry's views are React. You define a view
-> with `defineCalendarView`, over the projections in `@moltenship/calendar-core`. Keyboard
-> navigation, drafts, history and dragging aren't in it yet.
+> with `defineCalendarView`, over the projections in `@moltenship/calendar-core`, and bind
+> keyboard navigation, dragging, drafts and undo to it with this package's hooks.
 
 The headless [SolidJS](https://www.solidjs.com) 2 layer of Moltenship Time. It renders the
 calendar primitive from `@moltenship/calendar-primitives` with
 [ui-sdk](https://ui-sdk.dev)'s Solid adapter, the way `@moltenship/calendar-react` does for React,
 so both frameworks share one implementation of the calendar's state, actions and event changes.
 It renders plain, unstyled elements: `createCalendar` gives a `Root`, the structural parts (frame,
-toolbar, title, viewport, view switcher, the previous, next and today triggers, and the active
-view) and read hooks that return accessors. Agents drive the calendar through ui-sdk's bridge,
-which the application creates.
+toolbar, title, viewport, view switcher, the previous, next and today triggers, the active view,
+`Event` and `Announcer`) and hooks that return accessors where React's return values. A view binds
+keyboard navigation with `useCalendarKeyboard` and `useRovingFocus`, pointer dragging, resizing
+and creating with `useCalendarPointer` over `@moltenship/calendar-dnd`, and undo with
+`useCalendarHistory`. Agents drive the calendar through ui-sdk's bridge, which the application
+creates.
 
 ## Install
 

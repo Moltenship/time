@@ -14,6 +14,7 @@ import {
 } from "@moltenship/calendar-primitives";
 import type { Accessor } from "solid-js";
 
+import { Announcer } from "./announcer";
 import { createCalendarParts } from "./parts";
 import { createCalendarRoot, type CalendarRootValue } from "./root";
 import { createRootContext } from "./root-context";
@@ -75,7 +76,7 @@ export function createCalendar<
     const root = createRootContext<CalendarRootValue>("calendar-root");
     // One primitive per factory: its agent surface checks view names against these views.
     const primitive = createCalendarPrimitive<TViewDef, TSelection, TFocus, TResourceId>({ views });
-    const parts = createCalendarParts(root);
+    const { EventPart, ...parts } = createCalendarParts(root);
     const Root = createCalendarRoot<
       TEvent,
       TResource,
@@ -119,6 +120,8 @@ export function createCalendar<
 
     const factory: Factory = {
       ...parts,
+      Announcer,
+      Event: EventPart as unknown as Factory["Event"],
       Root,
       ViewSwitcher: parts.ViewSwitcher as Factory["ViewSwitcher"],
       views,

@@ -4,14 +4,13 @@ import type {
   CalendarNowSource,
   EventAdapter,
   EventId,
+  EventSnapshot,
   InvalidCalendarEventPolicy,
   ResourceId,
 } from "@moltenship/calendar-core";
 import {
-  clockOf,
   createCalendarPartIds,
   createCalendarRuntime,
-  createClockTicker,
   resolveCalendarStoreDefaults,
   sameRange,
   TODAY_SAMPLE_INTERVAL_MS,
@@ -38,8 +37,10 @@ import {
 } from "solid-js";
 
 import type { RootContext } from "./root-context";
+import { sharedContext, type CalendarSharedValue } from "./shared";
 import { createStateSelector } from "./state-selector";
 import type { CalendarMeta, CalendarRootProps } from "./types";
+import { createNowSampler } from "./use-now";
 import type { AnyCalendarView } from "./views";
 
 // oxlint-disable-next-line typescript/no-explicit-any -- the parts serve every factory's root.
@@ -88,11 +89,6 @@ const same = <T>(value: T) => value;
 const noop = () => undefined;
 /** What an events array subscribes to: nothing. Its server snapshot is the array itself. */
 const noEventSource: CalendarStateSource<readonly never[] | null> = Object.freeze({
-  getSnapshot: () => null,
-  subscribe: () => noop,
-});
-/** What a fixed `now` subscribes to: nothing. */
-const noClock: CalendarStateSource<Temporal.Instant | null> = Object.freeze({
   getSnapshot: () => null,
   subscribe: () => noop,
 });
@@ -267,18 +263,10 @@ export function createCalendarRoot<
 
     // `today` follows a clock sampled once a minute: `null` on the server and while hydrating, as
     // the server's time isn't the reader's, unless `now` fixes it.
-    const ticker = createMemo(() =>
-      createClockTicker(
-        clockOf({ clock: props.clock } as CalendarNowSource),
-        TODAY_SAMPLE_INTERVAL_MS,
-      ),
+    const instant = createNowSampler(
+      () => ({ clock: props.clock, now: props.now }) as CalendarNowSource,
+      () => TODAY_SAMPLE_INTERVAL_MS,
     );
-    const sampled = createStateSelector<Temporal.Instant | null, Temporal.Instant | null>(() => {
-      if (props.now !== undefined) return noClock;
-      const { getSnapshot, subscribe } = ticker();
-      return { getServerSnapshot: () => null, getSnapshot, subscribe };
-    }, same);
-    const instant = () => props.now ?? sampled();
 
     const derived = createMemo(() => {
       const inputs: Inputs = {
@@ -410,6 +398,17 @@ export function createCalendarRoot<
       view,
       visibleRange: visibleDates,
     };
-    return root.provide(value, () => props.children);
+    // What the hooks that work in any calendar read: views and gestures drive the nearest root.
+    const shared: CalendarSharedValue = {
+      annotations: createMemo(() => model().annotations),
+      availability: createMemo(() => model().availability),
+      environment: createMemo(() => model().environment),
+      events: createMemo(
+        () => model().visibleEvents as EventSnapshot<unknown, EventId, ResourceId>,
+      ),
+      interaction: createMemo(() => model().interaction),
+      resources: createMemo(() => model().resourceTree),
+    };
+    return root.provide(value, () => sharedContext.provide(shared, () => props.children));
   };
 }

@@ -6,7 +6,7 @@ export interface RootContext<T> {
   readonly context: Context<T | null>;
   /** Renders `children` with `value` provided. Call it in the root's body. */
   provide(value: T, children: () => JSX.Element): JSX.Element;
-  /** The nearest root's value; throws `calendar-hook-outside-root` outside one. */
+  /** The nearest provider's value; throws the context's error code outside one. */
   use(): T;
 }
 
@@ -15,7 +15,10 @@ export interface RootContext<T> {
  * default with our own check throws the error code the React package throws instead, so both
  * adapters fail the same way.
  */
-export function createRootContext<T>(name: string): RootContext<T> {
+export function createRootContext<T>(
+  name: string,
+  error = "calendar-hook-outside-root",
+): RootContext<T> {
   const context = createContext<T | null>(null, { name });
   return Object.freeze({
     context,
@@ -28,7 +31,7 @@ export function createRootContext<T>(name: string): RootContext<T> {
       }),
     use() {
       const value = useContext(context);
-      if (value === null) throw new Error("calendar-hook-outside-root");
+      if (value === null) throw new Error(error);
       return value;
     },
   });

@@ -1,4 +1,5 @@
 import type {
+  CalendarAnnouncementMessages,
   CalendarAnnotation,
   CalendarAnnotationSource,
   CalendarAvailability,
@@ -18,6 +19,7 @@ import type {
   EventId,
   EventSnapshot,
   InvalidCalendarEventPolicy,
+  NormalizedCalendarEvent,
   ResourceId,
 } from "@moltenship/calendar-core";
 import type {
@@ -242,6 +244,37 @@ export type CalendarViewSwitcherProps<TView extends string = string> = Omit<
   readonly getViewLabel: (view: TView) => string;
 };
 
+export type CalendarAnnouncerProps = Omit<ElementProps<"div">, "children"> & {
+  /** What each phase says, in the calendar's language; read each time something is said. */
+  readonly messages: CalendarAnnouncementMessages;
+};
+
+export interface CalendarEventRenderValue<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+> {
+  readonly event: TEvent;
+  readonly normalized: NormalizedCalendarEvent<TEvent, TEventId, TResourceId>;
+}
+
+export interface CalendarEventProps<
+  TEvent,
+  TEventId extends EventId = EventId,
+  TResourceId extends ResourceId = ResourceId,
+> {
+  /**
+   * Renders the event as the calendar shows it, pending changes included. It gets an accessor and
+   * stays rendered while the event changes, as `Show` does; read it where it is used.
+   */
+  readonly children: (
+    value: Accessor<CalendarEventRenderValue<TEvent, TEventId, TResourceId>>,
+  ) => JSX.Element;
+  readonly eventId: TEventId;
+  /** What shows while the calendar has no such event. */
+  readonly fallback?: JSX.Element;
+}
+
 export interface CalendarActiveViewProps {
   /** What shows while the active view is unregistered. */
   readonly fallback?: JSX.Element;
@@ -273,6 +306,13 @@ export interface CalendarFactory<
 > {
   /** Renders the active view's `Renderer` with its projection. */
   readonly ActiveView: Component<CalendarActiveViewProps>;
+  /**
+   * A polite live region that speaks keyboard and pointer moves, resizes, and creates through
+   * `messages`. Render one inside `Root`.
+   */
+  readonly Announcer: Component<CalendarAnnouncerProps>;
+  /** Renders one event by its ID as the calendar shows it, or `fallback` without it. */
+  readonly Event: Component<CalendarEventProps<TEvent, TEventId, TResourceId>>;
   /** A `section`: the calendar's frame, named by `label` or the title, which agents find. */
   readonly Frame: Component<CalendarFrameProps>;
   readonly NextTrigger: Component<CalendarTriggerProps>;
