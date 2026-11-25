@@ -24,6 +24,20 @@ describe("the release workflow's check", () => {
     expect(checkProblems(ready)).toEqual({ blockers: [], problems: [] });
   });
 
+  test("stops a stable version whose docs would still install @next, and no pre-release", () => {
+    const taggedDocs = ["docs/setup.md:12", "packages/ics/README.md:16"];
+    const stable = { ...ready, version: "1.0.0", taggedDocs };
+
+    expect(checkProblems(stable)).toEqual({
+      blockers: [],
+      problems: [
+        "1.0.0 is a stable version, which npm serves as latest, but these lines still install @next, the pre-release tag: docs/setup.md:12, packages/ics/README.md:16. Take the tag out of them, or put a docs page's sentence in <PreRelease>.",
+      ],
+    });
+    expect(checkProblems({ ...stable, taggedDocs: [] }).problems).toEqual([]);
+    expect(checkProblems({ ...ready, taggedDocs }).problems).toEqual([]);
+  });
+
   test("stops even a dry run on a version that doesn't go up", () => {
     expect(checkProblems({ ...ready, version: "1.0.0-rc.1" }).blockers).toEqual([
       "1.0.0-rc.1 must be above 1.0.0-rc.1, the version the packages have.",

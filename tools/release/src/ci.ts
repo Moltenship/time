@@ -4,10 +4,12 @@ import { join } from "node:path";
 import { gt } from "semver";
 
 import { releaseDirectory } from "./config";
+import { docsTagProblem, nextTagLeftovers, prepareDocs } from "./docs-tag";
 import { createGitHubRelease, releaseTag } from "./github-release";
-import { manifestPath, readManifest } from "./manifest";
+import { distTag, manifestPath, readManifest } from "./manifest";
+import { leftToDo, wouldLeave } from "./next-tag";
 import { trustedPublishing, type Trust } from "./oidc";
-import { publish } from "./publish";
+import { moveNextTag, publish } from "./publish";
 import { fetchPackument, waitForPublished } from "./published";
 import {
   assertVersion,
@@ -32,10 +34,12 @@ import {
  *
  * - `check`: the version, the tag, npm, and npm's trusted publisher on each package, before
  *   anything else runs;
- * - `prepare`: bumps the eleven manifests, commits and tags, inside the runner;
+ * - `prepare`: bumps the eleven manifests, takes `@next` out of the READMEs and skill files for
+ *   a stable version, commits and tags, inside the runner;
  * - `package`, after the gate: the release notes and a git bundle of the release commit, for the
  *   jobs after it;
- * - `publish`: the tarballs the gate checked, with npm trusted publishing;
+ * - `publish`: the tarballs the gate checked, with npm trusted publishing, then the `next` tag
+ *   for a stable version;
  * - `finish`: waits for npm to serve them, pushes main and the tag, writes the GitHub release.
  *
  * Each reads VERSION and DRY_RUN from the environment. A dry run does everything but publish,
@@ -85,6 +89,11 @@ export interface CheckFacts {
   /** The packages npm serves at the version already. */
   readonly served: readonly string[];
   readonly trust: ReadonlyMap<string, Trust>;
+  /**
+   * The lines of the tracked Markdown that would still install `@next` after the release commit
+   * took the tag out of the READMEs and skill files, as `file:line`.
+   */
+  readonly taggedDocs?: readonly string[];
 }
 
 /**
@@ -133,6 +142,10 @@ export function checkProblems(facts: CheckFacts): {
   for (const [name, trust] of facts.trust) {
     if (trust.verdict === "error") problems.push(`Can't ask npm about ${name}: ${trust.detail}`);
   }
+  // The gate checks this on the release commit; here it stops the run ten minutes sooner.
+  if (distTag(version) === "latest" && facts.taggedDocs && facts.taggedDocs.length > 0) {
+    problems.push(docsTagProblem(version, facts.taggedDocs));
+  }
   return { blockers, problems };
 }
 
@@ -176,15 +189,24 @@ async function check(version: string, dryRun: boolean): Promise<void> {
     remoteTag,
     served,
     trust,
+    taggedDocs: await nextTagLeftovers(workspaceRoot, { rewritten: true }),
   });
   if (blockers.length > 0) throw new Error(`Not releasing ${version}:\n- ${blockers.join("\n- ")}`);
   await report(problems, dryRun);
   console.log(`Releasing ${version}${dryRun ? ", as a dry run" : ""}.`);
 }
 
-/** Bumps the eleven manifests, commits `chore(release): v<version>` and tags it, in the runner. */
+/**
+ * Bumps the eleven manifests, and for a stable version takes `@next` out of the install commands
+ * of the READMEs and skill files, commits `chore(release): v<version>` and tags it, in the runner.
+ */
 async function prepare(version: string): Promise<void> {
   const files = await setVersion(version);
+  const docs = await prepareDocs(version);
+  if (docs.length > 0) {
+    console.log(`Took @next out of ${docs.length} files: ${docs.join(", ")}`);
+    files.push(...docs);
+  }
   const tag = releaseTag(version);
   await runOrThrow("git", ["add", "--", ...files]);
   await runOrThrow("git", [
@@ -278,6 +300,10 @@ async function push(tag: string, version: string): Promise<void> {
 async function publishRelease(version: string, dryRun: boolean): Promise<void> {
   await importRelease(version);
   await report(await publish({ version, dryRun }), dryRun);
+  // A stable version takes `next` too. What npm won't do here is a step for the owner, not a
+  // failure: the packages are published.
+  const left = await moveNextTag({ version, dryRun });
+  if (left !== undefined) await annotate(`${dryRun ? wouldLeave : leftToDo} ${left}`);
 }
 
 async function finish(version: string, dryRun: boolean): Promise<void> {

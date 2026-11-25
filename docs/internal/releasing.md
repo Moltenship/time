@@ -47,6 +47,17 @@ and then it must be set up again.
    "Require two-factor authentication and disallow tokens", or `vp run release:trust
    --disallow-tokens` (`npm access set mfa=publish`). Trusted publishing isn't a token, so the
    workflow keeps publishing; a leaked token can't.
+4. **Optional: let the workflow move `next`.** A stable release also points `next` at itself
+   ([A stable release and `@next`](#a-stable-release-and-next)), with `npm dist-tag add` through
+   trusted publishing. npm takes that only from a trusted publisher whose allowed actions include
+   it: on npmjs.com, each package's Settings → Trusted publishing → the GitHub Actions connection →
+   "Allow npm dist-tag", which is off by default
+   ([npm's docs](https://docs.npmjs.com/trusted-publishers)). `npm trust github` has no flag for it,
+   so `vp run release:trust` sets up publishing alone. npm's docs say a connection's fields can't be
+   changed once it exists; if the setting can't be turned on for the one a package has, delete the
+   connection and create it again with both actions, within two days of the release. It also needs
+   npm 11.21.0 in the runner, and Node.js 26 came with npm 11.20.0 when this was written. Without
+   either, the release still goes out, and ends with the command to run by hand.
 
 The release workflow's first job checks the trusted publisher on every package, and a release
 without one stops there, before anything else runs.
@@ -71,11 +82,9 @@ no prompt. It:
    since the last tag. After a prerelease, that's the next one (`1.0.0-rc.2`); after a stable
    version, major for a breaking change, minor for a feature and patch for the rest. With no
    commits since the last tag but the release's own, it stops: there's nothing to release, unless
-   you name a version. Prereleases go to npm's `next` tag, stable versions to `latest`. The docs
-   site's install commands take their tag from `installTag` in `apps/showcase/lib/install-tag.ts`:
-   `"next"` while the docs describe a prerelease, `undefined` in the PR before a stable release,
-   which also takes the sentences in `<PreRelease>` blocks off the pages. READMEs and the skill's
-   files name the tag themselves (#284).
+   you name a version. Prereleases go to npm's `next` tag, stable versions to `latest`, and the
+   install commands follow by themselves
+   ([A stable release and `@next`](#a-stable-release-and-next)).
 2. **Looks at the version's runs.** One that's going is watched, and one that succeeded is
    reported. The newest that failed after it started publishing runs its failed jobs again
    ([When it stops](#when-it-stops)). None of that needs the checkout.
@@ -98,8 +107,9 @@ The workflow, one release at a time (a second waits; dry runs queue apart):
    command checked, no release landed on `main` while the run waited, and npm's trusted publisher
    for the workflow is on every package: it asks npm the way `npm publish` does, trading the job's
    OIDC token for a publish token it throws away.
-2. **Gate** (read-only): bumps the eleven manifests, commits `chore(release): v<version>` and tags it,
-   in the runner only, then runs `RELEASE_VERSION=<version> vp run release:gate` on that commit:
+2. **Gate** (read-only): bumps the eleven manifests, and for a stable version takes `@next` out of
+   the READMEs and skill files, commits `chore(release): v<version>` and tags it, in the runner
+   only, then runs `RELEASE_VERSION=<version> vp run release:gate` on that commit:
    the whole full tier, Firefox included, with a strict dry run that packs the tarballs and writes
    `.release/manifest.json` ([Checks](#checks)). Then it writes the release notes with
    [changelogithub](https://github.com/antfu/changelogithub) from the Conventional Commits since
@@ -107,7 +117,8 @@ The workflow, one release at a time (a second waits; dry runs queue apart):
    and keeps `.release/`, with a git bundle of the release commit and tag, for the jobs after it.
    About 11 minutes.
 3. **Publish** (with an OIDC token, no install scripts): the tarballs the gate checked, with
-   `npm publish --provenance` through trusted publishing, skipping any npm serves already.
+   `npm publish --provenance` through trusted publishing, skipping any npm serves already. After a
+   stable version it points `next` at the release too, where npm lets it.
 4. **Finish** (the only job that can write to the repository): waits for npm to serve every
    package with the gate's integrity, the dist-tag, its trusted publisher and provenance; then
    pushes the tag, so the commit npm has is on GitHub whatever happens next, then `main`, and
@@ -161,7 +172,47 @@ gh release create v<version> --verify-tag --title <version> --notes-file .releas
 release would stop at instead of stopping, and the gate runs. Then a job of its own, with no
 OIDC token and no write access, checks what publishing would do and how the push would go, and
 prints the notes; the publish and finish jobs don't run. It publishes, pushes and releases nothing,
-and only reports CI and `main`'s rules on the laptop.
+and only reports CI and `main`'s rules on the laptop. A dry run of a stable version
+(`vp run release 2.0.0 --dry-run`) also checks the install commands: its first job reports the lines
+that would still install `@next`, its gate fails on them, and its last job says whether a release
+would move `next` or leave that to you.
+
+### A stable release and `@next`
+
+While a version is a prerelease, every install command names `@next`, since `latest` is still the
+last stable version. A stable release takes the tag out of them and moves `next`, and nobody edits
+anything by hand:
+
+- **The docs site** takes its tag from the version of `@moltenship/calendar` it is built with
+  (`installTag` in `apps/showcase/lib/install-tag.ts`): `next` for a prerelease, none for a stable
+  version. The pages write their commands without a tag, and a sentence that is only true for a
+  prerelease sits in a `<PreRelease>` block, which a stable build drops. So the release commit's
+  bump is enough: the gate's copy of the site builds with the packed version, and Vercel builds
+  `main` once the release commit lands there. The next prerelease puts the tag back the same way.
+- **READMEs, skill files and notes** are Markdown nothing compiles, so the release commit rewrites
+  them (`tools/release/src/docs-tag.ts`): each `@moltenship/…@next` loses its tag, and the sentence
+  "Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`." goes. The
+  tarballs are packed from that commit, so npm shows the READMEs without the tag.
+- **The check.** The dry run's `install tag` step fails a stable version while any tracked `.md` or
+  `.mdx` file still installs `@moltenship/…@next`, and names each `file:line`. A docs page may say
+  it inside `<PreRelease>`. A prerelease passes. The release workflow's first job runs the same
+  check on the files as the release commit would leave them, so a release stops there, before the
+  gate. `tools/release/tests/docs-tag.test.ts` does the same on every PR, so a line the rewrite
+  wouldn't clean fails in the PR that adds it: word a README's sentence as the others do, or leave
+  it out.
+- **npm's `next` tag.** After a stable release, `next` would still name the last prerelease, and
+  an `@next` command in someone's notes would install it. So the publish job runs
+  `npm dist-tag add <package>@<version> next` for each package whose `next` names an older version,
+  through trusted publishing ([One-time setup](#one-time-setup), step 4). A newer prerelease keeps
+  the tag. Where npm is older than 11.21.0 or refuses, nothing fails: the release is out, the run
+  carries a warning that starts with "Left to do by hand:", and `vp run release` prints it at its
+  end, with the command. Logged in to npm, with 2FA:
+
+  ```sh
+  for name in @moltenship/calendar @moltenship/calendar-core …; do npm dist-tag add "$name@<version>" next; done
+  ```
+
+  The warning lists the packages. A dry run says which of the two a release would do.
 
 ### Why this order
 
@@ -213,7 +264,7 @@ on what the dry run packed.
 | `vp run release:api` | Each package's built declarations against its committed `api-report.md` | PR |
 | `vp run release:exports` | Packs every package into a temporary folder, then runs publint and are-the-types-wrong (ESM-only), checks for `LICENSE`, checks that base packages don't import the dnd adapter, and checks that the facade's tarball has its docs and its skill | PR |
 | `vp run release:treeshake` | Bundles the facade's exports with esbuild, minified, with and without each opt-in feature's exports (`optionalFeatures` in `tools/release/src/config.ts`; today the event history, #227). From the built packages, as an app's bundler sees them, the bundle without the feature must have none of its markers. From source, with every module's side effects kept, it must have no bytes from the feature's files, so a statement left at a module's top level fails. With the feature, both must find it | PR |
-| `vp run release:dry-run` | A fresh build of every published package, then the size, API and export checks on it, and a clean consumer: installs the tarballs into a new project outside the workspace, from the pnpm store, with every third-party package at the version the workspace locks (offline, unless a cold cache needs metadata from npm, which it says); imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade and `calendar-solid` without their pointer exports to show `calendar-dnd` tree-shakes away. Last, a registry build into `.release/registry` that must ask for the packed version; the registry's tests run in `ci:test`. Writes `.release/manifest.json` | Full |
+| `vp run release:dry-run` | The `install tag` check: a stable version fails while a tracked `.md` or `.mdx` file still installs `@moltenship/…@next`. Then a fresh build of every published package, the size, API and export checks on it, and a clean consumer: installs the tarballs into a new project outside the workspace, from the pnpm store, with every third-party package at the version the workspace locks (offline, unless a cold cache needs metadata from npm, which it says); imports every package in Node, type-checks them with TypeScript 7 and 6 under `NodeNext` and `Bundler`, expects deep imports to fail, and bundles the facade and `calendar-solid` without their pointer exports to show `calendar-dnd` tree-shakes away. Last, a registry build into `.release/registry` that must ask for the packed version; the registry's tests run in `ci:test`. Writes `.release/manifest.json` | Full |
 | `vp run release:artifacts` | What uses the release, on the dry run's tarballs and registry, with their hashes checked: the SSR fixture's render and hydration tests and the docs site's build, routes and example tests, each in a copy outside the workspace, installed offline from the pnpm store (a cold cache reads metadata from npm); and #43's install test, `shadcn add` into clean Vite, Next.js and Solid apps, which needs the network for npm and shadcn's own components. See [quality-gates.md](./quality-gates.md#release-artifacts) | Full |
 | `vp run release` | The release itself ([Release](#release)). After publishing, the workflow checks that npm serves every package the dry run packed, with its integrity, its dist-tag, its trusted publisher and provenance, and runs #43's install test with the packages from npm (`REGISTRY_E2E_PACKAGES=npm vp run registry:e2e`) | Releases |
 
@@ -251,6 +302,9 @@ The publish job (`tools/release/src/publish.ts`) refuses unless:
 - the dry run checked the version asked for;
 - every published package was packed, and each tarball's sha512 still matches;
 - npm is 11.5.1 or later, the first that publishes through trusted publishing.
+
+Moving `next` after a stable version is no such condition: it is tried after the publish, and what
+npm refuses becomes a step for the owner ([A stable release and `@next`](#a-stable-release-and-next)).
 
 Before publishing anything, it asks npm about all eleven. A version npm already serves is skipped
 only when npm's integrity matches the tarball the gate checked; otherwise it stops, so the eleven

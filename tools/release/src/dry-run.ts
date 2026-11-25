@@ -2,6 +2,7 @@ import { relative } from "node:path";
 
 import { checkApiReports } from "./api";
 import { checkConsumer } from "./consumer";
+import { checkDocsTag } from "./docs-tag";
 import { checkTarballs } from "./exports";
 import { manifestPath, removeManifest, writeManifest } from "./manifest";
 import { packPublishedPackages, type PackedTarball } from "./pack";
@@ -51,6 +52,8 @@ export async function dryRun({
     console.log(`${packages.length} packages at ${shared}`);
     return shared;
   });
+  // A stable version's READMEs, skill files and docs install no `@next` (#284).
+  await step("install tag", () => checkDocsTag(version));
 
   await step("build", async () => {
     for (const entry of packages) {
