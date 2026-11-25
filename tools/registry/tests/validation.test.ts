@@ -41,30 +41,40 @@ describe("shadcn registry validation", () => {
     );
   });
 
-  test("a shared file is plain TypeScript with no framework in it", () => {
+  test("a shared file is plain TypeScript and imports only shared files and framework-free packages", () => {
     const path = "registry/shared/calendar-ui/button.styles.ts";
-    expect(sharedFileIssues(path, 'import { cva } from "class-variance-authority";')).toEqual([]);
-    expect(sharedFileIssues(path, 'import { cn } from "cn";')).toEqual([]);
-    expect(
-      sharedFileIssues(path, 'import type { Locale } from "@registry/shared/calendar/locale";'),
-    ).toEqual([]);
+    for (const specifier of [
+      "class-variance-authority",
+      "cn",
+      "@moltenship/calendar",
+      "@tanstack/virtual-core",
+      "@registry/shared/calendar/locale",
+      "./badge.styles",
+      "../calendar/locale",
+    ]) {
+      expect(sharedFileIssues(path, `import x from "${specifier}";`), specifier).toEqual([]);
+    }
     expect(sharedFileIssues("registry/shared/calendar-ui/button.tsx", "")).toHaveLength(1);
     for (const specifier of [
       "react",
       "react/jsx-runtime",
       "solid-js",
       "@solidjs/web",
+      "@ui-sdk/core/button",
       "@ui-sdk/react/button",
       "@ui-sdk/solid/button",
       "@base-ui/react/button",
       "lucide-react",
       "@tanstack/react-virtual",
+      "next/link",
+      "radix-ui",
+      "motion/react",
+      "zustand",
+      "@kobalte/core",
       "@registry/calendar/event-chip",
+      "../../calendar/event-chip",
     ]) {
       expect(sharedFileIssues(path, `import x from "${specifier}";`), specifier).toHaveLength(1);
     }
-    expect(sharedFileIssues(path, 'import { createButton } from "@ui-sdk/core/button";')).toEqual(
-      [],
-    );
   });
 });

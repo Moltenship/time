@@ -26,20 +26,21 @@ export const registrySourcePackage = "registry/package.json";
 /** Packages every consumer already has, so items never list them. */
 export const consumerPackages: ReadonlySet<string> = new Set(["react", "react-dom"]);
 
-const frameworks = /^(?:react|react-dom|solid-js|preact|vue|svelte|lit)(?:\/|$)/u;
-const frameworkScopes = /^@(?:solidjs|base-ui|astryxdesign|angular)\//u;
-/** ui-sdk's renderers; its core has no framework in it. */
-const uiSdkRenderer = /^@ui-sdk\/(?!core(?:\/|$))/u;
-/** A package made for one framework, such as `lucide-react` or `@tanstack/react-virtual`. */
-const frameworkFlavour = /^(?:@[^/]+\/)?(?:[^/]+-)?(?:react|solid|vue|svelte)(?:-[^/]+)?(?:\/|$)/u;
-
-/** Whether an import names a framework, or a package made for one. */
-export function frameworkPackage(specifier: string): boolean {
-  if (specifier.startsWith(".") || specifier.startsWith("@registry/")) return false;
-  return [frameworks, frameworkScopes, uiSdkRenderer, frameworkFlavour].some((pattern) =>
-    pattern.test(specifier),
-  );
-}
+/**
+ * The npm packages a shared file may import: framework-free ones that every framework's items can
+ * use. It's a list of what is allowed, not of what is not, because no pattern catches every package
+ * made for one framework (`next/link`, `radix-ui`, `motion/react`, `zustand`). A package joins
+ * when a shared file needs it and it imports no framework. ui-sdk isn't on it: only the kit's own
+ * files import ui-sdk (ADR 0279).
+ */
+export const sharedFilePackages: ReadonlySet<string> = new Set([
+  "@moltenship/calendar",
+  "@tanstack/virtual-core",
+  "class-variance-authority",
+  "clsx",
+  "cn",
+  "tailwind-merge",
+]);
 
 /**
  * Drag and drop stays optional. Views edit through the native pointer layer in

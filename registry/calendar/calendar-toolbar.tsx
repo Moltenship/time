@@ -31,7 +31,9 @@ function StepTrigger({
   readonly Trigger: ComponentType<CalendarTriggerProps>;
 }) {
   return (
-    <Tooltip>
+    // The tooltip names the icon button rather than describing it, so a screen reader reads the
+    // label once, not as a name and then again as a description.
+    <Tooltip type="label">
       <TooltipTrigger
         render={
           <Button

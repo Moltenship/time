@@ -14,6 +14,8 @@ const registryCoreImportFixture =
   "tests/fixtures/dependency-boundaries/registry/calendar/core-import.ts";
 const registryTestsFixture =
   "tests/fixtures/dependency-boundaries/registry/tests/harness-import.ts";
+const registrySharedFrameworkFixture =
+  "tests/fixtures/dependency-boundaries/registry/shared/calendar-ui/framework-import.ts";
 const registrySourceTestingFixture =
   "tests/fixtures/dependency-boundaries/registry/calendar/testing-import.ts";
 const testingInternalsFixture =
@@ -185,6 +187,19 @@ describe("workspace boundaries", { concurrent: false }, () => {
     ]);
     expect(violations(source)).toEqual([
       "registry-source-uses-calendar-facade @moltenship/calendar-testing",
+    ]);
+  });
+
+  test("a shared registry file imports no framework, no ui-sdk and no item's file", async () => {
+    const result = await cruiseWithArchitectureRules([registrySharedFrameworkFixture]);
+    const violations = result.summary.violations
+      .filter(({ rule }) => rule.name === "registry-shared-files-import-no-framework")
+      .map(({ to }) => to);
+
+    expect(violations.toSorted()).toEqual([
+      "@ui-sdk/core/button",
+      "react",
+      "tests/fixtures/dependency-boundaries/registry/calendar/core-import.ts",
     ]);
   });
 

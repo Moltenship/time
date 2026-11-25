@@ -52,7 +52,7 @@ afterEach(async () => {
   cleanup = undefined;
 });
 
-test("an agent's snapshot of the toolbar finds the kit's buttons and its view select", async () => {
+test("an agent's snapshot of the toolbar finds the kit's buttons and its view select, named once", async () => {
   const { container, unmount } = await render(
     <Calendar.Root
       clock={clock}
@@ -91,6 +91,17 @@ test("an agent's snapshot of the toolbar finds the kit's buttons and its view se
     label: "View",
     value: "day",
   });
+
+  // The step buttons' tooltips name them and add no description, which would repeat the name on
+  // every focus. Base UI's tooltip before the kit did the same.
+  for (const label of ["Previous period", "Next period"]) {
+    const button = container.querySelector(`button[aria-label="${label}"]`);
+    expect(button?.hasAttribute("aria-describedby"), label).toBe(false);
+    const name = container.ownerDocument.getElementById(
+      button?.getAttribute("aria-labelledby") ?? "",
+    );
+    expect(name?.textContent, label).toBe(label);
+  }
 
   // The kit's button wraps the calendar's trigger, so pressing it moves the calendar.
   await act(async () => {

@@ -120,6 +120,16 @@ export default {
       },
     },
     {
+      name: "registry-shared-files-import-no-framework",
+      comment:
+        "A shared file (registry/shared) is plain TypeScript every framework's items import: no React, no Solid, no ui-sdk and no item's own file (architecture.md, rule 5; ADR 0279). tools/registry's validation checks its packages against an allow-list too.",
+      severity: "error",
+      from: { path: "(?:^|/)registry/shared/" },
+      to: {
+        path: [reactPackages, solidPackages, uiSdkPackages, "(?:^|/)registry/(?!shared/)"],
+      },
+    },
+    {
       name: "registry-tests-use-the-facade-and-the-harness",
       comment:
         "The registry's tests, which aren't copied, also use the test harness, as an app's tests would.",
@@ -311,7 +321,7 @@ export default {
     {
       name: "only-primitives-and-integrations-import-ui-sdk",
       comment:
-        "ui-sdk is a peer of calendar-primitives, calendar-react and calendar-solid; besides them only the applications that create an agent bridge import it: the Solid demo and the docs site.",
+        "ui-sdk is a peer of calendar-primitives, calendar-react and calendar-solid; besides them only the registry's kit of controls (registry/calendar-ui) and the registry's tests, calendar-testing's tests, and the applications that create an agent bridge import it: the Solid demo and the docs site.",
       severity: "error",
       from: { path: sourceRoots, pathNot: uiSdkWorkspaces },
       to: { path: uiSdkPackages },
