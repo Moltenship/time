@@ -57,9 +57,10 @@ export interface CalendarKeyEventWrapper {
 /**
  * A view's keyboard, from `createCalendarKeyboard`. An integration calls its methods from the
  * `keydown` and `focusout` handlers of the element around the view's focusable cells and events.
- * Bind `keydown` on that element itself (`on:keydown` in Solid, not `onKeyDown`): a handler the
- * framework delegates to the document runs once the key has bubbled past every element, too late
- * for Escape's stopped propagation to keep it from the handlers around the view.
+ * Bind `keydown` on that element itself (`addEventListener` from a ref in Solid, not
+ * `onKeyDown`): a handler the framework delegates to the document runs once the key has bubbled
+ * past every element, too late for Escape's stopped propagation to keep it from the handlers
+ * around the view.
  */
 export interface CalendarKeyboardController {
   /**

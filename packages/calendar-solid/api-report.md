@@ -10,21 +10,75 @@ import {
   Component,
 } from "solid-js";
 import {
+  AvailabilityBand,
+  AvailabilityExtent,
+  AvailabilitySnapshot,
+  CalendarAnnotation,
+  CalendarAnnotationSource,
+  CalendarAnnouncementMessages,
+  CalendarAnnouncer,
+  CalendarAvailability,
+  CalendarDraft,
+  CalendarEnvironment,
+  CalendarEnvironmentBase,
+  CalendarEventChangeHandler,
+  CalendarEventInput,
+  CalendarEventInterval,
+  CalendarFocus,
+  CalendarInteractionCheck,
+  CalendarKeyboardSession,
+  CalendarNowSource,
+  CalendarPendingChanges,
+  CalendarPolicy,
+  CalendarProposalDetail,
+  CalendarSecondaryTimeZone,
+  CalendarSelection,
+  CalendarTransactionResult,
+  CalendarViewStrategy,
+  CalendarWeekRules,
+  ClosedDate,
+  EventAdapter,
+  EventHistory,
+  EventId,
+  EventSnapshot,
+  InvalidCalendarEventPolicy,
+  NormalizedCalendarEvent,
+  ResourceId,
+  ResourceVisibilityOptions,
+  TimeGridAnnotationGeometry,
+  TimeGridAnnotationMark,
+  TimeGridColumn,
+  VisibleResource,
+} from "@moltenship/calendar-core";
+import {
   CalendarActions,
   CalendarActiveView,
   CalendarActiveView as CalendarActiveView$1,
   CalendarAgentEvent,
   CalendarAgentEvent as CalendarAgentEvent$1,
+  CalendarAnnotations,
+  CalendarBusyResources,
   CalendarChangeReason,
   CalendarChangeSource,
   CalendarCommandOptions,
+  CalendarCommandOptions as CalendarCommandOptions$1,
   CalendarControlledState,
   CalendarDiagnostic,
   CalendarDiagnostic as CalendarDiagnostic$1,
+  CalendarDraftBusy,
+  CalendarHistory,
+  CalendarHistoryAnnouncementBuilder,
+  CalendarHistoryAnnouncementContext,
+  CalendarHistoryCommandOptions,
+  CalendarHistoryMessages,
+  CalendarHistoryOptions,
+  CalendarHistoryShortcutsTarget,
+  CalendarKeyboardOptions,
   CalendarPartIds,
   CalendarPartIds as CalendarPartIds$1,
   CalendarPublicState,
   CalendarPublicState as CalendarPublicState$1,
+  CalendarResourceStatus,
   CalendarRootStore,
   CalendarRootStore as CalendarRootStore$1,
   CalendarSemanticActions,
@@ -53,37 +107,22 @@ import {
   resolveViewOptions,
 } from "@moltenship/calendar-primitives";
 import {
-  CalendarAnnotation,
-  CalendarAnnotationSource,
-  CalendarAvailability,
-  CalendarEnvironment,
-  CalendarEnvironmentBase,
-  CalendarEventChangeHandler,
-  CalendarEventInput,
-  CalendarFocus,
-  CalendarNowSource,
-  CalendarPendingChanges,
-  CalendarPolicy,
-  CalendarProposalDetail,
-  CalendarSecondaryTimeZone,
-  CalendarSelection,
-  CalendarTransactionResult,
-  CalendarViewStrategy,
-  CalendarWeekRules,
-  EventAdapter,
-  EventId,
-  EventSnapshot,
-  InvalidCalendarEventPolicy,
-  ResourceId,
-} from "@moltenship/calendar-core";
+  CalendarPointerOptions,
+  CalendarPointerOptions as CalendarPointerOptions$1,
+  eventIdAttributes,
+  resourceIdAttributes,
+} from "@moltenship/calendar-dnd";
+import {
+  InstantInterval,
+  PlainDateInterval,
+} from "@moltenship/calendar-temporal";
 import {
   JSX,
 } from "@solidjs/web";
-import {
-  PlainDateInterval,
-} from "@moltenship/calendar-temporal";
 
+export declare function Announcer(props: CalendarAnnouncerProps): JSX.Element;
 type AnyCalendarView<TEvent = any> = CalendarView<string, any, any, TEvent>;
+type AnyDraft = CalendarDraft<EventId, ResourceId>;
 type CalendarAccessibleName = {
   readonly "aria-label": string;
   readonly children?: JSX.Element;
@@ -94,13 +133,31 @@ type CalendarAccessibleName = {
 interface CalendarActiveViewProps {
   readonly fallback?: JSX.Element;
 }
+type CalendarAnnouncerProps = Omit<ElementProps<"div">, "children"> & {
+  readonly messages: CalendarAnnouncementMessages;
+};
+interface CalendarBusyResourcesOptions {
+  readonly exclude?: EventId | null;
+  readonly resourceIds?: readonly ResourceId[];
+}
 interface CalendarContextValue<TEvent, TResource, TViewDef extends AnyCalendarView = AnyCalendarView, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
   readonly actions: CalendarSemanticActions$1<TViewDef["name"], TSelection, TFocus, TResourceId, TEvent, TEventId>;
   readonly meta: CalendarMeta<TEvent, TResource, TViewDef, TEventId, TResourceId>;
   readonly state: CalendarPublicState$1<TViewDef["name"], TSelection, TFocus, TResourceId>;
 }
+interface CalendarEventProps<TEvent, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
+  readonly children: (value: Accessor<CalendarEventRenderValue<TEvent, TEventId, TResourceId>>) => JSX.Element;
+  readonly eventId: TEventId;
+  readonly fallback?: JSX.Element;
+}
+interface CalendarEventRenderValue<TEvent, TEventId extends EventId, TResourceId extends ResourceId> {
+  readonly event: TEvent;
+  readonly normalized: NormalizedCalendarEvent<TEvent, TEventId, TResourceId>;
+}
 interface CalendarFactory<TEvent, TResource, TViewDef extends AnyCalendarView = AnyCalendarView, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
   readonly ActiveView: Component<CalendarActiveViewProps>;
+  readonly Announcer: Component<CalendarAnnouncerProps>;
+  readonly Event: Component<CalendarEventProps<TEvent, TEventId, TResourceId>>;
   readonly Frame: Component<CalendarFrameProps>;
   readonly NextTrigger: Component<CalendarTriggerProps>;
   readonly PreviousTrigger: Component<CalendarTriggerProps>;
@@ -122,6 +179,12 @@ interface CalendarFactory<TEvent, TResource, TViewDef extends AnyCalendarView = 
   useVisibleRange(): Accessor<PlainDateInterval | null>;
 }
 type CalendarFrameProps = Omit<ElementProps<"section">, "id">;
+interface CalendarHistoryShortcutsOptions {
+  readonly disabled?: boolean;
+  readonly redo?: readonly string[];
+  readonly scope: MaybeAccessor<HTMLElement | null | undefined>;
+  readonly undo?: readonly string[];
+}
 interface CalendarMeta<TEvent, TResource, TViewDef extends AnyCalendarView = AnyCalendarView, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
   readonly activeView: TViewDef | undefined;
   readonly diagnostics: readonly CalendarDiagnostic$1<TEvent, TEventId>[];
@@ -140,6 +203,14 @@ interface CalendarPartRefs {
   readonly toolbar: Accessor<HTMLElement | undefined>;
   readonly viewport: Accessor<HTMLDivElement | undefined>;
 }
+interface CalendarResourceExpansion {
+  readonly expanded: Accessor<boolean>;
+  readonly collapse: CalendarResourceExpansionCommand;
+  readonly expand: CalendarResourceExpansionCommand;
+  readonly toggle: CalendarResourceExpansionCommand;
+}
+type CalendarResourceExpansionCause = CalendarCommandOptions$1 | Event;
+type CalendarResourceExpansionCommand = (cause?: unknown) => void;
 type CalendarRootAnchorProps = {
   readonly anchorDate: Temporal.PlainDate;
   readonly defaultAnchorDate?: Temporal.PlainDate;
@@ -193,6 +264,14 @@ type CalendarRootTimeZoneProps = {
   readonly defaultTimeZone: string;
   readonly timeZone?: undefined;
 };
+interface CalendarRovingFocusOptions {
+  readonly days?: number;
+}
+interface CalendarRovingFocusProps {
+  readonly onFocus: (event: FocusEvent) => void;
+  readonly ref: (element: HTMLElement) => void;
+  readonly tabindex: 0 | -1;
+}
 type CalendarTitleProps = Omit<ElementProps<"span">, "id">;
 type CalendarToolbarProps = ElementProps<"header">;
 type CalendarTriggerProps = Omit<ElementProps<"button">, "children"> & CalendarAccessibleName;
@@ -229,9 +308,38 @@ interface CreateCalendarOptions<TEvent, TViewDef extends AnyCalendarView, TEvent
   readonly views?: readonly TViewDef[];
 }
 type ElementProps<Tag extends keyof JSX.IntrinsicElements> = JSX.IntrinsicElements[Tag];
+type MaybeAccessor<T> = T | Accessor<T>;
+interface UseNowOptions {
+  readonly intervalMs?: number;
+}
 export declare function createCalendar<TEvent, TResource = unknown, TSelection = CalendarSelection, TFocus = CalendarFocus>(): <TViewDef extends AnyCalendarView<TEvent> = never, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId>(options: CreateCalendarOptions<TEvent, TViewDef, TEventId, TResourceId>) => CalendarFactory<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>;
 export declare function createStateSelector<TState, TSelected>(source: CalendarStateSource$1<TState> | Accessor<CalendarStateSource$1<TState>>, selector: CalendarStateSelector$1<TState, TSelected>, { isEqual }?: CalendarStateSelectorOptions$1<TSelected>): Accessor<TSelected>;
 export declare function defineCalendarView<const TName extends string, TProjection, TOptions = undefined, TEvent = unknown>(view: CalendarViewInput<TName, TProjection, TOptions, TEvent>): CalendarView<TName, TProjection, TOptions, TEvent>;
+export declare function useAnchorDateRequests(listener: (date: Temporal.PlainDate, range: PlainDateInterval | null) => void): void;
+export declare function useBusyResources(range: MaybeAccessor<InstantInterval | CalendarEventInterval | null>, options?: MaybeAccessor<CalendarBusyResourcesOptions>): Accessor<CalendarBusyResources>;
+export declare function useCalendarAnnotations(): Accessor<CalendarAnnotations>;
+export declare function useCalendarAnnouncer(): CalendarAnnouncer;
+export declare function useCalendarAvailability(): Accessor<AvailabilitySnapshot>;
+export declare function useCalendarDraft(): Accessor<AnyDraft | null>;
+export declare function useCalendarDraftReporter(): (draft: AnyDraft | null) => void;
+export declare function useCalendarFocus<TSelected>(selector: (focus: CalendarFocus | null) => TSelected, options?: CalendarStateSelectorOptions$1<TSelected>): Accessor<TSelected>;
+export declare function useCalendarHistory<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(history: EventHistory<TEvent, TEventId, TResourceId>, options?: MaybeAccessor<CalendarHistoryOptions<NoInfer<TEvent>, NoInfer<TEventId>, NoInfer<TResourceId>>>): Accessor<CalendarHistory<TEvent, TEventId, TResourceId>>;
+export declare function useCalendarHistoryShortcuts(history: MaybeAccessor<CalendarHistoryShortcutsTarget>, options: MaybeAccessor<CalendarHistoryShortcutsOptions>): void;
+export declare function useCalendarInteraction(): Accessor<CalendarKeyboardSession | null>;
+export declare function useCalendarInteraction<TSelected>(selector: (session: CalendarKeyboardSession | null, check: CalendarInteractionCheck) => TSelected, options?: CalendarStateSelectorOptions$1<TSelected>): Accessor<TSelected>;
+export declare function useCalendarKeyboard(options?: MaybeAccessor<CalendarKeyboardOptions>): (element: HTMLElement) => void;
+export declare function useCalendarPointer<TEvent, TEventId extends EventId, TResourceId extends ResourceId>(options: MaybeAccessor<CalendarPointerOptions$1<TEvent, TEventId, TResourceId>>): (element: HTMLElement) => void;
+export declare function useCalendarSelection<TSelected>(selector: (selection: CalendarSelection | null) => TSelected, options?: CalendarStateSelectorOptions$1<TSelected>): Accessor<TSelected>;
+export declare function useClosedDates(range: MaybeAccessor<PlainDateInterval>, resourceId?: MaybeAccessor<ResourceId | null | undefined>): Accessor<ReadonlyMap<string, ClosedDate>>;
+export declare function useDraftBusy(resourceId: MaybeAccessor<ResourceId | null>): Accessor<CalendarDraftBusy | null>;
+export declare function useNow(options?: MaybeAccessor<UseNowOptions>): Accessor<Temporal.Instant | null>;
+export declare function useResourceExpansion(resourceId: MaybeAccessor<ResourceId>): CalendarResourceExpansion;
+export declare function useResourceStatus(resourceId?: MaybeAccessor<ResourceId | null | undefined>, at?: MaybeAccessor<Temporal.Instant | undefined>): Accessor<CalendarResourceStatus | null>;
+export declare function useRovingFocus(target: MaybeAccessor<CalendarFocus>, options?: MaybeAccessor<CalendarRovingFocusOptions>): CalendarRovingFocusProps;
+export declare function useTimeGridAnnotations(columns: MaybeAccessor<readonly TimeGridColumn[]>, geometry?: MaybeAccessor<TimeGridAnnotationGeometry>): Accessor<readonly (readonly TimeGridAnnotationMark[])[]>;
+export declare function useTimeGridAvailability(columns: MaybeAccessor<readonly TimeGridColumn[]>, resourceId?: MaybeAccessor<ResourceId | null | undefined>): Accessor<readonly (readonly AvailabilityBand[])[]>;
+export declare function useTimelineAvailability(columns: MaybeAccessor<readonly TimeGridColumn[]>, resourceId?: MaybeAccessor<ResourceId | null | undefined>): Accessor<readonly AvailabilityExtent[]>;
+export declare function useVisibleResources(options?: MaybeAccessor<ResourceVisibilityOptions>): Accessor<readonly VisibleResource[]>;
 
 export {
   type AnyCalendarView,
@@ -239,20 +347,43 @@ export {
   type CalendarActiveView,
   type CalendarActiveViewProps,
   type CalendarAgentEvent,
+  type CalendarAnnotations,
+  type CalendarAnnouncerProps,
+  type CalendarBusyResources,
+  type CalendarBusyResourcesOptions,
   type CalendarChangeReason,
   type CalendarChangeSource,
   type CalendarCommandOptions,
   type CalendarContextValue,
   type CalendarControlledState,
   type CalendarDiagnostic,
+  type CalendarDraftBusy,
+  type CalendarEventProps,
+  type CalendarEventRenderValue,
   type CalendarFactory,
   type CalendarFrameProps,
+  type CalendarHistory,
+  type CalendarHistoryAnnouncementBuilder,
+  type CalendarHistoryAnnouncementContext,
+  type CalendarHistoryCommandOptions,
+  type CalendarHistoryMessages,
+  type CalendarHistoryOptions,
+  type CalendarHistoryShortcutsOptions,
+  type CalendarHistoryShortcutsTarget,
+  type CalendarKeyboardOptions,
   type CalendarMeta,
   type CalendarPartIds,
   type CalendarPartRefs,
+  type CalendarPointerOptions,
   type CalendarPublicState,
+  type CalendarResourceExpansion,
+  type CalendarResourceExpansionCause,
+  type CalendarResourceExpansionCommand,
+  type CalendarResourceStatus,
   type CalendarRootProps,
   type CalendarRootStore,
+  type CalendarRovingFocusOptions,
+  type CalendarRovingFocusProps,
   type CalendarSemanticActions,
   type CalendarStateChangeDetail,
   type CalendarStateChangeHandler,
@@ -275,7 +406,11 @@ export {
   type CalendarViewportProps,
   type CalendarVisibleRange,
   type CreateCalendarOptions,
+  type MaybeAccessor,
+  type UseNowOptions,
   createCalendarStore,
+  eventIdAttributes,
   resolveViewOptions,
+  resourceIdAttributes,
 };
 ```

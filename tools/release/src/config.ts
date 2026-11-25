@@ -48,7 +48,11 @@ export const publishedPackages: readonly PublishedPackage[] = [
   // text and resource status and expansion took it to 105,505 raw and 28,638 gzip bytes, and
   // calendar-react down by as much. 108 and 30 KiB leave the usual headroom.
   { directory: "calendar-primitives", budgets: { ".": { raw: 108 * KiB, gzip: 30 * KiB } } },
-  { directory: "calendar-solid", budgets: { ".": { raw: 32 * KiB, gzip: 10 * KiB } } },
+  // Keyboard, roving focus, pointer dragging, drafts, history and the remaining hooks and parts
+  // (#275) took calendar-solid from 20,871 raw and 6,293 gzip bytes to 44,456 and 13,180. Its
+  // share of calendar-dnd stays out of an app that doesn't drag. 46 and 14 KiB leave the usual
+  // headroom.
+  { directory: "calendar-solid", budgets: { ".": { raw: 46 * KiB, gzip: 14 * KiB } } },
   // Root's event source (#200), read through useSyncExternalStore, took calendar-react to 78,147 of
   // 77,824 raw bytes, onEventChangeResult with useCalendarPendingChanges (#199) to 79,597 raw
   // and 20,740 of 20,480 gzip bytes, and useCalendarHistory with useCalendarHistoryShortcuts (#227)
@@ -133,13 +137,27 @@ export const pointerAdapterPackage = "@moltenship/calendar-dnd";
  * The framework integrations, which bind the pointer adapter (architecture.md §2, rule 4) and so
  * may depend on it, as the facade does. They may not import the other optional adapters.
  */
-export const pointerAdapterBindings: readonly string[] = ["@moltenship/calendar-react"];
+export const pointerAdapterBindings: readonly string[] = [
+  "@moltenship/calendar-react",
+  "@moltenship/calendar-solid",
+];
 
 /**
- * The facade's exports that bind the pointer adapter for a framework without being the adapter's
- * own: they bring its code in too, so a bundle of the facade's other exports leaves them out.
+ * The exports that bind the pointer adapter for a framework without being the adapter's own:
+ * they bring its code in too, so a bundle of the other exports leaves them out. React's and
+ * Solid's hooks share the name.
  */
 export const pointerBindingExports: readonly string[] = ["useCalendarPointer"];
+
+/**
+ * The packages an app imports whose exports, apart from the pointer ones, must bundle without the
+ * pointer adapter: the facade, which covers React through its re-exports, and the Solid
+ * integration, which an app imports itself.
+ */
+export const pointerBundleEntries: readonly string[] = [
+  "@moltenship/calendar",
+  "@moltenship/calendar-solid",
+];
 
 /** Where the dry run leaves its tarballs and manifest. Ignored by git. */
 export const releaseDirectory = ".release";

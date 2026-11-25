@@ -6,7 +6,12 @@ import { dirname, join } from "node:path";
 import { build } from "vite-plus";
 import { parse, stringify } from "yaml";
 
-import { facadePackage, pointerAdapterPackage, pointerBindingExports } from "./config";
+import {
+  facadePackage,
+  pointerAdapterPackage,
+  pointerBindingExports,
+  pointerBundleEntries,
+} from "./config";
 import { installFromStore, lockfileEntries, lockfileProblems } from "./isolated";
 import type { PackedTarball } from "./pack";
 import { readJson, run, runOrThrow, workspaceRoot } from "./workspace";
@@ -236,7 +241,8 @@ async function bundledModules(
       write: false,
       minify: true,
       lib: { entry: join(directory, file), formats: ["es"], fileName: "bundle" },
-      rollupOptions: { external: [/^react(-dom)?($|\/)/] },
+      // The frameworks stay the app's own.
+      rollupOptions: { external: [/^(react(-dom)?|solid-js|@solidjs\/web)($|\/)/] },
     },
   });
   const [result] = Array.isArray(output) ? output : [output];
@@ -253,8 +259,9 @@ async function bundledModules(
 
 /**
  * The facade re-exports the pointer adapter, and the integration's hooks that bind it
- * (`bindings`). A bundle of the facade's other exports must not keep any adapter code, and a
- * bundle of the pointer exports must keep some, which shows the check can see the adapter at all.
+ * (`bindings`); the Solid integration re-exports the adapter's ID attributes and binds it the same
+ * way. A bundle of the package's other exports must not keep any adapter code, and a bundle of the
+ * pointer exports must keep some, which shows the check can see the adapter at all.
  */
 export async function adapterBundleProblems(
   directory: string,
@@ -305,8 +312,10 @@ export async function checkConsumer(tarballs: readonly PackedTarball[]): Promise
   const problems = [
     ...(await runtimeProblems(directory, names)),
     ...(await typeProblems(directory, names)),
-    ...(await adapterBundleProblems(directory)),
   ];
+  for (const entry of pointerBundleEntries) {
+    problems.push(...(await adapterBundleProblems(directory, entry)));
+  }
   // A failed run keeps the project, so the failure can be reproduced in it.
   if (problems.length > 0) {
     throw new Error(`Clean-consumer checks failed in ${directory}:\n- ${problems.join("\n- ")}`);

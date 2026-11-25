@@ -434,9 +434,9 @@ Every step leaves `main` releasable. An item uses either the stock controls or t
 half of each, and both can sit in one application. The Solid registry is served only from the
 first Solid pull request, and its docs say which items exist.
 
-Before the Solid views (in progress, outside this record): interaction in the primitives and a
-framework-free pointer layer, then the Solid bindings. Not one of the hooks below is exported by
-`calendar-solid` today.
+Before the Solid views, outside this record: interaction in the primitives and a framework-free
+pointer layer, then the Solid bindings. All three are done: `calendar-solid` exports every hook
+below (#275).
 
 | Item | Needs from the Solid integration |
 | --- | --- |

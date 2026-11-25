@@ -1,6 +1,6 @@
 ---
 title: Solid
-description: The SolidJS 2 integration, a preview. What it has, how it differs from React, and what isn't in it yet.
+description: The SolidJS 2 integration, a preview. Its parts and hooks, keyboard navigation, dragging and undo in a view you write, how it differs from React, and what isn't in it yet.
 ---
 
 `@moltenship/calendar-solid` is the calendar for [SolidJS](https://www.solidjs.com) 2. It renders
@@ -9,10 +9,10 @@ implementation of the calendar's state, actions and event changes, [agent action
 included.
 
 <Callout type="warn" title="A preview">
-  This package is new in 2.0 and its API can change in any release before 2.0.0. It has the root,
-  the structural parts, the read hooks and the actions an agent can call. It has no ready-made
-  views, no keyboard navigation and no dragging yet: see [what isn't in it
-  yet](#what-isnt-in-it-yet). The rest of these docs describe React.
+  This package is new in 2.0 and its API can change in any release before 2.0.0. It has every part
+  and hook React's integration has, keyboard navigation, dragging, drafts and undo included, and the
+  actions an agent can call. It has no ready-made views and no testing package yet: see [what isn't
+  in it yet](#what-isnt-in-it-yet). The rest of these docs describe React.
 </Callout>
 
 ## Install
@@ -283,6 +283,8 @@ others [Primitives](/docs/api/primitives#what-it-exports) lists.
 | `ViewSwitcher`    | `<select>`  | One option per view. Requires `getViewLabel(name)`                                         |
 | `Viewport`        | `<div>`     | Wrapper for the view                                                                       |
 | `ActiveView`      | view output | Renders the active view's `Renderer`, or `fallback` if the view isn't registered           |
+| `Event`           | children    | Looks up one event by `eventId`. Its children get an accessor of the event as it shows     |
+| `Announcer`       | `<div>`     | The live region for keyboard, pointer and undo announcements. Takes `messages`             |
 
 Each part has the `data-calendar-part` attribute React's has, so CSS written for one works for the
 other. The parts take the element's own props, in Solid's spelling: `class`, not `className`.
@@ -307,6 +309,33 @@ accessor:
 | `useCalendarPendingChanges(selector?)`    | `Accessor` of the changes being saved, or of what `selector` picks from them                           |
 | `useCalendar()`                           | `{ actions, meta, state }`. `meta` and `state` are getters                                             |
 
+The package also exports the hooks a view is built with. They're the same as
+[React's](/docs/api/react#hooks), with an accessor where React returns a value, and they take an
+accessor wherever an argument can change:
+
+| Hook                                                                  | Returns                                                                                      |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| `useCalendarKeyboard(options?)`                                       | A ref for the element around the view's cells. Binds `keydown` and `focusout` on it          |
+| `useRovingFocus(target, options?)`                                    | The props for one focusable day, slot or event: `tabindex`, `onFocus` and `ref`. Spread them |
+| `useCalendarFocus(selector)`, `useCalendarSelection(selector)`        | `Accessor` of the focus or the selection, or of what `selector` picks from it                |
+| `useCalendarInteraction(selector?)`                                   | `Accessor` of the keyboard gesture in progress, or `null`                                    |
+| `useCalendarPointer(options)`                                         | A ref for the element around the view's days. Turns drags into proposals                     |
+| `useCalendarDraft()`, `useCalendarDraftReporter()`                    | `Accessor` of the pointer or keyboard draft, and the function a pointer layer reports it to  |
+| `useDraftBusy(...)`, `useBusyResources(...)`                          | `Accessor` of whether a draft overlaps busy time, and of the busy resources                  |
+| `useCalendarAnnouncer()`                                              | The announcer `useCalendarPointer` takes, which speaks through `Announcer`                   |
+| `useCalendarHistory(history, options?)`                               | `Accessor` of the undo stack, `canUndo`, `canRedo`, `undo()` and `redo()`                    |
+| `useCalendarHistoryShortcuts(controls, options)`                      | Nothing. Binds Mod+Z to undo, and Shift+Mod+Z or Ctrl+Y to redo, inside `scope`              |
+| `useNow(options?)`                                                    | `Accessor` of the current instant, or `null` on the server without `now`                     |
+| `useVisibleResources()`, `useResourceExpansion(resourceId)`           | `Accessor` of the resource rows, and the controls that expand and collapse them              |
+| `useResourceStatus(resourceId, at?)`                                  | `Accessor` of a resource's availability and busy state, or `null`                            |
+| `useCalendarAvailability()`, `useClosedDates(range)`                  | `Accessor` of the availability snapshot, and of the closed dates in `range`                  |
+| `useTimeGridAvailability(columns, id?)`, `useTimelineAvailability(…)` | `Accessor` of the closed time per column, or per resource row                                |
+| `useCalendarAnnotations()`, `useTimeGridAnnotations(columns)`         | `Accessor` of the annotations, and of those laid out on a time grid                          |
+| `useAnchorDateRequests(onRequest)`                                    | Nothing. Calls `onRequest` when the calendar asks a scrolling view to show a date            |
+
+`eventIdAttributes(id)` and `resourceIdAttributes(id)` return the data attributes the pointer layer
+reads on an event and a resource, so a numeric ID stays a number.
+
 ```tsx title="status.tsx"
 import { Calendar } from "./calendar";
 
@@ -330,6 +359,202 @@ export function Status() {
 }
 ```
 
+## Keyboard and dragging in a view
+
+A view gets keyboard navigation from three pieces, as in React:
+
+- **`getSpatialNavigation`** on the strategy says where each key moves focus. Reuse
+  `monthSpatialNavigation`, `listSpatialNavigation` or another from `@moltenship/calendar-core`.
+- **`useCalendarKeyboard()`** returns a ref for the element around the view's cells.
+- **`useRovingFocus(target)`** returns the props for each day, slot and event that takes focus.
+  The view has one tab stop.
+
+`useCalendarPointer(options)` returns another ref for the same element. It turns a drag on an
+event into a move, a drag on an element with `data-resize` into a resize, and a drag across days
+into a create, and proposes each through the options' `onPropose`. The hook passes `options` to
+`attachCalendarPointer` untouched, so [Pointer layer](/docs/api/changes#pointer-layer) documents
+every option. Give one element both refs with `ref={[keyboard, pointer]}`.
+
+```tsx title="month.tsx"
+import {
+  getMonthRange,
+  getMonthTitle,
+  monthSpatialNavigation,
+  navigateMonth,
+  projectMonth,
+  type DayGridSegment,
+  type MonthDay,
+  type MonthProjection,
+} from "@moltenship/calendar-core";
+import {
+  defineCalendarView,
+  eventIdAttributes,
+  useCalendarAnnouncer,
+  useCalendarDraftReporter,
+  useCalendarKeyboard,
+  useCalendarPointer,
+  useRovingFocus,
+  type CalendarViewRendererProps,
+} from "@moltenship/calendar-solid";
+import { For } from "solid-js";
+
+import type { Meeting } from "./calendar";
+
+type Month = MonthProjection<Meeting, string, string>;
+
+function Day(props: { readonly day: MonthDay; readonly column: number }) {
+  // An accessor, so the cell registers again when a new projection hands it a new day.
+  const roving = useRovingFocus(() => ({ date: props.day.date, kind: "day" }));
+  return (
+    <button
+      {...roving}
+      type="button"
+      data-date={props.day.date.toString()}
+      style={{ "grid-column": `${props.column + 1}` }}
+    >
+      {props.day.date.day}
+    </button>
+  );
+}
+
+function Chip(props: {
+  readonly date: Temporal.PlainDate;
+  readonly segment: DayGridSegment<Meeting, string, string>;
+}) {
+  const roving = useRovingFocus(
+    () => ({ date: props.date, eventId: props.segment.event.id, kind: "event" }),
+    () => ({ days: props.segment.span }),
+  );
+  return (
+    <button
+      {...roving}
+      {...eventIdAttributes(props.segment.event.id)}
+      type="button"
+      style={{
+        "grid-column": `${props.segment.column + 1} / span ${props.segment.span}`,
+        "grid-row": `${props.segment.lane + 2}`,
+      }}
+    >
+      {props.segment.event.title}
+      <span data-resize="end" aria-hidden="true" />
+    </button>
+  );
+}
+
+function MonthGrid(props: CalendarViewRendererProps<Month, undefined>) {
+  const keyboard = useCalendarKeyboard();
+  // A drag speaks through the root's Announcer, and its draft shows in useCalendarDraft.
+  const announcer = useCalendarAnnouncer();
+  const onPreview = useCalendarDraftReporter();
+  const pointer = useCalendarPointer(() => ({
+    announcer,
+    check: props.actions.checkEventChange,
+    disabled: props.isReadOnly,
+    events: props.events,
+    onPreview,
+    onPropose: props.actions.proposeEventChange,
+    timeZone: props.environment.timeZone,
+  }));
+  return (
+    <div ref={[keyboard, pointer]}>
+      <For each={props.projection.weeks} keyed={(week) => week.range.start.toString()}>
+        {(week) => (
+          <div style={{ display: "grid", "grid-template-columns": "repeat(7, 1fr)" }}>
+            <For each={week().days} keyed={(day) => day.date.toString()}>
+              {(day, index) => <Day day={day()} column={index()} />}
+            </For>
+            {/* Keyed by event: a dropped chip keeps its element, and its focus. */}
+            <For each={week().segments} keyed={(segment) => segment.event.id}>
+              {(segment) => <Chip date={week().days[segment().column]!.date} segment={segment()} />}
+            </For>
+          </div>
+        )}
+      </For>
+    </div>
+  );
+}
+
+export const monthView = defineCalendarView({
+  name: "month",
+  strategy: {
+    getRange: (anchor, environment) => getMonthRange(anchor, environment),
+    getSpatialNavigation: monthSpatialNavigation,
+    getTitle: (range, environment) => getMonthTitle(range, environment),
+    navigate: (anchor, delta) => navigateMonth(anchor, delta),
+    project: (input) => projectMonth(input) as Month,
+  },
+  Renderer: MonthGrid,
+});
+```
+
+The keys are the ones [Keyboard](/docs/accessibility#keyboard) lists. Space picks up the focused
+event, or starts a new one on the focused day, arrow keys move it, and Enter or Space drops it. A
+pointer drags the event, its `data-resize` handle, or across empty days. Neither starts when `Root`
+has no `onEventChange`, and neither picks up a read-only event. Each gesture's change runs your
+policies and `onEventChange`, as every other change does.
+
+Two things to know when you write the elements:
+
+- **A key handler inside the view runs after the calendar's.** Solid delegates `onKeyDown` to the
+  document, and the keyboard listens on the view's element, which the key reaches first. An element
+  that takes a key for itself, such as a chip that opens a popover on Space, listens natively from
+  a ref and calls `preventDefault()`: `ref={(element) => element.addEventListener("keydown",
+onKey)}`. The calendar then leaves the key alone.
+- **Render a roving element for as long as its component lives.** Solid doesn't call a ref when the
+  element goes away, so the element stays registered until the component that called
+  `useRovingFocus` is disposed. To hide a cell, put `Show` around that component, not inside it.
+
+Render `<Calendar.Announcer messages={messages} />` inside `Root` so a screen reader hears each
+gesture. The package ships no text: the registry's `calendar/announcements.ts` has an English set,
+and [Announcements](/docs/accessibility#announcements) describes the messages.
+
+## Undo and redo
+
+`useCalendarHistory(history)` binds a history from `createEventHistory` to the calendar, and
+`useCalendarHistoryShortcuts` adds the keyboard shortcuts. Record every result in `Root`'s
+`onEventChangeResult`:
+
+```tsx title="history.tsx"
+import { createEventHistory } from "@moltenship/calendar-core";
+import { useCalendarHistory, useCalendarHistoryShortcuts } from "@moltenship/calendar-solid";
+
+import { Calendar, type Meeting } from "./calendar";
+
+// One per calendar. Pass `onEventChangeResult={(result, detail) => changes.record(result, detail)}`
+// to Root.
+export const changes = createEventHistory<Meeting, string, string>();
+
+// Render it inside <Calendar.Root>.
+export function HistoryButtons() {
+  const controls = useCalendarHistory(changes);
+  const meta = Calendar.useCalendarMeta();
+  useCalendarHistoryShortcuts(controls, () => ({ scope: meta().refs.frame }));
+  return (
+    <>
+      <button type="button" disabled={!controls().canUndo} onClick={() => void controls().undo()}>
+        Undo
+      </button>
+      <button type="button" disabled={!controls().canRedo} onClick={() => void controls().redo()}>
+        Redo
+      </button>
+    </>
+  );
+}
+```
+
+To undo a create, the history needs the ID your app gave the new event: pass `createdEventId` to
+`createEventHistory`, as [Creates and deletes](/docs/undo-redo#creates-and-deletes) shows.
+`messages` in the hook's options speak each undo and redo through `Announcer`.
+
+## Server rendering
+
+`Root`, the parts and every hook render on the server with `@solidjs/web`'s `renderToString`, and
+hydrate without a mismatch. On the server the calendar doesn't read the clock, the host time zone
+or `window`. Without `now`, `useNow` gives `null` on the server and while hydrating, and the tab
+stop is the view's entry, which is today only when `now` is set. A store with `getServerSnapshot`
+renders that snapshot on the server and while hydrating. The keyboard and pointer refs attach
+nothing until the page hydrates.
+
 ## Differences from React
 
 | In React                                     | In Solid                                                                                          |
@@ -338,6 +563,10 @@ export function Status() {
 | `useCalendar()` returns plain objects        | `meta` and `state` are getters. Read them in JSX, a memo or an effect, and don't destructure them |
 | A `Renderer` gets props you can destructure  | A `Renderer`'s props are getters: `props.projection`, read where it's used                        |
 | `meta.refs` holds React refs                 | `meta.refs` holds accessors: `meta().refs.viewport()`                                             |
+| `useCalendarKeyboard()` returns handlers     | It returns a ref, which binds `keydown` and `focusout` on the element itself                      |
+| A cell's `onKeyDown` runs before the view's  | It runs after, since Solid delegates it. Listen natively from a ref to take a key first           |
+| `useRovingFocus` listens for `focusin`       | It listens for `focus`, so a focus handler of yours hears `"focus"`                               |
+| `Calendar.Event`'s children get a value      | They get an accessor, and stay rendered while the event changes                                   |
 | A state change is visible on the next render | An accessor has the new value once Solid flushes: a microtask later, or after `flush()`           |
 | `@moltenship/calendar` is the one package    | `@moltenship/calendar-solid` and `@moltenship/calendar-core`                                      |
 | The bridge is `@ui-sdk/react/agent`          | The bridge is `@ui-sdk/solid/agent`                                                               |
@@ -449,24 +678,13 @@ import path changes.
 
 ## What isn't in it yet
 
-| Missing                                                                 | In React it's                                                                                                           |
-| ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
-| Ready-made views                                                        | The [registry](/docs/installation)'s week, day, month, year, agenda and timeline views, which are React source          |
-| Keyboard navigation inside a view                                       | `useCalendarKeyboard`, `useRovingFocus`, `useCalendarFocus`                                                             |
-| Dragging, resizing and creating with a pointer                          | `@moltenship/calendar-dnd` and the hooks that bind it                                                                   |
-| Gesture previews                                                        | `useCalendarDraft`, `useCalendarInteraction`                                                                            |
-| Undo and redo bindings                                                  | `useCalendarHistory`, `useCalendarHistoryShortcuts`                                                                     |
-| Announcements for screen readers                                        | `Calendar.Announcer`, `useCalendarAnnouncer`                                                                            |
-| `Calendar.Event`                                                        | A part that looks up one event                                                                                          |
-| Hooks for selection, annotations, availability, resources and the clock | `useCalendarSelection`, `useCalendarAnnotations`, `useCalendarAvailability`, `useVisibleResources`, `useNow` and others |
-| A testing package                                                       | `@moltenship/calendar-testing`, which is React only                                                                     |
+| Missing           | In React it's                                                                                                  |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| Ready-made views  | The [registry](/docs/installation)'s week, day, month, year, agenda and timeline views, which are React source |
+| An undo toast     | The registry's `calendar-history-toast`, which is React source                                                 |
+| A testing package | `@moltenship/calendar-testing`, which is React only                                                            |
+| A dnd-kit adapter | `@moltenship/calendar-dnd-kit`, which has React as a peer dependency                                           |
 
-`Root` already takes the props behind some of these: `annotations`, `availability`, `resources`,
-`selection` and `focus`. The calendar validates them, policies get `availability`, and `selection`
-and `focus` are state values you can read and set. What's missing is the hooks that hand
-annotations, availability and the resource tree to a view, and the behaviour built on them.
-
-Until they land, a Solid calendar is navigated and changed with its toolbar, with your own
-controls calling `actions`, and by an agent. Events change through
-`actions.proposeEventChange(proposal)`, which runs your policies and `onEventChange` as a drag
-does in React.
+Until the registry has Solid views, you write each view's `Renderer` with the hooks above. The
+[Solid demo](https://moltenship-time-demo.vercel.app/solid/)'s month grid and list are such views,
+with keyboard navigation, dragging and undo.

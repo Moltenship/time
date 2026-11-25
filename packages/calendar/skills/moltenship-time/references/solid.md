@@ -1,22 +1,22 @@
 # Solid
 
-`@moltenship/calendar-solid` is the SolidJS 2 integration, a preview. It renders the same primitive as React, so state, actions, event changes, policies and the agent surface are the same. Much of what React has isn't in it yet. Read `docs/api/solid.md` before you write Solid code, and check the package's own types: the preview changes between releases.
+`@moltenship/calendar-solid` is the SolidJS 2 integration, a preview. It renders the same primitive as React, so state, actions, event changes, policies and the agent surface are the same. It has every hook React has, and no ready-made views. Read `docs/api/solid.md` before you write Solid code, and check the package's own types: the preview changes between releases.
 
 ## What it has, and what it doesn't
 
-| Has                                                                 | Doesn't have yet                                                       |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| `createCalendar`, `defineCalendarView`                              | Ready-made views. The registry's views are React source                |
-| `Root` with the same props as React's                               | Keyboard navigation inside a view, roving focus                        |
-| `Frame`, `Toolbar`, `Title`, `Viewport`, `ActiveView`               | Dragging, resizing or creating with a pointer                          |
-| `PreviousTrigger`, `NextTrigger`, `TodayTrigger`, `ViewSwitcher`    | Gesture previews (`useCalendarDraft`, `useCalendarInteraction`)        |
-| `useCalendarState`, `useCalendarSelector`, `useCalendarActions`     | Undo bindings (`useCalendarHistory`, `useCalendarHistoryShortcuts`)    |
-| `useCalendarMeta`, `useVisibleRange`, `useViewProjection`           | `Calendar.Announcer`, `Calendar.Event`                                 |
-| `useCalendarPendingChanges`, `useCalendar`                          | Hooks for selection, annotations, availability, resources, the clock   |
-| `createStateSelector`, `createCalendarStore`, `resolveViewOptions`  | A testing package: `@moltenship/calendar-testing` is React only        |
-| The fifteen agent actions, through `@ui-sdk/solid/agent`            |                                                                        |
+| Has                                                                                                   | Doesn't have yet                                                    |
+| ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
+| `createCalendar`, `defineCalendarView`, `Root` with the same props as React's                         | Ready-made views. The registry's views are React source             |
+| Every part: the structural ones, `Event` and `Announcer`                                              | The registry's undo toast, `calendar-history-toast`                 |
+| The read hooks: state, selector, actions, meta, range, projection, pending changes                    | A testing package: `@moltenship/calendar-testing` is React only     |
+| `useCalendarKeyboard`, `useRovingFocus`, `useCalendarFocus`, `useCalendarSelection`                   | `@moltenship/calendar-dnd-kit`, which has React as a peer           |
+| `useCalendarPointer`, `eventIdAttributes`, `resourceIdAttributes`                                     |                                                                     |
+| `useCalendarInteraction`, `useCalendarDraft`, `useCalendarDraftReporter`, `useDraftBusy`              |                                                                     |
+| `useCalendarAnnouncer`, `useCalendarHistory`, `useCalendarHistoryShortcuts`                           |                                                                     |
+| `useNow`, resources, status, availability, closed dates, annotations, `useAnchorDateRequests`         |                                                                     |
+| `createStateSelector`, `createCalendarStore`, `resolveViewOptions`; the agent actions                 |                                                                     |
 
-If the user asks for something in the right column, say it isn't in the Solid preview. Don't import a React hook's name from the Solid package: it isn't exported.
+Every hook React's integration exports has a Solid one with the same name. If the user asks for something in the right column, say it isn't in the Solid preview.
 
 ## Install
 
@@ -178,9 +178,12 @@ export function App() {
 - **`class`, not `className`**, on the parts.
 - **A trigger needs children or an `aria-label`.** TypeScript requires one of them.
 - **An accessor has the new value once Solid flushes**, a microtask after the action.
+- **`useCalendarKeyboard()` and `useCalendarPointer(options)` return refs**, not handlers: `<div ref={[keyboard, pointer]}>`. Spread `useRovingFocus(target)` on each day, slot and event.
+- **Pass an accessor where an argument changes:** `useRovingFocus(() => ({ date: props.day.date, kind: "day" }))`. A plain value is read once.
+- **Key a `For` by identity** so an element keeps its focus across projections: `keyed={(segment) => segment.event.id}`. The children then get accessors.
 - **The store's view type has to be the calendar's:** `createCalendarStore<View>(...)`. A calendar without resources takes a store made without the resource ID type.
 
-The rest is in the other references and applies as written: `state.md` for controlled and uncontrolled state, `changes.md` for `onEventChange`, policies and pending changes. Skip their parts on history hooks, dragging and the registry.
+The rest is in the other references and applies as written: `state.md` for controlled and uncontrolled state, `changes.md` for `onEventChange`, policies and pending changes. The history hooks apply too, from `@moltenship/calendar-solid`. Skip their parts on the registry.
 
 ## Agents
 
@@ -195,9 +198,16 @@ export const agent = createAgent({
 
 Everything in `agent-ready.md` holds: `label` on `Root`, `Calendar.Frame` rendered, `detail.fields` read in `onEventChange`, `allowAgentDelete` for deletes, the same fifteen actions with one object each, the same results and errors. Only the import path differs.
 
-## Changing an event without a drag
+## Keyboard, dragging and undo
 
-There's no pointer layer yet, so a person changes an event through your own controls. Call `actions.proposeEventChange(proposal)` from `Calendar.useCalendarActions()`: it runs the policies and `onEventChange` and resolves with the result. `changes.md` has the proposal's shape.
+`docs/api/solid.md` has a month view with both refs, and the undo buttons. In short:
+
+- Give the strategy a `getSpatialNavigation`, such as `monthSpatialNavigation` from `@moltenship/calendar-core`, or the keys move nothing.
+- Pass `useCalendarPointer` the Renderer's `events`, `actions.proposeEventChange` as `onPropose`, `actions.checkEventChange` as `check`, `isReadOnly` as `disabled` and the environment's `timeZone`. Add `useCalendarAnnouncer()` and `useCalendarDraftReporter()` as `announcer` and `onPreview`. Render `data-date` on each day, `eventIdAttributes(id)` on each event and `data-resize="start"` or `"end"` on its handles.
+- Render `<Calendar.Announcer messages={...} />` inside `Root`. The registry's `calendar/announcements.ts` has English messages; the packages ship none.
+- Record results in `Root`'s `onEventChangeResult` with `history.record`, then bind `useCalendarHistory(history)` and `useCalendarHistoryShortcuts(controls, () => ({ scope: meta().refs.frame }))`. Pass `createdEventId` to `createEventHistory` so creates can be undone.
+
+A person can also change an event through your own controls: call `actions.proposeEventChange(proposal)` from `Calendar.useCalendarActions()`. It runs the policies and `onEventChange` and resolves with the result. `changes.md` has the proposal's shape.
 
 ## Testing
 

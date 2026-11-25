@@ -177,8 +177,8 @@ store of ADR 0070 alone, stays maintainable until 2.0 is released.
 - **Done:** the kernel and the agent surface (#276). The framework-free halves of interaction of
   point 2: the keyboard controller, roving focus, the draft source and its busy queries, the
   history binding and its shortcuts, and the announcer's live text, which `calendar-react` binds.
-  The pointer adapter of point 4 is framework-free, and `useCalendarPointer` is the React
-  integration's.
-- **Not done:** the Solid integration binds none of the interaction or the pointer adapter yet;
-  registry views on the new parts, Solid views and the registry's controls on ui-sdk, whose way
-  and order [ADR 0279](./0279-solid-views-in-the-registry.md) decides.
+  The pointer adapter of point 4 is framework-free. Both integrations bind all of it:
+  `calendar-solid` has the keyboard, roving focus, the pointer adapter, drafts, the history and the
+  remaining hooks and parts, with the same names as `calendar-react`'s.
+- **Not done:** registry views on the new parts, Solid views and the registry's controls on ui-sdk,
+  whose way and order [ADR 0279](./0279-solid-views-in-the-registry.md) decides.
