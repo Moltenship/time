@@ -13,7 +13,6 @@ import { expect, test } from "vite-plus/test";
 import {
   AnnotationMark,
   AnnotationRail,
-  type AnnotationMarkElementProps,
   type TimeGridAnnotationMarkData,
   type TimeGridAnnotationSource,
   type TimeGridAnnotationsProps,
@@ -320,24 +319,20 @@ test("a view draws a custom composition of the parts", async () => {
   ]);
 });
 
-test("a mark's render element runs its own handler beside the mark's", async () => {
+test("a mark runs its own handlers before its tooltip's and popover's", async () => {
   const pressed: string[] = [];
   function Bars(props: TimeGridAnnotationsProps) {
-    const element = (key: string, markProps: AnnotationMarkElementProps) => (
-      <div
-        {...markProps}
-        data-custom=""
-        onMouseDown={(event) => {
-          pressed.push(key);
-          (markProps.onMouseDown as (event: MouseEvent) => void)(event);
-        }}
-      />
-    );
     return (
       <AnnotationRail>
         <For each={props.marks} keyed={(mark: TimeGridAnnotationMarkData) => mark.key}>
           {(mark) => (
-            <AnnotationMark mark={mark()} render={(markProps) => element(mark().key, markProps)} />
+            <AnnotationMark
+              data-testid={mark().key}
+              mark={mark()}
+              onClick={() => pressed.push(`click ${mark().key}`)}
+              onMouseDown={() => pressed.push(`press ${mark().key}`)}
+              render={(markProps) => <a href="#track" {...markProps} />}
+            />
           )}
         </For>
       </AnnotationRail>
@@ -346,14 +341,20 @@ test("a mark's render element runs its own handler beside the mark's", async () 
   const container = await renderDay({
     view: createDayView<ColoredEvent>({ annotations: { Annotations: Bars } }),
   });
-  const mark = container.querySelector<HTMLElement>("[data-custom]")!;
-  const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
-  mark.dispatchEvent(press);
+  const mark = container.querySelector<HTMLElement>("a[data-testid]")!;
+  const key = mark.dataset.testid!;
+  const pressEvent = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+  mark.dispatchEvent(pressEvent);
+  mark.click();
+  await settled();
 
-  expect(pressed).toHaveLength(1);
+  expect(pressed).toEqual([`press ${key}`, `click ${key}`]);
   // The mark's own handler keeps a press from focusing it in the aria-hidden rail.
-  expect(press.defaultPrevented).toBe(true);
+  expect(pressEvent.defaultPrevented).toBe(true);
   expect(mark.dataset.slot).toBe("annotation-mark");
+  expect(mark.getAttribute("href")).toBe("#track");
+  // The popover's handler still runs after yours.
+  expect(document.querySelector('[role="dialog"]')).not.toBeNull();
 });
 
 test("a week view draws each day's annotations in its own column", async () => {

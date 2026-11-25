@@ -117,7 +117,12 @@ export function annotationSourceStyle(source: CalendarAnnotationSource): {
   readonly color?: CalendarEventColor;
   readonly Icon?: AnnotationIcon;
 } {
-  return sharedSourceStyle<CalendarEventColor, AnnotationIcon>(source, calendarEventColors);
+  return sharedSourceStyle<CalendarEventColor, AnnotationIcon>(
+    source,
+    calendarEventColors,
+    // A function component, or a memo or forwardRef object.
+    (Icon) => typeof Icon === "function" || (typeof Icon === "object" && Icon !== null),
+  );
 }
 
 export interface TimeGridAnnotationsProps {

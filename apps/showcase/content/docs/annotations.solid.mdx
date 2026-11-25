@@ -61,8 +61,9 @@ they draw no rail. Give each source a `color` from the event palette and an `Ico
   fades in at the top and has no icon.
 - **Details.** Hovering a mark shows a tooltip, and clicking it opens a popover listing what it
   merges. Both are the kit's, in `components/calendar/ui/`, one of each for the whole grid. The
-  popover keeps focus until Escape, an outside click or its close button, then returns it to where
-  it was. Pressing or dragging a mark never starts a new event.
+  popover keeps focus until Escape or its close button, which return focus to where it was, or an
+  outside click, which leaves focus where the click put it. Pressing or dragging a mark never
+  starts a new event.
 
 ### Customize them
 
@@ -89,7 +90,9 @@ column's marks, already merged and placed in lanes, and composes the parts:
 - `AnnotationMark` has the variants `capsule` (default), `bar` (a thin bar that keeps its true
   length) and `band` (a tint across the column behind events, with `placement: "overlay"`). Its
   `render` prop takes a function of the mark's props that returns your element in its place, such
-  as a link to the track. Spread the props on it: they place it and wire its tooltip and popover.
+  as a link to the track. Spread the props last, so they place it and wire its tooltip and popover.
+  Put your own handlers and attributes on the `AnnotationMark` itself: it passes them on and runs
+  your handlers before its own.
 - `AnnotationMarkIcon` draws the source's `Icon`. Children replace it.
 - `useAnnotationMark()` gives any part inside a mark its mark and width.
 

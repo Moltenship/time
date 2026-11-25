@@ -224,10 +224,8 @@ export function App() {
         days to create one. In the year, arrow keys move through days and Enter or a click lists a
         day's events. In the agenda, up and down move between events, Page Up and Page Down between
         days. A change to a Team sync asks which of the series it applies to, and every other change
-        shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
-        days. A change to a Team sync asks which of the series it applies to, and every other change
         shows a toast to undo it; F6 reaches it. The week and day draw your sleep and music beside
-        the events, and shade the time outside 9 to 6 on weekdays.{" "}
+        the events, and shade the time outside 9 to 6 on weekdays; the month mutes the weekend.{" "}
         <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">

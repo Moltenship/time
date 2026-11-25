@@ -114,7 +114,12 @@ export function annotationSourceStyle(source: CalendarAnnotationSource): {
   readonly color?: CalendarEventColor;
   readonly Icon?: AnnotationIcon;
 } {
-  return sharedSourceStyle<CalendarEventColor, AnnotationIcon>(source, calendarEventColors);
+  return sharedSourceStyle<CalendarEventColor, AnnotationIcon>(
+    source,
+    calendarEventColors,
+    // A Solid component is a function.
+    (Icon) => typeof Icon === "function",
+  );
 }
 
 export interface TimeGridAnnotationsProps {
@@ -289,19 +294,29 @@ export function annotationMarkVariants(
   return cn(annotationMarkBaseClass, annotationMarkVariantClasses[options.variant ?? "capsule"]);
 }
 
-/** The props an `AnnotationMark`'s `render` spreads on its element. */
-export type AnnotationMarkElementProps = JSX.HTMLAttributes<HTMLDivElement> &
-  Record<`data-${string}`, string | undefined>;
+/**
+ * The props an `AnnotationMark`'s `render` spreads on its element, any element such as a `div` or
+ * a link, typed loosely as the kit's own `render` props are.
+ */
+export type AnnotationMarkElementProps = Record<string, any>;
 
-export interface AnnotationMarkProps {
+/**
+ * A mark takes a `div`'s attributes besides its own. Your handlers run before the mark's, which
+ * wire its tooltip and popover.
+ */
+export interface AnnotationMarkProps extends Omit<
+  JSX.HTMLAttributes<HTMLDivElement>,
+  "children" | "class" | "id" | "ref" | "style"
+> {
   readonly children?: JSX.Element;
   readonly class?: string;
   /** Opens the details popover on click. */
   readonly details?: boolean;
   readonly mark: TimeGridAnnotationMarkData;
   /**
-   * Your own element in place of the `div`: a function of the mark's props, which you spread on
-   * it. They place it, wire its tooltip and popover, and hold the children.
+   * Your own element in place of the `div`: a function of the mark's props. Spread them last, so
+   * they place it, wire its tooltip and popover, and hold the children. Put your own handlers on
+   * the `AnnotationMark`, which runs them first.
    */
   readonly render?: (props: AnnotationMarkElementProps) => JSX.Element;
   readonly style?: JSX.CSSProperties;
@@ -325,6 +340,7 @@ export function AnnotationMark(props: AnnotationMarkProps) {
   const context = useAnnotationsContext();
   const placement = createMemo(() => markPlacement(context.rail, props.mark));
   const details = () => props.details !== false;
+  const rest = omit(props, "children", "class", "details", "mark", "render", "style", "variant");
   const markContext: AnnotationMarkContextValue = {
     get mark() {
       return props.mark;
@@ -370,6 +386,7 @@ export function AnnotationMark(props: AnnotationMarkProps) {
       },
       // A click opens the details without focusing the mark, which sits in the aria-hidden rail.
       onMouseDown: (event: MouseEvent) => {
+        callHandler(props.onMouseDown, event);
         callHandler(trigger.onMouseDown, event);
         event.preventDefault();
       },
@@ -379,12 +396,22 @@ export function AnnotationMark(props: AnnotationMarkProps) {
       // Out of the tab order: the rail is aria-hidden.
       tabindex: -1,
     };
+    // Your handler first, then the trigger's, for each event both handle.
+    const both: Record<string, MouseHandler> = {};
+    for (const key of Object.keys(trigger))
+      if (key.startsWith("on") && key !== "onMouseDown" && key in rest)
+        both[key] = (event) => {
+          callHandler((rest as Record<string, unknown>)[key], event);
+          callHandler(trigger[key], event);
+        };
     // The id first, as React sets it, so the element's attributes read in the same order.
     const all = merge(
       { id: trigger.id },
+      omit(rest, "onMouseDown"),
       omit(trigger, "id", "onMouseDown"),
+      both,
       own,
-    ) as AnnotationMarkElementProps;
+    ) as unknown as AnnotationMarkElementProps;
     const render = props.render;
     return render === undefined ? <div {...all} /> : render(all);
   };

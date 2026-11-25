@@ -166,18 +166,16 @@ export function markVariables(
 /**
  * A source's `color`, one of the theme's `colors`, and its `Icon`, when they are valid. Sources
  * reach the view through the root as plain `CalendarAnnotationSource`s, so the fields are checked
- * rather than assumed: an icon is a function component, or a React memo or forwardRef object.
+ * rather than assumed: `isIcon` says what the view's framework can render as a component.
  */
 export function annotationSourceStyle<Color extends string, Icon>(
   source: CalendarAnnotationSource,
   colors: readonly Color[],
+  isIcon: (value: unknown) => boolean,
 ): { readonly color?: Color; readonly Icon?: Icon } {
   const { color, Icon } = source as { readonly color?: unknown; readonly Icon?: unknown };
   return {
     color: colors.find((known) => known === color),
-    Icon:
-      typeof Icon === "function" || (typeof Icon === "object" && Icon !== null)
-        ? (Icon as Icon)
-        : undefined,
+    Icon: isIcon(Icon) ? (Icon as Icon) : undefined,
   };
 }
