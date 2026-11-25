@@ -60,6 +60,13 @@ function samplesOf(file: DocsFile): Sample[] {
 const script: ReadonlySet<string> = new Set(["ts", "tsx", "js", "jsx", "typescript", "javascript"]);
 const isFenced = (sample: Sample) => !sample.from.includes("/");
 
+/** What a shared page says to Solid's reader alone: the text of its `<Solid>` blocks. */
+function solidBlocksOf(file: DocsFile): string {
+  return [...file.source.matchAll(/<Solid>([\s\S]*?)<\/Solid>/gu)]
+    .map(([, text]) => text)
+    .join("\n");
+}
+
 describe("code samples in Solid's docs", () => {
   test("a Solid page has no TypeScript written in the page: its samples are included files", () => {
     // A fenced block is text that no compiler reads, so an API that changes would leave it wrong.
@@ -67,6 +74,19 @@ describe("code samples in Solid's docs", () => {
       .flatMap(samplesOf)
       .filter((sample) => isFenced(sample) && script.has(sample.from))
       .map((sample) => `${sample.file}: a \`${sample.from}\` block`);
+    expect(inline).toEqual([]);
+  });
+
+  test("nor has a `<Solid>` block of a shared page", () => {
+    // A shared page may write TypeScript that both frameworks read, as React's pages do. What it
+    // shows Solid's reader alone is Solid code, so it's an included file too.
+    const inline = solidPages
+      .filter((file) => file.framework === undefined)
+      .flatMap((file) =>
+        [...solidBlocksOf(file).matchAll(fence)]
+          .filter(([, language = ""]) => script.has(language))
+          .map(([, language]) => `${file.file}: a \`${language}\` block in <Solid>`),
+      );
     expect(inline).toEqual([]);
   });
 
@@ -146,6 +166,21 @@ describe("the blocks one framework's reader sees", () => {
     },
   );
 
+  test("a block's tag in the first column stands alone on its line", () => {
+    // The formatter reads a tag in the first column, with text after it, as a block of its own
+    // and puts a blank line before it. That ends the paragraph in the middle of a sentence. So a
+    // block inside a sentence starts after the sentence's words, on their line, and a block that
+    // is a whole paragraph has its tags on lines of their own.
+    const lines = docsFiles().flatMap((file) =>
+      file.source
+        .split("\n")
+        .map((line, index) => ({ line, where: `${file.file}:${index + 1}` }))
+        .filter(({ line }) => /^<(?:React|Solid)>\s*\S/u.test(line))
+        .map(({ where }) => where),
+    );
+    expect(lines).toEqual([]);
+  });
+
   test("a page one framework has uses no blocks: all of it is that framework's", () => {
     const withBlocks = docsFiles()
       .filter((file) => file.framework !== undefined && blockTag.test(file.source))
@@ -167,7 +202,9 @@ describe("where Solid's docs lean on React's", () => {
   test("only the listed pages link to React's docs", () => {
     const found: Record<string, number> = {};
     for (const file of solidPages) {
-      const count = [...viewOf(file, "solid").matchAll(/\]\(\/docs\/react(?=[/#)])/gu)].length;
+      // Markdown links, and the `href` of a card or another component.
+      const count = [...viewOf(file, "solid").matchAll(/(?:\]\(|href=")\/docs\/react(?=[/#)"])/gu)]
+        .length;
       if (count > 0) found[file.file] = count;
     }
     expect(found).toEqual(linksToReact);

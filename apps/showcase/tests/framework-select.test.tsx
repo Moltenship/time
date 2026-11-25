@@ -61,7 +61,7 @@ describe("the options", () => {
 
   test("the selected option is marked, and leads where the reader is", () => {
     const [react, solid] = frameworkOptions("/docs/solid/quick-start", "solid", pages);
-    expect(solid?.props?.["aria-current"]).toBe("true");
+    expect(solid?.props?.["aria-current"]).toBe("page");
     expect(solid?.url).toBe("/docs/solid/quick-start");
     expect(react?.props?.["aria-current"]).toBeUndefined();
   });
@@ -146,7 +146,7 @@ describe("the select", () => {
       ["React", "/docs/react/quick-start"],
       ["Solid", "/docs/solid/quick-start"],
     ]);
-    expect(links.map((link) => link.getAttribute("aria-current"))).toEqual(["true", null]);
+    expect(links.map((link) => link.getAttribute("aria-current"))).toEqual(["page", null]);
   });
 
   test("in Solid's docs it names Solid, and React's link leads back to the same page", () => {
@@ -158,7 +158,7 @@ describe("the select", () => {
       "/docs/react/api/components",
       "/docs/solid/api/components",
     ]);
-    expect(links.map((link) => link.getAttribute("aria-current"))).toEqual([null, "true"]);
+    expect(links.map((link) => link.getAttribute("aria-current"))).toEqual([null, "page"]);
   });
 
   test("a page Solid lacks leads to the nearest one it has", () => {

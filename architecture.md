@@ -1631,7 +1631,7 @@ content/docs/**/*.mdx
   → source.config.ts schemas and MDX options
   → generated Fumadocs source
   → lib/source.ts loader
-  → app/docs/[[...slug]] page + generated navigation
+  → app/docs/[framework]/[[...slug]] page + generated navigation
   → pre-rendered pages and static-compatible search index
 ```
 

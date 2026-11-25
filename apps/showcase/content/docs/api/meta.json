@@ -8,8 +8,8 @@
     "changes",
     "store",
     "primitives",
-    "[Temporal helpers](/docs/api/temporal)",
     "---Other packages---",
+    "[Temporal helpers](/docs/api/temporal)",
     "[Recurrence](/docs/api/recurrence)",
     "[iCalendar (ICS)](/docs/api/ics)",
     "dnd-kit"

@@ -13,9 +13,9 @@ replace single occurrences. The package does two things with a series:
 
 ## Use it without the calendar
 
-The package imports no UI framework. It depends on `@moltenship/calendar-core`,
-`@moltenship/calendar-temporal` and `@moltenship/ics`, which import none either, so it expands a
-series on a server, in a worker or in a script as it does in a browser.
+The package imports no UI framework. It depends on `@moltenship/calendar-core` and
+`@moltenship/ics`, which import none either, so it expands a series on a server, in a worker or in
+a script as it does in a browser.
 
 The calendar doesn't need it, and doesn't re-export it. Occurrences reach a calendar as ordinary
 events, through an adapter, so views, dragging and the event engine work the same with or without

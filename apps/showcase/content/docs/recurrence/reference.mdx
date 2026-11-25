@@ -126,10 +126,7 @@ An event that is both a master and an override is read as the override, with a
 
 ### RecurringCalendarEvent
 
-`RecurringCalendarEvent<TData, TEventId, TResourceId>` is core's
-
-<React>[`CalendarEvent`](/docs/concepts/events#records-in-times-own-shape)</React>
-<Solid>`CalendarEvent`</Solid>
+`RecurringCalendarEvent<TData, TEventId, TResourceId>` is core's <React>[`CalendarEvent`](/docs/concepts/events#records-in-times-own-shape)</React><Solid>`CalendarEvent`</Solid>
 with an optional `recurrence: EventRecurrence` and `override: RecurrenceOverride`. Use it when your
 app has no event type of its own, with [`createCanonicalRecurrenceAdapter`](#adapters). It's also
 what [`recurringEventsFromIcs`](#ics-bridge) returns and
@@ -837,4 +834,8 @@ same objects.
 edit creates: an override, or the new series when `newSeries.id` isn't set. It gets the event
 without its ID. Apps with their own event type or store write the same steps themselves.
 
-<React>See [Save the edit](/docs/recurrence/calendar#save-the-edit).</React>
+<React>
+
+See [Save the edit](/docs/recurrence/calendar#save-the-edit).
+
+</React>

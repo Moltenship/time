@@ -122,6 +122,9 @@ React's docs documents every option. Give one element both refs with `ref={[keyb
 
 <include meta='title="month.tsx"'>../../examples/solid/month.tsx#month</include>
 
+A view shows once the calendar has it. Add `monthView` to the `views` that `createCalendar` takes,
+beside the quick start's agenda: `views: [listView, monthView]`.
+
 The keys are the ones [Keyboard](/docs/react/accessibility#keyboard) lists in React's docs. Space picks up the focused
 event, or starts a new one on the focused day, arrow keys move it, and Enter or Space drops it. A
 pointer drags the event, its `data-resize` handle, or across empty days. Neither starts when `Root`

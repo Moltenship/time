@@ -487,11 +487,12 @@ allows.
 
 > **Changed on 2026-11-25, by the owner.** The docs are two full sets, as TanStack's are: React
 > docs at `/docs/react` and Solid docs at `/docs/solid`, with a React and Solid select at the top
-> of the sidebar. That replaces the first and third bullets below: there are no framework tabs
-> inside a page, and the old addresses redirect. A page that reads the same for both is written
-> once, and `<React>` and `<Solid>` blocks hold what differs. A page about something Solid lacks
-> is absent from the Solid docs until its step lands. The other bullets hold, with "the Solid
-> page" for "the Solid tab".
+> of the sidebar. That replaces the first, third and last bullets below: there are no framework
+> tabs inside a page, and the old addresses redirect. A page that reads the same for both is
+> written once, and `<React>` and `<Solid>` blocks hold what differs. A page about something Solid
+> lacks is absent from the Solid docs until its step lands, and the docs' "React and Solid" page
+> lists what's coming. The second and fourth bullets hold, with "the Solid page" for "the Solid
+> tab".
 
 - **One set of pages, two tabs.** Each views page, the quick start and the installation page show
   React and Solid code in tabs that share one remembered choice, so picking Solid on one page
@@ -531,9 +532,9 @@ question is left open.
     site are not planned (point 12).
 11. TanStack Virtual stays. `createVirtualizer` is a possibility after 2.0, with no commitment
     (point 9).
-12. Added on 2026-11-25: the docs are a React set and a Solid set, each complete for what its
-    framework has, with the framework in the address and a select in the sidebar. This replaces
-    the tabs of point 12.
+12. Added on 2026-11-25: the docs are a React set and a Solid set, with the framework in the
+    address and a select in the sidebar. The Solid set has pages only on what Solid has, and it
+    grows as Solid does. This replaces the tabs of point 12.
 
 ## Alternatives
 

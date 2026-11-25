@@ -8,10 +8,13 @@ beside it: it expands each series into its occurrences for the dates on screen, 
 shows those as ordinary events. Views, drag and drop, and the event engine work the same with or
 without it, and apps that don't import it pay nothing for it.
 
-This page explains the model.
+This page explains the model. The [API reference](/docs/recurrence/reference) lists every export.
 
-<React>[Show and edit recurring events](/docs/recurrence/calendar) wires it into a calendar.</React>
-The [API reference](/docs/recurrence/reference) lists every export.
+<React>
+
+[Show and edit recurring events](/docs/recurrence/calendar) wires the model into a calendar.
+
+</React>
 
 ## Series
 
@@ -35,11 +38,9 @@ Occurrences, 19–23 Oct: Mon 09:00, Tue 09:00, Thu 10:00, Fri 09:00
 ```
 
 Your events keep their own shape. A recurrence adapter, beside your event adapter, reads the
-recurrence of a master and what an override replaces, as an
-
-<React>[event adapter](/docs/concepts/events)</React>
-<Solid>event adapter</Solid> reads titles and times. Series can be endless, so occurrences exist
-only for the dates you expand, usually the dates the calendar shows.
+recurrence of a master and what an override replaces, as an <React>[event adapter](/docs/concepts/events)</React><Solid>event adapter</Solid>
+reads titles and times. Series can be endless, so occurrences exist only for the dates you expand,
+usually the dates the calendar shows.
 
 ## Each series keeps its own time
 
@@ -77,7 +78,11 @@ its master loads. One-off events keep their own IDs.
 Changing the following occurrences, or all of them, changes their original starts, and so their
 IDs. The edit's `occurrenceIds` maps old IDs to new ones, so your selection can follow.
 
-<React>See [Keep the selection](/docs/recurrence/calendar#keep-the-selection).</React>
+<React>
+
+See [Keep the selection](/docs/recurrence/calendar#keep-the-selection).
+
+</React>
 
 ## Editing a series
 

@@ -43,7 +43,7 @@ export function frameworkOptions(
       icon: logos[framework],
       // The selected option leads where the reader is, so choosing it again changes nothing.
       url: selected ? pathname : twinUrl(pathname, framework, (url) => own.has(url)),
-      props: { "aria-current": selected ? "true" : undefined },
+      props: { "aria-current": selected ? "page" : undefined },
     };
   });
 }

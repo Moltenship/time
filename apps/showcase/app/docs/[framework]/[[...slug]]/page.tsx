@@ -5,6 +5,7 @@ import {
   type DocsPage,
   canonicalUrl,
   frameworkOf,
+  neighbours,
   pageSections,
   qualifiedTitle,
   sourceFile,
@@ -74,7 +75,7 @@ export default async function DocumentationPage(props: DocumentationPageProps) {
   };
 
   return (
-    <Page full={page.data.full} toc={page.data.toc}>
+    <Page footer={{ items: neighbours(page) }} full={page.data.full} toc={page.data.toc}>
       <script dangerouslySetInnerHTML={jsonLd(structuredData)} type="application/ld+json" />
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription>{page.data.description}</DocsDescription>

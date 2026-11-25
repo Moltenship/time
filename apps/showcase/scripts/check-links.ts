@@ -4,6 +4,8 @@ import { type LinkedPage, brokenLinks } from "@/lib/link-check";
 import { pageMarkdown } from "@/lib/llms";
 import { allPages, docLinks } from "@/lib/source";
 
+import { sourceProblems } from "./check-source";
+
 // The site's addresses outside the docs: the App Router's own pages, and the Markdown ones, which
 // are route handlers and a rewrite (`app/llms.txt`, `app/llms-full.txt`, `docs-redirects.mjs`).
 const scanned = await scanURLs({ cwd: process.cwd(), preset: "next" });
@@ -53,16 +55,23 @@ for (const { file, link, page, reason } of brokenInMarkdown) {
 }
 for (const leftover of leftovers) console.error(leftover);
 
-const failures = broken.length + brokenInMarkdown.length + leftovers.length;
+// The rest of what the two sets promise: canonical addresses, the sitemap, the sidebars, the
+// links at the foot of each page and the search records (`check-source.ts`).
+const problems = sourceProblems();
+for (const problem of problems) console.error(problem);
+
+const failures = broken.length + brokenInMarkdown.length + leftovers.length + problems.length;
 if (failures > 0) {
   console.error(
     `${broken.length} broken links on the pages, ${brokenInMarkdown.length} in their Markdown, ` +
-      `and ${leftovers.length} pages whose Markdown kept a framework's block.`,
+      `${leftovers.length} pages whose Markdown kept a framework's block, ` +
+      `and ${problems.length} other problems.`,
   );
   process.exit(1);
 }
 
 const count = linked.reduce((total, page) => total + page.links.length, 0);
 console.log(
-  `Validated ${count} links on ${linked.length} pages of the React and Solid docs, and each page's Markdown.`,
+  `Validated ${count} links on ${linked.length} pages of the React and Solid docs, each page's Markdown, ` +
+    "and the canonical addresses, sitemap, sidebars and search records.",
 );
