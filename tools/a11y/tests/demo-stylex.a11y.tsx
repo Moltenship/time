@@ -8,7 +8,7 @@ import { button, events, renderDemo } from "./demo-stylex-screen";
 import { click, until } from "./render";
 
 describe("StyleX demo", () => {
-  test("styles apply: StyleX's, Astryx's and the calendar's tokens, in both themes", async () => {
+  test("styles apply: StyleX's and the calendar's tokens, in both themes", async () => {
     for (const theme of themes) {
       setTheme(theme);
       await renderDemo("week");
@@ -18,8 +18,8 @@ describe("StyleX demo", () => {
       expect(getComputedStyle(event).position).toBe("absolute");
       expect(getComputedStyle(event).backgroundColor).not.toBe("rgba(0, 0, 0, 0)");
       const create = button("Create", document.querySelector("aside") ?? document);
-      expect(create && getComputedStyle(create).cursor).toBe("pointer");
-      expect(document.documentElement.dataset.theme).toBe(theme);
+      expect(create && getComputedStyle(create).borderTopWidth).toBe("1px");
+      expect(document.documentElement.classList.contains("dark")).toBe(theme === "dark");
       expect(getComputedStyle(document.documentElement).colorScheme).toBe(theme);
     }
   });
@@ -42,14 +42,15 @@ describe("StyleX demo", () => {
     await renderDemo("week");
     await click(button("Create", document.querySelector("aside") ?? document));
 
-    const dialog = document.querySelector<HTMLElement>("dialog[open]");
+    await until(() => expect(document.querySelector('[role="dialog"]')).not.toBeNull());
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
     const title = dialog?.querySelector<HTMLInputElement>('input[placeholder="Add title"]');
     if (title == null) throw new Error("no-title-field");
     await userEvent.fill(title, "Planning poker");
     await click(button("Save", dialog ?? document));
 
     await until(() => {
-      expect(document.querySelector("dialog[open]")).toBeNull();
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
       expect(events().some((event) => event.textContent?.includes("Planning poker"))).toBe(true);
     });
   });
@@ -58,7 +59,7 @@ describe("StyleX demo", () => {
     setTheme("light");
     await renderDemo("week");
 
-    const switcher = document.querySelector<HTMLElement>('[role="banner"] [role="combobox"]');
+    const switcher = document.querySelector<HTMLElement>('header [role="combobox"]');
     await click(switcher);
     let month: HTMLElement | undefined;
     await until(() => {

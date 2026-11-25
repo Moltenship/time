@@ -50,7 +50,7 @@ const solidWorkspaces =
  * free of ui-sdk. The registry's own tests read the kit through an agent bridge too.
  */
 const uiSdkWorkspaces =
-  "(?:^|/)(?:packages/calendar-(?:primitives|react|solid)/|packages/calendar-testing/tests/|registry/(?:(?:solid/|shared/)?calendar-ui|stylex-calendar-ui|(?:solid/)?tests)/|apps/(?:demo-solid|showcase)/)";
+  "(?:^|/)(?:packages/calendar-(?:primitives|react|solid)/|packages/calendar-testing/tests/|registry/(?:(?:solid/|shared/)?calendar-ui|stylex-calendar-ui|(?:solid/)?tests)/|apps/(?:demo-solid|showcase)/|apps/demo/src/stylex/)";
 const sourceRoots = "(?:^|/)(?:apps|benchmarks|packages|registry|tools)/";
 /** A package's source and its tests: rules 12 and 13 cover both (architecture.md). */
 const packageCodePath = (packageName: string) =>
@@ -376,7 +376,7 @@ export default {
     {
       name: "only-primitives-and-integrations-import-ui-sdk",
       comment:
-        "ui-sdk is a peer of calendar-primitives, calendar-react and calendar-solid; besides them only the registry's kits of controls (registry/calendar-ui, registry/solid/calendar-ui, registry/stylex-calendar-ui and the kits' shared files) and the registries' tests, calendar-testing's tests, and the applications that create an agent bridge import it: the Solid demo and the docs site.",
+        "ui-sdk is a peer of calendar-primitives, calendar-react and calendar-solid; besides them only the registry's kits of controls (registry/calendar-ui, registry/solid/calendar-ui, registry/stylex-calendar-ui and the kits' shared files) and the registries' tests, calendar-testing's tests, the applications that create an agent bridge import it: the Solid demo and the docs site, and the React demo's StyleX page, whose chrome builds the controls the kit lacks on it (ADR 0279).",
       severity: "error",
       from: { path: sourceRoots, pathNot: uiSdkWorkspaces },
       to: { path: uiSdkPackages },

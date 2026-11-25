@@ -70,7 +70,7 @@ export default defineConfig(({ command }) => ({
       // Into the `/stylex/` page's stylesheet, not the Tailwind page's.
       cssInjectionTarget: (fileName: string) => /(?:^|\/)stylex-[^/]+\.css$/u.test(fileName),
       dev: command === "serve",
-      // Astryx's tokens use `light-dark()`, which older targets would lower, breaking its themes.
+      // The calendar's tokens use `light-dark()`, which older targets would lower, breaking them.
       lightningcssOptions: {
         targets: { chrome: 123 << 16, firefox: 120 << 16, safari: (17 << 16) | (5 << 8) },
       },
@@ -84,7 +84,7 @@ export default defineConfig(({ command }) => ({
   build: {
     cssTarget: ["chrome123", "firefox120", "safari17.5"],
     rollupOptions: {
-      // Two pages, so neither loads the other's global CSS: Tailwind's, and Astryx's.
+      // Two pages, so neither loads the other's global CSS: Tailwind's, and the StyleX page's.
       input: { main: fromHere("index.html"), stylex: fromHere("stylex/index.html") },
     },
   },

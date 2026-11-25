@@ -1,41 +1,62 @@
-import { Icon } from "@astryxdesign/core/Icon";
-import { IconButton } from "@astryxdesign/core/IconButton";
-import { Text } from "@astryxdesign/core/Text";
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import * as stylex from "@stylexjs/stylex";
 import { CalendarPlusIcon, GripVerticalIcon } from "lucide-react";
 import { useId, useRef } from "react";
 
-import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import { eventColorStyles } from "@registry/stylex-calendar-theme/event-color-styles";
+import { Button } from "@registry/stylex-calendar-ui/button";
 
 import { getCalendarColor } from "../../calendars";
 import type { DemoTask, DemoTaskList } from "../../tasks";
 import { useUnschedule } from "../../unschedule";
 import { taskLength, useTaskCard, useUnscheduledDrop } from "../../unscheduled";
 import { StylexDemoCalendar } from "../calendar";
-import { SectionHeading } from "./section";
+import { visuallyHidden } from "../ui/visually-hidden";
+import { sectionStyles } from "./section";
 
 const styles = stylex.create({
-  card: {
+  hint: {
+    color: "var(--muted-foreground)",
+    fontSize: "0.75rem",
+    lineHeight: "calc(1 / 0.75)",
+    paddingBottom: "0.5rem",
+    paddingInline: "0.5rem",
+  },
+  list: {
+    borderRadius: "var(--radius)",
+    display: "flex",
+    flexDirection: "column",
+    gap: "0.25rem",
+    minHeight: "3rem",
+    padding: "0.25rem",
+    transitionDuration: "150ms",
+    transitionProperty:
+      "color, background-color, border-color, outline-color, text-decoration-color, fill, stroke",
+    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
+  },
+  dropTarget: {
+    backgroundColor: "var(--accent)",
+    boxShadow: "0 0 0 2px var(--ring)",
+  },
+  item: {
+    alignItems: "center",
+    display: "flex",
+    gap: "0.25rem",
+  },
+  // `brightness()` takes no `light-dark()`, so the hover dims in both schemes; the main demo's
+  // brightens in dark.
+  task: {
     alignItems: "flex-start",
-    appearance: "none",
-    backgroundColor: {
-      default: calendarVars["--calendar-event"],
-      ":hover": `color-mix(in oklch, ${calendarVars["--calendar-event"]} 92%, ${calendarVars["--calendar-event-foreground"]})`,
-    },
-    borderBlockWidth: 0,
-    borderInlineEndWidth: 0,
-    borderInlineStartColor: calendarVars["--calendar-event-border"],
+    backgroundColor: "var(--calendar-event)",
+    borderInlineStartColor: "var(--calendar-event-border)",
     borderInlineStartStyle: "solid",
     borderInlineStartWidth: 3,
     borderRadius: "calc(var(--radius) * 0.8)",
-    color: calendarVars["--calendar-event-foreground"],
+    color: "var(--calendar-event-foreground)",
     cursor: "grab",
     display: "flex",
-    flexBasis: 0,
+    filter: { default: null, ":hover": "brightness(0.97)" },
     flexGrow: 1,
-    fontFamily: "inherit",
+    flexShrink: 1,
     gap: "0.375rem",
     minWidth: 0,
     opacity: {
@@ -44,8 +65,8 @@ const styles = stylex.create({
       "[data-dragging]": 0.6,
       "[data-over-calendar]": 0.3,
     },
-    outlineColor: { default: null, ":focus-visible": calendarVars["--ring"] },
-    outlineOffset: { default: null, ":focus-visible": "1px" },
+    outlineColor: { default: null, ":focus-visible": "var(--ring)" },
+    outlineOffset: { default: null, ":focus-visible": 1 },
     outlineStyle: { default: null, ":focus-visible": "solid" },
     outlineWidth: { default: null, ":focus-visible": 2 },
     paddingBlock: "0.375rem",
@@ -54,6 +75,7 @@ const styles = stylex.create({
     textAlign: "start",
     transitionDuration: "150ms",
     transitionProperty: "opacity",
+    transitionTimingFunction: "cubic-bezier(0.4, 0, 0.2, 1)",
   },
   grip: {
     flexShrink: 0,
@@ -62,35 +84,9 @@ const styles = stylex.create({
     opacity: 0.5,
     width: "0.875rem",
   },
-  hint: {
-    paddingBlockEnd: "0.5rem",
-  },
-  item: {
-    alignItems: "center",
-    display: "flex",
-    gap: "0.25rem",
-  },
-  length: {
-    display: "block",
-    fontSize: "0.75rem",
-    lineHeight: "1rem",
-  },
-  list: {
-    backgroundColor: { default: null, "[data-over]": calendarVars["--accent"] },
-    borderRadius: "var(--radius)",
-    boxShadow: { default: null, "[data-over]": `0 0 0 2px ${calendarVars["--ring"]}` },
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.25rem",
-    minHeight: "3rem",
-    outlineStyle: "none",
-    padding: "0.25rem",
-    transitionDuration: "150ms",
-    transitionProperty: "background-color",
-  },
   text: {
-    flexBasis: 0,
     flexGrow: 1,
+    flexShrink: 1,
     minWidth: 0,
   },
   title: {
@@ -98,6 +94,11 @@ const styles = stylex.create({
     fontSize: "0.875rem",
     fontWeight: 500,
     lineHeight: 1.375,
+  },
+  length: {
+    display: "block",
+    fontSize: "0.75rem",
+    lineHeight: "calc(1 / 0.75)",
   },
 });
 
@@ -124,20 +125,22 @@ export function UnscheduledTasks({ onSchedule, taskList }: UnscheduledTasksProps
 
   return (
     <section aria-labelledby={headingId}>
-      <SectionHeading id={headingId}>Unscheduled</SectionHeading>
-      <Text as="p" display="block" id={hintId} type="supporting" xstyle={styles.hint}>
+      <h2 id={headingId} {...stylex.props(sectionStyles.heading)}>
+        Unscheduled
+      </h2>
+      <p id={hintId} {...stylex.props(styles.hint)}>
         Drag a task onto the calendar, or an event here to unschedule it.
-      </Text>
+      </p>
       <ul
         ref={(node) => {
           ref(node);
           listRef.current = node;
         }}
         aria-describedby={hintId}
+        data-over={isDropTarget || undefined}
         // Where focus goes back to after a task's editor saves it away.
         tabIndex={-1}
-        data-over={isDropTarget || undefined}
-        {...stylex.props(styles.list)}
+        {...stylex.props(styles.list, isDropTarget && styles.dropTarget)}
       >
         {tasks.map((task) => (
           <TaskItem
@@ -168,30 +171,31 @@ function TaskItem({
     <li {...stylex.props(styles.item)}>
       <button
         ref={ref}
-        type="button"
-        data-color={color}
         aria-busy={saving || undefined}
+        data-color={color}
         data-dragging={isDragSource || undefined}
-        data-task-id={task.id}
         data-over-calendar={overCalendar || undefined}
-        {...stylex.props(styles.card, eventColorStyles[color])}
+        data-task-id={task.id}
+        type="button"
+        {...stylex.props(styles.task, eventColorStyles[color])}
       >
         <GripVerticalIcon aria-hidden {...stylex.props(styles.grip)} />
         <span {...stylex.props(styles.text)}>
           <span {...stylex.props(styles.title)}>{task.title}</span>
           {/* Read as "Long run, 1 h": the name is the card's own text. */}
-          <VisuallyHidden>, </VisuallyHidden>
+          <span {...stylex.props(visuallyHidden.text)}>, </span>
           <span {...stylex.props(styles.length)}>{taskLength(task.minutes)}</span>
         </span>
       </button>
-      <IconButton
-        icon={<Icon icon={CalendarPlusIcon} />}
-        isDisabled={saving}
-        label={`Schedule ${task.title}`}
-        onClick={(click) => onSchedule(task, click.currentTarget as HTMLElement)}
-        size="sm"
+      <Button
+        aria-label={`Schedule ${task.title}`}
+        disabled={saving}
+        onClick={(click) => onSchedule(task, click.currentTarget)}
+        size="icon-sm"
         variant="ghost"
-      />
+      >
+        <CalendarPlusIcon aria-hidden />
+      </Button>
     </li>
   );
 }

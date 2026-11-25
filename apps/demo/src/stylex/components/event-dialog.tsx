@@ -1,53 +1,92 @@
-import { Button } from "@astryxdesign/core/Button";
-import { CheckboxInput } from "@astryxdesign/core/CheckboxInput";
-import { DateInput } from "@astryxdesign/core/DateInput";
-import { Dialog, DialogHeader } from "@astryxdesign/core/Dialog";
-import { Layout, LayoutContent, LayoutFooter } from "@astryxdesign/core/Layout";
-import { Selector } from "@astryxdesign/core/Selector";
-import { HStack, VStack } from "@astryxdesign/core/Stack";
-import { TextArea } from "@astryxdesign/core/TextArea";
-import { TextInput } from "@astryxdesign/core/TextInput";
-import { TimeInput } from "@astryxdesign/core/TimeInput";
-import type { IsoDayOfWeek } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
-import { useEffect, useRef } from "react";
+import { useId } from "react";
 
-import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
+import { eventColorStyles } from "@registry/stylex-calendar-theme/event-color-styles";
+import { Button } from "@registry/stylex-calendar-ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@registry/stylex-calendar-ui/select";
 
-import { demoCalendars, isDemoCalendarId } from "../../calendars";
+import { demoCalendars, getCalendarColor, isDemoCalendarId } from "../../calendars";
 import { moveDraftStart, repeatsFrom, type EventDraft } from "../../event-draft";
-import { parseDate, parseTime, useEventForm, type EventFormOptions } from "../../event-form";
+import {
+  parseDate,
+  parseTime,
+  timeValue,
+  useEventForm,
+  type EventFormOptions,
+} from "../../event-form";
 import { seriesDate } from "../../repeat";
 import { StylexDemoCalendar } from "../calendar";
-import { isoDate, isoTime } from "./iso";
+import { Checkbox } from "../ui/checkbox";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog";
+import { Input, Label, Textarea } from "../ui/field";
+import { visuallyHidden } from "../ui/visually-hidden";
 import { RepeatField } from "./repeat-field";
 import { ResourcePicker } from "./resource-picker";
-import { Swatch } from "./swatch";
+
+const small = "@media (min-width: 640px)";
 
 const styles = stylex.create({
-  error: {
-    color: calendarVars["--destructive"],
-    fontSize: "0.875rem",
-    lineHeight: "1.25rem",
+  content: {
+    maxWidth: { default: "calc(100% - 2rem)", [small]: "28rem" },
   },
-  // The form holds the dialog's header, content and footer without being a box of its own.
   form: {
-    display: "contents",
+    display: "grid",
+    gap: "1rem",
+  },
+  title: {
+    fontSize: "1.125rem",
+    height: "2.75rem",
+    lineHeight: "calc(1.75 / 1.125)",
+  },
+  allDay: {
+    width: "fit-content",
+  },
+  when: {
+    alignItems: "center",
+    columnGap: "0.5rem",
+    display: "grid",
+    gridTemplateColumns: "auto 1fr auto",
+    rowGap: "0.75rem",
+  },
+  span: {
+    gridColumn: "span 2 / span 2",
+  },
+  time: {
+    width: { default: "6.5rem", [small]: "7rem" },
+  },
+  field: {
+    display: "grid",
+    gap: "0.5rem",
+  },
+  full: {
+    width: "100%",
+  },
+  dot: {
+    backgroundColor: "var(--calendar-event-border)",
+    borderRadius: "9999px",
+    flexShrink: 0,
+    height: "0.75rem",
+    width: "0.75rem",
   },
   option: {
     alignItems: "center",
     display: "flex",
-    gap: "0.5rem",
+    gap: "0.375rem",
   },
-  when: {
-    columnGap: "0.5rem",
-    display: "grid",
-    gridTemplateColumns: "1fr 8rem",
-    minWidth: 0,
-    rowGap: "0.75rem",
+  description: {
+    maxHeight: "10rem",
   },
-  whenAllDay: {
-    gridTemplateColumns: "1fr",
+  error: {
+    color: "var(--destructive)",
+    fontSize: "0.875rem",
+    lineHeight: "calc(1.25 / 0.875)",
   },
 });
 
@@ -60,7 +99,6 @@ export interface EventDialogProps {
   /** Where focus goes when the dialog closes, such as the event it edits. */
   readonly returnFocus?: HTMLElement | null;
   readonly timeZone: string;
-  readonly weekStartsOn: IsoDayOfWeek;
 }
 
 export function EventDialog({
@@ -70,61 +108,44 @@ export function EventDialog({
   onSave,
   returnFocus,
   timeZone,
-  weekStartsOn,
 }: EventDialogProps) {
-  const open = draft !== null;
-  // Astryx's dialog returns focus to what was focused as it opened, in its own effect, which runs
-  // before this one: a place to return to wins over it.
-  const wasOpen = useRef(false);
-  useEffect(() => {
-    if (wasOpen.current && !open && returnFocus?.isConnected === true) returnFocus.focus();
-    wasOpen.current = open;
-  }, [open, returnFocus]);
-
   return (
-    <Dialog
-      // Bounded by the viewport so a long description scrolls instead of pushing Save off-screen.
-      maxHeight="calc(100dvh - 2rem)"
-      isOpen={open}
-      onOpenChange={onOpenChange}
-      purpose="form"
-      width={480}
-    >
-      {draft !== null && (
-        <EventForm
-          initial={draft}
-          locale={locale}
-          onOpenChange={onOpenChange}
-          onSave={onSave}
-          timeZone={timeZone}
-          weekStartsOn={weekStartsOn}
-        />
-      )}
+    <Dialog open={draft !== null} onOpenChange={onOpenChange}>
+      <DialogContent
+        finalFocus={() => (returnFocus?.isConnected === true ? returnFocus : undefined)}
+        xstyle={styles.content}
+      >
+        {draft !== null && (
+          <EventForm initial={draft} locale={locale} onSave={onSave} timeZone={timeZone} />
+        )}
+      </DialogContent>
     </Dialog>
   );
 }
 
-/** Whether a locale writes times on a 12-hour clock, as the native field the other UI has does. */
-function hourFormat(locale: Intl.LocalesArgument): "12h" | "24h" {
-  const { hour12 } = new Intl.DateTimeFormat(locale, { hour: "numeric" }).resolvedOptions();
-  return hour12 === true ? "12h" : "24h";
+function CalendarDot({ calendarId }: { readonly calendarId: string }) {
+  const color = isDemoCalendarId(calendarId) ? getCalendarColor(calendarId) : undefined;
+  return (
+    <span
+      aria-hidden
+      data-color={color}
+      {...stylex.props(styles.dot, color !== undefined && eventColorStyles[color])}
+    />
+  );
 }
 
 function EventForm({
   initial,
   locale,
-  onOpenChange,
   onSave,
   timeZone,
-  weekStartsOn,
 }: {
   readonly initial: EventDraft;
   readonly locale: Intl.LocalesArgument;
-  readonly onOpenChange: (open: boolean) => void;
   readonly onSave: EventDialogProps["onSave"];
   readonly timeZone: string;
-  readonly weekStartsOn: IsoDayOfWeek;
 }) {
+  const id = useId();
   const actions = StylexDemoCalendar.useCalendarActions();
   const { draft, error, interval, saving, setDraft, submit, update } = useEventForm({
     actions,
@@ -132,160 +153,146 @@ function EventForm({
     onSave,
     timeZone,
   });
-  // After Astryx's dialog header has focused its title, which it does each time its effect runs.
-  const titleRef = useRef<HTMLInputElement>(null);
-  useEffect(() => titleRef.current?.focus(), []);
-  const clock = hourFormat(locale);
-  const firstDay = weekStartsOn === 7 ? 0 : weekStartsOn;
 
   return (
     <form noValidate onSubmit={submit} {...stylex.props(styles.form)}>
-      <Layout
-        content={
-          <LayoutContent>
-            <VStack gap={4}>
-              <TextInput
-                ref={titleRef}
-                hasAutoFocus
-                isLabelHidden
-                label="Title"
-                onChange={(title) => update({ title })}
-                placeholder="Add title"
-                size="lg"
-                status={
-                  error !== undefined && draft.title.trim() === "" ? { type: "error" } : undefined
-                }
-                value={draft.title}
-                width="100%"
-              />
-              <CheckboxInput
-                // A task goes on a time slot, so it can go back to the unscheduled tasks.
-                isDisabled={initial.newId !== undefined}
-                label="All day"
-                onChange={(allDay) => update({ allDay })}
-                value={draft.allDay}
-              />
-              <fieldset
-                aria-label="When"
-                {...stylex.props(styles.when, draft.allDay && styles.whenAllDay)}
-              >
-                <DateInput
-                  label="Starts"
-                  onChange={(text) => {
-                    const date = text === undefined ? undefined : parseDate(text);
-                    if (date)
-                      setDraft((current) => moveDraftStart(current, date, current.startTime));
-                  }}
-                  value={isoDate(draft.startDate)}
-                  weekStartsOn={firstDay}
-                  width="100%"
-                />
-                {!draft.allDay && (
-                  <TimeInput
-                    hourFormat={clock}
-                    increment={5}
-                    label="Start time"
-                    onChange={(text) => {
-                      const time = text === undefined ? undefined : parseTime(text);
-                      if (time)
-                        setDraft((current) => moveDraftStart(current, current.startDate, time));
-                    }}
-                    value={isoTime(draft.startTime)}
-                    width="100%"
-                  />
-                )}
-                <DateInput
-                  label="Ends"
-                  onChange={(text) => {
-                    const endDate = text === undefined ? undefined : parseDate(text);
-                    if (endDate) update({ endDate });
-                  }}
-                  value={isoDate(draft.endDate)}
-                  weekStartsOn={firstDay}
-                  width="100%"
-                />
-                {!draft.allDay && (
-                  <TimeInput
-                    hourFormat={clock}
-                    increment={5}
-                    label="End time"
-                    onChange={(text) => {
-                      const endTime = text === undefined ? undefined : parseTime(text);
-                      if (endTime) update({ endTime });
-                    }}
-                    value={isoTime(draft.endTime)}
-                    width="100%"
-                  />
-                )}
-              </fieldset>
-              <Selector
-                label="Calendar"
-                onChange={(calendarId) => {
-                  if (isDemoCalendarId(calendarId)) update({ calendarId });
-                }}
-                options={demoCalendars.map(({ id, name }) => ({ label: name, value: id }))}
-                renderOption={({ label, value }) => (
-                  <span {...stylex.props(styles.option)}>
-                    <Swatch color={demoCalendars.find(({ id }) => id === value)?.color} />
-                    {label}
-                  </span>
-                )}
-                renderValue={({ label, value }) => (
-                  <span {...stylex.props(styles.option)}>
-                    <Swatch color={demoCalendars.find(({ id }) => id === value)?.color} />
-                    {label}
-                  </span>
-                )}
-                value={draft.calendarId}
-                width="100%"
-              />
-              <RepeatField
-                locale={locale}
-                minimumEnd={repeatsFrom(draft, timeZone)}
-                onChange={(repeat) => update({ repeat })}
-                // Presets are named after the day the series repeats on, in its own zone.
-                startDate={
-                  "error" in interval ? draft.startDate : seriesDate(interval, draft.seriesTimeZone)
-                }
-                timeZone={draft.seriesTimeZone}
-                value={draft.repeat}
-              />
-              {draft.calendarId === "work" && (
-                <ResourcePicker
-                  eventId={initial.id}
-                  interval={"error" in interval ? null : interval}
-                  onChange={(resourceIds) => update({ resourceIds })}
-                  value={draft.resourceIds ?? []}
-                />
-              )}
-              <TextArea
-                label="Description"
-                onChange={(description) => update({ description })}
-                value={draft.description}
-                width="100%"
-              />
-              {error !== undefined && (
-                <p role="alert" {...stylex.props(styles.error)}>
-                  {error}
-                </p>
-              )}
-            </VStack>
-          </LayoutContent>
-        }
-        footer={
-          <LayoutFooter>
-            <HStack gap={2} hAlign="end">
-              <Button isDisabled={saving} label="Save" type="submit" variant="primary" />
-            </HStack>
-          </LayoutFooter>
-        }
-        header={
-          <DialogHeader
-            onOpenChange={onOpenChange}
-            title={initial.id === undefined ? "New event" : "Edit event"}
-          />
-        }
+      <DialogHeader>
+        <DialogTitle>{initial.id === undefined ? "New event" : "Edit event"}</DialogTitle>
+      </DialogHeader>
+      <Input
+        aria-invalid={error !== undefined && draft.title.trim() === ""}
+        aria-label="Title"
+        autoFocus
+        onChange={(event) => update({ title: event.target.value })}
+        placeholder="Add title"
+        value={draft.title}
+        xstyle={styles.title}
       />
+      <Label xstyle={styles.allDay}>
+        <Checkbox
+          checked={draft.allDay}
+          // A task goes on a time slot, so it can go back to the unscheduled tasks.
+          disabled={initial.newId !== undefined}
+          onCheckedChange={(checked) => update({ allDay: checked === true })}
+        />
+        All day
+      </Label>
+      <fieldset {...stylex.props(styles.when)}>
+        <legend {...stylex.props(visuallyHidden.text)}>When</legend>
+        <Label htmlFor={`${id}-start`}>Starts</Label>
+        <Input
+          id={`${id}-start`}
+          onChange={(event) => {
+            const date = parseDate(event.target.value);
+            if (date) setDraft((current) => moveDraftStart(current, date, current.startTime));
+          }}
+          type="date"
+          value={draft.startDate.toString()}
+          xstyle={draft.allDay && styles.span}
+        />
+        <Input
+          aria-label="Start time"
+          hidden={draft.allDay}
+          onChange={(event) => {
+            const time = parseTime(event.target.value);
+            if (time) setDraft((current) => moveDraftStart(current, current.startDate, time));
+          }}
+          step={300}
+          type="time"
+          value={timeValue(draft.startTime)}
+          xstyle={styles.time}
+        />
+        <Label htmlFor={`${id}-end`}>Ends</Label>
+        <Input
+          id={`${id}-end`}
+          onChange={(event) => {
+            const endDate = parseDate(event.target.value);
+            if (endDate) update({ endDate });
+          }}
+          type="date"
+          value={draft.endDate.toString()}
+          xstyle={draft.allDay && styles.span}
+        />
+        <Input
+          aria-label="End time"
+          hidden={draft.allDay}
+          onChange={(event) => {
+            const endTime = parseTime(event.target.value);
+            if (endTime) update({ endTime });
+          }}
+          step={300}
+          type="time"
+          value={timeValue(draft.endTime)}
+          xstyle={styles.time}
+        />
+      </fieldset>
+      <div {...stylex.props(styles.field)}>
+        <Label htmlFor={`${id}-calendar`}>Calendar</Label>
+        <Select
+          items={demoCalendars.map(({ id: value, name }) => ({ label: name, value }))}
+          onValueChange={(calendarId) => {
+            if (isDemoCalendarId(calendarId)) update({ calendarId });
+          }}
+          value={draft.calendarId}
+        >
+          <SelectTrigger id={`${id}-calendar`} xstyle={styles.full}>
+            <span {...stylex.props(styles.option)}>
+              <CalendarDot calendarId={draft.calendarId} />
+              <SelectValue />
+            </span>
+          </SelectTrigger>
+          <SelectContent>
+            <SelectGroup>
+              {demoCalendars.map((calendar) => (
+                <SelectItem key={calendar.id} label={calendar.name} value={calendar.id}>
+                  <span {...stylex.props(styles.option)}>
+                    <CalendarDot calendarId={calendar.id} />
+                    {calendar.name}
+                  </span>
+                </SelectItem>
+              ))}
+            </SelectGroup>
+          </SelectContent>
+        </Select>
+      </div>
+      <RepeatField
+        locale={locale}
+        minimumEnd={repeatsFrom(draft, timeZone)}
+        onChange={(repeat) => update({ repeat })}
+        // Presets are named after the day the series repeats on, in its own zone.
+        startDate={
+          "error" in interval ? draft.startDate : seriesDate(interval, draft.seriesTimeZone)
+        }
+        timeZone={draft.seriesTimeZone}
+        value={draft.repeat}
+      />
+      {draft.calendarId === "work" && (
+        <ResourcePicker
+          eventId={initial.id}
+          interval={"error" in interval ? null : interval}
+          onChange={(resourceIds) => update({ resourceIds })}
+          value={draft.resourceIds ?? []}
+        />
+      )}
+      <div {...stylex.props(styles.field)}>
+        <Label htmlFor={`${id}-description`}>Description</Label>
+        <Textarea
+          id={`${id}-description`}
+          onChange={(event) => update({ description: event.target.value })}
+          value={draft.description}
+          xstyle={styles.description}
+        />
+      </div>
+      {error !== undefined && (
+        <p role="alert" {...stylex.props(styles.error)}>
+          {error}
+        </p>
+      )}
+      <DialogFooter>
+        <Button disabled={saving} type="submit">
+          Save
+        </Button>
+      </DialogFooter>
     </form>
   );
 }

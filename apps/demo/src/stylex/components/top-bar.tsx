@@ -1,11 +1,10 @@
-import { Icon } from "@astryxdesign/core/Icon";
-import { IconButton } from "@astryxdesign/core/IconButton";
-import { Text } from "@astryxdesign/core/Text";
 import * as stylex from "@stylexjs/stylex";
 import { KeyboardIcon, MenuIcon } from "lucide-react";
 
 import { CalendarToolbar } from "@registry/stylex-calendar/calendar-toolbar";
 import { ViewSwitcher } from "@registry/stylex-calendar/view-switcher";
+import { Button } from "@registry/stylex-calendar-ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/stylex-calendar-ui/tooltip";
 
 import type { DemoView } from "../../demo-model";
 import { viewSwitcherOptions } from "../../view-options";
@@ -15,26 +14,43 @@ import { DocsLink } from "./docs-link";
 import { ThemeToggle } from "./theme-toggle";
 import { FrameworkSwitch, UiSwitch } from "./ui-switch";
 
+const small = "@media (min-width: 640px)";
+const large = "@media (min-width: 1024px)";
+const belowSmall = "@media (max-width: 639.98px)";
+const belowLarge = "@media (max-width: 1023.98px)";
+
 const styles = stylex.create({
   brand: {
     alignItems: "center",
-    display: { default: "none", "@media (min-width: 1024px)": "flex" },
+    display: { default: "none", [large]: "flex" },
     flexShrink: 0,
     gap: "0.5rem",
     paddingInline: "0.25rem",
     width: "15rem",
   },
-  // On wrappers that aren't boxes of their own: a `display` set on an Astryx control would replace
-  // its own.
-  // Below `lg` the bar has no room for the framework switch; the drawer, open from the menu, has it.
-  fromDesktop: {
-    display: { default: "contents", "@media (max-width: 1023.98px)": "none" },
-  },
-  fromTablet: {
-    display: { default: "contents", "@media (max-width: 639.98px)": "none" },
+  brandName: {
+    fontSize: "1.125rem",
+    fontWeight: 500,
+    lineHeight: "calc(1.75 / 1.125)",
   },
   menu: {
-    display: { default: "contents", "@media (min-width: 1024px)": "none" },
+    borderRadius: "9999px",
+    display: { default: "inline-flex", [large]: "none" },
+  },
+  // Below `lg` the bar has no room for it, and the drawer, open from the menu, has it.
+  fromLarge: {
+    display: { default: "flex", [belowLarge]: "none" },
+  },
+  fromSmall: {
+    display: { default: "flex", [belowSmall]: "none" },
+  },
+  roundFromSmall: {
+    borderRadius: "9999px",
+    display: { default: "inline-flex", [belowSmall]: "none" },
+  },
+  // Wide enough for "Resources".
+  viewSwitcher: {
+    width: { default: null, [small]: "8rem" },
   },
 });
 
@@ -56,39 +72,48 @@ export function TopBar({ onOpenSidebar, onShowShortcuts, scrolling }: TopBarProp
       calendar={StylexDemoCalendar}
       start={
         <>
-          <div {...stylex.props(styles.menu)}>
-            <IconButton
-              icon={<Icon icon={MenuIcon} />}
-              label="Open sidebar"
-              onClick={onOpenSidebar}
-              variant="ghost"
-            />
-          </div>
+          <Button
+            aria-label="Open sidebar"
+            onClick={onOpenSidebar}
+            size="icon"
+            variant="ghost"
+            xstyle={styles.menu}
+          >
+            <MenuIcon aria-hidden />
+          </Button>
           <div {...stylex.props(styles.brand)}>
             <BrandMark />
-            <Text size="lg" weight="medium">
-              Calendar
-            </Text>
+            <span {...stylex.props(styles.brandName)}>Calendar</span>
           </div>
         </>
       }
     >
-      <ViewSwitcher onValueChange={setView} options={viewSwitcherOptions(scrolling)} value={view} />
-      <div {...stylex.props(styles.fromTablet)}>
-        <div {...stylex.props(styles.fromDesktop)}>
-          <FrameworkSwitch />
-        </div>
-        <UiSwitch />
-        <IconButton
-          icon={<Icon icon={KeyboardIcon} />}
-          label="Keyboard shortcuts"
-          onClick={onShowShortcuts}
-          tooltip="Keyboard shortcuts (?)"
-          variant="ghost"
-        />
-        <DocsLink />
-        <ThemeToggle />
-      </div>
+      <ViewSwitcher
+        onValueChange={setView}
+        options={viewSwitcherOptions(scrolling)}
+        value={view}
+        xstyle={styles.viewSwitcher}
+      />
+      <FrameworkSwitch xstyle={styles.fromLarge} />
+      <UiSwitch xstyle={styles.fromSmall} />
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <Button
+              aria-label="Keyboard shortcuts"
+              onClick={onShowShortcuts}
+              size="icon"
+              variant="ghost"
+              xstyle={styles.roundFromSmall}
+            />
+          }
+        >
+          <KeyboardIcon aria-hidden />
+        </TooltipTrigger>
+        <TooltipContent>Keyboard shortcuts (?)</TooltipContent>
+      </Tooltip>
+      <DocsLink xstyle={styles.roundFromSmall} />
+      <ThemeToggle xstyle={styles.roundFromSmall} />
     </CalendarToolbar>
   );
 }

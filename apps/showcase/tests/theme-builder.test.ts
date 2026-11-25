@@ -576,14 +576,14 @@ describe("presets", () => {
     ).toBe(false);
   });
 
-  test("Astryx neutral sets every base colour, as an app maps an Astryx theme", () => {
-    const astryx = presets.find(({ name }) => name === "Astryx neutral")!;
+  test("Monochrome sets every base colour, as an app maps its design system's", () => {
+    const monochrome = presets.find(({ name }) => name === "Monochrome")!;
     const mapped = Object.keys(tokensFileDefaults)
       .filter((name) => !name.startsWith("--calendar-") && name !== "--radius")
       .toSorted();
 
-    expect(Object.keys(astryx.light!).toSorted()).toEqual(mapped);
-    expect(Object.keys(astryx.dark!).toSorted()).toEqual(
+    expect(Object.keys(monochrome.light!).toSorted()).toEqual(mapped);
+    expect(Object.keys(monochrome.dark!).toSorted()).toEqual(
       [...mapped, "--calendar-today"].toSorted(),
     );
   });

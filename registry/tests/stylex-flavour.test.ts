@@ -179,19 +179,19 @@ describe("the StyleX flavour keeps in step with the Tailwind source", () => {
     }
   });
 
-  test("the flavour builds its controls on its kit, without Astryx or Base UI", () => {
+  test("the flavour builds its controls on its kit, without Base UI", () => {
     const flavourItems = readdirSync(registry).filter(
       (name) => name.startsWith(flavour) && existsSync(join(registry, name, "registry-item.json")),
     );
     for (const item of flavourItems) {
       const { dependencies = [] } = manifestOf(item);
-      const outside = dependencies.filter((name) => /^@(?:astryxdesign|base-ui)\//u.test(name));
+      const outside = dependencies.filter((name) => name.startsWith("@base-ui/"));
       expect(outside, item).toEqual([]);
       for (const file of sourceFiles(item)) {
         const imports = [...read(item, file).matchAll(/from "([^"]+)"/gu)].map(([, name]) => name!);
         const wrong = imports.filter(
           (name) =>
-            /^@(?:astryxdesign|base-ui)\//u.test(name) ||
+            name.startsWith("@base-ui/") ||
             // Only the kit reaches ui-sdk; the views take their controls from it.
             (name.startsWith("@ui-sdk/") && item !== `${flavour}calendar-ui`),
         );

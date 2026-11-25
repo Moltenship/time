@@ -10,8 +10,6 @@ catalogMode: prefer
 
 catalog:
   "@arethetypeswrong/core": 0.18.5
-  "@astryxdesign/core": 0.7.5
-  "@astryxdesign/theme-neutral": 0.7.5
   "@babel/core": 7.29.7
   "@dnd-kit/dom": 0.5.1
   "@dnd-kit/react": 0.5.1
@@ -93,12 +91,9 @@ peerDependencyRules:
   allowedVersions:
     vite: "*"
 allowBuilds:
-  "@astryxdesign/core": false
   esbuild: true
   msw: false
 minimumReleaseAgeExclude:
-  - "@astryxdesign/core@0.7.5"
-  - "@astryxdesign/theme-neutral@0.7.5"
   - cn@0.5.1
   - lucide-react@1.65.0
   - motion@14.9.0

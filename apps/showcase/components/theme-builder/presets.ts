@@ -87,7 +87,7 @@ export const presets: readonly Preset[] = [
     name: "Plum, solid events",
   },
   {
-    // `@astryxdesign/theme-neutral`'s colours, as an app maps them onto the base colours (StyleX docs).
+    // Every base colour, as an app sets them when it maps its design system's (StyleX docs).
     dark: {
       "--accent": "oklch(0.222 0 0)",
       "--accent-foreground": "oklch(1 0 0)",
@@ -131,7 +131,7 @@ export const presets: readonly Preset[] = [
       "--secondary": "oklch(0.958 0 0)",
       "--secondary-foreground": "oklch(0 0 0)",
     },
-    name: "Astryx neutral",
+    name: "Monochrome",
   },
   {
     kind: "density",

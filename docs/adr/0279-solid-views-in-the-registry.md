@@ -278,7 +278,8 @@ Solid views use the same class strings as their React twins.
   manifest. Hiding text visually becomes eight style properties of our own.
 - The StyleX tokens stop reading Astryx's variables first and hold their own values, which they
   already carry as fallbacks. An Astryx application maps its theme onto the calendar's variables
-  in a few lines, which the StyleX page shows. The setup on that page loses the Astryx packages,
+  in a few lines, which the migration guide shows (the StyleX page shows the same mapping for any
+  design system, since K4). The setup on that page loses the Astryx packages,
   its cascade layers and its `Theme` wrapper.
 - The demo's `/stylex/` page keeps working throughout, because its own chrome (the app shell,
   drawer, event dialog, date and time fields; 19 files) imports Astryx by itself. A last step

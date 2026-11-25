@@ -441,9 +441,11 @@ describe("workspace boundaries", { concurrent: false }, () => {
         // The facade and the testing package re-export the React integration, so they carry its
         // peers, as they carry React; their source still imports no ui-sdk (the cruiser's rule).
         // The registry's kit, `calendar-ui`, builds the controls on ui-sdk (ADR 0279); the cruiser
-        // keeps the rest of the registry's source off it.
+        // keeps the rest of the registry's source off it. So does the React demo's StyleX page,
+        // for the controls its chrome needs that the kit lacks; the cruiser keeps its Tailwind
+        // page off it.
         "ui-sdk": (path) =>
-          /^(?:packages\/calendar(?:-(?:primitives|react|solid|testing))?|apps\/(?:demo-solid|showcase)|registry)\//u.test(
+          /^(?:packages\/calendar(?:-(?:primitives|react|solid|testing))?|apps\/(?:demo|demo-solid|showcase)|registry)\//u.test(
             path,
           ),
       };
