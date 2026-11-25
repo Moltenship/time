@@ -27,8 +27,9 @@ Add the `year-view` item to your app with the shadcn CLI, as
 npx shadcn@latest add @moltenship/year-view
 ```
 
-Then register the view, with the month its month names open. A date opens the view `dayView`
-names, `day` by default; this calendar has no view by that name, so it opens the month:
+Then register the view, with the views it opens: a date opens the view `dayView` names, `day` by
+default, and a month's name the one `monthView` names, `month` by default. This calendar has the
+registry's [month](/docs/views/month) and [day](/docs/views/week-and-day) for them:
 
 <include meta='title="calendar.tsx"'>../../examples/solid/year-page.tsx#view</include>
 

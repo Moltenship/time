@@ -1,4 +1,4 @@
-// The Year page's samples, after `shadcn add` of the Solid year and month. The registry's install
+// The Year page's samples, after `shadcn add` of the Solid year, month and time grid. The registry's install
 // test adds this file to a clean Solid app, whose typecheck and build cover it.
 
 // #region view
@@ -10,6 +10,7 @@ import {
 
 import type { CalendarEventColor } from "@/components/calendar/event-colors";
 import { createMonthView } from "@/components/calendar/month-view/month-view";
+import { createDayView } from "@/components/calendar/time-grid-view/time-grid-view";
 import { createYearView } from "@/components/calendar/year-view/year-view";
 
 export type Event = CalendarEvent<{ readonly color: CalendarEventColor }>;
@@ -19,9 +20,11 @@ const getEventColor = (event: Event) => event.data.color;
 export const Calendar = createCalendar<Event>()({
   eventAdapter: createCanonicalEventAdapter<{ readonly color: CalendarEventColor }>(),
   views: [
-    // A date opens the day in the view named `dayView`, here the month, which this calendar has.
-    createYearView<Event>({ dayView: "month", getEventColor }),
+    // A date opens the view named `dayView`, `day` by default, and a month's name the one named
+    // `monthView`, `month` by default.
+    createYearView<Event>({ getEventColor }),
     createMonthView<Event>({ getEventColor }),
+    createDayView<Event>({ getEventColor }),
   ],
 });
 // #endregion view
