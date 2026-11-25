@@ -1,5 +1,11 @@
 import { afterEach } from "vite-plus/test";
-import { cdp, server, userEvent } from "vite-plus/test/browser";
+import { cdp, commands, server, userEvent } from "vite-plus/test/browser";
+
+declare module "vite-plus/test/browser" {
+  interface BrowserCommands {
+    collectGarbage: (aboveMB: number) => Promise<void>;
+  }
+}
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
@@ -50,3 +56,9 @@ document.body.append(corner);
 afterEach(async () => {
   await userEvent.hover(corner, { force: true, timeout: 10_000 });
 });
+
+// What a test drops stays in the page's heap until a full collection, which a busy CI runner's
+// Chromium put off until the heap held a gigabyte of dropped frames and the page lost its
+// connections. So after each test the page collects its garbage once it holds more than 300 MB:
+// on the runner the suite's live heap stayed under 200 MB.
+if (server.browser === "chromium") afterEach(() => commands.collectGarbage(300));
