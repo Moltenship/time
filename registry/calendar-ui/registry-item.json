@@ -73,6 +73,11 @@
       "target": "@components/calendar/ui/popover-handle.ts"
     },
     {
+      "path": "registry/shared/calendar-ui/popup-side.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/popup-side.ts"
+    },
+    {
       "path": "registry/calendar-ui/dialog.tsx",
       "type": "registry:component",
       "target": "@components/calendar/ui/dialog.tsx"

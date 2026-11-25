@@ -17,7 +17,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { popupSide, type PopupSide } from "@registry/shared/calendar-ui/popover-handle";
+import { popupSide, type PopupSide } from "@registry/shared/calendar-ui/popup-side";
 import {
   createTooltipHandle,
   cursorAnchor,

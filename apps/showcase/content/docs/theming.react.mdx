@@ -174,7 +174,11 @@ import from each file, and what they pass:
 | `toast.tsx`   | `ToastViewport`, `Toast`, `ToastTitle`, `ToastDescription`, `ToastAction`, `ToastClose`, `createToastManager`, `ToastManager` | `createToastManager()`: `add({ id, title, description, timeout, actionProps, onRemove })`, where `timeout: 0` keeps a toast and `actionProps.onClick` gets `{ input }`, and `close(id)`. `ToastViewport`: `manager`, `aria-label` and one toast's parts as children. `ToastClose`: `aria-label`. The parts render the toast's own text                                                                                                                                                                                                                                         |
 
 The kit's files also export `buttonVariants`, `badgeVariants`, `SelectGroupLabel` and
-`SelectSeparator` for your own code. Keep them, or remove what you don't use.
+`SelectSeparator` for your own code. Keep them, or remove what you don't use. Beside them,
+`tooltip-handle.ts`, `popover-handle.ts` and `toast-manager.ts` hold the kit's tooltip, popover
+and toast state, and `popup-side.ts` maps `inline-start` and `inline-end` for the tooltip and the
+popover. A control you replace can stop importing them; keep each one another kit file still
+imports.
 
 `render` is an element to render in place of the `<button>`. The toolbar passes the calendar's
 `TodayTrigger`, `PreviousTrigger` and `NextTrigger` this way: the trigger keeps its own props and
@@ -209,13 +213,16 @@ styles in place of class names. Where the table says `className`, the StyleX vie
 value of `stylex.create`, and a control applies it after its own styles:
 
 ```tsx title="components/calendar-stylex/ui/button.tsx"
-import type { ComponentProps } from "react";
+import type { ComponentProps, CSSProperties } from "react";
 
 import { Button as AppButton } from "@/components/ui/button";
 import { buttonVariants } from "@/components/calendar-stylex/ui/button.styles";
 import { type XStyle, xprops } from "@/components/calendar-stylex/xprops";
 
-export interface ButtonProps extends ComponentProps<typeof AppButton> {
+// Base UI's className and style can be functions of state; the views pass plain values.
+export interface ButtonProps extends Omit<ComponentProps<typeof AppButton>, "className" | "style"> {
+  readonly className?: string;
+  readonly style?: CSSProperties;
   readonly xstyle?: XStyle;
 }
 

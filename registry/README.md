@@ -293,5 +293,4 @@ export default defineConfig({ resolve: { tsconfigPaths: true } });
 ```
 
 The app also lists the UI dependencies the source uses (`@ui-sdk/core`, `@ui-sdk/react`, `cn`,
-`class-variance-authority`, `lucide-react`, and `shadcn` for its Tailwind variants), and
-`@base-ui/react` while it renders the `stylex-` items.
+`class-variance-authority`, `lucide-react`, and `shadcn` for its Tailwind variants).

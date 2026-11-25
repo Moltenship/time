@@ -20,10 +20,9 @@ import {
 import {
   createPopoverHandle,
   popoverControllerOf,
-  popupSide,
   type PopoverHandle,
-  type PopupSide,
 } from "@registry/shared/calendar-ui/popover-handle";
+import { popupSide, type PopupSide } from "@registry/shared/calendar-ui/popup-side";
 import { popoverDefaults, popoverStyles } from "@registry/shared/stylex-calendar-ui/popover.styles";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
 
