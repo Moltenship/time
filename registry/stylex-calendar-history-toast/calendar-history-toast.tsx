@@ -17,7 +17,7 @@ import * as stylex from "@stylexjs/stylex";
 import { XIcon } from "lucide-react";
 import { useEffect, useInsertionEffect, useRef, useState } from "react";
 
-import { calendarHistoryAnnouncements } from "@registry/stylex-calendar/announcements";
+import { calendarHistoryAnnouncements } from "@registry/shared/calendar/announcements";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
 

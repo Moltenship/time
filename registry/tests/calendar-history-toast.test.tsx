@@ -11,7 +11,7 @@ import {
 import { act, useState } from "react";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import { calendarAnnouncements } from "../calendar/announcements";
+import { calendarAnnouncements } from "../shared/calendar/announcements";
 import {
   CalendarHistoryToast,
   calendarHistoryToastMessages,

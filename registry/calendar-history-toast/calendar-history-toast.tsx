@@ -14,7 +14,7 @@ import {
 import { XIcon } from "lucide-react";
 import { useEffect, useInsertionEffect, useRef, useState } from "react";
 
-import { calendarHistoryAnnouncements } from "@registry/calendar/announcements";
+import { calendarHistoryAnnouncements } from "@registry/shared/calendar/announcements";
 import {
   createToastManager,
   Toast,

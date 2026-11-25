@@ -15,7 +15,7 @@ import {
 } from "@moltenship/calendar-testing";
 import { afterEach, expect, test } from "vite-plus/test";
 
-import { calendarAnnouncements } from "../calendar/announcements";
+import { calendarAnnouncements } from "../shared/calendar/announcements";
 import { createMonthView } from "../month-view/month-view";
 import { createResourceColumnsView } from "../resource-columns-view/resource-columns-view";
 import { createWeekView } from "../time-grid-view/time-grid-view";

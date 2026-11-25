@@ -19,7 +19,7 @@
       "target": "@components/calendar-stylex/calendar-toolbar.tsx"
     },
     {
-      "path": "registry/stylex-calendar/announcements.ts",
+      "path": "registry/shared/calendar/announcements.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/announcements.ts"
     },
@@ -87,6 +87,21 @@
       "path": "registry/shared/calendar/view-keys.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/view-keys.ts"
+    },
+    {
+      "path": "registry/shared/calendar/navigation-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/navigation-labels.ts"
+    },
+    {
+      "path": "registry/shared/calendar/mini-month-dates.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/mini-month-dates.ts"
+    },
+    {
+      "path": "registry/shared/calendar/resource-status-summary.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/resource-status-summary.ts"
     }
   ]
 }

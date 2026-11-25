@@ -9,6 +9,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@registry/calendar-ui/select";
+import {
+  viewSwitcherShortcutClass,
+  viewSwitcherTriggerClass,
+} from "@registry/shared/calendar/calendar-toolbar.styles";
+import { viewSwitcherLabel } from "@registry/shared/calendar/navigation-labels";
 
 export interface ViewSwitcherOption<TView extends string> {
   readonly label: string;
@@ -39,7 +44,10 @@ export function ViewSwitcher<TView extends string>({
         if (option !== undefined) onValueChange(option.value);
       }}
     >
-      <SelectTrigger aria-label="View" className={cn("rounded-full sm:w-26", className)}>
+      <SelectTrigger
+        aria-label={viewSwitcherLabel}
+        className={cn(viewSwitcherTriggerClass, className)}
+      >
         <SelectValue />
       </SelectTrigger>
       <SelectContent align="end" alignItemWithTrigger={false}>
@@ -49,9 +57,7 @@ export function ViewSwitcher<TView extends string>({
               {option.label}
               {/* The trigger and typing read `label`, so the shortcut only appears in the list. */}
               {option.shortcut !== undefined && (
-                <kbd className="ms-auto font-sans text-xs text-muted-foreground">
-                  {option.shortcut}
-                </kbd>
+                <kbd className={viewSwitcherShortcutClass}>{option.shortcut}</kbd>
               )}
             </SelectItem>
           ))}

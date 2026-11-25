@@ -8,7 +8,7 @@ import {
 } from "@moltenship/calendar";
 import { useState } from "react";
 
-import { calendarAnnouncements } from "@registry/calendar/announcements";
+import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { TimeGridView, type TimeGridViewOptions } from "@registry/time-grid-view/time-grid-view";
 

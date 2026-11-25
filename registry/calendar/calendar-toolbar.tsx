@@ -5,6 +5,18 @@ import type { ComponentType, ReactNode } from "react";
 import { cn } from "cn";
 import { Button } from "@registry/calendar-ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/calendar-ui/tooltip";
+import {
+  calendarActionsClass,
+  calendarStepClass,
+  calendarStepIconClass,
+  calendarStepsClass,
+  calendarTitleClass,
+  calendarTodayClass,
+  calendarTodayIconClass,
+  calendarTodayTextClass,
+  calendarToolbarClass,
+} from "@registry/shared/calendar/calendar-toolbar.styles";
+import { calendarToolbarLabels } from "@registry/shared/calendar/navigation-labels";
 
 /** The headless parts the toolbar styles. Every `createCalendar` factory provides them. */
 export type CalendarToolbarParts = Pick<
@@ -35,7 +47,7 @@ function StepTrigger({
       <TooltipTrigger
         render={
           <Button
-            className="rounded-full"
+            className={calendarStepClass}
             render={<Trigger aria-label={label} />}
             size="icon"
             variant="ghost"
@@ -53,34 +65,28 @@ export function CalendarToolbar({ calendar, children, className, start }: Calend
   const { NextTrigger, PreviousTrigger, Title, TodayTrigger, Toolbar } = calendar;
 
   return (
-    <Toolbar
-      className={cn("flex h-14 shrink-0 items-center gap-0.5 px-2 sm:gap-2 sm:px-4", className)}
-    >
+    <Toolbar className={cn(calendarToolbarClass, className)}>
       {start}
       <Button
-        className="rounded-full max-sm:w-8 max-sm:px-0 sm:px-4"
-        render={<TodayTrigger aria-label="Today" />}
+        className={calendarTodayClass}
+        render={<TodayTrigger aria-label={calendarToolbarLabels.today} />}
         variant="outline"
       >
-        <span className="sm:hidden">
+        <span className={calendarTodayIconClass}>
           <CalendarCheckIcon />
         </span>
-        <span className="max-sm:hidden">Today</span>
+        <span className={calendarTodayTextClass}>{calendarToolbarLabels.today}</span>
       </Button>
-      <div className="flex items-center">
-        <StepTrigger label="Previous period" Trigger={PreviousTrigger}>
-          <ChevronLeftIcon className="rtl:rotate-180" />
+      <div className={calendarStepsClass}>
+        <StepTrigger label={calendarToolbarLabels.previous} Trigger={PreviousTrigger}>
+          <ChevronLeftIcon className={calendarStepIconClass} />
         </StepTrigger>
-        <StepTrigger label="Next period" Trigger={NextTrigger}>
-          <ChevronRightIcon className="rtl:rotate-180" />
+        <StepTrigger label={calendarToolbarLabels.next} Trigger={NextTrigger}>
+          <ChevronRightIcon className={calendarStepIconClass} />
         </StepTrigger>
       </div>
-      {/*
-        On a phone or a small tablet, upright or turned, a long title such as a week across two
-        years wraps onto a second line.
-      */}
-      <Title className="min-w-0 text-base max-lg:line-clamp-2 max-lg:leading-tight max-lg:text-balance sm:text-xl lg:truncate" />
-      <div className="ms-auto flex shrink-0 items-center gap-1 sm:gap-2">{children}</div>
+      <Title className={calendarTitleClass} />
+      <div className={calendarActionsClass}>{children}</div>
     </Toolbar>
   );
 }

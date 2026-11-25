@@ -8,7 +8,7 @@ import {
 } from "@moltenship/calendar-testing";
 import { afterEach, expect, test, vi } from "vite-plus/test";
 
-import { calendarAnnouncements } from "../calendar/announcements";
+import { calendarAnnouncements } from "../shared/calendar/announcements";
 import { createWeekView } from "../time-grid-view/time-grid-view";
 import {
   allDay,

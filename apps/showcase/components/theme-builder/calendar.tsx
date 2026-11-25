@@ -1,7 +1,7 @@
 import { availabilityPolicy, createCalendar, defineEventAdapter } from "@moltenship/calendar";
 import { useState } from "react";
 
-import { calendarAnnouncements } from "@registry/calendar/announcements";
+import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { MiniMonth } from "@registry/calendar/mini-month";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";

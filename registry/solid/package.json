@@ -13,6 +13,7 @@
     "@tanstack/virtual-core": "catalog:",
     "@ui-sdk/core": "catalog:",
     "@ui-sdk/solid": "catalog:",
+    "class-variance-authority": "catalog:",
     "cn": "catalog:",
     "solid-js": "catalog:"
   },

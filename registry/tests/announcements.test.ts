@@ -11,7 +11,10 @@ import {
 } from "@moltenship/calendar";
 import { expect, test } from "vite-plus/test";
 
-import { calendarAnnouncements, calendarHistoryAnnouncements } from "../calendar/announcements";
+import {
+  calendarAnnouncements,
+  calendarHistoryAnnouncements,
+} from "../shared/calendar/announcements";
 import { timed } from "./view-fixtures";
 
 const [standup] = createEventSnapshot(

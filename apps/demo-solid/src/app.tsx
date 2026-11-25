@@ -2,11 +2,16 @@ import { createEventHistory, type CalendarWeekRules } from "@moltenship/calendar
 import { useCalendarHistory, useCalendarHistoryShortcuts } from "@moltenship/calendar-solid";
 import { createEffect, createSignal } from "solid-js";
 
+import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
+import { MiniMonth } from "@registry/calendar/mini-month";
+import { ViewSwitcher } from "@registry/calendar/view-switcher";
+import { Button } from "@registry/calendar-ui/button";
+
 import { AgentPanel } from "./agent-panel";
 import { announcements, historyAnnouncements } from "./announcements";
 import { Calendar, type Meeting } from "./calendar";
 import { FrameworkSwitch } from "./framework-switch";
-import { readSolidLocation, writeSolidLocation } from "./url-state";
+import { readSolidLocation, writeSolidLocation, type SolidView } from "./url-state";
 
 const timeZone = Temporal.Now.timeZoneId();
 const today = Temporal.Now.plainDateISO(timeZone);
@@ -91,13 +96,36 @@ function HistoryControls() {
   useCalendarHistoryShortcuts(controls, () => ({ scope: meta().refs.frame }));
   return (
     <>
-      <button type="button" disabled={!controls().canUndo} onClick={() => void controls().undo()}>
+      <Button disabled={!controls().canUndo} onClick={() => controls().undo()} variant="outline">
         Undo
-      </button>
-      <button type="button" disabled={!controls().canRedo} onClick={() => void controls().redo()}>
+      </Button>
+      <Button disabled={!controls().canRedo} onClick={() => controls().redo()} variant="outline">
         Redo
-      </button>
+      </Button>
     </>
+  );
+}
+
+const viewOptions = [
+  { label: "Month", value: "month" },
+  { label: "Agenda", value: "agenda" },
+] as const satisfies readonly { readonly label: string; readonly value: SolidView }[];
+
+/** The registry's mini month, following the calendar: it shows the range the view shows. */
+function Sidebar(props: {
+  readonly date: Temporal.PlainDate;
+  readonly onSelectDate: (date: Temporal.PlainDate) => void;
+}) {
+  const visibleRange = Calendar.useVisibleRange();
+  return (
+    <MiniMonth
+      locale={navigator.language}
+      onSelectDate={props.onSelectDate}
+      selectedDate={props.date}
+      today={today}
+      visibleRange={visibleRange() ?? undefined}
+      weekStartsOn={weekRules.firstDay}
+    />
   );
 }
 
@@ -123,13 +151,13 @@ export function App() {
         <FrameworkSwitch search={new URL(href()).search} />
       </header>
       <p class="preview">
-        This page runs <code>@moltenship/calendar-solid</code>, a preview. The agenda is the
-        registry's Solid list view, the files <code>shadcn add</code> installs into a Solid app: up
-        and down move between events, Page Up and Page Down between days. The month grid is this
-        page's own view on the package's hooks: arrow keys move through days and events, Space picks
-        an event up or starts a new one, a pointer drags an event to move it, its ends to resize it,
-        or across days to create one, and Undo and Redo take changes back.{" "}
-        <a href={docsUrl}>The Solid docs</a>
+        This page runs <code>@moltenship/calendar-solid</code>, a preview. The toolbar, the view
+        switcher, the mini month and the agenda are the registry's Solid items, the files{" "}
+        <code>shadcn add</code> installs into a Solid app: in the agenda, up and down move between
+        events, Page Up and Page Down between days. The month grid is this page's own view on the
+        package's hooks: arrow keys move through days and events, Space picks an event up or starts
+        a new one, a pointer drags an event to move it, its ends to resize it, or across days to
+        create one, and Undo and Redo take changes back. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's month and list projections, with an agent driving it
@@ -177,27 +205,30 @@ export function App() {
       >
         <div class="layout">
           <Calendar.Frame class="calendar">
-            <Calendar.Toolbar class="toolbar">
-              <Calendar.PreviousTrigger aria-label="Previous">‹</Calendar.PreviousTrigger>
-              <Calendar.TodayTrigger>Today</Calendar.TodayTrigger>
-              <Calendar.NextTrigger aria-label="Next">›</Calendar.NextTrigger>
-              <Calendar.Title class="title" />
+            <CalendarToolbar calendar={Calendar} class="toolbar">
               <HistoryControls />
-              <Calendar.ViewSwitcher
-                aria-label="View"
-                getViewLabel={(name) => (name === "month" ? "Month" : "Agenda")}
+              <ViewSwitcher
+                onValueChange={(view) => setLocation((current) => ({ ...current, view }))}
+                options={viewOptions}
+                value={location().view}
               />
-            </Calendar.Toolbar>
+            </CalendarToolbar>
             <Calendar.Viewport class="viewport">
               <Calendar.ActiveView />
             </Calendar.Viewport>
           </Calendar.Frame>
           <Calendar.Announcer messages={announcements} />
-          <AgentPanel
-            allowDelete={allowDelete()}
-            onAllowDeleteChange={setAllowDelete}
-            steps={steps}
-          />
+          <div class="side">
+            <Sidebar
+              date={location().date}
+              onSelectDate={(date) => setLocation((current) => ({ ...current, date }))}
+            />
+            <AgentPanel
+              allowDelete={allowDelete()}
+              onAllowDeleteChange={setAllowDelete}
+              steps={steps}
+            />
+          </div>
         </div>
       </Calendar.Root>
     </main>

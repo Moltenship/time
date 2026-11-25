@@ -6,7 +6,7 @@ import {
 } from "@moltenship/calendar";
 import { useState, type CSSProperties } from "react";
 
-import { calendarAnnouncements } from "@registry/calendar/announcements";
+import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import {

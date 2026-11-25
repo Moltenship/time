@@ -1,18 +1,23 @@
 "use client";
 
 import { IconButton } from "@astryxdesign/core/IconButton";
-import {
-  monthGrid,
-  plainDateIntervalContains,
-  type IsoDayOfWeek,
-  type PlainDateInterval,
-} from "@moltenship/calendar";
+import type { IsoDayOfWeek, PlainDateInterval } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
+import {
+  isSameMonth,
+  miniMonthDay,
+  miniMonthFormats,
+  miniMonthKeySteps,
+  miniMonthTabStop,
+  miniMonthWeeks,
+  startOfMonth,
+} from "@registry/shared/calendar/mini-month-dates";
+import { miniMonthLabels } from "@registry/shared/calendar/navigation-labels";
 
 const styles = stylex.create({
   cell: {
@@ -135,35 +140,6 @@ export interface MiniMonthProps {
   readonly xstyle?: XStyle;
 }
 
-const keyboardSteps: Partial<Record<string, Temporal.DurationLike>> = {
-  ArrowDown: { days: 7 },
-  ArrowLeft: { days: -1 },
-  ArrowRight: { days: 1 },
-  ArrowUp: { days: -7 },
-  PageDown: { months: 1 },
-  PageUp: { months: -1 },
-};
-
-function startOfMonth(date: Temporal.PlainDate): Temporal.PlainDate {
-  return date.with({ day: 1 });
-}
-
-function isSameMonth(date: Temporal.PlainDate, month: Temporal.PlainDate): boolean {
-  return date.year === month.year && date.month === month.month;
-}
-
-function useMiniMonthFormats(locale: Intl.LocalesArgument) {
-  return useMemo(
-    () => ({
-      day: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
-      month: new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }),
-      weekday: new Intl.DateTimeFormat(locale, { weekday: "narrow" }),
-      weekdayName: new Intl.DateTimeFormat(locale, { weekday: "long" }),
-    }),
-    [locale],
-  );
-}
-
 /** A navigable month for sidebars: highlights today, the selected date, and the visible range. */
 export function MiniMonth({
   className,
@@ -181,7 +157,7 @@ export function MiniMonth({
   const [month, setMonth] = useState(() => startOfMonth(selectedDate));
   const [focusedDate, setFocusedDate] = useState(selectedDate);
   const [syncedDate, setSyncedDate] = useState(selectedDate);
-  const formats = useMiniMonthFormats(locale);
+  const formats = useMemo(() => miniMonthFormats(locale), [locale]);
 
   // Follow the main calendar: a new selected date brings its month into view.
   if (!syncedDate.equals(selectedDate)) {
@@ -190,15 +166,8 @@ export function MiniMonth({
     setMonth(startOfMonth(selectedDate));
   }
 
-  const weeks = useMemo(
-    () =>
-      monthGrid(month, { fixedWeeks: true, weekStartsOn }).weeks.map((week) =>
-        Array.from({ length: 7 }, (_, index) => week.start.add({ days: index })),
-      ),
-    [month, weekStartsOn],
-  );
-  const tabStop = isSameMonth(focusedDate, month) ? focusedDate : month;
-  const lastVisibleDate = visibleRange?.end.subtract({ days: 1 });
+  const weeks = useMemo(() => miniMonthWeeks(month, weekStartsOn), [month, weekStartsOn]);
+  const tabStop = miniMonthTabStop(focusedDate, month);
 
   useEffect(() => {
     if (!focusTabStop.current) return;
@@ -207,7 +176,7 @@ export function MiniMonth({
   });
 
   function moveFocus(event: KeyboardEvent<HTMLTableElement>) {
-    const step = keyboardSteps[event.key];
+    const step = miniMonthKeySteps[event.key];
     if (step === undefined) return;
     event.preventDefault();
     const next = tabStop.add(step);
@@ -225,7 +194,7 @@ export function MiniMonth({
         <div {...stylex.props(styles.steps)}>
           <IconButton
             icon={<ChevronLeftIcon {...stylex.props(styles.icon)} />}
-            label="Previous month"
+            label={miniMonthLabels.previous}
             onClick={() => setMonth(month.subtract({ months: 1 }))}
             size="sm"
             variant="ghost"
@@ -233,7 +202,7 @@ export function MiniMonth({
           />
           <IconButton
             icon={<ChevronRightIcon {...stylex.props(styles.icon)} />}
-            label="Next month"
+            label={miniMonthLabels.next}
             onClick={() => setMonth(month.add({ months: 1 }))}
             size="sm"
             variant="ghost"
@@ -250,64 +219,63 @@ export function MiniMonth({
       >
         <thead>
           <tr>
-            {weeks[0]?.map((day) => (
+            {weeks[0]?.map((date) => (
               // A header cell inherits an ancestor's explicit text-align, so it centers itself.
               <th
-                key={day.dayOfWeek}
-                abbr={formats.weekdayName.format(day)}
+                key={date.dayOfWeek}
+                abbr={formats.weekdayName.format(date)}
                 scope="col"
                 {...stylex.props(styles.weekday)}
               >
-                {formats.weekday.format(day)}
+                {formats.weekday.format(date)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {weeks.map((days) => (
-            <tr key={days[0]?.toString()}>
-              {days.map((day, column) => {
-                const isToday = day.equals(today);
-                const isSelected = day.equals(selectedDate);
-                const isVisible =
-                  visibleRange !== undefined && plainDateIntervalContains(visibleRange, day);
-                const isOutside = !isSameMonth(day, month) && !isVisible && !isToday;
+          {weeks.map((dates) => (
+            <tr key={dates[0]?.toString()}>
+              {dates.map((date, column) => {
+                const day = miniMonthDay(date, column, {
+                  month,
+                  selectedDate,
+                  today,
+                  visibleRange,
+                });
+                const isOutside = !day.inMonth && !day.isVisible && !day.isToday;
 
                 return (
                   <td
-                    key={day.toString()}
-                    aria-selected={isSelected}
-                    data-visible={isVisible ? "" : undefined}
+                    key={date.toString()}
+                    aria-selected={day.isSelected}
+                    data-visible={day.isVisible ? "" : undefined}
                     {...stylex.props(
                       styles.cell,
-                      isVisible && styles.cellVisible,
-                      isVisible &&
-                        (column === 0 || day.equals(visibleRange.start)) &&
-                        styles.cellStart,
-                      isVisible &&
-                        (column === 6 || (lastVisibleDate && day.equals(lastVisibleDate))) &&
-                        styles.cellEnd,
+                      day.isVisible && styles.cellVisible,
+                      day.rangeStart && styles.cellStart,
+                      day.rangeEnd && styles.cellEnd,
                     )}
                   >
                     <button
                       type="button"
-                      aria-current={isToday ? "date" : undefined}
-                      aria-label={formats.day.format(day)}
-                      data-outside-month={isSameMonth(day, month) ? undefined : ""}
-                      tabIndex={day.equals(tabStop) ? 0 : -1}
+                      aria-current={day.isToday ? "date" : undefined}
+                      aria-label={formats.day.format(date)}
+                      data-outside-month={day.inMonth ? undefined : ""}
+                      tabIndex={date.equals(tabStop) ? 0 : -1}
                       onClick={() => {
-                        setFocusedDate(day);
-                        onSelectDate(day);
+                        setFocusedDate(date);
+                        onSelectDate(date);
                       }}
                       {...stylex.props(
                         styles.day,
                         // Muted text is under 4.5:1 on the range band and the hover fill.
                         isOutside && styles.dayOutside,
-                        isSelected && (isOutside ? styles.daySelectedOutside : styles.daySelected),
-                        isToday && styles.dayToday,
+                        day.isSelected &&
+                          (isOutside ? styles.daySelectedOutside : styles.daySelected),
+                        day.isToday && styles.dayToday,
                       )}
                     >
-                      {day.day}
+                      {date.day}
                     </button>
                   </td>
                 );

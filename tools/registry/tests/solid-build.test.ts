@@ -48,6 +48,7 @@ describe("Solid registry build", () => {
       "base-tokens",
       "calendar",
       "calendar-theme",
+      "calendar-ui",
       "list-view",
     ]);
     expect(await checkBuiltRegistry({ outDir, manifest, framework: solidRegistry })).toEqual([]);

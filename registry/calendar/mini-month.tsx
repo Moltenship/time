@@ -1,16 +1,33 @@
 "use client";
 
-import {
-  monthGrid,
-  plainDateIntervalContains,
-  type IsoDayOfWeek,
-  type PlainDateInterval,
-} from "@moltenship/calendar";
+import type { IsoDayOfWeek, PlainDateInterval } from "@moltenship/calendar";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { cn } from "cn";
 import { Button } from "@registry/calendar-ui/button";
+import {
+  isSameMonth,
+  miniMonthDay,
+  miniMonthFormats,
+  miniMonthKeySteps,
+  miniMonthTabStop,
+  miniMonthWeeks,
+  startOfMonth,
+} from "@registry/shared/calendar/mini-month-dates";
+import {
+  miniMonthCellClass,
+  miniMonthClass,
+  miniMonthDayClass,
+  miniMonthGridClass,
+  miniMonthHeaderClass,
+  miniMonthStepClass,
+  miniMonthStepIconClass,
+  miniMonthStepsClass,
+  miniMonthTitleClass,
+  miniMonthWeekdayClass,
+} from "@registry/shared/calendar/mini-month.styles";
+import { miniMonthLabels } from "@registry/shared/calendar/navigation-labels";
 
 export interface MiniMonthProps {
   readonly className?: string;
@@ -21,35 +38,6 @@ export interface MiniMonthProps {
   /** Dates the main view currently shows, highlighted as a band. */
   readonly visibleRange?: PlainDateInterval;
   readonly weekStartsOn: IsoDayOfWeek;
-}
-
-const keyboardSteps: Partial<Record<string, Temporal.DurationLike>> = {
-  ArrowDown: { days: 7 },
-  ArrowLeft: { days: -1 },
-  ArrowRight: { days: 1 },
-  ArrowUp: { days: -7 },
-  PageDown: { months: 1 },
-  PageUp: { months: -1 },
-};
-
-function startOfMonth(date: Temporal.PlainDate): Temporal.PlainDate {
-  return date.with({ day: 1 });
-}
-
-function isSameMonth(date: Temporal.PlainDate, month: Temporal.PlainDate): boolean {
-  return date.year === month.year && date.month === month.month;
-}
-
-function useMiniMonthFormats(locale: Intl.LocalesArgument) {
-  return useMemo(
-    () => ({
-      day: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
-      month: new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }),
-      weekday: new Intl.DateTimeFormat(locale, { weekday: "narrow" }),
-      weekdayName: new Intl.DateTimeFormat(locale, { weekday: "long" }),
-    }),
-    [locale],
-  );
 }
 
 /** A navigable month for sidebars: highlights today, the selected date, and the visible range. */
@@ -68,7 +56,7 @@ export function MiniMonth({
   const [month, setMonth] = useState(() => startOfMonth(selectedDate));
   const [focusedDate, setFocusedDate] = useState(selectedDate);
   const [syncedDate, setSyncedDate] = useState(selectedDate);
-  const formats = useMiniMonthFormats(locale);
+  const formats = useMemo(() => miniMonthFormats(locale), [locale]);
 
   // Follow the main calendar: a new selected date brings its month into view.
   if (!syncedDate.equals(selectedDate)) {
@@ -77,15 +65,8 @@ export function MiniMonth({
     setMonth(startOfMonth(selectedDate));
   }
 
-  const weeks = useMemo(
-    () =>
-      monthGrid(month, { fixedWeeks: true, weekStartsOn }).weeks.map((week) =>
-        Array.from({ length: 7 }, (_, index) => week.start.add({ days: index })),
-      ),
-    [month, weekStartsOn],
-  );
-  const tabStop = isSameMonth(focusedDate, month) ? focusedDate : month;
-  const lastVisibleDate = visibleRange?.end.subtract({ days: 1 });
+  const weeks = useMemo(() => miniMonthWeeks(month, weekStartsOn), [month, weekStartsOn]);
+  const tabStop = miniMonthTabStop(focusedDate, month);
 
   useEffect(() => {
     if (!focusTabStop.current) return;
@@ -94,7 +75,7 @@ export function MiniMonth({
   });
 
   function moveFocus(event: KeyboardEvent<HTMLTableElement>) {
-    const step = keyboardSteps[event.key];
+    const step = miniMonthKeySteps[event.key];
     if (step === undefined) return;
     event.preventDefault();
     const next = tabStop.add(step);
@@ -104,29 +85,29 @@ export function MiniMonth({
   }
 
   return (
-    <div className={cn("w-full select-none", className)}>
-      <div className="flex items-center justify-between pb-1 ps-2">
-        <h2 id={titleId} aria-live="polite" className="text-sm font-medium">
+    <div className={cn(miniMonthClass, className)}>
+      <div className={miniMonthHeaderClass}>
+        <h2 id={titleId} aria-live="polite" className={miniMonthTitleClass}>
           {formats.month.format(month)}
         </h2>
-        <div className="flex">
+        <div className={miniMonthStepsClass}>
           <Button
-            aria-label="Previous month"
-            className="rounded-full"
+            aria-label={miniMonthLabels.previous}
+            className={miniMonthStepClass}
             onClick={() => setMonth(month.subtract({ months: 1 }))}
             size="icon-sm"
             variant="ghost"
           >
-            <ChevronLeftIcon className="rtl:rotate-180" />
+            <ChevronLeftIcon className={miniMonthStepIconClass} />
           </Button>
           <Button
-            aria-label="Next month"
-            className="rounded-full"
+            aria-label={miniMonthLabels.next}
+            className={miniMonthStepClass}
             onClick={() => setMonth(month.add({ months: 1 }))}
             size="icon-sm"
             variant="ghost"
           >
-            <ChevronRightIcon className="rtl:rotate-180" />
+            <ChevronRightIcon className={miniMonthStepIconClass} />
           </Button>
         </div>
       </div>
@@ -134,72 +115,53 @@ export function MiniMonth({
         ref={gridRef}
         role="grid"
         aria-labelledby={titleId}
-        className="w-full border-collapse"
+        className={miniMonthGridClass}
         onKeyDown={moveFocus}
       >
         <thead>
           <tr>
-            {weeks[0]?.map((day) => (
-              // A header cell inherits an ancestor's explicit text-align, so it centers itself.
+            {weeks[0]?.map((date) => (
               <th
-                key={day.dayOfWeek}
-                abbr={formats.weekdayName.format(day)}
+                key={date.dayOfWeek}
+                abbr={formats.weekdayName.format(date)}
                 scope="col"
-                className="pb-1 text-center text-[0.6875rem] font-medium text-muted-foreground"
+                className={miniMonthWeekdayClass}
               >
-                {formats.weekday.format(day)}
+                {formats.weekday.format(date)}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {weeks.map((days) => (
-            <tr key={days[0]?.toString()}>
-              {days.map((day, column) => {
-                const isToday = day.equals(today);
-                const isSelected = day.equals(selectedDate);
-                const isVisible =
-                  visibleRange !== undefined && plainDateIntervalContains(visibleRange, day);
-
+          {weeks.map((dates) => (
+            <tr key={dates[0]?.toString()}>
+              {dates.map((date, column) => {
+                const day = miniMonthDay(date, column, {
+                  month,
+                  selectedDate,
+                  today,
+                  visibleRange,
+                });
                 return (
                   <td
-                    key={day.toString()}
-                    aria-selected={isSelected}
-                    data-visible={isVisible ? "" : undefined}
-                    className={cn(
-                      "p-0 py-px",
-                      isVisible && "bg-calendar-selection",
-                      isVisible &&
-                        (column === 0 || day.equals(visibleRange.start)) &&
-                        "rounded-s-full",
-                      isVisible &&
-                        (column === 6 || (lastVisibleDate && day.equals(lastVisibleDate))) &&
-                        "rounded-e-full",
-                    )}
+                    key={date.toString()}
+                    aria-selected={day.isSelected}
+                    data-visible={day.isVisible ? "" : undefined}
+                    className={miniMonthCellClass(day)}
                   >
                     <button
                       type="button"
-                      aria-current={isToday ? "date" : undefined}
-                      aria-label={formats.day.format(day)}
-                      data-outside-month={isSameMonth(day, month) ? undefined : ""}
-                      tabIndex={day.equals(tabStop) ? 0 : -1}
-                      className={cn(
-                        "mx-auto flex size-7 items-center justify-center rounded-full text-xs tabular-nums outline-none hover:bg-accent focus-visible:ring-2 focus-visible:ring-ring",
-                        // Muted text is under 4.5:1 on the range band and the hover fill.
-                        !isSameMonth(day, month) &&
-                          !isVisible &&
-                          !isToday &&
-                          "text-muted-foreground hover:text-accent-foreground",
-                        isSelected && "font-semibold text-calendar-today",
-                        isToday &&
-                          "bg-calendar-today font-semibold text-calendar-today-foreground hover:bg-calendar-today/90",
-                      )}
+                      aria-current={day.isToday ? "date" : undefined}
+                      aria-label={formats.day.format(date)}
+                      data-outside-month={day.inMonth ? undefined : ""}
+                      tabIndex={date.equals(tabStop) ? 0 : -1}
+                      className={miniMonthDayClass(day)}
                       onClick={() => {
-                        setFocusedDate(day);
-                        onSelectDate(day);
+                        setFocusedDate(date);
+                        onSelectDate(date);
                       }}
                     >
-                      {day.day}
+                      {date.day}
                     </button>
                   </td>
                 );

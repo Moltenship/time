@@ -23,8 +23,14 @@ const solidItems = readdirSync(solid).filter((name) =>
   existsSync(join(solid, name, "registry-item.json")),
 );
 
-test("the Solid registry has the first path's items", () => {
-  expect(solidItems.toSorted()).toEqual(["base-tokens", "calendar", "calendar-theme", "list-view"]);
+test("the Solid registry has the items ported so far", () => {
+  expect(solidItems.toSorted()).toEqual([
+    "base-tokens",
+    "calendar",
+    "calendar-theme",
+    "calendar-ui",
+    "list-view",
+  ]);
 });
 
 describe.each(solidItems.filter((name) => existsSync(join(registry, name, "registry-item.json"))))(
@@ -34,7 +40,15 @@ describe.each(solidItems.filter((name) => existsSync(join(registry, name, "regis
     const own = manifestOf(join(solid, name));
 
     test("lists every shared file its React twin lists, at the same target", () => {
-      expect(shared(own)).toEqual(shared(react));
+      // The kit's popover, dialog and toast come with the views that use them (ADR 0279, S3, S6).
+      const pending = name === "calendar-ui" ? /\/(?:dialog|popover|toast)\.styles\.ts$/u : null;
+      expect(shared(own)).toEqual(
+        shared(react).filter(({ path }) => pending === null || !pending.test(path)),
+      );
+    });
+
+    test("installs the items its React twin installs", () => {
+      expect(own.registryDependencies ?? []).toEqual(react.registryDependencies ?? []);
     });
 
     test("installs its files where its React twin installs them", () => {
@@ -42,8 +56,8 @@ describe.each(solidItems.filter((name) => existsSync(join(registry, name, "regis
       const missing = (own.files ?? [])
         .map(({ target }) => target)
         .filter((target) => !reactTargets.has(target));
-      // The Solid icons are inline SVG until lucide-solid supports Solid 2.0.
-      expect(missing).toEqual(name === "calendar" ? ["@components/calendar/icons.tsx"] : []);
+      // The Solid icons are inline SVG in the kit until lucide-solid supports Solid 2.0.
+      expect(missing).toEqual(name === "calendar-ui" ? ["@components/calendar/ui/icons.tsx"] : []);
     });
 
     test("holds no class strings of its own: they come from the shared .styles.ts files", () => {

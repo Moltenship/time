@@ -5,6 +5,7 @@ import * as stylex from "@stylexjs/stylex";
 
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import type { XStyle } from "@registry/stylex-calendar-theme/xprops";
+import { viewSwitcherLabel } from "@registry/shared/calendar/navigation-labels";
 
 const styles = stylex.create({
   control: {
@@ -58,7 +59,7 @@ export function ViewSwitcher<TView extends string>({
       // Astryx types `xstyle` narrower than what `stylex.props` takes.
       controlXstyle={[styles.control, xstyle] as stylex.StyleXStyles}
       isLabelHidden
-      label="View"
+      label={viewSwitcherLabel}
       options={options.map(({ label, value: optionValue }) => ({ label, value: optionValue }))}
       placement="below"
       value={value}

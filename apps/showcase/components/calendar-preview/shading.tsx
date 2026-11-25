@@ -3,7 +3,7 @@ import { ToggleGroup } from "@base-ui/react/toggle-group";
 import { createCalendar, defineEventAdapter } from "@moltenship/calendar";
 import { useId, useState } from "react";
 
-import { calendarAnnouncements } from "@registry/calendar/announcements";
+import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
 
 import { previewAvailability } from "./availability";

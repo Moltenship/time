@@ -244,13 +244,18 @@ follow the rules above, with these differences:
   runs in place. An item lists no file from the other framework's tree.
 - `base-tokens` is React's item over the same `shared/base-tokens/base-tokens.css`, for a Solid
   app without shadcn/ui's theme.
-- The icons are inline SVG in `calendar/icons.tsx`, so no item depends on an icon package.
+- The icons are inline SVG in `calendar-ui/icons.tsx`, installed beside the kit's controls, so no
+  item depends on an icon package.
+- `calendar-ui` holds the controls the ported views use so far, on `@ui-sdk/solid`, with the same
+  names, props and `shared/calendar-ui/<control>.styles.ts` look files as React's. A Solid control
+  takes `class` where React's takes `className`. `registry/tests/kit-twins.test.ts` and the a11y
+  run's `kit-twins` check fail when the two kits drift.
 
 `registry/solid` is its own private workspace (`registry-source-solid`), depending on
 `@moltenship/calendar-solid`, with `@registry/*` mapped to it and `@registry/shared/*` to
 `registry/shared`. Its tests run in the `registry-solid` Vitest project, and
-`tools/a11y/tests/solid` checks the agenda in a real browser against what the React agenda's
-files check. `apps/demo-solid` draws its agenda from it.
+`tools/a11y/tests/solid` checks the agenda, the toolbar, the view switcher and the mini month in
+a real browser against what the React files check. `apps/demo-solid` draws its agenda from it.
 
 ## Consuming the source in this repo
 
