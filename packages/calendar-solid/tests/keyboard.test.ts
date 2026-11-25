@@ -178,6 +178,26 @@ describe("roving focus", () => {
     await press("ArrowRight");
     expect(outer).toEqual(["ArrowRight"]);
   });
+
+  test("a native key listener inside the view takes a key before the calendar does", async () => {
+    // Solid delegates `onKeyDown` to the document, after the region's listener; a listener the
+    // element adds itself, as from a ref, runs first and can keep the key.
+    const container = await mount([allDay("trip", "2026-10-07", "2026-10-10", "Trip")]);
+    const day = cell(container, "2026-10-08");
+    const seen: boolean[] = [];
+    day.addEventListener("keydown", (event) => {
+      seen.push(event.defaultPrevented);
+      if (event.key === "ArrowRight" || event.key === "Escape") event.preventDefault();
+    });
+    await focus(day);
+
+    await press("ArrowRight");
+    expect(document.activeElement).toBe(day);
+    await press("Escape");
+    await press("ArrowDown");
+    expect(document.activeElement).toBe(cell(container, "2026-10-15"));
+    expect(seen).toEqual([false, false, false]);
+  });
 });
 
 describe("keyboard move, resize, and create", () => {

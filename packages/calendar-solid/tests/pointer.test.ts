@@ -168,8 +168,9 @@ describe("useCalendarPointer", () => {
       columns,
       events: snapshot,
       onPropose: () => undefined,
+      preview: "free",
       // An option this package doesn't know of reaches the pointer layer as it was given.
-      preview: { kind: "free" },
+      unknownOption: { kind: "later" },
       timeZone,
     } as Options;
     mount(() =>

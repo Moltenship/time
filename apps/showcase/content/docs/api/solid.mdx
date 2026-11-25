@@ -316,17 +316,17 @@ accessor wherever an argument can change:
 | Hook                                                                  | Returns                                                                                      |
 | --------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
 | `useCalendarKeyboard(options?)`                                       | A ref for the element around the view's cells. Binds `keydown` and `focusout` on it          |
-| `useRovingFocus(target, options?)`                                    | The props for one focusable day, slot or event: `tabIndex`, `onFocus` and `ref`. Spread them |
-| `useCalendarFocus(selector?)`, `useCalendarSelection(selector?)`      | `Accessor` of the focus or the selection, or of what `selector` picks from it                |
+| `useRovingFocus(target, options?)`                                    | The props for one focusable day, slot or event: `tabindex`, `onFocus` and `ref`. Spread them |
+| `useCalendarFocus(selector)`, `useCalendarSelection(selector)`        | `Accessor` of the focus or the selection, or of what `selector` picks from it                |
 | `useCalendarInteraction(selector?)`                                   | `Accessor` of the keyboard gesture in progress, or `null`                                    |
 | `useCalendarPointer(options)`                                         | A ref for the element around the view's days. Turns drags into proposals                     |
-| `useCalendarDraft()`, `useCalendarDraftReporter()`                    | `Accessor` of the pointer gesture's draft, and the function a pointer layer reports it to    |
+| `useCalendarDraft()`, `useCalendarDraftReporter()`                    | `Accessor` of the pointer or keyboard draft, and the function a pointer layer reports it to  |
 | `useDraftBusy(...)`, `useBusyResources(...)`                          | `Accessor` of whether a draft overlaps busy time, and of the busy resources                  |
 | `useCalendarAnnouncer()`                                              | The announcer `useCalendarPointer` takes, which speaks through `Announcer`                   |
 | `useCalendarHistory(history, options?)`                               | `Accessor` of the undo stack, `canUndo`, `canRedo`, `undo()` and `redo()`                    |
 | `useCalendarHistoryShortcuts(controls, options)`                      | Nothing. Binds Mod+Z to undo, and Shift+Mod+Z or Ctrl+Y to redo, inside `scope`              |
 | `useNow(options?)`                                                    | `Accessor` of the current instant, or `null` on the server without `now`                     |
-| `useVisibleResources()`, `useResourceExpansion()`                     | `Accessor` of the resource rows, and the controls that expand and collapse them              |
+| `useVisibleResources()`, `useResourceExpansion(resourceId)`           | `Accessor` of the resource rows, and the controls that expand and collapse them              |
 | `useResourceStatus(resourceId, at?)`                                  | `Accessor` of a resource's availability and busy state, or `null`                            |
 | `useCalendarAvailability()`, `useClosedDates(range)`                  | `Accessor` of the availability snapshot, and of the closed dates in `range`                  |
 | `useTimeGridAvailability(columns, id?)`, `useTimelineAvailability(…)` | `Accessor` of the closed time per column, or per resource row                                |
@@ -489,9 +489,20 @@ export const monthView = defineCalendarView({
 
 The keys are the ones [Keyboard](/docs/accessibility#keyboard) lists. Space picks up the focused
 event, or starts a new one on the focused day, arrow keys move it, and Enter or Space drops it. A
-pointer drags the event, its `data-resize` handle, or across empty days. Both stop when `Root` has
-no `onEventChange` or is `readOnly`. Each gesture's change runs your policies and `onEventChange`,
-as every other change does.
+pointer drags the event, its `data-resize` handle, or across empty days. Neither starts when `Root`
+has no `onEventChange`, and neither picks up a read-only event. Each gesture's change runs your
+policies and `onEventChange`, as every other change does.
+
+Two things to know when you write the elements:
+
+- **A key handler inside the view runs after the calendar's.** Solid delegates `onKeyDown` to the
+  document, and the keyboard listens on the view's element, which the key reaches first. An element
+  that takes a key for itself, such as a chip that opens a popover on Space, listens natively from
+  a ref and calls `preventDefault()`: `ref={(element) => element.addEventListener("keydown",
+onKey)}`. The calendar then leaves the key alone.
+- **Render a roving element for as long as its component lives.** Solid doesn't call a ref when the
+  element goes away, so the element stays registered until the component that called
+  `useRovingFocus` is disposed. To hide a cell, put `Show` around that component, not inside it.
 
 Render `<Calendar.Announcer messages={messages} />` inside `Root` so a screen reader hears each
 gesture. The package ships no text: the registry's `calendar/announcements.ts` has an English set,
@@ -553,6 +564,7 @@ nothing until the page hydrates.
 | A `Renderer` gets props you can destructure  | A `Renderer`'s props are getters: `props.projection`, read where it's used                        |
 | `meta.refs` holds React refs                 | `meta.refs` holds accessors: `meta().refs.viewport()`                                             |
 | `useCalendarKeyboard()` returns handlers     | It returns a ref, which binds `keydown` and `focusout` on the element itself                      |
+| A cell's `onKeyDown` runs before the view's  | It runs after, since Solid delegates it. Listen natively from a ref to take a key first           |
 | `useRovingFocus` listens for `focusin`       | It listens for `focus`, so a focus handler of yours hears `"focus"`                               |
 | `Calendar.Event`'s children get a value      | They get an accessor, and stay rendered while the event changes                                   |
 | A state change is visible on the next render | An accessor has the new value once Solid flushes: a microtask later, or after `flush()`           |

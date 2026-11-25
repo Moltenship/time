@@ -53,14 +53,21 @@ export function useCalendarHistory<
   > = {},
 ): Accessor<CalendarHistory<TEvent, TEventId, TResourceId>> {
   const { events, interaction } = useShared();
-  const bound = createMemo(() => {
-    const { actions, announcements, changes } = interaction();
-    return bindCalendarHistory({ actions, announcements, changes }, history, () =>
-      untrack(() => ({
-        events: events() as EventSnapshot<TEvent, TEventId, TResourceId>,
-        messages: access(options).messages,
-      })),
-    );
-  });
+  // By the three pieces it binds, as React's does: a new runtime, as when a controlled slice
+  // changes, keeps the binding while they stay the same.
+  const actions = createMemo(() => interaction().actions);
+  const announcements = createMemo(() => interaction().announcements);
+  const changes = createMemo(() => interaction().changes);
+  const bound = createMemo(() =>
+    bindCalendarHistory(
+      { actions: actions(), announcements: announcements(), changes: changes() },
+      history,
+      () =>
+        untrack(() => ({
+          events: events() as EventSnapshot<TEvent, TEventId, TResourceId>,
+          messages: access(options).messages,
+        })),
+    ),
+  );
   return createStateSelector(bound, same);
 }

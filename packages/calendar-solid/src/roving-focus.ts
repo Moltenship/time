@@ -64,6 +64,10 @@ export interface CalendarRovingFocusProps {
  * navigation moves DOM focus to the new target, even when it renders in a new place. Only the
  * elements whose tab stop changes update. `target` and `options` may be accessors, as a keyed
  * `For` item's are; the element registers again when its target changes.
+ *
+ * The element stays registered until the hook's owner is disposed, as Solid never calls a ref
+ * with `null`: render it for as long as the component lives, and put `Show` around the component
+ * rather than around the element.
  */
 export function useRovingFocus(
   target: MaybeAccessor<CalendarFocus>,

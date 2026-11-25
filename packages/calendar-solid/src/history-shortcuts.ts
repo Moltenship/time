@@ -19,9 +19,8 @@ export interface CalendarHistoryShortcutsOptions {
    */
   readonly redo?: readonly string[];
   /**
-   * The element whose keys undo and redo, usually the root's frame,
-   * `Calendar.useCalendarMeta()().refs.frame`, an accessor. Keys elsewhere on the page are left
-   * alone.
+   * The element whose keys undo and redo, usually the root's frame: `meta().refs.frame`, read
+   * inside the options' accessor. Keys elsewhere on the page are left alone.
    */
   readonly scope: MaybeAccessor<HTMLElement | null | undefined>;
   /** Keys that undo; `["Mod+Z"]` by default, and `[]` turns them off. */
@@ -41,7 +40,8 @@ export interface CalendarHistoryShortcutsOptions {
  *
  * ```ts
  * const history = useCalendarHistory(eventHistory);
- * useCalendarHistoryShortcuts(history, { scope: Calendar.useCalendarMeta()().refs.frame });
+ * const meta = Calendar.useCalendarMeta();
+ * useCalendarHistoryShortcuts(history, () => ({ scope: meta().refs.frame }));
  * ```
  */
 export function useCalendarHistoryShortcuts(

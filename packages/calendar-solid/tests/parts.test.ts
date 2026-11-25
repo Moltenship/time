@@ -15,11 +15,13 @@ import {
   useRovingFocus,
   type CalendarEventRenderValue,
 } from "../src";
+import { when } from "../src/flow";
 import { element } from "../src/props";
 import {
   allDay,
   KeyboardCalendar,
   KeyboardFixture,
+  testMessages,
   type FixtureEvent,
 } from "./fixtures/interaction";
 import { mount, settled } from "./harness/render";
@@ -142,6 +144,45 @@ describe("Announcer", () => {
     // The application's style wins, as it comes after.
     expect(styled.style.position).toBe("static");
     expect(styled.style.width).toBe("1px");
+  });
+
+  test("the last one mounted speaks, and one that unmounts hands the channel back", async () => {
+    const [second, setSecond] = createSignal(false);
+    const view = mount(() =>
+      createComponent(KeyboardFixture, {
+        initialEvents: [allDay("trip", "2026-10-07", "2026-10-09", "Trip")],
+        onChange: () => undefined,
+        // Rendered before the fixture's own Announcer, and mounted after it.
+        get children() {
+          return when(second, () =>
+            createComponent(KeyboardCalendar.Announcer, {
+              "data-second": "",
+              messages: testMessages,
+            }),
+          );
+        },
+      }),
+    );
+    await settled();
+    // Each region's text, with Intl's thin and narrow spaces made plain.
+    const regions = () =>
+      [...view.container.querySelectorAll('[data-calendar-part="announcer"]')].map((region) => {
+        const said = region.textContent!.replace(/\s/gu, " ");
+        return region.hasAttribute("data-second") ? `second:${said}` : said;
+      });
+    view.container.querySelector<HTMLElement>('[data-event="trip"]')!.focus();
+    await settled();
+
+    setSecond(true);
+    await settled();
+    await press(" ");
+    expect(regions()).toEqual(["second:start move Trip Oct 7 – 8", ""]);
+    await press("Escape");
+
+    setSecond(false);
+    await settled();
+    await press(" ");
+    expect(regions()).toEqual(["start move Trip Oct 7 – 8"]);
   });
 });
 

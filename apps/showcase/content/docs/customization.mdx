@@ -175,8 +175,9 @@ calendar that renders `Frame`, whatever draws its views. You write the rest:
   [In your own views](/docs/accessibility#in-your-own-views) has the hooks, and
   `Calendar.Announcer` speaks the changes.
 
-A Solid app is at this level today. The registry has no Solid views yet, and
-[`@moltenship/calendar-solid`](/docs/api/solid) doesn't bind dragging or keyboard navigation yet.
+A Solid app is at this level today, since the registry has no Solid views yet.
+[`@moltenship/calendar-solid`](/docs/api/solid) has the same hooks for dragging, keyboard
+navigation and announcements, so a Solid view you write gets them as a React one does.
 
 ## What each level costs
 
