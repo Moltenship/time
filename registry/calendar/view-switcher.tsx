@@ -8,7 +8,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@registry/ui/select";
+} from "@registry/calendar-ui/select";
 
 export interface ViewSwitcherOption<TView extends string> {
   readonly label: string;
@@ -32,7 +32,8 @@ export function ViewSwitcher<TView extends string>({
 }: ViewSwitcherProps<TView>) {
   return (
     <Select
-      items={options}
+      // ui-sdk's select takes a mutable array.
+      items={[...options]}
       value={value}
       onValueChange={(next) => {
         const option = options.find((candidate) => candidate.value === next);
@@ -45,9 +46,9 @@ export function ViewSwitcher<TView extends string>({
       <SelectContent align="end" alignItemWithTrigger={false}>
         <SelectGroup>
           {options.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
+            <SelectItem key={option.value} label={option.label} value={option.value}>
               {option.label}
-              {/* The trigger shows the label from `items`, so the shortcut only appears in the list. */}
+              {/* The trigger and typing read `label`, so the shortcut only appears in the list. */}
               {option.shortcut !== undefined && (
                 <kbd className="ms-auto font-sans text-xs text-muted-foreground">
                   {option.shortcut}

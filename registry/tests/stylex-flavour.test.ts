@@ -30,7 +30,9 @@ const items = readdirSync(registry).filter(
   (name) =>
     existsSync(join(registry, name, "registry-item.json")) &&
     !name.startsWith(flavour) &&
-    name !== "calendar-theme",
+    name !== "calendar-theme" &&
+    // The kit's StyleX twin, `stylex-calendar-ui`, comes with the flavour's move to it (ADR 0279, K3).
+    name !== "calendar-ui",
 );
 const sourceFiles = (item: string) =>
   filesOf(join(registry, item)).filter((file) => file !== "registry-item.json");

@@ -5,7 +5,11 @@
   "title": "Resource timeline",
   "description": "Resources as rows and time as columns for a day of hours or a week or month of days: a sticky resource column with collapsible groups, a sticky header, events as bars packed into lanes, a now-line, drag and keyboard moves along time and across rows, and two-axis virtualization that renders only the rows and slots in view.",
   "dependencies": ["@moltenship/calendar", "@tanstack/react-virtual", "cn", "lucide-react"],
-  "registryDependencies": ["button", "@moltenship/calendar", "@moltenship/calendar-theme"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/calendar-ui"
+  ],
   "files": [
     {
       "path": "registry/resource-timeline-view/resource-timeline-view.tsx",

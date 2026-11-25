@@ -30,7 +30,7 @@ import {
   calendarEventColors,
   type CalendarEventColor,
 } from "@registry/calendar-theme/event-colors";
-import { Button } from "@registry/ui/button";
+import { Button } from "@registry/calendar-ui/button";
 import { PopoverContent } from "@registry/ui/popover";
 import { TooltipContent } from "@registry/ui/tooltip";
 import { cn } from "cn";

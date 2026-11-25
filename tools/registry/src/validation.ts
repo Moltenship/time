@@ -4,10 +4,13 @@ import { isAbsolute, relative, resolve, sep } from "node:path";
 import parsePackageArgument from "npm-package-arg";
 import { registryItemSchema } from "shadcn/schema";
 
+import { importsOf } from "./check";
 import {
   dragAndDropPackages,
+  frameworkPackage,
   registryNamespace,
   registrySourceDirectory,
+  registrySharedDirectory,
   registrySourcePackage,
 } from "./config";
 
@@ -71,6 +74,23 @@ async function isFile(workspaceRoot: string, path: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+/**
+ * What a shared file may not import: a framework, a package made for one, or an item's own file.
+ * Each framework's items import the shared file, so it holds no markup and no framework code.
+ */
+export function sharedFileIssues(path: string, source: string): string[] {
+  if (!path.endsWith(".ts") || path.endsWith(".d.ts")) {
+    return [`${path} is shared, so it is a plain .ts file with no markup`];
+  }
+  return importsOf(source).flatMap((specifier) =>
+    frameworkPackage(specifier)
+      ? [`${path} is shared, but imports ${specifier}, which belongs to one framework`]
+      : specifier.startsWith("@registry/") && !specifier.startsWith(`@${registrySharedDirectory}/`)
+        ? [`${path} is shared, but imports ${specifier}; it may import other shared files only`]
+        : [],
+  );
 }
 
 async function readDeclaredPackages(workspaceRoot: string): Promise<ReadonlySet<string>> {
@@ -248,6 +268,11 @@ async function validateParsedItem(
       issues.push(
         issue("missing-source-file", `${path}.path`, `Source file does not exist: ${file.path}`),
       );
+    } else if (file.path.startsWith(`${registrySharedDirectory}/`)) {
+      const source = await readFile(resolve(workspaceRoot, file.path), "utf8");
+      for (const message of sharedFileIssues(file.path, source)) {
+        issues.push(issue("framework-in-shared-file", `${path}.path`, message));
+      }
     }
 
     if (!file.target) {

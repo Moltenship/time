@@ -1,3 +1,6 @@
+/* Declared first, so the app's styles win over the CSS ui-sdk adds to the page. */
+@layer ui-sdk;
+
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";

@@ -13,6 +13,8 @@
     "@moltenship/calendar": "workspace:*",
     "@stylexjs/stylex": "catalog:",
     "@tanstack/react-virtual": "catalog:",
+    "@ui-sdk/core": "catalog:",
+    "@ui-sdk/react": "catalog:",
     "class-variance-authority": "catalog:",
     "cn": "catalog:",
     "lucide-react": "catalog:",

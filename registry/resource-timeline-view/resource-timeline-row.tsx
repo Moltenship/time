@@ -36,7 +36,7 @@ import {
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
-import { Button } from "@registry/ui/button";
+import { Button } from "@registry/calendar-ui/button";
 
 import {
   closedDayExtents,
