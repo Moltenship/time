@@ -204,7 +204,7 @@ return {
 
 ## Writing an integration
 
-`@moltenship/calendar-solid` is the model to read: it's the smaller of the two. An integration
+`@moltenship/calendar-solid` is the model to read: it binds everything React's does, in less code. An integration
 does four things:
 
 1. Creates the runtime and the primitive in its factory, as `createCalendar` does.
@@ -216,7 +216,7 @@ does four things:
 
 The interaction below is shared from here as stores and plain functions. The pointer layer is
 `@moltenship/calendar-dnd`, which imports no framework either: bind `attachCalendarPointer` as
-`useCalendarPointer` does in React.
+`useCalendarPointer` does in both integrations.
 
 There's no guide beyond this page yet, and the runtime's types change as the Solid integration
 grows. If you plan an integration, open an issue first.

@@ -230,7 +230,9 @@ announcement context, with the step's event when the calendar shows it.
 
 ## Outside React
 
-`createEventHistory` doesn't use React. Record each result yourself, and pass `undo` and `redo` the
+In a Solid app, `@moltenship/calendar-solid` has `useCalendarHistory` and
+`useCalendarHistoryShortcuts`: see [Undo and redo](/docs/api/solid#undo-and-redo) there. Elsewhere,
+`createEventHistory` works without a framework. Record each result yourself, and pass `undo` and `redo` the
 events the user sees and a function that proposes, such as `propose` from
 [`createEventTransactions`](/docs/api/changes#results). `getEvents` must return the same snapshot
 until the events change: the history tells events that haven't caught up with its own saves by

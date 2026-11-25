@@ -98,13 +98,13 @@ progress** is being written against the contract here; **planned** is decided an
 | --- | --- |
 | `calendar-primitives`: the store, the runtime, the calendar primitive | Built |
 | `calendar-react` rendering the primitive | Built |
-| `calendar-solid` and `apps/demo-solid` | Built: the root, the structural parts, the read hooks and the agent surface. No ready-made views |
+| `calendar-solid` and `apps/demo-solid` | Built: the root, every part and hook `calendar-react` has, and the agent surface. The demo's own month grid and list bind the keyboard, the pointer, drafts and undo. No ready-made views |
 | Enforcement of rules 12 to 15 and the release tooling for the two packages | Built |
 | The `"agent"` input method (§10) | Built |
 | The agent surface: actions with one JSON object each, reading actions, a change's outcome, the proposal's detail and `fields` for policies and `onEventChange` (§10) | Built |
 | Docs for agents: agent and WebMCP guides with live examples, `llms.txt`, a skill for coding agents (§20) | Built |
-| Keyboard gestures, roving focus, drafts and the history binding in the primitives | Built: the keyboard controller, roving focus, the draft source and the busy queries, the history binding and its shortcuts, the announcer's live text, resource status and expansion are in the primitives, and React binds them. Solid binds none of them yet |
-| A framework-free pointer adapter: `useCalendarPointer` in the React integration (rule 4) | Built: `calendar-dnd` has no React peer, and the facade exports the hook from `calendar-react`. Solid doesn't bind the adapter yet |
+| Keyboard gestures, roving focus, drafts and the history binding in the primitives | Built: the keyboard controller, roving focus, the draft source and the busy queries, the history binding and its shortcuts, the announcer's live text, resource status and expansion are in the primitives, and both integrations bind them |
+| A framework-free pointer adapter: `useCalendarPointer` in each integration (rule 4) | Built: `calendar-dnd` has no framework peer. The facade exports the hook from `calendar-react`, and `calendar-solid` exports its own, which passes the options through |
 | Registry views on the new parts; Solid views; the registry's controls on ui-sdk | Planned. [ADR 0279](./docs/adr/0279-solid-views-in-the-registry.md) decides how and in what order |
 
 Until a piece is built, the sections below describe the 1.x implementation and say where 2.0
@@ -118,7 +118,7 @@ to 15.
 1. Temporal utilities never import a UI framework (React, Solid), ui-sdk, Jotai, dnd-kit, DOM types, CSS, or application types.
 2. Core never imports a UI framework, ui-sdk, Jotai, dnd-kit, DOM types, or registry source.
 3. The React integration (`calendar-react`) may import the primitives, core, the Temporal utilities, React, and ui-sdk's `@ui-sdk/core` and `@ui-sdk/react` (rule 14), and the pointer adapter, which its `useCalendarPointer` binds (rule 4), but not default view source.
-4. The pointer adapter (`calendar-dnd`) may import core and the Temporal utilities, and nothing else of ours: not the primitives and not an integration. It never imports ui-sdk. It uses native Pointer Events, not a drag-and-drop library (ADR 0037). In 2.0 it imports no framework, in its tests either: `useCalendarPointer`, its React binding, is the React integration's, and the Solid integration binds `attachCalendarPointer` itself (planned). Of the published packages the facade, the dnd-kit adapter and the two integrations may import it.
+4. The pointer adapter (`calendar-dnd`) may import core and the Temporal utilities, and nothing else of ours: not the primitives and not an integration. It never imports ui-sdk. It uses native Pointer Events, not a drag-and-drop library (ADR 0037). In 2.0 it imports no framework, in its tests either: `useCalendarPointer`, its React binding, is the React integration's, and the Solid integration binds `attachCalendarPointer` in its own `useCalendarPointer`. Of the published packages the facade, the dnd-kit adapter and the two integrations may import it.
 5. Registry source imports only the `@moltenship/calendar` facade, other registry items, shared files, the npm packages `registry/package.json` declares, and stock shadcn components, which leave the rule when the last item stops using them (ADR 0279). Shared files (`registry/shared/`) are plain `.ts` files with no framework in them: they import other shared files and framework-free packages, and no framework, no package made for one and no item's own file. It never imports a drag-and-drop library or `calendar-dnd`. Its tests, which aren't installed, may also use `calendar-testing`, as an app's tests would.
 6. The showcase and the demos (`apps/demo`, and `apps/demo-solid` for Solid) import packages only through their public entry points, and registry source in place. In the full tier and the release gate, `vp run release:artifacts` runs the SSR fixture's tests and builds and serves the docs site in copies outside the workspace, installed from the dry run's packed tarballs as an end user would, and installs the built registry into clean Vite and Next.js apps on the same tarballs (#203).
 7. No package may deep-import another package's `src/` directory.
@@ -201,7 +201,7 @@ demo (`apps/demo/vite.config.ts`), so one deployment has both frameworks and a s
 | `@moltenship/calendar-core`       | Event adapters, normalized snapshots, interval indexes, view strategies, fragments, layout engines, policies, transactions.   | `calendar-temporal`; provisional `@flatten-js/interval-tree` behind an internal interface | Stable                                            |
 | `@moltenship/calendar-primitives` | 2.0. The framework-free calendar: the runtime `Root` derives with, the calendar store and its binding, the calendar as a ui-sdk primitive (controlled slices, semantic actions, slots for parts, the agent surface). | `calendar-core`, `calendar-temporal`; `@ui-sdk/core` peer                                 | 2.0 preview; not settled                          |
 | `@moltenship/calendar-react`      | Per-instance provider, controlled state bridge, selectors, actions, meta, headless parts, custom-view renderer contract. In 2.0 it renders the primitive. | `calendar-core`, `calendar-temporal`; React 19 peer. In 2.0 also `calendar-primitives` and `calendar-dnd`, and `@ui-sdk/core` and `@ui-sdk/react` peers | Stable                                            |
-| `@moltenship/calendar-solid`      | 2.0. The same integration for SolidJS 2.0: factory, parts, state and actions over the primitive. No ready-made views, keyboard gestures or pointer layer yet. | `calendar-primitives`, `calendar-core`, `calendar-temporal`; `solid-js`, `@solidjs/web`, `@ui-sdk/core` and `@ui-sdk/solid` peers | 2.0 preview; not settled                          |
+| `@moltenship/calendar-solid`      | 2.0. The same integration for SolidJS 2.0: factory, parts, hooks, state and actions over the primitive, keyboard gestures and the pointer binding included. No ready-made views yet. | `calendar-primitives`, `calendar-core`, `calendar-temporal`, `calendar-dnd`; `solid-js`, `@solidjs/web`, `@ui-sdk/core` and `@ui-sdk/solid` peers | 2.0 preview; not settled                          |
 | `@moltenship/calendar-dnd`        | Pointer Events sessions, geometry adapter, drag preview, auto-scroll, announcements; drags in from and out to the rest of the page. | `calendar-core`, `calendar-temporal`. React 19 peer in 1.x; in 2.0 no framework (rule 4) | Stable adapter; no DOM event types in callbacks   |
 | `@moltenship/calendar-dnd-kit`    | Optional dnd-kit adapter: a draggable carrying `calendarDropData` drops into the views; events a view moves become dnd-kit drags for the app's droppables. | `calendar-dnd`, `calendar-core`, `@dnd-kit/abstract` (dnd-kit's collision enums); React 19, `@dnd-kit/react` and `@dnd-kit/dom` 0.5 peers | Optional adapter; follows dnd-kit 0.5, which is pre-1.0 |
 | `@moltenship/calendar`            | The ergonomic entry point used by most React consumers. Re-exports core, the Temporal utilities, the React bindings and the pointer adapter. | `calendar-core`, `calendar-temporal`, `calendar-react`, `calendar-dnd`; React 19 peer. In 2.0 also `calendar-react`'s ui-sdk peers | Stable facade                                     |
@@ -1176,7 +1176,7 @@ Explicit move and resize buttons and an event details surface in the registry ar
 
 `useCalendarPointer` is the React binding of `attachCalendarPointer`. It was part of `calendar-dnd`
 in 1.x; in 2.0 it is the React integration's, the facade keeps exporting it, and the Solid
-integration binds the same function (rule 4, planned). It takes the rendered `events`, `onPropose` and `timeZone`, and optionally `snap`
+integration binds the same function in a hook of the same name (rule 4). It takes the rendered `events`, `onPropose` and `timeZone`, and optionally `snap`
 (15 minutes by default), `announcer`, `check`, `columns`, `scrollContainer` (the nearest scrollable
 ancestor by default), `sidewaysScrollContainer` (a scroller nested in it that scrolls sideways in
 its place), `onPreview`, `disabled` (views pass their `isReadOnly` prop) and
@@ -1845,10 +1845,9 @@ except that the docs for agents need the agent surface.
    Gate: the React package's tests pass with no change to what they assert, among them the tests
    behind ADR 0070 and the zero-commit pointer tests; the a11y suite passes; a Solid root renders,
    hydrates and keeps a controlled slice current.
-2. **Interaction (built for React; Solid planned).** Keyboard gestures, roving focus, gesture
-   drafts and the history binding are in the primitives; `useCalendarPointer` is in the React
-   integration and `calendar-dnd` has no React peer; the Solid integration binds all of it
-   (planned).
+2. **Interaction (built).** Keyboard gestures, roving focus, gesture drafts and the history
+   binding are in the primitives; `useCalendarPointer` is in each integration and `calendar-dnd`
+   has no framework peer; the Solid integration binds all of it, as React's does.
    Gate: the keyboard and pointer parity tests pass unchanged in React, and the same scenarios pass
    in Solid.
 3. **Agents (built).** The agent surface of §10, proposals as `"agent"`, and the proposal's

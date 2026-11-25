@@ -7,7 +7,7 @@ description: Builds calendars with Moltenship Time (@moltenship/calendar), a hea
 
 Moltenship Time is a headless calendar. The npm packages hold the behaviour: state, dates and time zones, layout, drag and keyboard editing, recurrence. The views (week, month, agenda and the rest) are source files the app owns, added with the shadcn CLI. Since 2.0 the calendar's parts are [ui-sdk](https://ui-sdk.dev) components, so an AI agent can read the calendar and act on it once the app creates ui-sdk's agent bridge.
 
-The engine and the calendar's state import no UI framework. The React integration is complete, and the registry's views are React source. The SolidJS 2 integration is a preview without views, keyboard navigation or dragging. This file describes React unless it says otherwise.
+The engine and the calendar's state import no UI framework. The React integration is complete, and the registry's views are React source. The SolidJS 2 integration is a preview with the same hooks, keyboard navigation and dragging included, and no ready-made views. This file describes React unless it says otherwise.
 
 ## Read first
 
@@ -54,7 +54,7 @@ your records ──adapter──▶ createCalendar({ eventAdapter, views }) ─�
 3. **Save changes, restrict them, undo them**: [references/changes.md](references/changes.md).
 4. **Let an AI agent use the calendar**: [references/agent-ready.md](references/agent-ready.md).
 5. **Test it**: [references/testing.md](references/testing.md).
-6. **SolidJS**: [references/solid.md](references/solid.md). It's a preview with less in it; read that file before promising anything.
+6. **SolidJS**: [references/solid.md](references/solid.md). It's a preview without views or a testing package; read that file before promising anything.
 
 Before you finish, check your work against [references/mistakes.md](references/mistakes.md).
 

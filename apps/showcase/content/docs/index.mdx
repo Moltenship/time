@@ -15,8 +15,8 @@ your app sets.
 
 To see every view with more data, try the [live demo](https://moltenship-time-demo.vercel.app), a
 Google Calendar-style app built from the same views. A switch in it opens the
-[Solid demo](https://moltenship-time-demo.vercel.app/solid/), which has a month grid, an agenda
-and an agent panel.
+[Solid demo](https://moltenship-time-demo.vercel.app/solid/), which has a month grid and an agenda
+you can drag events in, undo and redo, and an agent panel.
 
 <Callout type="warn" title="2.0 is a pre-release">
   These docs describe Time 2.0, which is built on [ui-sdk](https://ui-sdk.dev). Time 2.0 is a
@@ -70,8 +70,9 @@ where they're ahead.
 
 ## What you get today
 
-The engine and the calendar's state are the same in React and Solid. The views, the gestures and
-some hooks exist in React only. [React and Solid](/docs/frameworks) has the full table.
+The engine, the calendar's state, the keyboard, the gestures and the hooks are the same in React
+and Solid. The ready-made views and the testing package exist in React only.
+[React and Solid](/docs/frameworks) has the full table.
 
 ### In React and in Solid
 
@@ -99,9 +100,14 @@ some hooks exist in React only. [React and Solid](/docs/frameworks) has the full
   policies and your `onEventChange`, marked as an agent's, and the agent gets back how it ended.
   A browser's built-in agent reaches them through WebMCP, an experimental browser API, and a model
   you run reaches them through `agentTools`. See [Agents in your app](/docs/agents).
-- **Undo and redo.** `createEventHistory` records changes and takes them back. React has a hook
-  and keyboard shortcuts for it. Solid has no hook yet, and
-  [Outside React](/docs/undo-redo#outside-react) shows the calls to make yourself.
+- **Editing by pointer and keyboard.** `useCalendarPointer` turns drags into moves, resizes and
+  creates, with a mouse, a pen or touch, and `useCalendarKeyboard` moves focus through a view and
+  moves and resizes events [from the keyboard](/docs/accessibility#changing-events). The
+  `Announcer` says each step to a screen reader.
+- **Undo and redo.** `createEventHistory` records changes, and `useCalendarHistory` and its
+  keyboard shortcuts take them back. See [Undo and redo](/docs/undo-redo).
+- **Server rendering.** During server rendering, Time doesn't read the clock, the host time zone or
+  `window`, so the server and the browser render the same markup from the same props.
 - **Docs your coding agent can read.** Every page has a Markdown version, the docs ship inside
   `@moltenship/calendar@next`, and a skill teaches a coding agent the library. See
   [Build with a coding agent](/docs/agents/coding-agents).
@@ -115,18 +121,15 @@ some hooks exist in React only. [React and Solid](/docs/frameworks) has the full
   [scroll without end](/docs/views/scrolling). They are source files built on shadcn/ui and
   Tailwind CSS, or on [StyleX](/docs/stylex), with a [theme](/docs/theming) of calendar tokens and
   an event color palette.
-- **Editing by pointer and keyboard.** The built-in views support dragging, resizing and creating
-  events with a mouse, a pen or touch, and moving and resizing them
-  [from the keyboard](/docs/accessibility#changing-events).
-- **Server rendering.** During server rendering, Time doesn't read the clock, the host time zone or
-  `window`, so the server and the browser render the same markup from the same props.
+- **Editing in the built-in views.** The views bind the pointer and the keyboard, and the
+  registry's undo toast offers to take each change back.
 - **A testing package.** [`@moltenship/calendar-testing`](/docs/testing) has a fixed clock, typed
   builders, a render harness, and keyboard and pointer drivers.
 
 ### In Solid, as a preview
 
-`@moltenship/calendar-solid` has the typed factory, `Root`, the structural parts and the hooks that
-read state. It has no ready-made views, no keyboard navigation and no dragging yet. See
+`@moltenship/calendar-solid` has the parts and hooks React has, so a view you write gets keyboard
+navigation, dragging, drafts and undo. It has no ready-made views and no testing package yet. See
 [Solid](/docs/api/solid).
 
 <Cards>

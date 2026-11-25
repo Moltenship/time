@@ -134,11 +134,12 @@ const agentFacts = [
 const frameworkRows = [
   ["Engine, state and event changes", "Yes", "Yes"],
   ["Actions an agent can call", "Yes", "Yes"],
-  ["Root, toolbar parts and read hooks", "Yes", "Yes"],
+  ["Root, parts and hooks", "Yes", "Yes"],
+  ["Keyboard navigation in a view", "Yes", "Yes, in views you write"],
+  ["Drag, resize and create", "Yes", "Yes, in views you write"],
+  ["Undo and redo", "A hook and shortcuts", "A hook and shortcuts"],
   ["Ready-made views", "shadcn/ui or StyleX source", "Not yet"],
-  ["Keyboard navigation in a view", "Yes", "Not yet"],
-  ["Drag, resize and create", "Yes", "Not yet"],
-  ["Undo and redo", "A hook and shortcuts", "createEventHistory, no hook yet"],
+  ["Testing package", "Yes", "Not yet"],
 ] as const;
 
 const agentDocs = [
@@ -297,8 +298,8 @@ export default async function HomePage() {
               ui-sdk
             </a>
             . React and Solid each have a package that renders that state. The Solid package has the
-            typed factory, Root, the structural parts and the read hooks. You write its views
-            yourself for now.
+            parts and hooks React has, keyboard navigation, dragging and undo included. It has no
+            ready-made views yet, so you write them.
           </p>
           <p className="mt-4 text-fd-muted-foreground">
             Time 2.0 is a pre-release and ui-sdk is a beta, so both APIs can still change.
@@ -329,7 +330,9 @@ export default async function HomePage() {
                     {feature}
                   </th>
                   <td className="px-4 py-3">{react}</td>
-                  <td className={`px-4 py-3 ${solid === "Yes" ? "" : "text-fd-muted-foreground"}`}>
+                  <td
+                    className={`px-4 py-3 ${solid === "Not yet" ? "text-fd-muted-foreground" : ""}`}
+                  >
                     {solid}
                   </td>
                 </tr>
