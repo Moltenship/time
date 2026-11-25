@@ -23,6 +23,7 @@ import {
   toastCloseClassName,
   toastDescriptionClassName,
   toastRegionClassName,
+  toastRegionDefaults,
   toastTitleClassName,
 } from "@registry/shared/calendar-ui/toast.styles";
 
@@ -43,10 +44,8 @@ export interface ToastViewportProps {
 function ToastViewport({ children, className, manager, ...props }: ToastViewportProps) {
   return (
     <ToastRegion
-      align="center"
+      {...toastRegionDefaults}
       className={cn(toastRegionClassName, className)}
-      maxVisible={1}
-      side="bottom"
       toaster={toasterOf(manager)}
       {...props}
     >

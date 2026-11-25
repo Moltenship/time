@@ -11,6 +11,16 @@
       "path": "registry/calendar-history-toast/calendar-history-toast.tsx",
       "type": "registry:component",
       "target": "@components/calendar/calendar-history-toast/calendar-history-toast.tsx"
+    },
+    {
+      "path": "registry/shared/calendar-history-toast/history-toast.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/calendar-history-toast/history-toast.ts"
+    },
+    {
+      "path": "registry/shared/calendar-history-toast/history-toast.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/calendar-history-toast/history-toast.styles.ts"
     }
   ]
 }

@@ -1,8 +1,19 @@
 import { describe, expect, test } from "vite-plus/test";
 import { server, userEvent } from "vite-plus/test/browser";
 
+import { XIcon } from "lucide-react";
+
 import { Badge } from "@registry/calendar-ui/badge";
 import { Button } from "@registry/calendar-ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@registry/calendar-ui/dialog";
 import {
   Popover,
   PopoverClose,
@@ -20,9 +31,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@registry/calendar-ui/select";
+import {
+  createToastManager,
+  Toast,
+  ToastAction,
+  ToastClose,
+  ToastDescription,
+  ToastTitle,
+  ToastViewport,
+} from "@registry/calendar-ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/calendar-ui/tooltip";
 
-import { describeTree, kitFixture, opened, popups } from "./kit-twins";
+import { describeTree, kitFixture, kitToast, opened, popups, toastShown } from "./kit-twins";
 import { render, until } from "./render";
 
 // React's kit renders what `kit-twins/` stores, and `solid/kit-twins.a11y.tsx` checks the Solid
@@ -116,6 +136,51 @@ describe.runIf(server.browser === "chromium")("kit twins", () => {
     );
     await expect(describeTree(root(), ...popups(container()))).toMatchFileSnapshot(
       "./kit-twins/popover-open.txt",
+    );
+  });
+
+  test("the dialog, open", async () => {
+    await render(
+      <div data-testid="kit">
+        <Dialog open onOpenChange={() => {}}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit recurring event</DialogTitle>
+              <DialogDescription>“Standup” repeats.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>,
+    );
+    await until(() => expect(opened(document.querySelector('[role="dialog"]'))).toBe(true));
+    await expect(describeTree(root(), ...popups(container()))).toMatchFileSnapshot(
+      "./kit-twins/dialog-open.txt",
+    );
+  });
+
+  test("the toast", async () => {
+    const manager = createToastManager();
+    await render(
+      <div data-testid="kit">
+        <ToastViewport aria-label="Notifications" manager={manager}>
+          <Toast>
+            <ToastTitle />
+            <ToastDescription />
+            <ToastAction />
+            <ToastClose aria-label="Dismiss">
+              <XIcon />
+            </ToastClose>
+          </Toast>
+        </ToastViewport>
+      </div>,
+    );
+    manager.add(kitToast);
+    await until(() => expect(toastShown()).toBe(true));
+    await expect(describeTree(root(), ...popups(container()))).toMatchFileSnapshot(
+      "./kit-twins/toast.txt",
     );
   });
 });

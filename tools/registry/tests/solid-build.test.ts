@@ -47,10 +47,12 @@ describe("Solid registry build", () => {
     expect(manifest.items.map(({ name }) => name).toSorted()).toEqual([
       "base-tokens",
       "calendar",
+      "calendar-history-toast",
       "calendar-theme",
       "calendar-ui",
       "list-view",
       "month-view",
+      "recurrence-scope-dialog",
     ]);
     expect(await checkBuiltRegistry({ outDir, manifest, framework: solidRegistry })).toEqual([]);
     const registry = JSON.parse(await readFile(join(outDir, "registry.json"), "utf8")) as {

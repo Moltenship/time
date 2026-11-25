@@ -16,6 +16,16 @@
       "path": "registry/recurrence-scope-dialog/use-recurrence-scope-prompt.tsx",
       "type": "registry:hook",
       "target": "@components/calendar/recurrence-scope-dialog/use-recurrence-scope-prompt.tsx"
+    },
+    {
+      "path": "registry/shared/recurrence-scope-dialog/recurrence-scope.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/recurrence-scope-dialog/recurrence-scope.ts"
+    },
+    {
+      "path": "registry/shared/recurrence-scope-dialog/recurrence-scope-dialog.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/recurrence-scope-dialog/recurrence-scope-dialog.styles.ts"
     }
   ]
 }

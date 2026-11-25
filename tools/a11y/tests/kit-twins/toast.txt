@@ -1,0 +1,15 @@
+<div data-testid="kit">
+  <section aria-keyshortcuts="F6" aria-label="Notifications" class="fixed inset-x-0 top-auto bottom-6 mx-auto translate-none my-0 h-fit w-fit max-w-[calc(100vw-2rem)] overflow-visible rounded-xl border-0 bg-transparent p-0 outline-none focus-visible:ring-2 focus-visible:ring-ring [&>ol]:m-0 [&>ol]:flex [&>ol]:list-none [&>ol]:flex-col [&>ol]:items-center [&>ol]:p-0" data-align="center" data-side="bottom" data-slot="toast-region" popover="manual" role="region">
+    <ol data-slot="toast-list">
+      <li aria-describedby="#2" aria-labelledby="#1" class="flex items-center gap-1 rounded-lg bg-foreground py-1.5 ps-4 pe-1.5 text-sm text-background shadow-lg outline-none transition-[opacity,translate] duration-200 focus-visible:ring-2 focus-visible:ring-ring data-ending-style:opacity-0 data-starting-style:opacity-0 motion-safe:data-ending-style:translate-y-2 motion-safe:data-starting-style:translate-y-2" data-front="" data-slot="toast" data-type="default" tabindex="0">
+        <div class="me-2 min-w-0 truncate" data-slot="toast-title" id="#1">
+          "Moved “Standup”"
+        <div class="text-background/80" data-slot="toast-description" id="#2">
+          "To undo it, press F6 and choose Undo."
+        <button class="h-8 rounded-md px-3 font-semibold outline-none hover:bg-background/15 focus-visible:ring-2 focus-visible:ring-background/60" data-slot="toast-action" type="button">
+          "Undo"
+        <button aria-label="Dismiss" class="grid size-8 place-items-center rounded-md text-background/70 outline-none hover:bg-background/15 hover:text-background focus-visible:ring-2 focus-visible:ring-background/60 [&_svg]:size-4" data-slot="toast-close" type="button">
+          <svg aria-hidden="true" fill="none" height="24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" stroke="currentColor" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<div aria-hidden="true">
+<div aria-atomic="true" aria-live="polite" data-ui-sdk-announcer="" role="status">
+<div aria-atomic="true" aria-live="assertive" data-ui-sdk-announcer="assertive" role="alert">

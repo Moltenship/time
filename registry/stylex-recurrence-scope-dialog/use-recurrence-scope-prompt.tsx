@@ -1,26 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import {
-  offeredRecurrenceScopes,
-  RecurrenceScopeDialog,
-  type RecurrenceEditScope,
-  type RecurrenceScopeAction,
-} from "./recurrence-scope-dialog";
+  closedRecurrenceScopePrompt,
+  createRecurrenceScopeQuestions,
+  type RecurrenceScopeQuestion,
+} from "@registry/shared/recurrence-scope-dialog/recurrence-scope";
 
-/** What to ask about a pending change to an occurrence of a recurring event. */
-export interface RecurrenceScopeQuestion {
-  /** An edit (move, resize, update) or a delete; picks the copy. Defaults to `"edit"`. */
-  readonly action?: RecurrenceScopeAction;
-  /** The event's title, quoted in the question. */
-  readonly eventTitle?: string;
-  /**
-   * The scopes to offer, shown in a fixed order: this, following, all. Defaults to all three.
-   * With none, `ask` resolves `null` at once and shows nothing.
-   */
-  readonly scopes?: readonly RecurrenceEditScope[];
-}
+import { RecurrenceScopeDialog, type RecurrenceEditScope } from "./recurrence-scope-dialog";
+
+export type { RecurrenceScopeQuestion };
 
 export interface RecurrenceScopePrompt {
   /**
@@ -33,14 +23,6 @@ export interface RecurrenceScopePrompt {
   /** The dialog; render it once, anywhere under the component that calls the hook. */
   readonly dialog: ReactNode;
 }
-
-interface PromptState {
-  readonly open: boolean;
-  /** Kept after an answer, so the dialog keeps its copy while it animates closed. */
-  readonly question: RecurrenceScopeQuestion;
-}
-
-const closed: PromptState = { open: false, question: {} };
 
 /**
  * Asks which events of a recurring series a change applies to, as a promise. Await it in
@@ -111,77 +93,19 @@ const closed: PromptState = { open: false, question: {} };
  * ```
  */
 export function useRecurrenceScopePrompt(): RecurrenceScopePrompt {
-  const [prompt, setPrompt] = useState<PromptState>(closed);
-  /** Resolves the open question until it is answered. */
-  const pending = useRef<((scope: RecurrenceEditScope | null) => void) | null>(null);
-  /** Hands over an answer once the dialog has closed. */
-  const answered = useRef<(() => void) | null>(null);
-  const unmounted = useRef(false);
+  const [prompt, setPrompt] = useState(closedRecurrenceScopePrompt);
+  const [questions] = useState(() => createRecurrenceScopeQuestions(setPrompt));
 
-  /** Hands over an answer that is still closing. */
-  const handOver = useCallback(() => {
-    const answer = answered.current;
-    answered.current = null;
-    answer?.();
-  }, []);
-
-  /** Takes the open question's resolver, so only one answer reaches it. */
-  const takePending = useCallback(() => {
-    const resolve = pending.current;
-    pending.current = null;
-    return resolve;
-  }, []);
-
-  /** Hands over an answer, and cancels a question that has none. */
-  const settle = useCallback(() => {
-    handOver();
-    takePending()?.(null);
-  }, [handOver, takePending]);
-
-  const ask = useCallback(
-    (question: RecurrenceScopeQuestion = {}) => {
-      // A newer question replaces the open one, which counts as cancelled; an answer still
-      // closing goes now.
-      settle();
-      if (unmounted.current) return Promise.resolve(null);
-      if (offeredRecurrenceScopes(question.scopes).length === 0) {
-        setPrompt((current) => (current.open ? { ...current, open: false } : current));
-        return Promise.resolve(null);
-      }
-      return new Promise<RecurrenceEditScope | null>((resolve) => {
-        pending.current = resolve;
-        setPrompt({ open: true, question });
-      });
-    },
-    [settle],
-  );
-
-  const onResolve = useCallback(
-    (scope: RecurrenceEditScope | null) => {
-      const resolve = takePending();
-      // The answer waits for focus to be back on the event: applying it can replace the event.
-      if (resolve !== null) answered.current = () => resolve(scope);
-      setPrompt((current) => ({ ...current, open: false }));
-    },
-    [takePending],
-  );
-
-  useEffect(() => {
-    unmounted.current = false;
-    return () => {
-      unmounted.current = true;
-      settle();
-    };
-  }, [settle]);
+  useEffect(() => questions.connect(), [questions]);
 
   return {
-    ask,
+    ask: questions.ask,
     dialog: (
       <RecurrenceScopeDialog
         action={prompt.question.action}
         eventTitle={prompt.question.eventTitle}
-        onClosed={handOver}
-        onResolve={onResolve}
+        onClosed={questions.closed}
+        onResolve={questions.answer}
         open={prompt.open}
         scopes={prompt.question.scopes}
       />

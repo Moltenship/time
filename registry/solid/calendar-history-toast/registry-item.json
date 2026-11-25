@@ -1,0 +1,26 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "calendar-history-toast",
+  "type": "registry:component",
+  "title": "Undo toast",
+  "description": "An Undo toast for a calendar's event history: after each change it offers to undo it, and after an undo, to redo it. It adds Mod+Z and Shift+Mod+Z or Ctrl+Y in the calendar's frame, reads each toast out, and adds how to reach Undo for a change no gesture announced. English messages to edit or translate. The same toast as the React registry's, in Solid.",
+  "dependencies": ["@moltenship/calendar-solid"],
+  "registryDependencies": ["@moltenship/calendar", "@moltenship/calendar-ui"],
+  "files": [
+    {
+      "path": "registry/solid/calendar-history-toast/calendar-history-toast.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/calendar-history-toast/calendar-history-toast.tsx"
+    },
+    {
+      "path": "registry/shared/calendar-history-toast/history-toast.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/calendar-history-toast/history-toast.ts"
+    },
+    {
+      "path": "registry/shared/calendar-history-toast/history-toast.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/calendar-history-toast/history-toast.styles.ts"
+    }
+  ]
+}

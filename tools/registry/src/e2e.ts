@@ -374,7 +374,15 @@ async function testApp(
 }
 
 /** The Solid items the Solid app adds, by the registry's namespace, as the Solid docs do. */
-const solidItems = ["base-tokens", "calendar-ui", "calendar", "list-view", "month-view"] as const;
+const solidItems = [
+  "base-tokens",
+  "calendar-ui",
+  "calendar",
+  "list-view",
+  "month-view",
+  "recurrence-scope-dialog",
+  "calendar-history-toast",
+] as const;
 
 /** The versions the workspace builds and tests with, from its catalog. */
 async function catalogVersion(name: string): Promise<string> {

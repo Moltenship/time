@@ -10,13 +10,16 @@ import { userEvent } from "vite-plus/test/browser";
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { ViewSwitcher } from "@registry/calendar/view-switcher";
 import { createAgendaView } from "@registry/list-view/agenda-view";
+import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-recurrence-scope-prompt";
 
-import { render, until } from "./render";
+import { render, tab, until } from "./render";
 
 // The kit's files are the app's code once added, so an app can make one render its own control,
 // as `../own-controls.a11y.tsx` checks for React. The views import the kit's names, so they get
-// these instead, with nothing else changed: a plain `<button>` and a native `<select>`.
+// these instead, with nothing else changed: a plain `<button>`, a native `<select>` and the
+// browser's `<dialog>`.
 vi.mock("@registry/calendar-ui/button", () => import("./own-controls/button"));
+vi.mock("@registry/calendar-ui/dialog", () => import("./own-controls/dialog"));
 vi.mock("@registry/calendar-ui/select", () => import("./own-controls/select"));
 
 type Fixture = CalendarEvent<null, string>;
@@ -123,4 +126,49 @@ test("the view switcher with the app's own select still picks by pointer and by 
   await until(() => expect(chosen).toEqual(["month", "week"]));
   expect(select().value).toBe("week");
   expect(document.activeElement).toBe(select());
+});
+
+function RecurringEvent() {
+  const { ask, dialog } = useRecurrenceScopePrompt();
+  const [answer, setAnswer] = createSignal("none yet");
+  return (
+    <main class="p-4">
+      <button
+        type="button"
+        data-event-id="standup"
+        onClick={async () => setAnswer((await ask({ eventTitle: "Standup" })) ?? "cancelled")}
+      >
+        Standup
+      </button>
+      <output>{answer()}</output>
+      {dialog}
+    </main>
+  );
+}
+
+test("the recurrence question in the app's own dialog answers by keyboard", async () => {
+  await render(() => <RecurringEvent />);
+  const event = document.querySelector<HTMLElement>('[data-event-id="standup"]')!;
+  const dialog = () => document.querySelector<HTMLDialogElement>("dialog[open]");
+  const answer = () => document.querySelector("output")?.textContent;
+  const focused = () => document.activeElement?.textContent;
+
+  event.focus();
+  await userEvent.keyboard("{Enter}");
+  await until(() => expect(dialog()?.hasAttribute("data-own-control")).toBe(true));
+  await until(() => expect(focused()).toBe("This event"));
+  await userEvent.keyboard("{Escape}");
+  await until(() => expect(answer()).toBe("cancelled"));
+  await until(() => expect(dialog()).toBeNull());
+  expect(document.activeElement).toBe(event);
+
+  await userEvent.keyboard("{Enter}");
+  await until(() => expect(focused()).toBe("This event"));
+  await userEvent.keyboard(tab);
+  await until(() => expect(focused()).toBe("This and following events"));
+  await userEvent.keyboard("{ArrowDown}");
+  await until(() => expect(focused()).toBe("All events"));
+  await userEvent.keyboard("{Enter}");
+  await until(() => expect(answer()).toBe("all"));
+  await until(() => expect(document.activeElement).toBe(event));
 });

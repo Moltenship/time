@@ -13,9 +13,6 @@ const registry = join(import.meta.dirname, "..");
 const reactKit = join(registry, "calendar-ui");
 const solidKit = join(registry, "solid", "calendar-ui");
 
-/** The kit's controls that come to Solid with the views that use them (ADR 0279, S6). */
-const pending = ["dialog", "toast"];
-
 /** The icons are the Solid kit's own until lucide-solid supports Solid 2.0. */
 const solidOnly = ["icons"];
 
@@ -91,9 +88,9 @@ function read(folder: string, name: string): Control {
 /** A React member's name in Solid: `class` for `className`. */
 const inSolid = (member: string) => (member === "className" ? "class" : member);
 
-test("the Solid kit has React's controls, less those still to come", () => {
+test("the Solid kit has React's controls", () => {
   expect(controls(solidKit).filter((name) => !solidOnly.includes(name))).toEqual(
-    controls(reactKit).filter((name) => !pending.includes(name)),
+    controls(reactKit),
   );
 });
 

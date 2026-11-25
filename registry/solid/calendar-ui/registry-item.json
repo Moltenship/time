@@ -3,7 +3,7 @@
   "name": "calendar-ui",
   "type": "registry:component",
   "title": "Calendar controls",
-  "description": "The calendar's own controls, thin wrappers over ui-sdk's Solid components in the calendar's look: button, badge, tooltip, select and popover, and the icons the kit and the views draw. Each control's classes live in a plain .styles.ts file beside it, the same file the React kit installs. They land under components/calendar/ui, apart from the app's own components/ui.",
+  "description": "The calendar's own controls, thin wrappers over ui-sdk's Solid components in the calendar's look: button, badge, tooltip, select, popover, dialog and toast, and the icons the kit and the views draw. Each control's classes live in a plain .styles.ts file beside it, the same file the React kit installs. They land under components/calendar/ui, apart from the app's own components/ui.",
   "dependencies": ["@ui-sdk/core", "@ui-sdk/solid", "class-variance-authority", "cn"],
   "files": [
     {
@@ -70,6 +70,31 @@
       "path": "registry/shared/calendar-ui/popup-side.ts",
       "type": "registry:lib",
       "target": "@components/calendar/ui/popup-side.ts"
+    },
+    {
+      "path": "registry/solid/calendar-ui/dialog.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/ui/dialog.tsx"
+    },
+    {
+      "path": "registry/shared/calendar-ui/dialog.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/dialog.styles.ts"
+    },
+    {
+      "path": "registry/solid/calendar-ui/toast.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/ui/toast.tsx"
+    },
+    {
+      "path": "registry/shared/calendar-ui/toast.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/toast.styles.ts"
+    },
+    {
+      "path": "registry/shared/calendar-ui/toast-manager.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/ui/toast-manager.ts"
     },
     {
       "path": "registry/solid/calendar-ui/icons.tsx",
