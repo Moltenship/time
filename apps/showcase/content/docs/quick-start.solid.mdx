@@ -8,8 +8,7 @@ an agenda of your own meetings. The agenda is a Solid component you write, so yo
 is made: it draws a layout the engine computes. The registry has a styled
 [agenda](/docs/views/agenda) to add instead, and you write the other views the same way.
 
-This page shows code only, since this site is a React app. The
-[Solid demo](https://moltenship-time-demo.vercel.app/solid/) is a running Solid calendar built the
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/) is a running calendar built the
 same way, with a month grid, an agenda and an agent panel. Its source is the repository's
 [`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
 
@@ -59,7 +58,7 @@ yours, and the calendar never stores them. Pass the signal's value: `events={mee
 
 `onEventChange` receives every change to an event: a move, a resize, a create or a delete. This
 agenda binds no dragging, so here the changes come from an
-[agent](/docs/api/components#agents), and `titleFrom` reads the title the agent sent.
+[agent](/docs/agents), and `titleFrom` reads the title the agent sent.
 
 </Step>
 <Step>
@@ -87,12 +86,15 @@ an accessor, so call it where you use it: `view()`, `range()`.
 ## Next steps
 
 - [Agenda](/docs/views/agenda) is the registry's styled agenda, added with the shadcn CLI.
-- [Components and hooks](/docs/api/components) lists every part, hook and export of the package.
-- [Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view) writes a
-  month grid with roving focus, and drags that move, resize and create events.
-- [Undo and redo](/docs/api/components#undo-and-redo) records changes and takes them back.
-- [Agents](/docs/api/components#agents) lets an AI agent read the calendar and change it.
+- [How it works](/docs/concepts/how-it-works) explains the adapter, the views and the state behind
+  this calendar.
+- [Custom views](/docs/views/custom-views) writes a view's strategy and its `Renderer` from
+  scratch.
+- [Interactions](/docs/interactions) saves changes and binds drags that move, resize and create
+  events, and [Accessibility](/docs/accessibility#in-your-own-views) writes a month grid with
+  keyboard navigation.
+- [Undo and redo](/docs/undo-redo) records changes and takes them back.
+- [Agents in your app](/docs/agents) lets an AI agent read the calendar and change it.
 - [Recurring events](/docs/recurrence) and [iCalendar](/docs/ics) turn series and ICS feeds into
   events the calendar shows.
-- [React and Solid](/docs/frameworks) says what the two integrations share, and what Solid
-  doesn't have yet.
+- [Components and hooks](/docs/api/components) lists every part, hook and export of the package.

@@ -149,6 +149,13 @@ describe("the select", () => {
     expect(links.map((link) => link.getAttribute("aria-current"))).toEqual(["page", null]);
   });
 
+  test("the list it opens has a name, since a popover is a dialog to a screen reader", () => {
+    open(renderAt("/docs/react/quick-start", "react"));
+    const popover = document.querySelector("[role='dialog']");
+    expect(popover?.getAttribute("aria-label")).toBe("Framework");
+    expect(popover?.querySelectorAll("a")).toHaveLength(2);
+  });
+
   test("in Solid's docs it names Solid, and React's link leads back to the same page", () => {
     const button = renderAt("/docs/solid/api/components", "solid");
     expect(button.getAttribute("aria-label")).toBe("Framework: Solid");

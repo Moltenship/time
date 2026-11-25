@@ -1,0 +1,798 @@
+---
+title: Availability
+description: Working hours, closed days and holidays, people and rooms in their own time zones, shading you can restyle, a busy or free status, and policies that keep bookings inside working hours and rooms from being double-booked.
+---
+
+<React>
+
+<CalendarPreview view="week" availability announcements />
+
+Business hours are open, and everything else is shaded: the evenings, the weekend and Friday's
+holiday. Availability is when the calendar, or a person or a room, can be booked. Views shade the
+time outside it, the month mutes closed days, and a policy decides what happens to a change that
+lands outside it: the change can be blocked, or saved with a warning. Drag an event into the evening above and the
+screen reader strip says "outside working hours". Try it with people in other time zones in the
+[live demo](https://moltenship-time-demo.vercel.app), where the Working hours setting switches
+between hidden, shown, warn and block.
+
+</React>
+
+<Solid>
+
+Availability is when the calendar, or a person or a room, can be booked: business hours are open,
+and the evenings, the weekend and a holiday are closed. A view can shade the closed time, and a
+policy decides what happens to a change that lands outside the hours: the change can be blocked, or
+saved with a warning.
+
+</Solid>
+
+## Add working hours
+
+Pass the calendar's hours to `Root` as `availability`, and add `availabilityPolicy` to its policies:
+
+<React>
+
+```tsx
+import { availabilityPolicy, type CalendarAvailability } from "@moltenship/calendar";
+
+const time = Temporal.PlainTime.from;
+
+const officeHours: CalendarAvailability = {
+  weekly: [{ days: [1, 2, 3, 4, 5], start: time("09:00"), end: time("17:00") }],
+  exceptions: [
+    { date: Temporal.PlainDate.from("2026-12-25"), label: "Christmas" },
+    {
+      date: Temporal.PlainDate.from("2026-12-24"),
+      hours: [{ start: time("09:00"), end: time("12:00") }],
+    },
+  ],
+};
+
+const policies = [availabilityPolicy<Meeting, string, string>({ mode: "warn" })];
+
+<Calendar.Root availability={officeHours} policies={policies} {...props} />;
+```
+
+Without `availabilityPolicy`, views still shade the hours, but nothing stops a change outside
+them.
+
+</React>
+
+<Solid>
+
+<include meta='title="office-hours.tsx"'>../examples/solid/office-hours.tsx#hours</include>
+
+`Schedule` is a calendar whose events book people and rooms; [your own idea of busy](#customize)
+shows it. Without `availabilityPolicy`, a view can still shade the hours, but nothing stops a change
+outside them.
+
+</Solid>
+
+## Hours and exceptions
+
+- **Weekly hours.** Each rule opens `start` to `end` on its `days`, ISO days of the week from `1`
+  (Monday) to `7` (Sunday). A day can have several rules, such as a lunch break between two. An
+  `end` at or before `start` runs past midnight, so `22:00` to `06:00` is a night and `00:00` to
+  `00:00` a whole day. Leave `weekly` out to open every day all day.
+- **Exceptions.** An exception replaces one date's hours. Without `hours` it closes the date; its
+  `label`, such as "Christmas", names the closed day<React> in the month and year views</React>.
+- **Time zones.** The hours are on the display time zone's clock unless `availability.timeZone`
+  says otherwise, such as the office's.
+- **Daylight saving time.** Hours are half-open, `[start, end)`, and read on the wall clock. On a
+  spring-forward day, hours that start in the skipped hour open when the clock jumps. On a
+  fall-back day, hours that end in the repeated hour close after the repeat, so they cover both.
+
+Invalid rules, exceptions and time zones are left out and reported through `onDiagnosticsChange`
+as `invalid-availability`. The calendar never throws over them.
+
+## People and rooms
+
+<React>
+
+<CalendarPreview view="resources" availability />
+
+</React>
+
+Resources follow the calendar's hours unless they have their own:
+
+<React>
+
+```tsx
+import type { AvailabilityRule } from "@moltenship/calendar";
+
+const weekdays = (start: string, end: string): AvailabilityRule => ({
+  days: [1, 2, 3, 4, 5],
+  start: Temporal.PlainTime.from(start),
+  end: Temporal.PlainTime.from(end),
+});
+
+const resources = [
+  {
+    id: "orchid",
+    title: "Orchid",
+    data: room,
+    availability: { weekly: [weekdays("08:00", "20:00")] },
+  },
+  { id: "alex", title: "Alex", data: person, timeZone: "America/Los_Angeles" },
+  { id: "lee", title: "Lee", data: person, timeZone: "Asia/Kolkata" },
+];
+```
+
+</React>
+
+<Solid>
+
+<include meta='title="schedule-resources.ts"'>
+  ../examples/solid/schedule-resources.ts#resources
+</include>
+
+</Solid>
+
+- **Own hours.** A resource's `weekly` replaces the calendar's. Its `exceptions` add to the
+  calendar's, so a company holiday closes every room, and the resource's own win on the same date.
+- **Own time zone.** A resource with a `timeZone` keeps its hours on that clock: Alex's 9 to 5 in
+  Los Angeles shows as the evening in Berlin.
+- **The same instant.** Moving an event to a resource in another time zone keeps its instant: a
+  9:00 call in New York stays 9:00 in New York, which is 14:00 for London.
+
+<React>
+
+- **One time axis.** Resource columns and the timeline keep a single axis in the display time
+  zone. Only the shading follows each resource's clock, and its header shows its local time and
+  UTC offset, such as "7:18 AM GMT-7", while that clock differs from the display time zone's.
+
+</React>
+
+<React>
+
+## Customize the shading
+
+Each stretch of closed time is a `div` hidden from screen readers. It carries why it is closed and
+where it meets open time, so CSS can restyle it:
+
+| Attribute or variable                   | Value                                                                                     |
+| --------------------------------------- | ----------------------------------------------------------------------------------------- |
+| `data-slot`                             | `time-grid-unavailable`, `resource-timeline-unavailable`, `month-closed` or `year-closed` |
+| `data-reason`                           | `outside-hours`, `closed-day` (no weekly hours that day) or `exception` (a closed date)   |
+| `data-label`                            | The exception's `label`, such as "Company holiday"                                        |
+| `data-opens-before`, `data-opens-after` | Present where open time meets the band's start or end in the view                         |
+| `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                    |
+
+<ShadingRecipesPreview />
+
+```css title="globals.css"
+/* Gradient: closed time fades out over the last hour and a half before working hours. */
+[data-slot="time-grid-unavailable"] {
+  --calendar-unavailable: color-mix(in oklch, var(--muted-foreground) 16%, transparent);
+  /* Never more than half the band, so a short closure between open hours still shows. */
+  --fade: min(calc(var(--calendar-hour-height) * 1.5), 50%);
+}
+[data-slot="time-grid-unavailable"][data-opens-after] {
+  mask-image: linear-gradient(to bottom, black calc(100% - var(--fade)), transparent);
+}
+[data-slot="time-grid-unavailable"][data-opens-before] {
+  mask-image: linear-gradient(to top, black calc(100% - var(--fade)), transparent);
+}
+[data-slot="time-grid-unavailable"][data-opens-before][data-opens-after] {
+  mask-image: linear-gradient(
+    transparent,
+    black var(--fade),
+    black calc(100% - var(--fade)),
+    transparent
+  );
+}
+
+/* Hatching, with holidays tinted. */
+[data-slot="time-grid-unavailable"] {
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent 0 6px,
+    color-mix(in oklch, var(--muted-foreground) 25%, transparent) 6px 7px
+  );
+}
+[data-slot="time-grid-unavailable"][data-reason="exception"] {
+  background-color: color-mix(in oklch, var(--brand) 8%, transparent);
+}
+
+/* A brand tint, through the token every view reads. */
+:root {
+  --calendar-unavailable: color-mix(in oklch, var(--brand) 12%, transparent);
+}
+```
+
+The default tint is `--calendar-unavailable` for closed time and `--calendar-closed` for closed
+days in the month. In the dark theme closed time is lighter than open time, since a near-black
+surface has little room to get darker. Recipes built on `--muted-foreground` or your own tokens
+follow the theme the same way.
+
+To draw something else, pass `renderUnavailable` to a view: a function of the band's props and its
+state that returns an element. The state holds the `band`
+(its `reason`, `label` and edges), the column's `date` and the `resource` whose hours it shows,
+so rooms can look different from people. Keep the props on your element: they place it and keep it
+hidden from screen readers.
+
+```tsx
+import type { UnavailableTimeRender } from "@/components/calendar/unavailable-time";
+
+const tintRooms: UnavailableTimeRender = (props, { resource }) =>
+  // Views hand over resources as the root got them; read your own fields from `data`.
+  (resource?.data as Room | Person | undefined)?.kind === "room" ? (
+    <div
+      {...props}
+      style={{
+        ...props.style,
+        "--calendar-unavailable": "color-mix(in oklch, var(--color-sky-500) 14%, transparent)",
+      }}
+    />
+  ) : (
+    <div {...props} />
+  );
+
+const views = [
+  createWeekView<Meeting>({ renderUnavailable: tintRooms }),
+  createResourceColumnsView<Meeting, Room | Person>({ renderUnavailable: tintRooms }),
+];
+```
+
+Every view that shades closed time takes `renderUnavailable`: week, day, month, year, the scrolling
+week, day and month views, resource columns and the timeline. The agenda views don't shade closed
+time.
+
+</React>
+
+## Busy or available
+
+Working hours and events answer two different questions. **Unavailable** means outside working
+hours. **Busy** means an event occupies the time. A person can be busy outside their hours, at a
+late call, or free during them. The status API keeps the two apart:
+
+<React>
+
+```ts
+import { availabilityAt, busyAt, resourceStatusAt } from "@moltenship/calendar";
+
+availabilityAt(availability, now, "maya");
+// { available: true, closesAt: Temporal.Instant }
+// { available: false, reason: "outside-hours" | "closed-day" | "exception", label?, opensAt }
+
+// `events` is the root's event snapshot, as views get it in their props.
+busyAt(events, now, { resourceId: "maya", timeZone: "Europe/Berlin" });
+// { busy: true, events: [...], freeAt: Temporal.Instant }
+// { busy: false, nextEventAt: Temporal.Instant | null }
+```
+
+</React>
+
+<Solid>
+
+<include meta='title="busy-status.ts"'>../examples/solid/busy-status.ts#status</include>
+
+</Solid>
+
+- **Time zones.** Hours are read on the resource's own clock, as the shading is, and are safe
+  across daylight saving changes. All-day and floating events count on the wall clock you pass,
+  usually the display time zone, as the views show them.
+- **Which events are busy.** Timed and floating events are; all-day ones, such as a holiday
+  banner, aren't, as in Google Calendar. The event adapter's `isBusy` overrides that; see
+  [Customize](#customize).
+- **Overlaps.** `events` lists everything in progress. `freeAt` is when the last of a run of
+  overlapping or back-to-back events ends, so a 10:00 standup followed by an 11:00 review is busy
+  until the review ends.
+- **Horizons.** `opensAt` and `closesAt` look up to a year ahead, and `freeAt` and `nextEventAt`
+  a month ahead. They are `null` past that.
+
+<React>
+
+In React, `useResourceStatus(resourceId, at?)` returns both, plus `changesAt`, the next instant
+either can change. Without `at` it follows the calendar's `clock` or `now`. It re-renders only
+when the status changes, waking at `changesAt` rather than on every tick. It is `null` while
+server rendering, unless the calendar fixes `now`.
+
+```tsx
+import { useResourceStatus } from "@moltenship/calendar";
+
+function Presence({ id }: { id: string }) {
+  const status = useResourceStatus(id);
+  if (status === null) return null;
+  return status.busy.busy ? "In a meeting" : status.availability.available ? "Around" : "Away";
+}
+```
+
+</React>
+
+<Solid>
+
+`useResourceStatus(resourceId, at?)` returns an accessor of both, plus `changesAt`, the next
+instant either can change. Without `at` it follows the calendar's `clock` or `now`. It updates only
+when the status changes, waking at `changesAt` rather than on every tick. It is `null` while server
+rendering and hydrating, unless the calendar fixes `now`.
+
+<include meta='title="presence.tsx"'>../examples/solid/presence.tsx#presence</include>
+
+</Solid>
+
+<React>
+
+## Busy badge in resource views
+
+<CalendarPreview view="resources" availability status />
+
+Set `resourceStatus: true` on the resource columns or timeline view to show a badge on each
+resource:
+
+| State         | Shows                                                      |
+| ------------- | ---------------------------------------------------------- |
+| Busy          | "Busy until 3:00 PM", while events occupy it               |
+| Free          | "Free until 5:00 PM", until its next event or closing time |
+| Outside hours | "Outside hours until Mon 9:00 AM", until it opens          |
+| Closed today  | "Closed today", or "Closed today, Company holiday"         |
+
+The words carry the state; the dot before them is colored with `--calendar-busy` or
+`--calendar-free`. Times are on the display clock, with the weekday within the next six days and the date further out. Busy
+wins over the hours, so a late call shows as busy. The badge is the calendar's `Badge`. In
+your own `ResourceHeader`, add `ResourceHeaderStatus` where you want it:
+
+```tsx
+import {
+  ResourceHeaderStatus,
+  ResourceHeaderTitle,
+  ResourceHeaderToggle,
+} from "@/components/calendar/resource-columns-view/resource-header";
+
+function ResourceHeader() {
+  return (
+    <>
+      <ResourceHeaderToggle />
+      <span className="flex min-w-0 flex-col">
+        <ResourceHeaderTitle />
+        <ResourceHeaderStatus />
+      </span>
+    </>
+  );
+}
+```
+
+`ResourceHeaderStatus` shows nothing for a group, whose own bookings aren't its members', or
+without `resourceStatus`, which makes room for it in the header. For a badge anywhere else,
+`useResourceStatusSummary(environment, resourceId)` from `resource-status.tsx` returns the words
+and state, and `ResourceStatusBadge` draws them; `environment` is the `locale` and `timeZone` a
+view gets in its props.
+
+</React>
+
+## Scheduling: who's busy?
+
+<React>
+
+<CalendarPreview view="timeline-day" availability status />
+
+While you place an event, by dragging or with the keyboard, each resource's header says whether
+it's busy then: **Busy** when an event overlaps the draft, **Outside hours** when the time is
+outside its hours, **Free** otherwise. Create or move an event above, and watch the row headers.
+The draft's own event never conflicts with itself, and events that only touch don't conflict.
+
+</React>
+
+<Solid>
+
+While someone places an event, by dragging or with the keyboard, your UI can say for each resource
+whether it's busy then: an event overlaps the draft, the time is outside its hours, or it's free.
+The draft's own event never conflicts with itself, and events that only touch don't conflict.
+
+</Solid>
+It all rests on one function. `busyResources` answers for many resources at once, with one query
+of the event index, bucketed by each event's resources, so a busy person never marks the others:
+
+<React>
+
+```ts
+import { busyResources } from "@moltenship/calendar";
+
+const busy = busyResources(
+  events,
+  { start, end },
+  {
+    exclude: "evt_42", // the event being moved, if any
+    resourceIds: ["room-orchid", "room-lotus", "maya"], // or leave out for every resource
+    timeZone: "Europe/Berlin", // for all-day and floating events
+  },
+);
+busy.get("maya"); // [standup, review]: the events that make Maya busy then
+busy.has("room-lotus"); // false: free resources are absent
+```
+
+</React>
+
+<Solid>
+
+<include meta='title="busy-resources.ts"'>../examples/solid/busy-resources.ts#busy</include>
+
+</Solid>
+
+The range can also be a placement, all-day or floating, read on `timeZone`. <React>In React:</React><Solid>The hooks return accessors:</Solid>
+
+| Hook                             | Returns                                                                             |
+| -------------------------------- | ----------------------------------------------------------------------------------- |
+| `useBusyResources(range, opts?)` | `busyResources` over the root's events, once per change of events or range          |
+| `useCalendarDraft()`             | The change being placed, by pointer or keyboard: `{ eventId, proposed }`, or `null` |
+| `useDraftBusy(resourceId)`       | A resource during the draft: `{ events, outsideHours }`, or `null` without one      |
+
+<React>
+
+Drafts step by slots, so these change at most once a step. `useDraftBusy` works the draft's busy
+resources out once for every header that asks. During a pointer drag or a keyboard create, a header
+re-renders only when its own answer changes; a keyboard move or resize changes the events the view
+shows on each step, so headers re-render then too, which stays cheap.
+
+</React>
+
+<Solid>
+
+Drafts step by slots, so these change at most once a step. `useDraftBusy` works the draft's busy
+resources out once for every component that asks, and each one updates only when its own resource's
+answer changes.
+
+</Solid>
+An all-day draft shows who has busy time that day, even though an all-day event is free by default
+and so doesn't conflict under `conflictPolicy`; the status is information, not a rule. To flag or
+prevent double-booking on save, see [double booking](#double-booking).
+
+### Customize
+
+<React>
+
+Everything the views draw is a layer over these hooks, so you can replace any of it.
+
+**Your own status in the header.** Pass `resourceStatus` options instead of `true`. `DraftStatus`
+draws the status during a draft in place of the badge, and gets the resource, its busy events and
+whether the draft is outside its hours. Headers also carry `data-busy` and `data-outside-hours`
+during a draft, so CSS alone can style them.
+
+```tsx
+function AvatarRing({ resource, events, outsideHours }: ResourceDraftStatusProps) {
+  const ring =
+    events.length > 0 ? "ring-red-500" : outsideHours ? "ring-amber-500" : "ring-green-500";
+  return (
+    <span
+      className={`size-5 rounded-full ring-2 ${ring}`}
+      title={events.map((e) => e.title).join(", ")}
+    />
+  );
+}
+
+createResourceColumnsView<Meeting>({ resourceStatus: { DraftStatus: AvatarRing } });
+```
+
+```css
+[data-slot="resource-header"][data-busy] {
+  background: color-mix(in oklch, var(--calendar-busy) 12%, transparent);
+}
+```
+
+**Your own words.** `labels` replaces the English the badge shows and screen readers hear, now and
+during a draft. `until` is a time on the display clock, absent during a draft:
+
+```ts
+createTimelineWeekView<Meeting>({
+  resourceStatus: {
+    labels: {
+      busy: (until) => (until ? `Occupé jusqu'à ${until}` : "Occupé"),
+      free: (until) => (until ? `Libre jusqu'à ${until}` : "Libre"),
+      outsideHours: (until) => (until ? `Hors horaires jusqu'à ${until}` : "Hors horaires"),
+      closedToday: (label) => (label ? `Fermé aujourd'hui, ${label}` : "Fermé aujourd'hui"),
+    },
+  },
+});
+```
+
+</React>
+**Your own idea of busy.** The event adapter's `isBusy` is the one place that decides, for the
+status, the draft headers, `busyResources` and `conflictPolicy` alike:
+
+<React>
+
+```ts
+const eventAdapter = defineEventAdapter<Meeting>()({
+  // ...getId, getInterval, getResourceIds, getTitle
+  // Focus time and tentative meetings leave you bookable; all-day ones block when marked busy.
+  isBusy: (meeting) =>
+    meeting.title !== "Focus time" &&
+    meeting.showAs !== "tentative" &&
+    (meeting.kind !== "all-day" || meeting.showAs === "busy"),
+});
+```
+
+</React>
+
+<Solid>
+
+<include meta='title="schedule.ts"'>../examples/solid/schedule.ts#calendar</include>
+
+</Solid>
+
+<React>
+
+**Your own "who's busy" UI.** Any component can ask. The [live demo](https://moltenship-time-demo.vercel.app)'s
+event dialog has a room and people picker split into Available and Busy, built on
+`useBusyResources` rather than shipped as a part; busy rooms stay selectable, since a double
+booking can be on purpose:
+
+```tsx
+function RoomPicker({ interval, eventId }: { interval: CalendarEventInterval; eventId?: string }) {
+  const busy = useBusyResources(interval, { exclude: eventId });
+  const [free, taken] = partition(rooms, (room) => !busy.has(room.id));
+  return (
+    <>
+      <Group title="Available" rooms={free} />
+      <Group
+        title="Busy"
+        rooms={taken}
+        chip={(room) =>
+          busy
+            .get(room.id)!
+            .map((e) => e.title)
+            .join(", ")
+        }
+      />
+    </>
+  );
+}
+```
+
+</React>
+
+<Solid>
+
+**Your own "who's busy" UI.** Any component inside the root can ask. This picker lists each room
+with what keeps it busy during an interval. Busy rooms stay in the list, since a double booking can
+be on purpose:
+
+<include meta='title="room-picker.tsx"'>../examples/solid/room-picker.tsx#picker</include>
+
+</Solid>
+
+## Double booking
+
+`conflictPolicy` in the root's `policies` checks a change against double-booking: a busy event
+may not overlap another busy event of a resource it books. It runs the same query as
+`busyResources`, with the reason `"resource-conflict"`. Each resource can follow its own mode, so a
+room can't be double-booked while a person can, with a warning.
+
+<React>
+
+Drag a booking onto another one here, and switch the modes:
+
+<RoomsAndPeoplePreview rules="conflicts" />
+
+</React>
+
+<React>
+
+```tsx
+import { conflictPolicy } from "@moltenship/calendar";
+
+const rooms = new Set(resources.filter((r) => r.data.kind === "room").map((r) => r.id));
+
+const policies = [
+  conflictPolicy<Meeting, string, string>({
+    mode: "warn", // people, and any resource getResourceMode leaves out
+    getResourceMode: (resourceId) => (rooms.has(resourceId) ? "block" : undefined),
+  }),
+];
+
+<Calendar.Root policies={policies} resources={resources} /* … */ />;
+```
+
+</React>
+
+<Solid>
+
+<include meta='title="conflicts.ts"'>../examples/solid/conflicts.ts#conflicts</include>
+
+</Solid>
+
+| Mode      | Double-booking the resource…                                                            |
+| --------- | --------------------------------------------------------------------------------------- |
+| `"block"` | Rejects the change, and the event goes back where it was. The default.                  |
+| `"warn"`  | Saves it, with `"resource-conflict"` in its `warnings`, so you can say so or ask first. |
+| `"allow"` | Saves it as it is, as if the resource had no check.                                     |
+
+- `mode` is the mode for every resource. `getResourceMode` gives a resource its own, by its ID;
+  `undefined` keeps `mode`. Policies don't see your resources, so look the ID up in yours, as above.
+- When a change double-books several resources, the strictest of their modes decides: any
+  `"block"` rejects it, and otherwise any `"warn"` flags it. A room that's free doesn't block a
+  meeting whose person is busy.
+- Only what a change alters is checked: its time, or the resources it adds when the time stays.
+  An event that's already double-booked can still be edited. Resources in `"allow"` mode aren't
+  queried at all, and deletes always pass.
+- Events that only touch don't conflict, and an event that isn't busy books nothing: the event
+  adapter's [`isBusy`](#busy-or-available) decides, for `conflictPolicy` as for the status.
+- The modes decide what saving does, not who's busy. <React>A person in `"allow"` mode still shows as busy in the [badge](#busy-badge-in-resource-views) and while you place an event.</React><Solid>A person in `"allow"` mode still shows as busy to [`useResourceStatus`](#busy-or-available) and [`useDraftBusy`](#scheduling-whos-busy).</Solid>
+
+<React>
+
+- Previews follow the modes: dragging a meeting over a busy room that blocks marks the preview red,
+  and over a busy person who warns, amber. See [keep changes inside](#keep-changes-inside).
+
+</React>
+
+There's no mode per calendar. A conflict is between two bookings of one resource, often from
+different calendars, and a new event has no calendar yet when the policies run. To keep a whole
+calendar out of conflicts, such as tentative holds, mark its events free in `isBusy`. For stricter
+checks on one calendar's events, choose between two policies in your own, since a policy is a
+function:
+
+<React>
+
+```ts
+import { conflictPolicy, type CalendarPolicy } from "@moltenship/calendar";
+
+const strict = conflictPolicy<Meeting, string, string>({ mode: "block" });
+const lenient = conflictPolicy<Meeting, string, string>({ mode: "warn" });
+const byCalendar: CalendarPolicy<Meeting, string, string> = (change, context) =>
+  change.event?.calendarId === "interviews" ? strict(change, context) : lenient(change, context);
+```
+
+</React>
+
+<Solid>
+
+<include meta='title="conflicts.ts"'>../examples/solid/conflicts.ts#by-calendar</include>
+
+</Solid>
+
+<React>
+
+How overlapping events are drawn is separate: see
+[rooms and people](/docs/views/resource-columns#rooms-and-people) for a layout per resource.
+
+</React>
+
+## Keep changes inside
+
+`availabilityPolicy({ mode })` checks every move, resize and create, whether it comes from a drag,
+the keyboard, or `actions.proposeEventChange`. An event with resources must fit the hours of each
+resource it books, on that resource's clock: its own hours, or the calendar's when it has none. So a
+room open until 20:00 takes an 18:00 booking even when the office closes at 17:00. An event without
+resources must fit the calendar's hours. A timed event must fall in open time, and an all-day event
+on dates with open time. Only what a change alters is checked, so events already outside the hours
+can still be edited.
+
+| Mode      | Outside the hours, the change is…                                                            |
+| --------- | -------------------------------------------------------------------------------------------- |
+| `"block"` | Rejected with the reason `"outside-availability"`, and the event goes back where it was.     |
+| `"warn"`  | Saved, with `"outside-availability"` in its `warnings`, so you can say so or ask to confirm. |
+
+<React>
+
+While a gesture is in progress, its preview shows what the policies would say: a drag preview or a
+keyboard create's draft gets a dashed outline, and an event moved or resized from the keyboard a
+ring, red when the change would be rejected and amber when it would be saved with a warning. Your
+own UI can ask the same question with
+`actions.checkEventChange(proposal)`, which runs the policies without saving anything.
+
+</React>
+
+<Solid>
+
+Your own UI can ask what the policies would say with `actions.checkEventChange(proposal)`, which
+runs them without saving anything.
+
+</Solid>
+
+<React>
+
+## Keyboard and screen readers
+
+Availability adds no keys and no tab stops; each view keeps its [key map](/docs/accessibility).
+The shading is hidden from screen readers, which hear the same information in words:
+
+| Where                                       | What a screen reader hears                                                     |
+| ------------------------------------------- | ------------------------------------------------------------------------------ |
+| A time-grid slot, with ↑ ↓                  | "Thursday, October 8 at 8:45 AM, outside working hours"                        |
+| A month or year day                         | "Friday, December 25, 2026, Christmas, closed, no events"                      |
+| A timeline day                              | "Orchid, Friday, December 25, 2026, closed"                                    |
+| A step of a move, resize or create          | "Thursday, October 8, 4:45 – 5:15 PM, outside working hours"                   |
+| A blocked drop                              | "Standup can't go outside working hours, so it's back where it was."           |
+| A saved change with a warning               | "Moved Standup to Thursday, October 8, 4:45 – 5:15 PM, outside working hours." |
+| A drop that double-books a room that blocks | "Standup would double-book a room or person, so it's back where it was."       |
+| A double booking saved with a warning       | "Moved Standup to Thursday, October 8, 9:00 – 9:30 AM, Maya, double-booked."   |
+| A resource header in another zone           | "Lee, local time 7:48 PM GMT+5:30"                                             |
+| A resource header with its status           | "Maya, Busy until 3:00 PM"                                                     |
+| A resource header during a draft            | "Maya, Busy", or "Leo, Outside hours"                                          |
+
+The messages live in `components/calendar/announcements.ts` in your app, ready to translate.
+
+## Anatomy
+
+<TimeGridAnatomy />
+
+```txt title="Rendered by TimeGridColumn"
+TimeGridColumn                   time-grid-column.tsx
+├── TimeGridAvailability         time-grid-availability.tsx, data-slot="time-grid-unavailable"
+├── TimeGridAnnotations          time-grid-annotations.tsx
+└── TimeGridEvent                time-grid-event.tsx
+```
+
+- **Time grid and resource columns.** `TimeGridAvailability` draws an `UnavailableTime` band behind
+  the events for each closed stretch of a column, in `--calendar-unavailable`.
+- **Timeline.** `TimelineAvailability` shades each resource's closed time along hour rows, and its
+  closed days along day rows, whose cells also get `data-closed`.
+- **Month.** A closed day gets a `month-closed` band in `--calendar-closed`, light enough that its
+  date and events stay readable, and its cell gets `data-closed`.
+- **Year.** Every closed day's cell gets `data-closed`; a shaded one also gets a `year-closed` band
+  in `--calendar-closed`, joined with the shaded days beside it in its row. By default only dates an
+  exception closes are shaded; `closedDays: "all"` adds the weekly closed days.
+- **Resource headers.** `ResourceHeaderTime` shows a resource's local time and
+  `ResourceHeaderStatus` its status; add them to your own `ResourceHeader` composition.
+
+</React>
+
+## Your own view
+
+The shading is separate from the event projection, like annotations, so working hours never
+change event layout. These hooks give a view what to draw, for the calendar's hours or, with a
+resource ID, that resource's:
+
+| Hook                                    | Returns                                                                     |
+| --------------------------------------- | --------------------------------------------------------------------------- |
+| `useTimeGridAvailability(columns, id?)` | The closed bands of each time-grid column, as fractions of 24 h             |
+| `useTimelineAvailability(columns, id?)` | The closed stretches along a timeline, as fractions of its width            |
+| `useClosedDates(range, id?)`            | The dates with no open time, keyed by ISO date, with a `reason` and `label` |
+| `useResourceStatus(id?, at?)`           | Working hours and events at an instant, and when either changes             |
+| `useCalendarAvailability()`             | The resolved hours: `calendar`, `forResource(id)`, `timeZone`               |
+
+Bands and stretches carry their `reason`, `label`, `opensBefore` and `opensAfter`<React>, as the
+attributes above do</React>.
+
+<Solid>
+
+The hooks return accessors. This week view shades each day's closed time:
+
+<include meta='title="week-view.tsx"'>../examples/solid/shading.tsx#view</include>
+
+```css
+.closed {
+  position: absolute;
+  inset-inline: 0;
+  background: color-mix(in oklch, currentColor 8%, transparent);
+}
+
+.closed[data-reason="exception"] {
+  background: color-mix(in oklch, currentColor 14%, transparent);
+}
+```
+
+The bands are hidden from screen readers, so give the same information in words, such as "outside
+working hours" in a slot's label.
+
+</Solid>
+
+Each schedule answers `available(range)`, `unavailable(range)` and `isAvailable(range)` for any
+instant range, and resolves each date once, so views can ask <React>on every render</React><Solid>as often as they like</Solid>.
+
+## Data model
+
+<TypeTable
+  type={{
+    weekly: {
+      type: "AvailabilityRule[]",
+      description:
+        "Hours by day of the week: { days, start, end }. Without it every day is open; an empty list opens only the exceptions.",
+    },
+    exceptions: {
+      type: "AvailabilityException[]",
+      description:
+        "Dates with other hours: { date, hours?, label? }. Without hours the date is closed.",
+    },
+    timeZone: {
+      type: "string",
+      description:
+        "The clock the calendar's hours are on. A resource's hours follow its own timeZone instead.",
+      default: "the display time zone",
+    },
+  }}
+/>
+
+A resource's `availability` takes `weekly` and `exceptions`, and its `timeZone` sits on the
+resource itself.

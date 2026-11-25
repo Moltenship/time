@@ -1,0 +1,255 @@
+---
+title: Customization
+description: How much of the calendar's UI is yours to change, from its tokens to every element on screen, built on the unstyled parts and hooks.
+---
+
+<React>
+
+Time is a headless core and one ready-made UI on top of it.
+
+- **The core is the npm packages.** They hold the engine, the calendar's state and actions, and
+  parts and hooks that render plain elements. They ship no CSS.
+- **The UI is the registry.** It's a set of React source files built on those packages: the views,
+  the toolbar, a kit of controls and a theme, in Tailwind CSS on shadcn/ui's tokens or in
+  [StyleX](/docs/stylex) with Astryx. `shadcn add` copies them into your app, and from then on
+  they are your code.
+
+Nothing in the packages depends on the registry. So every part of that UI is yours to change or
+replace, and an app on MUI, Mantine or its own design system uses the same packages without it.
+
+There are four levels, from the least work to the most:
+
+| Level                | You change                                   | Where                     | What it costs                                                       |
+| -------------------- | -------------------------------------------- | ------------------------- | ------------------------------------------------------------------- |
+| 1. Set tokens        | Colors, the event palette, sizes             | Your global CSS           | Nothing                                                             |
+| 2. Edit the files    | Markup, classes, layout, a view's behaviour  | `components/calendar/`    | A merge when a file you edited gets an update                       |
+| 3. Swap the controls | The buttons, tooltips, popovers and the rest | `components/calendar/ui/` | That merge, and an agent sees less of your controls                 |
+| 4. Build your own UI | Everything on screen                         | Your own components       | You write the views, with their keyboard support and their dragging |
+
+[What each level costs](#what-each-level-costs) has the details.
+
+The levels mix. One calendar can show the registry's month view, a toolbar you edited and a view
+you wrote.
+
+## Level 1: set tokens
+
+The registry's views read their colors and sizes from CSS variables. Override them in your own
+CSS:
+
+```css title="globals.css"
+:root {
+  --calendar-today: oklch(0.55 0.17 150);
+  --calendar-hour-height: 4rem;
+}
+
+.dark {
+  --calendar-today: oklch(0.72 0.15 150);
+}
+```
+
+Most calendar tokens derive from the shadcn tokens, so an app with its own shadcn theme gets a
+calendar in its colors before it writes a rule. [Theming](/docs/theming) lists every token, and the
+[Theme builder](/docs/theme-builder) shows your changes live and gives you the CSS to paste. The
+StyleX items have the same tokens as StyleX variables, which
+[Change the tokens](/docs/stylex#change-the-tokens) covers.
+
+You keep everything, updates included. `shadcn add` writes the theme's own block again each time,
+and your rules sit outside that block. Tokens change colors, the event palette, the hour height
+and the event padding. They don't change markup or layout.
+
+## Level 2: edit the files you added
+
+`shadcn add` puts source files in `components/calendar/`: a folder for each view, the toolbar,
+the view switcher and the event chip beside them, and the controls in `ui/`. Open a file and
+change it. The toolbar's tooltips open after 400 ms, for example. To open them sooner, change the
+default in the tooltip's file:
+
+```ts title="components/calendar/ui/tooltip.styles.ts"
+export const tooltipDefaults = { delay: 150, sideOffset: 4 } as const;
+```
+
+The same goes for a view's markup, the toolbar's layout in `calendar-toolbar.tsx`, and a control's
+classes in its `*.styles.ts` file.
+
+### Updates
+
+The files are copies, so a fix in the registry reaches your app when you add the item again:
+
+```bash
+npx shadcn@latest add https://time.molten.sh/r/month-view.json
+```
+
+The command goes through the item's files and the files of the items it builds on. It writes a
+file your app doesn't have, skips a file that matches the registry's, and asks before it replaces
+a file that differs. Answer no to keep yours. `--overwrite` replaces every file without asking,
+with any edits you made.
+
+To see what the command would do before it writes anything, add `--dry-run`. It lists each file
+as `create`, `skip (identical)` or `overwrite`, which marks a file that differs. `--diff` with a
+path from that list prints the difference between your file and the registry's, and writes
+nothing either:
+
+```bash
+npx shadcn@latest add https://time.molten.sh/r/month-view.json --dry-run
+npx shadcn@latest add https://time.molten.sh/r/month-view.json \
+  --diff components/calendar/month-view/month-view.tsx
+```
+
+The diff compares the two files as they are now, so it shows your edits and the registry's changes
+together. To separate them, commit your work, let `shadcn add` replace the file, and put your edits
+back from `git diff`.
+
+You keep the registry's UI and everything it does. You take on that merge for each file you
+edited. Files you didn't touch update without a question.
+
+## Level 3: swap the controls
+
+The Tailwind views take their controls from `button.tsx`, `badge.tsx`, `tooltip.tsx`,
+`select.tsx`, `popover.tsx`, `dialog.tsx` and `toast.tsx` in `components/calendar/ui/`: the
+buttons, badges, tooltips, view select, popovers, the recurrence dialog and the undo toast. Since
+2.0 those controls are built on [ui-sdk](https://ui-sdk.dev), and they are a default. The views import them from
+those files only and use them through a short list of props. To use a control of your own,
+replace the body of its file and keep the names it exports. With shadcn's button:
+
+```tsx title="components/calendar/ui/button.tsx"
+import type { ComponentProps } from "react";
+
+import { Button as AppButton, buttonVariants } from "@/components/ui/button";
+
+export type ButtonProps = ComponentProps<typeof AppButton>;
+
+export function Button(props: ButtonProps) {
+  return <AppButton {...props} />;
+}
+
+export { buttonVariants };
+```
+
+Every view now renders your button, and no view's file changes.
+[Use your own controls](/docs/theming#use-your-own-controls) lists what the views import from each
+file and the props they pass, and how to give a shadcn popover the handle that one popover for
+many triggers needs.
+
+This is an edit like any other, so `shadcn add` asks before it replaces the file. Swapping also
+has [two costs of its own](#what-each-level-costs).
+
+</React>
+<Solid>
+
+Time's packages are headless. They hold the engine, the calendar's state and actions, and parts
+and hooks that render plain elements, and they ship no CSS. Everything on screen is yours: your
+markup, your classes, your design system's components.
+
+The registry has one styled view so far, the [agenda](/docs/views/agenda). It comes as source
+files you own, with a theme of color tokens, and [UI source](/docs/installation#ui-source-optional)
+shows how to add it and change a token. This page is about the UI you write yourself.
+
+## Build your own UI
+
+</Solid>
+
+<React>
+
+## Level 4: build your own UI
+
+</React>
+
+Your app <React>adds nothing from the registry at this level. It </React>installs the packages, writes its own
+markup or uses any library's components, and connects them to the calendar through parts and
+hooks:
+
+- **Parts.** `Frame`, `Toolbar`, `Title`, `Viewport` and the previous, next and today triggers
+  each render one plain element with a `data-calendar-part` attribute. They take <React>`className`</React><Solid>`class`</Solid>,
+  `style`, `ref` and event handlers, and bring no class or style of their own.
+  [Components](/docs/api/components#components) lists them.
+- **Hooks.** `useCalendarActions()` returns `navigateNext`, `setView`, `proposeEventChange` and
+  the other [actions](/docs/api/components#actions), for controls of your own.
+  `useCalendarSelector` and the other [hooks](/docs/api/components#hooks) read the state.
+- **Views.** A [custom view](/docs/views/custom-views) is a strategy, which picks the dates and
+  the events, and a `Renderer`, which is your component.
+
+This calendar uses plain elements and class names from the app's own CSS:
+
+<React>
+
+<include meta='title="meeting-calendar.tsx"'>../examples/own-ui.tsx#ui</include>
+
+</React>
+
+<Solid>
+
+<include meta='title="booking-calendar.tsx"'>../examples/solid/own-ui.tsx#ui</include>
+
+</Solid>
+
+A library's components go where the plain elements are. The Today button can be your library's
+`Button` with the same `onClick`. Pass the click's <React>native </React>event as `event`, so a
+[state handler](/docs/concepts/state#what-a-handler-hears) hears how the person caused the
+change.<React> A button that can render another element in its place can render one of the
+calendar's triggers instead, as the registry's toolbar does with
+`<Button render={<TodayTrigger aria-label="Today" />}>`.</React>
+
+`@ui-sdk/core` and <React>`@ui-sdk/react` are peer dependencies since 2.0</React><Solid>`@ui-sdk/solid` are peer dependencies</Solid>. The calendar's state, its actions and what an agent reads are written on ui-sdk, and ui-sdk's
+parts are unstyled too. Installing them adds no look to your page and doesn't decide which
+components you use.
+
+You keep the engine, the state, [saving changes](/docs/interactions#saving-changes) with policies
+and pending state, and the actions an agent calls: an [agent bridge](/docs/agents/connect) lists a
+calendar that renders `Frame`, whatever draws its views. You write the rest:
+
+- **The views.** <React>The registry's views get their layouts from functions the packages export, such
+  as `projectMonth` and `projectList`. Your view's `project` can call the same ones</React><Solid>The
+  packages export the functions that lay a view out, such as `projectMonth` and `projectList`.
+  Your view's `project` calls them</Solid>, and your
+  `Renderer` draws the result.
+- **Dragging.** [`useCalendarPointer`](/docs/interactions#in-your-own-views) turns drags in your
+  markup into changes, from a few `data-*` attributes.
+- **Keyboard support and announcements.**
+  [In your own views](/docs/accessibility#in-your-own-views) has the hooks, and
+  `Calendar.Announcer` speaks the changes.
+
+<React>
+
+A Solid app is at this level today, since the registry has no Solid views yet. The
+[Solid docs](/docs/solid/quick-start) build a calendar this way.
+
+</React>
+
+<React>
+
+## What each level costs
+
+- **An edited file takes a merge.** From level 2 on, `shadcn add` no longer updates a file you
+  changed without asking. You bring the registry's fixes into that file yourself, as
+  [Updates](#updates) describes.
+- **An agent sees less of a control that isn't built on ui-sdk.** An
+  [agent bridge](/docs/agents/connect) lists ui-sdk's components. The kit's buttons and view
+  select are entries in that list. A control of your own is there only as far as your component
+  tells the bridge, and a control from a library that isn't built on ui-sdk, such as stock shadcn
+  or MUI, tells it nothing. The calendar stays on the bridge at every level, so an agent still
+  navigates and changes the view with the calendar's own actions.
+- **A React control needs a Solid twin.** ui-sdk has the same components in React and Solid, so a
+  control built on it behaves alike in both. A control built on a React library exists in React
+  only, so a Solid app needs its own version of it. Today that matters only for a Solid UI you
+  write yourself, since the registry has no Solid files yet.
+- **At level 4, the views are yours to write and test.** That includes laying out overlapping
+  events, keyboard navigation, dragging and screen reader announcements. The packages give you the
+  functions and hooks for each, and the registry's views are source you can read while you write
+  yours.
+
+</React>
+
+<Solid>
+
+## What it costs
+
+- **The views are yours to write and test.** That includes laying out overlapping events, keyboard
+  navigation, dragging and screen reader announcements. The packages give you the functions and
+  hooks for each.
+- **An agent sees less of a control that isn't built on ui-sdk.** An
+  [agent bridge](/docs/agents/connect) lists ui-sdk's components. A control of your own is there
+  only as far as your component tells the bridge, and a control from a library that isn't built
+  on ui-sdk tells it nothing. The calendar stays on the bridge either way, so an agent still
+  navigates and changes the view with the calendar's own actions.
+
+</Solid>

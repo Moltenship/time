@@ -71,7 +71,11 @@ no prompt. It:
    since the last tag. After a prerelease, that's the next one (`1.0.0-rc.2`); after a stable
    version, major for a breaking change, minor for a feature and patch for the rest. With no
    commits since the last tag but the release's own, it stops: there's nothing to release, unless
-   you name a version. Prereleases go to npm's `next` tag, stable versions to `latest`.
+   you name a version. Prereleases go to npm's `next` tag, stable versions to `latest`. The docs
+   site's install commands take their tag from `installTag` in `apps/showcase/lib/install-tag.ts`:
+   `"next"` while the docs describe a prerelease, `undefined` in the PR before a stable release,
+   which also takes the sentences in `<PreRelease>` blocks off the pages. READMEs and the skill's
+   files name the tag themselves (#284).
 2. **Looks at the version's runs.** One that's going is watched, and one that succeeded is
    reported. The newest that failed after it started publishing runs its failed jobs again
    ([When it stops](#when-it-stops)). None of that needs the checkout.

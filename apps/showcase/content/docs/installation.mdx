@@ -25,7 +25,7 @@ description: Requirements, the packages to install, the ui-sdk peer dependencies
 - **SolidJS 2.0.** `solid-js` and `@solidjs/web` are peer dependencies.
 - **ui-sdk.** `@ui-sdk/core` and `@ui-sdk/solid` are peer dependencies. The calendar's parts are
   [ui-sdk](https://ui-sdk.dev) components, which is how an
-  [agent](/docs/api/components#agents) reaches them. ui-sdk is in beta, and the calendar takes
+  [agent](/docs/agents) reaches them. ui-sdk is in beta, and the calendar takes
   `0.1.0-beta.16` and the betas after it.
 
 </Solid>
@@ -45,34 +45,38 @@ description: Requirements, the packages to install, the ui-sdk peer dependencies
 <Tab value="pnpm">
 
 ```bash
-pnpm add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
+pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="npm">
 
 ```bash
-npm install @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
+npm install @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="yarn">
 
 ```bash
-yarn add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
+yarn add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="bun">
 
 ```bash
-bun add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
+bun add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 </Tabs>
 
+<PreRelease>
+
 Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
+
+</PreRelease>
 
 `@moltenship/calendar` is the only calendar package most React apps import. It includes the React
 components, the event engine, the Temporal helpers, and the pointer interactions. Recurring events
@@ -93,34 +97,38 @@ keeps one as long as every `@ui-sdk/*` package is on the same version.
 <Tab value="pnpm">
 
 ```bash
-pnpm add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+pnpm add @moltenship/calendar-solid solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 <Tab value="npm">
 
 ```bash
-npm install @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+npm install @moltenship/calendar-solid solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 <Tab value="yarn">
 
 ```bash
-yarn add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+yarn add @moltenship/calendar-solid solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 <Tab value="bun">
 
 ```bash
-bun add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+bun add @moltenship/calendar-solid solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 </Tab>
 </Tabs>
 
+<PreRelease>
+
 Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
+
+</PreRelease>
 
 `@moltenship/calendar-solid` is the only calendar package most Solid apps import. It has the parts
 and the hooks, and it re-exports the event engine and the [Temporal helpers](/docs/temporal), so
@@ -129,10 +137,10 @@ the event adapter and the functions a view is made of come from it too. Don't in
 
 Two more packages are optional, and neither imports a framework. Recurring events add
 [`@moltenship/calendar-recurrence`](/docs/recurrence), and reading ICS feeds adds
-[`@moltenship/ics`](/docs/ics). Install each with `@next` when you import it.
+[`@moltenship/ics`](/docs/ics). Install each<PreRelease> with `@next`</PreRelease> when you import it.
 
 You import ui-sdk yourself in one case: to create the
-[agent bridge](/docs/api/components#agents), from `@ui-sdk/solid/agent`. Keep one copy of
+[agent bridge](/docs/agents/connect), from `@ui-sdk/solid/agent`. Keep one copy of
 `@ui-sdk/core` in your app. The calendar and the bridge find each other through it, and with two
 copies an agent sees no calendar. Your package manager keeps one as long as every `@ui-sdk/*`
 package is on the same version.
@@ -323,9 +331,10 @@ changes you made.
 The package renders plain, unstyled elements. The registry has a styled Solid view, the
 [agenda](/docs/views/agenda), with the [toolbar and mini month](/docs/views/toolbar) and the
 [controls](/docs/views/controls) they're built from, as source files that you add to your app and
-then own, the way shadcn/ui works. They install with the shadcn CLI from this site's Solid registry, at
-`https://time.molten.sh/r/solid`. The other views aren't in it yet, so you write those, as the
-[Quick start](/docs/quick-start) does. [What's coming](/docs/frameworks#whats-coming) has the plan.
+then own, the way shadcn/ui works. They install with the shadcn CLI from this site's Solid registry,
+at `https://time.molten.sh/r/solid`. The other views aren't in it yet, so you write those: the
+[Quick start](/docs/quick-start) writes the first one, and [Custom views](/docs/views/custom-views)
+covers the rest. [What's coming](/docs/frameworks#whats-coming) has the plan.
 
 | Item             | What it adds                                                                                                           |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------- |

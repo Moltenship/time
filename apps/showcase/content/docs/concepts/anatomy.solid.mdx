@@ -1,0 +1,53 @@
+---
+title: Anatomy
+description: The parts a calendar is built from, and their names in code.
+---
+
+A calendar is made of the parts your `createCalendar` factory returns, such as `Calendar.Toolbar`,
+and the views you register. This one puts every structural part together. `TeamCalendar` is the
+calendar from the [views overview](/docs/views#registering-views), with an agenda and a month grid:
+
+<include meta='title="team-calendar-app.tsx"'>../../examples/solid/anatomy.tsx#anatomy</include>
+
+- **`Root`** holds the calendar's state and renders no element of its own. Every part and hook
+  works anywhere inside it.
+- **`Frame`** is the calendar's `<section>`. `Root`'s `label` names it, for screen readers and for
+  an [agent](/docs/agents/connect#name-the-calendar).
+- **`Toolbar`, `Title`, `Viewport`** and the three triggers each render one element. A trigger
+  needs text or an `aria-label`.
+- **`ViewSwitcher`** is a plain `<select>` with one option per registered view. To draw your own
+  control, see [Switching views](/docs/views#switching-views).
+- **`ActiveView`** renders the active view's `Renderer` inside the viewport.
+
+The parts bring no styles. Each renders its element with a `data-calendar-part` attribute, such as
+`data-calendar-part="today-trigger"`, so the look is your CSS. They take the element's own props in
+Solid's spelling: `class`, not `className`. The
+[component reference](/docs/api/components#components) lists every part.
+
+## What the parts render
+
+```html
+<section data-calendar-part="frame" aria-label="Team calendar">
+  <header data-calendar-part="toolbar">
+    <button data-calendar-part="today-trigger">Today</button>
+    <button data-calendar-part="previous-trigger" aria-label="Previous period">‹</button>
+    <button data-calendar-part="next-trigger" aria-label="Next period">›</button>
+    <span data-calendar-part="title">Oct 5 – 18, 2026</span>
+    <select data-calendar-part="view-switcher" aria-label="View">
+      …
+    </select>
+  </header>
+  <div data-calendar-part="viewport">
+    <!-- what the active view's Renderer returns -->
+  </div>
+</section>
+```
+
+Two more parts sit beside these. `Calendar.Event` looks one event up by its ID and hands it to its
+children, and `Calendar.Announcer` is the live region that speaks
+[keyboard and pointer gestures](/docs/accessibility#announcements).
+
+## Views
+
+`ActiveView` draws the rest, and a view's markup is its own. [Custom views](/docs/views/custom-views)
+writes one from a strategy and a `Renderer`.

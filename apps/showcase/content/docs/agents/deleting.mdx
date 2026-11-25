@@ -1,0 +1,182 @@
+---
+title: Deleting
+description: Let an agent delete an event only after the person on the page says yes.
+---
+
+<React>
+
+<AgentDeletePreview />
+
+</React>
+
+A deleted event is gone from the calendar, so an agent can't delete until you turn it on. Two
+switches are involved, and a careful app sets both:
+
+1. `allowAgentDelete` on `Root`. Without it the calendar has no `deleteEvent` action, for every
+   agent and whatever the bridge allows, and it refuses a delete an agent causes any other way,
+   with [one exception](#a-delete-button-of-yours): a button of yours that waits before it deletes.
+2. The bridge's `allow`, which holds the step until the person answers.
+
+This page's samples import <React>the `Calendar`, `meetings` and `weekRules` that the
+[Quick start](/docs/quick-start) puts in `calendar.tsx`</React><Solid>the `Calendar` in the
+[Quick start](/docs/quick-start)'s `calendar.tsx`, the `seed` and `weekRules` in its
+`app.tsx`</Solid>, and `applyChange` and `timedOnly` from
+`agent-save.ts` in [Connect an agent](/docs/agents/connect#name-the-calendar).
+
+## Off by default
+
+A calendar without `allowAgentDelete` doesn't offer the action. `deleteEvent` isn't in its
+`actions`, `describeCalendar` reports `canDelete: false`, and a step that asks for it fails with
+the bridge's message for an action a component doesn't have:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "step": 0,
+    "message": "calendar c1 takes no deleteEvent now. It takes: createEvent, describeCalendar, getChange, goToDate, listEvents, moveEvent, navigateNext, navigatePrevious, navigateToday, resizeEvent, selectEvent, setTimeZone, setView, updateEvent."
+  },
+  "steps": [],
+  "appeared": [],
+  "values": {}
+}
+```
+
+So a model that reads the calendar first never proposes a delete it can't make. A read-only
+calendar, one without `onEventChange`, has no `deleteEvent` either, whatever `allowAgentDelete`
+says.
+
+<Callout title="A new calendar lists every action for a moment">
+  The actions a calendar doesn't offer leave its `actions` one microtask after it mounts. A snapshot
+  taken in the same task as the mount still lists `deleteEvent` and, on a read-only calendar, the
+  actions that change events. No agent reads a page that fast, but a test that mounts a calendar and
+  reads `actions` at once does: await a microtask first. A `deleteEvent` called in that moment
+  deletes nothing: it fails with `calendar-event-change-rejected: agent-delete-not-allowed`.
+</Callout>
+
+## Ask the person
+
+`allow` can return a promise. The bridge holds the step until it settles, so `allow` is where the
+question goes. This bridge puts the request in a <React>small store</React><Solid>signal</Solid> and resolves when the person answers:
+
+<React>
+
+<include meta='title="agent-confirm.ts"'>../../examples/agent-confirm.ts</include>
+
+</React>
+
+<Solid>
+
+<include meta='title="agent-confirm.ts"'>../../examples/solid/agent-confirm.ts#confirm</include>
+
+</Solid>
+
+The calendar turns deleting on and draws the question from <React>that store</React><Solid>that signal</Solid>:
+
+<React>
+
+<include meta='title="agent-confirm-calendar.tsx"'>
+  ../../examples/agent-confirm-calendar.tsx
+</include>
+
+</React>
+
+<Solid>
+
+<include meta='title="agent-confirm-calendar.tsx"'>
+  ../../examples/solid/agent-confirm-calendar.tsx#calendar
+</include>
+
+</Solid>
+
+What happens for each answer:
+
+| The person             | The step                                                              | Your `onEventChange`                                  |
+| ---------------------- | --------------------------------------------------------------------- | ----------------------------------------------------- |
+| Chooses "Delete"       | Succeeds. Its `result` is the change, with `proposed: null`           | Gets `{ cause: "delete", eventId }`, `input: "agent"` |
+| Chooses "Keep it"      | Fails with `The app refused deleteEvent on c1.`                       | Isn't called                                          |
+| Doesn't answer in time | Fails once `timeout` passes, and `signal` aborts so the question goes | Isn't called                                          |
+
+A few things to get right:
+
+- **Say what will be deleted.** `args[0]` is the step's input as the agent sent it, which should
+  be `{ eventId }`. `allow` runs before the calendar checks it, so `eventIdOf` reads it as unknown
+  input. Look the event up and show its title, as the example does, since the person can't judge
+  an ID.
+- **Take the question down on `signal`.** It aborts when the wait times out and when the turn is
+  stopped. A question left on screen would answer a step that's already over.
+- **Later calls wait.** While `allow` is pending, `act` and `query` calls on the same bridge queue
+  behind it. `snapshot` still answers.
+- **The calendar is asked first.** On a `Root` without `allowAgentDelete` a `deleteEvent` step
+  fails before the bridge calls `allow`, so the person is never asked about a delete that can't
+  run.
+- **Your policies still run.** After the person says yes, the delete is a proposal like any other.
+  A policy can refuse it, and the agent's step fails with the policy's reason.
+- **`timeout` is yours to choose.** A step waits five minutes for `allow` when you don't set it.
+
+## A delete button of yours
+
+An agent can press a ui-sdk button your app rendered, with a `press` step. When that button's
+handler proposes a delete, the delete is the agent's. Your policies and `onEventChange` get it
+with `detail.input` of `"agent"`, whatever input the handler passed:
+
+<React>
+
+<include meta='title="remove-meeting.tsx"'>../../examples/agent-delete-button.tsx</include>
+
+</React>
+
+<Solid>
+
+<include meta='title="remove-meeting.tsx"'>
+  ../../examples/solid/agent-delete-button.tsx#button
+</include>
+
+</Solid>
+
+- **Without `allowAgentDelete`, the calendar refuses it.** The press succeeds as a step and
+  deletes nothing. The proposal ends `rejected` with the reason `agent-delete-not-allowed`, your
+  `onEventChange` isn't called, and `onEventChangeResult` hears the refusal with `input: "agent"`.
+  A person's click on the same button deletes as it did.
+- **With `allowAgentDelete`, the press is what your `allow` has to hold.** The step is `press` on
+  a `button`, not `deleteEvent` on a calendar. The `allow` above refuses every component but the
+  calendar, so it refuses this press. An `allow` that lets presses through would let this one
+  delete without the question: ask the person for it as well, or put the button inside an element
+  with `data-agent-hidden`, which keeps it from agents as
+  [Connect an agent](/docs/agents/connect#decide-what-an-agent-may-do) does for a whole calendar.
+
+The same holds for every change a pressed button proposes: a policy that refuses agents refuses
+it. [Who made a change](/docs/agents/changes#two-kinds-of-change) has the rule.
+
+All of this is about a handler that proposes the delete before it returns. A button that waits
+first, for a confirmation dialog of its own or a request, proposes later, and by then the calendar
+can't tell the agent started it: the delete reads as `"api"` and goes through without
+`allowAgentDelete`. Keep a button like that from agents with `data-agent-hidden`, or refuse its
+press in `allow`.
+
+## Stopping a turn
+
+When the person stops the agent while a question is open, pass an `AbortSignal` to `act`. The
+waiting step fails with `deleteEvent on c1 was cancelled.`, `allow`'s `signal` aborts so the
+question comes down, and the steps after it don't run:
+
+<React>
+
+<include meta='title="agent-stop.ts"'>../../examples/agent-stop.ts</include>
+
+</React>
+
+<Solid>
+
+<include meta='title="agent-stop.ts"'>../../examples/solid/agent-stop.ts#stop</include>
+
+</Solid>
+
+## Undo instead of asking
+
+Asking first isn't the only shape. For a calendar where a wrong delete is cheap to reverse, let the
+delete run and offer an undo: an [event history](/docs/agents/changes#undo-an-agents-changes) with
+`inputs: ["agent"]` brings the deleted event back as it was. Keep the question for deletes your app
+can't take back, such as one that emails the guests.
+
+Next, hand the tools to a browser's agent with [WebMCP](/docs/agents/webmcp).

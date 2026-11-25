@@ -29,7 +29,7 @@ interface Sample {
   readonly code: string;
 }
 
-const include = /<include[^>]*>([^<#]+)(?:#([\w-]+))?<\/include>/gu;
+const include = /<include[^>]*>([^<#]+)(?:#([\w-]+))?\s*<\/include>/gu;
 const fence = /^```([\w-]+)[^\n]*\n([\s\S]*?)^```$/gmu;
 
 function region(source: string, name: string | undefined): string | undefined {
@@ -113,7 +113,7 @@ describe("code samples in Solid's docs", () => {
     // `@/components/calendar/…` is where `shadcn add` puts the Solid registry's files, which the
     // samples' tsconfig.json maps to registry/solid; any other `@/` path is the docs site's.
     const reactImport =
-      /from "(?:react|react-dom(?:\/[^"]+)?|next(?:\/[^"]+)?|@moltenship\/calendar|@moltenship\/calendar-(?:react|primitives|dnd|dnd-kit|testing)|@ui-sdk\/react|@registry\/[^"]+|@\/(?!components\/calendar\/)[^"]+)"/u;
+      /from "(?:react|react-dom(?:\/[^"]+)?|next(?:\/[^"]+)?|@moltenship\/calendar|@moltenship\/calendar-(?:react|dnd-kit|testing)|@ui-sdk\/react|@registry\/[^"]+|@\/(?!components\/calendar\/)[^"]+)"/u;
     const react = solidPages
       .flatMap(samplesOf)
       .filter((sample) => reactImport.test(sample.code))
@@ -183,6 +183,22 @@ describe("the blocks one framework's reader sees", () => {
     expect(lines).toEqual([]);
   });
 
+  test("no line holds only the punctuation that follows a block", () => {
+    // A block that ends a line, with the sentence's full stop on the next, renders the stop as a
+    // paragraph of its own. Keep the block and what follows it on one line.
+    const lines = docsFiles().flatMap((file) =>
+      file.source
+        .split("\n")
+        .map((line, index, all) => ({ line, before: all[index - 1] ?? "", index }))
+        .filter(
+          ({ line, before }) =>
+            /^\s*[.,;:!?)]+\s*$/u.test(line) && /<\/(?:React|Solid|PreRelease)>\s*$/u.test(before),
+        )
+        .map(({ index }) => `${file.file}:${index + 1}`),
+    );
+    expect(lines).toEqual([]);
+  });
+
   test("a page one framework has uses no blocks: all of it is that framework's", () => {
     const withBlocks = docsFiles()
       .filter((file) => file.framework !== undefined && blockTag.test(file.source))
@@ -193,13 +209,11 @@ describe("the blocks one framework's reader sees", () => {
 
 describe("where Solid's docs lean on React's", () => {
   /**
-   * Links from Solid's docs into React's, by page. Each is a subject Solid has and its docs don't
-   * cover yet. Writing the Solid page removes the links, and its line here.
+   * Links from Solid's docs into React's, by page. Solid's docs cover every subject Solid has, so
+   * there are none. A page that has to lean on React's docs for a while is listed here with its
+   * count, and writing the Solid page removes its line.
    */
-  const linksToReact: Readonly<Record<string, number>> = {
-    "api/components.solid.mdx": 12,
-    "api/index.mdx": 4,
-  };
+  const linksToReact: Readonly<Record<string, number>> = {};
 
   test("only the listed pages link to React's docs", () => {
     const found: Record<string, number> = {};

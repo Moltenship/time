@@ -1,0 +1,140 @@
+---
+title: Annotations
+description: Time-based information beside events, such as listening history, sleep, workouts and focus sessions.
+---
+
+Annotations show what happened alongside the events: what you listened to, when you slept, a
+workout, a focus session. Unlike events they are read-only, and they never take part in overlap
+layout, so they never reorder an event or change its lane.
+
+The calendar doesn't fetch anything. Your app loads the data from its integrations and passes it to
+`Root`, the same way it passes events.
+
+## Add them
+
+Describe each source once, then turn your data into annotations:
+
+<include meta='title="annotations.tsx"'>../examples/solid/annotations.tsx#data</include>
+
+Pass both to `Root`. `Tracker` is a calendar with the week view that
+[Draw them in a view](#draw-them-in-a-view) writes:
+
+<include meta='title="annotations.tsx"'>../examples/solid/annotations.tsx#root</include>
+
+The library knows no kinds of source: "sleep" and "music" are your names. Sources come in the order
+you list them, and leaving one out of `annotationSources` hides its annotations. Like events,
+annotations are half-open, `[start, end)`. Invalid ones are skipped and reported through
+`onDiagnosticsChange`.
+
+## Draw them in a view
+
+`useTimeGridAnnotations(columns, geometry)` lays the annotations out beside a time grid's columns
+and returns an accessor of one list of marks per column. This week view draws them in a rail at the
+start of each day:
+
+<include meta='title="annotations.tsx"'>../examples/solid/annotations.tsx#view</include>
+
+Register the view, and the `Root` above renders it:
+
+<include meta='title="annotations.tsx"'>../examples/solid/annotations.tsx#calendar</include>
+
+A mark is one source's annotations merged and placed, ready to draw:
+
+- **Position.** `top` and `height` are fractions of the column's 24-hour axis, like an event's
+  layout. `kind` is `"dot"` for a mark shorter than the geometry's `minHeight`, which draws at that
+  height, and `"bar"` for the rest.
+- **Merging.** A source's annotations closer than its `mergeGap` are one mark, such as tracks in a
+  listening session. Marks closer than the geometry's `minGap` merge too, so song-level history
+  stays readable when zoomed out. `mark.annotations` lists what a mark merges, in time order.
+- **Lanes.** When different sources overlap, such as music during a focus session, they share the
+  rail: `lane` is the mark's lane and `lanes` how many it shares the rail with.
+- **Days.** An annotation across midnight gives a mark on both days. `startsBeforeDay` and
+  `endsAfterDay` say where a mark is cut, so you can fade that end.
+
+Style the marks with your own CSS. The sample puts the source's ID in `data-source`:
+
+```css
+.rail {
+  position: absolute;
+  inset-block: 0;
+  inset-inline-start: 0;
+  inline-size: 18px;
+}
+
+.mark {
+  position: absolute;
+  border-radius: 999px;
+  background: oklch(0.7 0.15 150);
+}
+
+.mark[data-source="sleep"] {
+  background: linear-gradient(to bottom, oklch(0.5 0.19 282), oklch(0.7 0.14 275));
+}
+```
+
+The sample's rail is `aria-hidden`, so say the same in words. `summarizeAnnotationMarks` returns a
+day's totals per source, in source order, for a day's header or a screen-reader summary:
+
+<include meta='title="annotations.tsx"'>../examples/solid/annotations.tsx#summary</include>
+
+`useCalendarAnnotations()` returns the root's annotations and sources as they are, for a view that
+isn't a time grid.
+
+## Geometry
+
+The second argument of `useTimeGridAnnotations`. Every value is optional.
+
+<TypeTable
+  type={{
+    minHeight: {
+      type: "number",
+      description:
+        "The shortest a mark draws, as a fraction of the day. A mark too close to midnight to fit draws up from the day's end.",
+    },
+    minGap: {
+      type: "number",
+      description:
+        "Marks of one source closer than this fraction of the day merge, so they never touch.",
+    },
+    layout: {
+      type: '"pack" | "per-source"',
+      description:
+        "pack shares the rail between overlapping marks; per-source gives each source its own lane.",
+      default: '"pack"',
+    },
+    maxLanes: {
+      type: "number",
+      description: "In pack, marks beyond this many overlapping share the last lane.",
+      default: "3",
+    },
+  }}
+/>
+
+## Data model
+
+<TypeTable
+  type={{
+    id: { type: "string | number", description: "Unique among annotations.", required: true },
+    sourceId: {
+      type: "string",
+      description: "The source it belongs to. Annotations of sources not given are hidden.",
+      required: true,
+    },
+    start: { type: "Temporal.Instant", description: "Inclusive start.", required: true },
+    end: { type: "Temporal.Instant", description: "Exclusive end, after start.", required: true },
+    title: {
+      type: "string",
+      description: "Names the annotation, for a tooltip or a summary.",
+      required: true,
+    },
+    resourceIds: {
+      type: "readonly TResourceId[]",
+      description: "Resources it belongs to. Without them it belongs to the whole calendar.",
+    },
+    data: { type: "TData", description: "Anything your own parts need." },
+  }}
+/>
+
+A source has an `id`, a `label` that names it in summaries and tooltips, and an optional
+`mergeGap`. A mark carries the source object you passed, so a source can hold more, such as a
+color.

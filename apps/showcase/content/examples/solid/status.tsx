@@ -20,3 +20,17 @@ export function Status() {
   );
 }
 // #endregion status
+
+// #region event
+export function StandupLine() {
+  return (
+    <Calendar.Event eventId="standup" fallback={<p>Not found</p>}>
+      {(entry) => (
+        <p>
+          {entry().event.title} starts at {entry().normalized.start.toString()}
+        </p>
+      )}
+    </Calendar.Event>
+  );
+}
+// #endregion event
