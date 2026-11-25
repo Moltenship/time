@@ -1,10 +1,11 @@
 import { createEventHistory, type CalendarWeekRules } from "@moltenship/calendar-core";
-import { useCalendarHistory, useCalendarHistoryShortcuts } from "@moltenship/calendar-solid";
+import { useCalendarHistory } from "@moltenship/calendar-solid";
 import { createEffect, createSignal, For } from "solid-js";
 
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { MiniMonth } from "@registry/calendar/mini-month";
 import { ViewSwitcher } from "@registry/calendar/view-switcher";
+import { CalendarHistoryToast } from "@registry/calendar-history-toast/calendar-history-toast";
 import { Button } from "@registry/calendar-ui/button";
 import {
   Select,
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@registry/calendar-ui/select";
+import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-recurrence-scope-prompt";
 
 import { AgentPanel } from "./agent-panel";
 import { announcements, historyAnnouncements } from "./announcements";
@@ -24,6 +26,7 @@ import {
   type DragPreview,
 } from "./drag-preview";
 import { FrameworkSwitch } from "./framework-switch";
+import { applyToSeries, seriesScopes } from "./series";
 import {
   nearestSolidView,
   readSolidLocation,
@@ -47,6 +50,13 @@ const seed: readonly Meeting[] = [
     locked: true,
     title: "Board meeting",
   },
+  // A sync every day for five days, at 16:00: changing one asks which ones it applies to.
+  ...Array.from({ length: 5 }, (_, day) => ({
+    id: `sync-${day + 1}`,
+    interval: timed(today.add({ days: day }), "16:00", "16:30"),
+    series: "sync",
+    title: "Team sync",
+  })),
   {
     id: "offsite",
     interval: { end: today.add({ days: 7 }), kind: "all-day", start: today.add({ days: 5 }) },
@@ -100,6 +110,8 @@ const createdIds = new Map<string, string>();
 
 /** Every saved change, from a drag, a key or the agent, for undo and redo. */
 const changes = createEventHistory<Meeting, string, string>({
+  // A step holds one event, so undo can't take back a change to the Team sync's other occurrences.
+  filter: (change) => change.cause === "create" || change.event.series === undefined,
   // Once the events show it.
   createdEventId: (change, events) => {
     const id = createdIds.get(change.id);
@@ -107,11 +119,9 @@ const changes = createEventHistory<Meeting, string, string>({
   },
 });
 
-/** Undo and redo, as buttons and as Ctrl+Z and Ctrl+Y, or ⌘Z and ⇧⌘Z, inside the calendar. */
+/** Undo and redo as buttons. The registry's undo toast adds Ctrl+Z and Ctrl+Y, or ⌘Z and ⇧⌘Z. */
 function HistoryControls() {
   const controls = useCalendarHistory(changes, { messages: historyAnnouncements });
-  const meta = Calendar.useCalendarMeta();
-  useCalendarHistoryShortcuts(controls, () => ({ scope: meta().refs.frame }));
   return (
     <>
       <Button disabled={!controls().canUndo} onClick={() => controls().undo()} variant="outline">
@@ -191,6 +201,7 @@ export function App() {
     history.replaceState(history.state, "", next);
   });
   const [allowDelete, setAllowDelete] = createSignal(false);
+  const { ask, dialog } = useRecurrenceScopePrompt();
   const [lastChange, setLastChange] = createSignal("none yet");
   let created = 0;
 
@@ -202,12 +213,13 @@ export function App() {
       </header>
       <p class="preview">
         This page runs <code>@moltenship/calendar-solid</code>, a preview. The toolbar, the view
-        switcher, the mini month, the month and the agenda are the registry's Solid items, the files{" "}
-        <code>shadcn add</code> installs into a Solid app. In the month, arrow keys move through
-        days and Enter into a day's events, Space picks an event up or starts a new one, and a
-        pointer drags an event to another day or across days to create one; in the agenda, up and
-        down move between events, Page Up and Page Down between days. Undo and Redo take changes
-        back. <a href={docsUrl}>The Solid docs</a>
+        switcher, the mini month, the month, the agenda, the recurrence dialog and the undo toast
+        are the registry's Solid items, the files <code>shadcn add</code> installs into a Solid app.
+        In the month, arrow keys move through days and Enter into a day's events, Space picks an
+        event up or starts a new one, and a pointer drags an event to another day or across days to
+        create one; in the agenda, up and down move between events, Page Up and Page Down between
+        days. A change to a Team sync asks which of the series it applies to, and every other change
+        shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's month and list projections, with an agent driving it
@@ -220,9 +232,18 @@ export function App() {
         events={events()}
         label="Team calendar"
         locale={navigator.language}
-        onEventChange={(change, detail) => {
+        onEventChange={async (change, detail) => {
           setLastChange(`${change.cause} by ${detail.input}`);
-          if (change.cause === "delete") {
+          if (change.cause !== "create" && change.event.series !== undefined) {
+            const scope = await ask({
+              action: change.cause === "delete" ? "delete" : "edit",
+              eventTitle: change.event.title,
+              scopes: seriesScopes(change, events()),
+            });
+            // Rejecting rolls the change back; an `AbortError` is announced as a cancel.
+            if (scope === null) throw new DOMException("Cancelled", "AbortError");
+            setEvents((current) => applyToSeries(current, change, scope));
+          } else if (change.cause === "delete") {
             setEvents((current) => current.filter((event) => event.id !== change.eventId));
           } else if (change.cause === "create") {
             // Undoing a delete proposes a create with the deleted record: it comes back as it was.
@@ -272,6 +293,11 @@ export function App() {
             </Calendar.Viewport>
           </Calendar.Frame>
           <Calendar.Announcer messages={announcements} />
+          <CalendarHistoryToast
+            announcements={historyAnnouncements}
+            calendar={Calendar}
+            history={changes}
+          />
           <div class="side">
             <Sidebar
               date={location().date}
@@ -285,6 +311,7 @@ export function App() {
           </div>
         </div>
       </Calendar.Root>
+      {dialog}
     </main>
   );
 }

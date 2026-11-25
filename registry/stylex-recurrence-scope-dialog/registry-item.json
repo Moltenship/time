@@ -16,6 +16,11 @@
       "path": "registry/stylex-recurrence-scope-dialog/use-recurrence-scope-prompt.tsx",
       "type": "registry:hook",
       "target": "@components/calendar-stylex/recurrence-scope-dialog/use-recurrence-scope-prompt.tsx"
+    },
+    {
+      "path": "registry/shared/recurrence-scope-dialog/recurrence-scope.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/recurrence-scope-dialog/recurrence-scope.ts"
     }
   ]
 }

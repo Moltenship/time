@@ -14,16 +14,18 @@ import { render, shiftTab, tab, until } from "./render";
 /** A page with an event that asks, as `onEventChange` would, and shows the answer. */
 function Page({
   action = "edit",
+  dir,
   scopes,
 }: {
   readonly action?: RecurrenceScopeAction;
+  readonly dir?: "ltr" | "rtl";
   readonly scopes?: readonly RecurrenceEditScope[];
 }) {
   const { ask, dialog } = useRecurrenceScopePrompt();
   const [answer, setAnswer] = useState<string>("none yet");
 
   return (
-    <main className="p-4">
+    <main className="p-4" dir={dir}>
       <h1 className="text-lg font-medium">Week</h1>
       <button
         type="button"
@@ -103,6 +105,42 @@ test("Tab and Shift+Tab stay in the dialog, and Enter picks a scope", async () =
   await until(() => expect(answer()).toBe("all"));
   await until(() => expect(dialog()).toBeNull());
   expect(document.activeElement).toBe(event());
+});
+
+test("the arrow keys move between the scopes and wrap at the ends", async () => {
+  setTheme("light");
+  await render(<Page />);
+  await openFromKeyboard();
+
+  await focusReaches("This event");
+  for (const [key, text] of [
+    ["{ArrowDown}", "This and following events"],
+    ["{ArrowDown}", "All events"],
+    ["{ArrowDown}", "This event"],
+    ["{ArrowUp}", "All events"],
+    ["{ArrowLeft}", "This and following events"],
+    ["{ArrowRight}", "All events"],
+  ] as const) {
+    await userEvent.keyboard(key);
+    await focusReaches(text);
+  }
+
+  await userEvent.keyboard("{Enter}");
+  await until(() => expect(answer()).toBe("all"));
+});
+
+test("right to left, Left moves on and Right moves back", async () => {
+  setTheme("dark");
+  await render(<Page dir="rtl" />);
+  await openFromKeyboard();
+
+  await focusReaches("This event");
+  await userEvent.keyboard("{ArrowLeft}");
+  await focusReaches("This and following events");
+  await userEvent.keyboard("{ArrowRight}");
+  await focusReaches("This event");
+  await userEvent.keyboard("{ArrowRight}");
+  await focusReaches("All events");
 });
 
 test("Escape cancels and focus goes back to the event", async () => {

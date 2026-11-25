@@ -17,6 +17,7 @@
     "@moltenship/calendar-solid": "workspace:*",
     "@solidjs/web": "catalog:",
     "@stylexjs/stylex": "catalog:",
+    "lucide-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "solid-js": "catalog:"

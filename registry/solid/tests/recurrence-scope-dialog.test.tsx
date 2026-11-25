@@ -1,0 +1,255 @@
+// @vitest-environment jsdom
+
+import { createAgent } from "@ui-sdk/solid/agent";
+import { expect, test, vi } from "vite-plus/test";
+
+import { type RecurrenceEditScope } from "../recurrence-scope-dialog/recurrence-scope-dialog";
+import {
+  useRecurrenceScopePrompt,
+  type RecurrenceScopePrompt,
+  type RecurrenceScopeQuestion,
+} from "../recurrence-scope-dialog/use-recurrence-scope-prompt";
+import { click, focus, press, render, settled } from "./render";
+
+// One bridge for the file: it hears components as they are made, so it exists before any renders.
+const agent = createAgent();
+
+let prompt: RecurrenceScopePrompt | undefined;
+
+/** An app with an event button and the prompt, as a calendar page would have them. */
+function Host() {
+  const own = useRecurrenceScopePrompt();
+  prompt = own;
+  return (
+    <>
+      <button type="button" data-event-id="standup">
+        Standup
+      </button>
+      {own.dialog}
+    </>
+  );
+}
+
+const renderHost = () => render(() => <Host />);
+
+/**
+ * Asks through the host's prompt. The answer comes back wrapped, so awaiting this doesn't wait on
+ * it.
+ */
+async function ask(question?: RecurrenceScopeQuestion) {
+  const answer = prompt!.ask(question);
+  await settled();
+  return { answer };
+}
+
+const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
+const choice = (scope: RecurrenceEditScope) =>
+  document.querySelector<HTMLElement>(`[role="dialog"] [data-scope="${scope}"]`);
+const choices = () =>
+  [...document.querySelectorAll('[data-slot="recurrence-scope-choices"] button')].map(
+    (button) => button.textContent,
+  );
+const cancel = () =>
+  [...document.querySelectorAll<HTMLElement>('[role="dialog"] button')].find(
+    (button) => button.textContent === "Cancel",
+  ) ?? null;
+const textOf = (ids: string | null | undefined) =>
+  (ids ?? "")
+    .split(" ")
+    .map((id) => document.getElementById(id)?.textContent ?? "")
+    .join(" ");
+
+test.each(["this", "following", "all"] as const)(
+  "resolves %s when its button is picked",
+  async (scope) => {
+    await renderHost();
+    const { answer } = await ask();
+
+    await click(choice(scope));
+
+    await expect(answer).resolves.toBe(scope);
+    await vi.waitFor(() => expect(dialog()).toBeNull());
+  },
+);
+
+test("Cancel and Escape resolve null", async () => {
+  await renderHost();
+  const { answer: cancelled } = await ask();
+  await click(cancel());
+  await expect(cancelled).resolves.toBeNull();
+  await vi.waitFor(() => expect(dialog()).toBeNull());
+
+  const { answer: escaped } = await ask();
+  await vi.waitFor(() => expect(dialog()?.contains(document.activeElement)).toBe(true));
+  await press("Escape");
+  await expect(escaped).resolves.toBeNull();
+  await vi.waitFor(() => expect(dialog()).toBeNull());
+});
+
+test("offers all three scopes by default, from the narrowest", async () => {
+  await renderHost();
+  await ask();
+
+  expect(choices()).toEqual(["This event", "This and following events", "All events"]);
+});
+
+test("scopes filters the choices and keeps their order", async () => {
+  await renderHost();
+  await ask({ scopes: ["all", "this", "all"] });
+
+  expect(choices()).toEqual(["This event", "All events"]);
+});
+
+test("a single scope still asks", async () => {
+  await renderHost();
+  const { answer } = await ask({ action: "delete", scopes: ["all"] });
+
+  expect(choices()).toEqual(["All events"]);
+  await click(choice("all"));
+  await expect(answer).resolves.toBe("all");
+});
+
+test("no scopes resolves null at once, without a dialog", async () => {
+  await renderHost();
+
+  await expect((await ask({ scopes: [] })).answer).resolves.toBeNull();
+  expect(dialog()).toBeNull();
+});
+
+test("asking again resolves the open question with null and shows the new one", async () => {
+  await renderHost();
+  const { answer: first } = await ask({ eventTitle: "Standup" });
+  const { answer: second } = await ask({ action: "delete", eventTitle: "Retro" });
+
+  await expect(first).resolves.toBeNull();
+  expect(textOf(dialog()!.getAttribute("aria-labelledby"))).toBe("Delete recurring event");
+  await click(choice("following"));
+  await expect(second).resolves.toBe("following");
+});
+
+test("asking again hands over an answer whose dialog is still closing", async () => {
+  await renderHost();
+  const { answer: first } = await ask();
+
+  choice("all")!.click();
+  const second = prompt!.ask({ action: "delete" });
+  await settled();
+
+  await expect(first).resolves.toBe("all");
+  expect(textOf(dialog()!.getAttribute("aria-labelledby"))).toBe("Delete recurring event");
+  await click(choice("this"));
+  await expect(second).resolves.toBe("this");
+});
+
+test("unmounting resolves an open question with null", async () => {
+  const view = await renderHost();
+  const { answer } = await ask();
+
+  view.unmount();
+
+  await expect(answer).resolves.toBeNull();
+});
+
+test("the dialog is named by its title and described by its question", async () => {
+  await renderHost();
+  await ask();
+
+  expect(textOf(dialog()!.getAttribute("aria-labelledby"))).toBe("Edit recurring event");
+  expect(textOf(dialog()!.getAttribute("aria-describedby"))).toBe(
+    "This event repeats. Which events should this change apply to?",
+  );
+});
+
+test("a delete asks a different question, quoting the event's title", async () => {
+  await renderHost();
+  await ask({ action: "delete", eventTitle: "Standup" });
+
+  expect(textOf(dialog()!.getAttribute("aria-labelledby"))).toBe("Delete recurring event");
+  expect(textOf(dialog()!.getAttribute("aria-describedby"))).toBe(
+    "“Standup” repeats. Which events do you want to delete?",
+  );
+});
+
+test("focus starts on the narrowest scope offered and returns where it was", async () => {
+  await renderHost();
+  const event = document.querySelector<HTMLElement>('[data-event-id="standup"]')!;
+  await focus(event);
+
+  const { answer } = await ask();
+  await vi.waitFor(() => expect(document.activeElement).toBe(choice("this")));
+  await click(cancel());
+  await answer;
+  await vi.waitFor(() => expect(document.activeElement).toBe(event));
+
+  await ask({ scopes: ["all", "following"] });
+  await vi.waitFor(() => expect(document.activeElement).toBe(choice("following")));
+});
+
+test.each(["this", null] as const)(
+  "answers %s once the dialog has closed and focus is back where it was",
+  async (scope) => {
+    await renderHost();
+    const event = document.querySelector<HTMLElement>('[data-event-id="standup"]')!;
+    await focus(event);
+    const { answer } = await ask();
+    await vi.waitFor(() => expect(document.activeElement).toBe(choice("this")));
+    // The application applies the answer next, which can replace the event's element. Focus has
+    // to be back on it by then, so the page can move focus on from it.
+    const answered = answer.then((picked) => [picked, dialog(), document.activeElement]);
+
+    await click(scope === null ? cancel() : choice(scope));
+
+    await expect(answered).resolves.toEqual([scope, null, event]);
+  },
+);
+
+test("the arrow keys move between the choices and wrap, and leave Cancel to Tab", async () => {
+  await renderHost();
+  await ask();
+  await vi.waitFor(() => expect(document.activeElement).toBe(choice("this")));
+
+  await press("ArrowDown");
+  expect(document.activeElement).toBe(choice("following"));
+  await press("ArrowRight");
+  expect(document.activeElement).toBe(choice("all"));
+  await press("ArrowDown");
+  expect(document.activeElement).toBe(choice("this"));
+  await press("ArrowUp");
+  expect(document.activeElement).toBe(choice("all"));
+  await press("ArrowLeft");
+  expect(document.activeElement).toBe(choice("following"));
+  // With a modifier, the key is the page's.
+  await press("ArrowDown", { shiftKey: true });
+  expect(document.activeElement).toBe(choice("following"));
+
+  await focus(cancel());
+  await press("ArrowDown");
+  expect(document.activeElement).toBe(cancel());
+});
+
+test("Left and Right follow the writing direction", async () => {
+  await renderHost();
+  await ask();
+  await vi.waitFor(() => expect(document.activeElement).toBe(choice("this")));
+  document.querySelector<HTMLElement>('[data-slot="recurrence-scope-choices"]')!.style.direction =
+    "rtl";
+
+  await press("ArrowLeft");
+  expect(document.activeElement).toBe(choice("following"));
+  await press("ArrowRight");
+  expect(document.activeElement).toBe(choice("this"));
+});
+
+test("an agent finds the dialog's choices by name and picks one", async () => {
+  await renderHost();
+  const { answer } = await ask({ eventTitle: "Standup" });
+
+  const found = agent.snapshot().filter((component) => component.offPage !== true);
+  expect(
+    found.filter((component) => component.component === "button").map(({ label }) => label),
+  ).toEqual(expect.arrayContaining(["This event", "This and following events", "All events"]));
+
+  await agent.act({ steps: [{ action: "press", ref: "All events" }] });
+  await settled();
+  await expect(answer).resolves.toBe("all");
+});

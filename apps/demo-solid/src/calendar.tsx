@@ -9,6 +9,8 @@ export interface Meeting {
   readonly interval: CalendarEventInterval;
   /** An event nobody may change: the page's policy refuses it, for the agent and for drags. */
   readonly locked?: boolean;
+  /** The repeating event it's an occurrence of (see `series.ts`). */
+  readonly series?: string;
   readonly title: string;
 }
 

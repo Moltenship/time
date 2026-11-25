@@ -235,6 +235,49 @@ test.each(["this", null] as const)(
   },
 );
 
+test("the arrow keys move between the choices and wrap, and leave Cancel to Tab", async () => {
+  await renderHost();
+  await ask();
+  await vi.waitFor(() => expect(document.activeElement).toBe(choice("this")));
+  const arrow = (key: string, init: KeyboardEventInit = {}) =>
+    act(async () => {
+      document.activeElement!.dispatchEvent(
+        new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key, ...init }),
+      );
+    });
+
+  await arrow("ArrowDown");
+  expect(document.activeElement).toBe(choice("following"));
+  await arrow("ArrowRight");
+  expect(document.activeElement).toBe(choice("all"));
+  await arrow("ArrowDown");
+  expect(document.activeElement).toBe(choice("this"));
+  await arrow("ArrowUp");
+  expect(document.activeElement).toBe(choice("all"));
+  await arrow("ArrowLeft");
+  expect(document.activeElement).toBe(choice("following"));
+  // With a modifier, the key is the page's.
+  await arrow("ArrowDown", { shiftKey: true });
+  expect(document.activeElement).toBe(choice("following"));
+
+  await act(async () => cancel()!.focus());
+  await arrow("ArrowDown");
+  expect(document.activeElement).toBe(cancel());
+});
+
+test("Left and Right follow the writing direction", async () => {
+  await renderHost();
+  await ask();
+  await vi.waitFor(() => expect(document.activeElement).toBe(choice("this")));
+  document.querySelector<HTMLElement>('[data-slot="recurrence-scope-choices"]')!.style.direction =
+    "rtl";
+
+  await press(document.activeElement, "ArrowLeft");
+  expect(document.activeElement).toBe(choice("following"));
+  await press(document.activeElement, "ArrowRight");
+  expect(document.activeElement).toBe(choice("this"));
+});
+
 test("StrictMode's second mount doesn't count as the dialog closing", async () => {
   const closed = vi.fn();
   const view = await render(

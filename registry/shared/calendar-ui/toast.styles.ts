@@ -1,3 +1,6 @@
+/** Where the region sits and how many toasts it shows: one at a time, at the bottom centre. */
+export const toastRegionDefaults = { align: "center", maxVisible: 1, side: "bottom" } as const;
+
 /**
  * The region, at the bottom centre of the screen. It shows in the browser's top layer and clears
  * the browser's own popover border, padding and background. ui-sdk centres it with `left: 50%`

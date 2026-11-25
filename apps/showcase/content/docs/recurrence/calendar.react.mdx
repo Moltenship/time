@@ -223,6 +223,23 @@ events, and `SelectedEvent` is the component from [Deleting](#deleting).
 
 <include meta='title="team-calendar.tsx"'>../../examples/recurrence-root.tsx#root</include>
 
+## The dialog
+
+The dialog shows one button per scope offered, always in the same order, then Cancel. Focus starts
+on the narrowest scope offered, usually "This event".
+
+| Key            | What it does                                                             |
+| -------------- | ------------------------------------------------------------------------ |
+| Arrow keys     | Move between the scopes, wrapping at the ends. Left and Right follow RTL |
+| Tab, Shift+Tab | Move through the scopes and Cancel, and stay inside the dialog           |
+| Enter, Space   | Pick the focused scope, or cancel                                        |
+| Escape         | Cancel                                                                   |
+
+When it closes, focus goes back to where it was, such as the event, and only then does `ask`
+resolve. Safari skips buttons on Tab unless a setting says otherwise, so the arrow keys reach every
+scope there. The wording, English, is in `recurrence-scope.ts` beside the dialog, to edit or
+translate.
+
 ## Recipes
 
 <Cards>

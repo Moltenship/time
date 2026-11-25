@@ -99,3 +99,18 @@ export const kitFixture = {
   ],
   value: "week",
 } as const;
+
+/** The toast each kit shows, for the stored description. */
+export const kitToast = {
+  actionProps: { children: "Undo", onClick: () => {} },
+  description: "To undo it, press F6 and choose Undo.",
+  id: "kit",
+  timeout: 0,
+  title: "Moved “Standup”",
+} as const;
+
+/** Whether the toast `kitToast` adds has finished showing. */
+export const toastShown = (): boolean => {
+  const toast = document.querySelector('[aria-label="Notifications"] li');
+  return toast !== null && !toast.hasAttribute("data-starting-style");
+};

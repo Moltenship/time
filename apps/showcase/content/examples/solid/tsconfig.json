@@ -6,10 +6,19 @@
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "noEmit": true,
     "paths": {
+      "@/components/calendar/announcements": [
+        "../../../../../registry/shared/calendar/announcements"
+      ],
       "@/components/calendar/event-colors": [
         "../../../../../registry/shared/calendar-theme/event-colors"
       ],
       "@/components/calendar/list-view/*": ["../../../../../registry/solid/list-view/*"],
+      "@/components/calendar/calendar-history-toast/*": [
+        "../../../../../registry/solid/calendar-history-toast/*"
+      ],
+      "@/components/calendar/recurrence-scope-dialog/*": [
+        "../../../../../registry/solid/recurrence-scope-dialog/*"
+      ],
       "@/components/calendar/month-view/*": ["../../../../../registry/solid/month-view/*"],
       "@/components/calendar/ui/*": ["../../../../../registry/solid/calendar-ui/*"],
       "@/components/calendar/*": ["../../../../../registry/solid/calendar/*"],

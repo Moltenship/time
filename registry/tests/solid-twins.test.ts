@@ -27,10 +27,12 @@ test("the Solid registry has the items ported so far", () => {
   expect(solidItems.toSorted()).toEqual([
     "base-tokens",
     "calendar",
+    "calendar-history-toast",
     "calendar-theme",
     "calendar-ui",
     "list-view",
     "month-view",
+    "recurrence-scope-dialog",
   ]);
 });
 
@@ -41,12 +43,7 @@ describe.each(solidItems.filter((name) => existsSync(join(registry, name, "regis
     const own = manifestOf(join(solid, name));
 
     test("lists every shared file its React twin lists, at the same target", () => {
-      // The kit's dialog and toast come with the views that use them (ADR 0279, S6).
-      const pending =
-        name === "calendar-ui" ? /\/(?:(?:dialog|toast)\.styles|toast-manager)\.ts$/u : null;
-      expect(shared(own)).toEqual(
-        shared(react).filter(({ path }) => pending === null || !pending.test(path)),
-      );
+      expect(shared(own)).toEqual(shared(react));
     });
 
     test("installs the items its React twin installs", () => {

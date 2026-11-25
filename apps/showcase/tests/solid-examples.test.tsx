@@ -25,10 +25,21 @@ interface Use {
   readonly props: Readonly<Record<string, string>>;
 }
 
+/** Where a shared page's `<Solid>` blocks are, which React's docs drop whole. */
+const solidBlocks = (source: string) =>
+  [...source.matchAll(/<Solid>[\s\S]*?<\/Solid>/gu)].map(({ 0: block, index }) => ({
+    end: index + block.length,
+    start: index,
+  }));
+
 const uses: Use[] = docsFiles().flatMap((file) =>
-  [...file.source.matchAll(/<SolidExample\b([^>]*)\/>/gu)].map(([, attributes = ""]) => ({
+  [...file.source.matchAll(/<SolidExample\b([^>]*)\/>/gu)].map(({ 1: attributes = "", index }) => ({
     file: file.file,
-    framework: file.framework,
+    framework:
+      file.framework ??
+      (solidBlocks(file.source).some(({ end, start }) => start < index && index < end)
+        ? "solid"
+        : undefined),
     props: Object.fromEntries(
       [...attributes.matchAll(/([\w-]+)="([^"]*)"/gu)].map(([, key = "", value = ""]) => [
         key,
@@ -52,7 +63,7 @@ describe("the live examples on Solid's pages", () => {
     expect(entries.filter((entry) => !shown.has(entry))).toEqual([]);
   });
 
-  test("they are on Solid's own pages: a React reader never loads one", () => {
+  test("they are on Solid's own pages or in a <Solid> block: a React reader never loads one", () => {
     expect(uses.filter((use) => use.framework !== "solid").map((use) => use.file)).toEqual([]);
   });
 

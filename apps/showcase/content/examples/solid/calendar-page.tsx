@@ -1,5 +1,4 @@
-// The page Installation, the Agenda page and the Toolbar page show, after `shadcn add` of the
-// Solid items. The registry's install test adds this file to a clean Solid app, whose typecheck and
+// The page Installation, the Agenda and Toolbar pages show, after `shadcn add` of the Solid items. The registry's install test adds this file to a clean Solid app, whose typecheck and
 // build cover it.
 
 // #region view
@@ -142,3 +141,29 @@ export function CalendarWithToolbar() {
   );
 }
 // #endregion toolbar
+
+// The recurrence dialog, as the install test adds it. Its page shows it with
+// `@moltenship/calendar-recurrence` (`recurrence.tsx`), which this app doesn't install.
+import { useRecurrenceScopePrompt } from "@/components/calendar/recurrence-scope-dialog/use-recurrence-scope-prompt";
+
+export function CalendarAskingFirst() {
+  const { ask, dialog } = useRecurrenceScopePrompt();
+  return (
+    <>
+      <Calendar.Root
+        defaultAnchorDate={today}
+        defaultTimeZone="UTC"
+        events={events}
+        locale="en-US"
+        onEventChange={async (change) => {
+          const scope = await ask({ action: change.cause === "delete" ? "delete" : "edit" });
+          if (scope === null) throw new DOMException("Cancelled", "AbortError");
+        }}
+        weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
+      >
+        <Calendar.ActiveView />
+      </Calendar.Root>
+      {dialog}
+    </>
+  );
+}

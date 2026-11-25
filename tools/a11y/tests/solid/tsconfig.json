@@ -15,6 +15,7 @@
     "**/*.ts",
     "**/*.tsx",
     "../axe.ts",
+    "../keys.ts",
     "../kit-twins.ts",
     "../month-fixture.ts",
     "../waits.ts"

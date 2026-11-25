@@ -12,51 +12,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@registry/calendar-ui/dialog";
+import {
+  moveBetweenRecurrenceScopes,
+  offeredRecurrenceScopes,
+  recurrenceScopeCancelLabel,
+  recurrenceScopeLabels,
+  recurrenceScopeText,
+  type RecurrenceEditScope,
+  type RecurrenceScopeAction,
+} from "@registry/shared/recurrence-scope-dialog/recurrence-scope";
+import {
+  recurrenceScopeChoiceClassName,
+  recurrenceScopeChoicesClassName,
+} from "@registry/shared/recurrence-scope-dialog/recurrence-scope-dialog.styles";
 
-/**
- * Which events a change to one occurrence of a recurring event applies to: `"this"` occurrence
- * alone, `"following"` (it and every later one), or `"all"` of the series.
- *
- * The same union as `RecurrenceEditScope` from `@moltenship/calendar-recurrence`, declared here so
- * the registry source depends on nothing but `@moltenship/calendar`. The two match structurally,
- * so a scope from this dialog passes straight to `resolveRecurrenceEdit`.
- */
-export type RecurrenceEditScope = "this" | "following" | "all";
-
-/** What the pending change does; it picks the dialog's title and question. */
-export type RecurrenceScopeAction = "edit" | "delete";
-
-/** The order the dialog lists scopes in, from the narrowest to the whole series. */
-const scopeOrder: readonly RecurrenceEditScope[] = ["this", "following", "all"];
-
-const scopeLabels: Readonly<Record<RecurrenceEditScope, string>> = {
-  this: "This event",
-  following: "This and following events",
-  all: "All events",
-};
-
-const actionCopy: Readonly<
-  Record<RecurrenceScopeAction, { readonly question: string; readonly title: string }>
-> = {
-  edit: {
-    question: "Which events should this change apply to?",
-    title: "Edit recurring event",
-  },
-  delete: {
-    question: "Which events do you want to delete?",
-    title: "Delete recurring event",
-  },
-};
-
-/**
- * The scopes the dialog offers for `scopes`, in display order: this, following, all, whatever
- * order they are given in. Duplicates and unknown values drop out; no `scopes` means all three.
- */
-export function offeredRecurrenceScopes(
-  scopes?: readonly RecurrenceEditScope[],
-): readonly RecurrenceEditScope[] {
-  return scopes === undefined ? scopeOrder : scopeOrder.filter((scope) => scopes.includes(scope));
-}
+export { offeredRecurrenceScopes };
+export type { RecurrenceEditScope, RecurrenceScopeAction };
 
 export interface RecurrenceScopeDialogProps {
   /** An edit (move, resize, update) or a delete. Defaults to `"edit"`. */
@@ -84,12 +55,12 @@ export interface RecurrenceScopeDialogProps {
 
 /**
  * Asks which events of a recurring series a change applies to: one button per scope, then
- * Cancel. Focus starts on the narrowest scope offered, stays in the dialog while it is open, and
- * goes back to where it was when the dialog closes. `useRecurrenceScopePrompt` wraps it in a
- * promise for `onEventChange`.
+ * Cancel. Focus starts on the narrowest scope offered, the arrow keys move between the scopes,
+ * focus stays in the dialog while it is open, and goes back to where it was when the dialog
+ * closes. `useRecurrenceScopePrompt` wraps it in a promise for `onEventChange`.
  */
 export function RecurrenceScopeDialog({
-  action = "edit",
+  action,
   eventTitle,
   onClosed,
   onResolve,
@@ -97,8 +68,7 @@ export function RecurrenceScopeDialog({
   scopes,
 }: RecurrenceScopeDialogProps) {
   const firstChoice = useRef<HTMLButtonElement>(null);
-  const { question, title } = actionCopy[action];
-  const subject = eventTitle === undefined ? "This event" : `“${eventTitle}”`;
+  const { description, title } = recurrenceScopeText(action, eventTitle);
 
   return (
     <Dialog
@@ -114,11 +84,13 @@ export function RecurrenceScopeDialog({
       <DialogContent initialFocus={firstChoice}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>
-            {subject} repeats. {question}
-          </DialogDescription>
+          <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
-        <div data-slot="recurrence-scope-choices" className="grid gap-2">
+        <div
+          data-slot="recurrence-scope-choices"
+          className={recurrenceScopeChoicesClassName}
+          onKeyDown={(event) => moveBetweenRecurrenceScopes(event, event.currentTarget)}
+        >
           {offeredRecurrenceScopes(scopes).map((scope, index) => (
             <Button
               key={scope}
@@ -126,17 +98,19 @@ export function RecurrenceScopeDialog({
               data-scope={scope}
               variant="outline"
               size="lg"
-              className="justify-start"
+              className={recurrenceScopeChoiceClassName}
               onClick={() => {
                 if (open) onResolve(scope);
               }}
             >
-              {scopeLabels[scope]}
+              {recurrenceScopeLabels[scope]}
             </Button>
           ))}
         </div>
         <DialogFooter>
-          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+          <DialogClose render={<Button variant="outline" />}>
+            {recurrenceScopeCancelLabel}
+          </DialogClose>
         </DialogFooter>
       </DialogContent>
     </Dialog>

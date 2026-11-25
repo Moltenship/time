@@ -4,6 +4,7 @@ import { afterEach } from "vite-plus/test";
 
 import { cameToRest } from "../waits";
 
+export { inWebKit, shiftTab, tab } from "../keys";
 export { until } from "../waits";
 
 let mounted: (() => void) | undefined;

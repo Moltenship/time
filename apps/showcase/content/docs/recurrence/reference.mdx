@@ -7,9 +7,7 @@ Everything on this page is exported from `@moltenship/calendar-recurrence`. The
 [Overview](/docs/recurrence) has the install command and a first example, and
 [Series and occurrences](/docs/recurrence/model) explains the model.
 
-<React>
-  [Show and edit recurring events](/docs/recurrence/calendar) wires the package into a calendar.
-</React>
+[Show and edit recurring events](/docs/recurrence/calendar) wires the package into a calendar.
 
 ## Series
 
@@ -589,11 +587,8 @@ setEvents(
   offering, in order: `"this"`, `"following"`, `"all"`. It leaves out those
   `resolveRecurrenceEdit` would reject, and `"following"` where it means `"all"`, as on the first
   occurrence. It's empty for a change that isn't recurring. Hand it to the dialog that asks for
-  the scope.
-  <React>
-    [Ask which events a change applies
-    to](/docs/recurrence/calendar#ask-which-events-a-change-applies-to) builds one.
-  </React>
+  the scope. [Ask which events a change applies
+  to](/docs/recurrence/calendar#ask-which-events-a-change-applies-to) builds one.
 - `resolveRecurrenceEdit(change, scope, adapters, options)` returns a `RecurrenceEdit`. It reads its
   arguments only: it never changes them or calls your code.
 
@@ -834,8 +829,4 @@ same objects.
 edit creates: an override, or the new series when `newSeries.id` isn't set. It gets the event
 without its ID. Apps with their own event type or store write the same steps themselves.
 
-<React>
-
 See [Save the edit](/docs/recurrence/calendar#save-the-edit).
-
-</React>

@@ -1,0 +1,12 @@
+<div data-testid="kit">
+  <div class="fixed inset-0 z-50 bg-black/10 transition-opacity duration-100 ease-out supports-backdrop-filter:backdrop-blur-xs data-starting-style:opacity-0 data-ending-style:opacity-0" data-open="" data-slot="dialog-backdrop" popover="manual" role="presentation">
+  <div aria-describedby="#3" aria-labelledby="#2" aria-modal="true" class="fixed inset-0 m-auto grid h-fit max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] gap-4 overflow-y-auto rounded-xl border-0 bg-popover p-4 text-sm text-popover-foreground ring-1 ring-foreground/10 outline-none transition-[opacity,scale] duration-100 ease-out sm:max-w-sm data-starting-style:opacity-0 data-ending-style:opacity-0 motion-safe:data-starting-style:scale-95 motion-safe:data-ending-style:scale-95" data-open="" data-presentation="dialog" data-slot="dialog-content" id="#1" popover="manual" role="dialog" tabindex="-1">
+    <div class="flex flex-col gap-2" data-slot="dialog-header">
+      <h2 class="m-0 font-heading text-base leading-none font-medium" data-slot="dialog-title" id="#2">
+        "Edit recurring event"
+      <p class="m-0 text-sm text-muted-foreground" data-slot="dialog-description" id="#3">
+        "“Standup” repeats."
+    <div class="-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t border-border bg-muted/50 p-4 sm:flex-row sm:justify-end" data-slot="dialog-footer">
+      <button class="group/button inline-flex shrink-0 items-center justify-center rounded-lg border bg-clip-padding text-sm font-medium whitespace-nowrap transition-all outline-none select-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 active:not-aria-[haspopup]:translate-y-px disabled:pointer-events-none disabled:opacity-50 data-disabled:pointer-events-none data-disabled:opacity-50 data-pending:cursor-wait aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 border-border bg-background hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground dark:border-input dark:bg-input/30 dark:hover:bg-input/50 h-8 gap-1.5 px-2.5 has-data-[icon=inline-end]:pe-2 has-data-[icon=inline-start]:ps-2" data-slot="button" type="button">
+        "Cancel"
+<div aria-hidden="true" inert="">

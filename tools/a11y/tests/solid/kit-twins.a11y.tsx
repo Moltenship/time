@@ -5,6 +5,16 @@ import { server, userEvent } from "vite-plus/test/browser";
 import { Badge } from "@registry/calendar-ui/badge";
 import { Button } from "@registry/calendar-ui/button";
 import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@registry/calendar-ui/dialog";
+import { XIcon } from "@registry/calendar-ui/icons";
+import {
   Popover,
   PopoverClose,
   PopoverContent,
@@ -21,14 +31,25 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@registry/calendar-ui/select";
+import {
+  createToastManager,
+  Toast,
+  ToastAction,
+  ToastClose,
+  ToastDescription,
+  ToastTitle,
+  ToastViewport,
+} from "@registry/calendar-ui/toast";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/calendar-ui/tooltip";
 
-import { describeTree, kitFixture, opened, popups } from "../kit-twins";
+import { describeTree, kitFixture, kitToast, opened, popups, toastShown } from "../kit-twins";
 import buttonBadge from "../kit-twins/button-badge.txt?raw";
+import dialogOpen from "../kit-twins/dialog-open.txt?raw";
 import popoverClosed from "../kit-twins/popover-closed.txt?raw";
 import popoverOpen from "../kit-twins/popover-open.txt?raw";
 import selectClosed from "../kit-twins/select-closed.txt?raw";
 import selectOpen from "../kit-twins/select-open.txt?raw";
+import toastShowing from "../kit-twins/toast.txt?raw";
 import tooltipClosed from "../kit-twins/tooltip-closed.txt?raw";
 import tooltipOpen from "../kit-twins/tooltip-open.txt?raw";
 import { render, settled, until } from "./render";
@@ -129,5 +150,50 @@ describe.runIf(server.browser === "chromium")("kit twins", () => {
     );
     await settled();
     expect(describeTree(root(), ...popups(container()))).toBe(popoverOpen);
+  });
+
+  test("the dialog renders React's, open", async () => {
+    await render(() => (
+      <div data-testid="kit">
+        <Dialog open onOpenChange={() => {}}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Edit recurring event</DialogTitle>
+              <DialogDescription>“Standup” repeats.</DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <DialogClose render={(close) => <Button {...close} variant="outline" />}>
+                Cancel
+              </DialogClose>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    ));
+    await until(() => expect(opened(document.querySelector('[role="dialog"]'))).toBe(true));
+    await settled();
+    expect(describeTree(root(), ...popups(container()))).toBe(dialogOpen);
+  });
+
+  test("the toast renders React's", async () => {
+    const manager = createToastManager();
+    await render(() => (
+      <div data-testid="kit">
+        <ToastViewport aria-label="Notifications" manager={manager}>
+          <Toast>
+            <ToastTitle />
+            <ToastDescription />
+            <ToastAction />
+            <ToastClose aria-label="Dismiss">
+              <XIcon aria-hidden="true" />
+            </ToastClose>
+          </Toast>
+        </ToastViewport>
+      </div>
+    ));
+    manager.add(kitToast);
+    await until(() => expect(toastShown()).toBe(true));
+    await settled();
+    expect(describeTree(root(), ...popups(container()))).toBe(toastShowing);
   });
 });
