@@ -1,7 +1,9 @@
-import type { CalendarWeekRules } from "@moltenship/calendar-core";
+import { createEventHistory, type CalendarWeekRules } from "@moltenship/calendar-core";
+import { useCalendarHistory, useCalendarHistoryShortcuts } from "@moltenship/calendar-solid";
 import { createEffect, createSignal } from "solid-js";
 
 import { AgentPanel } from "./agent-panel";
+import { announcements, historyAnnouncements } from "./announcements";
 import { Calendar, type Meeting } from "./calendar";
 import { FrameworkSwitch } from "./framework-switch";
 import { readSolidLocation, writeSolidLocation } from "./url-state";
@@ -70,6 +72,35 @@ const steps = [
   { action: "deleteEvent", args: [{ eventId: "team-lunch" }], label: "Delete the lunch" },
 ] as const;
 
+/** The event each create became, by change ID, so undo finds it. */
+const createdIds = new Map<string, string>();
+
+/** Every saved change, from a drag, a key or the agent, for undo and redo. */
+const changes = createEventHistory<Meeting, string, string>({
+  // Once the events show it.
+  createdEventId: (change, events) => {
+    const id = createdIds.get(change.id);
+    return id !== undefined && events.get(id) !== undefined ? id : undefined;
+  },
+});
+
+/** Undo and redo, as buttons and as Ctrl+Z and Ctrl+Y, or ⌘Z and ⇧⌘Z, inside the calendar. */
+function HistoryControls() {
+  const controls = useCalendarHistory(changes, { messages: historyAnnouncements });
+  const meta = Calendar.useCalendarMeta();
+  useCalendarHistoryShortcuts(controls, () => ({ scope: meta().refs.frame }));
+  return (
+    <>
+      <button type="button" disabled={!controls().canUndo} onClick={() => void controls().undo()}>
+        Undo
+      </button>
+      <button type="button" disabled={!controls().canRedo} onClick={() => void controls().redo()}>
+        Redo
+      </button>
+    </>
+  );
+}
+
 export function App() {
   const [events, setEvents] = createSignal<readonly Meeting[]>(seed);
   // The view and date come from the URL and go back into it, so the framework switch keeps them.
@@ -92,10 +123,11 @@ export function App() {
         <FrameworkSwitch search={new URL(href()).search} />
       </header>
       <p class="preview">
-        This page runs <code>@moltenship/calendar-solid</code>, a preview with the root, the parts,
-        the read hooks and the agent actions. The month grid and the list are this page's own views:
-        the package has no ready-made views, keyboard navigation, dragging, drafts or undo yet.{" "}
-        <a href={docsUrl}>The Solid docs</a>
+        This page runs <code>@moltenship/calendar-solid</code>, a preview. The month grid and the
+        list are this page's own views on its hooks: arrow keys move through days and events, Space
+        picks an event up or starts a new one, a pointer drags an event to move it, its ends to
+        resize it, or across days to create one, and Undo and Redo take changes back. The package
+        has no ready-made views yet. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's month and list projections, with an agent driving it
@@ -113,14 +145,13 @@ export function App() {
           if (change.cause === "delete") {
             setEvents((current) => current.filter((event) => event.id !== change.eventId));
           } else if (change.cause === "create") {
-            created += 1;
-            // An agent names its event; the calendar passes the title on as a field.
+            // Undoing a delete proposes a create with the deleted record: it comes back as it was.
+            // An agent names a new event; the calendar passes the title on as a field.
             const title =
               typeof detail.fields?.title === "string" ? detail.fields.title : "New event";
-            setEvents((current) => [
-              ...current,
-              { id: `created-${created}`, interval: change.proposed, title },
-            ]);
+            const event = change.event ?? { id: `created-${(created += 1)}`, title };
+            createdIds.set(change.id, event.id);
+            setEvents((current) => [...current, { ...event, interval: change.proposed }]);
           } else {
             setEvents((current) =>
               current.map((event) =>
@@ -129,6 +160,7 @@ export function App() {
             );
           }
         }}
+        onEventChangeResult={(result, detail) => changes.record(result, detail)}
         onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
         onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
         policies={[
@@ -148,6 +180,7 @@ export function App() {
               <Calendar.TodayTrigger>Today</Calendar.TodayTrigger>
               <Calendar.NextTrigger aria-label="Next">›</Calendar.NextTrigger>
               <Calendar.Title class="title" />
+              <HistoryControls />
               <Calendar.ViewSwitcher
                 aria-label="View"
                 getViewLabel={(name) => (name === "month" ? "Month" : "List")}
@@ -157,6 +190,7 @@ export function App() {
               <Calendar.ActiveView />
             </Calendar.Viewport>
           </Calendar.Frame>
+          <Calendar.Announcer messages={announcements} />
           <AgentPanel
             allowDelete={allowDelete()}
             onAllowDeleteChange={setAllowDelete}
