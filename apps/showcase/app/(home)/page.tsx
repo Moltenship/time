@@ -137,10 +137,14 @@ const frameworkRows = [
   ["Engine, state and event changes", "Yes", "Yes"],
   ["Actions an agent can call", "Yes", "Yes"],
   ["Root, parts and hooks", "Yes", "Yes"],
-  ["Keyboard navigation in a view", "Yes", "Yes, in views you write"],
-  ["Drag, resize and create", "Yes", "Yes, in views you write"],
+  ["Keyboard navigation in a view", "Yes", "Yes"],
+  ["Drag, resize and create", "Yes", "Yes"],
   ["Undo and redo", "A hook and shortcuts", "A hook and shortcuts"],
-  ["Ready-made views", "shadcn/ui or StyleX source", "Not yet"],
+  [
+    "Ready-made views",
+    "shadcn/ui or StyleX source",
+    "Week, day, month, year and agenda, and the scrolling month and agenda",
+  ],
   ["Testing package", "Yes", "Not yet"],
 ] as const;
 
@@ -183,9 +187,9 @@ export default async function HomePage() {
           </h1>
           <p className="mt-5 max-w-2xl text-lg text-balance text-fd-muted-foreground">
             One engine computes time zones, daylight saving time and recurrence. React renders it
-            with views you copy and own. A SolidJS 2 package, a preview, renders the parts and
-            leaves the views to you. An AI agent can read the calendar and change it, under rules
-            your app sets.
+            with views you copy and own. A SolidJS 2 package, a preview, renders it too, with a
+            week, a day, a month, a year and an agenda to copy so far. An AI agent can read the
+            calendar and change it, under rules your app sets.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
@@ -317,8 +321,9 @@ export default async function HomePage() {
               ui-sdk
             </a>
             . React and Solid each have a package that renders that state. The Solid package has the
-            parts and hooks React has, keyboard navigation, dragging and undo included. It has no
-            ready-made views yet, so you write them.
+            parts and hooks React has, keyboard navigation, dragging and undo included. Its registry
+            has the week and day, the month, the year and the agenda so far, the month and agenda
+            also as scrolling views, and you write the other views.
           </p>
           <p className="mt-4 text-fd-muted-foreground">
             {installTag === undefined

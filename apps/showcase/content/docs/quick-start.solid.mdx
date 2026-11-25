@@ -68,7 +68,8 @@ agenda binds no dragging, so here the changes come from an
 ### Mount it
 
 Load a `Temporal` polyfill where the browser lacks one, then import the app, so no module runs
-before `Temporal` exists:
+before `Temporal` exists. The page's `index.html` loads this file as a module script and has the
+`<div id="root">` it renders into:
 
 <include meta='title="main.tsx"'>../examples/solid/main.tsx#main</include>
 

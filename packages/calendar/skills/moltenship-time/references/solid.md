@@ -1,20 +1,21 @@
 # Solid
 
-`@moltenship/calendar-solid` is the SolidJS 2 integration, a preview. It renders the same primitive as React, so state, actions, event changes, policies and the agent surface are the same. It has every hook React has, and one ready-made view so far: the agenda, in the Solid registry, with a toolbar, a view switcher, a mini month and a kit of controls. Read the Solid docs before you write Solid code, and check the package's own types: the preview changes between releases. The docs in the package are React's. Solid's are on the site: `https://time.molten.sh/llms.txt` lists them, and `https://time.molten.sh/docs/solid/api/components.md` is the reference.
+`@moltenship/calendar-solid` is the SolidJS 2 integration, a preview. It renders the same primitive as React, so state, actions, event changes, policies and the agent surface are the same. It has every hook React has. The Solid registry has ready-made views for the week and day, the month, the year and the agenda, the month and agenda also as scrolling views, with a toolbar, a view switcher, a mini month, the recurring-event dialog, the undo toast and a kit of controls. `https://time.molten.sh/docs/solid/frameworks.md` says what each view does today and what is still missing. Read the Solid docs before you write Solid code, and check the package's own types: the preview changes between releases. The docs in the package are React's. Solid's are on the site: `https://time.molten.sh/llms.txt` lists them, and `https://time.molten.sh/docs/solid/api/components.md` is the reference.
 
 ## What it has, and what it doesn't
 
 | Has                                                                                                   | Doesn't have yet                                                    |
 | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------- |
-| `createCalendar`, `defineCalendarView`, `Root` with the same props as React's                         | Ready-made views other than the agenda (`list-view`, see below)     |
-| Every part: the structural ones, `Event` and `Announcer`                                              | The registry's undo toast, `calendar-history-toast`                 |
-| The read hooks: state, selector, actions, meta, range, projection, pending changes                    | A testing package: `@moltenship/calendar-testing` is React only     |
-| `useCalendarKeyboard`, `useRovingFocus`, `useCalendarFocus`, `useCalendarSelection`                   | `@moltenship/calendar-dnd-kit`, which has React as a peer           |
+| `createCalendar`, `defineCalendarView`, `Root` with the same props as React's                         | The registry's resource views and its scrolling week and day        |
+| Every part: the structural ones, `Event` and `Announcer`                                              | A testing package: `@moltenship/calendar-testing` is React only     |
+| The read hooks: state, selector, actions, meta, range, projection, pending changes                    | `@moltenship/calendar-dnd-kit`, which has React as a peer           |
+| `useCalendarKeyboard`, `useRovingFocus`, `useCalendarFocus`, `useCalendarSelection`                   | The registry's views in StyleX: Solid's are Tailwind CSS            |
 | `useCalendarPointer`, `eventIdAttributes`, `resourceIdAttributes`                                     |                                                                     |
 | `useCalendarInteraction`, `useCalendarDraft`, `useCalendarDraftReporter`, `useDraftBusy`              |                                                                     |
 | `useCalendarAnnouncer`, `useCalendarHistory`, `useCalendarHistoryShortcuts`                           |                                                                     |
 | `useNow`, resources, status, availability, closed dates, annotations, `useAnchorDateRequests`         |                                                                     |
 | `createStateSelector`, `createCalendarStore`, `resolveViewOptions`; the agent actions                 |                                                                     |
+| The registry's week and day, month, year, agenda and scrolling month and agenda, its dialog and toast |                                                                     |
 
 Every hook React's integration exports has a Solid one with the same name. If the user asks for something in the right column, say it isn't in the Solid preview.
 
@@ -27,8 +28,8 @@ pnpm add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-
 Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 - `@moltenship/calendar-solid` is the one package to import. It re-exports the engine and the Temporal helpers, so the adapter and the view functions come from it too.
-- The agenda installs with the shadcn CLI from the Solid registry: `npx shadcn@latest add https://time.molten.sh/r/solid/list-view.json`. `https://time.molten.sh/docs/solid/installation.md` has the setup, and `https://time.molten.sh/docs/solid/views/agenda.md` the view.
-- The same registry's `calendar` item has the toolbar, the view switcher and the mini month (`https://time.molten.sh/docs/solid/views/toolbar.md`), and `calendar-ui` the controls they're built from (`https://time.molten.sh/docs/solid/views/controls.md`).
+- The views install with the shadcn CLI from the Solid registry: `npx shadcn@latest add https://time.molten.sh/r/solid/list-view.json` adds the agenda, and `time-grid-view`, `month-view` and `year-view` the week and day, the month and the year. `scrolling-month-view` and `scrolling-list-view` add the scrolling month and agenda (`https://time.molten.sh/docs/solid/views/scrolling.md`). `https://time.molten.sh/docs/solid/installation.md` has the setup, and `https://time.molten.sh/docs/solid/views.md` links each view's page.
+- The same registry's `calendar` item has the toolbar, the view switcher and the mini month (`https://time.molten.sh/docs/solid/views/toolbar.md`), and `calendar-ui` the controls they're built from (`https://time.molten.sh/docs/solid/views/controls.md`). `recurrence-scope-dialog` is the recurring-event dialog (`https://time.molten.sh/docs/solid/recurrence/calendar.md`), and `calendar-history-toast` the undo toast (`https://time.molten.sh/docs/solid/undo-redo.md`).
 - Don't install `@moltenship/calendar` in a Solid app. It's the React package.
 - With Vite, use `@solidjs/vite-plugin`, and set `"jsx": "preserve"` and `"jsxImportSource": "@solidjs/web"` in `tsconfig.json`. Exclude `@ui-sdk/core` from `optimizeDeps` so the dev server loads one copy.
 
@@ -183,7 +184,7 @@ export function App() {
 - **Key a `For` by identity** so an element keeps its focus across projections: `keyed={(segment) => segment.event.id}`. The children then get accessors.
 - **The store's view type has to be the calendar's:** `createCalendarStore<View>(...)`. A calendar without resources takes a store made without the resource ID type.
 
-The rest is in the other references and applies as written: `state.md` for controlled and uncontrolled state, `changes.md` for `onEventChange`, policies and pending changes. The history hooks apply too, from `@moltenship/calendar-solid`. Skip their parts on the registry.
+The rest is in the other references and applies as written: `state.md` for controlled and uncontrolled state, `changes.md` for `onEventChange`, policies and pending changes. The history hooks apply too, from `@moltenship/calendar-solid`. What they say about the registry's views is React's: in Solid, check the view's own page.
 
 ## Agents
 

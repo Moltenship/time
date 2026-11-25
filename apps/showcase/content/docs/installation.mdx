@@ -152,7 +152,8 @@ package is on the same version.
 ## Build setup
 
 The integration is plain TypeScript, and `@ui-sdk/solid` ships JSX for your app's Solid compiler.
-With Vite, use Solid's plugin:
+With Vite, use Solid's plugin, `@solidjs/vite-plugin`. It's a dev dependency of your app, beside
+`vite` and `typescript`:
 
 <include meta='title="vite.config.ts"'>../examples/solid/vite.config.ts#config</include>
 
@@ -367,8 +368,8 @@ theme, which defines `--background`, `--border`, `--primary` and the rest, skips
 ### Set up Tailwind CSS 4
 
 The files style themselves with Tailwind classes, so the app needs Tailwind CSS 4 and its
-preflight. With Vite, add `@tailwindcss/vite` to the plugins in the `vite.config.ts` above, after
-Solid's.
+preflight. With Vite, install `tailwindcss` and `@tailwindcss/vite` as dev dependencies, and add
+`@tailwindcss/vite` to the plugins in the `vite.config.ts` above, after Solid's.
 
 Import Tailwind in your global stylesheet, below an `@layer ui-sdk;` that puts your styles after
 the CSS ui-sdk adds to the page, and make Tailwind's `dark:` variant follow a `.dark` ancestor, as
@@ -435,8 +436,11 @@ src/components/calendar
 ├── ui                       calendar-ui
 │   ├── badge.tsx
 │   ├── button.tsx
+│   ├── dialog.tsx
 │   ├── icons.tsx
+│   ├── popover.tsx
 │   ├── select.tsx
+│   ├── toast.tsx
 │   ├── tooltip.tsx
 │   └── …                    their styles
 └── list-view                list-view

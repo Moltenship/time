@@ -19,6 +19,23 @@ function NextWeekButton() {
 }
 // #endregion hooks
 
+// #region uncontrolled
+export function UncontrolledCalendar() {
+  return (
+    <Calendar.Root
+      events={seed}
+      defaultView="list"
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="Europe/Berlin"
+      locale="en-US"
+      weekRules={weekRules}
+    >
+      <Calendar.ActiveView />
+    </Calendar.Root>
+  );
+}
+// #endregion uncontrolled
+
 // #region app
 export function ControlledCalendar() {
   const [anchorDate, setAnchorDate] = createSignal(Temporal.PlainDate.from("2026-10-08"));

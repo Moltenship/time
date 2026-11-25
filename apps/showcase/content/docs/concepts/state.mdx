@@ -22,6 +22,8 @@ independently of the others.
 Pass a `default` prop and the calendar manages the value from then on. Defaults are read once, when
 `Root` mounts.
 
+<React>
+
 ```tsx
 <Calendar.Root
   events={meetings}
@@ -34,6 +36,16 @@ Pass a `default` prop and the calendar manages the value from then on. Defaults 
   <Calendar.ActiveView />
 </Calendar.Root>
 ```
+
+</React>
+
+<Solid>
+
+<include meta='title="controlled-state.tsx"'>
+  ../../examples/solid/controlled-state.tsx#uncontrolled
+</include>
+
+</Solid>
 
 ## Controlled
 
