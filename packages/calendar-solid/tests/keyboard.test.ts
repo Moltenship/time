@@ -781,3 +781,69 @@ test("a keyboard view lets go of its listeners and its gesture with its owner", 
   expect(types).toEqual(expect.arrayContaining(["keydown", "focusout"]));
   removed.mockRestore();
 });
+
+/** A view whose projection, and so each day's target, is new whenever the events change. */
+function FreshRenderer(
+  props: CalendarViewRendererProps<{ readonly start: Temporal.PlainDate }, undefined>,
+): JSX.Element {
+  return createComponent(PagedDiv, {
+    ref: useCalendarKeyboard(),
+    get children() {
+      return createComponent(For, {
+        each: [0, 1, 2],
+        children: (offset: number) =>
+          createComponent(PagedItem, {
+            get date() {
+              return props.projection.start.add({ days: offset });
+            },
+          }),
+      } as never);
+    },
+  });
+}
+
+const FreshCalendar = createCalendar<FixtureEvent>()({
+  eventAdapter: createCanonicalEventAdapter<null, string, string>(),
+  views: [
+    defineCalendarView({
+      name: "fresh",
+      strategy: {
+        getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 3 })),
+        getSpatialNavigation: pagedNavigation,
+        getTitle: (range) => range.start.toString(),
+        navigate: (anchor, delta) => anchor.add({ days: 3 * delta }),
+        project: ({ range, snapshot }) => ({ snapshot, start: range.start }),
+      },
+      Renderer: FreshRenderer,
+    }),
+  ],
+});
+
+test("a new projection with the same targets keeps each element's tab stop as it was", async () => {
+  // In an object: Solid 2 reads a function given to createSignal as a derivation.
+  const [events, setEvents] = createSignal<{ value: readonly FixtureEvent[] }>({ value: [] });
+  const view = mountView(() =>
+    createComponent(
+      FreshCalendar.Root,
+      merge(pagedRoot, {
+        get events() {
+          return events().value;
+        },
+        get children() {
+          return createComponent(FreshCalendar.ActiveView, {});
+        },
+      }) as Parameters<typeof FreshCalendar.Root>[0],
+    ),
+  );
+  await settled();
+  await focus(cell(view.container, "2026-10-09"));
+
+  // Each day's target is a new object with the same key, which keeps its registration and its
+  // tab stop.
+  for (const title of ["Trip", "Holiday", "Leave"]) {
+    setEvents({ value: [allDay("trip", "2026-10-09", "2026-10-10", title)] });
+    await settled();
+  }
+  expect(tabStops(view.container)).toEqual(["2026-10-09"]);
+  expect(focused()).toBe("2026-10-09");
+});
