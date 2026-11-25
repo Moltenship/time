@@ -6,11 +6,12 @@ description: Build a Solid calendar with a toolbar and an agenda view you write,
 You'll build a calendar in SolidJS 2: a toolbar with previous, next and today buttons, a title, and
 an agenda of your own meetings. The agenda is a Solid component you write, so you see how a view
 is made: it draws a layout the engine computes. The registry has a styled
-[agenda](/docs/views/agenda) to add instead, a [month](/docs/views/month) and a
+[agenda](/docs/views/agenda) to add instead, a [month](/docs/views/month), a
+[year](/docs/views/year) and a
 [week and day](/docs/views/week-and-day), and you write the other views the same way.
 
 The [Solid demo](https://moltenship-time-demo.vercel.app/solid/) is a running calendar built the
-same way, with the registry's week, day, month and agenda and an agent panel. Its source is the repository's
+same way, with the registry's week, day, month, year and agenda and an agent panel. Its source is the repository's
 [`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
 
 <Steps>
@@ -93,8 +94,8 @@ an accessor, so call it where you use it: `view()`, `range()`.
 
 ## Next steps
 
-- [Week and day](/docs/views/week-and-day), [Month](/docs/views/month) and
-  [Agenda](/docs/views/agenda) are the registry's styled views,
+- [Week and day](/docs/views/week-and-day), [Month](/docs/views/month), [Year](/docs/views/year)
+  and [Agenda](/docs/views/agenda) are the registry's styled views,
   added with the shadcn CLI.
 - [How it works](/docs/concepts/how-it-works) explains the adapter, the views and the state behind
   this calendar.

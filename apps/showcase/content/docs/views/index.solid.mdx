@@ -1,6 +1,6 @@
 ---
 title: Overview
-description: How views work, how to register and switch them, the registry's month and agenda, and the engine's layouts a view draws.
+description: How views work, how to register and switch them, the registry's month, year and agenda, and the engine's layouts a view draws.
 ---
 
 A view decides which dates are visible and how to draw them. A calendar can have several views, for
@@ -9,7 +9,7 @@ example an agenda and a month grid. The `view` state names the active one, and
 
 A view is a strategy and a `Renderer`. The strategy picks the dates and lays out the events, and
 the `Renderer` is a Solid component that draws that layout. The registry has styled views for the
-week, the day, the month and the agenda, with a toolbar, a mini month and the controls they're
+week, the day, the month, the year and the agenda, with a toolbar, a mini month and the controls they're
 built from. You add them to your app as source, and you write the other views.
 
 <Cards>
