@@ -8,6 +8,7 @@ import * as stylex from "@stylexjs/stylex";
 import { RotateCcwIcon } from "lucide-react";
 import { useId } from "react";
 
+import { dragPreviewField, type DemoDragPreview } from "../../drag-preview";
 import { settingFields, type DemoSettings, type SettingField } from "../../settings";
 import { SectionHeading } from "./section";
 
@@ -21,9 +22,12 @@ const styles = stylex.create({
 });
 
 export interface SettingsPanelProps {
+  /** How pointer drags preview where they land; mirrored in the URL as `?drag=free`. */
+  readonly dragPreview: DemoDragPreview;
   /** Makes every move, resize and delete fail after the simulated save delay. */
   readonly failSaves: boolean;
   readonly onChange: (settings: DemoSettings) => void;
+  readonly onDragPreviewChange: (preview: DemoDragPreview) => void;
   readonly onFailSavesChange: (failSaves: boolean) => void;
   readonly onReset: () => void;
   readonly settings: DemoSettings;
@@ -54,8 +58,10 @@ function Setting({ items, label, onValueChange, value }: SettingField) {
 }
 
 export function SettingsPanel({
+  dragPreview,
   failSaves,
   onChange,
+  onDragPreviewChange,
   onFailSavesChange,
   onReset,
   settings,
@@ -67,6 +73,7 @@ export function SettingsPanel({
     <section aria-labelledby={headingId}>
       <SectionHeading id={headingId}>Settings</SectionHeading>
       <VStack gap={3}>
+        <Setting {...dragPreviewField(dragPreview, onDragPreviewChange)} />
         {settingFields(settings, systemTimeZone, onChange).map((field) => (
           <Setting key={field.label} {...field} />
         ))}

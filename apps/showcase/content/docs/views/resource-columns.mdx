@@ -202,6 +202,17 @@ ResourceColumnsView              resource-columns-view.tsx
       type: "(event: TEvent) => string | undefined",
       description: "Extra words for each event's accessible name, such as its calendar.",
     },
+    dragPreview: {
+      type: '"snapped" | "free"',
+      description: (
+        <>
+          How a drag's preview moves: from slot to slot, or with the pointer over a marker of where
+          it would land, snapping there on release. See{" "}
+          <a href="/docs/interactions#snapped-and-free-drags">snapped and free drags</a>.
+        </>
+      ),
+      default: '"snapped"',
+    },
     getEventColor: {
       type: "(event: TEvent) => CalendarEventColor | undefined",
       description: (

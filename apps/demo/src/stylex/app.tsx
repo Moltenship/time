@@ -89,8 +89,10 @@ function Workspace() {
       <UnscheduledTasks onSchedule={scheduleTask} taskList={tasks} />
       <ActivityList hidden={hiddenSources} onToggle={workspace.toggleSource} />
       <SettingsPanel
+        dragPreview={workspace.dragPreview}
         failSaves={failSaves}
         onChange={workspace.changeSettings}
+        onDragPreviewChange={workspace.setDragPreview}
         onFailSavesChange={workspace.setFailSaves}
         onReset={workspace.resetDemoData}
         settings={settings}

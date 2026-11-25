@@ -28,6 +28,7 @@ import {
 import { demoAvailability, demoResourcesWithHours } from "./availability";
 import { busyNowEvents } from "./busy-now";
 import { useDemoEvents } from "./demo-events";
+import { useDragPreview } from "./drag-preview";
 import { demoAdapters, type DemoOccurrence, type DemoView } from "./demo-model";
 import { findEventElement, useFollowEventElement } from "./event-anchor";
 import { demoEventPolicy, type DemoEventChange } from "./event-changes";
@@ -115,6 +116,7 @@ export function useDemoWorkspace(askScope: AskRecurrenceScope) {
   const { resourceRules, workingHours } = settings;
   const today = (useNow() ?? Temporal.Now.instant()).toZonedDateTimeISO(timeZone).toPlainDate();
   const [location, setLocation] = useCalendarLocation(today);
+  const [dragPreview, setDragPreview] = useDragPreview();
   // The settings choose between paged and scrolling day, 3 days, week, month, and agenda, even for
   // a shared URL.
   const view = viewFor(location.view, scrolling);
@@ -220,19 +222,26 @@ export function useDemoWorkspace(askScope: AskRecurrenceScope) {
   const shownEvent = occurrences.find(({ id }) => id === openEvent?.eventId);
   // Every view that lays out timed events in columns follows the overlap setting, and the resource
   // columns the "Rooms and people" setting before it.
+  // Every view that drags by pointer follows the drag setting.
   const viewOptions = useMemo(() => {
-    const layout = { overlapLayout };
+    const drag = { dragPreview };
+    const layout = { ...drag, overlapLayout };
     return {
+      "3-day": drag,
       day: layout,
+      month: drag,
       resources:
         resourceRules === "by-kind"
           ? { ...layout, getResourceOverlapLayout: demoResourceOverlapLayout }
           : layout,
+      "scrolling-3-day": drag,
       "scrolling-day": layout,
+      "scrolling-month": drag,
       "scrolling-week": layout,
+      "timeline-week": drag,
       week: layout,
     };
-  }, [overlapLayout, resourceRules]);
+  }, [dragPreview, overlapLayout, resourceRules]);
 
   // Counts resets, so a save that was still in flight when the data was reset is dropped instead
   // of editing the fresh seed, whose event IDs repeat.
@@ -479,6 +488,7 @@ export function useDemoWorkspace(askScope: AskRecurrenceScope) {
     closeDialog,
     closePopover,
     draft,
+    dragPreview,
     failSaves,
     hiddenCalendars,
     hiddenSources,
@@ -496,6 +506,7 @@ export function useDemoWorkspace(askScope: AskRecurrenceScope) {
     saveFromDialog,
     scheduleTask,
     scrolling,
+    setDragPreview,
     setFailSaves,
     setShortcutsOpen,
     setSidebarOpen,

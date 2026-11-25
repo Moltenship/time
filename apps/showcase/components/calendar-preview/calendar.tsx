@@ -32,6 +32,7 @@ import {
   type PreviewEvent,
   type PreviewEventChange,
 } from "./events";
+import { ChoiceToggle } from "./layout-toggle";
 import { useLongRangeEvents } from "./long-range";
 
 export type PreviewView =
@@ -53,6 +54,8 @@ export interface LiveCalendarProps {
   readonly announcements?: boolean;
   /** Add office hours, shaded, that warn about changes outside them. */
   readonly availability?: boolean;
+  /** Add a toggle between drags that snap to the grid and drags that follow the pointer. */
+  readonly dragModes?: boolean;
   /**
    * A year of events either way of today, fetched from a pretend server as the view scrolls, in
    * place of the seeded weeks.
@@ -133,6 +136,13 @@ function subscribeToWidth(onChange: () => void) {
 
 const isWide = () => matchMedia(wideQuery).matches;
 
+type DragPreview = "free" | "snapped";
+
+const dragPreviews = [
+  { label: "Snap to grid", value: "snapped" },
+  { label: "Free", value: "free" },
+] as const satisfies readonly { readonly label: string; readonly value: DragPreview }[];
+
 const selectAnchorDate = (state: { readonly anchorDate: Temporal.PlainDate }) => state.anchorDate;
 
 function Sidebar({ today }: { readonly today: Temporal.PlainDate }) {
@@ -162,6 +172,7 @@ export default function LiveCalendar({
   annotations = false,
   announcements = false,
   availability = false,
+  dragModes = false,
   events: givenEvents,
   longRange = false,
   sidebar = false,
@@ -176,6 +187,7 @@ export default function LiveCalendar({
   const today = now.toPlainDate();
   const [activeView, setActiveView] = useState<PreviewView>(view);
   const wide = useSyncExternalStore(subscribeToWidth, isWide);
+  const [dragPreview, setDragPreview] = useState<DragPreview>("snapped");
 
   const changeEvent = (change: PreviewEventChange) =>
     setEvents((current) => applyPreviewChange(current, change));
@@ -195,11 +207,31 @@ export default function LiveCalendar({
         onVisibleRangeChange={longRange ? fetched.load : undefined}
         policies={availability ? availabilityPolicies : undefined}
         view={activeView === "week" && !wide ? "3-day" : activeView}
-        viewOptions={longRange ? { "scrolling-agenda": { loading: fetched.loading } } : undefined}
+        viewOptions={
+          longRange
+            ? { "scrolling-agenda": { loading: fetched.loading } }
+            : dragModes
+              ? {
+                  "3-day": { dragPreview },
+                  day: { dragPreview },
+                  month: { dragPreview },
+                  week: { dragPreview },
+                }
+              : undefined
+        }
         weekRules={weekRules}
       >
         <Calendar.Frame className="flex h-full flex-col">
           <CalendarToolbar calendar={Calendar} className="border-b">
+            {dragModes ? (
+              <ChoiceToggle
+                // A narrow toolbar keeps the toggles and leaves the label to screen readers.
+                label={<span className="max-sm:sr-only">Dragging</span>}
+                onChange={setDragPreview}
+                options={dragPreviews}
+                value={dragPreview}
+              />
+            ) : null}
             {switcher ? (
               <ViewSwitcher
                 onValueChange={setActiveView}

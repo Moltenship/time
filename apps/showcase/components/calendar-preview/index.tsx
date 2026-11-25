@@ -61,19 +61,21 @@ export function CalendarPreview({ size, status, view = "week", ...props }: Calen
         )}
       </div>
       <figcaption className="mt-3 text-center text-sm text-fd-muted-foreground">
-        {props.announcements === true
-          ? "Live, in your time zone. Tab into the calendar or click a day, then try the keys below."
-          : view === "scrolling-agenda"
-            ? `Live, in your time zone.${props.longRange === true ? " A year of events either way of today, fetched as you scroll." : ""}`
-            : view === "agenda" && props.switcher !== true
-              ? "Live, in your time zone."
-              : view === "year" && props.switcher !== true
-                ? "Live, in your time zone. Click a day to see its events, or a month's name to open it."
-                : view === "resources" || view === "timeline" || view === "timeline-day"
-                  ? "Live, in your time zone. Drag events between rooms and people, or resize and create them."
-                  : view.startsWith("scrolling-")
-                    ? "Live, in your time zone. Scroll or swipe through the days, and drag to move, resize or create events."
-                    : "Live, in your time zone. Drag to move, resize or create events."}
+        {props.dragModes === true
+          ? "Live, in your time zone. Pick a mode, then drag, resize or create events."
+          : props.announcements === true
+            ? "Live, in your time zone. Tab into the calendar or click a day, then try the keys below."
+            : view === "scrolling-agenda"
+              ? `Live, in your time zone.${props.longRange === true ? " A year of events either way of today, fetched as you scroll." : ""}`
+              : view === "agenda" && props.switcher !== true
+                ? "Live, in your time zone."
+                : view === "year" && props.switcher !== true
+                  ? "Live, in your time zone. Click a day to see its events, or a month's name to open it."
+                  : view === "resources" || view === "timeline" || view === "timeline-day"
+                    ? "Live, in your time zone. Drag events between rooms and people, or resize and create them."
+                    : view.startsWith("scrolling-")
+                      ? "Live, in your time zone. Scroll or swipe through the days, and drag to move, resize or create events."
+                      : "Live, in your time zone. Drag to move, resize or create events."}
       </figcaption>
     </figure>
   );

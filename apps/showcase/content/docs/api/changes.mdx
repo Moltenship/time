@@ -237,6 +237,20 @@ framework.
       default: "silent; ranges in the runtime's locale",
     },
     ghostClassName: { type: "string", description: "Extra classes for the drag preview." },
+    preview: {
+      type: '"snapped" | "free"',
+      description: (
+        <>
+          How the drag preview moves. <code>"snapped"</code> draws the event where a drop would
+          land, slot by slot. <code>"free"</code> moves a copy of a moved event with the pointer
+          over a marker of where it would land, and slides the copy there on release; a resize or
+          create on a time axis keeps its edge under the pointer. Both propose, check and announce
+          the same snapped placement. See{" "}
+          <a href="/docs/interactions#snapped-and-free-drags">snapped and free drags</a>.
+        </>
+      ),
+      default: '"snapped"',
+    },
     disabled: {
       type: "boolean",
       description: (
@@ -257,7 +271,19 @@ event being dragged has `data-dragging`. Preview elements have `data-calendar-gh
 `"range"`, and `data-invalid` or `data-warning` when `check` says a policy would reject or flag the
 drop. Range previews read `--calendar-ghost-background` and `--calendar-ghost-radius`, event
 previews `--calendar-ghost-shadow` and `--calendar-ghost-opacity`, and both
-`--calendar-ghost-z-index`.
+`--calendar-ghost-z-index`. The registry's themes put the surface's background under an event
+preview, so a chip of an app's without a background of its own stays readable while it moves; set
+`--calendar-ghost-event-background` to change it. A month's timed chip, see-through at rest, takes
+its event colour while it moves.
+
+With `preview: "free"`, the copy that follows the pointer is an event preview too. The marker of
+where the drop would land has `data-calendar-ghost="landing"`, sits one layer below the copy, and
+takes `data-invalid` or `data-warning` like the other previews. It reads
+`--calendar-ghost-landing-background`, `--calendar-ghost-landing-shadow` and
+`--calendar-ghost-radius`. On release the copy has `data-settling` while it slides into place, over
+`--calendar-ghost-settle-duration` (150ms) with `--calendar-ghost-settle-easing` (`ease-out`). Under
+`prefers-reduced-motion: reduce` it doesn't slide, and a theme that sets the duration to `0s` turns
+the slide off too.
 
 ### Drags from and to the rest of the page
 

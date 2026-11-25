@@ -324,6 +324,7 @@ export function ScrollingTimeGridView<TEvent>({
     disabled: isReadOnly,
     events,
     onPropose: actions.proposeEventChange,
+    preview: options.dragPreview,
     scrollContainer: viewportRef,
     sidewaysScrollContainer: axis.scrollRef,
     snap,

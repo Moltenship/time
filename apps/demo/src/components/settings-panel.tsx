@@ -13,12 +13,16 @@ import {
   SelectValue,
 } from "@registry/ui/select";
 
+import { dragPreviewField, type DemoDragPreview } from "../drag-preview";
 import { settingFields, type DemoSettings, type SettingField } from "../settings";
 
 export interface SettingsPanelProps {
+  /** How pointer drags preview where they land; mirrored in the URL as `?drag=free`. */
+  readonly dragPreview: DemoDragPreview;
   /** Makes every move, resize and delete fail after the simulated save delay. */
   readonly failSaves: boolean;
   readonly onChange: (settings: DemoSettings) => void;
+  readonly onDragPreviewChange: (preview: DemoDragPreview) => void;
   readonly onFailSavesChange: (failSaves: boolean) => void;
   readonly onReset: () => void;
   readonly settings: DemoSettings;
@@ -71,8 +75,10 @@ function Setting({ items, label, onValueChange, value }: SettingField) {
 }
 
 export function SettingsPanel({
+  dragPreview,
   failSaves,
   onChange,
+  onDragPreviewChange,
   onFailSavesChange,
   onReset,
   settings,
@@ -85,6 +91,7 @@ export function SettingsPanel({
       <h2 id={headingId} className="text-sm font-medium">
         Settings
       </h2>
+      <Setting {...dragPreviewField(dragPreview, onDragPreviewChange)} />
       {settingFields(settings, systemTimeZone, onChange).map((field) => (
         <Setting key={field.label} {...field} />
       ))}

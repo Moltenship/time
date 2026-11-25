@@ -5,6 +5,19 @@
  */
 
 /*
+ * A dragged event's copy: the surface's background under it, so a chip without a background of
+ * its own stays readable over the grid. Without specificity, so a chip's own background, from its
+ * StyleX classes, wins.
+ */
+:where([data-calendar-ghost="event"]) {
+  background-color: var(
+    --calendar-ghost-event-background,
+    var(--calendar-surface, var(--background))
+  );
+  border-radius: var(--calendar-ghost-radius, 6px);
+}
+
+/*
  * A drag preview the policies would reject or flag: outlined in dashes, so the state doesn't rest
  * on colour alone, with a rejected range tinted. An outline, because the preview's own inline
  * shadow would hide a ring.
@@ -21,6 +34,33 @@
 [data-calendar-ghost][data-warning] {
   outline: 2px dashed var(--calendar-warning);
   outline-offset: -2px;
+}
+
+/*
+ * Where a free drag (`dragPreview: "free"`) would land, under the copy that follows the pointer:
+ * a quiet tint with a thin edge, tinted red when the drop would be refused.
+ */
+[data-calendar-ghost="landing"] {
+  /* Busy dark grids hide a faint tint, so the marker is stronger there. */
+  --calendar-ghost-landing-background: light-dark(
+    color-mix(in oklch, var(--calendar-today) 10%, transparent),
+    color-mix(in oklch, var(--calendar-today) 15%, transparent)
+  );
+  --calendar-ghost-landing-shadow: inset 0 0 0 1.5px
+    color-mix(in oklch, var(--calendar-today) 45%, transparent);
+}
+
+[data-calendar-ghost="landing"][data-invalid] {
+  --calendar-ghost-landing-background: color-mix(
+    in oklch,
+    var(--calendar-invalid) 12%,
+    transparent
+  );
+  --calendar-ghost-landing-shadow: none;
+}
+
+[data-calendar-ghost="landing"][data-warning] {
+  --calendar-ghost-landing-shadow: none;
 }
 
 /* A dragged bar's copy keeps its title at its start, not where the bar's pin had moved it. */

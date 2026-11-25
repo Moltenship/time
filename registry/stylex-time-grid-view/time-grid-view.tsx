@@ -76,6 +76,12 @@ const styles = stylex.create({
  */
 export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions<TEvent> {
   /**
+   * How a pointer drag's preview moves: from slot to slot (`"snapped"`, the default), or with the
+   * pointer over a marker of where it would land (`"free"`), snapping there on release. Both
+   * propose the same snapped placement.
+   */
+  readonly dragPreview?: "free" | "snapped";
+  /**
    * How the root's annotations draw: the rail's size and side, or your own composition of the
    * annotation parts. Without annotation sources on the root, there is no rail.
    */
@@ -137,6 +143,7 @@ export function TimeGridView<TEvent>({
     disabled: isReadOnly,
     events,
     onPropose: actions.proposeEventChange,
+    preview: options.dragPreview,
     scrollContainer: scrollRef,
     snap,
     timeZone: environment.timeZone,

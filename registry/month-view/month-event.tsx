@@ -67,8 +67,9 @@ export function MonthEvent<TEvent>({
         "gap-1 rounded-sm px-1.5 py-0 max-sm:px-1 max-sm:text-[0.625rem]",
         bar
           ? [startsBefore && "rounded-s-none border-s-0 ps-0.5", endsAfter && "rounded-e-none"]
-          : // Small screens show compact tinted blocks instead of dot, time, and title.
-            "group/event border-s-0 bg-transparent font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:bg-calendar-event max-sm:text-calendar-event-foreground",
+          : // Small screens show compact tinted blocks instead of dot, time, and title. A dragged
+            // copy is tinted too, so the grid doesn't show through it.
+            "group/event border-s-0 bg-transparent font-normal text-foreground hover:bg-accent hover:brightness-100 data-calendar-ghost:bg-calendar-event max-sm:bg-calendar-event max-sm:text-calendar-event-foreground",
         className,
       )}
     >

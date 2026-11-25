@@ -146,6 +146,7 @@ function ScrollingMonthView<TEvent>({
     disabled: isReadOnly,
     events,
     onPropose: actions.proposeEventChange,
+    preview: options.dragPreview,
     scrollContainer: axis.scrollRef,
     timeZone,
   });
