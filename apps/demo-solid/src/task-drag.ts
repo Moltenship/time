@@ -15,6 +15,12 @@ import { taskFromOccurrence, taskOccurrence, type DemoTask } from "@demo/tasks";
 
 /** How far a press moves before it's a drag, so a click stays a click. */
 const dragThreshold = 4;
+/**
+ * A finger holds still this long, within `touchTolerance`, to pick a task up, as dnd-kit's pointer
+ * sensor has it in the React demo: a finger that moves sooner scrolls the sidebar instead.
+ */
+const touchDelay = 250;
+const touchTolerance = 5;
 /** How far an arrow key moves a keyboard drag, and with Shift. */
 const keyStep = { large: 80, small: 20 } as const;
 
@@ -68,6 +74,8 @@ export function createTaskDrag(
   let image: ReturnType<typeof dragImage> | null = null;
   let offset: CalendarPoint = { x: 0, y: 0 };
   let point: CalendarPoint = { x: 0, y: 0 };
+  /** Removes the listeners of the press under way. */
+  let release: (() => void) | undefined;
 
   function start(card: HTMLElement, input: "keyboard" | "pointer", from: CalendarPoint) {
     const { minutes, title } = task();
@@ -110,17 +118,37 @@ export function createTaskDrag(
     current?.cancel();
   }
 
-  onCleanup(() => session !== null && cancel());
+  onCleanup(() => {
+    release?.();
+    if (session !== null) cancel();
+  });
 
   const onPointerDown = (down: PointerEvent) => {
     if (down.button !== 0 || session !== null || disabled()) return;
+    release?.();
     const card = down.currentTarget as HTMLElement;
     const origin = { x: down.clientX, y: down.clientY };
+    const touch = down.pointerType === "touch";
+    const moved = (at: CalendarPoint) => Math.hypot(at.x - origin.x, at.y - origin.y);
     card.setPointerCapture(down.pointerId);
+    // Once a finger has picked the task up, its moves drag it rather than scroll the page.
+    const holdPage = (move: TouchEvent) => move.preventDefault();
+    let hold: ReturnType<typeof setTimeout> | undefined;
+    if (touch) {
+      hold = setTimeout(() => {
+        hold = undefined;
+        window.addEventListener("touchmove", holdPage, { passive: false });
+        start(card, "pointer", origin);
+      }, touchDelay);
+    }
     const onMove = (move: PointerEvent) => {
       const at = { x: move.clientX, y: move.clientY };
       if (session === null) {
-        if (Math.hypot(at.x - origin.x, at.y - origin.y) < dragThreshold) return;
+        if (touch) {
+          if (moved(at) > touchTolerance) release?.();
+          return;
+        }
+        if (moved(at) < dragThreshold) return;
         start(card, "pointer", origin);
       }
       follow(at);
@@ -131,13 +159,19 @@ export function createTaskDrag(
       cancel();
     };
     const finish = (up: PointerEvent) => {
+      release?.();
+      if (session === null) return;
+      if (up.type === "pointerup") drop();
+      else cancel();
+    };
+    release = () => {
+      clearTimeout(hold);
       card.removeEventListener("pointermove", onMove);
       card.removeEventListener("pointerup", finish);
       card.removeEventListener("pointercancel", finish);
       window.removeEventListener("keydown", onKey, true);
-      if (session === null) return;
-      if (up.type === "pointerup") drop();
-      else cancel();
+      window.removeEventListener("touchmove", holdPage);
+      release = undefined;
     };
     card.addEventListener("pointermove", onMove);
     card.addEventListener("pointerup", finish);

@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
-import { commands, page, userEvent } from "vite-plus/test/browser";
+import { cdp, commands, page, server, userEvent } from "vite-plus/test/browser";
 
 import { App } from "../../../../apps/demo-solid/src/app";
 import type { MouseStep } from "../../mouse";
@@ -210,17 +210,17 @@ describe("the Solid demo from the keyboard", () => {
       reached.push(focusedName() ?? "");
     }
 
-    expect(reached).toEqual(
-      expect.arrayContaining([
-        "Today",
-        "Previous period",
-        "Next period",
-        "React",
-        "Solid",
-        "Keyboard shortcuts",
-      ]),
-    );
-    expect(reached.indexOf("Today")).toBeLessThan(reached.indexOf("Keyboard shortcuts"));
+    expect(reached).toEqual([
+      "Today",
+      "Previous period",
+      "Next period",
+      "View",
+      "React",
+      "Solid",
+      "Keyboard shortcuts",
+      "Docs",
+      expect.stringMatching(/^Switch to (?:dark|light) theme$/u),
+    ]);
   });
 
   test("a task picked up with Space drops onto the week as an event", async () => {
@@ -302,6 +302,84 @@ describe("the Solid demo's unscheduled tasks", () => {
 
     await until(() => expect(taskCard("Call the dentist")).not.toBeNull());
     await until(() => expect(eventOf("task-dentist")).toBeNull());
+  });
+});
+
+/** Turns a point of the test's frame into one of the page CDP drives. */
+function onPage({ x, y }: Point) {
+  const frame = window.frameElement;
+  if (frame === null) return { x, y };
+  const box = frame.getBoundingClientRect();
+  const scale = box.width / (frame as HTMLElement).offsetWidth;
+  return { x: box.left + x * scale, y: box.top + y * scale };
+}
+
+/** A finger on the touch screen, through Chromium's own input pipeline. */
+async function touch(type: "touchEnd" | "touchMove" | "touchStart", at?: Point) {
+  await cdp().send("Input.dispatchTouchEvent", {
+    touchPoints: at === undefined ? [] : [{ id: 1, ...onPage(at) }],
+    type,
+  });
+}
+
+async function slide(from: Point, to: Point, steps = 12) {
+  for (let step = 1; step <= steps; step += 1) {
+    const t = step / steps;
+    await touch("touchMove", { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t });
+    await nextFrame();
+  }
+}
+
+// Real touches scroll the page and cancel the pointer as the browser takes them over, which
+// synthetic events can't show. CDP drives them in Chromium only.
+describe.runIf(server.browser === "chromium")("the Solid demo's tasks under a finger", () => {
+  beforeAll(async () => {
+    await cdp().send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 1 });
+  });
+  afterAll(async () => {
+    await cdp().send("Emulation.setTouchEmulationEnabled", { enabled: false });
+  });
+
+  test("a swipe over a task scrolls the sidebar and picks nothing up", async () => {
+    await renderDemo("week");
+    const aside = taskList().closest("aside")!;
+    const start = aside.scrollTop;
+    const from = center(taskCard("Call the dentist")!);
+    // A drag the browser's scroll then cancels would leave nothing behind: watch for any.
+    let pickedUp = false;
+    const watch = new MutationObserver(() => {
+      pickedUp ||= document.querySelector("[data-drag-image]") !== null;
+    });
+    watch.observe(document.body, { childList: true });
+
+    await touch("touchStart", from);
+    try {
+      await slide(from, { x: from.x, y: from.y - 200 });
+    } finally {
+      await touch("touchEnd");
+      watch.disconnect();
+    }
+
+    await until(() => expect(aside.scrollTop).toBeGreaterThan(start + 50));
+    expect(pickedUp).toBe(false);
+  });
+
+  test("a long press picks a task up, and the finger drops it on the week", async () => {
+    await renderDemo("week");
+    const body = document.querySelector<HTMLElement>('[data-slot="time-grid-body"]')!;
+    const column = body.querySelectorAll<HTMLElement>("[data-date]")[2]!;
+    const from = center(taskCard("Call the dentist")!);
+
+    await touch("touchStart", from);
+    try {
+      await until(() => expect(document.querySelector("[data-drag-image]")).not.toBeNull());
+      await slide(from, center(column));
+    } finally {
+      await touch("touchEnd");
+    }
+
+    await until(() => expect(eventOf("task-dentist")).not.toBeNull());
+    await until(() => expect(taskCard("Call the dentist")).toBeNull());
   });
 });
 
