@@ -249,15 +249,45 @@ const center = (rect: DOMRect) => ({
 const ghosts = () => document.querySelectorAll("[data-calendar-ghost]");
 const scroller = () => manager!.registry.plugins.get(AutoScroller)!;
 
+type Point = { readonly x: number; readonly y: number };
+
+/** Where the mouse is. */
+let at: Point = { x: 0, y: 0 };
+
 /** Presses at `from`, moves past dnd-kit's activation distance, then on to `to`. */
-async function pickUp(from: { readonly x: number; readonly y: number }) {
+async function pickUp(from: Point) {
   await mouse({ type: "move", x: from.x, y: from.y });
   await mouse({ type: "down" });
-  await mouse({ steps: 4, type: "move", x: from.x + 12, y: from.y + 6 });
+  at = { x: from.x + 12, y: from.y + 6 };
+  await mouse({ steps: 4, type: "move", ...at });
 }
 
-async function moveTo(to: { readonly x: number; readonly y: number }) {
-  await mouse({ steps: 12, type: "move", x: to.x, y: to.y });
+const inSidebar = ({ x, y }: Point) => {
+  const rect = box("aside");
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+};
+
+/**
+ * Moves to `to`, into or out of the view the way a person drags: along the sidebar, and across the
+ * view's edge level with where the drag goes. A view scrolls at an edge where the pointer rests
+ * 250 ms, and on a busy machine Playwright's steps come that far apart: a straight line that ran
+ * along an edge's band scrolled the view, and the drop landed hours from where the test aimed.
+ */
+async function moveTo(to: Point) {
+  const from = at;
+  at = to;
+  const corner =
+    inSidebar(from) === inSidebar(to)
+      ? null
+      : inSidebar(from)
+        ? { x: from.x, y: to.y }
+        : { x: to.x, y: from.y };
+  if (corner === null) {
+    await mouse({ steps: 12, type: "move", x: to.x, y: to.y });
+  } else {
+    await mouse({ steps: 6, type: "move", x: corner.x, y: corner.y });
+    await mouse({ steps: 6, type: "move", x: to.x, y: to.y });
+  }
   // Pointer moves land a frame or two later; dnd-kit applies them in a microtask.
   await act(async () => {
     await nextFrame();
@@ -265,10 +295,7 @@ async function moveTo(to: { readonly x: number; readonly y: number }) {
   });
 }
 
-async function drag(
-  from: { readonly x: number; readonly y: number },
-  to: { readonly x: number; readonly y: number },
-) {
+async function drag(from: Point, to: Point) {
   await pickUp(from);
   await moveTo(to);
   await mouse({ type: "up" });

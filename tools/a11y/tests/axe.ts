@@ -1,5 +1,9 @@
 import axe from "axe-core";
 
+import { expect } from "vite-plus/test";
+
+import { until } from "./waits";
+
 export type Theme = "light" | "dark";
 export const themes: readonly Theme[] = ["light", "dark"];
 
@@ -46,14 +50,7 @@ const excused = (rule: string, element: Element | undefined) =>
 
 /** Serious and critical WCAG 2.2 A/AA and best-practice violations, one line per element. */
 export async function seriousViolations(context: axe.ElementContext = document) {
-  // Popups fade in; a half-transparent frame would fail contrast. Animations a scroll drives, as
-  // the scrolling time grid's header, never finish.
-  await Promise.allSettled(
-    document
-      .getAnimations()
-      .filter(({ timeline }) => timeline === document.timeline)
-      .map(({ finished }) => finished),
-  );
+  await entered();
   const { violations } = await axe.run(context, {
     elementRef: true,
     resultTypes: ["violations"],
@@ -72,4 +69,23 @@ export async function seriousViolations(context: axe.ElementContext = document) 
             `${id}: ${help} at ${target.join(" ")}\n${failureSummary}`,
         ),
     );
+}
+
+/**
+ * Resolves once the page's popups have come in: a half-transparent frame would fail contrast. A
+ * popup opens in its starting style, and its fade starts a frame later, so the fades running when
+ * the popup appears don't include its own: axe ran on a dialog mid-fade once those had ended.
+ * Animations a scroll drives, as the scrolling time grid's header, never finish.
+ */
+async function entered() {
+  for (;;) {
+    await until(() => expect(document.querySelector("[data-starting-style]")).toBeNull());
+    const running = document
+      .getAnimations()
+      .filter(
+        ({ playState, timeline }) => timeline === document.timeline && playState === "running",
+      );
+    if (running.length === 0) return;
+    await Promise.allSettled(running.map(({ finished }) => finished));
+  }
 }

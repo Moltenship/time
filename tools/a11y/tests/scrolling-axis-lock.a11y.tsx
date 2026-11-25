@@ -1,10 +1,18 @@
 import { act } from "react";
 import { afterAll, afterEach, beforeAll, describe, expect, test } from "vite-plus/test";
-import { cdp, page, server } from "vite-plus/test/browser";
+import { cdp, commands, page, server } from "vite-plus/test/browser";
+
+import type { SwipeSteps } from "../swipe";
 
 import { atRest, inWebKit, render, until } from "./render";
 import { headerDrift } from "./scrolling-header";
 import { axis, reported, ScrollingScreen as Screen, title } from "./scrolling-screen";
+
+declare module "vite-plus/test/browser" {
+  interface BrowserCommands {
+    swipe: (steps: SwipeSteps) => Promise<void>;
+  }
+}
 
 // Safari on iOS locks a swipe to one direction only between nested scrollers, each scrolling one
 // way: in an element that scrolls both ways, a swipe down could also page the days (#260). No
@@ -114,35 +122,13 @@ function onPage([x, y]: readonly [number, number]) {
   return { x: box.left + x * scale, y: box.top + y * scale };
 }
 
-/** A finger on the touch screen, through Chromium's own input pipeline. */
-async function touch(
-  type: "touchEnd" | "touchMove" | "touchStart",
-  at?: readonly [number, number],
-) {
-  await cdp().send("Input.dispatchTouchEvent", {
-    touchPoints: at === undefined ? [] : [{ id: 1, ...onPage(at) }],
-    type,
-  });
-}
-
 /**
- * A finger's swipe from `from`, `by` along each axis, in steps as a finger moves. Each step is past
- * the browser's touch slop, so the swipe scrolls from its first move: on a loaded machine, smaller
- * steps can take the long-press's 450 ms to get there, and start a drag instead.
+ * A finger's swipe from `from`, `by` along each axis, a move a frame, from Node, so a loaded page
+ * can't make it late (`swipe.ts`). Each move is past the browser's touch slop, so the swipe
+ * scrolls from its first move and never waits out a long-press.
  */
-async function swipe(from: readonly [number, number], by: readonly [number, number]) {
-  const steps = 12;
-  await touch("touchStart", from);
-  try {
-    for (let step = 1; step <= steps; step++) {
-      const t = step / steps;
-      await touch("touchMove", [from[0] + by[0] * t, from[1] + by[1] * t]);
-      await new Promise((resolve) => setTimeout(resolve, 16));
-    }
-  } finally {
-    await touch("touchEnd");
-  }
-}
+const swipe = (from: readonly [number, number], by: readonly [number, number]) =>
+  commands.swipe({ by, from, steps: 12 });
 
 // Chromium rails a swipe on its own, in one scroller as in two, so these pass in the old layout
 // too; they check that the two scrollers still scroll and page a finger's swipes as before.

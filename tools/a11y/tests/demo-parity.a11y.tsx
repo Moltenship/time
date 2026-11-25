@@ -167,6 +167,16 @@ async function press(element: HTMLElement) {
   await commands.mouse({ type: "up" });
 }
 
+/**
+ * Opens a select with the button held down. A select's list opens on the press, and a release
+ * once it's open picks the option under the pointer: one that came late on a busy machine picked
+ * the chosen option, which sits over the trigger, and closed the list before the test read it.
+ */
+async function pressAndHold(element: HTMLElement) {
+  await hover(element);
+  await commands.mouse({ type: "down" });
+}
+
 /** Shows focus as a keyboard user sees it: after a key press, focus is visible. */
 async function focusByKeyboard(element: HTMLElement) {
   await press(find("aside h2, aside h3, aside p"));
@@ -304,6 +314,8 @@ interface Scenario {
   /** What the comparison reads, once `act` has run. */
   readonly scope: string;
   readonly act?: () => Promise<void>;
+  /** `act` leaves the mouse button down, for the comparison to read before it comes up. */
+  readonly held?: boolean;
   /** Differences the page can't fix, because they're the kit's: each is reported on the PR. */
   readonly known?: (line: string) => boolean;
   /** The pages it compares with Tailwind's; StyleX's and Solid's by default. */
@@ -353,7 +365,8 @@ const scenarios: Scenario[] = [
     size: "desktop",
   },
   {
-    act: () => press(find("header [role=combobox]")),
+    act: () => pressAndHold(find("header [role=combobox]")),
+    held: true,
     name: "view switcher",
     scope: '[role="listbox"]',
     size: "desktop",
@@ -364,8 +377,9 @@ const scenarios: Scenario[] = [
       await until(() => expect(win().document.querySelector(popup)).not.toBeNull());
       await settle();
       const label = find('[role="dialog"] label', "Calendar");
-      await press(win().document.getElementById(label.getAttribute("for")!)!);
+      await pressAndHold(win().document.getElementById(label.getAttribute("for")!)!);
     },
+    held: true,
     known: alignedList,
     name: "event dialog, calendar select",
     scope: list,
@@ -402,16 +416,27 @@ describe("the demo's StyleX page and the Solid demo look like its Tailwind page"
   describe.each(themes)("%s theme", (theme) => {
     test.each(scenarios)(
       "$size, $name",
-      async ({ act, known = () => false, pages: others = ["stylex", "solid"], scope, size }) => {
+      async ({
+        act,
+        held = false,
+        known = () => false,
+        pages: others = ["stylex", "solid"],
+        scope,
+        size,
+      }) => {
         const read: Partial<Record<Page, Map<string, Record<string, string>>>> = {};
         for (const page of ["tailwind", ...others] as const) {
           await open(page, theme, size);
-          if (act !== undefined) {
-            await act();
-            await until(() => expect(shown(scope)).toBe(true));
-            await settle();
+          try {
+            if (act !== undefined) {
+              await act();
+              await until(() => expect(shown(scope)).toBe(true));
+              await settle();
+            }
+            read[page] = probe(scope);
+          } finally {
+            if (held) await commands.mouse({ type: "up" });
           }
-          read[page] = probe(scope);
         }
         frame().remove();
 
