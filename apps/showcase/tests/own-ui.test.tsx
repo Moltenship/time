@@ -94,6 +94,8 @@ test("the app's own button calls an action", async () => {
 });
 
 test("the parts bring no class, inline style or stylesheet of their own", async () => {
+  // The test setup's own, which fills a gap in jsdom.
+  const setupStyles = document.querySelectorAll("style").length;
   const container = await render();
   const parts = [...container.querySelectorAll("[data-calendar-part]")];
 
@@ -115,7 +117,7 @@ test("the parts bring no class, inline style or stylesheet of their own", async 
   ]);
   expect(parts.every((part) => part.getAttribute("style") === null)).toBe(true);
   // Nor does rendering them add a stylesheet to the page.
-  expect(document.querySelectorAll("style")).toHaveLength(0);
+  expect(document.querySelectorAll("style")).toHaveLength(setupStyles);
   expect(document.adoptedStyleSheets ?? []).toHaveLength(0);
 });
 

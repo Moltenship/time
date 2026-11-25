@@ -7,6 +7,7 @@ import {
   eventIdAttributes,
   plainDateInterval,
 } from "@moltenship/calendar";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@ui-sdk/react/tooltip";
 import type { ReactNode } from "react";
 import { afterEach, expect, test } from "vite-plus/test";
 
@@ -273,6 +274,39 @@ test("hydrateCalendar renders on the server, hydrates, and the harness works as 
   expect(calendar.recoverableErrors).toEqual([]);
   await calendar.propose(moveStandup);
   expect(items(calendar.container)).toEqual(["Standup 2026-10-08T10:00:00Z"]);
+});
+
+test("hydrateCalendar lends jsdom the Popover API's methods while the calendar is mounted", async () => {
+  const lent = () => typeof HTMLElement.prototype.showPopover === "function";
+  expect(lent()).toBe(false);
+
+  // Without them, ui-sdk would render the closed tooltip in a portal, which a server can't.
+  const calendar = await hydrateCalendar(Calendar, {
+    children: (
+      <Tooltip>
+        <TooltipTrigger>Help</TooltipTrigger>
+        <TooltipContent>Drag an event to move it</TooltipContent>
+      </Tooltip>
+    ),
+    events: [standup],
+  });
+  expect(calendar.serverMarkup).toContain('data-slot="tooltip-content"');
+  expect(lent()).toBe(true);
+  await calendar.unmount();
+
+  expect(lent()).toBe(false);
+});
+
+test("hydrateCalendar keeps the Popover API's methods until the last calendar unmounts", async () => {
+  const lent = () => typeof HTMLElement.prototype.showPopover === "function";
+  const first = await hydrateCalendar(Calendar, { events: [standup] });
+  const second = await hydrateCalendar(Calendar, { events: [standup] });
+
+  await first.unmount();
+  expect(lent()).toBe(true);
+  await second.unmount();
+
+  expect(lent()).toBe(false);
 });
 
 test("hydrateCalendar throws when the client renders something else", async () => {

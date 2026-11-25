@@ -3,7 +3,7 @@
 // shadcn's stock one, which is built on Base UI and not on ui-sdk. `data-own-control` lets the test
 // see that every button came from here.
 import type { ButtonProps } from "@registry/calendar-ui/button";
-import { Button as AppButton } from "@registry/ui/button";
+import { Button as AppButton } from "@/components/ui/button";
 
 export type { ButtonProps };
 

@@ -13,7 +13,6 @@ import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createTimelineDayView } from "@registry/resource-timeline-view/resource-timeline-view";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
-import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { seriousViolations, setTheme, themes } from "./axe";
 import { nextFrame, render, until } from "./render";
@@ -73,31 +72,38 @@ function OverlapScreen({
   readonly view?: "resources" | "week";
 }) {
   return (
-    <TooltipProvider>
-      <Calendar.Root
-        defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
-        defaultTimeZone="UTC"
-        defaultView={view}
-        events={events}
-        locale="en-US"
-        now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
-        onEventChange={onEventChange}
-        resources={resources}
-        viewOptions={{ resources: { overlapLayout }, week: { overlapLayout } }}
-        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-      >
-        <Calendar.Frame className="flex h-dvh flex-col" dir={dir}>
-          <Calendar.Viewport className="min-h-0 flex-1">
-            <Calendar.ActiveView />
-          </Calendar.Viewport>
-        </Calendar.Frame>
-      </Calendar.Root>
-    </TooltipProvider>
+    <Calendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="UTC"
+      defaultView={view}
+      events={events}
+      locale="en-US"
+      now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
+      onEventChange={onEventChange}
+      resources={resources}
+      viewOptions={{ resources: { overlapLayout }, week: { overlapLayout } }}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Calendar.Frame className="flex h-dvh flex-col" dir={dir}>
+        <Calendar.Viewport className="min-h-0 flex-1">
+          <Calendar.ActiveView />
+        </Calendar.Viewport>
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }
 
 const eventElement = (title: string) =>
   document.querySelector<HTMLElement>(`[data-slot="time-grid-body"] [data-event-id="${title}"]`)!;
+/**
+ * Focuses an element after a key press, as moving focus with the keys does: focus opens a tooltip
+ * only then. A modifier alone doesn't count.
+ */
+async function focusFromKeyboard(element: HTMLElement) {
+  (document.activeElement as HTMLElement | null)?.blur();
+  await userEvent.keyboard("a");
+  await act(async () => element.focus());
+}
 /** The event drawn on top at a viewport point. */
 const eventAt = (x: number, y: number) =>
   document.elementFromPoint(x, y)?.closest("[data-event-id]") ?? null;
@@ -200,7 +206,8 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
   test("an event whose title doesn't fit shows it in full while hovered or focused", async () => {
     await render(<OverlapScreen dir={dir} overlapLayout="stack" />);
     const long = eventElement("Quarterly planning with the infrastructure and platform teams");
-    const tooltip = () => document.querySelector('[data-slot="tooltip-content"]');
+    // Open, not on its way out or hidden: the events' one tooltip stays in the page while closed.
+    const tooltip = () => document.querySelector('[data-slot="tooltip-content"][data-open]');
 
     // The tooltips open without a delay, so a few frames after the pointer comes, one would show.
     await userEvent.hover(eventElement("Review 3"));
@@ -215,11 +222,17 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
       ),
     );
     expect(await seriousViolations()).toEqual([]);
+    // One tooltip serves every event: one whose title fits doesn't take it over, it closes it.
+    await userEvent.hover(eventElement("Review 3"));
+    await until(() => expect(tooltip()).toBeNull());
+    await userEvent.hover(long);
+    await until(() => expect(tooltip()).not.toBeNull());
     await userEvent.unhover(long);
     await until(() => expect(tooltip()).toBeNull());
 
-    await act(async () => long.focus());
+    await focusFromKeyboard(long);
     await until(() => expect(tooltip()).not.toBeNull());
+    expect(document.querySelectorAll('[data-slot="tooltip-content"]')).toHaveLength(1);
   });
 
   test("Escape still reaches the calendar while the title tooltip is open", async () => {
@@ -230,7 +243,7 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
     const tooltip = () => document.querySelector('[data-slot="tooltip-content"][data-open]');
 
     // Picked up and moved, Escape cancels the move.
-    await act(async () => eventElement(title).focus());
+    await focusFromKeyboard(eventElement(title));
     await until(() => expect(tooltip()).not.toBeNull());
     await userEvent.keyboard(" ");
     await userEvent.keyboard("{ArrowDown}");
@@ -242,7 +255,7 @@ describe.each(["ltr", "rtl"] as const)("stacked events, %s", (dir) => {
     // Focused, Escape leaves the event for the slot it starts in. The gesture closed the tooltip
     // and the event kept focus, so focus comes back to it to open the tooltip again.
     await act(async () => eventElement(title).blur());
-    await act(async () => eventElement(title).focus());
+    await focusFromKeyboard(eventElement(title));
     await until(() => expect(tooltip()).not.toBeNull());
     await userEvent.keyboard("{Escape}");
     expect(document.activeElement?.getAttribute("aria-label")).toBe(
@@ -292,25 +305,23 @@ function MixedScreen({
   readonly view: "resources" | "timeline-day" | "week";
 }) {
   return (
-    <TooltipProvider>
-      <MixedCalendar.Root
-        defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
-        defaultTimeZone="UTC"
-        defaultView={view}
-        direction={dir}
-        events={booked}
-        locale="en-US"
-        now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
-        resources={spaces}
-        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-      >
-        <MixedCalendar.Frame className="flex h-dvh flex-col" dir={dir}>
-          <MixedCalendar.Viewport className="min-h-0 flex-1">
-            <MixedCalendar.ActiveView />
-          </MixedCalendar.Viewport>
-        </MixedCalendar.Frame>
-      </MixedCalendar.Root>
-    </TooltipProvider>
+    <MixedCalendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="UTC"
+      defaultView={view}
+      direction={dir}
+      events={booked}
+      locale="en-US"
+      now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
+      resources={spaces}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <MixedCalendar.Frame className="flex h-dvh flex-col" dir={dir}>
+        <MixedCalendar.Viewport className="min-h-0 flex-1">
+          <MixedCalendar.ActiveView />
+        </MixedCalendar.Viewport>
+      </MixedCalendar.Frame>
+    </MixedCalendar.Root>
   );
 }
 

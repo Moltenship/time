@@ -1,9 +1,9 @@
 import { RotateCcwIcon } from "lucide-react";
 import { useId } from "react";
 
-import { Button } from "@registry/ui/button";
-import { Checkbox } from "@registry/ui/checkbox";
-import { Label } from "@registry/ui/label";
+import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
 import {
   Select,
   SelectContent,
@@ -11,7 +11,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@registry/ui/select";
+} from "./ui/select";
 
 import { dragPreviewField, type DemoDragPreview } from "../drag-preview";
 import { settingFields, type DemoSettings, type SettingField } from "../settings";

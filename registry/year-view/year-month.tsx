@@ -1,6 +1,5 @@
 "use client";
 
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import {
   useClosedDates,
   useRovingFocus,
@@ -16,6 +15,7 @@ import {
 
 import { UnavailableTime, type UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import { PopoverTrigger, type PopoverHandle } from "@registry/calendar-ui/popover";
 import { cn } from "cn";
 
 export interface YearFormats {
@@ -29,7 +29,7 @@ export interface YearFormats {
 }
 
 /** Opens the day popover; the popover reads the day's events from the current projection. */
-export type YearDayPopoverHandle = PopoverPrimitive.Handle<Temporal.PlainDate>;
+export type YearDayPopoverHandle = PopoverHandle<Temporal.PlainDate>;
 
 /**
  * Which closed days the year shades: the dates an exception closes, such as holidays, those and
@@ -143,7 +143,7 @@ function YearDayCell<TEvent>({
           start={0}
         />
       )}
-      <PopoverPrimitive.Trigger
+      <PopoverTrigger
         handle={handle}
         id={triggerId}
         payload={day.date}
@@ -152,7 +152,7 @@ function YearDayCell<TEvent>({
         // it, the view's one tab stop, where the popover returns focus.
         onMouseDown={(event) => event.preventDefault()}
         tabIndex={-1}
-        className="relative flex size-full flex-col items-center justify-center gap-0.5 rounded-md outline-none hover:bg-accent data-popup-open:bg-accent"
+        className="relative flex size-full flex-col items-center justify-center gap-0.5 rounded-md outline-none hover:bg-accent aria-expanded:bg-accent"
       >
         <span
           className={cn(
@@ -173,7 +173,7 @@ function YearDayCell<TEvent>({
             />
           ))}
         </span>
-      </PopoverPrimitive.Trigger>
+      </PopoverTrigger>
     </div>
   );
 }

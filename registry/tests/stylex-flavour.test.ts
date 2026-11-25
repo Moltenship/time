@@ -31,6 +31,8 @@ const items = readdirSync(registry).filter(
     existsSync(join(registry, name, "registry-item.json")) &&
     !name.startsWith(flavour) &&
     name !== "calendar-theme" &&
+    // StyleX tokens come with the flavour's own token values (ADR 0279, K3).
+    name !== "base-tokens" &&
     // The kit's StyleX twin, `stylex-calendar-ui`, comes with the flavour's move to it (ADR 0279, K3).
     name !== "calendar-ui",
 );
@@ -78,8 +80,11 @@ describe("the StyleX flavour keeps in step with the Tailwind source", () => {
     for (const item of items) {
       for (const file of sourceFiles(item)) {
         const expected = exportsOf(read(item, file)).filter(
-          // The Tailwind preview's class has no StyleX equal; its styles are on the element.
-          (name) => !(file === "preview-check.ts" && name === "draftCheckClassName"),
+          (name) =>
+            // The Tailwind preview's class has no StyleX equal; its styles are on the element.
+            !(file === "preview-check.ts" && name === "draftCheckClassName") &&
+            // The flavour's event tooltips move onto one shared tooltip with its kit (ADR 0279, K3).
+            !(file === "time-grid-event.tsx" && name === "TimeGridEventTooltip"),
         );
         expect(exportsOf(read(`${flavour}${item}`, file)), `${item}/${file}`).toEqual(expected);
       }

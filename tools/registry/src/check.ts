@@ -230,8 +230,15 @@ export async function checkBuiltRegistry({
     if (full.components.length > 0) {
       issues.push(`${fullName} installs ${full.components.join(", ")} itself, not through an item`);
     }
+    // base-tokens is for an app without shadcn's theme; a shadcn app keeps its own.
     const missing = manifest.items
-      .filter(({ name }) => inFlavour(name) && name !== fullName && !full.items.includes(name))
+      .filter(
+        ({ name }) =>
+          inFlavour(name) &&
+          name !== fullName &&
+          name !== "base-tokens" &&
+          !full.items.includes(name),
+      )
       .map(({ name }) => name);
     if (missing.length > 0) issues.push(`${fullName} doesn't install ${missing.join(", ")}`);
     const foreign = full.items.filter((name) => !inFlavour(name));

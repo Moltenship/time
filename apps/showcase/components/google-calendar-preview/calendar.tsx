@@ -5,8 +5,7 @@ import type { GoogleEvent } from "@/lib/google-calendar";
 import { createGoogleCalendarApi } from "@/lib/google-calendar-api";
 import { createGoogleCalendarSync, type GoogleCalendarSync } from "@/lib/google-calendar-sync";
 
-import { Button } from "@registry/ui/button";
-import { TooltipProvider } from "@registry/ui/tooltip";
+import { Button } from "@/components/ui/button";
 
 import {
   createFakeGoogleCalendar,
@@ -146,20 +145,18 @@ export default function GoogleCalendarPreview({
   );
 
   return (
-    <TooltipProvider delay={400}>
-      <div className="flex h-full flex-col">
-        <div className="min-h-0 flex-1">
-          <GoogleCalendar sync={sync} timeZone={now.timeZoneId} />
-        </div>
-        <ControlPanel
-          changes={changes}
-          google={google}
-          onPushChange={setPush}
-          push={push}
-          sync={sync}
-        />
+    <div className="flex h-full flex-col">
+      <div className="min-h-0 flex-1">
+        <GoogleCalendar sync={sync} timeZone={now.timeZoneId} />
       </div>
-    </TooltipProvider>
+      <ControlPanel
+        changes={changes}
+        google={google}
+        onPushChange={setPush}
+        push={push}
+        sync={sync}
+      />
+    </div>
   );
 }
 

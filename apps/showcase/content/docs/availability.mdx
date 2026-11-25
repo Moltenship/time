@@ -155,8 +155,8 @@ days in the month. In the dark theme closed time is lighter than open time, sinc
 surface has little room to get darker. Recipes built on `--muted-foreground` or your own tokens
 follow the theme the same way.
 
-To draw something else, pass `renderUnavailable` to a view. It works like Base UI's `render`:
-give it an element, or a function of the band's props and its state. The state holds the `band`
+To draw something else, pass `renderUnavailable` to a view: a function of the band's props and its
+state that returns an element. The state holds the `band`
 (its `reason`, `label` and edges), the column's `date` and the `resource` whose hours it shows,
 so rooms can look different from people. Keep the props on your element: they place it and keep it
 hidden from screen readers.
@@ -250,7 +250,7 @@ resource:
 
 The words carry the state; the dot before them is colored with `--calendar-busy` or
 `--calendar-free`. Times are on the display clock, with the weekday within the next six days and the date further out. Busy
-wins over the hours, so a late call shows as busy. The badge is shadcn's Base UI `Badge`. In
+wins over the hours, so a late call shows as busy. The badge is the calendar's `Badge`. In
 your own `ResourceHeader`, add `ResourceHeaderStatus` where you want it:
 
 ```tsx

@@ -29,6 +29,7 @@ import {
   type TimeGridAnnotationOptions,
 } from "./time-grid-annotations";
 import { TimeGridBody } from "./time-grid-body";
+import { TimeGridEventTooltip } from "./time-grid-event";
 import { TimeGridHeader } from "./time-grid-header";
 import { gutterStyle, timeGridGutterClassName, useTimeGridZones } from "./time-grid-zones";
 
@@ -146,7 +147,7 @@ export function TimeGridView<TEvent>({
         };
 
   return (
-    <>
+    <TimeGridEventTooltip>
       {/* Rows: day headers, all-day events, and the timed day columns; each starts with a gutter cell. */}
       <div
         ref={pointerRef}
@@ -201,7 +202,7 @@ export function TimeGridView<TEvent>({
       {annotations !== undefined && (
         <TimeGridAnnotationOverlays formatTime={formats.time} handles={annotationHandles} />
       )}
-    </>
+    </TimeGridEventTooltip>
   );
 }
 

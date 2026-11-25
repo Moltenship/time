@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useId, useRef } from "react";
 
-import { Button } from "@registry/ui/button";
+import { Button } from "./ui/button";
 
 import { DemoCalendar, type DemoOccurrence } from "../calendar";
 import { demoCalendars } from "../calendars";

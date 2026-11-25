@@ -4,8 +4,7 @@ import { useId, useRef, useState } from "react";
 import { createFakeEventsApi } from "@/content/examples/query-api";
 import { EventsCalendar } from "@/content/examples/query-calendar";
 
-import { Checkbox } from "@registry/ui/checkbox";
-import { TooltipProvider } from "@registry/ui/tooltip";
+import { Checkbox } from "@/components/ui/checkbox";
 
 import { createSampleEvents } from "./events";
 
@@ -39,29 +38,27 @@ export default function QueryPreviewCalendar({
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider delay={400}>
-        <div className="flex h-full flex-col">
-          <div className="min-h-0 flex-1">
-            <EventsCalendar api={api} timeZone={timeZone} />
-          </div>
-          <div className="flex min-h-12 shrink-0 items-center gap-3 border-t px-4 py-2 text-sm">
-            <Checkbox
-              checked={failing}
-              id={failId}
-              onCheckedChange={(checked) => {
-                failingRef.current = checked;
-                setFailing(checked);
-              }}
-            />
-            <label className="font-medium" htmlFor={failId}>
-              Make requests fail
-            </label>
-            <span className="text-muted-foreground max-sm:hidden">
-              Then move an event, or go to another month.
-            </span>
-          </div>
+      <div className="flex h-full flex-col">
+        <div className="min-h-0 flex-1">
+          <EventsCalendar api={api} timeZone={timeZone} />
         </div>
-      </TooltipProvider>
+        <div className="flex min-h-12 shrink-0 items-center gap-3 border-t px-4 py-2 text-sm">
+          <Checkbox
+            checked={failing}
+            id={failId}
+            onCheckedChange={(checked) => {
+              failingRef.current = checked;
+              setFailing(checked);
+            }}
+          />
+          <label className="font-medium" htmlFor={failId}>
+            Make requests fail
+          </label>
+          <span className="text-muted-foreground max-sm:hidden">
+            Then move an event, or go to another month.
+          </span>
+        </div>
+      </div>
     </QueryClientProvider>
   );
 }

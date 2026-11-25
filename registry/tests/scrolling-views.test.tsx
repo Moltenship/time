@@ -375,6 +375,9 @@ test("keys page a scrolling week past its visible days", async () => {
 test.each(["scrolling-week", "scrolling-day", "scrolling-month"] as const)(
   "%s server markup shows the visible range first and hydrates as is",
   async (view) => {
+    // Browsers have the Popover API, which jsdom lacks; without it ui-sdk's popups fall back to a
+    // portal, which a server can't render.
+    HTMLElement.prototype.showPopover = () => {};
     const markup = renderToString(<Screen view={view} />);
     // Until the browser lays the canvas out, the visible range starts it: the page before sits
     // past its start edge.
@@ -398,6 +401,7 @@ test.each(["scrolling-week", "scrolling-day", "scrolling-month"] as const)(
     cleanup = async () => {
       await act(async () => root.unmount());
       container.remove();
+      delete (HTMLElement.prototype as Partial<HTMLElement>).showPopover;
     };
 
     expect(errors).toEqual([]);

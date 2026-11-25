@@ -231,7 +231,7 @@ test("deletes persist after the save delay and roll back when saves fail", async
 
 /** The undo toast's text and buttons, or `null` while none shows. */
 const undoToast = () =>
-  document.querySelector('[aria-label="Notifications"] [role="dialog"]')?.textContent ?? null;
+  document.querySelector('[aria-label="Notifications"] [data-slot="toast"]')?.textContent ?? null;
 
 test("a deleted event can be undone from the toast, and a keyboard move with Ctrl+Z", async () => {
   vi.spyOn(navigator, "platform", "get").mockReturnValue("Win32");
@@ -239,7 +239,8 @@ test("a deleted event can be undone from the toast, and a keyboard move with Ctr
   await deleteFromPopover("lunch");
   await pastSaveDelay();
   expect(eventButton("lunch")).toBeNull();
-  expect(undoToast()).toBe("Event deletedUndo");
+  // The hint after the title is for screen readers only.
+  expect(undoToast()).toBe("Event deletedTo undo it, press F6 and choose Undo.Undo");
 
   const undo = [...document.querySelectorAll('[aria-label="Notifications"] button')].find(
     (button) => button.textContent === "Undo",

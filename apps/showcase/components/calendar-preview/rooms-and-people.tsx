@@ -13,7 +13,6 @@ import { calendarAnnouncements } from "@registry/calendar/announcements";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createTimelineDayView } from "@registry/resource-timeline-view/resource-timeline-view";
-import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { applyPreviewChange, type PreviewEvent } from "./events";
 import { ChoiceToggle, overlapLayouts } from "./layout-toggle";
@@ -145,74 +144,72 @@ export default function RoomsAndPeopleCalendar({
   );
 
   return (
-    <TooltipProvider delay={400}>
-      <Calendar.Root
-        defaultAnchorDate={day.toPlainDate()}
-        defaultTimeZone={day.timeZoneId}
-        defaultView={view}
-        events={events}
-        locale="en-US"
-        onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}
-        onEventChangeResult={
-          rules === "conflicts" ? (result) => setLastResult(describeResult(result)) : undefined
-        }
-        policies={policies}
-        resources={spaces}
-        viewOptions={{ resources: resourceOptions, "timeline-day": resourceOptions }}
-        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-      >
-        <Calendar.Frame className="flex h-full flex-col">
-          <div className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-2">
-            {rules === "layout" ? (
-              <>
-                <ChoiceToggle
-                  label="Rooms"
-                  onChange={setRoomLayout}
-                  options={view === "resources" ? overlapLayouts : timelineLayouts}
-                  value={roomLayout}
-                />
-                <ChoiceToggle
-                  label="People"
-                  onChange={setPeopleLayout}
-                  options={view === "resources" ? overlapLayouts : timelineLayouts}
-                  value={peopleLayout}
-                />
-              </>
-            ) : (
-              <>
-                <ChoiceToggle
-                  label="Rooms"
-                  onChange={(mode) => {
-                    setRoomMode(mode);
-                    setLastResult(null);
-                  }}
-                  options={conflictModes}
-                  value={roomMode}
-                />
-                <ChoiceToggle
-                  label="People"
-                  onChange={(mode) => {
-                    setPeopleMode(mode);
-                    setLastResult(null);
-                  }}
-                  options={conflictModes}
-                  value={peopleMode}
-                />
-                <p
-                  data-slot="rooms-preview-outcome"
-                  className="min-h-5 basis-full text-sm text-fd-muted-foreground"
-                >
-                  {lastResult ?? "Drag a booking onto another in the same room or person."}
-                </p>
-              </>
-            )}
-          </div>
-          <Calendar.Viewport className="min-h-0 flex-1">
-            <Calendar.ActiveView />
-          </Calendar.Viewport>
-          <Calendar.Announcer messages={calendarAnnouncements} />
-        </Calendar.Frame>
-      </Calendar.Root>
-    </TooltipProvider>
+    <Calendar.Root
+      defaultAnchorDate={day.toPlainDate()}
+      defaultTimeZone={day.timeZoneId}
+      defaultView={view}
+      events={events}
+      locale="en-US"
+      onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}
+      onEventChangeResult={
+        rules === "conflicts" ? (result) => setLastResult(describeResult(result)) : undefined
+      }
+      policies={policies}
+      resources={spaces}
+      viewOptions={{ resources: resourceOptions, "timeline-day": resourceOptions }}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Calendar.Frame className="flex h-full flex-col">
+        <div className="flex min-h-14 shrink-0 flex-wrap items-center gap-x-4 gap-y-2 border-b px-4 py-2">
+          {rules === "layout" ? (
+            <>
+              <ChoiceToggle
+                label="Rooms"
+                onChange={setRoomLayout}
+                options={view === "resources" ? overlapLayouts : timelineLayouts}
+                value={roomLayout}
+              />
+              <ChoiceToggle
+                label="People"
+                onChange={setPeopleLayout}
+                options={view === "resources" ? overlapLayouts : timelineLayouts}
+                value={peopleLayout}
+              />
+            </>
+          ) : (
+            <>
+              <ChoiceToggle
+                label="Rooms"
+                onChange={(mode) => {
+                  setRoomMode(mode);
+                  setLastResult(null);
+                }}
+                options={conflictModes}
+                value={roomMode}
+              />
+              <ChoiceToggle
+                label="People"
+                onChange={(mode) => {
+                  setPeopleMode(mode);
+                  setLastResult(null);
+                }}
+                options={conflictModes}
+                value={peopleMode}
+              />
+              <p
+                data-slot="rooms-preview-outcome"
+                className="min-h-5 basis-full text-sm text-fd-muted-foreground"
+              >
+                {lastResult ?? "Drag a booking onto another in the same room or person."}
+              </p>
+            </>
+          )}
+        </div>
+        <Calendar.Viewport className="min-h-0 flex-1">
+          <Calendar.ActiveView />
+        </Calendar.Viewport>
+        <Calendar.Announcer messages={calendarAnnouncements} />
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }

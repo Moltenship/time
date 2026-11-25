@@ -8,6 +8,7 @@
     "test": "vp test"
   },
   "dependencies": {
+    "@base-ui/react": "catalog:",
     "@dnd-kit/dom": "catalog:",
     "@dnd-kit/react": "catalog:",
     "@moltenship/calendar": "workspace:*",

@@ -1,8 +1,7 @@
 "use client";
 
-import { useRender } from "@base-ui/react/use-render";
 import type { CalendarResource, ClosedTime, ResourceId } from "@moltenship/calendar";
-import type { CSSProperties } from "react";
+import type { CSSProperties, HTMLAttributes, ReactElement } from "react";
 
 import { cn } from "cn";
 
@@ -17,11 +16,14 @@ export interface UnavailableTimeState {
 }
 
 /**
- * Replaces the shading of closed time, as `render` does on Base UI parts: an element to draw in
- * its place, or a function of its props and state, such as a tint for rooms. Keep the props on
- * your element; they place it and keep it `aria-hidden`.
+ * Replaces the shading of closed time: a function of its props and state that returns the element
+ * to draw in its place, such as a tint for rooms. Spread the props on your element; they place it
+ * and keep it `aria-hidden`.
  */
-export type UnavailableTimeRender = useRender.RenderProp<UnavailableTimeState>;
+export type UnavailableTimeRender = (
+  props: HTMLAttributes<HTMLDivElement> & Record<`data-${string}`, string | undefined>,
+  state: UnavailableTimeState,
+) => ReactElement;
 
 export interface UnavailableTimeProps extends UnavailableTimeState {
   readonly className: string;
@@ -34,8 +36,6 @@ export interface UnavailableTimeProps extends UnavailableTimeState {
 }
 
 const percent = (fraction: number) => `${fraction * 100}%`;
-/** The state goes to `render`, not into attributes; the band's are set below. */
-const noStateAttributes = { band: () => null, date: () => null, resource: () => null };
 
 /**
  * One stretch of closed time, behind events. Screen readers hear it in the names of the cells it
@@ -54,24 +54,19 @@ export function UnavailableTime({
   start,
   style,
 }: UnavailableTimeProps) {
-  return useRender({
-    defaultTagName: "div",
-    props: {
-      "aria-hidden": true,
-      className: cn("pointer-events-none absolute", className),
-      "data-label": band.label,
-      "data-opens-after": band.opensAfter ? "" : undefined,
-      "data-opens-before": band.opensBefore ? "" : undefined,
-      "data-reason": band.reason,
-      "data-slot": slot,
-      style: {
-        "--band-end": percent(end),
-        "--band-start": percent(start),
-        ...style,
-      } as CSSProperties,
-    },
-    render,
-    state: { band, date, resource },
-    stateAttributesMapping: noStateAttributes,
-  });
+  const props = {
+    "aria-hidden": true,
+    className: cn("pointer-events-none absolute", className),
+    "data-label": band.label,
+    "data-opens-after": band.opensAfter ? "" : undefined,
+    "data-opens-before": band.opensBefore ? "" : undefined,
+    "data-reason": band.reason,
+    "data-slot": slot,
+    style: {
+      "--band-end": percent(end),
+      "--band-start": percent(start),
+      ...style,
+    } as CSSProperties,
+  };
+  return render === undefined ? <div {...props} /> : render(props, { band, date, resource });
 }

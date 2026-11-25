@@ -6,8 +6,6 @@ import { afterEach, beforeAll, expect, test, vi } from "vite-plus/test";
 import { sampleMeetings, sampleTasks } from "../components/dnd-kit-preview/calendar";
 import { BacklogCalendar, meetingFromTask } from "../content/examples/dnd-kit-backlog";
 
-import { TooltipProvider } from "@registry/ui/tooltip";
-
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
 }
@@ -37,14 +35,12 @@ test("shows the backlog's tasks beside the week's meetings", async () => {
   const root = createRoot(container);
   await act(async () =>
     root.render(
-      <TooltipProvider>
-        <BacklogCalendar
-          anchorDate={today}
-          initialMeetings={sampleMeetings(today, timeZone)}
-          initialTasks={sampleTasks}
-          timeZone={timeZone}
-        />
-      </TooltipProvider>,
+      <BacklogCalendar
+        anchorDate={today}
+        initialMeetings={sampleMeetings(today, timeZone)}
+        initialTasks={sampleTasks}
+        timeZone={timeZone}
+      />,
     ),
   );
   cleanup = async () => {

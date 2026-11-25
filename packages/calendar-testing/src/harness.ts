@@ -485,6 +485,7 @@ function setUp<
     root: Root,
     recoverableErrors: readonly unknown[],
     ownsContainer: boolean,
+    onUnmount?: () => void,
   ): CalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId> {
     let active = true;
     const ensureMounted = () => {
@@ -514,6 +515,7 @@ function setUp<
         mounted.delete(entry);
         await act(async () => root.unmount());
         if (ownsContainer) container.remove();
+        onUnmount?.();
       },
     };
     mounted.add(entry);
@@ -639,6 +641,38 @@ export async function renderCalendar<
   return rendered;
 }
 
+type PopoverMethod = "hidePopover" | "showPopover" | "togglePopover";
+
+/** How many mounted calendars borrow the Popover API's methods, which go when the last unmounts. */
+let popoverApiBorrowers = 0;
+
+/**
+ * Gives an environment without the Popover API, such as jsdom, methods that do nothing, and
+ * returns what takes them away again. Browsers have the API; without it ui-sdk's popups render in
+ * a portal, which a server render can't.
+ */
+function lendPopoverApi(): () => void {
+  if (typeof HTMLElement === "undefined") return () => {};
+  const prototype = HTMLElement.prototype as Partial<Record<PopoverMethod, () => unknown>>;
+  if (popoverApiBorrowers === 0) {
+    if (typeof prototype.showPopover === "function") return () => {};
+    prototype.showPopover = () => {};
+    prototype.hidePopover = () => {};
+    prototype.togglePopover = () => false;
+  }
+  popoverApiBorrowers += 1;
+  let returned = false;
+  return () => {
+    if (returned) return;
+    returned = true;
+    popoverApiBorrowers -= 1;
+    if (popoverApiBorrowers > 0) return;
+    delete prototype.showPopover;
+    delete prototype.hidePopover;
+    delete prototype.togglePopover;
+  };
+}
+
 /** Whether a console message is one of React's hydration warnings. */
 function isHydrationWarning(args: readonly unknown[]): boolean {
   return args.some((arg) => typeof arg === "string" && /hydrat/iu.test(arg));
@@ -652,6 +686,8 @@ function isHydrationWarning(args: readonly unknown[]): boolean {
  * then that mentions hydration counts. React's development build logs those warnings and its
  * production build doesn't, so test with the development build. The server render runs in the
  * test's own environment, so code that checks for `window` takes its browser branch there too.
+ * Without the Popover API, as in jsdom, its methods do nothing until the calendar unmounts, as
+ * they would in a browser with no popup open.
  */
 export async function hydrateCalendar<
   TEvent,
@@ -676,7 +712,14 @@ export async function hydrateCalendar<
   HydratedCalendarHarness<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>
 > {
   const { element, harness } = setUp(Calendar, options);
-  const serverMarkup = renderToString(element(), { identifierPrefix: options.identifierPrefix });
+  const returnPopoverApi = lendPopoverApi();
+  let serverMarkup: string;
+  try {
+    serverMarkup = renderToString(element(), { identifierPrefix: options.identifierPrefix });
+  } catch (error) {
+    returnPopoverApi();
+    throw error;
+  }
   const { container, owns } = containerFor(options);
   container.innerHTML = serverMarkup;
   const problems: unknown[] = [];
@@ -705,11 +748,12 @@ export async function hydrateCalendar<
       // The root may already be gone with its error.
     }
     if (owns) container.remove();
+    returnPopoverApi();
     throw error;
   } finally {
     console.error = consoleError;
   }
-  const hydrated = harness(container, root!, recoverableErrors, owns);
+  const hydrated = harness(container, root!, recoverableErrors, owns, returnPopoverApi);
   if (problems.length > 0) {
     await hydrated.unmount();
     throw new HydrationMismatchError(problems, serverMarkup);

@@ -477,6 +477,34 @@ test("a view draws a custom composition of the parts", async () => {
   ]);
 });
 
+test("a mark's render element keeps its own handlers, and the mark's run after them", async () => {
+  const pressed: string[] = [];
+  function Bars({ marks: columnMarks }: TimeGridAnnotationsProps) {
+    return (
+      <AnnotationRail>
+        {columnMarks.map((mark) => (
+          <AnnotationMark
+            key={mark.key}
+            mark={mark}
+            render={<div data-custom="" onMouseDown={() => pressed.push(mark.key)} />}
+          />
+        ))}
+      </AnnotationRail>
+    );
+  }
+  const container = await renderDay({
+    view: createDayView<ColoredEvent>({ annotations: { Annotations: Bars } }),
+  });
+  const mark = container.querySelector<HTMLElement>("[data-custom]")!;
+  const press = new MouseEvent("mousedown", { bubbles: true, cancelable: true });
+  mark.dispatchEvent(press);
+
+  expect(pressed).toHaveLength(1);
+  // The mark's own handler keeps a press from focusing it in the aria-hidden rail.
+  expect(press.defaultPrevented).toBe(true);
+  expect(mark.dataset.slot).toBe("annotation-mark");
+});
+
 test("a week view draws each day's annotations in its own column", async () => {
   const Calendar = calendarWith(createWeekView<ColoredEvent>());
   const rendered = await render(

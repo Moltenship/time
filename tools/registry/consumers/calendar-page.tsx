@@ -12,7 +12,6 @@ import {
 } from "@moltenship/calendar";
 import { useState } from "react";
 
-import { TooltipProvider } from "@/components/ui/tooltip";
 import { calendarAnnouncements } from "@/components/calendar/announcements";
 import { CalendarHistoryToast } from "@/components/calendar/calendar-history-toast/calendar-history-toast";
 import { CalendarToolbar } from "@/components/calendar/calendar-toolbar";
@@ -117,7 +116,7 @@ export default function CalendarPage() {
   const [history] = useState(() => createEventHistory<Meeting, string, string>());
 
   return (
-    <TooltipProvider>
+    <>
       <MiniMonth
         locale="en-US"
         onSelectDate={setSelectedDate}
@@ -153,6 +152,6 @@ export default function CalendarPage() {
         <CalendarHistoryToast calendar={Calendar} history={history} />
       </Calendar.Root>
       {dialog}
-    </TooltipProvider>
+    </>
   );
 }

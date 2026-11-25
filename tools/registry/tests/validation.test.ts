@@ -11,7 +11,7 @@ describe("shadcn registry validation", () => {
     const report = await validateRegistryWorkspace(workspaceRoot);
 
     expect(report.issues).toEqual([]);
-    expect(report.manifests).toBe(29);
+    expect(report.manifests).toBe(30);
   });
 
   test("known-bad registry fixture fails for every protected contract", async () => {

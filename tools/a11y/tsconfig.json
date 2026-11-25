@@ -4,6 +4,8 @@
     "jsx": "react-jsx",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "paths": {
+      // The demo's shadcn components, where an app keeps its own.
+      "@/components/ui/*": ["../../apps/demo/src/components/ui/*"],
       "@registry/*": ["../../registry/*"]
     },
     "types": ["vite-plus/client"]

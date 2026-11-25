@@ -24,7 +24,6 @@ import {
   createThreeDayView,
   createWeekView,
 } from "@registry/time-grid-view/time-grid-view";
-import { TooltipProvider } from "@registry/ui/tooltip";
 import { createYearView } from "@registry/year-view/year-view";
 
 import { render, until } from "./render";
@@ -108,32 +107,30 @@ const events: readonly Fixture[] = [
 /** A phone's calendar: the toolbar with a view switcher over the view. */
 function Phone({ anchor = "2026-10-08", view }: { readonly anchor?: string; readonly view: View }) {
   return (
-    <TooltipProvider>
-      <Calendar.Root
-        defaultAnchorDate={Temporal.PlainDate.from(anchor)}
-        defaultTimeZone="UTC"
-        defaultView={view}
-        events={events}
-        locale="en-US"
-        now={Temporal.Instant.from("2026-10-08T10:20:00Z")}
-        onEventChange={() => {}}
-        resources={resources}
-        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-      >
-        <Calendar.Frame className="flex h-dvh flex-col">
-          <CalendarToolbar calendar={Calendar} className="border-b">
-            <ViewSwitcher
-              onValueChange={() => {}}
-              options={[{ label: "Resources", value: view }]}
-              value={view}
-            />
-          </CalendarToolbar>
-          <Calendar.Viewport className="min-h-0 flex-1">
-            <Calendar.ActiveView />
-          </Calendar.Viewport>
-        </Calendar.Frame>
-      </Calendar.Root>
-    </TooltipProvider>
+    <Calendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from(anchor)}
+      defaultTimeZone="UTC"
+      defaultView={view}
+      events={events}
+      locale="en-US"
+      now={Temporal.Instant.from("2026-10-08T10:20:00Z")}
+      onEventChange={() => {}}
+      resources={resources}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Calendar.Frame className="flex h-dvh flex-col">
+        <CalendarToolbar calendar={Calendar} className="border-b">
+          <ViewSwitcher
+            onValueChange={() => {}}
+            options={[{ label: "Resources", value: view }]}
+            value={view}
+          />
+        </CalendarToolbar>
+        <Calendar.Viewport className="min-h-0 flex-1">
+          <Calendar.ActiveView />
+        </Calendar.Viewport>
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }
 

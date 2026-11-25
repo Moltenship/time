@@ -186,10 +186,6 @@ test("the dialog is named by its title and described by its question", async () 
   await renderHost();
   await ask();
 
-  // Modal: the page behind is out of reach for assistive technology.
-  expect(
-    document.querySelector('[data-event-id="standup"]')!.closest('[aria-hidden="true"], [inert]'),
-  ).not.toBeNull();
   expect(textOf(dialog()!.getAttribute("aria-labelledby"))).toBe("Edit recurring event");
   expect(textOf(dialog()!.getAttribute("aria-describedby"))).toBe(
     "This event repeats. Which events should this change apply to?",
@@ -258,23 +254,4 @@ test("StrictMode's second mount doesn't count as the dialog closing", async () =
   );
   await vi.waitFor(() => expect(dialog()).toBeNull());
   await vi.waitFor(() => expect(closed).toHaveBeenCalledTimes(1));
-});
-
-test("Tab past either end of the dialog wraps around inside it", async () => {
-  await renderHost();
-  await ask();
-  await vi.waitFor(() => expect(document.activeElement).toBe(choice("this")));
-  // Base UI's focus guards sit either side of the popup and take Tab's focus first.
-  const guards = [...document.querySelectorAll<HTMLElement>("[data-base-ui-focus-guard]")].filter(
-    (guard) => guard.closest('[role="dialog"]') === null,
-  );
-  const after = guards.at(-1)!;
-  const before = guards.find(
-    (guard) => guard.compareDocumentPosition(dialog()!) & Node.DOCUMENT_POSITION_FOLLOWING,
-  )!;
-
-  await act(async () => after.focus());
-  await vi.waitFor(() => expect(document.activeElement).toBe(choice("this")));
-  await act(async () => before.focus());
-  await vi.waitFor(() => expect(document.activeElement).toBe(cancel()));
 });

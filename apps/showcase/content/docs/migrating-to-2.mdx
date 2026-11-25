@@ -18,18 +18,18 @@ names the types 2.0 widened.
 
 ## In short
 
-| Change                                                                | Do this                                                                            | Who it affects                                                                  |
-| --------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
-| `@ui-sdk/core` and `@ui-sdk/react` are peer dependencies              | [Install them](#install-the-new-peer-dependencies)                                 | Everyone                                                                        |
-| `CalendarInputMethod` has a fourth value, `"agent"`                   | [Handle it](#handle-the-agent-input)                                               | Code that switches on `detail.input`                                            |
-| `onEventChange` and policies get the proposal's detail, with `fields` | [Check handlers with a second parameter](#handlers-and-policies-hear-who-proposed) | Handlers with an optional second parameter, and code that calls a typed handler |
-| The toolbar parts and the frame render a `data-slot` attribute        | [Check selectors on `data-slot="calendar"`](#the-parts-have-data-slot)             | Apps with shadcn's date picker, or such CSS                                     |
-| State handlers hear `reason`, `source`, `event` and can `cancel()`    | Nothing. [Use it](#state-handlers-hear-why-and-who)                                | Code that builds a `detail` by hand, in tests                                   |
-| Actions take options last                                             | [Wrap an action used as an event handler](#actions-take-options)                   | Code such as `onClick={actions.navigateNext}`                                   |
-| `Root` has `label`, `allowAgentDelete` and `formatAgentEventLabel`    | [Name your calendar](#name-the-calendar)                                           | Apps that want agents, or a fixed name                                          |
-| The store and state types moved to `@moltenship/calendar-primitives`  | Nothing: [the old imports still work](#new-packages)                               | Nobody                                                                          |
-| `useCalendarPointer` moved to `@moltenship/calendar-react`            | [Import it from there](#the-pointer-hook-moved)                                    | Code that imports it from `@moltenship/calendar-dnd`                            |
-| The registry's controls come from a new item, `calendar-ui`           | [Add the registry's items again](#add-the-registrys-items-again)                   | Apps with the Tailwind items from the registry                                  |
+| Change                                                                                  | Do this                                                                            | Who it affects                                                                  |
+| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| `@ui-sdk/core` and `@ui-sdk/react` are peer dependencies                                | [Install them](#install-the-new-peer-dependencies)                                 | Everyone                                                                        |
+| `CalendarInputMethod` has a fourth value, `"agent"`                                     | [Handle it](#handle-the-agent-input)                                               | Code that switches on `detail.input`                                            |
+| `onEventChange` and policies get the proposal's detail, with `fields`                   | [Check handlers with a second parameter](#handlers-and-policies-hear-who-proposed) | Handlers with an optional second parameter, and code that calls a typed handler |
+| The toolbar parts and the frame render a `data-slot` attribute                          | [Check selectors on `data-slot="calendar"`](#the-parts-have-data-slot)             | Apps with shadcn's date picker, or such CSS                                     |
+| State handlers hear `reason`, `source`, `event` and can `cancel()`                      | Nothing. [Use it](#state-handlers-hear-why-and-who)                                | Code that builds a `detail` by hand, in tests                                   |
+| Actions take options last                                                               | [Wrap an action used as an event handler](#actions-take-options)                   | Code such as `onClick={actions.navigateNext}`                                   |
+| `Root` has `label`, `allowAgentDelete` and `formatAgentEventLabel`                      | [Name your calendar](#name-the-calendar)                                           | Apps that want agents, or a fixed name                                          |
+| The store and state types moved to `@moltenship/calendar-primitives`                    | Nothing: [the old imports still work](#new-packages)                               | Nobody                                                                          |
+| `useCalendarPointer` moved to `@moltenship/calendar-react`                              | [Import it from there](#the-pointer-hook-moved)                                    | Code that imports it from `@moltenship/calendar-dnd`                            |
+| The registry's controls and popups come from a new item, `calendar-ui`, without Base UI | [Add the registry's items again](#add-the-registrys-items-again)                   | Apps with the Tailwind items from the registry                                  |
 
 What didn't change: the engine, what the registry's views do, the `data-calendar-part` attributes
 and the other attributes your CSS and tests target, the keyboard model, and every hook's name and return
@@ -204,9 +204,10 @@ frame too. Scope such a selector to the date picker, or select the scheduler by
 
 ## Add the registry's items again
 
-In 1.x the registry's Tailwind items used shadcn's `button`, `badge`, `tooltip` and `select` from
-your app's `components/ui`, so a change you made there changed the calendar too. In 2.0 they use
-`calendar-ui`, the calendar's own controls, built on ui-sdk. The controls no longer follow your
+In 1.x the registry's Tailwind items used shadcn's `button`, `badge`, `tooltip`, `select`,
+`popover` and `dialog` from your app's `components/ui`, and Base UI's toast, so a change you made
+there changed the calendar too, and your app needed a Base UI style. In 2.0 they use
+`calendar-ui`, the calendar's own controls, built on ui-sdk, and no longer need Base UI. The controls no longer follow your
 app's `components/ui`: they look the same in every app, and you restyle them in their own files.
 They are a default and the files are yours, so you can still put your own components in their
 place. [Customization](/docs/customization) lists every way to change the calendar's UI.
@@ -217,8 +218,9 @@ place. [Customization](/docs/customization) lists every way to change the calend
    npx shadcn@latest add https://time.molten.sh/r/calendar-full.json
    ```
 
-   This now installs `calendar-ui` too: `button.tsx`, `badge.tsx`, `tooltip.tsx` and `select.tsx`
-   in `components/calendar/ui/`, with the classes each one uses in a `*.styles.ts` file beside it.
+   This now installs `calendar-ui` too: `button.tsx`, `badge.tsx`, `tooltip.tsx`, `select.tsx`,
+   `popover.tsx`, `dialog.tsx` and `toast.tsx` in `components/calendar/ui/`, with the classes each
+   one uses in a `*.styles.ts` file beside it.
    It adds `@ui-sdk/core` and `@ui-sdk/react` if your app doesn't have them yet. `shadcn add` asks
    before it replaces a file you changed; redo your changes on the new files.
 
@@ -230,23 +232,43 @@ place. [Customization](/docs/customization) lists every way to change the calend
    @import "tailwindcss";
    ```
 
-   The view select's list and the toolbar's tooltips open in the browser's top layer, through the
-   Popover API, so the registry's items now need Chrome and Edge 114, Safari 17 or Firefox 125. In
+   The calendar's popups, from the view select's list and the tooltips to the popovers, the
+   recurrence dialog and the undo toast, open in the browser's top layer, through the Popover API,
+   so the registry's items now need Chrome and Edge 114, Safari 17 or Firefox 125. In
    an older browser they render at the end of the page, and a server-rendered page doesn't
    hydrate them cleanly.
 
-3. If you restyled the calendar's buttons, badges, tooltips or the view switcher through
-   `components/ui`, make those changes in `components/calendar/ui/` instead. To keep using your
-   own components there, make those files render them, as
+3. If you restyled the calendar's buttons, badges, tooltips, popovers, dialogs or the view
+   switcher through `components/ui`, make those changes in `components/calendar/ui/` instead. To
+   keep using your own components there, make those files render them, as
    [Use your own controls](/docs/theming#use-your-own-controls) shows.
+
+4. The items no longer install shadcn's components or `@base-ui/react`, and any shadcn style
+   works. Keep the ones your app uses itself; the calendar doesn't need them. An app without
+   shadcn's tokens can add `base-tokens`, as [UI source](/docs/installation#ui-source-optional)
+   shows.
 
 An [agent bridge](/docs/agents/connect) now lists the toolbar's buttons and the view select
 beside the calendar, as `button` and `select` entries, and your `allow` hears the steps an agent
-takes on them. The toolbar's tooltips no longer need a `TooltipProvider`, and they don't follow
-its `delay`: they open after 400 ms, which `tooltipDefaults` in
-`components/calendar/ui/tooltip.styles.ts` sets. The week and day views' event tooltips, the
-popovers and the dialogs still use shadcn's components, so keep the provider if you use
-`time-grid-view`. The `stylex-` items don't change.
+takes on them. The calendar's tooltips no longer need a `TooltipProvider`, and they don't follow
+its `delay`: the toolbar's open after 400 ms, which `tooltipDefaults` in
+`components/calendar/ui/tooltip.styles.ts` sets. The `stylex-` items don't change.
+
+If you edited the views, a few of their own props changed with the move:
+
+- `renderUnavailable` is a function of the band's props and its state, `(props, state) =>
+element`. An element alone no longer works: wrap it in a function that spreads `props` on it.
+- `AnnotationMark`'s `render` takes an element, and the mark's props merge into it. A function no
+  longer works.
+- The history toast's `recordedAnnouncement(step, title)` message is now
+  `recordedHint(step)`. It returns only the part after the toast's title, such as "To undo it,
+  press F6 and choose Undo.", since the title is read first. A screen reader now reads every toast
+  as it shows, after the announcement of the gesture that caused it.
+- A popover trigger has `aria-expanded` while its popover is open, in place of Base UI's
+  `data-popup-open`. Style it with `aria-expanded:`.
+- The time grid's event tooltips share one tooltip per view. A composition that renders
+  `TimeGridEvent` outside the registry's views wraps them in `TimeGridEventTooltip` to do the
+  same; without it, each event brings its own.
 
 ## Name the calendar
 
@@ -351,10 +373,9 @@ never reaches a view bound through the other.
   handler. Only a real pointer reads `"mouse"`.
 - **The frame's name.** A test that finds the frame by its accessible name finds the `label` once
   you set one.
-- **The view switcher in jsdom.** The registry's select is ui-sdk's, which reads
-  `performance.getEntriesByType` before it places its list, and jsdom has no such method. A test
-  setup file that renders the view switcher adds one:
-  `performance.getEntriesByType ??= () => [];`.
+- **The registry's controls in jsdom.** They're ui-sdk's, which read paint timing, measure
+  toasts and wait for transitions, none of which jsdom has, and jsdom hides every popup. Add the
+  stubs [Testing](/docs/testing#set-up-vitest) lists to your test setup file.
 - **Agent changes.** [Testing](/docs/testing#changes-an-agent-makes) shows how to run an agent's
   step in a test.
 

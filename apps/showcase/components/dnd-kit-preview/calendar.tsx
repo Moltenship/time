@@ -1,8 +1,6 @@
 import { BacklogCalendar, type Meeting, type Task } from "@/content/examples/dnd-kit-backlog";
 import { useState } from "react";
 
-import { TooltipProvider } from "@registry/ui/tooltip";
-
 /** Tasks in the backlog to start with. */
 export const sampleTasks: readonly Task[] = [
   { id: "task-report", minutes: 90, title: "Draft the report" },
@@ -30,13 +28,11 @@ export default function DndKitPreviewCalendar() {
   const [timeZone] = useState(() => Temporal.Now.timeZoneId());
   const [today] = useState(() => Temporal.Now.plainDateISO(timeZone));
   return (
-    <TooltipProvider delay={400}>
-      <BacklogCalendar
-        anchorDate={today}
-        initialMeetings={sampleMeetings(today, timeZone)}
-        initialTasks={sampleTasks}
-        timeZone={timeZone}
-      />
-    </TooltipProvider>
+    <BacklogCalendar
+      anchorDate={today}
+      initialMeetings={sampleMeetings(today, timeZone)}
+      initialTasks={sampleTasks}
+      timeZone={timeZone}
+    />
   );
 }

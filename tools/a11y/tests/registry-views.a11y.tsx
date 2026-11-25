@@ -124,3 +124,33 @@ describe.each(themes)("registry views, %s theme", (theme) => {
     expect(await seriousViolations()).toEqual([]);
   });
 });
+
+test("an annotation's tooltip follows the pointer up and down its mark", async () => {
+  setTheme("light");
+  await render(<RegistryScreen view="week" />);
+  const marks = [...document.querySelectorAll<HTMLElement>('[data-slot="annotation-mark"]')];
+  const mark = marks.reduce((tallest, next) =>
+    next.getBoundingClientRect().height > tallest.getBoundingClientRect().height ? next : tallest,
+  );
+  const { height, width } = mark.getBoundingClientRect();
+  // Tall enough that its ends are far apart.
+  expect(height).toBeGreaterThan(60);
+  const tooltip = () =>
+    document.querySelector<HTMLElement>('[data-slot="tooltip-content"][data-open]');
+  const middle = () => {
+    const box = tooltip()!.getBoundingClientRect();
+    return box.y + box.height / 2;
+  };
+
+  await userEvent.hover(mark, { position: { x: width / 2, y: 4 } });
+  await until(() => expect(tooltip()).not.toBeNull());
+  const near = mark.getBoundingClientRect().y + 4;
+  await until(() => expect(Math.abs(middle() - near)).toBeLessThan(12));
+
+  await userEvent.hover(mark, { position: { x: width / 2, y: height - 4 } });
+  const far = mark.getBoundingClientRect().bottom - 4;
+  await until(() => expect(Math.abs(middle() - far)).toBeLessThan(12));
+  // Beside the mark, at the inline end, wherever the pointer is.
+  expect(tooltip()!.getBoundingClientRect().x).toBeGreaterThan(mark.getBoundingClientRect().right);
+  await userEvent.unhover(mark);
+});

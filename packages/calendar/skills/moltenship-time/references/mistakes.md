@@ -27,7 +27,7 @@ These are the mistakes this library's shape makes easy: the ones a coding agent 
 | A calendar with no height                                      | Give `Calendar.Frame` a height; `Viewport` takes `min-h-0 flex-1`                            |
 | Missing `"use client"` in the App Router                       | Calendar modules are Client Components                                                       |
 | Wrapping the calendar in a context "provider" you invented     | `Root` is the provider. There is no other                                                    |
-| `shadcn add` into an app whose style isn't `base-*`            | The views need Base UI primitives. Check `components.json` first                             |
+| `shadcn add` into an app without shadcn's tokens               | The views read `--background`, `--primary` and the rest. Add `base-tokens`                   |
 | Installing only `@moltenship/calendar` on 2.0                  | Also `@ui-sdk/core` and `@ui-sdk/react`, on the calendar's version                           |
 | No `@layer ui-sdk;` before `@import "tailwindcss"`             | ui-sdk's popover CSS wins over Tailwind: the view select's list loses its look               |
 | Selecting `[data-slot="calendar"]` to find a shadcn date picker | In 2.0 `Calendar.Frame` renders it too. Scope the selector, or use `data-calendar-part="frame"` for the scheduler |

@@ -46,10 +46,6 @@ const dialog = () => document.querySelector<HTMLElement>('[role="dialog"]');
 const event = () => document.querySelector<HTMLElement>('[data-event-id="standup"]')!;
 const answer = () => document.querySelector('[data-testid="answer"]')!.textContent;
 const focusedText = () => document.activeElement?.textContent;
-/**
- * Tab past either end lands on the dialog's focus guard, which moves focus on to the other end in
- * the next animation frame, so wait for it.
- */
 const focusReaches = (text: string) => until(() => expect(focusedText()).toBe(text));
 const textOf = (ids: string | null) =>
   (ids ?? "")
@@ -79,6 +75,8 @@ test("the dialog is named by its title and described by its question", async () 
   await render(<Page action="delete" />);
   await openFromKeyboard();
 
+  // Modal: the page behind is out of reach, for a pointer and assistive technology alike.
+  await until(() => expect(event().closest("[inert]")).not.toBeNull());
   expect(textOf(dialog()!.getAttribute("aria-labelledby"))).toBe("Delete recurring event");
   expect(textOf(dialog()!.getAttribute("aria-describedby"))).toBe(
     "“Standup” repeats. Which events do you want to delete?",

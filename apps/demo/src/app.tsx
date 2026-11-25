@@ -6,9 +6,9 @@ import { useRef } from "react";
 import { calendarAnnouncements } from "@registry/calendar/announcements";
 import { CalendarHistoryToast } from "@registry/calendar-history-toast/calendar-history-toast";
 import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-recurrence-scope-prompt";
-import { Button } from "@registry/ui/button";
-import { Sheet, SheetContent, SheetTitle } from "@registry/ui/sheet";
-import { TooltipProvider } from "@registry/ui/tooltip";
+import { Button } from "./components/ui/button";
+import { Sheet, SheetContent, SheetTitle } from "./components/ui/sheet";
+import { TooltipProvider } from "./components/ui/tooltip";
 
 import { DemoCalendar } from "./calendar";
 import { ActivityList } from "./components/activity-list";

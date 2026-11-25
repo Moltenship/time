@@ -44,6 +44,25 @@ throw an error that says so when `Temporal` is missing.
 if (!("Temporal" in globalThis)) await import("temporal-polyfill/global");
 ```
 
+The registry's controls are ui-sdk's, which read paint timing, measure toasts and wait for
+transitions, none of which jsdom has. jsdom's stylesheet also hides every popup that isn't
+`:popover-open`, which nothing matches without the Popover API. A test that renders them adds
+these to the setup file:
+
+```ts title="tests/setup.ts"
+performance.getEntriesByType ??= () => [];
+globalThis.ResizeObserver ??= class {
+  disconnect() {}
+  observe() {}
+  unobserve() {}
+};
+Element.prototype.getAnimations ??= () => [];
+// ui-sdk marks an open popup `data-open`; jsdom weighs its rules by specificity alone.
+const popups = document.createElement("style");
+popups.textContent = "[popover][data-open] { display: block !important; }";
+document.head.append(popups);
+```
+
 The harness turns on React's `IS_REACT_ACT_ENVIRONMENT` flag when it first renders, unless your
 setup set it already.
 

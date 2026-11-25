@@ -80,7 +80,8 @@ pass `{ input: "keyboard" }`.
 
 ## Undo toast
 
-The registry's `calendar-history-toast` item is an "Undo" toast built on Base UI's Toast. After each
+The registry's `calendar-history-toast` item is an "Undo" toast built on the calendar's toast, in
+`components/calendar/ui/toast.tsx`. After each
 change it offers to undo it, and after an undo, to redo it. It also adds the keys above in the
 calendar's frame and speaks undo and redo through the `Announcer`. Install it with the
 [shadcn CLI](/docs/installation#ui-source-optional), then render it inside `Root`:
@@ -106,11 +107,11 @@ import { CalendarHistoryToast } from "@/components/calendar/calendar-history-toa
 
 One toast shows at a time, and a cleared history closes it. A message that returns `null` shows no
 toast and closes the one on screen: the English set does so for an empty stack or a change you
-cancelled. The toast's region doesn't speak, so nothing is said twice: changes made by a gesture
-are announced as they're made, and undo and redo by the `Announcer`. Deletes, updates and changes
-from your own UI, which no gesture announced, are spoken once with how to reach Undo
-(`recordedAnnouncement`), and that toast stays at least 10 seconds, long enough to hear it out and
-press F6. The region's name is `region`.
+cancelled. A screen reader reads each toast as it shows. Changes made by a gesture are announced
+as they're made, so their toast's title follows that announcement, and undo and redo are spoken by
+the `Announcer` too. Deletes, updates and changes from your own UI, which no gesture announced,
+add how to reach Undo after the title (`recordedHint`), and that toast stays at least 10 seconds,
+long enough to hear it out and press F6. The region's name is `region`.
 
 ## What gets recorded
 

@@ -70,13 +70,18 @@ function declarationsOf(container: Container<ChildNode>, where: string): Declara
   return declarations;
 }
 
-/** `:root` and `.dark` hold tokens: the calendar's ones ship, the stock shadcn ones are the app's. */
-function calendarTokens(rule: Rule): Declarations {
+/**
+ * `:root` and `.dark` hold tokens: the calendar's ones ship, the stock shadcn ones are the app's,
+ * unless the item is the one that gives an app without them shadcn's (`standard`).
+ */
+function calendarTokens(rule: Rule, standard: boolean): Declarations {
   const tokens: Declarations = {};
   for (const [property, value] of Object.entries(declarationsOf(rule, selectorOf(rule)))) {
     if (property.startsWith("--calendar-")) {
       tokens[property] = value;
-    } else if (!standardCssVariables.has(property.slice(2))) {
+    } else if (standardCssVariables.has(property.slice(2))) {
+      if (standard) tokens[property] = value;
+    } else {
       throw new Error(
         `${selectorOf(rule)} sets ${property}, which is neither a calendar token nor a stock shadcn one`,
       );
@@ -100,13 +105,18 @@ function readRules(container: AtRule, where: string): Record<string, Declaration
  * merges it into the app's own stylesheet with the file's structure: the `@theme inline` mappings,
  * and the tokens and rules inside `@layer base`, where the app's own unlayered rules win over them
  * as they do over the file. The stock shadcn tokens the file also sets, for apps without them, are
- * left out: a shadcn app defines its own.
+ * left out: a shadcn app defines its own. `standard` keeps them, for `base-tokens`, which gives an
+ * app without them shadcn's.
  *
  * The tokens go in `css`, not in `cssVars.light` and `cssVars.dark`: shadcn writes those to the
  * app's unlayered `:root` and `.dark`, where CSS pasted from the theme builder couldn't override
  * them.
  */
-export function themeCssToRegistry(source: string, from: string): ThemeRegistryCss {
+export function themeCssToRegistry(
+  source: string,
+  from: string,
+  { standard = false }: { readonly standard?: boolean } = {},
+): ThemeRegistryCss {
   const root = postcss.parse(source, { from });
   const theme: Declarations = {};
   const css: CssBlock = {};
@@ -115,7 +125,10 @@ export function themeCssToRegistry(source: string, from: string): ThemeRegistryC
     if (node.type === "comment") continue;
     if (node.type === "atrule" && node.name === "theme") {
       for (const [property, value] of Object.entries(declarationsOf(node, "@theme"))) {
-        if (property.startsWith("--color-calendar-")) {
+        if (
+          property.startsWith("--color-calendar-") ||
+          (standard && isStandardThemeMapping(property))
+        ) {
           setOnce(theme, property.slice(2), value, "@theme");
         } else if (!isStandardThemeMapping(property)) {
           throw new Error(
@@ -132,7 +145,7 @@ export function themeCssToRegistry(source: string, from: string): ThemeRegistryC
         const selector = selectorOf(child);
         const declarations =
           selector === ":root" || selector === ".dark"
-            ? calendarTokens(child)
+            ? calendarTokens(child, standard)
             : declarationsOf(child, `${key} ${selector}`);
         setOnce(rules, selector, declarations, key);
       }

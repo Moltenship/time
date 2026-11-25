@@ -2,7 +2,7 @@ import { PlusIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { MiniMonth } from "@registry/calendar/mini-month";
-import { Button } from "@registry/ui/button";
+import { Button } from "./ui/button";
 
 import { DemoCalendar } from "../calendar";
 import type { DemoCalendarId } from "../calendars";

@@ -77,7 +77,7 @@ describe("registry build", () => {
 
     expect(source).not.toContain("@registry/");
     expect(source).toContain('from "@/components/calendar/event-chip"');
-    expect(source).toContain('from "@/components/ui/popover"');
+    expect(source).toContain('from "@/components/calendar/ui/popover"');
     expect(source).toContain('from "./month-week"');
     expect(monthView.files!.map(({ target }) => target)).toContain(
       "@components/calendar/month-view/month-view.tsx",
@@ -103,9 +103,9 @@ describe("registry build", () => {
       "lucide-react",
     ]);
     expect(monthView.registryDependencies).toEqual([
-      "popover",
       `${baseUrl}/calendar.json`,
       `${baseUrl}/calendar-theme.json`,
+      `${baseUrl}/calendar-ui.json`,
     ]);
     expect(monthView.meta?.compatibility).toEqual({ "@moltenship/calendar": `^${version}` });
     expect(manifest.runtime).toEqual({ "@moltenship/calendar": version });
@@ -143,6 +143,21 @@ describe("registry build", () => {
     for (const [, property] of source.matchAll(/^\s*(--calendar-[\w-]+):/gmu)) {
       expect(shipped, property).toContain(`"${property}"`);
     }
+  });
+
+  test("base-tokens gives an app without shadcn's theme its tokens, in the base layer", async () => {
+    const tokens = await readItem("base-tokens");
+    const base = tokens.css?.["@layer base"] as Record<string, Record<string, string>>;
+
+    expect(tokens.files).toBeUndefined();
+    expect(tokens.cssVars?.theme?.["color-primary"]).toBe("var(--primary)");
+    expect(tokens.cssVars?.theme?.["radius-lg"]).toBe("var(--radius)");
+    expect(base[":root"]?.["--background"]).toBe("oklch(1 0 0)");
+    expect(base[".dark"]?.["--background"]).toBe("oklch(0.145 0 0)");
+    // A shadcn app keeps its own: the full install doesn't bring them.
+    expect(manifest.items.find(({ name }) => name === fullItemName)?.items).not.toContain(
+      "base-tokens",
+    );
   });
 
   test("two builds write the same bytes", async () => {

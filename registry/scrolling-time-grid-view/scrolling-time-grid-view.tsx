@@ -54,6 +54,7 @@ import {
   TimeGridColumn,
   useTimeGridColumnFormats,
 } from "@registry/time-grid-view/time-grid-column";
+import { TimeGridEventTooltip } from "@registry/time-grid-view/time-grid-event";
 import { offsetLabel, TimeGridDayHeaders } from "@registry/time-grid-view/time-grid-header";
 import type { TimeGridViewOptions } from "@registry/time-grid-view/time-grid-view";
 import {
@@ -291,7 +292,7 @@ export function ScrollingTimeGridView<TEvent>({
   const gutter = "shrink-0 w-(--calendar-gutter-width) bg-calendar-surface";
 
   return (
-    <>
+    <TimeGridEventTooltip>
       {/* Rows: day headers, all-day events, and the timed day columns; each starts with a gutter cell. */}
       <div
         ref={pointerRef}
@@ -444,7 +445,7 @@ export function ScrollingTimeGridView<TEvent>({
       {annotations !== undefined && (
         <TimeGridAnnotationOverlays formatTime={formats.time} handles={annotationHandles} />
       )}
-    </>
+    </TimeGridEventTooltip>
   );
 }
 

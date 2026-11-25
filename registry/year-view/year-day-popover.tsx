@@ -1,14 +1,13 @@
 "use client";
 
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import type { EventDayFragment, EventId, ResourceId, YearDay } from "@moltenship/calendar";
 import { useRef, type ReactNode, type RefObject } from "react";
 
 import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import { Popover, PopoverContent } from "@registry/calendar-ui/popover";
 import { cn } from "cn";
-import { PopoverContent } from "@registry/ui/popover";
 
 import type { YearDayPopoverHandle, YearFormats } from "./year-month";
 
@@ -83,7 +82,7 @@ export interface YearDayPopoverProps<TEvent> {
 }
 
 /**
- * One popover for every day of the year, through Base UI's detached triggers, so the year never
+ * One popover for every day of the year, through a handle every day shares, so the year never
  * mounts hundreds of roots. It lists the day's events and opens the day from its date. Closing it
  * returns focus to the day, unless a click outside focused something else.
  */
@@ -100,7 +99,7 @@ export function YearDayPopover<TEvent>({
   const popup = useRef<HTMLDivElement>(null);
 
   return (
-    <PopoverPrimitive.Root handle={handle}>
+    <Popover handle={handle}>
       {({ payload: date }) => {
         if (date === undefined) return null;
         const fragments = days.get(date.toString())?.fragments ?? [];
@@ -109,21 +108,15 @@ export function YearDayPopover<TEvent>({
           <PopoverContent
             ref={popup}
             aria-label={`Events on ${name}`}
-            className="max-h-(--available-height) w-64 gap-0 p-2"
+            className="w-64 gap-0 p-2"
             // The popup takes focus, from a pointer or a key alike; Tab then reaches its events.
             initialFocus={popup}
-            finalFocus={() => {
-              // An outside click that focused something else keeps that focus.
-              const active = document.activeElement;
-              if (active !== null && active !== document.body && !popup.current?.contains(active)) {
-                return false;
-              }
-              return (
-                view.current?.querySelector<HTMLElement>(
-                  `[role="gridcell"][data-date="${date.toString()}"]`,
-                ) ?? false
-              );
-            }}
+            // The day's cell, the view's tab stop; ui-sdk leaves focus alone after a click outside.
+            finalFocus={() =>
+              view.current?.querySelector<HTMLElement>(
+                `[role="gridcell"][data-date="${date.toString()}"]`,
+              ) ?? null
+            }
           >
             <div className="flex flex-col items-center gap-0.5 pb-2">
               <span className="text-[0.6875rem] font-medium text-muted-foreground uppercase">
@@ -158,6 +151,6 @@ export function YearDayPopover<TEvent>({
           </PopoverContent>
         );
       }}
-    </PopoverPrimitive.Root>
+    </Popover>
   );
 }

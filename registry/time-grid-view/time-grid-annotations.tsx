@@ -1,8 +1,5 @@
 "use client";
 
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
-import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
-import { useRender } from "@base-ui/react/use-render";
 import {
   useCalendarAnnotations,
   useTimeGridAnnotations,
@@ -14,6 +11,7 @@ import {
 import { cva, type VariantProps } from "class-variance-authority";
 import { XIcon } from "lucide-react";
 import {
+  cloneElement,
   createContext,
   use,
   useMemo,
@@ -23,6 +21,7 @@ import {
   type ComponentType,
   type CSSProperties,
   type MouseEvent,
+  type ReactElement,
   type ReactNode,
 } from "react";
 
@@ -31,8 +30,20 @@ import {
   type CalendarEventColor,
 } from "@registry/calendar-theme/event-colors";
 import { Button } from "@registry/calendar-ui/button";
-import { PopoverContent } from "@registry/ui/popover";
-import { TooltipContent } from "@registry/ui/tooltip";
+import {
+  createPopoverHandle,
+  Popover,
+  PopoverClose,
+  PopoverContent,
+  PopoverTitle,
+  PopoverTrigger,
+} from "@registry/calendar-ui/popover";
+import {
+  createTooltipHandle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@registry/calendar-ui/tooltip";
 import { cn } from "cn";
 
 import { annotationRange, type AnnotationFormats } from "./annotation-label";
@@ -239,8 +250,8 @@ export function eventsBesideMarks(
 
 export function useAnnotationHandles() {
   const [handles] = useState(() => ({
-    popover: PopoverPrimitive.createHandle<TimeGridAnnotationMarkData>(),
-    tooltip: TooltipPrimitive.createHandle<TimeGridAnnotationMarkData>(),
+    popover: createPopoverHandle<TimeGridAnnotationMarkData>(),
+    tooltip: createTooltipHandle<TimeGridAnnotationMarkData>(),
   }));
   return handles;
 }
@@ -337,15 +348,17 @@ export const annotationMarkVariants = cva(
 );
 
 export interface AnnotationMarkProps
-  extends useRender.ComponentProps<"div">, VariantProps<typeof annotationMarkVariants> {
+  extends ComponentProps<"div">, VariantProps<typeof annotationMarkVariants> {
   readonly mark: TimeGridAnnotationMarkData;
   /** Opens the details popover on click. */
   readonly details?: boolean;
+  /** Your own element in place of the `div`; the mark's props merge into it. */
+  readonly render?: ReactElement<ComponentProps<"div">>;
 }
 
 /**
  * One mark, wired to the grid's tooltip and details popover. Children read it through
- * `useAnnotationMark`; `render` swaps the element, as everywhere in Base UI.
+ * `useAnnotationMark`; `render` swaps the element.
  */
 export function AnnotationMark({
   className,
@@ -365,61 +378,87 @@ export function AnnotationMark({
   );
   const offset = RAIL_PADDING + mark.lane * laneWidth + (laneWidth - width) / 2;
   const context = useMemo(() => ({ mark, width }), [mark, width]);
-  const element = useRender({
-    defaultTagName: "div",
-    props: {
-      ...props,
-      className: cn(annotationMarkVariants({ variant }), details && "cursor-pointer", className),
-      "data-annotation-id": String(mark.annotations[0]!.id),
+  const element = (
+    <div
+      {...props}
+      className={cn(annotationMarkVariants({ variant }), details && "cursor-pointer", className)}
+      data-annotation-id={String(mark.annotations[0]!.id)}
       // Pressing a mark never starts a drag in the grid.
-      "data-calendar-pointer": "none",
-      "data-color": annotationSourceStyle(mark.source).color,
-      "data-ends-after": mark.endsAfterDay ? "" : undefined,
-      "data-kind": mark.kind,
-      "data-slot": "annotation-mark",
-      "data-source": mark.source.id,
-      "data-starts-before": mark.startsBeforeDay ? "" : undefined,
+      data-calendar-pointer="none"
+      data-color={annotationSourceStyle(mark.source).color}
+      data-ends-after={mark.endsAfterDay ? "" : undefined}
+      data-kind={mark.kind}
+      data-slot="annotation-mark"
+      data-source={mark.source.id}
+      data-starts-before={mark.startsBeforeDay ? "" : undefined}
       // A click opens the details without focusing the mark, which sits in the aria-hidden rail.
-      onMouseDown: (event: MouseEvent<HTMLDivElement>) => {
+      onMouseDown={(event: MouseEvent<HTMLDivElement>) => {
         onMouseDown?.(event);
         event.preventDefault();
-      },
-      style: {
-        "--mark-height": `${mark.height * 100}%`,
-        "--mark-offset": `${offset}px`,
-        "--mark-top": `${mark.top * 100}%`,
-        "--mark-width": `${width}px`,
-        ...style,
-      } as CSSProperties,
-    },
-    render,
-  });
-  const tooltip = (
-    <TooltipPrimitive.Trigger
-      delay={0}
-      handle={handles.tooltip}
-      payload={mark}
+      }}
+      style={
+        {
+          "--mark-height": `${mark.height * 100}%`,
+          "--mark-offset": `${offset}px`,
+          "--mark-top": `${mark.top * 100}%`,
+          "--mark-width": `${width}px`,
+          ...style,
+        } as CSSProperties
+      }
       // Out of the tab order: the rail is aria-hidden.
       tabIndex={-1}
-      render={element}
+    />
+  );
+  const tooltip = (
+    <TooltipTrigger
+      handle={handles.tooltip}
+      payload={mark}
+      render={render === undefined ? element : cloneWith(render, element)}
     />
   );
 
   return (
     <AnnotationMarkContext value={context}>
       {details ? (
-        <PopoverPrimitive.Trigger
-          handle={handles.popover}
-          nativeButton={false}
-          payload={mark}
-          tabIndex={-1}
-          render={tooltip}
-        />
+        <PopoverTrigger handle={handles.popover} payload={mark} render={tooltip} />
       ) : (
         tooltip
       )}
     </AnnotationMarkContext>
   );
+}
+
+/**
+ * `render` with the mark's props merged in: its own props win, the classes and styles add up, and
+ * where both handle an event, its own handler runs first and then the mark's.
+ */
+function cloneWith(
+  render: ReactElement<ComponentProps<"div">>,
+  element: ReactElement<ComponentProps<"div">>,
+): ReactElement {
+  const own = render.props as Record<string, unknown>;
+  const mark = element.props as Record<string, unknown>;
+  const handlers: Record<string, unknown> = {};
+  for (const [key, handler] of Object.entries(own)) {
+    const markHandler = mark[key];
+    if (
+      !/^on[A-Z]/u.test(key) ||
+      typeof handler !== "function" ||
+      typeof markHandler !== "function"
+    )
+      continue;
+    handlers[key] = (...args: unknown[]) => {
+      handler(...args);
+      markHandler(...args);
+    };
+  }
+  return cloneElement(render, {
+    ...element.props,
+    ...render.props,
+    ...handlers,
+    className: cn(element.props.className, render.props.className),
+    style: { ...element.props.style, ...render.props.style },
+  });
 }
 
 /**
@@ -459,7 +498,7 @@ export function TimeGridAnnotations({ marks }: TimeGridAnnotationsProps) {
 }
 
 /**
- * One tooltip and one popover for every mark in the grid, through Base UI's detached triggers, so
+ * One tooltip and one popover for every mark in the grid, through handles shared by every mark, so
  * hundreds of marks never mount hundreds of roots. The tooltip follows the pointer vertically. The
  * popover keeps focus until it closes, then hands it back to what had it, never to the hidden mark,
  * unless a click outside focused something else.
@@ -472,21 +511,21 @@ export function TimeGridAnnotationOverlays({
   readonly handles: TimeGridAnnotationHandles;
 }) {
   const popup = useRef<HTMLDivElement>(null);
-  const returnFocus = useRef<Element | null>(null);
+  const [returnFocus, setReturnFocus] = useState<HTMLElement>();
   const range = (mark: TimeGridAnnotationMarkData) => {
     const { end, start } = annotationRange(mark);
     return `${formatTime(start)} – ${formatTime(end)}`;
   };
   return (
     <>
-      {/* Not hoverable: its hover bridge would sit under the pointer and swallow clicks. */}
-      <TooltipPrimitive.Root disableHoverablePopup handle={handles.tooltip} trackCursorAxis="y">
+      <Tooltip delay={0} handle={handles.tooltip} trackCursorAxis="y">
         {({ payload }) =>
           payload === undefined ? null : (
             <TooltipContent
               side="inline-end"
               sideOffset={8}
-              className="flex-col items-start gap-0.5"
+              // Never under the pointer to swallow a click on the mark.
+              className="pointer-events-none flex-col items-start gap-0.5"
             >
               <span className="font-medium">
                 {payload.annotations.length === 1
@@ -501,15 +540,18 @@ export function TimeGridAnnotationOverlays({
             </TooltipContent>
           )
         }
-      </TooltipPrimitive.Root>
-      <PopoverPrimitive.Root
+      </Tooltip>
+      <Popover
         handle={handles.popover}
-        // With a close button this also keeps Base UI's focus guards out of the hidden rail.
+        // Keeps Tab inside, rather than moving on into the hidden rail.
         modal="trap-focus"
         onOpenChange={(open) => {
           // Clicking another mark while open keeps focus in the popup: keep the first target.
           const active = document.activeElement;
-          if (open && !popup.current?.contains(active)) returnFocus.current = active;
+          if (!open || popup.current?.contains(active)) return;
+          setReturnFocus(
+            active instanceof HTMLElement && active !== document.body ? active : undefined,
+          );
         }}
       >
         {({ payload }) => {
@@ -524,23 +566,9 @@ export function TimeGridAnnotationOverlays({
               ref={popup}
               // Marks open from a pointer, so the popup takes focus rather than its close button.
               initialFocus={popup}
-              finalFocus={() => {
-                // An outside click that focused something else keeps that focus.
-                const active = document.activeElement;
-                if (
-                  active !== null &&
-                  active !== document.body &&
-                  !popup.current?.contains(active)
-                ) {
-                  return false;
-                }
-                const previous = returnFocus.current;
-                return previous instanceof HTMLElement &&
-                  previous.isConnected &&
-                  previous !== document.body
-                  ? previous
-                  : false;
-              }}
+              // Back where focus was before a mark opened it, never into the hidden rail. ui-sdk
+              // leaves focus alone after a click outside.
+              finalFocus={returnFocus === undefined ? false : () => returnFocus}
             >
               <div data-color={color} className="flex items-center gap-2">
                 {Icon !== undefined && (
@@ -549,19 +577,19 @@ export function TimeGridAnnotationOverlays({
                   </span>
                 )}
                 <div className="min-w-0">
-                  <PopoverPrimitive.Title className="truncate text-sm leading-tight font-medium">
+                  <PopoverTitle className="truncate leading-tight">
                     {payload.annotations.length === 1
                       ? payload.annotations[0]!.title
                       : payload.source.label}
-                  </PopoverPrimitive.Title>
+                  </PopoverTitle>
                   <p className="text-xs text-muted-foreground tabular-nums">{range(payload)}</p>
                 </div>
-                <PopoverPrimitive.Close
+                <PopoverClose
                   render={<Button variant="ghost" size="icon-sm" className="ms-auto self-start" />}
                 >
                   <XIcon />
                   <span className="sr-only">Close</span>
-                </PopoverPrimitive.Close>
+                </PopoverClose>
               </div>
               {payload.annotations.length > 1 && (
                 <ul className="flex flex-col gap-1 text-xs">
@@ -586,7 +614,7 @@ export function TimeGridAnnotationOverlays({
             </PopoverContent>
           );
         }}
-      </PopoverPrimitive.Root>
+      </Popover>
     </>
   );
 }

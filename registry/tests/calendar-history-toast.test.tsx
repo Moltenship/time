@@ -110,6 +110,10 @@ function toast() {
   return action === undefined ? title : `${title} [${action.textContent}]`;
 }
 
+/** What the toasts' live region last read out. */
+const toastSpoken = () =>
+  document.querySelector('[role="status"]:not([data-calendar-part])')?.textContent?.trim() ?? "";
+
 function spoken(container: HTMLElement) {
   return container
     .querySelector('[data-calendar-part="announcer"]')!
@@ -155,9 +159,9 @@ test("offers to undo each change, then to redo it, and speaks through the Announ
 
   await moveStandup();
   expect(toast()).toBe("Moved “Standup” [Undo]");
-  // The toast's region stays quiet; the Announcer speaks for the history.
-  expect(document.querySelector('[aria-label="Notifications"]')!.getAttribute("aria-live")).toBe(
-    "off",
+  // Each toast is read out by its title; the Announcer says what an undo or redo did.
+  await vi.waitFor(() =>
+    expect(toastSpoken()).toBe("Moved “Standup”. To undo it, press F6 and choose Undo."),
   );
 
   await click(actionButton());
@@ -270,9 +274,9 @@ test("Undo from the keyboard says so, and a change no gesture announced is spoke
   );
   cleanup = view.unmount;
   await moveStandup();
-  expect(
-    document.querySelector('[role="status"]:not([data-calendar-part])')?.textContent?.trim(),
-  ).toBe("Moved “Standup”. To undo it, press F6 and choose Undo.");
+  await vi.waitFor(() =>
+    expect(toastSpoken()).toBe("Moved “Standup”. To undo it, press F6 and choose Undo."),
+  );
   await act(async () => {
     actionButton()!.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 0 }));
     await new Promise((resolve) => setTimeout(resolve));
@@ -280,7 +284,7 @@ test("Undo from the keyboard says so, and a change no gesture announced is spoke
   expect(inputs).toEqual(["api", "keyboardundo"]);
 });
 
-test("a spoken toast stays 10 seconds and takes its words with it; a timeout of 0 keeps it", async () => {
+test("a spoken toast stays 10 seconds to be heard out; a timeout of 0 keeps it", async () => {
   vi.useFakeTimers({
     toFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "Date"],
   });
@@ -288,19 +292,17 @@ test("a spoken toast stays 10 seconds and takes its words with it; a timeout of 
     const history = createEventHistory<Meeting, string, string>();
     const view = await render(<Application history={history} />);
     cleanup = view.unmount;
-    const status = () =>
-      document.querySelector('[role="status"]:not([data-calendar-part])')?.textContent?.trim();
     await act(async () => {
       await actions!.proposeEventChange({ cause: "delete", eventId: "standup" });
     });
     expect(toast()).toBe("Event deleted [Undo]");
-    expect(status()).toBe("Event deleted. To undo it, press F6 and choose Undo.");
+    await act(async () => vi.advanceTimersByTimeAsync(500));
+    expect(toastSpoken()).toBe("Event deleted. To undo it, press F6 and choose Undo.");
     // Past the usual 6 seconds, still there to be heard out.
     await act(async () => vi.advanceTimersByTimeAsync(7_000));
     expect(toast()).toBe("Event deleted [Undo]");
     await act(async () => vi.advanceTimersByTimeAsync(5_000));
     expect(toast()).toBeNull();
-    expect(status()).toBe("");
 
     await view.unmount();
     const kept = await render(

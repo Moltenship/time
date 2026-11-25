@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { Dialog, DialogContent } from "@registry/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 
 import { seriousViolations } from "./axe";
 import { render } from "./render";

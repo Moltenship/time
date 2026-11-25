@@ -20,7 +20,6 @@ import { createMonthView } from "@registry/month-view/month-view";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import type { TimeGridAnnotationSource } from "@registry/time-grid-view/time-grid-annotations";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
-import { TooltipProvider } from "@registry/ui/tooltip";
 import { createYearView } from "@registry/year-view/year-view";
 
 type Fixture = CalendarEvent<{ readonly color: CalendarEventColor }, string>;
@@ -179,42 +178,40 @@ export function RegistryScreen({
   readonly view: RegistryView;
 }) {
   return (
-    <TooltipProvider>
-      <Calendar.Root
-        annotationSources={annotationSources}
-        annotations={annotationData}
-        availability={availability}
-        defaultAnchorDate={today}
-        defaultExpandedResourceIds={["team"]}
-        defaultTimeZone="UTC"
-        defaultView={view}
-        events={events}
-        locale="en-US"
-        now={Temporal.Instant.from("2026-10-08T10:20:00Z")}
-        resources={resources}
-        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-      >
-        <Calendar.Frame className="flex h-dvh" dir={dir}>
-          <aside className="w-64 shrink-0 border-e p-3">
-            <MiniMonth
-              locale="en-US"
-              onSelectDate={() => {}}
-              selectedDate={today.add({ days: 1 })}
-              today={today}
-              visibleRange={plainDateInterval(today.subtract({ days: 3 }), today.add({ days: 4 }))}
-              weekStartsOn={1}
-            />
-          </aside>
-          <main className="flex min-w-0 flex-1 flex-col">
-            <CalendarToolbar calendar={Calendar} className="border-b">
-              <ViewSwitcher onValueChange={() => {}} options={viewOptions} value={view} />
-            </CalendarToolbar>
-            <Calendar.Viewport className="min-h-0 flex-1">
-              <Calendar.ActiveView />
-            </Calendar.Viewport>
-          </main>
-        </Calendar.Frame>
-      </Calendar.Root>
-    </TooltipProvider>
+    <Calendar.Root
+      annotationSources={annotationSources}
+      annotations={annotationData}
+      availability={availability}
+      defaultAnchorDate={today}
+      defaultExpandedResourceIds={["team"]}
+      defaultTimeZone="UTC"
+      defaultView={view}
+      events={events}
+      locale="en-US"
+      now={Temporal.Instant.from("2026-10-08T10:20:00Z")}
+      resources={resources}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Calendar.Frame className="flex h-dvh" dir={dir}>
+        <aside className="w-64 shrink-0 border-e p-3">
+          <MiniMonth
+            locale="en-US"
+            onSelectDate={() => {}}
+            selectedDate={today.add({ days: 1 })}
+            today={today}
+            visibleRange={plainDateInterval(today.subtract({ days: 3 }), today.add({ days: 4 }))}
+            weekStartsOn={1}
+          />
+        </aside>
+        <main className="flex min-w-0 flex-1 flex-col">
+          <CalendarToolbar calendar={Calendar} className="border-b">
+            <ViewSwitcher onValueChange={() => {}} options={viewOptions} value={view} />
+          </CalendarToolbar>
+          <Calendar.Viewport className="min-h-0 flex-1">
+            <Calendar.ActiveView />
+          </Calendar.Viewport>
+        </main>
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }

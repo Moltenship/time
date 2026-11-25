@@ -1,6 +1,5 @@
 "use client";
 
-import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import {
   withAsciiSpaces,
   type EventDayFragment,
@@ -8,12 +7,18 @@ import {
   type ResourceId,
   type TimeGridEventLayout,
 } from "@moltenship/calendar";
-import { useRef, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
-import { TooltipContent } from "@registry/ui/tooltip";
+import {
+  createTooltipHandle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  type TooltipHandle,
+} from "@registry/calendar-ui/tooltip";
 import { cn } from "cn";
 
 import type { AnnotationEventInset } from "./time-grid-annotations";
@@ -126,6 +131,47 @@ export function eventTimeRange(
   return `${formats.time.format(start.toPlainTime())}${dash}${formats.dayTime.format(end)}`;
 }
 
+/** What an event hands the shared tooltip: its full name, its title, and whether it's cut short. */
+interface EventTooltipPayload {
+  readonly clipped: () => boolean;
+  readonly label: string;
+  readonly title: string;
+}
+
+const EventTooltipContext = createContext<TooltipHandle<EventTooltipPayload> | undefined>(
+  undefined,
+);
+
+/**
+ * One tooltip for every event inside it, so a grid of hundreds of events mounts one tooltip
+ * rather than one each. Wrap a view's grid in it; it renders the tooltip after the grid, not
+ * inside it. An event outside one brings its own.
+ */
+export function TimeGridEventTooltip({ children }: { readonly children?: ReactNode }) {
+  const [handle] = useState(() => createTooltipHandle<EventTooltipPayload>());
+  return (
+    <EventTooltipContext value={handle}>
+      {children}
+      <Tooltip
+        // A clipped title shows at once, as the annotations' tooltip does.
+        delay={0}
+        handle={handle}
+        onOpenChange={(open, details) => {
+          // A title that fits needs no tooltip; one passed on by an event it fits closes.
+          if (!open || details.payload?.clipped() === true) return;
+          details.cancel();
+          handle.close();
+        }}
+      >
+        {({ payload }) => (
+          // The tooltip names the event, so it carries the event's full name.
+          <TooltipContent aria-label={payload?.label}>{payload?.title}</TooltipContent>
+        )}
+      </Tooltip>
+    </EventTooltipContext>
+  );
+}
+
 /**
  * A positioned event: title and time range, or one compact line when short. Render a column's
  * events in layout order, so stacked events draw over the ones they overlap. Resize handles mark
@@ -133,7 +179,17 @@ export function eventTimeRange(
  * are squared off instead. A short block keeps one handle, and handles take at most a third of the
  * height, so the rest still grabs to move.
  */
-export function TimeGridEvent<TEvent>({
+export function TimeGridEvent<TEvent>(props: TimeGridEventProps<TEvent>) {
+  return use(EventTooltipContext) === undefined ? (
+    <TimeGridEventTooltip>
+      <EventBlock {...props} />
+    </TimeGridEventTooltip>
+  ) : (
+    <EventBlock {...props} />
+  );
+}
+
+function EventBlock<TEvent>({
   color,
   formats,
   icon,
@@ -145,6 +201,7 @@ export function TimeGridEvent<TEvent>({
   resourceId,
   timeZone,
 }: TimeGridEventProps<TEvent>) {
+  const tooltip = use(EventTooltipContext);
   const { fragment, height, left, top, width } = layout;
   const { event, endsAfterDay, startsBeforeDay } = fragment;
   const [start, end] = wallTimes(fragment, timeZone);
@@ -152,83 +209,79 @@ export function TimeGridEvent<TEvent>({
   const resizable = !isReadOnly && !event.isReadOnly;
   const chip = useEventChip(event, { date: fragment.date, labelEvent, offscreen, resourceId });
   const titleRef = useRef<HTMLSpanElement>(null);
-  const [titleShown, setTitleShown] = useState(false);
 
-  // A title that doesn't fit shows in full in a tooltip while the event is hovered or focused.
+  const grabbed = chip["data-grabbed"] !== undefined;
+  // Not while a keyboard gesture moves the event.
+  useEffect(() => {
+    if (grabbed) tooltip?.close();
+  }, [grabbed, tooltip]);
+
+  // A title that doesn't fit shows in full in the tooltip while the event is hovered or focused.
   return (
-    <TooltipPrimitive.Root
-      // Not while a keyboard gesture moves the event.
-      disabled={offscreen || chip["data-grabbed"] !== undefined}
-      onOpenChange={(open, details) => {
-        // Escape belongs to the calendar, which cancels a gesture or leaves the event with it; the
-        // tooltip only closes.
-        if (details.reason === "escape-key") {
-          details.cancel();
-          details.allowPropagation();
-        }
-        setTitleShown(open && isClipped(titleRef.current));
+    <TooltipTrigger
+      handle={tooltip}
+      payload={{
+        clipped: () => !offscreen && !grabbed && isClipped(titleRef.current),
+        label: chip["aria-label"],
+        title: event.title,
       }}
-      open={titleShown}
+      render={
+        <EventChip
+          // Given here, the trigger's own slot doesn't replace the event's.
+          data-slot="calendar-event"
+          color={color}
+          {...chip}
+          className={cn(
+            // Raised while hovered, and above that while focused, so a stacked event's title shows
+            // over the ones covering it, wherever the pointer rests. The padding falls back to the
+            // old `px-1.5 py-1` for a theme copied before its tokens.
+            "group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20",
+            compact
+              ? "flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none"
+              : "py-[var(--calendar-event-padding-y,var(--spacing))]",
+            startsBeforeDay && "rounded-t-none",
+            endsAfterDay && "rounded-b-none",
+          )}
+          style={{ height: percent(height), top: percent(top), ...laneBox(left, width, inset) }}
+        />
+      }
     >
-      {/* Base UI's own trigger, so the event keeps `data-slot="calendar-event"`. */}
-      <TooltipPrimitive.Trigger
-        render={
-          <EventChip
-            color={color}
-            {...chip}
-            className={cn(
-              // Raised while hovered, and above that while focused, so a stacked event's title shows
-              // over the ones covering it, wherever the pointer rests. The padding falls back to the
-              // old `px-1.5 py-1` for a theme copied before its tokens.
-              "group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20",
-              compact
-                ? "flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none"
-                : "py-[var(--calendar-event-padding-y,var(--spacing))]",
-              startsBeforeDay && "rounded-t-none",
-              endsAfterDay && "rounded-b-none",
-            )}
-            style={{ height: percent(height), top: percent(top), ...laneBox(left, width, inset) }}
-          />
-        }
-      >
-        {compact ? (
-          <span ref={titleRef} className="truncate">
-            <span data-slot="calendar-event-title">
-              {/* Smaller, to fit the compact line without making it taller. */}
-              <EventIcon className="size-2.5 [&_svg]:size-2.5">{icon}</EventIcon>
-              {event.title}
-            </span>
-            <span className="font-normal opacity-80">
-              , <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
-            </span>
+      {compact ? (
+        <span ref={titleRef} className="truncate">
+          <span data-slot="calendar-event-title">
+            {/* Smaller, to fit the compact line without making it taller. */}
+            <EventIcon className="size-2.5 [&_svg]:size-2.5">{icon}</EventIcon>
+            {event.title}
           </span>
-        ) : (
-          <>
-            <span ref={titleRef} data-slot="calendar-event-title" className="line-clamp-2">
-              <EventIcon>{icon}</EventIcon>
-              {event.title}
-            </span>
-            <span data-event-time className="truncate font-normal tabular-nums opacity-80">
-              {eventTimeRange(start, end, formats)}
-            </span>
-          </>
-        )}
-        {resizable && !startsBeforeDay && (!compact || endsAfterDay) && (
-          <span
-            aria-hidden
-            data-resize="start"
-            className="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize"
-          />
-        )}
-        {resizable && !endsAfterDay && (
-          <span
-            aria-hidden
-            data-resize="end"
-            className="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40"
-          />
-        )}
-      </TooltipPrimitive.Trigger>
-      <TooltipContent>{event.title}</TooltipContent>
-    </TooltipPrimitive.Root>
+          <span className="font-normal opacity-80">
+            , <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
+          </span>
+        </span>
+      ) : (
+        <>
+          <span ref={titleRef} data-slot="calendar-event-title" className="line-clamp-2">
+            <EventIcon>{icon}</EventIcon>
+            {event.title}
+          </span>
+          <span data-event-time className="truncate font-normal tabular-nums opacity-80">
+            {eventTimeRange(start, end, formats)}
+          </span>
+        </>
+      )}
+      {resizable && !startsBeforeDay && (!compact || endsAfterDay) && (
+        <span
+          aria-hidden
+          data-resize="start"
+          className="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize"
+        />
+      )}
+      {resizable && !endsAfterDay && (
+        <span
+          aria-hidden
+          data-resize="end"
+          className="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40"
+        />
+      )}
+    </TooltipTrigger>
   );
 }

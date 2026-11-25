@@ -30,7 +30,6 @@ import { createMonthView } from "@registry/month-view/month-view";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createTimelineDayView } from "@registry/resource-timeline-view/resource-timeline-view";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
-import { TooltipProvider } from "@registry/ui/tooltip";
 
 import type { MouseStep } from "../mouse";
 import { nextFrame, render, until } from "./render";
@@ -196,47 +195,45 @@ function Page({
   readonly view?: View;
 }) {
   return (
-    <TooltipProvider>
-      <DragDropProvider
-        plugins={(defaults) => [
-          ...defaults.filter((plugin) => plugin !== Feedback),
-          Feedback.configure(appFeedback),
-        ]}
+    <DragDropProvider
+      plugins={(defaults) => [
+        ...defaults.filter((plugin) => plugin !== Feedback),
+        Feedback.configure(appFeedback),
+      ]}
+    >
+      <CalendarDndKit />
+      <ManagerProbe />
+      <DragCounter />
+      {tray && <Tray onDrop={onDrop} />}
+      <Calendar.Root
+        defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+        defaultTimeZone="UTC"
+        defaultView={view}
+        direction={dir}
+        events={[review]}
+        locale="en-US"
+        now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
+        onEventChange={onEventChange}
+        onEventChangeResult={onEventChangeResult}
+        resources={resources}
+        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >
-        <CalendarDndKit />
-        <ManagerProbe />
-        <DragCounter />
-        {tray && <Tray onDrop={onDrop} />}
-        <Calendar.Root
-          defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
-          defaultTimeZone="UTC"
-          defaultView={view}
-          direction={dir}
-          events={[review]}
-          locale="en-US"
-          now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
-          onEventChange={onEventChange}
-          onEventChangeResult={onEventChangeResult}
-          resources={resources}
-          weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-        >
-          {(() => {
-            const frame = (
-              <Calendar.Frame className="flex h-dvh" dir={dir}>
-                <aside className="flex w-48 shrink-0 flex-col gap-4 p-2">
-                  <Task />
-                  <Bin onDrop={onDrop} />
-                </aside>
-                <Calendar.Viewport className="min-h-0 min-w-0 flex-1">
-                  <Calendar.ActiveView />
-                </Calendar.Viewport>
-              </Calendar.Frame>
-            );
-            return around ? <Around>{frame}</Around> : frame;
-          })()}
-        </Calendar.Root>
-      </DragDropProvider>
-    </TooltipProvider>
+        {(() => {
+          const frame = (
+            <Calendar.Frame className="flex h-dvh" dir={dir}>
+              <aside className="flex w-48 shrink-0 flex-col gap-4 p-2">
+                <Task />
+                <Bin onDrop={onDrop} />
+              </aside>
+              <Calendar.Viewport className="min-h-0 min-w-0 flex-1">
+                <Calendar.ActiveView />
+              </Calendar.Viewport>
+            </Calendar.Frame>
+          );
+          return around ? <Around>{frame}</Around> : frame;
+        })()}
+      </Calendar.Root>
+    </DragDropProvider>
   );
 }
 

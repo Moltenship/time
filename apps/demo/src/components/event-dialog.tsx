@@ -1,16 +1,10 @@
 import { useId } from "react";
 
-import { Button } from "@registry/ui/button";
-import { Checkbox } from "@registry/ui/checkbox";
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@registry/ui/dialog";
-import { Input } from "@registry/ui/input";
-import { Label } from "@registry/ui/label";
+import { Button } from "./ui/button";
+import { Checkbox } from "./ui/checkbox";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "./ui/dialog";
+import { Input } from "./ui/input";
+import { Label } from "./ui/label";
 import {
   Select,
   SelectContent,
@@ -18,8 +12,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@registry/ui/select";
-import { Textarea } from "@registry/ui/textarea";
+} from "./ui/select";
+import { Textarea } from "./ui/textarea";
 
 import { DemoCalendar } from "../calendar";
 import { demoCalendars, isDemoCalendarId } from "../calendars";

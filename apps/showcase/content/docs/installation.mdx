@@ -163,16 +163,20 @@ this section, as [Build your own UI](/docs/customization#level-4-build-your-own-
 <Step>
 
 Set up [shadcn/ui](https://ui.shadcn.com/docs/installation) with Tailwind CSS 4 if your app
-doesn't use it yet. The files need shadcn's default primitives, built on
-[Base UI](https://base-ui.com), which `init` sets up:
+doesn't use it yet. `shadcn add` needs its `components.json`, and the calendar's files use its
+tokens, such as `--background` and `--primary`:
 
 ```bash
 npx shadcn@latest init
 ```
 
-If your app already uses shadcn/ui, check that `style` in `components.json` starts with `base-`,
-such as `base-nova`. `shadcn add` installs components in your app's existing style, and the
-calendar's files don't compile against primitives from other styles.
+Any style works: the calendar brings its own controls and uses none of your app's components. An
+app with a `components.json` but without shadcn's tokens gets shadcn's neutral ones from
+`base-tokens`:
+
+```bash
+npx shadcn@latest add https://time.molten.sh/r/base-tokens.json
+```
 
 </Step>
 <Step>
@@ -184,14 +188,13 @@ npx shadcn@latest add https://time.molten.sh/r/calendar-full.json
 ```
 
 Or add only the views you use. Each one brings what it builds on: the theme, the shared
-`calendar` parts, the calendar's controls, the shadcn components it uses, and npm packages such as
-`@moltenship/calendar`.
+`calendar` parts, the calendar's controls, and npm packages such as `@moltenship/calendar`.
 
 | Item                       | What it adds                                                                 |
 | -------------------------- | ---------------------------------------------------------------------------- |
-| `calendar-full`            | Every item below                                                             |
+| `calendar-full`            | Every item below but `base-tokens`                                           |
 | `calendar-theme`           | The calendar's tokens and event colors, added to your global CSS             |
-| `calendar-ui`              | The calendar's buttons, badges, tooltips and selects, built on ui-sdk        |
+| `calendar-ui`              | The calendar's controls and popups, built on ui-sdk                          |
 | `calendar`                 | `CalendarToolbar`, `ViewSwitcher`, `EventChip`, `MiniMonth` and shared parts |
 | `time-grid-view`           | The [week and day](/docs/views/week-and-day) views                           |
 | `month-view`               | The [month](/docs/views/month) view                                          |
@@ -204,6 +207,7 @@ Or add only the views you use. Each one brings what it builds on: the theme, the
 | `resource-timeline-view`   | The [resource timeline](/docs/views/resource-timeline) views                 |
 | `recurrence-scope-dialog`  | The [recurrence scope dialog](/docs/guides/recurring-events)                 |
 | `calendar-history-toast`   | The [undo toast](/docs/undo-redo#undo-toast)                                 |
+| `base-tokens`              | shadcn/ui's neutral tokens, for an app without them                          |
 
 Each item's address is `https://time.molten.sh/r/<item>.json`:
 
@@ -232,8 +236,9 @@ Then `npx shadcn@latest add @moltenship/month-view` works too.
 </Step>
 <Step>
 
-The calendar's controls come from `calendar-ui`, not from your app's `components/ui`. They're a
-default: to use your own button, badge, tooltip or select, see
+The calendar's controls come from `calendar-ui`, not from your app's `components/ui`: its
+buttons, badges, tooltips, selects, popovers, dialogs and toasts. They're a default: to use your
+own, see
 [Use your own controls](/docs/theming#use-your-own-controls). ui-sdk
 adds a little CSS of its own to the page, in a layer named `ui-sdk`. Name that layer before
 Tailwind in your global CSS, so your styles and Tailwind's win over it:
@@ -243,19 +248,11 @@ Tailwind in your global CSS, so your styles and Tailwind's win over it:
 @import "tailwindcss";
 ```
 
-The view select's list and the toolbar's tooltips open in the browser's top layer, through the
-Popover API: Chrome and Edge 114, Safari 17 and Firefox 125 or later. In an older browser they
+The calendar's popups, such as the view select's list, its tooltips, popovers and dialogs, open
+in the browser's top layer, through the Popover API: Chrome and Edge 114, Safari 17 and Firefox 125 or later. In an older browser they
 render at the end of the page instead, and a server-rendered page doesn't hydrate them cleanly.
 The toolbar's tooltips open after 400 ms; change `tooltipDefaults` in
 `components/calendar/ui/tooltip.styles.ts`, or pass `delay` to a `Tooltip`.
-
-</Step>
-<Step>
-
-The week and day views' event and annotation tooltips use shadcn's tooltip, so with
-`time-grid-view` wrap your app in `TooltipProvider` from `@/components/ui/tooltip` once, as
-`shadcn add` reminds you and shadcn's
-[tooltip instructions](https://ui.shadcn.com/docs/components/tooltip) describe.
 
 </Step>
 </Steps>

@@ -2,8 +2,8 @@ import { KeyboardIcon, MenuIcon } from "lucide-react";
 
 import { CalendarToolbar } from "@registry/calendar/calendar-toolbar";
 import { ViewSwitcher } from "@registry/calendar/view-switcher";
-import { Button } from "@registry/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@registry/ui/tooltip";
+import { Button } from "./ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
 import { DemoCalendar, type DemoView } from "../calendar";
 import { viewSwitcherOptions } from "../view-options";

@@ -1,6 +1,6 @@
 import { cn } from "cn";
 
-import { buttonVariants } from "@registry/ui/button";
+import { buttonVariants } from "./ui/button";
 
 import {
   demoFrameworks,

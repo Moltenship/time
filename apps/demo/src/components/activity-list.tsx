@@ -1,7 +1,7 @@
 import { useId } from "react";
 
-import { Checkbox } from "@registry/ui/checkbox";
-import { Label } from "@registry/ui/label";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
 
 import { demoAnnotationSources, type DemoAnnotationSourceId } from "../annotations";
 

@@ -73,7 +73,8 @@ rail.
 - **Days.** An annotation across midnight shows on both days. A part that starts the day before
   fades in at the top and has no icon.
 - **Details.** Hovering a mark shows a tooltip, and clicking it opens a popover listing what it
-  merges. Both are Base UI components, one of each for the whole grid. The popover keeps focus
+  merges. Both come from the calendar's controls in `components/calendar/ui/`, one of each for the
+  whole grid. The popover keeps focus
   until Escape, outside click or its close button, then returns it to where it was. Pressing or
   dragging a mark never starts a new event.
 
@@ -121,8 +122,9 @@ createWeekView<Meeting>({ annotations: { Annotations: MyAnnotations } });
 ```
 
 - `AnnotationMark` has the variants `capsule` (default), `bar` (a thin bar that keeps its true
-  length) and `band` (a tint across the column behind events, with `placement: "overlay"`). Base
-  UI's `render` prop swaps its element, for example for a link to the track.
+  length) and `band` (a tint across the column behind events, with `placement: "overlay"`). Its
+  `render` prop takes an element to render in its place, such as a link to the track, and the
+  mark's props merge into it.
 - `AnnotationMarkIcon` draws the source's `Icon`. Children replace it.
 - `useAnnotationMark()` gives any part inside a mark its mark and width.
 
