@@ -271,9 +271,9 @@ the same pointer layer; a drop on another resource swaps that resource in the ev
 
 <Solid>
 
-A view binds the pointer layer with `useCalendarPointer`, as [In your own views](#in-your-own-views)
-shows. Once `Root` has an `onEventChange` handler, people edit events in that view with the mouse,
-a pen, or touch:
+The registry's week, day and month bind the pointer layer, and a view you write binds it with
+`useCalendarPointer`, as [In your own views](#in-your-own-views) shows. Once `Root` has an
+`onEventChange` handler, people edit events in these views with the mouse, a pen, or touch:
 
 | Layout                      | Move                                                                 | Resize                             | Create                                          |
 | --------------------------- | -------------------------------------------------------------------- | ---------------------------------- | ----------------------------------------------- |
@@ -300,14 +300,15 @@ apply. A few details:
 - The view scrolls when you drag near any edge of its scroll container.
 - Read-only events (your adapter's `isReadOnly`) can't be dragged and have no resize handles.
 - While dragging, the original event dims (it has `data-dragging`) and a preview shows where it
-  would land.<React> Dragging never re-renders the view.</React>
+  would land.<React> Dragging never re-renders the view.</React><Solid> In the registry's week and
+  day, a drag changes nothing in the view but its preview.</Solid>
 
 Clicking an empty slot doesn't create an event; creating needs a drag.
 
 ### Snapped and free drags
 
 By default the preview snaps: it draws the event where a drop would land, so it steps from slot to
-slot. <React>Set a view's `dragPreview` option to `"free"`</React><Solid>Pass `preview: "free"` to `useCalendarPointer`</Solid> and the preview follows the pointer instead:
+slot. <React>Set a view's `dragPreview` option to `"free"`</React><Solid>Set a registry view's `dragPreview` option to `"free"`, or pass `preview: "free"` to `useCalendarPointer` in a view you write,</Solid> and the preview follows the pointer instead:
 
 - **Move:** a copy of the event moves with the pointer, pixel for pixel, over a marker of where a
   drop would land. On release the copy slides onto the event in its new place.
