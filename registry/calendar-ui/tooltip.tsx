@@ -87,7 +87,6 @@ export interface TooltipProps<Payload> {
    * tooltip as it is.
    */
   readonly onOpenChange?: (open: boolean, details: TooltipOpenChangeDetails<Payload>) => void;
-  readonly open?: boolean;
   /** Follows the pointer up and down its trigger, rather than centring on it. */
   readonly trackCursorAxis?: "y";
   /**

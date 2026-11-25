@@ -34,8 +34,8 @@ export interface ToastOptions {
   /** A button that does something, such as Undo. Pressing it leaves the toast open. */
   readonly actionProps?: {
     readonly children: string;
-    /** `input` says whether a key or a pointer pressed it. */
-    readonly onClick: (details: { readonly input: "keyboard" | "pointer" }) => void;
+    /** `input` says whether a key, a pointer or an agent pressed it. */
+    readonly onClick: (details: { readonly input: "agent" | "keyboard" | "pointer" }) => void;
   };
   /** Runs once it has closed. */
   readonly onRemove?: () => void;
@@ -63,12 +63,16 @@ function createToastManager(): ToastManager {
             : {
                 dismiss: false,
                 label: actionProps.children,
+                // A screen reader's virtual click and a script's count as keys, as with a
+                // button's `detail` of 0.
                 onAction: (_event, { source }) =>
                   actionProps.onClick({
                     input:
-                      source === "mouse" || source === "pen" || source === "touch"
-                        ? "pointer"
-                        : "keyboard",
+                      source === "agent"
+                        ? "agent"
+                        : source === "mouse" || source === "pen" || source === "touch"
+                          ? "pointer"
+                          : "keyboard",
                   }),
               },
         description,

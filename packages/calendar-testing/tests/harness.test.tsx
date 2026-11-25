@@ -297,6 +297,18 @@ test("hydrateCalendar lends jsdom the Popover API's methods while the calendar i
   expect(lent()).toBe(false);
 });
 
+test("hydrateCalendar keeps the Popover API's methods until the last calendar unmounts", async () => {
+  const lent = () => typeof HTMLElement.prototype.showPopover === "function";
+  const first = await hydrateCalendar(Calendar, { events: [standup] });
+  const second = await hydrateCalendar(Calendar, { events: [standup] });
+
+  await first.unmount();
+  expect(lent()).toBe(true);
+  await second.unmount();
+
+  expect(lent()).toBe(false);
+});
+
 test("hydrateCalendar throws when the client renders something else", async () => {
   let renders = 0;
   function Counter() {

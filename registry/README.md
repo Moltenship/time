@@ -115,10 +115,10 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
   lists what the views pass; change it with the props. `tools/a11y/tests/own-controls.a11y.tsx`
   runs the views with a button, a select, a popover and a dialog of an app's own, shadcn's stock
   ones.
-- Hundreds of triggers share one popup, never one root each: the year's day popover, the month's
-  "+N more" list, the annotations' tooltip and popover and the time grid's event tooltip each open
-  from a handle (`createPopoverHandle`, `createTooltipHandle`) that every trigger passes with its
-  `payload`.
+- Hundreds of triggers share one popup, never one root each: the year's day popover, the
+  annotations' tooltip and popover and the time grid's event tooltip each open from a handle
+  (`createPopoverHandle`, `createTooltipHandle`) that every trigger passes with its `payload`. The
+  month has one "+N more" per day at most, so each keeps its own popover.
 - A kit control takes its classes from its `shared/calendar-ui/<control>.styles.ts` file and adds
   only the markup its framework needs. The kit's popups open in the browser's top layer, so they
   need no portal or `z-index`. ui-sdk puts its own CSS in a layer named `ui-sdk`, which the app

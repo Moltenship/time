@@ -373,10 +373,9 @@ never reaches a view bound through the other.
   handler. Only a real pointer reads `"mouse"`.
 - **The frame's name.** A test that finds the frame by its accessible name finds the `label` once
   you set one.
-- **The view switcher in jsdom.** The registry's select is ui-sdk's, which reads
-  `performance.getEntriesByType` before it places its list, and jsdom has no such method. A test
-  setup file that renders the view switcher adds one:
-  `performance.getEntriesByType ??= () => [];`.
+- **The registry's controls in jsdom.** They're ui-sdk's, which read paint timing, measure
+  toasts and wait for transitions, none of which jsdom has, and jsdom hides every popup. Add the
+  stubs [Testing](/docs/testing#set-up-vitest) lists to your test setup file.
 - **Agent changes.** [Testing](/docs/testing#changes-an-agent-makes) shows how to run an agent's
   step in a test.
 

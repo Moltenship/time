@@ -31,7 +31,10 @@ import {
  * `Popover.createHandle()`: hundreds of triggers share one root.
  */
 export interface PopoverHandle<Payload> {
-  /** Opens the popover from the trigger with this `id`, as a press on it would. */
+  /**
+   * Opens the popover from the trigger with this `id` in the document, as a press on it would. A
+   * popover already open from that trigger stays open.
+   */
   open(triggerId: string): void;
   close(): void;
   /** The `payload` of the trigger that opened it last. */
@@ -45,7 +48,11 @@ function createPopoverHandle<Payload>(): PopoverHandle<Payload> {
   const handle: PopoverHandle<Payload> = {
     close: () => void controller.close(),
     getPayload: () => controller.getPayload(),
-    open: (triggerId) => document.getElementById(triggerId)?.click(),
+    open: (triggerId) => {
+      const trigger = document.getElementById(triggerId);
+      // A press toggles: on the trigger the popover is open from, it would close it.
+      if (trigger?.getAttribute("aria-expanded") !== "true") trigger?.click();
+    },
   };
   controllers.set(handle, controller as PopoverController<unknown>);
   return handle;

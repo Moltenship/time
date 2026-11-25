@@ -218,7 +218,7 @@ function MoreEvents<TEvent>({
       <PopoverContent
         align="center"
         aria-label={`Events on ${formats.date.format(day.date)}`}
-        className="max-h-(--available-height) w-64 gap-0 p-2"
+        className="w-64 gap-0 p-2"
       >
         <div className="flex flex-col items-center gap-0.5 pb-2">
           <span className="text-[0.6875rem] font-medium text-muted-foreground uppercase">

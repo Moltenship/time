@@ -153,6 +153,8 @@ export function TimeGridEventTooltip({ children }: { readonly children?: ReactNo
     <EventTooltipContext value={handle}>
       {children}
       <Tooltip
+        // A clipped title shows at once, as the annotations' tooltip does.
+        delay={0}
         handle={handle}
         onOpenChange={(open, details) => {
           // A title that fits needs no tooltip; one passed on by an event it fits closes.

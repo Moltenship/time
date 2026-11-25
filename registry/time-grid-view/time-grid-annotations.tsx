@@ -428,17 +428,36 @@ export function AnnotationMark({
   );
 }
 
-/** `render` with the mark's props merged in: its own props win, and the classes and styles add up. */
+/**
+ * `render` with the mark's props merged in: its own props win, the classes and styles add up, and
+ * where both handle an event, its own handler runs first and then the mark's.
+ */
 function cloneWith(
   render: ReactElement<ComponentProps<"div">>,
   element: ReactElement<ComponentProps<"div">>,
 ): ReactElement {
-  const own = render.props;
+  const own = render.props as Record<string, unknown>;
+  const mark = element.props as Record<string, unknown>;
+  const handlers: Record<string, unknown> = {};
+  for (const [key, handler] of Object.entries(own)) {
+    const markHandler = mark[key];
+    if (
+      !/^on[A-Z]/u.test(key) ||
+      typeof handler !== "function" ||
+      typeof markHandler !== "function"
+    )
+      continue;
+    handlers[key] = (...args: unknown[]) => {
+      handler(...args);
+      markHandler(...args);
+    };
+  }
   return cloneElement(render, {
     ...element.props,
-    ...own,
-    className: cn(element.props.className, own.className),
-    style: { ...element.props.style, ...own.style },
+    ...render.props,
+    ...handlers,
+    className: cn(element.props.className, render.props.className),
+    style: { ...element.props.style, ...render.props.style },
   });
 }
 

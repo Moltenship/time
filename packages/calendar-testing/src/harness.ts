@@ -643,19 +643,30 @@ export async function renderCalendar<
 
 type PopoverMethod = "hidePopover" | "showPopover" | "togglePopover";
 
+/** How many mounted calendars borrow the Popover API's methods, which go when the last unmounts. */
+let popoverApiBorrowers = 0;
+
 /**
  * Gives an environment without the Popover API, such as jsdom, methods that do nothing, and
  * returns what takes them away again. Browsers have the API; without it ui-sdk's popups render in
  * a portal, which a server render can't.
  */
 function lendPopoverApi(): () => void {
-  if (typeof HTMLElement === "undefined" || typeof HTMLElement.prototype.showPopover === "function")
-    return () => {};
+  if (typeof HTMLElement === "undefined") return () => {};
   const prototype = HTMLElement.prototype as Partial<Record<PopoverMethod, () => unknown>>;
-  prototype.showPopover = () => {};
-  prototype.hidePopover = () => {};
-  prototype.togglePopover = () => false;
+  if (popoverApiBorrowers === 0) {
+    if (typeof prototype.showPopover === "function") return () => {};
+    prototype.showPopover = () => {};
+    prototype.hidePopover = () => {};
+    prototype.togglePopover = () => false;
+  }
+  popoverApiBorrowers += 1;
+  let returned = false;
   return () => {
+    if (returned) return;
+    returned = true;
+    popoverApiBorrowers -= 1;
+    if (popoverApiBorrowers > 0) return;
     delete prototype.showPopover;
     delete prototype.hidePopover;
     delete prototype.togglePopover;

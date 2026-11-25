@@ -183,8 +183,8 @@ runs the command, and your button adds its look and passes on `disabled`. If you
 `asChild`. Typing on the view select matches each item's `label`, so pass it on to your select's
 items.
 
-The month's "+N more" list, the year's day popover and the annotations each open one popover from
-many triggers, so a view never mounts hundreds of roots. With shadcn's popover, build the handle
+The year's day popover and the annotations each open one popover from many triggers, so a view
+never mounts hundreds of roots. With shadcn's popover, build the handle
 on Base UI's `Popover.createHandle()`: it opens a trigger by its `id` and closes, and your
 `getPayload()` returns the `payload` of the trigger that opened it last. The views move focus
 themselves where `finalFocus` says, so map `false` to Base UI's `finalFocus={false}`. The

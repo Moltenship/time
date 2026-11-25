@@ -108,7 +108,7 @@ export function YearDayPopover<TEvent>({
           <PopoverContent
             ref={popup}
             aria-label={`Events on ${name}`}
-            className="max-h-(--available-height) w-64 gap-0 p-2"
+            className="w-64 gap-0 p-2"
             // The popup takes focus, from a pointer or a key alike; Tab then reaches its events.
             initialFocus={popup}
             // The day's cell, the view's tab stop; ui-sdk leaves focus alone after a click outside.
