@@ -2,11 +2,15 @@ import {
   instantInterval,
   summarizeAnnotationMarks,
   timedFragmentBox,
+  type TimeGridAnnotationMark,
   type TimeGridBand,
   type TimeGridColumn,
 } from "@moltenship/calendar";
 
-import type { TimeGridAnnotationMarkData } from "./time-grid-annotations";
+/*
+ * The words the time grid's annotations put in front of a screen reader and in their tooltip and
+ * popover, one place for every framework's markup.
+ */
 
 export interface AnnotationFormats {
   readonly duration: (duration: Temporal.Duration) => string;
@@ -34,7 +38,7 @@ export function annotationFormats(
 }
 
 /** The whole time a mark covers, across days. */
-export function annotationRange(mark: TimeGridAnnotationMarkData) {
+export function annotationRange(mark: TimeGridAnnotationMark) {
   const [first] = mark.annotations;
   const end = mark.annotations.reduce(
     (latest, annotation) =>
@@ -44,12 +48,40 @@ export function annotationRange(mark: TimeGridAnnotationMarkData) {
   return { end, start: first!.start };
 }
 
+/** What a mark's tooltip and popover lead with: its one item's title, or its source's label. */
+export function annotationTitle(mark: TimeGridAnnotationMark): string {
+  return mark.annotations.length === 1 ? mark.annotations[0]!.title : mark.source.label;
+}
+
+/** "9:00 AM – 11:10 AM": the whole time a mark covers. */
+export function annotationRangeText(
+  mark: TimeGridAnnotationMark,
+  formatTime: (instant: Temporal.Instant) => string,
+): string {
+  const { end, start } = annotationRange(mark);
+  return `${formatTime(start)} – ${formatTime(end)}`;
+}
+
+/** The tooltip's second line: the source and range of one item, or the range and item count. */
+export function annotationTooltipDetail(
+  mark: TimeGridAnnotationMark,
+  formatTime: (instant: Temporal.Instant) => string,
+): string {
+  const range = annotationRangeText(mark, formatTime);
+  return mark.annotations.length === 1
+    ? `${mark.source.label} · ${range}`
+    : `${range} · ${mark.annotations.length} items`;
+}
+
+/** The details popover lists this many of a mark's items, then "and N more". */
+export const POPOVER_ITEMS = 5;
+
 /**
  * A day's annotations for a screen reader, read with its column header: "Annotations: Sleep until
  * 7:05 AM. Music, 3 times, 2 hours, 10 minutes."
  */
 export function describeDayAnnotations(
-  marks: readonly TimeGridAnnotationMarkData[],
+  marks: readonly TimeGridAnnotationMark[],
   { duration, time }: AnnotationFormats,
 ): string | undefined {
   const summaries = summarizeAnnotationMarks(marks);
@@ -78,7 +110,7 @@ const EPSILON = 1e-9;
  * a merged mark names nothing.
  */
 export function describeAnnotationsAt(
-  marks: readonly TimeGridAnnotationMarkData[],
+  marks: readonly TimeGridAnnotationMark[],
   column: TimeGridColumn,
   band: TimeGridBand,
   { time }: AnnotationFormats,

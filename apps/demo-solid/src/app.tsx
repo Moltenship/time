@@ -16,6 +16,7 @@ import {
 } from "@registry/calendar-ui/select";
 import { useRecurrenceScopePrompt } from "@registry/recurrence-scope-dialog/use-recurrence-scope-prompt";
 
+import { activityAround, activitySources, officeHours } from "./activity";
 import { AgentPanel } from "./agent-panel";
 import { announcements, historyAnnouncements } from "./announcements";
 import { Calendar, type Meeting } from "./calendar";
@@ -58,6 +59,8 @@ const seed: readonly Meeting[] = [
     title: "Offsite",
   },
 ];
+
+const activity = activityAround(today, timeZone);
 
 // ISO weeks: they start on Monday, and the first has four days of the new year.
 const weekRules: CalendarWeekRules = { firstDay: 1, minimalDays: 4, weekend: [6, 7] };
@@ -221,9 +224,9 @@ export function App() {
         days to create one. In the year, arrow keys move through days and Enter or a click lists a
         day's events. In the agenda, up and down move between events, Page Up and Page Down between
         days. A change to a Team sync asks which of the series it applies to, and every other change
-        shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
-        days. A change to a Team sync asks which of the series it applies to, and every other change
-        shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
+        shows a toast to undo it; F6 reaches it. The week and day draw your sleep and music beside
+        the events, and shade the time outside 9 to 6 on weekdays; the month mutes the weekend.{" "}
+        <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's time grid, month, year and list projections, with an
@@ -233,6 +236,9 @@ export function App() {
       <Calendar.Root
         allowAgentDelete={allowDelete()}
         anchorDate={location().date}
+        annotationSources={activitySources}
+        annotations={activity}
+        availability={officeHours}
         defaultTimeZone={timeZone}
         events={events()}
         label="Team calendar"

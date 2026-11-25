@@ -10,11 +10,13 @@ import {
   type TimeGridSpan,
 } from "@moltenship/calendar-solid";
 import type { JSX } from "@solidjs/web";
-import { createMemo } from "solid-js";
+import { createMemo, createSignal, Show } from "solid-js";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
+import { annotationFormats } from "@registry/shared/time-grid-view/annotation-label";
 import { fullDateFormat } from "@registry/shared/time-grid-view/time-grid-labels";
 import {
   timeGridHeadClass,
@@ -22,6 +24,14 @@ import {
 } from "@registry/shared/time-grid-view/time-grid.styles";
 
 import { TimeGridAllDay } from "./time-grid-all-day";
+import {
+  createAnnotationHandles,
+  DEFAULT_COLUMN_HEIGHT,
+  TimeGridAnnotationOverlays,
+  useTimeGridAnnotationLayout,
+  type TimeGridAnnotationOptions,
+  type TimeGridAnnotationWiring,
+} from "./time-grid-annotations";
 import { TimeGridBody } from "./time-grid-body";
 import { TimeGridEventTooltip } from "./time-grid-event";
 import { TimeGridHeader } from "./time-grid-header";
@@ -34,6 +44,11 @@ import { gutterStyle, useTimeGridZones } from "./time-grid-zones";
  * overlapping events that all agree takes it, and any other group `overlapLayout`.
  */
 export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions<TEvent> {
+  /**
+   * How the root's annotations draw: the rail's size and side, or your own composition of the
+   * annotation parts. Without annotation sources on the root, there is no rail.
+   */
+  readonly annotations?: TimeGridAnnotationOptions;
   /** Registered view a week's header date opens, usually `"day"`; without it dates are static. */
   readonly dayView?: string;
   /** Extra words for each event's accessible name, such as its calendar. */
@@ -52,6 +67,11 @@ export interface TimeGridViewOptions<TEvent> extends OverlapLayoutOptions<TEvent
    * adds to each event's accessible name.
    */
   readonly getEventIcon?: (event: TEvent) => JSX.Element;
+  /**
+   * Replaces the shading of closed time: a function of its props and of the band, date and
+   * resource, such as a gradient into working hours or a tint for rooms.
+   */
+  readonly renderUnavailable?: UnavailableTimeRender;
 }
 
 /** Pointer and keyboard both step by these slots, so they reach the same times. */
@@ -94,6 +114,21 @@ export function TimeGridView<TEvent>(props: TimeGridViewProps<TEvent>) {
     timeZone: props.environment.timeZone,
   }));
   const keyboard = useViewKeyboard({ snap });
+  // Merging and lane packing use drawn sizes, so they follow the body's measured height.
+  const [columnHeight, setColumnHeight] = createSignal(DEFAULT_COLUMN_HEIGHT);
+  const annotationLayout = useTimeGridAnnotationLayout(
+    columns,
+    () => props.options.annotations,
+    () => ({ columnHeight: columnHeight(), dense: days().length > 1 }),
+  );
+  const annotationHandles = createAnnotationHandles();
+  const formats = createMemo(() =>
+    annotationFormats(props.environment.locale, props.environment.timeZone),
+  );
+  const annotations = createMemo((): TimeGridAnnotationWiring | undefined => {
+    const layout = annotationLayout();
+    return layout.enabled ? { formats: formats(), handles: annotationHandles, layout } : undefined;
+  });
   const labelEvent = useEventLabel(
     () => props.environment,
     () => props.options.describeEvent,
@@ -123,6 +158,7 @@ export function TimeGridView<TEvent>(props: TimeGridViewProps<TEvent>) {
         <div class={timeGridHeadClass}>
           <TimeGridHeader
             actions={props.actions}
+            annotations={annotations()}
             days={days()}
             dayView={props.options.dayView}
             environment={props.environment}
@@ -139,20 +175,27 @@ export function TimeGridView<TEvent>(props: TimeGridViewProps<TEvent>) {
           />
         </div>
         <TimeGridBody
+          annotations={annotations()}
           days={days()}
           environment={props.environment}
           getEventColor={props.options.getEventColor}
           getEventIcon={props.options.getEventIcon}
           isReadOnly={props.isReadOnly}
           labelEvent={labelEvent()}
+          onColumnHeightChange={setColumnHeight}
           onOpenDay={openDay()}
           ref={(element) => {
             body = element;
           }}
+          renderUnavailable={props.options.renderUnavailable}
           slotMinutes={snap.increment}
           zones={zones()}
         />
       </div>
+      {/* Outside the grid: an open popover's parts must not become grid children. */}
+      <Show when={annotations() !== undefined}>
+        <TimeGridAnnotationOverlays formatTime={formats().time} handles={annotationHandles} />
+      </Show>
     </TimeGridEventTooltip>
   );
 }

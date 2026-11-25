@@ -5,9 +5,10 @@ import {
   type TimeGridDay,
 } from "@moltenship/calendar-solid";
 import type { JSX } from "@solidjs/web";
-import { createEffect, createMemo, For, Show, type Accessor } from "solid-js";
+import { createEffect, createMemo, For, onCleanup, Show, type Accessor } from "solid-js";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import {
   dayColumns,
@@ -28,10 +29,12 @@ import {
   timeGridZonedHoursClass,
 } from "@registry/shared/time-grid-view/time-grid.styles";
 
+import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
 import { TimeGridColumn, useTimeGridColumnFormats } from "./time-grid-column";
 import { TimeGridZoneHours, zoneTimeFormat, type TimeGridZone } from "./time-grid-zones";
 
 export interface TimeGridBodyProps<TEvent> {
+  readonly annotations?: TimeGridAnnotationWiring;
   readonly days: readonly TimeGridDay<TEvent>[];
   readonly environment: CalendarEnvironmentBase;
   readonly getEventColor?: (event: TEvent) => CalendarEventColor | undefined;
@@ -39,10 +42,13 @@ export interface TimeGridBodyProps<TEvent> {
   /** The root takes no changes: events have no resize handles. */
   readonly isReadOnly?: boolean;
   readonly labelEvent: EventLabeler<TEvent>;
+  /** Reports the 24-hour row's height in px when it changes, as zooming the hours does. */
+  readonly onColumnHeightChange?: (height: number) => void;
   /** Opens a date in the day view; Shift+Enter on a slot does so. */
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   /** Receives the scrolling element, which dragging also scrolls near its edges. */
   readonly ref?: (element: HTMLDivElement) => void;
+  readonly renderUnavailable?: UnavailableTimeRender;
   /** Length of a keyboard slot, as the keyboard's snap sets it. */
   readonly slotMinutes: number;
   /** The root's secondary time zones, with an hour column each; see `useTimeGridZones`. */
@@ -108,6 +114,25 @@ export function useOpeningScroll(
   );
 }
 
+/**
+ * Reports an element's height whenever it changes, such as the 24-hour row when hours zoom: a ref
+ * for the element. Call it in a component's body, which stops it with the component.
+ */
+export function observeHeight(
+  onHeightChange: () => ((height: number) => void) | undefined,
+): (element: HTMLElement) => void {
+  const observer =
+    typeof ResizeObserver === "undefined"
+      ? undefined
+      : new ResizeObserver(([entry]) => {
+          if (entry !== undefined && entry.contentRect.height > 0) {
+            onHeightChange()?.(entry.contentRect.height);
+          }
+        });
+  onCleanup(() => observer?.disconnect());
+  return (element) => observer?.observe(element);
+}
+
 /** The grid's timed row, scrolling through 24 hours: hour gutter, hour lines, and a cell per day. */
 export function TimeGridBody<TEvent>(props: TimeGridBodyProps<TEvent>) {
   let body: HTMLDivElement | undefined;
@@ -122,6 +147,7 @@ export function TimeGridBody<TEvent>(props: TimeGridBodyProps<TEvent>) {
         );
   });
   const formats = useTimeGridColumnFormats(() => props.environment.locale);
+  const rowHeight = observeHeight(() => props.onColumnHeightChange);
   useOpeningScroll(
     () => body,
     now,
@@ -137,7 +163,7 @@ export function TimeGridBody<TEvent>(props: TimeGridBodyProps<TEvent>) {
       data-slot="time-grid-body"
       class={timeGridBodyClass}
     >
-      <div role="row" class={timeGridTimedRowClass}>
+      <div ref={rowHeight} role="row" class={timeGridTimedRowClass}>
         <div role="rowheader" class={timeGridRowHeaderClass}>
           <span class={srOnlyClass}>{timedEventsLabel}</span>
           <TimeGridHours locale={props.environment.locale} zones={props.zones} />
@@ -149,6 +175,14 @@ export function TimeGridBody<TEvent>(props: TimeGridBodyProps<TEvent>) {
           <For each={props.days} keyed={(day) => day.column.key}>
             {(day, index) => (
               <TimeGridColumn
+                annotations={
+                  props.annotations === undefined
+                    ? undefined
+                    : {
+                        ...props.annotations,
+                        marks: props.annotations.layout.columns[index()] ?? [],
+                      }
+                }
                 day={day()}
                 getEventColor={props.getEventColor}
                 getEventIcon={props.getEventIcon}
@@ -157,6 +191,7 @@ export function TimeGridBody<TEvent>(props: TimeGridBodyProps<TEvent>) {
                 nowTop={nowPosition()?.column === index() ? nowPosition()!.top : null}
                 formats={formats()}
                 onOpenDay={props.onOpenDay}
+                renderUnavailable={props.renderUnavailable}
                 slotMinutes={props.slotMinutes}
                 timeZone={props.environment.timeZone}
                 zones={props.zones}

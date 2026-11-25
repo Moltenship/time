@@ -39,7 +39,7 @@ import {
   useScrollingAxis,
 } from "@registry/stylex-calendar/scrolling-axis";
 import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
-import { annotationFormats } from "@registry/stylex-time-grid-view/annotation-label";
+import { annotationFormats } from "@registry/shared/time-grid-view/annotation-label";
 import {
   AllDayRowHeader,
   TimeGridAllDayCells,

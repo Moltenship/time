@@ -20,9 +20,9 @@ between hidden, shown, warn and block.
 <Solid>
 
 Availability is when the calendar, or a person or a room, can be booked: business hours are open,
-and the evenings, the weekend and a holiday are closed. A view can shade the closed time, and a
-policy decides what happens to a change that lands outside the hours: the change can be blocked, or
-saved with a warning.
+and the evenings, the weekend and a holiday are closed. The week and day shade the closed time, the
+month mutes closed days, and a policy decides what happens to a change that lands outside the
+hours: the change can be blocked, or saved with a warning.
 
 The registry's [month](/docs/views/month) mutes the closed days: here the weekends, and Friday the
 16th, a company day. Drag an event onto one and the strip under the calendar, which shows what a
@@ -76,7 +76,7 @@ them.
 <include meta='title="office-hours.tsx"'>../examples/solid/office-hours.tsx#hours</include>
 
 `Schedule` is a calendar whose events book people and rooms; [your own idea of busy](#customize)
-shows it. Without `availabilityPolicy`, a view can still shade the hours, but nothing stops a change
+shows it. Without `availabilityPolicy`, views still shade the hours, but nothing stops a change
 outside them.
 
 </Solid>
@@ -156,12 +156,12 @@ const resources = [
 
 </React>
 
-<React>
-
 ## Customize the shading
 
 Each stretch of closed time is a `div` hidden from screen readers. It carries why it is closed and
 where it meets open time, so CSS can restyle it:
+
+<React>
 
 | Attribute or variable                   | Value                                                                                     |
 | --------------------------------------- | ----------------------------------------------------------------------------------------- |
@@ -172,6 +172,20 @@ where it meets open time, so CSS can restyle it:
 | `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                    |
 
 <ShadingRecipesPreview />
+
+</React>
+
+<Solid>
+
+| Attribute or variable                   | Value                                                                                   |
+| --------------------------------------- | --------------------------------------------------------------------------------------- |
+| `data-slot`                             | `time-grid-unavailable` in the week and day, or `month-closed` in the month             |
+| `data-reason`                           | `outside-hours`, `closed-day` (no weekly hours that day) or `exception` (a closed date) |
+| `data-label`                            | The exception's `label`, such as "Company holiday"                                      |
+| `data-opens-before`, `data-opens-after` | Present where open time meets the band's start or end in the view                       |
+| `--band-start`, `--band-end`            | Where the band starts and ends along its column or row, as percentages                  |
+
+</Solid>
 
 ```css title="globals.css"
 /* Gradient: closed time fades out over the last hour and a half before working hours. */
@@ -219,10 +233,13 @@ surface has little room to get darker. Recipes built on `--muted-foreground` or 
 follow the theme the same way.
 
 To draw something else, pass `renderUnavailable` to a view: a function of the band's props and its
-state that returns an element. The state holds the `band`
-(its `reason`, `label` and edges), the column's `date` and the `resource` whose hours it shows,
-so rooms can look different from people. Keep the props on your element: they place it and keep it
-hidden from screen readers.
+state that returns an element. The state holds the `band` (its `reason`, `label` and edges), the
+column's `date` and the `resource` whose hours it shows, or `null` for the calendar's own. Keep the
+props on your element: they place it and keep it hidden from screen readers.
+
+<React>
+
+Rooms can look different from people:
 
 ```tsx
 import type { UnavailableTimeRender } from "@/components/calendar/unavailable-time";
@@ -252,6 +269,14 @@ week, day and month views, resource columns and the timeline. The agenda views d
 time.
 
 </React>
+
+<Solid>
+
+<include meta='title="views.tsx"'>../examples/solid/shading-render.tsx#render</include>
+
+The week, day and month take `renderUnavailable`. The agenda doesn't shade closed time.
+
+</Solid>
 
 ## Busy or available
 
@@ -755,8 +780,8 @@ resource ID, that resource's:
 | `useResourceStatus(id?, at?)`           | Working hours and events at an instant, and when either changes             |
 | `useCalendarAvailability()`             | The resolved hours: `calendar`, `forResource(id)`, `timeZone`               |
 
-Bands and stretches carry their `reason`, `label`, `opensBefore` and `opensAfter`<React>, as the
-attributes above do</React>.
+Bands and stretches carry their `reason`, `label`, `opensBefore` and `opensAfter`, as the
+attributes above do.
 
 <Solid>
 

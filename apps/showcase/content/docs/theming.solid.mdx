@@ -56,15 +56,15 @@ The calendar's tokens, and the files of the Solid registry that read each one to
 | `--calendar-axis`             | Hour and weekday labels                               | `text-calendar-axis`              | The week and day                                                  |
 | `--calendar-now`              | The current-time line                                 | `bg-calendar-now`                 | The week and day                                                  |
 | `--calendar-weekend`          | Weekend background                                    | `bg-calendar-weekend`             | No file yet                                                       |
-| `--calendar-unavailable`      | Closed time in time grids and timelines               | `bg-calendar-unavailable`         | No file yet                                                       |
+| `--calendar-unavailable`      | Closed time in time grids and timelines               | `bg-calendar-unavailable`         | The week and day                                                  |
 | `--calendar-hour-height`      | Height of one hour in time grids (`3rem`)             | `h-(--calendar-hour-height)`      | The week and day                                                  |
 | `--calendar-event-padding-x`  | Padding at the sides of time-grid events (`0.375rem`) | `px-(--calendar-event-padding-x)` | The week and day                                                  |
 | `--calendar-event-padding-y`  | Padding above and below time-grid events (`0.25rem`)  | `py-(--calendar-event-padding-y)` | The week and day                                                  |
 
-The tokens no file reads yet belong to views the registry doesn't have in Solid, such as the resource
-timeline, or to what the week and day don't draw yet, such as working hours. The theme defines them all the same, so a
-[view you write](/docs/views/custom-views) uses their classes today and matches the registry's
-views when they arrive.
+`--calendar-weekend`, which no file reads yet, belongs to a view the registry doesn't have in Solid:
+the resource timeline. The theme defines it all the same, so a
+[view you write](/docs/views/custom-views) uses its class today and matches the registry's view
+when it arrives.
 
 The color tokens work with any Tailwind color utility, so `text-calendar-today` and
 `ring-calendar-now` are classes too. Most calendar tokens derive from the base tokens:

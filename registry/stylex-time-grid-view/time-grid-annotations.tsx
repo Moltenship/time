@@ -5,7 +5,6 @@ import {
   useTimeGridAnnotations,
   type CalendarAnnotationSource,
   type TimeGridAnnotationMark,
-  type TimeGridBand,
   type TimeGridColumn,
 } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
@@ -49,7 +48,34 @@ import {
   TooltipTrigger,
 } from "@registry/stylex-calendar-ui/tooltip";
 
-import { annotationRange, type AnnotationFormats } from "./annotation-label";
+import {
+  annotationRangeText,
+  annotationTitle,
+  annotationTooltipDetail,
+  POPOVER_ITEMS,
+  type AnnotationFormats,
+} from "@registry/shared/time-grid-view/annotation-label";
+import {
+  annotationMarkSizes,
+  annotationSourceStyle as sharedSourceStyle,
+  markPlacement,
+  markVariables,
+  MIN_ICON_WIDTH,
+  resolveRail,
+  type ResolvedAnnotationRail,
+  type TimeGridAnnotationRail,
+} from "@registry/shared/time-grid-view/annotation-layout";
+
+export {
+  annotationEventInset,
+  bandBesideMarks,
+  DEFAULT_COLUMN_HEIGHT,
+  eventsBesideMarks,
+} from "@registry/shared/time-grid-view/annotation-layout";
+export type {
+  AnnotationEventInset,
+  TimeGridAnnotationRail,
+} from "@registry/shared/time-grid-view/annotation-layout";
 
 const styles = stylex.create({
   close: {
@@ -253,27 +279,12 @@ export function annotationSourceStyle(source: CalendarAnnotationSource): {
   readonly color?: CalendarEventColor;
   readonly Icon?: AnnotationIcon;
 } {
-  const { color, Icon } = source as { readonly color?: unknown; readonly Icon?: unknown };
-  return {
-    color: calendarEventColors.find((known) => known === color),
-    // Function components, and memo or forwardRef objects.
-    Icon:
-      typeof Icon === "function" || (typeof Icon === "object" && Icon !== null)
-        ? (Icon as AnnotationIcon)
-        : undefined,
-  };
-}
-
-/** The rail's size and lanes, in px. The layout needs them as numbers to merge and pack marks. */
-export interface TimeGridAnnotationRail {
-  /** The column edge the rail sits on. */
-  readonly side?: "start" | "end";
-  /** 18 in a multi-day grid and 30 in a single day by default. */
-  readonly width?: number;
-  /** 12 and 20 by default. A mark is never shorter than it is wide, so a short one is a circle. */
-  readonly markWidth?: number;
-  /** `pack` shares the rail between overlapping marks; `per-source` gives each source a lane. */
-  readonly layout?: "pack" | "per-source";
+  return sharedSourceStyle<CalendarEventColor, AnnotationIcon>(
+    source,
+    calendarEventColors,
+    // A function component, or a memo or forwardRef object.
+    (Icon) => typeof Icon === "function" || (typeof Icon === "object" && Icon !== null),
+  );
 }
 
 export interface TimeGridAnnotationsProps {
@@ -292,8 +303,6 @@ export interface TimeGridAnnotationOptions {
   readonly Annotations?: ComponentType<TimeGridAnnotationsProps>;
 }
 
-type ResolvedRail = Required<TimeGridAnnotationRail>;
-
 /** The layout a time grid hands its columns and header. */
 export interface TimeGridAnnotationLayout {
   /** Marks per column; empty when the root has no annotation sources. */
@@ -303,7 +312,7 @@ export interface TimeGridAnnotationLayout {
   readonly minHeight: number;
   readonly options: TimeGridAnnotationOptions;
   readonly placement: "rail" | "overlay";
-  readonly rail: ResolvedRail;
+  readonly rail: ResolvedAnnotationRail;
 }
 
 /** What a grid hands its header and columns when the root has annotation sources. */
@@ -311,24 +320,6 @@ export interface TimeGridAnnotationWiring {
   readonly formats: AnnotationFormats;
   readonly handles: TimeGridAnnotationHandles;
   readonly layout: TimeGridAnnotationLayout;
-}
-
-/** The registry's default `--calendar-hour-height` (3rem) over a day, until the grid is measured. */
-export const DEFAULT_COLUMN_HEIGHT = 24 * 48;
-/** Marks of one source closer than this many px merge, so they never touch. */
-const MIN_GAP_PX = 3;
-/** Space between the rail's edges and its lanes. */
-const RAIL_PADDING = 2;
-/** Narrower marks drop their icon. */
-const MIN_ICON_WIDTH = 10;
-
-function resolveRail(rail: TimeGridAnnotationRail | undefined, dense: boolean): ResolvedRail {
-  return {
-    layout: rail?.layout ?? "pack",
-    markWidth: rail?.markWidth ?? (dense ? 12 : 20),
-    side: rail?.side ?? "start",
-    width: rail?.width ?? (dense ? 18 : 30),
-  };
 }
 
 /**
@@ -343,13 +334,8 @@ export function useTimeGridAnnotationLayout(
   const { sources } = useCalendarAnnotations();
   const placement = options.placement ?? "rail";
   const { layout, markWidth, side, width } = resolveRail(options.rail, dense);
-  const overlay = placement === "overlay";
-  const minHeight = overlay ? 0 : markWidth / columnHeight;
-  const marks = useTimeGridAnnotations(columns, {
-    layout,
-    minGap: overlay ? 0 : MIN_GAP_PX / columnHeight,
-    minHeight,
-  });
+  const { minGap, minHeight } = annotationMarkSizes(placement, markWidth, columnHeight);
+  const marks = useTimeGridAnnotations(columns, { layout, minGap, minHeight });
   return useMemo(
     () => ({
       columns: marks,
@@ -361,76 +347,6 @@ export function useTimeGridAnnotationLayout(
     }),
     [layout, markWidth, marks, minHeight, options, placement, side, sources.length, width],
   );
-}
-
-/** Px an event keeps free at each side of the column's event area, for the rail. */
-export interface AnnotationEventInset {
-  readonly end: number;
-  readonly start: number;
-}
-
-/** The strip the event area already keeps free at its end, for creating beside busy blocks. */
-const CREATE_STRIP = 8;
-/** Bands this close, as fractions of a day, meet rather than overlap, as in the event layout. */
-const EDGE_TOLERANCE = 1e-9;
-
-/** What the rail takes from the events beside its marks; `undefined` when it takes nothing. */
-export function annotationEventInset(
-  layout: TimeGridAnnotationLayout,
-): AnnotationEventInset | undefined {
-  if (!layout.enabled || layout.placement === "overlay") return undefined;
-  return layout.rail.side === "start"
-    ? { end: 0, start: layout.rail.width }
-    : { end: Math.max(0, layout.rail.width + 2 - CREATE_STRIP), start: 0 };
-}
-
-/**
- * Whether a band crosses one of the column's marks as the rail draws it: never shorter than the
- * layout's `minHeight`, and drawn up from the day's end when too close to midnight to fit.
- */
-export function bandBesideMarks(
-  layout: TimeGridAnnotationLayout,
-  marks: readonly TimeGridAnnotationMarkData[],
-  { height, top }: TimeGridBand,
-): boolean {
-  return marks.some((mark) => {
-    const from = Math.min(mark.top, 1 - layout.minHeight);
-    const to = Math.max(mark.top + mark.height, from + layout.minHeight);
-    return top < to - EDGE_TOLERANCE && from < top + height - EDGE_TOLERANCE;
-  });
-}
-
-/**
- * Which of a column's events move aside for the rail. Overlapping events form groups as the
- * event layout groups them, and a group moves as one when any of its events is beside a mark, so
- * its events keep their places beside each other. Every other event keeps the column's width.
- */
-export function eventsBesideMarks(
-  layout: TimeGridAnnotationLayout,
-  marks: readonly TimeGridAnnotationMarkData[],
-  events: readonly TimeGridBand[],
-): readonly boolean[] {
-  const moved = events.map(() => false);
-  if (marks.length === 0) return moved;
-  const order = events.map((_, index) => index).sort((a, b) => events[a]!.top - events[b]!.top);
-  let group: number[] = [];
-  let bottom = -Infinity;
-  const place = () => {
-    if (group.some((index) => bandBesideMarks(layout, marks, events[index]!))) {
-      for (const index of group) moved[index] = true;
-    }
-  };
-  for (const index of order) {
-    const { height, top } = events[index]!;
-    if (bottom <= top + EDGE_TOLERANCE) {
-      place();
-      group = [];
-    }
-    group.push(index);
-    bottom = Math.max(bottom, top + height);
-  }
-  place();
-  return moved;
 }
 
 export function useAnnotationHandles() {
@@ -446,7 +362,7 @@ export type TimeGridAnnotationHandles = ReturnType<typeof useAnnotationHandles>;
 interface AnnotationsContextValue {
   readonly handles: TimeGridAnnotationHandles;
   readonly placement: "rail" | "overlay";
-  readonly rail: ResolvedRail;
+  readonly rail: ResolvedAnnotationRail;
 }
 
 interface AnnotationMarkContextValue {
@@ -568,12 +484,8 @@ export function AnnotationMark({
   ...props
 }: AnnotationMarkProps) {
   const { handles, rail } = useAnnotationsContext();
-  const laneWidth = (rail.width - RAIL_PADDING * 2) / mark.lanes;
-  const width = Math.max(
-    2,
-    Math.min(rail.markWidth, Math.floor(laneWidth) - (mark.lanes > 1 ? 1 : 0)),
-  );
-  const offset = RAIL_PADDING + mark.lane * laneWidth + (laneWidth - width) / 2;
+  const placement = markPlacement(rail, mark);
+  const { width } = placement;
   const context = useMemo(() => ({ mark, width }), [mark, width]);
   const { color } = annotationSourceStyle(mark.source);
   const element = (
@@ -598,13 +510,7 @@ export function AnnotationMark({
       {...xprops(
         {
           className,
-          style: {
-            "--mark-height": `${mark.height * 100}%`,
-            "--mark-offset": `${offset}px`,
-            "--mark-top": `${mark.top * 100}%`,
-            "--mark-width": `${width}px`,
-            ...style,
-          } as CSSProperties,
+          style: { ...markVariables(mark, placement), ...style } as CSSProperties,
         },
         styles.mark,
         markVariantStyles[variant ?? "capsule"],
@@ -723,25 +629,15 @@ export function TimeGridAnnotationOverlays({
 }) {
   const popup = useRef<HTMLDivElement>(null);
   const [returnFocus, setReturnFocus] = useState<HTMLElement>();
-  const range = (mark: TimeGridAnnotationMarkData) => {
-    const { end, start } = annotationRange(mark);
-    return `${formatTime(start)} – ${formatTime(end)}`;
-  };
   return (
     <>
       <Tooltip delay={0} handle={handles.tooltip} trackCursorAxis="y">
         {({ payload }) =>
           payload === undefined ? null : (
             <TooltipContent side="inline-end" sideOffset={8} xstyle={styles.markTooltip}>
-              <span {...stylex.props(styles.markTooltipTitle)}>
-                {payload.annotations.length === 1
-                  ? payload.annotations[0]!.title
-                  : payload.source.label}
-              </span>
+              <span {...stylex.props(styles.markTooltipTitle)}>{annotationTitle(payload)}</span>
               <span {...stylex.props(styles.markTooltipDetail)}>
-                {payload.annotations.length === 1
-                  ? `${payload.source.label} · ${range(payload)}`
-                  : `${range(payload)} · ${payload.annotations.length} items`}
+                {annotationTooltipDetail(payload, formatTime)}
               </span>
             </TooltipContent>
           )
@@ -786,11 +682,11 @@ export function TimeGridAnnotationOverlays({
                 )}
                 <div {...stylex.props(styles.detailsText)}>
                   <PopoverTitle xstyle={styles.detailsTitle}>
-                    {payload.annotations.length === 1
-                      ? payload.annotations[0]!.title
-                      : payload.source.label}
+                    {annotationTitle(payload)}
                   </PopoverTitle>
-                  <p {...stylex.props(styles.detailsRange)}>{range(payload)}</p>
+                  <p {...stylex.props(styles.detailsRange)}>
+                    {annotationRangeText(payload, formatTime)}
+                  </p>
                 </div>
                 <PopoverClose
                   render={<Button size="icon-sm" variant="ghost" xstyle={styles.close} />}
@@ -801,15 +697,15 @@ export function TimeGridAnnotationOverlays({
               </div>
               {payload.annotations.length > 1 && (
                 <ul {...stylex.props(styles.items)}>
-                  {payload.annotations.slice(0, 5).map((annotation) => (
+                  {payload.annotations.slice(0, POPOVER_ITEMS).map((annotation) => (
                     <li key={annotation.id} {...stylex.props(styles.item)}>
                       <span {...stylex.props(styles.itemTitle)}>{annotation.title}</span>
                       <span {...stylex.props(styles.itemTime)}>{formatTime(annotation.start)}</span>
                     </li>
                   ))}
-                  {payload.annotations.length > 5 && (
+                  {payload.annotations.length > POPOVER_ITEMS && (
                     <li {...stylex.props(styles.itemsMore)}>
-                      and {payload.annotations.length - 5} more
+                      and {payload.annotations.length - POPOVER_ITEMS} more
                     </li>
                   )}
                 </ul>

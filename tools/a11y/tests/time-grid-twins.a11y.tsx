@@ -9,6 +9,9 @@ import { describeLayout } from "./kit-twins";
 import { render, until } from "./render";
 import {
   timeGridAnchor,
+  timeGridAnnotationSources,
+  timeGridAnnotations,
+  timeGridAvailability,
   timeGridEvents,
   timeGridNow,
   timeGridWeekRules,
@@ -34,9 +37,14 @@ const Calendar = createCalendar<TimeGridFixture>()({
 
 const grid = () => document.querySelector('[data-slot="time-grid"]')!;
 
-function TimeGrid(props: { readonly view: "day" | "week" }) {
+function TimeGrid(props: { readonly annotated?: boolean; readonly view: "day" | "week" }) {
   return (
     <Calendar.Root
+      {...(props.annotated === true && {
+        annotationSources: timeGridAnnotationSources,
+        annotations: timeGridAnnotations,
+        availability: timeGridAvailability,
+      })}
       defaultAnchorDate={timeGridAnchor}
       defaultTimeZone="UTC"
       defaultView={props.view}
@@ -73,6 +81,16 @@ describe.runIf(server.browser === "chromium")("time grid twins", () => {
     await until(() => expect(grid().querySelector('[data-slot="time-grid-draft"]')).not.toBeNull());
     await expect(describeLayout(grid())).toMatchFileSnapshot("./view-twins/week-draft.txt");
     await userEvent.keyboard("{Escape}");
+  });
+
+  test("the week, with annotations and working hours, and a slot focused in both", async () => {
+    await render(<TimeGrid annotated view="week" />);
+    await until(() => expect(grid().querySelector('[data-slot="annotation-mark"]')).not.toBeNull());
+    // Thursday's first slot, at midnight: closed, and in Wednesday night's sleep.
+    grid().querySelector<HTMLElement>('[tabindex="0"]')!.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    await until(() => expect(document.activeElement?.getAttribute("role")).toBe("button"));
+    await expect(describeLayout(grid())).toMatchFileSnapshot("./view-twins/week-annotations.txt");
   });
 
   test("the day, with a second time zone", async () => {

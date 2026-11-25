@@ -18,10 +18,6 @@ The week view has seven columns, starting on `weekRules.firstDay`. The day view 
 the anchor date. `createThreeDayView` has three, from the anchor date: on a phone, where a week's
 seven columns are too narrow to read, it shows more than a day.
 
-<Callout type="warn" title="Annotations and working hours come next">
-  The week and day don't draw the root's annotations or shade time outside working hours yet.
-</Callout>
-
 ## Add them
 
 Add the `time-grid-view` item to your app with the shadcn CLI, as
@@ -108,6 +104,25 @@ Pass them to `createWeekView`, `createDayView` or `createThreeDayView`, or per r
       description:
         "How far each level of a stack is indented, as a fraction of the column width, the same for every stacked group. A value that isn't positive throws, whatever the layout.",
     },
+    renderUnavailable: {
+      type: "UnavailableTimeRender",
+      description: (
+        <>
+          Replaces the shading of closed time: a function of its props and its state. See{" "}
+          <a href="/docs/availability#customize-the-shading">customize the shading</a>.
+        </>
+      ),
+    },
+    annotations: {
+      type: "TimeGridAnnotationOptions",
+      description: (
+        <>
+          How the root's annotations draw: a rail beside the events or an overlay (
+          <code>placement</code>), the rail's size and side, or your own parts. See{" "}
+          <a href="/docs/annotations#options">Annotations</a>.
+        </>
+      ),
+    },
   }}
 />
 
@@ -124,6 +139,10 @@ Pass them to `createWeekView`, `createDayView` or `createThreeDayView`, or per r
   45 minutes show on one line, as "Standup, 9:30 AM". Events that run past midnight show their real
   times on both days, as "10:00 PM – 2:00 AM". A title that doesn't fit its event shows in full in
   the kit's tooltip while you hover or focus the event.
+- **Working hours:** time outside the root's `availability` is shaded, and a focused slot there
+  says "outside working hours". See [Annotations and working hours](#annotations-and-working-hours).
+- **Annotations:** the root's annotations, such as sleep or listening history, draw in a rail at
+  the start of each day, and an event beside a mark moves aside for it.
 - **Daylight saving time:** hours skipped when the clocks go forward are hatched, and hours repeated
   when they go back are tinted, with both occurrences side by side.
 - **Current time:** a line across today's column, from
@@ -140,6 +159,39 @@ Pass them to `createWeekView`, `createDayView` or `createThreeDayView`, or per r
 - **Right to left** mirrors the grid, the hours and the events' borders included, when the page or
   `Calendar.Frame` has `dir="rtl"`.
 - **Reduced motion** opens the tooltip without its scale and slide.
+
+## Annotations and working hours
+
+<SolidExample
+  name="week-annotations"
+  title="The week view with annotations and working hours"
+  size="h-[34rem]"
+  caption="Live. Sleep and a listening session beside the events, and the time outside 9 to 5 shaded. Hover a mark to see what it is, or click it for the details."
+/>
+
+The week and day draw the root's annotations as soon as `Root` has `annotationSources`, and shade
+the time outside its `availability`:
+
+<include meta='title="week-annotations.tsx"'>
+  ../../examples/solid/week-annotations.tsx#root
+</include>
+
+Give each source a `color` from the event palette and an `Icon`, and its marks draw as capsules in
+that color with the icon inside their top:
+
+<include meta='title="week-annotations.tsx"'>
+  ../../examples/solid/week-annotations.tsx#sources
+</include>
+
+- **Marks** sit in a rail at the start of each day column, 18px wide in the week and 30px in the
+  day. An event moves aside only where a mark is beside it. Hovering a mark shows a tooltip, and
+  clicking it opens a popover of everything it merges. [Annotations](/docs/annotations#the-week-and-day)
+  has the rail's options and parts.
+- **Closed time** is a band of `--calendar-unavailable` behind the events, one per stretch:
+  evenings, nights and the weekend here. [Availability](/docs/availability#customize-the-shading)
+  restyles it or draws your own.
+- **Screen readers** hear both in words instead: a day's header summarizes its annotations, and a
+  focused slot names the items across it and says when it's outside working hours.
 
 ## Overlapping events
 
@@ -208,6 +260,8 @@ TimeGridView                     time-grid-view.tsx, a grid
     ├── Time gutter              --calendar-gutter-width
     │   └── TimeGridZoneHours    time-grid-zones.tsx, one per secondary time zone
     └── TimeGridColumn           time-grid-column.tsx, one per day, data-date
+        ├── TimeGridAvailability time-grid-availability.tsx, closed time behind events
+        ├── TimeGridAnnotations  time-grid-annotations.tsx, the rail of marks, or yours
         ├── TimeGridEvent        time-grid-event.tsx
         │   ├── Title and time
         │   └── Resize handles   data-resize="start" and "end"
@@ -225,6 +279,8 @@ The `.tsx` files are Solid components. What they draw comes from plain TypeScrip
 | `time-grid-geometry.ts` | Where an event, a gap or a fold sits in its column, and where the grid opens scrolled |
 | `all-day-layout.ts`     | Which all-day events fit in a collapsed row, and how many each day hides              |
 | `secondary-zones.ts`    | Each zone's hours, names and the notes under a day whose times differ                 |
+| `annotation-layout.ts`  | The rail's size, where its marks sit, and which events move aside for them            |
+| `annotation-label.ts`   | What a day's header and a focused slot say about the annotations                      |
 
 - The gutter is `--calendar-gutter-width` wide: `--calendar-hours-width` for the hours (3rem, or
   4rem from the `sm` breakpoint), plus `--calendar-zone-width` for each secondary time zone.

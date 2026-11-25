@@ -209,3 +209,73 @@ export function zoneNotesClass(className?: string): string {
 }
 
 export const zoneNoteClass = "max-w-full truncate";
+
+// Availability
+
+/** Shading over a column's closed time, behind its events. */
+export const timeGridUnavailableClass = "inset-x-0 bg-calendar-unavailable";
+
+// Annotations
+
+/** The strip a column's marks sit in: beside events, or across the column for an overlay. */
+export function annotationRailClass(placement: "rail" | "overlay", className?: string): string {
+  return cn(
+    "pointer-events-none absolute inset-y-0",
+    placement === "overlay"
+      ? "inset-x-0 z-0"
+      : "z-[5] w-(--calendar-annotation-rail-width) data-[side=end]:end-0 data-[side=start]:start-0",
+    className,
+  );
+}
+
+/**
+ * Geometry arrives as CSS variables: `--mark-top` and `--mark-height` as fractions of the day,
+ * `--mark-offset` and `--mark-width` in px inside the rail. A variant's `--mark-min-height` keeps
+ * a short mark near midnight inside the day, drawn up from its end as the layout measures it.
+ */
+export const annotationMarkBaseClass =
+  "pointer-events-auto absolute top-[min(var(--mark-top),calc(100%_-_var(--mark-min-height,0px)))] transition-[filter,background-color] duration-100 motion-reduce:transition-none";
+
+/** A mark's looks, by variant. */
+export const annotationMarkVariantClasses = {
+  /** A capsule never shorter than it is wide, so a short one is a circle. */
+  capsule:
+    "start-(--mark-offset) h-[max(var(--mark-min-height),calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full [--mark-min-height:var(--mark-width)] bg-calendar-event-border shadow-[inset_0_0_0_1px_rgb(0_0_0/0.14)] hover:brightness-110 data-ends-after:rounded-b-none data-ends-after:mask-[linear-gradient(to_top,transparent,black_1.5rem)] data-starts-before:rounded-t-none data-starts-before:mask-[linear-gradient(to_bottom,transparent,black_1.5rem)] data-starts-before:data-ends-after:mask-[linear-gradient(to_bottom,transparent,black_1.5rem,black_calc(100%-1.5rem),transparent)] dark:shadow-[inset_0_0_0_1px_rgb(255_255_255/0.16)]",
+  /** A thin bar that keeps its true length. */
+  bar: "start-(--mark-offset) h-[max(var(--mark-min-height),calc(var(--mark-height)_-_1px))] w-(--mark-width) rounded-full [--mark-min-height:3px] bg-calendar-event-border hover:brightness-110 data-ends-after:rounded-b-none data-starts-before:rounded-t-none",
+  /** A tint across the column behind events; for `placement: "overlay"`. */
+  band: "inset-x-0 h-(--mark-height) border-s-2 border-calendar-event-border bg-calendar-event-border/12 hover:bg-calendar-event-border/24",
+} as const;
+
+export type AnnotationMarkVariant = keyof typeof annotationMarkVariantClasses;
+
+/** A mark that opens its details on click shows a pointer. */
+export const annotationMarkDetailsClass = "cursor-pointer";
+
+export function annotationMarkIconClass(className?: string): string {
+  return cn(
+    "absolute inset-x-px top-px flex aspect-square items-center justify-center rounded-full bg-white/35 text-black/70 [&_svg]:size-[62%]",
+    className,
+  );
+}
+
+/** Never under the pointer, so it can't swallow a click on the mark. */
+export const annotationTooltipClass = "pointer-events-none flex-col items-start gap-0.5";
+export const annotationTooltipTitleClass = "font-medium";
+export const annotationTooltipDetailClass = "opacity-70";
+
+export const annotationPopoverClass = "w-72";
+export const annotationPopoverHeaderClass = "flex items-center gap-2";
+export const annotationPopoverIconClass =
+  "flex size-7 shrink-0 items-center justify-center rounded-full bg-calendar-event-border text-background";
+export const annotationPopoverIconGlyphClass = "size-4";
+export const annotationPopoverHeadingClass = "min-w-0";
+export const annotationPopoverTitleClass = "truncate leading-tight";
+export const annotationPopoverRangeClass = "text-xs text-muted-foreground tabular-nums";
+export const annotationPopoverCloseClass = "ms-auto self-start";
+export const annotationPopoverListClass = "flex flex-col gap-1 text-xs";
+export const annotationPopoverItemClass = "flex justify-between gap-3";
+export const annotationPopoverItemTitleClass = "truncate";
+export const annotationPopoverItemTimeClass = "shrink-0 text-muted-foreground tabular-nums";
+export const annotationPopoverMoreClass = "text-muted-foreground";
+export const annotationPopoverFooterClass = "border-t pt-2 text-[0.6875rem] text-muted-foreground";

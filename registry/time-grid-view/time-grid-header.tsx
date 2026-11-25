@@ -24,7 +24,7 @@ import {
   timeGridHeaderRowClass,
 } from "@registry/shared/time-grid-view/time-grid.styles";
 
-import { describeDayAnnotations } from "./annotation-label";
+import { describeDayAnnotations } from "@registry/shared/time-grid-view/annotation-label";
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
 import {
   gutterColumn,

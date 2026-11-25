@@ -22,7 +22,7 @@ import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.st
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
 import { xprops } from "@registry/stylex-calendar-theme/xprops";
 
-import { annotationFormats } from "./annotation-label";
+import { annotationFormats } from "@registry/shared/time-grid-view/annotation-label";
 import { TimeGridAllDay } from "./time-grid-all-day";
 import {
   DEFAULT_COLUMN_HEIGHT,
