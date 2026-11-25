@@ -4,7 +4,6 @@ import {
   defineCalendarView,
   limitDayGridLanes,
   plainDateIntervalContains,
-  scrollingMonthAnchor,
   scrollingMonthOf,
   scrollingMonthStrategy,
   useAnchorDateRequests,
@@ -27,11 +26,7 @@ import {
 } from "react";
 
 import { useEventLabel } from "@registry/stylex-calendar/event-label";
-import {
-  epochDay,
-  ScrollSnapPoints,
-  useScrollingAxis,
-} from "@registry/stylex-calendar/scrolling-axis";
+import { ScrollSnapPoints, useScrollingAxis } from "@registry/stylex-calendar/scrolling-axis";
 import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
 import {
   calendarConsts,
@@ -42,13 +37,14 @@ import {
   weekHidingFocus,
   type MonthViewOptions,
 } from "@registry/stylex-month-view/month-view";
+import { LaneProbe, MonthWeekRow, weekHeight } from "@registry/stylex-month-view/month-week";
+import { INITIAL_LANES } from "@registry/shared/month-view/month-layout";
 import {
-  LaneProbe,
-  laneHeightOf,
-  lanesIn,
-  MonthWeekRow,
-  weekHeight,
-} from "@registry/stylex-month-view/month-week";
+  attachWeekLanes,
+  scrollingMonthWeeks,
+  weekNumber,
+  WEEK,
+} from "@registry/shared/scrolling-month-view/scrolling-month";
 
 const styles = stylex.create({
   editable: {
@@ -130,20 +126,8 @@ type ScrollingMonthViewProps<TEvent> = CalendarViewRendererProps<
   ScrollingMonthViewOptions<TEvent>
 >;
 
-/** Lane count before the first measurement, e.g. while rendering on the server. */
-const INITIAL_LANES = 3;
-/** One week's height: the viewport shared by the visible weeks. */
-const WEEK = "var(--calendar-week-height)";
-/** Months with snap points either way of the range, past any a swipe reaches before it renders. */
-const SNAP_MONTHS = 6;
-
-/** A week's number from the week of 1970-01-01; weeks that start on the same weekday count by one. */
-function weekNumber(date: Temporal.PlainDate): number {
-  return Math.floor(epochDay(date) / 7);
-}
-
 /**
- * Measures how many event lanes fit in a week row of `track`, which holds `count` of them, again
+ * How many event lanes fit in a week row of `track`, which holds `count` of them, measured again
  * only when the rows or the lane height change: `probe` is a `LaneProbe`.
  */
 function useLaneCapacity(
@@ -152,22 +136,11 @@ function useLaneCapacity(
   count: number,
 ): number {
   const [lanes, setLanes] = useState(INITIAL_LANES);
-
   useLayoutEffect(() => {
     const element = track.current;
     if (element === null) return;
-    const measure = () => {
-      const height = element.getBoundingClientRect().height / count;
-      if (height > 0) setLanes(lanesIn(height, laneHeightOf(probe.current)));
-    };
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    if (probe.current !== null) observer.observe(probe.current);
-    return () => observer.disconnect();
+    return attachWeekLanes(element, { count, onChange: setLanes, probe: probe.current });
   }, [count, probe, track]);
-
   return lanes;
 }
 
@@ -189,26 +162,15 @@ function ScrollingMonthView<TEvent>({
 }: ScrollingMonthViewProps<TEvent>) {
   const { locale, timeZone } = environment;
   const weeks = range.start.until(range.end).days / 7;
-  const first = weekNumber(range.start);
   const month = scrollingMonthOf(range);
-  const strategy = useMemo(() => scrollingMonthStrategy(weeks), [weeks]);
-  /** The week a month's page starts at: the one that holds its first day. */
-  const monthStart = (date: Temporal.PlainDate) =>
-    weekNumber(strategy.getRange(date, environment, undefined).start);
-  const weekStart = (week: number) => range.start.add({ weeks: week - first });
+  const axisWeeks = scrollingMonthWeeks(range, weeks, environment);
   const axis = useScrollingAxis({
     axis: "block",
-    first,
-    onScroll: (week) => actions.setAnchorDate(scrollingMonthAnchor(weekStart(week))),
+    first: axisWeeks.first,
+    onScroll: (week) => actions.setAnchorDate(axisWeeks.anchorOf(week)),
     page: weeks,
     rtl: false,
-    // The nearest of the months around the week there: their first weeks are four or five apart.
-    snapTo: (week) => {
-      const near = scrollingMonthAnchor(weekStart(Math.round(week)));
-      return [-1, 0, 1]
-        .map((months) => monthStart(near.add({ months })))
-        .reduce((best, start) => (Math.abs(start - week) < Math.abs(best - week) ? start : best));
-    },
+    snapTo: axisWeeks.snapTo,
   });
   // Today and Next can ask for the anchor the view already has while a scroll runs ahead of it.
   useAnchorDateRequests((_, requested) => {
@@ -294,9 +256,7 @@ function ScrollingMonthView<TEvent>({
           <ScrollSnapPoints
             axis="block"
             base={axis.base}
-            points={Array.from({ length: 2 * SNAP_MONTHS + 1 }, (_, index) =>
-              monthStart(month.add({ months: index - SNAP_MONTHS })),
-            )}
+            points={axisWeeks.snapPoints()}
             size={WEEK}
           />
           <div

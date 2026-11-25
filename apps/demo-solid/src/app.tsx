@@ -27,6 +27,7 @@ import {
   type DragPreview,
 } from "./drag-preview";
 import { FrameworkSwitch } from "./framework-switch";
+import { isScrolling, viewFor } from "./scrolling";
 import { applyToSeries, seriesScopes } from "./series";
 import { readSolidLocation, writeSolidLocation, type SolidView } from "./url-state";
 
@@ -133,14 +134,15 @@ function HistoryControls() {
   );
 }
 
-const viewOptions = [
+/** The views the switcher offers: the paged ones. The setting below makes the month and agenda scroll. */
+const viewOptions: readonly { readonly label: string; readonly value: SolidView }[] = [
   { label: "Day", value: "day" },
   { label: "3 days", value: "3-day" },
   { label: "Week", value: "week" },
   { label: "Month", value: "month" },
   { label: "Year", value: "year" },
   { label: "Agenda", value: "agenda" },
-] as const satisfies readonly { readonly label: string; readonly value: SolidView }[];
+];
 
 /** How a pointer drag previews where it lands, as the React demo's settings choose it. */
 function DragPreviewSelect(props: {
@@ -203,6 +205,12 @@ export function App() {
   createEffect(href, (next) => {
     history.replaceState(history.state, "", next);
   });
+  // The React demo's "Scroll days, weeks, months and agenda": here the month and the agenda. A
+  // setting of its own, as React's, so it outlasts the views it doesn't change; it starts on when
+  // the URL's view scrolls.
+  const [scrolling, setScrolling] = createSignal(isScrolling(location().view));
+  const showView = (view: SolidView) =>
+    setLocation((current) => ({ ...current, view: viewFor(view, scrolling()) }));
   const [allowDelete, setAllowDelete] = createSignal(false);
   const { ask, dialog } = useRecurrenceScopePrompt();
   const [lastChange, setLastChange] = createSignal("none yet");
@@ -218,15 +226,16 @@ export function App() {
         This page runs <code>@moltenship/calendar-solid</code>, a preview. The toolbar, the view
         switcher, the mini month, the week, day, month, year and agenda, the recurrence dialog and
         the undo toast are the registry's Solid items, the files <code>shadcn add</code> installs
-        into a Solid app. Arrow keys move through the week's and day's 15-minute slots and the
-        month's days, Enter moves into the events there, and Space picks an event up or starts a new
-        one. A pointer drags an event to another time or day, or its edges, or across empty time or
-        days to create one. In the year, arrow keys move through days and Enter or a click lists a
-        day's events. In the agenda, up and down move between events, Page Up and Page Down between
-        days. A change to a Team sync asks which of the series it applies to, and every other change
-        shows a toast to undo it; F6 reaches it. The week and day draw your sleep and music beside
-        the events, and shade the time outside 9 to 6 on weekdays; the month mutes the weekend.{" "}
-        <a href={docsUrl}>The Solid docs</a>
+        into a Solid app. "Scroll the month and agenda" switches to their scrolling versions, which
+        swipe a month at a time and scroll through days without end. Arrow keys move through the
+        week's and day's 15-minute slots and the month's days, Enter moves into the events there,
+        and Space picks an event up or starts a new one. A pointer drags an event to another time or
+        day, or its edges, or across empty time or days to create one. In the year, arrow keys move
+        through days and Enter or a click lists a day's events. In the agenda, up and down move
+        between events, Page Up and Page Down between days. A change to a Team sync asks which of
+        the series it applies to, and every other change shows a toast to undo it; F6 reaches it.
+        The week and day draw your sleep and music beside the events, and shade the time outside 9
+        to 6 on weekdays; the month mutes the weekend. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's time grid, month, year and list projections, with an
@@ -274,7 +283,7 @@ export function App() {
         }}
         onEventChangeResult={(result, detail) => changes.record(result, detail)}
         onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
-        onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
+        onViewChange={showView}
         policies={[
           // A locked event stays where it is: the change fails, and an agent hears the reason.
           (change) =>
@@ -287,6 +296,7 @@ export function App() {
           "3-day": { dragPreview: dragPreview() },
           day: { dragPreview: dragPreview() },
           month: { dragPreview: dragPreview() },
+          "scrolling-month": { dragPreview: dragPreview() },
           week: { dragPreview: dragPreview() },
         }}
         weekRules={weekRules}
@@ -297,9 +307,9 @@ export function App() {
               <HistoryControls />
               <DragPreviewSelect onValueChange={setDragPreview} value={dragPreview()} />
               <ViewSwitcher
-                onValueChange={(view) => setLocation((current) => ({ ...current, view }))}
+                onValueChange={showView}
                 options={viewOptions}
-                value={location().view}
+                value={viewFor(location().view, false)}
               />
             </CalendarToolbar>
             <Calendar.Viewport class="viewport">
@@ -313,6 +323,18 @@ export function App() {
             history={changes}
           />
           <div class="side">
+            <label class="toggle">
+              <input
+                type="checkbox"
+                checked={scrolling()}
+                onChange={(event) => {
+                  const on = event.currentTarget.checked;
+                  setScrolling(on);
+                  setLocation((current) => ({ ...current, view: viewFor(current.view, on) }));
+                }}
+              />
+              <span>Scroll the month and agenda</span>
+            </label>
             <Sidebar
               date={location().date}
               onSelectDate={(date) => setLocation((current) => ({ ...current, date }))}

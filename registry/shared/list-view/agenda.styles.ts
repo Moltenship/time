@@ -10,6 +10,8 @@ export const agendaScrollClass = "relative h-full overflow-y-auto";
 /** The view's dates without events, in place of the list. */
 export const emptyAgendaViewClass = "flex h-full items-center justify-center p-6 text-center";
 export const agendaListClass = "relative";
+/** A scrolling agenda's empty state, among the days or at the end of the list. */
+export const scrollingAgendaEmptyClass = "flex flex-1 items-center justify-center p-6 text-center";
 
 /** A row the virtualizer places: a day, or a scrolling agenda's empty row. The last has no rule. */
 export function agendaRowClass(last: boolean): string {

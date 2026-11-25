@@ -17,6 +17,11 @@
       "target": "@components/calendar/scrolling-list-view/scrolling-agenda-view.tsx"
     },
     {
+      "path": "registry/shared/list-view/agenda-scroll.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-list-view/agenda-scroll.ts"
+    },
+    {
       "path": "registry/scrolling-list-view/use-agenda-scroll.ts",
       "type": "registry:hook",
       "target": "@components/calendar/scrolling-list-view/use-agenda-scroll.ts"

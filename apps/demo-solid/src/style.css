@@ -148,7 +148,8 @@ a {
 }
 
 /* The month shares the viewport's height between its weeks, as many event lanes as fit. */
-.viewport:has([data-slot="month-view"]) {
+.viewport:has([data-slot="month-view"]),
+.viewport:has([data-slot="scrolling-month"]) {
   height: min(42rem, 75dvh);
   border-top: 1px solid var(--line);
 }

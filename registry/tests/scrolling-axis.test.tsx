@@ -198,6 +198,67 @@ test("a drag that scrolls the view still moves the range, without snapping it", 
   expect(scrolls).toEqual([]);
 });
 
+test("a finger that pauses mid-swipe holds the view until it lifts", async () => {
+  const { finishScroll, shownItem, viewport } = await show();
+  const touch = (type: string, target: Element = viewport) =>
+    act(async () => {
+      target.dispatchEvent(new Event(type, { bubbles: true }));
+    });
+  // The finger lands on a day, which leaves the document as the canvas recentres.
+  const day = viewport.querySelector("[data-base]")!.appendChild(document.createElement("div"));
+  scrolls = [];
+  await touch("touchstart", day);
+  await act(async () => {
+    viewport.scrollLeft += 2.6 * ITEM;
+    viewport.dispatchEvent(new Event("scroll"));
+  });
+  day.remove();
+
+  // Still, past the time a scroll takes to settle: the view stays under the finger.
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  expect(scrolls).toEqual([]);
+
+  // It lifts short of halfway, and the view comes back to its page.
+  await touch("touchend", day);
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  expect(scrolls).toEqual([{ behavior: "smooth", left: expect.any(Number) }]);
+  await finishScroll();
+  expect(shownItem()).toBe(5000);
+});
+
+test("two fingers hold the view until both lift, the last to land lifting first", async () => {
+  const { finishScroll, shownItem, viewport } = await show();
+  const track = viewport.querySelector("[data-base]")!;
+  const [first, second] = [0, 1].map(() => track.appendChild(document.createElement("div")));
+  /** A touch event on `target` for `finger`, with `down` the fingers on the screen after it. */
+  const touch = (type: string, target: Element, finger: number, down: readonly number[]) =>
+    act(async () => {
+      const event = Object.assign(new Event(type, { bubbles: true }), {
+        changedTouches: [{ identifier: finger }],
+        touches: down.map((identifier) => ({ identifier })),
+      });
+      target.dispatchEvent(event);
+    });
+  scrolls = [];
+  await touch("touchstart", first!, 1, [1]);
+  await touch("touchstart", second!, 2, [1, 2]);
+  await act(async () => {
+    viewport.scrollLeft += 2.6 * ITEM;
+    viewport.dispatchEvent(new Event("scroll"));
+  });
+
+  // The finger that landed last lifts first: the other still holds the view.
+  await touch("touchend", second!, 2, [1]);
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  expect(scrolls).toEqual([]);
+
+  await touch("touchend", first!, 1, []);
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  expect(scrolls).toEqual([{ behavior: "smooth", left: expect.any(Number) }]);
+  await finishScroll();
+  expect(shownItem()).toBe(5000);
+});
+
 test.each([
   ["on to the next page past halfway", 5004.4, 5007],
   ["back short of halfway", 5002.6, 5000],

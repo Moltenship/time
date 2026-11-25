@@ -223,12 +223,18 @@ function MonthDayCell(props: {
   readonly onOpenDay: (date: Temporal.PlainDate) => void;
   readonly renderUnavailable?: UnavailableTimeRender;
 }) {
-  const roving = useRovingFocus(() => ({ date: props.day.date, kind: "day" }));
+  let element: HTMLElement | undefined;
+  // The cell joins the view's roving focus only while its week is in view; a week a scroll moves
+  // away releases its place. Out of the tab order, it stays focusable, so focus on it survives.
+  const roving = createMemo(() => {
+    if (props.offscreen) return null;
+    const own = useRovingFocus(() => ({ date: props.day.date, kind: "day" }));
+    if (element !== undefined) own.ref(element);
+    return own;
+  });
   const inDraft = useCalendarInteraction((session) => inAllDayDraft(session, props.day.date));
   const draftCheck = useDraftCheck();
   const check = () => previewCheckAttributes(inDraft() ? draftCheck() : undefined);
-  // Out of the tab order, yet focusable, so focus on it survives a scroll that moves it away.
-  const offscreen = untrack(() => props.offscreen);
   // Native, so it runs before the view's keyboard, which listens on the grid.
   const openDayKey = (element: HTMLElement) => {
     element.addEventListener("keydown", (event) => {
@@ -244,9 +250,15 @@ function MonthDayCell(props: {
     <div
       role="gridcell"
       aria-label={dayCellLabel(props.formats, props.day.date, props.closed, props.count)}
-      ref={offscreen ? openDayKey : [roving.ref, openDayKey]}
-      onFocus={offscreen ? undefined : roving.onFocus}
-      tabindex={offscreen ? -1 : roving.tabindex}
+      ref={[
+        (node: HTMLElement) => {
+          element = node;
+          untrack(roving)?.ref(node);
+        },
+        openDayKey,
+      ]}
+      onFocus={(event: FocusEvent) => untrack(roving)?.onFocus(event)}
+      tabindex={roving()?.tabindex ?? -1}
       class={monthDayCellClass}
     >
       <Show when={props.closed}>

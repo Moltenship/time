@@ -81,15 +81,39 @@ export function useAgendaVirtualizer({
     return untrack(agenda.viewportHeight);
   });
 
-  onSettled(() => within(() => virtualizer._didMount()));
-  // After each render, as TanStack's React binding does: it picks up the scroll element and
-  // scrolls to the initial offset once there is one.
-  createEffect(items, () => within(() => virtualizer._willUpdate()));
-  // Keeps the row on top in place once new rows are laid out.
-  createEffect(rows, () => {
+  // What runs after each layout, in the order React's layout effects run.
+  const laidOut: (() => void)[] = [];
+  let kept: { readonly rows: readonly AgendaRow<unknown>[]; readonly stop: () => void } | undefined;
+  // As TanStack's React binding does after each render: it picks up the scroll element and
+  // scrolls to the initial offset once there is one, and keeps the item on top as rows come and
+  // go at the ends. Then it keeps the row on top in place once new rows are laid out, and then
+  // runs `afterLayout`'s.
+  const layOut = (next: readonly AgendaRow<unknown>[]) => {
+    within(() => virtualizer._willUpdate());
     const element = scrollElement();
-    return element === undefined ? undefined : within(() => agenda.keepTop(element));
+    if (element !== undefined && kept?.rows !== next) {
+      kept?.stop();
+      kept = { rows: next, stop: within(() => agenda.keepTop(element)) };
+    }
+    for (const run of laidOut) run();
+  };
+  // The first layout scrolls to the initial row, which changes the rows to render: once mounted,
+  // so no effect has to render again for its own write.
+  let mounted = false;
+  onSettled(() => {
+    const stop = within(() => virtualizer._didMount());
+    mounted = true;
+    layOut(untrack(rows));
+    return stop;
   });
+  // Then after each render. One effect, as Solid orders effects by their sources, not as created.
+  createEffect(
+    () => ({ items: items(), rows: rows() }),
+    ({ rows: next }) => {
+      if (mounted) layOut(next);
+    },
+  );
+  onCleanup(() => kept?.stop());
 
   /**
    * The ref of a rendered row at `index`: it measures the row, and again as it resizes. Call it
@@ -105,5 +129,13 @@ export function useAgendaVirtualizer({
     };
   };
 
-  return { items, measure, totalSize, viewportHeight, virtualizer };
+  /**
+   * Runs `run` after each render once the list is laid out and its row on top kept, as a scroll
+   * that follows the anchor date must.
+   */
+  const afterLayout = (run: () => void) => {
+    laidOut.push(run);
+  };
+
+  return { afterLayout, items, measure, totalSize, viewportHeight, virtualizer };
 }

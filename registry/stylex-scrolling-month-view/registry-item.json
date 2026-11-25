@@ -15,6 +15,11 @@
       "path": "registry/stylex-scrolling-month-view/scrolling-month-view.tsx",
       "type": "registry:component",
       "target": "@components/calendar-stylex/scrolling-month-view/scrolling-month-view.tsx"
+    },
+    {
+      "path": "registry/shared/scrolling-month-view/scrolling-month.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/scrolling-month-view/scrolling-month.ts"
     }
   ]
 }
