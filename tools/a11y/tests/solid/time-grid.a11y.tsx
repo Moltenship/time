@@ -19,6 +19,9 @@ import { seriousViolations, setTheme, themes } from "../axe";
 import { describeLayout } from "../kit-twins";
 import {
   timeGridAnchor,
+  timeGridAnnotationSources,
+  timeGridAnnotations,
+  timeGridAvailability,
   timeGridEvents,
   timeGridNow,
   timeGridWeekRules,
@@ -26,6 +29,7 @@ import {
   type TimeGridFixture,
 } from "../time-grid-fixture";
 import day from "../view-twins/day.txt?raw";
+import weekAnnotations from "../view-twins/week-annotations.txt?raw";
 import weekDraft from "../view-twins/week-draft.txt?raw";
 import week from "../view-twins/week.txt?raw";
 import { press, render, settled, until } from "./render";
@@ -52,6 +56,8 @@ const Calendar = createCalendar<TimeGridFixture>()({
 });
 
 function TimeGrid(props: {
+  /** With the fixture's annotations and working hours. */
+  readonly annotated?: boolean;
   readonly dir?: "ltr" | "rtl";
   readonly dragPreview?: "free" | "snapped";
   readonly onEventChange?: (change: Change) => void;
@@ -72,6 +78,9 @@ function TimeGrid(props: {
   };
   return (
     <Calendar.Root
+      annotationSources={props.annotated === true ? timeGridAnnotationSources : undefined}
+      annotations={props.annotated === true ? timeGridAnnotations : undefined}
+      availability={props.annotated === true ? timeGridAvailability : undefined}
       defaultAnchorDate={timeGridAnchor}
       defaultTimeZone="UTC"
       defaultView={view()}
@@ -202,6 +211,16 @@ describe.runIf(server.browser === "chromium")("the Solid time grid renders React
     await userEvent.keyboard("{Escape}");
   });
 
+  test("the week, with annotations and working hours, and a slot focused in both", async () => {
+    await render(() => <TimeGrid annotated view="week" />);
+    await until(() => expect(grid().querySelector('[data-slot="annotation-mark"]')).not.toBeNull());
+    // Thursday's first slot, at midnight: closed, and in Wednesday night's sleep.
+    grid().querySelector<HTMLElement>('[tabindex="0"]')!.focus();
+    await userEvent.keyboard("{ArrowDown}");
+    await until(() => expect(document.activeElement?.getAttribute("role")).toBe("button"));
+    expect(describeLayout(grid())).toBe(weekAnnotations);
+  });
+
   test("the day, with a second time zone", async () => {
     await render(() => <TimeGrid view="day" />);
     await nowLine();
@@ -248,6 +267,122 @@ describe("the Solid time grid's tooltip", () => {
     const content = document.querySelector('[data-slot="tooltip-content"]')!;
     expect(content.getAttribute("aria-label")).toBe(chip(longTitle).getAttribute("aria-label"));
     expect(grid().contains(content)).toBe(false);
+  });
+});
+
+const mark = (source: "music" | "sleep") =>
+  grid().querySelector<HTMLElement>(`[data-slot="annotation-mark"][data-source="${source}"]`);
+const popover = () => document.querySelector<HTMLElement>('[data-slot="popover-content"]');
+
+/** Clicks a mark, as a pointer does: the press keeps focus where it was. */
+async function clickMark(source: "music" | "sleep") {
+  await userEvent.click(mark(source)!);
+  await settled();
+}
+
+/** A button outside the grid, focused, so a test sees focus come back to it. */
+function focusedButton(): HTMLButtonElement {
+  const button = document.body.appendChild(document.createElement("button"));
+  button.textContent = "Before";
+  button.focus();
+  return button;
+}
+
+describe.each(themes)("the Solid time grid's annotations, %s theme", (theme) => {
+  test("the week with annotations and working hours has no serious violations", async () => {
+    setTheme(theme);
+    await render(() => <TimeGrid annotated />);
+    await nowLine();
+
+    expect(await seriousViolations()).toEqual([]);
+  });
+
+  test("a mark's details popover has none, keeps focus and closes with Escape", async () => {
+    setTheme(theme);
+    await render(() => <TimeGrid annotated />);
+    await clickMark("music");
+    await until(() => expect(popover()?.contains(document.activeElement)).toBe(true));
+
+    expect(await seriousViolations()).toEqual([]);
+    // Focus stays out of the hidden rail: no focus guards there while open, and none after.
+    expect(document.querySelectorAll('[data-slot="annotation-rail"] [tabindex="0"]')).toHaveLength(
+      0,
+    );
+    await press("Escape");
+    // It closes after its exit animation.
+    await until(() => expect(popover()).toBeNull());
+    expect(document.activeElement?.closest('[aria-hidden="true"]') ?? null).toBeNull();
+  });
+});
+
+describe("the Solid time grid's annotation popover", () => {
+  test("returns focus past a switch between marks", async () => {
+    await render(() => <TimeGrid annotated />);
+    const before = focusedButton();
+    try {
+      await clickMark("music");
+      await clickMark("sleep");
+      await until(() => expect(popover()?.textContent).toContain("Sleep"));
+      await until(() => expect(popover()?.contains(document.activeElement)).toBe(true));
+      await press("Escape");
+      await until(() => expect(popover()).toBeNull());
+
+      expect(document.activeElement).toBe(before);
+    } finally {
+      before.remove();
+    }
+  });
+
+  test("leaves focus where an outside click put it", async () => {
+    await render(() => <TimeGrid annotated />);
+    const before = focusedButton();
+    const field = document.body.appendChild(document.createElement("input"));
+    field.setAttribute("aria-label", "Elsewhere");
+    try {
+      await clickMark("music");
+      // Open, with focus inside, a frame after it mounts: only then is a click outside one.
+      await until(() => expect(popover()?.contains(document.activeElement)).toBe(true));
+      const popup = popover()!;
+      await userEvent.click(field);
+      await until(() => expect(popup.isConnected).toBe(false));
+
+      expect(document.activeElement).toBe(field);
+    } finally {
+      before.remove();
+      field.remove();
+    }
+  });
+
+  test("a mark's tooltip follows the pointer up and down it", async () => {
+    await render(() => <TimeGrid annotated />);
+    const marks = [...grid().querySelectorAll<HTMLElement>('[data-slot="annotation-mark"]')];
+    const tallest = marks.reduce((tallest, next) =>
+      next.getBoundingClientRect().height > tallest.getBoundingClientRect().height ? next : tallest,
+    );
+    tallest.scrollIntoView({ block: "center" });
+    const { height, width } = tallest.getBoundingClientRect();
+    // Tall enough that its ends are far apart.
+    expect(height).toBeGreaterThan(60);
+    const tooltip = () =>
+      document.querySelector<HTMLElement>('[data-slot="tooltip-content"][data-open]');
+    const centre = () => {
+      const box = tooltip()!.getBoundingClientRect();
+      return box.y + box.height / 2;
+    };
+
+    await userEvent.hover(tallest, { position: { x: width / 2, y: 4 } });
+    await until(() => expect(tooltip()).not.toBeNull());
+    const near = tallest.getBoundingClientRect().y + 4;
+    await until(() => expect(Math.abs(centre() - near)).toBeLessThan(12));
+
+    await userEvent.hover(tallest, { position: { x: width / 2, y: height - 4 } });
+    const far = tallest.getBoundingClientRect().bottom - 4;
+    await until(() => expect(Math.abs(centre() - far)).toBeLessThan(12));
+    // Beside the mark, at the inline end, wherever the pointer is.
+    expect(tooltip()!.getBoundingClientRect().x).toBeGreaterThan(
+      tallest.getBoundingClientRect().right,
+    );
+    await userEvent.unhover(tallest);
   });
 });
 
