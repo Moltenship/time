@@ -37,8 +37,9 @@ export type { CalendarKeyboardOptions };
  * delegation to the document, so Escape's stopped propagation keeps it from the handlers around
  * the view. A delegated `onKeyDown` inside the view therefore runs after the calendar has taken
  * its key; an element that takes a key for itself listens natively, from a ref, and calls
- * `preventDefault()`, which the calendar respects. `options` is read whenever a key arrives. Every phase is announced through the root's
- * `Announcer`, and a view that unmounts mid-gesture leaves nothing grabbed.
+ * `preventDefault()`, which the calendar respects. `options` is read whenever a key arrives.
+ * Every phase is announced through the root's `Announcer`, and a view that unmounts mid-gesture
+ * leaves nothing grabbed.
  */
 export function useCalendarKeyboard(
   options: MaybeAccessor<CalendarKeyboardOptions> = {},

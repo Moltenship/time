@@ -183,17 +183,25 @@ describe("roving focus", () => {
     // Solid delegates `onKeyDown` to the document, after the region's listener; a listener the
     // element adds itself, as from a ref, runs first and can keep the key.
     const container = await mount([allDay("trip", "2026-10-07", "2026-10-10", "Trip")]);
-    const day = cell(container, "2026-10-08");
     const seen: boolean[] = [];
-    day.addEventListener("keydown", (event) => {
+    const keep = (event: KeyboardEvent) => {
       seen.push(event.defaultPrevented);
       if (event.key === "ArrowRight" || event.key === "Escape") event.preventDefault();
-    });
-    await focus(day);
+    };
+    const day = cell(container, "2026-10-08");
+    const trip = segment(container, "trip");
+    day.addEventListener("keydown", keep);
+    trip.addEventListener("keydown", keep);
 
+    await focus(day);
     await press("ArrowRight");
     expect(document.activeElement).toBe(day);
+    // Escape on an event would go back out to its day; the event's listener keeps it.
+    await focus(trip);
     await press("Escape");
+    expect(document.activeElement).toBe(trip);
+    // Keys the listener lets through still reach the calendar.
+    await focus(day);
     await press("ArrowDown");
     expect(document.activeElement).toBe(cell(container, "2026-10-15"));
     expect(seen).toEqual([false, false, false]);
