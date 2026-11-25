@@ -39,7 +39,8 @@ export interface AgendaListOptions {
 /**
  * The agenda's scrolling element and its virtualizer. The days where focus enters the range, its
  * first and last, always render, so the list keeps a tab stop; while focus is in the list, the
- * focused day stays rendered as it scrolls away. `ref` goes on the scrolling element.
+ * focused day stays rendered as it scrolls away. `ref` goes on the scrolling element; `within` says
+ * whether focus is in the list.
  */
 export function useAgendaList({ initialRow, range, rows }: AgendaListOptions) {
   // Set by the ref once, before any effect reads it.
@@ -65,23 +66,40 @@ export function useAgendaList({ initialRow, range, rows }: AgendaListOptions) {
     rows,
     scrollElement: () => scrollElement,
   });
+  // The element focus was last on in the list.
+  let lastFocused: HTMLElement | undefined;
   // Focus that leaves with an element, as when a focused day scrolls out of the loaded dates,
-  // fires no event, so each render checks for it.
+  // fires no event, so each render checks for it. Solid's list diff can also take a row out and
+  // put it back to reorder the rows, which drops focus to the page: focus goes back to it.
   createEffect(
     () => (virtual.items(), within()),
     (inside) => {
-      if (inside && scrollElement?.contains(document.activeElement) !== true) setWithin(false);
+      const page = scrollElement?.ownerDocument;
+      if (
+        !inside ||
+        scrollElement === undefined ||
+        scrollElement.contains(page?.activeElement ?? null)
+      ) {
+        return;
+      }
+      const dropped = page?.activeElement == null || page.activeElement === page.body;
+      if (dropped && lastFocused?.isConnected === true && scrollElement.contains(lastFocused)) {
+        lastFocused.focus({ preventScroll: true });
+      } else setWithin(false);
     },
   );
 
   const ref = (element: HTMLDivElement) => {
     scrollElement = element;
-    element.addEventListener("focusin", () => setWithin(true));
+    element.addEventListener("focusin", (event) => {
+      lastFocused = event.target as HTMLElement;
+      setWithin(true);
+    });
     element.addEventListener("focusout", (event) => {
       if (!element.contains(event.relatedTarget as Node | null)) setWithin(false);
     });
   };
-  return { ...virtual, ref };
+  return { ...virtual, ref, scrollElement: () => scrollElement, within };
 }
 
 export type AgendaListState = ReturnType<typeof useAgendaList>;

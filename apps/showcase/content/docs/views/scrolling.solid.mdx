@@ -1,0 +1,148 @@
+---
+title: Scrolling views
+description: The Solid month and agenda as views that scroll without end, from the Solid registry.
+---
+
+<SolidExample
+  name="scrolling-month"
+  title="The scrolling month"
+  size="h-[34rem]"
+  caption="Live. The page that Add them builds. Swipe or scroll: it comes to rest on the next month, and the title follows."
+/>
+
+The [month](/docs/views/month) and the [agenda](/docs/views/agenda) move a page at a time. Their
+scrolling versions follow your finger, as Apple's Calendar does on iPad. The month swipes up and
+down a month at a time, and the agenda scrolls one list of days through months or years, comes to
+rest on any day, and jumps to a date at once. They're separate views, so the paged ones keep
+working as they are, and you can register both.
+
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=scrolling-month) has both:
+turn on "Scroll the month and agenda" beside the calendar.
+
+## Add them
+
+Add the items to your app with the shadcn CLI, as
+[UI source](/docs/installation#ui-source-optional) describes. Each brings the view it builds on,
+`month-view` or `list-view`, with the theme and the shared `calendar` parts:
+
+```bash
+npx shadcn@latest add @moltenship/scrolling-month-view @moltenship/scrolling-list-view
+```
+
+Then register the views:
+
+<include meta='title="calendar.tsx"'>../../examples/solid/scrolling-month-page.tsx#view</include>
+
+The month's weeks share the height they're given, so give `Calendar.Viewport` a height:
+
+<include meta='title="scrolling-month-page.tsx"'>
+  ../../examples/solid/scrolling-month-page.tsx#page
+</include>
+
+The views are named `scrolling-month` and `scrolling-agenda`, and take the same options as their
+paged versions, plus `dayView`, the view a date opens, `"day"` by default.
+
+## How they move
+
+| View               | Shows                                                                                               | A swipe moves | Previous and Next | Today         |
+| ------------------ | --------------------------------------------------------------------------------------------------- | ------------- | ----------------- | ------------- |
+| `scrolling-month`  | Six weeks from the week of the 1st, or up to twelve with `createScrollingMonthView(options, weeks)` | A month       | A month           | Today's month |
+| `scrolling-agenda` | `weeks` from the anchor date, four by default                                                       | Free, any day | `weeks`           | Today on top  |
+
+The anchor date is the scroll position. When a scroll comes to rest, the view sets `anchorDate` to
+what it shows, so `Calendar.Title`, `onAnchorDateChange`, and a URL that stores the date follow the
+scroll. During a long swipe the anchor follows every half page, so the next weeks load before they
+scroll into view. With a controlled `anchorDate`, the view stays where it was scrolled until your
+state takes the latest date `onAnchorDateChange` sent, even a few flushes later; any other
+`anchorDate` moves the view to it. If you defer the update, commit the latest date rather than each
+one in turn.
+
+### The month
+
+The month shows the anchor's month as the paged month does: six weeks from the one that holds its
+first day, which every month fits, with the days of other months dimmed. A swipe follows your finger
+and comes to rest on the next month with its first week on top, four or five weeks on, or back on
+this one if it went less than halfway; a fling moves one month.
+
+When the anchor changes any other way, from Today, Next, or your own `setAnchorDate`, the month
+scrolls there: smoothly over a month or two, and at once from further away, from the keyboard, or
+when the system asks for reduced motion.
+
+### The agenda
+
+<SolidExample
+  name="scrolling-agenda"
+  title="The scrolling agenda"
+  size="h-[34rem]"
+  caption="Live. It loads events from a pretend server as you scroll, and the end of the list says so while they're on their way."
+/>
+
+- **The anchor date is the day on top.** The range starts at the anchor date rather than its week,
+  since the list comes to rest on any day.
+- **Today, Previous, Next, and any other anchor date jump the list** to put that date on top, or
+  the next day with events, at once, rather than gliding there as the month does. The list holds
+  that date on top while its events load, until you scroll.
+- **Only the days in view render.** Each is measured once it renders, as its events wrap, and days
+  that load above or below the ones on screen don't move them.
+- **The end of the list** follows the last loaded day. It's as tall as the view, so any day can
+  scroll to the top, and says "Loading events…" while `loading` is set, or that nothing more is
+  scheduled. Scrolling on past either end of the loaded days moves a page that way, once per
+  gesture, so the list crosses weeks without events. Weeks shown without events get the empty
+  state, at the end of the list or among the days after them.
+
+## Loading events as you scroll
+
+Each scrolling view renders a page of weeks on either side of what it shows, with their events, so
+a swipe never reveals an empty page. Its strategy reports those dates as its **load range**, and
+`onVisibleRangeChange` on `Root` hands them to you: after the first render, and whenever the view,
+its dates, or the time zone change, but not when only `events` do.
+
+Fetch events for `loadRange` and pass them in `events`. Set the agenda's `loading` while some are on
+their way:
+
+<include meta='title="scrolling-agenda-page.tsx"'>
+  ../../examples/solid/scrolling-agenda-page.tsx#loading
+</include>
+
+| Field              | Contents                                                     |
+| ------------------ | ------------------------------------------------------------ |
+| `view`             | The active view's name                                       |
+| `range`            | The visible dates                                            |
+| `instantRange`     | `range` as instants in the calendar's time zone              |
+| `loadRange`        | The dates to have events for: `range` and a page either side |
+| `loadInstantRange` | `loadRange` as instants, ready to send to an API             |
+
+Paged views report too: their `loadRange` is the visible `range`. Time never fetches or keeps
+events itself; keep what you've loaded in your own state.
+
+## Keyboard
+
+The keys work as in the [month](/docs/views/month#keyboard) and the
+[agenda](/docs/views/agenda#keyboard), over the dates on screen. In the month, moving past the last
+visible week, or pressing Page Down, scrolls to the next month. In the agenda, keys that page past
+the range move the calendar on. Weeks rendered around the visible ones are hidden from screen
+readers, so the month reads as six weeks.
+
+## Dragging
+
+Drag, resize, and create work as in the paged month. Dragging toward the top or bottom edge keeps
+scrolling into the weeks beyond, rendering them as it goes, and the month stops snapping while a
+gesture is under way and comes to rest on the nearest month when you let go. The `dragPreview`
+option picks [snapped or free drags](/docs/interactions#snapped-and-free-drags) here too.
+
+## How it's built
+
+The views put their scrolling in plain TypeScript that needs an element and no framework, and the
+`.tsx` files bind it to Solid:
+
+| File                           | Holds                                                                                         |
+| ------------------------------ | --------------------------------------------------------------------------------------------- |
+| `scrolling-axis-controller.ts` | The month's axis: weeks on a canvas thousands of items long, and where a scroll comes to rest |
+| `scrolling-axis.tsx`           | `useScrollingAxis`, the axis in a Solid component, and the snap points                        |
+| `scrolling-month.ts`           | The month's weeks on the axis, where each month starts, and how many event lanes fit          |
+| `agenda-scroll.ts`             | The agenda's scroll position and anchor date, which follow each other                         |
+| `use-agenda-scroll.ts`         | The agenda's scrolling in a Solid component, on the agenda's virtualizer                      |
+
+The month renders only the weeks near its load range. Scroll positions are never signals: the views
+render again only when the anchor moves. In right-to-left layouts, set `dir="rtl"` on the page or
+on `Calendar.Frame`.

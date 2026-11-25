@@ -37,8 +37,8 @@ describe("the Solid demo's view and date in the URL", () => {
     ["scrolling-week", "week"],
     ["scrolling-day", "day"],
     ["scrolling-3-day", "3-day"],
-    ["scrolling-agenda", "agenda"],
-    ["scrolling-month", "month"],
+    ["scrolling-month", "scrolling-month"],
+    ["scrolling-agenda", "scrolling-agenda"],
   ])("shows the nearest view for %s: %s", (view, nearest) => {
     expect(read(`?view=${view}`)[0]).toBe(nearest);
   });

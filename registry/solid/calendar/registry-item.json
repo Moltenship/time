@@ -3,7 +3,7 @@
   "name": "calendar",
   "type": "registry:component",
   "title": "Calendar shell",
-  "description": "The calendar's shell, shared by every Solid calendar view: toolbar, view switcher, mini month, event chip, accessible event names, resource status, announcements and the views' navigation keys, on the Solid kit of controls.",
+  "description": "The calendar's shell, shared by every Solid calendar view: toolbar, view switcher, mini month, event chip, accessible event names, resource status, the endless scroll axis, announcements and the views' navigation keys, on the Solid kit of controls.",
   "dependencies": ["@moltenship/calendar-solid", "cn"],
   "registryDependencies": ["@moltenship/calendar-theme", "@moltenship/calendar-ui"],
   "files": [
@@ -16,6 +16,16 @@
       "path": "registry/shared/calendar/announcements.ts",
       "type": "registry:lib",
       "target": "@components/calendar/announcements.ts"
+    },
+    {
+      "path": "registry/shared/calendar/scrolling-axis-controller.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-axis-controller.ts"
+    },
+    {
+      "path": "registry/shared/calendar/scrolling-axis.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-axis.styles.ts"
     },
     {
       "path": "registry/solid/calendar/event-chip.tsx",
@@ -41,6 +51,11 @@
       "path": "registry/solid/calendar/resource-status.tsx",
       "type": "registry:component",
       "target": "@components/calendar/resource-status.tsx"
+    },
+    {
+      "path": "registry/solid/calendar/scrolling-axis.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/scrolling-axis.tsx"
     },
     {
       "path": "registry/solid/calendar/unavailable-time.tsx",

@@ -4,7 +4,6 @@ import {
   defineCalendarView,
   limitDayGridLanes,
   plainDateIntervalContains,
-  scrollingMonthAnchor,
   scrollingMonthOf,
   scrollingMonthStrategy,
   useAnchorDateRequests,
@@ -26,21 +25,32 @@ import {
 } from "react";
 
 import { useEventLabel } from "@registry/calendar/event-label";
-import { epochDay, ScrollSnapPoints, useScrollingAxis } from "@registry/calendar/scrolling-axis";
+import { ScrollSnapPoints, useScrollingAxis } from "@registry/calendar/scrolling-axis";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import {
   useMonthFormats,
   weekHidingFocus,
   type MonthViewOptions,
 } from "@registry/month-view/month-view";
+import { LaneProbe, MonthWeekRow, weekHeight } from "@registry/month-view/month-week";
 import {
-  LaneProbe,
-  laneHeightOf,
-  lanesIn,
-  MonthWeekRow,
-  weekHeight,
-} from "@registry/month-view/month-week";
-import { cn } from "cn";
+  monthColumnHeaderClass,
+  monthHeaderRowClass,
+  monthViewClass,
+} from "@registry/shared/month-view/month.styles";
+import { INITIAL_LANES } from "@registry/shared/month-view/month-layout";
+import {
+  attachWeekLanes,
+  scrollingMonthWeeks,
+  weekNumber,
+  WEEK,
+} from "@registry/shared/scrolling-month-view/scrolling-month";
+import {
+  scrollingMonthTrackClass,
+  scrollingMonthViewportClass,
+  scrollingMonthWeekClass,
+  scrollingMonthWeeksClass,
+} from "@registry/shared/scrolling-month-view/scrolling-month.styles";
 
 export interface ScrollingMonthViewOptions<TEvent> extends MonthViewOptions<TEvent> {
   /** The registered view a date opens, `"day"` by default. */
@@ -52,20 +62,8 @@ type ScrollingMonthViewProps<TEvent> = CalendarViewRendererProps<
   ScrollingMonthViewOptions<TEvent>
 >;
 
-/** Lane count before the first measurement, e.g. while rendering on the server. */
-const INITIAL_LANES = 3;
-/** One week's height: the viewport shared by the visible weeks. */
-const WEEK = "var(--calendar-week-height)";
-/** Months with snap points either way of the range, past any a swipe reaches before it renders. */
-const SNAP_MONTHS = 6;
-
-/** A week's number from the week of 1970-01-01; weeks that start on the same weekday count by one. */
-function weekNumber(date: Temporal.PlainDate): number {
-  return Math.floor(epochDay(date) / 7);
-}
-
 /**
- * Measures how many event lanes fit in a week row of `track`, which holds `count` of them, again
+ * How many event lanes fit in a week row of `track`, which holds `count` of them, measured again
  * only when the rows or the lane height change: `probe` is a `LaneProbe`.
  */
 function useLaneCapacity(
@@ -74,22 +72,11 @@ function useLaneCapacity(
   count: number,
 ): number {
   const [lanes, setLanes] = useState(INITIAL_LANES);
-
   useLayoutEffect(() => {
     const element = track.current;
     if (element === null) return;
-    const measure = () => {
-      const height = element.getBoundingClientRect().height / count;
-      if (height > 0) setLanes(lanesIn(height, laneHeightOf(probe.current)));
-    };
-    measure();
-    if (typeof ResizeObserver === "undefined") return;
-    const observer = new ResizeObserver(measure);
-    observer.observe(element);
-    if (probe.current !== null) observer.observe(probe.current);
-    return () => observer.disconnect();
+    return attachWeekLanes(element, { count, onChange: setLanes, probe: probe.current });
   }, [count, probe, track]);
-
   return lanes;
 }
 
@@ -111,26 +98,15 @@ function ScrollingMonthView<TEvent>({
 }: ScrollingMonthViewProps<TEvent>) {
   const { locale, timeZone } = environment;
   const weeks = range.start.until(range.end).days / 7;
-  const first = weekNumber(range.start);
   const month = scrollingMonthOf(range);
-  const strategy = useMemo(() => scrollingMonthStrategy(weeks), [weeks]);
-  /** The week a month's page starts at: the one that holds its first day. */
-  const monthStart = (date: Temporal.PlainDate) =>
-    weekNumber(strategy.getRange(date, environment, undefined).start);
-  const weekStart = (week: number) => range.start.add({ weeks: week - first });
+  const axisWeeks = scrollingMonthWeeks(range, weeks, environment);
   const axis = useScrollingAxis({
     axis: "block",
-    first,
-    onScroll: (week) => actions.setAnchorDate(scrollingMonthAnchor(weekStart(week))),
+    first: axisWeeks.first,
+    onScroll: (week) => actions.setAnchorDate(axisWeeks.anchorOf(week)),
     page: weeks,
     rtl: false,
-    // The nearest of the months around the week there: their first weeks are four or five apart.
-    snapTo: (week) => {
-      const near = scrollingMonthAnchor(weekStart(Math.round(week)));
-      return [-1, 0, 1]
-        .map((months) => monthStart(near.add({ months })))
-        .reduce((best, start) => (Math.abs(start - week) < Math.abs(best - week) ? start : best));
-    },
+    snapTo: axisWeeks.snapTo,
   });
   // Today and Next can ask for the anchor the view already has while a scroll runs ahead of it.
   useAnchorDateRequests((_, requested) => {
@@ -176,20 +152,16 @@ function ScrollingMonthView<TEvent>({
       aria-label={title}
       {...keyboard}
       data-slot="scrolling-month"
-      className={cn(
-        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] [--calendar-month-lane:22px] pointer-coarse:[--calendar-month-lane:26px] data-interaction:select-none data-[interaction=move]:cursor-grabbing",
-        // A long-press on a touch screen picks events up: it selects no text and opens no callout.
-        !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
-      )}
+      className={monthViewClass(isReadOnly)}
     >
       <LaneProbe ref={laneProbe} />
-      <div role="row" className="grid shrink-0 grid-cols-7 border-b border-calendar-grid">
+      <div role="row" className={monthHeaderRowClass}>
         {projection.weeks[0]?.days.map(({ date }) => (
           <div
             key={date.dayOfWeek}
             role="columnheader"
             aria-label={formats.weekdayName.format(date)}
-            className="py-2 text-center text-[0.6875rem] font-medium text-muted-foreground uppercase"
+            className={monthColumnHeaderClass}
           >
             {formats.weekday.format(date)}
           </div>
@@ -198,7 +170,7 @@ function ScrollingMonthView<TEvent>({
       <div
         ref={axis.scrollRef}
         data-slot="scrolling-month-viewport"
-        className="relative min-h-0 flex-1 snap-y snap-mandatory overflow-y-auto overscroll-y-contain [container-type:size] in-data-interaction:snap-none"
+        className={scrollingMonthViewportClass}
         style={
           {
             // Always a whole month on screen, so every date is on a page: short viewports show
@@ -207,22 +179,19 @@ function ScrollingMonthView<TEvent>({
           } as CSSProperties
         }
       >
-        {/* A flex column, so the rows' offset never collapses through it. */}
         <div
           ref={axis.trackRef}
-          className="relative flex flex-col"
+          className={scrollingMonthTrackClass}
           style={{ height: `calc(${axis.count} * ${WEEK})` }}
         >
           <ScrollSnapPoints
             axis="block"
             base={axis.base}
-            points={Array.from({ length: 2 * SNAP_MONTHS + 1 }, (_, index) =>
-              monthStart(month.add({ months: index - SNAP_MONTHS })),
-            )}
+            points={axisWeeks.snapPoints()}
             size={WEEK}
           />
           <div
-            className="grid shrink-0"
+            className={scrollingMonthWeeksClass}
             style={{
               gridTemplateRows: `repeat(${projection.weeks.length}, ${WEEK})`,
               marginBlockStart: `calc(${start} * ${WEEK})`,
@@ -236,11 +205,7 @@ function ScrollingMonthView<TEvent>({
                   key={week.range.start.toString()}
                   // Weeks rendered above and below the visible ones are for scrolling into.
                   aria-hidden={offscreen ? true : undefined}
-                  className={cn(
-                    "grid",
-                    // A week showing every lane grows over the next ones instead of moving them.
-                    expanded && "relative z-10 bg-calendar-surface shadow-md",
-                  )}
+                  className={scrollingMonthWeekClass(expanded)}
                   style={
                     expanded
                       ? {

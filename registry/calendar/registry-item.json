@@ -53,6 +53,16 @@
       "target": "@components/calendar/scrolling-axis.tsx"
     },
     {
+      "path": "registry/shared/calendar/scrolling-axis-controller.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-axis-controller.ts"
+    },
+    {
+      "path": "registry/shared/calendar/scrolling-axis.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-axis.styles.ts"
+    },
+    {
       "path": "registry/calendar/unavailable-time.tsx",
       "type": "registry:component",
       "target": "@components/calendar/unavailable-time.tsx"

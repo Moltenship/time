@@ -155,6 +155,15 @@ export function createAgendaVirtualizer({
     readonly key: string;
   } | null = null;
   let laidOut = input.rows;
+  /**
+   * The rows the virtualizer had when focus last scrolled the list, and where it scrolled to.
+   * Focus that moves once rows are rendered but before `keepTop` sees them, as Solid's focus
+   * does, scrolled the focused row into view where those rows are: that's the place to keep, not
+   * what was on top, nor where TanStack moves the list from the offset its last `scroll` event
+   * left, before that focus.
+   */
+  let focusedIn: { readonly rows: readonly AgendaRow<unknown>[]; readonly top: number } | null =
+    null;
 
   return {
     virtualizer,
@@ -178,7 +187,9 @@ export function createAgendaVirtualizer({
      */
     keepTop(element: HTMLDivElement): () => void {
       const { rows } = input;
+      let scrolledTo = element.scrollTop;
       const remember = () => {
+        scrolledTo = element.scrollTop;
         const item = virtualizer.getVirtualItemForOffset(element.scrollTop);
         const row = item === undefined ? undefined : rows[item.index];
         onTop =
@@ -187,7 +198,10 @@ export function createAgendaVirtualizer({
             : { date: rowDate(row), into: element.scrollTop - item.start, key: placeKey(row) };
       };
       const top = onTop;
-      if (laidOut !== rows && top !== null) {
+      const focused = laidOut !== rows && focusedIn?.rows === rows ? focusedIn.top : null;
+      if (focused !== null) {
+        if (Math.abs(focused - element.scrollTop) >= 1) virtualizer.scrollToOffset(focused);
+      } else if (laidOut !== rows && top !== null) {
         // What was on top went away, as an empty state when its dates get events or a day when
         // its last event goes: the first row from its date takes its place, from the top.
         const kept = rows.findIndex((row) => placeKey(row) === top.key);
@@ -205,10 +219,15 @@ export function createAgendaVirtualizer({
       // would put back what was on top before focus moved. The focus events come before that
       // scroll, so look again once the script is done.
       let live = true;
-      const rememberFocus = () =>
+      const rememberFocus = () => {
+        // Focus that moves without scrolling, as with `preventScroll`, leaves what's on top.
+        if (element.scrollTop !== scrolledTo) {
+          focusedIn = { rows: input.rows, top: element.scrollTop };
+        }
         queueMicrotask(() => {
           if (live) remember();
         });
+      };
       element.addEventListener("scroll", remember, { passive: true });
       element.addEventListener("focusin", rememberFocus);
       return () => {

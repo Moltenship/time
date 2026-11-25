@@ -14,6 +14,7 @@ import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 import { AgendaList, useAgendaFormats, useAgendaList } from "@registry/list-view/agenda-list";
 import { agendaRows, rowFrom } from "@registry/shared/list-view/agenda-rows";
+import { scrollingAgendaEmptyClass } from "@registry/shared/list-view/agenda.styles";
 import { AgendaEndMessage, EmptyAgenda } from "@registry/list-view/agenda-states";
 import type { AgendaViewOptions } from "@registry/list-view/agenda-view";
 
@@ -77,7 +78,7 @@ function ScrollingAgendaView<TEvent>({
   const endRow = rows.at(-1);
   const empty = rows.some((row) => row.kind === "empty" || (row.kind === "end" && row.shown));
   const emptyState = (
-    <div className="flex flex-1 items-center justify-center p-6 text-center">
+    <div className={scrollingAgendaEmptyClass}>
       <EmptyAgenda
         dates={withAsciiSpaces(
           formats.range.formatRange(range.start, range.end.subtract({ days: 1 })),

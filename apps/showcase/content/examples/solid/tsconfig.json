@@ -20,6 +20,12 @@
         "../../../../../registry/solid/recurrence-scope-dialog/*"
       ],
       "@/components/calendar/month-view/*": ["../../../../../registry/solid/month-view/*"],
+      "@/components/calendar/scrolling-list-view/*": [
+        "../../../../../registry/solid/scrolling-list-view/*"
+      ],
+      "@/components/calendar/scrolling-month-view/*": [
+        "../../../../../registry/solid/scrolling-month-view/*"
+      ],
       "@/components/calendar/time-grid-view/*": ["../../../../../registry/solid/time-grid-view/*"],
       "@/components/calendar/year-view/*": ["../../../../../registry/solid/year-view/*"],
       "@/components/calendar/ui/*": ["../../../../../registry/solid/calendar-ui/*"],

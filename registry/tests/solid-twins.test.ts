@@ -33,6 +33,8 @@ test("the Solid registry has the items ported so far", () => {
     "list-view",
     "month-view",
     "recurrence-scope-dialog",
+    "scrolling-list-view",
+    "scrolling-month-view",
     "time-grid-view",
     "year-view",
   ]);

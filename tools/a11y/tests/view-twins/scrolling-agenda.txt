@@ -1,0 +1,327 @@
+<div class="relative h-full overflow-y-auto" data-slot="agenda-view">
+  <ol aria-label="Oct 8 – Nov 4, 2026" class="relative">
+    <li aria-posinset="1" aria-setsize="9" class="flex gap-3 px-3 py-2 sm:gap-6 sm:px-6 absolute inset-x-0 border-b border-calendar-grid" data-date="2026-10-05" data-index="0">
+      <div class="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
+        <span class="text-[0.6875rem] font-medium uppercase text-muted-foreground">
+          "Mon"
+        <button aria-label="Monday, October 5, 2026" class="flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+          "5"
+      <ul class="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
+        <li>
+          <button aria-label="blue call, Monday, October 5, 3:00 – 3:30 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="blue" data-event-id="blue call" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "3:00 – 3:30 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "blue call"
+        <li>
+          <button aria-label="teal call, Monday, October 5, 3:00 – 3:30 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="teal" data-event-id="teal call" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "3:00 – 3:30 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "teal call"
+    <li aria-posinset="2" aria-setsize="9" class="flex gap-3 px-3 py-2 sm:gap-6 sm:px-6 absolute inset-x-0 border-b border-calendar-grid" data-date="2026-10-06" data-index="1">
+      <div class="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
+        <span class="text-[0.6875rem] font-medium uppercase text-muted-foreground">
+          "Tue"
+        <button aria-label="Tuesday, October 6, 2026" class="flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+          "6"
+      <ul class="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
+        <li>
+          <button aria-label="Conference, all day, Tuesday, October 6 – Friday, October 9" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="teal" data-event-id="Conference" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="rounded-full bg-calendar-event px-2 py-0.5 text-xs font-medium text-calendar-event-foreground">
+                "All day"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "Conference"
+              <span class="shrink-0 text-xs text-muted-foreground group-hover/event:text-accent-foreground">
+                "Day 1 of 4"
+        <li>
+          <button aria-label="gray call, Tuesday, October 6, 3:00 – 3:30 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="gray" data-event-id="gray call" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "3:00 – 3:30 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "gray call"
+        <li>
+          <button aria-label="green call, Tuesday, October 6, 3:00 – 3:30 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="green" data-event-id="green call" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "3:00 – 3:30 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "green call"
+    <li aria-posinset="3" aria-setsize="9" class="flex gap-3 px-3 py-2 sm:gap-6 sm:px-6 absolute inset-x-0 border-b border-calendar-grid" data-date="2026-10-07" data-index="2">
+      <div class="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
+        <span class="text-[0.6875rem] font-medium uppercase text-muted-foreground">
+          "Wed"
+        <button aria-label="Wednesday, October 7, 2026" class="flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+          "7"
+      <ul class="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
+        <li>
+          <button aria-label="Conference, all day, Tuesday, October 6 – Friday, October 9" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="teal" data-event-id="Conference" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="rounded-full bg-calendar-event px-2 py-0.5 text-xs font-medium text-calendar-event-foreground">
+                "All day"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "Conference"
+              <span class="shrink-0 text-xs text-muted-foreground group-hover/event:text-accent-foreground">
+                "Day 2 of 4"
+        <li>
+          <button aria-label="red call, Wednesday, October 7, 3:00 – 3:30 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="red" data-event-id="red call" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "3:00 – 3:30 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "red call"
+    <li aria-posinset="4" aria-setsize="9" class="flex gap-3 px-3 py-2 sm:gap-6 sm:px-6 absolute inset-x-0 border-b border-calendar-grid" data-date="2026-10-08" data-index="3">
+      <div class="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
+        <span class="text-[0.6875rem] font-medium uppercase text-calendar-today">
+          "Thu"
+        <button aria-current="date" aria-label="Thursday, October 8, 2026" class="flex size-9 items-center justify-center rounded-full text-lg tabular-nums focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring bg-calendar-today text-calendar-today-foreground hover:bg-calendar-today/90" tabindex="-1" type="button">
+          "8"
+      <ul class="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
+        <li>
+          <button aria-label="Conference, all day, Tuesday, October 6 – Friday, October 9" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="teal" data-event-id="Conference" data-slot="calendar-event" tabindex="0" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="rounded-full bg-calendar-event px-2 py-0.5 text-xs font-medium text-calendar-event-foreground">
+                "All day"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "Conference"
+              <span class="shrink-0 text-xs text-muted-foreground group-hover/event:text-accent-foreground">
+                "Day 3 of 4"
+        <li>
+          <button aria-label="Holiday, all day, Thursday, October 8" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="orange" data-event-id="Holiday" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="rounded-full bg-calendar-event px-2 py-0.5 text-xs font-medium text-calendar-event-foreground">
+                "All day"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "Holiday"
+        <li>
+          <button aria-label="blue meeting, Thursday, October 8, 8:00 – 8:45 AM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="blue" data-event-id="blue meeting" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "8:00 – 8:45 AM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "blue meeting"
+        <li>
+          <button aria-label="green meeting, Thursday, October 8, 9:00 – 9:45 AM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="green" data-event-id="green meeting" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "9:00 – 9:45 AM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "green meeting"
+        <li>
+          <button aria-label="red meeting, Thursday, October 8, 10:00 – 10:45 AM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="red" data-event-id="red meeting" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "10:00 – 10:45 AM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "red meeting"
+        <li>
+          <button aria-label="orange meeting, Thursday, October 8, 11:00 – 11:45 AM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="orange" data-event-id="orange meeting" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "11:00 – 11:45 AM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "orange meeting"
+        <li>
+          <button aria-label="yellow meeting, Thursday, October 8, 12:00 – 12:45 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="yellow" data-event-id="yellow meeting" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "12:00 – 12:45 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "yellow meeting"
+        <li>
+          <button aria-label="purple meeting, Thursday, October 8, 1:00 – 1:45 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="purple" data-event-id="purple meeting" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "1:00 – 1:45 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "purple meeting"
+        <li>
+          <button aria-label="pink meeting, Thursday, October 8, 2:00 – 2:45 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="pink" data-event-id="pink meeting" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "2:00 – 2:45 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "pink meeting"
+        <li>
+          <button aria-label="teal meeting, Thursday, October 8, 3:00 – 3:45 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="teal" data-event-id="teal meeting" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "3:00 – 3:45 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "teal meeting"
+        <li>
+          <button aria-label="orange call, Thursday, October 8, 3:00 – 3:30 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="orange" data-event-id="orange call" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "3:00 – 3:30 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "orange call"
+        <li>
+          <button aria-label="gray meeting, Thursday, October 8, 4:00 – 4:45 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="gray" data-event-id="gray meeting" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "4:00 – 4:45 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "gray meeting"
+    <li aria-posinset="5" aria-setsize="9" class="flex gap-3 px-3 py-2 sm:gap-6 sm:px-6 absolute inset-x-0 border-b border-calendar-grid" data-date="2026-10-09" data-index="4">
+      <div class="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
+        <span class="text-[0.6875rem] font-medium uppercase text-muted-foreground">
+          "Fri"
+        <button aria-label="Friday, October 9, 2026" class="flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+          "9"
+      <ul class="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
+        <li>
+          <button aria-label="Conference, all day, Tuesday, October 6 – Friday, October 9" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="teal" data-event-id="Conference" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="rounded-full bg-calendar-event px-2 py-0.5 text-xs font-medium text-calendar-event-foreground">
+                "All day"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "Conference"
+              <span class="shrink-0 text-xs text-muted-foreground group-hover/event:text-accent-foreground">
+                "Day 4 of 4"
+        <li>
+          <button aria-label="yellow call, Friday, October 9, 3:00 – 3:30 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="yellow" data-event-id="yellow call" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "3:00 – 3:30 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "yellow call"
+    <li aria-posinset="6" aria-setsize="9" class="flex gap-3 px-3 py-2 sm:gap-6 sm:px-6 absolute inset-x-0 border-b border-calendar-grid" data-date="2026-10-10" data-index="5">
+      <div class="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
+        <span class="text-[0.6875rem] font-medium uppercase text-muted-foreground">
+          "Sat"
+        <button aria-label="Saturday, October 10, 2026" class="flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+          "10"
+      <ul class="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
+        <li>
+          <button aria-label="Offsite, all day, Saturday, October 10 – Tuesday, October 13" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="purple" data-event-id="Offsite" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="rounded-full bg-calendar-event px-2 py-0.5 text-xs font-medium text-calendar-event-foreground">
+                "All day"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "Offsite"
+              <span class="shrink-0 text-xs text-muted-foreground group-hover/event:text-accent-foreground">
+                "Day 1 of 4"
+        <li>
+          <button aria-label="purple call, Saturday, October 10, 3:00 – 3:30 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="purple" data-event-id="purple call" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "3:00 – 3:30 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "purple call"
+    <li aria-posinset="7" aria-setsize="9" class="flex gap-3 px-3 py-2 sm:gap-6 sm:px-6 absolute inset-x-0 border-b border-calendar-grid" data-date="2026-10-11" data-index="6">
+      <div class="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
+        <span class="text-[0.6875rem] font-medium uppercase text-muted-foreground">
+          "Sun"
+        <button aria-label="Sunday, October 11, 2026" class="flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+          "11"
+      <ul class="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
+        <li>
+          <button aria-label="Offsite, all day, Saturday, October 10 – Tuesday, October 13" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="purple" data-event-id="Offsite" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="rounded-full bg-calendar-event px-2 py-0.5 text-xs font-medium text-calendar-event-foreground">
+                "All day"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "Offsite"
+              <span class="shrink-0 text-xs text-muted-foreground group-hover/event:text-accent-foreground">
+                "Day 2 of 4"
+        <li>
+          <button aria-label="pink call, Sunday, October 11, 3:00 – 3:30 PM" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="pink" data-event-id="pink call" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="text-muted-foreground tabular-nums group-hover/event:text-accent-foreground max-sm:text-xs">
+                "3:00 – 3:30 PM"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "pink call"
+    <li aria-posinset="8" aria-setsize="9" class="flex gap-3 px-3 py-2 sm:gap-6 sm:px-6 absolute inset-x-0 border-b border-calendar-grid" data-date="2026-10-12" data-index="7">
+      <div class="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
+        <span class="text-[0.6875rem] font-medium uppercase text-muted-foreground">
+          "Mon"
+        <button aria-label="Monday, October 12, 2026" class="flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+          "12"
+      <ul class="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
+        <li>
+          <button aria-label="Offsite, all day, Saturday, October 10 – Tuesday, October 13" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="purple" data-event-id="Offsite" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="rounded-full bg-calendar-event px-2 py-0.5 text-xs font-medium text-calendar-event-foreground">
+                "All day"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "Offsite"
+              <span class="shrink-0 text-xs text-muted-foreground group-hover/event:text-accent-foreground">
+                "Day 3 of 4"
+    <li aria-posinset="9" aria-setsize="9" class="flex gap-3 px-3 py-2 sm:gap-6 sm:px-6 absolute inset-x-0" data-date="2026-10-13" data-index="8">
+      <div class="sticky top-0 flex w-12 shrink-0 flex-col items-center gap-0.5 self-start pt-1">
+        <span class="text-[0.6875rem] font-medium uppercase text-muted-foreground">
+          "Tue"
+        <button aria-label="Tuesday, October 13, 2026" class="flex size-9 items-center justify-center rounded-full text-lg tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+          "13"
+      <ul class="flex min-w-0 flex-1 flex-col gap-0.5 py-1">
+        <li>
+          <button aria-label="Offsite, all day, Saturday, October 10 – Tuesday, October 13" class="flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-calendar-event-border px-2 text-start transition-[filter,box-shadow] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group/event w-full gap-x-3 gap-y-0.5 border-s-0 bg-transparent py-1.5 text-sm font-normal text-foreground hover:bg-accent hover:brightness-100 max-sm:flex-col max-sm:items-start" data-color="purple" data-event-id="Offsite" data-slot="calendar-event" tabindex="-1" type="button">
+            <span class="flex shrink-0 items-center gap-2 sm:w-44">
+              <span aria-hidden="true" class="size-2.5 shrink-0 rounded-full bg-calendar-event-border">
+              <span class="rounded-full bg-calendar-event px-2 py-0.5 text-xs font-medium text-calendar-event-foreground">
+                "All day"
+            <span class="flex min-w-0 flex-1 items-baseline gap-2 max-sm:w-full max-sm:pl-4.5">
+              <span class="truncate font-medium" data-slot="calendar-event-title">
+                "Offsite"
+              <span class="shrink-0 text-xs text-muted-foreground group-hover/event:text-accent-foreground">
+                "Day 4 of 4"
+  <div class="absolute inset-x-0 flex flex-col" data-index="9">
+    <p class="px-3 py-4 text-center text-sm text-muted-foreground sm:px-6">
+      "Nothing more is scheduled through Wednesday, December 2, 2026."

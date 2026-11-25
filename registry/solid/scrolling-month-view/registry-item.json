@@ -1,0 +1,30 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "scrolling-month-view",
+  "type": "registry:component",
+  "title": "Scrolling month view",
+  "description": "A month of weeks that scrolls up and down without end and comes to rest on a week: rows share the height, the month most of the third row falls in names the view, and weeks a page either side render with their events, \"+N more\" popovers, drag and keys. The same month as the React registry's, in Solid.",
+  "dependencies": ["@moltenship/calendar-solid", "cn"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/month-view"
+  ],
+  "files": [
+    {
+      "path": "registry/solid/scrolling-month-view/scrolling-month-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/scrolling-month-view/scrolling-month-view.tsx"
+    },
+    {
+      "path": "registry/shared/scrolling-month-view/scrolling-month.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-month-view/scrolling-month.ts"
+    },
+    {
+      "path": "registry/shared/scrolling-month-view/scrolling-month.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-month-view/scrolling-month.styles.ts"
+    }
+  ]
+}

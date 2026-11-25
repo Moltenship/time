@@ -15,6 +15,16 @@
       "path": "registry/scrolling-month-view/scrolling-month-view.tsx",
       "type": "registry:component",
       "target": "@components/calendar/scrolling-month-view/scrolling-month-view.tsx"
+    },
+    {
+      "path": "registry/shared/scrolling-month-view/scrolling-month.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-month-view/scrolling-month.ts"
+    },
+    {
+      "path": "registry/shared/scrolling-month-view/scrolling-month.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/scrolling-month-view/scrolling-month.styles.ts"
     }
   ]
 }
