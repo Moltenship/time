@@ -1,14 +1,22 @@
 ---
 title: Installation
-description: Requirements, packages, the ui-sdk peer dependencies, and Temporal setup.
+description: Requirements, the packages for React and for SolidJS 2, the ui-sdk peer dependencies, and Temporal setup.
 ---
+
+<Callout type="warn" title="2.0 is a pre-release">
+  These docs describe Time 2.0, which npm has under the `next` tag. Its API can still change before
+  2.0.0, and so can ui-sdk's while it is in beta. Coming from 1.x? See [Migrating to
+  2.0](/docs/migrating-to-2).
+</Callout>
 
 ## Requirements
 
-- **React 19.** React and React DOM are peer dependencies.
-- **ui-sdk.** `@ui-sdk/core` and `@ui-sdk/react` are peer dependencies since 2.0. The calendar's
-  parts are [ui-sdk](https://ui-sdk.dev) components, which is how an [agent](/docs/agents) reaches
-  them. ui-sdk is in beta: the calendar takes `0.1.0-beta.16` and the betas after it.
+Both frameworks need these:
+
+- **ui-sdk.** `@ui-sdk/core` is a peer dependency since 2.0, with `@ui-sdk/react` or
+  `@ui-sdk/solid` beside it. The calendar's parts are [ui-sdk](https://ui-sdk.dev) components,
+  which is how an [agent](/docs/agents) reaches them. ui-sdk is in beta, and the calendar takes
+  `0.1.0-beta.16` and the betas after it.
 - **A JavaScript runtime with `Temporal`.** Node.js 26 and later include it. Browser support is
   still rolling out, so check the
   [MDN compatibility table](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Temporal#browser_compatibility)
@@ -16,45 +24,50 @@ description: Requirements, packages, the ui-sdk peer dependencies, and Temporal 
 - **TypeScript 6 or later** with `"lib": ["DOM", "DOM.Iterable", "ESNext"]`. `ESNext` has the
   `Temporal` types.
 
+You also need one of these frameworks:
+
+- **React 19.** React and React DOM are peer dependencies. The React integration is complete.
+- **SolidJS 2.0.** `solid-js` and `@solidjs/web` are peer dependencies. The Solid integration is a
+  preview. [React and Solid](/docs/frameworks) lists what it has.
+
 ## Install
 
-<Callout type="warn" title="2.0 is a pre-release">
-  These docs describe Time 2.0. Its API can still change before 2.0.0, and so can ui-sdk's while it
-  is in beta. Coming from 1.x? See [Migrating to 2.0](/docs/migrating-to-2).
-</Callout>
+### React
 
 <Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
 <Tab value="pnpm">
 
 ```bash
-pnpm add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
+pnpm add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="npm">
 
 ```bash
-npm install @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
+npm install @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="yarn">
 
 ```bash
-yarn add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
+yarn add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 <Tab value="bun">
 
 ```bash
-bun add @moltenship/calendar @ui-sdk/core @ui-sdk/react react react-dom
+bun add @moltenship/calendar@next @ui-sdk/core @ui-sdk/react react react-dom
 ```
 
 </Tab>
 </Tabs>
 
-`@moltenship/calendar` is the only calendar package most apps import. It includes the React
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
+
+`@moltenship/calendar` is the only calendar package most React apps import. It includes the React
 components, the event engine, the Temporal helpers, and the pointer interactions. Recurring events
 add `@moltenship/calendar-recurrence`, reading ICS feeds `@moltenship/ics`, and dragging your own
 dnd-kit items into the calendar `@moltenship/calendar-dnd-kit`. See
@@ -65,7 +78,51 @@ You import ui-sdk yourself in one case: to create the [agent bridge](/docs/agent
 find each other through it, and with two copies an agent sees no calendar. Your package manager
 keeps one as long as every `@ui-sdk/*` package is on the same version.
 
-For SolidJS 2, install `@moltenship/calendar-solid` instead; see [Solid](/docs/api/solid).
+### Solid
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+```
+
+</Tab>
+</Tabs>
+
+Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
+
+A Solid app installs `@moltenship/calendar-solid` and `@moltenship/calendar-core`, and not
+`@moltenship/calendar`, which is the React package. The event adapter and the functions a view is
+made of come from `@moltenship/calendar-core`. The agent bridge comes from `@ui-sdk/solid/agent`.
+The Temporal helpers are in `@moltenship/calendar-temporal`. Add `@moltenship/calendar-temporal@next`
+when you import one.
+
+Your app's Solid compiler has to compile `@ui-sdk/solid`. [Build setup](/docs/api/solid#build-setup)
+has the Vite and TypeScript configuration, and [A calendar](/docs/api/solid#a-calendar) is the first
+calendar to build, since the [Quick start](/docs/quick-start) uses React views. The Temporal and TypeScript sections below apply to
+Solid as written. The UI source section doesn't, since the registry has no Solid views yet.
 
 ## Temporal
 
@@ -97,9 +154,9 @@ Make sure your `tsconfig.json` includes the `ESNext` library so `Temporal` is ty
 
 ## UI source (optional)
 
-The packages render plain, unstyled elements. The styled views, toolbar and theme are source files
-that you add to your app and then own, the way shadcn/ui works. They install with the shadcn CLI
-from this site's registry. There's no other installer.
+The packages render plain, unstyled elements. The styled views, toolbar and theme are React source
+files that you add to your app and then own, the way shadcn/ui works. They install with the shadcn
+CLI from this site's registry. There's no other installer.
 
 <Steps>
 <Step>
@@ -203,4 +260,5 @@ vp run dev
 `vp run dev` starts this site locally. The examples on these pages are real files in
 `apps/showcase/content/examples`, type-checked against the current packages.
 
-Next, build a calendar in the [Quick start](/docs/quick-start).
+Next, build a React calendar in the [Quick start](/docs/quick-start), or a Solid one in
+[A calendar](/docs/api/solid#a-calendar).

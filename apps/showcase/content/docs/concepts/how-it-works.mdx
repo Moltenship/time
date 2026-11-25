@@ -1,18 +1,33 @@
 ---
 title: How it works
-description: The packages, and how your events become a rendered view.
+description: The packages, which of them React and Solid share, and how your events become a rendered view.
 ---
 
 ## Packages
 
+Time has three layers. The engine and the calendar import no UI framework, and an integration
+renders them in one:
+
 ```text
-@moltenship/calendar                    what you import: everything below
-├── @moltenship/calendar-react          Root, components, hooks
+integration   @moltenship/calendar (React)       @moltenship/calendar-solid (Solid)
+calendar      @moltenship/calendar-primitives    state, actions, what an agent can call
+engine        @moltenship/calendar-core          adapters, validation, snapshots, queries, changes
+              @moltenship/calendar-temporal      ranges, day boundaries, DST helpers
+```
+
+A React app imports one package, which re-exports the React integration and the layers under it:
+
+```text
+@moltenship/calendar                    what a React app imports: everything below
+├── @moltenship/calendar-react          the React integration: Root, components, hooks
 │   └── @moltenship/calendar-primitives the calendar without a framework: state, actions, agents
 ├── @moltenship/calendar-dnd            drag, resize, and create inside views
 ├── @moltenship/calendar-core           adapters, validation, snapshots, queries, changes
 └── @moltenship/calendar-temporal       ranges, day boundaries, DST helpers
 ```
+
+A Solid app imports `@moltenship/calendar-solid` and `@moltenship/calendar-core`. The Solid
+integration is a preview, and [React and Solid](/docs/frameworks) lists what it has.
 
 `calendar-dnd` builds on `calendar-core`, which builds on `calendar-temporal`, and `calendar-react`
 builds on all three and on `calendar-primitives`.
@@ -32,16 +47,16 @@ Two more packages stand apart from `@moltenship/calendar`: `@moltenship/calendar
 recurring events into ordinary events (it builds on core, Temporal and `ics`), and `@moltenship/ics`
 parses iCalendar text with no dependencies.
 
-| Package                           | Use it when                                                                                           |
-| --------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `@moltenship/calendar`            | Almost always. It includes `calendar-core`, `calendar-temporal`, `calendar-react` and `calendar-dnd`. |
-| `@moltenship/calendar-core`       | You want to validate or query events in code that never loads React.                                  |
-| `@moltenship/calendar-temporal`   | You only need the date and time zone helpers.                                                         |
-| `@moltenship/calendar-react`      | Rarely. `@moltenship/calendar` already includes everything in it.                                     |
-| `@moltenship/calendar-primitives` | You write a framework integration, or want the agent types. See [Primitives](/docs/api/primitives).   |
-| `@moltenship/calendar-solid`      | Your app is on SolidJS 2. A preview, without the styled views. See [Solid](/docs/api/solid).          |
-| `@moltenship/calendar-recurrence` | Your events repeat. See [Recurring events](/docs/concepts/recurrence).                                |
-| `@moltenship/ics`                 | You read iCalendar feeds or files. See [ICS](/docs/api/ics).                                          |
+| Package                           | Use it when                                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `@moltenship/calendar`            | Your app is on React. It includes `calendar-core`, `calendar-temporal`, `calendar-react` and `calendar-dnd`. |
+| `@moltenship/calendar-core`       | Your app is on Solid, or you validate or query events in code that never loads React.                        |
+| `@moltenship/calendar-temporal`   | You only need the date and time zone helpers.                                                                |
+| `@moltenship/calendar-react`      | Rarely. `@moltenship/calendar` already includes everything in it.                                            |
+| `@moltenship/calendar-primitives` | You write a framework integration, or want the agent types. See [Primitives](/docs/api/primitives).          |
+| `@moltenship/calendar-solid`      | Your app is on SolidJS 2. A preview, without the styled views. See [Solid](/docs/api/solid).                 |
+| `@moltenship/calendar-recurrence` | Your events repeat. See [Recurring events](/docs/concepts/recurrence).                                       |
+| `@moltenship/ics`                 | You read iCalendar feeds or files. See [ICS](/docs/api/ics).                                                 |
 
 `@moltenship/calendar` has no `"use client"` directive of its own, so a Server Component can import
 its core and Temporal helpers. The React parts and the pointer layer keep their client boundary.
@@ -69,7 +84,7 @@ Steps 2 and 3 only run again when their inputs change. A new array with the same
 order reuses the snapshot. A changed array is read again through the adapter, except records with an
 unchanged `getRevision` value; if every record comes out the same, in the same order, the interval indexes are kept.
 
-## Using the engine without React
+## Using the engine without a framework
 
 Snapshots work anywhere. This finds the meetings in a time range using `calendar-core` and
 `calendar-temporal` directly:

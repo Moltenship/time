@@ -83,3 +83,20 @@ export function ServerIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function RepeatIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="m17 2 4 4-4 4M3 11v-1a4 4 0 0 1 4-4h14M7 22l-4-4 4-4M21 13v1a4 4 0 0 1-4 4H3" />
+    </Icon>
+  );
+}
+
+export function GlobeIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <circle cx="12" cy="12" r="10" />
+      <path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20M2 12h20" />
+    </Icon>
+  );
+}

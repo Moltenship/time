@@ -1,13 +1,4 @@
 {
-  "title": "Agents",
-  "pages": [
-    "index",
-    "connect",
-    "changes",
-    "deleting",
-    "webmcp",
-    "server",
-    "reference",
-    "coding-agents"
-  ]
+  "title": "Agents in your app",
+  "pages": ["index", "connect", "changes", "deleting", "webmcp", "server", "reference"]
 }

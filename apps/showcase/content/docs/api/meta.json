@@ -2,15 +2,18 @@
   "title": "API reference",
   "pages": [
     "index",
+    "---React and Solid---",
     "react",
+    "solid",
+    "---Engine and state---",
     "events",
     "changes",
     "store",
     "temporal",
-    "ics",
-    "recurrence",
-    "dnd-kit",
     "primitives",
-    "solid"
+    "---Other packages---",
+    "recurrence",
+    "ics",
+    "dnd-kit"
   ]
 }

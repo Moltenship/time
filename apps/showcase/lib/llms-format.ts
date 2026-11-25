@@ -134,3 +134,13 @@ export function formatIndex({ title, summary, notes, sections }: IndexText): str
 
   return [`# ${title}`, `> ${summary}`, ...notes, ...lists].join("\n\n").concat("\n");
 }
+
+/**
+ * A page's name in the index: "Views: Month" for a page in a folder. A page named as its folder
+ * is, such as a folder's index page, isn't named twice.
+ */
+export function groupedLabel(title: string, folder: string | undefined): string {
+  if (folder === undefined) return title;
+  if (folder === title) return title;
+  return `${folder}: ${title}`;
+}

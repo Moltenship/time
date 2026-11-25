@@ -8,6 +8,7 @@ import {
   siteDescription,
   siteKeywords,
   siteName,
+  siteSocialTitle,
   siteTitle,
   siteUrl,
 } from "@/lib/site";
@@ -28,7 +29,7 @@ export const metadata: Metadata = {
   creator: "Moltenship",
   category: "technology",
   metadataBase: new URL(siteUrl),
-  openGraph: { ...openGraphBase, type: "website", title: siteTitle },
+  openGraph: { ...openGraphBase, type: "website", title: siteSocialTitle },
   twitter: { card: "summary_large_image" },
   robots: {
     googleBot: { "max-image-preview": "large", "max-snippet": -1, "max-video-preview": -1 },

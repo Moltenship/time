@@ -1,7 +1,7 @@
-import { siteTitle } from "@/lib/site";
+import { siteHeadline, siteSocialTitle } from "@/lib/site";
 import { ImageResponse } from "next/og";
 
-export const alt = siteTitle;
+export const alt = siteSocialTitle;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
@@ -65,16 +65,17 @@ export default function OpenGraphImage() {
         <div
           style={{
             marginTop: "auto",
-            fontSize: 68,
+            fontSize: 60,
             fontWeight: 600,
             letterSpacing: -2,
             lineHeight: 1.05,
+            textWrap: "balance",
           }}
         >
-          The React calendar built on Temporal
+          {siteHeadline}
         </div>
-        <div style={{ marginTop: 28, fontSize: 28, color: "#a3a3a3" }}>
-          Exact time zones and DST. Views you own.
+        <div style={{ marginTop: 28, fontSize: 28, color: "#a3a3a3", textWrap: "balance" }}>
+          Exact time zones and recurrence. Views you own.
         </div>
       </div>
       <div

@@ -11,6 +11,11 @@ export function PreviewSkeleton() {
         <span className="h-5 w-40 rounded-md bg-fd-muted" />
       </div>
       <div className="flex-1 bg-[linear-gradient(to_bottom,var(--color-fd-border)_1px,transparent_1px)] bg-size-[100%_3rem]" />
+      <noscript>
+        <p className="border-t px-4 py-3 text-sm text-fd-muted-foreground">
+          This example needs JavaScript.
+        </p>
+      </noscript>
     </div>
   );
 }

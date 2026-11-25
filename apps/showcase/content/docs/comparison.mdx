@@ -3,18 +3,20 @@ title: Comparison
 description: How Time compares with FullCalendar and react-big-calendar, as of October 2026.
 ---
 
-This page compares Time with two React calendars that many teams already use:
+This page compares Time in a React app with two React calendars that many teams already use:
 [FullCalendar](https://fullcalendar.io) 7.1, through `@fullcalendar/react` and its premium
 plugins, and [react-big-calendar](https://github.com/bigcalendar/react-big-calendar) 1.20. It's
-accurate as of **October 2026**. Claims about Time come from these docs and the code on `main`.
+accurate as of **October 2026**, and Time's rows under [Maturity](#maturity) as of November 25, 2026. Claims about Time come from these docs and the code on `main`.
 Claims about the other two link their sources in the notes at the end of the page; a ✗ without a
 note means we found no such feature in their docs or code. If something here is wrong or out of
 date, [open an issue](https://github.com/Moltenship/time/issues).
 
-<Callout type="warn" title="Time is new, and on npm as a release candidate">
-  Time started in August 2026 and has one maintainer. Its packages are on npm as a release candidate
-  for 1.0.0, its first release, and its API can still change before 1.0.0 if the release candidate
-  turns up problems. FullCalendar has been developed since 2009 and react-big-calendar since 2015.
+<Callout type="warn" title="Time is new, and has no stable release">
+  Time started in August 2026 and has one maintainer. Its newest release is 2.0.0-beta.1, a
+  pre-release on npm's `next` tag. npm's `latest` tag for `@moltenship/calendar` is 1.0.0-rc.1, a
+  release candidate. These docs describe 2.0, which is built on [ui-sdk](https://ui-sdk.dev), a
+  beta, so the API can still change before 2.0.0. The SolidJS 2 package is a preview, and this page
+  doesn't compare it. FullCalendar has been developed since 2009 and react-big-calendar since 2015.
   Both are downloaded more than a million times a week and run in production in many apps. Read the
   rows below with that in mind.
 </Callout>
@@ -93,7 +95,7 @@ it isn't built in: you'd write it yourself or add another library.
 |                           | Time                                                                                                                                                                                                                                      | FullCalendar                                                                                                                                                       | react-big-calendar                                                                                                 |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------ |
 | Headless core             | ✓ The event engine, the Temporal helpers and the calendar's state and actions use no React. The React parts render plain elements ([How it works](/docs/concepts/how-it-works))                                                           | Partial. `@full-ui/headless-calendar`, MIT, is its internal core; its readme calls it a beta[^fc-headless]                                                         | ✗                                                                                                                  |
-| Frameworks                | React. A SolidJS 2 package renders the same headless calendar as a preview, without the styled views ([Solid](/docs/api/solid))                                                                                                           | ✓ React, Vue 3, Angular, Preact, plain JavaScript and a web component[^fc-frameworks]                                                                              | React only[^rbc-react]                                                                                             |
+| Frameworks                | React. A SolidJS 2 package renders the same headless calendar as a preview, without the styled views, keyboard navigation or dragging ([React and Solid](/docs/frameworks))                                                               | ✓ React, Vue 3, Angular, Preact, plain JavaScript and a web component[^fc-frameworks]                                                                              | React only[^rbc-react]                                                                                             |
 | React versions            | 19                                                                                                                                                                                                                                        | 17 to 19[^fc-frameworks]                                                                                                                                           | 16.14 to 19[^rbc-react]                                                                                            |
 | Server rendering, Next.js | ✓ Renders the same markup on the server and in the browser. Calendars are Client Components. A full [App Router example](/docs/guides/nextjs-app-router) with Server Actions                                                              | ✓ The React package is written in React since 7.0, with server rendering and StrictMode. A Next.js example project[^fc-react]                                      | Partial. Its docs don't cover server rendering or Next.js. App Router users put it in a Client Component[^rbc-ssr] |
 | Own the code              | ✓ Every view's components, the toolbar and the theme are source files you add with the shadcn CLI ([UI source](/docs/installation#ui-source-optional)). Date math, layout, and the drag and keyboard logic stay in `@moltenship/calendar` | Partial. A shadcn registry adds a wrapper, a toolbar and Tailwind classes for each part. The views' markup and behaviour stay in `@fullcalendar/react`[^fc-shadcn] | ✗                                                                                                                  |
@@ -105,7 +107,7 @@ it isn't built in: you'd write it yourself or add another library.
 |                               | Time                                                                                                                                                                                                                                                                  | FullCalendar                                                                                      | react-big-calendar                                                                                    |
 | ----------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
 | Virtualization and large data | ✓ Resource columns, the resource timeline, the agenda and the scrolling views render only what's in view. Month and time grids render the visible range. Events sit in an interval index, so each view reads only its range ([Performance](/docs/guides/performance)) | Partial. Opt-in and premium, for the resource timeline only. Other views are planned[^fc-virtual] | ✗ No virtualization. Reports about large data were closed by a bot, and a fix isn't merged[^rbc-perf] |
-| Bundle size, gzipped          | 143 kB. 67 kB if your app already ships Base UI's select, popover and tooltip, `cn` and lucide-react                                                                                                                                                                  | 84 kB. 118 kB with the premium resource views                                                     | 99 kB with Luxon and a time zone. 85 kB with date-fns, without time zones                             |
+| Bundle size, gzipped          | Measured on 1.x, before 2.0 added ui-sdk. 143 kB, or 67 kB if your app already ships Base UI's select, popover and tooltip, `cn` and lucide-react                                                                                                                     | 84 kB. 118 kB with the premium resource views                                                     | 99 kB with Luxon and a time zone. 85 kB with date-fns, without time zones                             |
 
 ### How the sizes were measured
 
@@ -141,14 +143,14 @@ polyfill, which only browsers without Temporal need.
 
 ## Maturity
 
-|                                | Time                                          | FullCalendar                                                             | react-big-calendar                                |
-| ------------------------------ | --------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
-| Since                          | August 2026                                   | 2009[^fc-maturity]                                                       | 2015[^rbc-maturity]                               |
-| Latest release                 | 1.0.0-rc.1, a release candidate, October 2026 | 7.1.2, October 12, 2026[^fc-maturity]                                    | 1.20.0, June 1, 2026[^rbc-maturity]               |
-| Releases in the last 12 months | 1, a release candidate                        | 8[^fc-maturity]                                                          | 2[^rbc-maturity]                                  |
-| Weekly npm downloads           | None yet, first published in October 2026     | 1.8 million for `@fullcalendar/react`[^fc-downloads]                     | 1.17 million[^rbc-downloads]                      |
-| GitHub                         | 1 contributor                                 | 20.7k stars, about 130 contributors[^fc-maturity]                        | 8.8k stars, about 240 contributors[^rbc-maturity] |
-| Support                        | GitHub issues                                 | Community support, and email support with a premium license[^fc-license] | GitHub issues[^rbc-maturity]                      |
+|                                | Time                                                                                           | FullCalendar                                                             | react-big-calendar                                |
+| ------------------------------ | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------ | ------------------------------------------------- |
+| Since                          | August 2026                                                                                    | 2009[^fc-maturity]                                                       | 2015[^rbc-maturity]                               |
+| Latest release                 | 2.0.0-beta.1, a pre-release, November 25, 2026                                                 | 7.1.2, October 12, 2026[^fc-maturity]                                    | 1.20.0, June 1, 2026[^rbc-maturity]               |
+| Releases in the last 12 months | 3: two release candidates and one beta                                                         | 8[^fc-maturity]                                                          | 2[^rbc-maturity]                                  |
+| Weekly npm downloads           | 9 for `@moltenship/calendar` in the week of November 17, 2026. First published in October 2026 | 1.8 million for `@fullcalendar/react`[^fc-downloads]                     | 1.17 million[^rbc-downloads]                      |
+| GitHub                         | 1 contributor                                                                                  | 20.7k stars, about 130 contributors[^fc-maturity]                        | 8.8k stars, about 240 contributors[^rbc-maturity] |
+| Support                        | GitHub issues                                                                                  | Community support, and email support with a premium license[^fc-license] | GitHub issues[^rbc-maturity]                      |
 
 FullCalendar and react-big-calendar have years of bug reports behind them, answers on Stack
 Overflow, example projects and people who know them. Time has none of that yet.
@@ -171,7 +173,7 @@ end, view components you own as source, editing by keyboard with screen reader a
 edits to recurring series, availability and conflict rules, resource views under the MIT license,
 or a calendar an [AI agent](/docs/agents) can read and change under your app's rules. Don't choose
 it yet if you need a stable release with a track record, or styled views for a framework other
-than React.
+than React. In SolidJS 2, Time is a preview where you write the views yourself.
 
 [^fc-license]: FullCalendar's [pricing](https://fullcalendar.io/pricing), [purchase](https://fullcalendar.io/purchase) and [license](https://fullcalendar.io/license) pages, its [premium](https://fullcalendar.io/docs/premium) docs, and the [plugin index](https://fullcalendar.io/docs/plugin-index), which marks the premium plugins.
 

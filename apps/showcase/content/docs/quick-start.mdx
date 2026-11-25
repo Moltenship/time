@@ -1,10 +1,11 @@
 ---
 title: Quick start
-description: Build a week, day, month, and agenda calendar with the built-in views.
+description: Build a week, day, month and agenda calendar in React with the built-in views.
 ---
 
-You'll build this calendar: a toolbar, a view switcher, and the built-in week, day, month, and
-agenda views, showing your own meetings.
+You'll build this calendar in React: a toolbar, a view switcher, and the built-in week, day, month
+and agenda views, showing your own meetings. The built-in views are React source, so a Solid app
+starts from [A calendar](/docs/api/solid#a-calendar) instead, with a view you write.
 
 <CalendarPreview switcher />
 
@@ -15,8 +16,8 @@ To see these views running with more data before you start, open the [live demo]
 
 ### Install
 
-Install `@moltenship/calendar` as described in [Installation](/docs/installation), including
-`Temporal` if your browsers need it.
+Install `@moltenship/calendar` and its peer dependencies as [Installation](/docs/installation#react)
+describes, with a `Temporal` polyfill if your browsers need one.
 
 </Step>
 <Step>
@@ -95,4 +96,9 @@ import { TooltipProvider } from "@/components/ui/tooltip";
   />
   <Card title="Views" href="/docs/views" description="Options for each built-in view." />
   <Card title="Theming" href="/docs/theming" description="Colors, dark mode, and event colors." />
+  <Card
+    title="Agents"
+    href="/docs/agents/connect"
+    description="Let an AI agent read this calendar and change it, under your rules."
+  />
 </Cards>

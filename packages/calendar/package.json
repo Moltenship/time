@@ -1,9 +1,10 @@
 {
   "name": "@moltenship/calendar",
   "version": "2.0.0-beta.1",
-  "description": "A headless React calendar built on the Temporal API: week, day, month, year, agenda and resource views, exact time zones and DST, drag and drop.",
+  "description": "Moltenship Time for React, a headless calendar built on the Temporal API with week, day, month, year, agenda and resource views, exact time zones and DST, drag and drop, and actions an AI agent can call.",
   "keywords": [
     "agenda",
+    "ai-agents",
     "calendar",
     "drag-and-drop",
     "dst",

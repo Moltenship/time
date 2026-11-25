@@ -3,18 +3,32 @@ title: Overview
 description: What each package exports, and where to import it from.
 ---
 
-Import from `@moltenship/calendar`. It includes the React components and hooks, the event engine,
-the Temporal helpers, and the pointer interactions, so one import line covers the calendar:
+In a React app, import from `@moltenship/calendar`. It includes the React components and hooks,
+the event engine, the Temporal helpers, and the pointer interactions, so one import line covers the
+calendar:
 
 ```ts
 import { createCalendar, defineCalendarView, plainDateInterval } from "@moltenship/calendar";
 ```
+
+In a Solid app, the factory, the parts and the hooks come from `@moltenship/calendar-solid`, and
+the engine from `@moltenship/calendar-core`. The pages under "Engine and state" in the sidebar
+name `@moltenship/calendar` as the import. In Solid, events, changes and policies come from
+`@moltenship/calendar-core`. The Temporal helpers come from `@moltenship/calendar-temporal`, which
+you install beside it as `@moltenship/calendar-temporal@next`. The store comes from
+`@moltenship/calendar-solid`. The pointer layer, `@moltenship/calendar-dnd`, imports no framework,
+but the Solid package doesn't bind it yet.
 
 <Cards>
   <Card
     title="React components and hooks"
     href="/docs/api/react"
     description="createCalendar, Root and its props, components, hooks, meta, diagnostics."
+  />
+  <Card
+    title="Solid"
+    href="/docs/api/solid"
+    description="The headless calendar for SolidJS 2, as a preview. A separate package."
   />
   <Card
     title="Events and snapshots"
@@ -37,6 +51,11 @@ import { createCalendar, defineCalendarView, plainDateInterval } from "@moltensh
     description="Ranges, grids, rounding, day boundaries, and DST from calendar-temporal."
   />
   <Card
+    title="Primitives"
+    href="/docs/api/primitives"
+    description="The calendar without a framework, for integrations. A separate package."
+  />
+  <Card
     title="iCalendar (ICS)"
     href="/docs/api/ics"
     description="Parse ICS feeds and files into typed Temporal values. A separate package."
@@ -56,16 +75,6 @@ import { createCalendar, defineCalendarView, plainDateInterval } from "@moltensh
     href="/docs/agents/reference"
     description="What a calendar tells an AI agent: snapshot fields, actions, arguments and errors."
   />
-  <Card
-    title="Primitives"
-    href="/docs/api/primitives"
-    description="The calendar without a framework, for integrations. A separate package."
-  />
-  <Card
-    title="Solid"
-    href="/docs/api/solid"
-    description="The headless calendar for SolidJS 2, as a preview. A separate package."
-  />
 </Cards>
 
 The iCalendar parser, `@moltenship/ics`, stands alone. `@moltenship/calendar` doesn't re-export it,
@@ -80,23 +89,23 @@ into it. It's optional and not re-exported, so the calendar's install carries no
 Tests use `@moltenship/calendar-testing`, a development dependency: see [Testing](/docs/testing).
 
 The agent bridge isn't the calendar's: `createAgent`, `agentTools` and `registerTools` come from
-`@ui-sdk/react/agent`, which your app imports itself. See [Agents](/docs/agents).
+`@ui-sdk/react/agent`, which your app imports itself. See [Agents in your app](/docs/agents).
 
 ## Packages
 
-| Package                           | Contents                                                                                                                 | Dependencies                                                                                                                     |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------- |
-| `@moltenship/calendar`            | Re-exports `calendar-react`, `-core`, `-temporal` and `-dnd`. Ships these docs as Markdown and a skill for coding agents | Those four; React 19, `@ui-sdk/core`, `@ui-sdk/react` (peers)                                                                    |
-| `@moltenship/calendar-react`      | `createCalendar`, `defineCalendarView`, components, hooks, store                                                         | `calendar-primitives`, `calendar-dnd`, `calendar-core`, `calendar-temporal`; React 19, `@ui-sdk/core`, `@ui-sdk/react` (peers)   |
-| `@moltenship/calendar-primitives` | The calendar's state, actions, runtime and agent surface, with no framework. Not re-exported.                            | `calendar-core`, `calendar-temporal`; `@ui-sdk/core` (peer)                                                                      |
-| `@moltenship/calendar-solid`      | `createCalendar`, `defineCalendarView`, parts and read hooks for SolidJS 2. A preview. Not re-exported.                  | `calendar-primitives`, `calendar-core`, `calendar-temporal`; `solid-js`, `@solidjs/web`, `@ui-sdk/core`, `@ui-sdk/solid` (peers) |
-| `@moltenship/calendar-core`       | Adapters, validation, snapshots, queries, changes and policies, view strategies, availability. No React.                 | `calendar-temporal`, `@flatten-js/interval-tree`                                                                                 |
-| `@moltenship/calendar-temporal`   | Ranges, grids, rounding, zoned days, DST                                                                                 | None                                                                                                                             |
-| `@moltenship/calendar-dnd`        | Pointer drag, resize, and create for views, with no framework                                                            | `calendar-core`, `calendar-temporal`                                                                                             |
-| `@moltenship/ics`                 | iCalendar parsing into Temporal values. Not re-exported.                                                                 | None                                                                                                                             |
-| `@moltenship/calendar-recurrence` | Series expansion, occurrence IDs, series edits. Not re-exported.                                                         | `calendar-core`, `calendar-temporal`, `ics`                                                                                      |
-| `@moltenship/calendar-dnd-kit`    | dnd-kit items dragged in, events dragged out. Not re-exported.                                                           | `calendar-dnd`, `calendar-core`; React 19, dnd-kit 0.5 (peers)                                                                   |
-| `@moltenship/calendar-testing`    | A test harness for your calendar: fixed clock, builders, render and hydration. See [Testing](/docs/testing).             | `calendar`, `calendar-recurrence`; React and React DOM 19, `@ui-sdk/core`, `@ui-sdk/react` (peers)                               |
+| Package                           | Contents                                                                                                                              | Dependencies                                                                                                                     |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `@moltenship/calendar`            | Re-exports `calendar-react`, `-core`, `-temporal` and `-dnd`. Since 2.0 it ships these docs as Markdown and a skill for coding agents | Those four; React 19, `@ui-sdk/core`, `@ui-sdk/react` (peers)                                                                    |
+| `@moltenship/calendar-react`      | `createCalendar`, `defineCalendarView`, components, hooks, store                                                                      | `calendar-primitives`, `calendar-dnd`, `calendar-core`, `calendar-temporal`; React 19, `@ui-sdk/core`, `@ui-sdk/react` (peers)   |
+| `@moltenship/calendar-primitives` | The calendar's state, actions and runtime, agent actions included, with no framework. Not re-exported.                                | `calendar-core`, `calendar-temporal`; `@ui-sdk/core` (peer)                                                                      |
+| `@moltenship/calendar-solid`      | `createCalendar`, `defineCalendarView`, parts and read hooks for SolidJS 2. A preview. Not re-exported.                               | `calendar-primitives`, `calendar-core`, `calendar-temporal`; `solid-js`, `@solidjs/web`, `@ui-sdk/core`, `@ui-sdk/solid` (peers) |
+| `@moltenship/calendar-core`       | Adapters, validation, snapshots, queries, changes and policies, view strategies, availability. No React.                              | `calendar-temporal`, `@flatten-js/interval-tree`                                                                                 |
+| `@moltenship/calendar-temporal`   | Ranges, grids, rounding, zoned days, DST                                                                                              | None                                                                                                                             |
+| `@moltenship/calendar-dnd`        | Pointer drag, resize, and create for views, with no framework                                                                         | `calendar-core`, `calendar-temporal`                                                                                             |
+| `@moltenship/ics`                 | iCalendar parsing into Temporal values. Not re-exported.                                                                              | None                                                                                                                             |
+| `@moltenship/calendar-recurrence` | Series expansion, occurrence IDs, series edits. Not re-exported.                                                                      | `calendar-core`, `calendar-temporal`, `ics`                                                                                      |
+| `@moltenship/calendar-dnd-kit`    | dnd-kit items dragged in, events dragged out. Not re-exported.                                                                        | `calendar-dnd`, `calendar-core`; React 19, dnd-kit 0.5 (peers)                                                                   |
+| `@moltenship/calendar-testing`    | A test harness for your calendar: fixed clock, builders, render and hydration. See [Testing](/docs/testing).                          | `calendar`, `calendar-recurrence`; React and React DOM 19, `@ui-sdk/core`, `@ui-sdk/react` (peers)                               |
 
 Every package is ESM only. Import from the package name: paths inside a package aren't part of the
 API.
