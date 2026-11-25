@@ -118,9 +118,8 @@ Every commit message and every PR title is `<type>(<scope>)!: <summary>`, per [C
 
 ## Code review
 
-- Non-trivial PRs get a review from Claude Opus 5.5 (xhigh). Simple ones skip it: docs or notes only, mechanical changes, or small fixes their tests cover.
-- One reviewer per PR, for every round: spawn it once, then continue the same agent (SendMessage) with what you changed and the new commit, instead of spawning a fresh one.
-- Start a new reviewer only if the old one can't be continued (its context ran out, or it's gone), and give it the earlier rounds' findings and your replies.
+- Non-trivial PRs get a review from Claude Opus 5.5 (high). Simple ones skip it: docs or notes only, mechanical changes, or small fixes their tests cover.
+- One round: the reviewer reads the PR once. Nobody reviews the fixes again; whoever merges checks that each blocker and should-fix finding is fixed or answered.
 - Fix each finding, or reply with the reason you didn't. Post the local gate's result on the PR.
 - Merge with squash once the local gate passes and the review, if there was one, has no open blocker or should-fix findings. Rebase on `main` first if behind. The Vercel checks don't gate merges: when Vercel's daily deploy limit is hit, production catches up with the next deploy after it resets.
 
