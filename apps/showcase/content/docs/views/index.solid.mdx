@@ -8,11 +8,16 @@ example an agenda and a month grid. The `view` state names the active one, and
 `<Calendar.ActiveView />` renders it.
 
 A view is a strategy and a `Renderer`. The strategy picks the dates and lays out the events, and
-the `Renderer` is a Solid component that draws that layout. The registry has two styled views so
-far, the month and the agenda, with a toolbar, a mini month and the controls they're built from. You add them to
-your app as source, and you write the other views.
+the `Renderer` is a Solid component that draws that layout. The registry has styled views for the
+week, the day, the month and the agenda, with a toolbar, a mini month and the controls they're
+built from. You add them to your app as source, and you write the other views.
 
 <Cards>
+  <Card
+    title="Week and day"
+    href="/docs/views/week-and-day"
+    description="The registry's time grids, with an all-day row, a current-time line and secondary time zones."
+  />
   <Card
     title="Month"
     href="/docs/views/month"

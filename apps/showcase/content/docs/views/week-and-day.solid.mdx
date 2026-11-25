@@ -1,0 +1,214 @@
+---
+title: Week and day
+description: The Solid week and day views, time grids with an all-day row, a current-time line and DST-aware hours, from the Solid registry.
+---
+
+Try them in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=week): it opens on
+the week.
+
+`createWeekView` and `createDayView` show the hours of the day down the side and one column per day.
+The week view has seven columns, starting on `weekRules.firstDay`. The day view has one column for
+the anchor date. `createThreeDayView` has three, from the anchor date: on a phone, where a week's
+seven columns are too narrow to read, it shows more than a day.
+
+## Add them
+
+Add the `time-grid-view` item to your app with the shadcn CLI, as
+[UI source](/docs/installation#ui-source-optional) describes. It brings the theme, the shared
+`calendar` parts and the kit's tooltip:
+
+```bash
+npx shadcn@latest add @moltenship/time-grid-view
+```
+
+Then register the views:
+
+<include meta='title="calendar.tsx"'>../../examples/solid/week-page.tsx#view</include>
+
+The views are named `week`, `day` and `3-day`. Previous and Next move by a week, a day or three
+days. The hours scroll inside the height they're given, so give `Calendar.Viewport` a height:
+
+<include meta='title="week-page.tsx"'>../../examples/solid/week-page.tsx#page</include>
+
+## Options
+
+Pass them to `createWeekView`, `createDayView` or `createThreeDayView`, or per root in
+`viewOptions`, such as `viewOptions={{ week: { overlapLayout: "stack" } }}`:
+
+<TypeTable
+  type={{
+    dayView: {
+      type: "string",
+      description: (
+        <>
+          A registered view that opens when you click a date in the header, usually{" "}
+          <code>"day"</code>. Without it the header dates are plain text.
+        </>
+      ),
+    },
+    getEventColor: {
+      type: "(event: TEvent) => CalendarEventColor | undefined",
+      description: (
+        <>
+          The color for each event, one of <code>calendarEventColors</code> in{" "}
+          <code>event-colors.ts</code>, which <code>calendar-theme</code> installs.
+        </>
+      ),
+    },
+    getEventIcon: {
+      type: "(event: TEvent) => JSX.Element",
+      description:
+        "A small icon before each event's title, such as a repeat mark on recurring events, or nothing. It's decorative and hidden from screen readers: say the same in describeEvent, which adds to the event's accessible name.",
+    },
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: "Extra words for each event's accessible name, such as its calendar.",
+    },
+    overlapLayout: {
+      type: '"columns" | "equal" | "stack"',
+      default: '"columns"',
+      description: (
+        <>
+          How overlapping events share a day column. See{" "}
+          <a href="#overlapping-events">overlapping events</a>.
+        </>
+      ),
+    },
+    getEventOverlapLayout: {
+      type: '(event: TEvent) => "columns" | "equal" | "stack" | undefined',
+      description:
+        "An event's own layout, such as its calendar's. A group of overlapping events takes it when they all agree.",
+    },
+    stackIndent: {
+      type: "number",
+      default: "0.15",
+      description:
+        "How far each level of a stack is indented, as a fraction of the column width, the same for every stacked group. A value that isn't positive throws, whatever the layout.",
+    },
+  }}
+/>
+
+## What it shows
+
+- **Header:** the weekday and date of each column, with today highlighted and marked
+  `aria-current="date"`. The corner shows the time zone's offset, such as "GMT+2", after the name
+  of each [secondary time zone](#secondary-time-zones).
+- **All-day row:** all-day events, plus timed and floating events that last 24 hours or more. Busy
+  days collapse to three rows with "+N more", and a chevron in the corner expands the row.
+- **Hours:** labels come from `Intl`, so they read "1 PM" or "13:00" depending on the locale. Each
+  hour is `--calendar-hour-height` tall (3rem by default).
+- **Events:** overlapping events sit side by side, or as `overlapLayout` sets. Events shorter than
+  45 minutes show on one line, as "Standup, 9:30 AM". Events that run past midnight show their real
+  times on both days, as "10:00 PM – 2:00 AM". A title that doesn't fit its event shows in full in
+  the kit's tooltip while you hover or focus the event.
+- **Daylight saving time:** hours skipped when the clocks go forward are hatched, and hours repeated
+  when they go back are tinted, with both occurrences side by side.
+- **Current time:** a line across today's column, from
+  [`useNow()`](/docs/concepts/time#the-current-time). The grid opens scrolled to the current time,
+  or to 08:00 when today isn't visible, and keeps its scroll position when you move between weeks.
+- **Changes being saved:** events with a pending change, the ones
+  [`useCalendarPendingChanges`](/docs/api/components#hooks) returns, get `aria-busy` and render at
+  60% opacity.
+- **On a phone** every event and button is at least 24 px wide, and a long press doesn't select
+  text. The 3-day view fits a phone better than the week.
+- **Right to left** mirrors the grid, the hours and the events' borders included, when the page or
+  `Calendar.Frame` has `dir="rtl"`.
+- **Reduced motion** opens the tooltip without its scale and slide.
+
+## Overlapping events
+
+`overlapLayout` sets how events that overlap share a day column:
+
+- **`"columns"`** (the default) puts overlapping events side by side, in as few lanes as they
+  need. Each event widens into lanes that stay free beside it.
+- **`"equal"`** uses the same lanes, but every event in a busy stretch is one lane wide, so the
+  lanes line up.
+- **`"stack"`** cascades them. Each event is indented past the earlier events it overlaps and drawn
+  on top of them, reaching to the column's end. `stackIndent` sets the indent. A deep stack indents
+  less, so the top event keeps at least half the column.
+
+`getEventOverlapLayout` gives events a layout of their own, usually their calendar's, and returns
+`undefined` for events that follow the view's. A group of overlapping events takes its events' own
+layout only when they all agree, and otherwise the view's `overlapLayout`.
+
+Every layout keeps the same rules:
+
+- Events that touch, one ending as the next starts, don't overlap. An event shorter than 15
+  minutes still takes up 15 so it stays readable, so it can overlap the next one.
+- Overlapping events form a group, laid out on its own, so a change to one group never moves
+  events in another.
+- The order is fixed: by start, then longer first, then event ID. It's the order events are drawn
+  in.
+
+## Secondary time zones
+
+Pass `secondaryTimeZones` to `Root` to label the hours in other time zones too, such as
+`secondaryTimeZones={["America/New_York", { timeZone: "Asia/Tokyo", label: "Tokyo" }]}`. Each zone
+gets a column of hours beside the calendar's own.
+
+- **Names:** each column is named by its `label`, or by the zone's short name from `Intl` in the
+  calendar's locale, such as "EDT" or "GMT+5:30". Without a `label`, hover it for the zone's full
+  name.
+- **Hours:** each line is read on its own date, in both zones' rules, so the labels stay right when
+  either zone changes its clocks. Zones off the hour show minutes, such as "4:30 PM" in India.
+  "+1" or "-1" marks a time on the next or previous day there.
+- **Daylight saving time:** an hour the calendar's zone skips has no label, and an hour it repeats
+  shows its first time. A day that reads differently, because a zone changes its offset, says so
+  under its date, such as "EST -1h". Hover the note to see from when, and until when if it ends
+  that day.
+- **Width:** each zone's column is `--calendar-zone-width` wide, 4rem by default, which fits
+  "12:30 AM+1". Set the variable on an element around the calendar for a locale that writes longer
+  times, such as `[--calendar-zone-width:4.5rem]`.
+- **Screen readers:** the extra hours are hidden, like the calendar's own hour labels, so the grid's
+  columns stay the same.
+
+[Time and time zones](/docs/concepts/time#secondary-time-zones) explains how each line is read.
+
+## Anatomy
+
+All three views render `TimeGridView`, with seven day columns for the week, three for the 3-day
+view and one for the day. The view builds these parts itself from its projection, so they're not
+parts you compose: to change one, edit its file under `components/calendar/time-grid-view`.
+
+```txt title="Rendered by TimeGridView"
+TimeGridView                     time-grid-view.tsx, a grid
+├── TimeGridHeader               time-grid-header.tsx, the time zone and each day
+├── TimeGridAllDay               time-grid-all-day.tsx, the all-day row
+│   ├── AllDayRowHeader          "All day", and the chevron that expands the row
+│   └── AllDayCell               a gridcell, one per day, data-date and data-all-day
+│       ├── AllDayEvent          one per event in the row
+│       └── "+N more"            expands the row
+└── TimeGridBody                 time-grid-body.tsx, scrolls
+    ├── Time gutter              --calendar-gutter-width
+    │   └── TimeGridZoneHours    time-grid-zones.tsx, one per secondary time zone
+    └── TimeGridColumn           time-grid-column.tsx, one per day, data-date
+        ├── TimeGridEvent        time-grid-event.tsx
+        │   ├── Title and time
+        │   └── Resize handles   data-resize="start" and "end"
+        └── Now line             data-slot="time-grid-now"
+```
+
+The `.tsx` files are Solid components. What they draw comes from plain TypeScript beside them:
+
+| File                    | Holds                                                                                 |
+| ----------------------- | ------------------------------------------------------------------------------------- |
+| `time-grid.styles.ts`   | Every class the parts set, so a restyle is one file                                   |
+| `time-grid-labels.ts`   | The dates, hours, ranges and names the parts show and read out                        |
+| `time-grid-geometry.ts` | Where an event, a gap or a fold sits in its column, and where the grid opens scrolled |
+| `all-day-layout.ts`     | Which all-day events fit in a collapsed row, and how many each day hides              |
+| `secondary-zones.ts`    | Each zone's hours, names and the notes under a day whose times differ                 |
+
+- The gutter is `--calendar-gutter-width` wide: `--calendar-hours-width` for the hours (3rem, or
+  4rem from the `sm` breakpoint), plus `--calendar-zone-width` for each secondary time zone.
+- An event's `top` and `height` come from its times, and its `left` and `width` from the
+  [overlap layout](#overlapping-events). A column renders its events in layout order, so a stacked
+  event draws over the ones it overlaps.
+- The grid shares one tooltip among its events, so a week of events renders one tooltip, not one
+  each.
+
+## Markup for interactions
+
+If you change the markup, keep the attributes the pointer layer reads: day columns have `data-date`
+and cover the full 24 hours, all-day cells have `data-date` and `data-all-day`, each event is a
+`<button>` with `data-event-id`, and events you can edit have `data-resize="start"` and
+`data-resize="end"` handles.
