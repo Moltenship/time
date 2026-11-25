@@ -84,8 +84,12 @@ no prompt. It:
    release commit the workflow pushed, which starts no CI, it reads the parent's). Nothing in
    `main`'s rules or branch protection may refuse the workflow's push: it reads them and changes
    nothing. Then it starts the release workflow on `main`, passing the commit it checked.
-4. **Watches** it (`gh run watch`) and reports: the GitHub release's link, or the jobs that failed
-   and the end of their logs.
+4. **Watches** it and reports: the GitHub release's link, or the jobs that failed and the end of
+   their logs. It waits for GitHub to list the run it started, since a lookup right after the start
+   can answer 404, then follows it with `gh run watch`, and watches again if that stops while the
+   run is going. It reports only on a run that has ended. When GitHub doesn't return the run for
+   three minutes, it stops with an error and a non-zero exit, and says the run's result is unknown:
+   look at the Actions tab, and run the command again to pick a release run up.
 
 The workflow, one release at a time (a second waits; dry runs queue apart):
 
@@ -131,6 +135,10 @@ Run the same command again once the cause is fixed. It looks at the version's la
   the same commit and with the same tarballs, kept for 30 days. They skip what npm serves, so the
   eleven never mix two builds; the push and the GitHub release are safe to repeat.
 - **It's running:** it watches it. **It released:** it says so.
+- **The command lost the run** (GitHub didn't return it for three minutes): the run may still be
+  going. Nothing is known from the command, so read the run on the Actions tab. Run the command
+  again and it watches a release that is still running. After a dry run, read the run's own page:
+  a second command would start a second dry run.
 
 A rerun runs the same commit and the same `release.yml`, so a failure after publishing that only a
 change to the release tooling can fix can't be finished by one. Finish it by hand from the run's

@@ -3,6 +3,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { releaseTag } from "./github-release";
 import { commitsBetween, previousTag, suggestVersion } from "./notes";
 import { assertVersion, isReleaseCommit, sharedVersion } from "./version";
+import { followRun, runPassed, startedRun, type ListedRun } from "./watch";
 import {
   gitState,
   parseArguments,
@@ -135,8 +136,8 @@ async function quietly(args: readonly string[]): Promise<string> {
   return result.code === 0 ? result.stdout : "";
 }
 
-/** The release workflow's runs, newest first, with their titles. */
-async function releaseRuns(): Promise<(WorkflowRun & { displayTitle: string })[]> {
+/** The release workflow's runs, newest first, with their titles and how each started. */
+async function releaseRuns(): Promise<(WorkflowRun & ListedRun)[]> {
   const { stdout } = await runOrThrow("gh", [
     "run",
     "list",
@@ -145,9 +146,9 @@ async function releaseRuns(): Promise<(WorkflowRun & { displayTitle: string })[]
     "--limit",
     "100",
     "--json",
-    "databaseId,status,conclusion,url,displayTitle",
+    "databaseId,status,conclusion,url,displayTitle,headBranch,event,createdAt",
   ]);
-  return JSON.parse(stdout) as (WorkflowRun & { displayTitle: string })[];
+  return JSON.parse(stdout) as (WorkflowRun & ListedRun)[];
 }
 
 /** One version's release runs, newest first, with whether each got as far as publishing. */
@@ -325,12 +326,13 @@ async function dispatch(
   ]);
   const printed = /actions\/runs\/(\d+)/.exec(stdout)?.[1];
   if (printed) return Number(printed);
-  // An older gh prints nothing: find the run GitHub has just listed.
+  // An older gh prints nothing: find the run this command started, once GitHub lists it.
   while (Date.now() - started < 2 * 60_000) {
-    const run = (await releaseRuns()).find(
-      ({ displayTitle, status }) =>
-        displayTitle === runTitle(version, dryRun) && status !== "completed",
-    );
+    const run = startedRun(await releaseRuns(), {
+      branch,
+      since: started,
+      title: runTitle(version, dryRun),
+    });
     if (run) return run.databaseId;
     await sleep(5_000);
   }
@@ -346,10 +348,16 @@ async function summarize(id: number, version: string, dryRun: boolean): Promise<
     "view",
     String(id),
     "--json",
-    "conclusion,url,jobs",
+    "status,conclusion,url,jobs",
   ]);
-  const view = JSON.parse(stdout) as { conclusion: string; url: string; jobs: Job[] };
-  if (view.conclusion === "success") {
+  const view = JSON.parse(stdout) as {
+    status: string;
+    conclusion: string;
+    url: string;
+    jobs: Job[];
+  };
+  // Throws for a run that hasn't ended: it has no result to report yet.
+  if (runPassed(view)) {
     if (dryRun) {
       // What the run reported a release would stop at, as its warnings.
       const warnings: string[] = [];
@@ -479,9 +487,14 @@ async function release(options: ReleaseOptions): Promise<boolean> {
     },
   );
 
-  await step("Watch the release workflow", async () => {
-    await run("gh", ["run", "watch", String(id), "--interval", "30"], { inherit: true });
-  });
+  // Waits for GitHub to list the run, follows it to its end, and throws when it can't find it.
+  await step("Watch the release workflow", () =>
+    followRun(id, {
+      gh: (args, options) => run("gh", args, options),
+      now: Date.now,
+      sleep: (milliseconds) => sleep(milliseconds),
+    }),
+  );
   return summarize(id, version, dryRun);
 }
 
