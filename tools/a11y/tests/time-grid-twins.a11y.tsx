@@ -1,6 +1,6 @@
 import { createCalendar, createCanonicalEventAdapter } from "@moltenship/calendar";
 import { describe, expect, test } from "vite-plus/test";
-import { server } from "vite-plus/test/browser";
+import { server, userEvent } from "vite-plus/test/browser";
 
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
@@ -62,6 +62,17 @@ describe.runIf(server.browser === "chromium")("time grid twins", () => {
     await render(<TimeGrid view="week" />);
     await until(() => expect(grid().querySelector('[data-slot="time-grid-now"]')).not.toBeNull());
     await expect(describeLayout(grid())).toMatchFileSnapshot("./view-twins/week.txt");
+  });
+
+  test("the week, with a slot focused and a keyboard draft on it", async () => {
+    await render(<TimeGrid view="week" />);
+    await until(() => expect(grid().querySelector('[data-slot="time-grid-now"]')).not.toBeNull());
+    // From today's all-day cell, the grid's tab stop, to its first slot, then a create there.
+    grid().querySelector<HTMLElement>('[tabindex="0"]')!.focus();
+    await userEvent.keyboard("{ArrowDown} ");
+    await until(() => expect(grid().querySelector('[data-slot="time-grid-draft"]')).not.toBeNull());
+    await expect(describeLayout(grid())).toMatchFileSnapshot("./view-twins/week-draft.txt");
+    await userEvent.keyboard("{Escape}");
   });
 
   test("the day, with a second time zone", async () => {
