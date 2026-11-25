@@ -47,6 +47,16 @@
       "target": "@components/calendar/time-grid-view/time-grid-zones.tsx"
     },
     {
+      "path": "registry/solid/time-grid-view/time-grid-annotations.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/time-grid-view/time-grid-annotations.tsx"
+    },
+    {
+      "path": "registry/solid/time-grid-view/time-grid-availability.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/time-grid-view/time-grid-availability.tsx"
+    },
+    {
       "path": "registry/shared/time-grid-view/annotation-label.ts",
       "type": "registry:lib",
       "target": "@components/calendar/time-grid-view/annotation-label.ts"

@@ -5,8 +5,9 @@ import {
   type PlainDateInterval,
   type TimeGridDay,
 } from "@moltenship/calendar-solid";
-import { createMemo, For, Show } from "solid-js";
+import { createMemo, createUniqueId, For, Show } from "solid-js";
 
+import { describeDayAnnotations } from "@registry/shared/time-grid-view/annotation-label";
 import { offsetLabel } from "@registry/shared/time-grid-view/secondary-zones";
 import { dayColumns } from "@registry/shared/time-grid-view/time-grid-geometry";
 import { dayHeaderFormats, openDayLabel } from "@registry/shared/time-grid-view/time-grid-labels";
@@ -16,11 +17,13 @@ import {
   dayHeaderNotesClass,
   dayHeaderNumberClass,
   dayHeaderWeekdayClass,
+  srOnlyClass,
   timeGridCornerClass,
   timeGridDaysClass,
   timeGridHeaderRowClass,
 } from "@registry/shared/time-grid-view/time-grid.styles";
 
+import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
 import {
   gutterColumn,
   TimeGridGutterLabels,
@@ -35,6 +38,8 @@ const noZones: readonly TimeGridZone[] = [];
 
 export interface TimeGridHeaderProps {
   readonly actions: CalendarViewActions;
+  /** The root's annotations; each day's header describes its own. */
+  readonly annotations?: TimeGridAnnotationWiring;
   readonly days: readonly TimeGridDay<unknown>[];
   /** View a date opens in a multi-day grid; dates are static without one. */
   readonly dayView: string | undefined;
@@ -45,6 +50,8 @@ export interface TimeGridHeaderProps {
 
 export interface TimeGridDayHeadersProps {
   readonly actions: CalendarViewActions;
+  /** The root's annotations; each day's header describes its own. */
+  readonly annotations?: TimeGridAnnotationWiring;
   readonly days: readonly TimeGridDay<unknown>[];
   /** View a date opens in a multi-day grid; dates are static without one. */
   readonly dayView: string | undefined;
@@ -68,6 +75,7 @@ export function TimeGridDayHeaders(props: TimeGridDayHeadersProps) {
   const notes = createMemo(() => zoneNotesByDate(props.zones ?? noZones));
   const formats = createMemo(() => dayHeaderFormats(props.environment.locale));
   const opensDay = () => !props.single && props.dayView !== undefined;
+  const summaryId = createUniqueId();
 
   return (
     <div
@@ -75,8 +83,15 @@ export function TimeGridDayHeaders(props: TimeGridDayHeadersProps) {
       style={{ "grid-template-columns": dayColumns(props.days.length) }}
     >
       <For each={props.days} keyed={(day) => day.column.date.toString()}>
-        {(day) => {
+        {(day, index) => {
           const date = () => day().column.date;
+          const summary = () => {
+            const { annotations } = props;
+            const marks = annotations?.layout.columns[index()];
+            return annotations === undefined || marks === undefined
+              ? undefined
+              : describeDayAnnotations(marks, annotations.formats);
+          };
           const label = () => formats().full.format(date());
           const number = () => (
             <span class={dayHeaderNumberClass(props.single, day().isToday, opensDay())}>
@@ -87,6 +102,7 @@ export function TimeGridDayHeaders(props: TimeGridDayHeadersProps) {
           return (
             <div
               aria-current={day().isToday ? "date" : undefined}
+              aria-describedby={summary() === undefined ? undefined : `${summaryId}-${index()}`}
               aria-hidden={
                 props.shown === undefined || plainDateIntervalContains(props.shown, date())
                   ? undefined
@@ -118,6 +134,13 @@ export function TimeGridDayHeaders(props: TimeGridDayHeadersProps) {
                 class={dayHeaderNotesClass(props.single)}
                 notes={notes().get(date().toString())}
               />
+              <Show when={summary()}>
+                {(text) => (
+                  <span class={srOnlyClass} id={`${summaryId}-${index()}`}>
+                    {text()}
+                  </span>
+                )}
+              </Show>
             </div>
           );
         }}
@@ -149,6 +172,7 @@ export function TimeGridHeader(props: TimeGridHeaderProps) {
       </div>
       <TimeGridDayHeaders
         actions={props.actions}
+        annotations={props.annotations}
         days={props.days}
         dayView={props.dayView}
         environment={props.environment}

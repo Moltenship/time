@@ -14,6 +14,7 @@ import {
 } from "@moltenship/calendar-solid";
 import type { JSX } from "@solidjs/web";
 import { createMemo, For, Show, untrack, type Accessor } from "solid-js";
+import { Dynamic } from "@solidjs/web";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import {
@@ -21,6 +22,7 @@ import {
   previewCheckAttributes,
   useDraftCheck,
 } from "@registry/calendar/preview-check";
+import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import {
   bandBox,
@@ -33,6 +35,7 @@ import {
 } from "@registry/shared/time-grid-view/time-grid-geometry";
 import {
   clockChangeTitles,
+  outsideWorkingHours,
   slotLabel,
   timeGridColumnFormats,
   type TimeGridColumnFormats,
@@ -47,6 +50,22 @@ import {
   timeGridSlotClass,
 } from "@registry/shared/time-grid-view/time-grid.styles";
 
+import { describeAnnotationsAt } from "@registry/shared/time-grid-view/annotation-label";
+
+import {
+  annotationEventInset,
+  bandBesideMarks,
+  eventsBesideMarks,
+  TimeGridAnnotationProvider,
+  TimeGridAnnotations,
+  type TimeGridAnnotationMarkData,
+  type TimeGridAnnotationWiring,
+} from "./time-grid-annotations";
+import {
+  isUnavailableIn,
+  TimeGridAvailability,
+  useColumnAvailability,
+} from "./time-grid-availability";
 import { TimeGridEvent } from "./time-grid-event";
 import { describeZoneTimes, type TimeGridZone } from "./time-grid-zones";
 
@@ -71,6 +90,10 @@ export interface TimeGridColumnResource {
 }
 
 export interface TimeGridColumnProps<TEvent> {
+  /** The root's annotations on this column's day, beside its events. */
+  readonly annotations?: TimeGridAnnotationWiring & {
+    readonly marks: readonly TimeGridAnnotationMarkData[];
+  };
   /** The column's `aria-colindex`, in a grid that renders only some of its columns. */
   readonly colIndex?: number;
   readonly day: TimeGridDay<TEvent>;
@@ -89,6 +112,8 @@ export interface TimeGridColumnProps<TEvent> {
   readonly onOpenDay?: (date: Temporal.PlainDate) => void;
   /** The column's resource; without one, the column shows every resource's focus and drafts. */
   readonly resource?: TimeGridColumnResource;
+  /** Replaces the shading of closed time; see `UnavailableTimeRender`. */
+  readonly renderUnavailable?: UnavailableTimeRender;
   /** Length of a keyboard slot, as the keyboard's snap sets it. */
   readonly slotMinutes: number;
   readonly timeZone: string;
@@ -161,6 +186,31 @@ export function TimeGridColumn<TEvent>(props: TimeGridColumnProps<TEvent>) {
     { isEqual: sameBand },
   );
   const draftCheck = useDraftCheck();
+  const unavailable = useColumnAvailability(column, resourceId);
+  const inset = createMemo(() => {
+    const layout = props.annotations?.layout;
+    return layout === undefined ? undefined : annotationEventInset(layout);
+  });
+  const besideMarks = createMemo(() => {
+    const { annotations } = props;
+    return annotations === undefined || inset() === undefined
+      ? undefined
+      : eventsBesideMarks(annotations.layout, annotations.marks, props.day.events);
+  });
+  /** The draft's box, moved aside for the rail when it crosses a mark. */
+  const draftStyle = (band: { readonly height: number; readonly top: number }) => {
+    const { annotations } = props;
+    const aside = inset();
+    return aside !== undefined &&
+      annotations !== undefined &&
+      bandBesideMarks(annotations.layout, annotations.marks, band)
+      ? {
+          ...bandBox(band),
+          "inset-inline-end": `${aside.end}px`,
+          "inset-inline-start": `${aside.start}px`,
+        }
+      : bandBox(band);
+  };
   // The column's own resource, so a gesture started here stays in it.
   const slotFocus = createMemo((): CalendarSlotFocus | null => {
     const focus = slot();
@@ -174,6 +224,17 @@ export function TimeGridColumn<TEvent>(props: TimeGridColumnProps<TEvent>) {
       props.zones === undefined
         ? undefined
         : describeZoneTimes(column(), focus.time, props.zones, props.formats),
+      isUnavailableIn(unavailable(), slotBand(focus, props.slotMinutes))
+        ? outsideWorkingHours
+        : undefined,
+      props.annotations === undefined
+        ? undefined
+        : describeAnnotationsAt(
+            props.annotations.marks,
+            column(),
+            slotBand(focus, props.slotMinutes),
+            props.annotations.formats,
+          ),
     ]);
   const labelHere = createMemo<EventLabeler<TEvent>>(() => {
     const { labelEvent, resource } = props;
@@ -189,6 +250,12 @@ export function TimeGridColumn<TEvent>(props: TimeGridColumnProps<TEvent>) {
       data-today={props.day.isToday ? "" : undefined}
       class={timeGridColumnClass}
     >
+      <TimeGridAvailability
+        bands={unavailable()}
+        date={column().date}
+        render={props.renderUnavailable}
+        resource={props.resource?.resource ?? null}
+      />
       <For each={column().gaps} keyed={(band) => band.top}>
         {(band) => (
           <div class={timeGridGapClass} style={bandBox(band())} title={clockChangeTitles.gap} />
@@ -199,16 +266,28 @@ export function TimeGridColumn<TEvent>(props: TimeGridColumnProps<TEvent>) {
           <div class={timeGridFoldClass} style={bandBox(band())} title={clockChangeTitles.fold} />
         )}
       </For>
-      {/* The inline-end margin keeps a strip free for creating an event beside busy blocks. */}
+      <Show when={props.annotations}>
+        {(annotations) => (
+          <TimeGridAnnotationProvider handles={annotations().handles} layout={annotations().layout}>
+            <Dynamic
+              component={annotations().layout.options.Annotations ?? TimeGridAnnotations}
+              marks={annotations().marks}
+            />
+          </TimeGridAnnotationProvider>
+        )}
+      </Show>
+      {/* The inline-end margin keeps a strip free for creating an event beside busy blocks. The
+          rail takes its strip only from the events beside its marks. */}
       <div class={timeGridEventsClass}>
         <For
           each={props.day.events}
           keyed={(layout: Layout<TEvent>) => eventKey(layout.fragment.event.id)}
         >
-          {(layout) => (
+          {(layout, index) => (
             <TimeGridEvent
               color={props.getEventColor?.(layout().fragment.event.event)}
               icon={props.getEventIcon?.(layout().fragment.event.event)}
+              inset={besideMarks()?.[index()] === true ? inset() : undefined}
               isReadOnly={props.isReadOnly}
               labelEvent={labelHere()}
               layout={layout()}
@@ -227,7 +306,7 @@ export function TimeGridColumn<TEvent>(props: TimeGridColumnProps<TEvent>) {
               data-invalid={previewCheckAttributes(draftCheck())["data-invalid"]}
               data-warning={previewCheckAttributes(draftCheck())["data-warning"]}
               class={timeGridDraftClass(draftCheckClassName)}
-              style={bandBox(band())}
+              style={draftStyle(band())}
             />
           )}
         </Show>
