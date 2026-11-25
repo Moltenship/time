@@ -13,7 +13,15 @@ import {
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
 import { Popover, PopoverContent } from "@registry/stylex-calendar-ui/popover";
 
-import type { YearDayPopoverHandle, YearFormats } from "./year-month";
+import { eventKey, isBarFragment } from "@registry/shared/year-view/year-layout";
+import {
+  dayEventsLabel,
+  eventTime,
+  noEventsText,
+  type YearFormats,
+} from "@registry/shared/year-view/year-labels";
+
+import type { YearDayPopoverHandle } from "./year-month";
 
 const styles = stylex.create({
   chip: {
@@ -134,11 +142,8 @@ interface YearEventProps<TEvent> {
 function YearEvent<TEvent>({ color, formats, fragment, icon, labelEvent }: YearEventProps<TEvent>) {
   const { event } = fragment;
   const chip = useEventChip(event, { date: fragment.date, focusTarget: false, labelEvent });
-  const bar = event.kind === "all-day" || fragment.startsBeforeDay || fragment.endsAfterDay;
-  const time =
-    event.kind === "all-day" || fragment.startsBeforeDay
-      ? undefined
-      : formats.time(fragment.start.toPlainTime());
+  const bar = isBarFragment(fragment);
+  const time = eventTime(fragment, formats);
 
   return (
     <EventChip
@@ -207,7 +212,7 @@ export function YearDayPopover<TEvent>({
         return (
           <PopoverContent
             ref={popup}
-            aria-label={`Events on ${name}`}
+            aria-label={dayEventsLabel(formats, date)}
             xstyle={styles.popup}
             // The popup takes focus, from a pointer or a key alike; Tab then reaches its events.
             initialFocus={popup}
@@ -230,13 +235,12 @@ export function YearDayPopover<TEvent>({
               </button>
             </div>
             {fragments.length === 0 ? (
-              <p {...stylex.props(styles.noEvents)}>No events</p>
+              <p {...stylex.props(styles.noEvents)}>{noEventsText}</p>
             ) : (
               <div {...stylex.props(styles.events)}>
                 {fragments.map((fragment) => (
                   <YearEvent
-                    // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
-                    key={`${typeof fragment.event.id}:${fragment.event.id}`}
+                    key={eventKey(fragment)}
                     color={getEventColor?.(fragment.event.event)}
                     icon={getEventIcon?.(fragment.event.event)}
                     formats={formats}
