@@ -35,7 +35,17 @@ export const animationRate: BrowserCommand<[rate: number]> = async (context, rat
   if (rate < 1) await expectSlowed(page, rate);
 };
 
-/** Throws unless each frame's document timeline runs at no more than twice `rate`. */
+/**
+ * Throws unless each frame's document timeline runs nearer `rate` than full speed: a rate that
+ * didn't apply measures about 1, one that did measures `rate`, and the limit is halfway between
+ * them as ratios go.
+ *
+ * The timeline only moves with the frames, and a callback that reads it may run late, so one short
+ * span against the wall clock reads too fast when its first callback is the late one: on a CI
+ * runner a frame slowed to 0.02 once measured 0.04. So it takes the median of three spans. The
+ * times `requestAnimationFrame` hands its callbacks are no steadier a clock to measure against:
+ * Chromium slows them with the timeline.
+ */
 async function expectSlowed(page: Page, rate: number): Promise<void> {
   const frames = await Promise.all(
     page.frames().map(async (frame) => {
@@ -44,11 +54,19 @@ async function expectSlowed(page: Page, rate: number): Promise<void> {
           url: frame.url(),
           rate: await frame.evaluate(async () => {
             const frameTick = () => new Promise((resolve) => requestAnimationFrame(resolve));
-            await frameTick();
-            const [timeline, wall] = [Number(document.timeline.currentTime), performance.now()];
-            await frameTick();
-            await frameTick();
-            return (Number(document.timeline.currentTime) - timeline) / (performance.now() - wall);
+            const span = async () => {
+              await frameTick();
+              const [timeline, wall] = [Number(document.timeline.currentTime), performance.now()];
+              await frameTick();
+              await frameTick();
+              await frameTick();
+              return (
+                (Number(document.timeline.currentTime) - timeline) / (performance.now() - wall)
+              );
+            };
+            const [first, second, third] = [await span(), await span(), await span()];
+            // The median of the three.
+            return Math.max(Math.min(first, second), Math.min(Math.max(first, second), third));
           }),
         };
       } catch (error) {
@@ -58,7 +76,7 @@ async function expectSlowed(page: Page, rate: number): Promise<void> {
       }
     }),
   );
-  const fast = frames.filter((frame) => frame !== undefined && frame.rate > rate * 2);
+  const fast = frames.filter((frame) => frame !== undefined && frame.rate > Math.sqrt(rate));
   if (fast.length > 0) {
     const list = fast.map((frame) => `${frame!.url} at ${frame!.rate.toFixed(2)}`).join(", ");
     throw new Error(`animationRate(${rate}) didn't slow ${list}`);
