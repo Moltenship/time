@@ -20,7 +20,7 @@ import { dayColumns } from "@registry/shared/time-grid-view/time-grid-geometry";
 import { dayHeaderFormats, openDayLabel } from "@registry/shared/time-grid-view/time-grid-labels";
 import { offsetLabel } from "@registry/shared/time-grid-view/secondary-zones";
 
-import { describeDayAnnotations } from "./annotation-label";
+import { describeDayAnnotations } from "@registry/shared/time-grid-view/annotation-label";
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
 import {
   gutterColumn,

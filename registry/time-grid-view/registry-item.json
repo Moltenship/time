@@ -57,9 +57,14 @@
       "target": "@components/calendar/time-grid-view/time-grid-zones.tsx"
     },
     {
-      "path": "registry/time-grid-view/annotation-label.ts",
+      "path": "registry/shared/time-grid-view/annotation-label.ts",
       "type": "registry:lib",
       "target": "@components/calendar/time-grid-view/annotation-label.ts"
+    },
+    {
+      "path": "registry/shared/time-grid-view/annotation-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/time-grid-view/annotation-layout.ts"
     },
     {
       "path": "registry/shared/time-grid-view/time-grid-geometry.ts",

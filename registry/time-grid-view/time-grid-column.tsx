@@ -48,7 +48,7 @@ import {
   timeGridSlotClass,
 } from "@registry/shared/time-grid-view/time-grid.styles";
 
-import { describeAnnotationsAt } from "./annotation-label";
+import { describeAnnotationsAt } from "@registry/shared/time-grid-view/annotation-label";
 import {
   annotationEventInset,
   bandBesideMarks,

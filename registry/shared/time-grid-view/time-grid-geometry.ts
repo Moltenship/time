@@ -220,3 +220,14 @@ export function openingScrollTop(
     ? DEFAULT_SCROLL_FRACTION * scrollHeight
     : Math.max(0, nowTop * scrollHeight - clientHeight / 3);
 }
+
+/** Well under a millisecond of the axis, so bands that only touch never count as overlapping. */
+const BAND_EPSILON = 1e-9;
+
+/** Whether any of `band` is closed, such as a focused slot, so its name can say so. */
+export function isUnavailableIn(bands: readonly TimeGridBand[], band: TimeGridBand): boolean {
+  return bands.some(
+    ({ height, top }) =>
+      top < band.top + band.height - BAND_EPSILON && top + height > band.top + BAND_EPSILON,
+  );
+}

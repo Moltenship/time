@@ -23,7 +23,7 @@ import {
   timeGridViewClass,
 } from "@registry/shared/time-grid-view/time-grid.styles";
 
-import { annotationFormats } from "./annotation-label";
+import { annotationFormats } from "@registry/shared/time-grid-view/annotation-label";
 import { TimeGridAllDay } from "./time-grid-all-day";
 import {
   DEFAULT_COLUMN_HEIGHT,

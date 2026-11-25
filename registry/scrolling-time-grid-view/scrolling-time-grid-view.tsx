@@ -37,7 +37,7 @@ import {
   useScrollingAxis,
 } from "@registry/calendar/scrolling-axis";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
-import { annotationFormats } from "@registry/time-grid-view/annotation-label";
+import { annotationFormats } from "@registry/shared/time-grid-view/annotation-label";
 import {
   AllDayRowHeader,
   TimeGridAllDayCells,

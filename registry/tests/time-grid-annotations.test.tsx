@@ -19,7 +19,10 @@ import {
 import { MusicIcon } from "lucide-react";
 import { afterEach, describe, expect, test } from "vite-plus/test";
 
-import { annotationFormats, describeAnnotationsAt } from "../time-grid-view/annotation-label";
+import {
+  annotationFormats,
+  describeAnnotationsAt,
+} from "@registry/shared/time-grid-view/annotation-label";
 import {
   AnnotationMark,
   AnnotationRail,

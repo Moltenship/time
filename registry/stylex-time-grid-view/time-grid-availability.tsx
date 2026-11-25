@@ -5,7 +5,6 @@ import {
   type AvailabilityBand,
   type CalendarResource,
   type ResourceId,
-  type TimeGridBand,
   type TimeGridColumn,
 } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
@@ -40,16 +39,7 @@ export function useColumnAvailability(
   return useTimeGridAvailability(columns, resourceId)[0] ?? noBands;
 }
 
-/** Well under a millisecond of the axis, so bands that only touch never count as overlapping. */
-const EPSILON = 1e-9;
-
-/** Whether any of `band` is closed, such as a focused slot, so its name can say so. */
-export function isUnavailableIn(bands: readonly TimeGridBand[], band: TimeGridBand): boolean {
-  return bands.some(
-    ({ height, top }) =>
-      top < band.top + band.height - EPSILON && top + height > band.top + EPSILON,
-  );
-}
+export { isUnavailableIn } from "@registry/shared/time-grid-view/time-grid-geometry";
 
 /**
  * Shading over a column's closed time, behind its events; `render` replaces it. Screen readers

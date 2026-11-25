@@ -37,7 +37,7 @@ import {
   type TimeGridColumnFormats,
 } from "@registry/shared/time-grid-view/time-grid-labels";
 
-import { describeAnnotationsAt } from "./annotation-label";
+import { describeAnnotationsAt } from "@registry/shared/time-grid-view/annotation-label";
 import {
   annotationEventInset,
   bandBesideMarks,

@@ -5,12 +5,13 @@ import {
   type AvailabilityBand,
   type CalendarResource,
   type ResourceId,
-  type TimeGridBand,
   type TimeGridColumn,
 } from "@moltenship/calendar";
 import { useMemo } from "react";
 
 import { UnavailableTime, type UnavailableTimeRender } from "@registry/calendar/unavailable-time";
+
+import { timeGridUnavailableClass } from "@registry/shared/time-grid-view/time-grid.styles";
 
 import { percent } from "./time-grid-event";
 
@@ -28,16 +29,7 @@ export function useColumnAvailability(
   return useTimeGridAvailability(columns, resourceId)[0] ?? noBands;
 }
 
-/** Well under a millisecond of the axis, so bands that only touch never count as overlapping. */
-const EPSILON = 1e-9;
-
-/** Whether any of `band` is closed, such as a focused slot, so its name can say so. */
-export function isUnavailableIn(bands: readonly TimeGridBand[], band: TimeGridBand): boolean {
-  return bands.some(
-    ({ height, top }) =>
-      top < band.top + band.height - EPSILON && top + height > band.top + EPSILON,
-  );
-}
+export { isUnavailableIn } from "@registry/shared/time-grid-view/time-grid-geometry";
 
 /**
  * Shading over a column's closed time, behind its events; `render` replaces it. Screen readers
@@ -59,7 +51,7 @@ export function TimeGridAvailability({
     <UnavailableTime
       key={band.top}
       band={band}
-      className="inset-x-0 bg-calendar-unavailable"
+      className={timeGridUnavailableClass}
       date={date}
       end={band.top + band.height}
       render={render}
