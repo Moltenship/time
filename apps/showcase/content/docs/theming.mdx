@@ -1,6 +1,6 @@
 ---
 title: Theming
-description: Calendar color tokens, dark mode, and the event color palette.
+description: Calendar color tokens, dark mode, the event color palette, and controls of your own.
 ---
 
 The packages don't ship any CSS. The styled parts in the registry read their colors and sizes from
@@ -130,3 +130,60 @@ event tokens for light and dark mode. To add a color, add its name to `calendarE
   --calendar-event-chroma: 0.2;
 }
 ```
+
+## Use your own controls
+
+The kit's files are your app's code once you add them: a default to edit or replace.
+
+The Tailwind views take their buttons, badges, tooltips and the view select from the files
+`calendar-ui` adds to `components/calendar/ui/`. They don't import ui-sdk themselves, and they
+don't reach into a control's parts or attributes. To use a control of your own, replace the body
+of its file: keep the file's name, the names it exports and the props below, and render your
+component. The views stay as they are.
+
+With shadcn's button, from a Base UI style, the button file is a few lines:
+
+```tsx title="components/calendar/ui/button.tsx"
+import type { ComponentProps } from "react";
+
+import { Button as AppButton, buttonVariants } from "@/components/ui/button";
+
+export type ButtonProps = ComponentProps<typeof AppButton>;
+
+export function Button(props: ButtonProps) {
+  return <AppButton {...props} />;
+}
+
+export { buttonVariants };
+```
+
+Pass on every other prop, `aria-*` and `data-*` included, to the element your control renders,
+around its children. The views set them, and their CSS and tests read some of them. What the views
+import from each file, and what they pass:
+
+| File          | The views import                                                                       | What the views pass                                                                                                                                                                                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `button.tsx`  | `Button`                                                                               | `variant` (`outline`, `ghost`), `size` (`default`, `lg`, `icon`, `icon-sm`, `icon-xs`), `className`, `onClick`, `disabled`, `tabIndex`, `ref`, `aria-*`, `data-scope`, and `render`                                                                                            |
+| `badge.tsx`   | `Badge`                                                                                | `variant="outline"`, `className`, `title`, and `data-slot="resource-status"` with `data-state`, which colours the status dot inside it                                                                                                                                         |
+| `tooltip.tsx` | `Tooltip`, `TooltipTrigger`, `TooltipContent`                                          | `Tooltip`: `delay`. `TooltipTrigger`: `render`, the button it shows on. `TooltipContent`: the text, and `side`, `align`, `sideOffset` and `className`                                                                                                                          |
+| `select.tsx`  | `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectGroup`, `SelectItem` | `Select`: `items` (`{ label, value }`), `value` and `onValueChange`, which gets the new value. `SelectTrigger`: `aria-label` and `className`. `SelectContent`: `align` and `alignItemWithTrigger`. `SelectItem`: `value`, `label`, and the label with its shortcut as children |
+
+The kit's files also export `buttonVariants`, `badgeVariants`, `SelectGroupLabel` and
+`SelectSeparator` for your own code. Keep them, or remove what you don't use.
+
+`render` is an element to render in place of the `<button>`. The toolbar passes the calendar's
+`TodayTrigger`, `PreviousTrigger` and `NextTrigger` this way: the trigger keeps its own props and
+runs the command, and your button adds its look and passes on `disabled`. If your button takes
+`asChild` instead, as a Radix style's does, render the `render` element as its child with
+`asChild`. Typing on the view select matches each item's `label`, so pass it on to your select's
+items.
+
+A control that isn't built on ui-sdk gives up two things:
+
+- **What an agent sees.** An [agent bridge](/docs/agents/connect) lists ui-sdk's components. It
+  reads your control only as far as your component tells it, and a stock shadcn control tells it
+  nothing. The calendar stays on the bridge, so an agent can still change the view with its
+  `setView` action.
+- **The same control in React and Solid.** The kit's controls behave alike in both frameworks
+  because both build on ui-sdk's. Yours behaves as your component does, so a Solid app needs its
+  own version of it.

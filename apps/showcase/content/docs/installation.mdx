@@ -231,7 +231,9 @@ Then `npx shadcn@latest add @moltenship/month-view` works too.
 </Step>
 <Step>
 
-The calendar's controls come from `calendar-ui`, not from your app's `components/ui`, and ui-sdk
+The calendar's controls come from `calendar-ui`, not from your app's `components/ui`. They're a
+default: to use your own button, badge, tooltip or select, see
+[Use your own controls](/docs/theming#use-your-own-controls). ui-sdk
 adds a little CSS of its own to the page, in a layer named `ui-sdk`. Name that layer before
 Tailwind in your global CSS, so your styles and Tailwind's win over it:
 

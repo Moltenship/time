@@ -28,7 +28,7 @@ npx shadcn@latest add \
 | `calendar-history-toast`   | `CalendarHistoryToast` (an Undo toast)                                    | `calendar-history-toast/calendar-history-toast`          | `docs/undo-redo.md`               |
 | `recurrence-scope-dialog`  | "This event, following, or all?"                                          | `recurrence-scope-dialog/use-recurrence-scope-prompt`    | `docs/guides/recurring-events.md` |
 
-Every view item brings the shared `calendar` item: `calendar-toolbar`, `view-switcher`, `event-colors`, `announcements`, the theme, and `calendar-ui`, the calendar's own buttons, badges, tooltips and selects on ui-sdk (they don't use the app's `components/ui`). Each item also has a `stylex-` twin for apps on StyleX (`docs/stylex.md`).
+Every view item brings the shared `calendar` item: `calendar-toolbar`, `view-switcher`, `event-colors`, `announcements`, the theme, and `calendar-ui`, the calendar's own buttons, badges, tooltips and selects on ui-sdk (they don't use the app's `components/ui`). They're a default the app owns: to use the app's own control, make its file in `components/calendar/ui/` render it with the same exports and props (theming docs, "Use your own controls"). Each item also has a `stylex-` twin for apps on StyleX (`docs/stylex.md`).
 
 `shadcn add` installs `@moltenship/calendar`, and `calendar-ui` adds `@ui-sdk/core` and `@ui-sdk/react` when the app has none. Keep every `@ui-sdk/*` package on the calendar's version.
 

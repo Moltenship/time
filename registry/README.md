@@ -108,6 +108,13 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
   `<TooltipTrigger render={<Button variant="ghost" />}>…</TooltipTrigger>`. The kit's tooltips
   group on their own; the stock Base UI tooltips the week and day views still use need a
   `TooltipProvider` around the app, as `shadcn add tooltip` instructs.
+- The kit is a default an app can replace in part or whole: once added, its files are the app's
+  code. So each control's props are a small, explicit interface with shadcn's and Base UI's names
+  (what the views pass, nothing more), and a view uses a control only through those props. A view
+  imports controls from `@registry/calendar-ui/*` only, never ui-sdk, and reads none of a
+  control's ui-sdk parts, context or data attributes. The theming docs' "Use your own controls"
+  lists what the views pass; change it with the props. `tools/a11y/tests/own-controls.a11y.tsx`
+  runs the views with a button and a select of an app's own.
 - A kit control takes its classes from its `shared/calendar-ui/<control>.styles.ts` file and adds
   only the markup its framework needs. The kit's popups open in the browser's top layer, so they
   need no portal or `z-index`. ui-sdk puts its own CSS in a layer named `ui-sdk`, which the app

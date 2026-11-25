@@ -234,7 +234,9 @@ app's `components/ui`: they look the same in every app, and you restyle them in 
    hydrate them cleanly.
 
 3. If you restyled the calendar's buttons, badges, tooltips or the view switcher through
-   `components/ui`, make those changes in `components/calendar/ui/` instead.
+   `components/ui`, make those changes in `components/calendar/ui/` instead. To keep using your
+   own components there, make those files render them, as
+   [Use your own controls](/docs/theming#use-your-own-controls) shows.
 
 An [agent bridge](/docs/agents/connect) now lists the toolbar's buttons and the view select
 beside the calendar, as `button` and `select` entries, and your `allow` hears the steps an agent
