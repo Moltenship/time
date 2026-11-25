@@ -5,7 +5,7 @@
     "jsxImportSource": "@solidjs/web",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
     "paths": {
-      "@moltenship/calendar": ["../../packages/calendar-solid/src/index.ts"],
+      "@moltenship/calendar": ["./calendar-facade.ts"],
       "@registry/shared/*": ["../shared/*"],
       "@registry/*": ["./*"]
     },

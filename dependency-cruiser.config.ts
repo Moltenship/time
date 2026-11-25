@@ -150,9 +150,9 @@ export default {
     {
       name: "solid-registry-stays-in-its-tree",
       comment:
-        "The Solid items import their own tree and the shared files, never the React tree (ADR 0279, point 2).",
+        "The Solid items import their own tree and the shared files, never the React tree (ADR 0279, point 2). The Vite config imports its plugin from the registry tooling's package, `registry`, whose name the rule would read as this folder.",
       severity: "error",
-      from: { path: "^registry/solid/" },
+      from: { path: "^registry/solid/", pathNot: "^registry/solid/vite\\.config\\.ts$" },
       to: { path: "^registry/(?!solid/|shared/)" },
     },
     {

@@ -11,7 +11,7 @@
       ],
       "@/components/calendar/list-view/*": ["../../../../../registry/solid/list-view/*"],
       "@/components/calendar/*": ["../../../../../registry/solid/calendar/*"],
-      "@moltenship/calendar": ["../../../../../packages/calendar-solid/src/index.ts"],
+      "@moltenship/calendar": ["../../../../../registry/solid/calendar-facade.ts"],
       "@registry/shared/*": ["../../../../../registry/shared/*"],
       "@registry/*": ["../../../../../registry/solid/*"]
     },

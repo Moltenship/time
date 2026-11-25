@@ -3,7 +3,7 @@ import { availableParallelism } from "node:os";
 import solid from "@solidjs/vite-plugin";
 import { defaultExclude, defineConfig } from "vite-plus";
 
-import { solidRegistrySource } from "../../tools/registry/src/solid-source";
+import { solidRegistrySource } from "registry/solid-source";
 
 // The Solid registry's tests, a project of the root's `vp test`. solid-js and @solidjs/web export
 // their server build to Node, so they're inlined and resolve the browser build, as
