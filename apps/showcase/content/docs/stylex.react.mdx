@@ -3,12 +3,18 @@ title: StyleX
 description: The calendar's views styled with StyleX, for apps without Tailwind.
 ---
 
-The registry's baseline is Tailwind. If your app styles with [StyleX](https://stylexjs.com), use
-the `stylex-*` items instead. They hold the same components with the same behaviour, every view
-included: same file names, exports, `data-slot` attributes, roles and labels. Styles are
-`stylex.create` rather than Tailwind classes. Buttons, tooltips, the view select, popovers, dialogs
-and toasts come from `stylex-calendar-ui`, the StyleX twin of the calendar's kit: the same parts on
-[ui-sdk](https://ui-sdk.dev), with the same look. As with the baseline, you own the source you add.
+The registry's baseline is Tailwind. The `stylex-*` items look the same as the Tailwind ones and
+exist for apps that style with [StyleX](https://stylexjs.com): the same sizes, colours, type, hover
+and focus states and motion, control by control and view by view, in light and dark. They hold the
+same components with the same behaviour, every view included: same file names, exports,
+`data-slot` attributes, roles and labels. Only the styles differ, `stylex.create` rather than
+Tailwind classes. Buttons, tooltips, the view select, popovers, dialogs and toasts come from
+`stylex-calendar-ui`, the StyleX twin of the calendar's kit: the same parts on
+[ui-sdk](https://ui-sdk.dev). As with the baseline, you own the source you add.
+
+One detail differs: in dark, a hovered event dims a little where the Tailwind one brightens.
+StyleX's dark colours follow the page's `color-scheme` through `light-dark()`, which takes only
+colours, so a filter can't change with it.
 
 See it running on the demo's [StyleX page](https://moltenship-time-demo.vercel.app/stylex/).
 
