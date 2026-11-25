@@ -4,7 +4,12 @@
     "jsx": "preserve",
     "jsxImportSource": "@solidjs/web",
     "lib": ["ESNext", "DOM", "DOM.Iterable"],
-    "types": ["vite-plus/client"]
+    "types": ["vite-plus/client"],
+    "paths": {
+      "@moltenship/calendar": ["../../packages/calendar-solid/src/index.ts"],
+      "@registry/shared/*": ["../../registry/shared/*"],
+      "@registry/*": ["../../registry/solid/*"]
+    }
   },
   "include": ["src", "tests", "vite.config.ts"]
 }

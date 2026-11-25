@@ -4,7 +4,7 @@
   "type": "registry:component",
   "title": "Agenda view",
   "description": "Chronological agenda grouped by day, virtualized so only the days in view render: sticky dates, Intl time ranges, all-day badges, \"Day k of n\" for multi-day events, and empty and loading states. The scrolling agenda builds on its parts.",
-  "dependencies": ["@moltenship/calendar", "@tanstack/react-virtual", "cn", "lucide-react"],
+  "dependencies": ["@moltenship/calendar", "@tanstack/virtual-core", "cn", "lucide-react"],
   "registryDependencies": ["@moltenship/calendar", "@moltenship/calendar-theme"],
   "files": [
     {
@@ -33,9 +33,24 @@
       "target": "@components/calendar/list-view/agenda-states.tsx"
     },
     {
-      "path": "registry/list-view/agenda-rows.ts",
+      "path": "registry/shared/list-view/agenda-rows.ts",
       "type": "registry:lib",
       "target": "@components/calendar/list-view/agenda-rows.ts"
+    },
+    {
+      "path": "registry/shared/list-view/agenda-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/list-view/agenda-labels.ts"
+    },
+    {
+      "path": "registry/shared/list-view/agenda.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/list-view/agenda.styles.ts"
+    },
+    {
+      "path": "registry/shared/list-view/agenda-virtualizer.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/list-view/agenda-virtualizer.ts"
     },
     {
       "path": "registry/list-view/use-agenda-virtualizer.ts",

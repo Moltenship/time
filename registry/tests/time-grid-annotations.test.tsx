@@ -32,7 +32,7 @@ import {
 import { createDayView, createWeekView } from "../time-grid-view/time-grid-view";
 import { render } from "./render";
 import { anchorDate, ariaLabel, clock, text, timed, type ColoredEvent } from "./view-fixtures";
-import type { CalendarEventColor } from "../calendar-theme/event-colors";
+import type { CalendarEventColor } from "../shared/calendar-theme/event-colors";
 
 /** A calendar with just `view`, so day and week each register under their own name. */
 function calendarWith<TView extends AnyCalendarView<ColoredEvent>>(view: TView) {

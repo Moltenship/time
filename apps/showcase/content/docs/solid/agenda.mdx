@@ -1,0 +1,145 @@
+---
+title: Agenda
+description: The Solid agenda, a chronological list of events grouped by day that renders only the days in view, from the Solid registry.
+---
+
+Try it in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=agenda): pick Agenda
+in the view switcher.
+
+`createAgendaView` lists the events in the coming weeks, one group per day. Days without events are
+left out. Only the days in view render, so a long range, such as `weeks: 104` with thousands of
+events, stays fast.
+
+## Add it
+
+Add the `list-view` item to your app with the shadcn CLI, as
+[Solid views from the registry](/docs/solid/registry) describes. It brings the theme and the shared
+`calendar` parts:
+
+```bash
+npx shadcn@latest add @moltenship/list-view
+```
+
+Then register the view, and render it in `Calendar.ActiveView`:
+
+<include meta='title="calendar-page.tsx"'>
+  ../../../../../tools/registry/consumers/solid/calendar-page.tsx#view
+</include>
+
+The view is named `agenda`. It decides which days render with `@tanstack/virtual-core`, which the
+item installs.
+
+## Options
+
+Pass them to `createAgendaView`, or per root in `viewOptions`, where they override the view's own:
+
+```tsx
+<Calendar.Root viewOptions={{ agenda: { loading: isFetching(), weeks: 8 } }} /* … */>
+```
+
+<TypeTable
+  type={{
+    weeks: {
+      type: "number",
+      description:
+        "How many whole weeks to show, from the week of the anchor date. Previous and Next move by the same number of weeks.",
+      default: "4",
+    },
+    getEventColor: {
+      type: "(event: TEvent) => CalendarEventColor",
+      description: (
+        <>
+          The color for each event, one of <code>calendarEventColors</code> in{" "}
+          <code>event-colors.ts</code>. See <a href="/docs/theming#event-colors">event colors</a>.
+        </>
+      ),
+    },
+    getEventIcon: {
+      type: "(event: TEvent) => JSX.Element",
+      description:
+        "A small icon before each event's title, such as a repeat mark on recurring events, or nothing. It's decorative and hidden from screen readers: say the same in describeEvent, which adds to the event's accessible name.",
+    },
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: "Extra words for each event's accessible name, such as its calendar.",
+    },
+    loading: {
+      type: "boolean",
+      description:
+        "Events for the view's dates are still being fetched: the view says they're loading instead of that nothing is scheduled.",
+      default: "false",
+    },
+  }}
+/>
+
+## What it shows
+
+- **Days:** each day with events gets a date column that stays in view while you scroll its
+  events. Today is highlighted, and its date is `aria-current="date"`.
+- **Times** are formatted as a range with `Intl`, as in "10:00 – 11:30 AM". Events that started the
+  day before read "Until 2:00 AM"; events that run into the next day read "From 10:00 PM".
+- **All-day events** show an "All day" badge, and events longer than a day show "Day 2 of 3".
+- **Empty range:** a short message when the weeks shown have no events, or a loading one while
+  `loading` is set.
+- **Clicking a date** opens that day in the view named `day`. Register a view of your own by that
+  name so the click has somewhere to go.
+- **Changes being saved:** events with a [pending change](/docs/interactions#pending-changes) get
+  `aria-busy` and render at 60% opacity.
+- **On a phone** each event stacks its time above its title, and every date and event is at least
+  24 px tall.
+- **Right to left** mirrors the list, the date column included, when the page or `Calendar.Frame`
+  has `dir="rtl"`.
+- **Reduced motion** keeps the loading spinner still.
+
+Each day has `data-date`, and each event is a `<button>` with `data-event-id`.
+
+## Anatomy
+
+`AgendaView` renders a list with one group per day. The view builds these parts itself, so they're
+not parts you compose: to change one, edit its file under `components/calendar/list-view`.
+
+```txt title="Rendered by AgendaView"
+AgendaView                       agenda-view.tsx
+├── AgendaList                   agenda-list.tsx, scrolls the days in view
+│   └── Day group                agenda-day.tsx, data-date, one per day
+│       ├── Day group header     weekday and date, sticky
+│       └── AgendaItem           agenda-item.tsx, one per event
+└── Empty state                  agenda-states.tsx, EmptyAgenda: in place of the list
+```
+
+The `.tsx` files are Solid components. What they render comes from plain TypeScript beside them:
+
+| File                        | Holds                                                              |
+| --------------------------- | ------------------------------------------------------------------ |
+| `agenda.styles.ts`          | Every class the parts set, so a restyle is one file                |
+| `agenda-labels.ts`          | The time ranges, "All day", "Day 2 of 3" and the empty-state words |
+| `agenda-rows.ts`            | The rows the list renders, one per day                             |
+| `agenda-virtualizer.ts`     | Which days render and where, on `@tanstack/virtual-core`           |
+| `use-agenda-virtualizer.ts` | Binds that to the list element and Solid's reactivity              |
+
+`AgendaItem` renders the shared `EventChip` from `components/calendar/event-chip.tsx`, whose name,
+color and pending state the other views' events share.
+
+## Keyboard
+
+| Focus                  | Key                          | Effect                                  |
+| ---------------------- | ---------------------------- | --------------------------------------- |
+| An event               | ↑ ↓                          | Previous or next event                  |
+| An event               | Page Up, Page Down           | First event of the previous or next day |
+| An event               | Home, End                    | First or last event                     |
+| An event               | Enter                        | Open it, as a click does                |
+| An event               | Shift+Enter                  | Open its date in the day view           |
+| A range without events | ↑ or Page Up, ↓ or Page Down | The previous or next range              |
+
+The list is one tab stop. Moving past the first or last event shows the previous or next weeks. The
+list scrolls to keep the focused event in view, and the focused day stays rendered while focus is
+in the list. The agenda doesn't move or create events from the keyboard, since it has no days or
+times to move them to. The keys are the ones `view-keys.ts` maps, the same in every view.
+
+## Screen readers
+
+The list is an `<ol>` named by its weeks. Only the days in view render, so each day's `<li>`
+carries `aria-posinset` and `aria-setsize`, counting every day listed: "list item, 5 of 41". The
+list is `aria-busy` while `loading` is set. A range without events is a focusable group named by
+its message: "No events. Nothing is scheduled for October 5 – 18.", or "Loading events" while
+`loading` is set.

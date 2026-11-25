@@ -7,8 +7,12 @@ import { useId } from "react";
 
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
-
-import type { AgendaFormats } from "./agenda-day";
+import {
+  agendaEndLabel,
+  agendaEndLoadingLabel,
+  emptyAgendaCopy,
+  type AgendaFormats,
+} from "@registry/shared/list-view/agenda-labels";
 
 const spin = stylex.keyframes({ to: { transform: "rotate(360deg)" } });
 
@@ -101,6 +105,7 @@ export function EmptyAgenda({
 }) {
   const roving = useRovingFocus({ date: start, kind: "day" });
   const id = useId();
+  const copy = emptyAgendaCopy(loading, dates);
 
   return (
     <div
@@ -120,12 +125,8 @@ export function EmptyAgenda({
         <CalendarX2Icon aria-hidden {...stylex.props(styles.emptyIcon)} />
       )}
       <div id={id} {...stylex.props(styles.emptyLabel)}>
-        <p {...stylex.props(styles.emptyTitle)}>{loading ? "Loading events" : "No events"}</p>
-        <p {...stylex.props(styles.emptyMessage)}>
-          {loading
-            ? `Fetching what's scheduled for ${dates}.`
-            : `Nothing is scheduled for ${dates}.`}
-        </p>
+        <p {...stylex.props(styles.emptyTitle)}>{copy.title}</p>
+        <p {...stylex.props(styles.emptyMessage)}>{copy.detail}</p>
       </div>
     </div>
   );
@@ -150,10 +151,10 @@ export function AgendaEndMessage({
       {loading ? (
         <span {...stylex.props(styles.endLoading)}>
           <Spinner xstyle={styles.spinnerEnd} />
-          Loading events…
+          {agendaEndLoadingLabel}
         </span>
       ) : empty === null ? null : (
-        `Nothing more is scheduled through ${formats.date.format(empty.end.subtract({ days: 1 }))}.`
+        agendaEndLabel(formats, empty)
       )}
     </p>
   );

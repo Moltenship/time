@@ -13,7 +13,7 @@ import {
 import { useLayoutEffect, useMemo, useRef, useSyncExternalStore } from "react";
 
 import { AgendaList, useAgendaFormats, useAgendaList } from "@registry/list-view/agenda-list";
-import { agendaRows, rowFrom } from "@registry/list-view/agenda-rows";
+import { agendaRows, rowFrom } from "@registry/shared/list-view/agenda-rows";
 import { AgendaEndMessage, EmptyAgenda } from "@registry/list-view/agenda-states";
 import type { AgendaViewOptions } from "@registry/list-view/agenda-view";
 

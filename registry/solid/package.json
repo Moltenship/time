@@ -1,0 +1,25 @@
+{
+  "name": "registry-source-solid",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The Solid registry's source: Solid 2.0 items for shadcn, type-checked and tested in place.",
+  "type": "module",
+  "scripts": {
+    "test": "vp test"
+  },
+  "dependencies": {
+    "@moltenship/calendar-solid": "workspace:*",
+    "@solidjs/web": "catalog:",
+    "@tanstack/virtual-core": "catalog:",
+    "@ui-sdk/core": "catalog:",
+    "@ui-sdk/solid": "catalog:",
+    "cn": "catalog:",
+    "solid-js": "catalog:"
+  },
+  "devDependencies": {
+    "@solidjs/vite-plugin": "catalog:",
+    "jsdom": "catalog:",
+    "typescript": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

@@ -13,7 +13,6 @@ import {
   type ListProjection,
   type ListViewOptions,
   type ResourceId,
-  withAsciiSpaces,
 } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
 import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
@@ -21,9 +20,10 @@ import { useLayoutEffect, useMemo, useRef, type ReactNode } from "react";
 import type { EventDescriber } from "@registry/stylex-calendar/event-label";
 import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import { agendaDates } from "@registry/shared/list-view/agenda-labels";
+import { agendaRows } from "@registry/shared/list-view/agenda-rows";
 
 import { AgendaList, useAgendaFormats, useAgendaList } from "./agenda-list";
-import { agendaRows } from "./agenda-rows";
 import { EmptyAgenda } from "./agenda-states";
 
 const styles = stylex.create({
@@ -71,9 +71,7 @@ function EmptyAgendaView<TEvent>({ environment, options, range }: AgendaViewProp
   return (
     <div {...keyboard} data-slot="agenda-view" {...stylex.props(styles.empty)}>
       <EmptyAgenda
-        dates={withAsciiSpaces(
-          formats.range.formatRange(range.start, range.end.subtract({ days: 1 })),
-        )}
+        dates={agendaDates(formats, range)}
         loading={options.loading === true}
         start={range.start}
       />

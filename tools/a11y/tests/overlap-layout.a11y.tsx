@@ -9,7 +9,7 @@ import { act } from "react";
 import { describe, expect, test, vi } from "vite-plus/test";
 import { userEvent } from "vite-plus/test/browser";
 
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createTimelineDayView } from "@registry/resource-timeline-view/resource-timeline-view";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";

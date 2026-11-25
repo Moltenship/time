@@ -1,3 +1,15 @@
+/* Declared first, so the page's styles win over the CSS ui-sdk adds to it. */
+@layer ui-sdk;
+
+/* What an app that installs the registry's Solid items has: Tailwind, and the calendar's theme. */
+@import "tailwindcss";
+@import "../../../registry/shared/calendar-theme/calendar-theme.css";
+
+@source "../../../registry/solid";
+@source "../../../registry/shared";
+
+@custom-variant dark (&:is(.dark *));
+
 :root {
   color-scheme: light dark;
   font-family: system-ui, sans-serif;
@@ -17,6 +29,13 @@ body {
   color: CanvasText;
 }
 
+/* Tailwind's preflight leaves headings at the text's weight and links without an underline. */
+h1,
+h2,
+h3 {
+  font-weight: 700;
+}
+
 h1 {
   margin: 0;
   font-size: 1.5rem;
@@ -24,6 +43,7 @@ h1 {
 
 a {
   color: var(--accent-text);
+  text-decoration: underline;
 }
 
 .header {
@@ -70,8 +90,8 @@ a {
   margin: 0 0 0.25rem;
 }
 
-.hint,
-.empty {
+.hint {
+  margin: 0 0 1rem;
   color: var(--muted);
 }
 
@@ -111,6 +131,12 @@ a {
 .toolbar button:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+/* The agenda scrolls its days inside the viewport, which renders only the days in view. */
+.viewport:has([data-slot="agenda-view"]) {
+  height: min(36rem, 70dvh);
+  border-top: 1px solid var(--line);
 }
 
 .title {
@@ -192,33 +218,6 @@ a {
   opacity: 0.6;
 }
 
-.agenda-day h2 {
-  margin: 1rem 0 0.25rem;
-  font-size: 0.95rem;
-}
-
-.agenda-day[data-today] h2 {
-  color: var(--accent-text);
-}
-
-.agenda-day ul {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.agenda-day li {
-  display: flex;
-  gap: 1rem;
-  padding: 0.35rem 0;
-  border-bottom: 1px solid var(--line);
-}
-
-.agenda-day .time {
-  min-width: 7rem;
-  color: var(--muted);
-}
-
 .agent {
   padding: 1rem;
   border: 1px solid var(--line);
@@ -256,6 +255,7 @@ a {
   margin: 0;
   padding-left: 1.25rem;
   font-size: 0.85rem;
+  list-style: decimal;
 }
 
 .agent-log [data-failed] {
@@ -282,8 +282,7 @@ a {
 }
 
 .day:focus-visible,
-.chip:focus-visible,
-.agenda-day li:focus-visible {
+.chip:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: -2px;
 }

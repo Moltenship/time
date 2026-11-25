@@ -1,0 +1,10 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "base-tokens",
+  "type": "registry:item",
+  "title": "Base tokens",
+  "description": "shadcn/ui's neutral tokens (background, foreground, primary, border, ring and the rest) for light and dark themes, for an app that doesn't have shadcn/ui's theme. The React registry's base-tokens, from the same file. They sit in the base layer, so an app's own values win.",
+  "meta": {
+    "stylesheet": "registry/shared/base-tokens/base-tokens.css"
+  }
+}

@@ -5,7 +5,12 @@ import { satisfies, validRange } from "semver";
 import { registryItemSchema, registrySchema } from "shadcn/schema";
 
 import type { RegistryManifest, RegistryManifestItem } from "./compatibility";
-import { consumerPackages, dragAndDropPackages, registryNamespace } from "./config";
+import {
+  dragAndDropPackages,
+  reactRegistry,
+  registryNamespace,
+  type RegistryFramework,
+} from "./config";
 import { dependencyName, itemClosure } from "./items";
 import { consumerImportForTarget } from "./rewrite-imports";
 
@@ -18,6 +23,7 @@ export const stylexFullItemName = `${stylexItemPrefix}${fullItemName}`;
 interface CheckBuiltRegistryOptions {
   readonly outDir: string;
   readonly manifest: RegistryManifest;
+  readonly framework?: RegistryFramework;
 }
 
 const importSpecifier = /(?:\bfrom\s*|\bimport\s*\(\s*|\bimport\s+)["']([^"']+)["']/gu;
@@ -61,6 +67,7 @@ function importIssue(
   from: string,
   item: RegistryManifestItem,
   closure: readonly RegistryManifestItem[],
+  consumerPackages: ReadonlySet<string>,
 ): string | null {
   const where = `${item.name}: ${from} imports ${specifier}`;
   if (specifier.startsWith(".")) {
@@ -123,6 +130,7 @@ export function runtimeProblems(
 export async function checkBuiltRegistry({
   outDir,
   manifest,
+  framework = reactRegistry,
 }: CheckBuiltRegistryOptions): Promise<string[]> {
   const issues: string[] = [];
   const byName = new Map(manifest.items.map((item) => [item.name, item]));
@@ -203,10 +211,11 @@ export async function checkBuiltRegistry({
       owners.set(target, item.name);
       const content = file.content ?? "";
       if (content.length === 0) issues.push(`${item.name}: ${target} is empty`);
-      const boundary = clientBoundaryIssue(target, content);
+      // Solid has no Server Components, so its files declare no boundary.
+      const boundary = framework.useClient ? clientBoundaryIssue(target, content) : null;
       if (boundary) issues.push(`${item.name}: ${boundary}`);
       for (const specifier of importsOf(content)) {
-        const problem = importIssue(specifier, target, item, closure);
+        const problem = importIssue(specifier, target, item, closure, framework.consumerPackages);
         if (problem) issues.push(problem);
         if (dragAndDropPackages.some((pattern) => pattern.test(packageName(specifier)))) {
           issues.push(
@@ -217,10 +226,14 @@ export async function checkBuiltRegistry({
     }
   }
 
-  for (const [fullName, inFlavour] of [
-    [fullItemName, (name: string) => !name.startsWith(stylexItemPrefix)],
-    [stylexFullItemName, (name: string) => name.startsWith(stylexItemPrefix)],
-  ] as const) {
+  for (const flavour of framework.flavours) {
+    const fullName = flavour.fullItem;
+    if (!fullName) continue;
+    // An item is in the flavour whose prefix is the longest one it starts with.
+    const inFlavour = (name: string) =>
+      framework.flavours
+        .filter(({ prefix }) => name.startsWith(prefix))
+        .toSorted((a, b) => b.prefix.length - a.prefix.length)[0] === flavour;
     const full = byName.get(fullName);
     if (!full) {
       issues.push(`There is no ${fullName} item`);

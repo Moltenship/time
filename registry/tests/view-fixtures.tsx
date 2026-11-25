@@ -8,7 +8,7 @@ import {
   type CalendarEvent,
 } from "@moltenship/calendar";
 
-import type { CalendarEventColor } from "../calendar-theme/event-colors";
+import type { CalendarEventColor } from "../shared/calendar-theme/event-colors";
 
 export type ColoredEvent = CalendarEvent<{ readonly color: CalendarEventColor }, string | number>;
 

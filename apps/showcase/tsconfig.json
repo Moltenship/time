@@ -27,7 +27,7 @@
         "../../registry/recurrence-scope-dialog/*"
       ],
       "@/components/calendar/calendar-history-toast/*": ["../../registry/calendar-history-toast/*"],
-      "@/components/calendar/event-colors": ["../../registry/calendar-theme/event-colors"],
+      "@/components/calendar/event-colors": ["../../registry/shared/calendar-theme/event-colors"],
       "@/components/calendar/*": ["../../registry/calendar/*"],
       "@/lib/google-calendar": ["./content/examples/google-calendar"],
       "@/lib/google-calendar-api": ["./content/examples/google-calendar-api"],

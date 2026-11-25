@@ -1,0 +1,7 @@
+/* Declared first, so the app's styles win over the CSS ui-sdk adds to the page. */
+@layer ui-sdk;
+
+@import "tailwindcss";
+
+/* The calendar's theme switches on a `.dark` ancestor, so the `dark:` classes do too. */
+@custom-variant dark (&:is(.dark *));

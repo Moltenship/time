@@ -2,11 +2,11 @@ import { readFile } from "node:fs/promises";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { calendarEventColors } from "../calendar-theme/event-colors";
+import { calendarEventColors } from "../shared/calendar-theme/event-colors";
 import { composite, contrast, ThemeTokens } from "./theme-colors";
 
 const css = await readFile(
-  new URL("../calendar-theme/calendar-theme.css", import.meta.url),
+  new URL("../shared/calendar-theme/calendar-theme.css", import.meta.url),
   "utf8",
 );
 

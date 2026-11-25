@@ -12,7 +12,8 @@ import type { ComponentProps, ReactNode } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import { previewCheck, previewCheckAttributes } from "@registry/calendar/preview-check";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import { eventChipClass, eventIconClass } from "@registry/shared/calendar/event-chip.styles";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { cn } from "cn";
 
 export interface EventChipProps extends ComponentProps<"button"> {
@@ -37,13 +38,7 @@ export function EventChip({
       data-color={color}
       data-pending={pending ? "" : undefined}
       type={type}
-      className={cn(
-        // `data-dragging` marks the event a pointer drag is moving; its preview follows the pointer.
-        // `data-grabbed` marks the event a keyboard gesture is moving; it moves with the keys.
-        // `data-invalid` and `data-warning` mark a preview the policies would reject or flag.
-        "flex min-w-0 items-center gap-1.5 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event px-2 py-1 text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110",
-        className,
-      )}
+      className={cn(eventChipClass, className)}
       {...props}
     />
   );
@@ -66,10 +61,7 @@ export function EventIcon({ children, className }: EventIconProps) {
     <span
       aria-hidden="true"
       data-slot="calendar-event-icon"
-      className={cn(
-        "me-1 inline-flex size-3 shrink-0 items-center justify-center align-[-0.125em] [&_svg]:size-3 [&_svg]:shrink-0",
-        className,
-      )}
+      className={cn(eventIconClass, className)}
     >
       {children}
     </span>

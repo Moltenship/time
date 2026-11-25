@@ -11,7 +11,7 @@ import { hydrateRoot } from "react-dom/client";
 import { renderToString } from "react-dom/server";
 import { afterEach, expect, test } from "vite-plus/test";
 
-import type { CalendarEventColor } from "../calendar-theme/event-colors";
+import type { CalendarEventColor } from "../shared/calendar-theme/event-colors";
 import { createDayView, createWeekView } from "../time-grid-view/time-grid-view";
 import { click, render } from "./render";
 import { ariaLabel, text } from "./view-fixtures";

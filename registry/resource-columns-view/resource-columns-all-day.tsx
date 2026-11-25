@@ -5,7 +5,7 @@ import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type ReactNode, type RefCallback } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import {
   AllDayRowHeader,
   TimeGridAllDayCells,

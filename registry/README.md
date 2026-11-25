@@ -18,6 +18,7 @@ registry/
   calendar-full/    installs every item above but base-tokens, owns no files   registry item "calendar-full"
   stylex-<item>/    the same items, styled with StyleX and Astryx    registry item "stylex-<item>"
   shared/           framework-free files that items of both frameworks install, such as the kit's classes
+  solid/            the Solid registry: calendar-theme, base-tokens, calendar, list-view   served at /r/solid
   tests/            focused tests for the source above
 ```
 
@@ -39,7 +40,8 @@ that `tools/registry` checks:
 - `calendar-theme` points `meta.stylesheet` at `calendar-theme.css`. The build turns the file into
   the item's `cssVars` and `css`, so `shadcn add` merges its tokens and rules into the app's global
   CSS, inside `@layer base` as in the file. The stock shadcn tokens the file also sets stay out: a
-  shadcn app has its own. `base-tokens` does the same with `base-tokens.css`, and keeps the stock
+  shadcn app has its own. `base-tokens` does the same with `shared/base-tokens/base-tokens.css`, which
+  the Solid tree's `base-tokens` builds from too, and keeps the stock
   tokens, which are its job; it owns no other files. No manifest sets `cssVars` or `css` itself.
 - `calendar-full` is a `registry:item` that owns no files and installs every other item but
   `base-tokens`.
@@ -86,7 +88,10 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
   flavour's other items and own no file; ranges must hold for the workspace versions. Every
   `vp run registry#site` runs the same checks on what it builds.
 - `vp run registry:e2e`, slow and online: makes clean Vite and Next.js apps with `shadcn init`, runs
-  `shadcn add <url>/calendar-full.json` against the registry served locally, checks where the
+  `shadcn add <url>/calendar-full.json` against the registry served locally, and a clean Solid 2.0
+  app that runs `shadcn add @moltenship/base-tokens @moltenship/list-view` against `/r/solid` with
+  the `components.json`, `app.css` and page in `tools/registry/consumers/solid`, which the Solid
+  docs show; checks where the
   files landed and what the app installed, then typechecks and builds both apps. The Vite app uses
   a non-default `components` alias. The Next.js app's page, a Server Component, imports every item
   the client page uses straight from the server. The test packs the runtime packages from the
@@ -95,14 +100,14 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
   them with the served tarballs' hashes. `REGISTRY_E2E_PACKAGES=npm` uses the published ones
   instead, `REGISTRY_E2E_TARBALLS=<dir>` serves tarballs made elsewhere, and `REGISTRY_E2E_KEEP=1`
   keeps the apps (`failed`: only when one fails).
-  It prints `REGISTRY_E2E <json>` when both apps pass, with the hash of each tarball it served, or
+  `REGISTRY_E2E_APPS=vite,next,solid` picks the apps. It prints `REGISTRY_E2E <json>` when they all pass, with the hash of each tarball it served, or
   `REGISTRY_E2E_FAILED <json>` naming each app that failed and its step. The full tier runs it
   through `vp run release:artifacts`, on the release dry run's tarballs.
 
 ## Conventions
 
 - Import shared source through the `@registry/*` alias: `@registry/calendar-ui/button`,
-  `@registry/calendar/event-chip`, `@registry/calendar-theme/event-colors`. Files inside one item
+  `@registry/calendar/event-chip`, `@registry/shared/calendar-theme/event-colors`. Files inside one item
   may import each other relatively. Class names merge with `cn` from the `cn` package, as stock
   shadcn components do.
 - Compose with the `render` prop, never `asChild`:
@@ -221,6 +226,32 @@ and inline styles, a plain stylesheet or the Availability recipes can read them.
   structure below it, `dependencies` swapped (`@stylexjs/stylex`, `@astryxdesign/core`, no `cn`), and
   `registryDependencies` only `@moltenship/stylex-<item>`, with no stock shadcn components.
 
+## The Solid registry
+
+`registry/solid` holds the items for Solid 2.0 apps
+([ADR 0279](../docs/adr/0279-solid-views-in-the-registry.md)). The same tooling builds it, with
+the Solid framework's settings in `tools/registry/src/config.ts`, into `/r/solid/<item>.json`,
+with its own `registry.json` and `compatibility.json`; the React items keep their URLs. Its items
+follow the rules above, with these differences:
+
+- `dependencies` name `@moltenship/calendar-solid`, the Solid facade, which re-exports core and
+  Temporal as `@moltenship/calendar` does. The build adds its range.
+- `registryDependencies` name `@moltenship/<item>` and resolve to the Solid tree's URLs.
+- An item lists its own `.tsx` files from `registry/solid/<item>/` and the shared files it needs
+  from `registry/shared/`, at the same targets as the React item: `components/calendar/…`. A shared
+  file imports the facade as `@moltenship/calendar`, and the Solid build rewrites that to
+  `@moltenship/calendar-solid`; `tools/registry/src/solid-source.ts` does the same when the source
+  runs in place. An item lists no file from the other framework's tree.
+- `base-tokens` is React's item over the same `shared/base-tokens/base-tokens.css`, for a Solid
+  app without shadcn/ui's theme.
+- The icons are inline SVG in `calendar/icons.tsx`, so no item depends on an icon package.
+
+`registry/solid` is its own private workspace (`registry-source-solid`), depending on
+`@moltenship/calendar-solid`, with `@registry/*` mapped to it and `@registry/shared/*` to
+`registry/shared`. Its tests run in the `registry-solid` Vitest project, and
+`tools/a11y/tests/solid` checks the agenda in a real browser against what the React agenda's
+files check. `apps/demo-solid` draws its agenda from it.
+
 ## Consuming the source in this repo
 
 `registry/` is a private workspace (`registry-source`) so its imports resolve and it can be
@@ -241,7 +272,7 @@ export default defineConfig({ resolve: { tsconfigPaths: true } });
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
-@import "../../../registry/calendar-theme/calendar-theme.css";
+@import "../../../registry/shared/calendar-theme/calendar-theme.css";
 @source "../../../registry";
 @custom-variant dark (&:is(.dark *));
 ```

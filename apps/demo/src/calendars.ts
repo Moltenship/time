@@ -1,4 +1,4 @@
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 
 export const demoCalendars = [
   { color: "blue", id: "work", name: "Work" },

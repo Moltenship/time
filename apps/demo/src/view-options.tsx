@@ -1,6 +1,6 @@
 import { RepeatIcon } from "lucide-react";
 
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 
 import { demoCalendars, getCalendarColor } from "./calendars";
 import type { DemoOccurrence, DemoView } from "./demo-model";

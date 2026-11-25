@@ -7,12 +7,12 @@
   "dependencies": ["@moltenship/calendar"],
   "files": [
     {
-      "path": "registry/calendar-theme/event-colors.ts",
+      "path": "registry/shared/calendar-theme/event-colors.ts",
       "type": "registry:lib",
       "target": "@components/calendar/event-colors.ts"
     }
   ],
   "meta": {
-    "stylesheet": "registry/calendar-theme/calendar-theme.css"
+    "stylesheet": "registry/shared/calendar-theme/calendar-theme.css"
   }
 }

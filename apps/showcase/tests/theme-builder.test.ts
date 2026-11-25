@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 
 import { describe, expect, test } from "vite-plus/test";
 
-import { calendarEventColors } from "@registry/calendar-theme/event-colors";
+import { calendarEventColors } from "@registry/shared/calendar-theme/event-colors";
 import { composite, contrast, ThemeTokens } from "@registry/tests/theme-colors";
 
 import { hexToOklch } from "../components/theme-builder/color";
@@ -24,7 +24,7 @@ import {
 import { eventColorLabels, tokenInfo } from "../components/theme-builder/tokens";
 
 const css = await readFile(
-  new URL("../../../registry/calendar-theme/calendar-theme.css", import.meta.url),
+  new URL("../../../registry/shared/calendar-theme/calendar-theme.css", import.meta.url),
   "utf8",
 );
 const stylexTokens = await readFile(

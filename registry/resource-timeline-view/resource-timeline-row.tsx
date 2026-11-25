@@ -34,7 +34,7 @@ import {
   useDraftCheck,
 } from "@registry/calendar/preview-check";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { cn } from "cn";
 import { Button } from "@registry/calendar-ui/button";
 

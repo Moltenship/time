@@ -5,17 +5,7 @@ import {
 } from "@moltenship/calendar";
 import { useMemo } from "react";
 
-/** Keys a view moves focus with; inside a view they never reach the app's own shortcuts. */
-const navigationKeys = new Set([
-  "ArrowDown",
-  "ArrowLeft",
-  "ArrowRight",
-  "ArrowUp",
-  "End",
-  "Home",
-  "PageDown",
-  "PageUp",
-]);
+import { isViewNavigationKey } from "@registry/shared/calendar/view-keys";
 
 /**
  * `useCalendarKeyboard` for the element around a view. Keys from portals the view renders, such
@@ -33,8 +23,7 @@ export function useViewKeyboard(options?: CalendarKeyboardOptions): CalendarKeyb
       onKeyDown(event) {
         if (!event.currentTarget.contains(event.target as Node)) return;
         keyboard.onKeyDown(event);
-        if (event.altKey || event.ctrlKey || event.metaKey) return;
-        if (navigationKeys.has(event.key)) event.preventDefault();
+        if (isViewNavigationKey(event)) event.preventDefault();
       },
     }),
     [keyboard],

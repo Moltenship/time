@@ -72,6 +72,21 @@
       "path": "registry/stylex-calendar/view-switcher.tsx",
       "type": "registry:component",
       "target": "@components/calendar-stylex/view-switcher.tsx"
+    },
+    {
+      "path": "registry/shared/calendar/event-names.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/event-names.ts"
+    },
+    {
+      "path": "registry/shared/calendar/preview-state.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/preview-state.ts"
+    },
+    {
+      "path": "registry/shared/calendar/view-keys.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/view-keys.ts"
     }
   ]
 }

@@ -9,7 +9,7 @@ import {
 import { useState } from "react";
 
 import { calendarAnnouncements } from "@registry/calendar/announcements";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { TimeGridView, type TimeGridViewOptions } from "@registry/time-grid-view/time-grid-view";
 
 import { applyPreviewChange, type PreviewEvent, type PreviewEventChange } from "./events";

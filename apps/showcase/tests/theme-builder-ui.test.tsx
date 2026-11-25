@@ -7,7 +7,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeAll, expect, test, vi } from "vite-plus/test";
 
-import { calendarEventColors } from "@registry/calendar-theme/event-colors";
+import { calendarEventColors } from "@registry/shared/calendar-theme/event-colors";
 
 import ThemeBuilder from "../components/theme-builder/builder";
 import ThemeCalendar from "../components/theme-builder/calendar";
@@ -27,7 +27,7 @@ declare global {
 
 const source = parseTheme(
   await readFile(
-    path.join(import.meta.dirname, "../../../registry/calendar-theme/calendar-theme.css"),
+    path.join(import.meta.dirname, "../../../registry/shared/calendar-theme/calendar-theme.css"),
     "utf8",
   ),
 );

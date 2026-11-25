@@ -8,7 +8,7 @@ import {
   type RefObject,
 } from "react";
 
-import { rowDate, rowFrom, type AgendaRow } from "@registry/list-view/agenda-rows";
+import { rowDate, rowFrom, type AgendaRow } from "@registry/shared/list-view/agenda-rows";
 import type { AgendaVirtualizer } from "@registry/list-view/use-agenda-virtualizer";
 
 /** Without `scrollend`, a scroll has settled once it has been still this long. */

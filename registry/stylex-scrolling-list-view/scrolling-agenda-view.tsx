@@ -18,7 +18,7 @@ import {
   useAgendaFormats,
   useAgendaList,
 } from "@registry/stylex-list-view/agenda-list";
-import { agendaRows, rowFrom } from "@registry/stylex-list-view/agenda-rows";
+import { agendaRows, rowFrom } from "@registry/shared/list-view/agenda-rows";
 import { AgendaEndMessage, EmptyAgenda } from "@registry/stylex-list-view/agenda-states";
 import type { AgendaViewOptions } from "@registry/stylex-list-view/agenda-view";
 

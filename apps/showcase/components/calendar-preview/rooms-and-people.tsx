@@ -10,7 +10,7 @@ import {
 import { useMemo, useState } from "react";
 
 import { calendarAnnouncements } from "@registry/calendar/announcements";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createTimelineDayView } from "@registry/resource-timeline-view/resource-timeline-view";
 

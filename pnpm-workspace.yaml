@@ -3,6 +3,7 @@ packages:
   - benchmarks
   - packages/*
   - registry
+  - registry/solid
   - tools/*
 
 catalogMode: prefer
@@ -63,6 +64,8 @@ catalog:
   postcss: 8.5.32
   tailwindcss: 4.3.3
   "@tanstack/react-virtual": 3.14.24
+  # The engine under react-virtual, at the version it pins. The agenda's shared virtualizer runs on it.
+  "@tanstack/virtual-core": 3.19.9
   "@tanstack/react-query": 5.105.0
   "@vitest/browser-playwright": 5.0.5
   axe-core: 4.14.0

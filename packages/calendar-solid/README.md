@@ -1,9 +1,10 @@
 # @moltenship/calendar-solid
 
 > **2.0 preview.** This package is new and its API isn't settled. It can change in any release
-> before 2.0. It ships no ready-made views: the registry's views are React. You define a view
-> with `defineCalendarView`, over the projections in `@moltenship/calendar-core`, and bind
-> keyboard navigation, dragging, drafts and undo to it with this package's hooks.
+> before 2.0. The Solid registry has one ready-made view so far, the agenda
+> (`npx shadcn@latest add https://time.molten.sh/r/solid/list-view.json`). For the others you
+> define a view with `defineCalendarView`, over the engine's projections, and bind keyboard
+> navigation, dragging, drafts and undo to it with this package's hooks.
 
 The headless [SolidJS](https://www.solidjs.com) 2 layer of Moltenship Time. It renders the
 calendar primitive from `@moltenship/calendar-primitives` with
@@ -20,12 +21,14 @@ creates.
 ## Install
 
 ```bash
-pnpm add @moltenship/calendar-solid@next @moltenship/calendar-core@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
+pnpm add @moltenship/calendar-solid@next solid-js @solidjs/web @ui-sdk/core @ui-sdk/solid
 ```
 
 Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
-- `@moltenship/calendar-core` for the event adapter and the views' projections.
+- It re-exports `@moltenship/calendar-core` and `@moltenship/calendar-temporal`, as
+  `@moltenship/calendar` does for React, so the event adapter, the views' projections and the
+  Temporal helpers import from it.
 - Solid 2: `solid-js` and `@solidjs/web` are peer dependencies.
 - ui-sdk's `@ui-sdk/core` and `@ui-sdk/solid` 0.1 beta. They are peer dependencies, and still
   pre-1.0, so this package takes the beta the calendar was tested with and the ones after it in

@@ -84,6 +84,9 @@ describe("the two pages' import graphs", () => {
     expect(
       breaking("stylex/main.tsx", ({ from, specifier }) => {
         if (specifier === "tailwindcss" || specifier.startsWith("tailwindcss/")) return true;
+        // Shared files hold words, keys and layout for every flavour; the class strings in their
+        // `.styles.ts` files are Tailwind's.
+        if (specifier.startsWith("@registry/shared/")) return specifier.endsWith(".styles");
         if (specifier.startsWith("@registry/")) return !specifier.startsWith("@registry/stylex-");
         if (!specifier.startsWith(".")) return false;
         const target = resolve(dirname(from), specifier);

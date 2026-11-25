@@ -5,6 +5,6 @@
   "title": "Base tokens",
   "description": "shadcn/ui's neutral tokens (background, foreground, primary, border, ring and the rest) for light and dark themes, for an app that doesn't have shadcn/ui's theme. They sit in the base layer, so an app's own values win.",
   "meta": {
-    "stylesheet": "registry/base-tokens/base-tokens.css"
+    "stylesheet": "registry/shared/base-tokens/base-tokens.css"
   }
 }

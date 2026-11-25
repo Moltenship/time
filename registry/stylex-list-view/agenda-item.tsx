@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  withAsciiSpaces,
-  type EventId,
-  type ListItem,
-  type ResourceId,
-} from "@moltenship/calendar";
+import type { EventId, ListItem, ResourceId } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
 import type { ReactNode } from "react";
 
@@ -16,6 +11,7 @@ import {
   calendarVars,
 } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import { agendaTimeLabel, allDayLabel, dayOfLabel } from "@registry/shared/list-view/agenda-labels";
 
 const styles = stylex.create({
   allDay: {
@@ -108,16 +104,6 @@ export interface AgendaItemProps<TEvent> {
   readonly timeFormat: Intl.DateTimeFormat;
 }
 
-function timeLabel(
-  { end, event, start, endsAfterDay, startsBeforeDay }: ListItem<unknown, EventId, ResourceId>,
-  format: Intl.DateTimeFormat,
-) {
-  if (event.kind === "all-day" || (startsBeforeDay && endsAfterDay)) return undefined;
-  if (startsBeforeDay) return `Until ${format.format(end.toPlainTime())}`;
-  if (endsAfterDay) return `From ${format.format(start.toPlainTime())}`;
-  return withAsciiSpaces(format.formatRange(start.toPlainTime(), end.toPlainTime()));
-}
-
 /** One agenda row: time range or an "All day" badge, the title, and "Day k of n" for long events. */
 export function AgendaItem<TEvent>({
   color,
@@ -127,7 +113,7 @@ export function AgendaItem<TEvent>({
   onOpenDay,
   timeFormat,
 }: AgendaItemProps<TEvent>) {
-  const time = timeLabel(item, timeFormat);
+  const time = agendaTimeLabel(item, timeFormat);
   const chip = useEventChip(item.event, { date: item.date, labelEvent });
 
   return (
@@ -147,7 +133,7 @@ export function AgendaItem<TEvent>({
       <span {...stylex.props(styles.timeColumn)}>
         <span aria-hidden {...stylex.props(styles.dot)} />
         {time === undefined ? (
-          <span {...stylex.props(styles.allDay)}>All day</span>
+          <span {...stylex.props(styles.allDay)}>{allDayLabel}</span>
         ) : (
           <span {...stylex.props(styles.time)}>{time}</span>
         )}
@@ -159,9 +145,7 @@ export function AgendaItem<TEvent>({
           {item.event.title}
         </span>
         {item.dayCount > 1 && (
-          <span {...stylex.props(styles.days)}>
-            Day {item.dayIndex} of {item.dayCount}
-          </span>
+          <span {...stylex.props(styles.days)}>{dayOfLabel(item.dayIndex, item.dayCount)}</span>
         )}
       </span>
     </EventChip>

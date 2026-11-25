@@ -1,5 +1,10 @@
-// The Solid 2.0 adapter of the calendar kernel: a typed factory with its root, parts and read
-// hooks, view definitions with a Solid renderer, and the hooks a view's interaction binds.
+// The Solid 2.0 facade of the calendar: a typed factory with its root, parts and read hooks, view
+// definitions with a Solid renderer, and the hooks a view's interaction binds. Like
+// `@moltenship/calendar` for React, it also re-exports the engine, the Temporal utilities and the
+// pointer layer's helpers, so a Solid application and the registry's Solid items install one
+// package of ours.
+export * from "@moltenship/calendar-core";
+export * from "@moltenship/calendar-temporal";
 export { useCalendarAnnotations, useTimeGridAnnotations } from "./annotations";
 export type { CalendarAnnotations } from "./annotations";
 export { Announcer, useCalendarAnnouncer } from "./announcer";
@@ -79,9 +84,31 @@ export type {
   CalendarViewportProps,
   CreateCalendarOptions,
 } from "./types";
-// The data attributes the pointer layer reads, so numeric IDs stay distinct; and its options.
-export { eventIdAttributes, resourceIdAttributes } from "@moltenship/calendar-dnd";
-export type { CalendarPointerOptions } from "@moltenship/calendar-dnd";
+// The pointer layer's plain-DOM helpers, as `@moltenship/calendar` exports them: the data
+// attributes it reads, so numeric IDs stay distinct, and its gesture, drops and options.
+export {
+  attachCalendarPointer,
+  eventIdAttributes,
+  eventIdOf,
+  monitorCalendarDrags,
+  observeCalendarRegions,
+  resourceIdAttributes,
+  resourceIdOf,
+  startCalendarDrop,
+} from "@moltenship/calendar-dnd";
+export type {
+  CalendarDragFollower,
+  CalendarDragMonitor,
+  CalendarDragPreview,
+  CalendarDropOptions,
+  CalendarDropSession,
+  CalendarDropSource,
+  CalendarEventDrag,
+  CalendarPoint,
+  CalendarPointerOptions,
+  CalendarRect,
+  CalendarRegion,
+} from "@moltenship/calendar-dnd";
 // The kernel's store and types, so an application needs no second import for them.
 export { createCalendarStore, resolveViewOptions } from "@moltenship/calendar-primitives";
 export type {

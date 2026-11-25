@@ -1,4 +1,4 @@
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import type { ReactNode, SVGProps } from "react";
 
 /** Radii per corner: top left, top right, bottom right, bottom left. */

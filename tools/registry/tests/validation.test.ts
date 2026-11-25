@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 
 import { describe, expect, test } from "vite-plus/test";
 
+import { solidRegistry } from "../src/config";
 import { sharedFileIssues, validateRegistryWorkspace } from "../src/validation";
 
 const workspaceRoot = resolve(import.meta.dirname, "../../..");
@@ -14,10 +15,30 @@ describe("shadcn registry validation", () => {
     expect(report.manifests).toBe(30);
   });
 
+  test("accepts the Solid registry's source", async () => {
+    const report = await validateRegistryWorkspace(workspaceRoot, { framework: solidRegistry });
+
+    expect(report.issues).toEqual([]);
+    expect(report.manifests).toBe(4);
+  });
+
+  test("an item lists only its own tree's files and the shared ones", async () => {
+    const react = await validateRegistryWorkspace(workspaceRoot, {
+      manifestPaths: ["registry/solid/list-view/registry-item.json"],
+    });
+    const solid = await validateRegistryWorkspace(workspaceRoot, {
+      framework: solidRegistry,
+      manifestPaths: ["registry/list-view/registry-item.json"],
+    });
+
+    expect(react.issues.filter(({ code }) => code === "foreign-source-file")).not.toEqual([]);
+    expect(solid.issues.filter(({ code }) => code === "foreign-source-file")).not.toEqual([]);
+  });
+
   test("known-bad registry fixture fails for every protected contract", async () => {
-    const report = await validateRegistryWorkspace(workspaceRoot, [
-      "tools/registry/fixtures/known-bad/registry-item.json",
-    ]);
+    const report = await validateRegistryWorkspace(workspaceRoot, {
+      manifestPaths: ["tools/registry/fixtures/known-bad/registry-item.json"],
+    });
     const codes = new Set(report.issues.map(({ code }) => code));
 
     expect(report.valid).toBe(false);
@@ -25,6 +46,7 @@ describe("shadcn registry validation", () => {
       new Set([
         "composition-files",
         "drag-and-drop-dependency",
+        "foreign-source-file",
         "generated-compatibility",
         "inline-css",
         "invalid-dependency",

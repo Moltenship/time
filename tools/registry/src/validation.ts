@@ -7,11 +7,11 @@ import { registryItemSchema } from "shadcn/schema";
 import { importsOf } from "./check";
 import {
   dragAndDropPackages,
+  reactRegistry,
   registryNamespace,
-  registrySourceDirectory,
   registrySharedDirectory,
-  registrySourcePackage,
   sharedFilePackages,
+  type RegistryFramework,
 } from "./config";
 
 /**
@@ -112,17 +112,32 @@ export function sharedFileIssues(path: string, source: string): string[] {
   });
 }
 
-async function readDeclaredPackages(workspaceRoot: string): Promise<ReadonlySet<string>> {
+async function readDeclaredPackages(
+  workspaceRoot: string,
+  framework: RegistryFramework,
+): Promise<ReadonlySet<string>> {
   const manifest = JSON.parse(
-    await readFile(resolve(workspaceRoot, registrySourcePackage), "utf8"),
+    await readFile(resolve(workspaceRoot, framework.sourcePackage), "utf8"),
   ) as { readonly dependencies?: Record<string, string> };
   return new Set(Object.keys(manifest.dependencies ?? {}));
+}
+
+/**
+ * Whether a file in the workspace belongs to `framework`'s registry: its own tree or the shared
+ * files. Neither framework's items list the other's files (ADR 0279, point 3).
+ */
+export function isFrameworkSource(path: string, framework: RegistryFramework): boolean {
+  if (path.startsWith(`${registrySharedDirectory}/`)) return true;
+  if (!path.startsWith(`${framework.sourceDirectory}/`)) return false;
+  const folder = path.slice(framework.sourceDirectory.length + 1).split("/")[0];
+  return !framework.otherTrees.includes(folder ?? "");
 }
 
 function validateDependencies(
   dependencies: readonly string[] | undefined,
   manifestPath: string,
   declaredPackages: ReadonlySet<string>,
+  framework: RegistryFramework,
 ): RegistryValidationIssue[] {
   const issues: RegistryValidationIssue[] = [];
   const seen = new Set<string>();
@@ -174,7 +189,7 @@ function validateDependencies(
         issue(
           "undeclared-dependency",
           path,
-          `${parsed.name} is not a dependency of ${registrySourcePackage}, so registry source can't import it`,
+          `${parsed.name} is not a dependency of ${framework.sourcePackage}, so registry source can't import it`,
         ),
       );
     }
@@ -210,6 +225,7 @@ async function validateMeta(
   meta: unknown,
   manifestPath: string,
   workspaceRoot: string,
+  framework: RegistryFramework,
 ): Promise<RegistryValidationIssue[]> {
   if (!isRecord(meta)) return [];
   const issues: RegistryValidationIssue[] = [];
@@ -236,6 +252,14 @@ async function validateMeta(
           `meta.stylesheet must name a CSS file in the workspace: ${String(stylesheet)}`,
         ),
       );
+    } else if (!isFrameworkSource(stylesheet, framework)) {
+      issues.push(
+        issue(
+          "foreign-source-file",
+          `${manifestPath}.meta.stylesheet`,
+          `${stylesheet} isn't in the ${framework.name} registry's tree or the shared files`,
+        ),
+      );
     }
   }
   return issues;
@@ -246,6 +270,7 @@ async function validateParsedItem(
   manifestPath: string,
   workspaceRoot: string,
   declaredPackages: ReadonlySet<string>,
+  framework: RegistryFramework,
 ): Promise<RegistryItemValidation> {
   const issues: RegistryValidationIssue[] = [];
   const files = item.files ?? [];
@@ -289,6 +314,14 @@ async function validateParsedItem(
       issues.push(
         issue("missing-source-file", `${path}.path`, `Source file does not exist: ${file.path}`),
       );
+    } else if (!isFrameworkSource(file.path, framework)) {
+      issues.push(
+        issue(
+          "foreign-source-file",
+          `${path}.path`,
+          `${file.path} isn't in the ${framework.name} registry's tree or the shared files`,
+        ),
+      );
     } else if (file.path.startsWith(`${registrySharedDirectory}/`)) {
       const source = await readFile(resolve(workspaceRoot, file.path), "utf8");
       for (const message of sharedFileIssues(file.path, source)) {
@@ -318,7 +351,7 @@ async function validateParsedItem(
   }
 
   issues.push(
-    ...validateDependencies(item.dependencies, manifestPath, declaredPackages),
+    ...validateDependencies(item.dependencies, manifestPath, declaredPackages, framework),
     ...(item.devDependencies?.length
       ? [
           issue(
@@ -339,7 +372,7 @@ async function validateParsedItem(
           ),
         ]
       : []),
-    ...(await validateMeta(item.meta, manifestPath, workspaceRoot)),
+    ...(await validateMeta(item.meta, manifestPath, workspaceRoot, framework)),
   );
 
   return {
@@ -354,6 +387,7 @@ async function validateRegistryItemFile(
   manifestPath: string,
   workspaceRoot: string,
   declaredPackages: ReadonlySet<string>,
+  framework: RegistryFramework,
 ): Promise<RegistryItemValidation> {
   let input: unknown;
   try {
@@ -385,17 +419,21 @@ async function validateRegistryItemFile(
     };
   }
 
-  return validateParsedItem(parsed.data, manifestPath, workspaceRoot, declaredPackages);
+  return validateParsedItem(parsed.data, manifestPath, workspaceRoot, declaredPackages, framework);
 }
 
-/** Every `registry-item.json` one folder below `registry/`, in a stable order. */
-export async function findRegistryManifests(workspaceRoot: string): Promise<string[]> {
-  const entries = await readdir(resolve(workspaceRoot, registrySourceDirectory), {
+/** Every `registry-item.json` one folder below the framework's source folder, in a stable order. */
+export async function findRegistryManifests(
+  workspaceRoot: string,
+  framework: RegistryFramework = reactRegistry,
+): Promise<string[]> {
+  const entries = await readdir(resolve(workspaceRoot, framework.sourceDirectory), {
     withFileTypes: true,
   });
   const manifests: string[] = [];
   for (const entry of entries.filter((candidate) => candidate.isDirectory())) {
-    const manifestPath = `${registrySourceDirectory}/${entry.name}/registry-item.json`;
+    if (framework.otherTrees.includes(entry.name)) continue;
+    const manifestPath = `${framework.sourceDirectory}/${entry.name}/registry-item.json`;
     if (await isFile(workspaceRoot, manifestPath)) manifests.push(manifestPath);
   }
   return manifests.sort();
@@ -403,14 +441,22 @@ export async function findRegistryManifests(workspaceRoot: string): Promise<stri
 
 export async function validateRegistryWorkspace(
   workspaceRoot: string,
-  manifestPaths?: readonly string[],
+  {
+    framework = reactRegistry,
+    manifestPaths,
+  }: { readonly framework?: RegistryFramework; readonly manifestPaths?: readonly string[] } = {},
 ): Promise<RegistryValidationReport> {
-  const paths = manifestPaths ?? (await findRegistryManifests(workspaceRoot));
-  const declaredPackages = await readDeclaredPackages(workspaceRoot);
+  const paths = manifestPaths ?? (await findRegistryManifests(workspaceRoot, framework));
+  const declaredPackages = await readDeclaredPackages(workspaceRoot, framework);
   const results = await Promise.all(
     paths.map(async (manifestPath) => ({
       manifestPath,
-      validation: await validateRegistryItemFile(manifestPath, workspaceRoot, declaredPackages),
+      validation: await validateRegistryItemFile(
+        manifestPath,
+        workspaceRoot,
+        declaredPackages,
+        framework,
+      ),
     })),
   );
   const issues = results.flatMap(({ validation }) => validation.issues);

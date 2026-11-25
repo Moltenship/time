@@ -1,6 +1,6 @@
 import type { CalendarEventChange } from "@moltenship/calendar";
 
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 
 export type PreviewEvent = {
   readonly color: CalendarEventColor;

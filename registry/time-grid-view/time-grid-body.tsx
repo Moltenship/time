@@ -10,7 +10,7 @@ import { useLayoutEffect, useMemo, useRef, type ReactNode, type RefObject } from
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
 import { TimeGridColumn, useTimeGridColumnFormats } from "./time-grid-column";

@@ -35,9 +35,12 @@ const otherFrameworkPackages = npmPackages(
 
 /** The samples the docs site shows on its Solid pages. The site, a React app, never imports them. */
 const solidDocsSamples = "(?:^|/)apps/showcase/content/examples/solid/";
-/** Where Solid may appear: the Solid integration, the Solid demo and the Solid docs' samples. */
+/**
+ * Where Solid may appear: the Solid integration, the Solid registry (ADR 0279), its runs in the
+ * a11y suite with the config that compiles them, the Solid demo and the Solid docs' samples.
+ */
 const solidWorkspaces =
-  "(?:^|/)(?:packages/calendar-solid|apps/demo-solid|apps/showcase/content/examples/solid)/";
+  "(?:^|/)(?:(?:packages/calendar-solid|registry/solid|tools/a11y/tests/solid|apps/demo-solid|apps/showcase/content/examples/solid)/|tools/a11y/vite\\.config\\.ts$)";
 /**
  * Where ui-sdk may appear: the primitives, the two integrations, the registry's kit of controls,
  * and the applications that create an agent bridge to show them (architecture.md, rule 14): the
@@ -111,16 +114,46 @@ export default {
     {
       name: "registry-source-uses-calendar-facade",
       comment:
-        "Copied registry source depends only on the calendar facade and its declared UI deps.",
+        "Copied registry source depends only on the calendar facade and its declared UI deps. The React items and the shared files name the React facade; the Solid build rewrites the shared files' import to the Solid one.",
       severity: "error",
       from: {
         path: "(?:^|/)registry/",
-        pathNot: ["(?:^|/)tools/registry/", "(?:^|/)registry/tests/"],
+        pathNot: ["(?:^|/)tools/registry/", "(?:^|/)registry/(?:tests|solid)/"],
       },
       to: {
         path: ["^@moltenship/", "(?:^|/)(?:apps|benchmarks|packages|tools)/"],
         pathNot: "^@moltenship/calendar$",
       },
+    },
+    {
+      name: "solid-registry-source-uses-solid-facade",
+      comment:
+        "The Solid registry's items depend only on the Solid facade, @moltenship/calendar-solid, and their declared UI deps; its tests too. Its Vite config runs the source in place with a plugin from tools/registry.",
+      severity: "error",
+      from: {
+        path: "(?:^|/)registry/solid/",
+        pathNot: "(?:^|/)registry/solid/vite\\.config\\.ts$",
+      },
+      to: {
+        path: ["^@moltenship/", "(?:^|/)(?:apps|benchmarks|packages|tools)/"],
+        pathNot: "^@moltenship/calendar-solid$",
+      },
+    },
+    {
+      name: "registry-trees-stay-apart",
+      comment:
+        "A framework's items import their own tree and the shared files, never the other framework's tree (ADR 0279, point 2).",
+      severity: "error",
+      from: { path: "^registry/(?!solid/|shared/)" },
+      to: { path: "^registry/solid/" },
+    },
+    {
+      name: "solid-registry-stays-in-its-tree",
+      comment:
+        "The Solid items import their own tree and the shared files, never the React tree (ADR 0279, point 2).",
+      severity: "error",
+      from: { path: "^registry/solid/" },
+      to: { path: "^registry/(?!solid/|shared/)" },
     },
     {
       name: "registry-shared-files-import-no-framework",
@@ -309,15 +342,16 @@ export default {
     },
     {
       name: "no-react-in-primitives-or-solid",
-      comment: "React stays out of calendar-primitives and calendar-solid, their tests included.",
+      comment:
+        "React stays out of calendar-primitives, calendar-solid and the Solid registry, their tests included.",
       severity: "error",
-      from: { path: "(?:^|/)packages/calendar-(?:primitives|solid)/" },
+      from: { path: "(?:^|/)(?:packages/calendar-(?:primitives|solid)|registry/solid)/" },
       to: { path: reactPackages },
     },
     {
       name: "only-calendar-solid-imports-solid",
       comment:
-        "Solid appears only in calendar-solid, the Solid demo and the samples of the Solid docs.",
+        "Solid appears only in calendar-solid, the Solid registry, the a11y suite's Solid tests and the config that compiles them, the Solid demo and the samples of the Solid docs.",
       severity: "error",
       from: { path: sourceRoots, pathNot: solidWorkspaces },
       to: { path: solidPackages },

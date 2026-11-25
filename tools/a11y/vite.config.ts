@@ -1,11 +1,13 @@
 import { availableParallelism } from "node:os";
 import { fileURLToPath } from "node:url";
 
+import solid from "@solidjs/vite-plugin";
 import stylex from "@stylexjs/unplugin";
 import tailwindcss from "@tailwindcss/vite";
 import { configDefaults, defineConfig } from "vite-plus";
 import { playwright } from "vite-plus/test/browser-playwright";
 
+import { solidRegistrySource } from "../registry/src/solid-source";
 import { mouse } from "./mouse";
 import { Watchdog } from "./watchdog";
 
@@ -26,7 +28,13 @@ const chromiumOnly = ["tests/reduced-motion.a11y.tsx"];
  * group of its own, so its second browser doesn't compete with theirs for the CPU.
  */
 const stylexOnly = ["tests/demo-stylex*.a11y.tsx"];
-const tailwindExclude = [...chromiumOnly, ...stylexOnly];
+/**
+ * The Solid registry's files run in a project of their own (ADR 0279): its own Vite server, which
+ * compiles JSX with Solid's compiler and resolves the shared files' facade to the Solid one. In
+ * React's server the same shared files resolve to React's.
+ */
+const solidFiles = ["tests/solid/**/*.a11y.tsx"];
+const tailwindExclude = [...chromiumOnly, ...stylexOnly, ...solidFiles];
 // Absolute: Vitest doesn't resolve the paths of an instance's own setup files.
 const stylexSetup = [fromHere("./tests/setup.ts")];
 const tailwindSetup = [...stylexSetup, fromHere("./tests/setup-tailwind.ts")];
@@ -52,29 +60,28 @@ export default defineConfig(({ mode }) => {
     return { test: { include: [], passWithNoTests: true } };
   }
 
+  // Each mode optimizes dependencies in a cache of its own, so two runs at once don't rewrite each
+  // other's, and so does each project, whose servers prebundle different packages. Vitest's mode
+  // is `test`.
+  const cacheDir = (project: "react" | "solid") =>
+    project === "solid"
+      ? `node_modules/.vite-${mode}-solid`
+      : mode === "test"
+        ? undefined
+        : `node_modules/.vite-${mode}`;
+  const browser = {
+    enabled: true,
+    headless: true,
+    provider: playwright(),
+    viewport: { height: 800, width: 1280 },
+    // Real mouse input at page points, step by step, for drags a test watches as they go.
+    commands: { mouse },
+  };
+
   return {
-    // Each mode optimizes dependencies in a cache of its own, so two runs at once don't rewrite
-    // each other's. Vitest's mode is `test`.
-    cacheDir: mode === "test" ? undefined : `node_modules/.vite-${mode}`,
-    // What StyleX's compiled files import, known up front so the first such test doesn't reload.
-    optimizeDeps: { include: ["@stylexjs/stylex/lib/stylex-inject"] },
-    plugins: [
-      stylex.vite({
-        aliases: { "@registry/*": [fromHere("../../registry/*")] },
-        dev: true,
-        runtimeInjection: true,
-        unstable_moduleResolution: { rootDir: fromHere("../.."), type: "commonJS" },
-      }),
-      tailwindcss(),
-    ],
-    resolve: {
-      tsconfigPaths: true,
-    },
     lint: { options: { typeAware: true, typeCheck: true } },
     fmt: {},
     test: {
-      // Not `*.test.tsx`, so the root `vp test` run, which has no browser, leaves these alone.
-      include: ["tests/**/*.a11y.tsx"],
       maxWorkers,
       // A stuck page can't time its own tests out: the watchdog fails the run from Node instead.
       // Beside Vitest's own reporters, which in CI include the GitHub Actions annotations.
@@ -82,51 +89,99 @@ export default defineConfig(({ mode }) => {
         ...configDefaults.reporters,
         new Watchdog({ limitMs: 600_000, stallMs: 120_000 }),
       ],
-      browser: {
-        enabled: true,
-        headless: true,
-        instances: otherBrowsers
-          ? [
-              ...(firefoxRuns
+      projects: [
+        {
+          cacheDir: cacheDir("react"),
+          // What StyleX's compiled files import, known up front so the first such test doesn't reload.
+          optimizeDeps: { include: ["@stylexjs/stylex/lib/stylex-inject"] },
+          plugins: [
+            stylex.vite({
+              aliases: { "@registry/*": [fromHere("../../registry/*")] },
+              dev: true,
+              runtimeInjection: true,
+              unstable_moduleResolution: { rootDir: fromHere("../.."), type: "commonJS" },
+            }),
+            tailwindcss(),
+          ],
+          resolve: {
+            tsconfigPaths: true,
+          },
+          test: {
+            name: "react",
+            // Not `*.test.tsx`, so the root `vp test` run, which has no browser, leaves these alone.
+            include: ["tests/**/*.a11y.tsx"],
+            browser: {
+              ...browser,
+              instances: otherBrowsers
                 ? [
+                    ...(firefoxRuns
+                      ? [
+                          {
+                            browser: "firefox" as const,
+                            exclude: tailwindExclude,
+                            setupFiles: tailwindSetup,
+                          },
+                        ]
+                      : []),
                     {
-                      browser: "firefox" as const,
+                      browser: "webkit" as const,
                       exclude: tailwindExclude,
                       setupFiles: tailwindSetup,
                     },
+                    {
+                      browser: "webkit" as const,
+                      include: stylexOnly,
+                      name: "webkit-stylex",
+                      sequence: { groupOrder: 1 },
+                      setupFiles: stylexSetup,
+                    },
                   ]
-                : []),
-              { browser: "webkit" as const, exclude: tailwindExclude, setupFiles: tailwindSetup },
-              {
-                browser: "webkit" as const,
-                include: stylexOnly,
-                name: "webkit-stylex",
-                sequence: { groupOrder: 1 },
-                setupFiles: stylexSetup,
-              },
-            ]
-          : [
-              { browser: "chromium", exclude: tailwindExclude, setupFiles: tailwindSetup },
-              {
-                browser: "chromium",
-                include: chromiumOnly,
-                name: "reduced-motion",
-                provider: playwright({ contextOptions: { reducedMotion: "reduce" } }),
-                setupFiles: tailwindSetup,
-              },
-              {
-                browser: "chromium",
-                include: stylexOnly,
-                name: "chromium-stylex",
-                sequence: { groupOrder: 1 },
-                setupFiles: stylexSetup,
-              },
-            ],
-        provider: playwright(),
-        viewport: { height: 800, width: 1280 },
-        // Real mouse input at page points, step by step, for drags a test watches as they go.
-        commands: { mouse },
-      },
+                : [
+                    { browser: "chromium", exclude: tailwindExclude, setupFiles: tailwindSetup },
+                    {
+                      browser: "chromium",
+                      include: chromiumOnly,
+                      name: "reduced-motion",
+                      provider: playwright({ contextOptions: { reducedMotion: "reduce" } }),
+                      setupFiles: tailwindSetup,
+                    },
+                    {
+                      browser: "chromium",
+                      include: stylexOnly,
+                      name: "chromium-stylex",
+                      sequence: { groupOrder: 1 },
+                      setupFiles: stylexSetup,
+                    },
+                  ],
+            },
+          },
+        },
+        {
+          cacheDir: cacheDir("solid"),
+          // @ui-sdk/solid ships JSX for the app's Solid to compile, which the plugin finds only
+          // among this package's own dependencies; it comes here through calendar-solid. Its core
+          // stays out too, so there's one copy of ui-sdk's kernel, as in the Solid demo.
+          optimizeDeps: { exclude: ["@ui-sdk/core", "@ui-sdk/solid"] },
+          plugins: [solid(), solidRegistrySource(), tailwindcss()],
+          resolve: {
+            tsconfigPaths: true,
+          },
+          test: {
+            name: "solid",
+            include: solidFiles,
+            browser: {
+              ...browser,
+              instances: [
+                {
+                  browser: otherBrowsers ? ("webkit" as const) : ("chromium" as const),
+                  name: otherBrowsers ? "solid-webkit" : "solid-chromium",
+                  setupFiles: tailwindSetup,
+                },
+              ],
+            },
+          },
+        },
+      ],
     },
   };
 });

@@ -14,7 +14,7 @@ import {
 } from "@moltenship/calendar";
 
 import { UnavailableTime, type UnavailableTimeRender } from "@registry/calendar/unavailable-time";
-import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { PopoverTrigger, type PopoverHandle } from "@registry/calendar-ui/popover";
 import { cn } from "cn";
 

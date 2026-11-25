@@ -45,7 +45,7 @@ const steps = [
   { action: "listEvents", args: [], label: "List the visible events" },
   { action: "navigateNext", args: [], label: "Next period" },
   { action: "navigateToday", args: [], label: "Back to today" },
-  { action: "setView", args: [{ view: "list" }], label: "Switch to the list" },
+  { action: "setView", args: [{ view: "agenda" }], label: "Switch to the agenda" },
   { action: "setView", args: [{ view: "month" }], label: "Switch to the month" },
   {
     action: "moveEvent",
@@ -123,11 +123,13 @@ export function App() {
         <FrameworkSwitch search={new URL(href()).search} />
       </header>
       <p class="preview">
-        This page runs <code>@moltenship/calendar-solid</code>, a preview. The month grid and the
-        list are this page's own views on its hooks: arrow keys move through days and events, Space
-        picks an event up or starts a new one, a pointer drags an event to move it, its ends to
-        resize it, or across days to create one, and Undo and Redo take changes back. The package
-        has no ready-made views yet. <a href={docsUrl}>The Solid docs</a>
+        This page runs <code>@moltenship/calendar-solid</code>, a preview. The agenda is the
+        registry's Solid list view, the files <code>shadcn add</code> installs into a Solid app: up
+        and down move between events, Page Up and Page Down between days. The month grid is this
+        page's own view on the package's hooks: arrow keys move through days and events, Space picks
+        an event up or starts a new one, a pointer drags an event to move it, its ends to resize it,
+        or across days to create one, and Undo and Redo take changes back.{" "}
+        <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's month and list projections, with an agent driving it
@@ -183,7 +185,7 @@ export function App() {
               <HistoryControls />
               <Calendar.ViewSwitcher
                 aria-label="View"
-                getViewLabel={(name) => (name === "month" ? "Month" : "List")}
+                getViewLabel={(name) => (name === "month" ? "Month" : "Agenda")}
               />
             </Calendar.Toolbar>
             <Calendar.Viewport class="viewport">

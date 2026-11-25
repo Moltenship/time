@@ -5,10 +5,18 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 
+import { parse } from "yaml";
+
 import { buildRegistry } from "./build";
 import { checkBuiltRegistry, fullItemName, importsOf, runtimeProblems } from "./check";
 import type { RegistryManifest } from "./compatibility";
-import { dragAndDropPackages } from "./config";
+import {
+  defaultRegistryBaseUrl,
+  dragAndDropPackages,
+  frameworkBaseUrl,
+  registryNamespace,
+  solidRegistry,
+} from "./config";
 import { itemClosure } from "./items";
 import { servedPackageProblems } from "./lockfile";
 import { packRuntimePackages } from "./packages";
@@ -17,14 +25,16 @@ import { startLocalRegistryServer, type LocalRegistryServer } from "./server";
 /**
  * The install test. Clean Vite and Next.js apps made by `shadcn init` run
  * `shadcn add <url>/calendar-full.json` against a registry built and served locally, then
- * typecheck and build. Needs the network for npm and shadcn's own components.
+ * typecheck and build. A clean Solid 2.0 app, set up by hand as the Solid docs say (no
+ * `shadcn init`), adds the Solid registry's items by its namespace and builds too (ADR 0279,
+ * point 4). Needs the network for npm and shadcn's own components.
  *
  * - `REGISTRY_E2E_PACKAGES=local` (default): the runtime packages are packed from the workspace,
  *   so the test checks the registry against the code beside it, and served from a local npm
  *   registry for the `@moltenship` scope. `npm` installs the published packages instead.
  * - `REGISTRY_E2E_TARBALLS=<dir>`: serve these tarballs instead of packing, such as a release dry
  *   run's. Either way, each app's lockfile must have our packages with the served tarballs' hashes.
- * - `REGISTRY_E2E_APPS=vite,next`: which apps to make.
+ * - `REGISTRY_E2E_APPS=vite,next,solid`: which apps to make.
  * - `REGISTRY_E2E_KEEP=1`: keep the temporary folder to look at the apps; `failed`: only when an app
  *   fails.
  *
@@ -34,6 +44,8 @@ import { startLocalRegistryServer, type LocalRegistryServer } from "./server";
 
 const workspaceRoot = resolve(import.meta.dirname, "../../..");
 const fixture = resolve(import.meta.dirname, "../consumers/calendar-page.tsx");
+/** The Solid app's page, `components.json` and stylesheet, which the docs include. */
+const solidConsumer = resolve(import.meta.dirname, "../consumers/solid");
 const shadcn = createRequire(import.meta.url).resolve("shadcn");
 /** shadcn picks the package manager from the user agent, as `pnpm dlx shadcn` would set it. */
 const pnpmUserAgent = `pnpm/${process.env.npm_config_user_agent?.match(/pnpm\/(\S+)/u)?.[1] ?? "12"} node/${process.version}`;
@@ -360,11 +372,258 @@ async function testApp(
   return { app: app.name, files: expectedFiles(manifest).length, seconds };
 }
 
+/** The Solid items the Solid app adds, by the registry's namespace, as the Solid docs do. */
+const solidItems = ["base-tokens", "list-view"] as const;
+
+/** The versions the workspace builds and tests with, from its catalog. */
+async function catalogVersion(name: string): Promise<string> {
+  const workspace = parse(await readFile(join(workspaceRoot, "pnpm-workspace.yaml"), "utf8")) as {
+    readonly catalog: Record<string, string>;
+  };
+  const version = workspace.catalog[name];
+  if (version === undefined) throw new Error(`The catalog has no ${name}`);
+  return version;
+}
+
+/**
+ * A clean Solid 2.0 app with the four things the Solid docs ask for: Tailwind CSS 4, an `@/*` alias,
+ * a hand-written `components.json` that names the registry, and TypeScript's ESNext library for
+ * Temporal's types. Solid, Vite and Solid's compiler come at the workspace's versions.
+ */
+async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
+  await mkdir(join(root, "src"), { recursive: true });
+  const versions = Object.fromEntries(
+    await Promise.all(
+      ["@solidjs/vite-plugin", "@solidjs/web", "@tailwindcss/vite", "solid-js", "tailwindcss"].map(
+        async (name) => [name, await catalogVersion(name)] as const,
+      ),
+    ),
+  );
+  const files: Record<string, string> = {
+    "package.json": JSON.stringify(
+      {
+        name: "solid",
+        private: true,
+        type: "module",
+        scripts: { build: "vite build" },
+        dependencies: {
+          "@solidjs/web": versions["@solidjs/web"],
+          "solid-js": versions["solid-js"],
+        },
+        devDependencies: {
+          "@solidjs/vite-plugin": versions["@solidjs/vite-plugin"],
+          "@tailwindcss/vite": versions["@tailwindcss/vite"],
+          tailwindcss: versions["tailwindcss"],
+          typescript: "^6",
+          vite: "^8",
+        },
+      },
+      null,
+      2,
+    ),
+    "tsconfig.json": JSON.stringify(
+      {
+        compilerOptions: {
+          target: "ESNext",
+          module: "ESNext",
+          moduleResolution: "bundler",
+          lib: ["ESNext", "DOM", "DOM.Iterable"],
+          jsx: "preserve",
+          jsxImportSource: "@solidjs/web",
+          strict: true,
+          noEmit: true,
+          skipLibCheck: true,
+          types: ["vite/client"],
+          paths: { "@/*": ["./src/*"] },
+        },
+        include: ["src"],
+      },
+      null,
+      2,
+    ),
+    "vite.config.ts": [
+      'import solid from "@solidjs/vite-plugin";',
+      'import tailwindcss from "@tailwindcss/vite";',
+      'import { defineConfig } from "vite";',
+      "",
+      "export default defineConfig({",
+      "  plugins: [solid(), tailwindcss()],",
+      "  resolve: { tsconfigPaths: true },",
+      "});",
+      "",
+    ].join("\n"),
+    "index.html": [
+      "<!doctype html>",
+      '<html lang="en">',
+      "  <body>",
+      '    <div id="root"></div>',
+      '    <script type="module" src="/src/main.tsx"></script>',
+      "  </body>",
+      "</html>",
+      "",
+    ].join("\n"),
+    "src/main.tsx": [
+      'import { render } from "@solidjs/web";',
+      "",
+      'import CalendarPage from "./calendar-page";',
+      'import "./app.css";',
+      "",
+      'render(() => <CalendarPage />, document.getElementById("root")!);',
+      "",
+    ].join("\n"),
+  };
+  for (const [path, content] of Object.entries(files)) {
+    await writeFile(join(root, path), path.endsWith(".json") ? `${content}\n` : content);
+  }
+  // The files the docs show (apps/showcase/content/docs/solid), so the docs are what this tests.
+  const components = await readFile(join(solidConsumer, "components.json"), "utf8");
+  const published = frameworkBaseUrl(defaultRegistryBaseUrl, solidRegistry);
+  if (!components.includes(`"${published}/{name}.json"`)) {
+    throw new Error(`consumers/solid/components.json names no ${published} registry`);
+  }
+  await writeFile(
+    join(root, "components.json"),
+    components.replace(published, frameworkBaseUrl(registryUrl, solidRegistry)),
+  );
+  await writeFile(
+    join(root, "src/app.css"),
+    await readFile(join(solidConsumer, "app.css"), "utf8"),
+  );
+  await writeFile(
+    join(root, "src/calendar-page.tsx"),
+    await readFile(join(solidConsumer, "calendar-page.tsx"), "utf8"),
+  );
+}
+
+/** What `shadcn add` of the Solid items should write under the components alias. */
+function expectedSolidFiles(manifest: RegistryManifest): string[] {
+  const byName = new Map(manifest.items.map((item) => [item.name, item]));
+  return [
+    ...new Set(
+      solidItems.flatMap((name) =>
+        itemClosure(name, byName, ({ items }) => items).flatMap(({ targets }) => targets),
+      ),
+    ),
+  ]
+    .map((target) => target.replace(/^@components\//u, ""))
+    .sort();
+}
+
+async function verifySolidInstall(
+  root: string,
+  manifest: RegistryManifest,
+  served: ReadonlyMap<string, string> | null,
+): Promise<string[]> {
+  const problems: string[] = [];
+  const componentsDir = join(root, "src/components");
+  const expected = expectedSolidFiles(manifest);
+  const installed = (await listFiles(join(componentsDir, "calendar"))).map(
+    (file) => `calendar/${file}`,
+  );
+  if (installed.join() !== expected.join()) {
+    const missing = expected.filter((file) => !installed.includes(file));
+    const extra = installed.filter((file) => !expected.includes(file));
+    problems.push(
+      `calendar files differ: missing ${missing.join(", ") || "none"}; extra ${extra.join(", ") || "none"}`,
+    );
+  }
+  for (const file of installed) {
+    const source = await readFile(join(componentsDir, file), "utf8");
+    for (const specifier of importsOf(source)) {
+      if (specifier.startsWith("@registry/")) problems.push(`${file} imports ${specifier}`);
+      if (/^(?:react|react-dom|@moltenship\/calendar)$/u.test(specifier)) {
+        problems.push(`${file} imports ${specifier}, which a Solid app doesn't have`);
+      }
+    }
+  }
+
+  const packageJson = JSON.parse(await readFile(join(root, "package.json"), "utf8")) as {
+    readonly dependencies?: Record<string, string>;
+    readonly devDependencies?: Record<string, string>;
+  };
+  const dependencies = { ...packageJson.dependencies, ...packageJson.devDependencies };
+  for (const name of Object.keys(dependencies)) {
+    if (/^(?:react|react-dom|lucide-react|@base-ui\/react)$/u.test(name)) {
+      problems.push(`package.json depends on ${name}, which a Solid app never uses`);
+    }
+  }
+  for (const name of Object.keys(manifest.runtime)) {
+    if (!dependencies[name]) problems.push(`package.json doesn't depend on ${name}`);
+  }
+  if (served) {
+    const lockfile = await readFile(join(root, "pnpm-lock.yaml"), "utf8");
+    problems.push(...servedPackageProblems(lockfile, served, Object.keys(manifest.runtime)));
+  }
+  const versions = await installedVersions(root, Object.keys(manifest.runtime));
+  const list = manifest.items.find(({ name }) => name === "list-view")!;
+  problems.push(...runtimeProblems("list-view", list.compatibility, versions, "the app"));
+
+  const css = await readFile(join(root, "src/app.css"), "utf8");
+  for (const token of [
+    "--calendar-grid:",
+    "--color-calendar-event:",
+    '[data-color="blue"]',
+    "--background:",
+    "@custom-variant dark",
+  ]) {
+    if (!css.includes(token)) problems.push(`src/app.css has no ${token}`);
+  }
+  return problems;
+}
+
+async function testSolidApp(
+  directory: string,
+  registryUrl: string,
+  manifest: RegistryManifest,
+  local: Pick<LocalRegistryServer, "npmRegistry" | "integrity"> | null,
+): Promise<{ readonly app: string; readonly files: number; readonly seconds: number }> {
+  const started = performance.now();
+  const name = "solid";
+  const temporary = join(directory, `${name}-tmp`);
+  await mkdir(temporary, { recursive: true });
+  const env = { npm_config_user_agent: pnpmUserAgent, TMPDIR: temporary };
+  const root = join(directory, name);
+  let step = "";
+  const begin = (next: string, message = next) => {
+    step = next;
+    log(name, message);
+  };
+
+  try {
+    begin("set up", "set up a clean Solid 2.0 app");
+    await writeSolidApp(root, registryUrl);
+    if (local) await writeFile(join(root, ".npmrc"), `@moltenship:registry=${local.npmRegistry}\n`);
+    begin("install");
+    await run("pnpm", ["install"], root, env);
+
+    const items = solidItems.map((item) => `${registryNamespace}/${item}`);
+    begin("shadcn add", `shadcn add ${items.join(" ")}`);
+    await run(process.execPath, [shadcn, "add", ...items, "--yes"], root, env);
+
+    step = "the install";
+    const problems = await verifySolidInstall(root, manifest, local?.integrity ?? null);
+    if (problems.length > 0) {
+      throw new Error(`the install is wrong:\n${problems.map((line) => `- ${line}`).join("\n")}`);
+    }
+
+    begin("typecheck");
+    await run("pnpm", ["exec", "tsc", "--noEmit"], root, env);
+    begin("build");
+    await run("pnpm", ["run", "build"], root, env);
+  } catch (error) {
+    throw new AppFailure(name, step, error);
+  }
+
+  const seconds = Math.round((performance.now() - started) / 1000);
+  log(name, `passed in ${seconds}s`);
+  return { app: name, files: expectedSolidFiles(manifest).length, seconds };
+}
+
 const packageSource = process.env.REGISTRY_E2E_PACKAGES ?? "local";
 if (packageSource !== "local" && packageSource !== "npm") {
   throw new Error(`REGISTRY_E2E_PACKAGES must be "local" or "npm", not "${packageSource}"`);
 }
-const wantedApps = (process.env.REGISTRY_E2E_APPS ?? "vite,next").split(",");
+const wantedApps = (process.env.REGISTRY_E2E_APPS ?? "vite,next,solid").split(",");
 const keep = process.env.REGISTRY_E2E_KEEP;
 const directory = await mkdtemp(join(tmpdir(), "time-registry-e2e-"));
 const siteDir = join(directory, "site");
@@ -378,7 +637,11 @@ try {
       : join(directory, "tarballs");
     if (!process.env.REGISTRY_E2E_TARBALLS) {
       await mkdir(tarballDir, { recursive: true });
-      const packed = await packRuntimePackages(workspaceRoot, ["@moltenship/calendar"], tarballDir);
+      const packed = await packRuntimePackages(
+        workspaceRoot,
+        ["@moltenship/calendar", solidRegistry.facade],
+        tarballDir,
+      );
       console.log(`Packed ${packed.join(", ")}`);
     }
   }
@@ -394,16 +657,34 @@ try {
     const issues = await checkBuiltRegistry({ outDir: join(siteDir, "r"), manifest });
     if (issues.length > 0)
       throw new Error(`The built registry failed its checks:\n${issues.join("\n")}`);
-    console.log(`Serving ${manifest.items.length} items at ${registryUrl}`);
+    const solidOut = join(siteDir, "r", solidRegistry.path);
+    const solidManifest = await buildRegistry({
+      workspaceRoot,
+      outDir: solidOut,
+      baseUrl: registryUrl,
+      framework: solidRegistry,
+    });
+    const solidIssues = await checkBuiltRegistry({
+      outDir: solidOut,
+      manifest: solidManifest,
+      framework: solidRegistry,
+    });
+    if (solidIssues.length > 0)
+      throw new Error(`The built Solid registry failed its checks:\n${solidIssues.join("\n")}`);
+    console.log(
+      `Serving ${manifest.items.length} items at ${registryUrl} and ${solidManifest.items.length} at ${solidManifest.baseUrl}`,
+    );
 
     // Both apps finish before the server stops and the folder goes, even when one fails.
-    const settled = await Promise.allSettled(
-      apps
+    const local = packageSource === "local" ? server : null;
+    const settled = await Promise.allSettled([
+      ...apps
         .filter(({ name }) => wantedApps.includes(name))
-        .map((app) =>
-          testApp(app, directory, registryUrl, manifest, packageSource === "local" ? server : null),
-        ),
-    );
+        .map((app) => testApp(app, directory, registryUrl, manifest, local)),
+      ...(wantedApps.includes("solid")
+        ? [testSolidApp(directory, registryUrl, solidManifest, local)]
+        : []),
+    ]);
     const failures = settled.flatMap((result) => {
       if (result.status === "fulfilled") return [];
       const { reason } = result;

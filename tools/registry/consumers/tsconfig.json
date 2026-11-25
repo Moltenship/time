@@ -7,7 +7,9 @@
     // those imports at the source in this repository, as apps/showcase does for its examples.
     "paths": {
       "@/components/ui/*": ["../../../apps/demo/src/components/ui/*"],
-      "@/components/calendar/event-colors": ["../../../registry/calendar-theme/event-colors"],
+      "@/components/calendar/event-colors": [
+        "../../../registry/shared/calendar-theme/event-colors"
+      ],
       "@/components/calendar/list-view/*": ["../../../registry/list-view/*"],
       "@/components/calendar/month-view/*": ["../../../registry/month-view/*"],
       "@/components/calendar/recurrence-scope-dialog/*": [

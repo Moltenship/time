@@ -13,8 +13,9 @@ const testExclude = [...defaultExclude, ".claude/worktrees/**"];
 // it comes from another realm, and the bundler's native code doesn't take it for one, so they run
 // in a process of their own.
 const bundlerTests = ["tests/history-bundle.test.ts", "tools/release/tests/consumer.test.ts"];
-// The Solid integration's tests run as a project of their own; see `test.projects`.
-const solidTestsPattern = "packages/calendar-solid/**";
+// The Solid integration's tests and the Solid registry's run as projects of their own; see
+// `test.projects`.
+const solidTestsPatterns = ["packages/calendar-solid/**", "registry/solid/**"];
 
 export default defineConfig({
   resolve: {
@@ -34,7 +35,7 @@ export default defineConfig({
           include: testRoots.flatMap((root) =>
             defaultInclude.map((pattern) => `${root}/${pattern}`),
           ),
-          exclude: [...testExclude, ...bundlerTests, solidTestsPattern],
+          exclude: [...testExclude, ...bundlerTests, ...solidTestsPatterns],
           pool: "vmForks",
         },
       },
@@ -56,6 +57,8 @@ export default defineConfig({
           server: { deps: { inline: [/solid-js/, /@solidjs\/web/, /@ui-sdk\//] } },
         },
       },
+      // The Solid registry's JSX compiles with Solid's plugin, in its own config.
+      "registry/solid/vite.config.ts",
     ],
     // jsdom gaps that ui-sdk's popups run into, filled for every project.
     setupFiles: ["./tests/setup/paint-timing.ts"],

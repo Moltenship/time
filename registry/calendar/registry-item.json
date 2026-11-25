@@ -66,6 +66,26 @@
       "path": "registry/calendar/view-switcher.tsx",
       "type": "registry:component",
       "target": "@components/calendar/view-switcher.tsx"
+    },
+    {
+      "path": "registry/shared/calendar/event-names.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/event-names.ts"
+    },
+    {
+      "path": "registry/shared/calendar/event-chip.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/event-chip.styles.ts"
+    },
+    {
+      "path": "registry/shared/calendar/preview-state.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/preview-state.ts"
+    },
+    {
+      "path": "registry/shared/calendar/view-keys.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/view-keys.ts"
     }
   ]
 }
