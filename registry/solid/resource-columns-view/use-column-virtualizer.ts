@@ -39,8 +39,11 @@ export function useColumnVirtualizer(
 
   let unmount: (() => void) | undefined;
   // The virtualizer picks up the body here, once: its width sets the columns', which renders
-  // again. React's binding calls `_willUpdate` after every render, but it only acts on a new
-  // scroll element, and the body stays the same one; `update` passes a new width or direction on.
+  // again. React's binding calls `_willUpdate` after every render. Besides a new scroll element,
+  // which this body never becomes, it applies scroll adjustments the virtualizer has queued: from
+  // measuring items or anchoring to the end, and the columns do neither. Measure them or anchor
+  // them to the end, and it has to run after each layout as React's does. `update` passes a new
+  // width or direction on.
   onSettled(() => {
     unmount = virtualizer._didMount();
     virtualizer._willUpdate();

@@ -35,6 +35,34 @@ import "./setup";
 
 type Change = CalendarEventChange<FixtureEvent, string, string>;
 
+/** Each view's tab stop reads, by the date of the target read. */
+const isTabStopCalls = new Map<string, number>();
+
+// Counts what the roving store is asked, and answers as it would.
+vi.mock("@moltenship/calendar-primitives", async (original) => {
+  const primitives = await original<typeof import("@moltenship/calendar-primitives")>();
+  return {
+    ...primitives,
+    createCalendarViewRuntime: (
+      ...args: Parameters<typeof primitives.createCalendarViewRuntime>
+    ) => {
+      const runtime = primitives.createCalendarViewRuntime(...args);
+      const { roving } = runtime;
+      return {
+        ...runtime,
+        roving: {
+          ...roving,
+          isTabStop: (target: CalendarFocus, days: number) => {
+            const key = target.date.toString();
+            isTabStopCalls.set(key, (isTabStopCalls.get(key) ?? 0) + 1);
+            return roving.isTabStop(target, days);
+          },
+        },
+      };
+    },
+  };
+});
+
 afterEach(() => {
   renders.clear();
   tabStopReads.clear();
@@ -819,7 +847,7 @@ const FreshCalendar = createCalendar<FixtureEvent>()({
   ],
 });
 
-test("a new projection with the same targets keeps each element's tab stop as it was", async () => {
+test("a new projection with the same targets reads each tab stop once and keeps it", async () => {
   // In an object: Solid 2 reads a function given to createSignal as a derivation.
   const [events, setEvents] = createSignal<{ value: readonly FixtureEvent[] }>({ value: [] });
   const view = mountView(() =>
@@ -839,10 +867,17 @@ test("a new projection with the same targets keeps each element's tab stop as it
   await focus(cell(view.container, "2026-10-09"));
 
   // Each day's target is a new object with the same key, which keeps its registration and its
-  // tab stop.
+  // tab stop. Each change reads each tab stop once, when the root's focus and the new view reach
+  // the roving store: a target that counted as new would read it before that too, and then again.
   for (const title of ["Trip", "Holiday", "Leave"]) {
+    isTabStopCalls.clear();
     setEvents({ value: [allDay("trip", "2026-10-09", "2026-10-10", title)] });
     await settled();
+    expect(Object.fromEntries(isTabStopCalls)).toEqual({
+      "2026-10-08": 1,
+      "2026-10-09": 1,
+      "2026-10-10": 1,
+    });
   }
   expect(tabStops(view.container)).toEqual(["2026-10-09"]);
   expect(focused()).toBe("2026-10-09");
