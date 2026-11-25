@@ -18,6 +18,7 @@
     "../keys.ts",
     "../kit-twins.ts",
     "../month-fixture.ts",
-    "../waits.ts"
+    "../waits.ts",
+    "../year-fixture.ts"
   ]
 }

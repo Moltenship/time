@@ -1,0 +1,45 @@
+{
+  "$schema": "https://ui.shadcn.com/schema/registry-item.json",
+  "name": "year-view",
+  "type": "registry:component",
+  "title": "Year view",
+  "description": "A year at a glance: twelve month grids with today circled and a dot for each event colour on a day, a popover listing a day's events, and links into the day and month views. The same year as the React registry's, in Solid.",
+  "dependencies": ["@moltenship/calendar-solid", "cn"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/calendar-ui"
+  ],
+  "files": [
+    {
+      "path": "registry/solid/year-view/year-view.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/year-view/year-view.tsx"
+    },
+    {
+      "path": "registry/solid/year-view/year-month.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/year-view/year-month.tsx"
+    },
+    {
+      "path": "registry/solid/year-view/year-day-popover.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/year-view/year-day-popover.tsx"
+    },
+    {
+      "path": "registry/shared/year-view/year-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/year-view/year-layout.ts"
+    },
+    {
+      "path": "registry/shared/year-view/year-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/year-view/year-labels.ts"
+    },
+    {
+      "path": "registry/shared/year-view/year.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/year-view/year.styles.ts"
+    }
+  ]
+}
