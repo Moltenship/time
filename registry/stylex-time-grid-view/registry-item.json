@@ -60,6 +60,26 @@
       "path": "registry/stylex-time-grid-view/annotation-label.ts",
       "type": "registry:lib",
       "target": "@components/calendar-stylex/time-grid-view/annotation-label.ts"
+    },
+    {
+      "path": "registry/shared/time-grid-view/time-grid-geometry.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-geometry.ts"
+    },
+    {
+      "path": "registry/shared/time-grid-view/time-grid-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/time-grid-view/time-grid-labels.ts"
+    },
+    {
+      "path": "registry/shared/time-grid-view/secondary-zones.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/time-grid-view/secondary-zones.ts"
+    },
+    {
+      "path": "registry/shared/time-grid-view/all-day-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/time-grid-view/all-day-layout.ts"
     }
   ]
 }

@@ -5,7 +5,6 @@ import {
   type CalendarEnvironmentBase,
   type CalendarViewActions,
   type PlainDateInterval,
-  type TimeGridColumn,
   type TimeGridDay,
 } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
@@ -16,6 +15,10 @@ import {
   calendarMarker,
   calendarVars,
 } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
+
+import { dayColumns } from "@registry/shared/time-grid-view/time-grid-geometry";
+import { dayHeaderFormats, openDayLabel } from "@registry/shared/time-grid-view/time-grid-labels";
+import { offsetLabel } from "@registry/shared/time-grid-view/secondary-zones";
 
 import { describeDayAnnotations } from "./annotation-label";
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
@@ -134,16 +137,7 @@ export interface TimeGridHeaderProps {
 
 const noZones: readonly TimeGridZone[] = [];
 
-/** "GMT-4" for the display zone at the start of a column, such as the first visible day. */
-export function offsetLabel(
-  locale: Intl.LocalesArgument,
-  timeZone: string,
-  column: TimeGridColumn,
-) {
-  return new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: "shortOffset" })
-    .formatToParts(column.day.start)
-    .find((part) => part.type === "timeZoneName")?.value;
-}
+export { offsetLabel };
 
 export interface TimeGridDayHeadersProps {
   readonly actions: CalendarViewActions;
@@ -181,20 +175,11 @@ export function TimeGridDayHeaders({
   const { locale } = environment;
   const summaryId = useId();
   const notes = useMemo(() => zoneNotesByDate(zones), [zones]);
-  const formats = useMemo(
-    () => ({
-      full: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
-      weekday: new Intl.DateTimeFormat(locale, { weekday: "short" }),
-    }),
-    [locale],
-  );
+  const formats = useMemo(() => dayHeaderFormats(locale), [locale]);
   const opensDay = !single && dayView !== undefined;
 
   return (
-    <div
-      {...stylex.props(styles.days)}
-      style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
-    >
+    <div {...stylex.props(styles.days)} style={{ gridTemplateColumns: dayColumns(days.length) }}>
       {days.map(({ column: { date }, isToday }, index) => {
         const label = formats.full.format(date);
         const marks = annotations?.layout.columns[index];
@@ -233,7 +218,7 @@ export function TimeGridDayHeaders({
             </span>
             {opensDay ? (
               <button
-                aria-label={`Open ${label}`}
+                aria-label={openDayLabel(label)}
                 // The grid keeps one tab stop; Shift+Enter on a day's cells opens it.
                 tabIndex={-1}
                 {...stylex.props(styles.open, calendarMarker)}

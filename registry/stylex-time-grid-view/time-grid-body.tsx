@@ -14,6 +14,13 @@ import type { EventLabeler } from "@registry/stylex-calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import {
+  dayColumns,
+  hourTop,
+  labelledHours,
+  openingScrollTop,
+} from "@registry/shared/time-grid-view/time-grid-geometry";
+import { timedEventsLabel } from "@registry/shared/time-grid-view/time-grid-labels";
 
 import type { TimeGridAnnotationWiring } from "./time-grid-annotations";
 import { TimeGridColumn, useTimeGridColumnFormats } from "./time-grid-column";
@@ -88,11 +95,6 @@ export interface TimeGridBodyProps<TEvent> {
 
 const noZones: readonly TimeGridZone[] = [];
 
-/** Hour labels from 1:00 to 23:00; midnight sits under the header. */
-const labelledHours = Array.from({ length: 23 }, (_, index) => index + 1);
-/** Without a current time in view, open the day at 08:00. */
-const DEFAULT_SCROLL_FRACTION = 8 / 24;
-
 /**
  * The gutter's hour labels, from 1:00 to 23:00, over the full height of the element around it.
  * Each secondary zone's hours come first, in a `--calendar-zone-width` column of their own.
@@ -109,7 +111,7 @@ export function TimeGridHours({
   const hours = (
     <div aria-hidden {...stylex.props(styles.hours)}>
       {labelledHours.map((hour) => (
-        <span key={hour} {...stylex.props(styles.hour)} style={{ top: `${(hour / 24) * 100}%` }}>
+        <span key={hour} {...stylex.props(styles.hour)} style={{ top: hourTop(hour) }}>
           {format(new Temporal.PlainTime(hour))}
         </span>
       ))}
@@ -142,10 +144,7 @@ export function useOpeningScroll(
     const node = scrollRef.current;
     if (scrolled.current || node === null || now === null) return;
     scrolled.current = true;
-    node.scrollTop =
-      nowTop === null
-        ? DEFAULT_SCROLL_FRACTION * node.scrollHeight
-        : Math.max(0, nowTop * node.scrollHeight - node.clientHeight / 3);
+    node.scrollTop = openingScrollTop(nowTop, node.scrollHeight, node.clientHeight);
   }, [now, nowTop, scrollRef]);
 }
 
@@ -204,12 +203,12 @@ export function TimeGridBody<TEvent>({
     <div ref={scrollRef} data-slot="time-grid-body" {...stylex.props(styles.body)}>
       <div ref={rowRef} role="row" {...stylex.props(styles.row)}>
         <div role="rowheader" {...stylex.props(styles.rowHeader)}>
-          <span {...stylex.props(visuallyHiddenStyles.hidden)}>Timed events</span>
+          <span {...stylex.props(visuallyHiddenStyles.hidden)}>{timedEventsLabel}</span>
           <TimeGridHours locale={locale} zones={zones} />
         </div>
         <div
           {...stylex.props(styles.days)}
-          style={{ gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))` }}
+          style={{ gridTemplateColumns: dayColumns(days.length) }}
         >
           {days.map((day, index) => (
             <TimeGridColumn
