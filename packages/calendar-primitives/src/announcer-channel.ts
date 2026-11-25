@@ -119,7 +119,7 @@ export function createAnnouncerLiveText(): AnnouncerLiveText {
     getSnapshot: () => snapshot,
     speak(text: string) {
       spoken = { repeat: spoken.text === text && !spoken.repeat, text };
-      snapshot = spoken.repeat ? `${text} ` : text;
+      snapshot = spoken.repeat ? `${text}\u00a0` : text;
       listeners.notify();
     },
     subscribe: listeners.subscribe,

@@ -14,7 +14,8 @@ description: The packages, and how your events become a rendered view.
 └── @moltenship/calendar-temporal       ranges, day boundaries, DST helpers
 ```
 
-`calendar-react` and `calendar-dnd` build on `calendar-core`, which builds on `calendar-temporal`.
+`calendar-dnd` builds on `calendar-core`, which builds on `calendar-temporal`, and `calendar-react`
+builds on all three and on `calendar-primitives`.
 `calendar-core` and `calendar-temporal` don't use React or the DOM, so they also run on a server
 or in a worker.
 

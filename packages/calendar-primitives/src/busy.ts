@@ -44,7 +44,8 @@ function sameIds(
   return left === right || (left !== undefined && right !== undefined && sameElements(left, right));
 }
 
-type BusyRange = InstantInterval | CalendarEventInterval;
+/** The time a busy-resources query asks about: an instant range, or an event's interval. */
+export type BusyRange = InstantInterval | CalendarEventInterval;
 
 function sameInterval(left: BusyRange | null, right: BusyRange | null) {
   return (

@@ -93,7 +93,7 @@ test("a live region's text says a repeated message again, and is empty on the se
   live.speak("Moved");
   expect(live.getSnapshot()).toBe("Moved");
   live.speak("Moved");
-  expect(live.getSnapshot()).toBe("Moved ");
+  expect(live.getSnapshot()).toBe("Moved\u00a0");
   live.speak("Moved");
   expect(live.getSnapshot()).toBe("Moved");
   live.speak("Resized");

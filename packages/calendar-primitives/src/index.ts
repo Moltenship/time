@@ -17,7 +17,12 @@ export { subscribeAnchorDateRequests } from "./anchor-requests";
 export { createAnnouncerChannel, createAnnouncerLiveText } from "./announcer-channel";
 export type { AnnouncerChannel, AnnouncerLiveText } from "./announcer-channel";
 export { createBusyResourcesQuery, createDraftBusyQuery } from "./busy";
-export type { CalendarBusyResources, CalendarBusyResourcesQuery, CalendarDraftBusy } from "./busy";
+export type {
+  BusyRange,
+  CalendarBusyResources,
+  CalendarBusyResourcesQuery,
+  CalendarDraftBusy,
+} from "./busy";
 export { createCalendarPartIds } from "./calendar-types";
 export type {
   CalendarDiagnostic,

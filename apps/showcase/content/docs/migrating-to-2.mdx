@@ -256,6 +256,44 @@ Everything else in `@moltenship/calendar-dnd` stays where it was: `attachCalenda
 `startCalendarDrop`, `monitorCalendarDrags` and the attribute helpers. It no longer has React as a
 peer dependency.
 
+### With React but without calendar-react
+
+An app that used `@moltenship/calendar-dnd` in React without `@moltenship/calendar-react` has two
+ways on:
+
+- **Add `@moltenship/calendar-react`** and its peers, `@ui-sdk/core` and `@ui-sdk/react`, then
+  import the hook from it as above.
+- **Keep the hook in the app.** It's a few lines around `attachCalendarPointer`:
+
+```tsx title="use-calendar-pointer.ts"
+import type { EventId, ResourceId } from "@moltenship/calendar-core";
+import { attachCalendarPointer, type CalendarPointerOptions } from "@moltenship/calendar-dnd";
+import { useCallback, useInsertionEffect, useRef, type RefCallback } from "react";
+
+export function useCalendarPointer<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+>(options: CalendarPointerOptions<TEvent, TEventId, TResourceId>): RefCallback<HTMLElement> {
+  const latest = useRef(options);
+  useInsertionEffect(() => {
+    latest.current = options;
+  });
+  const disabled = options.disabled === true;
+  // Options are read as a gesture goes; only `disabled` attaches the listeners again.
+  return useCallback(
+    (element: HTMLElement | null) =>
+      element === null ? undefined : attachCalendarPointer(element, () => latest.current),
+    [disabled],
+  );
+}
+```
+
+Either way, keep every `@moltenship/calendar*` package on one version. `@moltenship/calendar-react`
+depends on `@moltenship/calendar-dnd` at its own exact version, and the pointer package keeps its
+drag registry in the module: two copies of it don't hear each other's drags, so a drop from one
+never reaches a view bound through the other.
+
 ## Tests
 
 - **Scripted clicks.** A click a test dispatches reads `source: "programmatic"` in a state

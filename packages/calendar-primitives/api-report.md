@@ -587,7 +587,7 @@ export declare function createDraftStore(): DraftStore;
 export declare function createKeyboardSessionStore(): KeyboardSessionStore;
 export declare function createMemoCell<T>(): (deps: readonly unknown[], compute: () => T) => T;
 export declare function createResourceExpansionCommands({ actions, read }: Pick<CalendarInteractionRuntime, "actions" | "read">, resourceId: ResourceId): CalendarResourceExpansionCommands;
-export declare function createResourceStatusClock(source: CalendarNowSource | undefined, compute: (at: Temporal.Instant) => CalendarResourceStatus): CalendarStateSource<CalendarResourceStatus>;
+export declare function createResourceStatusClock(source: CalendarNowSource | undefined, compute: (at: Temporal.Instant) => CalendarResourceStatus): CalendarStateSource<CalendarResourceStatus | null>;
 export declare function createStableCell<T>(isEqual: (previous: T, next: T) => boolean): (next: T) => T;
 export declare function describeAgentEvent(event: AnyEvent, environment: Pick<CalendarEnvironmentBase, "timeZone">): CalendarAgentEvent;
 export declare function describeAgentPlacement(placement: CalendarEventPlacement, timeZone: string): CalendarAgentPlacement;
@@ -636,6 +636,7 @@ export {
   type AnyCalendarState,
   type AnyCalendarViewDefinition,
   type AnyPendingChanges,
+  type BusyRange,
   type CalendarActions,
   type CalendarActiveView,
   type CalendarAgentApi,

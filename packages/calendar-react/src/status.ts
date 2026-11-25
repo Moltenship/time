@@ -72,7 +72,7 @@ export function useResourceStatus(
   const sampled = useSyncExternalStore(
     store?.subscribe ?? subscribeToNothing,
     store?.getSnapshot ?? serverSnapshot,
-    serverSnapshot,
+    store?.getServerSnapshot ?? serverSnapshot,
   );
   // By value, so an `at` made inline on each render computes once.
   const pinnedAt = off ? undefined : fixed?.epochNanoseconds;
