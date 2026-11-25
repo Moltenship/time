@@ -20,6 +20,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.useRealTimers();
+  vi.unstubAllGlobals();
   document.body.replaceChildren();
 });
 
@@ -91,6 +92,42 @@ test("a new subscription samples again, and every subscriber hears what changed"
   expect([a.mock.calls.length, b.mock.calls.length]).toEqual([1, 1]);
   expect(store.getSnapshot()?.availability.available).toBe(true);
   stopB();
+});
+
+test("a listener that throws is reported, and every other subscriber still hears the change", () => {
+  const reported = vi.fn();
+  vi.stubGlobal("reportError", reported);
+  const failure = new Error("listener failed");
+  const clock = testClock("2026-08-15T08:00:00Z");
+  const store = createResourceStatusClock({ clock }, statusAt);
+  store.getSnapshot();
+  const a = vi.fn(() => {
+    throw failure;
+  });
+  const b = vi.fn();
+  const stopA = store.subscribe(a);
+
+  // A's throw while B subscribes neither fails B's subscribe nor leaves B without its cleanup.
+  clock.set("2026-08-15T10:00:00Z");
+  const stopB = store.subscribe(b);
+  expect([a.mock.calls.length, b.mock.calls.length]).toEqual([1, 1]);
+  expect(reported).toHaveBeenCalledWith(failure);
+  stopA();
+  stopB();
+  expect(vi.getTimerCount()).toBe(0);
+
+  // And a throw during a tick: the ticker's later listeners hear it too.
+  const ticker = createClockTicker(clock, 1000);
+  ticker.getSnapshot();
+  const stopC = ticker.subscribe(a);
+  const stopD = ticker.subscribe(b);
+  clock.set("2026-08-15T10:00:01Z");
+  vi.advanceTimersByTime(1000);
+  expect([a.mock.calls.length, b.mock.calls.length]).toEqual([2, 2]);
+  expect(reported).toHaveBeenCalledTimes(2);
+  stopC();
+  stopD();
+  expect(vi.getTimerCount()).toBe(0);
 });
 
 test("a clock ticker serves every subscriber from one interval", () => {

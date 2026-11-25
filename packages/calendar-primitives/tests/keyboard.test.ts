@@ -136,11 +136,21 @@ test("an arrow key while idle moves the calendar's focus and DOM focus, preventi
 });
 
 test("keys with a modifier, or already handled, are left alone", () => {
-  const { interaction, press } = setup();
+  const { cells, interaction, press } = setup();
 
   expect(press("ArrowDown", { altKey: true }).defaultPrevented).toBe(false);
   expect(press("ArrowDown", { ctrlKey: true }).defaultPrevented).toBe(false);
+
+  // A handler inside the region, as a cell's own, took the key first.
+  const cell = cells.get("09:00")!;
+  const takeKey = (event: Event) => event.preventDefault();
+  cell.addEventListener("keydown", takeKey);
+  press("ArrowDown");
+  press(" ");
+  cell.removeEventListener("keydown", takeKey);
+
   expect(focusOf(interaction)).toMatchObject({ time: Temporal.PlainTime.from("09:00") });
+  expect(interaction.keyboard.get()).toBeNull();
 });
 
 test("Space on a cell starts a create; Escape cancels it, stops propagating and restores focus", () => {
