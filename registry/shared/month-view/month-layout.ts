@@ -112,6 +112,42 @@ export function weekHidingFocus<TEvent>(
   return shown ? -1 : index;
 }
 
+/** How many lanes fit in each of `weekCount` rows sharing a body `bodyHeight` px tall. */
+export function lanesFor(bodyHeight: number, weekCount: number, laneHeight: number): number {
+  return lanesIn(Math.max(MIN_ROW_HEIGHT, bodyHeight / weekCount), laneHeight);
+}
+
+/** What the lane count is measured from: the body's height and a probe's lane height. */
+export interface LaneSizes {
+  readonly bodyHeight: number;
+  readonly laneHeight: number;
+}
+
+/** Measures `body` and the lane height a `probe` measures, now. */
+export function measureLaneSizes(
+  body: HTMLElement,
+  probe: HTMLElement | null | undefined,
+): LaneSizes {
+  return { bodyHeight: body.clientHeight, laneHeight: laneHeightOf(probe) };
+}
+
+/**
+ * Calls `onChange` with the sizes whenever the body or the lane height a `probe` measures changes,
+ * from a ResizeObserver, which also reports them once as it starts. Returns the cleanup; where
+ * there's no ResizeObserver, it observes nothing and returns `undefined`.
+ */
+export function observeLaneSizes(
+  body: HTMLElement,
+  probe: HTMLElement | null | undefined,
+  onChange: (sizes: LaneSizes) => void,
+): (() => void) | undefined {
+  if (typeof ResizeObserver === "undefined") return undefined;
+  const observer = new ResizeObserver(() => onChange(measureLaneSizes(body, probe)));
+  observer.observe(body);
+  if (probe != null) observer.observe(probe);
+  return () => observer.disconnect();
+}
+
 /**
  * Measures how many event lanes fit in a week row of `body` and calls `onChange` with the count,
  * now and whenever the body or the lane height a `probe` measures changes. Attach it again when
@@ -126,16 +162,10 @@ export function attachLaneCapacity(
   },
 ): () => void {
   const { onChange, probe, weekCount } = options;
-  const measure = () => {
-    const rowHeight = Math.max(MIN_ROW_HEIGHT, body.clientHeight / weekCount);
-    onChange(lanesIn(rowHeight, laneHeightOf(probe)));
-  };
-  measure();
-  if (typeof ResizeObserver === "undefined") return () => {};
-  const observer = new ResizeObserver(measure);
-  observer.observe(body);
-  if (probe != null) observer.observe(probe);
-  return () => observer.disconnect();
+  const measure = ({ bodyHeight, laneHeight }: LaneSizes) =>
+    onChange(lanesFor(bodyHeight, weekCount, laneHeight));
+  measure(measureLaneSizes(body, probe));
+  return observeLaneSizes(body, probe, measure) ?? (() => {});
 }
 
 /** The segments that show something on a week's `column`, top to bottom. */

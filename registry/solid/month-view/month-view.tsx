@@ -16,17 +16,20 @@ import {
   type ResourceId,
 } from "@moltenship/calendar-solid";
 import type { JSX } from "@solidjs/web";
-import { createEffect, createMemo, createSignal, For, type Accessor } from "solid-js";
+import { createMemo, createSignal, For, onCleanup, onSettled, type Accessor } from "solid-js";
 
 import { useEventLabel, type EventDescriber } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import {
-  attachLaneCapacity,
   INITIAL_LANES,
+  lanesFor,
+  measureLaneSizes,
+  observeLaneSizes,
   rowSizes,
   weekHidingFocus,
+  type LaneSizes,
 } from "@registry/shared/month-view/month-layout";
 import { monthFormats, type MonthFormats } from "@registry/shared/month-view/month-labels";
 import {
@@ -70,21 +73,30 @@ type MonthViewProps<TEvent> = CalendarViewRendererProps<
 >;
 
 /**
- * How many event lanes fit in a week row, measured again only when the grid or the lane height
- * changes: `probe` is a `LaneProbe`.
+ * How many event lanes fit in a week row: a memo of the week count and of sizes a ResizeObserver
+ * writes, so a month with another number of weeks gets its lanes in the same flush. `probe` is a
+ * `LaneProbe`.
  */
 function useLaneCapacity(
   body: () => HTMLElement | undefined,
   probe: () => HTMLElement | undefined,
   weekCount: Accessor<number>,
 ): Accessor<number> {
-  const [lanes, setLanes] = createSignal(INITIAL_LANES, { ownedWrite: true });
-  createEffect(weekCount, (count) => {
+  const [sizes, setSizes] = createSignal<LaneSizes | null>(null, { ownedWrite: true });
+  let stop: (() => void) | undefined;
+  onSettled(() => {
     const element = body();
     if (element === undefined) return;
-    return attachLaneCapacity(element, { onChange: setLanes, probe: probe(), weekCount: count });
+    setSizes(measureLaneSizes(element, probe()));
+    stop = observeLaneSizes(element, probe(), setSizes);
   });
-  return lanes;
+  onCleanup(() => stop?.());
+  return createMemo(() => {
+    const measured = sizes();
+    return measured === null
+      ? INITIAL_LANES
+      : lanesFor(measured.bodyHeight, weekCount(), measured.laneHeight);
+  });
 }
 
 /** The month grid's formats, new when the locale changes. */
