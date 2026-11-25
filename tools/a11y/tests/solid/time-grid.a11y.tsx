@@ -10,7 +10,7 @@ import {
 } from "@registry/time-grid-view/time-grid-view";
 
 import { seriousViolations, setTheme, themes } from "../axe";
-import { describeTree } from "../kit-twins";
+import { describeLayout } from "../kit-twins";
 import {
   timeGridAnchor,
   timeGridEvents,
@@ -78,13 +78,13 @@ describe.runIf(server.browser === "chromium")("the Solid time grid renders React
   test("the week, with its all-day row collapsed", async () => {
     await render(() => <TimeGrid view="week" />);
     await nowLine();
-    expect(describeTree(grid())).toBe(week);
+    expect(describeLayout(grid())).toBe(week);
   });
 
   test("the day, with a second time zone", async () => {
     await render(() => <TimeGrid view="day" />);
     await nowLine();
-    expect(describeTree(grid())).toBe(day);
+    expect(describeLayout(grid())).toBe(day);
   });
 });
 
@@ -155,7 +155,7 @@ describe.each(["ltr", "rtl"] as const)("the Solid time grid, %s", (dir) => {
     // Overlapping events sit side by side from the inline start.
     expect(
       gap(chip("Design review").getBoundingClientRect(), chip("Planning").getBoundingClientRect()),
-    ).toBeLessThanOrEqual(0);
+    ).toBe(0);
     const event = getComputedStyle(chip("Design review"));
     expect(dir === "rtl" ? event.borderRightWidth : event.borderLeftWidth).toBe("3px");
   });

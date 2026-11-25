@@ -1,4 +1,4 @@
-<div aria-label="October 8, 2026" class="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize [--calendar-hours-width:3rem] sm:[--calendar-hours-width:4rem] [--calendar-gutter-width:calc(var(--calendar-hours-width)+var(--calendar-zones,0)*var(--calendar-zone-width,4rem))] pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]" data-slot="time-grid" role="grid">
+<div aria-label="October 8, 2026" class="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize [--calendar-hours-width:3rem] sm:[--calendar-hours-width:4rem] [--calendar-gutter-width:calc(var(--calendar-hours-width)+var(--calendar-zones,0)*var(--calendar-zone-width,4rem))] pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]" data-slot="time-grid" role="grid" style="--calendar-zones: 1">
   <div class="shrink-0 overflow-hidden border-b border-calendar-grid [scrollbar-gutter:stable]">
     <div class="flex" role="row">
       <div class="flex w-(--calendar-gutter-width) shrink-0 items-end pb-1 text-[0.625rem] text-calendar-axis" role="columnheader">
@@ -6,17 +6,17 @@
           "Tokyo"
         <span class="flex min-w-0 flex-1 justify-end pe-2 whitespace-nowrap">
           "GMT+0"
-      <div class="grid flex-1">
+      <div class="grid flex-1" style="grid-template-columns: repeat(1, minmax(0px, 1fr))">
         <div aria-current="date" aria-label="Thursday, October 8, 2026" class="flex min-w-0 flex-col gap-0.5 py-2 items-start px-2" role="columnheader">
           <span class="text-[0.6875rem] font-medium tracking-wide uppercase text-calendar-today">
             "Thu"
           <span class="flex items-center justify-center rounded-full text-xl tabular-nums sm:text-2xl size-11 bg-calendar-today text-calendar-today-foreground">
             "8"
-    <div class="flex" role="row">
+    <div class="flex" role="row" style="height: 1.875rem">
       <div class="flex w-(--calendar-gutter-width) shrink-0 items-start justify-end pt-0.5 pe-1" role="rowheader">
         <span class="sr-only">
           "All day"
-      <div class="grid flex-1">
+      <div class="grid flex-1" style="grid-template-columns: repeat(1, minmax(0px, 1fr))">
         <div aria-label="Thursday, October 8, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="0">
           <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-08">
   <div class="relative min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]" data-slot="time-grid-body">
@@ -26,143 +26,143 @@
           "Timed events"
         <div class="flex h-full">
           <div aria-hidden="true" class="relative h-full w-[var(--calendar-zone-width,4rem)] shrink-0" data-slot="time-grid-zone-hours" data-time-zone="Asia/Tokyo">
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 4.16667%">
               "10 AM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 8.33333%">
               "11 AM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 12.5%">
               "12 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 16.6667%">
               "1 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 20.8333%">
               "2 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 25%">
               "3 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 29.1667%">
               "4 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 33.3333%">
               "5 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 37.5%">
               "6 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 41.6667%">
               "7 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 45.8333%">
               "8 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 50%">
               "9 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 54.1667%">
               "10 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 58.3333%">
               "11 PM"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 62.5%">
               "12 AM"
               <span class="relative -top-1 ms-px text-[0.5rem] leading-none" data-day-offset="">
                 "+1"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 66.6667%">
               "1 AM"
               <span class="relative -top-1 ms-px text-[0.5rem] leading-none" data-day-offset="">
                 "+1"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 70.8333%">
               "2 AM"
               <span class="relative -top-1 ms-px text-[0.5rem] leading-none" data-day-offset="">
                 "+1"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 75%">
               "3 AM"
               <span class="relative -top-1 ms-px text-[0.5rem] leading-none" data-day-offset="">
                 "+1"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 79.1667%">
               "4 AM"
               <span class="relative -top-1 ms-px text-[0.5rem] leading-none" data-day-offset="">
                 "+1"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 83.3333%">
               "5 AM"
               <span class="relative -top-1 ms-px text-[0.5rem] leading-none" data-day-offset="">
                 "+1"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 87.5%">
               "6 AM"
               <span class="relative -top-1 ms-px text-[0.5rem] leading-none" data-day-offset="">
                 "+1"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 91.6667%">
               "7 AM"
               <span class="relative -top-1 ms-px text-[0.5rem] leading-none" data-day-offset="">
                 "+1"
-            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+            <span class="absolute end-1 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 95.8333%">
               "8 AM"
               <span class="relative -top-1 ms-px text-[0.5rem] leading-none" data-day-offset="">
                 "+1"
           <div class="min-w-0 flex-1">
             <div aria-hidden="true" class="relative h-full">
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 4.16667%">
                 "1 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 8.33333%">
                 "2 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 12.5%">
                 "3 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 16.6667%">
                 "4 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 20.8333%">
                 "5 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 25%">
                 "6 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 29.1667%">
                 "7 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 33.3333%">
                 "8 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 37.5%">
                 "9 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 41.6667%">
                 "10 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 45.8333%">
                 "11 AM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 50%">
                 "12 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 54.1667%">
                 "1 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 58.3333%">
                 "2 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 62.5%">
                 "3 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 66.6667%">
                 "4 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 70.8333%">
                 "5 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 75%">
                 "6 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 79.1667%">
                 "7 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 83.3333%">
                 "8 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 87.5%">
                 "9 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 91.6667%">
                 "10 PM"
-              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums">
+              <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 95.8333%">
                 "11 PM"
-      <div class="grid flex-1 bg-[linear-gradient(to_bottom,var(--calendar-grid)_1px,transparent_1px)] bg-size-[100%_var(--calendar-hour-height)]">
+      <div class="grid flex-1 bg-[linear-gradient(to_bottom,var(--calendar-grid)_1px,transparent_1px)] bg-size-[100%_var(--calendar-hour-height)]" style="grid-template-columns: repeat(1, minmax(0px, 1fr))">
         <div class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-08" data-today="" role="gridcell">
           <div class="absolute inset-y-0 start-0 end-2">
-            <button aria-label="Design review, Thursday, October 8, 9:00 – 10:00 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="blue" data-event-id="Design review" data-slot="calendar-event" tabindex="-1" type="button">
+            <button aria-label="Design review, Thursday, October 8, 9:00 – 10:00 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="blue" data-event-id="Design review" data-slot="calendar-event" style="height: 4.16667%; inset-inline-start: 0%; top: 37.5%; width: 50%" tabindex="-1" type="button">
               <span class="line-clamp-2" data-slot="calendar-event-title">
                 "Design review"
               <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
                 "9:00 – 10:00 AM"
               <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
               <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
-            <button aria-label="Planning, Thursday, October 8, 9:30 – 10:30 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="green" data-event-id="Planning" data-slot="calendar-event" tabindex="-1" type="button">
+            <button aria-label="Planning, Thursday, October 8, 9:30 – 10:30 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="green" data-event-id="Planning" data-slot="calendar-event" style="height: 4.16667%; inset-inline-start: 50%; top: 39.5833%; width: 50%" tabindex="-1" type="button">
               <span class="line-clamp-2" data-slot="calendar-event-title">
                 "Planning"
               <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
                 "9:30 – 10:30 AM"
               <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
               <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
-            <button aria-label="Pairing, Thursday, October 8, 10:00 – 11:00 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="orange" data-event-id="Pairing" data-slot="calendar-event" tabindex="-1" type="button">
+            <button aria-label="Pairing, Thursday, October 8, 10:00 – 11:00 AM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="orange" data-event-id="Pairing" data-slot="calendar-event" style="height: 4.16667%; inset-inline-start: 0%; top: 41.6667%; width: 50%" tabindex="-1" type="button">
               <span class="line-clamp-2" data-slot="calendar-event-title">
                 "Pairing"
               <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
                 "10:00 – 11:00 AM"
               <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
               <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
-            <button aria-label="Standup, Thursday, October 8, 1:00 – 1:15 PM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" data-color="purple" data-event-id="Standup" data-slot="calendar-event" tabindex="-1" type="button">
+            <button aria-label="Standup, Thursday, October 8, 1:00 – 1:15 PM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" data-color="purple" data-event-id="Standup" data-slot="calendar-event" style="height: 1.04167%; inset-inline-start: 0%; top: 54.1667%; width: 100%" tabindex="-1" type="button">
               <span class="truncate">
                 <span data-slot="calendar-event-title">
                   "Standup"
@@ -171,7 +171,7 @@
                   <span data-event-time="true">
                     "1:00 PM"
               <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
-            <button aria-label="Quarterly roadmap review with the platform, design and research teams, Thursday, October 8, 3:00 – 3:30 PM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" data-color="teal" data-event-id="Quarterly roadmap review with the platform, design and research teams" data-slot="calendar-event" tabindex="-1" type="button">
+            <button aria-label="Quarterly roadmap review with the platform, design and research teams, Thursday, October 8, 3:00 – 3:30 PM" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 flex-row items-center gap-1 py-0 text-[0.6875rem] leading-none" data-color="teal" data-event-id="Quarterly roadmap review with the platform, design and research teams" data-slot="calendar-event" style="height: 2.08333%; inset-inline-start: 0%; top: 62.5%; width: 100%" tabindex="-1" type="button">
               <span class="truncate">
                 <span data-slot="calendar-event-title">
                   "Quarterly roadmap review with the platform, design and research teams"
@@ -180,4 +180,4 @@
                   <span data-event-time="true">
                     "3:00 PM"
               <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
-          <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-calendar-now before:absolute before:-top-1 before:-start-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now" data-slot="time-grid-now">
+          <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-calendar-now before:absolute before:-top-1 before:-start-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now" data-slot="time-grid-now" style="top: 43.0556%">

@@ -5,7 +5,7 @@ import { server } from "vite-plus/test/browser";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
 
-import { describeTree } from "./kit-twins";
+import { describeLayout } from "./kit-twins";
 import { render, until } from "./render";
 import {
   timeGridAnchor,
@@ -17,7 +17,8 @@ import {
 } from "./time-grid-fixture";
 
 // React's week and day render what `view-twins/` stores, and `solid/time-grid.a11y.tsx` checks the
-// Solid views render the same (ADR 0279): roles, names, classes, keys and what an agent reads.
+// Solid views render the same (ADR 0279): roles, names, classes, keys, inline styles and what an
+// agent reads.
 // React's run writes the files, with `-u` on a change.
 
 const Calendar = createCalendar<TimeGridFixture>()({
@@ -60,12 +61,12 @@ describe.runIf(server.browser === "chromium")("time grid twins", () => {
   test("the week, with its all-day row collapsed", async () => {
     await render(<TimeGrid view="week" />);
     await until(() => expect(grid().querySelector('[data-slot="time-grid-now"]')).not.toBeNull());
-    await expect(describeTree(grid())).toMatchFileSnapshot("./view-twins/week.txt");
+    await expect(describeLayout(grid())).toMatchFileSnapshot("./view-twins/week.txt");
   });
 
   test("the day, with a second time zone", async () => {
     await render(<TimeGrid view="day" />);
     await until(() => expect(grid().querySelector('[data-slot="time-grid-now"]')).not.toBeNull());
-    await expect(describeTree(grid())).toMatchFileSnapshot("./view-twins/day.txt");
+    await expect(describeLayout(grid())).toMatchFileSnapshot("./view-twins/day.txt");
   });
 });
