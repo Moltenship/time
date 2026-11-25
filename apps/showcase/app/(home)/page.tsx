@@ -143,7 +143,7 @@ const frameworkRows = [
   [
     "Ready-made views",
     "shadcn/ui or StyleX source",
-    "Week, day, month, year and agenda, and the scrolling month and agenda",
+    "Week, day, month, year and agenda, the scrolling month and agenda, and resource columns",
   ],
   ["Testing package", "Yes", "Not yet"],
 ] as const;
@@ -323,7 +323,7 @@ export default async function HomePage() {
             . React and Solid each have a package that renders that state. The Solid package has the
             parts and hooks React has, keyboard navigation, dragging and undo included. Its registry
             has the week and day, the month, the year and the agenda so far, the month and agenda
-            also as scrolling views, and you write the other views.
+            also as scrolling views, and the resource columns, and you write the other views.
           </p>
           <p className="mt-4 text-fd-muted-foreground">
             {installTag === undefined
