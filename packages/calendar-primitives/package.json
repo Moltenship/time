@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-primitives",
-  "version": "1.0.0-rc.2",
+  "version": "2.0.0-beta.1",
   "description": "Framework-free calendar primitives for Moltenship Time, written on ui-sdk.",
   "homepage": "https://time.molten.sh/docs/api/primitives",
   "bugs": {

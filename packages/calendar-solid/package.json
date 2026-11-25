@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-solid",
-  "version": "1.0.0-rc.2",
+  "version": "2.0.0-beta.1",
   "description": "Headless SolidJS integration for Moltenship Time.",
   "homepage": "https://time.molten.sh/docs/api/solid",
   "bugs": {

@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-core",
-  "version": "1.0.0-rc.2",
+  "version": "2.0.0-beta.1",
   "description": "Framework-independent calendar data, projection, layout, and interaction engine.",
   "keywords": [
     "calendar",

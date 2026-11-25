@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-dnd-kit",
-  "version": "1.0.0-rc.2",
+  "version": "2.0.0-beta.1",
   "description": "Optional dnd-kit adapter for Moltenship Time: drag your items into the calendar and events out.",
   "keywords": [
     "calendar",

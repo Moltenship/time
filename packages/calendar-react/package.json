@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar-react",
-  "version": "1.0.0-rc.2",
+  "version": "2.0.0-beta.1",
   "description": "Headless React components and hooks for Moltenship Time, a calendar built on the Temporal API.",
   "keywords": [
     "calendar",

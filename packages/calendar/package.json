@@ -1,6 +1,6 @@
 {
   "name": "@moltenship/calendar",
-  "version": "1.0.0-rc.2",
+  "version": "2.0.0-beta.1",
   "description": "A headless React calendar built on the Temporal API: week, day, month, year, agenda and resource views, exact time zones and DST, drag and drop.",
   "keywords": [
     "agenda",
