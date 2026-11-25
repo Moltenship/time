@@ -12,8 +12,10 @@ export const dialogContentClassName =
 
 export const dialogHeaderClassName = "flex flex-col gap-2";
 
+// `border-border` names the colour that `shadcn init`'s base styles give every border, since a Solid
+// app has no `init` to run.
 export const dialogFooterClassName =
-  "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t bg-muted/50 p-4 sm:flex-row sm:justify-end";
+  "-mx-4 -mb-4 flex flex-col-reverse gap-2 rounded-b-xl border-t border-border bg-muted/50 p-4 sm:flex-row sm:justify-end";
 
 export const dialogTitleClassName = "m-0 font-heading text-base leading-none font-medium";
 
