@@ -1,6 +1,5 @@
 "use client";
 
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import {
   useResourceExpansion,
   type CalendarEnvironmentBase,
@@ -12,6 +11,7 @@ import * as stylex from "@stylexjs/stylex";
 import { ChevronRightIcon } from "lucide-react";
 import { createContext, use, type ComponentProps } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import {
   ResourceStatusPart,
   type ResourceHeaderStatusValue,
@@ -255,7 +255,7 @@ export function ResourceHeaderStatus({
   return (
     <>
       {/* Read after the name and local time, which the header's name runs on from. */}
-      <VisuallyHidden>, </VisuallyHidden>
+      <span {...stylex.props(visuallyHiddenStyles.hidden)}>, </span>
       <ResourceStatusPart className={className} status={status} xstyle={xstyle} />
     </>
   );

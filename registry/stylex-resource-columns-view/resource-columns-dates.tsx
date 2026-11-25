@@ -1,11 +1,11 @@
 "use client";
 
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import type { TimeGridDay } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type RefCallback } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import {
   TimeGridZoneNotes,
   zoneNotesByDate,
@@ -103,7 +103,7 @@ export function ResourceColumnsDates({
   return (
     <div role="row" {...stylex.props(styles.row)}>
       <div role="columnheader" aria-colindex={1} {...stylex.props(styles.gutter)}>
-        <VisuallyHidden>Date</VisuallyHidden>
+        <span {...stylex.props(visuallyHiddenStyles.hidden)}>Date</span>
       </div>
       <div {...stylex.props(styles.clip)} style={{ marginInlineEnd: scrollbarWidth }}>
         <div ref={followX} {...stylex.props(styles.track)} style={{ width: totalSize }}>

@@ -1,6 +1,5 @@
 "use client";
 
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import {
   plainDateIntervalContains,
   type CalendarEnvironmentBase,
@@ -12,6 +11,7 @@ import {
 import * as stylex from "@stylexjs/stylex";
 import { useId, useMemo } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import {
   calendarMarker,
   calendarVars,
@@ -252,7 +252,9 @@ export function TimeGridDayHeaders({
               xstyle={single ? styles.notesSingle : styles.notesMany}
             />
             {summary !== undefined && (
-              <VisuallyHidden id={`${summaryId}-${index}`}>{summary}</VisuallyHidden>
+              <span id={`${summaryId}-${index}`} {...stylex.props(visuallyHiddenStyles.hidden)}>
+                {summary}
+              </span>
             )}
           </div>
         );

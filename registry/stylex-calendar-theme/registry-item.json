@@ -30,6 +30,11 @@
       "path": "registry/stylex-calendar-theme/xprops.ts",
       "type": "registry:component",
       "target": "@components/calendar-stylex/xprops.ts"
+    },
+    {
+      "path": "registry/shared/stylex-calendar-theme/visually-hidden.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/visually-hidden.styles.ts"
     }
   ]
 }

@@ -1,6 +1,5 @@
 "use client";
 
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import {
   useClosedDates,
   useRovingFocus,
@@ -22,6 +21,7 @@ import {
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import { eventColorStyles } from "@registry/stylex-calendar-theme/event-color-styles";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import { PopoverTrigger, type PopoverHandle } from "@registry/stylex-calendar-ui/popover";
 
 const styles = stylex.create({
   cell: {
@@ -114,7 +114,7 @@ const styles = stylex.create({
     backgroundColor: {
       default: "transparent",
       ":hover": calendarVars["--accent"],
-      "[data-popup-open]": calendarVars["--accent"],
+      "[aria-expanded=true]": calendarVars["--accent"],
     },
     borderRadius: "calc(var(--radius) * 0.8)",
     borderWidth: 0,
@@ -157,7 +157,7 @@ export interface YearFormats {
 }
 
 /** Opens the day popover; the popover reads the day's events from the current projection. */
-export type YearDayPopoverHandle = PopoverPrimitive.Handle<Temporal.PlainDate>;
+export type YearDayPopoverHandle = PopoverHandle<Temporal.PlainDate>;
 
 /**
  * Which closed days the year shades: the dates an exception closes, such as holidays, those and
@@ -267,7 +267,7 @@ function YearDayCell<TEvent>({
           start={0}
         />
       )}
-      <PopoverPrimitive.Trigger
+      <PopoverTrigger
         handle={handle}
         id={triggerId}
         payload={day.date}
@@ -276,7 +276,7 @@ function YearDayCell<TEvent>({
         // it, the view's one tab stop, where the popover returns focus.
         onMouseDown={(event) => event.preventDefault()}
         tabIndex={-1}
-        {...stylex.props(styles.trigger)}
+        xstyle={styles.trigger}
       >
         <span {...stylex.props(styles.date, day.isToday && styles.dateToday)}>{day.date.day}</span>
         <span aria-hidden {...stylex.props(styles.dots)}>
@@ -290,7 +290,7 @@ function YearDayCell<TEvent>({
             />
           ))}
         </span>
-      </PopoverPrimitive.Trigger>
+      </PopoverTrigger>
     </div>
   );
 }

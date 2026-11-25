@@ -1,6 +1,5 @@
 "use client";
 
-import { IconButton } from "@astryxdesign/core/IconButton";
 import type { IsoDayOfWeek, PlainDateInterval } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
@@ -18,6 +17,7 @@ import {
   startOfMonth,
 } from "@registry/shared/calendar/mini-month-dates";
 import { miniMonthLabels } from "@registry/shared/calendar/navigation-labels";
+import { Button } from "@registry/stylex-calendar-ui/button";
 
 const styles = stylex.create({
   cell: {
@@ -192,22 +192,24 @@ export function MiniMonth({
           {formats.month.format(month)}
         </h2>
         <div {...stylex.props(styles.steps)}>
-          <IconButton
-            icon={<ChevronLeftIcon {...stylex.props(styles.icon)} />}
-            label={miniMonthLabels.previous}
+          <Button
+            aria-label={miniMonthLabels.previous}
             onClick={() => setMonth(month.subtract({ months: 1 }))}
-            size="sm"
+            size="icon-sm"
             variant="ghost"
             xstyle={styles.round}
-          />
-          <IconButton
-            icon={<ChevronRightIcon {...stylex.props(styles.icon)} />}
-            label={miniMonthLabels.next}
+          >
+            <ChevronLeftIcon {...stylex.props(styles.icon)} />
+          </Button>
+          <Button
+            aria-label={miniMonthLabels.next}
             onClick={() => setMonth(month.add({ months: 1 }))}
-            size="sm"
+            size="icon-sm"
             variant="ghost"
             xstyle={styles.round}
-          />
+          >
+            <ChevronRightIcon {...stylex.props(styles.icon)} />
+          </Button>
         </div>
       </div>
       <table

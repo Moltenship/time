@@ -8,8 +8,6 @@
     "test": "vp test"
   },
   "dependencies": {
-    "@astryxdesign/core": "catalog:",
-    "@base-ui/react": "catalog:",
     "@moltenship/calendar": "workspace:*",
     "@stylexjs/stylex": "catalog:",
     "@tanstack/react-virtual": "catalog:",

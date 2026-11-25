@@ -18,6 +18,15 @@ export const defaultRegistryBaseUrl = `${defaultRegistryHomepage}/r`;
  */
 export const registrySharedDirectory = "registry/shared";
 
+/**
+ * The kit's shared files: what its popover, tooltip and toast keep between renders, written once
+ * for every framework on ui-sdk's core, which has no framework in it (ADR 0279).
+ */
+export const kitSharedDirectory = `${registrySharedDirectory}/calendar-ui`;
+
+/** What the kit's shared files may import besides `sharedFilePackages`. */
+export const kitSharedPackages: ReadonlySet<string> = new Set(["@ui-sdk/core"]);
+
 /** A set of items styled one way inside a registry, and the item that installs all of them. */
 interface RegistryFlavour {
   /** What its items' names start with: `stylex-`, or nothing. */
@@ -98,10 +107,11 @@ export const baseTokensItemName = "base-tokens";
  * use. It's a list of what is allowed, not of what is not, because no pattern catches every package
  * made for one framework (`next/link`, `radix-ui`, `motion/react`, `zustand`). A package joins
  * when a shared file needs it and it imports no framework. ui-sdk isn't on it: only the kit's own
- * files import ui-sdk (ADR 0279).
+ * files import ui-sdk (ADR 0279), and of the shared files those in `kitSharedDirectory`.
  */
 export const sharedFilePackages: ReadonlySet<string> = new Set([
   "@moltenship/calendar",
+  "@stylexjs/stylex",
   "@tanstack/virtual-core",
   "class-variance-authority",
   "clsx",

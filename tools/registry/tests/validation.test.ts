@@ -12,7 +12,7 @@ describe("shadcn registry validation", () => {
     const report = await validateRegistryWorkspace(workspaceRoot);
 
     expect(report.issues).toEqual([]);
-    expect(report.manifests).toBe(30);
+    expect(report.manifests).toBe(31);
   });
 
   test("accepts the Solid registry's source", async () => {
@@ -70,6 +70,7 @@ describe("shadcn registry validation", () => {
       "cn",
       "@moltenship/calendar",
       "@tanstack/virtual-core",
+      "@stylexjs/stylex",
       "@registry/shared/calendar/locale",
       "./badge.styles",
       "../calendar/locale",
@@ -77,12 +78,19 @@ describe("shadcn registry validation", () => {
       expect(sharedFileIssues(path, `import x from "${specifier}";`), specifier).toEqual([]);
     }
     expect(sharedFileIssues("registry/shared/calendar-ui/button.tsx", "")).toHaveLength(1);
+    // The kit's shared files may import ui-sdk's core; no other shared file may.
+    expect(sharedFileIssues(path, 'import x from "@ui-sdk/core/popover";')).toEqual([]);
+    expect(
+      sharedFileIssues(
+        "registry/shared/calendar/locale.ts",
+        'import x from "@ui-sdk/core/popover";',
+      ),
+    ).toHaveLength(1);
     for (const specifier of [
       "react",
       "react/jsx-runtime",
       "solid-js",
       "@solidjs/web",
-      "@ui-sdk/core/button",
       "@ui-sdk/react/button",
       "@ui-sdk/solid/button",
       "@base-ui/react/button",

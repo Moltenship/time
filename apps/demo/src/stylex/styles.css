@@ -1,4 +1,4 @@
-@layer reset, astryx-base, astryx-theme;
+@layer reset, astryx-base, astryx-theme, ui-sdk;
 @import "@astryxdesign/core/reset.css";
 @import "@astryxdesign/core/astryx.css";
 @import "@astryxdesign/theme-neutral/theme.css";

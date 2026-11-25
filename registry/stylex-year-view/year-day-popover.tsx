@@ -1,6 +1,5 @@
 "use client";
 
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import type { EventDayFragment, EventId, ResourceId, YearDay } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
 import { useRef, type ReactNode, type RefObject } from "react";
@@ -12,22 +11,9 @@ import {
   calendarVars,
 } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import { Popover, PopoverContent } from "@registry/stylex-calendar-ui/popover";
 
 import type { YearDayPopoverHandle, YearFormats } from "./year-month";
-
-const popInBlockEnd = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0, 0.5rem, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const popInBlockStart = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0, -0.5rem, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const popInInlineEnd = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0.5rem, 0, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const popInInlineStart = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(-0.5rem, 0, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const popOut = stylex.keyframes({ to: { opacity: 0, transform: "scale3d(0.95, 0.95, 0.95)" } });
 
 const styles = stylex.create({
   chip: {
@@ -100,40 +86,9 @@ const styles = stylex.create({
     textAlign: "center",
   },
   popup: {
-    animationDuration: { default: "100ms", "@media (prefers-reduced-motion: reduce)": "0s" },
-    animationName: {
-      default: null,
-      "[data-closed]": popOut,
-      "[data-open]": {
-        default: popInBlockStart,
-        '[data-side="inline-end"]': popInInlineStart,
-        '[data-side="inline-start"]': popInInlineEnd,
-        '[data-side="left"]': popInInlineEnd,
-        '[data-side="right"]': popInInlineStart,
-        '[data-side="top"]': popInBlockEnd,
-      },
-    },
-    backgroundColor: calendarVars["--popover"],
-    borderRadius: "var(--radius)",
-    boxShadow: `0 0 0 1px color-mix(in oklch, ${calendarVars["--foreground"]} 10%, transparent), 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)`,
-    color: calendarVars["--popover-foreground"],
-    display: "flex",
-    flexDirection: "column",
-    fontSize: "0.875rem",
-    lineHeight: "1.25rem",
-    maxHeight: "var(--available-height)",
-    outlineColor: { default: null, "@media (forced-colors: active)": "transparent" },
-    outlineOffset: { default: null, "@media (forced-colors: active)": 2 },
-    outlineStyle: { default: "none", "@media (forced-colors: active)": "solid" },
-    outlineWidth: { default: null, "@media (forced-colors: active)": 2 },
+    gap: 0,
     padding: "0.5rem",
-    transformOrigin: "var(--transform-origin)",
     width: "16rem",
-    zIndex: 50,
-  },
-  positioner: {
-    isolation: "isolate",
-    zIndex: 50,
   },
   time: {
     flexShrink: 0,
@@ -228,7 +183,7 @@ export interface YearDayPopoverProps<TEvent> {
 }
 
 /**
- * One popover for every day of the year, through Base UI's detached triggers, so the year never
+ * One popover for every day of the year, through a handle every day shares, so the year never
  * mounts hundreds of roots. It lists the day's events and opens the day from its date. Closing it
  * returns focus to the day, unless a click outside focused something else.
  */
@@ -245,71 +200,56 @@ export function YearDayPopover<TEvent>({
   const popup = useRef<HTMLDivElement>(null);
 
   return (
-    <PopoverPrimitive.Root handle={handle}>
+    <Popover handle={handle}>
       {({ payload: date }) => {
         if (date === undefined) return null;
         const fragments = days.get(date.toString())?.fragments ?? [];
         const name = formats.date.format(date);
         return (
-          <PopoverPrimitive.Portal>
-            <PopoverPrimitive.Positioner sideOffset={4} {...stylex.props(styles.positioner)}>
-              <PopoverPrimitive.Popup
-                ref={popup}
-                data-slot="popover-content"
-                aria-label={`Events on ${name}`}
-                {...stylex.props(styles.popup)}
-                // The popup takes focus, from a pointer or a key alike; Tab then reaches its events.
-                initialFocus={popup}
-                finalFocus={() => {
-                  // An outside click that focused something else keeps that focus.
-                  const active = document.activeElement;
-                  if (
-                    active !== null &&
-                    active !== document.body &&
-                    !popup.current?.contains(active)
-                  ) {
-                    return false;
-                  }
-                  return (
-                    view.current?.querySelector<HTMLElement>(
-                      `[role="gridcell"][data-date="${date.toString()}"]`,
-                    ) ?? false
-                  );
-                }}
+          <PopoverContent
+            ref={popup}
+            aria-label={`Events on ${name}`}
+            xstyle={styles.popup}
+            // The popup takes focus, from a pointer or a key alike; Tab then reaches its events.
+            initialFocus={popup}
+            // The day's cell, the view's tab stop; ui-sdk leaves focus alone after a click outside.
+            finalFocus={() =>
+              view.current?.querySelector<HTMLElement>(
+                `[role="gridcell"][data-date="${date.toString()}"]`,
+              ) ?? null
+            }
+          >
+            <div {...stylex.props(styles.day)}>
+              <span {...stylex.props(styles.weekday)}>{formats.weekdayShort.format(date)}</span>
+              <button
+                type="button"
+                aria-label={name}
+                onClick={() => onOpenDay(date)}
+                {...stylex.props(styles.date)}
               >
-                <div {...stylex.props(styles.day)}>
-                  <span {...stylex.props(styles.weekday)}>{formats.weekdayShort.format(date)}</span>
-                  <button
-                    type="button"
-                    aria-label={name}
-                    onClick={() => onOpenDay(date)}
-                    {...stylex.props(styles.date)}
-                  >
-                    {date.day}
-                  </button>
-                </div>
-                {fragments.length === 0 ? (
-                  <p {...stylex.props(styles.noEvents)}>No events</p>
-                ) : (
-                  <div {...stylex.props(styles.events)}>
-                    {fragments.map((fragment) => (
-                      <YearEvent
-                        // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
-                        key={`${typeof fragment.event.id}:${fragment.event.id}`}
-                        color={getEventColor?.(fragment.event.event)}
-                        icon={getEventIcon?.(fragment.event.event)}
-                        formats={formats}
-                        fragment={fragment}
-                        labelEvent={labelEvent}
-                      />
-                    ))}
-                  </div>
-                )}
-              </PopoverPrimitive.Popup>
-            </PopoverPrimitive.Positioner>
-          </PopoverPrimitive.Portal>
+                {date.day}
+              </button>
+            </div>
+            {fragments.length === 0 ? (
+              <p {...stylex.props(styles.noEvents)}>No events</p>
+            ) : (
+              <div {...stylex.props(styles.events)}>
+                {fragments.map((fragment) => (
+                  <YearEvent
+                    // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
+                    key={`${typeof fragment.event.id}:${fragment.event.id}`}
+                    color={getEventColor?.(fragment.event.event)}
+                    icon={getEventIcon?.(fragment.event.event)}
+                    formats={formats}
+                    fragment={fragment}
+                    labelEvent={labelEvent}
+                  />
+                ))}
+              </div>
+            )}
+          </PopoverContent>
         );
       }}
-    </PopoverPrimitive.Root>
+    </Popover>
   );
 }

@@ -1,7 +1,7 @@
 /*
  * The few rules StyleX can't write, as they select elements the app's source doesn't render: drag
- * previews, which `@moltenship/calendar` makes, and icons an app passes to an event. Import it
- * once, after the Astryx stylesheets.
+ * previews, which `@moltenship/calendar` makes, the list inside ui-sdk's toast region, and icons an
+ * app passes to an event. Import it once, in the app's global stylesheet.
  */
 
 /*
@@ -66,6 +66,16 @@
 /* A dragged bar's copy keeps its title at its start, not where the bar's pin had moved it. */
 [data-calendar-ghost] [data-slot="calendar-event-title"] {
   transform: none !important;
+}
+
+/* The list ui-sdk renders in the history toast's region: no indent or bullets, toasts centred. */
+:where([data-slot="toast-region"]) > ol {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 /* An icon from `getEventIcon`, sized for the chip's text; a view sets the custom property. */

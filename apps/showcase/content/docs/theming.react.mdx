@@ -200,3 +200,32 @@ A control that isn't built on ui-sdk gives up two things:
 - **The same control in React and Solid.** ui-sdk has the same components in both frameworks, so
   a control built on it behaves alike in both. Yours behaves as your component does, so a Solid
   app needs its own version of it. The Solid registry has the theme and the agenda so far.
+
+### In the StyleX items
+
+The `stylex-` views take the same controls from `stylex-calendar-ui`, in
+`components/calendar-stylex/ui/`: the same files, exports and props as in the table, with StyleX
+styles in place of class names. Where the table says `className`, the StyleX views pass `xstyle`, a
+value of `stylex.create`, and a control applies it after its own styles:
+
+```tsx title="components/calendar-stylex/ui/button.tsx"
+import type { ComponentProps } from "react";
+
+import { Button as AppButton } from "@/components/ui/button";
+import { buttonVariants } from "@/components/calendar-stylex/ui/button.styles";
+import { type XStyle, xprops } from "@/components/calendar-stylex/xprops";
+
+export interface ButtonProps extends ComponentProps<typeof AppButton> {
+  readonly xstyle?: XStyle;
+}
+
+export function Button({ className, style, xstyle, ...props }: ButtonProps) {
+  return <AppButton {...props} {...xprops({ className, style }, xstyle)} />;
+}
+
+export { buttonVariants };
+```
+
+`xprops`, from the StyleX theme item, merges the styles with a `className` and `style` the element
+also gets. A control from a StyleX design system that takes `xstyle` itself, such as Astryx's,
+can take it as it comes.

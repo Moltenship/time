@@ -42,14 +42,15 @@ const solidDocsSamples = "(?:^|/)apps/showcase/content/examples/solid/";
 const solidWorkspaces =
   "(?:^|/)(?:(?:packages/calendar-solid|registry/solid|tools/a11y/tests/solid|apps/demo-solid|apps/showcase/content/examples/solid)/|tools/a11y/vite\\.config\\.ts$)";
 /**
- * Where ui-sdk may appear: the primitives, the two integrations, each framework's kit of controls,
- * and the applications that create an agent bridge to show them (architecture.md, rule 14): the
+ * Where ui-sdk may appear: the primitives, the two integrations, each framework's kit of controls
+ * (with the kits' shared files, which import ui-sdk's core alone), and the applications that create
+ * an agent bridge to show them (architecture.md, rule 14): the
  * Solid demo and the docs site. Also calendar-testing's tests, which drive an agent over a
  * recurring series: only that package depends on both the facade and recurrence. Its source stays
  * free of ui-sdk. The registry's own tests read the kit through an agent bridge too.
  */
 const uiSdkWorkspaces =
-  "(?:^|/)(?:packages/calendar-(?:primitives|react|solid)/|packages/calendar-testing/tests/|registry/(?:solid/)?(?:calendar-ui|tests)/|apps/(?:demo-solid|showcase)/)";
+  "(?:^|/)(?:packages/calendar-(?:primitives|react|solid)/|packages/calendar-testing/tests/|registry/(?:(?:solid/|shared/)?calendar-ui|stylex-calendar-ui|tests)/|apps/(?:demo-solid|showcase)/)";
 const sourceRoots = "(?:^|/)(?:apps|benchmarks|packages|registry|tools)/";
 /** A package's source and its tests: rules 12 and 13 cover both (architecture.md). */
 const packageCodePath = (packageName: string) =>
@@ -158,12 +159,20 @@ export default {
     {
       name: "registry-shared-files-import-no-framework",
       comment:
-        "A shared file (registry/shared) is plain TypeScript every framework's items import: no React, no Solid, no ui-sdk and no item's own file (architecture.md, rule 5; ADR 0279). tools/registry's validation checks its packages against an allow-list too.",
+        "A shared file (registry/shared) is plain TypeScript every framework's items import: no React, no Solid, no ui-sdk and no item's own file (architecture.md, rule 5; ADR 0279). The kit's shared files may import ui-sdk's core, which has no framework in it. tools/registry's validation checks its packages against an allow-list too.",
       severity: "error",
       from: { path: "(?:^|/)registry/shared/" },
       to: {
-        path: [reactPackages, solidPackages, uiSdkPackages, "(?:^|/)registry/(?!shared/)"],
+        path: [reactPackages, solidPackages, otherFrameworkPackages, "(?:^|/)registry/(?!shared/)"],
       },
+    },
+    {
+      name: "registry-shared-files-import-no-ui-sdk",
+      comment:
+        "Of the shared files, only the kit's (registry/shared/calendar-ui) import ui-sdk, and only its core: the controllers its popover, tooltip and toast keep in every framework (ADR 0279).",
+      severity: "error",
+      from: { path: "(?:^|/)registry/shared/", pathNot: "(?:^|/)registry/shared/calendar-ui/" },
+      to: { path: uiSdkPackages },
     },
     {
       name: "registry-tests-use-the-facade-and-the-harness",
@@ -367,7 +376,7 @@ export default {
     {
       name: "only-primitives-and-integrations-import-ui-sdk",
       comment:
-        "ui-sdk is a peer of calendar-primitives, calendar-react and calendar-solid; besides them only the registry's kits of controls (registry/calendar-ui, registry/solid/calendar-ui) and the registries' tests, calendar-testing's tests, and the applications that create an agent bridge import it: the Solid demo and the docs site.",
+        "ui-sdk is a peer of calendar-primitives, calendar-react and calendar-solid; besides them only the registry's kits of controls (registry/calendar-ui, registry/solid/calendar-ui, registry/stylex-calendar-ui and the kits' shared files) and the registries' tests, calendar-testing's tests, and the applications that create an agent bridge import it: the Solid demo and the docs site.",
       severity: "error",
       from: { path: sourceRoots, pathNot: uiSdkWorkspaces },
       to: { path: uiSdkPackages },

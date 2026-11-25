@@ -1,6 +1,5 @@
 "use client";
 
-import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip";
 import {
   withAsciiSpaces,
   type EventDayFragment,
@@ -9,7 +8,7 @@ import {
   type TimeGridEventLayout,
 } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
-import { useRef, useState, type ReactNode } from "react";
+import { createContext, use, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { EventChip, EventIcon, useEventChip } from "@registry/stylex-calendar/event-chip";
 import type { EventLabeler } from "@registry/stylex-calendar/event-label";
@@ -19,24 +18,15 @@ import {
   calendarVars,
 } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import {
+  createTooltipHandle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  type TooltipHandle,
+} from "@registry/stylex-calendar-ui/tooltip";
 
 import type { AnnotationEventInset } from "./time-grid-annotations";
-
-const slideFromBottom = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0, 0.5rem, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const slideFromLeft = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(-0.5rem, 0, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const slideFromRight = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0.5rem, 0, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const slideFromTop = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0, -0.5rem, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const zoomOut = stylex.keyframes({
-  to: { opacity: 0, transform: "scale3d(0.95, 0.95, 0.95)" },
-});
 
 const styles = stylex.create({
   // Raised while hovered, and above that while focused, so a stacked event's title shows over the
@@ -117,10 +107,6 @@ const styles = stylex.create({
     height: "0.625rem",
     width: "0.625rem",
   },
-  positioner: {
-    isolation: "isolate",
-    zIndex: 50,
-  },
   time: {
     fontWeight: 400,
     opacity: 0.8,
@@ -133,71 +119,6 @@ const styles = stylex.create({
     WebkitLineClamp: 2,
     display: "-webkit-box",
     overflow: "hidden",
-  },
-  tooltip: {
-    alignItems: "center",
-    animationDuration: { default: "150ms", "@media (prefers-reduced-motion: reduce)": "0s" },
-    animationName: {
-      default: null,
-      "[data-closed]": zoomOut,
-      "[data-open]": {
-        default: null,
-        '[data-side="bottom"]': slideFromTop,
-        '[data-side="inline-end"]': slideFromLeft,
-        '[data-side="inline-start"]': slideFromRight,
-        '[data-side="left"]': slideFromRight,
-        '[data-side="right"]': slideFromLeft,
-        '[data-side="top"]': slideFromBottom,
-      },
-    },
-    backgroundColor: calendarVars["--foreground"],
-    borderRadius: "calc(var(--radius) * 0.8)",
-    color: calendarVars["--background"],
-    display: "inline-flex",
-    fontSize: "0.75rem",
-    gap: "0.375rem",
-    lineHeight: "1rem",
-    maxWidth: "20rem",
-    paddingBlock: "0.375rem",
-    paddingInline: "0.75rem",
-    transformOrigin: "var(--transform-origin)",
-    width: "fit-content",
-    zIndex: 50,
-  },
-  tooltipArrow: {
-    backgroundColor: calendarVars["--foreground"],
-    borderRadius: "2px",
-    bottom: { default: null, '[data-side="top"]': "-0.625rem" },
-    fill: calendarVars["--foreground"],
-    height: "0.625rem",
-    left: {
-      default: null,
-      '[data-side="inline-end"]': "-0.25rem",
-      '[data-side="right"]': "-0.25rem",
-    },
-    right: {
-      default: null,
-      '[data-side="inline-start"]': "-0.25rem",
-      '[data-side="left"]': "-0.25rem",
-    },
-    rotate: "45deg",
-    top: {
-      default: null,
-      '[data-side="bottom"]': "0.25rem",
-      '[data-side="inline-end"]': "50% !important",
-      '[data-side="inline-start"]': "50% !important",
-      '[data-side="left"]': "50% !important",
-      '[data-side="right"]': "50% !important",
-    },
-    translate: {
-      default: "0 calc(-50% - 2px)",
-      '[data-side="inline-end"]': "0 -50%",
-      '[data-side="inline-start"]': "0 -50%",
-      '[data-side="left"]': "0 -50%",
-      '[data-side="right"]': "0 -50%",
-    },
-    width: "0.625rem",
-    zIndex: 50,
   },
   truncate: {
     overflow: "hidden",
@@ -314,23 +235,44 @@ export function eventTimeRange(
   return `${formats.time.format(start.toPlainTime())}${dash}${formats.dayTime.format(end)}`;
 }
 
-/** The title in full, for an event too small to show it. */
-function TooltipContent({ children }: { readonly children: ReactNode }) {
+/** What an event hands the shared tooltip: its full name, its title, and whether it's cut short. */
+interface EventTooltipPayload {
+  readonly clipped: () => boolean;
+  readonly label: string;
+  readonly title: string;
+}
+
+const EventTooltipContext = createContext<TooltipHandle<EventTooltipPayload> | undefined>(
+  undefined,
+);
+
+/**
+ * One tooltip for every event inside it, so a grid of hundreds of events mounts one tooltip
+ * rather than one each. Wrap a view's grid in it; it renders the tooltip after the grid, not
+ * inside it. An event outside one brings its own.
+ */
+export function TimeGridEventTooltip({ children }: { readonly children?: ReactNode }) {
+  const [handle] = useState(() => createTooltipHandle<EventTooltipPayload>());
   return (
-    <TooltipPrimitive.Portal>
-      <TooltipPrimitive.Positioner
-        align="center"
-        alignOffset={0}
-        side="top"
-        sideOffset={4}
-        {...stylex.props(styles.positioner)}
+    <EventTooltipContext value={handle}>
+      {children}
+      <Tooltip
+        // A clipped title shows at once, as the annotations' tooltip does.
+        delay={0}
+        handle={handle}
+        onOpenChange={(open, details) => {
+          // A title that fits needs no tooltip; one passed on by an event it fits closes.
+          if (!open || details.payload?.clipped() === true) return;
+          details.cancel();
+          handle.close();
+        }}
       >
-        <TooltipPrimitive.Popup data-slot="tooltip-content" {...stylex.props(styles.tooltip)}>
-          {children}
-          <TooltipPrimitive.Arrow {...stylex.props(styles.tooltipArrow)} />
-        </TooltipPrimitive.Popup>
-      </TooltipPrimitive.Positioner>
-    </TooltipPrimitive.Portal>
+        {({ payload }) => (
+          // The tooltip names the event, so it carries the event's full name.
+          <TooltipContent aria-label={payload?.label}>{payload?.title}</TooltipContent>
+        )}
+      </Tooltip>
+    </EventTooltipContext>
   );
 }
 
@@ -341,7 +283,17 @@ function TooltipContent({ children }: { readonly children: ReactNode }) {
  * are squared off instead. A short block keeps one handle, and handles take at most a third of the
  * height, so the rest still grabs to move.
  */
-export function TimeGridEvent<TEvent>({
+export function TimeGridEvent<TEvent>(props: TimeGridEventProps<TEvent>) {
+  return use(EventTooltipContext) === undefined ? (
+    <TimeGridEventTooltip>
+      <EventBlock {...props} />
+    </TimeGridEventTooltip>
+  ) : (
+    <EventBlock {...props} />
+  );
+}
+
+function EventBlock<TEvent>({
   color,
   formats,
   icon,
@@ -353,6 +305,7 @@ export function TimeGridEvent<TEvent>({
   resourceId,
   timeZone,
 }: TimeGridEventProps<TEvent>) {
+  const tooltip = use(EventTooltipContext);
   const { fragment, height, left, top, width } = layout;
   const { event, endsAfterDay, startsBeforeDay } = fragment;
   const [start, end] = wallTimes(fragment, timeZone);
@@ -360,79 +313,75 @@ export function TimeGridEvent<TEvent>({
   const resizable = !isReadOnly && !event.isReadOnly;
   const chip = useEventChip(event, { date: fragment.date, labelEvent, offscreen, resourceId });
   const titleRef = useRef<HTMLSpanElement>(null);
-  const [titleShown, setTitleShown] = useState(false);
 
-  // A title that doesn't fit shows in full in a tooltip while the event is hovered or focused.
+  const grabbed = chip["data-grabbed"] !== undefined;
+  // Not while a keyboard gesture moves the event.
+  useEffect(() => {
+    if (grabbed) tooltip?.close();
+  }, [grabbed, tooltip]);
+
+  // A title that doesn't fit shows in full in the tooltip while the event is hovered or focused.
   return (
-    <TooltipPrimitive.Root
-      // Not while a keyboard gesture moves the event.
-      disabled={offscreen || chip["data-grabbed"] !== undefined}
-      onOpenChange={(open, details) => {
-        // Escape belongs to the calendar, which cancels a gesture or leaves the event with it; the
-        // tooltip only closes.
-        if (details.reason === "escape-key") {
-          details.cancel();
-          details.allowPropagation();
-        }
-        setTitleShown(open && isClipped(titleRef.current));
+    <TooltipTrigger
+      handle={tooltip}
+      payload={{
+        clipped: () => !offscreen && !grabbed && isClipped(titleRef.current),
+        label: chip["aria-label"],
+        title: event.title,
       }}
-      open={titleShown}
+      render={
+        <EventChip
+          // Given here, the trigger's own slot doesn't replace the event's.
+          data-slot="calendar-event"
+          color={color}
+          {...chip}
+          style={{ height: percent(height), top: percent(top), ...laneBox(left, width, inset) }}
+          xstyle={[
+            styles.event,
+            calendarMarker,
+            compact ? styles.eventCompact : styles.eventFull,
+            startsBeforeDay && styles.eventStartsBefore,
+            endsAfterDay && styles.eventEndsAfter,
+          ]}
+        />
+      }
     >
-      {/* Base UI's own trigger, so the event keeps `data-slot="calendar-event"`. */}
-      <TooltipPrimitive.Trigger
-        render={
-          <EventChip
-            color={color}
-            {...chip}
-            style={{ height: percent(height), top: percent(top), ...laneBox(left, width, inset) }}
-            xstyle={[
-              styles.event,
-              calendarMarker,
-              compact ? styles.eventCompact : styles.eventFull,
-              startsBeforeDay && styles.eventStartsBefore,
-              endsAfterDay && styles.eventEndsAfter,
-            ]}
-          />
-        }
-      >
-        {compact ? (
-          <span ref={titleRef} {...stylex.props(styles.truncate)}>
-            <span data-slot="calendar-event-title">
-              {/* Smaller, to fit the compact line without making it taller. */}
-              <EventIcon xstyle={styles.iconCompact}>{icon}</EventIcon>
-              {event.title}
-            </span>
-            <span {...stylex.props(styles.time)}>
-              , <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
-            </span>
+      {compact ? (
+        <span ref={titleRef} {...stylex.props(styles.truncate)}>
+          <span data-slot="calendar-event-title">
+            {/* Smaller, to fit the compact line without making it taller. */}
+            <EventIcon xstyle={styles.iconCompact}>{icon}</EventIcon>
+            {event.title}
           </span>
-        ) : (
-          <>
-            <span
-              ref={titleRef}
-              data-slot="calendar-event-title"
-              {...stylex.props(styles.titleClamped)}
-            >
-              <EventIcon>{icon}</EventIcon>
-              {event.title}
-            </span>
-            <span data-event-time {...stylex.props(styles.truncate, styles.time, styles.timeRange)}>
-              {eventTimeRange(start, end, formats)}
-            </span>
-          </>
-        )}
-        {resizable && !startsBeforeDay && (!compact || endsAfterDay) && (
+          <span {...stylex.props(styles.time)}>
+            , <span data-event-time>{formats.time.format(start.toPlainTime())}</span>
+          </span>
+        </span>
+      ) : (
+        <>
           <span
-            aria-hidden
-            data-resize="start"
-            {...stylex.props(styles.handle, styles.handleStart)}
-          />
-        )}
-        {resizable && !endsAfterDay && (
-          <span aria-hidden data-resize="end" {...stylex.props(styles.handle, styles.handleEnd)} />
-        )}
-      </TooltipPrimitive.Trigger>
-      <TooltipContent>{event.title}</TooltipContent>
-    </TooltipPrimitive.Root>
+            ref={titleRef}
+            data-slot="calendar-event-title"
+            {...stylex.props(styles.titleClamped)}
+          >
+            <EventIcon>{icon}</EventIcon>
+            {event.title}
+          </span>
+          <span data-event-time {...stylex.props(styles.truncate, styles.time, styles.timeRange)}>
+            {eventTimeRange(start, end, formats)}
+          </span>
+        </>
+      )}
+      {resizable && !startsBeforeDay && (!compact || endsAfterDay) && (
+        <span
+          aria-hidden
+          data-resize="start"
+          {...stylex.props(styles.handle, styles.handleStart)}
+        />
+      )}
+      {resizable && !endsAfterDay && (
+        <span aria-hidden data-resize="end" {...stylex.props(styles.handle, styles.handleEnd)} />
+      )}
+    </TooltipTrigger>
   );
 }

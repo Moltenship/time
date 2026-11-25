@@ -31,10 +31,8 @@ const items = readdirSync(registry).filter(
     existsSync(join(registry, name, "registry-item.json")) &&
     !name.startsWith(flavour) &&
     name !== "calendar-theme" &&
-    // StyleX tokens come with the flavour's own token values (ADR 0279, K3).
-    name !== "base-tokens" &&
-    // The kit's StyleX twin, `stylex-calendar-ui`, comes with the flavour's move to it (ADR 0279, K3).
-    name !== "calendar-ui",
+    // shadcn's colours for apps without shadcn's theme. The StyleX theme holds its own.
+    name !== "base-tokens",
 );
 const sourceFiles = (item: string) =>
   filesOf(join(registry, item)).filter((file) => file !== "registry-item.json");
@@ -66,6 +64,14 @@ const dataSlots = (source: string) =>
     ...new Set([...source.matchAll(/data-slot"?[=:]\s*\{?"([^"]+)"/gu)].map(([, slot]) => slot!)),
   ].toSorted();
 
+/**
+ * A shared file the flavour may use: its own styles, or what the kit keeps between renders. Not
+ * the Tailwind kit's class names.
+ */
+const sharedForFlavour = (name: string) =>
+  name.startsWith(`@registry/shared/${flavour}`) ||
+  (name.startsWith("@registry/shared/") && !name.endsWith(".styles"));
+
 const withoutFlavour = (source: string) => source.replaceAll("@registry/stylex-", "@registry/");
 
 describe("the StyleX flavour keeps in step with the Tailwind source", () => {
@@ -82,16 +88,13 @@ describe("the StyleX flavour keeps in step with the Tailwind source", () => {
         const expected = exportsOf(read(item, file)).filter(
           (name) =>
             // The Tailwind preview's class has no StyleX equal; its styles are on the element.
-            !(file === "preview-check.ts" && name === "draftCheckClassName") &&
-            // The flavour's event tooltips move onto one shared tooltip with its kit (ADR 0279, K3).
-            !(file === "time-grid-event.tsx" && name === "TimeGridEventTooltip"),
+            !(file === "preview-check.ts" && name === "draftCheckClassName"),
         );
         expect(exportsOf(read(`${flavour}${item}`, file)), `${item}/${file}`).toEqual(expected);
       }
     }
   });
 
-  // The flavour also has the slots of the `ui/` parts it builds with Base UI itself.
   test("each item renders the data-slot attributes of its source", () => {
     for (const item of items) {
       const slots = (folder: string) =>
@@ -125,10 +128,10 @@ describe("the StyleX flavour keeps in step with the Tailwind source", () => {
           (name) =>
             name === "cn" ||
             name === "class-variance-authority" ||
-            // Shared files hold words and arithmetic both flavours use; their looks are Tailwind's.
+            // Shared files hold words and arithmetic both flavours use, and the StyleX kit's styles.
             (name.startsWith("@registry/") &&
               !name.startsWith(`@registry/${flavour}`) &&
-              !(name.startsWith("@registry/shared/") && !name.endsWith(".styles"))),
+              !sharedForFlavour(name)),
         );
         expect(wrong, `${item}/${file}`).toEqual([]);
         // A Tailwind utility left in a class name, which nothing here would style.
@@ -173,6 +176,27 @@ describe("the StyleX flavour keeps in step with the Tailwind source", () => {
           source.files?.map(({ path }) => path),
           `${item}: ${file.path}`,
         ).toContain(file.path);
+      }
+    }
+  });
+
+  test("the flavour builds its controls on its kit, without Astryx or Base UI", () => {
+    const flavourItems = readdirSync(registry).filter(
+      (name) => name.startsWith(flavour) && existsSync(join(registry, name, "registry-item.json")),
+    );
+    for (const item of flavourItems) {
+      const { dependencies = [] } = manifestOf(item);
+      const outside = dependencies.filter((name) => /^@(?:astryxdesign|base-ui)\//u.test(name));
+      expect(outside, item).toEqual([]);
+      for (const file of sourceFiles(item)) {
+        const imports = [...read(item, file).matchAll(/from "([^"]+)"/gu)].map(([, name]) => name!);
+        const wrong = imports.filter(
+          (name) =>
+            /^@(?:astryxdesign|base-ui)\//u.test(name) ||
+            // Only the kit reaches ui-sdk; the views take their controls from it.
+            (name.startsWith("@ui-sdk/") && item !== `${flavour}calendar-ui`),
+        );
+        expect(wrong, `${item}/${file}`).toEqual([]);
       }
     }
   });

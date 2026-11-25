@@ -1,9 +1,8 @@
 "use client";
 
-import { useRender } from "@base-ui/react/use-render";
 import type { CalendarResource, ClosedTime, ResourceId } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
-import type { CSSProperties } from "react";
+import type { CSSProperties, HTMLAttributes, ReactElement } from "react";
 
 import { unavailableBand } from "@registry/shared/calendar/unavailable-band";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
@@ -26,11 +25,14 @@ export interface UnavailableTimeState {
 }
 
 /**
- * Replaces the shading of closed time, as `render` does on Base UI parts: an element to draw in
- * its place, or a function of its props and state, such as a tint for rooms. Keep the props on
- * your element; they place it and keep it `aria-hidden`.
+ * Replaces the shading of closed time: a function of its props and state that returns the element
+ * to draw in its place, such as a tint for rooms. Spread the props on your element; they place it
+ * and keep it `aria-hidden`.
  */
-export type UnavailableTimeRender = useRender.RenderProp<UnavailableTimeState>;
+export type UnavailableTimeRender = (
+  props: HTMLAttributes<HTMLDivElement> & Record<`data-${string}`, string | undefined>,
+  state: UnavailableTimeState,
+) => ReactElement;
 
 export interface UnavailableTimeProps extends UnavailableTimeState {
   readonly className?: string;
@@ -43,9 +45,6 @@ export interface UnavailableTimeProps extends UnavailableTimeState {
   /** Styles the view adds, after the band's own. */
   readonly xstyle?: XStyle;
 }
-
-/** The state goes to `render`, not into attributes; the band's are set below. */
-const noStateAttributes = { band: () => null, date: () => null, resource: () => null };
 
 /**
  * One stretch of closed time, behind events. Screen readers hear it in the names of the cells it
@@ -66,18 +65,13 @@ export function UnavailableTime({
   xstyle,
 }: UnavailableTimeProps) {
   const { attributes, variables } = unavailableBand(band, slot, start, end);
-  return useRender({
-    defaultTagName: "div",
-    props: {
-      ...attributes,
-      ...xprops(
-        { className, style: { ...variables, ...style } as CSSProperties },
-        styles.band,
-        xstyle,
-      ),
-    },
-    render,
-    state: { band, date, resource },
-    stateAttributesMapping: noStateAttributes,
-  });
+  const props = {
+    ...attributes,
+    ...xprops(
+      { className, style: { ...variables, ...style } as CSSProperties },
+      styles.band,
+      xstyle,
+    ),
+  };
+  return render === undefined ? <div {...props} /> : render(props, { band, date, resource });
 }

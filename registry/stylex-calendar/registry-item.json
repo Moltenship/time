@@ -4,14 +4,8 @@
   "type": "registry:component",
   "title": "Calendar shell (StyleX)",
   "description": "Toolbar, view switcher, event chip, accessible event names, English screen-reader announcements of gestures, undo and redo, sidebar mini month, the endless scroll axis, and the replaceable shading of closed time and resource status badges shared by every calendar view.",
-  "dependencies": [
-    "@astryxdesign/core",
-    "@base-ui/react",
-    "@moltenship/calendar",
-    "@stylexjs/stylex",
-    "lucide-react"
-  ],
-  "registryDependencies": ["@moltenship/stylex-calendar-theme"],
+  "dependencies": ["@moltenship/calendar", "@stylexjs/stylex", "lucide-react"],
+  "registryDependencies": ["@moltenship/stylex-calendar-theme", "@moltenship/stylex-calendar-ui"],
   "files": [
     {
       "path": "registry/stylex-calendar/calendar-toolbar.tsx",

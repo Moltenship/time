@@ -1,6 +1,5 @@
 "use client";
 
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import {
   defineCalendarView,
   getYearRange,
@@ -25,6 +24,7 @@ import { useEventLabel, type EventDescriber } from "@registry/stylex-calendar/ev
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
+import { createPopoverHandle } from "@registry/stylex-calendar-ui/popover";
 
 import { YearDayPopover } from "./year-day-popover";
 import {
@@ -185,9 +185,7 @@ function YearView<TEvent>({
   const formats = useYearFormats(environment.locale);
   const labelEvent = useEventLabel(environment, options.describeEvent);
   const keyboard = useViewKeyboard();
-  const [handle] = useState<YearDayPopoverHandle>(() =>
-    PopoverPrimitive.createHandle<Temporal.PlainDate>(),
-  );
+  const [handle] = useState<YearDayPopoverHandle>(createPopoverHandle<Temporal.PlainDate>);
   const idPrefix = useId();
   const triggerId = (date: Temporal.PlainDate) => `${idPrefix}${date.toString()}`;
   const days = useMemo(() => {

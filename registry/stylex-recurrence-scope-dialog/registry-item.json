@@ -4,13 +4,8 @@
   "type": "registry:component",
   "title": "Recurrence scope dialog (StyleX)",
   "description": "Asks whether a change to a recurring event applies to this event, this and following events, or all events, while the change waits on screen. A promise-based hook for onEventChange resolves the scope, or null on cancel so the change rolls back.",
-  "dependencies": [
-    "@astryxdesign/core",
-    "@base-ui/react",
-    "@moltenship/calendar",
-    "@stylexjs/stylex"
-  ],
-  "registryDependencies": ["@moltenship/stylex-calendar-theme"],
+  "dependencies": ["@moltenship/calendar", "@stylexjs/stylex"],
+  "registryDependencies": ["@moltenship/stylex-calendar-theme", "@moltenship/stylex-calendar-ui"],
   "files": [
     {
       "path": "registry/stylex-recurrence-scope-dialog/recurrence-scope-dialog.tsx",

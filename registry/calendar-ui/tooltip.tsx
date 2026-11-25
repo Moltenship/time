@@ -1,12 +1,10 @@
 "use client";
 
 import {
-  createTooltipController,
   Tooltip as TooltipRoot,
   TooltipArrow,
   TooltipContent as TooltipContentPart,
   TooltipTrigger as TooltipTriggerPart,
-  type TooltipController,
 } from "@ui-sdk/react/tooltip";
 import { cn } from "cn";
 import {
@@ -20,45 +18,28 @@ import {
   type ReactNode,
 } from "react";
 
+import { popupSide, type PopupSide } from "@registry/shared/calendar-ui/popover-handle";
+import {
+  createTooltipHandle,
+  cursorAnchor,
+  reportTooltipOpen,
+  reportTooltipPayload,
+  tooltipStateOf,
+  trackTooltipPointer,
+  type TooltipHandle,
+  type TooltipHandleState,
+  type TooltipOpenChangeDetails,
+  type TooltipOpenChangeHandler,
+  type TooltipTracking,
+} from "@registry/shared/calendar-ui/tooltip-handle";
 import {
   tooltipArrowClassName,
   tooltipContentClassName,
   tooltipDefaults,
 } from "@registry/shared/calendar-ui/tooltip.styles";
 
-/**
- * One tooltip that many triggers show, each with its own `payload`, like Base UI's
- * `Tooltip.createHandle()`: hundreds of triggers share one root.
- */
-export interface TooltipHandle<Payload> {
-  close(): void;
-  /** The `payload` of the trigger that showed it last. */
-  getPayload(): Payload | undefined;
-}
-
-interface HandleState {
-  readonly controller: TooltipController<unknown>;
-  /** The trigger under the pointer and the pointer's height, for `trackCursorAxis`. */
-  readonly pointer: { element: Element | null; y: number };
-}
-
-const handles = new WeakMap<TooltipHandle<unknown>, HandleState>();
-
-function createTooltipHandle<Payload>(): TooltipHandle<Payload> {
-  const controller = createTooltipController<Payload>();
-  const handle: TooltipHandle<Payload> = {
-    close: () => void controller.close(),
-    getPayload: () => controller.getPayload(),
-  };
-  handles.set(handle, {
-    controller: controller as TooltipController<unknown>,
-    pointer: { element: null, y: 0 },
-  });
-  return handle;
-}
-
 interface TooltipContextValue {
-  readonly state: HandleState | undefined;
+  readonly state: TooltipHandleState | undefined;
   readonly trackCursorAxis: "y" | undefined;
 }
 
@@ -66,11 +47,6 @@ const TooltipContext = createContext<TooltipContextValue>({
   state: undefined,
   trackCursorAxis: undefined,
 });
-
-export interface TooltipOpenChangeDetails<Payload> {
-  readonly cancel: () => void;
-  readonly payload: Payload | undefined;
-}
 
 export interface TooltipProps<Payload> {
   /** The trigger and content, or a function of the payload the trigger under the pointer passed. */
@@ -86,7 +62,7 @@ export interface TooltipProps<Payload> {
    * `details.payload` is the payload of the trigger it opens from; `details.cancel()` keeps the
    * tooltip as it is.
    */
-  readonly onOpenChange?: (open: boolean, details: TooltipOpenChangeDetails<Payload>) => void;
+  readonly onOpenChange?: TooltipOpenChangeHandler<Payload>;
   /** Follows the pointer up and down its trigger, rather than centring on it. */
   readonly trackCursorAxis?: "y";
   /**
@@ -109,36 +85,24 @@ function Tooltip<Payload = unknown>({
   type = "label",
   ...props
 }: TooltipProps<Payload>) {
-  const state = handle === undefined ? undefined : handles.get(handle);
+  const state = tooltipStateOf(handle);
   const [payload, setPayload] = useState(
     () => state?.controller.getPayload() as Payload | undefined,
   );
-  // ui-sdk reports a trigger's payload before it opens, and a takeover by its payload alone.
-  const latest = useRef({ open: false, payload });
-  const change = (open: boolean, next: Payload | undefined, cancel: () => void) => {
-    let cancelled = false;
-    onOpenChange?.(open, {
-      cancel: () => {
-        cancelled = true;
-        cancel();
-      },
-      payload: next,
-    });
-    return !cancelled;
-  };
+  const tracking = useRef<TooltipTracking<Payload>>({ open: false, payload });
   const context = useMemo(() => ({ state, trackCursorAxis }), [state, trackCursorAxis]);
   return (
     <TooltipContext value={context}>
       <TooltipRoot
         controller={state?.controller}
         delay={delay}
-        onOpenChange={(open, details) => {
-          if (change(open, latest.current.payload, details.cancel)) latest.current.open = open;
-        }}
+        onOpenChange={(open, details) =>
+          reportTooltipOpen(tracking.current, onOpenChange, open, details)
+        }
         onPayloadChange={(next, details) => {
-          if (latest.current.open && !change(true, next as Payload, details.cancel)) return;
-          latest.current.payload = next as Payload;
-          setPayload(next as Payload);
+          if (reportTooltipPayload(tracking.current, onOpenChange, next as Payload, details)) {
+            setPayload(next as Payload);
+          }
         }}
         type={type}
         {...props}
@@ -169,7 +133,7 @@ const ownSlot = (render: ReactElement | undefined) =>
 /** A `render` element keeps its own `data-slot`. */
 function TooltipTrigger<Payload = unknown>({ handle, ...props }: TooltipTriggerProps<Payload>) {
   const context = use(TooltipContext);
-  const state = handle === undefined ? context.state : handles.get(handle);
+  const state = handle === undefined ? context.state : tooltipStateOf(handle);
   // A popover trigger that renders this one hands its own handlers down with the rest.
   const { onPointerEnter, onPointerMove, ...rest } = props as TooltipTriggerProps<Payload> & {
     readonly "data-slot"?: string;
@@ -178,9 +142,7 @@ function TooltipTrigger<Payload = unknown>({ handle, ...props }: TooltipTriggerP
   };
   const track = (handler: PointerHandler | undefined) => (event: PointerEvent<HTMLElement>) => {
     handler?.(event);
-    if (state === undefined) return;
-    state.pointer.element = event.currentTarget;
-    state.pointer.y = event.clientY;
+    trackTooltipPointer(state, event.currentTarget, event.clientY);
   };
   return (
     <TooltipTriggerPart
@@ -200,7 +162,7 @@ export interface TooltipContentProps {
   readonly children?: ReactNode;
   readonly className?: string;
   /** `inline-start` and `inline-end` follow the writing direction. */
-  readonly side?: "bottom" | "inline-end" | "inline-start" | "left" | "right" | "top";
+  readonly side?: PopupSide;
   readonly sideOffset?: number;
 }
 
@@ -213,21 +175,15 @@ function TooltipContent({
   ...props
 }: TooltipContentProps) {
   const { state, trackCursorAxis } = use(TooltipContext);
-  const anchor = useMemo(() => {
-    if (trackCursorAxis !== "y" || state === undefined) return undefined;
-    const { pointer } = state;
-    return {
-      getBoundingClientRect: () => {
-        const box = pointer.element?.getBoundingClientRect();
-        return { height: 0, width: box?.width ?? 0, x: box?.x ?? 0, y: pointer.y };
-      },
-    };
-  }, [state, trackCursorAxis]);
+  const anchor = useMemo(
+    () => (trackCursorAxis !== "y" || state === undefined ? undefined : cursorAnchor(state)),
+    [state, trackCursorAxis],
+  );
   return (
     <TooltipContentPart
       anchor={anchor}
       className={cn(tooltipContentClassName, className)}
-      side={side === "inline-end" ? "end" : side === "inline-start" ? "start" : side}
+      side={popupSide(side)}
       sideOffset={sideOffset}
       {...props}
     >
@@ -237,4 +193,5 @@ function TooltipContent({
   );
 }
 
+export type { TooltipHandle, TooltipOpenChangeDetails };
 export { createTooltipHandle, Tooltip, TooltipContent, TooltipTrigger };

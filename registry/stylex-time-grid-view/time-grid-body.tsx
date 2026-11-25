@@ -1,6 +1,5 @@
 "use client";
 
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import {
   timeGridPosition,
   useNow,
@@ -10,6 +9,7 @@ import {
 import * as stylex from "@stylexjs/stylex";
 import { useLayoutEffect, useMemo, useRef, type ReactNode, type RefObject } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import type { EventLabeler } from "@registry/stylex-calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
@@ -204,7 +204,7 @@ export function TimeGridBody<TEvent>({
     <div ref={scrollRef} data-slot="time-grid-body" {...stylex.props(styles.body)}>
       <div ref={rowRef} role="row" {...stylex.props(styles.row)}>
         <div role="rowheader" {...stylex.props(styles.rowHeader)}>
-          <VisuallyHidden>Timed events</VisuallyHidden>
+          <span {...stylex.props(visuallyHiddenStyles.hidden)}>Timed events</span>
           <TimeGridHours locale={locale} zones={zones} />
         </div>
         <div

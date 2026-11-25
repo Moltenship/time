@@ -87,7 +87,7 @@ export const presets: readonly Preset[] = [
     name: "Plum, solid events",
   },
   {
-    // `@astryxdesign/theme-neutral`, through the mapping in `calendar-tokens.stylex.ts`.
+    // `@astryxdesign/theme-neutral`'s colours, as an app maps them onto the base colours (StyleX docs).
     dark: {
       "--accent": "oklch(0.222 0 0)",
       "--accent-foreground": "oklch(1 0 0)",

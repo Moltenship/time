@@ -1,25 +1,25 @@
 ---
 title: StyleX
-description: The calendar's views styled with StyleX and Astryx, for apps without Tailwind.
+description: The calendar's views styled with StyleX, for apps without Tailwind.
 ---
 
-The registry's baseline is Tailwind and shadcn/ui. If your app styles with
-[StyleX](https://stylexjs.com) and builds on [Astryx](https://astryx.atmeta.com), Meta's design
-system, use the `stylex-*` items instead. They hold the same components with the same behaviour,
-every view included: same file names, exports, `data-slot` attributes, roles and labels. Styles are
-`stylex.create` rather than Tailwind classes, and buttons, tooltips and the like come from Astryx
-rather than shadcn/ui. As with the baseline, you own the source you add.
+The registry's baseline is Tailwind. If your app styles with [StyleX](https://stylexjs.com), use
+the `stylex-*` items instead. They hold the same components with the same behaviour, every view
+included: same file names, exports, `data-slot` attributes, roles and labels. Styles are
+`stylex.create` rather than Tailwind classes. Buttons, tooltips, the view select, popovers, dialogs
+and toasts come from `stylex-calendar-ui`, the StyleX twin of the calendar's kit: the same parts on
+[ui-sdk](https://ui-sdk.dev), with the same look. As with the baseline, you own the source you add.
 
 See it running on the demo's [StyleX page](https://moltenship-time-demo.vercel.app/stylex/).
 
 ## Install
 
 ```bash
-npm install @stylexjs/stylex @astryxdesign/core @astryxdesign/theme-neutral
+npm install @stylexjs/stylex
 npm install --save-dev @stylexjs/unplugin
 ```
 
-`@moltenship/calendar` comes with the items, as [UI source](/docs/installation#ui-source-optional)
+`@moltenship/calendar`, `@ui-sdk/react` and `lucide-react` come with the items, as [UI source](/docs/installation#ui-source-optional)
 describes, and [Temporal](/docs/installation#temporal) needs the same setup as in any app.
 
 ## Configure Vite
@@ -55,46 +55,39 @@ export default defineConfig(({ command }) => ({
 - `aliases` and `unstable_moduleResolution` let StyleX find the tokens file. The items import it as
   `@/components/calendar-stylex/calendar-tokens.stylex`, and StyleX reads it at compile time. Vite's
   own alias doesn't reach the StyleX compiler, so it needs both.
-- `lightningcssOptions.targets` and `build.cssTarget` name browsers that have `light-dark()`. Astryx
-  and the calendar's tokens rely on it for dark mode. With older targets it's lowered to a polyfill
+- `lightningcssOptions.targets` and `build.cssTarget` name browsers that have `light-dark()`. The
+  calendar's tokens rely on it for dark mode. With older targets it's lowered to a polyfill
   that needs `color-scheme` in the same stylesheet, and dark colors break without an error.
 
 ## Add the global CSS
 
-Declare the layers first, then import the stylesheets. `calendar-global.css` holds the few rules
-StyleX can't write, such as those for drag previews, and arrives with the items.
+Declare ui-sdk's layer first, then import the calendar's stylesheet. `calendar-global.css` holds the
+few rules StyleX can't write, such as those for drag previews, and arrives with the items. The
+tokens follow the page's `color-scheme` through `light-dark()`, so set it too, or let your app's
+mode toggle set it on the root:
 
 ```css title="styles.css"
-@layer reset, astryx-base, astryx-theme;
-@import "@astryxdesign/core/reset.css";
-@import "@astryxdesign/core/astryx.css";
-@import "@astryxdesign/theme-neutral/theme.css";
+@layer ui-sdk;
 @import "@/components/calendar-stylex/calendar-global.css";
+
+:root {
+  color-scheme: light dark;
+}
 ```
 
-Wrap your app in Astryx's `Theme`. It sets the root's `color-scheme`, which `light-dark()` follows:
-
-```tsx title="main.tsx"
-import { Theme } from "@astryxdesign/core/theme";
-import { neutralTheme } from "@astryxdesign/theme-neutral/built";
-
-import "./styles.css";
-
-<Theme theme={neutralTheme}>
-  <App />
-</Theme>;
-```
+The calendar needs no other theme: its tokens hold their own colors, those of the Tailwind theme.
+To use your design system's, [map them](#use-your-design-systems-colors).
 
 ## Add the items
 
 `shadcn add` needs a `components.json` to know your aliases, even in an app without Tailwind, and
 your `tsconfig.json` needs the `@/*` path. The schema requires the `tailwind` block, but these items
-don't read it, and adding them leaves your CSS as it is:
+don't read it or `style`, and adding them leaves your CSS as it is:
 
 ```json title="components.json"
 {
   "$schema": "https://ui.shadcn.com/schema.json",
-  "style": "base-nova",
+  "style": "new-york",
   "rsc": false,
   "tsx": true,
   "tailwind": { "css": "src/styles.css", "baseColor": "neutral", "cssVariables": true },
@@ -108,7 +101,7 @@ don't read it, and adding them leaves your CSS as it is:
 }
 ```
 
-`stylex-calendar-full` installs every view, the tokens and the parts they share:
+`stylex-calendar-full` installs every view, the tokens, the controls and the parts they share:
 
 ```bash
 npx shadcn@latest add https://time.molten.sh/r/stylex-calendar-full.json
@@ -121,8 +114,8 @@ Or add one view, which brings what it builds on. Every item in the
 npx shadcn@latest add https://time.molten.sh/r/stylex-month-view.json
 ```
 
-The files land in `calendar-stylex/` under your `components` alias, so they never overwrite the
-Tailwind ones.
+The files land in `calendar-stylex/` under your `components` alias, and the controls in
+`calendar-stylex/ui/`, so they never overwrite the Tailwind ones.
 
 ## Use the views
 
@@ -195,21 +188,45 @@ const calendarTheme = stylex.createTheme(calendarVars, {
 </div>;
 ```
 
-The base colors, such as `--background` and `--primary`, read the tokens of the root Astryx theme, so
-a theme of yours flows in with no change here. They fall back to the values of `calendar-theme.css`
-without one.
-
 Tokens are resolved where they're declared, on `:root`. So a wrapper that overrides `--primary`
 doesn't change `--calendar-event-border`, which reads `var(--primary)`: restate it in the same
 theme. The [Theme builder](/docs/theme-builder#use-the-stylex-theme) does this for you, and lets you
 try a theme and copy it.
 
-Popovers and tooltips open in a portal under `<body>`, outside a wrapper. To theme them too, put the
-theme's class on `<body>`, or pass your wrapper to the portal's `container` in the source you own.
+Popovers, tooltips, dialogs and toasts render inside the calendar, in the browser's top layer, so a
+theme on a wrapper reaches them too.
 
 `--calendar-surface` is no token. It's unset, and the views read it through a constant, for a
 container with its own background to set in an inline `style`, as on
 [Theming](/docs/theming#changing-tokens).
+
+## Use your design system's colors
+
+The base colors, such as `--background`, `--primary` and `--border`, hold the values of the
+Tailwind theme. To have the calendar follow your design system, point them at its variables. With
+[Astryx](https://astryx.atmeta.com), whose root `Theme` puts its variables on `<html>`, that's:
+
+```tsx
+const astryxCalendarTheme = stylex.createTheme(calendarVars, {
+  "--radius": "var(--radius-element)",
+  "--background": "var(--color-background-surface)",
+  "--foreground": "var(--color-text-primary)",
+  "--popover": "var(--color-background-popover)",
+  "--primary": "var(--color-accent)",
+  "--muted-foreground": "var(--color-text-secondary)",
+  "--border": "var(--color-border)",
+  "--ring": "var(--focus-outline-color)",
+  // …and the rest of the base colors in the list on Theming, in the same way.
+});
+
+// On `<html>` too, so the tokens that read a base color, such as `--calendar-event-border`, follow.
+document.documentElement.classList.add(
+  ...(stylex.props(astryxCalendarTheme).className ?? "").split(" "),
+);
+```
+
+[Tokens](/docs/theming#tokens) lists the base colors. The demo's
+[StyleX page](https://moltenship-time-demo.vercel.app/stylex/) maps Astryx's this way.
 
 ## Override a component's styles
 
@@ -223,6 +240,10 @@ const styles = stylex.create({
 
 <CalendarToolbar calendar={Calendar} xstyle={styles.toolbar} />;
 ```
+
+The controls in `calendar-stylex/ui/` take `xstyle` too. To change a control everywhere, edit its
+styles in its `.styles.ts` file, or replace the control, as
+[Use your own controls](/docs/theming#use-your-own-controls) describes.
 
 ## Event colors
 
@@ -245,17 +266,16 @@ name to `event-colors.ts`, its tokens to `calendar-tokens.stylex.ts`, and an ent
 
 ## Next.js
 
-The demo and CI exercise this flavour under Vite, and not under Next.js. Astryx's
-[`example-nextjs-stylex`](https://github.com/meta/astryx/tree/main/apps/example-nextjs-stylex) shows
-the setup for Next.js: `@stylexjs/babel-plugin` in `babel.config.js` with the `@/*` alias, and
-`@stylexjs/postcss-plugin` with `useCSSLayers.before` naming Astryx's layers, with `@stylex;` at the
-end of the global CSS.
+The demo and CI exercise this flavour under Vite, and not under Next.js. With Next.js, StyleX
+compiles through `@stylexjs/babel-plugin` in `babel.config.js`, with the `@/*` alias, and
+`@stylexjs/postcss-plugin`, with `@stylex;` in the global CSS; see StyleX's
+[installation guide](https://stylexjs.com/docs/learn/installation/).
 
 ## What's different from the baseline
 
-- Base UI stays, unstyled, under the parts that need its focus handling or anchoring where Astryx has
-  no equal: the recurrence scope dialog, the undo toast, the year view's day popover, and some
-  tooltips and popovers in the views. An item lists `@base-ui/react` when it uses it.
+- The controls come from `stylex-calendar-ui`, in `calendar-stylex/ui/`, not `calendar-ui`. They
+  have the same parts, props and `data-slot` attributes, built on ui-sdk as well. Their look is
+  `stylex.create` in the `.styles.ts` file beside each.
 - StyleX's classes have the same specificity as a global `[data-slot]` rule, and come after your
   CSS. So a rule of yours that sets a property a view's styles also set, such as an
   [Availability](/docs/availability) recipe's background color, needs a stronger selector:

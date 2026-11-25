@@ -15,7 +15,9 @@ const registryCoreImportFixture =
 const registryTestsFixture =
   "tests/fixtures/dependency-boundaries/registry/tests/harness-import.ts";
 const registrySharedFrameworkFixture =
-  "tests/fixtures/dependency-boundaries/registry/shared/calendar-ui/framework-import.ts";
+  "tests/fixtures/dependency-boundaries/registry/shared/calendar/framework-import.ts";
+const registryKitSharedFixture =
+  "tests/fixtures/dependency-boundaries/registry/shared/calendar-ui/ui-sdk-import.ts";
 const registrySourceTestingFixture =
   "tests/fixtures/dependency-boundaries/registry/calendar/testing-import.ts";
 const testingInternalsFixture =
@@ -201,14 +203,23 @@ describe("workspace boundaries", { concurrent: false }, () => {
   test("a shared registry file imports no framework, no ui-sdk and no item's file", async () => {
     const result = await cruiseWithArchitectureRules([registrySharedFrameworkFixture]);
     const violations = result.summary.violations
-      .filter(({ rule }) => rule.name === "registry-shared-files-import-no-framework")
-      .map(({ to }) => to);
+      .filter(({ rule }) => rule.name.startsWith("registry-shared-files-"))
+      .map(({ rule, to }) => `${rule.name} ${to}`);
 
     expect(violations.toSorted()).toEqual([
-      "@ui-sdk/core/button",
-      "react",
-      "tests/fixtures/dependency-boundaries/registry/calendar/core-import.ts",
+      "registry-shared-files-import-no-framework react",
+      "registry-shared-files-import-no-framework tests/fixtures/dependency-boundaries/registry/calendar/core-import.ts",
+      "registry-shared-files-import-no-ui-sdk @ui-sdk/core/button",
     ]);
+  });
+
+  test("the kit's shared files may import ui-sdk's core, and no framework's ui-sdk", async () => {
+    const result = await cruiseWithArchitectureRules([registryKitSharedFixture]);
+    const violations = result.summary.violations
+      .filter(({ rule }) => rule.name.startsWith("registry-shared-files-"))
+      .map(({ rule, to }) => `${rule.name} ${to}`);
+
+    expect(violations).toEqual(["registry-shared-files-import-no-framework @ui-sdk/react/popover"]);
   });
 
   test("the test harness imports only the facade and recurrence", async () => {

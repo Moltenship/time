@@ -1,6 +1,5 @@
 "use client";
 
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import type {
   CalendarEnvironmentBase,
   ResourceColumn,
@@ -10,6 +9,7 @@ import * as stylex from "@stylexjs/stylex";
 import type { VirtualItem } from "@tanstack/react-virtual";
 import { useMemo, type ComponentType, type ReactNode, type RefCallback } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import {
   draftStatusAttributes,
   useResourceHeaderStatus,
@@ -160,7 +160,9 @@ function ResourceHeaderCell({
         >
           <ResourceHeader resource={resource.resource} title={title} />
         </ResourceHeaderContext>
-        {groups.length > 0 && <VisuallyHidden>, {groups.join(", ")}</VisuallyHidden>}
+        {groups.length > 0 && (
+          <span {...stylex.props(visuallyHiddenStyles.hidden)}>, {groups.join(", ")}</span>
+        )}
       </div>
       <div
         {...stylex.props(styles.filler)}

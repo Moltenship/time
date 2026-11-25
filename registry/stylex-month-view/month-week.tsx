@@ -1,6 +1,5 @@
 "use client";
 
-import { Popover as PopoverPrimitive } from "@base-ui/react/popover";
 import {
   useCalendarInteraction,
   useClosedDates,
@@ -46,6 +45,7 @@ import {
   startTime,
   type MonthFormats,
 } from "@registry/shared/month-view/month-labels";
+import { Popover, PopoverContent, PopoverTrigger } from "@registry/stylex-calendar-ui/popover";
 
 import { MonthEvent } from "./month-event";
 
@@ -57,20 +57,6 @@ export {
   weekHeight,
 } from "@registry/shared/month-view/month-layout";
 export type { MonthFormats } from "@registry/shared/month-view/month-labels";
-
-const popInBlockEnd = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0, 0.5rem, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const popInBlockStart = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0, -0.5rem, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const popInInlineEnd = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(0.5rem, 0, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const popInInlineStart = stylex.keyframes({
-  from: { opacity: 0, transform: "translate3d(-0.5rem, 0, 0) scale3d(0.95, 0.95, 0.95)" },
-});
-const popOut = stylex.keyframes({ to: { opacity: 0, transform: "scale3d(0.95, 0.95, 0.95)" } });
 
 const styles = stylex.create({
   cell: {
@@ -237,40 +223,9 @@ const styles = stylex.create({
     textTransform: "uppercase",
   },
   popup: {
-    animationDuration: { default: "100ms", "@media (prefers-reduced-motion: reduce)": "0s" },
-    animationName: {
-      default: null,
-      "[data-closed]": popOut,
-      "[data-open]": {
-        default: popInBlockStart,
-        '[data-side="inline-end"]': popInInlineStart,
-        '[data-side="inline-start"]': popInInlineEnd,
-        '[data-side="left"]': popInInlineEnd,
-        '[data-side="right"]': popInInlineStart,
-        '[data-side="top"]': popInBlockEnd,
-      },
-    },
-    backgroundColor: calendarVars["--popover"],
-    borderRadius: "var(--radius)",
-    boxShadow: `0 0 0 1px color-mix(in oklch, ${calendarVars["--foreground"]} 10%, transparent), 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)`,
-    color: calendarVars["--popover-foreground"],
-    display: "flex",
-    flexDirection: "column",
-    fontSize: "0.875rem",
-    lineHeight: "1.25rem",
-    maxHeight: "var(--available-height)",
-    outlineColor: { default: null, "@media (forced-colors: active)": "transparent" },
-    outlineOffset: { default: null, "@media (forced-colors: active)": 2 },
-    outlineStyle: { default: "none", "@media (forced-colors: active)": "solid" },
-    outlineWidth: { default: null, "@media (forced-colors: active)": 2 },
+    gap: 0,
     padding: "0.5rem",
-    transformOrigin: "var(--transform-origin)",
     width: "16rem",
-    zIndex: 50,
-  },
-  positioner: {
-    isolation: "isolate",
-    zIndex: 50,
   },
   row: {
     borderBottomColor: calendarVars["--calendar-grid"],
@@ -393,61 +348,54 @@ function MoreEvents<TEvent>({
 }) {
   const text = moreEventsText(count);
   return (
-    <PopoverPrimitive.Root>
-      <PopoverPrimitive.Trigger
-        data-slot="popover-trigger"
+    <Popover>
+      <PopoverTrigger
         aria-label={moreEventsLabel(formats, day.date, count)}
         // The view keeps one tab stop; arrow keys reach these events in the grid.
         tabIndex={-1}
-        {...stylex.props(styles.more)}
         style={laneBox(lane)}
+        xstyle={styles.more}
       >
         <span {...stylex.props(styles.moreLong)}>{text.long}</span>
         <span {...stylex.props(styles.moreShort)}>{text.short}</span>
-      </PopoverPrimitive.Trigger>
-      <PopoverPrimitive.Portal>
-        <PopoverPrimitive.Positioner sideOffset={4} {...stylex.props(styles.positioner)}>
-          <PopoverPrimitive.Popup
-            data-slot="popover-content"
-            aria-label={dayEventsLabel(formats, day.date)}
-            {...stylex.props(styles.popup)}
-          >
-            <div {...stylex.props(styles.popoverDay)}>
-              <span {...stylex.props(styles.popoverWeekday)}>
-                {formats.weekday.format(day.date)}
-              </span>
-              <DateButton
-                day={{ ...day, inMonth: true }}
-                formats={formats}
-                onOpenDay={onOpenDay}
-                xstyle={styles.popoverDate}
+      </PopoverTrigger>
+      <PopoverContent
+        align="center"
+        aria-label={dayEventsLabel(formats, day.date)}
+        xstyle={styles.popup}
+      >
+        <div {...stylex.props(styles.popoverDay)}>
+          <span {...stylex.props(styles.popoverWeekday)}>{formats.weekday.format(day.date)}</span>
+          <DateButton
+            day={{ ...day, inMonth: true }}
+            formats={formats}
+            onOpenDay={onOpenDay}
+            xstyle={styles.popoverDate}
+          />
+        </div>
+        <div {...stylex.props(styles.popoverEvents)}>
+          {segmentsOn(segments, column).map((segment) => {
+            const fragment = fragmentOn(segment, column);
+            return (
+              <MonthEvent
+                key={eventKey(segment)}
+                bar={isBarFragment(fragment)}
+                color={getEventColor?.(segment.event.event)}
+                icon={getEventIcon?.(segment.event.event)}
+                date={day.date}
+                endsAfter={fragment.endsAfterDay}
+                event={segment.event}
+                focusTarget={false}
+                labelEvent={labelEvent}
+                startsBefore={fragment.startsBeforeDay}
+                time={startTime(fragment, formats)}
+                xstyle={styles.listed}
               />
-            </div>
-            <div {...stylex.props(styles.popoverEvents)}>
-              {segmentsOn(segments, column).map((segment) => {
-                const fragment = fragmentOn(segment, column);
-                return (
-                  <MonthEvent
-                    key={eventKey(segment)}
-                    bar={isBarFragment(fragment)}
-                    color={getEventColor?.(segment.event.event)}
-                    icon={getEventIcon?.(segment.event.event)}
-                    date={day.date}
-                    endsAfter={fragment.endsAfterDay}
-                    event={segment.event}
-                    focusTarget={false}
-                    labelEvent={labelEvent}
-                    startsBefore={fragment.startsBeforeDay}
-                    time={startTime(fragment, formats)}
-                    xstyle={styles.listed}
-                  />
-                );
-              })}
-            </div>
-          </PopoverPrimitive.Popup>
-        </PopoverPrimitive.Positioner>
-      </PopoverPrimitive.Portal>
-    </PopoverPrimitive.Root>
+            );
+          })}
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 

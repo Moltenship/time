@@ -1,16 +1,18 @@
 "use client";
 
-import { Button } from "@astryxdesign/core/Button";
-import { Dialog } from "@base-ui/react/dialog";
 import * as stylex from "@stylexjs/stylex";
-import { useInsertionEffect, useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
 
-import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
-
-const fadeIn = stylex.keyframes({ from: { opacity: 0 } });
-const fadeOut = stylex.keyframes({ to: { opacity: 0 } });
-const popIn = stylex.keyframes({ from: { opacity: 0, transform: "scale3d(0.95, 0.95, 0.95)" } });
-const popOut = stylex.keyframes({ to: { opacity: 0, transform: "scale3d(0.95, 0.95, 0.95)" } });
+import { Button } from "@registry/stylex-calendar-ui/button";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@registry/stylex-calendar-ui/dialog";
 
 const styles = stylex.create({
   choice: {
@@ -19,70 +21,6 @@ const styles = stylex.create({
   choices: {
     display: "grid",
     gap: "0.5rem",
-  },
-  content: {
-    animationDuration: { default: "100ms", "@media (prefers-reduced-motion: reduce)": "0s" },
-    animationName: { default: null, "[data-open]": popIn, "[data-closed]": popOut },
-    backgroundColor: calendarVars["--popover"],
-    borderRadius: "calc(var(--radius) * 1.4)",
-    boxShadow: `0 0 0 1px color-mix(in oklch, ${calendarVars["--foreground"]} 10%, transparent)`,
-    color: calendarVars["--popover-foreground"],
-    display: "grid",
-    fontSize: "0.875rem",
-    gap: "1rem",
-    left: "50%",
-    lineHeight: "1.25rem",
-    maxWidth: { default: "calc(100% - 2rem)", "@media (min-width: 640px)": "24rem" },
-    outlineStyle: "none",
-    padding: "1rem",
-    position: "fixed",
-    top: "50%",
-    translate: "-50% -50%",
-    width: "100%",
-    zIndex: 50,
-  },
-  description: {
-    color: calendarVars["--muted-foreground"],
-    fontSize: "0.875rem",
-    lineHeight: "1.25rem",
-    marginBlock: 0,
-  },
-  footer: {
-    backgroundColor: `color-mix(in oklch, ${calendarVars["--muted"]} 50%, transparent)`,
-    borderBottomLeftRadius: "calc(var(--radius) * 1.4)",
-    borderBottomRightRadius: "calc(var(--radius) * 1.4)",
-    borderTopColor: calendarVars["--border"],
-    borderTopStyle: "solid",
-    borderTopWidth: 1,
-    display: "flex",
-    flexDirection: { default: "column-reverse", "@media (min-width: 640px)": "row" },
-    gap: "0.5rem",
-    justifyContent: { default: null, "@media (min-width: 640px)": "flex-end" },
-    marginBottom: "-1rem",
-    marginInline: "-1rem",
-    padding: "1rem",
-  },
-  header: {
-    display: "flex",
-    flexDirection: "column",
-    gap: "0.5rem",
-  },
-  overlay: {
-    animationDuration: { default: "100ms", "@media (prefers-reduced-motion: reduce)": "0s" },
-    animationName: { default: null, "[data-open]": fadeIn, "[data-closed]": fadeOut },
-    backdropFilter: { default: null, "@supports (backdrop-filter: blur(0))": "blur(4px)" },
-    backgroundColor: "rgb(0 0 0 / 0.1)",
-    inset: 0,
-    isolation: "isolate",
-    position: "fixed",
-    zIndex: 50,
-  },
-  title: {
-    fontFamily: "inherit",
-    fontSize: "1rem",
-    fontWeight: 500,
-    lineHeight: 1,
-    marginBlock: 0,
   },
 });
 
@@ -156,30 +94,6 @@ export interface RecurrenceScopeDialogProps {
 }
 
 /**
- * Calls `onClosed` once the dialog it is in has unmounted and focus is back. Base UI queues that
- * focus as the popup unmounts, and the popup's cleanups run before those of its children, so the
- * call this one queues comes after it. The browser a11y suite checks that order.
- */
-function ClosedSignal({ onClosed }: { readonly onClosed: (() => void) | undefined }) {
-  const latest = useRef(onClosed);
-  const mounted = useRef(false);
-  useInsertionEffect(() => {
-    latest.current = onClosed;
-  });
-  useLayoutEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      // StrictMode runs this cleanup and mounts again at once; only a real unmount stays down.
-      queueMicrotask(() => {
-        if (!mounted.current) latest.current?.();
-      });
-    };
-  }, []);
-  return null;
-}
-
-/**
  * Asks which events of a recurring series a change applies to: one button per scope, then
  * Cancel. Focus starts on the narrowest scope offered, stays in the dialog while it is open, and
  * goes back to where it was when the dialog closes. `useRecurrenceScopePrompt` wraps it in a
@@ -198,55 +112,44 @@ export function RecurrenceScopeDialog({
   const subject = eventTitle === undefined ? "This event" : `“${eventTitle}”`;
 
   return (
-    <Dialog.Root
+    <Dialog
       open={open}
       onOpenChange={(next) => {
         if (!next && open) onResolve(null);
       }}
+      // Focus is back where it was by the time the dialog has animated closed.
+      onOpenChangeComplete={(next) => {
+        if (!next) onClosed?.();
+      }}
     >
-      <Dialog.Portal>
-        <Dialog.Backdrop data-slot="dialog-overlay" {...stylex.props(styles.overlay)} />
-        <Dialog.Popup
-          data-slot="dialog-content"
-          initialFocus={firstChoice}
-          {...stylex.props(styles.content)}
-        >
-          <div data-slot="dialog-header" {...stylex.props(styles.header)}>
-            <Dialog.Title data-slot="dialog-title" {...stylex.props(styles.title)}>
-              {title}
-            </Dialog.Title>
-            <Dialog.Description
-              data-slot="dialog-description"
-              {...stylex.props(styles.description)}
+      <DialogContent initialFocus={firstChoice}>
+        <DialogHeader>
+          <DialogTitle>{title}</DialogTitle>
+          <DialogDescription>
+            {subject} repeats. {question}
+          </DialogDescription>
+        </DialogHeader>
+        <div data-slot="recurrence-scope-choices" {...stylex.props(styles.choices)}>
+          {offeredRecurrenceScopes(scopes).map((scope, index) => (
+            <Button
+              key={scope}
+              ref={index === 0 ? firstChoice : undefined}
+              data-scope={scope}
+              variant="outline"
+              size="lg"
+              xstyle={styles.choice}
+              onClick={() => {
+                if (open) onResolve(scope);
+              }}
             >
-              {subject} repeats. {question}
-            </Dialog.Description>
-          </div>
-          <div data-slot="recurrence-scope-choices" {...stylex.props(styles.choices)}>
-            {offeredRecurrenceScopes(scopes).map((scope, index) => (
-              <Button
-                key={scope}
-                ref={index === 0 ? firstChoice : undefined}
-                data-scope={scope}
-                label={scopeLabels[scope]}
-                variant="secondary"
-                size="lg"
-                xstyle={styles.choice}
-                onClick={() => {
-                  if (open) onResolve(scope);
-                }}
-              />
-            ))}
-          </div>
-          <div data-slot="dialog-footer" {...stylex.props(styles.footer)}>
-            <Dialog.Close
-              data-slot="dialog-close"
-              render={<Button label="Cancel" variant="secondary" />}
-            />
-          </div>
-          <ClosedSignal onClosed={onClosed} />
-        </Dialog.Popup>
-      </Dialog.Portal>
-    </Dialog.Root>
+              {scopeLabels[scope]}
+            </Button>
+          ))}
+        </div>
+        <DialogFooter>
+          <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

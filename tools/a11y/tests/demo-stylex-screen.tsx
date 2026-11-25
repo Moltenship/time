@@ -80,7 +80,7 @@ export function describeStylexDemo(theme: Theme) {
       // The demo saves after a delay; the toast offers to undo once the delete is saved.
       await until(() => {
         expect(
-          document.querySelector('[aria-label="Notifications"] [role="dialog"]'),
+          document.querySelector('[aria-label="Notifications"] [data-slot="toast"]'),
         ).not.toBeNull();
       });
       expect(await seriousViolations()).toEqual([]);

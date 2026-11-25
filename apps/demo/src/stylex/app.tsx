@@ -9,6 +9,7 @@ import { neutralTheme } from "@astryxdesign/theme-neutral/built";
 import { CalendarDndKit } from "@moltenship/calendar-dnd-kit";
 import * as stylex from "@stylexjs/stylex";
 import { PlusIcon } from "lucide-react";
+import { useLayoutEffect } from "react";
 
 import { calendarAnnouncements } from "@registry/shared/calendar/announcements";
 import { CalendarHistoryToast } from "@registry/stylex-calendar-history-toast/calendar-history-toast";
@@ -17,6 +18,7 @@ import { useRecurrenceScopePrompt } from "@registry/stylex-recurrence-scope-dial
 import { withDragAnnouncements } from "../drag-announcements";
 import { useTheme } from "../theme";
 import { useDemoWorkspace } from "../use-demo-workspace";
+import { astryxCalendarTheme } from "./astryx-calendar-theme";
 import { StylexDemoCalendar } from "./calendar";
 import { ActivityList } from "./components/activity-list";
 import { BrandMark } from "./components/brand";
@@ -65,6 +67,13 @@ const styles = stylex.create({
 /** The demo on StyleX and Astryx, on the same state and data as the Tailwind page's `App`. */
 export function StylexApp() {
   const { theme } = useTheme();
+  // On `<html>`, where the root `Theme` puts Astryx's variables, so the calendar's tokens that read
+  // the base colours follow them too.
+  useLayoutEffect(() => {
+    const classes = (stylex.props(astryxCalendarTheme).className ?? "").split(" ").filter(Boolean);
+    document.documentElement.classList.add(...classes);
+    return () => document.documentElement.classList.remove(...classes);
+  }, []);
   return (
     <Theme mode={theme} theme={neutralTheme}>
       <Workspace />

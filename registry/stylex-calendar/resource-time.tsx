@@ -1,10 +1,10 @@
 "use client";
 
-import { VisuallyHidden } from "@astryxdesign/core/VisuallyHidden";
 import { useNow, type CalendarEnvironmentBase } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
 import { useMemo, type ComponentProps } from "react";
 
+import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import { type XStyle, xprops } from "@registry/stylex-calendar-theme/xprops";
 
@@ -81,7 +81,9 @@ export function ResourceTime({
       {...props}
       {...xprops({ className, style }, styles.time, xstyle)}
     >
-      <VisuallyHidden>{separator ? ", local time " : "local time "}</VisuallyHidden>
+      <span {...stylex.props(visuallyHiddenStyles.hidden)}>
+        {separator ? ", local time " : "local time "}
+      </span>
       {time}
     </span>
   );
