@@ -225,7 +225,8 @@ export default function LiveCalendar({
           <CalendarToolbar calendar={Calendar} className="border-b">
             {dragModes ? (
               <ChoiceToggle
-                label="Dragging"
+                // A narrow toolbar keeps the toggles and leaves the label to screen readers.
+                label={<span className="max-sm:sr-only">Dragging</span>}
                 onChange={setDragPreview}
                 options={dragPreviews}
                 value={dragPreview}
