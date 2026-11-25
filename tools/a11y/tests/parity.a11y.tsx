@@ -578,11 +578,38 @@ async function sampled(scenario: Scenario): Promise<Result> {
   await settle();
   const shown = snapshot(win());
   if (scenario.next === undefined) return { after: [], closing: [], opening, shown };
-  await scenario.next();
-  await started();
-  const closing = motion(win());
+  const closing = await closingMotion(scenario.next);
   await settle();
   return { after: snapshot(win()), closing, opening, shown };
+}
+
+/**
+ * The motion `next` starts. ui-sdk unmounts a closing popup on a real-time clock as well as when
+ * its exit ends, about 140 ms in, which the slowed exit outlasts, so a close is sampled in the
+ * task that starts it, when the popup takes `data-ending-style`.
+ */
+async function closingMotion(next: () => Promise<unknown>): Promise<Motion[]> {
+  const frameWindow = win();
+  let closing: Motion[] | undefined;
+  // The frame shares this page's event loop, so the callback runs before the task ends.
+  const observer = new MutationObserver((records) => {
+    if (records.some(({ target }) => (target as Element).hasAttribute("data-ending-style"))) {
+      closing ??= motion(frameWindow);
+    }
+  });
+  observer.observe(frameWindow.document, {
+    attributeFilter: ["data-ending-style"],
+    attributes: true,
+    subtree: true,
+  });
+  try {
+    await next();
+    if (closing !== undefined) return closing;
+    await started();
+    return closing ?? motion(frameWindow);
+  } finally {
+    observer.disconnect();
+  }
 }
 
 function motionDifferences(theme: string, tailwind: readonly Motion[], stylex: readonly Motion[]) {
