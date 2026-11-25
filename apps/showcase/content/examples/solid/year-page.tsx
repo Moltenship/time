@@ -18,7 +18,11 @@ const getEventColor = (event: Event) => event.data.color;
 
 export const Calendar = createCalendar<Event>()({
   eventAdapter: createCanonicalEventAdapter<{ readonly color: CalendarEventColor }>(),
-  views: [createYearView<Event>({ getEventColor }), createMonthView<Event>({ getEventColor })],
+  views: [
+    // A date opens the day in the view named `dayView`, here the month, which this calendar has.
+    createYearView<Event>({ dayView: "month", getEventColor }),
+    createMonthView<Event>({ getEventColor }),
+  ],
 });
 // #endregion view
 

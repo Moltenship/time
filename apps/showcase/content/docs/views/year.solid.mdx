@@ -20,7 +20,8 @@ Add the `year-view` item to your app with the shadcn CLI, as
 npx shadcn@latest add @moltenship/year-view
 ```
 
-Then register the view, with the month its month names open:
+Then register the view, with the month its month names open. A date opens the view `dayView`
+names, `day` by default; this calendar has no view by that name, so it opens the month:
 
 <include meta='title="calendar.tsx"'>../../examples/solid/year-page.tsx#view</include>
 
@@ -103,7 +104,8 @@ Pass them to `createYearView`, or per root in `viewOptions`, as the page above d
   and multi-day events count on every date they cover.
 - **A day's events:** clicking a day opens a popover with its events, all-day first, then by start
   time. Each event is a `<button data-event-id>`, so the app's own event details open from it as
-  from any other view. The date at the top opens the day in the view named `day`. The popover
+  from any other view. The date at the top opens the day in the view `dayView` names, `day` by default. Register a
+  view by that name, or point `dayView` at one you have, so the click has somewhere to go. The popover
   follows the day's events as they change, and a new year closes it.
 - **Month names** open that month in the view named `month`.
 - **Closed days:** with [availability](/docs/availability), see [below](#closed-days).

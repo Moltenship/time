@@ -1,4 +1,5 @@
 import { createCalendar, createCanonicalEventAdapter } from "@moltenship/calendar-solid";
+import { createSignal } from "solid-js";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vite-plus/test";
 import { cdp, page, server, userEvent } from "vite-plus/test/browser";
 
@@ -19,6 +20,7 @@ import {
   yearWeekRules,
   type YearFixture,
 } from "../year-fixture";
+import { nextFrame } from "../waits";
 import { atRest, press, render, settled, until } from "./render";
 
 // The Solid registry's year in a real browser, against what React's year files check
@@ -55,7 +57,7 @@ function Year(props: { readonly dir?: "ltr" | "rtl"; readonly onEventChange?: ()
 }
 
 /** A phone-sized year below the fold of a taller page, so a scroll of the page would show. */
-function PhoneYear() {
+function PhoneYear(props: { readonly events?: readonly YearFixture[] }) {
   return (
     <div>
       <div class="h-[120vh]" />
@@ -63,7 +65,7 @@ function PhoneYear() {
         defaultAnchorDate={yearAnchor}
         defaultTimeZone="UTC"
         defaultView="year"
-        events={yearEvents}
+        events={props.events ?? yearEvents}
         locale="en-US"
         now={yearNow}
         weekRules={yearWeekRules}
@@ -176,7 +178,8 @@ describe("the Solid year's keyboard and focus", () => {
   });
 
   test("a popover opened from the keyboard hands focus back to the day, where Enter opens it again", async () => {
-    await render(() => <Year />);
+    const onEventChange = vi.fn();
+    await render(() => <Year onEventChange={onEventChange} />);
     cell("2026-10-14").focus();
 
     await userEvent.keyboard("{Enter}");
@@ -192,6 +195,7 @@ describe("the Solid year's keyboard and focus", () => {
 
     await userEvent.keyboard("{Enter}");
     await until(() => expect(popover()?.contains(document.activeElement)).toBe(true));
+    expect(onEventChange).not.toHaveBeenCalled();
   });
 });
 
@@ -219,7 +223,30 @@ describe("the Solid year, phone-sized", () => {
     expect(document.querySelector('[data-month="2027-10"]')).not.toBeNull();
     await atRest(view());
     expect(showsMonth("2027-10")).toBe(true);
+
+    view().scrollTop = 0;
+    document.querySelector<HTMLElement>('button[aria-label="Previous period"]')!.click();
+    await settled();
+    expect(document.querySelector('[data-month="2026-10"]')).not.toBeNull();
+    await atRest(view());
+    expect(showsMonth("2026-10")).toBe(true);
     expect(window.scrollY).toBe(0);
+  });
+
+  test("new events for the same year leave the months where the user scrolled them", async () => {
+    const [events, setEvents] = createSignal<readonly YearFixture[]>(yearEvents);
+    await render(() => <PhoneYear events={events()} />);
+    await until(() => expect(showsMonth("2026-10")).toBe(true));
+    view().scrollTop = 0;
+
+    // As `onVisibleRangeChange` loading the year would, with focus outside the view.
+    setEvents((all) => all.slice(1));
+    await settled();
+    await nextFrame();
+    await nextFrame();
+
+    expect(view().scrollTop).toBe(0);
+    expect(showsMonth("2026-01")).toBe(true);
   });
 
   test("keyboard focus brings its own day into view as it crosses the year", async () => {

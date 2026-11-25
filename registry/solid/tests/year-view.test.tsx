@@ -196,6 +196,42 @@ test("the popover's date opens the day, and a month's name opens its month", asy
   expect(title(again)).toBe("Day 2026-03-01");
 });
 
+test("its options add names and icons to events and draw closed days the app's way", async () => {
+  const { container } = await render(() => (
+    <Calendar.Root
+      availability={{ exceptions: [{ date: anchorDate, label: "Holiday" }] }}
+      clock={clock}
+      defaultAnchorDate={anchorDate}
+      defaultTimeZone="UTC"
+      defaultView="year"
+      events={events}
+      locale="en-US"
+      viewOptions={{
+        year: {
+          describeEvent: (event) => (event.id === "standup" ? "Team calendar" : undefined),
+          getEventIcon: (event) => (event.id === "standup" ? <svg data-testid="repeat" /> : null),
+          renderUnavailable: (props, state) => (
+            <div {...props} data-on={state.date.toString()} data-testid="hatching" />
+          ),
+        },
+      }}
+      weekRules={{ firstDay: 7, minimalDays: 1, weekend: [6, 7] }}
+    >
+      <Calendar.ActiveView />
+    </Calendar.Root>
+  ));
+
+  const hatching = cell(container, "2026-10-08").querySelector('[data-testid="hatching"]');
+  expect(hatching?.getAttribute("data-slot")).toBe("year-closed");
+  expect(hatching?.getAttribute("data-on")).toBe("2026-10-08");
+
+  await click(cell(container, "2026-10-08").querySelector("button"));
+  const standup = popover()!.querySelector('[data-event-id="standup"]');
+  expect(standup?.querySelector('[data-testid="repeat"]')).not.toBeNull();
+  expect(ariaLabel(standup)).toContain("Team calendar");
+  expect(popover()!.querySelector('[data-event-id="lunch"] [data-testid="repeat"]')).toBeNull();
+});
+
 test("arrow and Page keys move between days and months, and past December to next year", async () => {
   const container = await renderYear();
   await focus(cell(container, "2026-10-08"));
