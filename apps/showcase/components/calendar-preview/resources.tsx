@@ -23,8 +23,7 @@ import {
   createTimelineDayView,
   createTimelineWeekView,
 } from "@registry/resource-timeline-view/resource-timeline-view";
-import { Avatar, AvatarFallback, AvatarImage } from "@registry/ui/avatar";
-import { TooltipProvider } from "@registry/ui/tooltip";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 import { hours, previewAvailability } from "./availability";
 import { applyPreviewChange, createPreviewEvents, type PreviewEvent } from "./events";
@@ -234,37 +233,35 @@ export default function ResourceCalendar({
   ]);
 
   return (
-    <TooltipProvider delay={400}>
-      <Calendar.Root
-        availability={availability ? previewAvailability(now.toPlainDate()) : undefined}
-        defaultAnchorDate={now.toPlainDate()}
-        defaultExpandedResourceIds={["design", "engineering"]}
-        defaultTimeZone={now.timeZoneId}
-        defaultView={view}
-        events={events}
-        locale="en-US"
-        onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}
-        policies={availability ? availabilityPolicies : undefined}
-        resources={availability ? resourcesWithHours : resources}
-        viewOptions={
-          status
-            ? {
-                resources: statusOptions,
-                "timeline-day": statusOptions,
-                "timeline-week": statusOptions,
-              }
-            : undefined
-        }
-        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-      >
-        <Calendar.Frame className="flex h-full flex-col">
-          <CalendarToolbar calendar={Calendar} className="border-b" />
-          <Calendar.Viewport className="min-h-0 flex-1">
-            <Calendar.ActiveView />
-          </Calendar.Viewport>
-          <Calendar.Announcer messages={calendarAnnouncements} />
-        </Calendar.Frame>
-      </Calendar.Root>
-    </TooltipProvider>
+    <Calendar.Root
+      availability={availability ? previewAvailability(now.toPlainDate()) : undefined}
+      defaultAnchorDate={now.toPlainDate()}
+      defaultExpandedResourceIds={["design", "engineering"]}
+      defaultTimeZone={now.timeZoneId}
+      defaultView={view}
+      events={events}
+      locale="en-US"
+      onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}
+      policies={availability ? availabilityPolicies : undefined}
+      resources={availability ? resourcesWithHours : resources}
+      viewOptions={
+        status
+          ? {
+              resources: statusOptions,
+              "timeline-day": statusOptions,
+              "timeline-week": statusOptions,
+            }
+          : undefined
+      }
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Calendar.Frame className="flex h-full flex-col">
+        <CalendarToolbar calendar={Calendar} className="border-b" />
+        <Calendar.Viewport className="min-h-0 flex-1">
+          <Calendar.ActiveView />
+        </Calendar.Viewport>
+        <Calendar.Announcer messages={calendarAnnouncements} />
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }

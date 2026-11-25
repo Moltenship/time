@@ -12,14 +12,12 @@ import {
   createTestEnvironment,
   renderCalendar,
 } from "@moltenship/calendar-testing";
-import type { ReactNode } from "react";
 import { afterEach, describe, expect, test } from "vite-plus/test";
 import { page, server } from "vite-plus/test/browser";
 
 import { createMonthView } from "@registry/month-view/month-view";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
-import { TooltipProvider } from "@registry/ui/tooltip";
 
 // @moltenship/calendar-testing's drivers on the registry's views in a real browser, as an app's
 // browser-mode tests would use them: pointer and touch, which need layout, and the keyboard.
@@ -43,10 +41,6 @@ const review = buildEvent({
 });
 const team = [buildResource({ title: "Ada" }), buildResource({ title: "Ben" })];
 
-function Providers({ children }: { readonly children: ReactNode }) {
-  return <TooltipProvider>{children}</TooltipProvider>;
-}
-
 afterEach(cleanup);
 
 function renderView(
@@ -69,7 +63,6 @@ function renderView(
     readOnly,
     resources: team,
     view,
-    wrapper: Providers,
   });
 }
 

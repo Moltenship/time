@@ -8,7 +8,6 @@ import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { createAgendaView } from "@registry/list-view/agenda-view";
 import { createMonthView } from "@registry/month-view/month-view";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
-import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { previewAvailability } from "@/components/calendar-preview/availability";
 import {
@@ -104,32 +103,30 @@ export default function ThemeCalendar({
   const today = now.toPlainDate();
 
   return (
-    <TooltipProvider delay={400}>
-      <Calendar.Root
-        availability={previewAvailability(today)}
-        defaultAnchorDate={today}
-        defaultTimeZone={now.timeZoneId}
-        events={events}
-        locale={locale}
-        onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}
-        onViewChange={onViewChange}
-        policies={policies}
-        view={view}
-        weekRules={weekRules}
-      >
-        <Calendar.Frame className="@container flex h-full flex-col">
-          <CalendarToolbar calendar={Calendar} className="border-b" />
-          <div className="flex min-h-0 flex-1">
-            <aside className="hidden w-56 shrink-0 border-e p-3 @2xl:block">
-              <Sidebar today={today} />
-            </aside>
-            <Calendar.Viewport className="min-w-0 flex-1">
-              <Calendar.ActiveView />
-            </Calendar.Viewport>
-          </div>
-          <Calendar.Announcer messages={calendarAnnouncements} />
-        </Calendar.Frame>
-      </Calendar.Root>
-    </TooltipProvider>
+    <Calendar.Root
+      availability={previewAvailability(today)}
+      defaultAnchorDate={today}
+      defaultTimeZone={now.timeZoneId}
+      events={events}
+      locale={locale}
+      onEventChange={(change) => setEvents((current) => applyPreviewChange(current, change))}
+      onViewChange={onViewChange}
+      policies={policies}
+      view={view}
+      weekRules={weekRules}
+    >
+      <Calendar.Frame className="@container flex h-full flex-col">
+        <CalendarToolbar calendar={Calendar} className="border-b" />
+        <div className="flex min-h-0 flex-1">
+          <aside className="hidden w-56 shrink-0 border-e p-3 @2xl:block">
+            <Sidebar today={today} />
+          </aside>
+          <Calendar.Viewport className="min-w-0 flex-1">
+            <Calendar.ActiveView />
+          </Calendar.Viewport>
+        </div>
+        <Calendar.Announcer messages={calendarAnnouncements} />
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }

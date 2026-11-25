@@ -1,7 +1,7 @@
 import { CalendarPlusIcon, GripVerticalIcon } from "lucide-react";
 import { useId, useRef } from "react";
 
-import { Button } from "@registry/ui/button";
+import { Button } from "./ui/button";
 import { cn } from "cn";
 
 import { DemoCalendar } from "../calendar";

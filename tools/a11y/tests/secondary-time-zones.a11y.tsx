@@ -9,7 +9,6 @@ import { describe, expect, test } from "vite-plus/test";
 import { createResourceColumnsView } from "@registry/resource-columns-view/resource-columns-view";
 import { createScrollingWeekView } from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
 import { createDayView, createWeekView } from "@registry/time-grid-view/time-grid-view";
-import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { seriousViolations, setTheme, themes } from "./axe";
 import { render } from "./render";
@@ -61,26 +60,24 @@ function Screen({
   readonly width?: number;
 }) {
   return (
-    <TooltipProvider>
-      <Calendar.Root
-        defaultAnchorDate={Temporal.PlainDate.from("2026-10-29")}
-        defaultTimeZone="Europe/Berlin"
-        defaultView={view}
-        direction={dir}
-        events={events}
-        locale="en-US"
-        now={Temporal.Instant.from("2026-10-29T08:30:00Z")}
-        resources={resources}
-        secondaryTimeZones={["America/New_York", { label: "Kolkata", timeZone: "Asia/Kolkata" }]}
-        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-      >
-        <Calendar.Frame className="flex h-dvh flex-col" dir={dir} style={{ width }}>
-          <Calendar.Viewport className="min-h-0 flex-1">
-            <Calendar.ActiveView />
-          </Calendar.Viewport>
-        </Calendar.Frame>
-      </Calendar.Root>
-    </TooltipProvider>
+    <Calendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-29")}
+      defaultTimeZone="Europe/Berlin"
+      defaultView={view}
+      direction={dir}
+      events={events}
+      locale="en-US"
+      now={Temporal.Instant.from("2026-10-29T08:30:00Z")}
+      resources={resources}
+      secondaryTimeZones={["America/New_York", { label: "Kolkata", timeZone: "Asia/Kolkata" }]}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Calendar.Frame className="flex h-dvh flex-col" dir={dir} style={{ width }}>
+        <Calendar.Viewport className="min-h-0 flex-1">
+          <Calendar.ActiveView />
+        </Calendar.Viewport>
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }
 

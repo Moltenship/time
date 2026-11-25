@@ -27,8 +27,6 @@ import {
   type EventWrite,
 } from "../content/examples/query-events";
 
-import { TooltipProvider } from "@registry/ui/tooltip";
-
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
 }
@@ -532,11 +530,9 @@ describe("EventsCalendar", () => {
   function renderCalendar(api: EventsApi, client = new QueryClient()) {
     return render(
       <QueryClientProvider client={client}>
-        <TooltipProvider>
-          <div style={{ height: 600 }}>
-            <EventsCalendar api={api} timeZone={timeZone} />
-          </div>
-        </TooltipProvider>
+        <div style={{ height: 600 }}>
+          <EventsCalendar api={api} timeZone={timeZone} />
+        </div>
       </QueryClientProvider>,
     );
   }

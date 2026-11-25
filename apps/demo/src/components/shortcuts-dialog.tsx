@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@registry/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 
 import { keyLabel, shortcutSections, type KeyListItem } from "../shortcuts";
 

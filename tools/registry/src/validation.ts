@@ -255,10 +255,12 @@ async function validateParsedItem(
     manifestPath,
   );
 
-  // A composition such as calendar-full owns no files and installs other items instead.
+  // A composition such as calendar-full owns no files and installs other items instead, and
+  // base-tokens only merges its stylesheet.
   const isComposition =
     item.type === "registry:item" && registryDependencies.itemDependencies.length > 0;
-  if (files.length === 0 && !isComposition) {
+  const isStylesheet = isRecord(item.meta) && typeof item.meta.stylesheet === "string";
+  if (files.length === 0 && !isComposition && !isStylesheet) {
     issues.push(
       issue("missing-files", `${manifestPath}.files`, "Registry items must declare source files"),
     );

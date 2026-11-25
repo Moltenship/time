@@ -1,9 +1,9 @@
 import type { CalendarEventInterval } from "@moltenship/calendar";
 import { useId } from "react";
 
-import { Badge } from "@registry/ui/badge";
-import { Checkbox } from "@registry/ui/checkbox";
-import { Label } from "@registry/ui/label";
+import { Badge } from "./ui/badge";
+import { Checkbox } from "./ui/checkbox";
+import { Label } from "./ui/label";
 
 import { useResourceGroups } from "../resource-groups";
 import type { DemoResourceId } from "../resources";

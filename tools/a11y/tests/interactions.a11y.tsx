@@ -9,7 +9,6 @@ import { describe, expect, test, vi } from "vite-plus/test";
 import { server, userEvent } from "vite-plus/test/browser";
 
 import { createWeekView } from "@registry/time-grid-view/time-grid-view";
-import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { render, until } from "./render";
 
@@ -32,24 +31,22 @@ const review: Fixture = {
 
 function Week({ onEventChange }: { readonly onEventChange: (change: Change) => void }) {
   return (
-    <TooltipProvider>
-      <Calendar.Root
-        defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
-        defaultTimeZone="UTC"
-        defaultView="week"
-        events={[review]}
-        locale="en-US"
-        now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
-        onEventChange={onEventChange}
-        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-      >
-        <Calendar.Frame className="flex h-dvh flex-col">
-          <Calendar.Viewport className="min-h-0 flex-1">
-            <Calendar.ActiveView />
-          </Calendar.Viewport>
-        </Calendar.Frame>
-      </Calendar.Root>
-    </TooltipProvider>
+    <Calendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="UTC"
+      defaultView="week"
+      events={[review]}
+      locale="en-US"
+      now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
+      onEventChange={onEventChange}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Calendar.Frame className="flex h-dvh flex-col">
+        <Calendar.Viewport className="min-h-0 flex-1">
+          <Calendar.ActiveView />
+        </Calendar.Viewport>
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }
 

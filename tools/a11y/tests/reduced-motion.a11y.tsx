@@ -1,9 +1,21 @@
-import { act } from "react";
+import { act, useState } from "react";
 import { describe, expect, test } from "vite-plus/test";
 
-import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@registry/ui/dialog";
-import { Popover, PopoverContent, PopoverTrigger } from "@registry/ui/popover";
-import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@registry/ui/sheet";
+import { Dialog, DialogContent, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+
+import {
+  Dialog as KitDialog,
+  DialogContent as KitDialogContent,
+  DialogTitle as KitDialogTitle,
+} from "@registry/calendar-ui/dialog";
+import {
+  Popover as KitPopover,
+  PopoverContent as KitPopoverContent,
+  PopoverTrigger as KitPopoverTrigger,
+} from "@registry/calendar-ui/popover";
+import { createToastManager, Toast, ToastTitle, ToastViewport } from "@registry/calendar-ui/toast";
 
 import { click, render, until } from "./render";
 import { axis, ScrollingScreen, title } from "./scrolling-screen";
@@ -87,6 +99,60 @@ describe("prefers-reduced-motion: reduce", () => {
     await open("Calendars");
 
     expect(await entry('[data-slot="sheet-content"]')).toEqual(fadesInPlace);
+  });
+
+  test("the calendar's popovers fade in without zooming or sliding", async () => {
+    await render(
+      <KitPopover>
+        <KitPopoverTrigger>More</KitPopoverTrigger>
+        <KitPopoverContent aria-label="Details">Details</KitPopoverContent>
+      </KitPopover>,
+    );
+    await open("More");
+
+    expect(await entry('[data-slot="popover-content"]')).toEqual(fadesInPlace);
+  });
+
+  test("the calendar's dialogs fade in without zooming", async () => {
+    function Question() {
+      const [shown, setShown] = useState(false);
+      return (
+        <>
+          <button type="button" onClick={() => setShown(true)}>
+            Edit
+          </button>
+          <KitDialog open={shown} onOpenChange={setShown}>
+            <KitDialogContent>
+              <KitDialogTitle>Edit recurring event</KitDialogTitle>
+            </KitDialogContent>
+          </KitDialog>
+        </>
+      );
+    }
+    await render(<Question />);
+    await open("Edit");
+
+    expect(await entry('[data-slot="dialog-content"]')).toEqual(fadesInPlace);
+  });
+
+  test("the calendar's toasts fade in without rising", async () => {
+    const manager = createToastManager();
+    await render(
+      <>
+        <button type="button" onClick={() => manager.add({ title: "Event deleted" })}>
+          Delete
+        </button>
+        <ToastViewport aria-label="Notifications" manager={manager}>
+          <Toast>
+            <ToastTitle />
+          </Toast>
+        </ToastViewport>
+      </>,
+    );
+    await open("Delete");
+    await until(() => expect(document.querySelector('[data-slot="toast"]')).not.toBeNull());
+
+    expect(await entry('[data-slot="toast"]')).toEqual(fadesInPlace);
   });
 
   test("drag previews don't glide between slots", async () => {

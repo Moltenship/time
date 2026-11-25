@@ -4,8 +4,12 @@
   "type": "registry:component",
   "title": "Year view",
   "description": "A year at a glance: twelve month grids with today circled and a dot for each event colour on a day, a popover listing a day's events, and links into the day and month views.",
-  "dependencies": ["@base-ui/react", "@moltenship/calendar", "cn"],
-  "registryDependencies": ["popover", "@moltenship/calendar", "@moltenship/calendar-theme"],
+  "dependencies": ["@moltenship/calendar", "cn"],
+  "registryDependencies": [
+    "@moltenship/calendar",
+    "@moltenship/calendar-theme",
+    "@moltenship/calendar-ui"
+  ],
   "files": [
     {
       "path": "registry/year-view/year-view.tsx",

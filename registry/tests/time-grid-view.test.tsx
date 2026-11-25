@@ -333,6 +333,9 @@ test("opens on the current time once a hydrated clock reports it", async () => {
       <Calendar.ActiveView />
     </Calendar.Root>
   );
+  // Browsers have the Popover API, which jsdom lacks; without it ui-sdk's popups fall back to a
+  // portal, which a server can't render.
+  HTMLElement.prototype.showPopover = () => {};
   const container = document.createElement("div");
   container.innerHTML = renderToString(element);
   document.body.append(container);
@@ -348,6 +351,7 @@ test("opens on the current time once a hydrated clock reports it", async () => {
     expect(container.querySelector('[data-slot="time-grid-now"]')).not.toBeNull();
     expect(body?.scrollTop).toBe(0.6875 * 1_440 - 600 / 3);
   } finally {
+    delete (HTMLElement.prototype as Partial<HTMLElement>).showPopover;
     for (const [key, descriptor] of originals) {
       if (descriptor === undefined) Reflect.deleteProperty(HTMLElement.prototype, key);
       else Object.defineProperty(HTMLElement.prototype, key, descriptor);

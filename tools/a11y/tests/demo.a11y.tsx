@@ -79,11 +79,14 @@ describe.each(themes)("demo, %s theme", (theme) => {
       async () => {
         await act(async () => undefined);
         expect(
-          document.querySelector('[aria-label="Notifications"] [role="dialog"]'),
+          document.querySelector('[aria-label="Notifications"] [data-slot="toast"]'),
         ).not.toBeNull();
       },
       { timeout: 3000 },
     );
     expect(await seriousViolations()).toEqual([]);
+    // At the bottom centre of the window, whatever ui-sdk's own centring does.
+    const region = document.querySelector('[aria-label="Notifications"]')!.getBoundingClientRect();
+    expect(Math.abs(region.left + region.width / 2 - innerWidth / 2)).toBeLessThan(1);
   });
 });

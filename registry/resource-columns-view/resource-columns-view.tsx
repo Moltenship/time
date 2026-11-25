@@ -26,6 +26,7 @@ import {
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
+import { TimeGridEventTooltip } from "@registry/time-grid-view/time-grid-event";
 import { offsetLabel } from "@registry/time-grid-view/time-grid-header";
 import {
   gutterColumn,
@@ -162,76 +163,80 @@ export function ResourceColumnsView<
   const corner = gutterColumn(columns, zones);
 
   return (
-    // Rows: resource headers, dates over several days, all-day events, and the timed columns; each
-    // starts with a gutter cell.
-    <div
-      ref={pointerRef}
-      role="grid"
-      aria-label={timeGridTitle(range, environment.locale)}
-      aria-colcount={1 + resources.length * columns.length}
-      {...keyboard}
-      data-slot="resource-columns"
-      className={cn(
-        "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize",
-        timeGridGutterClassName,
-        // A long-press on a touch screen picks events up: it selects no text and opens no callout.
-        !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
-      )}
-      style={gutterStyle(zones)}
-    >
-      <div className="shrink-0 border-b border-calendar-grid">
-        <ResourceColumnsHeader
-          {...placed}
-          corner={
-            <TimeGridGutterLabels
-              offset={
-                corner === undefined
-                  ? undefined
-                  : offsetLabel(environment.locale, environment.timeZone, corner)
-              }
+    <TimeGridEventTooltip>
+      {/* Rows: resource headers, dates over several days, all-day events, and the timed columns;
+          each starts with a gutter cell. */}
+      <div
+        ref={pointerRef}
+        role="grid"
+        aria-label={timeGridTitle(range, environment.locale)}
+        aria-colcount={1 + resources.length * columns.length}
+        {...keyboard}
+        data-slot="resource-columns"
+        className={cn(
+          "flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize",
+          timeGridGutterClassName,
+          // A long-press on a touch screen picks events up: it selects no text and opens no callout.
+          !isReadOnly && "pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]",
+        )}
+        style={gutterStyle(zones)}
+      >
+        <div className="shrink-0 border-b border-calendar-grid">
+          <ResourceColumnsHeader
+            {...placed}
+            corner={
+              <TimeGridGutterLabels
+                offset={
+                  corner === undefined
+                    ? undefined
+                    : offsetLabel(environment.locale, environment.timeZone, corner)
+                }
+                zones={zones}
+              />
+            }
+            days={columns.length}
+            environment={environment}
+            followX={followX}
+            // The projection's resources are untyped; `TResource` is the type the app gave the root.
+            ResourceHeader={
+              options.ResourceHeader as ComponentType<ResourceHeaderProps> | undefined
+            }
+            status={resourceStatusOptions(options.resourceStatus)}
+          />
+          {columns.length > 1 && resources[0] !== undefined && (
+            <ResourceColumnsDates
+              {...placed}
+              days={resources[0].days}
+              followX={followX}
+              locale={environment.locale}
               zones={zones}
             />
-          }
-          days={columns.length}
-          environment={environment}
-          followX={followX}
-          // The projection's resources are untyped; `TResource` is the type the app gave the root.
-          ResourceHeader={options.ResourceHeader as ComponentType<ResourceHeaderProps> | undefined}
-          status={resourceStatusOptions(options.resourceStatus)}
-        />
-        {columns.length > 1 && resources[0] !== undefined && (
-          <ResourceColumnsDates
+          )}
+          <ResourceColumnsAllDay
             {...placed}
-            days={resources[0].days}
             followX={followX}
+            getEventColor={options.getEventColor}
+            getEventIcon={options.getEventIcon}
+            labelEvent={labelEvent}
             locale={environment.locale}
-            zones={zones}
           />
-        )}
-        <ResourceColumnsAllDay
+        </div>
+        <ResourceColumnsBody
           {...placed}
-          followX={followX}
+          environment={environment}
+          followY={followY}
           getEventColor={options.getEventColor}
           getEventIcon={options.getEventIcon}
+          isReadOnly={isReadOnly}
           labelEvent={labelEvent}
-          locale={environment.locale}
+          onScroll={sync}
+          renderUnavailable={options.renderUnavailable}
+          scrollRef={scrollRef}
+          slotMinutes={snap.increment}
+          zones={zones}
         />
       </div>
-      <ResourceColumnsBody
-        {...placed}
-        environment={environment}
-        followY={followY}
-        getEventColor={options.getEventColor}
-        getEventIcon={options.getEventIcon}
-        isReadOnly={isReadOnly}
-        labelEvent={labelEvent}
-        onScroll={sync}
-        renderUnavailable={options.renderUnavailable}
-        scrollRef={scrollRef}
-        slotMinutes={snap.increment}
-        zones={zones}
-      />
-    </div>
+    </TimeGridEventTooltip>
   );
 }
 

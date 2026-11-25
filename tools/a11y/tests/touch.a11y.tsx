@@ -15,7 +15,6 @@ import { createTimelineDayView } from "@registry/resource-timeline-view/resource
 import { createScrollingMonthView } from "@registry/scrolling-month-view/scrolling-month-view";
 import { createScrollingDayView } from "@registry/scrolling-time-grid-view/scrolling-time-grid-view";
 import { createDayView } from "@registry/time-grid-view/time-grid-view";
-import { TooltipProvider } from "@registry/ui/tooltip";
 
 import { render, until } from "./render";
 
@@ -56,25 +55,23 @@ function Day({
   readonly view?: View;
 }) {
   return (
-    <TooltipProvider>
-      <Calendar.Root
-        defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
-        defaultTimeZone="UTC"
-        defaultView={view}
-        events={[review]}
-        locale="en-US"
-        now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
-        onEventChange={onEventChange}
-        resources={resources}
-        weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
-      >
-        <Calendar.Frame className="flex h-dvh flex-col">
-          <Calendar.Viewport className="min-h-0 flex-1">
-            <Calendar.ActiveView />
-          </Calendar.Viewport>
-        </Calendar.Frame>
-      </Calendar.Root>
-    </TooltipProvider>
+    <Calendar.Root
+      defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+      defaultTimeZone="UTC"
+      defaultView={view}
+      events={[review]}
+      locale="en-US"
+      now={Temporal.Instant.from("2026-10-08T08:30:00Z")}
+      onEventChange={onEventChange}
+      resources={resources}
+      weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+    >
+      <Calendar.Frame className="flex h-dvh flex-col">
+        <Calendar.Viewport className="min-h-0 flex-1">
+          <Calendar.ActiveView />
+        </Calendar.Viewport>
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }
 

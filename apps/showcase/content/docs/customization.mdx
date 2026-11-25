@@ -8,7 +8,7 @@ Time is a headless core and one ready-made UI on top of it.
 - **The core is the npm packages.** They hold the engine, the calendar's state and actions, and
   parts and hooks that render plain elements. They ship no CSS.
 - **The UI is the registry.** It's a set of React source files built on those packages: the views,
-  the toolbar, a kit of controls and a theme, in Tailwind CSS with shadcn/ui or in
+  the toolbar, a kit of controls and a theme, in Tailwind CSS on shadcn/ui's tokens or in
   [StyleX](/docs/stylex) with Astryx. `shadcn add` copies them into your app, and from then on
   they are your code.
 
@@ -21,7 +21,7 @@ There are four levels, from the least work to the most:
 | -------------------- | -------------------------------------------- | ------------------------- | ------------------------------------------------------------------- |
 | 1. Set tokens        | Colors, the event palette, sizes             | Your global CSS           | Nothing                                                             |
 | 2. Edit the files    | Markup, classes, layout, a view's behaviour  | `components/calendar/`    | A merge when a file you edited gets an update                       |
-| 3. Swap the controls | The buttons, badges, tooltips and the select | `components/calendar/ui/` | That merge, and an agent sees less of your controls                 |
+| 3. Swap the controls | The buttons, tooltips, popovers and the rest | `components/calendar/ui/` | That merge, and an agent sees less of your controls                 |
 | 4. Build your own UI | Everything on screen                         | Your own components       | You write the views, with their keyboard support and their dragging |
 
 [What each level costs](#what-each-level-costs) has the details.
@@ -102,9 +102,10 @@ edited. Files you didn't touch update without a question.
 
 ## Level 3: swap the controls
 
-The Tailwind views take their buttons, badges, tooltips and view select from `button.tsx`,
-`badge.tsx`, `tooltip.tsx` and `select.tsx` in `components/calendar/ui/`. Since 2.0 those controls
-are built on [ui-sdk](https://ui-sdk.dev), and they are a default. The views import them from
+The Tailwind views take their controls from `button.tsx`, `badge.tsx`, `tooltip.tsx`,
+`select.tsx`, `popover.tsx`, `dialog.tsx` and `toast.tsx` in `components/calendar/ui/`: the
+buttons, badges, tooltips, view select, popovers, the recurrence dialog and the undo toast. Since
+2.0 those controls are built on [ui-sdk](https://ui-sdk.dev), and they are a default. The views import them from
 those files only and use them through a short list of props. To use a control of your own,
 replace the body of its file and keep the names it exports. With shadcn's button:
 
@@ -124,8 +125,8 @@ export { buttonVariants };
 
 Every view now renders your button, and no view's file changes.
 [Use your own controls](/docs/theming#use-your-own-controls) lists what the views import from each
-file and the props they pass. The views' popovers, dialogs and event tooltips already come from
-your app's `components/ui`.
+file and the props they pass, and how to give a shadcn popover the handle that one popover for
+many triggers needs.
 
 This is an edit like any other, so `shadcn add` asks before it replaces the file. Swapping also
 has [two costs of its own](#what-each-level-costs).

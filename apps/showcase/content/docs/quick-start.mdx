@@ -24,9 +24,15 @@ describes, with a `Temporal` polyfill if your browsers need one.
 
 ### Add the UI source
 
-The views are source files that you add to your app with the shadcn CLI. They're built on
-shadcn/ui and its default Base UI primitives, so your app needs a Base UI style (see
-[UI source](/docs/installation#ui-source-optional)). Add the week and day, month, and agenda views:
+The views are source files that you add to your app with the shadcn CLI. They use shadcn/ui's
+tokens and bring their own controls, so any shadcn style works (see
+[UI source](/docs/installation#ui-source-optional)). Name ui-sdk's CSS layer before Tailwind in
+your global CSS, then add the week and day, month, and agenda views:
+
+```css title="globals.css"
+@layer ui-sdk;
+@import "tailwindcss";
+```
 
 ```bash
 npx shadcn@latest add \
@@ -36,7 +42,7 @@ npx shadcn@latest add \
 ```
 
 They bring the theme, the toolbar, view switcher and event chip from the shared `calendar` item,
-the calendar's controls from `calendar-ui`, and the shadcn components they use. The files land in
+and the calendar's controls and popups from `calendar-ui`. The files land in
 `components/calendar/` and are yours to change, as [Customization](/docs/customization) describes.
 The controls are built on ui-sdk, so name its CSS layer before Tailwind in
 your global CSS:
@@ -74,17 +80,6 @@ week rules (the first day of the week, where 1 is Monday, and the weekend days).
 Give the frame a height: the views fill it and scroll inside it. The calendar is read-only until
 you add an `onEventChange` handler; [Interactions](/docs/interactions) shows how to save dragged and
 resized events.
-
-The week view's event tooltips use shadcn's `Tooltip`, which shadcn sets up with a
-`TooltipProvider` around your app. If your app doesn't have one yet, add it once:
-
-```tsx title="app.tsx"
-import { TooltipProvider } from "@/components/ui/tooltip";
-
-<TooltipProvider>
-  <TeamCalendar meetings={meetings} />
-</TooltipProvider>;
-```
 
 </Step>
 </Steps>

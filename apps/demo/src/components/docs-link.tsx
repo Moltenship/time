@@ -1,7 +1,7 @@
 import { cn } from "cn";
 import { BookOpenIcon } from "lucide-react";
 
-import { buttonVariants } from "@registry/ui/button";
+import { buttonVariants } from "./ui/button";
 
 const docsUrl = "https://time.molten.sh";
 

@@ -7,8 +7,6 @@ import { afterEach, beforeAll, expect, test, vi } from "vite-plus/test";
 import { createRecurringPreviewEvents } from "../components/recurrence-preview/events";
 import { TeamCalendar } from "../content/examples/recurrence-root";
 
-import { TooltipProvider } from "@registry/ui/tooltip";
-
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
 }
@@ -36,13 +34,7 @@ async function render() {
   document.body.append(container);
   const root = createRoot(container);
   const events = createRecurringPreviewEvents(Temporal.Now.zonedDateTimeISO(timeZone));
-  await act(async () =>
-    root.render(
-      <TooltipProvider>
-        <TeamCalendar initialEvents={events} timeZone={timeZone} />
-      </TooltipProvider>,
-    ),
-  );
+  await act(async () => root.render(<TeamCalendar initialEvents={events} timeZone={timeZone} />));
   cleanup = async () => {
     await act(async () => root.unmount());
     container.remove();

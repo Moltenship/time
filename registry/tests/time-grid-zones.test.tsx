@@ -382,6 +382,9 @@ test("the resource columns view over several days notes the day a zone shifts", 
 test("server markup is deterministic and hydrates without a mismatch", async () => {
   const errors = vi.spyOn(console, "error").mockImplementation(() => {});
   const element = calendar(["Asia/Kolkata", "America/New_York"]);
+  // Browsers have the Popover API, which jsdom lacks; without it ui-sdk's popups fall back to a
+  // portal, which a server can't render.
+  HTMLElement.prototype.showPopover = () => {};
   const container = document.createElement("div");
   container.innerHTML = renderToString(element);
   document.body.append(container);
@@ -399,6 +402,7 @@ test("server markup is deterministic and hydrates without a mismatch", async () 
     expect(zoneHours(container)).toEqual(server);
     expect(errors).not.toHaveBeenCalled();
   } finally {
+    delete (HTMLElement.prototype as Partial<HTMLElement>).showPopover;
     errors.mockRestore();
   }
 });

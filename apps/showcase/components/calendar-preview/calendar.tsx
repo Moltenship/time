@@ -20,8 +20,7 @@ import {
   createWeekView,
   type TimeGridViewOptions,
 } from "@registry/time-grid-view/time-grid-view";
-import { Button } from "@registry/ui/button";
-import { TooltipProvider } from "@registry/ui/tooltip";
+import { Button } from "@/components/ui/button";
 import { createYearView } from "@registry/year-view/year-view";
 
 import { createPreviewAnnotations, previewAnnotationSources } from "./annotations";
@@ -193,85 +192,79 @@ export default function LiveCalendar({
     setEvents((current) => applyPreviewChange(current, change));
 
   return (
-    <TooltipProvider delay={400}>
-      <Calendar.Root
-        annotationSources={annotations ? previewAnnotationSources : undefined}
-        annotations={sampleAnnotations}
-        availability={availability ? previewAvailability(today) : undefined}
-        defaultAnchorDate={today}
-        defaultTimeZone={now.timeZoneId}
-        events={events}
-        locale={locale}
-        onEventChange={changeEvent}
-        onViewChange={(next) => setActiveView(next === "3-day" ? "week" : next)}
-        onVisibleRangeChange={longRange ? fetched.load : undefined}
-        policies={availability ? availabilityPolicies : undefined}
-        view={activeView === "week" && !wide ? "3-day" : activeView}
-        viewOptions={
-          longRange
-            ? { "scrolling-agenda": { loading: fetched.loading } }
-            : dragModes
-              ? {
-                  "3-day": { dragPreview },
-                  day: { dragPreview },
-                  month: { dragPreview },
-                  week: { dragPreview },
-                }
-              : undefined
-        }
-        weekRules={weekRules}
-      >
-        <Calendar.Frame className="flex h-full flex-col">
-          <CalendarToolbar calendar={Calendar} className="border-b">
-            {dragModes ? (
-              <ChoiceToggle
-                // A narrow toolbar keeps the toggles and leaves the label to screen readers.
-                label={<span className="max-sm:sr-only">Dragging</span>}
-                onChange={setDragPreview}
-                options={dragPreviews}
-                value={dragPreview}
-              />
-            ) : null}
-            {switcher ? (
-              <ViewSwitcher
-                onValueChange={setActiveView}
-                options={viewOptions}
-                value={activeView}
-              />
-            ) : activeView === view ? null : (
-              // Dates open the day view, so a single-view preview needs a way back to its view.
-              <Button
-                className="rounded-full"
-                onClick={() => setActiveView(view)}
-                size="sm"
-                variant="outline"
-              >
-                Back to {viewLabels[view].toLowerCase()}
-              </Button>
-            )}
-          </CalendarToolbar>
-          <div className="flex min-h-0 flex-1">
-            {sidebar ? (
-              <aside className="hidden w-64 shrink-0 border-r p-3 lg:block">
-                <Sidebar today={today} />
-              </aside>
-            ) : null}
-            <Calendar.Viewport className="min-w-0 flex-1">
-              <Calendar.ActiveView />
-            </Calendar.Viewport>
-          </div>
-          {announcements ? (
-            <div className="flex min-h-11 shrink-0 items-center gap-3 border-t px-4 py-2 text-sm">
-              <span className="shrink-0 text-xs font-medium text-fd-muted-foreground uppercase">
-                Screen reader
-              </span>
-              <Calendar.Announcer messages={calendarAnnouncements} style={shownAnnouncer} />
-            </div>
-          ) : (
-            <Calendar.Announcer messages={calendarAnnouncements} />
+    <Calendar.Root
+      annotationSources={annotations ? previewAnnotationSources : undefined}
+      annotations={sampleAnnotations}
+      availability={availability ? previewAvailability(today) : undefined}
+      defaultAnchorDate={today}
+      defaultTimeZone={now.timeZoneId}
+      events={events}
+      locale={locale}
+      onEventChange={changeEvent}
+      onViewChange={(next) => setActiveView(next === "3-day" ? "week" : next)}
+      onVisibleRangeChange={longRange ? fetched.load : undefined}
+      policies={availability ? availabilityPolicies : undefined}
+      view={activeView === "week" && !wide ? "3-day" : activeView}
+      viewOptions={
+        longRange
+          ? { "scrolling-agenda": { loading: fetched.loading } }
+          : dragModes
+            ? {
+                "3-day": { dragPreview },
+                day: { dragPreview },
+                month: { dragPreview },
+                week: { dragPreview },
+              }
+            : undefined
+      }
+      weekRules={weekRules}
+    >
+      <Calendar.Frame className="flex h-full flex-col">
+        <CalendarToolbar calendar={Calendar} className="border-b">
+          {dragModes ? (
+            <ChoiceToggle
+              // A narrow toolbar keeps the toggles and leaves the label to screen readers.
+              label={<span className="max-sm:sr-only">Dragging</span>}
+              onChange={setDragPreview}
+              options={dragPreviews}
+              value={dragPreview}
+            />
+          ) : null}
+          {switcher ? (
+            <ViewSwitcher onValueChange={setActiveView} options={viewOptions} value={activeView} />
+          ) : activeView === view ? null : (
+            // Dates open the day view, so a single-view preview needs a way back to its view.
+            <Button
+              className="rounded-full"
+              onClick={() => setActiveView(view)}
+              size="sm"
+              variant="outline"
+            >
+              Back to {viewLabels[view].toLowerCase()}
+            </Button>
           )}
-        </Calendar.Frame>
-      </Calendar.Root>
-    </TooltipProvider>
+        </CalendarToolbar>
+        <div className="flex min-h-0 flex-1">
+          {sidebar ? (
+            <aside className="hidden w-64 shrink-0 border-r p-3 lg:block">
+              <Sidebar today={today} />
+            </aside>
+          ) : null}
+          <Calendar.Viewport className="min-w-0 flex-1">
+            <Calendar.ActiveView />
+          </Calendar.Viewport>
+        </div>
+        {announcements ? (
+          <div className="flex min-h-11 shrink-0 items-center gap-3 border-t px-4 py-2 text-sm">
+            <span className="shrink-0 text-xs font-medium text-fd-muted-foreground uppercase">
+              Screen reader
+            </span>
+            <Calendar.Announcer messages={calendarAnnouncements} style={shownAnnouncer} />
+          </div>
+        ) : (
+          <Calendar.Announcer messages={calendarAnnouncements} />
+        )}
+      </Calendar.Frame>
+    </Calendar.Root>
   );
 }

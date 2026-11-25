@@ -25,7 +25,7 @@ import {
 import { UnavailableTime, type UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/calendar-theme/event-colors";
 import { cn } from "cn";
-import { Popover, PopoverContent, PopoverTrigger } from "@registry/ui/popover";
+import { Popover, PopoverContent, PopoverTrigger } from "@registry/calendar-ui/popover";
 
 import { MonthEvent } from "./month-event";
 

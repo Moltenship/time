@@ -3,8 +3,6 @@
 import type { AgentComponent, createAgent } from "@ui-sdk/react/agent";
 import { useCallback, useEffect, useId, useRef, useState, type ReactNode } from "react";
 
-import { TooltipProvider } from "@registry/ui/tooltip";
-
 export type AgentBridge = ReturnType<typeof createAgent>;
 
 /** One call to the bridge, as a model's tool call would make it. */
@@ -218,61 +216,59 @@ export function AgentPlayground({
   }
 
   return (
-    <TooltipProvider delay={400}>
-      <div className="flex flex-col">
-        <div className="h-[34rem] border-b" ref={setScope}>
-          {calendar}
-        </div>
-        {children}
-        <div className="grid divide-y lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-          <Panel title={scriptsTitle}>
-            <div className="flex flex-wrap gap-2">
-              {scripts.map((script) => (
-                <button
-                  key={script.label}
-                  className={scriptButtonClass}
-                  disabled={running || (script.needsChange === true && changeId === undefined)}
-                  onClick={() => void run(script)}
-                  type="button"
-                >
-                  {script.label}
-                </button>
-              ))}
-              {onReset === undefined ? null : (
-                <button
-                  className={`${scriptButtonClass} border-transparent text-fd-muted-foreground`}
-                  onClick={() => {
-                    setRecords([]);
-                    setChangeId(undefined);
-                    onReset();
-                  }}
-                  type="button"
-                >
-                  Reset
-                </button>
-              )}
-            </div>
-            <div aria-live="polite" className="flex flex-col gap-2">
-              {records.length === 0 ? (
-                <p className="text-sm text-fd-muted-foreground">{hint}</p>
-              ) : (
-                records.map(({ call, output }, index) => (
-                  <div key={index} className="flex flex-col gap-2" data-agent-call={call.tool}>
-                    <Code label={`Call ${index + 1}`}>{formatCall(call, index)}</Code>
-                    <Code label={`Result ${index + 1}`}>{json(output)}</Code>
-                  </div>
-                ))
-              )}
-            </div>
-          </Panel>
-          <Panel title="What the agent sees">
-            <Code className="max-h-[32rem]" label="The calendar in the bridge's snapshot">
-              {entry ?? "The calendar isn't in the snapshot."}
-            </Code>
-          </Panel>
-        </div>
+    <div className="flex flex-col">
+      <div className="h-[34rem] border-b" ref={setScope}>
+        {calendar}
       </div>
-    </TooltipProvider>
+      {children}
+      <div className="grid divide-y lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        <Panel title={scriptsTitle}>
+          <div className="flex flex-wrap gap-2">
+            {scripts.map((script) => (
+              <button
+                key={script.label}
+                className={scriptButtonClass}
+                disabled={running || (script.needsChange === true && changeId === undefined)}
+                onClick={() => void run(script)}
+                type="button"
+              >
+                {script.label}
+              </button>
+            ))}
+            {onReset === undefined ? null : (
+              <button
+                className={`${scriptButtonClass} border-transparent text-fd-muted-foreground`}
+                onClick={() => {
+                  setRecords([]);
+                  setChangeId(undefined);
+                  onReset();
+                }}
+                type="button"
+              >
+                Reset
+              </button>
+            )}
+          </div>
+          <div aria-live="polite" className="flex flex-col gap-2">
+            {records.length === 0 ? (
+              <p className="text-sm text-fd-muted-foreground">{hint}</p>
+            ) : (
+              records.map(({ call, output }, index) => (
+                <div key={index} className="flex flex-col gap-2" data-agent-call={call.tool}>
+                  <Code label={`Call ${index + 1}`}>{formatCall(call, index)}</Code>
+                  <Code label={`Result ${index + 1}`}>{json(output)}</Code>
+                </div>
+              ))
+            )}
+          </div>
+        </Panel>
+        <Panel title="What the agent sees">
+          <Code className="max-h-[32rem]" label="The calendar in the bridge's snapshot">
+            {entry ?? "The calendar isn't in the snapshot."}
+          </Code>
+        </Panel>
+      </div>
+    </div>
   );
 }
 

@@ -4,7 +4,7 @@ A calendar is three things: an adapter that reads your records, a `Calendar` mad
 
 ## 1. Add the views
 
-The views are source files, added with the shadcn CLI from the registry at `https://time.molten.sh/r/`. They're built on shadcn/ui with Base UI primitives, so `style` in the app's `components.json` must start with `base-`. Check for existing files in `components/calendar/` before adding: the app may already have them.
+The views are source files, added with the shadcn CLI from the registry at `https://time.molten.sh/r/`. They use shadcn/ui's tokens and bring their own controls (`calendar-ui`, on ui-sdk), so any shadcn style works. An app with a `components.json` but without shadcn's tokens adds `base-tokens`. Check for existing files in `components/calendar/` before adding: the app may already have them.
 
 ```bash
 npx shadcn@latest add \
@@ -133,7 +133,7 @@ export function TeamCalendar({ meetings }: { readonly meetings: readonly Meeting
 
 `Root` requires `events`, `locale`, `weekRules`, a date (`defaultAnchorDate` or `anchorDate`) and a time zone (`defaultTimeZone` or `timeZone`). It renders no element of its own.
 
-The week and day views' event tooltips use shadcn's `Tooltip`: with `time-grid-view`, the app needs one `TooltipProvider` from `@/components/ui/tooltip` around it. The toolbar's tooltips come from `calendar-ui` and need no provider.
+The views' tooltips, popovers, dialogs and toasts come from `calendar-ui` and need no provider. The global CSS names `@layer ui-sdk;` before `@import "tailwindcss"`.
 
 With server rendering, the server and the browser must agree on the date and time. Pass `now` (a `Temporal.Instant` made on the server) and a fixed date instead of `Temporal.Now` in the component (`docs/guides/nextjs.md`).
 

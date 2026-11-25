@@ -1,6 +1,6 @@
 "use client";
 
-import { useInsertionEffect, useLayoutEffect, useRef } from "react";
+import { useRef } from "react";
 
 import { Button } from "@registry/calendar-ui/button";
 import {
@@ -11,7 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@registry/ui/dialog";
+} from "@registry/calendar-ui/dialog";
 
 /**
  * Which events a change to one occurrence of a recurring event applies to: `"this"` occurrence
@@ -83,30 +83,6 @@ export interface RecurrenceScopeDialogProps {
 }
 
 /**
- * Calls `onClosed` once the dialog it is in has unmounted and focus is back. Base UI queues that
- * focus as the popup unmounts, and the popup's cleanups run before those of its children, so the
- * call this one queues comes after it. The browser a11y suite checks that order.
- */
-function ClosedSignal({ onClosed }: { readonly onClosed: (() => void) | undefined }) {
-  const latest = useRef(onClosed);
-  const mounted = useRef(false);
-  useInsertionEffect(() => {
-    latest.current = onClosed;
-  });
-  useLayoutEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-      // StrictMode runs this cleanup and mounts again at once; only a real unmount stays down.
-      queueMicrotask(() => {
-        if (!mounted.current) latest.current?.();
-      });
-    };
-  }, []);
-  return null;
-}
-
-/**
  * Asks which events of a recurring series a change applies to: one button per scope, then
  * Cancel. Focus starts on the narrowest scope offered, stays in the dialog while it is open, and
  * goes back to where it was when the dialog closes. `useRecurrenceScopePrompt` wraps it in a
@@ -130,8 +106,12 @@ export function RecurrenceScopeDialog({
       onOpenChange={(next) => {
         if (!next && open) onResolve(null);
       }}
+      // Focus is back where it was by the time the dialog has animated closed.
+      onOpenChangeComplete={(next) => {
+        if (!next) onClosed?.();
+      }}
     >
-      <DialogContent showCloseButton={false} initialFocus={firstChoice}>
+      <DialogContent initialFocus={firstChoice}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
@@ -158,7 +138,6 @@ export function RecurrenceScopeDialog({
         <DialogFooter>
           <DialogClose render={<Button variant="outline" />}>Cancel</DialogClose>
         </DialogFooter>
-        <ClosedSignal onClosed={onClosed} />
       </DialogContent>
     </Dialog>
   );

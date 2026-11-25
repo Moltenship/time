@@ -19,7 +19,7 @@ import {
   SelectSeparator as AppSelectSeparator,
   SelectTrigger as AppSelectTrigger,
   SelectValue as AppSelectValue,
-} from "@registry/ui/select";
+} from "@/components/ui/select";
 
 export function Select<TValue extends string = string>({
   items,

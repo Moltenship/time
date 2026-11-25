@@ -8,16 +8,16 @@ ship is what we run.
 
 ```text
 registry/
+  base-tokens/      shadcn's neutral tokens, for an app without them   registry item "base-tokens"
   calendar-theme/   tokens + event palette          registry item "calendar-theme"
-  calendar-ui/      the controls kit on ui-sdk: button, badge, tooltip, select   registry item "calendar-ui"
+  calendar-ui/      the controls kit on ui-sdk: button, badge, tooltip, select, popover, dialog, toast   registry item "calendar-ui"
   calendar/         toolbar, view switcher, event chip, mini month   registry item "calendar"
   month-view/ …     one folder per view, each its own registry item
   recurrence-scope-dialog/   asks which events of a recurring series a change applies to
   calendar-history-toast/    an Undo toast and keys for a calendar's event history
-  calendar-full/    installs every item above, owns no files         registry item "calendar-full"
+  calendar-full/    installs every item above but base-tokens, owns no files   registry item "calendar-full"
   stylex-<item>/    the same items, styled with StyleX and Astryx    registry item "stylex-<item>"
   shared/           framework-free files that items of both frameworks install, such as the kit's classes
-  ui/               stock shadcn components (Base UI, base-nova style): dialog, popover, …
   tests/            focused tests for the source above
 ```
 
@@ -31,15 +31,18 @@ that `tools/registry` checks:
 - `dependencies` lists bare package names, each declared in `registry/package.json`. The build
   adds a range to ours, `@moltenship/calendar@^<workspace version>`. Third-party packages stay bare,
   as in stock shadcn items, so `shadcn add` keeps the version an app already has.
-- `registryDependencies` lists stock shadcn components by name (`button`, `popover`) and our own
-  items as `@moltenship/<item>`. The build turns ours into URLs.
+- `registryDependencies` lists our own items as `@moltenship/<item>`, which the build turns into
+  URLs. The Tailwind items list no stock shadcn components: their controls come from
+  `calendar-ui`.
 - No item depends on a drag-and-drop library. Views edit through the pointer layer in
   `@moltenship/calendar`, which stays off until the app passes `onEventChange`.
 - `calendar-theme` points `meta.stylesheet` at `calendar-theme.css`. The build turns the file into
   the item's `cssVars` and `css`, so `shadcn add` merges its tokens and rules into the app's global
   CSS, inside `@layer base` as in the file. The stock shadcn tokens the file also sets stay out: a
-  shadcn app has its own. No manifest sets `cssVars` or `css` itself.
-- `calendar-full` is a `registry:item` that owns no files and installs every other item.
+  shadcn app has its own. `base-tokens` does the same with `base-tokens.css`, and keeps the stock
+  tokens, which are its job; it owns no other files. No manifest sets `cssVars` or `css` itself.
+- `calendar-full` is a `registry:item` that owns no files and installs every other item but
+  `base-tokens`.
 - A file under `shared/` is plain TypeScript (`.ts`) with no framework in it. It imports other
   shared files and only the framework-free packages in `sharedFilePackages`
   (`tools/registry/src/config.ts`): no React, Solid, Base UI or ui-sdk, and no item's own file. A
@@ -48,12 +51,10 @@ that `tools/registry` checks:
   `shared/calendar-ui/<control>.styles.ts`, the class strings each control's look comes from, so
   another framework's kit can install the same look.
 
-`ui/` is not a registry item. It holds the components a stock shadcn app already has (Base UI,
-`base-nova` style), unchanged apart from the `@registry/ui/button` import path, so the source
-compiles here. Items list them in `registryDependencies`, and consumers get the upstream versions.
-The Tailwind items take their buttons, badges, tooltips and selects from `calendar-ui` instead,
-so those controls look the same in every app and don't follow the app's own `components/ui`. The
-popovers, dialogs and toasts still come from `ui/`.
+The Tailwind items take every control from `calendar-ui`: buttons, badges, tooltips, selects,
+popovers, dialogs and toasts. So those controls look the same in every app and don't follow the
+app's own `components/ui`, and the items need neither Base UI nor a shadcn style. The stock shadcn
+components the demo uses for its own chrome live in `apps/demo/src/components/ui`.
 
 ## Building and serving
 
@@ -64,9 +65,8 @@ The build:
 
 1. checks the manifests;
 2. copies the source to a temporary folder with each `@registry/…` import rewritten to the path
-   shadcn rewrites to the consumer's aliases: `@registry/ui/button` becomes
-   `@/components/ui/button`, and `@registry/calendar/event-chip` becomes the import for its target,
-   `@/components/calendar/event-chip`;
+   shadcn rewrites to the consumer's aliases: `@registry/calendar/event-chip` becomes the import for
+   its target, `@/components/calendar/event-chip`;
 3. writes a `registry.json` with a range on our runtime dependency, URL registry dependencies,
    and each item's `meta.compatibility`, the `@moltenship/calendar` range its whole install needs;
 4. runs `shadcn build`, then writes `compatibility.json` beside the items: each item's URL,
@@ -106,15 +106,19 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
   shadcn components do.
 - Compose with the `render` prop, never `asChild`:
   `<TooltipTrigger render={<Button variant="ghost" />}>…</TooltipTrigger>`. The kit's tooltips
-  group on their own; the stock Base UI tooltips the week and day views still use need a
-  `TooltipProvider` around the app, as `shadcn add tooltip` instructs.
+  group on their own and need no provider.
 - The kit is a default an app can replace in part or whole: once added, its files are the app's
   code. So each control's props are a small, explicit interface with shadcn's and Base UI's names
   (what the views pass, nothing more), and a view uses a control only through those props. A view
   imports controls from `@registry/calendar-ui/*` only, never ui-sdk, and reads none of a
   control's ui-sdk parts, context or data attributes. The theming docs' "Use your own controls"
   lists what the views pass; change it with the props. `tools/a11y/tests/own-controls.a11y.tsx`
-  runs the views with a button and a select of an app's own.
+  runs the views with a button, a select, a popover and a dialog of an app's own, shadcn's stock
+  ones.
+- Hundreds of triggers share one popup, never one root each: the year's day popover, the month's
+  "+N more" list, the annotations' tooltip and popover and the time grid's event tooltip each open
+  from a handle (`createPopoverHandle`, `createTooltipHandle`) that every trigger passes with its
+  `payload`.
 - A kit control takes its classes from its `shared/calendar-ui/<control>.styles.ts` file and adds
   only the markup its framework needs. The kit's popups open in the browser's top layer, so they
   need no portal or `z-index`. ui-sdk puts its own CSS in a layer named `ui-sdk`, which the app
@@ -204,14 +208,14 @@ and inline styles, a plain stylesheet or the Availability recipes can read them.
   container to set.
 - Event colours: wherever the source sets `data-color`, keep it and add
   `color !== undefined && eventColorStyles[color]`.
-- `registry/ui` becomes Astryx: `@astryxdesign/core/Button`, `IconButton`, `Tooltip`, `Popover`,
+- The controls become Astryx: `@astryxdesign/core/Button`, `IconButton`, `Tooltip`, `Popover`,
   `Dialog`, `AlertDialog`, `Badge`, `Selector`. Read `node_modules/@astryxdesign/core/src/<Name>/<Name>.doc.mjs`
   for their props. Astryx's own components take `xstyle`. Base UI, unstyled, stays where Astryx has
   no way to do what the source does, such as an anchor-only popover. `cn` and
   `class-variance-authority` don't appear in this flavour, and Tailwind classes don't either.
 - `.ts` files with no styles (`event-label.ts`, `preview-check.ts`) are copies with their imports
   changed; `tests/stylex-flavour.test.ts` holds them to it.
-- Imports go through `@registry/stylex-<item>/…`, never `@registry/<item>/…` or `@registry/ui/…`.
+- Imports go through `@registry/stylex-<item>/…`, never `@registry/<item>/…`.
 - Manifests: name `stylex-<item>`, targets under `@components/calendar-stylex/`, the source's
   structure below it, `dependencies` swapped (`@stylexjs/stylex`, `@astryxdesign/core`, no `cn`), and
   `registryDependencies` only `@moltenship/stylex-<item>`, with no stock shadcn components.
@@ -241,6 +245,6 @@ export default defineConfig({ resolve: { tsconfigPaths: true } });
 @custom-variant dark (&:is(.dark *));
 ```
 
-The app also lists the UI dependencies the source uses (`@base-ui/react`, `cn`,
-`class-variance-authority`, `lucide-react`, and `shadcn` for its Tailwind variants), exactly as a
-stock shadcn project has them.
+The app also lists the UI dependencies the source uses (`@ui-sdk/core`, `@ui-sdk/react`, `cn`,
+`class-variance-authority`, `lucide-react`, and `shadcn` for its Tailwind variants), and
+`@base-ui/react` while it renders the `stylex-` items.

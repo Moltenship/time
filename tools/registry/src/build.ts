@@ -129,7 +129,6 @@ export async function buildRegistry({
   }
   const resolveImport = (from: string) => (specifier: string) => {
     const path = specifier.slice("@registry/".length);
-    if (path.startsWith("ui/")) return `@/components/${path}`;
     const target = targets.get(`registry/${path}`) ?? targets.get(`registry/${path}/index`);
     if (!target) throw new Error(`${from} imports ${specifier}, which no registry item ships`);
     return consumerImportForTarget(target);
@@ -162,7 +161,10 @@ export async function buildRegistry({
       const { stylesheet, ...meta } = item.meta ?? {};
       const theme =
         typeof stylesheet === "string"
-          ? themeCssToRegistry(await readFile(join(root, stylesheet), "utf8"), stylesheet)
+          ? themeCssToRegistry(await readFile(join(root, stylesheet), "utf8"), stylesheet, {
+              // The one item whose job is shadcn's own tokens, for an app that has none.
+              standard: item.name === "base-tokens",
+            })
           : null;
 
       registryItems.push({

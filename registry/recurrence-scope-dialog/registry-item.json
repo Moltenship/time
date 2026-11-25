@@ -5,7 +5,7 @@
   "title": "Recurrence scope dialog",
   "description": "Asks whether a change to a recurring event applies to this event, this and following events, or all events, while the change waits on screen. A promise-based hook for onEventChange resolves the scope, or null on cancel so the change rolls back.",
   "dependencies": ["@moltenship/calendar"],
-  "registryDependencies": ["dialog", "@moltenship/calendar-ui"],
+  "registryDependencies": ["@moltenship/calendar-ui"],
   "files": [
     {
       "path": "registry/recurrence-scope-dialog/recurrence-scope-dialog.tsx",
