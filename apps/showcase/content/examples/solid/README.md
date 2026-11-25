@@ -20,6 +20,15 @@ into a clean Solid app, so what the docs show is what it installs and builds.
 test copies both into the same app, beside `calendar-page.tsx`. So it does `undo-toast.tsx`, Undo
 and redo's undo toast on that month.
 
+`month-events.ts`, `drag-preview.tsx`, `spoken.tsx` and `opening-hours.tsx` are the live examples
+of the shared pages Interactions, Accessibility and Availability, on the Month page's calendar.
+The install test leaves them out: they add no registry file the Month page doesn't.
+
+`agent-steps.tsx` is the buttons and the answer of the agent guides' live examples, and
+`agent-overview.tsx`, `agent-access.tsx`, `agent-delete.tsx` and `agent-log.tsx` are those
+examples: each runs a calendar the guides build on a real bridge, and sends it calls written by
+hand. No model runs.
+
 `recurrence.tsx` is the calendar of Show and edit recurring events, on
 `@moltenship/calendar-recurrence`. The install test leaves it out, since its clean app doesn't
 install that package; `calendar-page.tsx` covers the dialog's install there.

@@ -9,6 +9,17 @@ description: What an AI agent sees of your calendar, what it can do to it, and w
 
 </React>
 
+<Solid>
+
+<SolidExample
+  name="agent-overview"
+  title="A calendar and the calls an agent sends"
+  size="h-[30rem]"
+  caption="Live, in the browser's own styles. Each button sends one call to a real bridge."
+/>
+
+</Solid>
+
 An agent is an AI model with tools: the one built into a browser, or one you run and connect to
 your page. Since 2.0 a calendar describes itself to agents. An agent reads the calendar's state and
 the events in view, and changes them by calling named actions. It doesn't read your markup or
@@ -29,6 +40,22 @@ The example above is a real calendar next to what a real bridge lists for it. Th
 calls a model would send. No model runs on these pages.
 
 </React>
+
+<Solid>
+
+The example above is a real calendar on a real bridge. The buttons send the calls a model would
+send, and the answer under them is what the model would read. No model runs on these pages. The
+calendar and the bridge are the ones [Connect an agent](/docs/agents/connect) builds:
+
+<include meta='title="agent-overview.tsx"'>
+  ../../examples/solid/agent-overview.tsx#overview
+</include>
+
+`AgentSteps` is the buttons and the answer, for these pages' examples:
+
+<include meta='title="agent-steps.tsx"'>../../examples/solid/agent-steps.tsx#steps</include>
+
+</Solid>
 
 ## What an agent sees
 

@@ -21,6 +21,16 @@ resize, or create one. A screen reader hears each step. The keys and the announc
 calendar's, and a view you write binds them with three hooks, as
 [In your own views](#in-your-own-views) shows.
 
+Try it on the registry's [month](/docs/views/month): Tab into the calendar or click a day, then use
+the keys below. The strip under the calendar shows what a screen reader announces.
+
+<SolidExample
+  name="announcements"
+  title="A month with its announcements in view"
+  size="h-[34rem]"
+  caption="Live. Space picks an event up, the arrow keys move it and Enter drops it."
+/>
+
 </Solid>
 
 ## Keyboard
@@ -165,6 +175,11 @@ packages ship no text. The registry's `calendar` item adds a full English set, `
 in `components/calendar/announcements.ts`, and this is a short one of your own:
 
 <include meta='title="announcements.ts"'>../examples/solid/announcements.ts#messages</include>
+
+The example at the top of this page shows the announcer instead of hiding it: a `style` goes over
+the announcer's own.
+
+<include meta='title="spoken.tsx"'>../examples/solid/spoken.tsx#spoken</include>
 
 </Solid>
 

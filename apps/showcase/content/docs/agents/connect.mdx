@@ -9,6 +9,17 @@ description: Create the agent bridge, name your calendar, and decide which actio
 
 </React>
 
+<Solid>
+
+<SolidExample
+  name="agent-access"
+  title="What the agent may do, and the calls it sends"
+  size="h-[32rem]"
+  caption="Live, in the browser's own styles. Pick what the agent may do, then send a call."
+/>
+
+</Solid>
+
 A calendar is reachable by agents once your app creates ui-sdk's agent bridge. The bridge lists the
 calendar, runs an agent's steps on it, and asks your `allow` before each one. This page sets that
 up. <React>Its samples import the `Calendar`, `Meeting`, `meetings` and `weekRules` that the
@@ -245,6 +256,11 @@ This bridge reads a setting the person controls:
 <Solid>
 
 <include meta='title="agent.ts"'>../../examples/solid/agent-permissions.ts#permissions</include>
+
+The example at the top of this page sets that switch from three radio buttons. `AgentSteps` is
+the buttons and the answer, from [Agents in your app](/docs/agents):
+
+<include meta='title="agent-access.tsx"'>../../examples/solid/agent-access.tsx#access</include>
 
 </Solid>
 

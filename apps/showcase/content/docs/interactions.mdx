@@ -328,6 +328,26 @@ snapped.
 
 </React>
 
+<Solid>
+
+The registry's [month](/docs/views/month) passes its `dragPreview` option to the hook, so
+`viewOptions` on `Root` picks the mode:
+
+<SolidExample
+  name="drag-preview"
+  title="Snapped and free drags in the month"
+  size="h-[32rem]"
+  caption="Live. Pick a mode, then drag an event to another day."
+/>
+
+<include meta='title="drag-preview.tsx"'>../examples/solid/drag-preview.tsx#drag-preview</include>
+
+`applyChange` and `seed` are the example's save and its events:
+
+<include meta='title="month-events.ts"'>../examples/solid/month-events.ts#events</include>
+
+</Solid>
+
 The drop is the same in both modes. Your handler, the policies, the draft hooks, the announcements
 and your own drop zones all hear the snapped placement, never the pointer's exact position.
 
