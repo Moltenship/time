@@ -45,7 +45,7 @@ no dnd-kit.
 
 ## Documentation
 
-- [dnd-kit adapter](https://time.molten.sh/docs/api/dnd-kit)
+- [dnd-kit adapter](https://time.molten.sh/docs/react/api/dnd-kit)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

@@ -28,7 +28,7 @@ Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 ## Documentation
 
-- [Interactions](https://time.molten.sh/docs/interactions)
+- [Interactions](https://time.molten.sh/docs/react/interactions)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

@@ -1,16 +1,17 @@
 ---
 title: React and Solid
-description: What the React and SolidJS 2 integrations share, what each one has today, and which pages of these docs apply to which.
+description: What the React and SolidJS 2 integrations share, what each one has today, and what's coming for Solid.
 ---
 
 Time's engine is in packages that import no UI framework. An integration package renders it in
-one framework. There are two integrations. React is complete, and SolidJS 2 is a preview.
+one framework. There are two integrations, and each has its own docs: the select at the top of the
+sidebar switches between them and keeps you on the same page where both have it. React's
+integration is complete, and SolidJS 2's is a preview.
 
 <Callout type="warn" title="Solid is a preview">
   `@moltenship/calendar-solid` has the parts and hooks React's integration has, keyboard navigation,
   dragging, drafts and undo included. It has no ready-made views and no testing package yet, so you
-  write each view. Its API can change in any release before 2.0.0. The code samples on the other
-  pages are React.
+  write each view. Its API can change in any release before 2.0.0.
 </Callout>
 
 ## The layers
@@ -35,21 +36,21 @@ integrations bind all of them, so a key or a drag does the same thing in both.
 
 These work the same in both frameworks, because they run below the integration:
 
-| Topic             | What both frameworks share                                                                                 | Read                                               |
-| ----------------- | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------- |
-| Events            | `defineEventAdapter`, validation, snapshots and queries                                                    | [Events and adapters](/docs/concepts/events)       |
-| Time              | `Temporal` values, timed, all-day and floating events, time zones and daylight saving time                 | [Time and time zones](/docs/concepts/time)         |
-| State             | The six state values, controlled and uncontrolled props, change handlers, and `createCalendarStore`        | [State](/docs/concepts/state)                      |
-| Recurrence        | `@moltenship/calendar-recurrence` turns series into ordinary events before the calendar sees them          | [Recurring events](/docs/concepts/recurrence)      |
-| Changes           | Proposals, `onEventChange`, `onEventChangeResult`, policies and pending changes                            | [Interactions](/docs/interactions#saving-changes)  |
-| Undo history      | `createEventHistory` records results, and `useCalendarHistory` takes them back                             | [Undo and redo](/docs/undo-redo)                   |
-| Keyboard          | The keys, roving focus and keyboard move, resize and create, through `useCalendarKeyboard`                 | [Keyboard](/docs/accessibility#keyboard)           |
-| Pointer gestures  | Drag, resize and create with a mouse, a pen or touch, through `useCalendarPointer`                         | [Pointer layer](/docs/api/changes#pointer-layer)   |
-| Announcements     | `Announcer` and the messages a screen reader hears                                                         | [Announcements](/docs/accessibility#announcements) |
-| Agents            | The actions an agent can call, with the same names, inputs, results and errors                             | [Agents in your app](/docs/agents)                 |
-| `Root`            | Its props have the same names, types and defaults                                                          | [`Root`](/docs/api/react#root)                     |
-| A view's strategy | `getRange`, `navigate`, `getTitle` and `project`, and the engine's projections, such as `projectMonth`     | [Custom views](/docs/views/custom-views#strategy)  |
-| CSS hooks         | Each part renders the same `data-calendar-part` attribute, so a selector written for one matches the other | [Components](/docs/api/react#components)           |
+| Topic             | What both frameworks share                                                                                 | Read                                                                                                                                                                    |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Events            | `defineEventAdapter`, validation, snapshots and queries                                                    | <React>[Events and adapters](/docs/concepts/events)</React><Solid>[Create the calendar](/docs/quick-start#create-the-calendar)</Solid>                                  |
+| Time              | `Temporal` values, timed, all-day and floating events, time zones and daylight saving time                 | <React>[Time and time zones](/docs/concepts/time)</React><Solid>[Temporal helpers](/docs/temporal)</Solid>                                                              |
+| State             | The six state values, controlled and uncontrolled props, change handlers, and `createCalendarStore`        | <React>[State](/docs/concepts/state)</React><Solid>[Hooks](/docs/api/components#hooks)</Solid>                                                                          |
+| Recurrence        | `@moltenship/calendar-recurrence` turns series into ordinary events before the calendar sees them          | [Series and occurrences](/docs/recurrence/model)                                                                                                                        |
+| Changes           | Proposals, `onEventChange`, `onEventChangeResult`, policies and pending changes                            | <React>[Interactions](/docs/interactions#saving-changes)</React><Solid>[Render it](/docs/quick-start#render-it)</Solid>                                                 |
+| Undo history      | `createEventHistory` records results, and `useCalendarHistory` takes them back                             | <React>[Undo and redo](/docs/undo-redo)</React><Solid>[Undo and redo](/docs/api/components#undo-and-redo)</Solid>                                                       |
+| Keyboard          | The keys, roving focus and keyboard move, resize and create, through `useCalendarKeyboard`                 | <React>[Keyboard](/docs/accessibility#keyboard)</React><Solid>[Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view)</Solid>           |
+| Pointer gestures  | Drag, resize and create with a mouse, a pen or touch, through `useCalendarPointer`                         | <React>[Pointer layer](/docs/api/changes#pointer-layer)</React><Solid>[Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view)</Solid>   |
+| Announcements     | `Announcer` and the messages a screen reader hears                                                         | <React>[Announcements](/docs/accessibility#announcements)</React><Solid>[Keyboard and dragging in a view](/docs/api/components#keyboard-and-dragging-in-a-view)</Solid> |
+| Agents            | The actions an agent can call, with the same names, inputs, results and errors                             | <React>[Agents in your app](/docs/agents)</React><Solid>[Agents](/docs/api/components#agents)</Solid>                                                                   |
+| `Root`            | Its props have the same names, types and defaults                                                          | <React>[`Root`](/docs/api/components#root)</React><Solid>[Parts](/docs/api/components#parts)</Solid>                                                                    |
+| A view's strategy | `getRange`, `navigate`, `getTitle` and `project`, and the engine's projections, such as `projectMonth`     | <React>[Custom views](/docs/views/custom-views#strategy)</React><Solid>[Create the calendar](/docs/quick-start#create-the-calendar)</Solid>                             |
+| CSS hooks         | Each part renders the same `data-calendar-part` attribute, so a selector written for one matches the other | <React>[Components](/docs/api/components#components)</React><Solid>[Parts](/docs/api/components#parts)</Solid>                                                          |
 
 ## What differs
 
@@ -69,49 +70,46 @@ These work the same in both frameworks, because they run below the integration:
 | Testing package               | `@moltenship/calendar-testing`                                    | None. That package has React as a peer dependency                                               |
 | Agent bridge                  | `@ui-sdk/react/agent`                                             | `@ui-sdk/solid/agent`                                                                           |
 
-[Solid](/docs/api/solid#what-isnt-in-it-yet) lists what's missing.
+## What's coming
 
-## Which pages apply to Solid
+Solid doesn't have these yet:
 
-There is one set of pages for both frameworks, and their samples are React. Read them from a Solid
-app like this:
+| Missing           | In React it's                                                                            |
+| ----------------- | ---------------------------------------------------------------------------------------- |
+| Ready-made views  | The registry's week, day, month, year, agenda and resource views, which are React source |
+| An undo toast     | The registry's `calendar-history-toast`, which is React source                           |
+| A testing package | `@moltenship/calendar-testing`, which is React only                                      |
+| A dnd-kit adapter | `@moltenship/calendar-dnd-kit`, which has React as a peer dependency                     |
 
-| Section       | In a Solid app                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Get started   | [Installation](/docs/installation#solid) covers both frameworks. The [Quick start](/docs/quick-start) uses the registry's React views, so follow [A calendar](/docs/api/solid#a-calendar) instead                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Concepts      | [How it works](/docs/concepts/how-it-works), [Events and adapters](/docs/concepts/events) and [Recurring events](/docs/concepts/recurrence) apply. The hooks in [State](/docs/concepts/state) and `useNow` in [Time and time zones](/docs/concepts/time) exist in Solid. The ones that read a value return an accessor. The parts in [Anatomy](/docs/concepts/anatomy) that come from the registry, such as `MiniMonth`, are React source                                                                                                                                                                                                                                 |
-| Views         | The view pages document React source. [Custom views](/docs/views/custom-views) applies, with a Solid component as the `Renderer`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
-| Interactions  | All of it applies. A view you write binds the gestures as [Keyboard and dragging in a view](/docs/api/solid#keyboard-and-dragging-in-a-view) shows. `@moltenship/calendar-dnd-kit` has React as a peer dependency                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
-| Undo and redo | The history, the hook, the shortcuts and the announcements apply, with the hooks from `@moltenship/calendar-solid`. The toast is React source                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
-| Availability  | Applies. The hooks that hand availability and resources to a view return accessors                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
-| Annotations   | Applies. `useCalendarAnnotations` and `useTimeGridAnnotations` return accessors                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| Accessibility | The keyboard map and the announcements apply to a Solid view that binds `useCalendarKeyboard` and renders `Announcer`. The ARIA patterns and the CI checks describe the registry's React views                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| Testing       | React only. `@moltenship/calendar-testing` renders React                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| Guides        | The guides build React components. The code that runs outside a component applies in Solid. That is the feed parsing in [Show an ICS feed](/docs/guides/ics), the series expansion in [Show and edit recurring events](/docs/guides/recurring-events) the event conversion in [Google Calendar events](/docs/guides/google-calendar), and the API calls, sync tokens and etags in [Sync with Google Calendar](/docs/guides/google-calendar-sync). In [Performance](/docs/guides/performance), the sections on records, revisions and `project` apply, and the last two describe React renders. The Next.js, TanStack Query, dnd-kit and Motion guides use React libraries |
-| Styling       | The tokens style the registry's React views                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
-| AI            | [Agents in your app](/docs/agents) applies, with the bridge imported from `@ui-sdk/solid/agent` where a sample imports `@ui-sdk/react/agent`. The undo samples in [Who made a change](/docs/agents/changes) use `useCalendarHistory`, which Solid has too. [Build with a coding agent](/docs/agents/coding-agents) applies, and the skill has a Solid reference                                                                                                                                                                                                                                                                                                           |
-| API reference | [Solid](/docs/api/solid) replaces [React components and hooks](/docs/api/react). The pages under "Engine and state" apply. In [Event changes](/docs/api/changes#pointer-layer), `attachCalendarPointer` imports no framework, and both integrations export `useCalendarPointer`, which passes its options to it. Under "Other packages", [Recurrence](/docs/api/recurrence) and [iCalendar](/docs/api/ics) import no framework, and the [dnd-kit adapter](/docs/api/dnd-kit) needs React                                                                                                                                                                                  |
+The views are the next work. The registry gets Solid versions of its items, installed with the
+same `shadcn add` command, starting with the agenda and then the toolbar, the month view and the
+week and day views. [Issue #279](https://github.com/Moltenship/time/issues/279) tracks each step.
+The testing package and the dnd-kit adapter have no Solid plan yet.
 
-## Start in React
-
-1. [Install](/docs/installation) `@moltenship/calendar` and its peer dependencies.
-2. Follow the [Quick start](/docs/quick-start) to a calendar with week, day, month and agenda views.
-3. Save edits as [Interactions](/docs/interactions) shows.
-
-## Start in Solid
-
-1. [Install](/docs/installation#solid) `@moltenship/calendar-solid` and set up the Solid compiler.
-2. Build [a calendar](/docs/api/solid#a-calendar) with a view you write.
-3. Read [Differences from React](/docs/api/solid#differences-from-react) before you copy a sample
-   from another page.
-
-The [Solid demo](https://moltenship-time-demo.vercel.app/solid/) is a running Solid calendar with a
-month grid and an agenda you can navigate with the keyboard and drag events in, undo and redo, and
-an agent panel. Its switch opens the React demo and keeps the view and the date. Its source is the repository's
+Until the registry has a Solid view, you write its `Renderer` with the package's hooks. The
+[Solid demo](https://moltenship-time-demo.vercel.app/solid/)'s month grid and agenda are such
+views, with keyboard navigation, dragging and undo, and their source is the repository's
 [`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
+
+The Solid docs have no page on something Solid lacks. That is why they have no pages on the
+built-in views, theming, StyleX or testing.
+
+<Solid>
+
+Some pages on things Solid does have aren't written yet: the concepts, custom views, interactions,
+availability, annotations, accessibility and the agent guides. Until they are,
+[Components and hooks](/docs/api/components) covers those subjects in Solid, and it links to the React
+page where the rest of a subject is the same in both frameworks.
+
+</Solid>
 
 ## Other frameworks
 
 Time has no integration for Vue, Svelte, Angular or any framework other than these two. You'd write
-one on `@moltenship/calendar-primitives`, and its API can still change. See
-[Primitives](/docs/api/primitives).
+one on `@moltenship/calendar-primitives`, and its API can still change.
+
+<React>
+
+See [Primitives](/docs/api/primitives).
+
+</React>

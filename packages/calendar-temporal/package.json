@@ -14,7 +14,7 @@
     "timezone",
     "typescript"
   ],
-  "homepage": "https://time.molten.sh/docs/api/temporal",
+  "homepage": "https://time.molten.sh/docs/temporal",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

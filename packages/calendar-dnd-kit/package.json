@@ -12,7 +12,7 @@
     "temporal",
     "typescript"
   ],
-  "homepage": "https://time.molten.sh/docs/api/dnd-kit",
+  "homepage": "https://time.molten.sh/docs/react/api/dnd-kit",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

@@ -57,7 +57,7 @@ packed code carries the `/*!` notice.
 | `@moltenship/calendar-testing` | Test helpers for apps: environment, builders, fixtures, render and hydration harness, queries, drivers and assertions (#45) | Public facade and `calendar-recurrence` |
 | `@moltenship/calendar-recurrence` | Recurrence layer: RRULE expansion, occurrences, series edits (ADR 0048) | `calendar-core`, `ics` |
 | `@moltenship/ics` | Standalone iCalendar parsing (ADR 0151) | None |
-| `showcase` | Consumer-equivalent documentation and examples | Public facade, `calendar-recurrence`, `calendar-dnd-kit`, `calendar-testing` and `@moltenship/ics` |
+| `showcase` | Consumer-equivalent documentation and examples, for React and for Solid | Public facade, `calendar-recurrence`, `calendar-dnd-kit`, `calendar-temporal`, `calendar-testing` and `@moltenship/ics`; `calendar-solid` and `calendar-core` as dev dependencies, for the Solid docs' samples, which it type-checks and never imports |
 | `ssr-fixture` | Consumer-equivalent SSR/hydration verification | Public facade; its tests also use `calendar-testing` |
 | `benchmark` | Internal core and recurrence benchmark runners, with their fixtures | Core, recurrence and Temporal utilities |
 | `demo` | The Google Calendar-style demo app. Its build also builds `demo-solid` into `dist/solid`, and its dev server serves it at `/solid/` (`apps/demo/vite.config.ts`) | Public facade, `calendar-recurrence` and `calendar-dnd-kit`; `demo-solid` as a dev dependency, which it builds and never imports |
@@ -81,7 +81,8 @@ source imports none of it. ui-sdk is pre-1.0: the catalog pins one version for a
 peer range is a caret that starts at it, `tests/package-metadata.test.ts` holds them together, and
 an upgrade moves all of them in one pull request. Only the primitives, the two integrations and the
 applications that show them import `@ui-sdk/*`, through its public entries, and only
-`calendar-solid` and `demo-solid` import Solid.
+`calendar-solid`, `demo-solid` and the samples of the Solid docs
+(`apps/showcase/content/examples/solid`) import Solid.
 
 `calendar-core` depends on `@flatten-js/interval-tree` behind its
 internal `IntervalIndex` (ADR 0016). dnd-kit (`@dnd-kit/react` and `@dnd-kit/dom` 0.5) is a peer
@@ -150,7 +151,7 @@ no framework, no ui-sdk renderer and, of ours, only core and the Temporal utilit
 integration imports the other or the other's framework; `@ui-sdk/*` is imported only by the
 primitives, the integrations and the applications that show them, never through an `internal`,
 `dist` or `src` path and never its date, Calendar or Timeline entries from a package; Solid only by
-`calendar-solid` and `demo-solid`; and the catalog and the `@ui-sdk/*` peers move together.
+`calendar-solid`, `demo-solid` and the Solid docs' samples; and the catalog and the `@ui-sdk/*` peers move together.
 
 Dependency-cruiser 18 uses an isolated TypeScript 6 parser through `packageExtensions` because its
 boundary analysis does not yet work with TypeScript 7. This exception is tooling-only: Vite+ and

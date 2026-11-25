@@ -16,12 +16,22 @@ interface NavigationCoverage {
   readonly listed: readonly string[];
 }
 
-/** A sidebar entry that names no page: `---Get started---` starts a group. */
+/**
+ * A sidebar entry that names no page of its own: `---Get started---` starts a group, and
+ * `[Recurrence](/docs/api/recurrence)` points to a page listed in another section.
+ */
 const isSeparator = (entry: string) => /^---.*---$/.test(entry);
+const isPointer = (entry: string) => /^\[[^\]]*\]\(.+\)$/.test(entry);
+
+/** `...ics` lists the folder's pages in the parent's group, with no folder of their own. */
+const folderOf = (entry: string) => entry.replace(/^\.\.\./, "");
 
 /**
  * A folder's `meta.json` lists its own pages and folders. A parent's can also list a page of a
  * folder by its path, such as `agents/coding-agents`, to place it outside that folder's group.
+ *
+ * A page is one path whatever its files are named: `quick-start.react.mdx` and
+ * `quick-start.solid.mdx` are the page `quick-start` in each framework's docs (`lib/source.ts`).
  */
 async function collectNavigationCoverage(
   directory: string,
@@ -33,7 +43,9 @@ async function collectNavigationCoverage(
   };
   expect(Array.isArray(meta.pages)).toBe(true);
   const folders = entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
-  const navigation = (meta.pages as string[]).filter((entry) => !isSeparator(entry));
+  const navigation = (meta.pages as string[])
+    .filter((entry) => !isSeparator(entry) && !isPointer(entry))
+    .map(folderOf);
 
   // Every folder is in its parent's sidebar.
   expect(navigation.filter((entry) => folders.includes(entry)).sort()).toEqual(folders.sort());
@@ -45,9 +57,11 @@ async function collectNavigationCoverage(
   );
   return {
     authored: [
-      ...entries
-        .filter((entry) => entry.isFile() && /\.(?:md|mdx)$/.test(entry.name))
-        .map((entry) => prefix + entry.name.replace(/\.(?:md|mdx)$/, "")),
+      ...new Set(
+        entries
+          .filter((entry) => entry.isFile() && /\.(?:md|mdx)$/.test(entry.name))
+          .map((entry) => prefix + entry.name.replace(/(?:\.(?:react|solid))?\.(?:md|mdx)$/, "")),
+      ),
       ...nested.flatMap((coverage) => coverage.authored),
     ],
     listed: [

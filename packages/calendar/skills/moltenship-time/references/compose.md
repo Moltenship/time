@@ -26,7 +26,7 @@ npx shadcn@latest add \
 | `scrolling-list-view`      | `createScrollingAgendaView`                                               | `scrolling-list-view/scrolling-agenda-view`              | `docs/views/agenda.md`            |
 | `calendar-full`            | Every other item in this table                                            |                                                          | `docs/installation.md`            |
 | `calendar-history-toast`   | `CalendarHistoryToast` (an Undo toast)                                    | `calendar-history-toast/calendar-history-toast`          | `docs/undo-redo.md`               |
-| `recurrence-scope-dialog`  | "This event, following, or all?"                                          | `recurrence-scope-dialog/use-recurrence-scope-prompt`    | `docs/guides/recurring-events.md` |
+| `recurrence-scope-dialog`  | "This event, following, or all?"                                          | `recurrence-scope-dialog/use-recurrence-scope-prompt`    | `docs/recurrence/calendar.md` |
 
 Every view item brings the shared `calendar` item: `calendar-toolbar`, `view-switcher`, `event-colors`, `announcements`, the theme, and `calendar-ui`, the calendar's own buttons, badges, tooltips and selects on ui-sdk (they don't use the app's `components/ui`). They're a default the app owns: to use the app's own control, make its file in `components/calendar/ui/` render it with the same exports and props (theming docs, "Use your own controls"). Each item also has a `stylex-` twin for apps on StyleX (`docs/stylex.md`).
 
@@ -164,7 +164,7 @@ Rooms or people that events belong to are `resources` on `Root`, and `getResourc
 
 ## Recurring events
 
-Recurrence is a layer over ordinary events, in `@moltenship/calendar-recurrence`: you expand series into occurrences and pass those as `events`. Read `docs/concepts/recurrence.md` and `docs/guides/recurring-events.md` before writing any of it. Don't expand RRULEs by hand.
+Recurrence is a layer over ordinary events, in `@moltenship/calendar-recurrence`: you expand series into occurrences and pass those as `events`. Read `docs/recurrence/model.md` and `docs/recurrence/calendar.md` before writing any of it. Don't expand RRULEs by hand.
 
 ## A view of your own
 

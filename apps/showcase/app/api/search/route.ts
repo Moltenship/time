@@ -1,8 +1,10 @@
-import { source } from "@/lib/source";
-import { createFromSource } from "fumadocs-core/search/server";
+import { searchRecords } from "@/lib/search-index";
+import { createSearchAPI } from "fumadocs-core/search/server";
 
 export const revalidate = false;
 
-export const { staticGET: GET } = createFromSource(source, {
+/** One index for both frameworks' docs, each page tagged with its framework. */
+export const { staticGET: GET } = createSearchAPI("advanced", {
   language: "english",
+  indexes: searchRecords,
 });

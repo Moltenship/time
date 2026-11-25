@@ -12,7 +12,7 @@
     "temporal",
     "typescript"
   ],
-  "homepage": "https://time.molten.sh/docs/interactions",
+  "homepage": "https://time.molten.sh/docs/react/interactions",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

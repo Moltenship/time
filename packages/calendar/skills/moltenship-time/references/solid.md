@@ -1,6 +1,6 @@
 # Solid
 
-`@moltenship/calendar-solid` is the SolidJS 2 integration, a preview. It renders the same primitive as React, so state, actions, event changes, policies and the agent surface are the same. It has every hook React has, and no ready-made views. Read `docs/api/solid.md` before you write Solid code, and check the package's own types: the preview changes between releases.
+`@moltenship/calendar-solid` is the SolidJS 2 integration, a preview. It renders the same primitive as React, so state, actions, event changes, policies and the agent surface are the same. It has every hook React has, and no ready-made views. Read the Solid docs before you write Solid code, and check the package's own types: the preview changes between releases. The docs in the package are React's. Solid's are on the site: `https://time.molten.sh/llms.txt` lists them, and `https://time.molten.sh/docs/solid/api/components.md` is the reference.
 
 ## What it has, and what it doesn't
 
@@ -200,7 +200,7 @@ Everything in `agent-ready.md` holds: `label` on `Root`, `Calendar.Frame` render
 
 ## Keyboard, dragging and undo
 
-`docs/api/solid.md` has a month view with both refs, and the undo buttons. In short:
+`https://time.molten.sh/docs/solid/api/components.md` has a month view with both refs, and the undo buttons. In short:
 
 - Give the strategy a `getSpatialNavigation`, such as `monthSpatialNavigation` from `@moltenship/calendar-core`, or the keys move nothing.
 - Pass `useCalendarPointer` the Renderer's `events`, `actions.proposeEventChange` as `onPropose`, `actions.checkEventChange` as `check`, `isReadOnly` as `disabled` and the environment's `timeZone`. Add `useCalendarAnnouncer()` and `useCalendarDraftReporter()` as `announcer` and `onPreview`. Render `data-date` on each day, `eventIdAttributes(id)` on each event and `data-resize="start"` or `"end"` on its handles.

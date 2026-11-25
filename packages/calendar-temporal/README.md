@@ -33,7 +33,7 @@ Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 ## Documentation
 
-- [Temporal helpers](https://time.molten.sh/docs/api/temporal)
+- [Temporal helpers](https://time.molten.sh/docs/temporal)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

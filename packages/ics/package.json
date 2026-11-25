@@ -15,7 +15,7 @@
     "typescript",
     "vevent"
   ],
-  "homepage": "https://time.molten.sh/docs/api/ics",
+  "homepage": "https://time.molten.sh/docs/ics",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

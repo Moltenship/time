@@ -17,52 +17,63 @@ import {
 // links, the index and the Markdown form of the MDX components.
 
 describe("links", () => {
-  test("a page's file follows its URL, and the docs' root is index.md", () => {
-    expect(markdownPath("/docs")).toBe("index.md");
-    expect(markdownPath("/docs/agents")).toBe("agents.md");
-    expect(markdownPath("/docs/agents/connect")).toBe("agents/connect.md");
+  test("a page's file follows its address in its framework's docs, and the root is index.md", () => {
+    expect(markdownPath("/docs/react")).toBe("index.md");
+    expect(markdownPath("/docs/react/agents")).toBe("agents.md");
+    expect(markdownPath("/docs/solid/api/components")).toBe("api/components.md");
   });
 
   test("the site links to each page's Markdown by an absolute URL", () => {
-    expect(siteLink("/docs", "")).toBe("https://time.molten.sh/docs.md");
-    expect(siteLink("/docs/agents/connect", "#create-the-bridge")).toBe(
-      "https://time.molten.sh/docs/agents/connect.md#create-the-bridge",
+    expect(siteLink("/docs/react", "")).toBe("https://time.molten.sh/docs/react.md");
+    expect(siteLink("/docs/solid/api/components", "#agents")).toBe(
+      "https://time.molten.sh/docs/solid/api/components.md#agents",
     );
   });
 
   test("packaged docs link to the file beside them by a relative path", () => {
-    expect(fileLink("/docs")("/docs/agents/connect", "")).toBe("./agents/connect.md");
-    expect(fileLink("/docs/agents/connect")("/docs/agents/changes", "#undo")).toBe(
-      "./changes.md#undo",
+    const fromConnect = fileLink("/docs/react/agents/connect");
+    expect(fileLink("/docs/react")("/docs/react/agents/connect", "")).toBe("./agents/connect.md");
+    expect(fromConnect("/docs/react/agents/changes", "#undo")).toBe("./changes.md#undo");
+    expect(fromConnect("/docs/react/installation", "")).toBe("../installation.md");
+    expect(fromConnect("/docs/react", "")).toBe("../index.md");
+    expect(fileLink("/docs/react/views/month")("/docs/react/api/components", "#root")).toBe(
+      "../api/components.md#root",
     );
-    expect(fileLink("/docs/agents/connect")("/docs/installation", "")).toBe("../installation.md");
-    expect(fileLink("/docs/agents/connect")("/docs", "")).toBe("../index.md");
-    expect(fileLink("/docs/views/month")("/docs/api/react", "#root")).toBe("../api/react.md#root");
+  });
+
+  test("packaged docs hold one framework, so a link to the other's page leads to the site", () => {
+    expect(fileLink("/docs/react/customization")("/docs/solid/quick-start", "#render-it")).toBe(
+      "https://time.molten.sh/docs/solid/quick-start.md#render-it",
+    );
   });
 
   test("links in prose are rewritten, and paths in code samples are left alone", () => {
     const markdown = [
-      "See [Connect](/docs/agents/connect#name-the-calendar) and the [index](/llms.txt).",
+      "See [Connect](/docs/react/agents/connect#name-the-calendar) and the [index](/llms.txt).",
       "```ts",
-      'const href = "[x](/docs/agents/connect)";',
+      'const href = "[x](/docs/react/agents/connect)";',
       "```",
-      "Then [Installation](/docs/installation).",
+      "Then [Installation](/docs/react/installation).",
     ].join("\n");
 
-    expect(rewriteLinks(markdown, fileLink("/docs/agents/changes"))).toBe(
+    expect(rewriteLinks(markdown, fileLink("/docs/react/agents/changes"))).toBe(
       [
         "See [Connect](./connect.md#name-the-calendar) and the [index](https://time.molten.sh/llms.txt).",
         "```ts",
-        'const href = "[x](/docs/agents/connect)";',
+        'const href = "[x](/docs/react/agents/connect)";',
         "```",
         "Then [Installation](../installation.md).",
       ].join("\n"),
     );
   });
 
-  test("a site address that only starts like a docs page becomes absolute", () => {
-    expect(rewriteLinks("[`/docs.md`](/docs.md) and [docs](/docs)", fileLink("/docs/agents"))).toBe(
-      "[`/docs.md`](https://time.molten.sh/docs.md) and [docs](./index.md)",
+  test("a link to a page's Markdown is a site address, and gets no second .md", () => {
+    const markdown = "[`/docs/solid.md`](/docs/solid.md) and [docs](/docs/react)";
+    expect(rewriteLinks(markdown, fileLink("/docs/react/agents"))).toBe(
+      "[`/docs/solid.md`](https://time.molten.sh/docs/solid.md) and [docs](./index.md)",
+    );
+    expect(rewriteLinks(markdown, siteLink)).toBe(
+      "[`/docs/solid.md`](https://time.molten.sh/docs/solid.md) and [docs](https://time.molten.sh/docs/react.md)",
     );
   });
 });

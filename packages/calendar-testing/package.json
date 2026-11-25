@@ -13,7 +13,7 @@
     "typescript",
     "vitest"
   ],
-  "homepage": "https://time.molten.sh/docs/testing",
+  "homepage": "https://time.molten.sh/docs/react/testing",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

@@ -533,6 +533,9 @@ importers:
       '@moltenship/calendar-recurrence':
         specifier: workspace:*
         version: link:../../packages/calendar-recurrence
+      '@moltenship/calendar-temporal':
+        specifier: workspace:*
+        version: link:../../packages/calendar-temporal
       '@moltenship/ics':
         specifier: workspace:*
         version: link:../../packages/ics
@@ -582,9 +585,21 @@ importers:
       '@babel/core':
         specifier: 'catalog:'
         version: 7.29.7(supports-color@7.2.0)
+      '@moltenship/calendar-core':
+        specifier: workspace:*
+        version: link:../../packages/calendar-core
+      '@moltenship/calendar-solid':
+        specifier: workspace:*
+        version: link:../../packages/calendar-solid
       '@moltenship/calendar-testing':
         specifier: workspace:*
         version: link:../../packages/calendar-testing
+      '@solidjs/vite-plugin':
+        specifier: 'catalog:'
+        version: 3.0.1(@babel/core@7.29.7(supports-color@7.2.0))(@solidjs/web@2.0.3(solid-js@2.0.3))(@voidzero-dev/vite-plus-core@1.4.0(@arethetypeswrong/core@0.18.5)(@types/node@26.6.6)(esbuild@0.28.2)(jiti@2.7.0)(publint@0.3.25)(tsx@4.23.15)(typescript@7.0.2)(yaml@2.9.1))(solid-js@2.0.3)
+      '@solidjs/web':
+        specifier: 'catalog:'
+        version: 2.0.3(solid-js@2.0.3)
       '@stylexjs/babel-plugin':
         specifier: 'catalog:'
         version: 0.19.1(supports-color@7.2.0)
@@ -606,6 +621,9 @@ importers:
       '@types/react-dom':
         specifier: 'catalog:'
         version: 19.3.0(@types/react@19.3.0)
+      '@ui-sdk/solid':
+        specifier: 'catalog:'
+        version: 0.1.0-beta.16(@solidjs/web@2.0.3(solid-js@2.0.3))(@ui-sdk/core@0.1.0-beta.16)(solid-js@2.0.3)
       jsdom:
         specifier: 'catalog:'
         version: 30.1.3
@@ -615,6 +633,9 @@ importers:
       registry:
         specifier: workspace:*
         version: link:../../tools/registry
+      solid-js:
+        specifier: 'catalog:'
+        version: 2.0.3
       tailwindcss:
         specifier: 'catalog:'
         version: 4.3.3

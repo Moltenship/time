@@ -33,8 +33,11 @@ const otherFrameworkPackages = npmPackages(
   "preact|vue|svelte|@angular/[^/]+|lit|@ui-sdk/(?!core(?:/|$))[^/]+",
 );
 
-/** Where Solid may appear: the Solid integration and the Solid demo. */
-const solidWorkspaces = "(?:^|/)(?:packages/calendar-solid|apps/demo-solid)/";
+/** The samples the docs site shows on its Solid pages. The site, a React app, never imports them. */
+const solidDocsSamples = "(?:^|/)apps/showcase/content/examples/solid/";
+/** Where Solid may appear: the Solid integration, the Solid demo and the Solid docs' samples. */
+const solidWorkspaces =
+  "(?:^|/)(?:packages/calendar-solid|apps/demo-solid|apps/showcase/content/examples/solid)/";
 /**
  * Where ui-sdk may appear: the primitives, the two integrations, the registry's kit of controls,
  * and the applications that create an agent bridge to show them (architecture.md, rule 14): the
@@ -313,10 +316,19 @@ export default {
     },
     {
       name: "only-calendar-solid-imports-solid",
-      comment: "Solid appears only in calendar-solid and the Solid demo.",
+      comment:
+        "Solid appears only in calendar-solid, the Solid demo and the samples of the Solid docs.",
       severity: "error",
       from: { path: sourceRoots, pathNot: solidWorkspaces },
       to: { path: solidPackages },
+    },
+    {
+      name: "docs-site-imports-no-solid-sample",
+      comment:
+        "The docs site shows its Solid samples as text. It is a React app, so nothing in it imports one.",
+      severity: "error",
+      from: { path: "(?:^|/)apps/showcase/", pathNot: solidDocsSamples },
+      to: { path: solidDocsSamples },
     },
     {
       name: "only-primitives-and-integrations-import-ui-sdk",

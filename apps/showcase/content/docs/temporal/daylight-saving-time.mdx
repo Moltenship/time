@@ -1,0 +1,98 @@
+---
+title: Handle daylight saving time
+description: Days of 23 and 25 hours, wall-clock times the clocks skip or repeat, and the rows of a day view, with @moltenship/calendar-temporal.
+---
+
+Twice a year, in a zone with daylight saving time, a date isn't 24 hours long. In Berlin the
+clocks go from 02:00 to 03:00 on March 29, 2026, so that date lasts 23 hours and 02:15 never
+happens. On October 25 they go from 03:00 back to 02:00, so the date lasts 25 hours and 02:15
+happens twice. Code that adds 24 hours to midnight, or that turns "02:15" into an instant without
+looking, is wrong on those two dates.
+
+The functions on this page take the time zone as an argument and never read the host's.
+
+## How long a date is
+
+`zonedDayRange(date, timeZone)` returns the real start and end of a date in a zone, and its length:
+
+<include meta='title="daylight-saving-time.ts"'>../../examples/temporal-dst.ts#day</include>
+
+In `Europe/Berlin`, `hoursInDay` returns 23 for March 29, 2026, 25 for October 25 and 24 for
+October 8.
+
+## Which events are on a date
+
+`interval` on the result is the range of instants to compare events with. Compare with it, and not
+with midnight plus 24 hours:
+
+<include meta='title="daylight-saving-time.ts"'>../../examples/temporal-dst.ts#query</include>
+
+An event from 22:30 to 23:00 UTC on October 8 is on October 9 in Berlin, where it starts at 00:30,
+and on October 8 in New York.
+
+`kind` is `"skipped"` in the rare case where a zone skips a whole date, as Samoa did on December
+30, 2011. Such a date has no instants, and `interval` is `null`.
+
+For an event that crosses midnight, `splitInstantRangeByZonedDay(range, timeZone)` cuts its range
+into one piece per date, and each piece says whether the event continues before or after that
+date.
+
+## The rows of a day view
+
+A day view shows the wall clock: 24 rows labelled 00:00 to 23:00, on every date. `slotsInZonedDay`
+returns those rows with the instants behind each:
+
+<include meta='title="daylight-saving-time.ts"'>../../examples/temporal-dst.ts#rows</include>
+
+On March 29 in Berlin the 02:00 row is a gap and has no instant. On October 25 it is a fold and
+has two:
+
+```text
+March 29, 2026                         October 25, 2026
+01:00 unique 2026-03-29T00:00:00Z      01:00 unique 2026-10-24T23:00:00Z
+02:00 gap                              02:00 fold   2026-10-25T00:00:00Z 2026-10-25T01:00:00Z
+03:00 unique 2026-03-29T01:00:00Z      03:00 unique 2026-10-25T02:00:00Z
+```
+
+A slot that a clock change cuts through is split at the change: its `kind` is `"transition"` and it
+has one segment for each part. The function throws a `RangeError` when a day would have more than
+10,000 slots, and `limit` raises that.
+
+## A time a person typed
+
+A form gives a date and a time with no zone. `resolveZonedWallTime` turns them into an instant and
+says what it found: `kind` is `"unique"`, `"gap"` or `"fold"`.
+
+<include meta='title="daylight-saving-time.ts"'>../../examples/temporal-dst.ts#pick</include>
+
+With Berlin as the zone:
+
+| The person typed  | `pickTime` returns                                  |
+| ----------------- | --------------------------------------------------- |
+| October 8, 02:15  | The instant `2026-10-08T00:15:00Z`                  |
+| March 29, 02:15   | "The clocks skip that time. Did you mean 03:15?"    |
+| October 25, 02:15 | The instant `2026-10-25T00:15:00Z`, the first 02:15 |
+
+`disambiguation` takes Temporal's four values. `"compatible"` moves a skipped time later by the
+length of the gap and picks the earlier of two repeated times. `"reject"` gives a result whose
+`status` is `"rejected"` for both. In a fold, `occurrences` holds both instants, so a form can ask
+which one the person meant.
+
+## A pointer on a time grid
+
+A drag gives a wall-clock time that needs rounding to the grid. `snapZonedWallTime` rounds it and
+resolves it in one step:
+
+<include meta='title="daylight-saving-time.ts"'>../../examples/temporal-dst.ts#snap</include>
+
+09:07 on October 8 snaps to 09:00. 02:10 on March 29 has no 02:00 or 02:15 to snap to, so it lands
+on 03:00, the moment the clocks change. `mode` is `"nearest"` by default, or `"floor"` or `"ceil"`,
+and `fold` picks the earlier or the later of two repeated times.
+
+<React>
+
+The calendar's week and day views are built on these functions, so they draw a 23-hour day and a
+repeated hour without code of yours. [Time and time zones](/docs/concepts/time) describes what a
+reader sees.
+
+</React>

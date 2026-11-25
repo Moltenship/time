@@ -174,7 +174,7 @@ and `otherComponents`.
 
 ## Documentation
 
-- [ICS reference](https://time.molten.sh/docs/api/ics)
+- [iCalendar (ICS)](https://time.molten.sh/docs/ics)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

@@ -5,27 +5,35 @@
  * packaged copy).
  */
 
+import { parseDocsUrl } from "./frameworks";
 import { siteUrl } from "./site";
 
 export { siteUrl };
 
-/** Turns a docs URL such as `/docs/agents/connect`, and its `#hash` if any, into a link target. */
+/** Turns a docs URL such as `/docs/react/agents/connect`, and its `#hash`, into a link target. */
 export type DocLink = (url: string, hash: string) => string;
 
-/** A page's file in a folder of Markdown docs: `/docs` is `index.md`, `/docs/a/b` is `a/b.md`. */
+/**
+ * A page's file in a folder of one framework's docs as Markdown: `/docs/react` is `index.md`,
+ * `/docs/react/a/b` is `a/b.md`.
+ */
 export function markdownPath(url: string): string {
-  const path = url.replace(/^\/docs\/?/u, "").replace(/\/$/u, "");
+  const path = parseDocsUrl(url)?.path ?? "";
   return path === "" ? "index.md" : `${path}.md`;
 }
 
 /** Links for the site: each page's Markdown version, as an absolute URL an agent can fetch. */
-export const siteLink: DocLink = (url, hash) =>
-  `${siteUrl}${url === "/docs" ? "/docs.md" : `${url.replace(/\/$/u, "")}.md`}${hash}`;
+export const siteLink: DocLink = (url, hash) => `${siteUrl}${url.replace(/\/$/u, "")}.md${hash}`;
 
-/** Links for a folder of Markdown files: relative paths from the file that has the link. */
+/**
+ * Links for a folder of Markdown files: relative paths from the file that has the link. The folder
+ * holds one framework's docs, so a link to the other framework's leads to the site.
+ */
 export function fileLink(from: string): DocLink {
+  const framework = parseDocsUrl(from)?.framework;
   const here = markdownPath(from).split("/").slice(0, -1);
   return (url, hash) => {
+    if (parseDocsUrl(url)?.framework !== framework) return siteLink(url, hash);
     const target = markdownPath(url).split("/");
     let shared = 0;
     while (shared < here.length && shared < target.length - 1 && here[shared] === target[shared]) {
@@ -64,6 +72,8 @@ export function rewriteLinks(markdown: string, link: DocLink): string {
       }
       return line
         .replace(docsLink, (_match, url: string, hash: string | undefined) => {
+          // A page's Markdown (`/docs/solid.md`) is a site address already, not a page to convert.
+          if (url.endsWith(".md")) return `](${siteUrl}${url}${hash ?? ""})`;
           return `](${link(url, hash ?? "")})`;
         })
         .replace(siteRootLink, (match, path: string) =>

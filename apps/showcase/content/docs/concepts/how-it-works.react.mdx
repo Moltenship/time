@@ -1,0 +1,111 @@
+---
+title: How it works
+description: The packages, which of them React and Solid share, and how your events become a rendered view.
+---
+
+## Packages
+
+Time has three layers. The engine and the calendar import no UI framework, and an integration
+renders them in one:
+
+```text
+integration   @moltenship/calendar (React)       @moltenship/calendar-solid (Solid)
+calendar      @moltenship/calendar-primitives    state, actions, what an agent can call
+engine        @moltenship/calendar-core          adapters, validation, snapshots, queries, changes
+              @moltenship/calendar-temporal      ranges, day boundaries, DST helpers
+```
+
+A React app imports one package, which re-exports the React integration and the layers under it:
+
+```text
+@moltenship/calendar                    what a React app imports: everything below
+├── @moltenship/calendar-react          the React integration: Root, components, hooks
+│   └── @moltenship/calendar-primitives the calendar without a framework: state, actions, agents
+├── @moltenship/calendar-dnd            drag, resize, and create inside views
+├── @moltenship/calendar-core           adapters, validation, snapshots, queries, changes
+└── @moltenship/calendar-temporal       ranges, day boundaries, DST helpers
+```
+
+A Solid app imports `@moltenship/calendar-solid` and `@moltenship/calendar-core`. The Solid
+integration is a preview with [docs of its own](/docs/solid), and
+[React and Solid](/docs/frameworks) lists what it has.
+
+`calendar-dnd` builds on `calendar-core`, which builds on `calendar-temporal`, and `calendar-react`
+builds on all three and on `calendar-primitives`.
+`calendar-core` and `calendar-temporal` don't use React or the DOM, so they also run on a server
+or in a worker.
+
+Since 2.0 the calendar itself is written once, without a framework, in
+`@moltenship/calendar-primitives`: the state, the actions, the pipeline from your events to a
+view's projection, and what the calendar tells an [AI agent](/docs/agents). It's a
+[ui-sdk](https://ui-sdk.dev) primitive, and `calendar-react` renders it with `@ui-sdk/react`. That
+is why `@ui-sdk/core` and `@ui-sdk/react` are peer dependencies, and how
+`@moltenship/calendar-solid` renders the same calendar in SolidJS 2. Dates, time zones,
+recurrence, layouts and policies stay in the calendar's own engine; ui-sdk's date components
+aren't used.
+
+Two more packages stand apart from `@moltenship/calendar`: `@moltenship/calendar-recurrence` expands
+recurring events into ordinary events (it builds on core, Temporal and `ics`), and `@moltenship/ics`
+parses iCalendar text with no dependencies.
+
+| Package                           | Use it when                                                                                                  |
+| --------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| `@moltenship/calendar`            | Your app is on React. It includes `calendar-core`, `calendar-temporal`, `calendar-react` and `calendar-dnd`. |
+| `@moltenship/calendar-core`       | Your app is on Solid, or you validate or query events in code that never loads React.                        |
+| `@moltenship/calendar-temporal`   | You only need the date and time zone helpers.                                                                |
+| `@moltenship/calendar-react`      | Rarely. `@moltenship/calendar` already includes everything in it.                                            |
+| `@moltenship/calendar-primitives` | You write a framework integration, or want the agent types. See [Primitives](/docs/api/primitives).          |
+| `@moltenship/calendar-solid`      | Your app is on SolidJS 2. A preview, with the hooks and no styled views. See the [Solid docs](/docs/solid).  |
+| `@moltenship/calendar-recurrence` | Your events repeat. See [Recurring events](/docs/recurrence/model).                                          |
+| `@moltenship/ics`                 | You read iCalendar feeds or files. See [ICS](/docs/ics/reference).                                           |
+
+`@moltenship/calendar` has no `"use client"` directive of its own, so a Server Component can import
+its core and Temporal helpers. The React parts and the pointer layer keep their client boundary.
+
+Import from the package name only. The packages export nothing else besides `./package.json`, so a
+path such as
+`@moltenship/calendar-core/src/events` doesn't resolve.
+
+## From events to the screen
+
+1. You pass `events` to `Root`.
+2. `Root` runs each record through your adapter, validates it, and builds a **snapshot**: a frozen,
+   indexed copy of your events.
+3. `Root` asks the active view's strategy for the visible dates, then calls its `project` function
+   with the snapshot. The result is the view's **projection**: the events it needs, in the shape it
+   needs.
+4. `ActiveView` renders the view's `Renderer` with that projection.
+5. Buttons and your own controls call actions such as `navigateNext` or `setView`. The calendar
+   updates uncontrolled state itself and sends controlled changes to your handlers. A new date or
+   view means a new range and a new projection.
+6. An [agent](/docs/agents) calls the same actions through ui-sdk's agent bridge, if your app
+   creates one. Its changes reach the same handlers and policies, marked as an agent's.
+
+Steps 2 and 3 only run again when their inputs change. A new array with the same records in the same
+order reuses the snapshot. A changed array is read again through the adapter, except records with an
+unchanged `getRevision` value; if every record comes out the same, in the same order, the interval indexes are kept.
+
+## Using the engine without a framework
+
+Snapshots work anywhere. This finds the meetings in a time range using `calendar-core` and
+`calendar-temporal` directly:
+
+```ts
+import { createEventSnapshotCache } from "@moltenship/calendar-core";
+import { instantInterval } from "@moltenship/calendar-temporal";
+
+const snapshots = createEventSnapshotCache(eventAdapter);
+const snapshot = snapshots.getSnapshot(meetings);
+
+const morning = snapshot.queryTimed(
+  instantInterval(
+    Temporal.Instant.from("2026-10-08T06:00:00Z"),
+    Temporal.Instant.from("2026-10-08T10:00:00Z"),
+  ),
+);
+
+morning.map((meeting) => meeting.title); // ["Standup"]
+```
+
+`eventAdapter` and `meetings` are the ones from the [Quick start](/docs/quick-start). The
+[snapshot reference](/docs/api/events#snapshots) lists every query.

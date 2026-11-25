@@ -28,8 +28,8 @@ Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
 
 ## Documentation
 
-- [React components and hooks](https://time.molten.sh/docs/api/react)
-- [Agents](https://time.molten.sh/docs/agents)
+- [React components and hooks](https://time.molten.sh/docs/react/api/components)
+- [Agents](https://time.molten.sh/docs/react/agents)
 - [Repository](https://github.com/Moltenship/time)
 
 ## License

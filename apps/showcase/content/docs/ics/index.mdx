@@ -1,0 +1,124 @@
+---
+title: Overview
+description: What @moltenship/ics is, how to install it, and a first parse of iCalendar text into Temporal values.
+---
+
+`@moltenship/ics` reads iCalendar (RFC 5545), the text format of calendar feeds, invitations and
+exports from Google Calendar, Outlook, iCloud and most other calendar apps. ICS text goes in.
+Calendars, events, to-dos, journals, free/busy and time zones come out, with dates and times as
+`Temporal` values and every problem in the text listed with its line.
+
+## Use it without the calendar
+
+The package imports no other Moltenship package, no UI framework and no dependency. It runs
+wherever `Temporal` does: in a browser, on a server, in a worker or in a script. An app that never
+renders a calendar can use it to read a feed, check an upload or convert an export.
+
+<React>
+
+`@moltenship/calendar` doesn't re-export it, so install it by its own name.
+
+</React>
+
+## Install
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/ics@next
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/ics@next
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/ics@next
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/ics@next
+```
+
+</Tab>
+</Tabs>
+
+The package is versioned with the calendar. 2.0 is a pre-release on npm's `next` tag, so the
+command installs `@next`.
+
+It needs a runtime with `Temporal`, or a polyfill loaded first, and TypeScript's `ESNext` library.
+[Installation](/docs/installation#temporal) shows both.
+
+## Parse a calendar
+
+`parseIcs` takes the text and returns its calendars. `getEventEnd` works out when an event ends,
+from its `DTEND` or its `DURATION`:
+
+<include meta='title="describe-events.ts"'>../../examples/ics-first.ts#first</include>
+
+`describeEvents(text)` returns these lines:
+
+```text
+Planning: 2026-10-12T09:00:00+02:00[Europe/Berlin] to 2026-10-12T09:45:00+02:00[Europe/Berlin]
+Offsite: 2026-10-15 to 2026-10-17
+```
+
+The first event names a time zone, so its start is a `Temporal.ZonedDateTime`. The second is an
+all-day event, so its start is a `Temporal.PlainDate`, and its end is the day after its last day,
+as the file wrote it. A start's `kind` says which of five shapes the file used, and
+[Dates and times](/docs/ics/reference#dates-and-times) lists them.
+
+## Try it
+
+Edit the text below to see what `parseIcs` returns. The sample is a Google Calendar feed with a
+recurring meeting, an all-day event, an event imported from Outlook, and one date written the way
+a careless exporter writes it.
+
+<IcsPlayground />
+
+## What it does with bad text
+
+Parsing is lenient. The parser keeps what it can read, skips a component it can't type, such as an
+event without `UID` or `DTSTART`, and reports each problem in `issues` with its line. Bad text
+never throws. With `strict: true`, an error throws an `IcsParseError` instead.
+[Read an .ics file](/docs/ics/import) shows both ways.
+
+## What it doesn't do
+
+- **It doesn't expand recurring events.** A rule is parsed into an `IcsRecurrenceRule`, and its
+  occurrences aren't listed. [`@moltenship/calendar-recurrence`](/docs/recurrence) lists them.
+- **It doesn't write ICS from typed objects.** `stringifyIcsComponents` writes a syntax tree you
+  build yourself.
+- **It doesn't read bytes.** `parseIcs` takes a string, so decode the bytes as UTF-8 first.
+
+## Next
+
+<Cards>
+  <Card
+    title="Read an .ics file"
+    href="/docs/ics/import"
+    description="Parse a file a person picks, report its problems, and turn its dates into instants."
+  />
+  <React>
+    <Card
+      title="Show an ICS feed"
+      href="/docs/ics/feed"
+      description="Fetch a feed on the server and show its events in the calendar."
+    />
+  </React>
+  <Card
+    title="API reference"
+    href="/docs/ics/reference"
+    description="Every field of a calendar and an event, time zones, issues, extensions and the lower layers."
+  />
+</Cards>

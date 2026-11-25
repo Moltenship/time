@@ -1,0 +1,122 @@
+---
+title: Overview
+description: What @moltenship/calendar-recurrence is, how to install it, and a first expansion of a rule into dates.
+---
+
+`@moltenship/calendar-recurrence` handles events that repeat. A series is stored the way
+iCalendar, Google Calendar and Outlook store it: one master event with a rule, plus events that
+replace single occurrences. The package does two things with a series:
+
+- **It expands it** into the occurrences inside a range of dates, usually the dates on screen.
+- **It turns a change to one occurrence into what to save** for "this event", "this and following
+  events" or "all events".
+
+## Use it without the calendar
+
+The package imports no UI framework. It depends on `@moltenship/calendar-core` and
+`@moltenship/ics`, which import none either, so it expands a series on a server, in a worker or in
+a script as it does in a browser.
+
+The calendar doesn't need it, and doesn't re-export it. Occurrences reach a calendar as ordinary
+events, through an adapter, so views, dragging and the event engine work the same with or without
+it.
+
+## Install
+
+<Tabs groupId="package-manager" persist items={["pnpm", "npm", "yarn", "bun"]}>
+<Tab value="pnpm">
+
+```bash
+pnpm add @moltenship/calendar-recurrence@next
+```
+
+</Tab>
+<Tab value="npm">
+
+```bash
+npm install @moltenship/calendar-recurrence@next
+```
+
+</Tab>
+<Tab value="yarn">
+
+```bash
+yarn add @moltenship/calendar-recurrence@next
+```
+
+</Tab>
+<Tab value="bun">
+
+```bash
+bun add @moltenship/calendar-recurrence@next
+```
+
+</Tab>
+</Tabs>
+
+The package is versioned with the calendar. 2.0 is a pre-release on npm's `next` tag, so the
+command installs `@next`. Keep it on the same version as the calendar, so both share one copy of
+the engine.
+
+It needs a runtime with `Temporal`, or a polyfill loaded first, and TypeScript's `ESNext` library.
+[Installation](/docs/installation#temporal) shows both.
+
+## From a rule to dates
+
+`parseRecurrenceRule` reads a rule as iCalendar writes it, and `expandRecurrenceRule` lists the
+starts it gives from a first occurrence:
+
+<include meta='title="starts.ts"'>../../examples/recurrence-first.ts#first</include>
+
+`mondays` holds three instants:
+
+```text
+2026-10-19T07:00:00Z
+2026-10-26T08:00:00Z
+2026-11-02T08:00:00Z
+```
+
+Each is 09:00 in Berlin. The clocks there go back on October 25, so the instant moves by an hour
+and the meeting stays at 09:00. A timed series repeats on the wall clock of its own time zone.
+
+The expansion covers RFC 5545: every `FREQ`, every `BY` part, `BYSETPOS`, `WKST`, `COUNT` and
+`UNTIL`. A rule without an end is endless, so pass a window of dates as the third argument, as
+[The engine](/docs/recurrence/reference#the-engine) shows.
+
+## From events to occurrences
+
+A rule alone has no exceptions and no moved occurrences. For those, the package reads your own
+events through two adapters and expands them together:
+
+- `createOccurrenceExpander(adapters)` returns an expander. `expander.expand(events, range)`
+  returns every occurrence that overlaps the range, with exception dates left out and overrides in
+  place. One-off events pass through.
+- `recurringEventsFromIcs(calendar.events)` groups events parsed by
+  [`@moltenship/ics`](/docs/ics) into masters, overrides and one-off events, ready for the
+  expander.
+- `resolveRecurrenceEdit` and `applyRecurrenceEdit` turn a moved, resized or deleted occurrence
+  into the events to write.
+
+[Series and occurrences](/docs/recurrence/model) explains the model these share.
+
+## Next
+
+<Cards>
+  <Card
+    title="Series and occurrences"
+    href="/docs/recurrence/model"
+    description="Masters, exception dates and overrides, occurrence IDs, and what each edit scope changes."
+  />
+  <React>
+    <Card
+      title="Show and edit recurring events"
+      href="/docs/recurrence/calendar"
+      description="Expand the dates on screen, ask which events a change applies to, and save the edit."
+    />
+  </React>
+  <Card
+    title="API reference"
+    href="/docs/recurrence/reference"
+    description="Adapters, expansion, occurrence IDs, rules, the ICS bridge and edits."
+  />
+</Cards>

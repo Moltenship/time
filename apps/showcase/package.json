@@ -4,6 +4,9 @@
   "private": true,
   "description": "Consumer-equivalent documentation and examples for Moltenship Time.",
   "type": "module",
+  "imports": {
+    "#docs-redirects": "./docs-redirects.mjs"
+  },
   "scripts": {
     "build": "node --run registry && next build",
     "dev": "node --run registry && next dev",
@@ -24,6 +27,7 @@
     "@moltenship/calendar": "workspace:*",
     "@moltenship/calendar-dnd-kit": "workspace:*",
     "@moltenship/calendar-recurrence": "workspace:*",
+    "@moltenship/calendar-temporal": "workspace:*",
     "@moltenship/ics": "workspace:*",
     "@tanstack/react-query": "catalog:",
     "@ui-sdk/core": "catalog:",
@@ -42,7 +46,11 @@
   "devDependencies": {
     "@anthropic-ai/sdk": "catalog:",
     "@babel/core": "catalog:",
+    "@moltenship/calendar-core": "workspace:*",
+    "@moltenship/calendar-solid": "workspace:*",
     "@moltenship/calendar-testing": "workspace:*",
+    "@solidjs/vite-plugin": "catalog:",
+    "@solidjs/web": "catalog:",
     "@stylexjs/babel-plugin": "catalog:",
     "@tailwindcss/postcss": "catalog:",
     "@types/babel__core": "catalog:",
@@ -50,9 +58,11 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
+    "@ui-sdk/solid": "catalog:",
     "jsdom": "catalog:",
     "next-validate-link": "catalog:",
     "registry": "workspace:*",
+    "solid-js": "catalog:",
     "tailwindcss": "catalog:",
     "tsx": "catalog:",
     "typescript": "catalog:",

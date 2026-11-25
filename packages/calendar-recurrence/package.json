@@ -15,7 +15,7 @@
     "temporal",
     "typescript"
   ],
-  "homepage": "https://time.molten.sh/docs/api/recurrence",
+  "homepage": "https://time.molten.sh/docs/recurrence",
   "bugs": {
     "url": "https://github.com/Moltenship/time/issues"
   },

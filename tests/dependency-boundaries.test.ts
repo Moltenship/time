@@ -34,6 +34,10 @@ const registryUiSdkFixture =
   "tests/fixtures/dependency-boundaries/registry/calendar/ui-sdk-import.ts";
 const demoSolidFixture = "tests/fixtures/dependency-boundaries/apps/demo/src/solid-import.ts";
 const solidDemoFixture = "tests/fixtures/dependency-boundaries/apps/demo-solid/src/main.ts";
+const solidDocsSampleFixture =
+  "tests/fixtures/dependency-boundaries/apps/showcase/content/examples/solid/sample.tsx";
+const docsSiteSolidFixture =
+  "tests/fixtures/dependency-boundaries/apps/showcase/components/solid-import.ts";
 const testingUiSdkFixture =
   "tests/fixtures/dependency-boundaries/packages/calendar-testing/src/ui-sdk-import.ts";
 const pointerFrameworkFixture =
@@ -94,6 +98,7 @@ const expectedWorkspaceDependencies = {
     "@moltenship/calendar",
     "@moltenship/calendar-dnd-kit",
     "@moltenship/calendar-recurrence",
+    "@moltenship/calendar-temporal",
     "@moltenship/ics",
   ],
   "ssr-fixture": ["@moltenship/calendar"],
@@ -277,6 +282,14 @@ describe("workspace boundaries", { concurrent: false }, () => {
       expect(await violations(solidDemoFixture)).toEqual([]);
     });
 
+    test("the Solid docs' samples may use Solid, and the rest of the docs site may not", async () => {
+      expect(await violations(solidDocsSampleFixture)).toEqual([]);
+      expect(await violations(docsSiteSolidFixture)).toEqual([
+        "docs-site-imports-no-solid-sample tests/fixtures/dependency-boundaries/apps/showcase/content/examples/solid/sample.tsx",
+        "only-calendar-solid-imports-solid solid-js",
+      ]);
+    });
+
     test("calendar-testing's tests may drive an agent bridge, and its source may not", async () => {
       expect(await violations(testingAgentTestFixture)).toEqual([]);
       expect(await violations(testingUiSdkFixture)).toEqual([
@@ -402,7 +415,10 @@ describe("workspace boundaries", { concurrent: false }, () => {
       // By manifest path; the Solid demo joins workspaceManifestPaths when it lands.
       const allowed: Record<keyof typeof frameworks, (path: string) => boolean> = {
         react: (path) => !/^packages\/calendar-(?:primitives|solid)\//u.test(path),
-        solid: (path) => /^(?:packages\/calendar-solid|apps\/demo-solid)\//u.test(path),
+        // The docs site declares Solid for the samples of its Solid pages, which it type-checks
+        // and never imports (the cruiser's rules keep Solid inside `content/examples/solid`).
+        solid: (path) =>
+          /^(?:packages\/calendar-solid|apps\/(?:demo-solid|showcase))\//u.test(path),
         // The docs site creates an agent bridge for its live examples (architecture.md, rule 14).
         // The facade and the testing package re-export the React integration, so they carry its
         // peers, as they carry React; their source still imports no ui-sdk (the cruiser's rule).

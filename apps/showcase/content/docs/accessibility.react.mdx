@@ -1,0 +1,304 @@
+---
+title: Accessibility
+description: The keyboard map, screen reader announcements, the ARIA patterns each view uses, reduced motion, and right-to-left layout.
+---
+
+Everything you can do with a pointer in the built-in views, you can also do from the keyboard:
+move around, open an event, and move, resize, or create one. A screen reader hears each step. Try it
+here: Tab into the calendar or click a day, then use the keys below. The strip under the calendar
+shows what a screen reader announces.
+
+<CalendarPreview view="week" switcher announcements size="h-[36rem]" />
+
+## Keyboard
+
+Each view is **one tab stop**. Tab enters it on the day, slot, or event you last focused, or on
+today, and the keys below move focus inside it. Moving past the visible range navigates the view.
+Inside a view, arrow, Home, End, and Page keys always belong to the view, so they never trigger your
+app's own shortcuts, even where there's nowhere to move.
+
+### Moving around
+
+| View      | Focus                        | Key                          | Effect                                                                                                  |
+| --------- | ---------------------------- | ---------------------------- | ------------------------------------------------------------------------------------------------------- |
+| All       | Outside the view             | Tab                          | Enter the view                                                                                          |
+| All       | An event                     | Enter                        | Open it: the element's own click, such as the [demo](https://moltenship-time-demo.vercel.app)'s popover |
+| All       | An event                     | Escape                       | Back to its day (month, all-day row) or the slot it starts in (week, day)                               |
+| All       | A day, slot, or agenda event | Shift+Enter                  | Open that date in the day view                                                                          |
+| Month     | A day                        | ← →                          | Previous or next day                                                                                    |
+| Month     | A day                        | ↑ ↓                          | Same weekday a week earlier or later                                                                    |
+| Month     | A day                        | Home, End                    | First or last day of the week                                                                           |
+| Month     | A day                        | Page Up, Page Down           | Same day in the previous or next month                                                                  |
+| Month     | A day                        | Enter                        | Go into the day's events                                                                                |
+| Month     | An event                     | ↑ ↓                          | Previous or next event of the day; past the ends, to the day itself or the next week                    |
+| Year      | A day                        | ← → ↑ ↓                      | Previous or next day, or the same weekday a week away, across months                                    |
+| Year      | A day                        | Home, End                    | First or last day of the week's row in its month                                                        |
+| Year      | A day                        | Page Up, Page Down           | Same day in the previous or next month                                                                  |
+| Year      | A day                        | Enter, Space                 | Open the day's events in a popover; Escape returns to the day                                           |
+| Week, day | An all-day cell              | ↓                            | First slot of the day                                                                                   |
+| Week, day | A slot                       | ↑ ↓                          | Previous or next 15-minute slot; up from the first slot, the all-day cell                               |
+| Week, day | A day or slot                | ← →                          | Same slot on the previous or next day                                                                   |
+| Week, day | A day or slot                | Home, End                    | First or last day shown                                                                                 |
+| Week, day | A day or slot                | Page Up, Page Down           | Back or forward a whole week (or day)                                                                   |
+| Week, day | A slot                       | Enter                        | The event covering it                                                                                   |
+| Week, day | An all-day cell              | Enter                        | Go into the day's all-day events                                                                        |
+| Week, day | A timed event                | ↑ ↓                          | Previous or next event in the column                                                                    |
+| Week, day | A timed event                | ← →                          | The event beside it that overlaps it                                                                    |
+| Resources | A day or slot                | ← →                          | Same slot in the previous or next column, crossing into the next resource                               |
+| Resources | A day or slot                | Home, End                    | First or last column                                                                                    |
+| Resources | A day or slot                | Page Up, Page Down           | Same resource, a whole day (or range) earlier or later                                                  |
+| Timeline  | A day or slot                | ← →                          | Previous or next day, or half hour in the day timeline                                                  |
+| Timeline  | A day or slot                | ↑ ↓                          | The same time in the previous or next resource's row                                                    |
+| Timeline  | A day or slot                | Home, End                    | First or last day or half hour shown                                                                    |
+| Timeline  | A day or slot                | Page Up, Page Down           | Back or forward a whole day, week, or month                                                             |
+| Timeline  | A day or slot                | Enter                        | The events covering it in that row                                                                      |
+| Timeline  | A group's day or slot        | Shift+Enter                  | Expand or collapse the group                                                                            |
+| Timeline  | An event                     | ← →                          | Previous or next event in the row                                                                       |
+| Timeline  | An event                     | ↑ ↓                          | The cell at its start in the previous or next row                                                       |
+| Agenda    | An event                     | ↑ ↓                          | Previous or next event                                                                                  |
+| Agenda    | An event                     | Page Up, Page Down           | First event of the previous or next day                                                                 |
+| Agenda    | An event                     | Home, End                    | First or last event                                                                                     |
+| Agenda    | A range without events       | ↑ or Page Up, ↓ or Page Down | The previous or next range                                                                              |
+
+In the [resource columns](/docs/views/resource-columns#keyboard) view, each resource's days come
+before the next resource's, and inside a column the week and day keys apply.
+
+Shift+Enter opens the view named `day`; in the resource timeline it expands or collapses a group
+instead. In the week view it needs the
+[`dayView`](/docs/views/week-and-day#options) option, and the day view has nothing to open. The
+table shows left-to-right calendars; with `direction="rtl"` on `Root`, ← and → swap so they follow
+the layout (see [Right-to-left](#right-to-left)).
+
+### Changing events
+
+With `onEventChange` on `Root`, the month, week, day, resource columns, and resource timeline views
+can change events from the keyboard, just as a drag does; without it, Space picks nothing up and
+is left to the focused element. The year view shows events without
+changing them, so Space there opens a day's events. Moving a picked-up event into another
+resource's column or row swaps that resource, as dropping it there would.
+
+| Focus                              | Key                              | Effect                                                                                                                                                                                                |
+| ---------------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| An event                           | Space                            | Pick it up to move it                                                                                                                                                                                 |
+| An event                           | Shift+Space                      | Pick it up to resize its end. Shift+Space again switches to its start, and back                                                                                                                       |
+| A day (month cell or all-day cell) | Space                            | Start an all-day event there                                                                                                                                                                          |
+| A slot                             | Space                            | Start an hour-long event there                                                                                                                                                                        |
+| Picked up                          | Arrow keys                       | Move, resize, or extend it: by days in the month and the all-day row, by slots in the time grid. Moving a timed event above the first slot makes it all-day, and below the all-day row makes it timed |
+| Picked up                          | Enter or Space                   | Save it through `onEventChange`                                                                                                                                                                       |
+| Picked up                          | Escape, Tab, or leaving the view | Cancel. Focus returns to where you started                                                                                                                                                            |
+
+A saved change goes through your [policies](/docs/interactions#policies) and shows as
+[pending](/docs/interactions#pending-changes) like any other. Read-only events say so when you pick
+them up, and stay where they are. The agenda has no cells to move events to, so it only navigates
+and opens them.
+
+`useCalendarKeyboard({ snap, createDuration })` sets the slot length (the pointer's `snap`, 15
+minutes by default) and how long a slot create starts out (one hour).
+
+## Announcements
+
+Keyboard and pointer moves, resizes, and creates are announced through a polite live region. Render
+`Announcer` once inside `Root`, with the messages from the registry:
+
+```tsx title="calendar.tsx"
+import { calendarAnnouncements } from "@/components/calendar/announcements";
+
+<Calendar.Root
+  defaultAnchorDate={Temporal.PlainDate.from("2026-10-08")}
+  defaultTimeZone="Europe/Berlin"
+  events={meetings}
+  locale="en-US"
+  onEventChange={saveMeeting}
+  weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
+>
+  <Calendar.Announcer messages={calendarAnnouncements} />
+  <Calendar.ActiveView />
+</Calendar.Root>;
+```
+
+`Announcer` renders a visually hidden `<div role="status" aria-live="polite">`. Without it nothing
+is announced. Picking up Standup and moving it down a slot, for example, reads:
+
+1. "Picked up Standup, Thursday, October 8, 9:30 – 9:45 AM. Use the arrow keys to move it, then
+   Enter to drop it or Escape to cancel."
+2. "Thursday, October 8, 9:45 – 10:00 AM"
+3. "Moved Standup to Thursday, October 8, 9:45 – 10:00 AM." once `onEventChange` has saved it.
+
+In a calendar with resources, picking up, moving and creating an event also name the resources it
+books, from `Root`'s `resources`: "Moved Standup to Thursday, October 8, 9:45 – 10:00 AM, Orchid."
+While moving, a step names them only when they change.
+
+### Customize and localize them
+
+The packages ship no text. `calendarAnnouncements` lives in `components/calendar/announcements.ts`
+in your app once you add the UI source, so you can edit it in place. To translate it, write a
+`CalendarAnnouncementMessages` object of your own, with one builder per phase:
+
+| Phase    | When                                                           | The update also has                                                                                                                                       |
+| -------- | -------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `start`  | An event is picked up, or a create starts                      | `check`: what the policies say about `proposed`, or `null` with no answer yet (a keyboard move or resize that hasn't stepped, or an async policy)         |
+| `step`   | Each arrow key, or each new slot under the pointer             | `check`, as for `start`                                                                                                                                   |
+| `commit` | Your handler saved the change                                  | `proposed`: the change as saved, and `warnings`                                                                                                           |
+| `reject` | A policy or your handler refused it, or the event is read-only | `reason`, such as `"read-only"`, and `error`: what your handler or a policy threw, if one did (an `AbortError` from your handler means the app cancelled) |
+| `cancel` | Escape, Tab, leaving the view, or a drag dropped outside it    |                                                                                                                                                           |
+
+Each builder receives the update and a context, and returns the text to speak or `null` to stay
+silent. The update has `cause` (`"move"`, `"resize-start"`, `"resize-end"`, or `"create"`),
+`input` (`"keyboard"` or `"pointer"`), `event` (`null` while creating), and the `original` and
+`proposed` placements. The context has `locale`, `timeZone`, `resourceTitle(resourceId)`, and
+`formatRange(placement)`, which formats a placement as the drag preview labels it ("9:30 – 10:00 AM").
+
+```tsx title="announcements-de.ts"
+import type { CalendarAnnouncementMessages } from "@moltenship/calendar";
+
+const titleOf = ({ event }: { readonly event: { readonly title: string } | null }) =>
+  event === null ? "Der neue Termin" : event.title;
+
+export const announcementsDe: CalendarAnnouncementMessages = {
+  start: (update) =>
+    update.cause === "create"
+      ? "Neuer Termin. Mit den Pfeiltasten verlängern, Eingabe zum Speichern."
+      : `${titleOf(update)} aufgenommen. Pfeiltasten zum Verschieben, Eingabe zum Ablegen.`,
+  step: ({ proposed }, { formatRange }) => (proposed === null ? null : formatRange(proposed)),
+  commit: (update, { formatRange }) => `${titleOf(update)}: ${formatRange(update.proposed)}.`,
+  reject: (update) =>
+    update.reason === "superseded" ? null : `${titleOf(update)} bleibt, wo er war.`,
+  cancel: () => "Abgebrochen.",
+};
+```
+
+`formatRange` follows the calendar's `locale`. To change how ranges read, add an optional
+`formatRange(placement, { locale, timeZone })` to your messages; the default is
+`formatPlacementRange`. It labels the drag preview and becomes the context's `formatRange`, so it
+changes spoken ranges only in builders that call that helper, as the German example does.
+`calendarAnnouncements` spells dates out with `describeWhen` from `event-label.ts` instead; edit
+that to change how its announcements read.
+
+### Pointer gestures
+
+The built-in views pass the same announcer to the pointer layer, so drags are announced by the same
+messages and the drag preview labels ranges with the same `formatRange`. In your own views, do the
+same:
+
+```tsx
+const announcer = useCalendarAnnouncer();
+const pointerRef = useCalendarPointer({ announcer, events, onPropose, timeZone });
+```
+
+### Event names
+
+Every event is a `<button>` named in full: "Standup, Thursday, October 8, 9:30 – 9:45 AM, Work
+calendar, saving". The name leads with the title, then says when, where (the resource, in the
+resource columns view), an optional detail, and whether a change is still saving. `useEventLabel` builds it in `registry/calendar/event-label.ts`, where the
+English words live, so edit or translate them there. Pass `describeEvent: (event) => string` to a
+view to add the detail, such as the calendar's name.
+
+## ARIA patterns
+
+| View              | Pattern                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ----------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Month             | A `grid` labelled with the month ("October 2026"). A header `row` holds a `columnheader` per weekday, named in full. Each week is a `row` of seven `gridcell`s named by date and event count ("Thursday, October 8, 2026, 2 events"). A cell holds its date button and the events that start that day. "+N more" opens a dialog named "Events on Thursday, October 8, 2026".                                                                                                                                                                                                                                                                                               |
+| Year              | A `group` labelled with the year ("2026") holding a `grid` per month, labelled "October 2026". A header `row` holds a `columnheader` per weekday, named in full. Each week is a `row` of seven `gridcell`s: a day is named by date and event count ("Thursday, October 8, 2026, 2 events") with `aria-haspopup="dialog"`, and cells outside the month are empty. The twelve grids share one tab stop. A day's events open in a dialog named "Events on Thursday, October 8, 2026".                                                                                                                                                                                         |
+| Week and day      | A `grid` labelled with the range ("Oct 4 – 10, 2026") with three rows: a header row of `columnheader`s (the time zone, then each day); the all-day row, led by an "All day" `rowheader` that also holds the expand toggle (`aria-expanded`), with a `gridcell` per day; and the timed row, led by a "Timed events" `rowheader`, with a `gridcell` per day. Hour labels, including those of [secondary time zones](/docs/views/week-and-day#secondary-time-zones), are hidden from assistive tech. The focused slot renders as a `button` named "Thursday, October 8 at 9:30 AM", followed by its time in each secondary time zone; the other slots aren't elements at all. |
+| Resource columns  | A `grid` labelled with the range, with `aria-colcount` and an `aria-colindex` on every cell, since only the columns in view render. A header `row` has a `columnheader` per resource, named with its groups ("Maya, Design"), and a group's header holds its collapse toggle (`aria-expanded`). Then the all-day and timed rows, as in the week view, with each cell, slot and event named with its resource ("Maya, Thursday, October 8 at 9:30 AM").                                                                                                                                                                                                                     |
+| Resource timeline | A `grid` labelled with the range ("Oct 5 – 11, 2026" or "October 2026"). A header `row` holds a "Resources" `columnheader` and one per hour or day, named in full. Each resource is a `row` named by the resource, led by a `rowheader` with its name (and a group's expand toggle, `aria-expanded`, out of the tab order), then a `gridcell` per slot named by resource, time, and event count ("Orchid, Monday, October 5, 2026, 2 events"). `aria-rowcount` and `aria-colcount` count every resource and slot, though only those in view render. The focused cell renders a `button` with the same name.                                                                |
+| Agenda            | An `<ol>` labelled with the range, with one `<li>` per day and a `<ul>` of its events. Only the days in view render, so each day has `aria-posinset` and `aria-setsize`. A range without events is a focusable group named "No events". The scrolling agenda is the same list.                                                                                                                                                                                                                                                                                                                                                                                             |
+
+All views share these:
+
+- **One tab stop** with a roving `tabIndex`: only the focused day, slot, or event has
+  `tabIndex={0}`. The header's "Open date" buttons and the all-day row's expand toggle are out of
+  the tab order; Shift+Enter and focusing a hidden event do their job.
+- **Today** is marked `aria-current="date"`.
+- **Events** are `<button>`s with the full names above. Events with a pending change have
+  `aria-busy`.
+- **Focus** shows as a solid 2px `outline-ring` outline, which stays visible in forced-colors mode.
+  A focused event rises above its neighbours.
+
+The mini month in `registry/calendar` is a separate `grid` of date buttons: arrow keys move by a
+day or a week, and Page Up and Page Down by a month.
+
+### Checked in CI
+
+`vp run a11y` runs [axe-core](https://github.com/dequelabs/axe-core) in Chromium over every built-in
+view, the toolbar and mini month, and the demo's main screens, in light and dark, and fails on any
+serious or critical WCAG 2.2 A/AA or best-practice violation. It exempts four rules, each only on
+specific elements:
+
+- **Label in name**, for events and day cells: a chip shows an abbreviated subset of its name
+  ("9:30 AM Standup"), and a day cell is named by its date and event count because its events are
+  focused separately. Event names lead with the title, so speech input still matches it.
+- **Target size**, inside the month and time grids, where an event's box is its time span (WCAG
+  2.5.8's "essential" exception).
+- **Hidden focusable elements**, for Base UI's focus guards, which pass focus straight on. The
+  StyleX items and the demo's own shadcn components still use Base UI.
+- **Command name**, for the same focus guards in WebKit, where Base UI makes them unnamed buttons
+  on purpose, so its focus trap catches VoiceOver's cursor instead of letting it leave a popup.
+
+`vp run browsers` runs the same checks in Firefox and WebKit (WebKit alone on macOS 27, where
+Playwright's Firefox doesn't start), except the reduced-motion tests, which run in Chromium.
+
+On touch screens, month events and "+N more" are 24 px tall; with a mouse they stay 20 px. A test
+emulates a 375 px touch screen in Chromium and checks that every target in the day, 3-day, month,
+year, agenda and resource views is at least 24 px, or spaced as WCAG 2.5.8 allows. It leaves out:
+
+- timed events in the time grids, whose height is their time span, the exception above: a
+  15-minute event is 12 px tall;
+- annotation marks, which are still 12–20 px wide (#219);
+- the week view, whose seven columns are too narrow for its events on a phone. Offer the 3-day view
+  there.
+
+A separate test checks the [theme](/docs/theming) against WCAG AA in both color schemes: event text
+on every event color, the today marker, the now line, and the focus ring. If you override `--ring`,
+keep it at 3:1 or more against your background, even at 50% opacity. shadcn's default light ring is
+about 1.5:1 at 50%.
+
+## Reduced motion
+
+When the system asks for reduced motion (`prefers-reduced-motion: reduce`), the calendar theme:
+
+- fades popovers, dialogs, and tooltips in and out without zooming or sliding;
+- fades sheets without sliding them in;
+- keeps transitions off the drag preview;
+- crossfades view transitions in place instead of moving them.
+
+The rules come with the `calendar-theme` item, which adds them to your global CSS, because the
+registry views use shadcn's own popover, select, and tooltip, which you install from shadcn.
+
+## Right-to-left
+
+Right-to-left takes two settings: `dir="rtl"` on an ancestor of the calendar, such as `<html>`,
+for the layout, and `direction="rtl"` on `Root` for the keys. `Root` doesn't read the page's
+`dir`, so set both:
+
+```tsx
+<html dir="rtl" lang="ar">
+  <body>
+    <Calendar.Root {...rootProps} direction="rtl" locale="ar">
+      <Calendar.ActiveView />
+    </Calendar.Root>
+  </body>
+</html>
+```
+
+The month, week, day, and agenda views then mirror: days run from right to left, the hour gutter
+moves to the right, events put their accent edge on the right, continuation chevrons point the way
+the event continues, and the toolbar's arrows turn around. ← and → follow the layout, so ← moves to
+the next day, which an RTL grid shows on the left, and a picked-up event moves the same way. The
+views use logical CSS properties throughout (`ms-*`, `border-s`, `start-*`), so your own edits
+should too.
+
+## In your own views
+
+[Custom views](/docs/views/custom-views) get the same keyboard support from three pieces:
+
+- **`getSpatialNavigation`** on the view's strategy says where each key moves focus. Reuse
+  `monthSpatialNavigation`, `yearSpatialNavigation`, `timeGridSpatialNavigation`, or
+  `listSpatialNavigation`, or write your own.
+- **`useCalendarKeyboard(options)`** returns `onKeyDown` and `onBlur` handlers. Spread them on the
+  element around the view.
+- **`useRovingFocus(focus)`** returns the props for one focusable day (`{ kind: "day", date }`),
+  slot, or event (`{ kind: "event", date, eventId }`), including its `tabIndex`.
+
+`useCalendarInteraction()` returns the keyboard gesture in progress, for drawing a create's draft
+or tinting the cells it covers.

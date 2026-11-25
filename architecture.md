@@ -129,7 +129,7 @@ to 15.
 12. The primitives (`calendar-primitives`) import core, the Temporal utilities and `@ui-sdk/core`, and nothing else: no UI framework, no ui-sdk renderer (`@ui-sdk/react`, `@ui-sdk/solid` or another), no integration, no pointer adapter and no registry source. Unlike the engine, they may use DOM types: slots bind elements.
 13. The integrations never import each other. `calendar-react` imports no `calendar-solid`, no Solid and no `@ui-sdk/solid`. `calendar-solid` may import the primitives, core, the Temporal utilities, Solid, ui-sdk's `@ui-sdk/core` and `@ui-sdk/solid`, and the pointer adapter; it imports no `calendar-react`, no React, no `@ui-sdk/react`, and no package with a React peer: the facade, `calendar-dnd-kit` and `calendar-testing`. Rules 12 and 13 cover the packages' tests as well as their source, except that the primitives' tests may also import the test runner (`vite-plus`), `jsdom` and Node's built-ins.
 14. `@ui-sdk/*` is imported only by the primitives and the two integrations, by the registry's kit of controls (`registry/calendar-ui`, through `@ui-sdk/react/<entry>`; ADR 0279) and the registry's tests, and by the repository's applications that show them: `apps/demo-solid` and the docs site, which create an agent bridge, and the React demo and the a11y suite once they do; creating one is an application's job. Every import goes through a documented public entry (`@ui-sdk/core`, `@ui-sdk/core/<entry>`, `@ui-sdk/<framework>/<entry>`), never an `internal`, `dist` or `src` path, and uses no type that only such a path exports. The packages and registry source never import ui-sdk's date entries (`date`, `calendar`, `timeline`, `date-picker`, `date-input`, `time-input`): the domain is the engine's. The engine, the pointer adapter, recurrence, `ics`, the dnd-kit adapter, the facade's own source, the test harness and registry source outside the kit import no ui-sdk at all.
-15. Solid (`solid-js`, `@solidjs/web`) is imported only by `calendar-solid` and `apps/demo-solid`.
+15. Solid (`solid-js`, `@solidjs/web`) is imported only by `calendar-solid`, `apps/demo-solid` and the samples of the Solid docs (`apps/showcase/content/examples/solid`). The docs site shows those samples as text and type-checks them with a Solid `tsconfig.json` of their own. It is a React app, so nothing else in it imports Solid or a sample.
 
 ## 3. Repository and package topology
 
@@ -187,9 +187,13 @@ time/
 ```
 
 `apps/showcase` is the only documentation application. It runs on Fumadocs; there is no second docs
-content tree. `apps/demo` is a public Google Calendar-style demo built from the registry views; it
+content tree. One tree of pages (`content/docs`) is compiled twice, into the React docs at
+`/docs/react` and the Solid docs at `/docs/solid`: a file's name says which set has the page, and
+`<React>` and `<Solid>` blocks hold what differs on a page both have (`lib/source.ts`,
+`lib/remark-framework.ts`). `apps/demo` is a public Google Calendar-style demo built from the registry views; it
 carries no documentation. `apps/demo-solid` shows the Solid integration and is the one place in the
-repository that compiles Solid JSX; the packages are written without JSX. It stays an app of its
+repository that compiles Solid JSX; the packages are written without JSX, and the Solid docs'
+samples are only type-checked. It stays an app of its
 own, with its own Vite config, and the demo's build and dev server serve it at `/solid/` of the
 demo (`apps/demo/vite.config.ts`), so one deployment has both frameworks and a switch between them.
 
@@ -224,7 +228,7 @@ All of these publish. Package versions move in lockstep, through 2.0 as well. Th
 | ------------------------------------- | ---------------------------------- | ----------------------------------------------------------------- | ----------------------------------------------------------------- |
 | React 19                              | `calendar-react`, facade, registry (and `calendar-dnd` in 1.x) | Rendering, context, refs, SSR, external-store subscription | Peer dependency; absent from core, Temporal utilities, the primitives, the pointer adapter (2.0), the Solid integration, recurrence and `ics` |
 | ui-sdk 0.1 beta: `@ui-sdk/core`, `@ui-sdk/react`, `@ui-sdk/solid` (Apache-2.0) | `calendar-primitives` (core), `calendar-react` (core, React renderer), `calendar-solid` (core, Solid renderer), `apps/demo-solid` | 2.0: one definition of the calendar's parts and actions that React and Solid render, and the agent bridge with WebMCP registration (ADR 0275) | Peers, never dependencies, so the app's bridge shares one core. Public entries only; no date, Calendar or Timeline entries (rule 14). Pre-1.0: one catalog version, caret peers, one PR per upgrade. `@ui-sdk/core` has no dependencies |
-| SolidJS 2.0: `solid-js`, `@solidjs/web` (MIT) | `calendar-solid` (peers), `apps/demo-solid` | 2.0: the second framework the primitives are rendered by | Peers of the Solid integration alone (rule 15); JSX compiled only in the demo |
+| SolidJS 2.0: `solid-js`, `@solidjs/web` (MIT) | `calendar-solid` (peers), `apps/demo-solid`, the Solid docs' samples in `apps/showcase` (type-checked only) | 2.0: the second framework the primitives are rendered by | Peers of the Solid integration alone (rule 15); JSX compiled only in the demo |
 | `@dnd-kit/react` + `@dnd-kit/dom` 0.5 | `calendar-dnd-kit` (peer), the demo, the docs site, `tools/a11y` | Apps that already use dnd-kit drag their items into the calendar and events out (#237) | A peer of the optional adapter, used besides only by the demo, the docs site and tests; a minor upgrade is a PR to the adapter and those |
 | TanStack Virtual 3                    | List and resource registry views   | Maintained vertical/horizontal windowing and measurement          | Hidden behind view adapters; not required by core                 |
 | `@flatten-js/interval-tree` 2         | `calendar-core` provisionally      | Established interval-query baseline                               | Hidden behind `IntervalIndex`; retained only if benchmarks pass   |
@@ -1627,7 +1631,7 @@ content/docs/**/*.mdx
   → source.config.ts schemas and MDX options
   → generated Fumadocs source
   → lib/source.ts loader
-  → app/docs/[[...slug]] page + generated navigation
+  → app/docs/[framework]/[[...slug]] page + generated navigation
   → pre-rendered pages and static-compatible search index
 ```
 

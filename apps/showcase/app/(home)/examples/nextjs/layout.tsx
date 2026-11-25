@@ -28,7 +28,7 @@ export default function ExampleLayout({ children }: Readonly<{ children: ReactNo
           memory, for you only, and can reset at any time.
         </p>
         <p className="mt-3 flex gap-4 text-sm font-medium">
-          <Link className="hover:text-brand" href="/docs/guides/nextjs-app-router">
+          <Link className="hover:text-brand" href="/docs/react/guides/nextjs-app-router">
             Read the guide
           </Link>
           <a className="hover:text-brand" href={sourceUrl}>
