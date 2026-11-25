@@ -47,6 +47,7 @@ describe("Solid registry build", () => {
     expect(manifest.items.map(({ name }) => name).toSorted()).toEqual([
       "base-tokens",
       "calendar",
+      "calendar-full",
       "calendar-history-toast",
       "calendar-theme",
       "calendar-ui",
@@ -143,6 +144,6 @@ describe("Solid registry build", () => {
       }
     }
     expect([...linked].filter((name) => !names.includes(name))).toEqual([]);
-    expect(linked).toContain("list-view");
+    expect(linked).toContain("calendar-full");
   });
 });

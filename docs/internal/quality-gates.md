@@ -245,7 +245,7 @@ components, takes 15 to 35 seconds once the pnpm store is warm, and isn't part o
 makes clean Vite and Next.js apps with `shadcn init`, runs `shadcn add <url>/calendar-full.json`
 against the registry served from a local server, checks the files, aliases, package.json and
 installed runtime, then typechecks and builds both apps. A clean Solid 2.0 app, set up by hand as
-the Solid docs say, from their samples in `apps/showcase/content/examples/solid`, adds `base-tokens` and `list-view` from
+the Solid docs say, from their samples in `apps/showcase/content/examples/solid`, adds `base-tokens` and `calendar-full` from
 `/r/solid` by the `@moltenship` namespace, then typechecks and builds too. The Next.js app's page is a Server
 Component that also imports every item the client page uses, so a component without its client
 boundary fails the build. The runtime packages are packed from the

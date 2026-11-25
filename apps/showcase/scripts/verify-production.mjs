@@ -287,21 +287,24 @@ try {
   assert.match(exampleHtml, /Asia\/Tokyo/);
 
   // The shadcn registry the build wrote to public/r, as `npx shadcn add <url>` fetches it.
-  const registry = await fetch(`${origin}/r/registry.json`);
-  assert.equal(registry.status, 200, "/r/registry.json is not served.");
-  const { items } = await registry.json();
-  for (const { name } of items) {
-    const item = await fetch(`${origin}/r/${name}.json`);
-    assert.equal(item.status, 200, `/r/${name}.json is not served.`);
-    assert.equal((await item.json()).name, name);
+  // Each framework's registry, at /r and /r/solid, serves every item it lists and its calendar-full.
+  for (const path of ["/r", "/r/solid"]) {
+    const registry = await fetch(`${origin}${path}/registry.json`);
+    assert.equal(registry.status, 200, `${path}/registry.json is not served.`);
+    const { items } = await registry.json();
+    for (const { name } of items) {
+      const item = await fetch(`${origin}${path}/${name}.json`);
+      assert.equal(item.status, 200, `${path}/${name}.json is not served.`);
+      assert.equal((await item.json()).name, name);
+    }
+    assert(
+      items.some(({ name }) => name === "calendar-full"),
+      `The registry at ${path} has no calendar-full item.`,
+    );
   }
-  assert(
-    items.some(({ name }) => name === "calendar-full"),
-    "The registry has no calendar-full item.",
-  );
 
   console.log(
-    `Verified the landing page, every page of the React and Solid docs with its Markdown, canonical address and search, the install commands' npm tag for ${version}, the redirects, the sitemap, the App Router example, the live Solid examples, the shadcn registry and not-found handling.`,
+    `Verified the landing page, every page of the React and Solid docs with its Markdown, canonical address and search, the install commands' npm tag for ${version}, the redirects, the sitemap, the App Router example, the live Solid examples, the React and Solid shadcn registries and not-found handling.`,
   );
 } finally {
   server.kill("SIGTERM");

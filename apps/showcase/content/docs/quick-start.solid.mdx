@@ -6,12 +6,14 @@ description: Build a Solid calendar with a toolbar and an agenda view you write,
 You'll build a calendar in SolidJS 2: a toolbar with previous, next and today buttons, a title, and
 an agenda of your own meetings. The agenda is a Solid component you write, so you see how a view
 is made: it draws a layout the engine computes. The registry has a styled
-[agenda](/docs/views/agenda) to add instead, a [month](/docs/views/month), a
-[year](/docs/views/year) and a
-[week and day](/docs/views/week-and-day), and you write the other views the same way.
+[agenda](/docs/views/agenda) to add instead, and the [week and day](/docs/views/week-and-day),
+the [month](/docs/views/month), the [year](/docs/views/year), the
+[scrolling views](/docs/views/scrolling) and the [resource columns](/docs/views/resource-columns),
+with a [toolbar and a mini month](/docs/views/toolbar). `calendar-full` installs every one of them,
+as [Installation](/docs/installation#add-the-items) shows.
 
-The [Solid demo](https://moltenship-time-demo.vercel.app/solid/) is a running calendar built the
-same way, with the registry's week, day, month, year, agenda and resource columns and an agent panel. Its source is the repository's
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/) is a running calendar on the
+registry's views, the React demo's app in Solid. Its source is the repository's
 [`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
 
 <Steps>
@@ -95,9 +97,10 @@ an accessor, so call it where you use it: `view()`, `range()`.
 
 ## Next steps
 
-- [Week and day](/docs/views/week-and-day), [Month](/docs/views/month), [Year](/docs/views/year)
-  and [Agenda](/docs/views/agenda) are the registry's styled views,
-  added with the shadcn CLI.
+- [Week and day](/docs/views/week-and-day), [Month](/docs/views/month), [Year](/docs/views/year),
+  [Agenda](/docs/views/agenda), [Scrolling views](/docs/views/scrolling) and
+  [Resource columns](/docs/views/resource-columns) are the registry's styled views, and
+  [Toolbar and mini month](/docs/views/toolbar) its toolbar, all added with the shadcn CLI.
 - [How it works](/docs/concepts/how-it-works) explains the adapter, the views and the state behind
   this calendar.
 - [Custom views](/docs/views/custom-views) writes a view's strategy and its `Renderer` from

@@ -27,6 +27,7 @@ test("the Solid registry has the items ported so far", () => {
   expect(solidItems.toSorted()).toEqual([
     "base-tokens",
     "calendar",
+    "calendar-full",
     "calendar-history-toast",
     "calendar-theme",
     "calendar-ui",
@@ -43,6 +44,25 @@ test("the Solid registry has the items ported so far", () => {
   ]);
 });
 
+// The React registry's items the Solid one doesn't have yet. Each one's pull request takes it off.
+const notYetInSolid = new Set(["@moltenship/resource-timeline-view"]);
+
+test("the Solid a11y group renders every Solid item that draws something", () => {
+  const a11y = join(registry, "..", "tools/a11y/tests/solid");
+  const sources = readdirSync(a11y, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && /\.tsx?$/u.test(entry.name))
+    .map((entry) => readFileSync(join(entry.parentPath, entry.name), "utf8"));
+  const drawn = solidItems.filter((name) =>
+    (manifestOf(join(solid, name)).files ?? []).some(({ path }) => path.endsWith(".tsx")),
+  );
+  const untested = drawn.filter(
+    (name) => !sources.some((source) => source.includes(`"@registry/${name}/`)),
+  );
+
+  expect(drawn.length).toBeGreaterThan(10);
+  expect(untested).toEqual([]);
+});
+
 describe.each(solidItems.filter((name) => existsSync(join(registry, name, "registry-item.json"))))(
   "%s",
   (name) => {
@@ -54,7 +74,9 @@ describe.each(solidItems.filter((name) => existsSync(join(registry, name, "regis
     });
 
     test("installs the items its React twin installs", () => {
-      expect(own.registryDependencies ?? []).toEqual(react.registryDependencies ?? []);
+      expect(own.registryDependencies ?? []).toEqual(
+        (react.registryDependencies ?? []).filter((item) => !notYetInSolid.has(item)),
+      );
     });
 
     test("installs its files where its React twin installs them", () => {
