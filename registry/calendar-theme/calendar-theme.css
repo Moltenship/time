@@ -174,6 +174,15 @@
       color-mix(in oklch, var(--calendar-today) 45%, transparent);
   }
 
+  /* Busy dark grids hide a faint tint, so the marker is stronger there. */
+  .dark [data-calendar-ghost="landing"] {
+    --calendar-ghost-landing-background: color-mix(
+      in oklch,
+      var(--calendar-today) 15%,
+      transparent
+    );
+  }
+
   [data-calendar-ghost="landing"][data-invalid] {
     --calendar-ghost-landing-background: color-mix(
       in oklch,

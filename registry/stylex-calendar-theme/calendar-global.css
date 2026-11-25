@@ -28,7 +28,11 @@
  * a quiet tint with a thin edge, tinted red when the drop would be refused.
  */
 [data-calendar-ghost="landing"] {
-  --calendar-ghost-landing-background: color-mix(in oklch, var(--calendar-today) 10%, transparent);
+  /* Busy dark grids hide a faint tint, so the marker is stronger there. */
+  --calendar-ghost-landing-background: light-dark(
+    color-mix(in oklch, var(--calendar-today) 10%, transparent),
+    color-mix(in oklch, var(--calendar-today) 15%, transparent)
+  );
   --calendar-ghost-landing-shadow: inset 0 0 0 1.5px
     color-mix(in oklch, var(--calendar-today) 45%, transparent);
 }
