@@ -321,9 +321,10 @@ const missingView = new RegExp(
 );
 
 /**
- * What the Solid demo can't match yet. It has no UI switch, as StyleX is a React page's, and its
- * view lists are shorter by the views it doesn't register: what comes after them moves, so its
- * boxes are compared by size, and a list's by width.
+ * What the Solid demo can't match yet. It has no UI switch, as StyleX is a React page's, so the top
+ * bar's controls after it sit further right; and it registers fewer views, so the rows after them
+ * in the switcher and the shortcuts dialog sit higher. Its boxes are compared by size, and a list's
+ * by width, since the list is shorter too.
  */
 function notInSolid(line: string) {
   if (/^only in Tailwind: (?:group: UI|a: UI, )/u.test(line)) return true;

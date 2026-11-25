@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vite-plus/test";
 
-import { isScrolling, viewFor } from "../src/scrolling";
+import { viewFor } from "../src/scrolling";
 
 /** A page with the paged views and the scrolling month and agenda. */
 const views = [
@@ -31,12 +31,5 @@ describe("the setting that scrolls days, weeks, months and agenda", () => {
   test("leaves a view that's already in the set as it is", () => {
     expect(viewFor("scrolling-month", true, views)).toBe("scrolling-month");
     expect(viewFor("month", false, views)).toBe("month");
-  });
-
-  test("reads the setting from the view", () => {
-    expect(isScrolling("scrolling-agenda")).toBe(true);
-    expect(isScrolling("scrolling-month")).toBe(true);
-    expect(isScrolling("month")).toBe(false);
-    expect(isScrolling("agenda")).toBe(false);
   });
 });

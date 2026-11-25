@@ -14,8 +14,3 @@ export function viewFor<TView extends string>(
   const next = reactViewFor(view as DemoView, scrolling) as string;
   return views.includes(next as TView) ? (next as TView) : view;
 }
-
-/** Whether `view` is a scrolling one, which turns the setting on for a link to it. */
-export function isScrolling(view: string): boolean {
-  return reactViewFor(view as DemoView, false) !== view;
-}

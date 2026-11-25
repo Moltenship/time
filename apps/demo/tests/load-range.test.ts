@@ -16,7 +16,7 @@ describe("covering", () => {
     expect(covering(current, range("2026-10-14", "2027-01-06"))).toBe(current);
   });
 
-  it("moves to six weeks either side of dates it doesn't cover", () => {
+  it("moves to six weeks either side of the start of dates it doesn't cover", () => {
     expect(text(covering(current, range("2027-01-03", "2027-01-10")))).toBe(
       "2026-11-22/2027-02-14",
     );

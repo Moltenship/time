@@ -10,8 +10,8 @@ export function around(date: Temporal.PlainDate): PlainDateInterval {
 
 /**
  * The dates to expand series over once the calendar reports the ones it needs: `current` while it
- * still covers them, so moving within six weeks expands nothing again, or else six weeks either
- * side of them.
+ * still covers them, so moving within it expands nothing again, or else from six weeks before
+ * their start to six weeks after it, or to their end if that's later.
  */
 export function covering(current: PlainDateInterval, needed: PlainDateInterval): PlainDateInterval {
   const compare = (one: Temporal.PlainDate, two: Temporal.PlainDate) =>
