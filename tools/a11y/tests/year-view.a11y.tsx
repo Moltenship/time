@@ -87,6 +87,12 @@ test("Today, Previous and Next bring the anchor's month back into view", async (
   expect(document.querySelector('[data-month="2027-10"]')).not.toBeNull();
   await atRest(view());
   expect(showsMonth("2027-10")).toBe(true);
+
+  view().scrollTop = 0;
+  await click("Previous period");
+  expect(document.querySelector('[data-month="2026-10"]')).not.toBeNull();
+  await atRest(view());
+  expect(showsMonth("2026-10")).toBe(true);
   expect(window.scrollY).toBe(0);
 });
 

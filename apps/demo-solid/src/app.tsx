@@ -135,6 +135,7 @@ const viewOptions = [
   { label: "3 days", value: "3-day" },
   { label: "Week", value: "week" },
   { label: "Month", value: "month" },
+  { label: "Year", value: "year" },
   { label: "Agenda", value: "agenda" },
 ] as const satisfies readonly { readonly label: string; readonly value: SolidView }[];
 
@@ -212,17 +213,19 @@ export function App() {
       </header>
       <p class="preview">
         This page runs <code>@moltenship/calendar-solid</code>, a preview. The toolbar, the view
-        switcher, the mini month, the week, day, month and agenda, the recurrence dialog and the
-        undo toast are the registry's Solid items, the files <code>shadcn add</code> installs into a
-        Solid app. In the month, arrow keys move through days and Enter into a day's events, Space
-        picks an event up or starts a new one, and a pointer drags an event to another day or across
-        days to create one; in the agenda, up and down move between events, Page Up and Page Down
+        switcher, the mini month, the week, day, month, year and agenda, the recurrence dialog and
+        the undo toast are the registry's Solid items, the files <code>shadcn add</code> installs
+        into a Solid app. In the month, arrow keys move through days and Enter into a day's events,
+        Space picks an event up or starts a new one, and a pointer drags an event to another day or
+        across days to create one; in the year, arrow keys move through days and Enter or a click
+        lists a day's events; in the agenda, up and down move between events, Page Up and Page Down
         between days. A change to a Team sync asks which of the series it applies to, and every
         other change shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
-        A Solid 2.0 calendar on the engine's time grid, month and list projections, with an agent
-        driving it through ui-sdk. Last change: <output data-last-change="">{lastChange()}</output>
+        A Solid 2.0 calendar on the engine's time grid, month, year and list projections, with an
+        agent driving it through ui-sdk. Last change:{" "}
+        <output data-last-change="">{lastChange()}</output>
       </p>
       <Calendar.Root
         allowAgentDelete={allowDelete()}

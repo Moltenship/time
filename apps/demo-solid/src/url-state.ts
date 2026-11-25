@@ -1,5 +1,5 @@
 /** The Solid demo's views. `app.tsx` passes them as the calendar's `view`, which checks the names. */
-export type SolidView = "week" | "3-day" | "day" | "month" | "agenda";
+export type SolidView = "week" | "3-day" | "day" | "month" | "year" | "agenda";
 
 export interface SolidLocation {
   readonly date: Temporal.PlainDate;
@@ -9,7 +9,8 @@ export interface SolidLocation {
 /**
  * The React demo's views (`demoViewNames` in apps/demo/src/demo-model.ts), each with the nearest
  * view this demo has: the time grid of the same days for the scrolling grids, the resource columns
- * and the timeline, the month grid for a month or a year, and the agenda for the agendas.
+ * and the timeline, the month grid for a month, the year for a year, and the agenda for the
+ * agendas.
  */
 const nearestView: Readonly<Record<string, SolidView>> = {
   "3-day": "3-day",
@@ -24,7 +25,7 @@ const nearestView: Readonly<Record<string, SolidView>> = {
   "scrolling-week": "week",
   "timeline-week": "week",
   week: "week",
-  year: "month",
+  year: "year",
 };
 
 function viewFor(value: string | null): SolidView | undefined {

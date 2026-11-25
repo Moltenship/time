@@ -25,6 +25,16 @@
       "path": "registry/stylex-year-view/year-day-popover.tsx",
       "type": "registry:component",
       "target": "@components/calendar-stylex/year-view/year-day-popover.tsx"
+    },
+    {
+      "path": "registry/shared/year-view/year-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/year-view/year-layout.ts"
+    },
+    {
+      "path": "registry/shared/year-view/year-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar-stylex/year-view/year-labels.ts"
     }
   ]
 }

@@ -6,10 +6,28 @@ import { useRef, type ReactNode, type RefObject } from "react";
 import { EventChip, EventIcon, useEventChip } from "@registry/calendar/event-chip";
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
+import { dayCellOf, eventKey, isBarFragment } from "@registry/shared/year-view/year-layout";
+import {
+  dayEventsLabel,
+  eventTime,
+  noEventsText,
+  type YearFormats,
+} from "@registry/shared/year-view/year-labels";
+import {
+  yearEventClass,
+  yearEventDotClass,
+  yearEventTimeClass,
+  yearEventTitleClass,
+  yearPopoverClass,
+  yearPopoverDateClass,
+  yearPopoverEmptyClass,
+  yearPopoverHeaderClass,
+  yearPopoverListClass,
+  yearPopoverWeekdayClass,
+} from "@registry/shared/year-view/year.styles";
 import { Popover, PopoverContent } from "@registry/calendar-ui/popover";
-import { cn } from "cn";
 
-import type { YearDayPopoverHandle, YearFormats } from "./year-month";
+import type { YearDayPopoverHandle } from "./year-month";
 
 interface YearEventProps<TEvent> {
   readonly color?: CalendarEventColor;
@@ -28,38 +46,14 @@ interface YearEventProps<TEvent> {
 function YearEvent<TEvent>({ color, formats, fragment, icon, labelEvent }: YearEventProps<TEvent>) {
   const { event } = fragment;
   const chip = useEventChip(event, { date: fragment.date, focusTarget: false, labelEvent });
-  const bar = event.kind === "all-day" || fragment.startsBeforeDay || fragment.endsAfterDay;
-  const time =
-    event.kind === "all-day" || fragment.startsBeforeDay
-      ? undefined
-      : formats.time(fragment.start.toPlainTime());
+  const bar = isBarFragment(fragment);
+  const time = eventTime(fragment, formats);
 
   return (
-    <EventChip
-      color={color}
-      {...chip}
-      title={event.title}
-      className={cn(
-        "h-6 shrink-0 gap-1 rounded-sm px-1.5 py-0",
-        !bar &&
-          "group/event border-s-0 bg-transparent font-normal text-foreground hover:bg-accent hover:brightness-100",
-      )}
-    >
-      {!bar && (
-        <span aria-hidden className="size-2 shrink-0 rounded-full bg-calendar-event-border" />
-      )}
-      {time !== undefined && (
-        <span
-          className={cn(
-            "shrink-0",
-            // Muted on the hover fill falls short of 4.5:1.
-            bar ? "font-normal" : "text-muted-foreground group-hover/event:text-accent-foreground",
-          )}
-        >
-          {time}
-        </span>
-      )}
-      <span data-slot="calendar-event-title" className="min-w-0 flex-1 truncate font-medium">
+    <EventChip color={color} {...chip} title={event.title} className={yearEventClass(bar)}>
+      {!bar && <span aria-hidden className={yearEventDotClass} />}
+      {time !== undefined && <span className={yearEventTimeClass(bar)}>{time}</span>}
+      <span data-slot="calendar-event-title" className={yearEventTitleClass}>
         <EventIcon>{icon}</EventIcon>
         {event.title}
       </span>
@@ -107,38 +101,31 @@ export function YearDayPopover<TEvent>({
         return (
           <PopoverContent
             ref={popup}
-            aria-label={`Events on ${name}`}
-            className="w-64 gap-0 p-2"
+            aria-label={dayEventsLabel(formats, date)}
+            className={yearPopoverClass}
             // The popup takes focus, from a pointer or a key alike; Tab then reaches its events.
             initialFocus={popup}
             // The day's cell, the view's tab stop; ui-sdk leaves focus alone after a click outside.
-            finalFocus={() =>
-              view.current?.querySelector<HTMLElement>(
-                `[role="gridcell"][data-date="${date.toString()}"]`,
-              ) ?? null
-            }
+            finalFocus={() => dayCellOf(view.current, date)}
           >
-            <div className="flex flex-col items-center gap-0.5 pb-2">
-              <span className="text-[0.6875rem] font-medium text-muted-foreground uppercase">
-                {formats.weekdayShort.format(date)}
-              </span>
+            <div className={yearPopoverHeaderClass}>
+              <span className={yearPopoverWeekdayClass}>{formats.weekdayShort.format(date)}</span>
               <button
                 type="button"
                 aria-label={name}
                 onClick={() => onOpenDay(date)}
-                className="flex size-10 items-center justify-center rounded-full text-xl tabular-nums hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+                className={yearPopoverDateClass}
               >
                 {date.day}
               </button>
             </div>
             {fragments.length === 0 ? (
-              <p className="pb-2 text-center text-xs text-muted-foreground">No events</p>
+              <p className={yearPopoverEmptyClass}>{noEventsText}</p>
             ) : (
-              <div className="-mx-2 flex min-h-0 flex-col gap-0.5 overflow-y-auto px-2 py-1">
+              <div className={yearPopoverListClass}>
                 {fragments.map((fragment) => (
                   <YearEvent
-                    // `typeof` keeps numeric 1 and string "1" apart; they are distinct event IDs.
-                    key={`${typeof fragment.event.id}:${fragment.event.id}`}
+                    key={eventKey(fragment)}
                     color={getEventColor?.(fragment.event.event)}
                     icon={getEventIcon?.(fragment.event.event)}
                     formats={formats}

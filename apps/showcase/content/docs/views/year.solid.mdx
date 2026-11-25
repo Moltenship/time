@@ -1,0 +1,197 @@
+---
+title: Year
+description: The Solid year, twelve months at a glance with a dot for each event color on a day and a popover of its events, from the Solid registry.
+---
+
+<SolidExample
+  name="year"
+  title="The year view"
+  size="h-[40rem]"
+  caption="Live. The page that Add it builds, with two events in October 2026. Click a day to see its events."
+/>
+
+The [Solid demo](https://moltenship-time-demo.vercel.app/solid/?view=year) opens on the year, with
+more events and a toolbar.
+
+`createYearView` shows the anchor's calendar year, January to December, as twelve small month
+grids. Weeks start on `weekRules.firstDay`. Each date shows once: a week that reaches into the
+month before or after leaves those cells empty, so every month keeps its own shape.
+
+## Add it
+
+Add the `year-view` item to your app with the shadcn CLI, as
+[UI source](/docs/installation#ui-source-optional) describes. It brings the theme, the shared
+`calendar` parts and the kit's popover:
+
+```bash
+npx shadcn@latest add @moltenship/year-view
+```
+
+Then register the view, with the views it opens: a date opens the view `dayView` names, `day` by
+default, and a month's name the one `monthView` names, `month` by default. This calendar has the
+registry's [month](/docs/views/month) and [day](/docs/views/week-and-day) for them:
+
+<include meta='title="calendar.tsx"'>../../examples/solid/year-page.tsx#view</include>
+
+The view is named `year`. Previous and Next move by one year. Its range is the whole year, so
+`onVisibleRangeChange` asks for a year of events at a time. Where the months don't fit, the view
+scrolls inside the height it's given, so give `Calendar.Viewport` a height:
+
+<include meta='title="year-page.tsx"'>../../examples/solid/year-page.tsx#page</include>
+
+## Options
+
+Pass them to `createYearView`, or per root in `viewOptions`, as the page above does with
+`closedDays`:
+
+<TypeTable
+  type={{
+    getEventColor: {
+      type: "(event: TEvent) => CalendarEventColor",
+      description: (
+        <>
+          The color of each event's dot and of its row in the popover, one of{" "}
+          <code>calendarEventColors</code> in <code>event-colors.ts</code>, which{" "}
+          <code>calendar-theme</code> installs.
+        </>
+      ),
+    },
+    getEventIcon: {
+      type: "(event: TEvent) => JSX.Element",
+      description:
+        "A small icon before each event's title in the popover, such as a repeat mark on recurring events, or nothing; the dots don't show it. It's decorative and hidden from screen readers: say the same in describeEvent, which adds to the event's accessible name.",
+    },
+    describeEvent: {
+      type: "(event: TEvent) => string | undefined",
+      description: (
+        <>
+          Extra words for each event's <a href="/docs/accessibility#event-names">accessible name</a>
+          , such as its calendar.
+        </>
+      ),
+    },
+    dayView: {
+      type: "string",
+      default: '"day"',
+      description: "The registered view a date opens.",
+    },
+    monthView: {
+      type: "string",
+      default: '"month"',
+      description: "The registered view a month's name opens.",
+    },
+    closedDays: {
+      type: '"exceptions" | "all" | "none"',
+      default: '"exceptions"',
+      description: (
+        <>
+          Which closed days are shaded: the dates an exception closes, such as holidays; those and
+          the weekly closed days, such as weekends; or none. A closed day is named "closed" either
+          way. See <a href="#closed-days">Closed days</a>.
+        </>
+      ),
+    },
+    renderUnavailable: {
+      type: "UnavailableTimeRender",
+      description: (
+        <>
+          Replaces the shading of the closed days <code>closedDays</code> picks. See{" "}
+          <a href="/docs/availability">Availability</a>.
+        </>
+      ),
+    },
+  }}
+/>
+
+## What it shows
+
+- **Months:** two to a row on a phone, up to six on a wide screen. Each keeps room for six weeks, so
+  months side by side line up.
+- **Days:** today's date sits in a filled circle and is `aria-current="date"`. Under each date, a
+  dot for every event color on that day, up to three, in the order the day's events start. All-day
+  and multi-day events count on every date they cover.
+- **A day's events:** clicking a day opens a popover with its events, all-day first, then by start
+  time. Each event is a `<button data-event-id>`, so the app's own event details open from it as
+  from any other view. The date at the top opens the day in the view `dayView` names, `day` by default. Register a
+  view by that name, or point `dayView` at one you have, so the click has somewhere to go. The popover
+  follows the day's events as they change, and a new year closes it.
+- **Month names** open that month in the view named `month`.
+- **Closed days:** with [availability](/docs/availability), see [below](#closed-days).
+- **Scrolling:** where the months don't fit, the view opens with today's month, or the day you last
+  focused, in view. Today, Previous, Next and a picked date scroll their month into view. Only the
+  view scrolls, never the page around it.
+- **Targets:** every day is 24 px across, so a finger finds it on a phone.
+- **Right to left** mirrors the months and their weeks when the page or `Calendar.Frame` has
+  `dir="rtl"`.
+- **Reduced motion** opens the popover without its scale and slide.
+- **Editing:** none. The year shows events without moving or creating them; open a day or a month
+  to edit.
+
+## Closed days
+
+With [availability](/docs/availability), a day without working hours is named "closed" for screen readers,
+as in the month view. What's shaded depends on `closedDays`:
+
+- `"exceptions"` (the default) shades the dates an exception closes, such as a public holiday or an
+  offsite. Weekly closed days, such as weekends, stay plain: the weekday columns already show them,
+  and a third of the year in gray would bury the holidays.
+- `"all"` shades the weekly closed days too.
+- `"none"` shades nothing.
+
+Shaded days next to each other in a week join into one band with rounded ends, so a weekend or a
+long holiday reads as one stretch, and the rows stay apart. To draw it differently, such as
+hatching, pass `renderUnavailable`; its `band` carries the reason, the exception's label and
+whether open time meets each end.
+
+## Anatomy
+
+`YearView` renders the parts below. The view builds them itself from its projection, so they're not
+parts you compose: to change one, edit its file under `components/calendar/year-view`.
+
+```txt title="Rendered by YearView"
+YearView                         year-view.tsx
+├── YearMonthGrid                year-month.tsx, one per month
+│   ├── Month name               opens the month view
+│   ├── Weekday initials
+│   └── YearDayCell              a gridcell, data-date, one per day
+│       ├── UnavailableTime      the shading of a closed day
+│       └── PopoverTrigger       the date and its event dots, data-color, one per color
+└── YearDayPopover               year-day-popover.tsx, one for the whole year
+    ├── Date                     opens the day view
+    └── YearEvent                a [data-event-id] button per event
+```
+
+The popover is one popover from the kit, with a trigger in every day that shares it through a
+handle, so the year never mounts hundreds of popovers.
+
+The `.tsx` files are Solid components. What they render comes from plain TypeScript beside them:
+
+| File             | Holds                                                                     |
+| ---------------- | ------------------------------------------------------------------------- |
+| `year.styles.ts` | Every class the parts set, so a restyle is one file                       |
+| `year-labels.ts` | The dates, start times, day names and the popover's words                 |
+| `year-layout.ts` | The dots a day shows, which days are closed, and which month to scroll to |
+
+## Keyboard
+
+The [Accessibility](/docs/accessibility#keyboard) page has the full map.
+
+| Focus | Key                | Effect                                                                   |
+| ----- | ------------------ | ------------------------------------------------------------------------ |
+| A day | ← →                | Previous or next day, across months                                      |
+| A day | ↑ ↓                | Same weekday a week earlier or later, across months                      |
+| A day | Home, End          | First or last day of the week's row in its month                         |
+| A day | Page Up, Page Down | Same day in the previous or next month                                   |
+| A day | Enter, Space       | Open the day's events. Tab moves through them; Escape returns to the day |
+| A day | Shift+Enter        | Open the day in the day view                                             |
+
+The year is one tab stop. Moving past December 31 or before January 1 navigates to the next or
+previous year.
+
+## Build your own
+
+The strategy pieces are exported from `@moltenship/calendar-solid`, for a year that looks
+different, such as a heat map of busy days: `getYearRange`, `navigateYear`, `getYearTitle`,
+`projectYear` and `yearSpatialNavigation`. `projectYear` returns twelve months of week rows, each
+day with its event fragments in display order, or `null` outside the month. See
+[Custom views](/docs/views/custom-views).

@@ -25,6 +25,21 @@
       "path": "registry/year-view/year-day-popover.tsx",
       "type": "registry:component",
       "target": "@components/calendar/year-view/year-day-popover.tsx"
+    },
+    {
+      "path": "registry/shared/year-view/year-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/year-view/year-layout.ts"
+    },
+    {
+      "path": "registry/shared/year-view/year-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/year-view/year-labels.ts"
+    },
+    {
+      "path": "registry/shared/year-view/year.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/year-view/year.styles.ts"
     }
   ]
 }

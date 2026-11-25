@@ -5,7 +5,6 @@ import {
   getYearRange,
   getYearTitle,
   navigateYear,
-  plainDateIntervalContains,
   projectYear,
   useAnchorDateRequests,
   yearSpatialNavigation,
@@ -14,7 +13,6 @@ import {
   type EventId,
   type PlainDateInterval,
   type ResourceId,
-  type YearDay,
   type YearProjection,
 } from "@moltenship/calendar";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
@@ -23,15 +21,18 @@ import { useEventLabel, type EventDescriber } from "@registry/calendar/event-lab
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/calendar/view-keyboard";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
+import {
+  createMonthInView,
+  triggerIdOf,
+  yearDaysByDate,
+  type YearClosedDays,
+} from "@registry/shared/year-view/year-layout";
+import { yearFormats, type YearFormats } from "@registry/shared/year-view/year-labels";
+import { yearMonthsClass, yearViewClass } from "@registry/shared/year-view/year.styles";
 import { createPopoverHandle } from "@registry/calendar-ui/popover";
 
 import { YearDayPopover } from "./year-day-popover";
-import {
-  YearMonthGrid,
-  type YearClosedDays,
-  type YearDayPopoverHandle,
-  type YearFormats,
-} from "./year-month";
+import { YearMonthGrid, type YearDayPopoverHandle } from "./year-month";
 
 export interface YearViewOptions<TEvent> {
   /**
@@ -67,87 +68,24 @@ type YearViewProps<TEvent> = CalendarViewRendererProps<
 >;
 
 export function useYearFormats(locale: Intl.LocalesArgument): YearFormats {
-  return useMemo(() => {
-    const hour = new Intl.DateTimeFormat(locale, { hour: "numeric" });
-    const hourMinute = new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit" });
-    return {
-      date: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
-      month: new Intl.DateTimeFormat(locale, { month: "long" }),
-      monthYear: new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }),
-      time: (time) => (time.minute === 0 ? hour : hourMinute).format(time),
-      weekday: new Intl.DateTimeFormat(locale, { weekday: "narrow" }),
-      weekdayName: new Intl.DateTimeFormat(locale, { weekday: "long" }),
-      weekdayShort: new Intl.DateTimeFormat(locale, { weekday: "short" }),
-    };
-  }, [locale]);
-}
-
-/** Room left above a month scrolled into view, so its name doesn't touch the edge. */
-const SCROLL_MARGIN = 12;
-
-function prefersReducedMotion(element: Element): boolean {
-  return (
-    element.ownerDocument.defaultView?.matchMedia?.("(prefers-reduced-motion: reduce)").matches ===
-    true
-  );
+  return useMemo(() => yearFormats(locale), [locale]);
 }
 
 /**
- * Scrolls the view, and never the page around it, until `date`'s month shows from its top, as
- * where months stack on a phone. A month already in view stays where it is.
- */
-function showMonth(view: HTMLElement, date: Temporal.PlainDate, behavior: ScrollBehavior) {
-  const month = view.querySelector(`[data-month="${date.toPlainYearMonth().toString()}"]`);
-  if (month === null) return;
-  const bounds = view.getBoundingClientRect();
-  const { bottom, top } = month.getBoundingClientRect();
-  if (top >= bounds.top && bottom <= bounds.bottom) return;
-  const position = view.scrollTop + top - bounds.top - SCROLL_MARGIN;
-  if (typeof view.scrollTo === "function") view.scrollTo({ behavior, top: position });
-  else view.scrollTop = position;
-}
-
-/**
- * Keeps the month the user is after in view: the date Today, Previous, Next or a picked date asks
- * for, smoothly within the year, and when a year opens, the day keyboard focus would enter on.
- * Keys that move focus into another year leave it to focus, which brings its day into view.
+ * Keeps the month the user is after in view, through the shared `createMonthInView`: the date
+ * Today, Previous, Next or a picked date asks for, and when a year opens, the day keyboard focus
+ * would enter on.
  */
 function useMonthInView(view: RefObject<HTMLElement | null>, range: PlainDateInterval) {
-  const requested = useRef<Temporal.PlainDate | null>(null);
-  const focusInside = (element: HTMLElement) =>
-    element.contains(element.ownerDocument.activeElement);
-
-  useAnchorDateRequests((date, shown) => {
-    const element = view.current;
-    if (element === null) return;
-    // Keys move focus within the year without asking for a date, so this is Today or a pick.
-    if (shown?.start.equals(range.start) === true) {
-      showMonth(element, date, prefersReducedMotion(element) ? "instant" : "smooth");
-    } else {
-      // Shown once the new year renders.
-      requested.current = date;
-    }
-  });
+  const [inView] = useState(createMonthInView);
+  useAnchorDateRequests((date, shown) => inView.request(view.current, date, shown, range));
 
   const year = range.start.toString();
   useEffect(() => {
-    const element = view.current;
-    const date = requested.current;
-    requested.current = null;
-    if (element === null || focusInside(element)) return;
-    const entry = element
-      .querySelector('[role="gridcell"][tabindex="0"]')
-      ?.getAttribute("data-date");
-    const target =
-      date !== null && plainDateIntervalContains(range, date)
-        ? date
-        : entry == null
-          ? null
-          : Temporal.PlainDate.from(entry);
-    if (target !== null) showMonth(element, target, "instant");
+    inView.yearShown(view.current, range);
     // Once per year: the range object can change with the same dates.
     // oxlint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, year]);
+  }, [inView, view, year]);
 }
 
 function YearView<TEvent>({
@@ -163,16 +101,8 @@ function YearView<TEvent>({
   const keyboard = useViewKeyboard();
   const [handle] = useState<YearDayPopoverHandle>(createPopoverHandle<Temporal.PlainDate>);
   const idPrefix = useId();
-  const triggerId = (date: Temporal.PlainDate) => `${idPrefix}${date.toString()}`;
-  const days = useMemo(() => {
-    const byDate = new Map<string, YearDay<TEvent, EventId, ResourceId>>();
-    for (const month of projection.months) {
-      for (const week of month.weeks) {
-        for (const day of week.days) if (day !== null) byDate.set(day.date.toString(), day);
-      }
-    }
-    return byDate;
-  }, [projection]);
+  const triggerId = (date: Temporal.PlainDate) => triggerIdOf(idPrefix, date);
+  const days = useMemo(() => yearDaysByDate(projection), [projection]);
   const year = range.start.toString();
   // Another year has none of the open day's triggers.
   useEffect(() => handle.close(), [handle, year]);
@@ -192,10 +122,10 @@ function YearView<TEvent>({
       aria-label={getYearTitle(range, environment)}
       {...keyboard}
       data-slot="year-view"
-      className="@container h-full min-h-0 overflow-y-auto"
+      className={yearViewClass}
     >
       {/* Two narrow months side by side on a phone, up to six across on a wide screen. */}
-      <div className="grid grid-cols-1 content-start gap-x-4 gap-y-5 p-3 @sm:grid-cols-2 @2xl:gap-x-8 @2xl:p-6 @3xl:grid-cols-3 @5xl:grid-cols-4 @[100rem]:grid-cols-6">
+      <div className={yearMonthsClass}>
         {projection.months.map((month) => (
           <YearMonthGrid
             key={month.range.start.toString()}

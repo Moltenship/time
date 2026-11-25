@@ -4,13 +4,10 @@ import {
   useClosedDates,
   useRovingFocus,
   type ClosedDate,
-  type ClosedTime,
-  type EventDayFragment,
   type EventId,
   type ResourceId,
   type YearDay,
   type YearMonth,
-  type YearWeek,
 } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
 
@@ -22,6 +19,14 @@ import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.st
 import { eventColorStyles } from "@registry/stylex-calendar-theme/event-color-styles";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
 import { PopoverTrigger, type PopoverHandle } from "@registry/stylex-calendar-ui/popover";
+import {
+  closedDaysOf,
+  dotColors,
+  weekdaysOf,
+  type YearClosedDays,
+  type YearShade,
+} from "@registry/shared/year-view/year-layout";
+import { dayCellLabel, type YearFormats } from "@registry/shared/year-view/year-labels";
 
 const styles = stylex.create({
   cell: {
@@ -144,54 +149,11 @@ const styles = stylex.create({
   },
 });
 
-export interface YearFormats {
-  readonly date: Intl.DateTimeFormat;
-  readonly month: Intl.DateTimeFormat;
-  readonly monthYear: Intl.DateTimeFormat;
-  readonly time: (time: Temporal.PlainTime) => string;
-  readonly weekday: Intl.DateTimeFormat;
-  readonly weekdayName: Intl.DateTimeFormat;
-  readonly weekdayShort: Intl.DateTimeFormat;
-}
+export type { YearClosedDays } from "@registry/shared/year-view/year-layout";
+export type { YearFormats } from "@registry/shared/year-view/year-labels";
 
 /** Opens the day popover; the popover reads the day's events from the current projection. */
 export type YearDayPopoverHandle = PopoverHandle<Temporal.PlainDate>;
-
-/**
- * Which closed days the year shades: the dates an exception closes, such as holidays, those and
- * the weekly ones too, such as weekends, or none. A closed day's name says "closed" either way.
- */
-export type YearClosedDays = "all" | "exceptions" | "none";
-
-/** Where a shaded day sits in its row's run of shaded days, which the shading rounds the ends of. */
-interface YearShade {
-  readonly band: ClosedDate & ClosedTime;
-  /** The run starts on this day: the day before it in the row isn't shaded. */
-  readonly first: boolean;
-  /** The run ends on this day. */
-  readonly last: boolean;
-}
-
-/** The most event colours a day shows as dots. */
-const MAX_DOTS = 3;
-
-function eventCount(count: number): string {
-  return count === 0 ? "no events" : count === 1 ? "1 event" : `${count} events`;
-}
-
-/** The day's event colours in display order, each once; `undefined` is the theme's default. */
-function dotColors<TEvent>(
-  fragments: readonly EventDayFragment<TEvent, EventId, ResourceId>[],
-  getEventColor: ((event: TEvent) => CalendarEventColor) | undefined,
-): readonly (CalendarEventColor | undefined)[] {
-  const colors: (CalendarEventColor | undefined)[] = [];
-  for (const { event } of fragments) {
-    const color = getEventColor?.(event.event);
-    if (!colors.includes(color)) colors.push(color);
-    if (colors.length === MAX_DOTS) break;
-  }
-  return colors;
-}
 
 interface YearDayCellProps<TEvent> {
   /** Set when the day has no working hours. */
@@ -231,14 +193,7 @@ function YearDayCell<TEvent>({
       role="gridcell"
       aria-current={day.isToday ? "date" : undefined}
       aria-haspopup="dialog"
-      aria-label={[
-        formats.date.format(day.date),
-        closed?.label,
-        closed === undefined ? undefined : "closed",
-        eventCount(day.fragments.length),
-      ]
-        .filter((part) => part !== undefined)
-        .join(", ")}
+      aria-label={dayCellLabel(formats, day.date, closed, day.fragments.length)}
       data-closed={closed === undefined ? undefined : ""}
       data-date={day.date.toString()}
       {...roving}
@@ -325,37 +280,6 @@ export function YearMonthGrid<TEvent>({
   const first = month.range.start;
   const label = formats.monthYear.format(first);
   const closed = useClosedDates(month.range);
-  type Week = YearWeek<TEvent, EventId, ResourceId>;
-  const closedOn = (week: Week, column: number) => {
-    const day = week.days[column];
-    return day == null ? undefined : closed.get(day.date.toString());
-  };
-  const isShaded = (week: Week, column: number) => {
-    const day = closedOn(week, column);
-    return (
-      day !== undefined &&
-      (shadeClosedDays === "all" ||
-        (shadeClosedDays === "exceptions" && day.reason === "exception"))
-    );
-  };
-  /** A shaded day: its band opens where its row has an open day beside it. */
-  const shadeOf = (week: Week, column: number): YearShade | undefined => {
-    if (!isShaded(week, column)) return undefined;
-    const isOpen = (side: number) => week.days[side] != null && closedOn(week, side) === undefined;
-    return {
-      band: {
-        ...closedOn(week, column)!,
-        opensAfter: column < week.days.length - 1 && isOpen(column + 1),
-        opensBefore: column > 0 && isOpen(column - 1),
-      },
-      first: column === 0 || !isShaded(week, column - 1),
-      last: column === week.days.length - 1 || !isShaded(week, column + 1),
-    };
-  };
-  const weekdays = Array.from({ length: 7 }, (_, index) =>
-    month.weeks[0]!.range.start.add({ days: index }),
-  );
-
   return (
     <div
       data-month={first.toPlainYearMonth().toString()}
@@ -374,7 +298,7 @@ export function YearMonthGrid<TEvent>({
       </button>
       <div role="grid" aria-label={label} {...stylex.props(styles.grid)}>
         <div role="row" {...stylex.props(styles.row)}>
-          {weekdays.map((date) => (
+          {weekdaysOf(month).map((date) => (
             <div
               key={date.dayOfWeek}
               role="columnheader"
@@ -386,29 +310,32 @@ export function YearMonthGrid<TEvent>({
           ))}
         </div>
         <div {...stylex.props(styles.weeks)}>
-          {month.weeks.map((week) => (
-            <div key={week.range.start.toString()} role="row" {...stylex.props(styles.row)}>
-              {week.days.map((day, column) =>
-                day === null ? (
-                  // Keeps the columns in step for screen readers; the date shows in its own month.
-                  <div key={column} role="gridcell" />
-                ) : (
-                  <YearDayCell
-                    key={day.date.toString()}
-                    closed={closedOn(week, column)}
-                    day={day}
-                    formats={formats}
-                    getEventColor={getEventColor}
-                    handle={handle}
-                    onOpenDay={onOpenDay}
-                    renderUnavailable={renderUnavailable}
-                    shade={shadeOf(week, column)}
-                    triggerId={triggerId(day.date)}
-                  />
-                ),
-              )}
-            </div>
-          ))}
+          {month.weeks.map((week) => {
+            const days = closedDaysOf(week, closed, shadeClosedDays);
+            return (
+              <div key={week.range.start.toString()} role="row" {...stylex.props(styles.row)}>
+                {week.days.map((day, column) =>
+                  day === null ? (
+                    // Keeps the columns in step for screen readers; the date shows in its own month.
+                    <div key={column} role="gridcell" />
+                  ) : (
+                    <YearDayCell
+                      key={day.date.toString()}
+                      closed={days[column]!.closed}
+                      day={day}
+                      formats={formats}
+                      getEventColor={getEventColor}
+                      handle={handle}
+                      onOpenDay={onOpenDay}
+                      renderUnavailable={renderUnavailable}
+                      shade={days[column]!.shade}
+                      triggerId={triggerId(day.date)}
+                    />
+                  ),
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
