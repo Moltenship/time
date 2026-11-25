@@ -9,10 +9,14 @@ import {
   type TimeGridPosition,
 } from "@moltenship/calendar";
 import * as stylex from "@stylexjs/stylex";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { useMemo, type ReactNode, type RefCallback, type RefObject } from "react";
 
+import { resourceTitle } from "@registry/shared/resource-columns-view/resource-columns-labels";
+import { resourceColIndex } from "@registry/shared/resource-columns-view/resource-columns-layout";
 import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
+import { dayColumns } from "@registry/shared/time-grid-view/time-grid-geometry";
+import { timedEventsLabel } from "@registry/shared/time-grid-view/time-grid-labels";
 import type { EventLabeler } from "@registry/stylex-calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
@@ -24,8 +28,6 @@ import {
   type TimeGridColumnFormats,
 } from "@registry/stylex-time-grid-view/time-grid-column";
 import type { TimeGridZone } from "@registry/stylex-time-grid-view/time-grid-zones";
-
-import { resourceTitle } from "./resource-columns-header";
 
 const styles = stylex.create({
   canvas: {
@@ -130,7 +132,7 @@ function ResourceDays<TEvent>({
       {...resourceIdAttributes(resource.id)}
       {...stylex.props(styles.resourceDays)}
       style={{
-        gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+        gridTemplateColumns: dayColumns(days.length),
         insetInlineStart: start,
         width: size,
       }}
@@ -197,7 +199,7 @@ export function ResourceColumnsBody<TEvent>({
   return (
     <div role="row" {...stylex.props(styles.row)}>
       <div role="rowheader" aria-colindex={1} {...stylex.props(styles.rowHeader)}>
-        <span {...stylex.props(visuallyHiddenStyles.hidden)}>Timed events</span>
+        <span {...stylex.props(visuallyHiddenStyles.hidden)}>{timedEventsLabel}</span>
         <div ref={followY} {...stylex.props(styles.hours)}>
           <TimeGridHours locale={locale} zones={zones} />
         </div>
@@ -212,7 +214,7 @@ export function ResourceColumnsBody<TEvent>({
           {items.map(({ index, key, size, start }) => (
             <ResourceDays
               key={key}
-              colIndex={2 + index * (days?.length ?? 1)}
+              colIndex={resourceColIndex(index, days?.length ?? 1)}
               column={resources[index]!}
               formats={formats}
               getEventColor={getEventColor}

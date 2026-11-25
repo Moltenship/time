@@ -1,6 +1,6 @@
 ---
 title: Overview
-description: How views work, how to register and switch them, the registry's week and day, month, year and agenda and the scrolling month and agenda, and the engine's layouts a view draws.
+description: How views work, how to register and switch them, the registry's week and day, month, year and agenda, the scrolling month and agenda and the resource columns, and the engine's layouts a view draws.
 ---
 
 A view decides which dates are visible and how to draw them. A calendar can have several views, for
@@ -10,7 +10,7 @@ example an agenda and a month grid. The `view` state names the active one, and
 A view is a strategy and a `Renderer`. The strategy picks the dates and lays out the events, and
 the `Renderer` is a Solid component that draws that layout. The registry has styled views for the
 week, the day, the month, the year and the agenda, the month and agenda each also as a scrolling
-view, with a toolbar, a mini month and the controls they're
+view, and resource columns, with a toolbar, a mini month and the controls they're
 built from. You add them to your app as source, and you write the other views.
 
 <Cards>
@@ -38,6 +38,11 @@ built from. You add them to your app as source, and you write the other views.
     title="Scrolling views"
     href="/docs/views/scrolling"
     description="The month and the agenda as views that scroll without end."
+  />
+  <Card
+    title="Resource columns"
+    href="/docs/views/resource-columns"
+    description="Rooms and people side by side, grouped by team, with hundreds of columns."
   />
   <Card
     title="Toolbar and mini month"

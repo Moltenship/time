@@ -1,0 +1,343 @@
+<div aria-colcount="16" aria-label="Oct 8 – 10, 2026" class="flex h-full min-h-0 flex-col [--calendar-ghost-background:var(--calendar-selection)] data-interaction:select-none data-[interaction=move]:cursor-grabbing data-[interaction=resize]:cursor-ns-resize [--calendar-hours-width:3rem] sm:[--calendar-hours-width:4rem] [--calendar-gutter-width:calc(var(--calendar-hours-width)+var(--calendar-zones,0)*var(--calendar-zone-width,4rem))] pointer-coarse:select-none pointer-coarse:[-webkit-touch-callout:none]" data-slot="resource-columns" role="grid">
+  <div class="shrink-0 border-b border-calendar-grid">
+    <div class="flex" role="row" style="height: 4rem">
+      <div aria-colindex="1" class="flex w-(--calendar-gutter-width) shrink-0 items-end pb-1 text-[0.625rem] text-calendar-axis" role="columnheader">
+        <span class="flex min-w-0 flex-1 justify-end pe-2 whitespace-nowrap">
+          "GMT+0"
+      <div class="relative min-w-0 flex-1 overflow-clip" style="margin-inline-end: 15px">
+        <div class="relative h-full" style="transform: translateX(0px); width: 1920px">
+          <div aria-colindex="2" aria-colspan="3" class="absolute inset-y-0" role="columnheader" style="inset-inline-start: 0px; width: 384px">
+            <div class="flex h-full flex-col">
+              <div class="@container flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2 bg-muted" data-slot="resource-header" style="height: 2rem">
+                <button aria-expanded="true" aria-label="Collapse Team" class="-ms-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" tabindex="-1" type="button">
+                  <svg aria-hidden="true" class="size-4 transition-transform rtl:-scale-x-100 rotate-90 rtl:-rotate-90" fill="none" height="24" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" stroke="currentColor" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+                <span class="flex min-w-0 flex-col">
+                  <span class="truncate text-sm font-medium" data-slot="resource-header-title" title="Team">
+                    "Team"
+              <div class="flex-1 border-s border-calendar-grid" style="min-height: 2rem">
+          <div aria-colindex="5" aria-colspan="3" class="absolute inset-y-0" role="columnheader" style="inset-inline-start: 384px; width: 384px">
+            <div class="flex h-full flex-col">
+              <div aria-hidden="true" class="shrink-0 bg-muted" style="height: 2rem">
+              <div class="@container flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2" data-slot="resource-header" style="height: 2rem">
+                <span class="flex min-w-0 flex-col">
+                  <span class="truncate text-sm font-medium" data-slot="resource-header-title" title="Ada">
+                    "Ada"
+                <span class="sr-only">
+                  ", Team"
+              <div class="flex-1 border-s border-calendar-grid" style="min-height: 0rem">
+          <div aria-colindex="8" aria-colspan="3" class="absolute inset-y-0" role="columnheader" style="inset-inline-start: 768px; width: 384px">
+            <div class="flex h-full flex-col">
+              <div aria-hidden="true" class="shrink-0 bg-muted" style="height: 2rem">
+              <div class="@container flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2" data-slot="resource-header" style="height: 2rem">
+                <span class="flex min-w-0 flex-col">
+                  <span class="truncate text-sm font-medium" data-slot="resource-header-title" title="Grace">
+                    "Grace"
+                <span class="sr-only">
+                  ", Team"
+              <div class="flex-1 border-s border-calendar-grid" style="min-height: 0rem">
+          <div aria-colindex="11" aria-colspan="3" class="absolute inset-y-0" role="columnheader" style="inset-inline-start: 1152px; width: 384px">
+            <div class="flex h-full flex-col">
+              <div class="@container flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2" data-slot="resource-header" style="height: 2rem">
+                <span class="flex min-w-0 flex-col">
+                  <span class="truncate text-sm font-medium" data-slot="resource-header-title" title="Aurora">
+                    "Aurora"
+                  <span class="shrink-0 text-[0.625rem] text-muted-foreground tabular-nums truncate leading-none" data-slot="resource-time">
+                    <span class="sr-only">
+                      ", local time"
+                    "7:20 PM GMT+9"
+              <div class="flex-1 border-s border-calendar-grid" style="min-height: 2rem">
+          <div aria-colindex="14" aria-colspan="3" class="absolute inset-y-0" role="columnheader" style="inset-inline-start: 1536px; width: 384px">
+            <div class="flex h-full flex-col">
+              <div class="@container flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2" data-slot="resource-header" style="height: 2rem">
+                <span class="flex min-w-0 flex-col">
+                  <span class="truncate text-sm font-medium" data-slot="resource-header-title" title="Borealis">
+                    "Borealis"
+              <div class="flex-1 border-s border-calendar-grid" style="min-height: 2rem">
+    <div class="flex h-7" role="row">
+      <div aria-colindex="1" class="w-(--calendar-gutter-width) shrink-0" role="columnheader">
+        <span class="sr-only">
+          "Date"
+      <div class="relative min-w-0 flex-1 overflow-clip" style="margin-inline-end: 15px">
+        <div class="relative h-full" style="transform: translateX(0px); width: 1920px">
+          <div class="absolute inset-y-0 grid" style="grid-template-columns: repeat(3, minmax(0px, 1fr)); inset-inline-start: 0px; width: 384px">
+            <div aria-colindex="2" aria-current="date" aria-label="Thursday, October 8, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-calendar-today">
+                "Thu"
+              <span class="tabular-nums font-semibold text-calendar-today">
+                "8"
+            <div aria-colindex="3" aria-label="Friday, October 9, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-muted-foreground">
+                "Fri"
+              <span class="tabular-nums">
+                "9"
+            <div aria-colindex="4" aria-label="Saturday, October 10, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-muted-foreground">
+                "Sat"
+              <span class="tabular-nums">
+                "10"
+          <div class="absolute inset-y-0 grid" style="grid-template-columns: repeat(3, minmax(0px, 1fr)); inset-inline-start: 384px; width: 384px">
+            <div aria-colindex="5" aria-current="date" aria-label="Thursday, October 8, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-calendar-today">
+                "Thu"
+              <span class="tabular-nums font-semibold text-calendar-today">
+                "8"
+            <div aria-colindex="6" aria-label="Friday, October 9, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-muted-foreground">
+                "Fri"
+              <span class="tabular-nums">
+                "9"
+            <div aria-colindex="7" aria-label="Saturday, October 10, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-muted-foreground">
+                "Sat"
+              <span class="tabular-nums">
+                "10"
+          <div class="absolute inset-y-0 grid" style="grid-template-columns: repeat(3, minmax(0px, 1fr)); inset-inline-start: 768px; width: 384px">
+            <div aria-colindex="8" aria-current="date" aria-label="Thursday, October 8, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-calendar-today">
+                "Thu"
+              <span class="tabular-nums font-semibold text-calendar-today">
+                "8"
+            <div aria-colindex="9" aria-label="Friday, October 9, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-muted-foreground">
+                "Fri"
+              <span class="tabular-nums">
+                "9"
+            <div aria-colindex="10" aria-label="Saturday, October 10, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-muted-foreground">
+                "Sat"
+              <span class="tabular-nums">
+                "10"
+          <div class="absolute inset-y-0 grid" style="grid-template-columns: repeat(3, minmax(0px, 1fr)); inset-inline-start: 1152px; width: 384px">
+            <div aria-colindex="11" aria-current="date" aria-label="Thursday, October 8, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-calendar-today">
+                "Thu"
+              <span class="tabular-nums font-semibold text-calendar-today">
+                "8"
+            <div aria-colindex="12" aria-label="Friday, October 9, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-muted-foreground">
+                "Fri"
+              <span class="tabular-nums">
+                "9"
+            <div aria-colindex="13" aria-label="Saturday, October 10, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-muted-foreground">
+                "Sat"
+              <span class="tabular-nums">
+                "10"
+          <div class="absolute inset-y-0 grid" style="grid-template-columns: repeat(3, minmax(0px, 1fr)); inset-inline-start: 1536px; width: 384px">
+            <div aria-colindex="14" aria-current="date" aria-label="Thursday, October 8, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-calendar-today">
+                "Thu"
+              <span class="tabular-nums font-semibold text-calendar-today">
+                "8"
+            <div aria-colindex="15" aria-label="Friday, October 9, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-muted-foreground">
+                "Fri"
+              <span class="tabular-nums">
+                "9"
+            <div aria-colindex="16" aria-label="Saturday, October 10, 2026" class="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs" role="columnheader">
+              <span class="font-medium uppercase text-muted-foreground">
+                "Sat"
+              <span class="tabular-nums">
+                "10"
+    <div class="flex" role="row" style="height: 1.875rem">
+      <div class="flex w-(--calendar-gutter-width) shrink-0 items-start justify-end pt-0.5 pe-1" role="rowheader">
+        <span class="sr-only">
+          "All day"
+      <div class="relative min-w-0 flex-1 overflow-clip" style="margin-inline-end: 15px">
+        <div class="relative h-full" style="transform: translateX(0px); width: 1920px">
+          <div class="absolute inset-y-0 flex" data-resource-id="team" style="inset-inline-start: 0px; width: 384px">
+            <div class="grid flex-1" style="grid-template-columns: repeat(3, minmax(0px, 1fr))">
+              <div aria-colindex="2" aria-label="Team, Thursday, October 8, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="0">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-08">
+              <div aria-colindex="3" aria-label="Team, Friday, October 9, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-09">
+              <div aria-colindex="4" aria-label="Team, Saturday, October 10, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-10">
+          <div class="absolute inset-y-0 flex" data-resource-id="ada" style="inset-inline-start: 384px; width: 384px">
+            <div class="grid flex-1" style="grid-template-columns: repeat(3, minmax(0px, 1fr))">
+              <div aria-colindex="5" aria-label="Ada, Thursday, October 8, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-08">
+              <div aria-colindex="6" aria-label="Ada, Friday, October 9, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-09">
+              <div aria-colindex="7" aria-label="Ada, Saturday, October 10, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-10">
+          <div class="absolute inset-y-0 flex" data-resource-id="grace" style="inset-inline-start: 768px; width: 384px">
+            <div class="grid flex-1" style="grid-template-columns: repeat(3, minmax(0px, 1fr))">
+              <div aria-colindex="8" aria-label="Grace, Thursday, October 8, 2026, 1 all-day event" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-08">
+                <button aria-label="Leave, all day, Thursday, October 8 – Friday, October 9, Grace" class="flex items-center gap-1.5 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event px-2 text-start text-xs font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 absolute start-0 z-1 mx-1 min-w-0 py-0 leading-[1.375rem]" data-color="purple" data-event-id="Leave" data-slot="calendar-event" style="height: 1.375rem; inset-inline-end: calc(-100% - 1px); top: 0.25rem" tabindex="-1" type="button">
+                  <span class="truncate" data-slot="calendar-event-title">
+                    "Leave"
+              <div aria-colindex="9" aria-label="Grace, Friday, October 9, 2026, 1 all-day event" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-09">
+              <div aria-colindex="10" aria-label="Grace, Saturday, October 10, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-10">
+          <div class="absolute inset-y-0 flex" data-resource-id="aurora" style="inset-inline-start: 1152px; width: 384px">
+            <div class="grid flex-1" style="grid-template-columns: repeat(3, minmax(0px, 1fr))">
+              <div aria-colindex="11" aria-label="Aurora, Thursday, October 8, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-08">
+              <div aria-colindex="12" aria-label="Aurora, Friday, October 9, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-09">
+              <div aria-colindex="13" aria-label="Aurora, Saturday, October 10, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-10">
+          <div class="absolute inset-y-0 flex" data-resource-id="borealis" style="inset-inline-start: 1536px; width: 384px">
+            <div class="grid flex-1" style="grid-template-columns: repeat(3, minmax(0px, 1fr))">
+              <div aria-colindex="14" aria-label="Borealis, Thursday, October 8, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-08">
+              <div aria-colindex="15" aria-label="Borealis, Friday, October 9, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-09">
+              <div aria-colindex="16" aria-label="Borealis, Saturday, October 10, 2026, no all-day events" class="relative min-w-0 border-s border-calendar-grid focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring" role="gridcell" tabindex="-1">
+                <div class="absolute inset-0 data-draft:bg-calendar-selection data-invalid:bg-calendar-invalid/15 data-invalid:outline-2 data-invalid:-outline-offset-2 data-invalid:outline-calendar-invalid data-invalid:outline-dashed data-warning:outline-2 data-warning:-outline-offset-2 data-warning:outline-calendar-warning data-warning:outline-dashed" data-all-day="" data-date="2026-10-10">
+  <div class="flex min-h-0 flex-1" role="row">
+    <div aria-colindex="1" class="w-(--calendar-gutter-width) shrink-0 overflow-clip" role="rowheader">
+      <span class="sr-only">
+        "Timed events"
+      <div class="h-[calc(var(--calendar-hour-height)*24)]" style="transform: translateY(-337px)">
+        <div aria-hidden="true" class="relative h-full">
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 4.16667%">
+            "1 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 8.33333%">
+            "2 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 12.5%">
+            "3 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 16.6667%">
+            "4 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 20.8333%">
+            "5 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 25%">
+            "6 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 29.1667%">
+            "7 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 33.3333%">
+            "8 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 37.5%">
+            "9 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 41.6667%">
+            "10 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 45.8333%">
+            "11 AM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 50%">
+            "12 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 54.1667%">
+            "1 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 58.3333%">
+            "2 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 62.5%">
+            "3 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 66.6667%">
+            "4 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 70.8333%">
+            "5 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 75%">
+            "6 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 79.1667%">
+            "7 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 83.3333%">
+            "8 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 87.5%">
+            "9 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 91.6667%">
+            "10 PM"
+          <span class="absolute end-2 -translate-y-1/2 text-[0.625rem] whitespace-nowrap text-calendar-axis tabular-nums" style="top: 95.8333%">
+            "11 PM"
+    <div class="relative min-w-0 flex-1 overflow-auto [scrollbar-gutter:stable]" data-slot="resource-columns-body">
+      <div class="relative h-[calc(var(--calendar-hour-height)*24)] bg-[linear-gradient(to_bottom,var(--calendar-grid)_1px,transparent_1px)] bg-size-[100%_var(--calendar-hour-height)]" style="width: 1920px">
+        <div class="absolute inset-y-0 grid" data-resource-id="team" style="grid-template-columns: repeat(3, minmax(0px, 1fr)); inset-inline-start: 0px; width: 384px">
+          <div aria-colindex="2" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-08" data-today="" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-after="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 37.5%; --band-start: 0%; height: 37.5%; top: 0%">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-before="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 70.83333333333334%; height: 29.1667%; top: 70.8333%">
+            <div class="absolute inset-y-0 start-0 end-2">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-calendar-now before:absolute before:-top-1 before:-start-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now" data-slot="time-grid-now" style="top: 43.0556%">
+          <div aria-colindex="3" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-09" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-after="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 37.5%; --band-start: 0%; height: 37.5%; top: 0%">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-before="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 70.83333333333334%; height: 29.1667%; top: 70.8333%">
+            <div class="absolute inset-y-0 start-0 end-2">
+          <div aria-colindex="4" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-10" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-reason="closed-day" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 0%; height: 100%; top: 0%">
+            <div class="absolute inset-y-0 start-0 end-2">
+        <div class="absolute inset-y-0 grid" data-resource-id="ada" style="grid-template-columns: repeat(3, minmax(0px, 1fr)); inset-inline-start: 384px; width: 384px">
+          <div aria-colindex="5" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-08" data-today="" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-after="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 37.5%; --band-start: 0%; height: 37.5%; top: 0%">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-before="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 70.83333333333334%; height: 29.1667%; top: 70.8333%">
+            <div class="absolute inset-y-0 start-0 end-2">
+              <button aria-label="Standup, Thursday, October 8, 9:00 – 10:00 AM, Ada" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="blue" data-event-id="Standup" data-slot="calendar-event" style="height: 4.16667%; inset-inline-start: 0%; top: 37.5%; width: 50%" tabindex="-1" type="button">
+                <span class="line-clamp-2" data-slot="calendar-event-title">
+                  "Standup"
+                <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                  "9:00 – 10:00 AM"
+                <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
+                <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+              <button aria-label="Overlap, Thursday, October 8, 9:30 – 10:30 AM, Ada" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="red" data-event-id="Overlap" data-slot="calendar-event" style="height: 4.16667%; inset-inline-start: 50%; top: 39.5833%; width: 50%" tabindex="-1" type="button">
+                <span class="line-clamp-2" data-slot="calendar-event-title">
+                  "Overlap"
+                <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                  "9:30 – 10:30 AM"
+                <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
+                <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+              <button aria-label="Review, Thursday, October 8, 1:00 – 3:00 PM, Ada" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="green" data-event-id="Review" data-slot="calendar-event" style="height: 8.33333%; inset-inline-start: 0%; top: 54.1667%; width: 100%" tabindex="-1" type="button">
+                <span class="line-clamp-2" data-slot="calendar-event-title">
+                  "Review"
+                <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                  "1:00 – 3:00 PM"
+                <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
+                <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-calendar-now before:absolute before:-top-1 before:-start-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now" data-slot="time-grid-now" style="top: 43.0556%">
+          <div aria-colindex="6" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-09" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-after="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 37.5%; --band-start: 0%; height: 37.5%; top: 0%">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-before="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 70.83333333333334%; height: 29.1667%; top: 70.8333%">
+            <div class="absolute inset-y-0 start-0 end-2">
+          <div aria-colindex="7" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-10" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-reason="closed-day" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 0%; height: 100%; top: 0%">
+            <div class="absolute inset-y-0 start-0 end-2">
+        <div class="absolute inset-y-0 grid" data-resource-id="grace" style="grid-template-columns: repeat(3, minmax(0px, 1fr)); inset-inline-start: 768px; width: 384px">
+          <div aria-colindex="8" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-08" data-today="" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-after="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 37.5%; --band-start: 0%; height: 37.5%; top: 0%">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-before="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 70.83333333333334%; height: 29.1667%; top: 70.8333%">
+            <div class="absolute inset-y-0 start-0 end-2">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-calendar-now before:absolute before:-top-1 before:-start-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now" data-slot="time-grid-now" style="top: 43.0556%">
+          <div aria-colindex="9" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-09" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-after="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 37.5%; --band-start: 0%; height: 37.5%; top: 0%">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-before="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 70.83333333333334%; height: 29.1667%; top: 70.8333%">
+            <div class="absolute inset-y-0 start-0 end-2">
+          <div aria-colindex="10" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-10" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-reason="closed-day" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 0%; height: 100%; top: 0%">
+            <div class="absolute inset-y-0 start-0 end-2">
+        <div class="absolute inset-y-0 grid" data-resource-id="aurora" style="grid-template-columns: repeat(3, minmax(0px, 1fr)); inset-inline-start: 1152px; width: 384px">
+          <div aria-colindex="11" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-08" data-today="" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-before="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 33.33333333333333%; height: 66.6667%; top: 33.3333%">
+            <div class="absolute inset-y-0 start-0 end-2">
+              <button aria-label="Review, Thursday, October 8, 1:00 – 3:00 PM, Aurora" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="green" data-event-id="Review" data-slot="calendar-event" style="height: 8.33333%; inset-inline-start: 0%; top: 54.1667%; width: 100%" tabindex="-1" type="button">
+                <span class="line-clamp-2" data-slot="calendar-event-title">
+                  "Review"
+                <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                  "1:00 – 3:00 PM"
+                <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
+                <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-calendar-now before:absolute before:-top-1 before:-start-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now" data-slot="time-grid-now" style="top: 43.0556%">
+          <div aria-colindex="12" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-09" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-before="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 62.5%; --band-start: 33.33333333333333%; height: 29.1667%; top: 33.3333%">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-reason="closed-day" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 62.5%; height: 37.5%; top: 62.5%">
+            <div class="absolute inset-y-0 start-0 end-2">
+          <div aria-colindex="13" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-10" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-reason="closed-day" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 0%; height: 100%; top: 0%">
+            <div class="absolute inset-y-0 start-0 end-2">
+        <div class="absolute inset-y-0 grid" data-resource-id="borealis" style="grid-template-columns: repeat(3, minmax(0px, 1fr)); inset-inline-start: 1536px; width: 384px">
+          <div aria-colindex="14" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-08" data-today="" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-after="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 50%; --band-start: 0%; height: 50%; top: 0%">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-before="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 83.33333333333334%; height: 16.6667%; top: 83.3333%">
+            <div class="absolute inset-y-0 start-0 end-2">
+              <button aria-label="Audit, Thursday, October 8, 2:00 – 3:00 PM, Borealis" aria-labelledby="#1" class="flex min-w-0 overflow-hidden rounded-md border-s-3 border-calendar-event-border bg-calendar-event text-start text-xs leading-tight font-medium text-calendar-event-foreground transition-[filter,box-shadow] hover:brightness-[0.97] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring data-dragging:opacity-40 data-grabbed:z-20 data-grabbed:shadow-lg data-invalid:ring-2 data-invalid:ring-calendar-invalid data-pending:opacity-60 data-warning:ring-2 data-warning:ring-calendar-warning dark:hover:brightness-110 group absolute flex-col items-stretch gap-0 px-[var(--calendar-event-padding-x,calc(var(--spacing)*1.5))] shadow-[0_0_0_1px_var(--calendar-surface,var(--background))] hover:z-10 focus:z-20 focus-visible:z-20 py-[var(--calendar-event-padding-y,var(--spacing))]" data-color="orange" data-event-id="Audit" data-slot="calendar-event" style="height: 4.16667%; inset-inline-start: 0%; top: 58.3333%; width: 100%" tabindex="-1" type="button">
+                <span class="line-clamp-2" data-slot="calendar-event-title">
+                  "Audit"
+                <span class="truncate font-normal tabular-nums opacity-80" data-event-time="true">
+                  "2:00 – 3:00 PM"
+                <span aria-hidden="true" class="absolute inset-x-0 top-0 h-1.5 max-h-1/3 cursor-ns-resize" data-resize="start">
+                <span aria-hidden="true" class="absolute inset-x-0 bottom-0 flex h-1.5 max-h-1/3 cursor-ns-resize justify-center after:mt-auto after:mb-0.5 after:h-0.5 after:w-4 after:rounded-full after:bg-current after:opacity-0 after:transition-opacity group-hover:after:opacity-40" data-resize="end">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 z-10 h-0.5 -translate-y-1/2 bg-calendar-now before:absolute before:-top-1 before:-start-1.5 before:size-2.5 before:rounded-full before:bg-calendar-now" data-slot="time-grid-now" style="top: 43.0556%">
+          <div aria-colindex="15" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-09" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-after="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 50%; --band-start: 0%; height: 50%; top: 0%">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-opens-before="" data-reason="outside-hours" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 83.33333333333334%; height: 16.6667%; top: 83.3333%">
+            <div class="absolute inset-y-0 start-0 end-2">
+          <div aria-colindex="16" class="relative min-w-0 border-s border-calendar-grid" data-date="2026-10-10" role="gridcell">
+            <div aria-hidden="true" class="pointer-events-none absolute inset-x-0 bg-calendar-unavailable" data-reason="closed-day" data-slot="time-grid-unavailable" style="--band-end: 100%; --band-start: 0%; height: 100%; top: 0%">
+            <div class="absolute inset-y-0 start-0 end-2">

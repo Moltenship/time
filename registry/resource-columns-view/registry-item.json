@@ -4,7 +4,7 @@
   "type": "registry:component",
   "title": "Resource columns view",
   "description": "A day or N-day time grid with a column per resource: headers grouped by the resource hierarchy with collapsible groups and a slot for your own header content such as avatars, an all-day row per resource, a sticky hour gutter and header, a now-line, drag and keyboard moves across resources, and horizontal virtualization so hundreds of resources scroll smoothly.",
-  "dependencies": ["@moltenship/calendar", "@tanstack/react-virtual", "cn", "lucide-react"],
+  "dependencies": ["@moltenship/calendar", "@tanstack/virtual-core", "cn", "lucide-react"],
   "registryDependencies": [
     "@moltenship/calendar",
     "@moltenship/calendar-theme",
@@ -42,19 +42,49 @@
       "target": "@components/calendar/resource-columns-view/resource-columns-body.tsx"
     },
     {
-      "path": "registry/resource-columns-view/column-virtualizer.ts",
+      "path": "registry/shared/resource-columns-view/resource-columns-labels.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-columns-view/resource-columns-labels.ts"
+    },
+    {
+      "path": "registry/shared/resource-columns-view/resource-columns-layout.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-columns-view/resource-columns-layout.ts"
+    },
+    {
+      "path": "registry/shared/resource-columns-view/resource-columns.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-columns-view/resource-columns.styles.ts"
+    },
+    {
+      "path": "registry/shared/resource-columns-view/column-virtualizer.ts",
       "type": "registry:lib",
       "target": "@components/calendar/resource-columns-view/column-virtualizer.ts"
     },
     {
-      "path": "registry/resource-columns-view/axis-sync.ts",
+      "path": "registry/shared/resource-columns-view/axis-sync.ts",
       "type": "registry:lib",
       "target": "@components/calendar/resource-columns-view/axis-sync.ts"
     },
     {
-      "path": "registry/resource-columns-view/focused-column.ts",
+      "path": "registry/shared/resource-columns-view/focused-column.ts",
       "type": "registry:lib",
       "target": "@components/calendar/resource-columns-view/focused-column.ts"
+    },
+    {
+      "path": "registry/resource-columns-view/use-column-virtualizer.ts",
+      "type": "registry:hook",
+      "target": "@components/calendar/resource-columns-view/use-column-virtualizer.ts"
+    },
+    {
+      "path": "registry/resource-columns-view/use-axis-sync.ts",
+      "type": "registry:hook",
+      "target": "@components/calendar/resource-columns-view/use-axis-sync.ts"
+    },
+    {
+      "path": "registry/resource-columns-view/use-focused-column.ts",
+      "type": "registry:hook",
+      "target": "@components/calendar/resource-columns-view/use-focused-column.ts"
     }
   ]
 }

@@ -26,6 +26,10 @@ import {
 } from "@registry/stylex-calendar/resource-status";
 import type { UnavailableTimeRender } from "@registry/stylex-calendar/unavailable-time";
 import { useViewKeyboard } from "@registry/stylex-calendar/view-keyboard";
+import {
+  resourceColumnsSnap as snap,
+  resourceMinWidth,
+} from "@registry/shared/resource-columns-view/resource-columns-layout";
 import { calendarVars } from "@registry/stylex-calendar-theme/calendar-tokens.stylex";
 import type { CalendarEventColor } from "@registry/stylex-calendar-theme/event-colors";
 import { TimeGridEventTooltip } from "@registry/stylex-time-grid-view/time-grid-event";
@@ -38,14 +42,14 @@ import {
   useTimeGridZones,
 } from "@registry/stylex-time-grid-view/time-grid-zones";
 
-import { useAxisSync } from "./axis-sync";
-import { useColumnVirtualizer } from "./column-virtualizer";
 import { ResourceColumnsAllDay } from "./resource-columns-all-day";
 import { ResourceColumnsBody } from "./resource-columns-body";
 import { ResourceColumnsDates } from "./resource-columns-dates";
 import { ResourceColumnsHeader } from "./resource-columns-header";
 import type { ResourceHeaderProps } from "./resource-header";
-import { useFocusedColumnInView } from "./focused-column";
+import { useAxisSync } from "./use-axis-sync";
+import { useColumnVirtualizer } from "./use-column-virtualizer";
+import { useFocusedColumnInView } from "./use-focused-column";
 
 const styles = stylex.create({
   grid: {
@@ -130,11 +134,6 @@ export interface ResourceColumnsViewOptions<
 
 const selectResource = (focus: CalendarFocus | null) => focus?.resourceId;
 
-/** Pointer and keyboard both step by these slots, so they reach the same times. */
-const snap = { increment: 15, smallestUnit: "minute" } as const;
-/** The narrowest a resource's day gets before the columns scroll sideways, in pixels. */
-const MIN_DAY_WIDTH = 128;
-
 export type ResourceColumnsViewProps<
   TEvent,
   TResource extends CalendarResource<unknown, ResourceId> = CalendarResource<unknown, ResourceId>,
@@ -166,7 +165,7 @@ export function ResourceColumnsView<
   const focusedResource = useCalendarFocus(selectResource);
   const { scrollRef, scrollbarWidth, virtualizer } = useColumnVirtualizer({
     keys,
-    minWidth: MIN_DAY_WIDTH * Math.max(1, columns.length),
+    minWidth: resourceMinWidth(columns.length),
     pinned: resources.findIndex(({ resource }) => resource.id === focusedResource),
     rtl,
   });

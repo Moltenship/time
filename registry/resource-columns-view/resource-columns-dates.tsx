@@ -1,15 +1,29 @@
 "use client";
 
 import type { TimeGridDay } from "@moltenship/calendar";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { useMemo, type RefCallback } from "react";
 
+import { datesLabel } from "@registry/shared/resource-columns-view/resource-columns-labels";
+import { resourceColIndex } from "@registry/shared/resource-columns-view/resource-columns-layout";
+import {
+  resourceColumnsClipClass,
+  resourceColumnsTrackClass,
+  resourceDateClass,
+  resourceDatesCornerClass,
+  resourceDatesRowClass,
+  resourceDayNumberClass,
+  resourceDaysClass,
+  resourceWeekdayClass,
+} from "@registry/shared/resource-columns-view/resource-columns.styles";
+import { dayColumns } from "@registry/shared/time-grid-view/time-grid-geometry";
+import { dayHeaderFormats } from "@registry/shared/time-grid-view/time-grid-labels";
+import { srOnlyClass } from "@registry/shared/time-grid-view/time-grid.styles";
 import {
   TimeGridZoneNotes,
   zoneNotesByDate,
   type TimeGridZone,
 } from "@registry/time-grid-view/time-grid-zones";
-import { cn } from "cn";
 
 export interface ResourceColumnsDatesProps {
   readonly days: readonly TimeGridDay<unknown>[];
@@ -37,30 +51,21 @@ export function ResourceColumnsDates({
   zones = noZones,
 }: ResourceColumnsDatesProps) {
   const notes = useMemo(() => zoneNotesByDate(zones), [zones]);
-  const formats = useMemo(
-    () => ({
-      full: new Intl.DateTimeFormat(locale, { dateStyle: "full" }),
-      weekday: new Intl.DateTimeFormat(locale, { weekday: "short" }),
-    }),
-    [locale],
-  );
+  const formats = useMemo(() => dayHeaderFormats(locale), [locale]);
 
   return (
-    <div role="row" className="flex h-7">
-      <div role="columnheader" aria-colindex={1} className="w-(--calendar-gutter-width) shrink-0">
-        <span className="sr-only">Date</span>
+    <div role="row" className={resourceDatesRowClass}>
+      <div role="columnheader" aria-colindex={1} className={resourceDatesCornerClass}>
+        <span className={srOnlyClass}>{datesLabel}</span>
       </div>
-      <div
-        className="relative min-w-0 flex-1 overflow-clip"
-        style={{ marginInlineEnd: scrollbarWidth }}
-      >
-        <div ref={followX} className="relative h-full" style={{ width: totalSize }}>
+      <div className={resourceColumnsClipClass} style={{ marginInlineEnd: scrollbarWidth }}>
+        <div ref={followX} className={resourceColumnsTrackClass} style={{ width: totalSize }}>
           {items.map(({ index, key, size, start }) => (
             <div
               key={key}
-              className="absolute inset-y-0 grid"
+              className={resourceDaysClass}
               style={{
-                gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+                gridTemplateColumns: dayColumns(days.length),
                 insetInlineStart: start,
                 width: size,
               }}
@@ -69,24 +74,15 @@ export function ResourceColumnsDates({
                 <div
                   key={dayKey}
                   role="columnheader"
-                  aria-colindex={2 + index * days.length + day}
+                  aria-colindex={resourceColIndex(index, days.length) + day}
                   aria-current={isToday ? "date" : undefined}
                   aria-label={formats.full.format(date)}
-                  className="flex min-w-0 items-center justify-center gap-1 border-s border-calendar-grid text-xs"
+                  className={resourceDateClass}
                 >
-                  <span
-                    className={cn(
-                      "font-medium uppercase",
-                      isToday ? "text-calendar-today" : "text-muted-foreground",
-                    )}
-                  >
+                  <span className={resourceWeekdayClass(isToday)}>
                     {formats.weekday.format(date)}
                   </span>
-                  <span
-                    className={cn("tabular-nums", isToday && "font-semibold text-calendar-today")}
-                  >
-                    {date.day}
-                  </span>
+                  <span className={resourceDayNumberClass(isToday)}>{date.day}</span>
                   <TimeGridZoneNotes notes={notes.get(date.toString())} />
                 </div>
               ))}

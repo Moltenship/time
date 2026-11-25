@@ -3,6 +3,15 @@
 import { useNow, type CalendarEnvironmentBase } from "@moltenship/calendar";
 import { useMemo, type ComponentProps } from "react";
 
+import {
+  localTimeWords,
+  resourceClock,
+  resourceTimeText,
+} from "@registry/shared/calendar/resource-clock";
+import {
+  resourceTimeClass,
+  resourceTimeWordsClass,
+} from "@registry/shared/calendar/resource-time.styles";
 import { cn } from "cn";
 
 export interface ResourceTimeProps extends Omit<ComponentProps<"span">, "children"> {
@@ -12,20 +21,6 @@ export interface ResourceTimeProps extends Omit<ComponentProps<"span">, "childre
   readonly timeZone: string | undefined;
   /** Reads a comma before it, after a name it follows in an accessible name. */
   readonly separator?: boolean;
-}
-
-function clockFor(locale: Intl.Locale | string, timeZone: string | undefined) {
-  if (timeZone === undefined) return null;
-  try {
-    return {
-      offset: new Intl.DateTimeFormat(locale, { timeZone, timeZoneName: "shortOffset" }),
-      time: new Intl.DateTimeFormat(locale, { hour: "numeric", minute: "2-digit", timeZone }),
-      timeZone,
-    };
-  } catch {
-    // An unknown time zone, which the root reports as a diagnostic.
-    return null;
-  }
 }
 
 /**
@@ -38,14 +33,11 @@ export function useResourceTime(
 ): string | null {
   const now = useNow();
   const clock = useMemo(
-    () => clockFor(environment.locale, timeZone),
+    () => resourceClock(environment.locale, timeZone),
     [environment.locale, timeZone],
   );
   if (now === null || clock === null) return null;
-  const offsetIn = (zone: string) => now.toZonedDateTimeISO(zone).offsetNanoseconds;
-  if (offsetIn(clock.timeZone) === offsetIn(environment.timeZone)) return null;
-  const offset = clock.offset.formatToParts(now).find(({ type }) => type === "timeZoneName");
-  return `${clock.time.format(now)} ${offset?.value ?? ""}`.trim();
+  return resourceTimeText(clock, now, environment.timeZone);
 }
 
 /** `useResourceTime` as small print, which screen readers hear as "local time". */
@@ -60,12 +52,8 @@ export function ResourceTime({
   if (time === null) return null;
 
   return (
-    <span
-      data-slot="resource-time"
-      className={cn("shrink-0 text-[0.625rem] text-muted-foreground tabular-nums", className)}
-      {...props}
-    >
-      <span className="sr-only">{separator ? ", local time " : "local time "}</span>
+    <span data-slot="resource-time" className={cn(resourceTimeClass, className)} {...props}>
+      <span className={resourceTimeWordsClass}>{localTimeWords(separator)}</span>
       {time}
     </span>
   );

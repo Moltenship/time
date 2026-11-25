@@ -7,7 +7,8 @@ export type SolidView =
   | "year"
   | "agenda"
   | "scrolling-month"
-  | "scrolling-agenda";
+  | "scrolling-agenda"
+  | "resources";
 
 export interface SolidLocation {
   readonly date: Temporal.PlainDate;
@@ -16,16 +17,16 @@ export interface SolidLocation {
 
 /**
  * The React demo's views (`demoViewNames` in apps/demo/src/demo-model.ts), each with the nearest
- * view this demo has: the time grid of the same days for the scrolling grids, the resource columns
- * and the timeline, the month grid for a month, the year for a year, and the agenda for the
- * agendas. The scrolling month and agenda are themselves.
+ * view this demo has: the time grid of the same days for the scrolling grids and the timeline, the
+ * month grid for a month, the year for a year, and the agenda for the agendas. The resource columns
+ * and the scrolling month and agenda are themselves.
  */
 const nearestView: Readonly<Record<string, SolidView>> = {
   "3-day": "3-day",
   agenda: "agenda",
   day: "day",
   month: "month",
-  resources: "day",
+  resources: "resources",
   "scrolling-3-day": "3-day",
   "scrolling-agenda": "scrolling-agenda",
   "scrolling-day": "day",

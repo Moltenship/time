@@ -8,12 +8,25 @@ import {
   type ResourceColumn,
   type TimeGridPosition,
 } from "@moltenship/calendar";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { useMemo, type ReactNode, type RefCallback, type RefObject } from "react";
 
 import type { EventLabeler } from "@registry/calendar/event-label";
 import type { UnavailableTimeRender } from "@registry/calendar/unavailable-time";
 import type { CalendarEventColor } from "@registry/shared/calendar-theme/event-colors";
+import { resourceTitle } from "@registry/shared/resource-columns-view/resource-columns-labels";
+import { resourceColIndex } from "@registry/shared/resource-columns-view/resource-columns-layout";
+import {
+  resourceBodyClass,
+  resourceBodyGutterClass,
+  resourceBodyHoursClass,
+  resourceBodyRowClass,
+  resourceBodyTrackClass,
+  resourceDaysClass,
+} from "@registry/shared/resource-columns-view/resource-columns.styles";
+import { dayColumns } from "@registry/shared/time-grid-view/time-grid-geometry";
+import { timedEventsLabel } from "@registry/shared/time-grid-view/time-grid-labels";
+import { srOnlyClass } from "@registry/shared/time-grid-view/time-grid.styles";
 import { TimeGridHours, useOpeningScroll } from "@registry/time-grid-view/time-grid-body";
 import {
   TimeGridColumn,
@@ -21,8 +34,6 @@ import {
   type TimeGridColumnFormats,
 } from "@registry/time-grid-view/time-grid-column";
 import type { TimeGridZone } from "@registry/time-grid-view/time-grid-zones";
-
-import { resourceTitle } from "./resource-columns-header";
 
 export interface ResourceColumnsBodyProps<TEvent> {
   readonly environment: CalendarEnvironmentBase;
@@ -91,9 +102,9 @@ function ResourceDays<TEvent>({
   return (
     <div
       {...resourceIdAttributes(resource.id)}
-      className="absolute inset-y-0 grid"
+      className={resourceDaysClass}
       style={{
-        gridTemplateColumns: `repeat(${days.length}, minmax(0, 1fr))`,
+        gridTemplateColumns: dayColumns(days.length),
         insetInlineStart: start,
         width: size,
       }}
@@ -158,31 +169,24 @@ export function ResourceColumnsBody<TEvent>({
   useOpeningScroll(scrollRef, now, nowPosition?.top ?? null);
 
   return (
-    <div role="row" className="flex min-h-0 flex-1">
-      <div
-        role="rowheader"
-        aria-colindex={1}
-        className="w-(--calendar-gutter-width) shrink-0 overflow-clip"
-      >
-        <span className="sr-only">Timed events</span>
-        <div ref={followY} className="h-[calc(var(--calendar-hour-height)*24)]">
+    <div role="row" className={resourceBodyRowClass}>
+      <div role="rowheader" aria-colindex={1} className={resourceBodyGutterClass}>
+        <span className={srOnlyClass}>{timedEventsLabel}</span>
+        <div ref={followY} className={resourceBodyHoursClass}>
           <TimeGridHours locale={locale} zones={zones} />
         </div>
       </div>
       <div
         ref={scrollRef}
         data-slot="resource-columns-body"
-        className="relative min-w-0 flex-1 overflow-auto [scrollbar-gutter:stable]"
+        className={resourceBodyClass}
         onScroll={onScroll}
       >
-        <div
-          className="relative h-[calc(var(--calendar-hour-height)*24)] bg-[linear-gradient(to_bottom,var(--calendar-grid)_1px,transparent_1px)] bg-size-[100%_var(--calendar-hour-height)]"
-          style={{ width: totalSize }}
-        >
+        <div className={resourceBodyTrackClass} style={{ width: totalSize }}>
           {items.map(({ index, key, size, start }) => (
             <ResourceDays
               key={key}
-              colIndex={2 + index * (days?.length ?? 1)}
+              colIndex={resourceColIndex(index, days?.length ?? 1)}
               column={resources[index]!}
               formats={formats}
               getEventColor={getEventColor}

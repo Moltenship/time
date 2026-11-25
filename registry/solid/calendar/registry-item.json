@@ -53,6 +53,11 @@
       "target": "@components/calendar/resource-status.tsx"
     },
     {
+      "path": "registry/solid/calendar/resource-time.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/resource-time.tsx"
+    },
+    {
       "path": "registry/solid/calendar/scrolling-axis.tsx",
       "type": "registry:component",
       "target": "@components/calendar/scrolling-axis.tsx"
@@ -116,6 +121,16 @@
       "path": "registry/shared/calendar/resource-status-summary.ts",
       "type": "registry:lib",
       "target": "@components/calendar/resource-status-summary.ts"
+    },
+    {
+      "path": "registry/shared/calendar/resource-clock.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-clock.ts"
+    },
+    {
+      "path": "registry/shared/calendar/resource-time.styles.ts",
+      "type": "registry:lib",
+      "target": "@components/calendar/resource-time.styles.ts"
     },
     {
       "path": "registry/shared/calendar/resource-status.styles.ts",

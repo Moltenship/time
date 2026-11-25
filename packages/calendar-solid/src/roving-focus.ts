@@ -75,8 +75,12 @@ export function useRovingFocus(
 ): CalendarRovingFocusProps {
   const { interaction } = useShared();
   const { roving } = viewRuntimeContext.use();
-  const targetOf = () => access(target);
-  const daysOf = () => access(options).days ?? 1;
+  // A new projection hands the same target as a new object: it counts as new only when its key
+  // changes, so the tab stop isn't read again in a flush that hasn't moved it.
+  const targetOf = createMemo(() => access(target), {
+    equals: (left, right) => calendarFocusKey(left) === calendarFocusKey(right),
+  });
+  const daysOf = createMemo(() => access(options).days ?? 1);
   // Read each time the roving store says the tab stop may have moved, and when the target does.
   const tabStop = createStateSelector({ getSnapshot: nothing, subscribe: roving.subscribe }, () =>
     roving.isTabStop(targetOf(), daysOf()),

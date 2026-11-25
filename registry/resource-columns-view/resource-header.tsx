@@ -15,6 +15,21 @@ import {
   type ResourceHeaderStatusValue,
 } from "@registry/calendar/resource-status";
 import { ResourceTime } from "@registry/calendar/resource-time";
+import {
+  groupToggleLabel,
+  statusSeparator,
+} from "@registry/shared/resource-columns-view/resource-columns-labels";
+import {
+  defaultResourceHeaderStatusRowClass,
+  defaultResourceHeaderStatusTimeClass,
+  defaultResourceHeaderTextClass,
+  resourceGroupChevronClass,
+  resourceGroupToggleClass,
+  resourceHeaderIconClass,
+  resourceHeaderTimeClass,
+  resourceHeaderTitleClass,
+} from "@registry/shared/resource-columns-view/resource-columns.styles";
+import { srOnlyClass } from "@registry/shared/time-grid-view/time-grid.styles";
 import { cn } from "cn";
 
 /** What the view hands a resource header; the parts read the rest through `useResourceHeader`. */
@@ -56,20 +71,14 @@ function GroupToggle({ id, title }: { readonly id: ResourceId; readonly title: s
   return (
     <button
       aria-expanded={expanded}
-      aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`}
-      className="-ms-1 flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-accent-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+      aria-label={groupToggleLabel(expanded, title)}
+      className={resourceGroupToggleClass}
       onClick={toggle}
       // The grid keeps one tab stop.
       tabIndex={-1}
       type="button"
     >
-      <ChevronRightIcon
-        className={cn(
-          "size-4 transition-transform rtl:-scale-x-100",
-          // Down when open: RTL mirrors it to point left, so it turns the other way.
-          expanded && "rotate-90 rtl:-rotate-90",
-        )}
-      />
+      <ChevronRightIcon className={resourceGroupChevronClass(expanded)} />
     </button>
   );
 }
@@ -91,7 +100,7 @@ export function ResourceHeaderIcon({ className, ...props }: ComponentProps<"span
     <span
       aria-hidden
       data-slot="resource-header-icon"
-      className={cn("flex shrink-0 items-center", className)}
+      className={cn(resourceHeaderIconClass, className)}
       {...props}
     />
   );
@@ -103,11 +112,7 @@ export function ResourceHeaderTitle({ children, className, ...props }: Component
   return (
     <span
       data-slot="resource-header-title"
-      className={cn(
-        "truncate text-sm font-medium",
-        visible.id === null && "text-muted-foreground",
-        className,
-      )}
+      className={cn(resourceHeaderTitleClass(visible.id === null), className)}
       title={title}
       {...props}
     >
@@ -126,7 +131,7 @@ export function ResourceHeaderTime({ className, ...props }: ComponentProps<"span
     <ResourceTime
       // The header's name runs on from the resource's: "Leo, local time 5:30 PM".
       separator
-      className={cn("truncate leading-none", className)}
+      className={cn(resourceHeaderTimeClass, className)}
       environment={environment}
       timeZone={visible.resource?.timeZone}
       {...props}
@@ -146,7 +151,7 @@ export function ResourceHeaderStatus({ className }: { readonly className?: strin
   return (
     <>
       {/* Read after the name and local time, which the header's name runs on from. */}
-      <span className="sr-only">, </span>
+      <span className={srOnlyClass}>{statusSeparator}</span>
       <ResourceStatusPart className={className} status={status} />
     </>
   );
@@ -161,13 +166,12 @@ export function DefaultResourceHeader() {
   return (
     <>
       <ResourceHeaderToggle />
-      <span className="flex min-w-0 flex-col">
+      <span className={defaultResourceHeaderTextClass}>
         <ResourceHeaderTitle />
         {status !== null ? (
-          <span className="flex min-w-0 items-center gap-1">
-            {/* The badge keeps its words and the local time gives way after it, out of sight in
-                a narrow column; the name still reads the time first. */}
-            <ResourceHeaderTime className="order-last min-w-0 shrink @max-[11rem]:sr-only" />
+          <span className={defaultResourceHeaderStatusRowClass}>
+            {/* The name still reads the time first. */}
+            <ResourceHeaderTime className={defaultResourceHeaderStatusTimeClass} />
             <ResourceHeaderStatus />
           </span>
         ) : (

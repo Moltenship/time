@@ -11,6 +11,10 @@ import * as stylex from "@stylexjs/stylex";
 import { ChevronRightIcon } from "lucide-react";
 import { createContext, use, type ComponentProps } from "react";
 
+import {
+  groupToggleLabel,
+  statusSeparator,
+} from "@registry/shared/resource-columns-view/resource-columns-labels";
 import { visuallyHiddenStyles } from "@registry/shared/stylex-calendar-theme/visually-hidden.styles";
 import {
   ResourceStatusPart,
@@ -154,7 +158,7 @@ function GroupToggle({ id, title }: { readonly id: ResourceId; readonly title: s
   return (
     <button
       aria-expanded={expanded}
-      aria-label={`${expanded ? "Collapse" : "Expand"} ${title}`}
+      aria-label={groupToggleLabel(expanded, title)}
       {...stylex.props(styles.toggle)}
       onClick={toggle}
       // The grid keeps one tab stop.
@@ -257,7 +261,7 @@ export function ResourceHeaderStatus({
   return (
     <>
       {/* Read after the name and local time, which the header's name runs on from. */}
-      <span {...stylex.props(visuallyHiddenStyles.hidden)}>, </span>
+      <span {...stylex.props(visuallyHiddenStyles.hidden)}>{statusSeparator}</span>
       <ResourceStatusPart className={className} status={status} xstyle={xstyle} />
     </>
   );

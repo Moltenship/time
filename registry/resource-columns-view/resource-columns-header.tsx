@@ -5,7 +5,7 @@ import type {
   ResourceColumn,
   VisibleResource,
 } from "@moltenship/calendar";
-import type { VirtualItem } from "@tanstack/react-virtual";
+import type { VirtualItem } from "@tanstack/virtual-core";
 import { useMemo, type ComponentType, type ReactNode, type RefCallback } from "react";
 
 import {
@@ -13,7 +13,30 @@ import {
   useResourceHeaderStatus,
   type ResourceStatusOptions,
 } from "@registry/calendar/resource-status";
-import { cn } from "cn";
+import {
+  resourceGroupsWords,
+  resourceTitle,
+} from "@registry/shared/resource-columns-view/resource-columns-labels";
+import {
+  groupBandHeight,
+  headerFillHeight,
+  headerLevels,
+  headerRowHeight,
+  nameRowHeight,
+  resourceColIndex,
+  resourceGroupsOf,
+} from "@registry/shared/resource-columns-view/resource-columns-layout";
+import {
+  resourceColumnsClipClass,
+  resourceColumnsTrackClass,
+  resourceGroupBandClass,
+  resourceHeaderCellClass,
+  resourceHeaderColumnClass,
+  resourceHeaderFillClass,
+  resourceHeaderRowClass,
+  resourceNameRowClass,
+} from "@registry/shared/resource-columns-view/resource-columns.styles";
+import { srOnlyClass, timeGridCornerClass } from "@registry/shared/time-grid-view/time-grid.styles";
 
 import {
   DefaultResourceHeader,
@@ -41,15 +64,7 @@ export interface ResourceColumnsHeaderProps {
   readonly totalSize: number;
 }
 
-/** Height of one hierarchy level, in rem. */
-const LEVEL = 2;
-/** A name row with room for the status badge under the name, in rem. */
-const STATUS_ROW = 2.75;
-
-/** A resource's name, or "Unassigned" for the bucket of events without resources. */
-export function resourceTitle({ resource }: VisibleResource): string {
-  return resource?.title ?? "Unassigned";
-}
+export { resourceTitle };
 
 /**
  * One column's header. A resource sits on the row for its depth, under a band for each group it
@@ -78,36 +93,31 @@ function ResourceHeaderCell({
   const headerStatus = useResourceHeaderStatus(environment, resource, status);
 
   return (
-    <div className="flex h-full flex-col">
+    <div className={resourceHeaderCellClass}>
       {groups.map((_, level) => (
         <div
           key={level}
           aria-hidden
-          className="shrink-0 bg-muted"
-          style={{ height: `${LEVEL}rem` }}
+          className={resourceGroupBandClass}
+          style={{ height: groupBandHeight }}
         />
       ))}
       <div
         data-slot="resource-header"
         {...draftStatusAttributes(headerStatus)}
-        className={cn(
-          // A container, so header parts can fit themselves to the column's width.
-          "@container flex shrink-0 items-center gap-1 border-s border-calendar-grid px-2",
-          expanded && "bg-muted",
-        )}
-        // Groups show no status, so their name row keeps the height their members' bands have.
-        style={{ height: `${status !== null && !resource.hasChildren ? STATUS_ROW : LEVEL}rem` }}
+        className={resourceNameRowClass(expanded)}
+        style={{ height: nameRowHeight(status !== null, resource.hasChildren) }}
       >
         <ResourceHeaderContext
           value={{ environment, groups, status: headerStatus, title, visible: resource }}
         >
           <ResourceHeader resource={resource.resource} title={title} />
         </ResourceHeaderContext>
-        {groups.length > 0 && <span className="sr-only">, {groups.join(", ")}</span>}
+        {groups.length > 0 && <span className={srOnlyClass}>{resourceGroupsWords(groups)}</span>}
       </div>
       <div
-        className="flex-1 border-s border-calendar-grid"
-        style={{ minHeight: `${(levels - depth - 1) * LEVEL}rem` }}
+        className={resourceHeaderFillClass}
+        style={{ minHeight: headerFillHeight(levels, depth) }}
       />
     </div>
   );
@@ -129,53 +139,29 @@ export function ResourceColumnsHeader({
   status,
   totalSize,
 }: ResourceColumnsHeaderProps) {
-  // A visible resource's parents are visible too, so its groups are found among the columns.
-  const byId = useMemo(
-    () => new Map(resources.map(({ resource }) => [resource.id, resource] as const)),
-    [resources],
-  );
-  const levels = resources.reduce(
-    (deepest, { resource }) => Math.max(deepest, resource.depth + 1),
-    1,
-  );
-  const groupsOf = (resource: VisibleResource) => {
-    const groups: string[] = [];
-    for (let parentId = resource.parentId; parentId !== null;) {
-      const parent = byId.get(parentId);
-      if (parent === undefined) break;
-      groups.unshift(resourceTitle(parent));
-      parentId = parent.parentId;
-    }
-    return groups;
-  };
+  const groupsOf = useMemo(() => resourceGroupsOf(resources), [resources]);
+  const levels = headerLevels(resources);
 
   return (
     <div
       role="row"
-      className="flex"
-      style={{ height: `${(levels - 1) * LEVEL + (status !== null ? STATUS_ROW : LEVEL)}rem` }}
+      className={resourceHeaderRowClass}
+      style={{ height: headerRowHeight(levels, status !== null) }}
     >
-      <div
-        role="columnheader"
-        aria-colindex={1}
-        className="flex w-(--calendar-gutter-width) shrink-0 items-end pb-1 text-[0.625rem] text-calendar-axis"
-      >
+      <div role="columnheader" aria-colindex={1} className={timeGridCornerClass}>
         {corner}
       </div>
-      <div
-        className="relative min-w-0 flex-1 overflow-clip"
-        style={{ marginInlineEnd: scrollbarWidth }}
-      >
-        <div ref={followX} className="relative h-full" style={{ width: totalSize }}>
+      <div className={resourceColumnsClipClass} style={{ marginInlineEnd: scrollbarWidth }}>
+        <div ref={followX} className={resourceColumnsTrackClass} style={{ width: totalSize }}>
           {items.map(({ index, key, size, start }) => {
             const { resource } = resources[index]!;
             return (
               <div
                 key={key}
                 role="columnheader"
-                aria-colindex={2 + index * days}
+                aria-colindex={resourceColIndex(index, days)}
                 aria-colspan={days > 1 ? days : undefined}
-                className="absolute inset-y-0"
+                className={resourceHeaderColumnClass}
                 style={{ insetInlineStart: start, width: size }}
               >
                 <ResourceHeaderCell

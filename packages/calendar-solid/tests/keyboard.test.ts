@@ -35,6 +35,34 @@ import "./setup";
 
 type Change = CalendarEventChange<FixtureEvent, string, string>;
 
+/** Each view's tab stop reads, by the date of the target read. */
+const isTabStopCalls = new Map<string, number>();
+
+// Counts what the roving store is asked, and answers as it would.
+vi.mock("@moltenship/calendar-primitives", async (original) => {
+  const primitives = await original<typeof import("@moltenship/calendar-primitives")>();
+  return {
+    ...primitives,
+    createCalendarViewRuntime: (
+      ...args: Parameters<typeof primitives.createCalendarViewRuntime>
+    ) => {
+      const runtime = primitives.createCalendarViewRuntime(...args);
+      const { roving } = runtime;
+      return {
+        ...runtime,
+        roving: {
+          ...roving,
+          isTabStop: (target: CalendarFocus, days: number) => {
+            const key = target.date.toString();
+            isTabStopCalls.set(key, (isTabStopCalls.get(key) ?? 0) + 1);
+            return roving.isTabStop(target, days);
+          },
+        },
+      };
+    },
+  };
+});
+
 afterEach(() => {
   renders.clear();
   tabStopReads.clear();
@@ -780,4 +808,77 @@ test("a keyboard view lets go of its listeners and its gesture with its owner", 
     .map(([type]) => type);
   expect(types).toEqual(expect.arrayContaining(["keydown", "focusout"]));
   removed.mockRestore();
+});
+
+/** A view whose projection, and so each day's target, is new whenever the events change. */
+function FreshRenderer(
+  props: CalendarViewRendererProps<{ readonly start: Temporal.PlainDate }, undefined>,
+): JSX.Element {
+  return createComponent(PagedDiv, {
+    ref: useCalendarKeyboard(),
+    get children() {
+      return createComponent(For, {
+        each: [0, 1, 2],
+        children: (offset: number) =>
+          createComponent(PagedItem, {
+            get date() {
+              return props.projection.start.add({ days: offset });
+            },
+          }),
+      } as never);
+    },
+  });
+}
+
+const FreshCalendar = createCalendar<FixtureEvent>()({
+  eventAdapter: createCanonicalEventAdapter<null, string, string>(),
+  views: [
+    defineCalendarView({
+      name: "fresh",
+      strategy: {
+        getRange: (anchor) => plainDateInterval(anchor, anchor.add({ days: 3 })),
+        getSpatialNavigation: pagedNavigation,
+        getTitle: (range) => range.start.toString(),
+        navigate: (anchor, delta) => anchor.add({ days: 3 * delta }),
+        project: ({ range, snapshot }) => ({ snapshot, start: range.start }),
+      },
+      Renderer: FreshRenderer,
+    }),
+  ],
+});
+
+test("a new projection with the same targets reads each tab stop once and keeps it", async () => {
+  // In an object: Solid 2 reads a function given to createSignal as a derivation.
+  const [events, setEvents] = createSignal<{ value: readonly FixtureEvent[] }>({ value: [] });
+  const view = mountView(() =>
+    createComponent(
+      FreshCalendar.Root,
+      merge(pagedRoot, {
+        get events() {
+          return events().value;
+        },
+        get children() {
+          return createComponent(FreshCalendar.ActiveView, {});
+        },
+      }) as Parameters<typeof FreshCalendar.Root>[0],
+    ),
+  );
+  await settled();
+  await focus(cell(view.container, "2026-10-09"));
+
+  // Each day's target is a new object with the same key, which keeps its registration and its
+  // tab stop. Each change reads each tab stop once, when the root's focus and the new view reach
+  // the roving store: a target that counted as new would read it before that too, and then again.
+  for (const title of ["Trip", "Holiday", "Leave"]) {
+    isTabStopCalls.clear();
+    setEvents({ value: [allDay("trip", "2026-10-09", "2026-10-10", title)] });
+    await settled();
+    expect(Object.fromEntries(isTabStopCalls)).toEqual({
+      "2026-10-08": 1,
+      "2026-10-09": 1,
+      "2026-10-10": 1,
+    });
+  }
+  expect(tabStops(view.container)).toEqual(["2026-10-09"]);
+  expect(focused()).toBe("2026-10-09");
 });

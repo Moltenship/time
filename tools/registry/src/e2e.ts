@@ -386,6 +386,7 @@ const solidItems = [
   "calendar-history-toast",
   "time-grid-view",
   "year-view",
+  "resource-columns-view",
 ] as const;
 
 /** The versions the workspace builds and tests with, from its catalog. */
@@ -480,6 +481,7 @@ async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
       "",
       'import CalendarPage from "./calendar-page";',
       'import MonthPage from "./month-page";',
+      'import ResourceColumnsPage from "./resource-columns-page";',
       'import ScrollingAgendaPage from "./scrolling-agenda-page";',
       'import ScrollingMonthPage from "./scrolling-month-page";',
       'import UndoToastPage from "./undo-toast";',
@@ -488,11 +490,12 @@ async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
       'import YearPage from "./year-page";',
       'import "./app.css";',
       "",
-      "// Each page by its hash: #annotations, #month, #scrolling-agenda, #scrolling-month, #week",
-      "// and #year are their docs pages, #undo the toast's, anything else Installation's.",
+      "// Each page by its hash: #annotations, #month, #resources, #scrolling-agenda, #scrolling-month,",
+      "// #week and #year are their docs pages, #undo the toast's, anything else Installation's.",
       "const pages = {",
       '  "#annotations": WeekAnnotations,',
       '  "#month": MonthPage,',
+      '  "#resources": ResourceColumnsPage,',
       '  "#scrolling-agenda": ScrollingAgendaPage,',
       '  "#scrolling-month": ScrollingMonthPage,',
       '  "#undo": UndoToastPage,',
@@ -530,6 +533,7 @@ async function writeSolidApp(root: string, registryUrl: string): Promise<void> {
   for (const page of [
     "calendar-page.tsx",
     "month-page.tsx",
+    "resource-columns-page.tsx",
     "scrolling-agenda-page.tsx",
     "scrolling-month-page.tsx",
     "undo-toast.tsx",
