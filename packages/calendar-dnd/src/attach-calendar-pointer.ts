@@ -88,7 +88,7 @@ export interface CalendarPointerOptions<
   /**
    * Turns gestures off. It's also read when the layer attaches: a region disabled then doesn't
    * listen for touch moves, which a drag needs on iOS, so attach again when it changes, as
-   * `useCalendarPointer` does.
+   * the React integration's `useCalendarPointer` does.
    */
   readonly disabled?: boolean;
   /**

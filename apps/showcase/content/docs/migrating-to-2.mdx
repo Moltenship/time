@@ -27,6 +27,7 @@ names the types 2.0 widened.
 | Actions take options last                                             | [Wrap an action used as an event handler](#actions-take-options)                   | Code such as `onClick={actions.navigateNext}`                                   |
 | `Root` has `label`, `allowAgentDelete` and `formatAgentEventLabel`    | [Name your calendar](#name-the-calendar)                                           | Apps that want agents, or a fixed name                                          |
 | The store and state types moved to `@moltenship/calendar-primitives`  | Nothing: [the old imports still work](#new-packages)                               | Nobody                                                                          |
+| `useCalendarPointer` moved to `@moltenship/calendar-react`            | [Import it from there](#the-pointer-hook-moved)                                    | Code that imports it from `@moltenship/calendar-dnd`                            |
 
 What didn't change: the engine, the registry's views, the `data-calendar-part` attributes and the
 other attributes your CSS and tests target, the keyboard model, and every hook's name and return
@@ -236,6 +237,62 @@ event action, as it gives a person no editing.
 `@moltenship/calendar-react` into the primitives. Both `@moltenship/calendar` and
 `@moltenship/calendar-react` re-export them, so imports from either still work and a store you
 created keeps its contract. See [Primitives](/docs/api/primitives).
+
+## The pointer hook moved
+
+`@moltenship/calendar-dnd` imports no framework in 2.0, so a Solid integration can bind it too. Its
+one React hook, `useCalendarPointer`, is in `@moltenship/calendar-react` now, with the same
+options and return value. `@moltenship/calendar` exports it as before, so an import from the
+facade doesn't change. An import from the pointer package does:
+
+```ts title="my-week-view.tsx"
+// 1.x
+import { useCalendarPointer } from "@moltenship/calendar-dnd";
+// 2.0
+import { useCalendarPointer } from "@moltenship/calendar-react";
+```
+
+Everything else in `@moltenship/calendar-dnd` stays where it was: `attachCalendarPointer`,
+`startCalendarDrop`, `monitorCalendarDrags` and the attribute helpers. It no longer has React as a
+peer dependency.
+
+### With React but without calendar-react
+
+An app that used `@moltenship/calendar-dnd` in React without `@moltenship/calendar-react` has two
+ways on:
+
+- **Add `@moltenship/calendar-react`** and its peers, `@ui-sdk/core` and `@ui-sdk/react`, then
+  import the hook from it as above.
+- **Keep the hook in the app.** It's a few lines around `attachCalendarPointer`:
+
+```tsx title="use-calendar-pointer.ts"
+import type { EventId, ResourceId } from "@moltenship/calendar-core";
+import { attachCalendarPointer, type CalendarPointerOptions } from "@moltenship/calendar-dnd";
+import { useCallback, useInsertionEffect, useRef, type RefCallback } from "react";
+
+export function useCalendarPointer<
+  TEvent,
+  TEventId extends EventId,
+  TResourceId extends ResourceId,
+>(options: CalendarPointerOptions<TEvent, TEventId, TResourceId>): RefCallback<HTMLElement> {
+  const latest = useRef(options);
+  useInsertionEffect(() => {
+    latest.current = options;
+  });
+  const disabled = options.disabled === true;
+  // Options are read as a gesture goes; only `disabled` attaches the listeners again.
+  return useCallback(
+    (element: HTMLElement | null) =>
+      element === null ? undefined : attachCalendarPointer(element, () => latest.current),
+    [disabled],
+  );
+}
+```
+
+Either way, keep every `@moltenship/calendar*` package on one version. `@moltenship/calendar-react`
+depends on `@moltenship/calendar-dnd` at its own exact version, and the pointer package keeps its
+drag registry in the module: two copies of it don't hear each other's drags, so a drop from one
+never reaches a view bound through the other.
 
 ## Tests
 

@@ -140,7 +140,7 @@ function regionOver(region: PointerRegion, hit: Element, eventId: EventId | unde
 /**
  * Follows a drag that started outside the calendar, such as a task dragged from a list, over the
  * calendar views on the page, and drops it into one: the framework-agnostic half of external drag
- * and drop, which a drag library's binding drives. Every view that uses `useCalendarPointer` takes
+ * and drop, which a drag library's binding drives. Every view that uses `attachCalendarPointer` takes
  * part, through the options it passes: the preview shows range boxes in its slots, its `check`
  * marks them `data-invalid` or `data-warning`, its announcer speaks each step with `outside` set,
  * and its `onPropose` gets the drop. Read-only views take no part.

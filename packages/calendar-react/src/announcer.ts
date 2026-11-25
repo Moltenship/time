@@ -1,19 +1,18 @@
 import type { CalendarAnnouncer } from "@moltenship/calendar-core";
+import { createAnnouncerLiveText } from "@moltenship/calendar-primitives";
 import {
   createElement,
   useInsertionEffect,
   useLayoutEffect,
   useRef,
   useState,
+  useSyncExternalStore,
   type CSSProperties,
   type ReactElement,
 } from "react";
 
 import type { CalendarAnnouncerProps } from "./calendar-types";
 import { useInteractionRuntime } from "./interaction";
-
-export { createAnnouncerChannel } from "@moltenship/calendar-primitives";
-export type { AnnouncerChannel } from "@moltenship/calendar-primitives";
 
 /** Hidden from view but read by screen readers. */
 const visuallyHidden: CSSProperties = {
@@ -38,15 +37,11 @@ export function Announcer({ messages, style, ...props }: CalendarAnnouncerProps)
   useInsertionEffect(() => {
     latest.current = messages;
   });
-  // A message that repeats the last one gets a trailing space, so the region changes and is read.
-  const [spoken, setSpoken] = useState({ repeat: false, text: "" });
+  const [live] = useState(createAnnouncerLiveText);
+  const spoken = useSyncExternalStore(live.subscribe, live.getSnapshot, live.getServerSnapshot);
   useLayoutEffect(
-    () =>
-      announcements.mount(
-        () => latest.current,
-        (text) => setSpoken((last) => ({ repeat: last.text === text && !last.repeat, text })),
-      ),
-    [announcements],
+    () => announcements.mount(() => latest.current, live.speak),
+    [announcements, live],
   );
 
   return createElement(
@@ -59,7 +54,7 @@ export function Announcer({ messages, style, ...props }: CalendarAnnouncerProps)
       "data-calendar-part": "announcer",
       style: { ...visuallyHidden, ...style },
     },
-    spoken.repeat ? `${spoken.text}\u00a0` : spoken.text,
+    spoken,
   );
 }
 

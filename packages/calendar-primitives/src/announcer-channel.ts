@@ -10,6 +10,9 @@ import {
   type ResourceTree,
 } from "@moltenship/calendar-core";
 
+import { createListeners } from "./listeners";
+import type { CalendarStateSource } from "./types";
+
 /** Connects the root's announcer to the live region that is mounted, if any. */
 export interface AnnouncerChannel {
   readonly announcer: CalendarAnnouncer;
@@ -93,5 +96,32 @@ export function createAnnouncerChannel(
       };
     },
     say,
+  });
+}
+
+/**
+ * The text of a mounted live region, as a store: pass `speak` to `AnnouncerChannel.mount` and
+ * render the snapshot as the region's text. A message that repeats the last one gets a trailing
+ * no-break space, so the region changes and a screen reader reads it again. Empty until something
+ * is said, on the server too.
+ */
+export interface AnnouncerLiveText extends CalendarStateSource<string> {
+  readonly speak: (text: string) => void;
+}
+
+/** Creates the text of one mounted live region; see `AnnouncerLiveText`. */
+export function createAnnouncerLiveText(): AnnouncerLiveText {
+  let spoken = { repeat: false, text: "" };
+  let snapshot = "";
+  const listeners = createListeners();
+  return Object.freeze({
+    getServerSnapshot: () => "",
+    getSnapshot: () => snapshot,
+    speak(text: string) {
+      spoken = { repeat: spoken.text === text && !spoken.repeat, text };
+      snapshot = spoken.repeat ? `${text}\u00a0` : text;
+      listeners.notify();
+    },
+    subscribe: listeners.subscribe,
   });
 }

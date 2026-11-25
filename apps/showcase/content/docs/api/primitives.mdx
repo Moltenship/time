@@ -148,6 +148,58 @@ The [agent reference](/docs/agents/reference) has every input, result and error.
 An app doesn't call these methods. An agent calls them by name through the bridge, where your
 `allow` decides first.
 
+## Interaction
+
+The keyboard, roving focus, drafts, the history binding and the announcer are written once, here.
+An integration binds each in a few lines, with three shapes:
+
+- **Stores** have `subscribe` and `getSnapshot`, and `getServerSnapshot` when the server reads
+  something else. React reads them with `useSyncExternalStore`, Solid with a store selector.
+- **Element listeners** take the element and a getter for the latest options, and return a
+  cleanup, as `attachCalendarPointer(element, () => options)` does. The getter is read whenever an
+  event arrives, so new options never re-attach anything.
+- **Queries** are memoized functions an integration calls while it renders, as often as it renders.
+
+Most take the root's interaction runtime, `model.interaction` from `runtime.derive`, or the few
+fields of it they use.
+
+| Export                                                                       | What it is                                                                                                                                                                                                                                                                                                             |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createCalendarViewRuntime(getView)`                                         | One rendered active view: `getView` reads the latest view, and `roving` is its roving focus store. Keep it on the root's focus with `roving.update(focus, calendarViewEntry(view))` after each render                                                                                                                  |
+| `calendarViewEntry(view)`                                                    | Where focus enters a view, from its spatial navigation                                                                                                                                                                                                                                                                 |
+| `focusRovingTarget(interaction, target, days, event)`                        | What a cell or event does when it takes DOM focus itself: it becomes the calendar's focus                                                                                                                                                                                                                              |
+| `calendarFocusKey(target)`                                                   | A key for a focus target, which changes exactly when the target does                                                                                                                                                                                                                                                   |
+| `createCalendarKeyboard(interaction, viewRuntime, getOptions, getResources)` | A view's keyboard: `keyDown(event, wrapper?)` and `focusOut(event, region)` for the element around its cells. `wrapper` is the framework's own event, when it wraps DOM events as React does. Bind `keydown` on that element itself (`on:keydown` in Solid): a handler delegated to the document stops Escape too late |
+| `interaction.draft`                                                          | A store of the change being drafted: the keyboard's session while there is one, else the pointer's draft                                                                                                                                                                                                               |
+| `createBusyResourcesQuery()`, `createDraftBusyQuery()`                       | Queries for the resources busy in a range, and for one resource during the draft                                                                                                                                                                                                                                       |
+| `bindCalendarHistory(interaction, history, getOptions)`                      | An event history bound to a root, as a store of `{ undo, redo, canUndo, canRedo, … }`                                                                                                                                                                                                                                  |
+| `attachCalendarHistoryShortcuts(interaction, getConfig)`                     | The undo and redo keys, a `keydown` listener on the document for keys inside `scope`; returns a cleanup                                                                                                                                                                                                                |
+| `createAnnouncerLiveText()`                                                  | A live region's text as a store. Pass its `speak` to `interaction.announcements.mount` and render the snapshot                                                                                                                                                                                                         |
+| `subscribeAnchorDateRequests(interaction, listener)`                         | Hears every date the root is asked to show, with the range the active view shows for it                                                                                                                                                                                                                                |
+| `createResourceExpansionCommands(interaction, resourceId)`                   | `expand`, `collapse` and `toggle` for one resource of a tree                                                                                                                                                                                                                                                           |
+| `createResourceStatusClock(source, compute)`                                 | A store of a status that depends on the time, such as whether a resource is open now, sampled on `source`'s clock once a minute while subscribed, and `null` on the server. Only the clock is read: when `source.now` is fixed, compute at it yourself                                                                 |
+
+A view that unmounts mid-gesture leaves nothing grabbed when its integration calls
+`interaction.keyboard.set(null)` on unmount. Its React binding, `useCalendarKeyboard`, is this:
+
+```ts title="keyboard.ts"
+const keyboard = useMemo(
+  () =>
+    createCalendarKeyboard(
+      interaction,
+      view,
+      () => latest.current.options,
+      () => latest.current.resources,
+    ),
+  [interaction, view],
+);
+useEffect(() => () => interaction.keyboard.set(null), [interaction.keyboard]);
+return {
+  onBlur: (event) => keyboard.focusOut(event.nativeEvent, event.currentTarget),
+  onKeyDown: (event) => keyboard.keyDown(event.nativeEvent, event),
+};
+```
+
 ## Writing an integration
 
 `@moltenship/calendar-solid` is the model to read: it's the smaller of the two. An integration
@@ -160,8 +212,9 @@ does four things:
 3. Renders the primitive's slots as parts through the framework's ui-sdk package.
 4. Passes the model to custom views and hooks through a context of its own.
 
-The keyboard session, the gesture drafts and the announcer channel are shared from here as stores
-and plain functions. The pointer layer is `@moltenship/calendar-dnd`.
+The interaction below is shared from here as stores and plain functions. The pointer layer is
+`@moltenship/calendar-dnd`, which imports no framework either: bind `attachCalendarPointer` as
+`useCalendarPointer` does in React.
 
 There's no guide beyond this page yet, and the runtime's types change as the Solid integration
 grows. If you plan an integration, open an issue first.

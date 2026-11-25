@@ -49,9 +49,9 @@ packed code carries the `/*!` notice.
 | `@moltenship/calendar-temporal` | Engine: type-specific Temporal utilities | None |
 | `@moltenship/calendar-core` | Engine: snapshots, indexes, projections, layouts, and transactions | `calendar-temporal` |
 | `@moltenship/calendar-primitives` | Primitives (2.0): the calendar runtime, the calendar store, the calendar as a ui-sdk primitive, the agent surface. No framework | `calendar-core`, `calendar-temporal` |
-| `@moltenship/calendar-react` | React integration: provider, selectors, actions, and headless parts | `calendar-core`, `calendar-temporal`; in 2.0 also `calendar-primitives`, and `calendar-dnd` once `useCalendarPointer` moves into it |
-| `@moltenship/calendar-solid` | Solid integration (2.0): the same for SolidJS 2.0. Never `calendar-react`, the facade or another package with a React peer | `calendar-core`, `calendar-primitives`, `calendar-temporal`; `calendar-dnd` once it has no React peer |
-| `@moltenship/calendar-dnd` | Pointer interaction adapter (native Pointer Events); framework-free in 2.0, when its one React hook moves to `calendar-react` | `calendar-core`, `calendar-temporal` |
+| `@moltenship/calendar-react` | React integration: provider, selectors, actions, and headless parts | `calendar-core`, `calendar-temporal`; in 2.0 also `calendar-primitives` and `calendar-dnd`, which its `useCalendarPointer` binds |
+| `@moltenship/calendar-solid` | Solid integration (2.0): the same for SolidJS 2.0. Never `calendar-react`, the facade or another package with a React peer | `calendar-core`, `calendar-primitives`, `calendar-temporal`; `calendar-dnd` |
+| `@moltenship/calendar-dnd` | Pointer interaction adapter (native Pointer Events); framework-free in 2.0, its tests too: its React hook is `calendar-react`'s | `calendar-core`, `calendar-temporal` |
 | `@moltenship/calendar-dnd-kit` | Optional dnd-kit adapter: items dragged into the calendar, events dragged out (#237) | `calendar-core`, `calendar-dnd` |
 | `@moltenship/calendar` | Supported public facade, for React | `calendar-core`, `calendar-dnd`, `calendar-react`, `calendar-temporal` |
 | `@moltenship/calendar-testing` | Test helpers for apps: environment, builders, fixtures, render and hydration harness, queries, drivers and assertions (#45) | Public facade and `calendar-recurrence` |
@@ -68,8 +68,8 @@ packed code carries the `/*!` notice.
 | `release` | Internal release tooling: size budgets, API reports, export checks, clean-consumer install, dry run, publish | None; it reads built and packed packages from disk |
 
 External dependencies are added by the issue that validates their contract. React 19 is a peer of
-`calendar-react`, `calendar-dnd`, `calendar-dnd-kit`, `calendar` and `calendar-testing`, and React
-DOM 19 of `calendar-testing`. In 1.x `calendar-react` has no runtime dependency outside the
+`calendar-react`, `calendar-dnd-kit`, `calendar` and `calendar-testing`, and React DOM 19 of
+`calendar-testing`; `calendar-dnd` had a React peer in 1.x and has none in 2.0. In 1.x `calendar-react` has no runtime dependency outside the
 workspace; it dropped Jotai in #70 (ADR 0070).
 
 2.0 adds ui-sdk and Solid, as peers only (#275, ADR 0275). `@ui-sdk/core` is a peer of
@@ -122,14 +122,14 @@ ics (standalone: no workspace imports, no runtime dependencies) ─────�
 ```text
 calendar-core + calendar-temporal → calendar-primitives (ui-sdk core peer; no framework)
        ↓
-calendar-primitives + calendar-core + calendar-temporal → calendar-react (React, ui-sdk React peers)
+calendar-primitives + calendar-dnd + calendar-core + calendar-temporal → calendar-react (React, ui-sdk React peers)
 calendar-primitives + calendar-core + calendar-temporal → calendar-solid (Solid, ui-sdk Solid peers) ─────→ demo-solid
 
 calendar-react ⇸ calendar-solid, and calendar-solid ⇸ calendar-react, the facade or any package with a React peer
 ```
 
-`calendar-dnd` keeps its place. Once `useCalendarPointer` has moved to `calendar-react`, it has no
-React peer and both integrations import it; `calendar-primitives` never does.
+`calendar-dnd` keeps its place, with no framework: `useCalendarPointer` is `calendar-react`'s, and
+`calendar-solid` may import the adapter to bind it the same way; `calendar-primitives` never does.
 
 Registry item directories are consumer-owned source boundaries, not npm packages. Of our packages,
 they import only the `@moltenship/calendar` facade, which the `registry-source-uses-calendar-facade` rule enforces,

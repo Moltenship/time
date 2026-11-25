@@ -52,6 +52,7 @@
   },
   "dependencies": {
     "@moltenship/calendar-core": "workspace:*",
+    "@moltenship/calendar-dnd": "workspace:*",
     "@moltenship/calendar-primitives": "workspace:*",
     "@moltenship/calendar-temporal": "workspace:*"
   },

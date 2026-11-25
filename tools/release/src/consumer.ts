@@ -6,7 +6,7 @@ import { dirname, join } from "node:path";
 import { build } from "vite-plus";
 import { parse, stringify } from "yaml";
 
-import { facadePackage, pointerAdapterPackage } from "./config";
+import { facadePackage, pointerAdapterPackage, pointerBindingExports } from "./config";
 import { installFromStore, lockfileEntries, lockfileProblems } from "./isolated";
 import type { PackedTarball } from "./pack";
 import { readJson, run, runOrThrow, workspaceRoot } from "./workspace";
@@ -252,18 +252,19 @@ async function bundledModules(
 }
 
 /**
- * The facade re-exports the pointer adapter. A bundle of the facade's other exports must not keep
- * any adapter code, and a bundle of the pointer exports must keep some, which shows the check can
- * see the adapter at all.
+ * The facade re-exports the pointer adapter, and the integration's hooks that bind it
+ * (`bindings`). A bundle of the facade's other exports must not keep any adapter code, and a
+ * bundle of the pointer exports must keep some, which shows the check can see the adapter at all.
  */
 export async function adapterBundleProblems(
   directory: string,
   facade = facadePackage,
   adapter = pointerAdapterPackage,
+  bindings: readonly string[] = pointerBindingExports,
 ): Promise<string[]> {
   const script = `
 const facade = Object.keys(await import(${JSON.stringify(facade)}));
-const adapter = new Set(Object.keys(await import(${JSON.stringify(adapter)})));
+const adapter = new Set([...Object.keys(await import(${JSON.stringify(adapter)})), ...${JSON.stringify(bindings)}]);
 console.log(JSON.stringify({ base: facade.filter((name) => !adapter.has(name)), pointer: facade.filter((name) => adapter.has(name)) }));
 `;
   await writeFile(join(directory, "exports-list.mjs"), script);

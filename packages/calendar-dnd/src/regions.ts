@@ -13,7 +13,7 @@ export interface PointerRegion {
 export interface CalendarRegion {
   /** Whether its gestures are off, as on a read-only root: then it takes no drops either. */
   readonly disabled: boolean;
-  /** The element the view passed to `useCalendarPointer` or `attachCalendarPointer`. */
+  /** The element the view attached with `attachCalendarPointer`, or a binding of it. */
   readonly element: HTMLElement;
 }
 

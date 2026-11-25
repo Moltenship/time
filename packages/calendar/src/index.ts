@@ -1,5 +1,5 @@
-// No "use client" here: core and Temporal utilities stay callable from Server Components, while
-// the React bindings and pointer interactions keep their own client boundaries.
+// No "use client" here: core, the Temporal utilities and the plain-DOM pointer layer stay
+// importable from Server Components, while the React bindings keep their own client boundary.
 export * from "@moltenship/calendar-core";
 export * from "@moltenship/calendar-temporal";
 export {
@@ -11,7 +11,6 @@ export {
   resourceIdAttributes,
   resourceIdOf,
   startCalendarDrop,
-  useCalendarPointer,
 } from "@moltenship/calendar-dnd";
 export type {
   CalendarDragFollower,
@@ -41,6 +40,7 @@ export {
   useCalendarHistoryShortcuts,
   useCalendarInteraction,
   useCalendarKeyboard,
+  useCalendarPointer,
   useCalendarSelection,
   useClosedDates,
   useCalendarDraft,

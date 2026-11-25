@@ -69,6 +69,23 @@ beforeAll(async () => {
     },
     sealed,
   );
+  // Binds the adapter in a package of its own, as the React integration's hook does.
+  await installed(
+    "@x/binding",
+    {
+      "dist/index.mjs":
+        'import { pointer } from "@x/adapter";\nexport function usePointer() { return pointer(); }\n',
+    },
+    sealed,
+  );
+  await installed(
+    "@x/binding-facade",
+    {
+      "dist/index.mjs":
+        'export { core } from "@x/core";\nexport { pointer } from "@x/adapter";\nexport { usePointer } from "@x/binding";\n',
+    },
+    sealed,
+  );
   // Runs adapter code when imported, so bundlers must keep the adapter.
   await installed(
     "@x/leaky-facade",
@@ -98,11 +115,23 @@ describe("clean-consumer checks", () => {
   });
 
   test("a facade whose other exports tree-shake the adapter away passes", async () => {
-    expect(await adapterBundleProblems(consumer, "@x/facade", "@x/adapter")).toEqual([]);
+    expect(await adapterBundleProblems(consumer, "@x/facade", "@x/adapter", [])).toEqual([]);
+  }, 30_000);
+
+  test("a facade's hooks that bind the adapter count as its pointer exports", async () => {
+    expect(
+      await adapterBundleProblems(consumer, "@x/binding-facade", "@x/adapter", ["usePointer"]),
+    ).toEqual([]);
+    // Left among the other exports, the binding brings the adapter into their bundle.
+    expect(await adapterBundleProblems(consumer, "@x/binding-facade", "@x/adapter", [])).toEqual([
+      expect.stringMatching(
+        /^@x\/binding-facade without its pointer exports still bundles \d+ bytes of @x\/adapter$/,
+      ),
+    ]);
   }, 30_000);
 
   test("a facade that keeps the adapter in its base bundle fails", async () => {
-    const problems = await adapterBundleProblems(consumer, "@x/leaky-facade", "@x/adapter");
+    const problems = await adapterBundleProblems(consumer, "@x/leaky-facade", "@x/adapter", []);
 
     expect(problems).toHaveLength(1);
     expect(problems[0]).toMatch(

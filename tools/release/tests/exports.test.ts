@@ -126,6 +126,29 @@ describe("export checks", () => {
     );
   }, 30_000);
 
+  test("the React integration may bind the pointer adapter, and no other optional adapter", async () => {
+    const problems = await tarballProblems(
+      await tarball("react-integration", {
+        name: "@moltenship/calendar-react",
+        manifest: {
+          dependencies: {
+            "@moltenship/calendar-dnd": "1.0.0",
+            "@moltenship/calendar-dnd-kit": "1.0.0",
+          },
+        },
+        files: {
+          "dist/index.mjs":
+            'import { attachCalendarPointer } from "@moltenship/calendar-dnd";\nexport const attach = attachCalendarPointer;\n',
+          "dist/index.d.mts": "export declare const attach: unknown;\n",
+        },
+      }),
+    );
+
+    expect(problems.filter((problem) => problem.includes("adapter"))).toEqual([
+      "depends on the optional adapter @moltenship/calendar-dnd-kit",
+    ]);
+  }, 30_000);
+
   test("the facade may re-export the pointer adapter", async () => {
     const problems = await tarballProblems(
       await tarball("facade", {

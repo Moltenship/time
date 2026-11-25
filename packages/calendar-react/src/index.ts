@@ -36,6 +36,7 @@ export type { CalendarResourceStatus } from "./status";
 export { createCalendarStore } from "./store";
 export { useCalendarInteraction, useCalendarKeyboard } from "./keyboard";
 export type { CalendarKeyboardHandlers, CalendarKeyboardOptions } from "./keyboard";
+export { useCalendarPointer } from "./pointer";
 export { useRovingFocus } from "./roving-focus";
 export type { CalendarRovingFocusOptions, CalendarRovingFocusProps } from "./roving-focus";
 export { useResourceExpansion, useVisibleResources } from "./resources";

@@ -40,15 +40,21 @@ export const publishedPackages: readonly PublishedPackage[] = [
   // 2.0 preview (ui-sdk primitives). Provisional budgets: set both from the first build of their
   // sources, with the usual headroom, in the PR that lands them. The review's fixes to the agent
   // (#276: who caused a change, agent deletes, ISO calendars only, known resource IDs) took
-  // calendar-primitives to 69,102 raw and 17,569 gzip bytes. 70 and 18 KiB leave the headroom.
-  { directory: "calendar-primitives", budgets: { ".": { raw: 70 * KiB, gzip: 18 * KiB } } },
+  // calendar-primitives to 69,102 raw and 17,569 gzip bytes. The framework-free halves of
+  // interaction moved in from calendar-react (#275): the keyboard controller, roving focus, the
+  // draft source and busy queries, the history binding and its shortcuts, the announcer's live
+  // text and resource status and expansion took it to 105,505 raw and 28,638 gzip bytes, and
+  // calendar-react down by as much. 108 and 30 KiB leave the usual headroom.
+  { directory: "calendar-primitives", budgets: { ".": { raw: 108 * KiB, gzip: 30 * KiB } } },
   { directory: "calendar-solid", budgets: { ".": { raw: 32 * KiB, gzip: 10 * KiB } } },
   // Root's event source (#200), read through useSyncExternalStore, took calendar-react to 78,147 of
   // 77,824 raw bytes, onEventChangeResult with useCalendarPendingChanges (#199) to 79,597 raw
   // and 20,740 of 20,480 gzip bytes, and useCalendarHistory with useCalendarHistoryShortcuts (#227)
-  // to 87,947 raw and 23,333 gzip bytes; apps that don't import them bundle none of them. 90 and
-  // 24 KiB leave the usual headroom.
-  { directory: "calendar-react", budgets: { ".": { raw: 90 * KiB, gzip: 24 * KiB } } },
+  // to 87,947 raw and 23,333 gzip bytes; apps that don't import them bundle none of them. On the
+  // primitives (#276), and with the framework-free halves of interaction moved into them (#275),
+  // it is a binding: 37,827 raw and 10,555 gzip bytes, useCalendarPointer included. 40 and 11 KiB
+  // leave the usual headroom.
+  { directory: "calendar-react", budgets: { ".": { raw: 40 * KiB, gzip: 11 * KiB } } },
   // The ICS bridge's RANGE=THISANDFUTURE split, Outlook's all-day flag and the feed's zone, then
   // edits replayed on the series' clock (#160), took calendar-recurrence from 130,708 raw and
   // 35,063 gzip bytes to 148,799 and 39,899. 152 and 42 KiB leave the usual headroom.
@@ -64,7 +70,10 @@ export const publishedPackages: readonly PublishedPackage[] = [
   { directory: "ics", budgets: { ".": { raw: 88 * KiB, gzip: 26 * KiB } } },
 ];
 
-/** Optional adapters. Base packages never import them, and the facade's other exports tree-shake them away. */
+/**
+ * Optional adapters. Base packages never import them, the integrations only the pointer adapter
+ * (`pointerAdapterBindings`), and the facade's other exports tree-shake them away.
+ */
 export const optionalAdapters: readonly string[] = [
   "@moltenship/calendar-dnd-kit",
   "@moltenship/calendar-dnd",
@@ -94,6 +103,8 @@ export const optionalFeatures: readonly OptionalFeature[] = [
     files: [
       "packages/calendar-core/src/history/event-history.ts",
       "packages/calendar-core/src/history/types.ts",
+      "packages/calendar-primitives/src/history.ts",
+      "packages/calendar-primitives/src/history-shortcuts.ts",
       "packages/calendar-react/src/history.ts",
       "packages/calendar-react/src/history-shortcuts.ts",
     ],
@@ -115,6 +126,18 @@ export const facadeAgentFiles = [
 
 /** The pointer adapter the facade re-exports. */
 export const pointerAdapterPackage = "@moltenship/calendar-dnd";
+
+/**
+ * The framework integrations, which bind the pointer adapter (architecture.md §2, rule 4) and so
+ * may depend on it, as the facade does. They may not import the other optional adapters.
+ */
+export const pointerAdapterBindings: readonly string[] = ["@moltenship/calendar-react"];
+
+/**
+ * The facade's exports that bind the pointer adapter for a framework without being the adapter's
+ * own: they bring its code in too, so a bundle of the facade's other exports leaves them out.
+ */
+export const pointerBindingExports: readonly string[] = ["useCalendarPointer"];
 
 /** Where the dry run leaves its tarballs and manifest. Ignored by git. */
 export const releaseDirectory = ".release";

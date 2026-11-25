@@ -24,7 +24,7 @@ import {
   timeZone,
   yAt,
   type TestEvent,
-} from "./dom-fixture";
+} from "./harness/pointer-fixture";
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;

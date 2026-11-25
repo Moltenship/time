@@ -1,9 +1,15 @@
-import type { CalendarDraft, EventId, ResourceId } from "@moltenship/calendar-core";
+import type {
+  CalendarDraft,
+  CalendarKeyboardSession,
+  EventId,
+  ResourceId,
+} from "@moltenship/calendar-core";
 
+import type { KeyboardSessionStore } from "./keyboard-store";
 import { createListeners } from "./listeners";
 import type { CalendarStateSource } from "./types";
 
-type AnyDraft = CalendarDraft<EventId, ResourceId>;
+export type AnyDraft = CalendarDraft<EventId, ResourceId>;
 
 /** The pointer's draft, which the pointer layer reports to the root while a drag previews a change. */
 export interface DraftStore extends CalendarStateSource<AnyDraft | null> {
@@ -21,5 +27,42 @@ export function createDraftStore(): DraftStore {
       listeners.notify();
     },
     subscribe: listeners.subscribe,
+  });
+}
+
+/** Each keyboard session as a draft, the same object for as long as the session is. */
+const sessionDrafts = new WeakMap<CalendarKeyboardSession, AnyDraft>();
+
+function draftOf(session: CalendarKeyboardSession): AnyDraft {
+  let draft = sessionDrafts.get(session);
+  if (draft === undefined) {
+    draft = Object.freeze({ eventId: session.eventId, proposed: session.proposed });
+    sessionDrafts.set(session, draft);
+  }
+  return draft;
+}
+
+const noDraft = () => null;
+
+/**
+ * The change being drafted, by keyboard or pointer: the keyboard's session while one is in
+ * progress, else the pointer's draft. The server and hydration read none.
+ */
+export function createDraftSource(
+  keyboard: KeyboardSessionStore,
+  pointerDraft: DraftStore,
+): CalendarStateSource<AnyDraft | null> {
+  return Object.freeze({
+    getServerSnapshot: noDraft,
+    getSnapshot: () => {
+      const session = keyboard.grabs.getSnapshot()?.session;
+      return session === undefined ? pointerDraft.getSnapshot() : draftOf(session);
+    },
+    subscribe: (listener: () => void) => {
+      const stops = [keyboard.grabs.subscribe(listener), pointerDraft.subscribe(listener)];
+      return () => {
+        for (const stop of stops) stop();
+      };
+    },
   });
 }

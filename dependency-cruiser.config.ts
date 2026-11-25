@@ -228,30 +228,61 @@ export default {
       },
     },
     {
+      name: "pointer-adapter-imports-no-framework",
+      comment:
+        "calendar-dnd is plain DOM, its tests too: no React, Solid or other framework, no ui-sdk, Jotai, dnd-kit or CSS. Each integration binds attachCalendarPointer itself.",
+      severity: "error",
+      from: { path: packageCodePath("calendar-dnd") },
+      to: {
+        path: [
+          reactPackages,
+          solidPackages,
+          otherFrameworkPackages,
+          uiSdkPackages,
+          npmPackages("jotai|@dnd-kit/[^/]+"),
+          "\\.(?:css|less|sass|scss)$",
+        ],
+      },
+    },
+    {
+      name: "pointer-adapter-builds-on-the-engine",
+      comment:
+        "calendar-dnd imports core and the Temporal utilities, nothing else of ours, in its tests too: not the primitives, an integration or the facade.",
+      severity: "error",
+      from: { path: packageCodePath("calendar-dnd") },
+      to: {
+        path: ["^@moltenship/", "(?:^|/)packages/"],
+        pathNot: [
+          "^@moltenship/calendar-(?:core|dnd|temporal)$",
+          "(?:^|/)packages/calendar-(?:core|dnd|temporal)/",
+        ],
+      },
+    },
+    {
       name: "react-integration-builds-on-the-primitives",
       comment:
-        "calendar-react imports the primitives, core and the Temporal utilities of ours, never calendar-solid.",
+        "calendar-react imports the primitives, the pointer adapter, core and the Temporal utilities of ours, never calendar-solid.",
       severity: "error",
       from: { path: packageSourcePath("calendar-react") },
       to: {
         path: ["^@moltenship/", "(?:^|/)packages/"],
         pathNot: [
-          "^@moltenship/calendar-(?:core|primitives|temporal)$",
-          "(?:^|/)packages/calendar-(?:core|primitives|react|temporal)/",
+          "^@moltenship/calendar-(?:core|dnd|primitives|temporal)$",
+          "(?:^|/)packages/calendar-(?:core|dnd|primitives|react|temporal)/",
         ],
       },
     },
     {
       name: "solid-integration-builds-on-the-primitives",
       comment:
-        "calendar-solid imports the primitives, core and the Temporal utilities of ours, in its tests too, never calendar-react, the facade or the React-only packages.",
+        "calendar-solid imports the primitives, the pointer adapter, core and the Temporal utilities of ours, in its tests too, never calendar-react, the facade or the React-only packages.",
       severity: "error",
       from: { path: packageCodePath("calendar-solid") },
       to: {
         path: ["^@moltenship/", "(?:^|/)packages/"],
         pathNot: [
-          "^@moltenship/calendar-(?:core|primitives|solid|temporal)$",
-          "(?:^|/)packages/calendar-(?:core|primitives|solid|temporal)/",
+          "^@moltenship/calendar-(?:core|dnd|primitives|solid|temporal)$",
+          "(?:^|/)packages/calendar-(?:core|dnd|primitives|solid|temporal)/",
         ],
       },
     },

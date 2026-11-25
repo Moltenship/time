@@ -1,3 +1,4 @@
+import { subscribeAnchorDateRequests } from "@moltenship/calendar-primitives";
 import type { PlainDateInterval } from "@moltenship/calendar-temporal";
 import { useInsertionEffect, useLayoutEffect, useRef } from "react";
 
@@ -21,11 +22,9 @@ export function useAnchorDateRequests(
   });
   useLayoutEffect(
     () =>
-      requests((slice, value) => {
-        if (slice !== "anchorDate") return;
-        const date = value as Temporal.PlainDate;
-        latest.current(date, rangeOf(date));
-      }),
+      subscribeAnchorDateRequests({ rangeOf, requests }, (date, range) =>
+        latest.current(date, range),
+      ),
     [rangeOf, requests],
   );
 }

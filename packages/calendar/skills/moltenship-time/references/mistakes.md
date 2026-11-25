@@ -30,6 +30,7 @@ These are the mistakes this library's shape makes easy: the ones a coding agent 
 | `shadcn add` into an app whose style isn't `base-*`            | The views need Base UI primitives. Check `components.json` first                             |
 | Installing only `@moltenship/calendar` on 2.0                  | Also `@ui-sdk/core` and `@ui-sdk/react`. `shadcn add` doesn't add them                       |
 | Selecting `[data-slot="calendar"]` to find a shadcn date picker | In 2.0 `Calendar.Frame` renders it too. Scope the selector, or use `data-calendar-part="frame"` for the scheduler |
+| `useCalendarPointer` from `@moltenship/calendar-dnd` on 2.0     | 2.0 moved it to the React integration. Import it from `@moltenship/calendar`                 |
 
 ## State
 

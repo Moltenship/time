@@ -22,9 +22,11 @@ import {
   CalendarEnvironment,
   CalendarEnvironmentBase,
   CalendarEventChangeHandler,
+  CalendarEventInterval,
   CalendarEventPlacement,
   CalendarEventProposal,
   CalendarFocus,
+  CalendarInputMethod,
   CalendarInteractionCheck,
   CalendarKeyboardSession,
   CalendarNowSource,
@@ -40,6 +42,9 @@ import {
   CalendarViewStrategy,
   CalendarWeekRules,
   EventAdapter,
+  EventHistory,
+  EventHistoryOutcome,
+  EventHistorySnapshot,
   EventId,
   EventSnapshot,
   EventSnapshotIssue,
@@ -47,6 +52,7 @@ import {
   InvalidCalendarEventPolicy,
   NormalizedCalendarEvent,
   ResourceId,
+  ResourceStatus,
   ResourceTree,
   SecondaryTimeZoneIssue,
 } from "@moltenship/calendar-core";
@@ -54,6 +60,7 @@ import {
   CalendarClock,
   InstantInterval,
   PlainDateInterval,
+  WallTimeSnapOptions,
 } from "@moltenship/calendar-temporal";
 import {
   PrimitiveInstance,
@@ -66,6 +73,9 @@ interface AnnouncerChannel {
   readonly mount: (getMessages: () => CalendarAnnouncementMessages, speak: (text: string) => void) => () => void;
   readonly say: (build: (context: CalendarAnnouncementContext, messages: CalendarAnnouncementMessages) => string | null) => void;
 }
+interface AnnouncerLiveText extends CalendarStateSource<string> {
+  readonly speak: (text: string) => void;
+}
 type AnyCalendarState = CalendarPublicState<string, unknown, unknown>;
 type AnyCalendarViewDefinition<TEvent = any> = CalendarViewDefinition<string, any, any, TEvent>;
 type AnyDraft = CalendarDraft<EventId, ResourceId>;
@@ -73,6 +83,7 @@ type AnyEvent = NormalizedCalendarEvent<unknown, EventId, ResourceId>;
 type AnyEvents = EventSnapshot<unknown, EventId, ResourceId>;
 type AnyPendingChanges = CalendarPendingChanges<unknown, EventId, ResourceId>;
 type AnyRuntime = CalendarRuntime<any, any, any, any, any, any, any>;
+type BusyRange = InstantInterval | CalendarEventInterval;
 type CalendarActions<TView extends string = string, TSelection = CalendarSelection, TFocus = CalendarFocus, TResourceId extends ResourceId = ResourceId> = { readonly [TSlice in CalendarStateSlice as `set${Capitalize<TSlice>}`]: (next: CalendarPublicState<TView, TSelection, TFocus, TResourceId>[TSlice], options?: CalendarCommandOptions) => void; };
 type CalendarActiveView<TViewDef extends AnyCalendarViewDefinition> = TViewDef extends unknown ? {
   readonly definition: TViewDef;
@@ -194,6 +205,12 @@ interface CalendarAnnotations {
   readonly snapshot: AnnotationSnapshot;
   readonly sources: readonly CalendarAnnotationSource[];
 }
+type CalendarBusyResources = ReadonlyMap<ResourceId, readonly NormalizedCalendarEvent<unknown, EventId, ResourceId>[]>;
+interface CalendarBusyResourcesQuery {
+  readonly exclude?: EventId | null;
+  readonly resourceIds?: readonly ResourceId[];
+  readonly timeZone: string;
+}
 type CalendarChangeReason = "focus-change" | "imperative" | "input-change" | "keyboard-navigation" | "next-press" | "previous-press" | "resource-toggle" | "today-press";
 type CalendarChangeSource = "agent" | "keyboard" | "mouse" | "pen" | "programmatic" | "touch" | "virtual";
 interface CalendarClockTicker {
@@ -227,10 +244,48 @@ type CalendarDiagnostic<TEvent, TEventId extends EventId> = {
   readonly issue: SecondaryTimeZoneIssue;
   readonly severity: "error";
 };
+interface CalendarDraftBusy {
+  readonly events: readonly NormalizedCalendarEvent<unknown, EventId, ResourceId>[];
+  readonly outsideHours: boolean;
+}
+interface CalendarHistory<TEvent, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> extends EventHistorySnapshot<TEvent, TEventId, TResourceId> {
+  readonly canRedo: boolean;
+  readonly canUndo: boolean;
+  readonly redo: (options?: CalendarHistoryCommandOptions) => Promise<EventHistoryOutcome<TEvent, TEventId, TResourceId>>;
+  readonly undo: (options?: CalendarHistoryCommandOptions) => Promise<EventHistoryOutcome<TEvent, TEventId, TResourceId>>;
+}
+type CalendarHistoryAnnouncementBuilder<TEvent = unknown, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> = (outcome: EventHistoryOutcome<TEvent, TEventId, TResourceId>, context: CalendarHistoryAnnouncementContext<TEvent, TEventId, TResourceId>) => string | null;
+interface CalendarHistoryAnnouncementContext<TEvent = unknown, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> extends CalendarAnnouncementContext {
+  readonly event: NormalizedCalendarEvent<TEvent, TEventId, TResourceId> | undefined;
+}
+interface CalendarHistoryBindingOptions<TEvent, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> extends CalendarHistoryOptions<TEvent, TEventId, TResourceId> {
+  readonly events: EventSnapshot<TEvent, TEventId, TResourceId>;
+}
+interface CalendarHistoryCommandOptions {
+  readonly input?: CalendarInputMethod;
+}
+interface CalendarHistoryMessages<TEvent = unknown, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
+  readonly redo: CalendarHistoryAnnouncementBuilder<TEvent, TEventId, TResourceId>;
+  readonly undo: CalendarHistoryAnnouncementBuilder<TEvent, TEventId, TResourceId>;
+}
+interface CalendarHistoryOptions<TEvent, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId> {
+  readonly messages?: CalendarHistoryMessages<TEvent, TEventId, TResourceId>;
+}
+interface CalendarHistoryShortcutsConfig {
+  readonly history: CalendarHistoryShortcutsTarget;
+  readonly redo?: readonly string[];
+  readonly scope: HTMLElement | null;
+  readonly undo?: readonly string[];
+}
+interface CalendarHistoryShortcutsTarget {
+  readonly redo: (options?: CalendarHistoryCommandOptions) => unknown;
+  readonly undo: (options?: CalendarHistoryCommandOptions) => unknown;
+}
 interface CalendarInteractionRuntime {
   readonly actions: CalendarSemanticActions<any, any, any, any, any, any>;
   readonly announcements: AnnouncerChannel;
   readonly changes: CalendarStateSource<AnyPendingChanges>;
+  readonly draft: CalendarStateSource<CalendarDraft<EventId, ResourceId> | null>;
   readonly isReadOnly: boolean;
   readonly keyboard: KeyboardSessionStore;
   readonly pointerDraft: DraftStore;
@@ -238,6 +293,19 @@ interface CalendarInteractionRuntime {
   readonly read: () => AnyCalendarState;
   readonly requests: (listener: CalendarRequestListener) => () => void;
   readonly source: CalendarStateSource<AnyCalendarState>;
+}
+interface CalendarKeyEventWrapper {
+  readonly preventDefault: () => void;
+  readonly stopPropagation: () => void;
+}
+interface CalendarKeyboardController {
+  readonly focusOut: (event: FocusEvent, region: HTMLElement) => void;
+  readonly keyDown: (event: KeyboardEvent, wrapper?: CalendarKeyEventWrapper) => void;
+}
+interface CalendarKeyboardOptions {
+  readonly axis?: "block" | "inline";
+  readonly createDuration?: Temporal.DurationLike;
+  readonly snap?: WallTimeSnapOptions;
 }
 interface CalendarPartIds {
   readonly frame: string;
@@ -285,6 +353,12 @@ interface CalendarPublicState<TView extends string = string, TSelection = Calend
   readonly view: TView;
 }
 type CalendarRequestListener = (slice: CalendarStateSlice, value: unknown) => void;
+interface CalendarResourceExpansionCommands {
+  readonly collapse: (cause?: unknown) => void;
+  readonly expand: (cause?: unknown) => void;
+  readonly toggle: (cause?: unknown) => void;
+}
+type CalendarResourceStatus = ResourceStatus<NormalizedCalendarEvent<unknown, EventId, ResourceId>>;
 type CalendarRootStore<TView extends string = string, TSelection = CalendarSelection, TFocus = CalendarFocus, TResourceId extends ResourceId = ResourceId> = CalendarStore<TView, TSelection, TFocus, TResourceId> | ([TResourceId] extends [never] ? CalendarStore<TView, TSelection, TFocus> : never);
 interface CalendarRootStoreBinding<TView extends string, TSelection, TFocus, TResourceId extends ResourceId> {
   readonly actions: CalendarActions<TView, TSelection, TFocus, TResourceId>;
@@ -293,6 +367,7 @@ interface CalendarRootStoreBinding<TView extends string, TSelection, TFocus, TRe
   readonly read: () => CalendarPublicState<TView, TSelection, TFocus, TResourceId>;
   readonly subscribeRequests: (listener: CalendarRequestListener) => () => void;
 }
+type CalendarRovingEntry = (command: "end" | "home") => CalendarFocus | null;
 interface CalendarRuntime<TEvent, TResource, TViewDef extends AnyCalendarViewDefinition, TSelection, TFocus, TEventId extends EventId, TResourceId extends ResourceId> {
   readonly announcements: AnnouncerChannel;
   readonly commit: (model: CalendarRuntimeModel<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>, inputs: CalendarRuntimeInputs<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>) => void;
@@ -451,6 +526,10 @@ interface CalendarViewDefinition<TName extends string = string, TProjection = un
 type CalendarViewOptionsMap<TViewDef extends AnyCalendarViewDefinition> = { readonly [TName in TViewDef["name"]]?: Partial<Extract<TViewDef, {
   readonly name: TName;
 }>["defaultOptions"]>; };
+interface CalendarViewRuntime {
+  readonly getView: () => CalendarActiveView<AnyCalendarViewDefinition> | null;
+  readonly roving: RovingFocusStore;
+}
 interface CalendarVisibleRange<TView extends string = string> {
   readonly instantRange: InstantInterval;
   readonly loadInstantRange: InstantInterval;
@@ -475,26 +554,47 @@ interface KeyboardSessionStore {
   readonly set: (grab: KeyboardGrab | null) => void;
   readonly subscribe: (listener: () => void) => () => void;
 }
+interface RovingFocusStore {
+  readonly enterFromEnd: () => void;
+  readonly focusTabStop: (when: "now" | "after-update") => void;
+  readonly focusAt: (node: Node) => CalendarFocus | null;
+  readonly isTabStop: (target: CalendarFocus, days: number) => boolean;
+  readonly register: (element: HTMLElement, target: CalendarFocus, days: number) => () => void;
+  readonly subscribe: (listener: () => void) => () => void;
+  readonly update: (focus: CalendarFocus | null, getEntry: CalendarRovingEntry) => void;
+}
 export declare const TODAY_SAMPLE_INTERVAL_MS = 6e4;
 export declare function agentEventLabel(event: CalendarAgentEvent, timeZone: string): string;
+export declare function attachCalendarHistoryShortcuts({ keyboard, pointerDraft }: Pick<CalendarInteractionRuntime, "keyboard" | "pointerDraft">, getConfig: () => CalendarHistoryShortcutsConfig): () => void;
+export declare function bindCalendarHistory<TEvent, TEventId extends EventId, TResourceId extends ResourceId>({ actions, announcements, changes }: Pick<CalendarInteractionRuntime, "actions" | "announcements" | "changes">, history: EventHistory<TEvent, TEventId, TResourceId>, getOptions: () => CalendarHistoryBindingOptions<TEvent, TEventId, TResourceId>): CalendarStateSource<CalendarHistory<TEvent, TEventId, TResourceId>>;
 export declare const calendarAgentActions: readonly (keyof CalendarAgentApi)[];
+export declare function calendarFocusKey(target: CalendarFocus): string;
 export declare const calendarStateSlices: readonly CalendarStateSlice[];
+export declare function calendarViewEntry(view: CalendarActiveView<AnyCalendarViewDefinition> | null): CalendarRovingEntry;
 export declare function clockOf(source: CalendarNowSource | undefined): CalendarClock;
 export declare function createAnnouncerChannel(getEnvironment: () => Pick<CalendarEnvironmentBase, "locale" | "timeZone">, getResources: () => ResourceTree): AnnouncerChannel;
+export declare function createAnnouncerLiveText(): AnnouncerLiveText;
+export declare function createBusyResourcesQuery(): (events: AnyEvents, range: BusyRange | null, query: CalendarBusyResourcesQuery) => CalendarBusyResources;
+export declare function createCalendarKeyboard({ actions, announcements, isReadOnly, keyboard, read }: CalendarInteractionRuntime, { getView, roving }: CalendarViewRuntime, getOptions: () => CalendarKeyboardOptions, getResources: () => ResourceTree | null): CalendarKeyboardController;
 export declare function createCalendarPartIds(instanceId: string): CalendarPartIds;
 export declare function createCalendarPrimitive<TViewDef extends AnyCalendarViewDefinition, TSelection = CalendarSelection, TFocus = CalendarFocus, TResourceId extends ResourceId = ResourceId>(config: CalendarPrimitiveConfig<TViewDef>): CalendarPrimitive<TViewDef["name"], TSelection, TFocus, TResourceId>;
 export declare function createCalendarRuntime<TEvent, TResource = unknown, TViewDef extends AnyCalendarViewDefinition = AnyCalendarViewDefinition, TSelection = CalendarSelection, TFocus = CalendarFocus, TEventId extends EventId = EventId, TResourceId extends ResourceId = ResourceId>(config: CalendarRuntimeConfig<TEvent, TViewDef, TEventId, TResourceId>): CalendarRuntime<TEvent, TResource, TViewDef, TSelection, TFocus, TEventId, TResourceId>;
 export declare function createCalendarStore<TView extends string = string, TSelection = CalendarSelection, TFocus = CalendarFocus, TResourceId extends ResourceId = ResourceId>(options: CalendarStoreOptions<TView, TSelection, TFocus, TResourceId>): CalendarStore<TView, TSelection, TFocus, TResourceId>;
+export declare function createCalendarViewRuntime(getView: () => CalendarActiveView<AnyCalendarViewDefinition> | null): CalendarViewRuntime;
 export declare function createClockTicker(clock: CalendarClock, intervalMs: number): CalendarClockTicker;
+export declare function createDraftBusyQuery(): (draft: AnyDraft | null, events: AnyEvents, availability: AvailabilitySnapshot, resourceId: ResourceId | null) => CalendarDraftBusy | null;
 export declare function createDraftStore(): DraftStore;
 export declare function createKeyboardSessionStore(): KeyboardSessionStore;
 export declare function createMemoCell<T>(): (deps: readonly unknown[], compute: () => T) => T;
+export declare function createResourceExpansionCommands({ actions, read }: Pick<CalendarInteractionRuntime, "actions" | "read">, resourceId: ResourceId): CalendarResourceExpansionCommands;
+export declare function createResourceStatusClock(source: CalendarNowSource | undefined, compute: (at: Temporal.Instant) => CalendarResourceStatus): CalendarStateSource<CalendarResourceStatus | null>;
 export declare function createStableCell<T>(isEqual: (previous: T, next: T) => boolean): (next: T) => T;
 export declare function describeAgentEvent(event: AnyEvent, environment: Pick<CalendarEnvironmentBase, "timeZone">): CalendarAgentEvent;
 export declare function describeAgentPlacement(placement: CalendarEventPlacement, timeZone: string): CalendarAgentPlacement;
 export declare function eventLabel(event: AnyEvent, environment: CalendarEnvironmentBase): string;
 export declare function eventsInRange(events: AnyEvents, range: PlainDateInterval, environment: CalendarEnvironmentBase): readonly AnyEvent[];
 export declare function findEvent(events: AnyEvents, id: unknown): AnyEvent;
+export declare function focusRovingTarget({ actions, read }: Pick<CalendarInteractionRuntime, "actions" | "read">, target: CalendarFocus, days: number, event: Event): void;
 export declare function getCalendarStoreInternals<TView extends string, TSelection, TFocus, TResourceId extends ResourceId>(store: CalendarStore<TView, TSelection, TFocus, TResourceId>): CalendarStoreInternals<TView, TSelection, TFocus, TResourceId>;
 export declare function mergeControlledState<TState extends CalendarPublicState<string, unknown, unknown>>(state: TState, controlled: Partial<TState> | undefined): TState;
 export declare function parseInstant(value: unknown, name: string, environment: Pick<CalendarEnvironmentBase, "disambiguation" | "timeZone">): Temporal.Instant;
@@ -526,14 +626,17 @@ export declare function sameSecondaryTimeZones(left: readonly (CalendarSecondary
 export declare function sameSliceValue(slice: CalendarStateSlice, previous: unknown, next: unknown): boolean;
 export declare function sameWeekRules(left: CalendarWeekRules, right: CalendarWeekRules): boolean;
 export declare function shallowEqual<T>(left: T, right: T): boolean;
+export declare function subscribeAnchorDateRequests({ rangeOf, requests }: Pick<CalendarInteractionRuntime, "rangeOf" | "requests">, listener: (date: Temporal.PlainDate, range: PlainDateInterval | null) => void): () => void;
 export declare const systemClock: CalendarClock;
 export declare function visibleEventsOf(events: AnyEvents, view: CalendarActiveView<AnyCalendarViewDefinition> | null): readonly AnyEvent[];
 
 export {
   type AnnouncerChannel,
+  type AnnouncerLiveText,
   type AnyCalendarState,
   type AnyCalendarViewDefinition,
   type AnyPendingChanges,
+  type BusyRange,
   type CalendarActions,
   type CalendarActiveView,
   type CalendarAgentApi,
@@ -550,13 +653,28 @@ export {
   type CalendarAgentResizeInput,
   type CalendarAgentUpdateInput,
   type CalendarAnnotations,
+  type CalendarBusyResources,
+  type CalendarBusyResourcesQuery,
   type CalendarChangeReason,
   type CalendarChangeSource,
   type CalendarClockTicker,
   type CalendarCommandOptions,
   type CalendarControlledState,
   type CalendarDiagnostic,
+  type CalendarDraftBusy,
+  type CalendarHistory,
+  type CalendarHistoryAnnouncementBuilder,
+  type CalendarHistoryAnnouncementContext,
+  type CalendarHistoryBindingOptions,
+  type CalendarHistoryCommandOptions,
+  type CalendarHistoryMessages,
+  type CalendarHistoryOptions,
+  type CalendarHistoryShortcutsConfig,
+  type CalendarHistoryShortcutsTarget,
   type CalendarInteractionRuntime,
+  type CalendarKeyEventWrapper,
+  type CalendarKeyboardController,
+  type CalendarKeyboardOptions,
   type CalendarPartIds,
   type CalendarPrimitive,
   type CalendarPrimitiveApi,
@@ -565,8 +683,11 @@ export {
   type CalendarPrimitiveOptions,
   type CalendarPublicState,
   type CalendarRequestListener,
+  type CalendarResourceExpansionCommands,
+  type CalendarResourceStatus,
   type CalendarRootStore,
   type CalendarRootStoreBinding,
+  type CalendarRovingEntry,
   type CalendarRuntime,
   type CalendarRuntimeConfig,
   type CalendarRuntimeConnectOptions,
@@ -590,9 +711,11 @@ export {
   type CalendarViewActions,
   type CalendarViewDefinition,
   type CalendarViewOptionsMap,
+  type CalendarViewRuntime,
   type CalendarVisibleRange,
   type DraftStore,
   type KeyboardGrab,
   type KeyboardSessionStore,
+  type RovingFocusStore,
 };
 ```

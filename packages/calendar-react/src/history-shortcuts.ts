@@ -1,9 +1,12 @@
-import type { EventHistoryDirection } from "@moltenship/calendar-core";
+import {
+  attachCalendarHistoryShortcuts,
+  type CalendarHistoryShortcutsTarget,
+} from "@moltenship/calendar-primitives";
 import { useEffect, useInsertionEffect, useRef, type RefObject } from "react";
 
-import type { CalendarHistoryCommandOptions } from "./history";
 import { useInteractionRuntime } from "./interaction";
-import { reportCallbackError } from "./report-error";
+
+export type { CalendarHistoryShortcutsTarget };
 
 export interface CalendarHistoryShortcutsOptions {
   /** Listens for nothing while `true`. */
@@ -21,84 +24,6 @@ export interface CalendarHistoryShortcutsOptions {
   readonly scope: RefObject<HTMLElement | null>;
   /** Keys that undo; `["Mod+Z"]` by default, and `[]` turns them off. */
   readonly undo?: readonly string[];
-}
-
-/** What undo and redo the shortcuts call: a bound history, from `useCalendarHistory`. */
-export interface CalendarHistoryShortcutsTarget {
-  readonly redo: (options?: CalendarHistoryCommandOptions) => unknown;
-  readonly undo: (options?: CalendarHistoryCommandOptions) => unknown;
-}
-
-// Plain literals, so a bundler drops them from a calendar without the shortcuts.
-const defaultUndo: readonly string[] = ["Mod+Z"];
-const defaultRedo: readonly string[] = ["Shift+Mod+Z", "Ctrl+Y"];
-const keyboardInput: CalendarHistoryCommandOptions = { input: "keyboard" };
-
-/**
- * Where a key belongs to something else: text the browser undoes in its own field, and dialogs,
- * menus and lists inside the calendar, which handle their own keys.
- */
-const ownKeys =
-  'input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="dialog"], [role="alertdialog"], [role="menu"], [role="listbox"]';
-
-function isApplePlatform(): boolean {
-  const { platform, userAgentData } = navigator as Navigator & {
-    readonly userAgentData?: { readonly platform?: string };
-  };
-  return /mac|iphone|ipad|ipod/i.test(userAgentData?.platform ?? platform);
-}
-
-/** Whether `event` is `binding`: exactly its modifiers, and its key by name or position. */
-function matches(event: KeyboardEvent, binding: string, apple: boolean): boolean {
-  const parts = binding.split("+").map((part) => part.trim().toLowerCase());
-  const key = parts.pop();
-  if (key === undefined || key === "") return false;
-  let ctrl = false;
-  let meta = false;
-  let shift = false;
-  let alt = false;
-  for (const modifier of parts) {
-    if (modifier === "mod") {
-      if (apple) meta = true;
-      else ctrl = true;
-    } else if (modifier === "ctrl" || modifier === "control") ctrl = true;
-    else if (modifier === "meta" || modifier === "cmd" || modifier === "command") meta = true;
-    else if (modifier === "shift") shift = true;
-    else if (modifier === "alt" || modifier === "option") alt = true;
-    else return false;
-  }
-  if (
-    event.ctrlKey !== ctrl ||
-    event.metaKey !== meta ||
-    event.shiftKey !== shift ||
-    event.altKey !== alt
-  ) {
-    return false;
-  }
-  const typed = event.key.toLowerCase();
-  if (typed === key) return true;
-  // A key that types no Latin letter or digit, as on a Russian layout or with Option on a Mac,
-  // matches by its position. One that types another Latin letter doesn't: on QWERTZ, the key
-  // where Z is on QWERTY types Y, which is redo's.
-  if (/^[a-z0-9]$/.test(typed)) return false;
-  if (/^[a-z]$/.test(key)) return event.code === `Key${key.toUpperCase()}`;
-  return /^[0-9]$/.test(key) && event.code === `Digit${key}`;
-}
-
-/**
- * Whether something on the key's path inside `scope`, from its target out, handles keys of its
- * own: a field, also inside a web component's shadow root, or a dialog, menu or list. A dialog
- * around the whole calendar doesn't count.
- */
-function ownsKeys(path: readonly EventTarget[], scope: HTMLElement): boolean {
-  for (const node of path) {
-    if (node === scope) return false;
-    if (!(node instanceof Element)) continue;
-    if ((node instanceof HTMLElement && node.isContentEditable) || node.matches(ownKeys)) {
-      return true;
-    }
-  }
-  return false;
 }
 
 /**
@@ -126,37 +51,17 @@ export function useCalendarHistoryShortcuts(
   const { disabled = false } = options;
 
   useEffect(() => {
-    if (disabled) return;
-    const apple = isApplePlatform();
+    if (disabled) return undefined;
     // The scope is read when a key arrives, so a frame that mounts after the hook, or remounts,
-    // keeps its keys, and a portal outside it, such as a dialog, never reaches them.
-    const listener = (event: KeyboardEvent) => {
-      const scope = latest.current.options.scope.current;
-      if (event.defaultPrevented || event.isComposing || scope === null) return;
-      // The path, not the target, which a shadow root around the calendar retargets to its host.
-      const path = event.composedPath();
-      if (!path.includes(scope)) return;
-      const { undo = defaultUndo, redo = defaultRedo } = latest.current.options;
-      const direction: EventHistoryDirection | null = undo.some((binding) =>
-        matches(event, binding, apple),
-      )
-        ? "undo"
-        : redo.some((binding) => matches(event, binding, apple))
-          ? "redo"
-          : null;
-      if (direction === null || ownsKeys(path, scope)) return;
-      // A gesture in progress has keys of its own; Escape cancels it.
-      if (keyboard.get() !== null || pointerDraft.getSnapshot() !== null) return;
-      event.preventDefault();
-      try {
-        Promise.resolve(latest.current.history[direction](keyboardInput)).catch(
-          reportCallbackError,
-        );
-      } catch (error) {
-        reportCallbackError(error);
-      }
-    };
-    document.addEventListener("keydown", listener);
-    return () => document.removeEventListener("keydown", listener);
+    // keeps its keys.
+    return attachCalendarHistoryShortcuts({ keyboard, pointerDraft }, () => {
+      const { history: target, options: current } = latest.current;
+      return {
+        history: target,
+        redo: current.redo,
+        scope: current.scope.current,
+        undo: current.undo,
+      };
+    });
   }, [disabled, keyboard, pointerDraft]);
 }

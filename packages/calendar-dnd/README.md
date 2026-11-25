@@ -1,8 +1,9 @@
 # @moltenship/calendar-dnd
 
 The pointer layer of Moltenship Time: drag to move, resize and create events inside a view, on
-native Pointer Events. Drags become change proposals for your app to save. `useCalendarPointer`
-does this in a view's Renderer, and `attachCalendarPointer` outside a React component.
+native Pointer Events. Drags become change proposals for your app to save. `attachCalendarPointer`
+does this for a view's element. It's plain DOM, with no framework: `useCalendarPointer`, the React
+binding, is in `@moltenship/calendar-react`.
 
 It also takes drags across the calendar's edge: `startCalendarDrop` drops items dragged in from
 the rest of the page, such as unscheduled tasks, into the view under them, and
@@ -15,10 +16,9 @@ It's a layer of `@moltenship/calendar`, which re-exports all of it. Most apps in
 ## Install
 
 ```bash
-pnpm add @moltenship/calendar-dnd react
+pnpm add @moltenship/calendar-dnd
 ```
 
-- React 19. React is a peer dependency.
 - A runtime with `Temporal` (Node.js 26 and later include it), or a polyfill that defines
   `globalThis.Temporal`, loaded first.
 - TypeScript 6 or later with `"lib": ["DOM", "DOM.Iterable", "ESNext"]`. `ESNext` has the
