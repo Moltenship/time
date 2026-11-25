@@ -9,13 +9,15 @@ ship is what we run.
 ```text
 registry/
   calendar-theme/   tokens + event palette          registry item "calendar-theme"
+  calendar-ui/      the controls kit on ui-sdk: button, badge, tooltip, select   registry item "calendar-ui"
   calendar/         toolbar, view switcher, event chip, mini month   registry item "calendar"
   month-view/ …     one folder per view, each its own registry item
   recurrence-scope-dialog/   asks which events of a recurring series a change applies to
   calendar-history-toast/    an Undo toast and keys for a calendar's event history
   calendar-full/    installs every item above, owns no files         registry item "calendar-full"
   stylex-<item>/    the same items, styled with StyleX and Astryx    registry item "stylex-<item>"
-  ui/               stock shadcn components (Base UI, base-nova style): button, dialog, popover, …
+  shared/           framework-free files that items of both frameworks install, such as the kit's classes
+  ui/               stock shadcn components (Base UI, base-nova style): dialog, popover, …
   tests/            focused tests for the source above
 ```
 
@@ -38,10 +40,18 @@ that `tools/registry` checks:
   CSS, inside `@layer base` as in the file. The stock shadcn tokens the file also sets stay out: a
   shadcn app has its own. No manifest sets `cssVars` or `css` itself.
 - `calendar-full` is a `registry:item` that owns no files and installs every other item.
+- A file under `shared/` is plain TypeScript (`.ts`) with no framework in it: no React, Solid, Base
+  UI, Astryx or ui-sdk renderer, and no `@registry/` import outside `shared/`. An item lists the
+  shared files it installs among its own `files`, with their targets. `calendar-ui` installs
+  `shared/calendar-ui/<control>.styles.ts`, the class strings each control's look comes from, so
+  another framework's kit can install the same look.
 
 `ui/` is not a registry item. It holds the components a stock shadcn app already has (Base UI,
 `base-nova` style), unchanged apart from the `@registry/ui/button` import path, so the source
 compiles here. Items list them in `registryDependencies`, and consumers get the upstream versions.
+The Tailwind items take their buttons, badges, tooltips and selects from `calendar-ui` instead,
+so those controls look the same in every app and don't follow the app's own `components/ui`. The
+popovers, dialogs and toasts still come from `ui/`.
 
 ## Building and serving
 
@@ -88,15 +98,21 @@ Items reach each other through URLs under `https://time.molten.sh/r`. Set
 
 ## Conventions
 
-- Import shared source through the `@registry/*` alias: `@registry/ui/button`,
+- Import shared source through the `@registry/*` alias: `@registry/calendar-ui/button`,
   `@registry/calendar/event-chip`, `@registry/calendar-theme/event-colors`. Files inside one item
   may import each other relatively. Class names merge with `cn` from the `cn` package, as stock
   shadcn components do.
-- Compose with Base UI's `render` prop, never `asChild`:
-  `<TooltipTrigger render={<Button variant="ghost" />}>…</TooltipTrigger>`. Tooltips need a
+- Compose with the `render` prop, never `asChild`:
+  `<TooltipTrigger render={<Button variant="ghost" />}>…</TooltipTrigger>`. The kit's tooltips
+  group on their own; the stock Base UI tooltips the week and day views still use need a
   `TooltipProvider` around the app, as `shadcn add tooltip` instructs.
+- A kit control takes its classes from its `shared/calendar-ui/<control>.styles.ts` file and adds
+  only the markup its framework needs. The kit's popups open in the browser's top layer, so they
+  need no portal or `z-index`. ui-sdk puts its own CSS in a layer named `ui-sdk`, which the app
+  names before Tailwind (`@layer ui-sdk;` above `@import "tailwindcss"`), so Tailwind wins.
 - Registry source imports only the calendar facade (`@moltenship/calendar`) and the UI
-  dependencies declared in `registry/package.json`. `dependency-cruiser.config.ts` enforces this.
+  dependencies declared in `registry/package.json`. Only the kit imports ui-sdk, through
+  `@ui-sdk/react/<entry>`. `dependency-cruiser.config.ts` enforces this.
 - Style with the theme tokens, not raw colours: `bg-calendar-event`, `border-calendar-grid`,
   `text-calendar-today`, `h-(--calendar-hour-height)`.
 - Event colours: a view accepts an optional `getEventColor?: (event) => CalendarEventColor` option

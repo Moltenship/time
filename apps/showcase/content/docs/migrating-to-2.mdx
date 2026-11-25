@@ -29,9 +29,10 @@ names the types 2.0 widened.
 | `Root` has `label`, `allowAgentDelete` and `formatAgentEventLabel`    | [Name your calendar](#name-the-calendar)                                           | Apps that want agents, or a fixed name                                          |
 | The store and state types moved to `@moltenship/calendar-primitives`  | Nothing: [the old imports still work](#new-packages)                               | Nobody                                                                          |
 | `useCalendarPointer` moved to `@moltenship/calendar-react`            | [Import it from there](#the-pointer-hook-moved)                                    | Code that imports it from `@moltenship/calendar-dnd`                            |
+| The registry's controls come from a new item, `calendar-ui`           | [Add the registry's items again](#add-the-registrys-items-again)                   | Apps with the Tailwind items from the registry                                  |
 
-What didn't change: the engine, the registry's views, the `data-calendar-part` attributes and the
-other attributes your CSS and tests target, the keyboard model, and every hook's name and return
+What didn't change: the engine, what the registry's views do, the `data-calendar-part` attributes
+and the other attributes your CSS and tests target, the keyboard model, and every hook's name and return
 value. The parts gained one attribute, [`data-slot`](#the-parts-have-data-slot).
 
 ## Install the new peer dependencies
@@ -75,8 +76,9 @@ Time 2.0 is a pre-release on npm's `next` tag, so the command installs `@next`.
   and a 1.x package beside a 2.0 one brings a second copy of the engine.
 - **`@moltenship/calendar-testing` has the same two peers.** A project that tests with it needs
   nothing more once the app has them.
-- **`shadcn add` doesn't install them.** The registry's items list `@moltenship/calendar` and not
-  the ui-sdk packages, so an app set up from the registry alone adds them by hand.
+- **`shadcn add` installs them only if they're missing.** The registry's `calendar-ui` item lists
+  the ui-sdk packages without a version, so an app that already has them keeps its own. Install
+  the version the calendar asks for yourself.
 - **Keep one copy of `@ui-sdk/core`.** The calendar and an [agent bridge](/docs/agents/connect)
   find each other through it. Your package manager keeps one as long as every `@ui-sdk/*` package
   is on the same version; `pnpm why @ui-sdk/core` shows whether it did.
@@ -200,6 +202,41 @@ shadcn's date picker renders `data-slot="calendar"` on its root. A rule such as 
 frame too. Scope such a selector to the date picker, or select the scheduler by
 `data-calendar-part="frame"`.
 
+## Add the registry's items again
+
+In 1.x the registry's Tailwind items used shadcn's `button`, `badge`, `tooltip` and `select` from
+your app's `components/ui`, so a change you made there changed the calendar too. In 2.0 they use
+`calendar-ui`, the calendar's own controls, built on ui-sdk. The controls no longer follow your
+app's `components/ui`: they look the same in every app, and you restyle them in their own files.
+
+1. Add the items you use again, or all of them:
+
+   ```bash
+   npx shadcn@latest add https://time.molten.sh/r/calendar-full.json
+   ```
+
+   This now installs `calendar-ui` too: `button.tsx`, `badge.tsx`, `tooltip.tsx` and `select.tsx`
+   in `components/calendar/ui/`, with the classes each one uses in a `*.styles.ts` file beside it.
+   It adds `@ui-sdk/core` and `@ui-sdk/react` if your app doesn't have them yet. `shadcn add` asks
+   before it replaces a file you changed; redo your changes on the new files.
+
+2. ui-sdk adds a little CSS to the page in a layer named `ui-sdk`. Name that layer before Tailwind
+   in your global CSS, so Tailwind's utilities win over it:
+
+   ```css title="globals.css"
+   @layer ui-sdk;
+   @import "tailwindcss";
+   ```
+
+3. If you restyled the calendar's buttons, badges, tooltips or the view switcher through
+   `components/ui`, make those changes in `components/calendar/ui/` instead.
+
+An [agent bridge](/docs/agents/connect) now lists the toolbar's buttons and the view select
+beside the calendar, as `button` and `select` entries, and your `allow` hears the steps an agent
+takes on them. The toolbar's tooltips no longer need a `TooltipProvider`. The week and day views' event tooltips,
+the popovers and the dialogs still use shadcn's components, so keep the provider if you use
+`time-grid-view`. The `stylex-` items don't change.
+
 ## Name the calendar
 
 `Root` takes three new props:
@@ -303,6 +340,10 @@ never reaches a view bound through the other.
   handler. Only a real pointer reads `"mouse"`.
 - **The frame's name.** A test that finds the frame by its accessible name finds the `label` once
   you set one.
+- **The view switcher in jsdom.** The registry's select is ui-sdk's, which reads
+  `performance.getEntriesByType` before it places its list, and jsdom has no such method. A test
+  setup file that renders the view switcher adds one:
+  `performance.getEntriesByType ??= () => [];`.
 - **Agent changes.** [Testing](/docs/testing#changes-an-agent-makes) shows how to run an agent's
   step in a test.
 

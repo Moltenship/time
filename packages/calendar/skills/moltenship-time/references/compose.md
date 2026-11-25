@@ -28,9 +28,16 @@ npx shadcn@latest add \
 | `calendar-history-toast`   | `CalendarHistoryToast` (an Undo toast)                                    | `calendar-history-toast/calendar-history-toast`          | `docs/undo-redo.md`               |
 | `recurrence-scope-dialog`  | "This event, following, or all?"                                          | `recurrence-scope-dialog/use-recurrence-scope-prompt`    | `docs/guides/recurring-events.md` |
 
-Every view item brings the shared `calendar` item: `calendar-toolbar`, `view-switcher`, `event-colors`, `announcements`, the theme. Each item also has a `stylex-` twin for apps on StyleX (`docs/stylex.md`).
+Every view item brings the shared `calendar` item: `calendar-toolbar`, `view-switcher`, `event-colors`, `announcements`, the theme, and `calendar-ui`, the calendar's own buttons, badges, tooltips and selects on ui-sdk (they don't use the app's `components/ui`). Each item also has a `stylex-` twin for apps on StyleX (`docs/stylex.md`).
 
-`shadcn add` installs `@moltenship/calendar` and doesn't add `@ui-sdk/core` or `@ui-sdk/react`. Install those yourself.
+`shadcn add` installs `@moltenship/calendar`, and `calendar-ui` adds `@ui-sdk/core` and `@ui-sdk/react` when the app has none. Keep every `@ui-sdk/*` package on the calendar's version.
+
+ui-sdk adds CSS in a layer named `ui-sdk`. The app's global CSS names that layer before Tailwind, or the layer wins over Tailwind's utilities:
+
+```css title="globals.css"
+@layer ui-sdk;
+@import "tailwindcss";
+```
 
 Read a view's docs page for its options before you set any. Options differ between views.
 
@@ -126,7 +133,7 @@ export function TeamCalendar({ meetings }: { readonly meetings: readonly Meeting
 
 `Root` requires `events`, `locale`, `weekRules`, a date (`defaultAnchorDate` or `anchorDate`) and a time zone (`defaultTimeZone` or `timeZone`). It renders no element of its own.
 
-The registry toolbar's buttons use shadcn's `Tooltip`: the app needs one `TooltipProvider` from `@/components/ui/tooltip` around it.
+The week and day views' event tooltips use shadcn's `Tooltip`: with `time-grid-view`, the app needs one `TooltipProvider` from `@/components/ui/tooltip` around it. The toolbar's tooltips come from `calendar-ui` and need no provider.
 
 With server rendering, the server and the browser must agree on the date and time. Pass `now` (a `Temporal.Instant` made on the server) and a fixed date instead of `Temporal.Now` in the component (`docs/guides/nextjs.md`).
 

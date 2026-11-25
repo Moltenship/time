@@ -36,7 +36,14 @@ npx shadcn@latest add \
 ```
 
 They bring the theme, the toolbar, view switcher and event chip from the shared `calendar` item,
-and the shadcn components they use. The files land in `components/calendar/`.
+the calendar's controls from `calendar-ui`, and the shadcn components they use. The files land in
+`components/calendar/`. The controls are built on ui-sdk, so name its CSS layer before Tailwind in
+your global CSS:
+
+```css title="globals.css"
+@layer ui-sdk;
+@import "tailwindcss";
+```
 
 </Step>
 <Step>
@@ -67,8 +74,8 @@ Give the frame a height: the views fill it and scroll inside it. The calendar is
 you add an `onEventChange` handler; [Interactions](/docs/interactions) shows how to save dragged and
 resized events.
 
-The toolbar's buttons use shadcn's `Tooltip`, which shadcn sets up with a `TooltipProvider` around
-your app. If your app doesn't have one yet, add it once:
+The week view's event tooltips use shadcn's `Tooltip`, which shadcn sets up with a
+`TooltipProvider` around your app. If your app doesn't have one yet, add it once:
 
 ```tsx title="app.tsx"
 import { TooltipProvider } from "@/components/ui/tooltip";
