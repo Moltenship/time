@@ -50,7 +50,7 @@ const solidWorkspaces =
  * free of ui-sdk. The registry's own tests read the kit through an agent bridge too.
  */
 const uiSdkWorkspaces =
-  "(?:^|/)(?:packages/calendar-(?:primitives|react|solid)/|packages/calendar-testing/tests/|registry/(?:(?:solid/|shared/)?calendar-ui|stylex-calendar-ui|tests)/|apps/(?:demo-solid|showcase)/)";
+  "(?:^|/)(?:packages/calendar-(?:primitives|react|solid)/|packages/calendar-testing/tests/|registry/(?:(?:solid/|shared/)?calendar-ui|stylex-calendar-ui|(?:solid/)?tests)/|apps/(?:demo-solid|showcase)/)";
 const sourceRoots = "(?:^|/)(?:apps|benchmarks|packages|registry|tools)/";
 /** A package's source and its tests: rules 12 and 13 cover both (architecture.md). */
 const packageCodePath = (packageName: string) =>
