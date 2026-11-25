@@ -386,6 +386,7 @@ const solidItems = [
   "calendar-history-toast",
   "time-grid-view",
   "year-view",
+  "resource-columns-view",
 ] as const;
 
 /** The versions the workspace builds and tests with, from its catalog. */

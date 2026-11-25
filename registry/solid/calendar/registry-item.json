@@ -53,6 +53,11 @@
       "target": "@components/calendar/resource-status.tsx"
     },
     {
+      "path": "registry/solid/calendar/resource-time.tsx",
+      "type": "registry:component",
+      "target": "@components/calendar/resource-time.tsx"
+    },
+    {
       "path": "registry/solid/calendar/scrolling-axis.tsx",
       "type": "registry:component",
       "target": "@components/calendar/scrolling-axis.tsx"
