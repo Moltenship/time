@@ -1,0 +1,120 @@
+---
+title: Toolbar and mini month
+description: The Solid registry's toolbar, view switcher and mini month, which move the calendar through its dates and views.
+---
+
+Try them in the [Solid demo](https://moltenship-time-demo.vercel.app/solid/): the toolbar sits above
+the calendar, and the mini month beside it.
+
+The `calendar` item has three parts that move a calendar around, the same ones React's registry
+has:
+
+| Part              | File                   | What it does                                                                      |
+| ----------------- | ---------------------- | --------------------------------------------------------------------------------- |
+| `CalendarToolbar` | `calendar-toolbar.tsx` | Today, previous and next period, and the title, with room for your own actions    |
+| `ViewSwitcher`    | `view-switcher.tsx`    | A select of the views, with a keyboard shortcut beside each one in the list       |
+| `MiniMonth`       | `mini-month.tsx`       | A month of dates that picks the calendar's date and shows the range the view does |
+
+## Add them
+
+Add the `calendar` item with the shadcn CLI, as
+[UI source](/docs/installation#ui-source-optional) describes. A view such as `list-view` brings it
+with it, and it brings the [controls](/docs/views/controls) it's built from:
+
+```bash
+npx shadcn@latest add @moltenship/calendar
+```
+
+Import the parts from where `shadcn add` puts them:
+
+<include meta='title="calendar-page.tsx"'>
+  ../../examples/solid/calendar-page.tsx#toolbar-imports
+</include>
+
+## Use them
+
+Render them inside `Calendar.Root`. The toolbar takes your calendar's parts, and the view switcher
+and the mini month read the calendar's state with its hooks:
+
+<include meta='title="calendar-page.tsx"'>../../examples/solid/calendar-page.tsx#toolbar</include>
+
+`CalendarToolbar` reads `calendar` once, when it renders. Its children go at the end, after the
+title: put the view switcher and your own actions there, and pass `start` for content before the
+Today button, such as a sidebar toggle. Its buttons are the package's `TodayTrigger`,
+`PreviousTrigger` and `NextTrigger`, so they step by the view's own period and are named for screen
+readers.
+
+`ViewSwitcher` doesn't know your views. Give it `options`, each a `label`, a `value` and an optional
+`shortcut`, the `value` that's chosen, and `onValueChange`. The shortcut shows in the list only, and
+the switcher binds no key to it.
+
+`MiniMonth` doesn't read the calendar either, so it can sit outside `Calendar.Root`. It shows the
+month of `selectedDate` and follows it when it changes, marks `today`, and draws `visibleRange` as
+a band. `onSelectDate` gets the date a person picks.
+
+<TypeTable
+  type={{
+    selectedDate: {
+      type: "Temporal.PlainDate",
+      description: "The date it marks as selected. A new one brings its month into view.",
+    },
+    onSelectDate: {
+      type: "(date: Temporal.PlainDate) => void",
+      description: "Called with the date a person picks, by click or Enter.",
+    },
+    today: { type: "Temporal.PlainDate", description: "The date it marks as today." },
+    locale: {
+      type: "Intl.LocalesArgument",
+      description: "The locale of the month's title and the weekdays' names.",
+    },
+    weekStartsOn: {
+      type: "IsoDayOfWeek",
+      description: "The first day of each row, 1 for Monday to 7 for Sunday.",
+    },
+    visibleRange: {
+      type: "PlainDateInterval",
+      description:
+        "The dates the calendar shows, drawn as a band. Pass `useVisibleRange()`'s value.",
+    },
+    class: { type: "string", description: "Classes on its outer element." },
+  }}
+/>
+
+## Keyboard
+
+| Focus            | Key                | Effect                                           |
+| ---------------- | ------------------ | ------------------------------------------------ |
+| A mini month day | ← →                | Previous or next day                             |
+| A mini month day | ↑ ↓                | The same day a week before or after              |
+| A mini month day | Page Up, Page Down | The same day a month before or after             |
+| A mini month day | Enter, Space       | Pick the day                                     |
+| The view select  | ↓, ↑, Enter, Space | Open the list; then move through it and pick one |
+| The view select  | A letter           | The next view whose label starts with it         |
+| The view select  | Escape             | Close the list, and keep the view                |
+
+The mini month is one tab stop, and moving past its first or last day shows the month before or
+after. Its keys run before the calendar's, so it works inside `Calendar.Frame` too. Picking a view
+from the list puts focus back on the select.
+
+## Screen readers
+
+The toolbar's Previous and Next buttons are named "Previous period" and "Next period", and their
+tooltips, which open after 400 ms on hover and on keyboard focus, label them. The view select is a
+`combobox` named "View", and its list a `listbox`. The trigger reads the view's label alone, without
+its shortcut.
+
+The mini month is a `grid` named by its heading, "October 2026", which is a live region, so a
+screen reader hears the new month after a step. Each day is a button named by its full date,
+"Thursday, October 8, 2026". Today's is `aria-current="date"`, and the selected day's cell is
+`aria-selected`.
+
+## Look
+
+In a right-to-left page, the arrows point the other way and the buttons keep their places at the
+inline start and end. With reduced motion, the select's list and the tooltips fade in without
+growing. On a touch screen, every target is at least 24 px. The parts take their classes from
+`calendar-toolbar.styles.ts` and `mini-month.styles.ts`, the same files React's registry installs,
+so the two frameworks look alike. Edit them to restyle the parts.
+
+The words, such as "Today" and "Next month", are in `navigation-labels.ts`. Change them there to
+translate the parts.

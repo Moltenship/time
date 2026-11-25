@@ -1,0 +1,77 @@
+---
+title: Controls
+description: The Solid registry's controls kit, the buttons, badges, tooltips and selects the views are built from, and how to use your own in their place.
+---
+
+The registry's views and the [toolbar](/docs/views/toolbar) don't import a component library. They
+take their buttons, badges, tooltips and the view select from the files the `calendar-ui` item adds
+to `components/calendar/ui/`. That's the kit: a default built on ui-sdk's Solid components, which
+gives them their keyboard, focus and ARIA. It's your code once you add it, to edit or replace.
+
+| File          | What the views use it for                                         |
+| ------------- | ----------------------------------------------------------------- |
+| `button.tsx`  | The toolbar's Today and step buttons, and the mini month's arrows |
+| `badge.tsx`   | A resource's status                                               |
+| `tooltip.tsx` | The names of the toolbar's step buttons, shown after 400 ms       |
+| `select.tsx`  | The view switcher                                                 |
+| `icons.tsx`   | The chevrons and the other icons, drawn inline                    |
+
+React's kit has the same files, with the same exports and props, and takes its look from the same
+`.styles.ts` files. A control looks and behaves alike in both frameworks, and the registry's tests
+check that the two kits render the same elements and attributes. React's kit also has the popover,
+dialog and toast, which come to Solid with the views that use them.
+
+## Add it
+
+The `calendar` item brings `calendar-ui`, so adding a view adds the kit too, as
+[UI source](/docs/installation#ui-source-optional) describes. It installs `@ui-sdk/core` and
+`@ui-sdk/solid` if your app doesn't have them.
+
+ui-sdk adds a little CSS of its own to the page, in a layer named `ui-sdk`. The stylesheet in
+[UI source](/docs/installation#ui-source-optional) names that layer before Tailwind, so your styles
+and Tailwind's win over it. The select's list and the tooltips open in the browser's top layer,
+through the Popover API: Chrome and Edge 114, Safari 17 and Firefox 125 or later.
+
+Tooltips wait 400 ms. Change `tooltipDefaults` in `components/calendar/ui/tooltip.styles.ts`, or
+pass `delay` to one `Tooltip`.
+
+In your own components, use the kit's controls as you would any other:
+
+<include meta='title="refresh.tsx"'>../../examples/solid/calendar-page.tsx#own-controls</include>
+
+## Use your own controls
+
+To use a control of your own, replace the body of its file. Keep the file's name, the names it
+exports and the props below, and render your component. The views stay as they are, since they
+import nothing else from it.
+
+A plain `<button>`, with no ui-sdk, in place of the kit's:
+
+<include meta='title="ui/button.tsx"'>../../examples/solid/own-button.tsx#button</include>
+
+Pass on every other prop, `aria-*` and `data-*` included, to the element your control renders,
+around its children. The views set them, and their CSS and tests read some of them. When the views
+pass `render`, they want one of the calendar's own triggers, such as Today, drawn as your button:
+call it with the props you'd have spread on your element, and render what it returns instead.
+
+What the views import from each file, and what they pass:
+
+| File          | The views import                                                                       | What the views pass                                                                                                                                                                                                                                                        |
+| ------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `button.tsx`  | `Button`                                                                               | `variant` (`outline`, `ghost`), `size` (`icon`, `icon-sm`, or none), `class`, `onClick`, `aria-label`, and `render`                                                                                                                                                        |
+| `badge.tsx`   | `Badge`                                                                                | `variant="outline"`, `class`, `title`, and `data-slot="resource-status"` with `data-state`, which colours the status dot inside it                                                                                                                                         |
+| `tooltip.tsx` | `Tooltip`, `TooltipTrigger`, `TooltipContent`                                          | `Tooltip`: its trigger and content. `TooltipTrigger`: `render`, the button it shows on. `TooltipContent`: the text                                                                                                                                                         |
+| `select.tsx`  | `Select`, `SelectTrigger`, `SelectValue`, `SelectContent`, `SelectGroup`, `SelectItem` | `Select`: `items` (`{ label, value }`), `value` and `onValueChange`, which gets the new value. `SelectTrigger`: `aria-label` and `class`. `SelectContent`: `align` and `alignItemWithTrigger`. `SelectItem`: `value`, `label`, and the label with its shortcut as children |
+
+Props take Solid's names, such as `class`, and otherwise React's kit's, so a control you write for
+both frameworks takes the same props in each.
+
+What changes when you swap a control:
+
+- **Keyboard, focus and ARIA** become your component's. The calendar's own keys, such as the mini
+  month's arrows, still work, since the views handle them.
+- **What an agent sees.** An agent bridge lists ui-sdk's components. It reads
+  your control only as far as your component tells it. The calendar stays on the bridge, so an
+  agent can still change the view with its `setView` action.
+- **The same control in React and Solid.** ui-sdk has the same components in both frameworks, so
+  the kit's controls behave alike in both. Yours behave as your components do.

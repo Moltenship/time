@@ -10,9 +10,9 @@ integration is complete, and SolidJS 2's is a preview.
 
 <Callout type="warn" title="Solid is a preview">
   `@moltenship/calendar-solid` has the parts and hooks React's integration has, keyboard navigation,
-  dragging, drafts and undo included. Of the registry's views it has the agenda so far, and it has
-  no testing package yet, so you write the other views. Its API can change in any release before
-  2.0.0.
+  dragging, drafts and undo included. Of the registry's views it has the agenda, with the toolbar
+  and the mini month, so far, and it has no testing package yet, so you write the other views. Its
+  API can change in any release before 2.0.0.
 </Callout>
 
 ## The layers
@@ -83,8 +83,8 @@ Solid doesn't have these yet:
 | A dnd-kit adapter | `@moltenship/calendar-dnd-kit`, which has React as a peer dependency             |
 
 The views are the next work. The registry gets Solid versions of its items, installed with the
-same `shadcn add` command. The agenda is the first, and the toolbar, the month view and the week and
-day views come next. [Issue #279](https://github.com/Moltenship/time/issues/279) tracks each step.
+same `shadcn add` command. The agenda, the toolbar, the mini month and the controls kit came first,
+and the month view and the week and day views come next. [Issue #279](https://github.com/Moltenship/time/issues/279) tracks each step.
 The testing package and the dnd-kit adapter have no Solid plan yet.
 
 Until the registry has a view in Solid, you write its `Renderer` with the package's hooks. The
@@ -93,7 +93,8 @@ keyboard navigation, dragging and undo, beside the registry's agenda. Its source
 repository's [`apps/demo-solid`](https://github.com/Moltenship/time/tree/main/apps/demo-solid).
 
 The Solid docs have no page on something Solid lacks. That is why the only view they have a page on
-is the agenda, and they have none on theming, StyleX or testing.
+is the agenda, beside the toolbar and the controls, and they have none on theming, StyleX or
+testing.
 
 <Solid>
 

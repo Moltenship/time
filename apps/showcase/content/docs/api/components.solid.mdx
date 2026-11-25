@@ -143,9 +143,8 @@ onKey)}`. The calendar then leaves the key alone.
   `useRovingFocus` is disposed. To hide a cell, put `Show` around that component, not inside it.
 
 Render `<Calendar.Announcer messages={messages} />` inside `Root` so a screen reader hears each
-gesture. The package ships no text. The Solid demo's
-[`announcements.ts`](https://github.com/Moltenship/time/blob/main/apps/demo-solid/src/announcements.ts)
-has an English set, and [Announcements](/docs/react/accessibility#announcements) in React's docs
+gesture. The package ships no text. The Solid registry's `calendar` item adds
+`components/calendar/announcements.ts`, an English set, and [Announcements](/docs/react/accessibility#announcements) in React's docs
 describes the messages.
 
 ## Undo and redo
