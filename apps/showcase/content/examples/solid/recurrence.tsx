@@ -17,7 +17,9 @@ import {
 import {
   createCalendar,
   type CalendarEventChange,
+  type CalendarFocus,
   type CalendarVisibleRange,
+  type EventId,
   useCalendarFocus,
 } from "@moltenship/calendar-solid";
 import { createMemo, createSignal } from "solid-js";
@@ -55,8 +57,19 @@ const standup: TeamEvent = {
   title: "Standup",
 };
 
+/** Focus on an occurrence, moved to the occurrence's new ID after an edit. */
+function renamed(
+  current: CalendarFocus | null,
+  ids: ReadonlyMap<EventId, string>,
+): CalendarFocus | null {
+  return current?.kind === "event"
+    ? { ...current, eventId: ids.get(current.eventId) ?? current.eventId }
+    : current;
+}
+
 export function TeamCalendar() {
   const [events, setEvents] = createSignal<readonly TeamEvent[]>([standup]);
+  const [focus, setFocus] = createSignal<CalendarFocus | null>(null);
 
   // #region expand
   // One expander for as long as the calendar is mounted: it keeps its work for series that
@@ -102,6 +115,9 @@ export function TeamCalendar() {
       setEvents((current) =>
         applyRecurrenceEdit(current, edit, { createId: () => crypto.randomUUID() }),
       );
+      // "following" and "all" give the occurrences new IDs. Focus follows them, and the calendar
+      // moves it to the occurrence under its new ID.
+      setFocus((current) => renamed(current, edit.occurrenceIds));
     }
   }
   // #endregion change
@@ -114,8 +130,10 @@ export function TeamCalendar() {
         defaultTimeZone={timeZone}
         defaultView="agenda"
         events={occurrences()}
+        focus={focus()}
         locale="en-US"
         onEventChange={onEventChange}
+        onFocusChange={setFocus}
         onVisibleRangeChange={onVisibleRangeChange}
         weekRules={{ firstDay: 1, minimalDays: 4, weekend: [6, 7] }}
       >

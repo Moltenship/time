@@ -110,6 +110,8 @@ const createdIds = new Map<string, string>();
 
 /** Every saved change, from a drag, a key or the agent, for undo and redo. */
 const changes = createEventHistory<Meeting, string, string>({
+  // A step holds one event, so undo can't take back a change to the Team sync's other occurrences.
+  filter: (change) => change.cause === "create" || change.event.series === undefined,
   // Once the events show it.
   createdEventId: (change, events) => {
     const id = createdIds.get(change.id);
@@ -212,12 +214,12 @@ export function App() {
       <p class="preview">
         This page runs <code>@moltenship/calendar-solid</code>, a preview. The toolbar, the view
         switcher, the mini month, the month, the agenda, the recurrence dialog and the undo toast
-        are the registry's Solid items, the files <code>shadcn add</code> installs into a Solid
-        app. In the month, arrow keys move through days and Enter into a day's events, Space picks
-        an event up or starts a new one, and a pointer drags an event to another day or across days
-        to create one; in the agenda, up and down move between events, Page Up and Page Down
-        between days. A change to a Team sync asks which of the series it applies to, and each
-        change shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
+        are the registry's Solid items, the files <code>shadcn add</code> installs into a Solid app.
+        In the month, arrow keys move through days and Enter into a day's events, Space picks an
+        event up or starts a new one, and a pointer drags an event to another day or across days to
+        create one; in the agenda, up and down move between events, Page Up and Page Down between
+        days. A change to a Team sync asks which of the series it applies to, and every other change
+        shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's month and list projections, with an agent driving it

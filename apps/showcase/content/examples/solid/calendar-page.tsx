@@ -1,4 +1,4 @@
-// The page Installation, the Agenda page and the Toolbar page show, after `shadcn add` of the
+// The page Installation, the Agenda, Toolbar and Undo and redo pages show, after `shadcn add` of the
 // Solid items. The registry's install test adds this file to a clean Solid app, whose typecheck and
 // build cover it.
 

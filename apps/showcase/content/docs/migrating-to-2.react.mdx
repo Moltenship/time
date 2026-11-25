@@ -265,8 +265,8 @@ element`. An element alone no longer works: wrap it in a function that spreads `
 - `AnnotationMark`'s `render` takes an element, and the mark's props merge into it. A function no
   longer works.
 - The history toast's `recordedAnnouncement(step, title)` message is now
-  `recordedHint(step)`. It returns only the part after the toast's title, such as "To undo it,
-  press F6 and choose Undo.", since the title is read first. A screen reader now reads every toast
+  `recordedHint(step)`, in `stylex-calendar-history-toast` too. It returns only the part after the
+  toast's title, such as "To undo it, press F6 and choose Undo.", since the title is read first. A screen reader now reads every toast
   as it shows, after the announcement of the gesture that caused it.
 - A popover trigger has `aria-expanded` while its popover is open, in place of Base UI's
   `data-popup-open`. Style it with `aria-expanded:`, or `"[aria-expanded=true]"` in StyleX.
