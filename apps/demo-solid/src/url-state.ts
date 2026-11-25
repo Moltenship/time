@@ -31,6 +31,14 @@ function viewFor(value: string | null): SolidView | undefined {
   return value !== null && Object.hasOwn(nearestView, value) ? nearestView[value] : undefined;
 }
 
+/**
+ * The view this demo shows for a view name a part asks for: the month's date number opens `day`,
+ * which shows here as the agenda from that date.
+ */
+export function nearestSolidView(name: string, fallback: SolidView): SolidView {
+  return viewFor(name) ?? fallback;
+}
+
 function parseDate(value: string | null): Temporal.PlainDate | undefined {
   // A plain ISO date of a four-digit year: Temporal also takes a calendar annotation and years
   // out to ±271821, whose edges no view can show.

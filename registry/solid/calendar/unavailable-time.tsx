@@ -57,21 +57,25 @@ export function UnavailableTime(props: UnavailableTimeProps) {
       style: { ...variables, ...props.style },
     };
   };
+  // Show runs its child once, untracked: the render is an expression in it, so it runs again when
+  // the band or its place changes, as React's does.
   return (
     <Show when={props.render} fallback={<div {...own()} />}>
-      {(render) =>
-        render()(own(), {
-          get band() {
-            return props.band;
-          },
-          get date() {
-            return props.date;
-          },
-          get resource() {
-            return props.resource;
-          },
-        })
-      }
+      {(render) => (
+        <>
+          {render()(own(), {
+            get band() {
+              return props.band;
+            },
+            get date() {
+              return props.date;
+            },
+            get resource() {
+              return props.resource;
+            },
+          })}
+        </>
+      )}
     </Show>
   );
 }

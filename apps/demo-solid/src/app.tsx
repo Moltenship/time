@@ -24,7 +24,12 @@ import {
   type DragPreview,
 } from "./drag-preview";
 import { FrameworkSwitch } from "./framework-switch";
-import { readSolidLocation, writeSolidLocation, type SolidView } from "./url-state";
+import {
+  nearestSolidView,
+  readSolidLocation,
+  writeSolidLocation,
+  type SolidView,
+} from "./url-state";
 
 const timeZone = Temporal.Now.timeZoneId();
 const today = Temporal.Now.plainDateISO(timeZone);
@@ -237,7 +242,9 @@ export function App() {
         }}
         onEventChangeResult={(result, detail) => changes.record(result, detail)}
         onAnchorDateChange={(date) => setLocation((current) => ({ ...current, date }))}
-        onViewChange={(view) => setLocation((current) => ({ ...current, view }))}
+        onViewChange={(view) =>
+          setLocation((current) => ({ ...current, view: nearestSolidView(view, current.view) }))
+        }
         policies={[
           // A locked event stays where it is: the change fails, and an agent hears the reason.
           (change) =>

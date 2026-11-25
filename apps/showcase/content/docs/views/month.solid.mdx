@@ -77,7 +77,9 @@ Pass them to `createMonthView`, or per root in `viewOptions`, as the page above 
 - **Single-day timed events** show a colored dot, the start time and the title.
 - **"+N more":** rows grow to fill the height they're given, at least 80 px each, and show as many
   events as fit. The rest collapse into "+N more", which opens a popover with the day's events.
-- **Closed days**, from the root's `availability`, are shaded and named by their reason.
+- **Closed days**, from the root's `availability`, are shaded, and a screen reader hears "closed"
+  in the day's name, after its exception's label if it has one: "Friday, October 9, 2026, Offsite,
+  closed, 2 events".
 - **Clicking a date number** opens that day in the view named `day`. Register a view of your own by
   that name so the click has somewhere to go.
 - **Editing:** with `onEventChange` on `Root`, drag an event to another day (timed events keep their
@@ -103,11 +105,13 @@ parts you compose: to change one, edit its file under `components/calendar/month
 ```txt title="Rendered by MonthView"
 MonthView                        month-view.tsx
 ├── Weekday header
-└── MonthWeek                    month-week.tsx, one per week
-    ├── Day cell                 data-date
-    │   └── Date button          aria-current="date" on today
-    ├── MonthEvent               month-event.tsx
-    └── "+N more"                the kit's popover, with the day's events
+└── MonthWeekRow                 month-week.tsx, one per week
+    └── MonthDayCell             a gridcell, one per day
+        ├── UnavailableTime      the shading of a closed day
+        ├── Date layer           data-date
+        │   └── DateButton       aria-current="date" on today
+        ├── MonthEvent           month-event.tsx, one per event that starts that day
+        └── MoreEvents           "+N more" and the kit's popover, with the day's events
 ```
 
 The `.tsx` files are Solid components. What they render comes from plain TypeScript beside them:
@@ -136,12 +140,11 @@ into another week.
 | An event | Shift+Space        | Pick up its end to resize it by days. Shift+Space again switches to its start |
 
 The grid is one tab stop. Events behind "+N more" are reachable too: while focus is on one, its week
-shows every event. After a drop, focus stays on the moved event. The keys are the ones
-`view-keys.ts` maps, the same in every view.
+shows every event. After a drop, focus stays on the moved event.
 
 ## Markup for interactions
 
 The view connects the pointer layer for you. If you change its markup, keep the attributes it reads:
-each day cell holds an element with `data-date` underneath its events, and each event is a
+each `MonthDayCell` holds an element with `data-date` underneath its events, and each event is a
 `<button>` with `data-event-id`. The events sit beside that element, not inside it, so a drag over
 a bar still finds the day under the pointer.

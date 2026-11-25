@@ -117,7 +117,10 @@ export function lanesFor(bodyHeight: number, weekCount: number, laneHeight: numb
   return lanesIn(Math.max(MIN_ROW_HEIGHT, bodyHeight / weekCount), laneHeight);
 }
 
-/** What the lane count is measured from: the body's height and a probe's lane height. */
+/**
+ * What the lane count is measured from: the body's height and a probe's lane height. Solid binds
+ * these sizes rather than `attachLaneCapacity`, so its lane count is a memo of the week count.
+ */
 export interface LaneSizes {
   readonly bodyHeight: number;
   readonly laneHeight: number;
