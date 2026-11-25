@@ -1,5 +1,4 @@
 import {
-  createEffect,
   createMemo,
   createSignal,
   onCleanup,
@@ -46,15 +45,14 @@ export function useColumnVirtualizer(
   });
 
   let unmount: (() => void) | undefined;
+  // The virtualizer picks up the body here, once: its width sets the columns', which renders
+  // again. React's binding calls `_willUpdate` after every render, but it only acts on a new
+  // scroll element, and the body stays the same one; `update` passes a new width or direction on.
   onSettled(() => {
     unmount = virtualizer._didMount();
-  });
-  onCleanup(() => unmount?.());
-  // After each render, as TanStack's React binding does: it picks up the scroll element, a new
-  // column width and a new direction.
-  createEffect(layout, () => {
     virtualizer._willUpdate();
   });
+  onCleanup(() => unmount?.());
 
   return {
     items: () => layout().items,
