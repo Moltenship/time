@@ -217,8 +217,12 @@ test("Escape rolls the change back and focus goes back to the occurrence", async
 
   await userEvent.keyboard("{Escape}");
 
-  await until(() => expect(document.activeElement).toBe(occurrence(thursday)));
-  expect(label(document.activeElement)).toBe("Standup, Thursday, October 8, 9:00 – 9:30 AM");
+  // Focus comes back to the moved occurrence first, as the answer waits for it, and follows the
+  // occurrence back to Thursday once the change is rolled back.
+  await until(() => {
+    expect(document.activeElement).toBe(occurrence(thursday));
+    expect(label(document.activeElement)).toBe("Standup, Thursday, October 8, 9:00 – 9:30 AM");
+  });
   // A cancelled question isn't a failed save.
   await until(() => expect(said).toEqual(["Cancelled. Standup is back where it was."]));
 });
