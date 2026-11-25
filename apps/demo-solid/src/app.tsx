@@ -215,12 +215,13 @@ export function App() {
         This page runs <code>@moltenship/calendar-solid</code>, a preview. The toolbar, the view
         switcher, the mini month, the week, day, month, year and agenda, the recurrence dialog and
         the undo toast are the registry's Solid items, the files <code>shadcn add</code> installs
-        into a Solid app. In the month, arrow keys move through days and Enter into a day's events,
-        Space picks an event up or starts a new one, and a pointer drags an event to another day or
-        across days to create one; in the year, arrow keys move through days and Enter or a click
-        lists a day's events; in the agenda, up and down move between events, Page Up and Page Down
-        between days. A change to a Team sync asks which of the series it applies to, and every
-        other change shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
+        into a Solid app. Arrow keys move through the week's and day's 15-minute slots and the
+        month's days, Enter moves into the events there, and Space picks an event up or starts a new
+        one. A pointer drags an event to another time or day, or its edges, or across empty time or
+        days to create one. In the year, arrow keys move through days and Enter or a click lists a
+        day's events. In the agenda, up and down move between events, Page Up and Page Down between
+        days. A change to a Team sync asks which of the series it applies to, and every other change
+        shows a toast to undo it; F6 reaches it. <a href={docsUrl}>The Solid docs</a>
       </p>
       <p class="hint">
         A Solid 2.0 calendar on the engine's time grid, month, year and list projections, with an
@@ -274,7 +275,12 @@ export function App() {
               : { type: "accept" },
         ]}
         view={location().view}
-        viewOptions={{ month: { dragPreview: dragPreview() } }}
+        viewOptions={{
+          "3-day": { dragPreview: dragPreview() },
+          day: { dragPreview: dragPreview() },
+          month: { dragPreview: dragPreview() },
+          week: { dragPreview: dragPreview() },
+        }}
         weekRules={weekRules}
       >
         <div class="layout">
